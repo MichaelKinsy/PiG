@@ -1,0 +1,239 @@
+# SPDX-License-Identifier: MIT
+name: Pi-Bolt harness comparison
+
+# Runs Pi-Bolt's own benchmark harness (github.com/opensec-git/Pi-Bolt, branch pi-bolt, directory bench/) on GitHub's runners
+# against three builds: Pi-Bolt as released (BOLT_TAG), PiG as released (PIG_TAG) and PiG built from this checkout. The harness
+# commands are the ones of Pi-Bolt's published workflow (bench/results/2026-10-23-pig-1.0.0/workflow.yml and workflow-windows.yml),
+# with the same pinning: Linux runs on one CPU. bench/pig_verify.py runs first and fails the job when the builds do not do the same
+# work. Raw output is the artifact of each job. Dispatch by hand only: it takes hours.
+#
+# Rerun it yourself: run this workflow from the Actions tab, or clone the harness at the commit above and run the commands of the
+# Suites step on any machine (the Pi-Bolt repository's bench/README.md describes each tool).
+
+on:
+  workflow_dispatch:
+    inputs:
+      bolt_tag:
+        description: Pi-Bolt release tag to compare
+        default: bolt-v1.1.4
+      pig_tag:
+        description: PiG release tag to compare
+        default: v0.7.0
+      harness_ref:
+        description: Commit of opensec-git/Pi-Bolt (branch pi-bolt) whose bench/ is run
+        default: 213e538ad0810633e1ab9a20a34e2ffc0f0f0f9b
+
+permissions:
+  contents: read
+
+env:
+  BOLT_TAG: ${{ inputs.bolt_tag }}
+  PIG_TAG: ${{ inputs.pig_tag }}
+  HARNESS_REF: ${{ inputs.harness_ref }}
+
+jobs:
+  bench:
+    name: Bench on ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux x86-64
+            runner: ubuntu-24.04
+            bolt: pi-bolt-linux-x64.tar.xz
+            pig: linux-amd64
+            cpus: "--cpus 1"
+          - name: Linux ARM64
+            runner: ubuntu-24.04-arm
+            bolt: pi-bolt-linux-arm64.tar.xz
+            pig: linux-arm64
+            cpus: "--cpus 1"
+          - name: macOS Apple silicon
+            runner: macos-15
+            bolt: pi-bolt-darwin-arm64.tar.xz
+            pig: darwin-arm64
+            cpus: ""
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+      - name: Builds
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BOLT_ASSET: ${{ matrix.bolt }}
+          PIG_PLAT: ${{ matrix.pig }}
+        run: |
+          set -euo pipefail
+          if [ "$RUNNER_OS" = Linux ]; then
+            sudo apt-get update -qq && sudo apt-get install -y -qq tmux xz-utils >/dev/null
+            OPENSSL=openssl
+          else
+            brew install tmux openssl@3 xz >/dev/null
+            OPENSSL="$(brew --prefix openssl@3)/bin/openssl"
+          fi
+          sha() { if command -v sha256sum >/dev/null; then sha256sum "$@"; else shasum -a 256 "$@"; fi; }
+          mkdir -p results .work out
+          # The harness, at the pinned commit; only its bench/ directory and the release key are used.
+          git clone --quiet --branch pi-bolt https://github.com/opensec-git/Pi-Bolt.git .work/harness
+          git -C .work/harness checkout --quiet "$HARNESS_REF"
+          echo "harness: opensec-git/Pi-Bolt $(git -C .work/harness rev-parse HEAD)" >>results/environment.txt
+          # bolt: Pi-Bolt as released, checked against the release's signed checksums.
+          base="https://github.com/opensec-git/Pi-Bolt/releases/download/$BOLT_TAG"
+          mkdir -p .work/bolt-dl
+          for f in "$BOLT_ASSET" SHA256SUMS SHA256SUMS.sig; do curl -fsSL -o ".work/bolt-dl/$f" "$base/$f"; done
+          "$OPENSSL" pkeyutl -verify -pubin -inkey .work/harness/keys/release.pub -rawin -in .work/bolt-dl/SHA256SUMS -sigfile .work/bolt-dl/SHA256SUMS.sig
+          (cd .work/bolt-dl && grep -E " $BOLT_ASSET\$" SHA256SUMS | sha -c -)
+          mkdir -p out/bolt && tar -C out/bolt --strip-components=1 -xJf ".work/bolt-dl/$BOLT_ASSET"
+          echo "bolt: $BOLT_ASSET of $BOLT_TAG (SHA256SUMS signature and sum verified)" >>results/environment.txt
+          # pig: PiG as released, checked against its SHA256SUMS and its build provenance.
+          pig="pig-${PIG_TAG#v}-$PIG_PLAT.tar.gz"
+          mkdir -p .work/pig-dl
+          gh release download "$PIG_TAG" --repo "$GITHUB_REPOSITORY" --pattern "$pig" --pattern "$pig.sigstore.json" --pattern SHA256SUMS --dir .work/pig-dl
+          (cd .work/pig-dl && grep " $pig\$" SHA256SUMS | sha -c -)
+          gh attestation verify ".work/pig-dl/$pig" --bundle ".work/pig-dl/$pig.sigstore.json" --repo "$GITHUB_REPOSITORY" >/dev/null
+          mkdir -p out/pig && tar -C out/pig --strip-components=1 -xzf ".work/pig-dl/$pig"
+          echo "pig: $pig (SHA256SUMS and sigstore bundle verified)" >>results/environment.txt
+          # tip: this checkout, built with the release's flags.
+          CGO_ENABLED=0 go build -buildvcs=false -trimpath -ldflags "-s -w -X main.Build=$GITHUB_SHA" -o out/tip/pig ./cmd/pig
+          echo "tip: $GITHUB_SHA (go build -trimpath -ldflags '-s -w')" >>results/environment.txt
+          {
+            echo "bolt: $(out/bolt/pi --version </dev/null)"
+            echo "pig: $(out/pig/pig --version </dev/null)"
+            echo "tip: $(out/tip/pig --version </dev/null)"
+            echo "runner: ${{ matrix.runner }} ($(uname -srm)), $(nproc 2>/dev/null || sysctl -n hw.ncpu) CPUs"
+            if [ "$RUNNER_OS" = Linux ]; then grep -m1 'model name' /proc/cpuinfo || lscpu | grep -m1 'Model name'; echo "THP: $(cat /sys/kernel/mm/transparent_hugepage/enabled)"; else sysctl -n machdep.cpu.brand_string; sw_vers | tr '\n' ' '; echo; fi
+            echo "python: $(python3 --version), tmux: $(tmux -V)"
+          } | tee -a results/environment.txt
+      - name: Same work
+        run: |
+          python3 .work/harness/bench/pig_verify.py --build bolt=out/bolt/pi --build pig=out/pig/pig --build tip=out/tip/pig | tee results/verify.txt
+      - name: Suites
+        env:
+          CPUS: ${{ matrix.cpus }}
+        run: |
+          H=.work/harness/bench
+          B=(--build bolt=out/bolt/pi --build pig=out/pig/pig --build tip=out/tip/pig)
+          run() { name=$1; out=$2; shift 2; echo "## $name" | tee -a results/all.txt; "$@" 2>&1 | grep -vE 'round [0-9]+/' | tee -a results/all.txt "results/$out" || echo "$name failed" | tee -a results/all.txt; }
+          run benchmark benchmark.txt python3 $H/benchmark.py --runs 21 --warmup 3 $CPUS "${B[@]}" --baseline bolt --out results/benchmark.jsonl
+          for i in 1 2 3; do run "long_answer $i" "long_answer-$i.txt" python3 $H/long_answer.py --sizes 20000,60000 $CPUS "${B[@]}"; done
+          run tmux_load tmux_load.txt python3 $H/tmux_load.py --steps md:20000,write:50 $CPUS "${B[@]}"
+          run large_write large_write.txt python3 $H/large_write.py --sizes 50,200 $CPUS "${B[@]}"
+          run pauses pauses.txt python3 $H/pauses.py $CPUS "${B[@]}" --out results/pauses.jsonl
+          run idle idle.txt python3 $H/idle.py --seconds 20 --rounds 2 "${B[@]}"
+          run "idle 120 s" idle-120.txt python3 $H/idle.py --seconds 120 --rounds 1 "${B[@]}"
+          run long_transcript long_transcript.txt python3 $H/long_transcript.py --entries 0,2292,4000 --mode fullscreen,regular --rounds 2 $CPUS "${B[@]}" --json results/long_transcript.jsonl
+          run "long_transcript keys" long_transcript-keys.txt python3 $H/long_transcript.py --entries 2292 --mode fullscreen,regular --keys $CPUS "${B[@]}" --json results/long_transcript.jsonl
+          for i in 1 2; do run "long_session $i" "long_session-$i.txt" python3 $H/long_session.py --prompts 40 --every 20 $CPUS "${B[@]}" --out results/long.jsonl; done
+          { echo '```'; cat results/environment.txt results/verify.txt results/all.txt | awk '/^## /{m=0} /^--- medians/{m=1} m || !/^\{/'; echo '```'; } >>"$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: bolt-bench-${{ matrix.pig }}
+          path: results/
+          retention-days: 30
+
+  windows:
+    name: Bench on Windows x64
+    runs-on: windows-2025
+    timeout-minutes: 360
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+      - name: Builds
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Continue'
+          New-Item -ItemType Directory -Force results, .work, out | Out-Null
+          function Check-Sum($dir, $file) {
+            $sum = (Get-FileHash "$dir\$file" -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ((Get-Content -LiteralPath "$dir\SHA256SUMS") -notcontains "$sum  $file") { throw "$file is not the one SHA256SUMS lists" }
+          }
+          # The scripts run Python 3 as `py -3`.
+          if (-not (Get-Command py -ErrorAction SilentlyContinue)) {
+            $shim = Join-Path $env:RUNNER_TEMP 'py-shim'
+            New-Item -ItemType Directory -Force $shim | Out-Null
+            Set-Content -Encoding ascii (Join-Path $shim 'py.cmd') "@if `"%~1`"==`"-3`" (python %2 %3 %4 %5 %6 %7 %8 %9) else (python %*)"
+            Add-Content -Encoding utf8 $env:GITHUB_PATH $shim
+            $env:PATH = "$shim;$env:PATH"
+          }
+          git clone --quiet --branch pi-bolt https://github.com/opensec-git/Pi-Bolt.git .work\harness
+          git -C .work\harness checkout --quiet $env:HARNESS_REF
+          $env_lines = @("harness: opensec-git/Pi-Bolt $(git -C .work\harness rev-parse HEAD)")
+          # bolt: Pi-Bolt as released, checked against the release's signed checksums.
+          $asset = 'pi-bolt-win32-x64.zip'
+          $base = "https://github.com/opensec-git/Pi-Bolt/releases/download/$env:BOLT_TAG"
+          New-Item -ItemType Directory -Force .work\bolt-dl | Out-Null
+          foreach ($f in $asset, 'SHA256SUMS', 'SHA256SUMS.sig') { Invoke-WebRequest -Uri "$base/$f" -OutFile ".work\bolt-dl\$f" }
+          $openssl = 'C:\Program Files\Git\usr\bin\openssl.exe'
+          & $openssl pkeyutl -verify -pubin -inkey .work\harness\keys\release.pub -rawin -in .work\bolt-dl\SHA256SUMS -sigfile .work\bolt-dl\SHA256SUMS.sig
+          if ($LASTEXITCODE -ne 0) { throw "the signature of $env:BOLT_TAG's checksums does not verify" }
+          Check-Sum .work\bolt-dl $asset
+          Expand-Archive ".work\bolt-dl\$asset" -DestinationPath .work\bolt-dl -Force
+          Move-Item .work\bolt-dl\pi-bolt-win32-x64 out\bolt
+          $env_lines += "bolt: $asset of $env:BOLT_TAG (SHA256SUMS signature and sum verified)"
+          # pig: PiG as released, checked against its SHA256SUMS and its build provenance.
+          $pig = "pig-$($env:PIG_TAG.TrimStart('v'))-windows-amd64.zip"
+          gh release download $env:PIG_TAG --repo $env:GITHUB_REPOSITORY --pattern $pig --pattern "$pig.sigstore.json" --pattern SHA256SUMS --dir .work\pig-dl --clobber
+          Check-Sum .work\pig-dl $pig
+          gh attestation verify ".work\pig-dl\$pig" --bundle ".work\pig-dl\$pig.sigstore.json" --repo $env:GITHUB_REPOSITORY | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw "PiG's attestation does not verify" }
+          Expand-Archive ".work\pig-dl\$pig" -DestinationPath .work\pig-x -Force
+          $pigexe = Get-ChildItem -Recurse .work\pig-x -Filter pig.exe | Select-Object -First 1
+          Move-Item $pigexe.Directory.FullName out\pig
+          $env_lines += "pig: $pig (SHA256SUMS and sigstore bundle verified)"
+          # tip: this checkout, built with the release's flags.
+          $env:CGO_ENABLED = '0'
+          go build -buildvcs=false -trimpath -ldflags "-s -w -X main.Build=$env:GITHUB_SHA" -o out\tip\pig.exe ./cmd/pig
+          if ($LASTEXITCODE -ne 0) { throw 'go build failed' }
+          $env_lines += "tip: $env:GITHUB_SHA"
+          $cpu = Get-CimInstance Win32_Processor | Select-Object -First 1
+          $env_lines += "bolt: $(& out\bolt\pi-bolt.exe --version | Select-Object -First 1)"
+          $env_lines += "pig: $(& out\pig\pig.exe --version | Select-Object -First 1)"
+          $env_lines += "tip: $(& out\tip\pig.exe --version | Select-Object -First 1)"
+          $env_lines += "runner: windows-2025, $($cpu.Name.Trim()), $($cpu.NumberOfCores) cores, $($cpu.NumberOfLogicalProcessors) threads; python: $(python --version)"
+          $env_lines
+          [IO.File]::WriteAllLines("$PWD\results\environment.txt", [string[]]$env_lines)
+      - name: Suites
+        run: |
+          $env:PYTHONUTF8 = '1'
+          $ErrorActionPreference = 'Continue'
+          $H = "$PWD\.work\harness\bench"
+          $B = @('--build', "bolt=$PWD\out\bolt\pi-bolt.exe", '--build', "pig=$PWD\out\pig\pig.exe", '--build', "tip=$PWD\out\tip\pig.exe")
+          function Run($name, $file, [string[]]$cmd) {
+            "## $name" | Add-Content -Encoding utf8 results\all.txt
+            $out = & python @cmd 2>&1 | ForEach-Object { "$_" } | Where-Object { $_ -notmatch 'round [0-9]+/' }
+            if ($LASTEXITCODE -ne 0) { $out += "$name failed (exit $LASTEXITCODE)" }
+            $out
+            [IO.File]::WriteAllLines("$PWD\results\$file", [string[]]@($out))
+            $out | Add-Content -Encoding utf8 results\all.txt
+          }
+          Run verify verify.txt (@("$H\pig_verify.py") + $B)
+          Run benchmark benchmark.txt (@("$H\benchmark.py", '--runs', '21', '--warmup', '3', '--baseline', 'bolt', '--out', 'results\benchmark.jsonl') + $B)
+          foreach ($i in 1, 2, 3) { Run "long_answer $i" "long_answer-$i.txt" (@("$H\long_answer.py", '--sizes', '20000,60000') + $B) }
+          Run large_write large_write.txt (@("$H\large_write.py", '--sizes', '50,200') + $B)
+          Run pauses pauses.txt (@("$H\pauses.py", '--out', 'results\pauses.jsonl') + $B)
+          Run idle idle.txt (@("$H\idle.py", '--seconds', '20', '--rounds', '2') + $B)
+          Run 'idle 120 s' idle-120.txt (@("$H\idle.py", '--seconds', '120', '--rounds', '1') + $B)
+          Run long_transcript long_transcript.txt (@("$H\long_transcript.py", '--entries', '0,2292,4000', '--mode', 'fullscreen,regular', '--rounds', '2', '--json', 'results\long_transcript.jsonl') + $B)
+          foreach ($i in 1, 2) { Run "long_session $i" "long_session-$i.txt" (@("$H\long_session.py", '--prompts', '40', '--every', '20', '--out', 'results\long.jsonl') + $B) }
+          $summary = @('```') + (Get-Content results\environment.txt) + (Get-Content results\all.txt | Where-Object { $_ -notmatch '^\{' }) + @('```')
+          $summary | Add-Content -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: bolt-bench-windows-amd64
+          path: results/
+          retention-days: 30

@@ -19,5 +19,7 @@ timeout_seconds = 60
 [assert]
 exit_code = 0
 output_equal = true
-both_contain = ["title Pets", "Notebook", "(+1 more)"]
+# The pin's lovely-mermaid 0.3.3 (Pi aceb1bd1, #8158) draws the `pie` diagram as a titled bar chart instead of leaving its source, probed 2026-11-08 at c23b9ec1:
+# the title row is "`             Pets`  " and the bar row "`Dogs  ████████████████████ 100%`". Pi 1.5.0 kept "title Pets" as source; both_contain names the pin's rows.
+both_contain = ["`             Pets`  ", "Dogs  ████████████████████ 100%", "Notebook", "(+1 more)"]
 runs = 3

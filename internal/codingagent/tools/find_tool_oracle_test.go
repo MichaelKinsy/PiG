@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"maps"
 	"math/rand/v2"
 	"os"
 	"os/exec"
@@ -157,19 +156,6 @@ func TestFindToolMatchesPi(t *testing.T) {
 		_ = json.Unmarshal(gotRaw, &normalized)
 		// fd walks in parallel, so the subset a result limit keeps is not specified (the same binary gives Pi and Pig different ones); a request that reaches its limit is compared by its notice, the number of results and the metadata, and every other request by its exact text.
 		want := expected[i]
-		// pig divergence (D253): Pi 1.5.0 reports the limit when exactly `limit` files match, Pi main 676af1d77 does not. Zero and fractional limits
-		// are left out of the scenarios (Pi 1.5.0 passes them to fd unchanged); TestFindLimitEdgeCases7121 covers them. A request where only the pinned Pi
-		// reports the limit must have exactly `limit` matches, which the same request with one more allowed proves.
-		if want.ResultLimitReached != nil && normalized.ResultLimitReached == nil {
-			wider := maps.Clone(scenario)
-			wider["limit"] = *want.ResultLimitReached + 1
-			widerRaw, _ := json.Marshal(wider)
-			widerResult, widerErr := tool.Execute(context.Background(), "call", widerRaw, nil)
-			if widerErr == nil && !widerResult.IsError && !strings.Contains(widerResult.Text(), "limit reached") && float64(strings.Count(widerResult.Text(), "\n")+1) == *want.ResultLimitReached {
-				head, _, _ := strings.Cut(want.Text, "\n\n[")
-				want.Text, want.ResultLimitReached = head, nil
-			}
-		}
 		if want.ResultLimitReached != nil && normalized.ResultLimitReached != nil {
 			keep := func(outcome findOutcome) findOutcome {
 				head, _, _ := strings.Cut(outcome.Text, "\n\n[")

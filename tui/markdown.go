@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 	"sync/atomic"
+	"weak"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
@@ -49,6 +50,20 @@ type Markdown struct {
 	cachedTheme          *Theme
 	cachedRevision       uint64
 	cachedTransformed    string
+	// inlinesOn is set while a render of a document that is not a quote or list item fills the inline renderings of memos;
+	// highlightsOn is the same for its highlighted code, which the document keeps for a quote or list item.
+	inlinesOn, highlightsOn bool
+	// markdownMemos is what the render that is running keeps for the next one of a longer or equal text. It is set only
+	// while a render runs; between renders memosRef holds it weakly, as markdown.ts holds its rendered blocks in a WeakRef:
+	// a full garbage collection releases it, and the next render rebuilds it.
+	*markdownMemos
+	memosRef weak.Pointer[markdownMemos]
+	// finished reports that the text no longer streams: a render keeps none of the memos (FinishStreaming).
+	finished bool
+}
+
+// markdownMemos is what a streamed render keeps for the next delta. The rows are the same with or without it.
+type markdownMemos struct {
 	// wraps holds the rows the last render wrapped, keyed by the overflowing
 	// line at wrapsWidth. wrapTextWithAnsi is a function of the line and the
 	// width, so a streamed render wraps only the lines that changed.
@@ -57,28 +72,19 @@ type Markdown struct {
 	// inlines holds the inline renderings of the last render's text in the default style, keyed by the text and marked's
 	// lexer state on entry. A rendering is a function of those and of inlinesContext, the inputs the style functions read,
 	// so it is kept only while every style function is one of tui's own (markdownPureStyles). Invalidate and a change of
-	// inlinesContext clear it, SetText does not. inlinesOn is set while a render of a document that is not a quote or list
-	// item fills it.
+	// inlinesContext clear it, SetText does not.
 	inlines, nextInlines map[inlineKey]inlineRendering
 	inlinesContext       inlineContext
-	inlinesOn            bool
 	// highlights holds the highlighted lines of the last render's code blocks, keyed by language and code, as markdown.ts
 	// keeps the highlighting of each top-level block it renders. The theme's highlighter runs for a block only when the
 	// code is new, so a streamed answer keeps the highlighting of its earlier blocks, and a resize or a spacing change
 	// keeps it for a block that renders again. A render keeps only what it used, which drops a streamed block's earlier
 	// versions. A change of highlightsEpoch (a theme change or a loaded grammar) and Invalidate clear it, SetText does
-	// not. highlightsOn is set while a render of a document that is not a quote or list item fills it; the code of a
-	// quote or list item is kept by the document.
+	// not.
 	highlights, nextHighlights map[highlightKey][]string
 	highlightsEpoch            HighlightEpoch
-	highlightsOn               bool
 	// resume is what the last render kept to resume the next one of a longer text from (markdown_resume.go).
 	resume *resumeState
-	// finished reports that the text no longer streams: a render keeps none of the memos above, which only serve
-	// the next render of a longer or equal text (FinishStreaming). markdown.ts holds its rendered blocks in a WeakRef,
-	// which a JavaScript job keeps alive until it ends; a Go collector cycle clears one between two deltas, so a Markdown
-	// holds them until it finishes instead.
-	finished bool
 }
 
 // FinishStreaming drops the memos a streamed render keeps for the next delta (the wraps, the inline renderings, the
@@ -99,8 +105,37 @@ func finishedMarkdown(m *Markdown) *Markdown {
 }
 
 func (m *Markdown) dropStreamingMemos() {
-	m.wraps, m.nextWraps, m.inlines, m.nextInlines, m.resume = nil, nil, nil, nil, nil
-	m.highlights, m.nextHighlights = nil, nil
+	m.markdownMemos = nil
+	m.memosRef = weak.Pointer[markdownMemos]{}
+}
+
+// holdMemos makes the memos the render that starts fills: the last render's while no garbage collection has released
+// them, empty ones after one has (markdown.ts renders a block again when its WeakRef was cleared).
+func (m *Markdown) holdMemos() {
+	if m.markdownMemos != nil {
+		return
+	}
+	if m.markdownMemos = m.memosRef.Value(); m.markdownMemos == nil {
+		m.markdownMemos = &markdownMemos{}
+	}
+}
+
+// releaseMemos ends a render's hold: from here the memos stay reachable only through memosRef, so the next collection
+// that finds nothing else holding them releases them.
+func (m *Markdown) releaseMemos() {
+	if m.markdownMemos != nil {
+		m.memosRef = weak.Make(m.markdownMemos)
+		m.markdownMemos = nil
+	}
+}
+
+// memos is what the last render kept, or nil when none was kept or a collection released it. A caller outside a render
+// uses it, as the render's own fields are set only while it runs.
+func (m *Markdown) memos() *markdownMemos {
+	if m.markdownMemos != nil {
+		return m.markdownMemos
+	}
+	return m.memosRef.Value()
 }
 
 // inlineContext is everything besides the text and the lexer state that an inline rendering in the default style reads.
@@ -163,9 +198,11 @@ func NewMarkdown(content string) *Markdown {
 
 // Invalidate reruns the display transform and parser on the next render, even when the source text is unchanged.
 func (m *Markdown) Invalidate() {
-	clear(m.inlines)
-	clear(m.highlights)
-	m.resume = nil
+	if memos := m.memos(); memos != nil {
+		clear(memos.inlines)
+		clear(memos.highlights)
+		memos.resume = nil
+	}
 	m.textChanged()
 }
 
@@ -369,8 +406,8 @@ func (m *Markdown) Render(width int) []string {
 	out := []string{}
 	if widthx.JSTrim(content) != "" {
 		out = m.renderDocument(content, width, contentWidth)
-	} else {
-		m.resume = nil
+	} else if memos := m.memos(); memos != nil {
+		memos.resume = nil
 	}
 	m.cachedContent, m.cachedWidth, m.cachedLines = m.Content, width, out
 	m.cachedTransformState, m.cachedTheme = transformState, ActiveTheme()
@@ -386,6 +423,7 @@ func (m *Markdown) renderDocument(content string, width, contentWidth int) []str
 	state := markedInlineStates.Get().(*markedInlineState)
 	state.startDocument()
 	m.inlineState = state
+	m.holdMemos()
 	m.startInlines()
 	m.startHighlights()
 	key, resumable := m.resumeKey(width, contentWidth)
@@ -421,6 +459,7 @@ func (m *Markdown) renderDocument(content string, width, contentWidth int) []str
 		tail, _ = m.layoutRows(nil, nil, extra, width, contentWidth)
 	}
 	m.keepWraps()
+	m.releaseMemos()
 	body := rows[:starts[run.finalBase]]
 	var padding []string
 	if m.defaultTextStyle != nil && m.defaultTextStyle.BgColor != nil {

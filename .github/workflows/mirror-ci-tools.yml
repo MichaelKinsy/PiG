@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: MIT
+# Copies the pinned CI tool tarballs to ghcr.io/michaelkinsy/pig-ci-tools, where fetch-pinned.sh looks before it asks GitHub's release-asset endpoint.
+# Run it once, and again whenever a pin in install-shellcheck.sh or seed-ci-image-bases.sh moves. Every asset is verified against its pin before upload.
+name: Mirror CI tools
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  mirror:
+    name: Mirror pinned CI tools to ghcr.io
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Mirror
+        shell: bash
+        env:
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ github.token }}
+        run: automation/ci/mirror-ci-tools.sh

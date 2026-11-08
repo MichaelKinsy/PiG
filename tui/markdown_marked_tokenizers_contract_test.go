@@ -47,7 +47,7 @@ func TestMarkedBlockTokenizersEqualTheirPatterns(t *testing.T) {
 	}
 	tokenizers := []tokenizer{
 		{"code", markedCode, markedBlockCode, false},
-		{"fences", markedFence, markedBlockFences, true},
+		{"fences", lexer.fence, markedBlockFences, true},
 		{"heading", lexer.heading, markedBlockHeading, false},
 		{"hr", markedHr, markedBlockHr, false},
 		{"html", markedHTMLBlock, markedBlockHTML, false},

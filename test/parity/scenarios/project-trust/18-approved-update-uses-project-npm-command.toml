@@ -23,7 +23,9 @@ timeout_seconds = 20
 
 [assert]
 exit_code = 0
-both_contain = ["Updated packages"]
+# The pin's package-manager-cli.ts (update case) prints "Updated N package(s):" only for packages the update reported as changed; the recorder npm changes nothing, so both hosts
+# print "Updating npm:fake-package..." and "Packages are already up to date" (Pi 1.5.0 printed "Updated packages" unconditionally).
+both_contain = ["Updating npm:fake-package...", "Packages are already up to date"]
 # The recorder writes the same complete LF-delimited artifact in both hosts; compare it without normalization.
 artifact_equal = true
 artifact_both_contain = ["project install"]

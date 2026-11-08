@@ -47,10 +47,10 @@ type McpServerConfigResult struct {
 
 // McpServerConfigOptions is what the application adds to the validation of server entries.
 type McpServerConfigOptions struct {
-	// CheckMetadataDocumentCallback checks the `oauth.callbackUrl` (callbackURL, set is false when none is configured) of an entry with
+	// CheckMetadataDocumentCallback checks the `oauth.callbackUrl` (callbackURL is nil when none is configured) of an entry with
 	// `oauth.clientRegistration: "cimd"`: the application's Client ID Metadata Documents must list it. It returns an error message, or "". Without
 	// this check, `"cimd"` is refused.
-	CheckMetadataDocumentCallback func(callbackURL string, set bool) string
+	CheckMetadataDocumentCallback func(callbackURL *string) string
 	// ExpandURL, when not nil, is applied to the `url` of an http entry before it is checked. Go mechanic of D156: PiG resolves
 	// environment references in a URL before using it, so the URL checked is the expanded one.
 	ExpandURL func(string) string
@@ -213,13 +213,13 @@ func validateOAuth(fields map[string]json.RawMessage, options McpServerConfigOpt
 		//portlint:allow numbers n is an integer from 1 to 65535 here (config.ts validateOAuth)
 		port, hasPort = int(n), true
 	}
-	callbackURL, hasCallbackURL := "", false
+	var callbackURL *string
 	if _, ok := oauth["callbackUrl"]; ok {
 		s, isString := stringMember(oauth, "callbackUrl")
 		if !isString || !isLoopbackRedirectURI(s) {
 			return "oauth.callbackUrl must be an http URI on localhost, 127.0.0.1, or [::1] without query or fragment"
 		}
-		callbackURL, hasCallbackURL = s, true
+		callbackURL = &s
 		u, _ := nodeurl.ParseHTTPURL(s)
 		if u.Port != "" && hasPort {
 			//portlint:allow numbers u.Port is the serialized port of a parsed URL: at most five decimal digits, or empty (config.ts validateOAuth)
@@ -249,7 +249,7 @@ func validateOAuth(fields map[string]json.RawMessage, options McpServerConfigOpt
 		if options.CheckMetadataDocumentCallback == nil {
 			return `oauth.clientRegistration "cimd" is not supported: there are no Client ID Metadata Documents`
 		}
-		if message := options.CheckMetadataDocumentCallback(callbackURL, hasCallbackURL); message != "" {
+		if message := options.CheckMetadataDocumentCallback(callbackURL); message != "" {
 			return message
 		}
 	}

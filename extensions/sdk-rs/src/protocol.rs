@@ -120,6 +120,9 @@ pub struct RegisterMsg {
     /// `markdown_transform` requests.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub markdown_transformer: bool,
+    /// The surfaces the transformer runs on, listed whenever one is registered (an empty list runs it nowhere).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub markdown_message_types: Option<Vec<String>>,
     /// PiG-only: the extension owns the thinking runs of assistant messages, so a hidden or zero-row run leaves no spacer rows. Omitted when false.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub owns_thinking_runs: bool,

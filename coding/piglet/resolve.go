@@ -15,6 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/piglet/artifact"
 	pigletrelease "github.com/MichaelKinsy/PiG/coding/piglet/release"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // Resolve finds a piglet by name, checking the resolution order:
@@ -257,14 +258,14 @@ func List() ([]PigletInfo, error) {
 		return nil, errors.Join(errs...)
 	}
 	for i := range piglets {
-		slices.SortFunc(piglets[i].Records, func(a, b RecordInfo) int {
+		sortx.Func(piglets[i].Records, func(a, b RecordInfo) int {
 			if value := strings.Compare(a.Target, b.Target); value != 0 {
 				return value
 			}
 			return strings.Compare(a.ReleaseVersion, b.ReleaseVersion)
 		})
 	}
-	slices.SortStableFunc(piglets, func(a, b PigletInfo) int {
+	sortx.Stable(piglets, func(a, b PigletInfo) int {
 		if value := strings.Compare(a.Name, b.Name); value != 0 {
 			return value
 		}

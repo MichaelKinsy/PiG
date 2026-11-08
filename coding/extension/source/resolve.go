@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 
 	"github.com/BurntSushi/toml"
 	"golang.org/x/mod/modfile"
@@ -525,7 +526,7 @@ func scanGoModule(root string) ([]goFactory, bool, bool, error) {
 	if err != nil {
 		return nil, false, false, err
 	}
-	slices.SortFunc(factories, func(a, b goFactory) int { return strings.Compare(a.packagePath, b.packagePath) })
+	sortx.Func(factories, func(a, b goFactory) int { return strings.Compare(a.packagePath, b.packagePath) })
 	return factories, hasMain, nonstandard, nil
 }
 

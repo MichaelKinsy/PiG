@@ -96,7 +96,7 @@ func lsScenarios() []lsScenario {
 			scenario.Args["path"] = pick([]string{"sub", "/vfs/sub", "./sub", "locked", "file.txt", "missing", "empty", ".", "", "sub/", "sub/../sub"})
 		}
 		if rng.IntN(5) == 0 {
-			// pig divergence (D253): Pi 1.5.0 lists nothing for limit 0 and keeps a fractional limit; TestLsLimitEdgeCases7121 covers both.
+			// Limit 0 and a fractional limit are covered by TestLsLimitEdgeCases7121.
 			scenario.Args["limit"] = []any{1, 2, 5, 10, 100, 500, 800, 3}[rng.IntN(8)]
 		}
 		scenarios = append(scenarios, scenario)

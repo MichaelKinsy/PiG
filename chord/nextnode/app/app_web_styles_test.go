@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -245,12 +246,7 @@ func distinct(values []string) []string {
 }
 
 func contains(values []string, value string) bool {
-	for _, each := range values {
-		if each == value {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(values, value)
 }
 
 func count(values []string, value string) int {

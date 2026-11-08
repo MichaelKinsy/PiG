@@ -57,11 +57,15 @@ func (h *Host) acceptsNodeGeneration(me *managedExt) bool {
 	return !p.stopping.Load() && h.packedCellGeneration[p.key] == p.generation
 }
 
-// planCells preserves explicit isolation and applies host-owned crash partitions only to shareable Node factories. transitionMu owns the diagnostic maps.
+// planCells preserves explicit isolation and applies host-owned crash partitions: Node factories are grouped around a culprit, and a native member whose own code
+// ended a shared process runs isolated. transitionMu owns the diagnostic maps.
 func (h *Host) planCells(configs []ExtConfig) []CellSpec {
 	configs = slices.Clone(configs)
 	for i, cfg := range configs {
 		cfg = normalizeUnresolvedNodeConfig(cfg)
+		if isPackableFactory(cfg) && h.nativeFaults[cfg.Name] != "" {
+			cfg.Isolation = "quarantined"
+		}
 		if isPackableNode(cfg) {
 			cfg.nodeRecoveryGroup = h.nodeGroups[cfg.Name]
 			if h.nodeFaults[cfg.Name] != "" {
@@ -157,9 +161,14 @@ func (h *Host) recoverNodeProcess(failed *packedProcessState, reason string) {
 		if culprit == "" {
 			culprit = failed.members[0].config.Name
 		}
-		h.nodeFaults[culprit] = reason
-		clear(h.nodeGroups)
-		action = "quarantine " + culprit + "; restart healthy members together"
+		if h.cells != nil && len(failed.members) == 1 {
+			// pig additive (D232): a lone member has no sibling in this Host to isolate it from, and quarantining it would start it in a process no other Host's instance of the cell joins; it restarts into the shared cell, and the supervisor's breaker stops one that keeps crashing.
+			action = "restart shared cell"
+		} else {
+			h.nodeFaults[culprit] = reason
+			clear(h.nodeGroups)
+			action = "quarantine " + culprit + "; restart healthy members together"
+		}
 	} else if h.nodeCrashes[failed.key] > 1 {
 		bisect = true
 		middle := len(failed.members) / 2

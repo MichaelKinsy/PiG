@@ -576,9 +576,10 @@ impl AgentSessionRuntime {
         Ok(CancelledResult::default())
     }
 
-    /// `dispose()`: it emits session_shutdown with the reason "quit" to the current session's extensions, runs the before-invalidate callback and disposes the session.
+    /// `dispose()`: it settles the active response, emits session_shutdown with the reason "quit" to the current session's extensions, runs the before-invalidate callback and disposes the session.
     pub fn dispose(&self) -> io::Result<()> {
         let session = self.session();
+        session.abort()?;
         session.emit_extension_event(json!({"type": "session_shutdown", "reason": "quit"}))?;
         let callback = self.state.lock().unwrap().before_session_invalidate.clone();
         if let Some(callback) = callback {

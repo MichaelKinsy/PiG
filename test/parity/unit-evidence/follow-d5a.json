@@ -3,15 +3,6 @@
   "upstream": "packages/chord/src/host/host.ts",
   "package": "./chord/next/host",
   "tests": [
-   "TestHostLoadLeavesOutAndReportsDuplicatePluginNamesAndDoubleServesTheLaterRefusesASecondLoad"
-  ],
-  "upstream_reference": "packages/chord/test/host/host.test.ts",
-  "mutation": "chord/next/host/host_host.go (Load): `if twice {` -> `if twice && false {` (TestHostLoadLeavesOutAndReportsDuplicatePluginNamesAndDoubleServesTheLaterRefusesASecondLoad FAILS: host_host_test.go:290: failed = [], want [[a plugin \"a\" is loaded twice]])"
- },
- {
-  "upstream": "packages/chord/src/host/host.ts",
-  "package": "./chord/next/host",
-  "tests": [
    "TestHostRevokeNeverRevokesTheHostsOwnPrincipal"
   ],
   "upstream_reference": "packages/chord/test/host/revocation.test.ts",

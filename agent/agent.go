@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"slices"
 	"strings"
 	"sync"
@@ -150,6 +151,28 @@ type AgentMessage struct {
 
 	// source is the object a System or Custom message was decoded from, when its JSON.stringify text differs from the text the fields encode to. Custom encodes its current members in the order of the decoded object.
 	source *messageSource
+	// origin is the Identity of the message a message_start envelope was copied from (startEventMessage); nil for any other message.
+	origin any
+}
+
+// Identity names the message m stands for, so the transcript's message, the message_end event's and the session entry's, which share one object, and the message_start envelope copied from it (startEventMessage) all give one key. It is nil for a message with no content to name. Pi hands one object to all of them; a key is what lets a listener of this process tell its payload copies apart from messages that merely look alike.
+func (m AgentMessage) Identity() any {
+	if m.origin != nil {
+		return m.origin
+	}
+	switch {
+	case m.System != nil:
+		return m.System
+	case m.User != nil:
+		return m.User
+	case m.Assistant != nil:
+		return m.Assistant
+	case m.ToolResult != nil:
+		return m.ToolResult
+	case m.Custom != nil:
+		return reflect.ValueOf(m.Custom).UnsafePointer()
+	}
+	return nil
 }
 
 // messageSource is the JSON.stringify text of the object a message was decoded from.

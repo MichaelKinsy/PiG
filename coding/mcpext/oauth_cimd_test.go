@@ -82,7 +82,7 @@ func TestMCPOAuthCIMDUsesPisDocumentWhenAuthorizationResponsesNameTheirIssuer(t 
 		t.Fatal(err)
 	}
 	authorization := h.server.recordedAuthorizations()[0]
-	if got := authorization.Get("client_id"); got != "https://pi.dev/oauth/client.json" {
+	if got := authorization.Get("client_id"); got != "https://pi-in-go.dev/oauth/client.json" {
 		t.Fatalf("client_id = %q", got)
 	}
 	redirect, err := url.Parse(authorization.Get("redirect_uri"))
@@ -96,7 +96,7 @@ func TestMCPOAuthCIMDUsesPisDocumentWhenAuthorizationResponsesNameTheirIssuer(t 
 		t.Fatalf("registrations = %d", got)
 	}
 	tokens := h.server.recordedTokenRequests()
-	if tokens[0].Get("client_id") != "https://pi.dev/oauth/client.json" || tokens[0].Get("redirect_uri") != redirect.String() {
+	if tokens[0].Get("client_id") != "https://pi-in-go.dev/oauth/client.json" || tokens[0].Get("redirect_uri") != redirect.String() {
 		t.Fatalf("token request = %v", tokens[0])
 	}
 	// The document is not stored, so signing in again refreshes the tokens instead of discarding them.
@@ -110,7 +110,7 @@ func TestMCPOAuthCIMDUsesPisDocumentWhenAuthorizationResponsesNameTheirIssuer(t 
 		t.Fatalf("authorizations = %d", got)
 	}
 	tokens = h.server.recordedTokenRequests()
-	if tokens[1].Get("grant_type") != "refresh_token" || tokens[1].Get("client_id") != "https://pi.dev/oauth/client.json" {
+	if tokens[1].Get("grant_type") != "refresh_token" || tokens[1].Get("client_id") != "https://pi-in-go.dev/oauth/client.json" {
 		t.Fatalf("second token request = %v", tokens[1])
 	}
 }
@@ -187,7 +187,7 @@ func TestMCPOAuthCIMDUsesADocumentAndCallbackPathSpecificToTheMCPServerWithoutTh
 	sum := sha256.Sum256([]byte(h.server.URL))
 	id := base64.RawURLEncoding.EncodeToString(sum[:9])
 	authorization := h.server.recordedAuthorizations()[0]
-	if got := authorization.Get("client_id"); got != "https://pi.dev/oauth/"+id+"/client.json" {
+	if got := authorization.Get("client_id"); got != "https://pi-in-go.dev/oauth/"+id+"/client.json" {
 		t.Fatalf("client_id = %q", got)
 	}
 	redirect, err := url.Parse(authorization.Get("redirect_uri"))
@@ -221,7 +221,7 @@ func TestMCPOAuthCIMDReplacesARegisteredClientWhenSwitchingToTheDocument(t *test
 	for _, authorization := range h.server.recordedAuthorizations() {
 		clients = append(clients, authorization.Get("client_id"))
 	}
-	if want := []string{"client-1", "https://pi.dev/oauth/client.json"}; !reflect.DeepEqual(clients, want) {
+	if want := []string{"client-1", "https://pi-in-go.dev/oauth/client.json"}; !reflect.DeepEqual(clients, want) {
 		t.Fatalf("authorization clients = %q, want %q", clients, want)
 	}
 	if id, ok := h.storedClientID(t); ok {

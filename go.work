@@ -10,5 +10,6 @@ use (
 	.
 	./apps/p2
 	./extensions/sdk
+	./piglets/pig-bolt
 	./piglets/porter/extensions/pig-porter
 )

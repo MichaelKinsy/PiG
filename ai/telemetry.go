@@ -18,6 +18,7 @@ package ai
 import (
 	"reflect"
 	"runtime"
+	"strings"
 	"sync"
 	"weak"
 
@@ -334,7 +335,7 @@ func (o *modelRequestObservation) onResult(message *AssistantMessage) {
 		}
 		o.span.SetAttributes(attributes)
 		if message.StopReason == StopReasonError {
-			o.span.SetStatus(telemetry.SpanStatus{Status: telemetry.SpanStatusCodeError, Error: &telemetry.SpanStatusError{Name: "provider_error", Message: jsstring.Slice(message.ErrorMessage, 0, 500)}})
+			o.span.SetStatus(telemetry.SpanStatus{Status: telemetry.SpanStatusCodeError, Error: &telemetry.SpanStatusError{Name: "provider_error", Message: strings.Clone(jsstring.Slice(message.ErrorMessage, 0, 500))}})
 		}
 		o.instr.requestDuration.Record(jsclock.PerformanceNow()-o.started, o.metricAttributes("stop", string(message.StopReason)), o.span)
 		if !o.poll || (message.StopReason != StopReasonPending && message.StopReason != StopReasonDeferred) {

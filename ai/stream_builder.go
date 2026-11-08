@@ -3,10 +3,12 @@ package ai
 import (
 	"cmp"
 	"context"
-	"slices"
+	"errors"
 	"strconv"
 	"sync/atomic"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 type assistantStreamBuilder struct {
@@ -40,6 +42,8 @@ type assistantStreamBuilder struct {
 	errorMessage func(string) string
 	// causeDetail appends the deepest cause of a failure to its message (anthropic-messages.ts withCauseDetail).
 	causeDetail bool
+	// transportCauseDetail does the same for a failure that crossed the Node fetch boundary only (formatProviderError(normalizeProviderError(error)) of the OpenAI APIs); an error with a status keeps its own message.
+	transportCauseDetail bool
 	// providerEvent is the bound OnProviderStreamEvent observer, or nil.
 	providerEvent func(data any) error
 	// providerEventOption and providerEventModel are the request's OnProviderStreamEvent option and the model it receives, for an adapter that
@@ -503,6 +507,8 @@ func (builder *assistantStreamBuilder) failureMessage(err error) string {
 	message := err.Error()
 	if builder.causeDetail {
 		message = WithCauseDetail(err)
+	} else if _, transport := errors.AsType[*nodeTransportError](err); transport && builder.transportCauseDetail {
+		message = WithCauseDetail(err)
 	}
 	if builder.errorMessage != nil {
 		return builder.errorMessage(message)
@@ -696,7 +702,7 @@ type endingBlock struct {
 
 // sortEndingBlocks orders blocks by content index, the order their end events follow. Content indices are distinct, so the unstable sort is deterministic; the typed comparison avoids sort.Slice's reflective swapper, which allocates on every stream end.
 func sortEndingBlocks(blocks []endingBlock) {
-	slices.SortFunc(blocks, func(a, b endingBlock) int { return cmp.Compare(a.contentIndex, b.contentIndex) })
+	sortx.Func(blocks, func(a, b endingBlock) int { return cmp.Compare(a.contentIndex, b.contentIndex) })
 }
 
 // closeGrammarToolInputJSONState closes the input of a custom tool call that ends without a complete input of its own.

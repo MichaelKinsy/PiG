@@ -20,6 +20,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"github.com/MichaelKinsy/PiG/internal/linkerexec"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 
 	"golang.org/x/mod/modfile"
 
@@ -415,7 +416,7 @@ func buildInputs(p *piglet.Piglet, cells []subprocess.CellSpec) ([]buildInput, e
 			})
 		}
 	}
-	slices.SortFunc(inputs, func(a, b buildInput) int {
+	sortx.Func(inputs, func(a, b buildInput) int {
 		if value := strings.Compare(a.Kind, b.Kind); value != 0 {
 			return value
 		}

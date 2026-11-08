@@ -63,10 +63,19 @@ func (cache *writeHighlightCache) line(i int) string {
 	return entry.text
 }
 
-// lineCount is len(trimTrailingEmptyLines(highlightedLines)): only the lines at the end are read.
+// lineCount is len(trimTrailingEmptyLines(highlightedLines)): only the lines at the end are read. A pending line that is not
+// empty is not highlighted to find out: highlighting keeps every character of a line, so the highlighted line is not empty
+// either (TestHighlightedLineOfTextIsNotEmpty), and a card that draws ten lines never reads the last line of a long file.
+// pig additive (D112): the count is the one upstream's highlighted lines give; only a line nothing draws is not highlighted.
 func (cache *writeHighlightCache) lineCount() int {
 	end := len(cache.highlightedLines)
-	for end > 0 && cache.line(end-1) == "" {
+	for end > 0 {
+		if entry := &cache.highlightedLines[end-1]; entry.pending && entry.text != "" {
+			break
+		}
+		if cache.line(end-1) != "" {
+			break
+		}
 		end--
 	}
 	return end
@@ -165,6 +174,37 @@ func updateWriteHighlightCacheIncremental(cache *writeHighlightCache, rawPath, f
 		cache.refreshPrefix()
 	}
 	return cache
+}
+
+// A warm-up highlights the text the content gained since the last one, and costs the same again for what it reads of the text before
+// (about a millisecond a 100 KB), so the steps are a sixteenth of the content, between writeWarmMinStep and writeWarmMaxStep: the
+// frame a warm-up falls in absorbs it (TypeScript: about 10 ms for the smallest step, 30 ms for the largest), and a file of 400 KB
+// warms in a few dozen steps.
+// pig additive (D112): the steps move when the highlight is computed, not what it is.
+const (
+	writeWarmMinStep = 8 << 10
+	writeWarmMaxStep = 32 << 10
+)
+
+// writeWarmStep is how many bytes a streaming write call's content of length n grows before its next warm-up.
+func writeWarmStep(n int) int { return min(max(n/16, writeWarmMinStep), writeWarmMaxStep) }
+
+// warmWholeHighlight keeps the highlighting of the whole file of a streaming write call continuing from the text so far. The
+// call's last frame draws the highlighter's lines of the complete file (upstream formatWriteCall: highlighter.highlight(fileContent)),
+// which highlight.js computes from the first line unless a run over a prefix left a state to resume from; one run over a file of
+// 400 KB stalled the frame that completes the call for 300 ms. Each warm-up leaves such a state, so the last frame highlights only
+// what the last step left. The lines it draws are those of a run over the whole file; only when they are computed moves. A language
+// that cannot resume stops the warm-ups after the first.
+// pig additive (D112): upstream highlights the complete file once, when the call completes.
+func (state *builtInRenderState) warmWholeHighlight(content, lang string) {
+	if state.writeWarmOff || len(content) < state.writeWarmed+writeWarmStep(len(content)) {
+		return
+	}
+	if !tui.WarmHighlight(normalizeWriteText(content), lang) {
+		state.writeWarmOff = true
+		return
+	}
+	state.writeWarmed = len(content)
 }
 
 // normalizeWriteText is replaceTabs(normalizeDisplayText(text)) for the content of a write call. A lone surrogate, which

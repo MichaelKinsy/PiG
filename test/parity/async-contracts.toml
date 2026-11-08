@@ -30,24 +30,24 @@ rationale = ""
 
 [[files]]
 path = "packages/ai/src/api/anthropic-messages.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "async/Promise source; PORT_MAP marks this file ported, but the per-file cross-language ordering/cancellation/error contract has not been reviewed for this pin, as for its sibling rows. Delta at Pi bd3c9b82: adc5fa9f replaces the local User-Agent merge with getIdentityHeaders; no added or removed line contains async, await, Promise or .then, so the delta adds no async contract to review. delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Pi e3bc05e87 changes one constant (the fixed top-level effort of a request with effort markers); no added or removed line contains async, await, Promise or .then. Delta at Pi d0aa218c: f715a15c1 changes only the code named in the upstream-sync row of this file; no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged. Delta at Pi 842c7317: the strict tool fallback's inline limit-message list and \"prefer\" test become calls to isStrictToolLimitErrorMessage and prefersJsonSchemaStrictSampling (constrained-sampling.ts); no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged. Delta at Pi c23b9ec1: a758f3ae4 adds message threads (continue and new-thread requests run in the same awaited request path, thread state is a mutex-guarded bounded map; ai/anthropic_threads.go), 4c992154d adds the cause to connection errors, 4a6a58eb5 keeps root $defs in non-strict tool schemas; no new Promise-level contract, the per-file review is still outstanding."
 
 [[files]]
 path = "packages/ai/src/api/azure-openai-responses.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/azure_openai_responses.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Delta at Pi bd3c9b82: adc5fa9f replaces the local User-Agent merge with getIdentityHeaders; no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged. Delta at Pi d0aa218c: f715a15c1 changes only the code named in the upstream-sync row of this file; no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged. Delta at Pi c23b9ec1: 0f4d5e960 omits prompt_cache_key for promptCacheKeyMode \"disabled\" (a request field, no ordering change)."
 
 [[files]]
 path = "packages/ai/src/api/bedrock-converse-stream.lazy.ts"
-disposition = "pending"
+disposition = "designed-out"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "Lazy dynamic-import wrapper; Go providers are statically linked (ai/providers/bedrock). Delta at Pi c23b9ec1: da95cd79c and 5c6ce2b32 change the loader for code-split Node bundles only."
 
 [[files]]
 path = "packages/ai/src/api/bedrock-converse-stream.ts"
@@ -100,11 +100,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/goog
 
 [[files]]
 path = "packages/ai/src/api/lazy.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
-
+disposition = "deferred"
+contracts = ["awaited", "cancellable", "microtask-ordering"]
+evidence = ["test:ai/models_provider_setup_abort_pi_test.go#TestModelsProviderSetupFailureReasonFollowsTheRequestSignal", "test:ai/models_runtime_result_test.go", "test:coding/model_refresh_metadata_test.go", "scenario:test/parity/scenarios/providers-faux-streaming/23-metadata-refresh-and-native-result.toml", "test:ai/telemetry_upstream_test.go#TestLazyStreamObservationOrdersEventResolvedResultUpstream", "test:ai/telemetry_upstream_test.go#TestLazyStreamObservationReportsTerminalResultOnceUpstream", "test:ai/telemetry_upstream_test.go#TestLazyStreamObservationReportsSetupFailureOnceUpstream"]
+rationale = "Setup returns an outer stream immediately; the Models operation owner forwards inner events in order and awaits the independent result before settling the outer result. Setup errors become error events. An end-only result is not a fabricated terminal event. Dynamic module loading uses static linking in Go. Full setup rejection, cancellation during iteration, and owner shutdown across every deferred API remain under review; this file is not async-closed. Pi 2ec55d80 adds the observer: ai.LazyStreamObserver{OnEvent, OnResult} is synchronous and read-only, runs inside the forwarding turn, calls OnEvent after each push and OnResult once after the outer stream ends, and observes a setup failure as the error event and then the result; it adds no cancellation and no tick (tick positions are unchanged). Delta at Pi c23b9ec1: f3a64af07 (#8635) adds the signal parameter of lazyStream; a setup that rejects ends with stopReason \"aborted\" instead of \"error\" when the signal is aborted (lazy.ts:83), whatever the cause. In Go the request context is that signal (ai.LazyStream, pushModelsSetupError); the cancellable contract now includes the reason of a setup failure under a cancelled context, covered by test:ai/models_provider_setup_abort_pi_test.go and test:ai/api_streams_aliases_pi_test.go."
 [[files]]
 path = "packages/ai/src/api/llama-cpp-classify.lazy.ts"
 disposition = "deferred"
@@ -128,17 +127,17 @@ rationale = "async/Promise source; PORT_MAP marks this file ported, but the per-
 
 [[files]]
 path = "packages/ai/src/api/openai-codex-responses.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/openai_codex_responses.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Delta at Pi bd3c9b82: adc5fa9f/04a93bad send the identity headers on the SSE request and the WebSocket handshake; no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged. Delta at Pi d0aa218c: f715a15c1 changes only the code named in the upstream-sync row of this file; no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged. Delta at Pi c23b9ec1: 90b42bca6 removes the abort listener after the SSE retry backoff; Go releases the context watcher with the backoff (ai/openai_codex_retry_backoff_release_test.go#TestCodexSSERetryBackoffReleasesTheCallerContext)."
 
 [[files]]
 path = "packages/ai/src/api/openai-completions.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "async/Promise source; PORT_MAP marks this file ported, but the per-file cross-language ordering/cancellation/error contract has not been reviewed for this pin, as for its sibling rows. Delta at Pi bd3c9b82: adc5fa9f replaces the local User-Agent merge with getIdentityHeaders; no added or removed line contains async, await, Promise or .then, so the delta adds no async contract to review. delivery/unresolved.tsv row 'Review the v0.87.1 denominators'. Delta at Pi d0aa218c: f715a15c1 changes only the code named in the upstream-sync row of this file; no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged. Delta at Pi c23b9ec1: 14b804d80, 0f4d5e960 and 7a6bd5a97 change request fields (requiresNonNullAssistantContent, promptCacheKeyMode, empty tools array); no ordering or cancellation change."
 
 [[files]]
 path = "packages/ai/src/api/openai-decisions.lazy.ts"
@@ -163,10 +162,10 @@ rationale = "processResponsesStream (openai-responses-shared.ts:511) is the only
 
 [[files]]
 path = "packages/ai/src/api/openai-responses.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "async/Promise source; PORT_MAP marks this file ported, but the per-file cross-language ordering/cancellation/error contract has not been reviewed for this pin, as for its sibling rows. Delta at Pi bd3c9b82: adc5fa9f/cedefc53 send the identity headers and add the ChatGPT workspace limit hint; no added or removed line contains async, await, Promise or .then, so the delta adds no async contract to review. delivery/unresolved.tsv row 'Review the v0.87.1 denominators'. Delta at Pi d0aa218c: f715a15c1 changes only the code named in the upstream-sync row of this file; no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged. Delta at Pi c23b9ec1: c5d397835 sends session-id instead of session_id; 0f4d5e960 adds promptCacheKeyMode (request fields, no ordering change)."
 
 [[files]]
 path = "packages/ai/src/api/openrouter-images.lazy.ts"
@@ -261,10 +260,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/oaut
 
 [[files]]
 path = "packages/ai/src/auth/oauth/load.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/oauth_registry.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Delta at Pi c23b9ec1: 5c6ce2b32 resolves variable lazy imports against the module URL (Node bundling); Go links the OAuth providers statically."
 
 [[files]]
 path = "packages/ai/src/auth/oauth/meta.ts"
@@ -352,10 +351,10 @@ rationale = "Type declarations only (no exported function, const or class in the
 
 [[files]]
 path = "packages/ai/src/env-api-keys.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/cli/main.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Delta at Pi c23b9ec1: 3e4f87265 adds the QWEN_TOKEN_PLAN_CN_API_KEY mapping for qwen-token-plan-individual-cn."
 
 [[files]]
 path = "packages/ai/src/images-api-registry.ts"
@@ -373,10 +372,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/imag
 
 [[files]]
 path = "packages/ai/src/lazy-oauth.ts"
-disposition = "pending"
+disposition = "designed-out"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "da95cd79c adds a lazy OAuth flow loader for code-split Node bundles; Go links the OAuth flows statically (ai/oauth_registry.go), so there is no deferred import to await or cancel."
 
 [[files]]
 path = "packages/ai/src/models-store.ts"
@@ -387,11 +386,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/mode
 
 [[files]]
 path = "packages/ai/src/models.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
-
+disposition = "deferred"
+contracts = ["awaited", "concurrent-joined", "detached-owned", "cancellable"]
+evidence = ["test:ai/models_provider_setup_abort_pi_test.go#TestModelsProviderSetupFailureReasonFollowsTheRequestSignal", "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream", "test:ai/models_runtime_auth_upstream_test.go#TestModelsRuntimeAuthUpstream", "test:ai/models_runtime_available_test.go#TestModelsGetAvailableRejectsBeforeOtherChecksSettle", "test:ai/models_runtime_lifetime_test.go#TestModelsCompletedRefreshSignalFollowsItsCaller", "scenario:test/parity/scenarios/model-runtime-store-catalog/19-models-runtime.toml"]
+rationale = "Reviewed against 0.87.1 only. packages/ai/src/images-models.ts was removed upstream in 0.99.1 and its image-catalog refresh and generation contract (auth and generation are blocking awaited calls; all-provider refresh joins every operation and swallows individual failures) now lives in models.ts; those image-models tests no longer exist; Pi 0.99.1 adds async members (Models.generateImages, Models.classify, getAvailableOfType, getAllAvailable, the getAuthenticatedProviders helper, login options) whose ordering, cancellation and error contract is not yet reviewed (ai/src/models.ts in packages/ai 0.99.1). Cache restoration precedes network auth. Refresh phases share one concrete provider signal and serialized, generation-checked publication; persistence completes before synchronous update. Replacement cancels the prior refresh. Aborted callers receive immutable result snapshots while owned non-cooperative callbacks settle without late publication. getAvailable starts checks concurrently and rejects on the first failure while retaining ownership of other checks. Auth and login preserve caller contexts; login distinguishes queued from started mutations. Stream setup runs in an owned worker and forwards all terminal events. Completed refresh signals stay non-aborted and follow later caller cancellation; weak parent forwarding releases unused subscriptions without changing retained signals. Delta at Pi bd3c9b82: adc5fa9f/04a93bad add CreateModelsOptions.identity, its merge into every request and the default login agentName; no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged. Delta at Pi c23b9ec1: f3a64af07 (#8635) passes options.signal to lazyStream at the five lazyStream sites (stream, streamSimple, streamDeferred, the provider dispatch without an API implementation, fetchDeferred), so a rejected setup under an aborted signal is \"aborted\"; the Go Models and CreateProvider pass the request context to the same setup-error path (test:ai/models_provider_setup_abort_pi_test.go, test:coding/model_runtime_abort_upstream_test.go)."
 [[files]]
 path = "packages/ai/src/providers/amazon-bedrock.ts"
 disposition = "deferred"
@@ -471,10 +469,10 @@ rationale = "observeModelRequest starts its span with `void start(...)`: nobody 
 
 [[files]]
 path = "packages/ai/src/types.ts"
-disposition = "pending"
+disposition = "no-runtime-async"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "Type declarations only: its Promise-typed members (onPayload, onResponse, getApiKey, fetchDeferred and the other option callbacks) are func fields of the Go option structs (ai/types.go), whose call, cancellation and error contracts are carried and tested by the files that invoke them. Delta at Pi c23b9ec1: 3e4f87265 adds the KnownProvider literal, a758f3ae4 adds StreamOptions.disableContinuation and the compat supportsMessageThreads field; neither adds an async member."
 
 [[files]]
 path = "packages/ai/src/utils/abort.ts"
@@ -499,10 +497,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/prov
 
 [[files]]
 path = "packages/ai/src/utils/retry.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "async/Promise source; PORT_MAP marks this file ported, but the per-file cross-language ordering/cancellation/error contract has not been reviewed for this pin, as for its sibling rows. Delta at Pi bd3c9b82: cedefc53, 29057ece and 6e491cfa change the classifier regular expressions; no added or removed line contains async, await, Promise or .then, so the delta adds no async contract to review. delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands. Delta at Pi c23b9ec1: 566344046 adds the gateway wording \"cut short after the reply had begun\" to the retryable patterns; the backoff sleep and abort contract are unchanged."
 
 [[files]]
 path = "packages/ai/src/utils/sleep.ts"
@@ -2973,7 +2971,7 @@ path = "packages/mcp/src/oauth/callback.ts"
 disposition = "translated"
 contracts = ["awaited", "cancellable", "detached-owned"]
 evidence = ["test:mcp/oauth/oauth_test.go#TestOAuthCallbackServerPagesRendersPlainTextByDefault", "test:mcp/oauth/oauth_test.go#TestOAuthCallbackServerPagesRendersPagesThroughRenderPage", "test:mcp/oauth/oauth_test.go#TestOAuthCallbackServerRejectsAResponseOnAnotherPathThanTheExpectedOne"]
-rationale = "waitForCallback returns a promise settled by the redirect, the timeout or close(); WaitForCallback blocks on a channel with the caller context (a wait that ends with its context frees its state, a wait after Close fails at once: D370). The server goroutine is owned by the server and ends in Close, which also drops connections that never sent a request."
+rationale = "waitForCallback returns a promise settled by the redirect, the timeout or close(); WaitForCallback blocks on a channel with the caller context (a wait that ends with its context frees its state, a wait after Close fails at once). The server goroutine is owned by the server and ends in Close, which also drops connections that never sent a request."
 
 [[files]]
 path = "packages/mcp/src/oauth/client-settings.ts"

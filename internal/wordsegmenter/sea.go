@@ -11,8 +11,6 @@ package wordsegmenter
 
 import (
 	_ "embed"
-	"encoding/binary"
-	"sort"
 
 	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 )
@@ -29,29 +27,17 @@ var khmerDictionary string
 //go:embed burmese_dictionary.bin
 var burmeseDictionary string
 
-// byteDictionary borrows ICU's offset-transformed word bytes in a sorted index. Lookup narrows the prefix range without allocating a runtime trie.
-type byteDictionary string
-
-func (d byteDictionary) uint32At(offset int) int {
-	//portlint:allow utf16units offset indexes the embedded little-endian ICU dictionary bytes, not a JS string; Pi's Intl.Segmenter (utils.ts:getWordSegmenter) has no such table
-	return int(binary.LittleEndian.Uint32([]byte(d[offset : offset+4])))
-}
-func (d byteDictionary) word(index int) string {
-	start := 4 + (d.uint32At(0)+1)*4
-	return string(d[start+d.uint32At(4+index*4) : start+d.uint32At(8+index*4)])
-}
-
 // possibleWord retains ICU's three-position candidate cache, ascending length order, longest initial choice, mark and backtracking behavior. All four scripts use BMP characters, so these code-point lengths also count UTF-16 units.
 type possibleWord struct {
 	offset, count, prefix, mark, current int
 	lengths                              [20]int
 }
 
-func (w *possibleWord) candidates(text []rune, pos *int, dictionary byteDictionary, base rune) int {
+func (w *possibleWord) candidates(text []rune, pos *int, dictionary wordTrie, base rune) int {
 	start := *pos
 	if start != w.offset {
 		w.offset, w.count, w.prefix = start, 0, 0
-		low, high := 0, dictionary.uint32At(0)
+		cursor := dictionary.root()
 		for i := start; i < len(text); i++ {
 			c := text[i] - base
 			switch text[i] {
@@ -64,25 +50,16 @@ func (w *possibleWord) candidates(text []rune, pos *int, dictionary byteDictiona
 			if c < 0 || c > 0xfd && text[i] != 0x200c && text[i] != 0x200d {
 				break
 			}
-			depth := i - start
-			at := func(index int) int {
-				word := dictionary.word(index)
-				if len(word) <= depth {
-					return -1
-				}
-				return int(word[depth])
-			}
-			low += sort.Search(high-low, func(i int) bool { return at(low+i) >= int(c) })
-			high = low + sort.Search(high-low, func(i int) bool { return at(low+i) > int(c) })
-			if low == high {
+			step, ok := dictionary.step(&cursor, int(c))
+			if !ok {
 				break
 			}
-			if len(dictionary.word(low)) == depth+1 {
+			if step.terminal {
 				if w.count < len(w.lengths) {
-					w.lengths[w.count] = depth + 1
+					w.lengths[w.count] = i - start + 1
 					w.count++
 				}
-				if high-low == 1 {
+				if !step.more {
 					break
 				} // USTRINGTRIE_FINAL_VALUE
 			}
@@ -137,7 +114,7 @@ func seaEndWord(script rune, r rune) bool {
 	return true
 }
 
-func seaMarkBest(words *[3]possibleWord, found int, text []rune, pos *int, dictionary byteDictionary, base rune) {
+func seaMarkBest(words *[3]possibleWord, found int, text []rune, pos *int, dictionary wordTrie, base rune) {
 	first, second, third := &words[found%3], &words[(found+1)%3], &words[(found+2)%3]
 	if *pos >= len(text) {
 		return
@@ -176,7 +153,7 @@ func seaDivide(text string, script rune, visit func(int)) {
 	}
 	dictionaries := [...]string{"", thaiDictionary, laoDictionary, khmerDictionary, burmeseDictionary}
 	bases := [...]rune{0, 0xe00, 0xe80, 0x1780, 0x1000}
-	dictionary, base := byteDictionary(dictionaries[script]), bases[script]
+	dictionary, base := wordTrie{data: dictionaries[script], width: 1}, bases[script]
 	words := [3]possibleWord{{offset: -1}, {offset: -1}, {offset: -1}}
 	found, pos := 0, 0
 	for pos < len(chars) {

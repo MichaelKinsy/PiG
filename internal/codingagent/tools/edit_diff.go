@@ -13,6 +13,8 @@ import (
 	"sort"
 	"strings"
 	"unicode/utf16"
+
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // normalizeToLF converts \r\n and stray \r to \n.
@@ -158,7 +160,7 @@ func applyEditsToNormalizedContent(normalizedContent string, edits []editEntry, 
 	}
 
 	// Sort ascending by position, check overlaps.
-	slices.SortStableFunc(matched, func(a, b matchedEdit) int { return cmp.Compare(a.matchIndex, b.matchIndex) })
+	sortx.Stable(matched, func(a, b matchedEdit) int { return cmp.Compare(a.matchIndex, b.matchIndex) })
 	for i := 1; i < len(matched); i++ {
 		prev := matched[i-1]
 		cur := matched[i]
@@ -269,7 +271,7 @@ func widenReplacementsToLines(originalContent, baseContent string, replacements 
 	}
 	var groups []*group
 	sorted := slices.Clone(replacements)
-	slices.SortStableFunc(sorted, func(a, b matchedEdit) int { return a.matchIndex - b.matchIndex })
+	sortx.Stable(sorted, func(a, b matchedEdit) int { return a.matchIndex - b.matchIndex })
 	for _, r := range sorted {
 		startLine, endLine, err := getReplacementLineRange(baseLines, r)
 		if err != nil {

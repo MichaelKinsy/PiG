@@ -16,7 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
-// Pi main ace560c30 (#11752, print-mode.ts, D234): the signal handlers stay until the final disposal is done, a signal during it waits for that disposal, and a repeated signal exits at once with 143. Pi 1.5.0 removed the handlers before the final disposeRuntime(), so a signal during it killed the process mid-dispose.
+// Pi main ace560c30 (#11752, print-mode.ts): the signal handlers stay until the final disposal is done, a signal during it waits for that disposal, and a repeated signal exits at once with 143. Pi 1.5.0 removed the handlers before the final disposeRuntime(), so a signal during it killed the process mid-dispose.
 func TestPrintModeSignalDuringFinalDisposalWaitsForIt(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping signal shutdown test in short mode")
@@ -91,7 +91,7 @@ func TestPrintModeSignalDuringFinalDisposalWaitsForIt(t *testing.T) {
 	}
 }
 
-// A stdout write error cancels the run before the final disposal. The signal handlers must outlive that cancellation: a repeated SIGTERM during the final disposal still exits at once (print-mode.ts keeps its handlers until disposeRuntime() returns, D234).
+// A stdout write error cancels the run before the final disposal. The signal handlers must outlive that cancellation: a repeated SIGTERM during the final disposal still exits at once (print-mode.ts keeps its handlers until disposeRuntime() returns).
 func TestPrintModeRepeatedSignalAfterStdoutFailureExitsAtOnce(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping signal shutdown test in short mode")

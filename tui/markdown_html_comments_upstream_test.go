@@ -144,6 +144,7 @@ func TestMarkdownHTMLCommentsStreamLikeAFreshRender(t *testing.T) {
 // together with a neighbouring blank line, or still open at the end of the text, must not leave a stale or missing row in a resumed render; the
 // test requires that a large share of the frames did resume.
 func TestMarkdownHTMLCommentsResumedRenderEqualsAFreshRender(t *testing.T) {
+	pauseGC(t) // the memos are inspected between renders, as a WeakRef target is kept until its job ends
 	mdCaseSetup(t)
 	rng := rand.New(rand.NewPCG(11, 12))
 	entries := markdownHTMLCommentDocs()
@@ -166,7 +167,7 @@ func TestMarkdownHTMLCommentsResumedRenderEqualsAFreshRender(t *testing.T) {
 				continue
 			}
 			prefix := text[:end]
-			if streamed.resume != nil && streamed.resume.pick(prefix) != nil {
+			if memosOf(streamed).resume != nil && memosOf(streamed).resume.pick(prefix) != nil {
 				resumed++
 			}
 			streamed.SetText(prefix)

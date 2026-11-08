@@ -7,10 +7,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // BuildFailure is a compiler failure reduced to what a person reads: one line, a
@@ -148,7 +149,7 @@ func trimBuildLogs(directory string) {
 	if len(logs) <= maxBuildLogs {
 		return
 	}
-	slices.SortFunc(logs, func(a, b logFile) int { return b.when.Compare(a.when) })
+	sortx.Func(logs, func(a, b logFile) int { return b.when.Compare(a.when) })
 	for _, old := range logs[maxBuildLogs:] {
 		_ = os.Remove(old.path)
 	}

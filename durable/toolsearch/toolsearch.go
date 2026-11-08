@@ -17,11 +17,11 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/ai"
-	"github.com/MichaelKinsy/PiG/codemode"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/harness"
 	"github.com/MichaelKinsy/PiG/durable/internal/search"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/schemaref"
 )
 
 // ToolName is the name of the tool_search tool.
@@ -49,7 +49,7 @@ func schemaText(schema, root any, parts *[]string, seen map[uintptr]bool) {
 		return
 	}
 	if ref, ok := object["$ref"].(string); ok {
-		if target, ok := codemode.ResolveSchemaRef(ref, root); ok {
+		if target, ok := schemaref.Resolve(ref, root); ok {
 			if targetObject, isObject := target.(map[string]any); isObject && !seen[reflect.ValueOf(targetObject).Pointer()] {
 				seen[reflect.ValueOf(targetObject).Pointer()] = true
 				schemaText(target, root, parts, seen)

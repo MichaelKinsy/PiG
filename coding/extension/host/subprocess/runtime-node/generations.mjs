@@ -9,7 +9,7 @@ import { runWithRuntime } from "./state.mjs";
 
 // Ports packages/coding-agent/src/core/extensions/loader.ts: extensionCache, useExtensionCacheCwd, loadExtensionModule.
 // Pi re-invokes an extension's factory inside the process that already holds its module: /reload clears the factory cache (resource-loader.ts reload) and re-imports each module through jiti, while a session replacement keeps the cache for an unchanged cwd and calls the cached factory again. Module-level state therefore survives exactly as far as Pi's loader keeps the module.
-// pig additive (D20): the host admits each generation over the process's stdin, one tab-separated line: admit, name, socket, entry, cwd, reload pass (0 outside a reload); name, socket, entry and cwd are percent-encoded so a name or path with a tab or line break survives; the generation registers on its own socket, so an older generation keeps serving until the host swaps and closes it.
+// pig additive (D20): the host admits each generation over the process's stdin, one tab-separated line: admit, name, socket, entry, cwd, reload pass (0 outside a reload), and the admitting Host's group when it shares cells (pig additive (D232)); name, socket, entry and cwd are percent-encoded so a name or path with a tab or line break survives; the generation registers on its own socket, so an older generation keeps serving until the host swaps and closes it.
 // decodePath reverses the host's percent-encoding of the four characters that delimit a control line (packed_go.go encodeAdmissionField).
 const pathEscapes = { "%25": "%", "%09": "\t", "%0A": "\n", "%0D": "\r" };
 function decodePath(value) {
@@ -85,11 +85,11 @@ export class Generations {
     }
   }
 
-  async load({ name, entry, socket, reload = "0", cwd }) {
+  async load({ name, entry, socket, reload = "0", cwd, group = "" }) {
     this.parked = false;
     process.env.PIG_EXT_NAME = name;
     this.prepareCache({ reload, cwd });
-    const runtime = new Runtime(entry, this.nativeProviderObjects, this.providerConfigObjects, { name, socket });
+    const runtime = new Runtime(entry, this.nativeProviderObjects, this.providerConfigObjects, { name, socket, group });
     let phase = "import";
     try {
       await runWithRuntime(runtime, async () => {
@@ -146,7 +146,7 @@ export class Generations {
     this.input = input;
     this.holdInput();
     for await (const line of lines) {
-      const [op, encodedName, encodedSocket, encodedEntry, encodedCwd, reload] = line.split("\t");
+      const [op, encodedName, encodedSocket, encodedEntry, encodedCwd, reload, encodedGroup] = line.split("\t");
       const name = decodePath(encodedName);
       const socket = decodePath(encodedSocket);
       const entry = decodePath(encodedEntry);
@@ -155,7 +155,7 @@ export class Generations {
         await this.park(socket);
         continue;
       }
-      if (op === "admit") await this.admit({ name, entry, socket, cwd, reload: reload || "0" });
+      if (op === "admit") await this.admit({ name, entry, socket, cwd, reload: reload || "0", group: decodePath(encodedGroup) ?? "" });
     }
     await Promise.all(this.running);
   }

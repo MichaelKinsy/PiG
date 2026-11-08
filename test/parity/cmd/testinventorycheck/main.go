@@ -85,6 +85,25 @@ type mappingEntry struct {
 	// partial entry does not cover yet (AGENTS.md: a partial disposition
 	// enumerates the missing cases). Required on every partial entry, forbidden elsewhere.
 	MissingCases []string `json:"missingCases,omitempty"`
+	// Protects, PigTest and WhyNot are the intention check (AGENTS.md, Upstream test parity). They are required on a designed-out or
+	// divergence entry and on an entry that lists designedOutCases: the property the upstream test protects, the PiG-shaped test
+	// considered, and why that form is impossible or worthless.
+	Protects string `json:"protects,omitempty"`
+	PigTest  string `json:"pigTest,omitempty"`
+	WhyNot   string `json:"whyNot,omitempty"`
+}
+
+// checkIntention requires the three intention-check fields, all non-blank, on every entry that designs out or diverges from upstream test cases.
+func checkIntention(entry mappingEntry) error {
+	if entry.Disposition != "designed-out" && entry.Disposition != "divergence" && len(entry.DesignedOutCases) == 0 {
+		return nil
+	}
+	for _, field := range []struct{ key, value string }{{"protects", entry.Protects}, {"pigTest", entry.PigTest}, {"whyNot", entry.WhyNot}} {
+		if strings.TrimSpace(field.value) == "" {
+			return fmt.Errorf("entry %q designs out or diverges from upstream test cases and needs a non-empty %s (property protected, PiG-shaped test considered, why impossible or worthless)", entry.Path, field.key)
+		}
+	}
+	return nil
 }
 
 var (
@@ -265,6 +284,9 @@ func checkDisposition(repoRoot string, entry mappingEntry, file inventoryFile, d
 		return err
 	}
 	if err := checkMissingCases(entry, file); err != nil {
+		return err
+	}
+	if err := checkIntention(entry); err != nil {
 		return err
 	}
 	switch entry.Disposition {
