@@ -144,8 +144,16 @@ func serveIngress(_ *delta.JsonObject, principal data.Principal, raw host.Self) 
 			_, commitErr := durableSession.Commit(ctx, func(tx durable.Tx) (any, error) { return nil, nil })
 			dbg(fmt.Sprint("empty commit done ", commitErr))
 			dbg("MirrorLock")
-			if err := sessions.MirrorLock(ctx, durableSession, in.Value("lock")); err != nil {
-				return nil, err
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					dbg(fmt.Sprint("PANIC ", recovered))
+					panic(recovered)
+				}
+			}()
+			mirrorErr := sessions.MirrorLock(ctx, durableSession, in.Value("lock"))
+			dbg(fmt.Sprint("MirrorLock done ", mirrorErr))
+			if mirrorErr != nil {
+				return nil, mirrorErr
 			}
 			dbg("DBG lock mirrored")
 			var target int
