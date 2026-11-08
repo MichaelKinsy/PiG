@@ -189,6 +189,7 @@ func CreatePlugins(options PluginsOptions, _ context.Context) *Plugins {
 		kindNames: make([]string, len(options.Kinds)),
 		kinds:     make(map[string]KindDefinition, len(options.Kinds)),
 		runtime:   NewPluginRuntime(options.Node),
+		mappings:  newMappingEvaluator(options.Node),
 		loop:      host.NewLoop(),
 		built:     map[string]BuiltFacet{},
 		current:   map[string]*scriptSet{},
@@ -258,6 +259,8 @@ type Plugins struct {
 	kindNames []string
 	kinds     map[string]KindDefinition
 	runtime   *PluginRuntime
+	// mappings reads the mapping of every CSS module its builds scope: one Node subprocess, ended by Close.
+	mappings *mappingEvaluator
 	// loop is where the state below and the watcher are touched: one section at a time.
 	loop    *host.Loop
 	watcher *pluginWatcher
@@ -622,6 +625,7 @@ func (c *Plugins) Close() {
 	c.section(c.watcher.close)
 	c.watcher.join()
 	c.loop.Wait()
+	c.mappings.close()
 	//portlint:allow ctxbackground Pi's plugins.close() takes no signal and returns nothing; the spare's close is bounded by the process's own stop grace
 	_ = c.runtime.Close(context.Background())
 }
@@ -740,7 +744,7 @@ func (c *Plugins) buildOne(plugin Plugin, kind string, plugins []Plugin, ctx con
 	definition := c.kinds[kind]
 	options := BuildOptions{
 		HostPackages: definition.HostPackages, Platform: definition.Platform, Kinds: c.kindNames, Plugins: plugins,
-		Api: c.options.Api, PublicPath: c.options.PublicPath,
+		Api: c.options.Api, PublicPath: c.options.PublicPath, Node: c.options.Node, mappings: c.mappings,
 	}
 	built, err := BuildFacet(plugin, kind, options, ctx)
 	if err != nil {

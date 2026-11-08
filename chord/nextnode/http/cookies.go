@@ -8,7 +8,8 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/jsclock"
 )
 
 // Ports packages/chord/src/next-node/http/cookies.ts. Cookies (decision "The HTTP component's security baseline" (5)):
@@ -18,8 +19,8 @@ import (
 // Forced Go differences. `Date.now()` is `now()`, the package's clock (tests set it for Pi's fake `Date`). Seconds until
 // expiry (`maxAge`) is a *float64 (absent: a session cookie). `encodeURIComponent` is encodeURIComponent below.
 
-// now is `Date.now()` as a time.
-var now = time.Now
+// now is `Date.now()` as a time: jsclock's, so a test that mocks the date (the app kit's rolling cookies) moves it too.
+var now = jsclock.DateTime
 
 // SameSite is a cookie's `SameSite` attribute: Pi's closed union `"Strict" | "Lax"`, which no text can extend.
 type SameSite uint8
@@ -77,6 +78,20 @@ func Cookie(name, value string, options CookieOptions) string {
 // ReadCookie is the value of cookie name on request when its signature with secret holds and its signed expiry has not
 // passed; false otherwise.
 func ReadCookie(request HttpRequest, name, secret string) (string, bool) {
+	signed, ok := ReadSignedCookie(request, name, secret)
+	return signed.Value, ok
+}
+
+// SignedCookie is a cookie as ReadCookie checks it, with its signed expiry.
+type SignedCookie struct {
+	Value string
+	// Expires is the signed expiry in milliseconds since the epoch; nil for a cookie without MaxAge.
+	Expires *float64
+}
+
+// ReadSignedCookie is cookie name on request as ReadCookie checks it, with its signed expiry: what renewing a cookie before
+// it expires needs. Upstream's `readSignedCookie`.
+func ReadSignedCookie(request HttpRequest, name, secret string) (SignedCookie, bool) {
 	header, _ := HeaderGet(request.Headers(), "Cookie")
 	for pair := range strings.SplitSeq(header, ";") {
 		equals := strings.IndexByte(pair, '=')
@@ -87,33 +102,34 @@ func ReadCookie(request HttpRequest, name, secret string) (string, bool) {
 		// From the right: the value may hold dots, the expiry and the signature never do.
 		dot := strings.LastIndexByte(signed, '.')
 		if dot < 0 {
-			return "", false
+			return SignedCookie{}, false
 		}
 		payload := signed[:dot]
 		expiresAt := strings.LastIndexByte(payload, '.')
 		if expiresAt < 0 {
-			return "", false
+			return SignedCookie{}, false
 		}
 		given := []byte(signed[dot+1:])
 		expected := []byte(signature(name, payload, secret))
 		if !hmac.Equal(given, expected) {
-			return "", false
+			return SignedCookie{}, false
 		}
-		expires := payload[expiresAt+1:]
-		if expires != "" {
+		var expires *float64
+		if stamp := payload[expiresAt+1:]; stamp != "" {
 			//portlint:allow numbers the signed expiry the component itself wrote: digits only
-			seconds, err := strconv.ParseFloat(expires, 64)
+			seconds, err := strconv.ParseFloat(stamp, 64)
 			if err != nil || seconds*1000 <= float64(now().UnixMilli()) {
-				return "", false
+				return SignedCookie{}, false
 			}
+			expires = new(seconds * 1000)
 		}
 		decoded, err := url.PathUnescape(payload[:expiresAt])
 		if err != nil {
-			return "", false
+			return SignedCookie{}, false
 		}
-		return decoded, true
+		return SignedCookie{Value: decoded, Expires: expires}, true
 	}
-	return "", false
+	return SignedCookie{}, false
 }
 
 // signature is the signature of a cookie's name and payload (its encoded value and expiry).

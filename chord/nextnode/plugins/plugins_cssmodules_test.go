@@ -3,8 +3,13 @@ package plugins
 // pi: packages/chord/src/node/plugins/css-modules.ts
 
 import (
+	"context"
+	"os/exec"
 	"regexp"
+	"slices"
+	"strconv"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -103,5 +108,118 @@ func TestEsbuildBuildGivesAPlainStylesheetsURLAnAsset(t *testing.T) {
 	}
 	if want := `url("/assets/` + built.Assets[0].Name + `")`; !strings.Contains(built.CSS.Text, want) {
 		t.Errorf("css lacks %s: %q", want, built.CSS.Text)
+	}
+}
+
+// Ports css-modules.ts's reading of a module as text: build.ts hands `scopeCssModule` `new TextDecoder().decode(contents)`, so
+// a byte that is not UTF-8 is U+FFFD before the class names are scoped (the review of this slice: `.a<0xFF>b{}` is the class
+// `a\ufffdb`, esbuild writes it `a\fffd b` with the space that ends the escape, and the mapping names it).
+func TestEsbuildBuildReadsACSSModuleAsUTF8LikeTextDecoderInvalidBytesAreU_FFFDBeforeScoping(t *testing.T) {
+	root := tempRoot(t)
+	writePlugin(t, root, "web", "@test/web", map[string]string{
+		"web.ts":           "import styles from \"./notes.module.css\";\nexport default { setup: () => styles };",
+		"notes.module.css": ".a\xffb{color:red}\n.c{content:\"\xff\"}\n/* \xc3 */",
+	}, nil)
+	_, plugin := esbuildDiscovered(t, "@test/web", root)
+	built := esbuildScript(t, esbuildBuild(t, plugin, "web", esbuildBrowser))
+	if built.CSS == nil {
+		t.Fatal("no stylesheet")
+	}
+	for _, want := range []string{`_a\fffd b{color:red}`, `_c{content:"\fffd"}`} {
+		if !strings.Contains(built.CSS.Text, want) {
+			t.Errorf("css = %q, want %q in it", built.CSS.Text, want)
+		}
+	}
+	if strings.Contains(built.CSS.Text, `\fffdb`) {
+		t.Errorf("css = %q: the escape of U+FFFD runs into the `b` after it", built.CSS.Text)
+	}
+}
+
+// A facet build that has a CSS module starts one Node subprocess for the mappings, started with NodeOptions.Command, and ends it
+// with the build: no process is left, and a build with no CSS module starts none.
+func TestEsbuildBuildEndsTheNodeSubprocessThatReadsCSSModuleMappings(t *testing.T) {
+	var mu sync.Mutex
+	var started []*exec.Cmd
+	options := esbuildBrowser
+	options.Node.Command = func(ctx context.Context, name string, args ...string) *exec.Cmd {
+		cmd := exec.CommandContext(ctx, name, args...)
+		mu.Lock()
+		started = append(started, cmd)
+		mu.Unlock()
+		return cmd
+	}
+	evaluators := func() (count int) {
+		mu.Lock()
+		defer mu.Unlock()
+		for _, cmd := range started {
+			if slices.Contains(cmd.Args, "-e") {
+				count++
+			}
+			if cmd.ProcessState == nil {
+				t.Errorf("%v is still running after the build", cmd.Args[1:])
+			}
+		}
+		return count
+	}
+	root := tempRoot(t)
+	writePlugin(t, root, "plain", "@test/plain", map[string]string{"web.ts": "export default { setup: () => 1 };"}, nil)
+	writePlugin(t, root, "web", "@test/web", map[string]string{
+		"web.ts":       "import a from \"./a.module.css\";\nimport b from \"./b.module.css\";\nexport default { setup: () => [a, b] };",
+		"a.module.css": ".x{color:red}",
+		"b.module.css": ".y{color:blue}",
+	}, nil)
+	_, plain := esbuildDiscovered(t, "@test/plain", root)
+	esbuildScript(t, esbuildBuild(t, plain, "web", options))
+	if got := evaluators(); got != 0 {
+		t.Fatalf("%d evaluator processes for a build with no CSS module", got)
+	}
+	_, plugin := esbuildDiscovered(t, "@test/web", root)
+	esbuildScript(t, esbuildBuild(t, plugin, "web", options))
+	if got := evaluators(); got != 1 {
+		t.Fatalf("%d evaluator processes for a build with two CSS modules, want 1", got)
+	}
+}
+
+// Builds that share an evaluator (the component's) start one Node subprocess between them, however many facets with CSS modules
+// they build at once, and it runs until the evaluator is closed.
+func TestEsbuildBuildsThatShareAnEvaluatorStartOneNodeSubprocessBetweenThem(t *testing.T) {
+	var mu sync.Mutex
+	var started []*exec.Cmd
+	options := esbuildBrowser
+	options.Node.Command = func(ctx context.Context, name string, args ...string) *exec.Cmd {
+		cmd := exec.CommandContext(ctx, name, args...)
+		if slices.Contains(args, "-e") {
+			mu.Lock()
+			started = append(started, cmd)
+			mu.Unlock()
+		}
+		return cmd
+	}
+	shared := newMappingEvaluator(options.Node)
+	options.mappings = shared
+	root := tempRoot(t)
+	const plugins = 6
+	for i := range plugins {
+		name := "p" + strconv.Itoa(i)
+		writePlugin(t, root, name, "@test/"+name, map[string]string{
+			"web.ts":       "import a from \"./a.module.css\";\nexport default { setup: () => a };",
+			"a.module.css": ".x{color:red}",
+		}, nil)
+	}
+	var group sync.WaitGroup
+	for i := range plugins {
+		_, plugin := esbuildDiscovered(t, "@test/p"+strconv.Itoa(i), root)
+		group.Go(func() { esbuildScript(t, esbuildBuild(t, plugin, "web", options)) })
+	}
+	group.Wait()
+	mu.Lock()
+	count, running := len(started), started[0].ProcessState == nil
+	mu.Unlock()
+	if count != 1 || !running {
+		t.Fatalf("%d evaluator processes, running = %v; want one, running", count, running)
+	}
+	shared.close()
+	if started[0].ProcessState == nil {
+		t.Fatal("the shared process is still running after close")
 	}
 }

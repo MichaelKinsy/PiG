@@ -589,10 +589,10 @@ func TestGroupCommit(t *testing.T) {
 		gate.Release()
 		seqOf(t, running)
 		// Each commit rejects with the thrown error itself (Pi: toBe(thrown)).
-		if err := <-led; err != thrown {
+		if err := <-led; !errors.Is(err, thrown) {
 			t.Fatalf("the leader's commit rejected with %v, want the listener's error itself", err)
 		}
-		if err := failureOf(t, follower); err != thrown {
+		if err := failureOf(t, follower); !errors.Is(err, thrown) {
 			t.Fatalf("the follower's commit rejected with %v, want the listener's error itself", err)
 		}
 		// Memory took the whole group (it is durable): no seq repeats.
@@ -720,7 +720,7 @@ func TestGroupCommit(t *testing.T) {
 		}()
 		admitted := startCommit(ctl.store, fence, created("b"))
 		gate.Release()
-		if err := <-refused; err != thrown {
+		if err := <-refused; !errors.Is(err, thrown) {
 			t.Fatalf("the refused commit rejected with %v, want the admission's error itself", err)
 		}
 		if seqOf(t, running) != 1 || seqOf(t, admitted) != 2 {
@@ -735,7 +735,7 @@ func TestGroupCommit(t *testing.T) {
 		store := memoryStore(t)
 		thrown := errors.New("admit threw")
 		throwing := CommitFence{Admit: func() bool { panic(thrown) }, Adopt: func(int64, []int64, int) error { return nil }}
-		if _, err := store.Commit([]StagedWrite{created("x")}, throwing, background); err != thrown {
+		if _, err := store.Commit([]StagedWrite{created("x")}, throwing, background); !errors.Is(err, thrown) {
 			t.Fatalf("err = %v, want the admission's error itself", err)
 		}
 		_, fence := recording()

@@ -1428,7 +1428,9 @@ func (store *ChordStore) stop(err error) func(error) {
 // was one (errors.Is and errors.As reach it, and so does ==), else this.
 type ThrownError struct{ Value any }
 
-func (err *ThrownError) Error() string { return fmt.Sprintf("store: a callback panicked: %v", err.Value) }
+func (err *ThrownError) Error() string {
+	return fmt.Sprintf("store: a callback panicked: %v", err.Value)
+}
 
 // thrownError is the error a panicking callback's value stands for.
 func thrownError(recovered any) error {
