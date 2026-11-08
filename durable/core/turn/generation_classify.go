@@ -95,44 +95,40 @@ func (r *run) classifyFailure(req requestInfo, message *jv.Object, settings Sett
 		r.retryOrFail(req, message, settings, stop, overflow)
 		return
 	}
-	// generation.ts classify reads the agent only for an overflow nothing was compacted for yet.
+	// generation.ts classify reads the agent only for an overflow nothing was compacted for yet; the policy it resolves keeps a
+	// cut or the failure is retried or ended as any.
 	r.agent(func(agent *Agent) {
 		compaction := settings.CompactionFor(req.model, agent.Compaction)
 		if !compaction.Enabled {
 			r.retryOrFail(req, message, settings, stop, overflow)
 			return
 		}
-		r.compactOnOverflow(req, message, settings, stop, overflow, compaction)
-	})
-}
-
-// compactOnOverflow starts the overflow compaction when the policy keeps a cut, else the failure is retried or ended as any.
-func (r *run) compactOnOverflow(req requestInfo, message *jv.Object, settings Settings, stop string, overflow bool, compaction history.Policy) {
-	r.context(req.cutoff, func(view *history.View) {
-		if _, ok := view.SelectCut(compaction.KeepRecentTokens); ok {
-			text := "Context overflow"
-			if s, ok := stringField(message, "errorMessage"); ok {
-				text = s
+		r.context(req.cutoff, func(view *history.View) {
+			if _, ok := view.SelectCut(compaction.KeepRecentTokens); ok {
+				text := "Context overflow"
+				if s, ok := stringField(message, "errorMessage"); ok {
+					text = s
+				}
+				r.commitDone(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
+					live, err := tx.Doc(LiveDef, session.DocArgs{Owner: r.conv})
+					if err != nil {
+						return nil, err
+					}
+					if _, err := appendAssistant(tx, r.conv, message); err != nil {
+						return nil, err
+					}
+					live.Delete("generation")
+					child, err := createCompaction(tx, r.conv, "overflow", r.rt.TaskID())
+					if err != nil {
+						return nil, err
+					}
+					cp := jobj("phase", phasePrepare, "attempt", req.attempt, "compacted", float64(child), "overflow", text)
+					return jobj("status", "waiting", "checkpoint", cp, "on", idList([]ID{child}), "policy", "allSettled"), nil
+				})
+				return
 			}
-			r.commitDone(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
-				live, err := tx.Doc(LiveDef, session.DocArgs{Owner: r.conv})
-				if err != nil {
-					return nil, err
-				}
-				if _, err := appendAssistant(tx, r.conv, message); err != nil {
-					return nil, err
-				}
-				live.Delete("generation")
-				child, err := createCompaction(tx, r.conv, "overflow", r.rt.TaskID())
-				if err != nil {
-					return nil, err
-				}
-				cp := jobj("phase", phasePrepare, "attempt", req.attempt, "compacted", float64(child), "overflow", text)
-				return jobj("status", "waiting", "checkpoint", cp, "on", idList([]ID{child}), "policy", "allSettled"), nil
-			})
-			return
-		}
-		r.retryOrFail(req, message, settings, stop, overflow)
+			r.retryOrFail(req, message, settings, stop, overflow)
+		})
 	})
 }
 

@@ -157,7 +157,7 @@ func (h *handler) txRun(t *hostTx, name string, op *jv.Object) {
 // txStorageRead asks the host's Storage to run one Pi Storage call (hook storageRead) that the operation makes before it
 // takes effect: session.ts #acquire loads the document with findDocument, and every record ID is minted with mintId. The
 // operation answers when the call completes, as the transaction callback's await does; a rejection answers the operation.
-func (h *handler) txStorageRead(t *hostTx, name string, op *jv.Object, method string, args any, done func()) {
+func (h *handler) txStorageRead(t *hostTx, name string, op *jv.Object, method string, args any, done *bool) {
 	body := jv.NewObject()
 	body.Set("name", "storageRead")
 	body.Set("handler", float64(0))
@@ -174,7 +174,7 @@ func (h *handler) txStorageRead(t *hostTx, name string, op *jv.Object, method st
 			}
 			return
 		}
-		done()
+		*done = true
 		h.txRun(t, name, op)
 	}})
 }
@@ -543,26 +543,25 @@ func (h *handler) txOp(t *hostTx, name string, op *jv.Object) (any, error) {
 	// transaction.ts #requireConversation: appendEntry, createTask and createSubmission read the conversation from the Storage first,
 	// unless this transaction created it.
 	if conv := requiredConversation(t, name, op); conv != 0 && !t.convDone && h.gated("conversation") && !tx.ConversationCreated(conv) {
-		h.txStorageRead(t, name, op, "conversation", []any{float64(conv)}, func() { t.convDone = true })
+		h.txStorageRead(t, name, op, "conversation", []any{float64(conv)}, &t.convDone)
 		return nil, errTxWaiting
 	}
 	if isMintOp(name) && !t.mintDone && h.gated("mintId") {
-		h.txStorageRead(t, name, op, "mintId", jv.NewObject(), func() { t.mintDone = true })
+		h.txStorageRead(t, name, op, "mintId", jv.NewObject(), &t.mintDone)
 		return nil, errTxWaiting
 	}
-	// transaction.ts conversation, entry and task read the record from the Storage (storage.conversation, entry, task) before they answer.
-	if (name == "conversation" || name == "entry" || name == "task") && !t.mintDone && h.gated(name) {
-		h.txStorageRead(t, name, op, name, []any{numOf(op, "id")}, func() { t.mintDone = true })
-		return nil, errTxWaiting
-	}
-	// transaction.ts submission and submissionByRequest read the record from the Storage (storage.submission, submissionByRequest).
-	if name == "submission" && !t.mintDone && h.gated(name) {
-		h.txStorageRead(t, name, op, name, []any{numOf(op, "id")}, func() { t.mintDone = true })
-		return nil, errTxWaiting
-	}
-	if name == "submissionByRequest" && !t.mintDone && h.gated(name) {
-		h.txStorageRead(t, name, op, name, []any{numOf(op, "conversationId"), strOf(op, "requestId")}, func() { t.mintDone = true })
-		return nil, errTxWaiting
+	// transaction.ts conversation, entry, task, submission and submissionByRequest read the record from the Storage
+	// (storage.conversation, entry, task, submission, submissionByRequest) before they answer.
+	switch name {
+	case "conversation", "entry", "task", "submission", "submissionByRequest":
+		if !t.mintDone && h.gated(name) {
+			args := []any{numOf(op, "id")}
+			if name == "submissionByRequest" {
+				args = []any{numOf(op, "conversationId"), strOf(op, "requestId")}
+			}
+			h.txStorageRead(t, name, op, name, args, &t.mintDone)
+			return nil, errTxWaiting
+		}
 	}
 	id := session.ID(numOf(op, "id"))
 	nilRec := func(o *jv.Object, err error) (any, error) {
@@ -857,7 +856,7 @@ func (h *handler) txDoc(t *hostTx, op *jv.Object) (any, error) {
 	}
 	// session.ts #acquire: a document that is not in the Session's loaded cache is looked up in the Storage (findDocument) first.
 	if !hd.found && !hd.hasInitial && !hd.hasMigrate && h.gated("findDocument") && !h.sess.Loaded(def, args) {
-		h.txStorageRead(t, "doc", op, "findDocument", jobj("address", docAddress(op)), func() { hd.found = true })
+		h.txStorageRead(t, "doc", op, "findDocument", jobj("address", docAddress(op)), &hd.found)
 		return nil, errTxWaiting
 	}
 	waitMint := false
@@ -893,7 +892,7 @@ func (h *handler) txDoc(t *hostTx, op *jv.Object) (any, error) {
 	}
 	host, err := t.tx.HostDoc(def, args, have, holds)
 	if waitMint {
-		h.txStorageRead(t, "doc", op, "mintId", jv.NewObject(), func() { t.mintDone = true })
+		h.txStorageRead(t, "doc", op, "mintId", jv.NewObject(), &t.mintDone)
 		return nil, errTxWaiting
 	}
 	if err != nil {
