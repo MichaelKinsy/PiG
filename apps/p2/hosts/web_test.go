@@ -325,6 +325,9 @@ func TestDevEndpointAnswersAsAServerWithoutDevMode(t *testing.T) {
 		`{"action":"reload","plugins":"x"}`:   "Error: Invalid plugin names",
 		`{"action":"reload","plugins":["A"]}`: "Error: Invalid plugin names",
 		`{"x":1}`:                             "Error: Invalid dev command",
+		`{"action":"reload","plugins":null}`:  "Error: Invalid plugin names",
+		`{"action":"restart"} x`:              "Error: Invalid dev command JSON",
+		``:                                    "Error: Invalid dev command JSON",
 	} {
 		response := post(own, body)
 		want, _ := json.Marshal(hosts.DevResult{Message: message})

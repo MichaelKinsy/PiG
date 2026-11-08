@@ -4,7 +4,9 @@
 // storage key or text a test reads (the manifest's `name`, the agent's mention name "Pi", `pi-theme`, `pi.*` documents).
 //   node brand.mjs apply <tree>                        patch <tree>/apps/p2 (assemble.sh does it before building)
 //   node brand.mjs finish <out> <upstream version>     add the public files and the brand block to a built bundle
+//   node brand.mjs check-tests <Pi checkout> <commit>  fail when a Pi test reads a text the overlay changes
 //   node brand.mjs css                                 print the brand stylesheet
+import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { cpSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -240,23 +242,24 @@ const files = {
 	"src/web/style.css": { sha256: "c9da1c6e1db2a3dae93d7d6baa15cc3168b81b20b94d906ef6c4ce9b8581efd6", append: stylesheet },
 	"plugins/chat/web.tsx": {
 		literals: [
-			['"Message Pi…"', '"Message PiG…"'],
-			["\tPiLogo,\n\tPlusIcon,\n", "\tPiHero,\n\tPiLogo,\n\tPlusIcon,\n"],
+			['"Message Pi…"', '"Message PiG…"', "Message Pi…"],
+			["\tPiLogo,\n\tPlusIcon,\n", "\tPiHero,\n\tPiLogo,\n\tPlusIcon,\n", null],
 			[
 				'\t\t\t\t\t\t\t<div className="hero-title">\n\t\t\t\t\t\t\t\t<PiLogo />\n\t\t\t\t\t\t\t\t<h2>What should Pi do?</h2>\n\t\t\t\t\t\t\t</div>',
 				'\t\t\t\t\t\t\t<PiHero title="What should PiG do?" />',
+				"What should Pi do?",
 			],
 		],
 	},
-	"plugins/devices/web.tsx": { literals: [["Open Pi's domain on the other device", "Open PiG's domain on the other device"]] },
-	"plugins/terminals/Terminal.tsx": { literals: [['<span className="terminal-agent">Pi</span>', '<span className="terminal-agent">PiG</span>']] },
+	"plugins/devices/web.tsx": { literals: [["Open Pi's domain on the other device", "Open PiG's domain on the other device", "Open Pi's domain on the other device"]] },
+	"plugins/terminals/Terminal.tsx": { literals: [['<span className="terminal-agent">Pi</span>', '<span className="terminal-agent">PiG</span>', 'terminal-agent">Pi<']] },
 	"plugins/discord/LinkSheet.tsx": {
 		literals: [
-			['<span className="label">Who may wake Pi</span>', '<span className="label">Who may wake PiG</span>'],
-			['<p className="muted small">Pick who may wake Pi.</p>', '<p className="muted small">Pick who may wake PiG.</p>'],
+			['<span className="label">Who may wake Pi</span>', '<span className="label">Who may wake PiG</span>', "Who may wake Pi</span>"],
+			// "Pick who may wake Pi." stays: test/p2/ui-discord.test.ts reads it.
 		],
 	},
-	"src/web/transcript.ts": { literals: [[`not shared with Pi"}.\``, `not shared with PiG"}.\``]] },
+	"src/web/transcript.ts": { literals: [[`not shared with Pi"}.\``, `not shared with PiG"}.\``, "not shared with Pi"]] },
 };
 function apply(tree) {
 	const root = join(tree, "apps/p2");
@@ -304,8 +307,30 @@ function finish(out, upstreamVersion) {
 	writeFileSync(bundlePath, `${JSON.stringify(bundle, null, "\t")}\n`);
 }
 
+/**
+ * Every overlaid Pi text must not be read by a Pi test (the overlay is for the branded build; Pi's UI tests run on the unbranded
+ * one, but the overlay promises to touch nothing a test reads). Searches apps/p2/test of a Pi checkout at a commit.
+ *   node brand.mjs check-tests <Pi checkout> <commit>
+ */
+function checkTests(pi, commit) {
+	const texts = Object.entries(files).flatMap(([file, change]) =>
+		(change.literals ?? []).map(([, , text]) => {
+			if (text === undefined) throw new Error(`${file}: a literal names no Pi text (give the text a test might read, or null for code)`);
+			return text;
+		}),
+	);
+	const failures = [];
+	for (const text of texts.filter((value) => value !== null)) {
+		const found = spawnSync("git", ["-C", pi, "grep", "-n", "-F", "--", text, commit, "--", "apps/p2/test"], { encoding: "utf8" });
+		if (found.status === 0) failures.push(`${JSON.stringify(text)} is read by Pi's tests:\n${found.stdout}`);
+	}
+	if (failures.length) throw new Error(failures.join("\n"));
+	console.log(`${texts.length} overlaid texts, none read by Pi's tests at ${commit}`);
+}
+
 const [command, ...args] = process.argv.slice(2);
 if (command === "apply") apply(args[0]);
 else if (command === "finish") finish(args[0], args[1]);
+else if (command === "check-tests") checkTests(args[0], args[1]);
 else if (command === "css") process.stdout.write(stylesheet());
 else if (process.argv[1] === fileURLToPath(import.meta.url)) throw new Error("usage: node brand.mjs apply <tree> | finish <out> <upstream version> | css");
