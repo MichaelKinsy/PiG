@@ -2684,13 +2684,13 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 - **Source:** PiG's own defect
 - **Symptom:** A Chord registry value source reads its composition in a section of the host's loop (inline when the caller is in one): `Value`, `Start` and `Current` from another goroutine (a native's open callback, a request) no longer race a contribution added as an object goes live or a waiter registering.
-- **Root cause:** Go code that reads a singleton's value from a job's goroutine (p2's environment-restart and sharing-archive jobs) raced the object's own commits and its seal on close; the red test fails under -race without the change. The benchmarks measure a read from a goroutine and from inside a section.
+- **Root cause:** Not recorded.
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `714e251284` (2026-11-07), `a79074ec58` (2026-11-07), `0a8ecd3702` (2026-11-08), `d80cb241f7` (2026-11-08)
-- **Tests:** `chord/next/host/host_registry_value_test.go::TestRegistryValueReadsRaceFreeWhileAContributionChanges`, `chord/next/host/host_singleton_value_test.go::TestSingletonValueReadFromGoroutinesDoesNotRaceTheObjectsChanges`, `chord/next/host/remote_hold_gate_test.go::TestReloadARecordedFactoryMayPinAKeyOnItsInertReference`, `chord/next/host/remote_hold_kept_test.go::TestHoldCallsInFlightAcrossALoadingUnbind`, `chord/next/host/remote_hold_kept_test.go::TestHoldCallsInFlightAcrossALoadingUnbindThroughARelay`, `chord/next/state/batch_assert_outside_own_test.go::TestAssertOutsideFromACallersGoroutineWaitsForTheCommitRunningOnTheLoop`
-- **Release note:** A Chord registry value source reads its composition in a section of the host's loop (inline when the caller is in one): `Value`, `Start` and `Current` from another goroutine (a native's open callback, a request) no longer race a contribution added as an object goes live or a waiter registering. <!-- fix: chord-registry-value-section -->
+- **Fix commits:** `0a8ecd3702` (2026-11-08)
+- **Tests:** `chord/next/host/host_registry_value_test.go::TestRegistryValueReadsRaceFreeWhileAContributionChanges`, `chord/next/state/batch_assert_outside_own_test.go::TestAssertOutsideFromACallersGoroutineWaitsForTheCommitRunningOnTheLoop`
+- **Release note:** A Chord registry value source reads its composition in a section of the host's loop (inline when the caller is in one): `Value`, `Start` and `Current` from another goroutine (a native's open callback, a request) no longer race a contribution added as an object goes live or a waiter registering.
 
 ### BF-0aa31c4
 
@@ -23301,9 +23301,9 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **User impact:** Lost or altered data
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `714e251284` (2026-11-07), `9ea6021b5f` (2026-11-07), `d892104fad` (2026-11-07), `d80cb241f7` (2026-11-08)
-- **Tests:** `chord/next/data/failure_test.go::TestWaitingCauseKeepsAVersionRefusal`, `chord/next/host/host_adapted_test.go::TestReloadAReferenceThatNeverHadValuesReadsNoneDuringAParkedRestartHasANewerReferenceReadNothingDuringAParkedRestartItsWatchWaitingThenTheNewInstancesValues`, `chord/next/host/host_adapted_test.go::TestReloadAnOlderConsumersFirstReadDuringAParkedRestartMapsWithTheProviderWhoseAttemptIsShownUntilTheNewOneGoesLive`, `chord/next/host/host_ctx_test.go::TestCallChainAMethodsCtxIsItsOwnChainNodeAboveItTheChainOfTheCallThatMadeItARootsHasNone`, `chord/next/host/host_example_63_test.go::TestExample63OptimisticAnswers`, `chord/next/host/host_example_64_test.go::TestExample64OldWork`, `chord/next/host/host_object_reload_test.go::TestReloadAReferenceDetachingFromAParkedRestartsOldAttemptFollowsTheOldInstanceWhileItsCallDrainsThenKeepsItsLastValueWithTheFailureOnce`, `chord/next/host/host_object_reload_test.go::TestReloadARestartBindsTheNewAttemptsRequestsBeforeReleasingTheOldOnesADependencyHeldOnlyByItNeverEnds` and 59 more in docs/bug-ledger.json
-- **Release note:** A Chord singleton state document's handle reads its value in a section of the host's loop, as its watch does: Go code that reads it from a job's goroutine no longer races the object's own commits and its seal when the host closes. <!-- fix: chord-singleton-value -->
+- **Fix commits:** `d80cb241f7` (2026-11-08)
+- **Tests:** `chord/next/host/host_singleton_value_test.go::TestSingletonValueReadFromGoroutinesDoesNotRaceTheObjectsChanges`
+- **Release note:** A Chord singleton state document's handle reads its value in a section of the host's loop, as its watch does: Go code that reads it from a job's goroutine no longer races the object's own commits and its seal when the host closes.
 
 ### BF-d8357e2
 
