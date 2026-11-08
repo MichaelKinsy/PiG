@@ -31,7 +31,7 @@ func TestStreamedHighlightIsAWholeRunAcrossBlocksAndEdits(t *testing.T) {
 	type sample struct{ lang, id, code string }
 	var samples []sample
 	for i, c := range corpus {
-		if SupportsLanguage(c.Lang) && (!testing.Short() || i%4 == 0) {
+		if SupportsLanguage(c.Lang) && (!(testing.Short() || raceEnabled) || i%4 == 0) {
 			samples = append(samples, sample{c.Lang, c.ID, c.Code})
 		}
 	}

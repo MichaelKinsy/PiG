@@ -135,8 +135,8 @@ func TestProviderProducersAcrossSDKs(t *testing.T) {
 			}
 			cancel()
 			result := pending.Result()
-			// api/lazy.ts:4-22 reports a throwing/cancelled setup or iterator as error; only an explicit provider aborted event has stopReason aborted.
-			if result.StopReason != ai.StopReasonError || result.ErrorMessage == "" {
+			// api/lazy.ts:61-86 (Pi c23b9ec1) ends a setup or iterator that fails while the stream's signal is aborted as stopReason aborted, and one that fails otherwise as error.
+			if result.StopReason != ai.StopReasonAborted || result.ErrorMessage == "" {
 				t.Fatalf("cancel result=%+v", result)
 			}
 			other, createErr := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})

@@ -132,10 +132,14 @@
         (t (cx-type-error "content.filter is not a function"))))
 
 (defun cx-truncate-for-summary (text max-chars)
+  "Pi's truncateForSummary: the cut keeps the first MAX-CHARS UTF-16 units through sliceHead, one unit fewer when it would split a surrogate pair. The marker counts TEXT.length - MAX-CHARS either way."
   (let* ((units (cx-utf16-units text)) (size (length units)))
     (if (<= size max-chars)
         text
-        (format nil "~A~%~%[... ~D more characters truncated]" (cx-units-string units 0 max-chars) (- size max-chars)))))
+        (let ((end (if (and (> max-chars 0) (<= #xD800 (aref units (1- max-chars)) #xDBFF) (<= #xDC00 (aref units max-chars) #xDFFF))
+                       (1- max-chars)
+                       max-chars)))
+          (format nil "~A~%~%[... ~D more characters truncated]" (cx-units-string units 0 end) (- size max-chars))))))
 
 (defun cx-serialize-assistant (message parts)
   "Add the parts of the assistant MESSAGE to PARTS (a cons cell holding the reversed list)."
