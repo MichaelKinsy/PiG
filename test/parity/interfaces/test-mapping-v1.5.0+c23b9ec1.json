@@ -2661,20 +2661,40 @@
     },
     {
       "path": "packages/chord/test/link/link.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:9ce7be5c9e33f214a1b92d3ee6db6136991bc7a40fba3a743780949f5be77bab",
       "evidence": [
-        "chord/next/link/link_test.go"
+        "chord/next/link/link_test.go",
+        "chord/next/host/remote_link_closed_gc_test.go"
       ],
-      "rationale": "5 of 6 upstream cases are ported; the 1 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases. Moved by the root move (Pi e9c0ff4d8) from packages/chord/test/next/link/link.test.ts, identical modulo import paths.",
+      "rationale": "All 6 upstream cases run in the evidence files (every Pi case title appears in a Go test on the lane branches; see rows/chord-*.md for the lane).",
       "missingCases": [
         "a closed memory link › keeps no listener set after its close: accepting it keeps no host"
       ]
     },
     {
       "path": "packages/chord/test/link/message.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ea2ee944fae53fb74db283000f5b6257875b8fcd33e4535b69ec0ad0f023e148"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:ea2ee944fae53fb74db283000f5b6257875b8fcd33e4535b69ec0ad0f023e148",
+      "evidence": [
+        "chord/next/link/message_test.go"
+      ],
+      "rationale": "28 of 41 upstream cases are ported on the lane branches; the 13 listed in missingCases have no Go test carrying the Pi title (see rows/chord-*.md for n/a cases).",
+      "missingCases": [
+        "messages › round-trip %j and pass the message schema",
+        "messages › carry a trace carrier up to its bounds; past them, of another shape or on another kind, the schema refuses it",
+        "messages › carry a trace carrier beside a call's byte segments",
+        "messages › refuse a type or host kind past 256 characters (review M1: a relay records them unparsed)",
+        "the binary codec › flags a trace carrier in the kind byte (0x40) and writes it as JSON after the origin",
+        "the binary codec › flags a call that is old work of a reload in the kind byte (0x20); another kind with that flag is unknown",
+        "the text codec › writes a call's trace carrier last, its payload's fields positional then (null when absent)",
+        "the text codec › writes a call's old-work flag after its carrier (null when absent), its payload's fields positional then",
+        "the text codec › leaves the old-work flag's value to the message schema: only true passes",
+        "describeMessage › prints a message in the text tuple form",
+        "a codec mismatch › decodes the other codec's hello as no message of its own",
+        "the binary codec's long strings › round-trip %s, encoded in place behind a padded length",
+        "the binary codec's short strings › round-trip at %i three-byte characters, around the one-byte length"
+      ]
     },
     {
       "path": "packages/chord/test/link/part.test.ts",
@@ -2695,113 +2715,282 @@
       "disposition": "partial",
       "upstreamTestHash": "sha256:8cad040a7cc000888f20c79148cc6e2c470d7aa02da73d467a499e2337ab97fa",
       "evidence": [
-        "chord/next/link/websocket_test.go"
+        "chord/next/link/websocket_test.go",
+        "chord/next/host/remote_websocket_test.go"
       ],
-      "rationale": "4 of 6 upstream cases are ported; the 2 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases. Moved by the root move (Pi e9c0ff4d8) from packages/chord/test/next/link/websocket.test.ts, identical modulo import paths.",
+      "rationale": "5 of 6 upstream cases are ported on the lane branches; the 1 listed in missingCases have no Go test carrying the Pi title (see rows/chord-*.md for n/a cases).",
       "missingCases": [
-        "WebSocket links over a loopback ws server › carry a live reference both ways; the client's hello waits for open",
-        "WebSocket links over a loopback ws server › close the connection on a frame above maxPayload (1009): references go loading (race 28)"
+        "WebSocket links over a loopback ws server › survive closing a socket that still connects: ws's late error is handled"
       ]
     },
     {
       "path": "packages/chord/test/node/app/app.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f37461c6de1d420c72b433c29f3012ffa117b441ed39bbc44c5cedec6c43cc28"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:f37461c6de1d420c72b433c29f3012ffa117b441ed39bbc44c5cedec6c43cc28",
+      "evidence": [
+        "chord/nextnode/app/app_test.go",
+        "chord/nextnode/app/app_workers_test.go",
+        "chord/nextnode/app/app_export_test.go"
+      ],
+      "rationale": "6 of 23 upstream cases are ported on the lane branches; the 17 listed in missingCases have no Go test carrying the Pi title (see rows/chord-*.md for n/a cases).",
+      "missingCases": [
+        "starting and closing › refuses a second server on the same data directory through a symbolic link (review L3)",
+        "starting and closing › makes the data directory private at every start, also when it existed looser (review M3)",
+        "starting and closing › refuses a data directory the kit must not tighten: home, root, another user's, also through a link (recheck N4)",
+        "starting and closing › names the address listened on in the owner link (review L4)",
+        "starting and closing › rejects when a plugin of the app's root fails, with everything closed",
+        "starting and closing › rejects when a worker kind's entry does not build, with everything closed",
+        "starting and closing › starts without worker kinds and without `principal.worker`; worker kinds need it (a type error)",
+        "workers › applies changes: builds the dirty plugins and rolls them out to the server, then the workers",
+        "applying changes one after another › starts a later applyChanges after the earlier one rolled out, so the newest build stays deployed",
+        "base code › compares the server's own code from its entry, the start script and what it imports, with no `base` given",
+        "base code › starts with an entry whose inactive optional import is missing: the import is left out, the rest compared",
+        "base code › starts when the scan of its entry fails (a lazy import of a file it cannot parse): reported, not compared",
+        "base code › marks base for a change of `base`'s files and directories and of a file a worker kind's base was built from, not for a rewrite with the same bytes",
+        "installs › installs a plugin from git into the user's root; applying changes loads it",
+        "export and import per address › exports without a worker under its lock: a hold arriving meanwhile starts the worker after it (review M1)",
+        "export and import per address › leaves a failed address failed after an export (recheck N5)",
+        "export and import per address › round-trips a worker's documents, tables and files; refuses an existing address"
+      ]
     },
     {
       "path": "packages/chord/test/node/app/archive.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:aae9b853143c638f9b69bc8d406e02f4e0956fbef2bfa930886d7db6cd6f1e7f"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:aae9b853143c638f9b69bc8d406e02f4e0956fbef2bfa930886d7db6cd6f1e7f",
+      "evidence": [
+        "chord/nextnode/app/archive_upstream_test.go"
+      ],
+      "rationale": "4 of 5 upstream cases are ported on the lane branches; the 1 listed in missingCases have no Go test carrying the Pi title (see rows/chord-*.md for n/a cases).",
+      "missingCases": [
+        "refusals when unpacking › refuses what `accept` refuses, an archive not starting with its manifest, and a foreign entry; leaves nothing"
+      ]
     },
     {
       "path": "packages/chord/test/node/app/blobs.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ee6582c90375ec9ad86fe520efbc8f877357f41d427b55a3a82e29e5eb8d8eff"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ee6582c90375ec9ad86fe520efbc8f877357f41d427b55a3a82e29e5eb8d8eff",
+      "evidence": [
+        "chord/nextnode/app/blobs_test.go"
+      ],
+      "rationale": "Ported on the lane branch (ChordNodeApp, rows/chord-nodeapp.md): Go twins keep the Pi cases under their own Go test names; every case is run."
     },
     {
       "path": "packages/chord/test/node/app/ephemeral-sessions.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:fab1945f8e105433609797ebe1e35d35ba97a4ff6b0ca5e4f112fed332fe9fea"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:fab1945f8e105433609797ebe1e35d35ba97a4ff6b0ca5e4f112fed332fe9fea",
+      "evidence": [
+        "chord/nextnode/app/ephemeral_sessions_test.go"
+      ],
+      "rationale": "All 3 upstream cases run in the evidence files (every Pi case title appears in a Go test on the lane branches; see rows/chord-*.md for the lane)."
     },
     {
       "path": "packages/chord/test/node/app/ephemeral.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ec253d3829821e05710a789b9f34c2ac6a43a7111f5ba81a44cdb88ad3a71e35"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ec253d3829821e05710a789b9f34c2ac6a43a7111f5ba81a44cdb88ad3a71e35",
+      "evidence": [
+        "chord/nextnode/app/ephemeral_upstream_test.go"
+      ],
+      "rationale": "All 2 upstream cases run in the evidence files (every Pi case title appears in a Go test on the lane branches; see rows/chord-*.md for the lane)."
     },
     {
       "path": "packages/chord/test/node/app/files-copy.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:3cc424cacb23a58e2f24196715d180985a7d73e4c1b7996575306cd78137cc7b"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:3cc424cacb23a58e2f24196715d180985a7d73e4c1b7996575306cd78137cc7b",
+      "evidence": [
+        "chord/nextnode/app/files_copy_test.go"
+      ],
+      "rationale": "All 2 upstream cases run in the evidence files (every Pi case title appears in a Go test on the lane branches; see rows/chord-*.md for the lane)."
     },
     {
       "path": "packages/chord/test/node/app/files-index.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:984734e58283ec1fde9d0bb2f33484c445b165da08fda9c2d451c82b1f221476"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:984734e58283ec1fde9d0bb2f33484c445b165da08fda9c2d451c82b1f221476",
+      "evidence": [
+        "chord/nextnode/app/files_index_test.go"
+      ],
+      "rationale": "1 of 3 upstream cases are ported on the lane branches; the 2 listed in missingCases have no Go test carrying the Pi title (see rows/chord-*.md for n/a cases).",
+      "missingCases": [
+        "names and paths › takes space names of lower case, digits, '.', '_' and '-', at most 64",
+        "names and paths › takes paths of non-empty segments without '.' or '..'; the root only as a folder"
+      ]
     },
     {
       "path": "packages/chord/test/node/app/files.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:6e263eca7289c8131323e141149c0247aec04b648c3018f1d3627bfc5fbd1a64"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:6e263eca7289c8131323e141149c0247aec04b648c3018f1d3627bfc5fbd1a64",
+      "evidence": [
+        "chord/nextnode/app/files_test.go"
+      ],
+      "rationale": "3 of 29 upstream cases are ported on the lane branches; the 26 listed in missingCases have no Go test carrying the Pi title (see rows/chord-*.md for n/a cases).",
+      "missingCases": [
+        "spaces › keeps the same path apart in two spaces; refuses a name outside the rule",
+        "spaces › removes a space: its files, folders, summary and the blobs only it used",
+        "paths and folders › makes the folders of a path; lists folders first, then files, each by path",
+        "paths and folders › pages a listing across its folders and files with cursors",
+        "paths and folders › refuses bad paths, a file where a folder is and a folder where a file is",
+        "paths and folders › moves a file with all its versions, changing only the index",
+        "paths and folders › moves a folder with everything under it; refuses a target that exists or lies inside",
+        "paths and folders › removes a folder with everything under it, and a file with every version",
+        "versions and blob references › adds a version per write; the path names the newest; older ones stay readable",
+        "versions and blob references › removing the newest version makes the next older one the newest",
+        "versions and blob references › never uses a number twice for a path: removed entirely, moved away or onto a removed path",
+        "versions and blob references › sweeps blobs a write left without its commit at the next start",
+        "keys › stores a write with a key once: the second answers the first, in its space only",
+        "keys › begins with a key: the file written with it, or the upload under way with it",
+        "metadata queries › keeps source, ref, key, mime and meta; finds versions by id, ref and key",
+        "imported times › keeps an import's created time; the summary's newest stay in created order",
+        "live folder queries › lists a folder live through writes, moves and removals",
+        "live folder queries › shows the first 500 entries and whether more follow",
+        "chunked uploads › writes a large file in chunks: begin, append at the stored offset, finish",
+        "chunked uploads › writes appends sent without waiting at their own offsets, byte for byte (review H1)",
+        "chunked uploads › finishes an upload only once the appends sent before it landed (review H1)",
+        "chunked uploads › caps the uploads under way per object: past it begin is refused busy; an ending one frees its slot (recheck N1)",
+        "chunked uploads › cancels an upload: its bytes no longer count, its slot is free",
+        "chunked uploads › drops the uploads a previous run left",
+        "caps › refuses a file over the per-file cap and writes over the total; a copy adds no bytes",
+        "caps › refuses a put and a read of more than 4 MiB"
+      ]
     },
     {
       "path": "packages/chord/test/node/app/folder-views.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:97a757b358bea1a92a9b76b154c88d2bad38614e14b3275b41876105ef1a2334"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:97a757b358bea1a92a9b76b154c88d2bad38614e14b3275b41876105ef1a2334",
+      "evidence": [
+        "chord/nextnode/app/folder_views_test.go"
+      ],
+      "rationale": "Ported on the lane branch (ChordNodeApp, rows/chord-nodeapp.md): Go twins keep the Pi cases under their own Go test names; every case is run."
     },
     {
       "path": "packages/chord/test/node/app/info.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:df221e845e51ea29f069fa179f5f590963dba8607eafe11ec50d7a3f66f78a67"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:df221e845e51ea29f069fa179f5f590963dba8607eafe11ec50d7a3f66f78a67",
+      "evidence": [
+        "chord/nextnode/app/info_upstream_test.go"
+      ],
+      "rationale": "Ported on the lane branch (ChordNodeApp, rows/chord-nodeapp.md): Go twins keep the Pi cases under their own Go test names; every case is run."
     },
     {
       "path": "packages/chord/test/node/app/invite.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:56ec62cbb7ce2aff8e3e1e518b10e9244017bb8fe952da98f3c5d744570ba2b7"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:56ec62cbb7ce2aff8e3e1e518b10e9244017bb8fe952da98f3c5d744570ba2b7",
+      "evidence": [
+        "chord/nextnode/app/invite_upstream_test.go"
+      ],
+      "rationale": "Ported on the lane branch (ChordNodeApp, rows/chord-nodeapp.md): Go twins keep the Pi cases under their own Go test names; every case is run."
     },
     {
       "path": "packages/chord/test/node/app/layout.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:22920a2be00f0a12133dbc50debfcf8d06d21eae7f63e5803f9285ae39129e66"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:22920a2be00f0a12133dbc50debfcf8d06d21eae7f63e5803f9285ae39129e66",
+      "evidence": [
+        "chord/nextnode/app/layout_test.go"
+      ],
+      "rationale": "1 of 4 upstream cases are ported on the lane branches; the 3 listed in missingCases have no Go test carrying the Pi title (see rows/chord-*.md for n/a cases).",
+      "missingCases": [
+        "worker directories › encodes an address key as one directory name under its kind",
+        "worker directories › keeps keys differing only in case apart, lowercased as a case-insensitive file system sees them",
+        "worker directories › names a long key by its hash"
+      ]
     },
     {
       "path": "packages/chord/test/node/app/owner.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:9d486441db82ea400bf24dfc845197d27f1d1e9d4be8a3289daa2a824ec6fb36"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:9d486441db82ea400bf24dfc845197d27f1d1e9d4be8a3289daa2a824ec6fb36",
+      "evidence": [
+        "chord/nextnode/app/owner_upstream_test.go"
+      ],
+      "rationale": "6 of 9 upstream cases are ported on the lane branches; the 3 listed in missingCases have no Go test carrying the Pi title (see rows/chord-*.md for n/a cases).",
+      "missingCases": [
+        "the owner token file › is replaced at the next start when its secret no longer matches its session (review L6)",
+        "an owner the app chooses › keeps a user owner's token file across starts, also with the owner's fields in another order",
+        "an owner the app chooses › replaces the owner token file when the owner changes and revokes its session; the old owner's others stay, not the owner"
+      ]
     },
     {
       "path": "packages/chord/test/node/app/pairing.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:b80b2cf65d8b194475143fcede004c85192b64475b00c08a8d75ac05fdfb554b"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:b80b2cf65d8b194475143fcede004c85192b64475b00c08a8d75ac05fdfb554b",
+      "evidence": [
+        "chord/nextnode/app/pairing_upstream_test.go",
+        "chord/delta/tracker_upstream_test.go",
+        "chord/next/host/host_ref_state_test.go"
+      ],
+      "rationale": "4 of 8 upstream cases are ported on the lane branches; the 4 listed in missingCases have no Go test carrying the Pi title (see rows/chord-*.md for n/a cases).",
+      "missingCases": [
+        "pairing over HTTP › pairs a client: code, owner approval, one poll with the token, then nothing",
+        "an owner the app chooses › lets only that principal approve, issues the device session for it, and does not count its pairings",
+        "limits › frees a client address's place once its pairing ends",
+        "limits › lets the signed-in owner pair past the caps, without counting it (recheck N2)"
+      ]
     },
     {
       "path": "packages/chord/test/node/app/secrets.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:9c5da2ee36ae8b6f13f1ff69ff16a8d719a39ebb6b1508943b6134ed2c1400ee"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:9c5da2ee36ae8b6f13f1ff69ff16a8d719a39ebb6b1508943b6134ed2c1400ee",
+      "evidence": [
+        "chord/nextnode/app/secrets_umask_unix_test.go"
+      ],
+      "rationale": "1 of 4 upstream cases are ported on the lane branches; the 3 listed in missingCases have no Go test carrying the Pi title (see rows/chord-*.md for n/a cases).",
+      "missingCases": [
+        "tokens and hashes › makes distinct base64url tokens of the asked size and matches only their own hash",
+        "secret files › creates a file with mode 0600, never overwrites it on create, replaces it whole, leaves no temporary file",
+        "secret files › keeps a secret file's first value: a fresh token at first, then that one"
+      ]
     },
     {
       "path": "packages/chord/test/node/app/sessions.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:80ef31c8fdfc51eed65bf752cb66e2e3839dfa8846cac85d4c345d5e4487c77f"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:80ef31c8fdfc51eed65bf752cb66e2e3839dfa8846cac85d4c345d5e4487c77f",
+      "evidence": [
+        "chord/nextnode/app/sessions_upstream_test.go"
+      ],
+      "rationale": "1 of 9 upstream cases are ported on the lane branches; the 8 listed in missingCases have no Go test carrying the Pi title (see rows/chord-*.md for n/a cases).",
+      "missingCases": [
+        "issuing, listing and revoking › issues a session whose token authenticates as a bearer and as the cookie, lists it without its hash, revokes it",
+        "issuing, listing and revoking › refuses a token with a wrong secret, an unknown id and a forged cookie",
+        "issuing, listing and revoking › keeps only the token's hash in the store",
+        "ephemeral sessions › live at most `limits.ephemeralSessions`: past it the oldest ends; an issue costs the same whatever came before",
+        "rolling cookies › renews a browser's session cookie once it is older than a day, with a fresh signed expiry (recheck N3)",
+        "rolling cookies › does not renew an ephemeral session's cookie, nor a revoked session's",
+        "expiry and malformed tokens › ends a persisted session unused for 400 days, at its next use",
+        "expiry and malformed tokens › answers a malformed token or a prototype key as an id with a plain 401, reporting nothing"
+      ]
     },
     {
       "path": "packages/chord/test/node/app/tar.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:e1f2d96f849c95f2bb9bb0c03b6ce462455bf2d54a6ddff4f693853888427a80"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:e1f2d96f849c95f2bb9bb0c03b6ce462455bf2d54a6ddff4f693853888427a80",
+      "evidence": [
+        "chord/nextnode/app/tar_test.go"
+      ],
+      "rationale": "All 5 upstream cases run in the evidence files (every Pi case title appears in a Go test on the lane branches; see rows/chord-*.md for the lane)."
     },
     {
       "path": "packages/chord/test/node/app/uploads.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ca237dda3ce284a22002de0c98e0cb3872809179f212d89d6d0ed8789484262e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ca237dda3ce284a22002de0c98e0cb3872809179f212d89d6d0ed8789484262e",
+      "evidence": [
+        "chord/nextnode/app/uploads_test.go"
+      ],
+      "rationale": "Ported on the lane branch (ChordNodeApp, rows/chord-nodeapp.md): Go twins keep the Pi cases under their own Go test names; every case is run."
     },
     {
       "path": "packages/chord/test/node/app/users.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:5e1abd052fa46f4e380a7e537eb5355a93d78dfb497927cd53ae79ef02af84c0"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:5e1abd052fa46f4e380a7e537eb5355a93d78dfb497927cd53ae79ef02af84c0",
+      "evidence": [
+        "chord/nextnode/app/users_upstream_test.go"
+      ],
+      "rationale": "Ported on the lane branch (ChordNodeApp, rows/chord-nodeapp.md): Go twins keep the Pi cases under their own Go test names; every case is run."
     },
     {
       "path": "packages/chord/test/node/app/worker.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f90976f7e213ffa02f641d10f100a68cd2f0404a0b6a7703e282799a3c522b1d"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:f90976f7e213ffa02f641d10f100a68cd2f0404a0b6a7703e282799a3c522b1d",
+      "evidence": [
+        "chord/nextnode/app/app_workers_test.go"
+      ],
+      "rationale": "Ported on the lane branch (ChordNodeApp, rows/chord-nodeapp.md): Go twins keep the Pi cases under their own Go test names; every case is run."
     },
     {
       "path": "packages/chord/test/node/compression.test.ts",
@@ -2929,8 +3118,12 @@
     },
     {
       "path": "packages/chord/test/node/plugins/testing.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:8fd2065075c0baa29d8d0bef8320b9fd91873a4d0066b3a648f254869e35320f"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:8fd2065075c0baa29d8d0bef8320b9fd91873a4d0066b3a648f254869e35320f",
+      "evidence": [
+        "chord/nextnode/plugins/plugins_testing_test.go"
+      ],
+      "rationale": "All 8 upstream cases run in the evidence files (every Pi case title appears in a Go test on the lane branches; see rows/chord-*.md for the lane)."
     },
     {
       "path": "packages/chord/test/node/plugins/watcher.test.ts",
@@ -3049,28 +3242,52 @@
     },
     {
       "path": "packages/chord/test/node/workers/base.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c81aa14f3f9a3cff377c94ce876bc4cd572b048b38109fc3963979c785ff5b7b"
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:c81aa14f3f9a3cff377c94ce876bc4cd572b048b38109fc3963979c785ff5b7b",
+      "evidence": [],
+      "rationale": "Designed out by D600 (draft, owner sign-off pending; rows/chord-reload-workers.md): a Go worker is the program's own executable, so there is no esbuild worker base to test."
     },
     {
       "path": "packages/chord/test/node/workers/child.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:547c8c230bba723cdd50963d49ead7d846cc4f6e944e2eaf0e1829b203c9fa41"
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:547c8c230bba723cdd50963d49ead7d846cc4f6e944e2eaf0e1829b203c9fa41",
+      "evidence": [],
+      "rationale": "Designed out by D600 (draft, owner sign-off pending; rows/chord-reload-workers.md): a Go worker is the program's own executable, so there is no esbuild worker base to test."
     },
     {
       "path": "packages/chord/test/node/workers/control.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:9858e5fb069dd676631234e0f756276f3660a447e4806bd7dde9a7c1b72dacc3"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:9858e5fb069dd676631234e0f756276f3660a447e4806bd7dde9a7c1b72dacc3",
+      "evidence": [
+        "chord/nextnode/workers/workers_control_test.go"
+      ],
+      "rationale": "1 of 3 upstream cases are ported on the lane branches; the 2 listed in missingCases have no Go test carrying the Pi title (see rows/chord-*.md for n/a cases).",
+      "missingCases": [
+        "errors › crosses a report's failures and parked causes and back",
+        "envelopes › tells control messages from anything else on the channel"
+      ]
     },
     {
       "path": "packages/chord/test/node/workers/lock.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d867c8df557729d75b865949bae00ac9648da05364fe7d7eddbcf7f50dd946eb"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:d867c8df557729d75b865949bae00ac9648da05364fe7d7eddbcf7f50dd946eb",
+      "evidence": [
+        "chord/nextnode/workers/workers_lock_test.go"
+      ],
+      "rationale": "5 of 6 upstream cases are ported on the lane branches; the 1 listed in missingCases have no Go test carrying the Pi title (see rows/chord-*.md for n/a cases).",
+      "missingCases": [
+        "socket file locks (macOS, the BSDs) › fail closed on a stale lock file, naming it: two takers never both take it over (Sol)"
+      ]
     },
     {
       "path": "packages/chord/test/node/workers/main.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:a1e14f4a90bc3160a8ce94139dd68b987e99d11f466cffc99f658feb47a77bb5"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:a1e14f4a90bc3160a8ce94139dd68b987e99d11f466cffc99f658feb47a77bb5",
+      "evidence": [
+        "chord/nextnode/workers/workers_main_test.go",
+        "chord/nextnode/workers/workers_signal_unix_test.go"
+      ],
+      "rationale": "All 4 upstream cases run in the evidence files (every Pi case title appears in a Go test on the lane branches; see rows/chord-*.md for the lane)."
     },
     {
       "path": "packages/chord/test/node/workers/process.test.ts",
@@ -3083,8 +3300,33 @@
     },
     {
       "path": "packages/chord/test/node/workers/workers.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:3c37d4d8b6ba7e8aacc072959d4c8eea747276567858a847056ec81a511686b6"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:3c37d4d8b6ba7e8aacc072959d4c8eea747276567858a847056ec81a511686b6",
+      "evidence": [
+        "chord/nextnode/workers/workers_workers_test.go",
+        "chord/nextnode/workers/workers_rollout_test.go",
+        "chord/nextnode/workers/workers_rollout_blocked_unix_test.go"
+      ],
+      "rationale": "17 of 34 upstream cases are ported on the lane branches; the 17 listed in missingCases have no Go test carrying the Pi title (see rows/chord-*.md for n/a cases).",
+      "missingCases": [
+        "the worker base (decision \"Workers start from the base code the server booted with\") › a worker started after an edit of the entry's imported source runs the code the component was created with",
+        "failures stay until retry or a rollout (R2) › a start that throws fails the address: holders fail waiting with it, a new hold forks nothing; retry starts it",
+        "failures stay until retry or a rollout (R2) › a running worker's lost link (a blocked event loop past the heartbeat): killed after the grace, its holders get a new worker past the lock file the kill left; a second within a minute fails the address",
+        "failures stay until retry or a rollout (R2) › the start timer covers only the start: a slow load after connecting is not killed (Q4)",
+        "keep-alive (D9, R3, Q5) › 1,000 sequential local calls in a worker nobody holds send no message (Sol)",
+        "stop › suspends while held: holders fail waiting suspended, nothing starts; forgotten with the last holder (Q3)",
+        "the rollout step (§4) › lists a worker stopped cleanly during it as stopped and one that crashed with its error (it stays dirty)",
+        "GC › 100 addresses started and stopped leave no state, no record, no suspension (Astra, Sol)",
+        "fix round 1 › close during a forked start that never connects returns at once, no failure (Opus F1)",
+        "fix round 1 › close during an app's start that ignores its signal returns at once; nothing forks after it (Sol)",
+        "fix round 1 › a stop during the worker's startup is a stop: its closers run, nothing fails (Astra)",
+        "fix round 1 › a reload queued behind one the child never answers settles when the child exits (Astra)",
+        "fix round 1 › a plugin whose evaluation failed is shipped again by the next rollout and stays dirty (Astra)",
+        "fix round 1 › two rollouts started together each ship their own build; the later one stays (Astra)",
+        "fix round 1 › reaps a worker that closed its own IPC channel and lives on: killed after the grace, a lost link its holder gets a new worker for (Sol)",
+        "fix round 1 › keeps no reload report once consumed: the reload queue settles to nothing (Sol)",
+        "fix round 1 › keeps a worker's stderr out of the public state: only worker_failed carries its tail (Astra)"
+      ]
     },
     {
       "path": "packages/chord/test/output-skip.test.ts",
@@ -3625,28 +3867,62 @@
     },
     {
       "path": "packages/chord/test/surfaces/active-language.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:9e2b73e4007163ac09df66f6572202d25e6e55db3f8cfabc70d0cf30e13e5ff4"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:9e2b73e4007163ac09df66f6572202d25e6e55db3f8cfabc70d0cf30e13e5ff4",
+      "evidence": [
+        "chord/next/surfaces/surfaces_active_language_test.go"
+      ],
+      "rationale": "1 of 2 upstream cases are ported on the lane branches; the 1 listed in missingCases have no Go test carrying the Pi title (see rows/chord-*.md for n/a cases).",
+      "missingCases": [
+        "following the active language › follows the device's languages, the principal's pick and the catalogs, kept as the host's page state"
+      ]
     },
     {
       "path": "packages/chord/test/surfaces/active-theme.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c33fe6fcea6078ca55762614ecf5f4bdca94c463ed0c00cadaf765a38041b717"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:c33fe6fcea6078ca55762614ecf5f4bdca94c463ed0c00cadaf765a38041b717",
+      "evidence": [
+        "chord/next/surfaces/surfaces_active_theme_test.go"
+      ],
+      "rationale": "2 of 3 upstream cases are ported on the lane branches; the 1 listed in missingCases have no Go test carrying the Pi title (see rows/chord-*.md for n/a cases).",
+      "missingCases": [
+        "theme choices › refuse an id over 128 characters (Opus M4, Fable L7)"
+      ]
     },
     {
       "path": "packages/chord/test/surfaces/client.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:227e4ce02a1dbcd614060684dff02eff2be8da27a6a641879fab174278af1edc"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:227e4ce02a1dbcd614060684dff02eff2be8da27a6a641879fab174278af1edc",
+      "evidence": [
+        "chord/next/surfaces/surfaces_client_test.go"
+      ],
+      "rationale": "All 10 upstream cases run in the evidence files (every Pi case title appears in a Go test on the lane branches; see rows/chord-*.md for the lane)."
     },
     {
       "path": "packages/chord/test/surfaces/connection.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:b30dd3c9989390028c4ef27fb7365b5ee437f6155df14337b1986667b7a85274"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:b30dd3c9989390028c4ef27fb7365b5ee437f6155df14337b1986667b7a85274",
+      "evidence": [
+        "chord/next/surfaces/surfaces_connection_test.go"
+      ],
+      "rationale": "6 of 8 upstream cases are ported on the lane branches; the 2 listed in missingCases have no Go test carrying the Pi title (see rows/chord-*.md for n/a cases).",
+      "missingCases": [
+        "reconnecting › reconnects after a growing pause, 250 ms doubling to 5 s, and reports its states",
+        "a silent socket › is replaced on a wake once its next ping is overdue; one with recent frames stays"
+      ]
     },
     {
       "path": "packages/chord/test/surfaces/format.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:bd72b1edce3512483cac854712c5b44ac60980582d168f15fdac002239c1614a"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:bd72b1edce3512483cac854712c5b44ac60980582d168f15fdac002239c1614a",
+      "evidence": [
+        "chord/next/surfaces/surfaces_format_test.go"
+      ],
+      "rationale": "1 of 3 upstream cases are ported on the lane branches; the 2 listed in missingCases have no Go test carrying the Pi title (see rows/chord-*.md for n/a cases).",
+      "missingCases": [
+        "formatting in the current language › formats times and numbers in the render's locale",
+        "formatting in the current language › formats in the platform's default locale outside a render"
+      ]
     },
     {
       "path": "packages/chord/test/surfaces/language.test.ts",
@@ -3655,38 +3931,80 @@
     },
     {
       "path": "packages/chord/test/surfaces/locale-choice.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:31ea47fbf567707cbaa3b9b181753d5973e0e1fcc18b275e1fe64b6e2af52672"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:31ea47fbf567707cbaa3b9b181753d5973e0e1fcc18b275e1fe64b6e2af52672",
+      "evidence": [
+        "chord/next/surfaces/surfaces_preference_test.go"
+      ],
+      "rationale": "All 1 upstream cases run in the evidence files (every Pi case title appears in a Go test on the lane branches; see rows/chord-*.md for the lane)."
     },
     {
       "path": "packages/chord/test/surfaces/messages.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:dc0e01ea71ba913db7077f354f65ffd7299553e96b3b255538b9a7dd49dba0ce"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:dc0e01ea71ba913db7077f354f65ffd7299553e96b3b255538b9a7dd49dba0ce",
+      "evidence": [
+        "chord/next/surfaces/surfaces_messages_test.go"
+      ],
+      "rationale": "11 of 14 upstream cases are ported on the lane branches; the 3 listed in missingCases have no Go test carrying the Pi title (see rows/chord-*.md for n/a cases).",
+      "missingCases": [
+        "rendering in a language › reports a contributed message that throws and goes on (here: the plugin's own catalog)",
+        "messages as data › builds typed data for the keys whose arguments are data",
+        "messages as data › renders a message in the viewer's language"
+      ]
     },
     {
       "path": "packages/chord/test/surfaces/page-state.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:bb0b6c79b14f670c565ea5cbaf9e6f1bfccd9afbb1cd1a055e79be7ab3fadaed"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:bb0b6c79b14f670c565ea5cbaf9e6f1bfccd9afbb1cd1a055e79be7ab3fadaed",
+      "evidence": [
+        "chord/next/surfaces/surfaces_page_state_test.go"
+      ],
+      "rationale": "4 of 5 upstream cases are ported on the lane branches; the 1 listed in missingCases have no Go test carrying the Pi title (see rows/chord-*.md for n/a cases).",
+      "missingCases": [
+        "a host's page state by key › keeps a key's value for whoever asks next, its own initial value ignored"
+      ]
     },
     {
       "path": "packages/chord/test/surfaces/preference.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:1282fc600f619854a440f9aac3782b206e948596c4a88564b40337f26960c19e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:1282fc600f619854a440f9aac3782b206e948596c4a88564b40337f26960c19e",
+      "evidence": [
+        "chord/next/surfaces/surfaces_preference_test.go"
+      ],
+      "rationale": "All 2 upstream cases run in the evidence files (every Pi case title appears in a Go test on the lane branches; see rows/chord-*.md for the lane)."
     },
     {
       "path": "packages/chord/test/surfaces/registered.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:e9629f578d67e60503e3e5c7852dfdeb8d89f40cb965afe6d43fbcd1bf911a69"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:e9629f578d67e60503e3e5c7852dfdeb8d89f40cb965afe6d43fbcd1bf911a69",
+      "evidence": [
+        "chord/next/surfaces/surfaces_registered_test.go"
+      ],
+      "rationale": "All 3 upstream cases run in the evidence files (every Pi case title appears in a Go test on the lane branches; see rows/chord-*.md for the lane)."
     },
     {
       "path": "packages/chord/test/surfaces/themes.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d6da5eb341a8892010f056624b7e919ac48d85b5c06a65e0f4bb0d21344f7197"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:d6da5eb341a8892010f056624b7e919ac48d85b5c06a65e0f4bb0d21344f7197",
+      "evidence": [
+        "chord/next/surfaces/surfaces_themes_test.go"
+      ],
+      "rationale": "All 4 upstream cases run in the evidence files (every Pi case title appears in a Go test on the lane branches; see rows/chord-*.md for the lane)."
     },
     {
       "path": "packages/chord/test/surfaces/translations.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:3263b221c526f24f29cd5b2eb7636fb0e91b8895de1030e89358e5635f1decca"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:3263b221c526f24f29cd5b2eb7636fb0e91b8895de1030e89358e5635f1decca",
+      "evidence": [
+        "chord/next/surfaces/surfaces_translations_test.go"
+      ],
+      "rationale": "1 of 5 upstream cases are ported on the lane branches; the 4 listed in missingCases have no Go test carrying the Pi title (see rows/chord-*.md for n/a cases).",
+      "missingCases": [
+        "composing translations › keeps the first by plugin name for a namespace and locale, reporting the other",
+        "composing translations › lets `override: true` win over a catalog without it, unreported",
+        "composing translations › keys catalogs by canonical locale, leaves invalid ones out reported, lists the locales offered",
+        "the kit's facet › serves the registry on a host, composing its plugins' contributions"
+      ]
     },
     {
       "path": "packages/chord/test/sync/lines.test.ts",
