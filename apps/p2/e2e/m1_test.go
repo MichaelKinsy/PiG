@@ -315,18 +315,25 @@ func TestM1WorkingChat(t *testing.T) {
 	})
 
 	t.Run("stops the worker when idle and reopens the session from its storage", func(t *testing.T) {
+		released := time.Now()
 		chat().Release()
 		// The released Chat lingers 30 s on the worker, which keeps it alive (Chord's activity counts lingering objects).
 		until(t, statuses.Member("statuses"), func(value delta.JsonValue) bool {
 			entry := status(value, sessionID)
 			return entry != nil && entry.Value("running") == false
 		}, 60*time.Second)
+		// The wait is the 30 s linger, then the 1.5 s idle time (found by a check each second), then the worker's exit; Pi
+		// waits the same (m1.test.ts has the same 60 s budget).
+		t.Logf("the worker stopped %s after the Chat was released", time.Since(released).Round(10*time.Millisecond))
+		reopening := time.Now()
 		holdChat(t)
 		view := until(t, chat().Member("view"), func(value delta.JsonValue) bool { return value != nil && len(assistants(value)) >= 6 }, 0)
+		t.Logf("the reopened session's view (a new worker process) took %s", time.Since(reopening).Round(10*time.Millisecond))
 		if answerText(assistants(view)[0]) != "Echo: hello" {
 			t.Fatalf("first answer %q", answerText(assistants(view)[0]))
 		}
 		// The new worker started on the epoch before the reload and was reconciled; its status reports still arrive.
+		streaming := time.Now()
 		send(t, "slow reopened", "r6")
 		until(t, statuses.Member("statuses"), func(value delta.JsonValue) bool { return busyHas(status(value, sessionID), 1) }, 0)
 		until(t, chat().Member("view"), func(value delta.JsonValue) bool {
@@ -336,6 +343,7 @@ func TestM1WorkingChat(t *testing.T) {
 			busy, _ := status(value, sessionID).Value("busy").([]any)
 			return len(busy) == 0
 		}, 0)
+		t.Logf("the slow answer (3000 characters through the faux provider) took %s until the session was idle", time.Since(streaming).Round(10*time.Millisecond))
 	})
 
 	t.Run("archives (stopping the worker) and restores", func(t *testing.T) {
