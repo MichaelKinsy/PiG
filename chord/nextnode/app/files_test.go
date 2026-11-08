@@ -141,9 +141,9 @@ func TestPathsRefuseBadPathsAFileWhereAFolderIsAndAFolderWhereAFileIs(t *testing
 		t.Fatalf("details = %s", jsonOf(t, got.Details))
 	}
 	_, err = f.call("mkdir", "space", "shared", "path", "docs/a.txt")
-	wantCode(t, err, data.CodeInvalid)
+	_ = wantCode(t, err, data.CodeInvalid)
 	_, err = f.call("begin", "space", "shared", "path", "docs", "mime", "x", "source", "t")
-	wantCode(t, err, data.CodeInvalid)
+	_ = wantCode(t, err, data.CodeInvalid)
 	f.close()
 }
 
