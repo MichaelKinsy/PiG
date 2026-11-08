@@ -24626,6 +24626,27 @@
       ]
     },
     {
+      "id": "BF-8022d7a",
+      "title": "fix(chord/nextnode): no JSON decode into an interface value in the terminal pipe or the browser driver…",
+      "symptom": "fix(chord/nextnode): no JSON decode into an interface value in the terminal pipe or the browser driver (any-trap)",
+      "rootCause": "The sandbox's header is decoded into raw fields, each read as the type its message kind needs (safeInteger, stringField, bridgeRequest, jsString); Browser.Evaluate returns the page value's JSON and the tests decode it into their own types. A header field beyond a float64 in an unrelated field no longer fails the whole header, as Pi's JSON.parse does not.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "8022d7a16d",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/tui/tui_pipe_test.go::TestReadingTheSandboxsHeaderChecksEachFieldAsPiDoes"
+      ]
+    },
+    {
       "id": "BF-8048c85",
       "title": "Tool-call header argument preview no longer splits a character: `truncateArg` (`tui/tool_execution.go`) cut…",
       "symptom": "Tool-call header argument preview no longer splits a character: `truncateArg` (`tui/tool_execution.go`) cut to `max-1` bytes, so a non-ASCII argument longer than the budget ended in a half character that the JSON quoting turned into a visible U+FFFD before the ellipsis (`text:\"ééé…é�…\"`); it now backs up to the start of a character.",
