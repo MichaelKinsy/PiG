@@ -159,6 +159,13 @@ func runWorker(options WorkerOptions, start workers.WorkerStart, ctx context.Con
 	if err := os.WriteFile(dataModule, []byte(hostDataModule(kit.Server, token)), 0o600); err != nil {
 		return nil, err
 	}
+	// The module holds this start's token: gone with the worker (Pi has no such file: its data facet is a closure).
+	start.OnClose(func(context.Context) error {
+		if err := os.Remove(dataModule); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+		return nil
+	})
 	goCore := []host.HostFacet{
 		{Name: "chord.app.worker-info", Facet: WorkerInfoFacet(WorkerInfoValues{Kind: start.Address.Kind, Key: start.Address.Key, Params: start.Address.Params, Start: app})},
 		{Name: "chord.app.files", Facet: FilesFacet(files, kit.Files, kit.Uploads)},
