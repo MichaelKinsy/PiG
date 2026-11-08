@@ -55,7 +55,7 @@ func TestOAuthLoginCancellationDoesNotCompleteAuthentication(t *testing.T) {
 			if err := m.runLoginRegisteredOAuth(t.Context(), successfulLoginProvider{provider.parityOAuthProvider}, testOAuthLoginName(provider), ""); err != nil {
 				t.Fatal(err)
 			}
-			waitPostLoginStatus(t, m, "Logged in to Anthropic. Selected claude-opus-4-8.")
+			waitPostLoginStatus(t, m, "Logged in to Anthropic. Selected claude-opus-5-5.")
 		})
 	}
 }

@@ -84,7 +84,7 @@ type ResumePoint struct {
 // ErrResumeFailed reports that a resumed run hit an exception highlight.js reports for the whole code, so the caller highlights the whole code instead.
 var ErrResumeFailed = errors.New("hljs: resumed highlight failed")
 
-// HighlightResumable is Highlight that starts at from, a ResumePoint of a run over a prefix of code, or the zero ResumePoint for the whole code. It returns the HTML of code[from:] only, and the resume points at or after from, with HTML offsets into that returned HTML. The points are valid for code extended with more text: a language with a pattern that reads without bound has none (the JSX tag callback of javascript and typescript, which looks for a closing tag anywhere after, is one such pattern's partner: both languages have such patterns), and the last ones, whose decisions could have read the end of the code, are dropped.
+// HighlightResumable is Highlight that starts at from, a ResumePoint of a run over a prefix of code, or the zero ResumePoint for the whole code. It returns the HTML of code[from:] only, and the resume points at or after from, with HTML offsets into that returned HTML. The points are valid for code extended with more text: a language with a pattern that reads without bound has none, and the last ones, whose decisions could have read the end of the code, are dropped. javascript and typescript have three such patterns and a callback that reads past the match (the JSX tag's, which looks for a closing tag anywhere after); a text check bounds each (guardedSources), and a point that fails one is dropped.
 func (r *Registry) HighlightResumable(code, language string, ignoreIllegals bool, from ResumePoint) (html string, points []ResumePoint, err error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -132,6 +132,7 @@ func (r *Registry) HighlightResumable(code, language string, ignoreIllegals bool
 	for len(points) > 0 && points[len(points)-1].Byte > limit {
 		points = points[:len(points)-1]
 	}
+	points = guardPoints(points, code, reach.guards)
 	return value, points, nil
 }
 

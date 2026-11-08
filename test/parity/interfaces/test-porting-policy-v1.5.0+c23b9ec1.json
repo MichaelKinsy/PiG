@@ -628,6 +628,15 @@
       "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling."
     },
     {
+      "path": "packages/ai/test/anthropic-message-threads.test.ts",
+      "upstreamTestHash": "sha256:c3c9855ef1f514fe9246f75f7a9acec233b6a6b7cad68c228bee9dc80d43a18b",
+      "area": "providers",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling."
+    },
+    {
       "path": "packages/ai/test/anthropic-mid-conversation-effort.test.ts",
       "upstreamTestHash": "sha256:41c4e19ce197243044d203cfb7e2e0de6b5f185121ab9ae2806bc9b9af402767",
       "area": "providers",
@@ -882,6 +891,15 @@
     {
       "path": "packages/ai/test/cache-retention.test.ts",
       "upstreamTestHash": "sha256:12c858b08949b9e939c833e8a7ea0a2668d2f12f4b31d16071ab581d41cc4044",
+      "area": "providers",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling."
+    },
+    {
+      "path": "packages/ai/test/clamp-max-tokens.test.ts",
+      "upstreamTestHash": "sha256:df80896bb514f1dfc0f4b4f3bb16027dc1b746741345597e666b09239f93691e",
       "area": "providers",
       "tags": [
         "hot-path"
@@ -1492,6 +1510,15 @@
       "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling."
     },
     {
+      "path": "packages/ai/test/openai-completions-non-null-assistant-content.test.ts",
+      "upstreamTestHash": "sha256:ab06a46cee61291d8793a1b904cc201f902b09dc5ec19efef7e9e4fe2da25f05",
+      "area": "providers",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling."
+    },
+    {
       "path": "packages/ai/test/openai-completions-prompt-cache.test.ts",
       "upstreamTestHash": "sha256:276535dc7e725b031e734fd3595cb644e1728a7e12520e0bf0aa8274c7fe8a01",
       "area": "providers",
@@ -1674,6 +1701,15 @@
     {
       "path": "packages/ai/test/openai-responses-partial-json-cleanup.test.ts",
       "upstreamTestHash": "sha256:ad44bf0cb7726e895b13b64e59070579a2a42ab84df0c6cc6117376bcf7ad7e9",
+      "area": "providers",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling."
+    },
+    {
+      "path": "packages/ai/test/openai-responses-prompt-cache.test.ts",
+      "upstreamTestHash": "sha256:17de0ec9bf7c1fabd7882e6a0522684c785142c811c040111e3eb06243164827",
       "area": "providers",
       "tags": [
         "hot-path"
@@ -7081,7 +7117,10 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "Production-path review at Pi 1.5.0: schema.Compile and CompileCoercing are the tool-argument validator of the Go product (cmd/pig links schema, schema/formats, schema/formats/internal/idna and schema/internal/ecmaregex): ai/validate.go (toolArgumentValidators) compiles every tool schema, reached through ai.ValidateToolArguments from agent/tool_execution.go, durable/harness/tool.go, durable/codemode/call.go and durable/core/driver/session.go; durable/harness/structured_output.go, chord/host/schema.go, chord/host/wire.go and chord/next/data/validator.go also call schema.Compile. SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [builders › carry the static type of valid values]: Go's compiler carries the static types of the builders' results (they return plain `Schema` values and the checks take `any`); Pi's Static<> type inference has no runtime form, and the runtime halves of the same test (the JSON shapes, the compile semantics) are TestBuildersProducePlainJSONSchema, TestBuildersProduceEveryLeaf and TestBuildersAcceptEveryAnnotationAndBound in schema/builders_upstream_test.go SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [builders › carry the static type of valid values]: Go's compiler carries the static types of the builders' results (they return plain `Schema` values and the checks take `any`); Pi's Static<> type inference has no runtime form, and the runtime halves of the same test (the JSON shapes, the compile semantics) are TestBuildersProducePlainJSONSchema, TestBuildersProduceEveryLeaf and TestBuildersAcceptEveryAnnotationAndBound in schema/builders_upstream_test.go"
+      "rationale": "Production-path review at Pi 1.5.0: schema.Compile and CompileCoercing are the tool-argument validator of the Go product (cmd/pig links schema, schema/formats, schema/formats/internal/idna and schema/internal/ecmaregex): ai/validate.go (toolArgumentValidators) compiles every tool schema, reached through ai.ValidateToolArguments from agent/tool_execution.go, durable/harness/tool.go, durable/codemode/call.go and durable/core/driver/session.go; durable/harness/structured_output.go, chord/host/schema.go, chord/host/wire.go and chord/next/data/validator.go also call schema.Compile. SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [builders › carry the static type of valid values]: Go's compiler carries the static types of the builders' results (they return plain `Schema` values and the checks take `any`); Pi's Static<> type inference has no runtime form, and the runtime halves of the same test (the JSON shapes, the compile semantics) are TestBuildersProducePlainJSONSchema, TestBuildersProduceEveryLeaf and TestBuildersAcceptEveryAnnotationAndBound in schema/builders_upstream_test.go SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [builders › carry the static type of valid values]: Go's compiler carries the static types of the builders' results (they return plain `Schema` values and the checks take `any`); Pi's Static<> type inference has no runtime form, and the runtime halves of the same test (the JSON shapes, the compile semantics) are TestBuildersProducePlainJSONSchema, TestBuildersProduceEveryLeaf and TestBuildersAcceptEveryAnnotationAndBound in schema/builders_upstream_test.go",
+      "designedOutCases": [
+        "builders › carry the static type of valid values"
+      ]
     },
     {
       "path": "packages/schema/test/coerce-typebox.test.ts",
@@ -7104,6 +7143,15 @@
     {
       "path": "packages/schema/test/conformance.test.ts",
       "upstreamTestHash": "sha256:c8a4ff57f6a93a380b9ac1020ad6fc1cb8ce1805657fd4b761ede18340f3fcf0",
+      "area": "tools",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi 1.5.0: schema.Compile and CompileCoercing are the tool-argument validator of the Go product (cmd/pig links schema, schema/formats, schema/formats/internal/idna and schema/internal/ecmaregex): ai/validate.go (toolArgumentValidators) compiles every tool schema, reached through ai.ValidateToolArguments from agent/tool_execution.go, durable/harness/tool.go, durable/codemode/call.go and durable/core/driver/session.go; durable/harness/structured_output.go, chord/host/schema.go, chord/host/wire.go and chord/next/data/validator.go also call schema.Compile."
+    },
+    {
+      "path": "packages/schema/test/equal.test.ts",
+      "upstreamTestHash": "sha256:591a1a7a347f537bcf9fb5fedae96455eacd85eb20bda0a415ff4de5353768f3",
       "area": "tools",
       "tags": [
         "hot-path"
@@ -7313,7 +7361,10 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "Main Screen input, message/tool rendering, terminal integration, or selected presentation. SCRUTINIZED:approved by the owner (2026-11-01): Go's collector can clear a weak pointer between two streaming deltas, so PiG holds the memo strongly for one render and releases it on FinishStreaming, Invalidate and a theme or grammar change; reviewed, no lifetime bug."
+      "rationale": "Main Screen input, message/tool rendering, terminal integration, or selected presentation. SCRUTINIZED:approved by the owner (2026-11-01): Go's collector can clear a weak pointer between two streaming deltas, so PiG holds the memo strongly for one render and releases it on FinishStreaming, Invalidate and a theme or grammar change; reviewed, no lifetime bug.",
+      "designedOutCases": [
+        "Markdown component › Block reuse › holds rendered blocks weakly, so a full garbage collection releases them"
+      ]
     },
     {
       "path": "packages/tui/test/mouse-components.test.ts",

@@ -136,7 +136,7 @@ func TestProviderRetryDelayErrorIsNotTransportFailure(t *testing.T) {
 	}
 }
 
-// Pi #10697 (open): undici reports every body-stream failure as TypeError("terminated") with the real failure in error.cause, and Pi drops the cause, so a peer disconnect and a body timeout both read "terminated". PiG keeps the Go cause in the message.
+// Pi 4c992154d: undici reports every body-stream failure as TypeError("terminated") with the real failure in error.cause, and the OpenAI APIs' error text keeps the cause: `terminated: other side closed (UND_ERR_SOCKET)`.
 func TestProviderTransportFailureMidStreamKeepsTheCause(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 		connection, buffered := closeHTTPConnection(t, writer)
@@ -149,7 +149,7 @@ func TestProviderTransportFailureMidStreamKeepsTheCause(t *testing.T) {
 
 	result := transportErrorTestResult(t, transportErrorTestProvider(server.URL))
 	assertRetryableTransportResult(t, result, "terminated")
-	if !strings.HasPrefix(result.ErrorMessage, "terminated (cause: ") || !strings.Contains(result.ErrorMessage, "unexpected EOF") || !strings.HasSuffix(result.ErrorMessage, ")") {
+	if result.ErrorMessage != "terminated: other side closed (UND_ERR_SOCKET)" {
 		t.Fatalf("error = %q, want terminated with the dropped connection's cause", result.ErrorMessage)
 	}
 }

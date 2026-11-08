@@ -540,6 +540,9 @@ func (g *GraphModelRuntime) Call(ctx context.Context, method string, raw json.Ra
 			return nil, err
 		}
 		return nil, runtime.Logout(ctx, provider)
+	case "settleCredentialWrites":
+		// Pi takes no signal; ctx is the call's own (the connection ending or the call being abandoned), the only thing that ends the wait early.
+		return nil, runtime.SettleCredentialWrites(ctx)
 	case "login":
 		return g.login(ctx, args)
 	case "refresh":

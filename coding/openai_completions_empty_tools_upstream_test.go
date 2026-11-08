@@ -23,6 +23,19 @@ type completionsRuntimeCapture struct {
 
 func captureCompletionsRuntime(t *testing.T, providerID, modelID string, request ai.Context, options ai.StreamOptions, window, capTokens int) completionsRuntimeCapture {
 	t.Helper()
+	override := map[string]any{}
+	if window != 0 {
+		override["contextWindow"] = window
+	}
+	if capTokens != 0 {
+		override["maxTokens"] = capTokens
+	}
+	return captureCompletionsRuntimeWithOverride(t, providerID, modelID, request, options, override)
+}
+
+// captureCompletionsRuntimeWithOverride runs one request through the model runtime with the model's models.json modelOverrides entry and returns what the server received.
+func captureCompletionsRuntimeWithOverride(t *testing.T, providerID, modelID string, request ai.Context, options ai.StreamOptions, override map[string]any) completionsRuntimeCapture {
+	t.Helper()
 	received := make(chan completionsRuntimeCapture, 1)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var payload map[string]json.RawMessage
@@ -47,13 +60,6 @@ func captureCompletionsRuntime(t *testing.T, providerID, modelID string, request
 	base, err := url.Parse(model.BaseURL)
 	if err != nil {
 		t.Fatal(err)
-	}
-	override := map[string]any{}
-	if window != 0 {
-		override["contextWindow"] = window
-	}
-	if capTokens != 0 {
-		override["maxTokens"] = capTokens
 	}
 	providerConfig := map[string]any{"baseUrl": server.URL + base.Path, "modelOverrides": map[string]any{modelID: override}}
 	if providerID == "openai" {
@@ -158,14 +164,24 @@ func TestOpenAICompletionsEmptyToolsUpstream(t *testing.T) {
 			}
 		})
 	}
-	// .upstream/v0.87.1/packages/ai/test/openai-completions-empty-tools.test.ts:253
-	t.Run("still emits tools: [] for Anthropic/LiteLLM proxy when conversation has tool history", func(t *testing.T) {
-		ctx := ai.Context{Tools: []ai.ToolSchema{}, Messages: []ai.Message{
+	// "tool history without tools": Pi 7a6bd5a97 replaced the v0.87.1 case that always sent `tools: []` with an omission by default and an opt-in.
+	toolHistory := func() ai.Context {
+		return ai.Context{Tools: []ai.ToolSchema{}, Messages: []ai.Message{
 			ai.UserMessage{Content: ai.UserText("use the tool")},
 			ai.AssistantMessage{API: ai.APIOpenAICompletions, Provider: "openai", Model: "gpt-4o-mini", StopReason: ai.StopReasonToolUse, Content: []ai.AssistantContentBlock{ai.ToolCall{ID: "t1", Name: "noop", Arguments: ai.JsonObject{}}}},
 			ai.ToolResultMessage{ToolCallID: "t1", ToolName: "noop", Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "done"}}},
 		}}
-		captured := captureCompletionsRuntime(t, "openai", "gpt-4o-mini", ctx, ai.StreamOptions{APIKey: "test"}, 0, 0)
+	}
+	// .upstream/current/packages/ai/test/openai-completions-empty-tools.test.ts:288 (regression for earendil-works/pi#11843)
+	t.Run("omits tools by default", func(t *testing.T) {
+		captured := captureCompletionsRuntime(t, "openai", "gpt-4o-mini", toolHistory(), ai.StreamOptions{APIKey: "test"}, 0, 0)
+		if tools, ok := captured.Payload["tools"]; ok {
+			t.Fatalf("tools present: %s", tools)
+		}
+	})
+	// .upstream/current/packages/ai/test/openai-completions-empty-tools.test.ts:298
+	t.Run("sends tools: [] when compat.requiresToolsWithToolHistory is set", func(t *testing.T) {
+		captured := captureCompletionsRuntimeWithOverride(t, "openai", "gpt-4o-mini", toolHistory(), ai.StreamOptions{APIKey: "test"}, map[string]any{"compat": map[string]any{"requiresToolsWithToolHistory": true}})
 		if string(captured.Payload["tools"]) != "[]" {
 			t.Fatalf("tools=%s", captured.Payload["tools"])
 		}

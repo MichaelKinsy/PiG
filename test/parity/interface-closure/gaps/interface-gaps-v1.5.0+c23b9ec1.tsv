@@ -1,16 +1,5 @@
 pkg:agent/.#ProxyStreamOptions	agent	child-gap	agent/proxy.go#ProxyStreamOptions
 pkg:agent/.#ProxyStreamOptions::property:disableContinuation	agent	not-exercised	agent/proxy.go#ProxyStreamOptions.DisableContinuation
-pkg:ai/api/bedrock-converse-stream.lazy#setBedrockProviderLoader	ai	no-go-symbol	
-pkg:ai/api/bedrock-converse-stream.lazy#setBedrockProviderLoader::call:0	ai	child-gap	
-pkg:ai/compat#BuiltinProvider	ai	undecidable	ai/known_provider.go#KnownProvider
-pkg:ai/compat#setBedrockProviderLoader	ai	no-go-symbol	
-pkg:ai/compat#setBedrockProviderLoader::call:0	ai	child-gap	
-pkg:ai/lazy-bedrock-provider#registerLazyBedrockProvider	ai	no-go-symbol	
-pkg:ai/lazy-bedrock-provider#registerLazyBedrockProvider::call:0	ai	child-gap	
-pkg:ai/lazy-oauth#registerLazyOAuthFlows	ai	no-go-symbol	
-pkg:ai/lazy-oauth#registerLazyOAuthFlows::call:0	ai	child-gap	
-pkg:ai/providers/all#BuiltinProvider	ai	no-go-symbol	
-pkg:ai/providers/compat-schema#ProviderCompat	ai	type-mismatch	internal/codingagent/model_registry.go#providerCompat
 pkg:chord/.#AcceptsTable	chord	undecidable	chord/next/contracts/accepts.go#AcceptsTable
 pkg:chord/.#AddedColumn	chord	no-go-symbol	
 pkg:chord/.#Address	chord	undecidable	chord/next/contracts/host_kind.go#Address
@@ -1042,7 +1031,7 @@ pkg:mcp/.#McpPipe::property:write	mcp	not-exercised	mcp/pipe.go#McpPipe.Write
 pkg:mcp/.#McpPipe::property:write::call:0	mcp	not-exercised	mcp/pipe.go#McpPipe.Write
 pkg:mcp/.#McpServerConfig	mcp	no-go-symbol	
 pkg:mcp/.#McpServerConfigOptions	mcp	child-gap	mcp/config.go#McpServerConfigOptions
-pkg:mcp/.#McpServerConfigOptions::property:checkMetadataDocumentCallback	mcp	signature-mismatch	mcp/config.go#McpServerConfigOptions.CheckMetadataDocumentCallback
+pkg:mcp/.#McpServerConfigOptions::property:checkMetadataDocumentCallback	mcp	signature-mismatch	internal/mcpshared/config.go#McpServerConfigOptions.CheckMetadataDocumentCallback
 pkg:mcp/.#McpStdioServerConfig	mcp	no-go-symbol	
 pkg:mcp/.#McpStdioServerConfig::property:args	mcp	child-gap	
 pkg:mcp/.#McpStdioServerConfig::property:command	mcp	child-gap	
@@ -1076,7 +1065,5 @@ pkg:schema/.#BigintBounds::property:exclusiveMinimum	schema	child-gap
 pkg:schema/.#BigintBounds::property:maximum	schema	child-gap	
 pkg:schema/.#BigintBounds::property:minimum	schema	child-gap	
 pkg:schema/.#BigintBounds::property:multipleOf	schema	child-gap	
-pkg:schema/.#bigint	schema	no-go-symbol	
-pkg:schema/.#bigint::call:0	schema	child-gap	
-pkg:schema/.#unsafe	schema	no-go-symbol	
-pkg:schema/.#unsafe::call:0	schema	child-gap	
+pkg:schema/.#bigint	schema	child-gap	schema/builders.go#BigInt
+pkg:schema/.#bigint::call:0	schema	undecidable	schema/builders.go#BigInt

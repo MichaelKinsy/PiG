@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"io"
 	"math"
 	"net"
 	"net/http"
@@ -138,6 +139,78 @@ func (c *idleTimeoutConn) Read(p []byte) (int, error) {
 func (c *idleTimeoutConn) Write(p []byte) (int, error) {
 	c.setWriteDeadline()
 	return c.Conn.Write(p)
+}
+
+// requestWriteBatch bounds the bytes one vectored write of a request body carries, so the write deadline restarts for each batch as it does for each write.
+const requestWriteBatch = 1 << 20
+
+// plainWriter hides ReadFrom, so io.Copy through it does not come back to idleTimeoutConn.ReadFrom.
+type plainWriter struct{ io.Writer }
+
+// ReadFrom sends what net/http copies from a request body. A requestBody held as segments arrives as an io.LimitedReader over its
+// *requestBodyReader (which has a Close of its own, so neither http.NewRequest nor the transport wraps it): its segments go out in vectored
+// writes of up to requestWriteBatch bytes instead of through io.Copy's 32 KiB buffer, which copies them and writes each 32 KiB piece
+// with a system call of its own. The bytes on the connection are the same. Any other body is copied as io.Copy copies it: a reader's
+// WriteTo may reuse its buffer between writes, which the batch would send corrupted.
+func (c *idleTimeoutConn) ReadFrom(r io.Reader) (int64, error) {
+	lr, ok := r.(*io.LimitedReader)
+	if !ok {
+		return io.Copy(plainWriter{c}, r)
+	}
+	body, ok := lr.R.(*requestBodyReader)
+	if !ok {
+		return io.Copy(plainWriter{c}, r)
+	}
+	batch := &requestBatchWriter{conn: c, remaining: lr.N}
+	_, err := body.WriteTo(batch)
+	if err == nil {
+		err = batch.flush()
+	}
+	lr.N = batch.remaining
+	return batch.written, err
+}
+
+// requestBatchWriter queues the segments a requestBodyReader writes and sends them to its connection in vectored writes. The segments are not copied: a requestBody never modifies them, which is why only its reader may write to a batch (Write keeps its argument until the next flush).
+type requestBatchWriter struct {
+	conn      *idleTimeoutConn
+	queue     net.Buffers
+	queued    int
+	remaining int64
+	written   int64
+}
+
+func (w *requestBatchWriter) Write(p []byte) (int, error) {
+	total := len(p)
+	if int64(total) > w.remaining-int64(w.queued) {
+		return 0, io.ErrShortWrite
+	}
+	for len(p) > 0 {
+		piece := p[:min(len(p), requestWriteBatch-w.queued)]
+		w.queue = append(w.queue, piece)
+		w.queued += len(piece)
+		p = p[len(piece):]
+		if w.queued == requestWriteBatch {
+			if err := w.flush(); err != nil {
+				return total - len(p), err
+			}
+		}
+	}
+	return total, nil
+}
+
+// flush writes the queued segments, as one writev system call where the connection has one.
+func (w *requestBatchWriter) flush() error {
+	if w.queued == 0 {
+		return nil
+	}
+	w.conn.setWriteDeadline()
+	send := w.queue
+	n, err := send.WriteTo(w.conn.Conn)
+	clear(w.queue)
+	w.queue, w.queued = w.queue[:0], 0
+	w.written += n
+	w.remaining -= n
+	return err
 }
 
 func (c *idleTimeoutConn) setReadDeadline() {

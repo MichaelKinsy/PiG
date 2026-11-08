@@ -80,3 +80,31 @@ func TestTheQuotedStringCacheFreesStringsThreeRequestsDidNotUse(t *testing.T) {
 		t.Fatalf("cache holds %d entries (%d by source, %d by data) and %d bytes, want the %d current strings and %d bytes", len(cache.entries), len(cache.bySource), len(cache.byData), cache.held, len(after), afterBytes)
 	}
 }
+
+// BenchmarkSplicedBodyOfEqualToolOutputs is one request build of a long session that read the same few files again and again: every earlier read is a string equal to one of the files at an address of its own, and the request carries each of them, converted as the completions request converts a tool result (sanitizeSurrogates, then the splice).
+func BenchmarkSplicedBodyOfEqualToolOutputs(b *testing.B) {
+	files := largeStrings("file", 4)
+	for i := range files {
+		files[i] = strings.Repeat(files[i], 12)
+	}
+	payload := make([]string, 160)
+	total := 0
+	for i := range payload {
+		payload[i] = strings.Clone(files[i%len(files)])
+		total += len(payload[i])
+	}
+	cache := newQuotedStringCache(1 << 30)
+	spliceInto(&testing.T{}, cache, payload)
+	b.SetBytes(int64(total))
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		converted := make([]string, len(payload))
+		for i, text := range payload {
+			converted[i] = sanitizeSurrogates(text)
+		}
+		if _, err := marshalSpliced(converted, cache, marshalRequestBody); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
