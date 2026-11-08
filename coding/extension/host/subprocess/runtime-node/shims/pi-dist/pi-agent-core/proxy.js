@@ -30,6 +30,7 @@ function buildProxyRequestOptions(options) {
         reasoning: options.reasoning,
         cacheRetention: options.cacheRetention,
         sessionId: options.sessionId,
+        disableContinuation: options.disableContinuation,
         headers: options.headers,
         metadata: options.metadata,
         transport: options.transport,

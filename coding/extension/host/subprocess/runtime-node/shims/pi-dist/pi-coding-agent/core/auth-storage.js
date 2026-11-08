@@ -47,7 +47,8 @@ export class FileAuthStorageBackend {
         const delayMs = 20;
         for (let attempt = 1;; attempt++) {
             try {
-                return lockfile.lockSync(path, { realpath: false });
+                // Lock the resolved file so symlinked aliases of auth.json share one lock (#11655).
+                return lockfile.lockSync(path);
             }
             catch (error) {
                 if (!getRetryableLockErrorCode(error) || attempt === maxAttempts)
@@ -88,8 +89,8 @@ export class FileAuthStorageBackend {
             signal?.throwIfAborted();
             let release;
             try {
+                // Lock the resolved file so symlinked aliases of auth.json share one lock (#11655).
                 release = await lockfile.lock(this.authPath, {
-                    realpath: false,
                     retries: 0,
                     stale: staleMs,
                     onCompromised,
