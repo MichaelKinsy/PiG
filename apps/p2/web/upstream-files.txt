@@ -523,3 +523,7 @@ plugins/coding-tools/cards.ts
 plugins/coding-tools/tui.ts
 plugins/powershell/tui.ts
 plugins/subagents/tui.ts
+plugins/projects/contract.ts
+plugins/workspace/protocol.ts
+plugins/ports/protocol.ts
+plugins/locations/contract.ts

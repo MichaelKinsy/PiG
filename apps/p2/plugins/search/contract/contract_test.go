@@ -12,9 +12,7 @@ func TestSearchContractsFingerprintAsPi(t *testing.T) {
 	const module = "plugins/search/contract.ts"
 	pi := oracle.Fingerprints(t, module)
 	for name, contract := range map[string]*contracts.Contract{
-		"SearchIndex": SearchIndex,
-		"SearchFeed":  SearchFeed,
-		"Search":      Search,
+		"SearchIndex": SearchIndex, "SearchFeed": SearchFeed, "Search": Search, "SessionReads": SessionReads, "IndexScan": IndexScan,
 	} {
 		want, ok := pi[module+"#"+name]
 		if !ok {
