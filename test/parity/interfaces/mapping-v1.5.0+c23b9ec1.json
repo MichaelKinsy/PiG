@@ -103654,15 +103654,15 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_messages_test.go#TestDefineMessagesListsItsCatalogsAsContributionsByCanonicalLocale",
-        "test:chord/next/surfaces/surfaces_messages_test.go#TestDefineMessagesRefusesANamespaceThatIsNoNameAndACatalogKeyThatIsNoLanguageTag",
-        "test:chord/next/surfaces/surfaces_messages_test.go#TestPrefersTheHostsContributedCatalogFallingBackKeyByKeyDownTheChainReported"
+        "test:chord/next/surfaces/surfaces_messages_test.go#TestDefineMessagesRefusesACatalogThatDoesNotMatchTheFirst",
+        "test:chord/next/surfaces/surfaces_messages_test.go#TestDefineMessagesRefusesANamespaceThatIsNoNameAndACatalogKeyThatIsNoLanguageTag"
       ]
     },
     {
       "id": "pkg:chord/.#CatalogShape",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:0494d1364395369fc74e3266117bd2b673c893c5cd9ce04b75e80476c7507ddc",
-      "rationale": "Pi chord/src/surfaces/messages.ts:22 CatalogShape<M> (Pi 1.5.0+c23b9ec1) is a mapped type over M's keys (strings as `string`, functions with their signatures) that makes the other catalogs match the first at compile time; it has no value, member or call at run time and Go generics cannot express it, so it is designed out (owner 2026-10-29/30: type-level mechanics). The Go type that carries a catalog is surfaces.Catalog (map[string]MessageValue); DefineMessages checks the keys of the others against the first at run time, as a JavaScript call through the same function would fail. Exercised by TestDefineMessages* (chord/next/surfaces/surfaces_messages_test.go).",
+      "rationale": "Pi chord/src/surfaces/messages.ts:22 CatalogShape<M> (Pi 1.5.0+c23b9ec1) is a mapped type over M's keys that makes every catalog after the first match it at compile time (messages.test.ts:51-61, @ts-expect-error: a catalog without a key of the first, a key the first lacks, an argument of another type). Intention check: the risk it guards, a plugin shipping a translation whose keys or text/function kinds drift from the source catalog, exists in PiG, so it is ported as a check, not skipped: DefineMessages refuses such a catalog at the declaration (matchesFirst, TestDefineMessagesRefusesACatalogThatDoesNotMatchTheFirst in chord/next/surfaces/surfaces_messages_test.go). Only the typed function signatures (`b: (n: number)` against `(n: string)`) have no Go form, since a MessageFunc takes untyped args. The type itself has no value, member or call at run time and Go generics cannot express it, so the row is designed out (owner 2026-10-29/30: type-level mechanics); the Go type that carries a catalog is surfaces.Catalog.",
       "pigTargets": [
         "chord/next/surfaces/surfaces_messages.go#Catalog"
       ]
@@ -103767,7 +103767,7 @@
       "id": "pkg:chord/.#ChordSpanName",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:1db21f1f59fffb717f31209efcdc4aaec1df2e0af0d0e5fc56b104d94d8313a2",
-      "rationale": "Pi chord/src/telemetry.ts:30 ChordSpanName (Pi 1.5.0+c23b9ec1) is TelemetrySchemaSpanName<typeof CHORD_TELEMETRY_SCHEMA>, the union of the span names the schema's literal type declares; it has no value, member or call at run time and Go generics cannot express it, so it is designed out (owner 2026-10-29/30: type-level mechanics). Go's span starter takes the name as a string and the schema (telemetry.Schema) declares which names exist, checked by the schema tests. Exercised by chord/next/telemetry schema tests.",
+      "rationale": "Pi chord/src/telemetry.ts:30 ChordSpanName (Pi 1.5.0+c23b9ec1) is TelemetrySchemaSpanName<typeof CHORD_TELEMETRY_SCHEMA>, the union of the span names the schema's literal type declares; it has no value, member or call at run time and Go generics cannot express it, so it is designed out (owner 2026-10-29/30: type-level mechanics). Go's span starter takes the name as a string and the schema (telemetry.Schema) declares which names exist, checked by the schema tests. Exercised by TestSchemaDeclaresEverySpanChordStartsAndKeepsIdsOffMetrics (chord/next/telemetry/telemetry_upstream_test.go).",
       "pigTargets": [
         "chord/next/telemetry/schema.go#Schema"
       ]
@@ -104720,7 +104720,7 @@
       "id": "pkg:chord/.#ClientError",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:733a055d30a776bb43b5ea87aa3c679d2cd2df2fa04da95e214500f00cbe3180",
-      "rationale": "Pi chord/src/surfaces/client.ts:25 ClientError (Pi 1.5.0+c23b9ec1) is a TypeScript union alias of object types discriminated by kind with no Go counterpart: Go has no unions or object-literal types, so surfaces.ClientError is the one struct of the discriminant Kind (ClientErrorKind) with the members of every variant (Host carries `error` of kind host, Err the `error` of update_failed, Failed, Plugin, URL, Reason, Report). Designed out as a language mechanic (owner 2026-10-29/30: type-level mechanics), as the reviewed HostError. Exercised by surfaces_client_test.go.",
+      "rationale": "Pi chord/src/surfaces/client.ts:25 ClientError (Pi 1.5.0+c23b9ec1) is a TypeScript union alias of object types discriminated by kind with no Go counterpart: Go has no unions or object-literal types, so surfaces.ClientError is the one struct of the discriminant Kind (ClientErrorKind) with the members of every variant (Host carries `error` of kind host, Err the `error` of update_failed, Failed, Plugin, URL, Reason, Report). Designed out as a language mechanic (owner 2026-10-29/30: type-level mechanics), as the reviewed HostError. Exercised by the update_failed cases of surfaces_client_test.go.",
       "pigTargets": [
         "chord/next/surfaces/surfaces_client.go#ClientError"
       ]
@@ -105971,7 +105971,7 @@
       "id": "pkg:chord/.#DataKeys",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:ba8261cfe7cc8d3681b53eb8f97407219980f44fbd92a856f138adf42f5e0a15",
-      "rationale": "Pi chord/src/surfaces/messages.ts:49 DataKeys<M> (Pi 1.5.0+c23b9ec1) is a mapped conditional type selecting the keys whose arguments are all MessageParams, so that `t.message` accepts only those; it has no value, member or call at run time and Go generics cannot express it, so it is designed out (owner 2026-10-29/30: type-level mechanics). Go's Messages.Message(key, params...) checks at run time that the key exists and the params are data (surfaces/doc.go). Exercised by TestMessage* (chord/next/surfaces/surfaces_messages_test.go).",
+      "rationale": "Pi chord/src/surfaces/messages.ts:49 DataKeys<M> (Pi 1.5.0+c23b9ec1) is a mapped conditional type selecting the keys whose arguments are all MessageParams, so `message` builds only what crosses a link (messages.test.ts:178-189, @ts-expect-error: a Date, a wrong argument, another namespace). Intention check: the risk it guards, building message data that is not plain JSON or names no message, exists in PiG, so it is ported as a check, not skipped: Messages.Message panics on a key the first catalog lacks or an argument that is no plain data, as a constructor does where TypeScript rejects the call (TestMessageRefusesAnUnknownKeyAndArgumentsThatAreNoData, chord/next/surfaces/surfaces_messages_test.go); a message of another namespace is refused by Render (renderData reports `unknown`). The type has no value, member or call at run time and Go generics cannot express it, so the row is designed out (owner 2026-10-29/30: type-level mechanics).",
       "pigTargets": [
         "chord/next/surfaces/surfaces_messages.go#Messages"
       ]
@@ -106154,16 +106154,16 @@
         "call:chord/next/surfaces/surfaces_messages.go#DefineMessages"
       ],
       "evidence": [
+        "test:chord/next/surfaces/surfaces_messages_test.go#TestDefineMessagesRefusesACatalogThatDoesNotMatchTheFirst",
         "test:chord/next/surfaces/surfaces_messages_test.go#TestDefineMessagesRefusesANamespaceThatIsNoNameAndACatalogKeyThatIsNoLanguageTag",
-        "test:chord/next/surfaces/surfaces_translations_test.go#TestComposeKeysCatalogsByCanonicalLocaleLeavesInvalidOnesOutAndListsTheLocalesOffered",
-        "test:chord/next/tui/tui_scope_test.go#TestScopeMessagesRenderInTheHostsLanguageAtEachCallAChangeOfItCallingChangedUntilDispose"
+        "test:chord/next/surfaces/surfaces_translations_test.go#TestComposeKeysCatalogsByCanonicalLocaleLeavesInvalidOnesOutAndListsTheLocalesOffered"
       ]
     },
     {
       "id": "pkg:chord/.#defineMessages::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:0ecedda07db507b647c06de3b3d214bd128dfe1bd311d148ba76ae2070d9c55c",
-      "rationale": "Pi chord/src/surfaces/messages.ts:84 defineMessages::call:0 (Pi 1.5.0+c23b9ec1): Pi takes the catalogs as one object keyed by locale, whose insertion order makes the first catalog the one that defines the keys; Go has no insertion-ordered map, so DefineMessages takes the catalogs as the variadic ordered LocaleCatalog values (Locale, Catalog), the first defining the keys (surfaces_messages.go). Designed out as a Go language mechanic (an ordered object is an ordered slice, as Columns is []ColumnProp). The type-level N and CatalogShape<M> are designed out separately. Exercised by TestDefineMessages* (chord/next/surfaces/surfaces_messages_test.go).",
+      "rationale": "Pi chord/src/surfaces/messages.ts:84 defineMessages::call:0 (Pi 1.5.0+c23b9ec1): Pi takes the catalogs as one object keyed by locale, whose insertion order makes the first catalog the one that defines the keys. Intention check: the intention is that the plugin states its catalogs once, in an order that names the source one, which PiG keeps; Go has no insertion-ordered map, so DefineMessages takes the ordered LocaleCatalog values (Locale, Catalog), the first defining the keys, and checks the namespace, the language tags, one catalog at least and (as CatalogShape's intention) that every catalog matches the first (TestDefineMessagesRefusesACatalogThatDoesNotMatchTheFirst, TestDefineMessages* cases in chord/next/surfaces/surfaces_messages_test.go). An ordered object is an ordered slice, as Columns is []ColumnProp: a Go language mechanic.",
       "pigTargets": [
         "chord/next/surfaces/surfaces_messages.go#DefineMessages"
       ]
@@ -106877,7 +106877,7 @@
       "id": "pkg:chord/.#FacetFunction::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:db2c31e7ac9bb2d3b148730a47b6b01e9b26cc0c7ba13f94382720f6aebc5df9",
-      "rationale": "Pi chord/src/surfaces/registered.ts:13 FacetFunction::call:0 (Pi 1.5.0+c23b9ec1): the built facet's function is (require, module, exports) of the CommonJS wrapper, where `exports` is the initial module.exports; Go has no CommonJS and a Go registered function receives the module whose Exports it fills, so `exports` is module.Exports and the two-parameter form (require, module) carries all three (surfaces_registered.go). Designed out as a JavaScript runtime mechanic. Exercised by surfaces_registered_test.go.",
+      "rationale": "Pi chord/src/surfaces/registered.ts:13 FacetFunction::call:0 (Pi 1.5.0+c23b9ec1): the built facet's function is (require, module, exports) of the CommonJS wrapper, where `exports` is the initial module.exports; Go has no CommonJS and a Go registered function receives the module whose Exports it fills, so `exports` is module.Exports and the two-parameter form (require, module) carries all three (surfaces_registered.go). Designed out as a JavaScript runtime mechanic. Exercised by TestRegisteredScriptsRegisterTheirPluginDigestAndFunctionTheSourceMapCommentKeptInsideTheCall (chord/next/surfaces/surfaces_registered_test.go).",
       "pigTargets": [
         "chord/next/surfaces/surfaces_registered.go#FacetFunction"
       ]
@@ -107462,7 +107462,7 @@
       "id": "pkg:chord/.#formatNumber::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:e7e5581fb3f867aeb6f38fe3ae155c58f200003090c0c3b547af0cfdd656a4da",
-      "rationale": "Pi chord/src/surfaces/format.ts:18 formatNumber::call:0 (Pi 1.5.0+c23b9ec1) takes (value, options?) and reads the current language from the render scope. Pi's render scope (inLanguage/currentLanguage, surfaces/language.ts:56-69) is a module-wide variable a synchronous render sets, which a Go program, with no goroutine-local state, cannot hold; the language is the first parameter of the Go function (nil outside a render) and message functions pass it on (chord/next/surfaces/doc.go; D450, drafted by the chord-ui lane). So Go's FormatNumber(lang, value, options) has one more parameter; the Intl options are the closed NumberOptions type with error returns (D464, drafted). Designed out as a Go language mechanic. Exercised by TestFormatNumber* and intl_drift_test.go (chord/next/surfaces).",
+      "rationale": "Pi chord/src/surfaces/format.ts:18 formatNumber::call:0 (Pi 1.5.0+c23b9ec1) takes (value, options?) and reads the current language from the render scope. Pi's render scope (inLanguage/currentLanguage, surfaces/language.ts:56-69) is a module-wide variable a synchronous render sets, which a Go program, with no goroutine-local state, cannot hold; the language is the first parameter of the Go function (nil outside a render) and message functions pass it on (chord/next/surfaces/doc.go; D450, drafted by the chord-ui lane). So Go's FormatNumber(lang, value, options) has one more parameter; the Intl options are the closed NumberOptions type with error returns (D464, drafted). Intention check: what the Pi call guards, that a message function formats in the language the render runs in and falls back to the platform locale outside one, is kept and tested the PiG way with the language passed in (nil outside a render): TestFormatsNumbersInThePlatformsDefaultLocaleOutsideARender and the oracle comparisons against Node. D450 (and D464/D465 for the closed option types and time.Time) are claimed in D-REGISTRY.md by the chord-ui lane, draft, pending scrutiny; the form is a Go language mechanic (no goroutine-local render scope). Exercised by TestFormatNumber* and intl_drift_test.go (chord/next/surfaces).",
       "pigTargets": [
         "chord/next/surfaces/surfaces_format.go#FormatNumber"
       ]
@@ -107493,7 +107493,7 @@
       "id": "pkg:chord/.#formatTime::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:d722554fc8dc2d98f7686bb0c6bc325734287ef82b54fab924fb9912e8ec8c21",
-      "rationale": "Pi chord/src/surfaces/format.ts:8 formatTime::call:0 (Pi 1.5.0+c23b9ec1) takes (at, options?) and reads the current language from the render scope. Pi's render scope (inLanguage/currentLanguage, surfaces/language.ts:56-69) is a module-wide variable a synchronous render sets, which a Go program, with no goroutine-local state, cannot hold; the language is the first parameter of the Go function (nil outside a render) and message functions pass it on (chord/next/surfaces/doc.go; D450, drafted by the chord-ui lane). So Go's FormatTime(lang, at, options) has one more parameter, takes a time.Time for the Date|number|string union (D465, drafted) and the closed TimeOptions. Designed out as a Go language mechanic. Exercised by TestFormatTime* and intl_drift_test.go (chord/next/surfaces).",
+      "rationale": "Pi chord/src/surfaces/format.ts:8 formatTime::call:0 (Pi 1.5.0+c23b9ec1) takes (at, options?) and reads the current language from the render scope. Pi's render scope (inLanguage/currentLanguage, surfaces/language.ts:56-69) is a module-wide variable a synchronous render sets, which a Go program, with no goroutine-local state, cannot hold; the language is the first parameter of the Go function (nil outside a render) and message functions pass it on (chord/next/surfaces/doc.go; D450, drafted by the chord-ui lane). So Go's FormatTime(lang, at, options) has one more parameter, takes a time.Time for the Date|number|string union (D465, drafted) and the closed TimeOptions. Intention check: what the Pi call guards, that a message function formats in the language the render runs in and falls back to the platform locale outside one, is kept and tested the PiG way with the language passed in (nil outside a render): TestFormatsNumbersInThePlatformsDefaultLocaleOutsideARender and the oracle comparisons against Node. D450 (and D464/D465 for the closed option types and time.Time) are claimed in D-REGISTRY.md by the chord-ui lane, draft, pending scrutiny; the form is a Go language mechanic (no goroutine-local render scope). Exercised by TestFormatTime* and intl_drift_test.go (chord/next/surfaces).",
       "pigTargets": [
         "chord/next/surfaces/intl_time.go#FormatTime"
       ]
@@ -110918,7 +110918,7 @@
       "evidence": [
         "test:chord/next/surfaces/surfaces_messages_test.go#TestAMessageWithNoArgumentsHasEmptyParamsAndRenders",
         "test:chord/next/surfaces/surfaces_messages_test.go#TestBuildsDataAndRendersItInTheViewersLanguage",
-        "test:chord/next/surfaces/surfaces_messages_test.go#TestShowsTheKeyOfAForeignOrUnknownMessageFromALinkReported"
+        "test:chord/next/surfaces/surfaces_messages_test.go#TestMessageRefusesAnUnknownKeyAndArgumentsThatAreNoData"
       ]
     },
     {
