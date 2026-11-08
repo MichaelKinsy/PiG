@@ -66,17 +66,8 @@ func renameTool(worker func() (*p2runtime.WorkerParts, error)) (*durable.ToolReg
 	parameters := schema.Obj(schema.Properties{
 		schema.Prop("title", schema.Str(schema.MinLength(1), schema.MaxLength(contract.MaxTitle))),
 	}, schema.Open())
-	encoded, err := json.Marshal(struct {
-		Name        string          `json:"name"`
-		Description string          `json:"description"`
-		Parameters  json.RawMessage `json:"parameters"`
-	}{"rename_session", renameDescription, mustMarshal(parameters)})
+	tool, err := p2runtime.ToolSchemaOf("rename_session", renameDescription, parameters)
 	if err != nil {
-		return nil, err
-	}
-	var tool ai.ToolSchema
-	//perf:ok the tool schema is built once per worker start (cold)
-	if err := json.Unmarshal(encoded, &tool); err != nil { //portlint:allow jsonclone a typed value converted from its stored JSON form, cold (see the perf:ok above)
 		return nil, err
 	}
 	return harness.DefineTool(durable.ToolRegistration{
@@ -115,14 +106,6 @@ func renameTool(worker func() (*p2runtime.WorkerParts, error)) (*durable.ToolReg
 			return toolReply("Renamed the session from "+jsonQuote(previous)+" to "+jsonQuote(title)+".", false), nil
 		},
 	}), nil
-}
-
-func mustMarshal(value any) []byte {
-	encoded, err := json.Marshal(value)
-	if err != nil {
-		panic(err)
-	}
-	return encoded
 }
 
 // serveSessionTools contributes the `rename_session` tool.

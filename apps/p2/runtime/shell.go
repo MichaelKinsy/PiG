@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/MichaelKinsy/PiG/schema"
 )
 
 // Ports apps/p2/src/runtime/shell.ts: user shell commands (`!cmd`, `!!cmd`) as Durable entries. A finished command is
@@ -109,4 +111,46 @@ func ShellTail(text string, maxLines, maxBytes int) (tail string, truncated bool
 // ShellTailDefault is ShellTail with the bash tool's limits (the defaults of `shellTail`).
 func ShellTailDefault(text string) (string, bool) {
 	return ShellTail(text, ShellMaxLines, ShellMaxBytes)
+}
+
+// ShellDataSchema is the schema of a `p2.shell` entry's data.
+var ShellDataSchema = schema.Obj(schema.Properties{
+	schema.Prop("author", AuthorSchema),
+	schema.Prop("command", schema.Str()),
+	schema.Prop("output", schema.Str()),
+	schema.Opt("exitCode", schema.Num()),
+	schema.Prop("cancelled", schema.Bool()),
+	schema.Prop("truncated", schema.Bool()),
+	schema.Opt("fullOutputPath", schema.Str()),
+	schema.Prop("includeInContext", schema.Bool()),
+	schema.Opt("error", schema.Str()),
+}, schema.Open())
+
+var isShellData = check(ShellDataSchema)
+
+// ShellDataOf returns the shell data an entry of kind `p2.shell` records, if data is one (`shellData`). data is a decoded JSON value
+// (objects as *delta.JsonObject).
+func ShellDataOf(data any) (ShellData, bool) {
+	if !isShellData(data) {
+		return ShellData{}, false
+	}
+	value, author := object(data), object(object(data).Value("author"))
+	result := ShellData{
+		Author:           Author{Kind: AuthorKind(text(author, "kind")), ID: text(author, "id"), Name: text(author, "name")},
+		Command:          text(value, "command"),
+		Output:           text(value, "output"),
+		Cancelled:        value.Value("cancelled") == true,
+		Truncated:        value.Value("truncated") == true,
+		IncludeInContext: value.Value("includeInContext") == true,
+	}
+	if code, ok := value.Value("exitCode").(float64); ok {
+		result.ExitCode = &code
+	}
+	if path, ok := value.Value("fullOutputPath").(string); ok {
+		result.FullOutputPath = &path
+	}
+	if message, ok := value.Value("error").(string); ok {
+		result.Error = &message
+	}
+	return result, true
 }
