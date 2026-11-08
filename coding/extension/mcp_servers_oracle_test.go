@@ -3,10 +3,10 @@ package extension
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/MichaelKinsy/PiG/internal/mcpshared"
 	"strings"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/internal/mcpshared"
 	"github.com/MichaelKinsy/PiG/internal/pioracle"
 )
 

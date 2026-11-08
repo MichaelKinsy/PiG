@@ -51,7 +51,7 @@ type McpServerConfigOptions struct {
 	// `oauth.clientRegistration: "cimd"`: the application's Client ID Metadata Documents must list it. It returns an error message, or "". Without
 	// this check, `"cimd"` is refused.
 	CheckMetadataDocumentCallback func(callbackURL string, set bool) string
-	// ExpandURL, when not nil, is applied to the `url` of an http entry before it is checked. Go mechanic for pig divergence D156: PiG resolves
+	// ExpandURL, when not nil, is applied to the `url` of an http entry before it is checked. pig divergence (D156): PiG resolves
 	// environment references in a URL before using it, so the URL checked is the expanded one.
 	ExpandURL func(string) string
 }
