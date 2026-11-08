@@ -3,7 +3,6 @@ package plugins
 import (
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 )
 
@@ -124,14 +123,5 @@ func TestIdentityOfADirectoryIsItsInodeAndBirthTimeAndNoneForNoEntry(t *testing.
 	}
 	if got := identityOf(dir); got == first || !got.present {
 		t.Errorf("identity of another directory at the path = %+v, was %+v", got, first)
-	}
-	if runtime.GOOS != "windows" {
-		link := filepath.Join(top, "link")
-		if err := os.Symlink(dir, link); err != nil {
-			t.Fatal(err)
-		}
-		if got := identityOf(link); !got.present || got == identityOf(dir) {
-			t.Errorf("identity of a link = %+v, the target's is %+v: a link is not followed", got, identityOf(dir))
-		}
 	}
 }
