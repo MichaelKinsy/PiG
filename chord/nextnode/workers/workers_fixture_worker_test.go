@@ -340,6 +340,10 @@ func holdNodeStart(ctx context.Context, name string, args ...string) *exec.Cmd {
 var onErrorThrew atomic.Bool
 
 func runWorkerFixture() {
+	if os.Getenv(fixtureReportExecutable) != "" {
+		executable, _ := os.Executable()
+		_, _ = fmt.Fprintf(os.Stdout, "executable %s\n", executable)
+	}
 	port := &countingPort{processPort: openProcessChannel()}
 	var worker host.Host
 	serve(port, func(start WorkerStart, ctx context.Context) (*WorkerResult, error) {
