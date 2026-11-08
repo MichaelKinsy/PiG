@@ -14,6 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
+	"github.com/MichaelKinsy/PiG/chord/next/store"
 )
 
 // Cell is a stub's in-memory state member (v1's `self.state`): the member itself plus Replace and Change for the test to
@@ -22,6 +23,9 @@ type Cell struct {
 	writable state.Writable[any]
 	member   chord.Watchable[delta.JsonValue]
 }
+
+// Value is the cell's current value. Replace and Change set it inside the host's own sections only: from a stub's method
+// handler, or through TestHost.SetCell from a test.
 
 // Value is the cell's current value.
 func (c *Cell) Value() any { return c.writable.Value() }
@@ -160,6 +164,9 @@ type TestHostOptions struct {
 	Stubs     []Stub
 	// BeforeLoad runs before Load: routes (`host.Route`) are declared there.
 	BeforeLoad func(host.Host)
+	// Store is the host's store, for facets that persist state or jobs (a test opens one with runtime.OpenHostStore on
+	// a temporary directory and closes it after the host).
+	Store store.Store
 	// Server overrides the server's natives (a server host): no workers and no resource options unless given.
 	Server *p2runtime.ServerParts
 }
@@ -202,7 +209,7 @@ func NewTestHost(t testing.TB, options TestHostOptions) *TestHost {
 		principal = p2runtime.Host
 	}
 	testHost := &TestHost{t: t, opts: options}
-	created, err := p2runtime.NewHost(host.HostOptions{Address: address, Principal: p2runtime.ToChord(principal), OnError: reportTo(testHost.record)})
+	created, err := p2runtime.NewHost(host.HostOptions{Address: address, Principal: p2runtime.ToChord(principal), OnError: reportTo(testHost.record), Store: options.Store})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -319,6 +326,41 @@ func (h *TestHost) Reload(base host.Facet, facets []host.Facet) error {
 	if err == nil && len(report.Failed) > 0 {
 		err = report.Failed[0].Error
 	}
+	return err
+}
+
+// WorkerHost is the worker of session, a host of its own at the session's address with a link to this server host, which
+// stamps it the worker's principal (as a real worker's link is): the registries of a worker and the given facets are loaded
+// on it (p2test.WorkerFacet gives it the worker natives). It closes with the test host.
+func (h *TestHost) WorkerHost(session string, generation int, facets ...host.Facet) host.Host {
+	h.t.Helper()
+	address := p2runtime.SessionKind.Address(delta.JsonObjectOf("id", session))
+	worker, err := p2runtime.NewHost(host.HostOptions{Address: &address, Principal: p2runtime.ToChord(p2runtime.Host), OnError: reportTo(h.record)})
+	if err != nil {
+		h.t.Fatal(err)
+	}
+	down, up := link.MemoryLinkPair()
+	if err := h.Host.Accept(down, host.LinkOptions{Principal: p2runtime.ToChord(p2runtime.WorkerPrincipal{Session: session, Generation: generation})}, Background); err != nil {
+		h.t.Fatal(err)
+	}
+	if err := worker.Connect(up, host.LinkOptions{Principal: p2runtime.ToChord(p2runtime.Server)}, Background); err != nil {
+		h.t.Fatal(err)
+	}
+	base := host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error { return p2runtime.ServeWorkerRegistries(facet) })
+	if err := h.load(worker, base, facets); err != nil {
+		_ = worker.Close(Background)
+		h.t.Fatal(err)
+	}
+	h.mu.Lock()
+	h.clients = append(h.clients, worker)
+	h.mu.Unlock()
+	return worker
+}
+
+// SetCell sets cell to value inside the host's own section (a root of the host's): a state member is written on the host's
+// loop, never from a test's goroutine while links are delivering.
+func (h *TestHost) SetCell(cell *Cell, value any) error {
+	_, err := h.Host.Root(func(host.Ctx) (any, error) { return nil, cell.Replace(value) }, Background, host.RootOptions{})
 	return err
 }
 
