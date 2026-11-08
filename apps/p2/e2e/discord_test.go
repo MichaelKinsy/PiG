@@ -68,6 +68,10 @@ func (r *discordRig) must(method string, args delta.JsonValue) *delta.JsonObject
 			return hosts.Member("workers").Value()
 		}, p2test.Background, host.RootOptions{})
 		encoded, _ := json.Marshal(workers)
+		for _, line := range p2runtime.ProcessLogs.Lines("session|" + r.session) {
+			r.t.Log(line)
+		}
+		r.t.Log(p2runtime.ProcessLogs.Notices())
 		r.t.Fatalf("%s: %v (workers %s)", method, err, encoded)
 	}
 	return object(value)
