@@ -360,16 +360,25 @@ func (w *SessionWorkers) until(ctx context.Context, pred func(states *delta.Json
 	}
 	defer func() { _, _ = watch.Stop() }()
 	changed := make(chan struct{}, 1)
-	watch.Start(func(_ context.Context, call chord.WatchCall[delta.JsonValue]) error {
-		if call.Kind == chord.WatchCallValue {
-			select {
-			case changed <- struct{}{}:
-			default:
+	// A watch whose context ended (the caller's step finished first) or whose state closed has nothing to follow: it is
+	// stopped before its start, and starting it panics.
+	if !chord.StartUnlessEnded(func() {
+		watch.Start(func(_ context.Context, call chord.WatchCall[delta.JsonValue]) error {
+			if call.Kind == chord.WatchCallValue {
+				select {
+				case changed <- struct{}{}:
+				default:
+				}
 			}
+			return nil
+		})
+	}) {
+		if ctx.Err() != nil {
+			return context.Cause(ctx)
 		}
-		return nil
-	})
-	if pred(watch.Value().(*delta.JsonObject)) {
+		return errors.New("the workers' state ended")
+	}
+	if pred(w.stateObject()) {
 		return nil
 	}
 	for {
