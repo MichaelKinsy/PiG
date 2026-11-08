@@ -168,6 +168,21 @@ func TestErrorHelpers(t *testing.T) {
 		}
 	})
 
+	// Pi packages/chord/src/data/errors.ts:117 forbidden(message, details?): a `forbidden` error without a reason.
+	t.Run("forbidden builds a forbidden error without a reason, with its details", func(t *testing.T) {
+		err := data.Forbidden("not authorized", delta.JsonObjectOf("who", "x"))
+		nexttest.RequireJSONEqual(t, err.ToJSON(), delta.JsonObjectOf(
+			"code", "forbidden", "message", "not authorized", "details", delta.JsonObjectOf("who", "x"),
+		))
+		if _, ok := data.IsChordErrorCode(err, data.CodeForbidden); !ok || err.Reason != "" {
+			t.Fatalf("forbidden = %+v", err)
+		}
+		bare := data.Forbidden("no details")
+		if bare.HasDetails || bare.Message != "no details" {
+			t.Fatalf("forbidden without details = %+v", bare)
+		}
+	})
+
 	t.Run("asChordError keeps a ChordError and wraps anything else as unavailable", func(t *testing.T) {
 		chord := data.Invalid(data.ReasonCycle, "c")
 		if got := data.AsChordError(chord, "open"); got != chord {

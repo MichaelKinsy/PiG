@@ -251,7 +251,7 @@ func (r *remoteObject) call(method string, args any, ctx context.Context, parent
 		telemetry.Attr("object", chordtelemetry.Capped(r.name)),
 		telemetry.Attr("address.kind", r.request.Address.Kind),
 	}
-	attributes = append(attributes, r.host.principalAttributes(r.caller.principal, ctx)...)
+	attributes = append(attributes, r.host.PrincipalAttributes(r.caller.principal, ctx)...)
 	span := chordtelemetry.NewOpenSpan(parent, "chord.call", attributes)
 	sent := held.side.call(held.id, index, methodData, args, chordctx.WithTelemetry(ctx, span.Span()))
 	sent.then(r.host.loop(), func(value any, err error) {

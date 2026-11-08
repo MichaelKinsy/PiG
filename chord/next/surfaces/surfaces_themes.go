@@ -19,7 +19,30 @@ import (
 // variables a caller writes is the caller's (JavaScript's insertion order has no Go carrier in a map).
 
 // BaseRoles are the roles every theme names: the kit's base set. Apps add their own roles; themes fill at least these.
-var BaseRoles = []string{"accent", "bg", "fg", "muted", "error", "warning", "success"}
+var BaseRoles = []BaseRole{BaseRoleAccent, BaseRoleBg, BaseRoleFg, BaseRoleMuted, BaseRoleError, BaseRoleWarning, BaseRoleSuccess}
+
+// BaseRole is a base role.
+type BaseRole string
+
+// The base roles, as BaseRoles lists them.
+const (
+	BaseRoleAccent  BaseRole = "accent"
+	BaseRoleBg      BaseRole = "bg"
+	BaseRoleFg      BaseRole = "fg"
+	BaseRoleMuted   BaseRole = "muted"
+	BaseRoleError   BaseRole = "error"
+	BaseRoleWarning BaseRole = "warning"
+	BaseRoleSuccess BaseRole = "success"
+)
+
+// ColorDepth is how many colours a terminal shows.
+type ColorDepth string
+
+// The colour depths of a terminal.
+const (
+	ColorDepthTruecolor ColorDepth = "truecolor"
+	ColorDepth256       ColorDepth = "256"
+)
 
 // Theme is an id, a name, its mode, a colour per role (CSS colours; `#rrggbb` for terminals), web and terminal extras.
 type Theme struct {
@@ -118,7 +141,7 @@ var (
 // (`38;2;r;g;b`, `38;5;n`; `48;…` for a background layer "bg"): the role's `tui` override first, else its colour, else the
 // fallback theme's; a `#rrggbb` colour is the nearest of the 256 xterm colours on a 256-colour terminal. A role nobody
 // defines, or a colour that is no `#rrggbb`, gives the terminal's default (`39`, `49`).
-func TerminalColor(theme Theme, role, depth, layer string) string {
+func TerminalColor(theme Theme, role string, depth ColorDepth, layer string) string {
 	color, has := theme.Tui[role]
 	if !has {
 		color, has = theme.Colors[role]
@@ -147,7 +170,7 @@ func TerminalColor(theme Theme, role, depth, layer string) string {
 	for i := range rgb {
 		rgb[i] = hexByte(match[i+1])
 	}
-	if depth == "truecolor" {
+	if depth == ColorDepthTruecolor {
 		return fmt.Sprintf("%s;2;%s", base, strings.Join([]string{strconv.Itoa(rgb[0]), strconv.Itoa(rgb[1]), strconv.Itoa(rgb[2])}, ";"))
 	}
 	return fmt.Sprintf("%s;5;%d", base, nearest256(rgb))
