@@ -27,7 +27,7 @@ var evaluateHostPackages = []string{"@earendil-works/chord", "esm-host", "cjs-ho
 
 // evaluateOpsPrelude is the probe ops shared by the evaluate and the stack tests. `packages` is Pi's `HOSTS` (hosts: "all"),
 // support.ts's `HOST_PACKAGES` ("chord") or `{}` ("none"); `run` is `evaluateFacet(script, { hostPackages, plugin })`;
-// `collected` is `expectCollected` and `settle` is `settledHeap` (test/next/support.ts) with the process's `gc`.
+// `collected` is `expectCollected` and `settle` is `settledHeap` (test/support.ts) with the process's `gc`.
 const evaluateOpsPrelude = `
 	packages: async (a) => {
 		if (a.hosts === "none") return {};

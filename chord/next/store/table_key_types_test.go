@@ -8,7 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/sqlite"
 )
 
-// upstream: packages/chord/test/next/store/table.test.ts "keys: type an int() key column as a number and a str() one as a string (tutorial, 2026-11-03)". Upstream pins KeyOf at the type level; a Go key is a Row (map[string]any) checked at the trust boundary, so the same property runs: an int() key column takes a number and refuses a string, a str() one takes a string and refuses a number, for a key of int alone and for a mixed key.
+// upstream: packages/chord/test/store/table.test.ts "keys: type an int() key column as a number and a str() one as a string (tutorial, 2026-11-03)". Upstream pins KeyOf at the type level; a Go key is a Row (map[string]any) checked at the trust boundary, so the same property runs: an int() key column takes a number and refuses a string, a str() one takes a string and refuses a number, for a key of int alone and for a mixed key.
 func TestKeyColumnsTakeTheirColumnTypeAnIntANumberAndAStrAString(t *testing.T) {
 	byNumber := qDefine(t, "by_number", TableOptions{Version: 1, Columns: []ColumnProp{Col("id", Int()), Col("text", Str())}, Key: []string{"id"}})
 	mixed := qDefine(t, "mixed", TableOptions{Version: 1, Columns: []ColumnProp{Col("id", Str()), Col("at", Int()), Col("text", Str())}, Key: []string{"id", "at"}})
