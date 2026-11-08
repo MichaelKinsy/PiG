@@ -939,15 +939,15 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/node/http/response.ts` | `chord/nextnode/http/response.go, chord/nextnode/http/statuscodes.go` | ✅ |
 | `packages/chord/src/node/http/router.ts` | `chord/nextnode/http/router.go` | ✅ |
 | `packages/chord/src/node/http/upgrades.ts` | `chord/nextnode/http/upgrades.go, chord/nextnode/http/websocket.go` | ✅ |
-| `packages/chord/src/node/plugins/build.ts` | `chord/nextnode/plugins/plugins_build.go, chord/nextnode/plugins/plugins_sourcemap.go` | ✅ |
+| `packages/chord/src/node/plugins/build.ts` | `chord/nextnode/plugins/plugins_build.go (scoped CSS modules through ScopeCSSModule, url() assets of stylesheets in a browser build), chord/nextnode/plugins/plugins_sourcemap.go` | ✅ |
 | `packages/chord/src/node/plugins/discover.ts` | `chord/nextnode/plugins/plugins_discover.go` | ✅ |
-| `packages/chord/src/node/plugins/evaluate.ts` | `chord/nextnode/plugins/plugins_runtime.go; Pi's file runs verbatim in the Node subprocess: chord/nextnode/plugins/node/pi/chord/src/next-node/plugins/evaluate.ts, node/host.mjs` | ✅ |
+| `packages/chord/src/node/plugins/evaluate.ts` | `chord/nextnode/plugins/plugins_runtime.go; Pi's file runs verbatim in the Node subprocess: chord/nextnode/plugins/node/pi/chord/src/node/plugins/evaluate.ts, node/host.mjs` | ✅ |
 | `packages/chord/src/node/plugins/index.ts` | `(barrel: Go imports the package)` | n/a |
 | `packages/chord/src/node/plugins/install.ts` | `chord/nextnode/plugins/plugins_install.go` | ✅ |
-| `packages/chord/src/node/plugins/plugins.ts` | `chord/nextnode/plugins/plugins_plugins.go` | ✅ |
-| `packages/chord/src/node/plugins/runtime.ts` | `chord/nextnode/plugins/plugins_runtime.go, chord/nextnode/plugins/plugins_node.go; Pi's file runs verbatim in the Node subprocess: chord/nextnode/plugins/node/pi/chord/src/next-node/plugins/runtime.ts` | ✅ |
-| `packages/chord/src/node/plugins/stack.ts` | `Pi's file runs verbatim in the Node subprocess: chord/nextnode/plugins/node/pi/chord/src/next-node/plugins/stack.ts; Go sees *NodeError.Stack (chord/nextnode/plugins/plugins_node.go)` | ✅ |
-| `packages/chord/src/node/plugins/watcher.ts` | `chord/nextnode/plugins/plugins_watcher.go` | ✅ |
+| `packages/chord/src/node/plugins/plugins.ts` | `chord/nextnode/plugins/plugins_plugins.go (Plugins.WatchBase)` | ✅ |
+| `packages/chord/src/node/plugins/runtime.ts` | `chord/nextnode/plugins/plugins_runtime.go, chord/nextnode/plugins/plugins_node.go; Pi's file runs verbatim in the Node subprocess: chord/nextnode/plugins/node/pi/chord/src/node/plugins/runtime.ts` | ✅ |
+| `packages/chord/src/node/plugins/stack.ts` | `Pi's file runs verbatim in the Node subprocess: chord/nextnode/plugins/node/pi/chord/src/node/plugins/stack.ts; Go sees *NodeError.Stack (chord/nextnode/plugins/plugins_node.go)` | ✅ |
+| `packages/chord/src/node/plugins/watcher.ts` | `chord/nextnode/plugins/plugins_watcher.go (base marks: recordBase/recordOwn, locations and ancestors watched alone, comparisons by at most 8 goroutines; an entry on the way to base code is renewed on a Create, Remove or Rename event only when its identity (inode and birth time: plugins_watcher_identity*.go, as Pi's `identityOf`) is not the one it had when watched; a watch fsnotify dropped with a move is put back without a comparison; the start reads entry types from ReadDir and hashes on at most 8 goroutines; D540 records the inode-only identity of other Unixes)` | ✅ |
 | `packages/chord/src/host/adapted.ts` | `chord/next/host/host_adapted.go` | ✅ |
 | `packages/chord/src/host/reference-keys.ts` | `chord/next/host/host_reference_keys.go` | ✅ |
 | `packages/chord/src/host/reference-source.ts` | `chord/next/host/host_reference_source.go` | ✅ |
@@ -985,8 +985,8 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/node/app/uploads.ts` | `chord/nextnode/app/uploads.go (Accept is the synchronous half of Pi's append, D430)` | ✅ |
 | `packages/chord/src/node/app/users.ts` | `chord/nextnode/app/users.go` | ✅ |
 | `packages/chord/src/node/app/worker.ts` | `chord/nextnode/app/worker.go` | ✅ |
-| `packages/chord/src/node/plugins/base-inputs.ts` | `chord/nextnode/plugins/plugins_baseinputs.go` | ✅ |
-| `packages/chord/src/node/plugins/css-modules.ts` | `chord/nextnode/plugins/plugins_cssmodules.go, plugins_cssmodules_node.go (esbuild CJS mapping module run in a Node subprocess; 3023 Pi goldens, rows/chord-plugins.md round 4)` | ✅ |
+| `packages/chord/src/node/plugins/base-inputs.ts` | `chord/nextnode/plugins/plugins_baseinputs.go (BaseInputs, ContentHash, Recorder: the one read of a file, kept under a lock for esbuild's goroutines)` | ✅ |
+| `packages/chord/src/node/plugins/css-modules.ts` | `chord/nextnode/plugins/plugins_cssmodules.go (ScopeCSSModule), chord/nextnode/plugins/plugins_cssmodules_node.go (the mapping module runs in a Node subprocess, as Pi runs it in a vm context: the same Script, spread and JSON.stringify)` | ✅ |
 | `packages/chord/src/node/plugins/testing.ts` | `chord/nextnode/plugins/plugins_testing.go` | ✅ |
 | `packages/chord/src/node/surfaces/bundle.ts` | `chord/nextnode/surfaces/surfaces_bundle.go` | 🟡 |
 | `packages/chord/src/node/surfaces/current.ts` | `chord/nextnode/surfaces/surfaces_current.go` | 🟡 |

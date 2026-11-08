@@ -162,7 +162,8 @@ type ReleaseMessage struct {
 }
 
 // CallMessage calls a method. Args is absent for a method without arguments; Segments are the byte segments of a
-// payload whose method's schema has a `bytes()` leaf, referenced from its JSON by `{"$bytes": i}`.
+// payload whose method's schema has a `bytes()` leaf, referenced from its JSON by `{"$bytes": i}`. Old is old work of a
+// reload (decision "Reload restarts every affected object"): honoured only from a trusted link.
 type CallMessage struct {
 	Origin   Optional[int]
 	Call     int
@@ -170,6 +171,7 @@ type CallMessage struct {
 	Method   int
 	Args     Part
 	Segments [][]byte
+	Old      bool
 }
 
 // AbortMessage aborts a call.

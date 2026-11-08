@@ -11,7 +11,7 @@
 // so `import type` edges, which Node never loads, do not pull files in. @earendil-works/pi-schema and
 // @earendil-works/pi-telemetry are Pi's two runtime dependencies of that closure. pi-schema is a package of the same Pi tree
 // (packages/schema, never published): its src closure is copied byte for byte to pi/schema, with its package.json and
-// LICENSES, and node/host.mjs resolves the package name to it, because Node refuses to strip the types of a file under
+// THIRD_PARTY_NOTICES, and node/host.mjs resolves the package name to it, because Node refuses to strip the types of a file under
 // node_modules. pi-telemetry's dist modules are copied as a package in node_modules.
 import { createHash } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
@@ -22,11 +22,11 @@ const [piTree, commit, telemetryDir, outDir, pin] = process.argv.slice(2);
 if (pin === undefined) throw new Error("usage: vendor-chord-plugins-node.mjs <pi tree> <commit> <pi-telemetry> <out> <pin>");
 
 const ENTRIES = [
-	"next/index.ts",
-	"next-node/plugins/evaluate.ts",
-	"next-node/plugins/stack.ts",
-	"next-node/plugins/runtime.ts",
-	"next-node/compression.ts",
+	"index.ts",
+	"node/plugins/evaluate.ts",
+	"node/plugins/stack.ts",
+	"node/plugins/runtime.ts",
+	"node/compression.ts",
 	"context/index.ts",
 	// The Node host's store (node/store.mjs): the SQLite backend over node:sqlite. database.ts is the interface node.ts
 	// imports as a type only, so Node's stripping leaves it out of the closure; it is copied as Pi's own file beside it.
@@ -81,7 +81,7 @@ function walk(dir) {
 }
 for (const file of [...schemaClosure].sort()) copy(file, join(pi, "schema/src", relative(schemaSrc, file)));
 copy(join(schemaDir, "package.json"), join(pi, "schema/package.json"));
-for (const file of walk(join(schemaDir, "LICENSES")).sort()) copy(file, join(pi, "schema/LICENSES", relative(join(schemaDir, "LICENSES"), file)));
+for (const file of walk(join(schemaDir, "THIRD_PARTY_NOTICES")).sort()) copy(file, join(pi, "schema/THIRD_PARTY_NOTICES", relative(join(schemaDir, "THIRD_PARTY_NOTICES"), file)));
 copy(join(telemetryDir, "package.json"), join(pi, "node_modules/@earendil-works/pi-telemetry/package.json"));
 for (const file of walk(join(telemetryDir, "dist")).sort()) {
 	const name = relative(telemetryDir, file).split(sep).join("/");
