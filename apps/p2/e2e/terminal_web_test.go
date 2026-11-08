@@ -18,8 +18,8 @@ import (
 
 	"github.com/MichaelKinsy/PiG/apps/p2/hosts"
 	"github.com/MichaelKinsy/PiG/apps/p2/p2test"
-	"github.com/MichaelKinsy/PiG/apps/p2/web"
 	sessionscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/sessions/contract"
+	"github.com/MichaelKinsy/PiG/apps/p2/web"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 )
 
