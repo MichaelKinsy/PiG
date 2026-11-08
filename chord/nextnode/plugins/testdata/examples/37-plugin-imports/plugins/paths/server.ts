@@ -2,7 +2,7 @@
 // own); a file of the plugin is read through `pluginFile`. Each use is a build error.
 
 import { join } from "node:path";
-import { defineFacet } from "@earendil-works/chord/next";
+import { defineFacet } from "@earendil-works/chord";
 
 export default defineFacet(() => {
 	console.log(join(__dirname, "data.json"));

@@ -392,3 +392,24 @@ func TestHostHoldsWaitingInTheIndexLeaveNothingBehindOnceTheirLinkClosed(t *test
 	nexttest.ExpectCollected(t, weaks...)
 	closeHosts(t, before, after)
 }
+
+// Ports unbound.test.ts `describe("what waits unserved (slice 12 §6, testPlugin)")`: lists the index's names sorted, and
+// the host the names no plugin serves.
+func TestWhatWaitsUnservedListsTheIndexsNamesSortedAndTheHostTheNamesNoPluginServes(t *testing.T) {
+	index := newUnboundIndex()
+	index.add("b", unboundRequestOf(nil))
+	index.add("a", unboundRequestOf(nil))
+	if got, want := index.Names(), []string{"a", "b"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("names = %v, want %v", got, want)
+	}
+	host := newHost(t, HostOptions{OnError: func(HostError) {}})
+	mustLoad(t)(host.Load([]HostFacet{{Name: "info", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return serveInfo(h) })}}, background))
+	held, err := host.Hold(background, unboundMissing, jsonObject("id", float64(1)), GetOptions{})
+	must(t, err)
+	turn(host)
+	if got, want := host.(*chordHost).UnservedNames(), []string{"app.missing"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("unservedNames = %v, want %v", got, want)
+	}
+	held.Release()
+	must(t, host.Close(background))
+}
