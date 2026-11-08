@@ -228,6 +228,7 @@ async function load(request, context) {
 		...(request.principalKey === true
 			? { principalKey: callbacks.memoizedByPrincipal((principal) => canonicalJson(principal, BACKGROUND_CONTEXT), (principal) => callbacks.callSync("principalKey", principal)) }
 			: {}),
+		...(request.principalAttributes === true ? { principalAttributes: (principal) => callbacks.callSync("principalAttributes", principal) } : {}),
 		...(request.revokedBy === true ? { revokedBy: (principal) => callbacks.callSync("revokedBy", principal) } : {}),
 		onError: (error) => port.control({ event: "error", error: hostError(error) }),
 	});

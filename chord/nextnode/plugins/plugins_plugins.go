@@ -185,6 +185,8 @@ type PluginsLoad struct {
 	GoPackages   []GoPackage
 	Telemetry    telemetry.TelemetryContext
 	PrincipalKey *data.PrincipalKeyFunction
+	// PrincipalAttributes is RuntimeLoad.PrincipalAttributes.
+	PrincipalAttributes func(principal data.Principal) telemetry.SpanAttributes
 	RevokedBy    host.RevokedBy[delta.JsonValue]
 	// Bridged are the app's Go core facets whose local types the plugins use (RuntimeLoad.Bridged); ParentServes is the remote
 	// types the Go host serves that the plugins use (RuntimeLoad.ParentServes).
@@ -431,7 +433,7 @@ func (c *Plugins) Load(options PluginsLoad, ctx context.Context) (*NodeHost, hos
 		Address: options.Address, Principal: options.Principal, Peer: options.Peer, Heartbeat: options.Heartbeat,
 		CloseTimeout: options.CloseTimeout, ReadyTimeout: options.ReadyTimeout, ReloadDrainTimeout: options.ReloadDrainTimeout, Compression: options.Compression,
 		Store:      options.Store,
-		GoPackages: options.GoPackages, Telemetry: options.Telemetry, PrincipalKey: options.PrincipalKey, RevokedBy: options.RevokedBy,
+		GoPackages: options.GoPackages, Telemetry: options.Telemetry, PrincipalKey: options.PrincipalKey, RevokedBy: options.RevokedBy, PrincipalAttributes: options.PrincipalAttributes,
 		Bridged: options.Bridged, ParentServes: options.ParentServes,
 	}, ctx)
 	if h == nil {

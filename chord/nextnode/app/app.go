@@ -499,6 +499,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 		Api:        &plugins.AppApi{Name: options.API.Name, Versions: options.API.Versions},
 		PublicPath: &assetsPath,
 		OnError:    func(err plugins.PluginsError) { a.report(AppErrorPlugins, err) }, Node: options.Node,
+		PrincipalAttributes: options.PrincipalAttributes,
 	}, ctx)
 	a.build, a.rollout = a.Plugins.Build, a.Plugins.Rollout
 	workerHosts := &workerHosts{keys: map[string]string{}, principals: map[string]string{}}

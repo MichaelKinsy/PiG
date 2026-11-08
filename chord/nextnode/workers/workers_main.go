@@ -1,6 +1,7 @@
 package workers
 
 import (
+	"github.com/MichaelKinsy/PiG/telemetry"
 	"context"
 	"errors"
 	"fmt"
@@ -81,6 +82,8 @@ type WorkerLoad struct {
 	ReadyTimeout *time.Duration
 	// ReloadDrainTimeout is the NodeHost's `reloadDrainTimeout` (RuntimeLoad's). Nil: the host's default.
 	ReloadDrainTimeout *time.Duration
+	// PrincipalAttributes is the NodeHost's `principalAttributes` (RuntimeLoad's): who a span was for. Nil: the host's own.
+	PrincipalAttributes func(principal data.Principal) telemetry.SpanAttributes
 }
 
 // BusyWatchable is a JSON watchable of numbers: a reference's member, or a source.
@@ -385,6 +388,7 @@ func (p *WorkerPlugins) Load(h host.Host, options WorkerLoad, ctx context.Contex
 		Kind: options.Kind, Core: options.Core, Scripts: p.message.Scripts, Modules: p.worker.options.HostPackages,
 		Address: &address, Principal: options.Principal, Peer: options.Peer, Heartbeat: &nodeHeartbeat, Bridged: bridged,
 		Store: options.Store, CloseTimeout: options.CloseTimeout, ReadyTimeout: options.ReadyTimeout, ReloadDrainTimeout: options.ReloadDrainTimeout,
+		PrincipalAttributes: options.PrincipalAttributes,
 	}, ctx)
 	if err != nil {
 		// A *plugins.PluginError comes with the loaded host (Pi's `host` is the caller's to stop): the worker ends instead.

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"github.com/MichaelKinsy/PiG/telemetry"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
@@ -52,6 +53,8 @@ type WorkerOptions struct {
 	Busy workers.BusyWatchable
 	// OnError gets the worker host's errors (host.HostError) and a failed start's.
 	OnError func(err any)
+	// PrincipalAttributes is who a span was for (`createHost`'s `principalAttributes`): this worker's hook, as the server's is its own.
+	PrincipalAttributes func(principal data.Principal) telemetry.SpanAttributes
 	// Node is how the worker's Node subprocess is started.
 	Node plugins.NodeOptions
 }
@@ -180,7 +183,7 @@ func runWorker(options WorkerOptions, start workers.WorkerStart, ctx context.Con
 			{Name: "chord.app.worker-info", Contracts: []*contracts.Contract{WorkerInfo}},
 			{Name: "chord.app.data.export", Contracts: []*contracts.Contract{HostDataExport}},
 		},
-		Principal: kit.Principal, Peer: kit.Server,
+		Principal: kit.Principal, Peer: kit.Server, PrincipalAttributes: options.PrincipalAttributes,
 		Store: &plugins.StoreOptions{Path: storePath}, CloseTimeout: kit.Timeouts.close(), ReadyTimeout: kit.Timeouts.ready(), ReloadDrainTimeout: kit.Timeouts.reloadDrain(),
 	}, ctx); err != nil {
 		return nil, err

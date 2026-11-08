@@ -384,6 +384,8 @@ type callbacksWire struct {
 	Telemetry    *telemetryWire `json:"telemetry,omitempty"`
 	PrincipalKey bool           `json:"principalKey,omitempty"`
 	RevokedBy    bool           `json:"revokedBy,omitempty"`
+	// PrincipalAttributes is set when the host has a `principalAttributes` hook (called synchronously).
+	PrincipalAttributes bool `json:"principalAttributes,omitempty"`
 	ParentServes bool           `json:"parentServes,omitempty"`
 }
 
@@ -392,7 +394,7 @@ type callbacksWire struct {
 // packages are options.GoPackages as goPackagesWire made them. When the host needs a synchronous connection the process's
 // worker thread makes it (listenSync); otherwise the socket's listener is released.
 func (h *NodeHost) enableCallbacks(options RuntimeLoad, packages []goPackageWire) callbacksWire {
-	wire := callbacksWire{GoPackages: packages, PrincipalKey: options.PrincipalKey != nil, RevokedBy: options.RevokedBy != nil}
+	wire := callbacksWire{GoPackages: packages, PrincipalKey: options.PrincipalKey != nil, RevokedBy: options.RevokedBy != nil, PrincipalAttributes: options.PrincipalAttributes != nil}
 	h.handleGoPackages(options.GoPackages)
 	if options.Telemetry != nil {
 		replay, telemetry := newNodeTelemetry(options.Telemetry)
@@ -428,6 +430,22 @@ func (h *NodeHost) enableCallbacks(options RuntimeLoad, packages []goPackageWire
 			return append([]delta.JsonValue{}, revocations...), nil
 		})
 	}
+	if attributes := options.PrincipalAttributes; attributes != nil {
+		h.handleSync("principalAttributes", func(_ context.Context, args json.RawMessage) (any, error) {
+			principal, err := principalOf(args)
+			if err != nil {
+				return nil, err
+			}
+			object := delta.NewJsonObject(0)
+			for _, attribute := range attributes(principal) {
+				// A nil value is upstream's undefined: omitted.
+				if attribute.Value != nil {
+					object.Set(attribute.Name, attribute.Value)
+				}
+			}
+			return object, nil
+		})
+	}
 	if serves := options.ParentServes; serves != nil {
 		wire.ParentServes = true
 		h.handleSync("parentServes", func(_ context.Context, args json.RawMessage) (any, error) {
@@ -438,7 +456,7 @@ func (h *NodeHost) enableCallbacks(options RuntimeLoad, packages []goPackageWire
 			return serves(name), nil
 		})
 	}
-	if wire.PrincipalKey || wire.RevokedBy || wire.ParentServes {
+	if wire.PrincipalKey || wire.RevokedBy || wire.PrincipalAttributes || wire.ParentServes {
 		wire.SyncToken = h.listenSync()
 	} else {
 		h.releaseListener()
