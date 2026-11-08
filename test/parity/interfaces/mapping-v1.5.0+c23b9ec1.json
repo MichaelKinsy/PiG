@@ -270846,24 +270846,11 @@
     },
     {
       "id": "pkg:schema/.#bigint::call:0",
-      "disposition": "ported",
+      "disposition": "designed-out",
       "upstreamShapeHash": "sha256:75a7064aa6569ff75e8536b030453c7e44837d620ccb935131be54aadfe555f3",
-      "rationale": "Ported, tested as Pi's bigint tests state the contract. Pi's `bigint(options)` takes Annotations<bigint> & BigintBounds and spreads them into the schema; PiG's counterpart is BigInt(opts ...BigIntOption), applied in call order so the keyword order of the schema is Pi's. Pi's checks run in schema/pi_main_bigint_upstream_test.go (TestPiMainBuildsABigIntWithBounds writes every bound in call order after the type; TestPiMainChecksTypeBoxBigIntWithItsBounds and TestPiMainChecksMultipleOfOfBigIntsExactly check bigint values against the bounds; TestExplainsBigIntsAgainstBoundsOfEitherKind) and the option typing (the Big* options fit BigInt alone) in schema/builders_options_test.go. No part is designed out: the compile-time excess-property check of the TypeScript option type is the compile error of a misplaced option, which TestBuilderOptionsFitOnlyTheirBuilders pins.",
+      "rationale": "Pi packages/schema/src/builders.ts:82 bigint::call:0 (Pi 1.5.0+c23b9ec1, unchanged from 1.4.0+b556cfe5): Pi's `bigint` returns Schema<bigint>, an index-signature object { [keyword: string]: unknown } branded with the static type (a type-level brand); Go returns schema.Schema = *Object, the ordered JSON object with the same keywords (schema/builders.go:12). Pi's `options` parameter (Annotations<bigint> & BigintBounds) is spread into the schema. Go has no optional parameter, and a struct of options cannot record the order in which the caller wrote the members, which the JS spread keeps in the schema (the key order is part of the provider request bytes and of fingerprints), so each builder takes variadic options applied in call order and typed per builder: BigInt takes ...BigIntOption (schema/builders.go:53): the AnnotationOption values Title, Description, Examples, Deprecated and Default, and BigMinimum, BigMaximum, BigExclusiveMinimum, BigExclusiveMaximum and BigMultipleOf (schema/builders.go:200-213). A misplaced option such as BigInt(MinLength(1)) or BigInt(Open()) does not compile, the Go counterpart of the excess-property check of Pi's per-builder TypeScript option type. Designed out as Go language mechanics (typed variadic options in call order; owner review flagged). Intention check (owner rule 2026-11-08): the Pi test guards that a bigint takes exactly its own bounds as bigints, written after the type in the order given, and that no other builder accepts them; PiG tests that intention at run time and at its type boundary: TestPiMainBuildsABigIntWithBounds (every BigInt option writes its keyword in call order) and TestBuilderOptionsFitOnlyTheirBuilders (the Big* options fit BigInt alone, and no number, string, array, bytes or object option fits it). Only the compile-time excess-property check of the TypeScript type has no run-time form. Owner approved 2026-11-02 (the same decision as num and int: Pi 1.5.0+c23b9ec1 packages/schema/src/builders.ts:44-48 builders spread their options into the schema).",
       "pigTargets": [
         "schema/builders.go#BigInt"
-      ],
-      "layers": {
-        "behavior": "complete",
-        "production": "public-api-tested",
-        "shape": "complete"
-      },
-      "production": [
-        "public-api:schema/builders.go#BigInt"
-      ],
-      "evidence": [
-        "test:schema/pi_main_bigint_upstream_test.go#TestPiMainBuildsABigIntWithBounds",
-        "test:schema/builders_options_test.go#TestBuilderOptionsFitOnlyTheirBuilders",
-        "test:schema/pi_main_bigint_upstream_test.go#TestExplainsBigIntsAgainstBoundsOfEitherKind"
       ]
     },
     {
