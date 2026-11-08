@@ -3,6 +3,7 @@ package terminals
 import (
 	"bytes"
 	"context"
+	"github.com/MichaelKinsy/PiG/apps/p2/p2test"
 	"os"
 	"regexp"
 	"strings"
@@ -120,6 +121,7 @@ func realTempDir(t *testing.T, prefix string) string {
 }
 
 func TestTerminalsRunInTheHostSurviveDisconnectsAndComeBackAsSnapshots(t *testing.T) {
+	p2test.NoLeakedGoroutines(t)
 	useDaemon(t)
 	directory := t.TempDir()
 	cwd := realTempDir(t, "p2-terminal-cwd-")
@@ -214,6 +216,7 @@ func TestTerminalsRunInTheHostSurviveDisconnectsAndComeBackAsSnapshots(t *testin
 }
 
 func TestTerminalsClosingAsksFirstWhileTheShellRunsAJob(t *testing.T) {
+	p2test.NoLeakedGoroutines(t)
 	useDaemon(t)
 	directory := t.TempDir()
 	cwd := realTempDir(t, "p2-terminal-busy-cwd-")
@@ -258,6 +261,7 @@ func TestTerminalsClosingAsksFirstWhileTheShellRunsAJob(t *testing.T) {
 }
 
 func TestTerminalsProgramsSeeTheViewersColorsAndHearAboutLightDarkSwitches(t *testing.T) {
+	p2test.NoLeakedGoroutines(t)
 	useDaemon(t)
 	directory := t.TempDir()
 	cwd := realTempDir(t, "p2-terminal-theme-cwd-")
@@ -279,6 +283,7 @@ func TestTerminalsProgramsSeeTheViewersColorsAndHearAboutLightDarkSwitches(t *te
 }
 
 func TestTerminalsAViewerThatFallsBehindStopsReceivingOutputAndResyncsWithASnapshot(t *testing.T) {
+	p2test.NoLeakedGoroutines(t)
 	useDaemon(t)
 	directory := t.TempDir()
 	cwd := realTempDir(t, "p2-terminal-cwd-")
@@ -341,6 +346,7 @@ func acknowledging(connection *hostConn) (received func() int, stop func()) {
 }
 
 func TestTerminalsASnapshotLargerThanTheOutputWindowDoesNotResyncAViewerThatKeepsUp(t *testing.T) {
+	p2test.NoLeakedGoroutines(t)
 	useDaemon(t)
 	directory := t.TempDir()
 	cwd := realTempDir(t, "p2-terminal-cwd-")

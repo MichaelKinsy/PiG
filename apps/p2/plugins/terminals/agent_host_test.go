@@ -3,6 +3,7 @@ package terminals
 import (
 	"context"
 	"errors"
+	"github.com/MichaelKinsy/PiG/apps/p2/p2test"
 	"net"
 	"os"
 	"reflect"
@@ -164,6 +165,7 @@ func shutdownHost(t *testing.T, directory string) {
 }
 
 func TestTerminalHostTheAgentsCalls(t *testing.T) {
+	p2test.NoLeakedGoroutines(t)
 	useDaemon(t)
 	directory := t.TempDir()
 	cwd, err := os.MkdirTemp("", "p2-agent-terminal-cwd-")

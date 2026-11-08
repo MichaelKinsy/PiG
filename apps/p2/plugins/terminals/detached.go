@@ -121,6 +121,9 @@ func ConnectTerminalHost(ctx context.Context, directory string) (net.Conn, error
 		return nil, err
 	}
 	deadline := time.Now().Add(hostStartTimeout)
+	wait := time.NewTimer(0)
+	defer wait.Stop()
+	<-wait.C
 	var last error
 	for {
 		conn, err := connectOnce(address)
@@ -131,8 +134,9 @@ func ConnectTerminalHost(ctx context.Context, directory string) (net.Conn, error
 		if time.Now().After(deadline) {
 			return nil, errors.Join(errors.New("Terminal host did not start (see Terminal host in Logs)"), last)
 		}
+		wait.Reset(100 * time.Millisecond)
 		select {
-		case <-time.After(100 * time.Millisecond):
+		case <-wait.C:
 		case <-ctx.Done():
 			return nil, context.Cause(ctx)
 		}
@@ -236,6 +240,7 @@ func AttachTerminalHost(directory string, onFrame func(Frame), onDetached func()
 	a := &Attachment{ready: make(chan struct{}), onDetached: onDetached}
 	//portlint:allow golifetime ends with the connection attempt or the socket
 	go func() {
+		//portlint:allow ctxbackground an attachment ends with its socket (Detach), not with a caller's context
 		conn, err := ConnectTerminalHost(context.Background(), directory)
 		if err != nil {
 			a.resolve(err)

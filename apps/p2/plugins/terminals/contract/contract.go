@@ -58,8 +58,8 @@ var TerminalServices = p2runtime.NewNativeRegistry("p2.terminal-services")
 // Terminals is one owner-only view, scoped to a session. Control is chord2; terminal input/output is a separate byte
 // channel. 2: `open` names the conversation whose location the terminal opens at.
 var Terminals = must(contracts.Remote("p2.terminals", contracts.RemoteDeclaration{
-	Version: 2,
-	Params:  contracts.Params{contracts.Prop("session", contracts.Str()), contracts.Prop("view", contracts.Str())},
+	Version:     2,
+	Params:      contracts.Params{contracts.Prop("session", contracts.Str()), contracts.Prop("view", contracts.Str())},
 	HostAddress: p2runtime.ServerHost,
 	Variants: []contracts.VariantEntry{
 		contracts.Var("owner", contracts.VariantDeclaration{

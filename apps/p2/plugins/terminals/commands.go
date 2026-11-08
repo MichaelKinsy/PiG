@@ -261,7 +261,7 @@ func jsNumberOf(text string) (float64, bool) {
 			var big float64
 			for _, digit := range text[2:] {
 				value, _ := strconv.ParseUint(string(digit), 16, 8)
-				big = big*float64(base) + float64(value)
+				big = float64(big*float64(base)) + float64(value)
 			}
 			return big, true
 		}

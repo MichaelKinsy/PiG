@@ -124,7 +124,7 @@ func newCallAPI(task int) *callAPI {
 	return &callAPI{task: durable.TaskId(task), memos: map[string]durable.JsonValue{}}
 }
 
-func (a *callAPI) TaskId() durable.TaskId             { return a.task }
+func (a *callAPI) TaskId() durable.TaskId                 { return a.task }
 func (a *callAPI) ConversationId() durable.ConversationId { return 7 }
 func (a *callAPI) Memo(_ context.Context, name string) (durable.JsonValue, bool, error) {
 	value, ok := a.memos[name]

@@ -36,7 +36,7 @@ import (
 // Calls with replies run on a goroutine each and enter the loop for each step, as the `await`s of main.ts.
 
 const (
-	idleExit  = 10 * time.Minute
+	idleExit        = 10 * time.Minute
 	scrollbackLines = 10_000
 	// ringBytes is the output each terminal keeps for the agent's reads.
 	ringBytes = 1024 * 1024
@@ -102,7 +102,6 @@ type hostClient struct {
 	hasSession bool
 	// calls are the cancels of its calls still running, by call id.
 	calls map[int]func()
-
 }
 
 // connEntry is a pi-env connection by environment ("" for this machine), with the configuration it was made for.
@@ -128,12 +127,12 @@ type Host struct {
 	done  chan struct{}
 
 	// Owned by the loop.
-	terminals   map[string]*hosted
-	order       []*hosted
-	clients     map[*hostClient]struct{}
-	connections map[string]*connEntry
-	idleSince   time.Time
-	remembered  map[string]*rememberedCall
+	terminals       map[string]*hosted
+	order           []*hosted
+	clients         map[*hostClient]struct{}
+	connections     map[string]*connEntry
+	idleSince       time.Time
+	remembered      map[string]*rememberedCall
 	rememberedOrder []string
 }
 
@@ -174,6 +173,7 @@ func do[T any](h *Host, fn func() T) T {
 }
 
 func (h *Host) loop() {
+	//portlint:allow doubleclose closed once, when the loop ends
 	defer close(h.done)
 	for {
 		select {
@@ -221,6 +221,7 @@ func RunHost(ctx context.Context, directory string) error {
 		terminals: map[string]*hosted{}, clients: map[*hostClient]struct{}{}, connections: map[string]*connEntry{},
 		idleSince: time.Now(), remembered: map[string]*rememberedCall{},
 	}
+	//portlint:allow golifetime the loop ends when the host stops (quit)
 	go h.loop()
 	var accepting sync.WaitGroup
 	accepting.Add(1)
@@ -270,6 +271,7 @@ func (h *Host) shutdown() {
 			h.close(terminal)
 		}
 		for _, entry := range h.connections {
+			//portlint:allow golifetime ends when the connection is made and closed
 			go closeEntry(entry)
 		}
 		// Let the daemons see their input end before this process goes.
@@ -453,6 +455,7 @@ func (h *Host) connection(ctx context.Context, name *string) (*env.Connection, m
 // start makes the connection of entry; a failure is forgotten, so the next use tries again.
 func (h *Host) start(entry *connEntry, key string, connect func() (*env.Connection, error)) {
 	entry.conn, entry.err = connect()
+	//portlint:allow doubleclose closed once, by the goroutine that made the connection
 	close(entry.done)
 	if entry.err != nil {
 		h.post(func() {
@@ -473,6 +476,7 @@ func (h *Host) release(key string) {
 	entry := h.connections[key]
 	delete(h.connections, key)
 	if entry != nil {
+		//portlint:allow golifetime ends when the connection is made and closed
 		go closeEntry(entry)
 	}
 }
@@ -590,6 +594,7 @@ func (h *Host) launch(terminal *hosted, request opening, theme TerminalTheme, st
 	defer close(started)
 	info := terminal.info
 	fail := func(err error) { h.post(func() { h.end(terminal, errorExited(err)) }) }
+	//portlint:allow ctxbackground a terminal starts on its own: nothing calls the host with a context
 	connection, shellEnv, err := h.connection(context.Background(), request.env)
 	if err != nil {
 		fail(err)
@@ -607,6 +612,7 @@ func (h *Host) launch(terminal *hosted, request opening, theme TerminalTheme, st
 	} else {
 		environment["COLORFGBG"] = "0;15"
 	}
+	//portlint:allow ctxbackground the terminal outlives its opener: Pi's `openTerminal` takes no signal here
 	pty, err := env.OpenTerminal(context.Background(), connection, env.TerminalOptions{
 		Cwd: request.cwd, Env: environment, Cols: request.cols, Rows: request.rows,
 		OnData: func(bytes []byte) {
@@ -793,6 +799,7 @@ func (h *Host) handle(client *hostClient, request TerminalRequest) {
 		pty := terminal.pty
 		//portlint:allow golifetime ends with the daemon's answer
 		go func() {
+			//portlint:allow ctxbackground the busy check has no caller: Pi's `pty.foreground()` takes no signal
 			job, err := pty.Foreground(context.Background())
 			if err != nil {
 				job = nil
@@ -882,6 +889,7 @@ func (h *Host) once(request HostCall) (HostResult, error) {
 		}
 		go func() {
 			first.result, first.err = h.perform(request, nil)
+			//portlint:allow doubleclose closed once, by the goroutine that made the call
 			close(first.done)
 			if first.err != nil {
 				// A failed call may be tried again.
@@ -910,6 +918,7 @@ func (h *Host) perform(request HostCall, cancelled <-chan struct{}) (HostResult,
 		var group sync.WaitGroup
 		for index, terminal := range terminals {
 			group.Add(1)
+			//portlint:allow gorecover the host is its own process: a panic is fatal, as Node's unhandled rejection is
 			go func() {
 				defer group.Done()
 				job := h.foreground(terminal)
@@ -1177,6 +1186,7 @@ func (h *Host) foreground(terminal *hosted) string {
 	if pty == nil {
 		return ""
 	}
+	//portlint:allow ctxbackground the foreground job question has no caller: Pi's `pty.foreground()` takes no signal
 	job, err := pty.Foreground(context.Background())
 	if err != nil || job == nil {
 		return ""

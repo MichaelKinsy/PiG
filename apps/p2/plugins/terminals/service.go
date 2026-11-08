@@ -718,6 +718,7 @@ func (e *hostEvents) next(wanted func(TerminalEvent) bool) (TerminalEvent, error
 		if ended {
 			return TerminalEvent{}, errors.New("Terminal host disconnected")
 		}
+		//portlint:allow golifetime bounded by the timer (the wait for the host's answer)
 		select {
 		case <-e.wake:
 		case <-timer.C:
@@ -853,8 +854,12 @@ func (s *webSocketView) BufferedAmount() int {
 	return s.buffered
 }
 
-func (s *webSocketView) SendText(text string)    { s.push(wsMessage{kind: websocket.TextMessage, data: []byte(text)}) }
-func (s *webSocketView) SendBinary(data []byte) { s.push(wsMessage{kind: websocket.BinaryMessage, data: data}) }
+func (s *webSocketView) SendText(text string) {
+	s.push(wsMessage{kind: websocket.TextMessage, data: []byte(text)})
+}
+func (s *webSocketView) SendBinary(data []byte) {
+	s.push(wsMessage{kind: websocket.BinaryMessage, data: data})
+}
 
 func (s *webSocketView) Terminate() {
 	s.mu.Lock()
