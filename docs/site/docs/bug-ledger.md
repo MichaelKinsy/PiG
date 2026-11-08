@@ -708,6 +708,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-7163ab3](#bf-7163ab3) | A pi-env connection whose daemon exits (or fails) before `hello` now adds the end of the daemon's stderr (the… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-7177d5f](#bf-7177d5f) | fix(tui): card of an unregistered tool is Pi's formatToolExecution | PiG's own defect | All platforms | Unreleased |
 | [BF-725e104](#bf-725e104) | The upstream test inventory records Pi's `shell-path-exists.test.ts` as ported instead of partial: Pi mocks… | PiG's own defect | Windows | 0.5.2 |
+| [BF-7299966](#bf-7299966) | Every frame the renderer paints allocates two fewer objects: the cursor's hide and show copied their escape… | PiG's own defect | All platforms | Unreleased |
 | [BF-72db80f](#bf-72db80f) | fix(durable): a streamed partial commits the text of its own events | PiG's own defect | All platforms | Unreleased |
 | [BF-72e0ca2](#bf-72e0ca2) | A Kitty image in a padded or colored box, or with text beside it, is no longer dropped from the fullscreen… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-72e7ab2](#bf-72e7ab2) | A tool card whose `app.tools.expand` key is unbound shows an empty key in ".. | PiG's own defect | All platforms | 0.5.0 |
@@ -829,6 +830,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-86c411a](#bf-86c411a) | fix(builtin): codemode and tool_search declare their parameters in TypeBox key order | PiG's own defect | All platforms | Unreleased |
 | [BF-8780292](#bf-8780292) | The footer's thinking level no longer reads `thinking off` in the first frames of an interactive start | PiG's own defect | All platforms | 0.7.0 |
 | [BF-87a6ac5](#bf-87a6ac5) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
+| [BF-87d4c01](#bf-87d4c01) | Searching a long session in `/tree` allocates 30% less than in 0.7.0: lowercasing text with non-ASCII… | PiG's own defect | All platforms | Unreleased |
 | [BF-8894a13](#bf-8894a13) | A double-quoted YAML string in a skill, prompt template or `parseFrontmatter` header now reads a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8894a13-2](#bf-8894a13-2) | The liveness conformance harness answers the host-parser helper calls a factory makes before the register… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8897a1b](#bf-8897a1b) | Interactive startup lists skill diagnostics under `[Skill warnings]` instead of `[Skill conflicts]`; most of… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
@@ -1032,6 +1034,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26-2](#bf-a09da26-2) | A bash or PowerShell tool card reads the result's `truncation` details by their exact keys, as Pi does: a… | PiG's own defect | Windows | 0.5.0 |
+| [BF-a0eeb24](#bf-a0eeb24) | `/fork` of a session that is not file-backed builds the clone's entries from the source's decoded messages… | PiG's own defect | All platforms | Unreleased |
 | [BF-a110f68](#bf-a110f68) | fix(tui,codingagent): owner-loop frame deadline and reader-side input routing (TU-T11, TU-T12) | PiG's own defect | All platforms | Unreleased |
 | [BF-a11fc08](#bf-a11fc08) | fix(durable): list D206 in the docs bundle; the cut-off tool case types its task id; the retry delay product… | PiG's own defect | All platforms | Unreleased |
 | [BF-a13bae4](#bf-a13bae4) | A `read` result shown in the transcript no longer keeps the file text a second time as its structured content | PiG's own defect | All platforms | 0.5.0 |
@@ -11129,6 +11132,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** None recorded.
 - **Release note:** The upstream test inventory records Pi's `shell-path-exists.test.ts` as ported instead of partial: Pi mocks `accessSync` and `spawnSync`, PiG's Windows alias and Unix cases match them case for case, and the native Windows check ran and passed on the Windows runner. The release gate no longer reports it as an open hot-path gap.
 
+### BF-7299966
+
+**Every frame the renderer paints allocates two fewer objects: the cursor's hide and show copied their escape…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Every frame the renderer paints allocates two fewer objects: the cursor's hide and show copied their escape sequence into a new slice, where they had copied it into a pooled buffer before dead-terminal handling routed them through `WriteToTerminal`.
+- **Root cause:** Not recorded.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `72999669a8` (2026-11-08)
+- **Tests:** `tui/terminal_write_allocs_norace_test.go::TestWriteToTerminalOfAByteWriterDoesNotAllocate`
+- **Release note:** Every frame the renderer paints allocates two fewer objects: the cursor's hide and show copied their escape sequence into a new slice, where they had copied it into a pooled buffer before dead-terminal handling routed them through `WriteToTerminal`.
+
 ### BF-72db80f
 
 **fix(durable): a streamed partial commits the text of its own events**
@@ -12798,6 +12815,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `87a6ac512c` (2026-10-25)
 - **Tests:** None recorded.
+
+### BF-87d4c01
+
+**Searching a long session in `/tree` allocates 30% less than in 0.7.0: lowercasing text with non-ASCII…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Searching a long session in `/tree` allocates 30% less than in 0.7.0: lowercasing text with non-ASCII characters (the search text of every row, model ids and names, and other callers of `jsstring.ToLower`) made a second copy of each text, which raised `BenchmarkTreeRecompute` by 43%.
+- **Root cause:** An earlier change kept lone surrogates in ToLower by decoding into a heap slice and converting a byte slice with string(...), two allocations more per non-ASCII text than []rune(s) on the stack and a strings.Builder. The lowercase memo of a /tree search lowercases every row once, so BenchmarkTreeRecompute rose from 11328 to 16254 allocs/op (bisected to that commit on the 0.7.1 line). UpperRune likewise built a byte slice for string(...). Same results, the old allocation counts, and a guard test for each.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `87d4c01443` (2026-11-06)
+- **Tests:** `internal/jsstring/case_allocs_norace_test.go::TestToLowerOfLongNonASCIITextAllocatesTwice`, `internal/jsstring/case_allocs_norace_test.go::TestToLowerOfShortNonASCIITextAllocatesItsResultOnly`, `internal/jsstring/case_allocs_norace_test.go::TestUpperRuneOfAPlainCharacterAllocatesOnce`
+- **Release note:** Searching a long session in `/tree` allocates 30% less than in 0.7.0: lowercasing text with non-ASCII characters (the search text of every row, model ids and names, and other callers of `jsstring.ToLower`) made a second copy of each text, which raised `BenchmarkTreeRecompute` by 43%.
 
 ### BF-8894a13
 
@@ -15636,6 +15667,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `a09da26616` (2026-10-13)
 - **Tests:** `coding/session_settings_json_test.go::TestSessionSettingsJSONIsTheEncodingOfGetSettings`, `internal/codingagent/settings_extension_json_test.go::TestExtensionSettingsJSONEncodesOncePerSettingsGeneration`, `internal/codingagent/settings_extension_json_test.go::TestExtensionSettingsJSONKeepsPiMemberOrder`, `internal/codingagent/settings_shared_read_test.go::TestSettingsReadHonorsPiWriterLock`, `internal/codingagent/tool_render_shell_details_test.go::TestShellCardIgnoresACaseVariantTruncatedBy`, `internal/codingagent/tool_render_shell_details_test.go::TestShellDetailsFromReadsTheExactKeys`
 - **Release note:** A bash or PowerShell tool card reads the result's `truncation` details by their exact keys, as Pi does: a member such as `TRUNCATEDBY` no longer stands in for `truncatedBy`.
+
+### BF-a0eeb24
+
+**`/fork` of a session that is not file-backed builds the clone's entries from the source's decoded messages…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `/fork` of a session that is not file-backed builds the clone's entries from the source's decoded messages again instead of decoding every record a second time, which doubled the allocations of that clone.
+- **Root cause:** An earlier change made Clone stream its records and decode each one it keeps in memory with DecodeFileEntry, where the earlier code rebased the source's decoded message entries onto their new parent and decoded only the other records.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a0eeb24909` (2026-11-07)
+- **Tests:** `internal/codingagent/session_clone_memory_allocs_norace_test.go::TestCloneOfAnInMemorySessionReusesItsDecodedMessages`
+- **Release note:** `/fork` of a session that is not file-backed builds the clone's entries from the source's decoded messages again instead of decoding every record a second time, which doubled the allocations of that clone.
 
 ### BF-a110f68
 

@@ -19673,6 +19673,28 @@
       "tests": []
     },
     {
+      "id": "BF-7299966",
+      "title": "Every frame the renderer paints allocates two fewer objects: the cursor's hide and show copied their escape…",
+      "symptom": "Every frame the renderer paints allocates two fewer objects: the cursor's hide and show copied their escape sequence into a new slice, where they had copied it into a pooled buffer before dead-terminal handling routed them through `WriteToTerminal`.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Every frame the renderer paints allocates two fewer objects: the cursor's hide and show copied their escape sequence into a new slice, where they had copied it into a pooled buffer before dead-terminal handling routed them through `WriteToTerminal`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "72999669a8",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "tui/terminal_write_allocs_norace_test.go::TestWriteToTerminalOfAByteWriterDoesNotAllocate"
+      ]
+    },
+    {
       "id": "BF-72db80f",
       "title": "fix(durable): a streamed partial commits the text of its own events",
       "symptom": "fix(durable): a streamed partial commits the text of its own events",
@@ -23067,6 +23089,30 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-87d4c01",
+      "title": "Searching a long session in `/tree` allocates 30% less than in 0.7.0: lowercasing text with non-ASCII…",
+      "symptom": "Searching a long session in `/tree` allocates 30% less than in 0.7.0: lowercasing text with non-ASCII characters (the search text of every row, model ids and names, and other callers of `jsstring.ToLower`) made a second copy of each text, which raised `BenchmarkTreeRecompute` by 43%.",
+      "rootCause": "An earlier change kept lone surrogates in ToLower by decoding into a heap slice and converting a byte slice with string(...), two allocations more per non-ASCII text than []rune(s) on the stack and a strings.Builder. The lowercase memo of a /tree search lowercases every row once, so BenchmarkTreeRecompute rose from 11328 to 16254 allocs/op (bisected to that commit on the 0.7.1 line). UpperRune likewise built a byte slice for string(...). Same results, the old allocation counts, and a guard test for each.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Searching a long session in `/tree` allocates 30% less than in 0.7.0: lowercasing text with non-ASCII characters (the search text of every row, model ids and names, and other callers of `jsstring.ToLower`) made a second copy of each text, which raised `BenchmarkTreeRecompute` by 43%.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "87d4c01443",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "internal/jsstring/case_allocs_norace_test.go::TestToLowerOfLongNonASCIITextAllocatesTwice",
+        "internal/jsstring/case_allocs_norace_test.go::TestToLowerOfShortNonASCIITextAllocatesItsResultOnly",
+        "internal/jsstring/case_allocs_norace_test.go::TestUpperRuneOfAPlainCharacterAllocatesOnce"
+      ]
     },
     {
       "id": "BF-8894a13",
@@ -28674,6 +28720,28 @@
         "internal/codingagent/settings_shared_read_test.go::TestSettingsReadHonorsPiWriterLock",
         "internal/codingagent/tool_render_shell_details_test.go::TestShellCardIgnoresACaseVariantTruncatedBy",
         "internal/codingagent/tool_render_shell_details_test.go::TestShellDetailsFromReadsTheExactKeys"
+      ]
+    },
+    {
+      "id": "BF-a0eeb24",
+      "title": "`/fork` of a session that is not file-backed builds the clone's entries from the source's decoded messages…",
+      "symptom": "`/fork` of a session that is not file-backed builds the clone's entries from the source's decoded messages again instead of decoding every record a second time, which doubled the allocations of that clone.",
+      "rootCause": "An earlier change made Clone stream its records and decode each one it keeps in memory with DecodeFileEntry, where the earlier code rebased the source's decoded message entries onto their new parent and decoded only the other records.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`/fork` of a session that is not file-backed builds the clone's entries from the source's decoded messages again instead of decoding every record a second time, which doubled the allocations of that clone.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a0eeb24909",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/session_clone_memory_allocs_norace_test.go::TestCloneOfAnInMemorySessionReusesItsDecodedMessages"
       ]
     },
     {
