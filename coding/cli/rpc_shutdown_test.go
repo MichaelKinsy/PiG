@@ -530,8 +530,8 @@ func TestRPCInputEndWritesSessionShutdownDialog(t *testing.T) {
 }
 
 // rpc-mode.ts shutdown() (728-744): the first trigger unsubscribes stdout,
-// disposes, flushes stdout unless the signal is SIGTERM, and exits. pig
-// divergence (D234, Pi main ace560c30): after it started, a stdin end, a
+// disposes, flushes stdout unless the signal is SIGTERM, and exits. After it
+// started (Pi main ace560c30), a stdin end, a
 // shutdown request or a single signal does nothing and the dispose finishes; a
 // repeated signal exits at once with 128 plus its number.
 func TestRPCShutdownTriggers(t *testing.T) {

@@ -296,7 +296,8 @@ class AgentSessionRuntime:
         return {"cancelled": False}
 
     def dispose(self) -> None:
-        """``dispose()``: it emits session_shutdown with the reason ``"quit"`` to the current session's extensions, runs the before-invalidate callback and disposes the session."""
+        """``dispose()``: it settles the active response, emits session_shutdown with the reason ``"quit"`` to the current session's extensions, runs the before-invalidate callback and disposes the session."""
+        self._session.abort()
         self._session._emit_extension_event({"type": "session_shutdown", "reason": "quit"})
         if self._before_session_invalidate is not None:
             self._before_session_invalidate()

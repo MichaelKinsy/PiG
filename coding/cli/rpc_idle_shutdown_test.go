@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// Pi 1.5.0 shutdownHandler (rpc-mode.ts) only set a flag that a stdin command or agent_settled checked, so a ctx.shutdown() from a timer on an idle session waited for the next command (Pi #11599, fixed on Pi main by 1708b4788, D231). The process must shut down on its own.
+// Pi 1.5.0 shutdownHandler (rpc-mode.ts) only set a flag that a stdin command or agent_settled checked, so a ctx.shutdown() from a timer on an idle session waited for the next command (Pi #11599, fixed on Pi main by 1708b4788). The process must shut down on its own.
 //
 // The request must arrive while the session is idle with input attached, so the extension makes it only after the test saw the get_state answer (RPC_SHUTDOWN_IDLE_GATE). A timer armed at session_start races that answer: when startup after session_start takes longer than the timer, the request is made before input is attached, the notification is written ahead of the get_state response, and awaitReady discards it. A 300 ms startup tail stands in for a slow runner, in both modes.
 func TestRPCExtensionShutdownWhileIdleExitsWithoutAnotherCommand(t *testing.T) {

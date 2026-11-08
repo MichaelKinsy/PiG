@@ -20,8 +20,7 @@ import (
 // exits. Only SIGTERM skips the stdout flush, during which the aborted run's
 // in-process tail finishes.
 //
-// pig divergence (D234): follows Pi main ace560c30 ahead of the v1.5.0 pin. Once
-// shutdown has started, a later stdin end, shutdown request or single signal
+// Once shutdown has started, a later stdin end, shutdown request or single signal
 // does nothing, so the dispose finishes; a repeated signal exits at once with
 // 128+signum (rpc-mode.ts signalCount). Pi 1.5.0 removed its signal handlers when
 // shutdown() began, so the next signal killed the process mid-dispose, and a
@@ -88,7 +87,7 @@ func (s *rpcShutdown) drained() { s.flushAndExit(false, 0) }
 // Started returns a channel closed when a trigger has started shutdown.
 func (s *rpcShutdown) Started() <-chan struct{} { return s.startedCh }
 
-// inputEnd handles stdin end. After shutdown started it does nothing: the started dispose finishes and exits (D234). It reports false in that case, so the caller leaves the process to that shutdown's exit.
+// inputEnd handles stdin end. After shutdown started it does nothing: the started dispose finishes and exits. It reports false in that case, so the caller leaves the process to that shutdown's exit.
 func (s *rpcShutdown) inputEnd() bool {
 	if s.settle != nil && !s.settle() {
 		return true
@@ -100,14 +99,14 @@ func (s *rpcShutdown) inputEnd() bool {
 	return false
 }
 
-// requested handles an extension's ctx.shutdown() once the gate's check passes. After shutdown started it does nothing (D234).
+// requested handles an extension's ctx.shutdown() once the gate's check passes. After shutdown started it does nothing.
 func (s *rpcShutdown) requested() {
 	if s.begin() {
 		s.flushAndExit(true, 0)
 	}
 }
 
-// signal handles the first termination signal, as the handler rpc-mode.ts registers does: shutdown(128+signum, signal). It reports whether it started the shutdown: when one was already running, the signal does not interrupt it and the running shutdown's exit ends the process (D234).
+// signal handles the first termination signal, as the handler rpc-mode.ts registers does: shutdown(128+signum, signal). It reports whether it started the shutdown: when one was already running, the signal does not interrupt it and the running shutdown's exit ends the process.
 func (s *rpcShutdown) signal(sig syscall.Signal) bool {
 	tools.KillTrackedDetachedChildren()
 	if !s.claim() {
@@ -123,7 +122,7 @@ func (s *rpcShutdown) runSignal(sig syscall.Signal) {
 	s.flushAndExit(sig != syscall.SIGTERM, 128+int(sig))
 }
 
-// repeatedSignal handles a second or later termination signal: it exits at once with 128+signum, without waiting for the dispose or for stdout. Pi calls process.exit directly here (rpc-mode.ts signalCount > 1), so an exit that is already flushing a stuck stdout does not hold it back: the exiting guard is set, not consulted, and the exit skips the stdout wait (D234).
+// repeatedSignal handles a second or later termination signal: it exits at once with 128+signum, without waiting for the dispose or for stdout. Pi calls process.exit directly here (rpc-mode.ts signalCount > 1), so an exit that is already flushing a stuck stdout does not hold it back: the exiting guard is set, not consulted, and the exit skips the stdout wait.
 func (s *rpcShutdown) repeatedSignal(sig syscall.Signal) {
 	tools.KillTrackedDetachedChildren()
 	s.exiting.Store(true)
@@ -134,7 +133,7 @@ func (s *rpcShutdown) repeatedSignal(sig syscall.Signal) {
 	exit(128 + int(sig))
 }
 
-// finish disposes the runtime when nobody has, for a mode exit that had no trigger, or whose trigger claimed the shutdown and did not get to run it: a termination signal can claim it when it is recorded and find no hook to run it, because the mode is still starting or already tearing down (D234). It does not exit, and does not wait for a dispose that is running.
+// finish disposes the runtime when nobody has, for a mode exit that had no trigger, or whose trigger claimed the shutdown and did not get to run it: a termination signal can claim it when it is recorded and find no hook to run it, because the mode is still starting or already tearing down. It does not exit, and does not wait for a dispose that is running.
 func (s *rpcShutdown) finish() {
 	s.claim()
 	s.startDispose()
@@ -162,7 +161,7 @@ func (s *rpcShutdown) claim() bool {
 	return true
 }
 
-// runDispose is the shutdown a trigger that claimed it runs: the events already published reach stdout, then the runtime is disposed. It runs once. A trigger that loses the race to another caller, the mode's finish, waits for that dispose to end before it returns, because its exit would otherwise end the process under the running session_shutdown handlers (D234).
+// runDispose is the shutdown a trigger that claimed it runs: the events already published reach stdout, then the runtime is disposed. It runs once. A trigger that loses the race to another caller, the mode's finish, waits for that dispose to end before it returns, because its exit would otherwise end the process under the running session_shutdown handlers.
 func (s *rpcShutdown) runDispose() {
 	if !s.startDispose() {
 		<-s.disposed
@@ -233,7 +232,7 @@ func (w *repeatedTermination) Stop() {
 	})
 }
 
-// pig divergence (D234): rpcExit ends the process once. Several exits can be in flight: a shutdown's own (after its dispose) and a repeated signal's. Each stops writing stdout first; the one that reaches the commit first owns the end and runs the cleanup, the exit.log line and the process exit, once. A later normal exit never returns, because the owner ends the process; a later repeated signal returns and leaves the end to the owner, which is past its stdout wait and about to exit (Pi's process.exit runs once, synchronously). The mode's own end can own the end too (endedByMode): then the process ends with the mode's return, and a normal exit returns without running anything.
+// rpcExit ends the process once. Several exits can be in flight: a shutdown's own (after its dispose) and a repeated signal's. Each stops writing stdout first; the one that reaches the commit first owns the end and runs the cleanup, the exit.log line and the process exit, once. A later normal exit never returns, because the owner ends the process; a later repeated signal returns and leaves the end to the owner, which is past its stdout wait and about to exit (Pi's process.exit runs once, synchronously). The mode's own end can own the end too (endedByMode): then the process ends with the mode's return, and a normal exit returns without running anything.
 type rpcExit struct {
 	// closeStdout stops later records from being written.
 	closeStdout func()
