@@ -106272,8 +106272,23 @@
     },
     {
       "id": "pkg:chord/.#Host::property:address",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:1a1f01b575d4a9cb3c9a7c5d422fd232fe2364c1e58141c1a3c520e58fabd249"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:1a1f01b575d4a9cb3c9a7c5d422fd232fe2364c1e58141c1a3c520e58fabd249",
+      "rationale": "Derived by the interface gap detector: Host::property:address is Go chord/next/host/host_host.go#Host.Address (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/host/host_host.go#Host.Address"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/http/http.go#newComponent"
+      ],
+      "evidence": [
+        "reach:chord/nextnode/http/http.go#newComponent"
+      ]
     },
     {
       "id": "pkg:chord/.#Host::property:close",
@@ -108333,8 +108348,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_host_test.go#TestHostALoadWhoseSetupThrowsLeavesThatPluginOutAndReportsItTheOthersPublishTheHostAndItsLinksStayOpen",
-        "test:chord/next/host/host_host_test.go#TestHostLoadLeavesOutAndReportsInvalidAndDuplicatePluginNamesAndDoubleServesTheLaterRefusesASecondLoad",
-        "test:chord/next/host/host_host_test.go#TestHostPrincipalsAHostWithoutAnAddressServesNoRemoteType"
+        "test:chord/next/host/host_host_test.go#TestHostLoadLeavesOutAndReportsDuplicatePluginNamesAndDoubleServesTheLaterRefusesASecondLoad",
+        "test:chord/next/host/host_host_test.go#TestHostLoadThrowsForAnInvalidPluginNameBeforeItChangesAnythingTheHostLoadsAfterwardsDecisionD"
       ]
     },
     {
@@ -114852,9 +114867,9 @@
         "public-api:chord/nextnode/app/app.go#AppError"
       ],
       "evidence": [
-        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesBuildsTheDirtyPluginsAndRollsThemOutToTheServer",
-        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesOneAfterAnotherSoTheNewestBuildStaysDeployed",
-        "test:chord/nextnode/app/app_changes_test.go#TestAppInstallsAPluginFromGitIntoTheUsersRootApplyingChangesLoadsIt"
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientAnswersEightRequestsAtOnceRefusesMoreAndIgnoresSIGUSR1OpusE10E8",
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientDrawsItsPromptInItsOwnColoursAndIgnoresKeysTypedBeforeItAppearedOpusE4",
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientEndsOnCtrlCWhileItsPromptIsOpenWhateverTheSandboxAsksOpusE11"
       ]
     },
     {
@@ -114895,9 +114910,9 @@
         "public-api:chord/nextnode/app/app.go#AppKind"
       ],
       "evidence": [
-        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesBuildsTheDirtyPluginsAndRollsThemOutToTheServer",
-        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesOneAfterAnotherSoTheNewestBuildStaysDeployed",
-        "test:chord/nextnode/app/app_changes_test.go#TestAppInstallsAPluginFromGitIntoTheUsersRootApplyingChangesLoadsIt"
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientAnswersEightRequestsAtOnceRefusesMoreAndIgnoresSIGUSR1OpusE10E8",
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientDrawsItsPromptInItsOwnColoursAndIgnoresKeysTypedBeforeItAppearedOpusE4",
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientEndsOnCtrlCWhileItsPromptIsOpenWhateverTheSandboxAsksOpusE11"
       ]
     },
     {
@@ -115320,7 +115335,7 @@
       "evidence": [
         "test:chord/nextnode/app/owner_upstream_test.go#TestOwnerLinkServesAPageReadingTheFragmentSignsTheOwnerInOnceAndRefusesTheTokenASecondTime",
         "test:chord/nextnode/app/sessions_upstream_test.go#TestEphemeralSessionsLiveAtMostTheLimitPastItTheOldestEndsAnIssueCostsTheSameWhateverCameBefore",
-        "test:chord/nextnode/app/invite_upstream_test.go#TestInvitesAcceptTheOwnerTheAppChoseAndRefuseAnotherUser"
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientPairsWithTheServerTheCodeShownApprovedByTheOwnerThenTheClientRuns"
       ]
     },
     {
@@ -115345,9 +115360,9 @@
         "public-api:chord/nextnode/app/app.go#StartServer"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAppFailsToStartWhenASurfacesBaseBundleDoesNotBuildWithEverythingClosed",
         "test:chord/nextnode/app/app_test.go#TestAppFailsWhenAPluginOfTheAppsRootFailsWithEverythingClosed",
-        "test:chord/nextnode/app/app_test.go#TestAppNamesTheAddressListenedOnInTheOwnerLink",
-        "test:chord/nextnode/app/app_test.go#TestAppRefusesADataDirectoryTheKitMustNotTightenHomeRootAnotherUsersAlsoThroughALink"
+        "test:chord/nextnode/app/app_test.go#TestAppNamesTheAddressListenedOnInTheOwnerLink"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -115368,9 +115383,9 @@
         "public-api:chord/nextnode/app/app.go#StartServer"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAppFailsToStartWhenASurfacesBaseBundleDoesNotBuildWithEverythingClosed",
         "test:chord/nextnode/app/app_test.go#TestAppFailsWhenAPluginOfTheAppsRootFailsWithEverythingClosed",
-        "test:chord/nextnode/app/app_test.go#TestAppNamesTheAddressListenedOnInTheOwnerLink",
-        "test:chord/nextnode/app/app_test.go#TestAppRefusesADataDirectoryTheKitMustNotTightenHomeRootAnotherUsersAlsoThroughALink"
+        "test:chord/nextnode/app/app_test.go#TestAppNamesTheAddressListenedOnInTheOwnerLink"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -115669,7 +115684,8 @@
       ],
       "evidence": [
         "test:chord/context/chordctx_upstream_test.go#TestContextDerivesTelemetryIndependentlyFromValuesAndCancellation",
-        "test:chord/context/chordctx_upstream_test.go#TestContextIsolatesConcurrentTraceInBranchesAndPreservesCallbackResultsAndErrors"
+        "test:chord/context/chordctx_upstream_test.go#TestContextIsolatesConcurrentTraceInBranchesAndPreservesCallbackResultsAndErrors",
+        "test:chord/nextnode/http/http_spans_test.go#TestRequestSpansContinuesAW3CTraceparentOnlyFromARequestAContributedRelayVerified"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -115691,7 +115707,8 @@
       ],
       "evidence": [
         "test:chord/context/chordctx_upstream_test.go#TestContextDerivesTelemetryIndependentlyFromValuesAndCancellation",
-        "test:chord/context/chordctx_upstream_test.go#TestContextIsolatesConcurrentTraceInBranchesAndPreservesCallbackResultsAndErrors"
+        "test:chord/context/chordctx_upstream_test.go#TestContextIsolatesConcurrentTraceInBranchesAndPreservesCallbackResultsAndErrors",
+        "test:chord/nextnode/http/http_spans_test.go#TestRequestSpansContinuesAW3CTraceparentOnlyFromARequestAContributedRelayVerified"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -117767,8 +117784,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/http/file_test.go#TestFileResponseClosesItsHandleOnEveryPathOpensNoneWhenNothingIsWritten",
-        "test:chord/nextnode/http/http_test.go#TestAnswersAForbiddenEscapingARoute403Unreported",
-        "test:chord/nextnode/http/http_test.go#TestAnswersAnswersWithoutABody"
+        "test:chord/nextnode/http/http_spans_test.go#TestRequestSpansContinuesAW3CTraceparentOnlyFromARequestAContributedRelayVerified",
+        "test:chord/nextnode/http/http_spans_test.go#TestRequestSpansTakesARelayedTraceparentAndTracestateOnlyWithinTheirBoundsAndPrintableReviewL2"
       ]
     },
     {
@@ -118020,7 +118037,7 @@
         "call:chord/nextnode/http/http.go#HttpComponent.Close"
       ],
       "evidence": [
-        "test:chord/nextnode/http/http_test.go#TestCancellationACloseBeforeThePublicationLeavesNothingRunningTheWaitingRequestAnswers503",
+        "test:chord/nextnode/http/http_test.go#TestCancellationACloseBeforeLoadLeavesNothingRunningTheEarlyRequestAnswers503",
         "test:chord/nextnode/http/http_test.go#TestCancellationACloseWhileTheFirstRequestResolvesTheRegistriesStartsNoFollow",
         "test:chord/nextnode/http/http_test.go#TestCancellationACloseWhoseContextIsAbortedAlreadyDoesNotWait"
       ],
@@ -118043,7 +118060,7 @@
         "call:chord/nextnode/http/http.go#HttpComponent.Close"
       ],
       "evidence": [
-        "test:chord/nextnode/http/http_test.go#TestCancellationACloseBeforeThePublicationLeavesNothingRunningTheWaitingRequestAnswers503",
+        "test:chord/nextnode/http/http_test.go#TestCancellationACloseBeforeLoadLeavesNothingRunningTheEarlyRequestAnswers503",
         "test:chord/nextnode/http/http_test.go#TestCancellationACloseWhileTheFirstRequestResolvesTheRegistriesStartsNoFollow",
         "test:chord/nextnode/http/http_test.go#TestCancellationACloseWhoseContextIsAbortedAlreadyDoesNotWait"
       ],
@@ -118332,8 +118349,25 @@
     },
     {
       "id": "pkg:chord/http#HttpOptions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2259280f81f3f020d03093262d293d5a2963a4cb6748426e270fb7ae53d98293"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:2259280f81f3f020d03093262d293d5a2963a4cb6748426e270fb7ae53d98293",
+      "rationale": "Derived by the interface gap detector: HttpOptions is Go chord/nextnode/http/http.go#HttpOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/http/http.go#HttpOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/http/http.go#CreateHttp"
+      ],
+      "evidence": [
+        "test:chord/nextnode/app/invite_upstream_test.go#TestInvitesAcceptTheOwnerTheAppChoseAndRefuseAnotherUser",
+        "test:chord/nextnode/app/invite_upstream_test.go#TestInvitesSignTheInviteeInAsTheChosenPrincipalOnceOnlyTheOwnerInvites",
+        "test:chord/nextnode/app/owner_upstream_test.go#TestAUserOwnersTokenFileIsKeptAcrossStartsAlsoWithTheOwnersFieldsInAnotherOrder"
+      ]
     },
     {
       "id": "pkg:chord/http#HttpRelay",
@@ -118499,8 +118533,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/http/file_test.go#TestFileResponseClosesItsHandleOnEveryPathOpensNoneWhenNothingIsWritten",
-        "test:chord/nextnode/http/http_test.go#TestAnswersAForbiddenEscapingARoute403Unreported",
-        "test:chord/nextnode/http/http_test.go#TestAnswersAnswersWithoutABody"
+        "test:chord/nextnode/http/http_spans_test.go#TestRequestSpansContinuesAW3CTraceparentOnlyFromARequestAContributedRelayVerified",
+        "test:chord/nextnode/http/http_spans_test.go#TestRequestSpansTakesARelayedTraceparentAndTracestateOnlyWithinTheirBoundsAndPrintableReviewL2"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -118522,8 +118556,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/http/file_test.go#TestFileResponseClosesItsHandleOnEveryPathOpensNoneWhenNothingIsWritten",
-        "test:chord/nextnode/http/http_test.go#TestAnswersAForbiddenEscapingARoute403Unreported",
-        "test:chord/nextnode/http/http_test.go#TestAnswersAnswersWithoutABody"
+        "test:chord/nextnode/http/http_spans_test.go#TestRequestSpansContinuesAW3CTraceparentOnlyFromARequestAContributedRelayVerified",
+        "test:chord/nextnode/http/http_spans_test.go#TestRequestSpansTakesARelayedTraceparentAndTracestateOnlyWithinTheirBoundsAndPrintableReviewL2"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -119911,9 +119945,9 @@
         "call:chord/nextnode/plugins/plugins_plugins.go#Plugins.Build"
       ],
       "evidence": [
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
         "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesOneAfterAnotherSoTheNewestBuildStaysDeployed",
-        "test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestPluginsBuildsShareOneEvaluatorProcessAndCloseEndsIt",
-        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample35PluginsLoadEditMarkBuildRollOut"
+        "test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestPluginsBuildsShareOneEvaluatorProcessAndCloseEndsIt"
       ]
     },
     {
@@ -119933,9 +119967,9 @@
         "call:chord/nextnode/plugins/plugins_build.go#BuildFacet"
       ],
       "evidence": [
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
         "test:chord/nextnode/plugins/plugins_build_test.go#TestBuildMakesTheSameScriptsAsPisBuildFacetForTheFixtures",
-        "test:chord/nextnode/plugins/plugins_build_test.go#TestEsbuildBuildAComputedImportRunsThroughRequire",
-        "test:chord/nextnode/plugins/plugins_build_test.go#TestEsbuildBuildAnAbortedContextIsItsCause"
+        "test:chord/nextnode/plugins/plugins_build_test.go#TestEsbuildBuildAComputedImportRunsThroughRequire"
       ]
     },
     {
@@ -120503,9 +120537,9 @@
         "call:chord/nextnode/plugins/plugins_plugins.go#Plugins.Build"
       ],
       "evidence": [
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
         "test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestPluginsBuildsShareOneEvaluatorProcessAndCloseEndsIt",
-        "test:chord/nextnode/plugins/plugins_endtoend_test.go#TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThenWorkerAndKeepsABrokenEditOldOnBoth",
-        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample35PluginsLoadEditMarkBuildRollOut"
+        "test:chord/nextnode/plugins/plugins_endtoend_test.go#TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThenWorkerAndKeepsABrokenEditOldOnBoth"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -120526,9 +120560,9 @@
         "call:chord/nextnode/plugins/plugins_plugins.go#Plugins.Build"
       ],
       "evidence": [
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
         "test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestPluginsBuildsShareOneEvaluatorProcessAndCloseEndsIt",
-        "test:chord/nextnode/plugins/plugins_endtoend_test.go#TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThenWorkerAndKeepsABrokenEditOldOnBoth",
-        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample35PluginsLoadEditMarkBuildRollOut"
+        "test:chord/nextnode/plugins/plugins_endtoend_test.go#TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThenWorkerAndKeepsABrokenEditOldOnBoth"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -120633,9 +120667,9 @@
         "call:chord/nextnode/plugins/plugins_plugins.go#Plugins.Discovery"
       ],
       "evidence": [
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
         "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample35PluginsLoadEditMarkBuildRollOut",
-        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample38WatchAndRollout",
-        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample51SingleFilePlugin"
+        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample38WatchAndRollout"
       ]
     },
     {
@@ -120855,9 +120889,9 @@
         "call:chord/nextnode/plugins/plugins_plugins.go#Plugins.State"
       ],
       "evidence": [
-        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesBuildsTheDirtyPluginsAndRollsThemOutToTheServer",
-        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesOneAfterAnotherSoTheNewestBuildStaysDeployed",
-        "test:chord/nextnode/app/app_changes_test.go#TestAppMarksBaseForAChangeOfBasesFilesAndDirectories"
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientRunsTheAppsTerminalCodeWithThePluginsConfirmsItsActionsAppliesAnEditInPlaceExits",
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
+        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesBuildsTheDirtyPluginsAndRollsThemOutToTheServer"
       ]
     },
     {
@@ -120998,9 +121032,9 @@
         "call:chord/nextnode/plugins/plugins_plugins.go#Plugins.Marks"
       ],
       "evidence": [
-        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesBuildsTheDirtyPluginsAndRollsThemOutToTheServer",
-        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesOneAfterAnotherSoTheNewestBuildStaysDeployed",
-        "test:chord/nextnode/app/app_changes_test.go#TestAppInstallsAPluginFromGitIntoTheUsersRootApplyingChangesLoadsIt"
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientRunsTheAppsTerminalCodeWithThePluginsConfirmsItsActionsAppliesAnEditInPlaceExits",
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
+        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesBuildsTheDirtyPluginsAndRollsThemOutToTheServer"
       ]
     },
     {
@@ -121025,9 +121059,9 @@
         "call:chord/nextnode/plugins/plugins_plugins.go#Plugins.Rollout"
       ],
       "evidence": [
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientRunsTheAppsTerminalCodeWithThePluginsConfirmsItsActionsAppliesAnEditInPlaceExits",
         "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesBuildsTheDirtyPluginsAndRollsThemOutToTheServer",
-        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesOneAfterAnotherSoTheNewestBuildStaysDeployed",
-        "test:chord/nextnode/plugins/plugins_endtoend_test.go#TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThenWorkerAndKeepsABrokenEditOldOnBoth"
+        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesOneAfterAnotherSoTheNewestBuildStaysDeployed"
       ]
     },
     {
@@ -121064,7 +121098,7 @@
       "evidence": [
         "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginTestsASingleFilePluginAndAPluginInACheckoutOfSeveralOpusL4",
         "test:chord/nextnode/plugins/plugins_examples_testplugin_test.go#TestExample52TestPlugin",
-        "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginCollectsUntilNoNewRegistryAppearsAnObjectLiveAfterTheFirstCollectionContributesTooSol"
+        "test:chord/nextnode/plugins/plugins_examples_tutorial_test.go#TestTutorialListsPluginOnAListsWorker"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -121087,7 +121121,7 @@
       "evidence": [
         "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginTestsASingleFilePluginAndAPluginInACheckoutOfSeveralOpusL4",
         "test:chord/nextnode/plugins/plugins_examples_testplugin_test.go#TestExample52TestPlugin",
-        "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginCollectsUntilNoNewRegistryAppearsAnObjectLiveAfterTheFirstCollectionContributesTooSol"
+        "test:chord/nextnode/plugins/plugins_examples_tutorial_test.go#TestTutorialListsPluginOnAListsWorker"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -121159,6 +121193,7 @@
       ],
       "evidence": [
         "test:chord/nextnode/plugins/plugins_examples_testplugin_test.go#TestExample52TestPlugin",
+        "test:chord/nextnode/plugins/plugins_examples_tutorial_test.go#TestTutorialListsPluginOnAListsWorker",
         "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginLoadsThePluginBuiltAgainstTheAPIBesideAStubCollectsItsContributionsAndListsWhatItWaitsFor"
       ]
     },
@@ -121180,6 +121215,7 @@
       ],
       "evidence": [
         "test:chord/nextnode/plugins/plugins_examples_testplugin_test.go#TestExample52TestPlugin",
+        "test:chord/nextnode/plugins/plugins_examples_tutorial_test.go#TestTutorialListsPluginOnAListsWorker",
         "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginLoadsThePluginBuiltAgainstTheAPIBesideAStubCollectsItsContributionsAndListsWhatItWaitsFor"
       ]
     },
@@ -274681,7 +274717,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/telemetryingest/recorder.go#Recorder.start"
+        "call:chord/next/telemetry/telemetry.go#NewOpenSpan"
       ],
       "evidence": [
         "test:telemetry/memory_pi_oracle_test.go#TestInMemoryTelemetryMatchesPiOnRandomPrograms",
@@ -275273,7 +275309,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/telemetry.go#aiAttribute"
+        "call:telemetry/schema_json.go#TelemetryStartAttributeDefinition.MarshalJSON"
       ],
       "evidence": [
         "test:telemetry/telemetry_upstream_test.go#TestTelemetryEventDefinitionAttributesSurviveTheSchemaRoundTrip",
@@ -275380,7 +275416,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/telemetry.go#aiAttribute"
+        "call:telemetry/schema_json.go#TelemetryAttributeDefinition.wire"
       ],
       "evidence": [
         "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream",
@@ -275602,7 +275638,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/telemetry.go#aiAttribute"
+        "call:telemetry/schema_json.go#TelemetryAttributeDefinition.MarshalJSON"
       ],
       "evidence": [
         "test:ai/telemetry_upstream_test.go#TestAITelemetryDefaultsToNoopUpstream",
@@ -275754,7 +275790,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/telemetry.go#aiAttribute"
+        "call:telemetry/schema_json.go#TelemetryAttributeDefinition.MarshalJSON"
       ],
       "evidence": [
         "test:ai/telemetry_upstream_test.go#TestAITelemetryDefaultsToNoopUpstream",
@@ -276029,7 +276065,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/plugins/plugins_node_telemetry.go#nodeTelemetry.contextOf"
+        "call:chord/next/telemetry/telemetry.go#ParentOf"
       ],
       "evidence": [
         "test:telemetry/propagation_upstream_test.go#TestPropagationUpstream",
@@ -276050,7 +276086,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/plugins/plugins_node_telemetry.go#nodeTelemetry.contextOf"
+        "call:chord/next/telemetry/telemetry.go#ParentOf"
       ],
       "evidence": [
         "test:telemetry/propagation_upstream_test.go#TestPropagationUpstream",
@@ -276693,7 +276729,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/telemetry.go#aiAttribute"
+        "call:telemetry/schema_json.go#TelemetryAttributeDefinition.MarshalJSON"
       ],
       "evidence": [
         "test:ai/telemetry_upstream_test.go#TestAITelemetryDefaultsToNoopUpstream",

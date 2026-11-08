@@ -60,8 +60,8 @@ pkg:chord/.#Ctx::property:toString	chord	member-missing	chord/next/host/host_ctx
 pkg:chord/.#Ctx::property:toString::call:0	chord	member-missing	chord/next/host/host_ctx.go#Ctx
 pkg:chord/.#Ctx::property:trace	chord	member-missing	chord/next/host/host_ctx.go#Ctx
 pkg:chord/.#Ctx::property:trace::call:0	chord	member-missing	chord/next/host/host_ctx.go#Ctx
-pkg:chord/.#Ctx::property:value	chord	child-gap	../.local/share/mise/installs/go/1.27.3/src/context/context.go#Context.Value
-pkg:chord/.#Ctx::property:value::call:0	chord	undecidable	../.local/share/mise/installs/go/1.27.3/src/context/context.go#Context.Value
+pkg:chord/.#Ctx::property:value	chord	child-gap	../../../usr/local/go/src/context/context.go#Context.Value
+pkg:chord/.#Ctx::property:value::call:0	chord	undecidable	../../../usr/local/go/src/context/context.go#Context.Value
 pkg:chord/.#DataKeys	chord	no-go-symbol	
 pkg:chord/.#Defaulted	chord	no-go-symbol	
 pkg:chord/.#EncodedRow	chord	type-mismatch	chord/next/store/rows.go#EncodedRow
@@ -86,7 +86,6 @@ pkg:chord/.#Factory::call:0	chord	child-gap
 pkg:chord/.#Held	chord	undecidable	chord/next/host/host_reference.go#Held
 pkg:chord/.#Host	chord	child-gap	chord/next/host/host_host.go#Host
 pkg:chord/.#Host::property:activity	chord	undecidable	chord/next/host/host_host.go#Host.Activity
-pkg:chord/.#Host::property:address	chord	member-missing	chord/next/host/host_host.go#Host
 pkg:chord/.#Host::property:get	chord	child-gap	chord/next/host/host_host.go#Host.Get
 pkg:chord/.#Host::property:get::call:0	chord	undecidable	chord/next/host/host_host.go#Host.Get
 pkg:chord/.#Host::property:hold	chord	not-exercised	chord/next/host/host_host.go#Host.Hold
@@ -506,8 +505,8 @@ pkg:chord/app#App::property:ownerLink	chord	not-exercised	chord/nextnode/app/app
 pkg:chord/app#App::property:ownerLink::call:0	chord	not-exercised	chord/nextnode/app/app.go#App.OwnerLink
 pkg:chord/app#App::property:ownerTokenFile	chord	not-exercised	chord/nextnode/app/app.go#App.OwnerTokenFile
 pkg:chord/app#App::property:plugins	chord	type-mismatch	chord/nextnode/app/app.go#App.Plugins
-pkg:chord/app#App::property:tui	chord	member-missing	chord/nextnode/app/app.go#App
-pkg:chord/app#App::property:web	chord	member-missing	chord/nextnode/app/app.go#App
+pkg:chord/app#App::property:tui	chord	not-exercised	chord/nextnode/app/app.go#App.Tui
+pkg:chord/app#App::property:web	chord	not-exercised	chord/nextnode/app/app.go#App.Web
 pkg:chord/app#App::property:workers	chord	not-exercised	chord/nextnode/app/app.go#App.Workers
 pkg:chord/app#AppApi	chord	undecidable	chord/nextnode/plugins/plugins_build.go#AppApi
 pkg:chord/app#AppOptions	chord	type-mismatch	chord/nextnode/app/app.go#AppOptions
@@ -549,7 +548,6 @@ pkg:chord/http#HttpComponent	chord	child-gap	chord/nextnode/http/http.go#HttpCom
 pkg:chord/http#HttpComponent::property:upgrade	chord	child-gap	chord/nextnode/http/http.go#HttpComponent.Upgrade
 pkg:chord/http#HttpComponent::property:upgrade::call:0	chord	signature-mismatch	chord/nextnode/http/http.go#HttpComponent.Upgrade
 pkg:chord/http#HttpContribution	chord	type-mismatch	chord/nextnode/http/router.go#HttpContribution
-pkg:chord/http#HttpOptions	chord	type-mismatch	chord/nextnode/http/http.go#HttpOptions
 pkg:chord/http#HttpRequest	chord	child-gap	chord/nextnode/http/request.go#HttpRequest
 pkg:chord/http#HttpRequest::property:body	chord	not-exercised	chord/nextnode/http/request.go#HttpRequest.Body
 pkg:chord/http#HttpRequest::property:body::call:0	chord	undecidable	chord/nextnode/http/request.go#HttpRequest.Body
@@ -646,7 +644,7 @@ pkg:chord/surfaces#PageAssets	chord	no-go-symbol
 pkg:chord/surfaces#ServedFile	chord	no-go-symbol	
 pkg:chord/surfaces#TUI_PREFIX	chord	no-go-symbol	
 pkg:chord/surfaces#TuiStart	chord	no-go-symbol	
-pkg:chord/surfaces#TuiSurface	chord	no-go-symbol	
+pkg:chord/surfaces#TuiSurface	chord	type-mismatch	chord/nextnode/app/app_surfaces.go#surface
 pkg:chord/surfaces#TuiSurfaceOptions	chord	no-go-symbol	
 pkg:chord/surfaces#WEB_PREFIX	chord	no-go-symbol	
 pkg:chord/surfaces#WebSurface	chord	no-go-symbol	
