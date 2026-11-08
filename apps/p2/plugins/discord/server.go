@@ -109,12 +109,11 @@ func objectFrom(value any) (*delta.JsonObject, error) {
 	return out, roundTrip(value, &out)
 }
 
-// storeState reads the persisted relay state. The read is a section of the host's loop: the document is sealed in one when the
-// object ends, and the relay's routines read it from goroutines of their own (Relay.Typing, the pending check).
+// storeState reads the persisted relay state. Singleton.Value reads in a section of the document's owner (the document is sealed
+// in one when the object ends, and the relay's routines read it from goroutines of their own: Relay.Typing, the pending check),
+// so the read needs no section of its own here.
 func storeState(doc *documents.Singleton) contract.State {
-	var value *delta.JsonObject
-	var err error
-	doc.Slot.Owner().Do(func() { value, err = doc.Value() })
+	value, err := doc.Value()
 	out := contract.State{Bindings: map[string]*contract.Binding{}, Pending: map[string]*contract.Pending{}}
 	if err != nil {
 		return out
