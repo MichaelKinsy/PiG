@@ -190,6 +190,7 @@ func Start(t testing.TB) *Browser {
 	}
 	socket.SetReadLimit(64 << 20)
 	b.socket = socket
+	//portlint:allow golifetime read ends when the socket closes (Close closes it and waits on done)
 	go b.read()
 	for _, method := range []string{"Page.enable", "Runtime.enable"} {
 		if _, err := b.Call(ctx, method, nil); err != nil {

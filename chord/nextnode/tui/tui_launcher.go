@@ -242,6 +242,7 @@ func (l *Launcher) sync(fn func()) {
 
 // loop runs the events one at a time.
 func (l *Launcher) loop() {
+	//portlint:allow doubleclose loop runs once per launcher (started once by start, which Launcher's constructor makes the only caller), and nothing else closes loopDone
 	defer close(l.loopDone)
 	for {
 		select {
@@ -272,6 +273,7 @@ func (l *Launcher) rows() int {
 
 // start downloads the base bundle and the plugins, starts the sandbox and takes the terminal.
 func (l *Launcher) start(ctx context.Context) error {
+	//portlint:allow golifetime the loop ends with the launcher: finish ends it (loopDone) and every post and sync gives up once it is closed
 	go l.loop()
 	if err := l.startSandbox(ctx); err != nil {
 		l.cancel()
@@ -280,6 +282,7 @@ func (l *Launcher) start(ctx context.Context) error {
 	if l.term.IsTTY() {
 		_ = l.term.SetRaw(true)
 	}
+	//portlint:allow golifetime ends when the terminal's input closes (a stopped launcher closes it) and its posts are dropped once the loop ended
 	go l.readInput()
 	// On the loop: a finish (the sandbox exited meanwhile) reads both, and must not see them half set, nor miss them.
 	l.sync(func() {

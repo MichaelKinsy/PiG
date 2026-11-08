@@ -95,9 +95,12 @@ func pair(ctx context.Context, credentials TerminalCredentials, base *url.URL, s
 		return "", errors.New("terminal: the server's pairing answer is malformed")
 	}
 	say(fmt.Sprintf("Pairing code %s: approve it at %s (signed in as the owner).", code, base.JoinPath("/_chord/pair/"+code)))
+	wait := time.NewTimer(pollInterval)
+	defer wait.Stop()
 	for {
 		select {
-		case <-time.After(pollInterval):
+		case <-wait.C:
+			wait.Reset(pollInterval)
 		case <-ctx.Done():
 			return "", context.Cause(ctx)
 		}
