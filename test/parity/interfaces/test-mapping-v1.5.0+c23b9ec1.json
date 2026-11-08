@@ -3939,8 +3939,12 @@
     },
     {
       "path": "packages/coding-agent/test/agent-session-queued-images.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:9b32a6ef0b1442d8cc525fe67ba65a542b0cd335891b0695f177ee7f1bc96f1d"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:9b32a6ef0b1442d8cc525fe67ba65a542b0cd335891b0695f177ee7f1bc96f1d",
+      "evidence": [
+        "coding/session_queue_images_test.go#TestSessionResizesImagesInQueuedSteeringAndFollowUpMessages"
+      ],
+      "rationale": "The one upstream case (steering, follow-up and a streaming prompt carry a resized image, with the resize hint, to the session file and every request) runs through Session.Steer, FollowUp and Prompt on the live Session; D249 records the Pi 1.5.0 difference."
     },
     {
       "path": "packages/coding-agent/test/agent-session-retry.test.ts",
@@ -4035,13 +4039,21 @@
     },
     {
       "path": "packages/coding-agent/test/auth-login.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:839cebc1dce9ade4a62ea1dd6ac4bf3539b81affde79e16da7b9e87bc688f8bc"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:839cebc1dce9ade4a62ea1dd6ac4bf3539b81affde79e16da7b9e87bc688f8bc",
+      "evidence": [
+        "coding/cli/auth_login_test.go"
+      ],
+      "rationale": "All 21 upstream cases (the radius-mcp/radius_mcp it.each is two subtests) run in coding/cli/auth_login_test.go against RunAuthLogin; expected texts name `pig` where Pi's name `pi` (D2)."
     },
     {
       "path": "packages/coding-agent/test/auth-logout.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:9dbc5f7ea18231b558c246edac85e31132f545f422f96e47d09f73247f409d18"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:9dbc5f7ea18231b558c246edac85e31132f545f422f96e47d09f73247f409d18",
+      "evidence": [
+        "coding/cli/auth_logout_test.go"
+      ],
+      "rationale": "All 8 upstream cases run in coding/cli/auth_logout_test.go against RunAuthLogout."
     },
     {
       "path": "packages/coding-agent/test/auth-storage.test.ts",
@@ -4050,8 +4062,12 @@
     },
     {
       "path": "packages/coding-agent/test/auth-terminal.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:a13be777ecf771f5f1f7efa175d2ac8edf9ce28ed04d2f680ce5b96b40e2f189"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:a13be777ecf771f5f1f7efa175d2ac8edf9ce28ed04d2f680ce5b96b40e2f189",
+      "evidence": [
+        "coding/cli/auth_terminal_test.go"
+      ],
+      "rationale": "All 4 upstream cases run in coding/cli/auth_terminal_test.go against processLoginTerminal.Question."
     },
     {
       "path": "packages/coding-agent/test/auth-url-copy.test.ts",
@@ -4085,8 +4101,14 @@
     },
     {
       "path": "packages/coding-agent/test/bash-executor-truncation.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:3af2e5be5a16db20e6d08cc692b2e979c883a43ab932a29f482f07e6e17876a3"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:3af2e5be5a16db20e6d08cc692b2e979c883a43ab932a29f482f07e6e17876a3",
+      "evidence": [
+        "internal/codingagent/tools/bash_executor_truncation_test.go#TestExecuteBashWithOperationsReportsDiscardedChunks10164",
+        "internal/codingagent/compaction/bash_discarded_output_test.go#TestBashExecutionToTextNamesTheLogOfDiscardedOutput",
+        "coding/bash_execution_llm_text_upstream_test.go#TestRecordedBashResultReachesModelContextUpstream"
+      ],
+      "rationale": "Both upstream cases run: the discarded-chunk case (completed and cancelled) and the short-output case in internal/codingagent/tools; the bashExecutionToText assertion runs through the compaction converter and, end to end, through Session.RecordBashResult and agent.ConvertToLLM."
     },
     {
       "path": "packages/coding-agent/test/block-images.test.ts",
@@ -4412,8 +4434,12 @@
     },
     {
       "path": "packages/coding-agent/test/config-selector-keybindings.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:392a976c0dd227977187e3881fcd5312d862c6b14cfb4b66516490a9ab41ccc6"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:392a976c0dd227977187e3881fcd5312d862c6b14cfb4b66516490a9ab41ccc6",
+      "evidence": [
+        "coding/cli/config_theme_test.go#TestConfigSelectorUIUsesTheUsersKeybindings"
+      ],
+      "rationale": "The one upstream case runs in coding/cli/config_theme_test.go against newConfigSelectorUI."
     },
     {
       "path": "packages/coding-agent/test/config-value-migration.test.ts",
@@ -4690,8 +4716,13 @@
     },
     {
       "path": "packages/coding-agent/test/extension-selector.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:6fdbcb4ada3d8e6fc2bd888aca6f6b1c20366ab89bd973802eccc854c652ec09"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:6fdbcb4ada3d8e6fc2bd888aca6f6b1c20366ab89bd973802eccc854c652ec09",
+      "evidence": [
+        "tui/extension_selector_test.go#TestExtensionSelectorWindowsLongOptionListsAroundTheSelection",
+        "tui/extension_selector_test.go#TestExtensionSelectorShortAndEmptyListsHaveNoScrollIndicator"
+      ],
+      "rationale": "Both upstream cases run in tui/extension_selector_test.go; D257 records the windowing Pi 1.5.0 lacks."
     },
     {
       "path": "packages/coding-agent/test/extensions-discovery.test.ts",
@@ -5011,8 +5042,14 @@
     },
     {
       "path": "packages/coding-agent/test/interactive-mode-paste.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:66253101f082c38c7337ab04a9640c1585afd975ae0ee9114befc16cefe9a5e2"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:66253101f082c38c7337ab04a9640c1585afd975ae0ee9114befc16cefe9a5e2",
+      "evidence": [
+        "internal/codingagent/ext_ui_custom_test.go#TestExtUIContextCustomKeepsCollapsedPasteContent",
+        "internal/codingagent/ext_ui_custom_test.go#TestRestoreQueuedMessagesKeepsCollapsedPasteContent",
+        "internal/codingagent/ext_ui_custom_test.go#TestSetRemoteEditorKeepsCollapsedPasteContent"
+      ],
+      "rationale": "All 4 upstream cases run in internal/codingagent/ext_ui_custom_test.go (default editor to a replacement and back, custom UI after it closes and after it fails to open, queued messages restored above the draft); D251 records the Pi 1.5.0 difference."
     },
     {
       "path": "packages/coding-agent/test/interactive-mode-startup-input.test.ts",
@@ -5103,8 +5140,14 @@
     },
     {
       "path": "packages/coding-agent/test/llama-ui.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:bb1fa7ca95ef5156e61dddaf1c59a19f9a4731ec6ff5fa6bb2b4eb68e73c8c40"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:bb1fa7ca95ef5156e61dddaf1c59a19f9a4731ec6ff5fa6bb2b4eb68e73c8c40",
+      "evidence": [
+        "internal/codingagent/llama/ui_selection_test.go#TestHuggingFaceSearchKeepsTheBrowsedModelSelectedWhenTheNextSearchLands",
+        "internal/codingagent/llama/ui_selection_test.go#TestHuggingFaceSearchSelectsTheBestMatchWhenTheUserDidNotBrowse",
+        "internal/codingagent/llama/ui_selection_test.go#TestHuggingFaceSearchSelectsTheBestMatchWhenTheBrowsedModelIsNotInTheNewResults"
+      ],
+      "rationale": "All 3 upstream cases run in internal/codingagent/llama/ui_selection_test.go; D312 records the Pi 1.5.0 difference."
     },
     {
       "path": "packages/coding-agent/test/login-dialog-device-code.test.ts",
@@ -5506,8 +5549,12 @@
     },
     {
       "path": "packages/coding-agent/test/provider-matching.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:7049fe7a5d06daa9238c1d06933b43f5397a8cd11e0e4b695d63d44541448cda"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:7049fe7a5d06daa9238c1d06933b43f5397a8cd11e0e4b695d63d44541448cda",
+      "evidence": [
+        "internal/codingagent/provider_matching_test.go#TestProviderReferenceMatching"
+      ],
+      "rationale": "All 4 upstream cases run as subtests of TestProviderReferenceMatching."
     },
     {
       "path": "packages/coding-agent/test/radius.test.ts",
@@ -6412,13 +6459,22 @@
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/11613-bash-timeout-after-shell-exit.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:6a13a0eac8ad661c76d9d1bf1af4ba8e6b20f5249276ac836596e50ced1c2f11"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:6a13a0eac8ad661c76d9d1bf1af4ba8e6b20f5249276ac836596e50ced1c2f11",
+      "evidence": [
+        "internal/codingagent/tools/bash_timeout_shell_exit_unix_test.go#TestBashTimeoutAfterShellExit11613"
+      ],
+      "rationale": "Both upstream cases run in internal/codingagent/tools/bash_timeout_shell_exit_unix_test.go against BashTool."
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/11692-dispose-waits-for-oauth-refresh.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:b1ffb8edc385e9a051380f754b20294591ee45ea2e30cf6b7a090fe1e1884751"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:b1ffb8edc385e9a051380f754b20294591ee45ea2e30cf6b7a090fe1e1884751",
+      "evidence": [
+        "coding/runtime_close_credential_writes_test.go#TestRuntimeCloseWaitsUntilTheRotatedTokenOfAStartedRefreshIsSaved",
+        "coding/runtime_close_credential_writes_test.go#TestRuntimeCloseWaitsForTheCatalogRefreshOfAnExpiredCredentialAfterItsContextEnded"
+      ],
+      "rationale": "The one upstream case runs in coding/runtime_close_credential_writes_test.go against Runtime.Close, both for a started credential read and for the RPC startup catalog refresh."
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/1717-2113-agent-session-event-settlement.test.ts",
@@ -7195,8 +7251,12 @@
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/9124-runtime-dispose-tool-settlement.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:a8cdfe9a091760bca6b6ea933a451056739937176180886c68c50592421a9352"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:a8cdfe9a091760bca6b6ea933a451056739937176180886c68c50592421a9352",
+      "evidence": [
+        "coding/runtime_dispose_settlement_test.go#TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown"
+      ],
+      "rationale": "The one upstream case runs in coding/runtime_dispose_settlement_test.go against Runtime.Close, asserting the persisted entries as Pi does."
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/9154-prompt-during-tree-navigation.test.ts",
@@ -7219,8 +7279,13 @@
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/9221-reload-during-tool.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:5d0e505bb397a30d4b269d9a6842ab2b8348d8034634c7ff3a12bff3c990532f"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:5d0e505bb397a30d4b269d9a6842ab2b8348d8034634c7ff3a12bff3c990532f",
+      "evidence": [
+        "coding/session_reload_busy_test.go#TestSessionReloadRejectedWhileRunningOrCompacting",
+        "coding/cli/headless_reload_test.go#TestRefusedReloadDuringARunningToolKeepsTheExtensionHostLive"
+      ],
+      "rationale": "All upstream cases run: direct reload during a tool, compaction and tree navigation, and idle reload in coding/session_reload_busy_test.go; the extension-command reload during a tool in coding/cli/headless_reload_test.go."
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/9340-9777-auto-compaction-cancellation.test.ts",
@@ -7367,8 +7432,12 @@
     },
     {
       "path": "packages/coding-agent/test/terminal-question.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:8b3415d41fdb22ff48724d9dd5adec01abd8757d71415a5d447a78ea5239614a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:8b3415d41fdb22ff48724d9dd5adec01abd8757d71415a5d447a78ea5239614a",
+      "evidence": [
+        "internal/terminalquestion/terminalquestion_test.go"
+      ],
+      "rationale": "All 5 upstream cases run in internal/terminalquestion/terminalquestion_test.go; the Node stream listener and raw-mode cleanup assertions do not exist in the Go Reader."
     },
     {
       "path": "packages/coding-agent/test/test-harness.test.ts",

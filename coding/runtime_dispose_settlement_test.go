@@ -71,6 +71,43 @@ func TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown(t *testin
 	if got := rolesOf(); !slices.Equal(got, want) {
 		t.Fatalf("messages after Close = %v, want %v", got, want)
 	}
+	// Pi reads the persisted entries: the settled turn is in the session file, and its tool result is the error text of the aborted tool.
+	var persistedRoles []string
+	var toolResult struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+		IsError bool `json:"isError"`
+	}
+	for _, entry := range h.session.SessionManager().GetEntries() {
+		if entry.Base().Type != "message" {
+			continue
+		}
+		var persisted struct {
+			Message json.RawMessage `json:"message"`
+		}
+		var header struct {
+			Role string `json:"role"`
+		}
+		if err := json.Unmarshal(entry.Raw(), &persisted); err != nil || json.Unmarshal(persisted.Message, &header) != nil {
+			t.Fatalf("message entry %s: %v", entry.Raw(), err)
+		}
+		if header.Role == "system" {
+			continue
+		}
+		persistedRoles = append(persistedRoles, header.Role)
+		if header.Role == "toolResult" {
+			if err := json.Unmarshal(persisted.Message, &toolResult); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if !slices.Equal(persistedRoles, want) {
+		t.Fatalf("persisted messages after Close = %v, want %v", persistedRoles, want)
+	}
+	if len(toolResult.Content) != 1 || toolResult.Content[0].Text != "Operation aborted" || !toolResult.IsError {
+		t.Fatalf("persisted tool result = %+v, want the error text %q with isError", toolResult, "Operation aborted")
+	}
 	mu.Lock()
 	defer mu.Unlock()
 	if !slices.Equal(rolesAtShutdown, want) {
