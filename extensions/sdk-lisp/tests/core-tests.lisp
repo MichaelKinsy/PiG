@@ -276,3 +276,140 @@
     (check-equal "D:\\d\\x/y" (pig::rt-join "D:\\d" "x/y"))
     (check-equal "D:\\d\\x" (pig::rt-join "D:\\d\\" "x"))
     (check-equal "E:\\abs" (pig::rt-join "D:\\d" "E:\\abs"))))
+
+;;; ---------------------------------------------------------------- replicated model info and session id
+
+(defun replica-push (host state)
+  (hsend host "type" "notify" "notify" (pig:obj "method" "state_update" "args" (pig:obj "state" state))))
+
+(defun replica-run (host thunk &optional (id "r"))
+  "Run THUNK in a command; answer every host call it sends with a marker reply. (values result number-of-host-calls)."
+  (setf *core-thunk* thunk)
+  (request host id "command" "tool" "c" "args" "")
+  (let ((calls 0))
+    (loop (let ((frame (hread host)))
+            (when (eq frame :eof) (error "end of file waiting for the response"))
+            (cond ((equal (pig:jget frame "type") "call")
+                   (incf calls)
+                   (answer-call host frame (if (equal (pig:jget (pig:jget frame "call") "method") "sessionRead")
+                                               "host-session"
+                                               (pig:obj "id" "host-model" "sessionId" "host-session" "name" "host-name" "sessionFile" "host-file"))))
+                  ((equal (pig:jget frame "type") "response") (return)))))
+    (values *core-result* calls)))
+
+(defun replica-reads (ctx)
+  (list (let ((info (pig:ctx-get-model-info ctx))) (and info (pig:jget info "id")))
+        (pig:ctx-get-session-id ctx)
+        (pig:session-get-session-id (pig:ctx-session-manager ctx))))
+
+(deftest replicated-reads-answer-locally-from-state-snapshots
+  (with-host (host (core-extension))
+    (replica-push host (pig:from-json "{\"model\":{\"id\":\"m1\",\"name\":\"M1\",\"provider\":\"p1\",\"contextWindow\":7},\"session\":{\"sessionId\":\"s1\"}}"))
+    (multiple-value-bind (result calls) (replica-run host #'replica-reads)
+      (check-equal '("m1" "s1" "s1") result)
+      (check-equal 0 calls))
+    (multiple-value-bind (result calls)
+        (replica-run host (lambda (ctx) (pig:jget (pig:ctx-get-model-info ctx) "contextWindow")) "r2")
+      (check-equal 7 result)
+      (check-equal 0 calls))
+    ;; a snapshot without the keys keeps both
+    (replica-push host (pig:obj "hasUI" t))
+    (check-equal '(("m1" "s1" "s1") 0) (multiple-value-list (replica-run host #'replica-reads "r3")))
+    ;; a later snapshot replaces both
+    (replica-push host (pig:from-json "{\"model\":{\"id\":\"m2\",\"provider\":{\"id\":\"p2\"}},\"session\":{\"sessionId\":\"s2\"}}"))
+    (check-equal '(("m2" "s2" "s2") 0) (multiple-value-list (replica-run host #'replica-reads "r4")))
+    ;; a session without an id reads as empty; a null model as none
+    (replica-push host (pig:from-json "{\"model\":null,\"session\":{}}"))
+    (check-equal '((nil "" "") 0) (multiple-value-list (replica-run host #'replica-reads "r5")))))
+
+(deftest replicated-reads-ask-the-host-before-the-first-snapshot
+  (with-host (host (core-extension))
+    (check-equal '(("host-model" "host-session" "host-session") 3) (multiple-value-list (replica-run host #'replica-reads)))
+    ;; one key seen does not make the other known
+    (replica-push host (pig:from-json "{\"model\":{\"id\":\"m1\"}}"))
+    (check-equal '(("m1" "host-session" "host-session") 2) (multiple-value-list (replica-run host #'replica-reads "r2")))))
+
+(deftest replicated-model-info-is-a-fresh-object-per-call
+  (with-host (host (core-extension))
+    (replica-push host (pig:from-json "{\"model\":{\"id\":\"m1\",\"cost\":{\"input\":1}}}"))
+    (replica-run host (lambda (ctx)
+                        (let ((first (pig:ctx-get-model-info ctx)))
+                          (setf (gethash "id" first) "mutated" (gethash "input" (gethash "cost" first)) 99)
+                          (let ((second (pig:ctx-get-model-info ctx)))
+                            (list (pig:jget second "id") (pig:jget (pig:jget second "cost") "input")))))
+                 "r1")
+    (check-equal '("m1" 1) *core-result*)))
+
+(deftest replicated-model-info-follows-the-host-reply-decode-of-a-bad-model
+  (with-host (host (core-extension))
+    (replica-push host (pig:from-json "{\"model\":\"junk\"}"))
+    (check-equal '(nil 0) (multiple-value-list (replica-run host (lambda (ctx) (pig:ctx-get-model-info ctx)))))
+    (replica-push host (pig:from-json "{\"model\":{\"id\":\"\",\"name\":\"n\"}}"))
+    (check-equal '(nil 0) (multiple-value-list (replica-run host (lambda (ctx) (pig:ctx-get-model-info ctx)) "r2")))))
+
+(deftest replicated-reads-keep-the-stale-error-and-replacement-contexts-ask-the-host
+  (with-host (host (core-extension))
+    (replica-push host (pig:from-json "{\"model\":{\"id\":\"m1\"},\"session\":{\"sessionId\":\"s1\"}}"))
+    (check-equal '(("host-model" "host-session" "host-session") 3)
+                 (multiple-value-list
+                  (replica-run host (lambda (ctx)
+                                      (let ((replaced (pig::copy-ctx ctx)))
+                                        (setf (pig::ctx-replacement replaced) (list :cwd "/r" :mode "rpc" :has-ui nil))
+                                        (list (pig:jget (pig:ctx-get-model-info replaced) "id") (pig:ctx-get-session-id replaced)
+                                              (pig:session-get-session-id (pig:ctx-session-manager replaced)))))
+                               "r1")))
+    (hsend host "type" "notify" "notify" (pig:obj "method" "invalidate" "args" (pig:obj "message" "session replaced")))
+    (check-equal '(("session replaced" "session replaced" "session replaced") 0)
+                 (multiple-value-list
+                  (replica-run host (lambda (ctx)
+                                      (flet ((message (thunk) (handler-case (progn (funcall thunk) "no error") (error (e) (princ-to-string e)))))
+                                        (list (message (lambda () (pig:ctx-get-model-info ctx)))
+                                              (message (lambda () (pig:ctx-get-session-id ctx)))
+                                              (message (lambda () (pig:session-get-session-id (pig:ctx-session-manager ctx)))))))
+                               "r2")))))
+
+(defun replica-name-file-reads (ctx)
+  (let ((manager (pig:ctx-session-manager ctx)))
+    (list (pig:ctx-get-session-name ctx) (pig:ctx-get-session-file ctx)
+          (pig:session-get-session-name manager) (pig:session-get-session-file manager))))
+
+(deftest replicated-session-name-and-file-answer-locally-from-state-snapshots
+  (with-host (host (core-extension))
+    (replica-push host (pig:from-json "{\"session\":{\"sessionId\":\"s1\",\"sessionName\":\"n1\",\"sessionFile\":\"/f1\"}}"))
+    (check-equal '(("n1" "/f1" "n1" "/f1") 0) (multiple-value-list (replica-run host #'replica-name-file-reads)))
+    ;; a snapshot without a session keeps both
+    (replica-push host (pig:obj "hasUI" t))
+    (check-equal '(("n1" "/f1" "n1" "/f1") 0) (multiple-value-list (replica-run host #'replica-name-file-reads "r2")))
+    ;; a later session replaces both, and an empty name or file clears it
+    (replica-push host (pig:from-json "{\"session\":{\"sessionId\":\"s2\",\"sessionName\":\"\",\"sessionFile\":\"\"}}"))
+    (check-equal '((nil nil nil nil) 0) (multiple-value-list (replica-run host #'replica-name-file-reads "r3")))
+    (replica-push host (pig:from-json "{\"session\":{\"sessionName\":\"n3\"}}"))
+    (check-equal '(("n3" nil "n3" nil) 0) (multiple-value-list (replica-run host #'replica-name-file-reads "r4")))))
+
+(deftest replicated-session-name-and-file-ask-the-host-before-the-first-session-snapshot
+  (with-host (host (core-extension))
+    (check-equal '(("host-name" "host-file" "host-session" "host-session") 4) (multiple-value-list (replica-run host #'replica-name-file-reads)))
+    (replica-push host (pig:from-json "{\"model\":{\"id\":\"m1\"}}"))
+    (check-equal '(("host-name" "host-file" "host-session" "host-session") 4) (multiple-value-list (replica-run host #'replica-name-file-reads "r2")))))
+
+(deftest replicated-session-name-and-file-keep-the-stale-error-and-replacement-contexts-ask-the-host
+  (with-host (host (core-extension))
+    (replica-push host (pig:from-json "{\"session\":{\"sessionName\":\"n1\",\"sessionFile\":\"/f1\"}}"))
+    (check-equal '(("host-name" "host-file" "host-session" "host-session") 4)
+                 (multiple-value-list
+                  (replica-run host (lambda (ctx)
+                                      (let ((replaced (pig::copy-ctx ctx)))
+                                        (setf (pig::ctx-replacement replaced) (list :cwd "/r" :mode "rpc" :has-ui nil))
+                                        (replica-name-file-reads replaced)))
+                               "r1")))
+    (hsend host "type" "notify" "notify" (pig:obj "method" "invalidate" "args" (pig:obj "message" "session replaced")))
+    (check-equal '(("session replaced" "session replaced" "session replaced" "session replaced") 0)
+                 (multiple-value-list
+                  (replica-run host (lambda (ctx)
+                                      (let ((manager (pig:ctx-session-manager ctx)))
+                                        (flet ((message (thunk) (handler-case (progn (funcall thunk) "no error") (error (e) (princ-to-string e)))))
+                                          (list (message (lambda () (pig:ctx-get-session-name ctx)))
+                                                (message (lambda () (pig:ctx-get-session-file ctx)))
+                                                (message (lambda () (pig:session-get-session-name manager)))
+                                                (message (lambda () (pig:session-get-session-file manager)))))))
+                               "r2")))))
