@@ -65,7 +65,7 @@
       "upstreamTestHash": "sha256:91d7b131993ac13536a998e80b0a6497291fc8735a7e967899c8dcdcec5a22ab",
       "evidence": [
         "ai/abort_upstream_test.go#TestAbortMatrixUpstream",
-        "coding/model_runtime_abort_upstream_test.go#TestModelRuntimeRejectedPreparationStaysErrorWhenCanceled",
+        "coding/model_runtime_abort_upstream_test.go#TestModelRuntimeRejectedPreparationIsAbortedWhenCanceled",
         "coding/model_runtime_abort_upstream_test.go#TestModelRuntimeProviderTimeoutWithoutRequestCancellationIsError",
         "test/parity/scenarios/providers-faux-streaming/14-provider-immediate-abort.toml"
       ],
