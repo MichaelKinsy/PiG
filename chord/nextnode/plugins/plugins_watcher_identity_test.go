@@ -13,6 +13,18 @@ import (
 // attributes. The events of the steps wait in the watcher while the test holds the host, so the watcher finds the directory
 // as the last step left it, as Pi's callbacks do (they run after the synchronous steps of a test).
 
+// seesHardlinkEdits reports whether the platform's watch of a file sees a write through another hardlink of it: kqueue's does (it
+// watches the file itself). inotify and ReadDirectoryChangesW (Linux, Windows) report a change only in the directory of the
+// name written, so the edit stays unseen. [INFERENCE] for Windows: not run there; Pi's own tests have no hardlink case, and this
+// is the review's scenario run on Pi on Linux and macOS.
+func seesHardlinkEdits() bool {
+	switch runtime.GOOS {
+	case "darwin", "freebsd", "netbsd", "openbsd", "dragonfly":
+		return true
+	}
+	return false
+}
+
 // A recorded file edited through a hardlink elsewhere raises no event in its directory's watch. The directory moved away and
 // back is the one watched: nothing is renewed or compared, so the edit stays unseen (Pi: `[false, false]`), and the watch
 // still sees a later write in place.
@@ -29,7 +41,7 @@ func TestTheBaseMarkDoesNotRenewTheWatchesOfADirectoryMovedAwayAndBackWhichIsThe
 	}
 	write(t, filepath.Join(top, "g.ts"), "B")
 	f.settled()
-	if runtime.GOOS != "linux" {
+	if seesHardlinkEdits() {
 		// kqueue (Pi on macOS gives `[true, true]`) sees an edit through a hardlink as a change of the watched file: the base
 		// is set at once, and the rest of this case has nothing left to show (the next test shows it without the link).
 		if !f.marks().Base {
@@ -80,6 +92,39 @@ func TestTheBaseMarkIsNotSetByADirectoryMovedAwayAndBackAndItsWatchesGoOn(t *tes
 		t.Fatal("base set: the directory moved away and back, the same one, was renewed and its files compared")
 	}
 	write(t, file, "C")
+	f.baseIs(true)
+}
+
+// A base directory (a tree watch, not one held alone) moved away and back in one burst keeps every watch of its tree: kqueue
+// drops the watch of a renamed directory, and `keepWatches` puts back the ones of the tree. An edit of a file in the directory
+// itself and one in its subdirectory are seen afterwards, and so is a new file (the directory's own watch).
+func TestTheBaseMarkKeepsTheTreeWatchesOfABaseDirectoryMovedAwayAndBackInOneBurst(t *testing.T) {
+	parent := realOf(t, tempRoot(t))
+	base := filepath.Join(parent, "app")
+	writeFiles(t, base, map[string]string{"core.ts": "v1", "sub/inner.ts": "inner"})
+	f := watcherOver(t, nil, base)
+	f.settled()
+	f.run(func() {
+		if err := os.Rename(base, filepath.Join(parent, "moved")); err != nil {
+			t.Error(err)
+		}
+		if err := os.Rename(filepath.Join(parent, "moved"), base); err != nil {
+			t.Error(err)
+		}
+	})
+	f.settled()
+	if f.marks().Base {
+		t.Fatal("base set by the move away and back")
+	}
+	write(t, filepath.Join(base, "sub", "inner.ts"), "edited")
+	f.baseIs(true)
+	write(t, filepath.Join(base, "sub", "inner.ts"), "inner")
+	f.baseIs(false)
+	write(t, filepath.Join(base, "core.ts"), "v2")
+	f.baseIs(true)
+	write(t, filepath.Join(base, "core.ts"), "v1")
+	f.baseIs(false)
+	write(t, filepath.Join(base, "new.ts"), "x")
 	f.baseIs(true)
 }
 
