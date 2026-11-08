@@ -155,7 +155,14 @@ func TestTerminalsObjectsDenyGuestsBeforeAcquiringADetachedHostResource(t *testi
 		t.Fatal(err)
 	}
 	defer view.Release()
-	p2test.ExpectChord(t, p2runtime.WhenLive(p2test.Background, view), data.CodeForbidden)
+	// Without the owner check the view neither ends nor fails: the deadline makes that a failure, not a hang.
+	ctx, cancel := context.WithTimeout(p2test.Background, 30*time.Second)
+	defer cancel()
+	err = p2runtime.WhenLive(ctx, view)
+	if ctx.Err() != nil {
+		t.Fatalf("the guest's view neither went live nor ended: %v", err)
+	}
+	p2test.ExpectChord(t, err, data.CodeForbidden)
 }
 
 func TestTerminalByteChannelsNeedAnOwnerAndALiveOneUseChord2Grant(t *testing.T) {
