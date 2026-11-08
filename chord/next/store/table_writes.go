@@ -362,6 +362,7 @@ func StagePut(sql, table string, row *EncodedRow, version int) StagedWrite {
 		if err := step.Run(sql, row.Params...); err != nil {
 			return nil, err
 		}
+		step.Rows++
 		return []StoreWrite{write}, nil
 	}}
 }
@@ -398,6 +399,7 @@ func counted(statement Statement, record func(count int64) StoreWrite) StagedWri
 		if err != nil {
 			return nil, err
 		}
+		step.Rows += int(count)
 		return []StoreWrite{record(count)}, nil
 	}}
 }

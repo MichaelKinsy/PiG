@@ -69,7 +69,7 @@ func batchEveryKind(t *testing.T) *ChordStore {
 	noError(t, err)
 	noError(t, PrepareTables([]DeclaredTable{{Definition: countsV2, Table: "app.store:counts"}}, store, openFence, "app.store", background))
 	var created []int64
-	fence := CommitFence{Admit: func() bool { return true }, Adopt: func(_ int64, ids []int64) error {
+	fence := CommitFence{Admit: func() bool { return true }, Adopt: func(_ int64, ids []int64, _ int) error {
 		created = append(created, ids...)
 		return nil
 	}}
