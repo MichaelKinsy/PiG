@@ -95,7 +95,13 @@ var Worker = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error
 		push := func(ctx context.Context) error {
 			pushing.Lock()
 			defer pushing.Unlock()
-			tasks, busy := summarize(graph.Value().(*delta.JsonObject))
+			// The graph is read in a section of the host's loop, as Pi's synchronous read of `graph.value`: its Durable
+			// publications apply there, and a push runs from its own goroutine.
+			var tasks int
+			var busy []any
+			if err := host.InSection(ctx, func() { tasks, busy = summarize(graph.Value().(*delta.JsonObject)) }); err != nil {
+				return err
+			}
 			parts, err := worker()
 			if err != nil {
 				return err
