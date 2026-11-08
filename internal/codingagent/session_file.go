@@ -579,9 +579,13 @@ func (b *lineBatch) reset() {
 }
 
 // indexLine adds the record of one line after the header as newSessionFromEntries adds a decoded record. A message or custom message is not
-// kept decoded; setBranchLocked reads back the ones the active context needs.
+// kept decoded; setBranchLocked reads back the ones the active context needs. The leaf is the id of the line before it.
 func (s *Session) indexLine(line []byte, off int64) error {
-	prepared := prepareIndexLine(line)
+	previous := ""
+	if s.leafID != nil {
+		previous = *s.leafID
+	}
+	prepared := prepareIndexLineAfter(line, previous)
 	return s.applyIndexLine(&prepared, line, off)
 }
 
