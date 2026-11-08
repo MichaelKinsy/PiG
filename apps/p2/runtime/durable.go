@@ -235,7 +235,8 @@ type durableRegistry struct {
 
 	// composition is the registries' last composition seen: both values and the switched-off names. Snapshot reads it
 	// without the host's loop, which a section may hold while it waits for the scheduler's lock (Snapshot is called
-	// under that lock). A composition refreshes it, in the batch that composed.
+	// under that lock). A composition refreshes it, in the batch that composed: a Snapshot taken between a registry's change and
+	// its follower's refresh reads the composition before (the scheduler subscribes first, so a change wakes it after the refresh).
 	composition atomic.Pointer[composed]
 
 	mu        sync.Mutex
