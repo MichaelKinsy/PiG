@@ -13,8 +13,29 @@ func (m *InteractiveMode) addCacheWarmingUsage(entry UsageEntry) {
 	if !m.showCacheMissNotices() {
 		return
 	}
+	// Back-to-back warms collapse into one line with the cumulative cost.
+	if previous := m.cacheWarmingNotice; previous != nil && previous.note == entry.Note {
+		if _, last := m.chatContainer.LastTwoChildren(); last == tui.Component(previous.component) {
+			previous.total += entry.Usage.Cost.Total
+			previous.component.Invalidate()
+			return
+		}
+	}
+	notice := &cacheWarmingNotice{total: entry.Usage.Cost.Total, note: entry.Note}
+	notice.component = tui.NewThemedText(func() string {
+		return tui.ActiveTheme().Fg("dim", FormatCacheWarmingUsage(notice.total, notice.note))
+	}, 1, 0)
+	m.cacheWarmingNotice = notice
 	m.chatContainer.Add(tui.NewSpacer(1))
-	m.chatContainer.Add(themedNotice("dim", FormatCacheWarmingUsage(entry), 1))
+	m.chatContainer.Add(notice.component)
+}
+
+// cacheWarmingNotice is the last rendered cache-warming line and its running
+// total; see addCacheWarmingUsage.
+type cacheWarmingNotice struct {
+	component *tui.ThemedText
+	total     float64
+	note      string
 }
 
 // decodeUsageEntry decodes a "usage" session entry.

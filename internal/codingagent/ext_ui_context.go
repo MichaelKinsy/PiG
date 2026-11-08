@@ -719,8 +719,26 @@ func (u *ExtUIContext) RunRemoteOverlay(opts extension.RemoteOverlayOptions, hos
 		if opts.Overlay || u.m.layout == nil {
 			h := u.m.tuiInst.ShowOverlay(overlay, remoteOverlayTUIOptions(opts))
 			u.bindOverlayControls(overlay, h, runOnOwner)
-			// upstream: interactive-mode.ts:2999 close() hides this overlay through its own handle, not the topmost one (Pi #10999).
-			cleanup = h.Hide
+			// upstream: interactive-mode.ts removeOverlay hides this overlay through its own handle, not the topmost one (Pi #10999),
+			// and clears the blocked status of an overlay that opted in. Reset removes it too, so a later cleanup finds it gone.
+			source := ""
+			if opts.Blocked != nil {
+				source = u.m.nextBlockingOverlaySource()
+			}
+			remove := func() {
+				if !u.m.deleteExtensionOverlay(h) {
+					return
+				}
+				h.Hide()
+				if source != "" {
+					u.m.programStatusReporter().SetBlocked(source, nil)
+				}
+			}
+			u.m.addExtensionOverlay(h, remove)
+			if source != "" {
+				u.m.programStatusReporter().SetBlocked(source, blockedStatusOf(opts.Blocked))
+			}
+			cleanup = remove
 		} else {
 			// Match upstream ctx.ui.custom(): the component joins the editor-slot dialog stack directly
 			// rather than being wrapped in a second modal shell (interactive-mode.ts pushExtensionDialog).

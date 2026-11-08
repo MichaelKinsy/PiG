@@ -554,6 +554,13 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/bun/sandbox-env-setup.ts` | `(Bun-only sandbox helper)` | n/a |
 | `packages/coding-agent/src/cli/auth-check.ts` | `coding/cli/auth_check.go (the main.ts runAuthCommand dispatch is mapped under main.ts)` | ✅ |
 | `packages/coding-agent/src/cli/auth-command.ts` | `coding/cli/auth_command.go (resolveCliModel for --model is mapped under core/model-resolver.ts)` | ✅ |
+| `packages/coding-agent/src/cli/auth-login.ts` | `coding/cli/auth_login.go (RunAuthLogin; every auth-login.test.ts case in coding/cli/auth_login_test.go; the main.ts runAuthLoginCommand dispatch is coding/cli/auth_run.go)` | ✅ |
+| `packages/coding-agent/src/cli/auth-logout.ts` | `coding/cli/auth_logout.go (RunAuthLogout; every auth-logout.test.ts case in coding/cli/auth_logout_test.go; the main.ts runAuthLogoutCommand dispatch is coding/cli/auth_run.go)` | ✅ |
+| `packages/coding-agent/src/cli/auth-terminal.ts` | `coding/cli/auth_terminal.go (LoginTerminal, CreateProcessLoginTerminal; auth-terminal.test.ts cases in coding/cli/auth_terminal_test.go)` | ✅ |
+| `packages/coding-agent/src/core/provider-matching.ts` | `internal/codingagent/provider_matching.go (FindMatchingProviders; provider_matching_test.go)` | ✅ |
+| `packages/coding-agent/src/core/radius-mcp.ts` | `internal/codingagent/radius_mcp.go (PlanRadiusMcpServer; radius_mcp_stripped.go for a build without built-in MCP)` | ✅ |
+| `packages/coding-agent/src/utils/terminal-question.ts` | `internal/terminalquestion/terminalquestion.go (Reader.Question; terminalquestion_test.go)` | ✅ |
+| `packages/coding-agent/src/utils/web-url.ts` | `internal/weburl/weburl.go (WebURL, DisplayURL)` | ✅ |
 | `packages/coding-agent/src/cli/setup.ts` | `coding/cli/setup_cli.go (PI_CODING_AGENT/AI_AGENT process markers; process.title is the executable name, Node warning suppression has no Go analogue, configureHttpDispatcher is mapped under core/http-dispatcher.ts)` | ✅ |
 | `packages/coding-agent/src/core/bug-report-upload.ts` | `(designed out: D62, PiG never uploads bug reports)` | n/a |
 | `packages/coding-agent/src/core/bug-report.ts` | `internal/codingagent/bug_report.go (export subset: metadata, redaction, diagnostics, archive; D62) + internal/codingagent/compaction/bug_report_summary.go (coding/bug_report.go; internal/codingagent/compaction/bug_report_summary_test.go)` | ✅ |

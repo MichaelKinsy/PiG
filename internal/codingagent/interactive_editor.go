@@ -104,7 +104,7 @@ func (m *InteractiveMode) setAllToolsExpanded(expanded bool) {
 	if notify != nil {
 		notify()
 	}
-	for _, container := range []*tui.Container{m.loadedResourcesContainer, m.chatContainer} {
+	for _, container := range []*tui.Container{m.loadedResourcesContainer, m.chatContainer, m.pendingMessagesContainer} {
 		if container == nil {
 			continue
 		}
