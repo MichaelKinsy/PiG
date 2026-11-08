@@ -272,6 +272,8 @@ func TestPipeTransportShutsDownOnceWhenClosedTwice(t *testing.T) {
 	for range 2 {
 		go func() { _ = program.transport.Close(); done <- struct{}{} }()
 	}
+	// The program ends only after the first Close took the shutdown: Pi's close returns without closing stdin once the program has ended.
+	<-program.pipe.stdinClosed
 	program.pipe.end(nil)
 	<-done
 	<-done
