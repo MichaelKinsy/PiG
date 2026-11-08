@@ -163,7 +163,7 @@ func jsonResult(tool, server string, payload json.RawMessage) (agent.AgentToolRe
 	if err != nil {
 		return agent.AgentToolResult{}, err
 	}
-	content, fullOutputPath := LimitMcpContent([]ai.ToolResultMessageContent{ai.TextContent{Text: string(payload)}}, nil)
+	content, fullOutputPath := limitMcpContent([]ai.ToolResultMessageContent{ai.TextContent{Text: string(payload)}}, SaveToTempFile)
 	return agent.AgentToolResult{
 		Content:           content,
 		Details:           McpToolDetails{Server: server, Tool: tool, FullOutputPath: fullOutputPath},
@@ -415,7 +415,7 @@ func CreateMcpResourceToolDefinitions(options ResourceToolsOptions) []extension.
 			if len(converted) == 0 {
 				converted = []ai.ToolResultMessageContent{ai.TextContent{Text: fmt.Sprintf("Resource %s is empty.", uri)}}
 			}
-			content, fullOutputPath := LimitMcpContent(converted, nil)
+			content, fullOutputPath := limitMcpContent(converted, SaveToTempFile)
 			contents := make([]json.RawMessage, 0, len(result.Contents))
 			for _, c := range result.Contents {
 				data, err := contentsWithoutMeta(c)
