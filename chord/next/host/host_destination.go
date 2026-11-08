@@ -45,10 +45,30 @@ type destination struct {
 	address *contracts.Address
 	routes  map[string]*route
 	parent  *path
+	// delegating is whether the host has a delegate (`Host.Delegate`): the route of its own address kind, which takes the
+	// remote types the host does not serve itself. served is the host's published table: whether it serves a type by name
+	// (the table's, not the object's liveness: a restarting or parked type stays here).
+	delegating bool
+	served     func(name string) bool
 }
 
-func newDestination(address *contracts.Address, routes map[string]*route, parent *path) *destination {
-	return &destination{address: address, routes: routes, parent: parent}
+func newDestination(address *contracts.Address, routes map[string]*route, parent *path, served func(name string) bool) *destination {
+	return &destination{address: address, routes: routes, parent: parent, served: served}
+}
+
+// delegates is whether a remote type of name that is placed on this host goes to the delegate instead: the host has one and
+// does not serve the type itself. `from` is the link a hold arrived on, nil for a reference made here: what the delegate's own
+// link asks for and nothing serves is not sent back to it (it would loop between the two hosts).
+func (d *destination) delegates(name string, from *hostLink) bool {
+	if !d.delegating || d.served(name) {
+		return false
+	}
+	if from != nil {
+		if delegate := d.routes[d.address.Kind]; delegate != nil && delegate.links[from] != nil {
+			return false
+		}
+	}
+	return true
 }
 
 // reference is where a reference to Type with params made as principal goes: here for a local type, and for a remote type
@@ -64,7 +84,7 @@ func (d *destination) reference(typ *contracts.Contract, params *delta.JsonObjec
 	if err != nil {
 		return placed{}, err
 	}
-	if d.isHere(address) {
+	if d.isHere(address) && !d.delegates(typ.Name, nil) {
 		return here, nil
 	}
 	path, err := d.pathTo(address, principal, ctx)
@@ -87,7 +107,7 @@ func (d *destination) placedHere(typ *contracts.Contract, params *delta.JsonObje
 	if err != nil {
 		return false, err
 	}
-	return d.isHere(address), nil
+	return d.isHere(address) && !d.delegates(typ.Name, nil), nil
 }
 
 // hold is where a hold arriving on from acting as principal goes, by the address it names (a request's `address`, and
@@ -95,7 +115,7 @@ func (d *destination) placedHere(typ *contracts.Contract, params *delta.JsonObje
 // the route of its kind; else over the parent link (waiting for it while it is down), unless it came on the parent link
 // or this host never had one (`unavailable`). It returns what `reference` does.
 func (d *destination) hold(address link.WireAddress, requestType string, from *hostLink, principal data.Principal, ctx context.Context) (placed, error) {
-	if d.isHere(address) {
+	if d.isHere(address) && !d.delegates(requestType, from) {
 		return here, nil
 	}
 	routedPath, err := d.pathTo(address, principal, ctx)
