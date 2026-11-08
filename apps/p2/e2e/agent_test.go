@@ -134,7 +134,9 @@ func TestCodeModeAgentFakeProvider(t *testing.T) {
 		}
 		// Read-only: it can be opened and read, not prompted, reconfigured or archived.
 		sub := f.hold(first.Value("conversationId").(float64))
-		f.until(sub.Member("view"), func(v delta.JsonValue) bool { return strings.Contains(marshal(t, object(v).Value("entries")), `{\"n\":1}`) })
+		f.until(sub.Member("view"), func(v delta.JsonValue) bool {
+			return strings.Contains(marshal(t, object(v).Value("entries")), `{\"n\":1}`)
+		})
 		_, err = sub.Call("send", delta.JsonObjectOf("text", "hello", "requestId", "steer"), p2test.Background)
 		if p2test.ExpectChord(t, err, data.CodeForbidden); err == nil || !strings.Contains(err.Error(), "read-only") {
 			t.Errorf("send: %v", err)

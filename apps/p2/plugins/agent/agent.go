@@ -85,7 +85,7 @@ func textOf(message *ai.AssistantMessage) string {
 // get.
 func newTool(models func() durable.Models, access func() map[string]p2runtime.P2Tool) p2runtime.P2Tool {
 	registration := harness.DefineTool(durable.ToolRegistration{
-		ToolSchema:             p2runtime.ToolSchemaOf(Tool, description, parameters),
+		ToolSchema:             p2runtime.MustToolSchema(Tool, description, parameters),
 		StructuredOutputSchema: map[string]any{},
 		// Only scripts call it: a model would block its turn on it.
 		Callers: []durable.ToolCaller{durable.CallerTools},
