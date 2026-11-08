@@ -616,12 +616,10 @@ func TestSessionRelocationFakeProvider(t *testing.T) {
 		if cancelled {
 			t.Fatal("the update succeeded: nothing to cancel")
 		}
-		// The restart's worker shows as running once its start finished (the relocation answers when the start began).
-		r.until(r.workers.Member("workers"), func(v delta.JsonValue) bool {
-			state := object(object(v).Value(s.session))
-			generation, _ := state.Value("generation").(float64)
-			return state != nil && state.Value("running") == true && generation > s.before.generation
-		})
+		after := r.worker(s.session)
+		if !after.running || after.generation <= s.before.generation {
+			t.Fatalf("worker = %+v, want a new running one (was %+v)", after, s.before)
+		}
 		gone() // a restart: the old worker's objects end
 		s.chat.Release()
 		current := s.chatOf(s.owner)
