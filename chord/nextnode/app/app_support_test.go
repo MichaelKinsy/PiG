@@ -179,8 +179,12 @@ func startUnbuilt(t testing.TB, plugins map[string]map[string]string, edit func(
 		noGoroutinesOf(t, "chord/nextnode/app.", "chord/nextnode/http.", "chord/nextnode/workers.", "chord/nextnode/plugins.")
 	})
 	t.Cleanup(func() { _ = app.Close(background) })
-	// Runs before the close: a started app that ran its test reported nothing (a close's own reports are not asked of it).
+	// Runs before the close: a started app that ran its test reported nothing. An app the test closed itself is not asked: a close
+	// reports what it ends (a call in flight, a hold that could not resolve), as the reload rows with a link in flight have it.
 	t.Cleanup(func() {
+		if app.closing.Load() {
+			return
+		}
 		errs.mu.Lock()
 		expected := errs.expected
 		errs.mu.Unlock()
