@@ -60,7 +60,7 @@ func TestWarmedWriteCardDrawsTheLinesOfAWholeRun(t *testing.T) {
 
 	forgetHighlights(t)
 	gotCollapsed, gotExpanded, warm := streamWriteCard(t, content, 1000)
-	if warm.writeWarmOff || warm.writeWarmed < len(content)-writeWarmStep(len(content)) {
+	if warm.writeWarmOff || warm.writeWarmed < len(content)-writeWarmStep {
 		t.Fatalf("the warm-ups stopped at %d of %d bytes (off: %v)", warm.writeWarmed, len(content), warm.writeWarmOff)
 	}
 	if !slices.Equal(gotCollapsed, wantCollapsed) {

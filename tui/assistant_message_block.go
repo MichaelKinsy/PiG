@@ -52,6 +52,8 @@ type AssistantMessageComponent struct {
 	terminalError     []Component
 	terminalErrorLine string
 	terminalErrorPad  int
+	// rowBuf is the array renderBorrowedChild renders into.
+	rowBuf []string
 }
 
 func (b *AssistantMessageComponent) newMarkdown(text string) *Markdown {
@@ -456,7 +458,25 @@ func (b *AssistantMessageComponent) Render(width int) []string {
 	if b.ownedRuns {
 		b.measureOwnedRuns(width)
 	}
-	out := b.renderCopy(width)
+	return b.withZones(b.renderCopy(width))
+}
+
+// renderBorrowedChild is Render into an array the block keeps for its next render: the parent container that borrows it
+// copies the rows before the block renders again, so a streamed message does not allocate its whole row list each frame.
+// Only a container that holds the block as a child calls it, under that container's lock.
+func (b *AssistantMessageComponent) renderBorrowedChild(width int) []string {
+	if width < 1 {
+		width = 1
+	}
+	if b.ownedRuns {
+		b.measureOwnedRuns(width)
+	}
+	b.rowBuf = b.renderInto(width, b.rowBuf)
+	return b.withZones(b.rowBuf)
+}
+
+// withZones adds the OSC 133 zone boundaries to out in place.
+func (b *AssistantMessageComponent) withZones(out []string) []string {
 	if b.hasToolCalls || len(out) == 0 {
 		return out
 	}

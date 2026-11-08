@@ -177,16 +177,11 @@ func updateWriteHighlightCacheIncremental(cache *writeHighlightCache, rawPath, f
 }
 
 // A warm-up highlights the text the content gained since the last one, and costs the same again for what it reads of the text before
-// (about a millisecond a 100 KB), so the steps are a sixteenth of the content, between writeWarmMinStep and writeWarmMaxStep: the
-// frame a warm-up falls in absorbs it (TypeScript: about 10 ms for the smallest step, 30 ms for the largest), and a file of 400 KB
-// warms in a few dozen steps.
-const (
-	writeWarmMinStep = 8 << 10
-	writeWarmMaxStep = 32 << 10
-)
-
-// writeWarmStep is how many bytes a streaming write call's content of length n grows before its next warm-up.
-func writeWarmStep(n int) int { return min(max(n/16, writeWarmMinStep), writeWarmMaxStep) }
+// (about a millisecond a 100 KB). The frame a warm-up falls in absorbs the whole step (TypeScript: about 1.2 ms a KB, so 35 ms for
+// the step), so the frame gap tail depends on how many frames carry one, not on how long each is: a step of 32 KB leaves a 400 KB
+// file twelve steps, under 1% of the frames it streams in, and the last frame a step of at most 35 ms, below the 80 ms a spinner
+// tick already leaves between two writes.
+const writeWarmStep = 32 << 10
 
 // warmWholeHighlight keeps the highlighting of the whole file of a streaming write call continuing from the text so far. The
 // call's last frame draws the highlighter's lines of the complete file (upstream formatWriteCall: highlighter.highlight(fileContent)),
@@ -196,7 +191,7 @@ func writeWarmStep(n int) int { return min(max(n/16, writeWarmMinStep), writeWar
 // that cannot resume stops the warm-ups after the first.
 // pig additive (D112): upstream highlights the complete file once, when the call completes.
 func (state *builtInRenderState) warmWholeHighlight(content, lang string) {
-	if state.writeWarmOff || len(content) < state.writeWarmed+writeWarmStep(len(content)) {
+	if state.writeWarmOff || len(content) < state.writeWarmed+writeWarmStep {
 		return
 	}
 	if !tui.WarmHighlight(normalizeWriteText(content), lang) {
