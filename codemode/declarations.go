@@ -336,10 +336,8 @@ func ResolveSchemaRefJSON(ref string, root json.RawMessage) (json.RawMessage, bo
 	return nil, false
 }
 
-// maxRefNesting is encoding/json's nesting limit for a value it decodes; the value a ref names is held to it, the values read past are not.
-const maxRefNesting = 10000
-
-// refScanner is a strict RFC 8259 reader over text with the acceptance of encoding/json: it reports malformed text through bad.
+// refScanner is a strict RFC 8259 reader over text with the acceptance of encoding/json, without its nesting limit: it reports malformed text
+// through bad.
 type refScanner struct {
 	text []byte
 	pos  int
@@ -372,7 +370,7 @@ func (s *refScanner) next() byte {
 func (s *refScanner) walk(segments []string) (start, end int, found bool) {
 	if s.next() != '{' {
 		if !s.bad {
-			s.value(math.MaxInt)
+			s.value()
 		}
 		return 0, 0, false
 	}
@@ -394,13 +392,13 @@ func (s *refScanner) walk(segments []string) (start, end int, found bool) {
 		s.pos++
 		switch {
 		case !match:
-			s.value(math.MaxInt)
+			s.value()
 		case len(segments) > 1:
 			start, end, found = s.walk(segments[1:])
 		default:
 			s.space()
 			start = s.pos
-			s.value(maxRefNesting)
+			s.value()
 			end, found = s.pos, true
 		}
 		if s.bad {
@@ -525,9 +523,9 @@ func (s *refScanner) literal(word string) {
 	s.pos += len(word)
 }
 
-// value reads one value at pos, up to limit levels of nesting. Whether each open level is an object is a bit of a stack, which stays on the
-// goroutine stack until the nesting passes 256.
-func (s *refScanner) value(limit int) {
+// value reads one value at pos. Nesting has no limit, as in the JSON.parse Pi reads schemas with: whether each open level is an object is a bit of
+// a stack, which stays on the goroutine stack until the nesting passes 256.
+func (s *refScanner) value() {
 	var inline [4]uint64
 	objects := inline[:]
 	depth := 0
@@ -544,10 +542,7 @@ func (s *refScanner) value(limit int) {
 			case s.bad:
 			case c == '{' || c == '[':
 				s.pos++
-				if depth++; depth > limit {
-					s.bad = true
-					return
-				}
+				depth++
 				if depth > len(objects)*64 {
 					objects = append(objects, 0)
 				}

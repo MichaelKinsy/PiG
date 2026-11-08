@@ -131,8 +131,7 @@ func FuzzResolveSchemaRefJSONAgainstTokens(f *testing.F) {
 }
 
 // TestResolveSchemaRefJSONDeepNesting checks the byte scanner against the Decoder.Token resolver on deeply nested text. The two differ only at
-// nesting within two levels of encoding/json's limit of 10000, where Decoder.Token rejects valid text and the byte scanner reads it up to the
-// limit; the loop stops short of that.
+// nesting within two levels of encoding/json's limit of 10000, which Decoder.Token rejects: the loop stops short of that.
 func TestResolveSchemaRefJSONDeepNesting(t *testing.T) {
 	for depth := 9900; depth <= 9990; depth += 3 {
 		deepObj := strings.Repeat(`{"c":`, depth-1) + `{}` + strings.Repeat("}", depth-1)
@@ -149,6 +148,32 @@ func TestResolveSchemaRefJSONDeepNesting(t *testing.T) {
 			want, wantOK := resolveSchemaRefJSONByTokens(c.ref, json.RawMessage(c.root))
 			if ok != wantOK || !bytes.Equal(got, want) {
 				t.Errorf("depth %d case %d: got %v, tokens %v", depth, n, ok, wantOK)
+			}
+		}
+	}
+}
+
+// TestResolveSchemaRefJSONHasNoNestingLimit pins that nesting is not limited. Pi reads schemas with JSON.parse, which has no limit, where
+// encoding/json stops at 10000 levels: a deep schema resolves in both.
+func TestResolveSchemaRefJSONHasNoNestingLimit(t *testing.T) {
+	for _, depth := range []int{10000, 10001, 20000, 100000} {
+		deepObj := strings.Repeat(`{"c":`, depth-1) + `{}` + strings.Repeat("}", depth-1)
+		deepArr := strings.Repeat("[", depth) + strings.Repeat("]", depth)
+		for _, c := range []struct {
+			name, ref, root, want string
+			ok                    bool
+		}{
+			{"found object", "#/a/b", `{"a":{"b":` + deepObj + `}}`, deepObj, true},
+			{"found beside deep array", "#/a/b", `{"a":{"b":{"c":` + deepArr + `}}}`, `{"c":` + deepArr + `}`, true},
+			{"deep object skipped", "#/b", `{"x":` + deepObj + `,"b":{}}`, `{}`, true},
+			{"deep array skipped", "#/b", `{"x":` + deepArr + `,"b":true}`, `true`, true},
+			{"found array names nothing", "#/a", `{"a":` + deepArr + `}`, "", false},
+			{"unclosed", "#/a", `{"a":` + deepObj[:len(deepObj)-1] + `}`, "", false},
+			{"mismatched", "#/a", `{"a":` + strings.Repeat("[", depth) + strings.Repeat("}", depth) + `}`, "", false},
+		} {
+			got, ok := codemode.ResolveSchemaRefJSON(c.ref, json.RawMessage(c.root))
+			if ok != c.ok || string(got) != c.want {
+				t.Errorf("depth %d, %s: got %v (%d bytes), want %v (%d bytes)", depth, c.name, ok, len(got), c.ok, len(c.want))
 			}
 		}
 	}
