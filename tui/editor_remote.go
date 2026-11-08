@@ -65,17 +65,10 @@ func (e *Editor) SetRemote(remote EditorRemote) {
 		e.stockInstance = nil
 	}
 	if remote == nil {
-		// upstream: interactive-mode.ts setCustomEditorComponent defaultEditor.setText(currentText), where currentText is the replaced editor's
-		// getExpandedText(): a collapsed paste marker of the component's own must not reach the default editor, which has no content stored under it.
-		expanded := ""
-		if e.remote != nil && !e.remote.delegated {
-			expanded = e.remoteExpandedText()
-		}
 		e.remote = nil
 		if leavingDelegated {
+			// upstream: interactive-mode.ts setCustomEditorComponent defaultEditor.setText(currentText)
 			e.SetText(text)
-		} else if expanded != "" && expanded != text {
-			e.SetText(expanded)
 		}
 		e.Invalidate()
 		return
