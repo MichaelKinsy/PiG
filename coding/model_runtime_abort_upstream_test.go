@@ -7,8 +7,8 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
-// Pi api/lazy.ts:46-59 keeps a rejected setup as an error, even if cancellation caused that rejection.
-func TestModelRuntimeRejectedPreparationStaysErrorWhenCanceled(t *testing.T) {
+// Pi api/lazy.ts:83 (f3a64af07): a rejected setup ends as "aborted" when the request signal is aborted, whatever caused the rejection.
+func TestModelRuntimeRejectedPreparationIsAbortedWhenCanceled(t *testing.T) {
 	runtime := newRuntimeTestServices(t).ModelRuntime()
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
@@ -22,7 +22,7 @@ func TestModelRuntimeRejectedPreparationStaysErrorWhenCanceled(t *testing.T) {
 		t.Fatalf("events=%#v", events)
 	}
 	terminal, ok := events[0].(ai.ErrorEvent)
-	if !ok || terminal.Reason != ai.StopReasonError || terminal.Error.StopReason != ai.StopReasonError || terminal.Error != stream.Result() {
+	if !ok || terminal.Reason != ai.StopReasonAborted || terminal.Error.StopReason != ai.StopReasonAborted || terminal.Error != stream.Result() {
 		t.Fatalf("terminal=%#v", events[0])
 	}
 }

@@ -174,11 +174,10 @@ func assertChat(model *ai.Model) error {
 	return ai.AssertChatModel(model)
 }
 
-// failedStream returns a stream that ends with an error result, as a lazy stream does when its setup rejects (model-runtime.ts stream: assertChatModel inside lazyStream). lazy.ts reports every setup rejection with reason "error", even under a cancelled signal.
-func (runtime *ModelRuntime) failedStream(model *ai.Model, err error) *ai.AssistantMessageEventStream {
+// failedStream returns a stream that ends with an error result, as a lazy stream does when its setup rejects (model-runtime.ts stream: assertChatModel inside lazyStream). lazy.ts:83 reports the rejection as "aborted" under an aborted signal and "error" otherwise (Pi f3a64af07); ctx is the request signal.
+func (runtime *ModelRuntime) failedStream(ctx context.Context, model *ai.Model, err error) *ai.AssistantMessageEventStream {
 	outer := ai.NewAssistantMessageEventStream()
-	// upstream: packages/ai/src/api/lazy.ts:lazyStream pushes reason "error" for a setup rejection.
-	runtime.fail(context.Background(), outer, model, err)
+	runtime.fail(ctx, outer, model, err)
 	return outer
 }
 

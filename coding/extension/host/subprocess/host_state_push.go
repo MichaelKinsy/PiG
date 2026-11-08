@@ -13,10 +13,24 @@ type statePushQueue struct {
 // Upstream's context getters read the live Session, the runtime's MCP registry and the global theme at every call (runner.ts:906, loader.ts:411-414 and 495-497, interactive-mode.ts:2665), while a runtime replicates the state, and a state push otherwise precedes only a request, a setModel or appendEntry call, and a status change. A timer or thread that reads between requests therefore saw the state the last request left.
 // The owner reports the change from the goroutine that made it, which can be the UI loop, and the push waits for every runtime's connection. So the caller does one atomic swap and queues a fan-out on a task Shutdown joins; the fan-out queues each extension's push on a task of its own, and pushStateTo sends nothing to a runtime whose state is unchanged.
 func (h *Host) hostStateChanged() {
-	if h.uiBridge == nil || h.hostStatePushQueued.Swap(true) {
+	if h.uiBridge == nil {
+		return
+	}
+	h.hostStateEpoch.Add(1)
+	if h.hostStatePushQueued.Swap(true) {
 		return
 	}
 	h.goDrainTask(h.fanOutStatePush)
+}
+
+// hostStateChanging reports that the Session's identity state (the model, the session id, name and file) is about to change, and hostStateSettled that the change was reported through hostStateChanged (UIBridge.HostStateChanging, HostStateSettled). The change becomes visible to a host call, which can read it and reply, before the owner reports it: a reply in that stretch flushes the state first, as one after the report does (replyToCall).
+func (h *Host) hostStateChanging() { h.hostStateInflight.Add(1) }
+
+func (h *Host) hostStateSettled() { h.hostStateInflight.Add(-1) }
+
+// behindHostState reports whether a host-side change may not have reached me: one is reported and not yet pushed to it, or one is in flight.
+func (h *Host) behindHostState(me *managedExt) bool {
+	return me.pushedStateEpoch.Load() < h.hostStateEpoch.Load() || h.hostStateInflight.Load() > 0
 }
 
 // fanOutStatePush queues a state push to every connected extension. It clears the queued flag before it reads the targets, so a change that arrives while it runs queues another fan-out that pushes the newer state.

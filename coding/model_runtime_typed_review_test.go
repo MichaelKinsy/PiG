@@ -14,8 +14,8 @@ import (
 
 // Review regressions for the typed ModelRuntime surface (Pi 0.99.1).
 
-// lazy.ts lazyStream reports every setup rejection, including assertChatModel, with reason "error"; a cancelled signal does not turn it into "aborted".
-func TestModelRuntimeNonChatRejectionIsAnErrorUnderCancellation(t *testing.T) {
+// lazy.ts:83 (Pi f3a64af07, #8635): lazyStream reports a setup rejection, including assertChatModel's, with reason "aborted" under an aborted signal (model-runtime.ts passes options?.signal).
+func TestModelRuntimeNonChatRejectionIsAbortedUnderCancellation(t *testing.T) {
 	for _, provider := range []string{"openrouter", "anthropic"} {
 		t.Run(provider, func(t *testing.T) {
 			services, _ := nativeCompatServices(t, "", nil)
@@ -28,7 +28,7 @@ func TestModelRuntimeNonChatRejectionIsAnErrorUnderCancellation(t *testing.T) {
 				"Stream":       runtime.Stream(ctx, chat, request, ai.StreamOptions{}).Result(),
 				"StreamSimple": runtime.StreamSimple(ctx, chat, request, ai.StreamOptions{}).Result(),
 			} {
-				if result.StopReason != ai.StopReasonError || !strings.Contains(result.ErrorMessage, "is not a chat model") {
+				if result.StopReason != ai.StopReasonAborted || !strings.Contains(result.ErrorMessage, "is not a chat model") {
 					t.Errorf("%s: stopReason=%s error=%q", name, result.StopReason, result.ErrorMessage)
 				}
 			}
