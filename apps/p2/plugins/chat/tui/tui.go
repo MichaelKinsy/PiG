@@ -385,6 +385,8 @@ func NewChatSurface(rt *runtime.TuiRuntime) *ChatSurface {
 		}
 		return ""
 	}))
+	// The editor's completion results apply on the owner loop.
+	s.Editor.SetAsyncApply(rt.Post)
 	s.Editor.SetAutocompleteTaskOwner(s.ctx, func(task func()) {
 		s.autocomplete.Add(1)
 		go func() { defer s.autocomplete.Done(); task() }()
@@ -1421,7 +1423,9 @@ func (s *ChatSurface) missingAnchor(anchor components.TranscriptAnchor) bool {
 		pages = s.store.Value()
 	}
 	if pages == nil {
-		return false
+		// Not loaded yet (a reload's new surface, a reference still connecting): the position waits for the conversation. Upstream's reference lingers, so its
+		// pages are there at the first render.
+		return s.ref != nil
 	}
 	items := pages.View.Items
 	older := true
@@ -2001,7 +2005,12 @@ func (s *ChatSurface) Dispose() {
 	s.autocomplete.Wait()
 }
 
-// Facet is the chat plugin's TUI facet: the chat slot and its commands. The plugin defines the transcript's entry displays (chat-mode adds its own): served on
-// the TUI too.
-var Facet = runtime.TuiFacet("chat", func(rt *runtime.TuiRuntime) runtime.TuiSurface { return NewChatSurface(rt) }, Commands(),
-	func(facet host.FacetHost) error { return chatcontract.TranscriptEntries.Serve(facet) })
+// NewFacet is a chat plugin TUI facet: the chat slot and its commands. The plugin defines the transcript's entry displays (chat-mode adds its own): served on
+// the TUI too. A new facet value replaces the loaded one on a reload.
+func NewFacet() host.Facet {
+	return runtime.TuiFacet("chat", func(rt *runtime.TuiRuntime) runtime.TuiSurface { return NewChatSurface(rt) }, Commands(),
+		func(facet host.FacetHost) error { return chatcontract.TranscriptEntries.Serve(facet) })
+}
+
+// Facet is the chat plugin's TUI facet.
+var Facet = NewFacet()
