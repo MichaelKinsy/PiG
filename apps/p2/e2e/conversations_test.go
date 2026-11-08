@@ -34,6 +34,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/coding-tools" // the busy case runs a bash call
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/conversations"
 )
 
