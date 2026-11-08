@@ -796,7 +796,7 @@ func NewIpcLink(channel IpcChannel) *IpcLink {
 // message listener catches both).
 func (link *IpcLink) receiveMessage(frame any) (ok bool) {
 	defer func() {
-		// upstream: packages/chord/src/link.ts:IpcLink (the message listener's bare `catch {}` closes the link with "protocol error")
+		// upstream: packages/chord/src/link/channel.ts:handle (the catch around one received message reports a protocol error and closes the link)
 		if recovered := recover(); recovered != nil {
 			ok = false
 		}
@@ -895,7 +895,7 @@ func NewWebSocketLink(socket WebSocketLike, options WebSocketLinkOptions) *WebSo
 // packed frames are accepted.
 func (link *WebSocketLink) receiveMessage(data any) (ok bool) {
 	defer func() {
-		// upstream: packages/chord/src/link.ts:WebSocketLink (the message listener's bare `catch {}` closes the link with "protocol error")
+		// upstream: packages/chord/src/link/channel.ts:handle (the catch around one received message reports a protocol error and closes the link)
 		if recovered := recover(); recovered != nil {
 			ok = false
 		}

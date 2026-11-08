@@ -195,7 +195,7 @@ func (s *OAuthCallbackServer) WaitForCallback(ctx context.Context, state string,
 }
 
 // Close rejects every pending wait and stops the server.
-// pig divergence (D370): Pi 63ea042ce closes every connection; Go closes the ones that never sent a request and leaves the others to Shutdown. A wait begun after Close fails at once (Pi's waits forever), and a wait that ends with its context frees its state.
+// Pi 63ea042ce closes every connection; Go closes the ones that never sent a request and leaves the others to Shutdown. A wait begun after Close fails at once (Pi's waits forever), and a wait that ends with its context frees its state.
 func (s *OAuthCallbackServer) Close() error {
 	s.mu.Lock()
 	s.closed = true
