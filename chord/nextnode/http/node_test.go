@@ -262,7 +262,7 @@ func TestWebRequestsAreServedFromTheListenerWhetherTheRouteReadsTheHeadersTheBod
 			return jsonOf(value), nil
 		}),
 	}})}}, servedOptions{
-		authenticate: func(HttpRequest, context.Context) (data.Principal, error) { return nil, nil },
+		authenticate: func(context.Context, HttpRequest) (data.Principal, error) { return nil, nil },
 	})
 	hostLine := "Host: 127.0.0.1:" + strconv.Itoa(server.port) + "\r\nConnection: close"
 	_, plain := rawExchange(t, server.port, "GET /plain HTTP/1.1\r\n"+hostLine+"\r\n\r\n")
