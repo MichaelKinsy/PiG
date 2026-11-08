@@ -65,8 +65,6 @@ Every active divergence must have:
 
 - D173: Tool search matches Chinese, Japanese and Korean queries (Pi #10816). Retired by Pi 79006f06 (#11037, fixes #10816), which D217 carries: Pi's `tokenize` (`packages/coding-agent/src/extensions/tool-search/tool.ts`, `packages/durable/src/search.ts`) NFC-normalizes the text, reduces it to letters, marks and numbers and splits it with `Intl.Segmenter` at word granularity, so words in every script match and `搜索记录` is split into words by ICU's dictionary. `internal/searchtext.Tokenize` does the same with `internal/wordsegmenter` (ICU 78.3 word rules and the CJK, Thai, Lao, Khmer and Burmese dictionaries, which the editor already embeds) and `golang.org/x/text/unicode/norm`; PiG no longer makes each character a term. `TestTokenizeMatchesPiOnEveryScriptClass` (`coding/extension/builtin/toolsearch`, `durable/internal/search`) compares 4,854 Pi 79006f06 tokenizations of every script class with no difference, and `TestTokenizeSegmentsUnicodeWords` and `TestBm25RankerMatchesUnicodeQueries` port Pi's tests. A Piglet Binary built with `pig_strip_word_dictionaries` has no dictionary, so it keeps a run of Han, Hiragana, Katakana, Thai, Lao, Khmer or Myanmar text as one term (D92, `TestTokenizeKeepsDictionaryScriptRunsWholeWithoutDictionaries`). The ID remains reserved.
 
-- D179: No Windows host manager (ForkDriver and ProcessChannel Unix-only). Retired before release: the Windows port (`chord/host/manager_fork_windows.go`, `manager_pipe_windows.go`, `manager_ipc_frames.go`) replaces the fallback, so `ForkDriver` and `ProcessChannel` exist on Unix and Windows and `NewNodeLoader` (D178) works on both. Native Windows evidence: all 27 chord/host C2 tests pass x1 and x5 on a Windows x64 runner with Node 24.22.0 (2026-10-14, PiG c0adb3e3cf), including real Node IPC (`TestProcessChannelIsNodesIPCChannel`) and every child-host `HostManager` case. The ID remains reserved.
-
 - D188: Opening a store at an older Durable schema version keeps a copy of it first, where Pi upgrades it in place. Retired by Pi 1.4.0 (npm `@earendil-works/pi-durable` 1.4.0, tag `v1.4.0` at `4a080252`, 2026-10-21), which writes SQLite schema version 2: Pi commit `f75b3240` (feat(durable): durable sleeping state replaces runtime.sleep, `packages/durable/src/storage/sqlite/migrations.ts:91-116`) adds the `sleeping` task status as migration 2, and the pin `1.4.0+b3a29f11` carries it unchanged. A user going back to a released Pi can open an upgraded store, so the copy PiG wrote to `<path>.schema-1.bak` is no longer needed. `durable/internal/schemabackup` and the two call-site markers are gone; `driver.OpenHarness` and `node.OpenNodeSqliteStorage` upgrade a version 1 store in place, as Pi does (`TestOpenHarnessUpgradesAVersionOneStoreInPlace`, `TestOpenNodeSqliteStorageUpgradesAVersionOneStoreInPlace`; Pi's migration test is twinned by `durable/storage/sqlite/sqlite_migrations_test.go`). Pi releases before 1.4.0 still refuse a version 2 store; a user who needs one keeps their own copy.
 
 - D217: Pi bug fixes after the pin that next carried (Pi e7a0df27..e3da248e). Retired by pin 2c8d1feb, which is at or after every carried Pi commit (`86dc686c` through `e3da248e`); its fixes are Pi behavior, and the markers, oracle hooks and allowances are gone.
@@ -1222,25 +1220,35 @@ Remove when: the host stops or freezes a runtime process before a suspended cont
 
 SCRUTINIZED:approved
 
-## D86 RPC settle tail: a settle-tail handler of a runtime that cannot report its wait holds stdin
+## D86 RPC settle tail and command admission: a handler of a runtime that cannot report its wait is taken to wait once it outlives a quantum
 
-What: in RPC mode Pi emits `agent_settled` in the microtasks that follow a published `agent_end`, so its stdin reader, which runs between macrotasks, reads no line between them (`agent-session.ts:1044-1058,1752-1777`, `rpc-mode.ts:355-360,808-810`). When an `agent_before_settle` or `agent_settled` handler awaits a timer, I/O or another real wait, Pi reads stdin while it waits. PiG reads stdin on its own goroutine, so `rpcSettleGate` holds each stdin batch, and stdin's end, from a published `agent_end` until `agent_settled` is written. The gate is open during a compaction, an auto-retry delay, a new run, an extension dialog and a settle-tail handler whose wait the host can see: a Node handler reports a suspended window to the host, as a command does. A handler of a runtime with no microtask continuation (the Go, Rust and Python SDKs) reports no window. While such a handler runs, the gate stays closed. A command sent during its wait is answered after the handler settles and `agent_settled` is written, where Pi answers it during the wait. After stdin's end, such a running handler counts as waiting, so shutdown does not wait for it.
+What: in RPC mode Pi emits `agent_settled` in the microtasks that follow a published `agent_end`, so its stdin reader, which runs between macrotasks, reads no line between them (`agent-session.ts:1044-1058,1752-1777`, `rpc-mode.ts:355-360,808-810`). When an `agent_before_settle` or `agent_settled` handler, or an extension command, awaits a timer, I/O or another real wait, Pi reads stdin while it waits (`rpc-mode.ts:808-810` starts every line without waiting for the one before). PiG reads stdin on its own goroutine, so `rpcSettleGate` holds each stdin batch, and stdin's end, from a published `agent_end` until `agent_settled` is written, and `rpcAwaitHandler` admits the next line only once a command or input handler suspended or finished. The gate is open during a compaction, an auto-retry delay, a new run, an extension dialog and a settle-tail handler that waits. A Node runtime reports the end of its event-loop window, so the host sees its waits exactly. A Go, Rust, Python or Lisp handler blocks in the language's own call (`net/http`, a socket read, a sleep), which nothing but the language tells from computing, so the host takes such a handler to be waiting once it has run for `subprocess.HandlerWaitQuantum` (250 ms) without answering: it acknowledges the invocation as suspended, which admits the next stdin line, and counts a settle-tail handler as waiting, which opens the gate. A handler that answers within the quantum is Pi's microtask-only continuation and holds stdin as before. After stdin's end, a running handler of such a runtime counts as waiting at once, so shutdown does not wait for it.
 
-Why: the host learns of a wait only from a runtime's report, and those runtimes have no equivalent of the Node window that closes unresponded. Without the gate, a command sent on seeing `agent_end` would be answered before `agent_settled`, which Pi never does.
+Why: the host learns of a wait only from a runtime's report, and those runtimes have no equivalent of the Node window that closes unresponded. Without a bound, a Go handler that awaits the network (the LangSmith extension's `agent_settled` PATCH with `LANGSMITH_TRACING_BACKGROUND=false`) left every later stdin line unanswered for as long as the wait lasted, where the same handler in Node answers `get_state` during it. Without the gate, a command sent on seeing `agent_end` would be answered before `agent_settled`, which Pi never does for a handler that does not wait.
 
-Observable effect: with an `agent_before_settle` or `agent_settled` handler in the Go, Rust or Python SDK that waits on a timer or I/O, a command sent while it waits is answered later than in Pi: after `agent_settled` instead of before it. Output order for every other case, including every Node handler, is as in Pi.
+Rejected options (each surveyed against the failing case, a plain `net/http` or socket wait in an `agent_settled` handler or command):
+- Waits reported only where an SDK mediates them (the `blocked` report of a host call, as the Node runtime reports `WINDOW_CLOSING_CALLS`): exact for `ctx.exec`, dialogs and model calls, blind to the stdlib I/O that caused the report; the ported LangSmith client dials with a plain `*http.Transport`.
+- Instrumenting the language's I/O (`httptrace` on the handler's context, wrapping `http.DefaultTransport`, patching `socket`): covers one client of one language; a custom transport, a raw socket, a sleep or a file read escapes it, and Rust and Lisp have no equivalent hook.
+- Reading the language scheduler (Go `runtime/metrics` goroutine states, an `asyncio` idle loop): the Go counters are documented as approximate and process-wide (a fused extension shares the host's goroutines), Rust and Lisp expose nothing, and every reading needs a sampling interval anyway.
+- Polling the extension process's thread states (`/proc/<pid>/task`, `libproc`): platform-specific, still needs an interval, and impossible for a fused extension, which shares the host process.
+- Dropping the gate for these runtimes: removes the deterministic order for a handler that does not wait, because the host handles a command as soon as it is read while the handler runs.
+- A longer bound (the 2 s heartbeat interval): the same behavior with a client stall of seconds.
 
-Scope: only a settle-tail handler of a runtime that reports no window, and only a command or stdin end sent during its wait. Outside that case the gate matches Pi and is not waived.
+Value of the quantum: a no-op `agent_settled` handler's request to response took 0.2 to 0.8 ms at the median, at most 3.1 ms at the 99th percentile and at most 8.7 ms at the maximum in 150 runs per SDK (Go, Rust, Python, Lisp, Node; xd670, idle and with twice as many busy loops as CPUs). 250 ms is about 29 times the slowest run, and bounds the delay a waiting handler adds to the first line it holds back. `TestRPCSettleHandlerLatencyProbe` in `coding/cli/rpc_settle_latency_probe_test.go` repeats the measurement (`PIG_PROBE_SETTLE_LATENCY=1`).
 
-Owner decision: 2026-10-01, owner Michael Kinsy approves this divergence as a temporary one ("Yes go with recommendations", in the lead session). Approval covers only the scope above.
+Observable effect: in the Go, Rust, Python or Lisp SDK, a command sent during the first 250 ms of an `agent_before_settle` or `agent_settled` handler that waits on a timer or I/O is answered after `agent_settled` instead of before it, and a stdin line sent during the first 250 ms of a command or input handler that waits is answered after that handler instead of before it; later in the wait both match Pi. A handler that computes for more than 250 ms without waiting is taken to wait, so a command sent meanwhile is answered during it, where Pi, whose loop the computation blocks, answers it afterwards. Output order for every other case, including every Node handler except the one below, is as in Pi. Known gap, not waived by this record: a Node input handler that awaits I/O is not reported as suspended in RPC mode (the Node runtime arms its window for commands and the settle tail only), so `rpcAwaitHandler` holds the next stdin line, `get_state` included, until it returns, on the base as well; the quantum does not apply to Node runtimes.
 
-Call-site markers: `coding/cli/rpc_settle_gate.go`: `rpcSettleGate`.
+Scope: only a settle-tail handler, command or input handler of a runtime that reports no window, and only a command or stdin end sent while it runs. Outside that case the gate matches Pi and is not waived.
 
-Evidence: `TestRPCCommandAfterAgentEndAnswersAfterAgentSettledComparedWithPi`, `TestRPCCommandDuringSuspendedSettleTailAnswersComparedWithPi` and `TestRPCInputEndDuringSuspendedSettleTailShutsDownComparedWithPi` in `coding/cli/rpc_input_end_order_test.go` (Pi and PiG for Node handlers), `TestRPCInputEndDuringGoSDKSettleTailHandlerShutsDown` in `coding/cli/rpc_shutdown_drain_go_test.go`, `TestRPCSettleGate*` in `coding/cli/rpc_settle_gate_test.go` and `TestSettleTailCountsHandlersPiServesStdinDuring` in `coding/extension/host/subprocess/command_window_test.go`.
+Owner decision: 2026-10-01, owner Michael Kinsy approves the gate holding stdin through such a handler as a temporary divergence ("Yes go with recommendations", in the lead session). The 250 ms quantum that bounds the hold (ticket `fix/071-settle-block`; the owner's standing instruction was to fix a Go handler that blocks `get_state` at the root and to record the rejected options) is approved by owner Michael Kinsy on 2026-11-07.
 
-Parity allowance: the Pi comparison rows cover Node handlers only. No test compares a command sent during a Go, Rust or Python handler's wait with Pi, because those handlers have no Pi counterpart.
+Call-site markers: `coding/cli/rpc_settle_gate.go`: `rpcSettleGate`; `coding/extension/host/subprocess/conn.go`: `HandlerWaitQuantum`, `withRequestQuantum`; `coding/extension/host/subprocess/host.go`: `makeEventHandler`, `makeCommandHandler`.
 
-Remove when: the Go, Rust and Python SDK runtimes report a settle-tail handler's suspension to the host, as the Node runtime does with a command's window, so the gate opens during their waits.
+Evidence: `TestRPCCommandDuringSettleHandlerNetworkWaitAnswersAcrossSDKs` and `TestRPCCommandDuringCommandNetworkWaitAnswersAcrossSDKs` in `coding/cli/rpc_settle_wait_test.go` (Pi, PiG with Node, Go, Rust, Python and Lisp handlers that wait on a socket), `TestRPCCommandDuringInputHandlerNetworkWaitAnswersAcrossSDKs` (an input handler that waits on a socket; Pi, Go, Rust, Python and Lisp), `TestRPCCommandAfterAgentEndAnswersAfterFastSettleHandlerAcrossSDKs` (a handler that does not wait holds stdin in every SDK, as in Pi), `TestConformance_WaitingHandlerIsSuspended` in `test/extension-conformance/wait_quantum_conformance_test.go` (isolated, packed and fused realizations), `TestHandlerOutlivingTheQuantumIsSuspended`, `TestHandlerAnsweringWithinTheQuantumIsNotSuspended` and `TestRequestWithoutTheQuantumSetsNoTimer` in `coding/extension/host/subprocess/handler_quantum_test.go`, `TestInteractiveEditorStaysLiveWhileSettleHandlerOrCommandWaits` in `test/integration/settle_wait_interactive_test.go`; `TestRPCCommandAfterAgentEndAnswersAfterAgentSettledComparedWithPi`, `TestRPCCommandDuringSuspendedSettleTailAnswersComparedWithPi` and `TestRPCInputEndDuringSuspendedSettleTailShutsDownComparedWithPi` in `coding/cli/rpc_input_end_order_test.go` (Pi and PiG for Node handlers), `TestRPCInputEndDuringGoSDKSettleTailHandlerShutsDown` in `coding/cli/rpc_shutdown_drain_go_test.go`, `TestRPCSettleGate*` in `coding/cli/rpc_settle_gate_test.go` and `TestSettleTailCounts*` in `coding/extension/host/subprocess/command_window_test.go`.
+
+Parity allowance: the Pi comparison rows run the TypeScript fixture, whose handlers wait and answer exactly as Pi's do; the Go, Rust, Python and Lisp rows assert Pi's observable order for the same wait.
+
+Remove when: the Go, Rust, Python and Lisp runtimes report the end of a handler's own wait exactly, as the Node runtime does with its window, or PiG runs extensions on one shared event loop as Pi does.
 
 SCRUTINIZED:approved
 
@@ -2186,24 +2194,6 @@ Call-site markers: `durable/harness/generation.go` (`createToolTask` in the gene
 Evidence: `TestToolRound` "runs a round in parallel by default and sequentially when configured or required by a tool" (`durable/harness/harness_tools_test.go`) ports `harness-tools.test.ts:263` with Pi's inputs and checks that the first two events are both starts, in either order, and that the next model request carries the tool results `c1` then `c2`; it fails when the round runs sequentially or the results are reordered.
 
 Remove when: never, unless Pi specifies the start order of the calls of a parallel round.
-
-SCRUTINIZED:approved
-
-## D178 Facet modules load in an isolated Node child, not in the host process
-
-What: Pi 1.4.0's `nodeLoader` (`packages/chord/src/loader.ts`) imports facet modules into the host's own Node process. PiG's `NodeLoader` / `NewNodeLoader(...).Load` (`chord/host/loader.go`) runs them in an isolated Node child, one per load, over `ForkDriver` and a `HostManager`; the Go host serves the contracts the child's facets serve and forwards each method call to the child. Three observable limits follow: (1) a facet cannot reach the Go host: the contracts it serves, `ctx`, and the principal a record is made for; (2) a `ChordError` a method throws crosses with its code, reason and message only (details, cause and retryable are not carried; retryable is recomputed from the code); (3) contracts with state or opaque members, several variants, `accepts` adapters or state migrations are refused at load with a `TypeError`.
-
-Why: a Go host has no in-process JavaScript module loader, and PiG already runs Node for extensions. The owner chose an isolated-Node loader over designing the loader out. Process isolation replaces Pi's reload query, root set and `registerHooks` hook: every load is a fresh process, so a reload's copies are fresh and the facets of one load share one module graph. It also ends Pi's leak of replaced module copies (`TODO(loader)`): a child stops at `Close` or once nothing refers to its facets.
-
-Scope: facet modules loaded through `chord/host` `NodeLoader`. Unchanged: facet naming by module URL, module order, Pi's `TypeError` message for a default export that is not a facet, `loader.test.ts` `:8` and `:17`, and the methods of method-only contracts, their results and their errors' codes and messages.
-
-Owner decision: 2026-10-13T19:44Z, chord decision C1(b): "port it as an isolated-Node facet loader over the already-ported ForkDriver" (`handoffs/owner-chord-decisions.md`); number assigned by the tern lead 2026-10-14.
-
-Call-site markers: `chord/host/loader.go` (`NewNodeLoader`, `NodeLoaderImpl.Load`, the factory's forwarding) and `chord/host/loader_child.mjs` (`checkServed`, the refusal points).
-
-Evidence: `TestNodeLoaderLoadsFacetModulesAndReloadsThemWithFreshCopiesOfTheirRelativeImports` ports `loader.test.ts:8` with Pi's fixture inputs; `TestNodeLoaderRefusesFacetsThatServeNonMethodMembers` pins limit (3); `TestNodeLoaderCarriesErrorsAndAbortsAcrossTheProcessBoundary` pins the error shape of limit (2) and the abort.
-
-Remove when: a Go host gains an in-process JavaScript module loader, or Pi moves `nodeLoader` out of process.
 
 SCRUTINIZED:approved
 
@@ -3612,7 +3602,7 @@ What: Pi's own runtime (the Node SDK) returns a tool's arguments only while V8 h
 | Go | `json.UnmarshalFrame` (`extensions/sdk/json`; `Unmarshal` and the host's marshal keep the standard 10000) | 10064 levels of the whole frame |
 | Python | `json.loads`, then a non-recursive parser (`_loads_deep`); ordering and stringify are iterative | 10100 levels (`MAX_FRAME_DEPTH`); `json.loads` alone stops at about 9997 on 3.12 and about 990 on 3.11 |
 | Rust | `from_json_str` on a 64 MiB decode stack (the arguments of a request or notification and the operations of an event-stream delta); a request with such a value runs on a 64 MiB thread, the connection's main loop on an 8 MiB one | 10016 levels (`MAX_NESTING_DEPTH`) |
-| Lisp | the JSON reader on the image's 64 MiB control stack (kept by every thread: address space reserved with `MAP_NORESERVE`) | 10016 levels (`*max-json-depth*`) |
+| Lisp | the JSON reader and writer recurse to 256 levels and keep deeper containers on a stack of their own; ordering, event-stream copies, `JSON.stringify` of conversation values, the bigint check and palette comparison are iterative (the image keeps SBCL's default 2 MB control stack) | 10016 levels (`*max-json-depth*`) |
 | Node | Pi's own `JSON.parse` and `JSON.stringify` | V8's stack (about 4400 levels on Node 24) |
 
 Why: Before, an extension could die on arguments Pi's own host sends it. The Go SDK ended its connection from d=9997: its reader validated the whole frame against encoding/json's 10000-level limit, while the host validates a request's arguments alone, so a frame the host sends nests a few levels past it (a limit of the codec, not a stack). The Python SDK failed the call from about 1000 levels, and from about 990 on Python 3.11, because its ordering and `JSON.stringify` were recursive and its JSON reader is bound by the recursion limit. The Rust and Lisp readers ended the connection past 4096 and 2000 levels. Rust's `Context::tool_params` returned none past 128 levels. Rust's event-stream deltas (a `message_update` whose tool call carries deep arguments, a `tool_execution_update`) ended the connection past 128 levels. Matching Pi's observable result for the arguments Pi accepts, and failing a call (never the extension) beyond what an SDK reads, keeps tool calls with legitimately nested JSON working. Pi's exact cut-off is not reproducible.
@@ -3688,6 +3678,88 @@ Evidence: `TestTreeNavigationPaintsNoStaleFrameBeforeTheTranscriptSwap` (red wit
 
 Parity allowance: scenario `tree/15-tree-navigation-no-stale-frame` runs a `session_before_tree` handler that awaits 600 ms. Both programs end on the same pane (`output_equal`). PiG's pane, sampled every 10 ms from the choice until "Navigated to selected point" shows, never shows the old leaf with the prompt gone (`pig_no_stale_frames`); Pi's samples are not asserted, because Pi shows that pane throughout the await.
 
+## D272 The upgrade type check runs in a driver program that the go command builds from the staged SDK, not in the pig binary
+
+What: `pig extension upgrade`, the startup SDK-drift offer and `extensionsAutoUpgrade` type check a Go extension with `go/types`. In Pi there is no SDK to drift from and no upgrade path, so no behavior of Pi is changed. In PiG the `pig` binary no longer links the type checker (`go/types`, `go/importer`, `go/printer`, `go/format` and the gc and gccgo importers: 511 KB of `go/types` symbols and about 1.4 MB of file). The type checker is the program `extensions/sdk/upgrade/driver`, a part of the staged Go SDK. `pig` runs `go run -trimpath ./upgrade/driver` in the staged SDK directory, with the go command and the environment that already list and build the extension. It sends the `LoadOptions` as JSON on standard input and reads the plan as JSON from standard output. The plan, the report, the diff, the exit codes and the error text are the same as before.
+
+What a user can see:
+- The analysis runs only when a Go source extension fails to build with an SDK drift error (the startup offer, `extension upgrade`, `extensionsAutoUpgrade`). Startup with no failing Go extension is not affected.
+- Warm cache: +0.06 s to +0.2 s per analysis (`pig extension upgrade --dry-run`: 0.63 to 0.67 s before, 0.71 to 0.84 s after), and about +0.09 s per start that has a Go extension that fails to build (0.14 to 0.18 s before, 0.24 to 0.27 s after).
+- The first analysis after a Go update, an SDK update or with an empty Go build cache compiles the driver: +4 s to +7 s (measured 4.2 to 4.7 s at start, 7.2 to 7.7 s for `extension upgrade`, 5.0 s on top of an empty build cache; go 1.27.3, linux/amd64, a loaded 16-CPU host, so ±10 %). The Go build cache keeps the driver, so later analyses do not pay it.
+- It works offline: the SDK module has no requirement, so the driver build needs no download. The measurements ran with `GOPROXY=off GOTOOLCHAIN=local`.
+- `pig` stages the Go SDK before the analysis (`EnsureSyncedLang`). A config root whose staged SDK cannot be written fails the analysis with the staging error. Before, the analysis ran from any SDK root the build found. A stock `pig` stages the SDK at startup already.
+- A cancelled analysis closes the driver's standard input, which cancels the driver's `go list`.
+- With no `go` on the path the text is the same as before. A Piglet Binary that compiled out the Go SDK cannot analyze a Go extension (D92).
+
+Why: the type checker was 1.4 MB of a binary every user downloads, and only the upgrade path runs it. The go command is already required by that path, because it lists and builds the extension. The driver is compiled by the user's own toolchain, so the compiler export data and `go/types` match.
+
+Pi bug: none.
+
+Scope: the go command that the toolchain resolver picks, on every platform. The `pig` binary still links about 107 KB of `go/types` symbols, because the public package `extensions/sdk/upgrade` imports `go/types`; moving its analysis API out would be an incompatible change of the released SDK module and is not part of this record. The process tests of the driver run on Linux, macOS and Windows: the fake go command is the test binary itself (8c67993ab1). Only the CI jobs of macOS and Windows prove the same code on those systems. One `pig extension upgrade --dry-run` on the D109 fixture with a fresh `PIG_HOME`, rebuild included, takes 2.80 s before the driver and 3.17 s after (+0.37 s, 10 warm runs on xd670); `pig` peaks at 37.0 MB against 41.1 MB, and the driver child at about 12.6 MB.
+
+Owner decision: approved by owner Michael Kinsy on 2026-11-06.
+
+SCRUTINIZED:approved
+
+Remove when: the owner prefers the type checker in the binary again, or Go ships `go/types` in a form that the binary can link at no size cost.
+
+Call-site markers: `coding/cli/extension_upgrade_analyze.go` (`analysisDriver`, `analysisKillDelay`, `analyzeExtension`, `runAnalysisDriver`), `extensions/sdk/upgrade/driver/main.go` (`main`).
+
+Evidence: `coding/cli/extension_upgrade_driver_test.go` runs the real driver and the real go command for a fixture extension (the plan, the error text, cancel, a missing go command). `extensions/sdk/upgrade/driver/main_test.go` covers the request and reply round trip and the cancel by closing standard input. `strip_upgrade_link_test.go` requires that the binary does not link the type checker's packages. The upgrade tests of `extensions/sdk/upgrade` and `coding/cli` (`Upgrade`, `SDKDrift`, `AnalysisDriver`) pass with the driver in the path. Review `reviews/sizeclimb-sdk.md` measured the latencies above before and after on xd670.
+
+## D274 A packed Go or Lisp member whose own code ends the shared process stops alone, and the members that shared the process restart and lose their in-memory state and in-flight calls
+
+What: Pi loads every extension into one process, and an isolated PiG extension has a process of its own. A packed Go or Lisp cell shares one process among its members, and neither language can contain a failing thread of an extension's code in the process that serves the others: a goroutine one member started that panics, or a thread one member made that signals a condition nothing handles, ends the process. The SDKs recover what they can: a panic or condition in any callback of the extension's own code that an SDK runs on a goroutine or thread it started (a handler, a tool, a listener, an editor or overlay component, an MCP credential store's `WithRefreshLock`, a settings storage's `WithLock`, a compact or nested-call callback) is that call's error, in an isolated and in a packed process alike. What remains is code the extension itself started.
+
+When such a thread ends the process, the host reads the trace the process wrote to its stderr log, only the trace of the panic or condition that ended it, and only when the process ended that way. A Go process that an unrecovered panic ended exits with status 2 and leaves the runtime's section: the last line of the log that begins `panic: `, its message and continuation lines, a blank line, and the header of the goroutine that was running (`goroutine N [running]:`), with nothing written between them and no `fatal error: ` line after it. The blocks the SDK writes for the panics it recovered (a handler's, a listener's) are handled failures and decide nothing. The frames of that goroutine, and its `created by` line, name a member when a frame's package is the member's import path, or belongs to the module of exactly one member. A Lisp backtrace (the last `Backtrace for:` section) counts only when SBCL's own `unhandled condition in --disable-debugger mode, quitting` line follows it, and names a member by the package that qualifies the function of a frame; the arguments SBCL prints after the function, which include the condition's text, name nobody. A trace that names exactly one member blames it. One that names two, or none, blames no one, and so does a process that ended any other way than by that panic or condition: `os.Exit`, a runtime fatal error (which ends with status 2 as a panic does, and writes `fatal error: `), `sb-ext:exit`, a kill. Whatever a member logged before decides nothing then: the text a member writes for a panic it handled in the form the Go runtime writes its own (`panic: ` and `debug.Stack()`), or a backtrace it prints (`sb-debug:print-backtrace` writes SBCL's `Backtrace for:` header), is not what ended the process. Four limits remain, and each blames or spares a member wrongly only in the case named: a Go member that logs such a block and then ends the process itself with `os.Exit(2)` is read as a panic of the member whose frames the block holds; and a Lisp thread of one member that calls another member's function in tail position names that other member, because SBCL's tail-call merging drops the calling frame from the backtrace (Go's `created by` line always names the starter, so Go is not affected). The other two need a trace crafted by the members' own code, written while the process is dying: a bare `debug.Stack()` block (it has no `panic: ` line) that a member writes between the blank line that follows the runtime's panic message and the runtime's goroutine header is read as the running goroutine's, and a backtrace a Lisp sibling prints between the culprit's backtrace and SBCL's quit line is read as the one that ended the process. The host then, when it blames one member,
+- stops the old process and every member's connection, and quarantines no cell;
+- stops the blamed member and reports it, with the cause the process wrote (`panic: ...`) and the log that holds it, as stopped until `/reload`, which is what an isolated extension's crash does; a `/reload` runs it isolated, in a process of its own, and never again beside the members it took down; and
+- starts the other members again together in a new shared process, at once, and reports each of them as restarting.
+
+The restarted members run their factories again, so an extension's in-memory state starts over, and a call that was in flight when the process ended fails with the connection error and is not replayed. An isolated extension's crash ends that extension only; here a sibling's crash restarts a member that did nothing wrong. A trace that names no member, or two (a kill, `os.Exit`, a runtime fatal error, a package two members share), stops every member of the cell until `/reload` restarts them, as before. A Rust thread that panics or a Python thread that raises ends that thread, not the process, so neither language reaches this path; a Node cell has its own recovery (D20).
+
+Why: Before, one member's goroutine ended every sibling and told them to run `/reload`, though the trace says whose code it was. Stopping only the member whose code failed matches the isolation an isolated extension gives, and the one thing packing cannot give an in-process language, a boundary around a failing thread, is replaced by a restart of the others. Recovering inside the thread is not possible: a goroutine or thread that the extension started has no frame of the SDK to recover in.
+
+Pi bug: none; Pi runs every extension in one process and has no process boundary to restart.
+
+Scope: the Go and Lisp SDKs' packed cells (a placement of the same factory the isolated cell runs), when the process ends with a trace that names exactly one member of a cell of two or more. Not an isolated extension, not a Rust or Python cell, not a Node cell, not a process that ended any other way than by an unrecovered panic or an unhandled condition (`os.Exit`, a runtime fatal error, a signal).
+
+Owner decision: approved by owner Michael Kinsy on 2026-11-07 (proposed by the 0.7.1 coordinator).
+
+SCRUTINIZED:approved
+
+Remove when: an extension's goroutine or thread can be contained in the process that serves other extensions, or the owner decides that a crash of a packed member stops its siblings until `/reload`. Then the call-site marker, the trace readers and this record go.
+
+Call-site markers: `coding/extension/host/subprocess/packed_native_recovery.go` (`recoverNativeProcess`).
+
+Evidence: `TestPackedProcessCrashBlamesTheMemberWhoseGoroutineEndedIt` (`coding/extension/host/subprocess/packed_native_recovery_host_test.go`: a Go cell of two; the other member's handler had panicked and been recovered earlier; one member's goroutine panics; the other restarts, the culprit stops and a reload runs it isolated, no cell is quarantined, and only the culprit is reported stopped), `TestPackedProcessExitStopsTheWholeCell` (the same file: `os.Exit` after a recovered panic, and `os.Exit`, a fatal error and a kill after a logged panic block, blame no one and stop the whole cell), `TestPackedLispProcessEndedWithoutAnUnhandledConditionStopsTheWholeCell` (`test/extension-conformance/packed_crash_blame_test.go`: a printed backtrace, then `sb-ext:exit` or a kill), `TestGoTraceCulpritReadsOnlyWhatEndedTheProcess` and `TestLispTraceCulpritReadsOnlyWhatEndedTheProcess`, `TestPackedCrashBlameAcrossSDKs` (`test/extension-conformance/packed_crash_blame_test.go`; Go and Lisp, isolated and packed), `TestGoTraceCulpritNamesTheMemberWhoseCodeEndedTheProcess` and `TestLispTraceCulpritNamesTheMemberWhosePackageQualifiesAFrame` (`coding/extension/host/subprocess/packed_native_recovery_test.go`: recovered blocks, `os.Exit`, fatal errors, a condition's text and two named members), and for the callbacks the SDKs recover `extensions/sdk/callback_guard_test.go`, `TestEditorComponentFailingKeyIsReportedAndFinished` (`test/extension-conformance/editor_input_failure_test.go`) and `a-failing-compact-callback-does-not-end-the-process` (`extensions/sdk-lisp/tests/core-tests.lisp`).
+
+Parity allowance: the row pins what a packed and an isolated placement share after one member's own thread ends its process: the blamed member is reported stopped with the log that holds its panic, the sibling answers a command and is never reported stopped, and a `/reload` brings both back. It does not pin that the sibling keeps its in-memory state, because it does not (the residue above).
+
+## D277 A Node renderer component that handles the mouse itself takes the click only, and the host answers it handled for the whole component
+
+What: Pi routes every mouse event of a fullscreen frame to the component under the pointer, and the answer of the component decides what the renderer does next (`tui-alt-screen.ts` `handleMouseEvent`, `handleSelectionMouseEvent`). A custom message or entry renderer of the Node SDK returns a component that lives in the extension's process, so the host cannot know its answer before it has to answer the terminal; it must not wait for the extension (AGENTS.md TUI rules). For a tree built from Pi's own `MouseRegion`, `Container` and `Box` the host needs no answer: the Node runtime finds the rectangles in which a `MouseRegion` answers by one walk over the tree that follows the three rules by which Pi's `dispatchMouseEvent` hands an event down (a `Container` and a `Box` to the child whose rows hold it, a `Box` inside its padding, a `MouseRegion` answering for every event that reaches it), sends them with the frame (`regions`), and the host hit-tests them. A click outside every region (the padding of a card) is left unhandled and falls through to text selection and copy-on-select; a click inside is handled and delivered to the component; Pi's compaction, branch-summary and skill cards and a `MouseRegion` card of an extension therefore match Pi byte for byte. The residue is a component whose tree has a handler that is not a `MouseRegion`, `Container` or `Box` (a hand-written `handleMouse`): PiG answers a click anywhere in it as handled at once and delivers it to the component (`dispatchMouseEvent`, coordinates local to it), and leaves every other event (press, release, drag, move, wheel) unhandled, so selection and scrolling work over it. A hand-written handler that takes press, drag, wheel, or a click only on some cells gets none of those events, and a click on a cell it would not have handled is handled and clears a text selection. A `MouseRegion` whose closure answers an event other than `click` (press, drag, wheel) gets only the click. A `MouseRegion` whose closure declines a left click (returns no result for it) is still answered handled, because the host cannot run the closure before it answers the terminal: the selection is cleared and copy-on-select is skipped, where Pi leaves the click unhandled. The SDKs whose renderers return a kit view are not affected: the host hit-tests a view's mouse regions from their description and answers exactly as the region says.
+
+Why: asking the extension is impossible without waiting for it, and answering every event inside the component (D107 §4.3, the ui.custom rule) would make every clickable card swallow its text selection and the transcript's wheel scrolling.
+
+Pi bug: none.
+
+Observable effect: only an extension that writes its own `handleMouse`, a `MouseRegion` that answers press, drag or wheel, or a `MouseRegion` whose closure declines a click differs from Pi, in the cases above.
+
+Scope: `render_message` and `render_entry` components of the Node runtime whose tree has a hand-written mouse handler, and the non-click events of a `MouseRegion` closure. Not tool renderers, widgets, header and footer (they take none yet, a recorded gap), not kit views, not trees of `MouseRegion`, `Container` and `Box` clicked.
+
+Owner decision: approved by owner Michael Kinsy on 2026-11-07, in this narrowed form only.
+
+SCRUTINIZED:approved
+
+Remove when: the host can ask the extension synchronously for a component's answer, or Pi's own components of a separate process need none.
+
+Call-site markers: `coding/extension/host/subprocess/render_proxy.go` (`HandleMouse`), `coding/extension/host/subprocess/runtime-node/runtime.mjs` (`renderTranscriptComponent`).
+
+Evidence: `TestRenderProxyNodeComponentTakesClickOnly` (`coding/extension/host/subprocess/render_proxy_mouse_test.go`) pins the residue; `TestRenderProxyNodeMouseRegionsAreHitTestedLikePi` and `TestRendererClickOutsideTheRegionFallsThrough` pin that a click outside the regions is unhandled and one inside is handled and counted; the tmux scenario `extensions-runtime/96-message-click-expansion` compares the clicks on the regions and on a card's padding with Pi's, but it cannot tell the narrowed behavior from the wide one (a padding click that the host wrongly handled still reaches Pi's own dispatch inside Node, which leaves it unhandled, so the screen is the same: only selection and copy-on-select differ, and a capture does not show them); the conformance row `TestRendererClickOutsideTheRegionFallsThrough` is the guard. `TestNodeMouseRegionsAreTheCellsPiDispatchReaches` (`coding/extension/host/subprocess/node_mouse_regions_test.go`) pins the walk against Pi's own `dispatchMouseEvent` asked about every cell, over 600 generated trees of `Container`, `Box` with padding and `MouseRegion`, over layouts rendered at another width, and over a layout that changed after the render, and checks that no handler of the extension runs and a 4000-line card costs milliseconds (the per-cell probe took 1.8 s at width 100 and 2.9 s at width 200).
+
+Parity allowance: none beyond the scenario above.
+
 ## D310 `/reload` and a session switch remove every extension overlay
 
 What: PiG ports Pi main 80d4d3c86 (`fix(coding-agent): remove all extension overlays on /reload and session switch`, #11853), which is not in Pi 1.5.0. `/reload` and a session switch remove every overlay an extension opened with `ctx.ui.custom({ overlay: true })`, hidden ones included, newest first, and dispose their components; pi's own overlays stay open. The extension's pending `custom()` call stays pending, as for an inline dialog. Pi 1.5.0 removed only the topmost overlay, so the lower ones stayed on screen and kept focus and input after the extension that opened them was gone.
@@ -3732,28 +3804,6 @@ Evidence: `TestCtrlOExpandsUserBashOutputInThePendingArea`, `TestQueuedMessageUp
 
 Parity allowance: none needed; Pi 1.5.0 has no test of this behavior.
 
-## D312 The model selectors keep the row the user browsed to when a catalog refresh lands
-
-What: PiG ports Pi main df0d88aac (`fix(coding-agent): keep model selector selection when the catalog refresh lands`, #11810, closing #9109), which is not in Pi 1.5.0. Opening the model selector or the llama model search starts a background refresh. When the refresh finished, Pi 1.5.0 moved the selection back to the current model, or to the top row when a search query was typed, discarding any browsing done meanwhile. The selectors now pass the selected model into the filter so the refresh keeps it selected by provider and ID; when it is gone the earlier fallback applies, and the list is rebuilt once.
-
-Why: browsing the list during the refresh lost the user's place.
-
-Pi bug: 1.5.0 discards the user's selection when the catalog refresh lands (#9109).
-
-Scope: the model selector (`tui/model_select.go` `applyFilterPreferring`) and the llama model search (`internal/codingagent/llama/ui.go`).
-
-Owner decision: owner sign-off pending (draft; Pi main follow of 2026-11-07).
-
-SCRUTINIZED:approved
-
-Remove when: the pinned Pi release contains df0d88aac. Then the call-site markers and this record go.
-
-Call-site markers: `tui/model_select.go` (`applyFilterPreferring`), `internal/codingagent/llama/ui.go` (search results).
-
-Evidence: the ported `model-selector.test.ts` and `llama-ui.test.ts` cases of Pi df0d88aac.
-
-Parity allowance: none needed; Pi 1.5.0 has no test of this behavior.
-
 ## D430 Go callers start a call and await it apart (Reference.Start, PendingCall) and run a handler's blocking remainder from outside the host package (AwaitingCtx)
 
 What: Pi's `ref.method(args)` starts the call at once and returns a Promise. A caller may start several calls before awaiting any (Files v2's pipelined `append`s, which the call window allows) and the host accepts them in the order they were started. A blocking Go `Reference.Call` cannot express that, so `Reference.Start(method, args, ctx)` is the synchronous half (the call is admitted and its handler's synchronous part has run when it returns) and `PendingCall.Wait(ctx)` the awaiting half. `host.AwaitingCtx(ctx, work)` is `Awaiting` for a caller outside the package, which cannot name the host's loop: the blocking remainder of an `onLive` or `on` handler (the awaits of Pi's async function).
@@ -3784,7 +3834,7 @@ Why: owner decision of 2026-11-07 23:33Z, port all of Pi main.
 
 Pi bug: none.
 
-Scope: `chord/next/store` (`live_query.go`), `chord/next/documents` (`Transaction` stages the refresh), `chord/next/host` (`StoreSelf.Query`, `HostError.Table`). A reload reports the object `swapped` until Pi a5d209afd (restart model) is ported, where Pi main says `restarted`.
+Scope: `chord/next/store` (`live_query.go`), `chord/next/documents` (`Transaction` stages the refresh), `chord/next/host` (`StoreSelf.Query`, `HostError.Table`). A reload reports the object `restarted` (Pi a5d209afd's restart model).
 
 Owner decision: owner sign-off pending (draft; Pi main follow of 2026-11-07).
 
@@ -3797,6 +3847,46 @@ Call-site markers: `chord/next/store/live_query.go`, `chord/next/host/host_attem
 Evidence: `TestLiveQuery*` (`chord/next/host/host_live_query_test.go`), `TestQueryRefreshAdoptsItsLastApplicationsRunsOnly...` (`chord/next/store/live_query_test.go`).
 
 Parity allowance: Go limits are int64: Pi's fractional and absent limits cannot be written.
+
+## D502 `TestPlugin` tests a plugin on the production topology: its host is the Node subprocess and the stubs are Go facets, not JavaScript values handed to one in-process host
+
+What: Pi's `testPlugin(dir, { kind, modules, stubs, ... })` (`packages/chord/src/node/plugins/testing.ts`) builds the plugin, evaluates it in the test's own process with live JavaScript `modules`, loads it with live `stubs` (`PluginFacet[]`) on one new in-memory host and returns that host. PiG's `TestPlugin` (`chord/nextnode/plugins/plugins_testing.go`) builds with the same `BuildFacet` and options and the same discovery, but a plugin evaluates only in the Node subprocess (AGENTS.md: no embedded JavaScript runtime; `docs/plan/chord-plugins-node-evaluator.md`), so: `Modules` are files the subprocess imports (the app's API as modules on disk, as a production host's `HostPackages`), not instances; a stub is a Go facet on a Go host (`TestPluginOptions.Stubs`, bridged to the plugin's host as `BridgedFacet` is, so it serves local types without keyed members) or a JavaScript module (`TestPluginOptions.Core`, which may also serve or contribute to registries and serve remote types); the result holds two hosts, the plugin's `NodeHost` (`TestedPlugin.Host`, reached through `NodeHost.Get` and `NodeHost.Hold`, the Go forms of `host.get` and `host.hold` for a local type) and the stubs' Go host (`TestedPlugin.Stubs`).
+
+Why: a live JavaScript closure, module instance or `Host` cannot cross the process boundary, and the alternative (a second evaluator of plugins in the Go process) is forbidden. The topology is the one apps run (a Go host with a Node host as its child), so a plugin that passes `TestPlugin` meets its stubs through the same bridge it meets Go core facets through in production.
+
+Scope: `TestPlugin`, `TestPluginOptions`, `TestStub`, `TestedPlugin.Host` and `Stubs`; the cases of `testing.test.ts` and example 52 give the same inputs (plugin files, API, contracts) and the same expectations (values read, contributions, names listed, errors) through these forms. Behaviour that is Pi's: a facet that throws while it evaluates rejects with that error as it is (`*NodeError`), and a setup that throws is `testPlugin: setup failed: ...` (`TestTestPluginRejectsAScriptThatThrowsWhileItEvaluatesWithItsOwnError`); the build and its refusals (`failed to build`), the versioned-API check, the root and kind derivation (single-file and checkout plugins, kinds named by files, `*.test.*`/`*.d.ts` naming none), the collecting facet and its fixed point, the wait for activations bounded by `timeouts.ready`, an in-memory store.
+
+Owner decision: approved 2026-11-08 (option (a), port with a Go `TestPlugin`, 2026-11-08 00:36Z; this record is the residue). One two-host effect: a Go stub whose setup fails makes `TestPlugin` fail on the stubs' Go host before the plugin loads, so the error lists only the stub's failure; Pi loads stubs and plugin in one `host.load` and joins both failures in one "setup failed" message.
+
+Call-site markers: `chord/nextnode/plugins/plugins_testing.go` (`TestStub`, `TestPlugin`), `chord/nextnode/plugins/node/testing.mjs`.
+
+Evidence: `TestTestPlugin*` (`chord/nextnode/plugins/plugins_testing_test.go`, the cases of `testing.test.ts`) and `TestExample52TestPlugin` (`plugins_examples_testplugin_test.go`).
+
+Parity allowance: none needed beyond the forms above; the Pi cases pass with Go stubs, file modules and the two hosts.
+
+Remove when: Pi evaluates plugins out of process (its stubs then need a wire form too) or PiG gets an in-process evaluator.
+
+SCRUTINIZED:approved
+
+## D503 `TestPlugin`'s registries are named, its contributions are data, and `root` is `RootPrincipal`: no JavaScript closure or registry token crosses
+
+What: Pi's `TestedPlugin.contributions(R)` takes the registry token `R` and returns its entries with their live values, and `root(fn, context, options)` runs the closure `fn` as the host's principal or `options.principal`. PiG's `TestedPlugin.Contributions(name, ctx)` takes the registry's name and returns `[]Contribution{Plugin, Type, Version, Value}` with each value as JSON data (a function or other non-data value in a contribution does not cross; the control channel's value form carries `bytes()` leaves), and `RootPrincipal(principal, ctx)` runs the fixed closure `async (ctx) => ctx.principal` of Pi's own test on the plugin's host and answers the principal its context has (the host's own for nil). The error for a registry that is not collected is Pi's message (`testPlugin: registry <name> is not collected ...`).
+
+Why: the plugin's host is in the Node subprocess; a Go function cannot run there as an object's code, and a JavaScript closure written in a Go test is not a Go value. The helper's own reads (the collection's fixed point over `undeclaredRegistries`, `activationsUnderWay`, `timeouts.ready`, `unservedNames`, the reload that adds the collecting facet) run in the subprocess (`node/testing.mjs`), so the host's internals never cross; only their results do.
+
+Scope: `TestedPlugin.Contributions`, `RootPrincipal`, `Unserved`. A test that needs `ctx.get` of other objects as another principal has no Go form of `root` yet; it reads through `NodeHost.Get` as the host's principal.
+
+Owner decision: approved 2026-11-08 (same option as D502).
+
+Call-site markers: `chord/nextnode/plugins/plugins_testing.go` (`Contributions`, `RootPrincipal`), `chord/nextnode/plugins/node/testing.mjs`.
+
+Evidence: `TestTestPluginLoadsThePluginBuiltAgainstTheAPIBesideAStubCollectsItsContributionsAndListsWhatItWaitsFor` (`plugins_testing_test.go`: contributions by name, root as the host and as `u2`), `TestExample52TestPlugin`.
+
+Parity allowance: none needed.
+
+Remove when: PiG's plugin host can run a Go closure in the plugin's host process, or Pi's `root` takes data.
+
+SCRUTINIZED:approved
 
 ## D520 A connection reset as soon as it is accepted reports the response read, where Pi usually reports the connect
 
@@ -3819,3 +3909,127 @@ Call-site markers: `ai/errors.go` (`nodeConnectionFailure`).
 Evidence: `TestConnectionErrorKeepsCauseThroughSDKsMatchesPi` (`ai/connection_cause_oracle_test.go`: refused, reset after the request, closed after the request, closed on accept, all exact against the pinned pi-ai) and `TestOpenAISDKTransportErrorConnectionReset` (`ai/openai_sdk_transport_error_test.go`: reset on accept accepts `connect`, `write` or `read`).
 
 Parity allowance: the reset-on-accept case accepts the three operations because the pinned pi-ai reaches any of them by timing and PiG reaches the read by construction.
+
+## D521 A bigint in validated tool arguments is the string `<digits>n`, where Pi holds a JavaScript bigint
+
+What: a tool schema with `Type.BigInt` (`{"type":"bigint"}`) coerces a JSON argument to a bigint in Pi's `validateToolArguments` (`packages/ai/src/utils/validation.ts`), and Pi's own `validation-probes.test.ts` writes that value as `${value}n` because `JSON.stringify` throws on a bigint (Pi af79b0c3d). PiG hands the validated arguments to a tool as JSON text, so a coerced bigint is written as the JSON string `"<digits>n"` (`ai.appendStringify`), and the four probe rows that hold a bigint or an `undefined` (bigint x3, undefined) record that representation. A tool that reads the argument as a number or as a string without the suffix sees the suffixed string, where Pi's tool receives a bigint.
+
+Why: Go has no JavaScript bigint inside a JSON document and a tool argument reaches the tool, the transcript and the extension protocols as JSON. A bigint cannot be written as a JSON number without losing the type or the digits it carries (`JSON.stringify` has no form for it), and a reader of the text cannot tell a bigint from a number. The string keeps every digit and marks the type the way Pi's probes do. `undefined` is not a divergence: it is no member of an object and `null` in an array, as `JSON.stringify` writes it.
+
+Pi bug: none; Pi's tool receives a bigint in process. The probes' `${value}n` is Pi's own notation for it.
+
+Scope: `appendStringify` (`ai/validate.go`) and so `ValidateToolArguments`: only a schema that names the `bigint` type, which no stock tool and no model catalog schema uses; an MCP or extension tool with `type: "bigint"` is the only way to reach it.
+
+Owner decision: owner approved option D (keep the string representation, record it as a numbered divergence) 2026-11-08 (owner list #22, "proceed with recommendations").
+
+SCRUTINIZED:approved
+
+Remove when: the tool-argument path carries a typed bigint (for example a JSON extension with a numeric tag) that every reader of the arguments understands.
+
+Call-site markers: `ai/validate.go` (`appendStringify`, the `*big.Int` case).
+
+Evidence: `TestValidationProbesMatchPi` and `TestValidateToolArgumentsMatchesPiOnPiProbes` (`ai/validate_probes_upstream_test.go`, `ai/validate_pi_oracle_test.go`): the bigint rows of `ai/testdata/validation-probes.json` run against Pi's recorded outcome and against Pi's own `validateToolArguments`, whose oracle (`ai/testdata/validate_tool_args.mjs`) writes a bigint as `${value}n`.
+
+Parity allowance: the four bigint and undefined rows of `validation-probes.test.ts` are compared by Pi's outcome notation, which PiG's representation matches; a tool that needs the bigint type gets the suffixed string.
+
+## D540 The plugins watcher's directory identity has no birth time on a system whose stat Go does not expose it for
+
+What: Pi renews the base watches under an entry on the way to base code only when the entry's identity, its inode and birth time (`identityOf`, `watcher.ts`), differs from the one it had when watched. PiG does the same with `statx` (ino, btime) on Linux and Android, `lstat` (ino, birthtimespec) on macOS, FreeBSD and NetBSD, `lstat` (ino, `X__st_birthtim`) on OpenBSD, and the file index and creation time on Windows. On any other Unix (DragonFly, Solaris and illumos, AIX) Go's `syscall.Stat_t` has no birth time, so the identity is the inode alone: a directory removed and made again that is given the same inode number is not seen as replaced there.
+
+Why: the birth time is not in Go's `syscall` on those systems, and nothing in PiG ships for them (the release matrix is Linux, Android, macOS and Windows). Linux file systems with no birth time (tmpfs) give 0 in Pi as well (libuv's `statx`), so they are not part of this record.
+
+Pi bug: Not a Pi bug.
+
+Scope: `chord/nextnode/plugins/plugins_watcher_identity_other.go`, the `base` mark of `pluginWatcher` on DragonFly, Solaris and illumos, and AIX.
+
+Owner decision: owner sign-off pending (drafted by the FollowChordPlugins lane on 2026-11-08).
+
+SCRUTINIZED:approved
+
+Remove when: PiG ships for such a system and its `Stat_t` carries a birth time, or Go's `syscall` gives one.
+
+Call-site markers: `chord/nextnode/plugins/plugins_watcher_identity_other.go`.
+
+Evidence: `TestIdentityOfADirectoryIsItsInodeAndBirthTimeAndNoneForNoEntry` states the identity on the systems tested; the build of the file is checked by `GOOS=dragonfly go vet ./chord/nextnode/plugins` (and netbsd, openbsd for the files that read a birth time).
+
+Parity allowance: none needed; no Pi test depends on an inode reused with no birth time.
+
+## D600 A Go worker's base is a private copy of its own executable, not an esbuild bundle: no bundle, no `cache/node`, no `NODE_COMPILE_CACHE`, and the copy is made at the build
+
+What: Pi builds a worker kind's base by bundling the entry module with the base code it imports (`workers/base.ts`, esbuild) in memory, writes it at the first fork into a private directory its component owns (the kit's `cache/workers/<kind>/`, emptied first, removed at `close` after every worker exited, never touched by a component that closed), records every file the build read (`WorkersBuilt.inputs`) and forks its workers with `NODE_COMPILE_CACHE` set to the kit's `cache/node/`. PiG's worker is the program the app names (`Entry`, usually its own executable), which holds its code already. `Workers.Build` (run by the kit right after the server listens) checks that `Entry` can be started, copies it into `WorkersOptions.BaseDir` (the kit's `cache/workers/<kind>/`, emptied first; a new temporary directory without one) and records the entry with the hash of the bytes copied; every worker forks that copy; `Close` removes the directory once every worker exited (also when its context ends the wait first), and a component that closed before its build copies nothing and leaves a named directory as it is. A copy that is gone (a cleaner of temporary files) is made again from the entry when the entry still has the recorded bytes. An edit of the entry marks `base` (the kit watches the recorded file), and runs in no worker. The layout has `cache/` and `cache/workers/` (mode 0700), not `cache/node/`.
+
+Why: a program cannot be held in memory as Pi's bundle is, so the snapshot is a file made at the build, not at the first fork: it keeps what Pi's test pins ("a worker started after an edit of the entry's imported source runs the code the base was built with"). There is no module graph to bundle, no Node compile cache for a compiled executable, and no esbuild error to report: the Go build error is an entry that cannot be started or copied.
+
+Pi bug: Not a Pi bug.
+
+Scope: `chord/nextnode/workers` (`Workers.Build`, `WorkersBuilt`, `WorkersOptions.BaseDir`), `chord/nextnode/app` (`AppLayout.Cache`, `AppLayout.WorkerBases`, the worker kinds' base records).
+
+Owner decision: owner sign-off pending (drafted by the ChordKit284 lane on 2026-11-08).
+
+Remove when: PiG's worker is a Node entry again.
+
+Call-site markers: `chord/nextnode/workers/workers_workers.go` (`Build`), `chord/nextnode/workers/doc.go`.
+
+Evidence: `TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeTheBaseWasBuiltWith`, `TestTheWorkerBaseAComponentThatClosedBeforeItsBuildWritesNothingAndLeavesANamedDirectoryAsItIs`, `TestTheWorkerBaseInANamedDirectoryEmptiedFirstWrittenAgainThereRemovedByClose`, `TestTheWorkerBaseABrokenEntryFailsItsBuildAndEveryStartWorkerFailedThePublicStartErrorNothingForks` (`chord/nextnode/workers`), `TestAppMarksBaseForAChangeOfAWorkerKindsEntryNotForARewriteWithTheSameBytes`, `TestAppReportsABaseThatFailsAfterTheListenAndRunsOn…` (`chord/nextnode/app`).
+
+Parity allowance: Pi's `base.test.ts` and the worker-base tests of `workers.test.ts` that bundle a Node module, the `NODE_COMPILE_CACHE` and `cache/node` assertions of `layout.test.ts` and `app.test.ts`, and the `app.test.ts` tests that hold a worker kind's base build on a pipe have no counterpart.
+
+## D603 PipeTransport.Close bounds its wait for the killed program
+
+What: `PipeTransport.Close` closes the program's stdin, waits `CloseTimeoutMs`, kills it, then waits the same time again for the exit and returns an error when the program still has not exited. Pi's `close()` awaits `exited` after the kill with no bound.
+
+Why: a pipe whose exit is never reported would hold a Go caller (shutdown, a server restart) forever; an error lets it go on. The exit-watcher goroutine of such a pipe still waits for the exit.
+
+Pi bug: none; a program that survives a kill is outside Pi's model.
+
+Owner decision: owner sign-off pending (draft).
+
+SCRUTINIZED:pending
+
+Remove when: Pi bounds the wait, or the owner declines the bound.
+
+Call-site markers: `mcp/pipe.go` (`PipeTransport.Close`).
+
+Evidence: none new; the bound is only reached with a pipe that ignores its kill (the pipe seam of `mcp/pipe_test.go`).
+
+## D604 A link's upgrade waits for the bases to be built (Pi's links connect at once)
+
+What: with a web or terminal surface, Pi's server listens, then builds the bases; the scripts object shows an empty set (`base: ""`) until the first set is published, on the assumption that no client holds it then. PiG's `StartServer` returns when the server listens, and its links endpoint (`LinksOptions.OptionsFunc`) holds each upgrade until `BasesBuilt` (or the app's close, which refuses it) before the link is accepted. Plain HTTP requests (the owner page, the API) are answered meanwhile as in Pi; a page or surface file waits for its own base.
+
+Why: the Go server listens before the plugins' Node host has loaded (about 0.5 s), and a page of a restarted server reconnects in that gap, before the bases have started. It then holds the empty set, its base differs from the page's, and the page reloads (`Outdated`): a seamless reconnect becomes a reload, and Pi's ported test of a failed plugin script tried again at a reconnect fails every time. Pi's build takes about 100 ms after a start of a few milliseconds, so the window is rarely open there.
+
+Observable effect: a base build that hangs holds every link of the app (pages, terminal clients, objects that need no surface), where Pi's link connects at once.
+
+Pi bug: Not a Pi bug.
+
+Scope: `chord/nextnode/app` (`App.linksAfterTheBases`).
+
+Owner decision: owner sign-off pending (drafted by the ChordKit284 lane on 2026-11-08). A narrower form (the two scripts objects waiting for the build, through the host's dependency parking) is possible and would let the other links connect at once.
+
+Remove when: the Go server's start no longer leaves a window (the plugins' host loads before the listen), or the scripts objects wait for the build themselves.
+
+Call-site markers: `chord/nextnode/app/app_bases.go` (`linksAfterTheBases`).
+
+Evidence: `TestAPagesPluginStylesheetsTryAFailedPluginsScriptAgainAtAReconnectWithItsStylesheetNeverOneWithoutTheOther` (red without the wait: the page reloaded), `TestAppHoldsALinkUntilTheBasesAreBuilt`.
+
+Parity allowance: none needed.
+
+## D605 The server's two hosts serve one union: `Host.Delegate` one way, the Node host's destination the other
+
+What: Pi's server runs its plugins in its own host (`createHost({ address: Server() })` loads them), so the server serves the union of the kit's types and the plugins' from one place. The Go kit's plugins run in a Node subprocess behind the Go server host, which is also addressed `server` (it serves the kit's own remote types: the locale and theme choices, telemetry ingest, the app's Go facets). Both directions are kept so a hold binds on whichever of the two serves the type. Go to Node: `Host.Delegate(kind, RouteOptions, ctx)` is the route of the host's own address kind, consulted only for remote types placed on the host that its published table does not serve: those holds and references go over the delegate (a relayed hold, a remote object, parked while `Resolve` runs, resolved again once after a drop), everything the host serves stays here whatever the state of its object. A hold arriving on the delegate's own link for a type nobody serves is answered `unavailable` (not sent back). The app kit gives the NodeHost the address `server` and delegates to its link instead of accepting it. Node to Go: Pi's `Destination` places every remote type of the NodeHost's own address here, served or not, so a plugin's `self.get(LocaleChoice, {})` would wait `<type> is not served here` for ever. The Node host runs Pi's `Destination` through `node/destination.mjs` (host.ts's import of `./destination.ts` is answered by `resolve.mjs`; Pi's file is vendored as it is): for a remote type placed here that the Go host serves (`Host.Serves`, asked over a synchronous callback, `RuntimeLoad.ParentServes`, kept until the next load or reload) the reference goes over the parent link, where the Go host's own object, whatever its variants and members, binds. Residual difference: a hold over that link acts as the link's principal, the server's (a child cannot claim to be someone else, link §4: `callerOf`), where Pi's one host acts as the plugin object's own principal. So a plugin object's LocaleChoice or ThemeChoice is the server principal's, not the page owner's. Making it the object's principal needs the child's link to name whom a hold acts for, which Pi's protocol allows only from a parent to its child; it is not done here and the test pins today's behaviour.
+
+Why: process boundary (a Node subprocess for the plugins) and the Go server's two hosts (D462). Without the first direction a TypeScript server plugin cannot serve a remote type (`a host without an address serves only local types`, or, with the address, `unavailable`), which every reload row on the server needs; without the second a server plugin cannot hold any type the Go server serves.
+
+Pi bug: none.
+
+Scope: `chord/next/host` (`Host.Delegate`, `Host.Serves`, `destination`, the closure rule's placement by the staged table), `chord/nextnode/plugins` (`node/destination.mjs`, `node/resolve.mjs`, `RuntimeLoad.ParentServes`), `chord/nextnode/app` (`start`). Nothing changes for a host without a delegate, or a NodeHost without `ParentServes`.
+
+Owner decision: owner sign-off pending (draft).
+
+Remove when: never for the two hosts; the principal difference goes when a child's link can name whom a hold acts for.
+
+Call-site markers: `chord/next/host/host_host.go` (`Delegate`, `Serves`), `chord/nextnode/app/app.go` (`start`), `chord/nextnode/plugins/node/destination.mjs`, `chord/next/host/host_delegate_test.go`.
+
+Evidence: `TestDelegateServesTheUnionOfTheHostsTypes...`, `TestDelegateWhatTheDelegatesOwnLinkAsksForAndNothingServesIsNotSentBackToIt`, `TestDelegateWhenItIsDownItsTypesWaitAndTheHostsOwnAreUntouched`, `TestDelegateAHoldMadeWhileItIsDownWaitsOnTheResolvesErrorAndBindsOnceItIsBack`, `TestDelegateHoldsKeepTheirOrderAcrossTheDelegatesRestart...`, `TestDelegateIsRefusedFor...`, `TestDelegateTheClosureRuleReadsTheStagedTable...`, `TestHostServesTheTypesOfItsPublishedTableAndNoOtherName` (`chord/next/host/host_delegate_test.go`), `TestAServerPluginsObjectHoldsTheTypesTheGoServerServesOverTheNodeHostsLinkAsTheServer` (`chord/nextnode/app/app_delegate_test.go`: binds, calls, the principal difference), and the server rows of the reload suite (`chord/nextnode/app/reload_*_test.go`).
+
+Parity allowance: none.
