@@ -5,7 +5,7 @@
 # Prints ui.mjs's JSON line (first-load bytes, server RSS) for Pi's server.
 set -euo pipefail
 pi=$1 modules=$2 script=${3:-ui.mjs}
-docker run --rm --network host --cpus 6 --user "$(id -u):$(id -g)" -e HOME=/tmp -e SCRIPT="$script" -e PI_PLUGINS="${PI_PLUGINS:-}" -e SHOW_LOG="${SHOW_LOG:-}" \
+docker run --rm --network host --cpus 6 --user "$(id -u):$(id -g)" -e HOME=/tmp -e SESSIONS="${SESSIONS:-1}" -e SCRIPT="$script" -e PI_PLUGINS="${PI_PLUGINS:-}" -e SHOW_LOG="${SHOW_LOG:-}" \
   -e P2_UI_NODE_PATH=/pw/node_modules -e PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
   -v "$modules:/pw/node_modules:ro" -v "$pi:$pi" -v "$(cd "$(dirname "$0")" && pwd):/ui:ro" -w "$pi/apps/p2" --entrypoint "" \
   mcr.microsoft.com/playwright:v1.64.1-noble bash -c '

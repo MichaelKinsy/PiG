@@ -70,7 +70,8 @@ expect((await page.evaluate("window.cspViolations")).length === 0, `CSP violatio
 // The loopback owner: the page's cookie is set by the server, no sign-in page.
 const cookies = await context.cookies(base);
 expect(cookies.length > 0, "the loopback owner cookie was not set");
-expect((await page.title()) === "Pi", `title ${await page.title()}`);
+const title = process.env.P2_UI_TITLE ?? "Pi";
+expect((await page.title()) === title, `title ${await page.title()}, want ${title}`);
 
 // A faux-provider chat round trip: the fake provider echoes the prompt.
 const text = "hello parity";
