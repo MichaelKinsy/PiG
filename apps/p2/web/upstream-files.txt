@@ -43,3 +43,5 @@ test/p2/outbox.test.ts
 test/p2/session-start.test.ts
 plugins/tree/contract.ts
 plugins/search/contract.ts
+plugins/conversations/contract.ts
+plugins/chat-mode/contract.ts
