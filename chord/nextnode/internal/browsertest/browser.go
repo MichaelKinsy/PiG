@@ -326,6 +326,7 @@ func (b *Browser) Call(ctx context.Context, method string, params any) (json.Raw
 	id := b.id
 	b.pending[id] = waiting
 	b.mu.Unlock()
+	//portlint:allow mapkeyorder a DevTools message is a JSON object whose keys the browser reads by name, in any order
 	message, err := json.Marshal(map[string]any{"id": id, "method": method, "params": params})
 	if err != nil {
 		return nil, err

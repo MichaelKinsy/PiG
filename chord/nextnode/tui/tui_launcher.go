@@ -581,6 +581,7 @@ func (l *Launcher) openSocket(id int) {
 		socket.conn = conn
 		socket.state.Store(socketOpen)
 		sandbox.Post(LauncherMessage{Kind: "socket_opened", Socket: id})
+//portlint:allow golifetime ends when the socket closes (close ends out and the connection), which the launcher's finish does for every socket
 		go socket.writeLoop()
 		for {
 			_, payload, err := conn.ReadMessage()
@@ -663,6 +664,7 @@ func (l *Launcher) answer(id int, request BridgeRequest) {
 		l.confirming = true
 	}
 	l.requests++
+	//portlint:allow golifetime a request answers once (at most maxRequests run); its downloads take l.ctx, which finish cancels, and its prompt ends with the loop (Ask returns false on loopDone)
 	go func() {
 		reply, err := l.reply(id, request)
 		if err != nil {
