@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/apps/p2/brand/sprite"
 	"github.com/MichaelKinsy/PiG/apps/p2/hosts"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 
@@ -47,7 +48,17 @@ func main() {
 func runServer() int {
 	// Provider logins and server plugins fetch in this process too.
 	p2runtime.ConfigureFetch()
-	server, err := hosts.StartServer(hosts.ServerOptions{})
+	options := hosts.ServerOptions{}
+	// The branded executable draws the sprite the user chose with PiG's `/sprite` (brand/sprite); a failure leaves the mark's
+	// default pig.
+	if home, err := sprite.DefaultHome(); err == nil {
+		if source, err := sprite.Open(home); err == nil {
+			options.Sprite = source
+		} else {
+			fmt.Fprintln(os.Stderr, "p2: sprite selection unavailable:", err)
+		}
+	}
+	server, err := hosts.StartServer(options)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
