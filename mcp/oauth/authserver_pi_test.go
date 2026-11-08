@@ -216,11 +216,12 @@ type recordingStore struct {
 	memory    oauth.MemoryOAuthStateStore
 	lockError error
 
-	mu     sync.Mutex
-	saves  []recordedSave
-	locked bool
-	held   chan struct{}
-	runs   sync.WaitGroup
+	mu      sync.Mutex
+	saves   []recordedSave
+	locked  bool
+	held    chan struct{}
+	started int
+	runs    sync.WaitGroup
 }
 
 type recordedSave struct {
@@ -246,8 +247,10 @@ func (s *recordingStore) Save(ctx context.Context, state oauth.McpOAuthState) er
 func (s *recordingStore) WithRefreshLock(ctx context.Context, fn func(context.Context) error) error {
 	s.mu.Lock()
 	held := s.held
-	s.mu.Unlock()
+	// Counted under mu: waitRuns reads the count under mu first, so the first Add is ordered before Wait as sync.WaitGroup requires.
+	s.started++
 	s.runs.Add(1)
+	s.mu.Unlock()
 	defer s.runs.Done()
 	if held != nil {
 		<-held
@@ -264,6 +267,18 @@ func (s *recordingStore) WithRefreshLock(ctx context.Context, fn func(context.Co
 		s.mu.Unlock()
 	}()
 	return fn(ctx)
+}
+
+// waitRuns waits for every WithRefreshLock call that has started, and fails the test if none did.
+func (s *recordingStore) waitRuns(t *testing.T) {
+	t.Helper()
+	s.mu.Lock()
+	started := s.started
+	s.mu.Unlock()
+	if started == 0 {
+		t.Fatal("no lock wait started")
+	}
+	s.runs.Wait()
 }
 
 // hold makes the next lock waits stand for another process holding the lock, until the returned function releases it.

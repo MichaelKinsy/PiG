@@ -3884,35 +3884,39 @@ Parity allowance: none needed; Pi 1.5.0 has no test of this behavior and Pi main
 
 ## D370 The OAuth callback server drops connections that have not sent a request when it closes
 
-What: PiG ports Pi main 63ea042ce (`fix(mcp): close remaining connections when the OAuth callback server closes`, #11855, fixing #11311), which is not in Pi 1.5.0. Pi calls `server.closeAllConnections()`; Go has no equivalent that spares a response being written, so `OAuthCallbackServer.Close` closes the connections that never sent a request (a browser's preconnect) and leaves idle and in-flight ones to `Shutdown`.
+What: The pin contains Pi 63ea042ce (`fix(mcp): close remaining connections when the OAuth callback server closes`, #11855, fixing #11311). Pi calls `server.closeAllConnections()`; Go has no equivalent that spares a response being written, so `OAuthCallbackServer.Close` closes the connections that never sent a request (a browser's preconnect) and leaves idle and in-flight ones to `Shutdown`. Two Go mechanics ride with it: `WaitForCallback` fails at once when it is called after `Close` (Pi's wait would run to its timeout), and a wait that ends with its context frees its state so the same state can wait again (Pi's wait has no signal).
 
 Why: Go's `Shutdown` waits up to 5 s for a connection that never sent a request, so `/mcp login` stalled up to the 2 s bound.
 
-Pi bug: 1.5.0 waits for the browser to drop the socket, for minutes.
+Pi bug: none; these are Go mechanics.
 
 Owner decision: owner sign-off pending.
 
 SCRUTINIZED:pending
 
-Remove when: the pinned Pi release contains 63ea042ce and PiG's close matches it.
+Remove when: Go gains a way to close the connections that never sent a request without cutting a response in flight, and a wait after Close times out as Pi's does.
 
-Evidence: `TestOAuthCallbackServerClosesWhileTheBrowserKeepsAnUnusedConnectionOpen` (`mcp/oauth/oauth_test.go`).
+Call-site markers: `mcp/oauth/callback.go` (`Close`).
 
-## D371 Tool search and codemode follow local schema refs; a malformed `$ref` renders as `unknown`
+Evidence: `TestOAuthCallbackServerClosesWhileTheBrowserKeepsAnUnusedConnectionOpen`, `TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext` (`mcp/oauth/oauth_test.go`), `TestOAuthCallbackServerLeavesNoGoroutineBehindAfterClose` (`mcp/oauth/goroutines_test.go`).
 
-What: PiG ports Pi main 6d3e342b2 (`fix(coding-agent): follow local schema refs in tool search and codemode summaries`, #11850, fixing #11803), which is not in Pi 1.5.0. `tool_search` reads names and descriptions behind local `$ref`s, the codemode summary resolves `$ref` chains, and a `$ref` with a malformed percent escape names nothing, so the `codemode` render functions return a string only (they returned the URIError as an error).
+## D373 The stored PKCE verifier is dropped once its code exchange succeeded
 
-Why: One MCP tool with such a ref failed every codemode run.
+What: after `AuthorizeMcp` exchanged an authorization code and saved the tokens, PiG removes the `codeVerifier` of that sign-in from the stored OAuth state. Pi keeps it in `mcp-auth.json` until the next sign-in overwrites it or the credentials are invalidated.
 
-Pi bug: 1.5.0 throws `URI malformed` out of every codemode run.
+Why: a PKCE verifier is single use; leaving it in a credentials file beyond the exchange only widens what a leaked file reveals.
 
-Owner decision: owner sign-off pending.
+Pi bug: none observable in behavior; additive hardening.
+
+Owner decision: owner sign-off pending (draft; Pi main follow of 2026-11-08).
 
 SCRUTINIZED:pending
 
-Remove when: the pinned Pi release contains 6d3e342b2.
+Remove when: Pi drops the verifier after the exchange, or the owner declines the hardening.
 
-Evidence: `TestMalformedRefPercentEncodingRendersAsUnknown`, `TestResolveSchemaRef*` (`codemode/declarations_test.go`), `TestSchemaRefs*` (`coding/extension/builtin/toolsearch/schema_refs_pi_test.go`), `TestFindsAToolByAParameterDescriptionBehindALocalReference...` (`durable/toolsearch/toolsearch_test.go`), `TestDescribeOutputSummarizesFieldsBehindLocalSchemaReferences`.
+Call-site markers: `mcp/oauth/flow.go` (the exchange branch of `runFlow`).
+
+Evidence: `TestAuthorizeMcpDropsTheVerifierAfterTheExchange` (`mcp/oauth/oauth_test.go`).
 
 ## D430 Go callers start a call and await it apart (Reference.Start, PendingCall) and run a handler's blocking remainder from outside the host package (AwaitingCtx)
 
