@@ -16,6 +16,7 @@ import (
 
 	// The plugins this executable ships (every directory of plugins/ with a plugin.go: plugins_test.go checks the list).
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/chat"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/coding-tools"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/drafts"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/envs"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/files"
