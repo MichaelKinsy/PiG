@@ -552,6 +552,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-62a1c87](#bf-62a1c87) | The `ExtensionSelector` and `ExtensionInput` oracles also run with the Kitty keyboard protocol active (CSI-u… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-62ae30d](#bf-62ae30d) | Durable: reading the history of a conversation whose parent conversation is not stored now fails with Pi's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-62b009c](#bf-62b009c) | fix: relocate the transcript wire encoders' perf annotations; raise the headless default size ceilings for… | PiG's own defect | All platforms | Unreleased |
+| [BF-62b2278](#bf-62b2278) | Chord: a registry value's watch that ended through its context's cancellation could race with the host's… | PiG's own defect | All platforms | Unreleased |
 | [BF-62c3691](#bf-62c3691) | `grep` with a large `context` no longer holds every context line in memory: its memory is bounded by the 50KB… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6323c8e](#bf-6323c8e) | fix(ai): a Bedrock model outside the catalog is a bedrock-converse-stream model of amazon-bedrock, so its own… | PiG's own defect | All platforms | Unreleased |
 | [BF-633152d](#bf-633152d) | Starting a Go extension no longer fails with `hash <dir> after its build: open …/release/deps/rmeta…: no… | PiG's own defect | All platforms | 0.7.0 |
@@ -9097,6 +9098,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `144341e42a` (2026-10-27), `62b009c7e6` (2026-10-27)
 - **Tests:** None recorded.
+
+### BF-62b2278
+
+**Chord: a registry value's watch that ended through its context's cancellation could race with the host's…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Chord: a registry value's watch that ended through its context's cancellation could race with the host's close (a data race under `-race`); the watch now ends as a section of its host, like the rest of the code that touches the registry.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `62b2278409` (2026-11-07)
+- **Tests:** None recorded.
+- **Release note:** Chord: a registry value's watch that ended through its context's cancellation could race with the host's close (a data race under `-race`); the watch now ends as a section of its host, like the rest of the code that touches the registry.
 
 ### BF-62c3691
 
