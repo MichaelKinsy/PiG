@@ -105,6 +105,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/ai/catalog/providers/openrouter.ts` | `internal/modelgen/providers/openrouter.go` | ✅ |
 | `packages/ai/catalog/providers/qwen-token-plan-cn.ts` | `internal/modelgen/providers/qwen_token_plan_cn.go` | ✅ |
 | `packages/ai/catalog/providers/qwen-token-plan-individual.ts` | `internal/modelgen/providers/qwen_token_plan_individual.go` | ✅ |
+| `packages/ai/catalog/providers/qwen-token-plan-individual-cn.ts` | `internal/modelgen/providers/qwen_token_plan_individual_cn.go` | ✅ |
 | `packages/ai/catalog/providers/qwen-token-plan.ts` | `internal/modelgen/providers/qwen_token_plan.go` | ✅ |
 | `packages/ai/catalog/providers/radius.ts` | `internal/modelgen/providers/radius.go` | ✅ |
 | `packages/ai/catalog/providers/together.ts` | `internal/modelgen/providers/together.go` | ✅ |
@@ -239,7 +240,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/ai/src/providers/data-json.d.ts` | `(TypeScript JSON import declaration only)` | n/a |
 | `packages/ai/src/providers/deepseek.ts` | `ai/provider_constructors.go` (provider metadata; the catalog rows come from the generated model table and register through the coding-agent model registry) | ✅ |
 | `packages/ai/src/providers/fireworks.ts` | `ai/provider_constructors.go` (provider metadata; the catalog rows come from the generated model table and register through the coding-agent model registry) | ✅ |
-| `packages/ai/src/providers/github-copilot.ts` | `ai/github_copilot_filter.go (filterModels)` (provider metadata and catalog from the generated model table ai/models_generated, registered through the coding-agent model registry internal/codingagent/model_registry), `ai/provider_constructors.go` | ✅ |
+| `packages/ai/src/providers/github-copilot.ts` | `ai/github_copilot_filter.go (filterModels, githubCopilotSystemOne: the /v1 prefix of the Microsoft-Decision-1 classifier; classifier-models.test.ts cases in TestClassifierModelsUpstream)`, `ai/builtin_providers.go (builtinClassifiers)` (provider metadata and catalog from the generated model table ai/models_generated, registered through the coding-agent model registry internal/codingagent/model_registry), `ai/provider_constructors.go` | ✅ |
 | `packages/ai/src/providers/groq.ts` | `ai/provider_constructors.go` (provider metadata; the catalog rows come from the generated model table and register through the coding-agent model registry) | ✅ |
 | `packages/ai/src/providers/huggingface.ts` | `ai/builtin_providers.go` (provider metadata; the catalog rows come from the generated model table and register through the coding-agent model registry) | ✅ |
 | `packages/ai/src/providers/kimi-coding.ts` | `ai/provider_constructors.go` (provider metadata; the catalog rows come from the generated model table and register through the coding-agent model registry) | ✅ |
@@ -326,7 +327,9 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/ai/src/providers/meta.ts` | `ai/provider_constructors.go` (MetaProvider: id, name, base URL, META_API_KEY auth, Muse subscription OAuth, openai-responses catalog; TestMetaCatalogMatchesPinnedProviderDefinition, TestBuiltinProviderAuthMetaAndRadiusMethods and the pinned module comparison TestBuiltinProvidersMatchPinnedProviderModules) | ✅ |
 | `packages/ai/src/providers/opencode-headers.ts` | `ai/opencode_headers.go` (WithOpenCodeSessionHeader: x-opencode-session from StreamOptions.SessionID for stream and streamSimple, case-insensitive caller override incl. null; opencode-provider-headers.test.ts cases: TestWithOpenCodeSessionHeaderPiCases, TestWithOpenCodeSessionHeaderLikeUpstream; the coding-agent model path adds the same header in its request-options wrapper, TestOpenCodeSessionHeaderMapsSessionIDWithoutCacheRetention) | ✅ |
 | `packages/ai/src/providers/qwen-token-plan-individual.models.ts` | `ai/models_generated.go (0.87.1 catalog shard; qwen-token-plan-models.test.ts cases: TestQwenTokenPlanIndividualExposesExactlyDocumentedTextModels, TestQwenTokenPlanExposesTextModelsAndOmitsImageModels)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/qwen-token-plan-individual-cn.models.ts` | `ai/models_generated.go (Pi main c23b9ec1 catalog shard; qwen-token-plan-models.test.ts case: TestQwenTokenPlanIndividualCnExposesExactlyDocumentedTextModels)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
 | `packages/ai/src/providers/qwen-token-plan-individual.ts` | `ai/provider_constructors.go` (QwenTokenPlanIndividualProvider: id, name, base URL, QWEN_TOKEN_PLAN_API_KEY auth, openai-completions catalog; qwen-token-plan-models.test.ts cases: TestQwenTokenPlanIndividualExposesExactlyDocumentedTextModels, TestQwenTokenPlanExposesTextModelsAndOmitsImageModels, and the pinned module comparison TestBuiltinProvidersMatchPinnedProviderModules) | ✅ |
+| `packages/ai/src/providers/qwen-token-plan-individual-cn.ts` | `ai/provider_constructors.go` (QwenTokenPlanIndividualCnProvider: id, name, base URL, QWEN_TOKEN_PLAN_CN_API_KEY auth, openai-completions catalog; qwen-token-plan-models.test.ts cases: TestQwenTokenPlanIndividualCnExposesExactlyDocumentedTextModels, TestEnvAPIKeysQwenIndividualCnUsesChinaTokenPlanVariable) | ✅ |
 | `packages/ai/src/providers/radius.models.ts` | `ai/models_generated.go (0.87.1 radius shard, served for the default gateway by the radius provider: ai/registry_test.go TestRuntimeDiscoveryIncludesRadiusCatalog, ai/radius_test.go TestRadiusProviderShipsPublicCatalogForDefaultGateway)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
 | `packages/ai/src/utils/identity.ts` | `ai/identity.go (ClientIdentity, UserAgentMode, ClientAttribution, MergeClientIdentity, FormatUserAgent, GetAttributionHeaders, GetOpenCodeSessionHeaders, PiAttribution) and ai/identity_models.go (WithClientIdentity over ClientIdentityModels: Go has no Proxy); every API module applies the identity headers below model and request headers (Bedrock adds the product to the AWS SDK user agent); PiG's product and attribution values are D65 and D26 (the release in the user agent comes from uname on unix and RtlGetVersion on Windows); ai/identity_test.go, ai/identity_oracle_test.go TestProviderIdentityHeadersMatchPi and ai/identity_images_oracle_test.go TestOpenRouterImagesHeadersMatchPi compare the headers with the pinned Pi; every identity.test.ts case is ported (test-mapping-v1.3.0+bd3c9b82.json)` | ✅ |
 | `packages/coding-agent/src/core/client-identity.ts` | `coding/client_identity.go (getClientIdentity: PiG's attribution while install telemetry is on, none otherwise; set per request in Session.buildRequestOptions); coding/client_identity_test.go, sdk-client-identity.test.ts ported (D26)` | ✅ |
@@ -551,6 +554,13 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/bun/sandbox-env-setup.ts` | `(Bun-only sandbox helper)` | n/a |
 | `packages/coding-agent/src/cli/auth-check.ts` | `coding/cli/auth_check.go (the main.ts runAuthCommand dispatch is mapped under main.ts)` | ✅ |
 | `packages/coding-agent/src/cli/auth-command.ts` | `coding/cli/auth_command.go (resolveCliModel for --model is mapped under core/model-resolver.ts)` | ✅ |
+| `packages/coding-agent/src/cli/auth-login.ts` | `coding/cli/auth_login.go (RunAuthLogin; every auth-login.test.ts case in coding/cli/auth_login_test.go; the main.ts runAuthLoginCommand dispatch is coding/cli/auth_run.go)` | ✅ |
+| `packages/coding-agent/src/cli/auth-logout.ts` | `coding/cli/auth_logout.go (RunAuthLogout; every auth-logout.test.ts case in coding/cli/auth_logout_test.go; the main.ts runAuthLogoutCommand dispatch is coding/cli/auth_run.go)` | ✅ |
+| `packages/coding-agent/src/cli/auth-terminal.ts` | `coding/cli/auth_terminal.go (LoginTerminal, CreateProcessLoginTerminal; auth-terminal.test.ts cases in coding/cli/auth_terminal_test.go)` | ✅ |
+| `packages/coding-agent/src/core/provider-matching.ts` | `internal/codingagent/provider_matching.go (FindMatchingProviders; provider_matching_test.go)` | ✅ |
+| `packages/coding-agent/src/core/radius-mcp.ts` | `internal/codingagent/radius_mcp.go (PlanRadiusMcpServer; radius_mcp_stripped.go for a build without built-in MCP)` | ✅ |
+| `packages/coding-agent/src/utils/terminal-question.ts` | `internal/terminalquestion/terminalquestion.go (Reader.Question; terminalquestion_test.go)` | ✅ |
+| `packages/coding-agent/src/utils/web-url.ts` | `internal/weburl/weburl.go (WebURL, DisplayURL)` | ✅ |
 | `packages/coding-agent/src/cli/setup.ts` | `coding/cli/setup_cli.go (PI_CODING_AGENT/AI_AGENT process markers; process.title is the executable name, Node warning suppression has no Go analogue, configureHttpDispatcher is mapped under core/http-dispatcher.ts)` | ✅ |
 | `packages/coding-agent/src/core/bug-report-upload.ts` | `(designed out: D62, PiG never uploads bug reports)` | n/a |
 | `packages/coding-agent/src/core/bug-report.ts` | `internal/codingagent/bug_report.go (export subset: metadata, redaction, diagnostics, archive; D62) + internal/codingagent/compaction/bug_report_summary.go (coding/bug_report.go; internal/codingagent/compaction/bug_report_summary_test.go)` | ✅ |
@@ -1095,6 +1105,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/env/src/remote-env.ts` | `env/remote_env.go + env/paths.go` | ✅ |
 | `packages/env/src/ssh.ts` | `env/ssh.go` | ✅ |
 | `packages/env/src/terminal.ts` | `env/terminal.go` | ✅ |
+| `packages/env/src/process.ts` | `env/process.go` (the tests of packages/env/test/process.test.ts are in env/process_test.go and run against Pi's own daemon as oracle once the pin has the `process` operation) | ✅ |
 | `packages/env/src/watch.ts` | `env/watch.go` | ✅ |
 | `packages/env/src/list-files.ts` | `env/list_files.go` | ✅ |
 
@@ -1113,6 +1124,7 @@ The daemon is a Go program with Pi's command line and wire protocol (D96); the R
 | `packages/env/daemon/src/main.rs` | `env/daemon/server.go`, `env/cmd/pi-env/main.go` (tests in env/daemon/server_test.go and env/cmd/pi-env/main_test.go) | ✅ |
 | `packages/env/daemon/src/output.rs` | `env/daemon/output.go` (tests in env/daemon/output_test.go) | ✅ |
 | `packages/env/daemon/src/pty.rs` | `env/daemon/pty.go + env/daemon/pty_unix.go + env/daemon/pty_linux.go (Linux, Android and macOS terminals through /dev/ptmx and x/sys/unix, no cgo, macOS in pty_darwin; other systems answer ENOTSUP from pty_other; the client tests in env/terminal_test.go and env/terminal_linux_test.go run against Pi's own daemon as oracle)` | ✅ |
+| `packages/env/daemon/src/process.rs` | `env/daemon/process.go + env/daemon/process_start.go + env/daemon/process_group.go + env/daemon/process_group_unix.go + env/daemon/process_group_windows.go + env/daemon/process_wait_linux.go + env/daemon/process_wait_darwin.go + env/daemon/process_unix.go + env/daemon/process_windows.go` (stdin queue and target lookup shared with pty in env/daemon/pty.go; tests in env/process_test.go and env/daemon/process_unix_test.go) | ✅ |
 | `packages/env/daemon/src/scan.rs` | `durable/env/line_scan.go` (LineScanner; tests in env/daemon/scan_test.go) | ✅ |
 | `packages/env/daemon/src/sys/mod.rs` | `(Rust module barrel: Go selects sys_unix.go or sys_windows.go by build constraint)` | n/a |
 | `packages/env/daemon/src/sys/unix.rs` | `env/daemon/sys_unix.go` | ✅ |
@@ -1141,9 +1153,9 @@ The daemon is a Go program with Pi's command line and wire protocol (D96); the R
 | Upstream | PiG | Status |
 |---|---|---|
 | `packages/schema/src/annotations.ts` | `schema/annotations.go` | ✅ |
-| `packages/schema/src/builders.ts` | `schema/builders.go` | ✅ |
-| `packages/schema/src/checks.ts` | `schema/checks.go` | ✅ |
-| `packages/schema/src/coerce.ts` | `schema/coerce.go (CompileCoercing returns the distinct type CoercingValidator where Pi has compile(schema, {coerce:true}))` | ✅ |
+| `packages/schema/src/builders.ts` | `schema/builders.go (Recursive; unsafe and the bigint builder are designed out: unsafe only types a schema, and Go has no bigint value; Pi main af79b0c3d)` | ✅ |
+| `packages/schema/src/checks.ts` | `schema/checks.go (a number is finite, D303; Equal is deepEqual; the leaf codes of Pi main 20c637b1a that object and array loops run inline are a JavaScript closure-call optimization with no observable effect, designed out: Go's closures keep their one shape and TestPiMainLeafChecksAgreeWithTheStandaloneCheck ports the test that pins the results; bigint and undefined checks have no Go value)` | ✅ |
+| `packages/schema/src/coerce.ts` | `schema/coerce.go (CompileCoercing returns the distinct type CoercingValidator where Pi has compile(schema, {coerce:true}); the base of an unindexed node goes through baseFor, D302; a number is finite, D303; the bigint and undefined conversions have no Go value)` | ✅ |
 | `packages/schema/src/compiler.ts` | `schema/compiler.go` | ✅ |
 | `packages/schema/src/explain.ts` | `schema/explain.go` | ✅ |
 | `packages/schema/src/formats/index.ts` | `schema/formats/index.go` | ✅ |

@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/tui/termsim"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 type upstreamRenderHarness struct {
@@ -130,6 +131,40 @@ func TestUpstreamTUIBoundedRender(t *testing.T) {
 			}
 		}
 	}
+	// packages/tui/test/tui-render.test.ts "does not write duplicate cursor markers to the terminal" (#9257, Pi 25490ea49)
+	t.Run("does not write duplicate cursor markers to the terminal", func(t *testing.T) {
+		w := &upstreamBoundedWriteTerminal{}
+		ui := NewWithOutput(w, 80, 24)
+		ui.Add(&recordingComponent{lines: []string{"\x1b[31m界🙂\x1b[0m" + widthx.CursorMarker + " world" + widthx.CursorMarker}})
+		ui.Render()
+		output := strings.Join(w.writes, "")
+		if !strings.Contains(output, "\x1b[31m界🙂\x1b[0m world") {
+			t.Fatalf("visible styled text should be preserved: %q", output)
+		}
+		if strings.Contains(output, widthx.CursorMarker) {
+			t.Fatalf("internal cursor markers must not reach the terminal: %q", output)
+		}
+		if !strings.Contains(output, "\x1b[5G") {
+			t.Fatalf("the first marker should keep the cursor at visible column 4: %q", output)
+		}
+	})
+	// packages/tui/test/tui-render.test.ts "does not write cursor markers from other visible or scrollback lines" (#9257, Pi 25490ea49)
+	t.Run("does not write cursor markers from other visible or scrollback lines", func(t *testing.T) {
+		w := &upstreamBoundedWriteTerminal{}
+		ui := NewWithOutput(w, 80, 2)
+		ui.Add(&recordingComponent{lines: []string{"offscreen" + widthx.CursorMarker, "a" + widthx.CursorMarker, "visible-b" + widthx.CursorMarker}})
+		ui.Render()
+		output := strings.Join(w.writes, "")
+		if !strings.Contains(output, "offscreen") || !strings.Contains(output, "a") {
+			t.Fatalf("full renders should preserve scrollback and other visible lines: %q", output)
+		}
+		if strings.Contains(output, widthx.CursorMarker) {
+			t.Fatalf("internal cursor markers must not reach the terminal: %q", output)
+		}
+		if !strings.Contains(output, "\x1b[10G") {
+			t.Fatalf("the bottom visible marker should determine the cursor column: %q", output)
+		}
+	})
 	// .upstream/v0.87.1/packages/tui/test/tui-render.test.ts:165
 	t.Run("splits a large full render without changing its output", func(t *testing.T) {
 		w := &upstreamBoundedWriteTerminal{}

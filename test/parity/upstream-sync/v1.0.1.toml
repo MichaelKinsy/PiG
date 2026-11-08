@@ -341,5 +341,5 @@ rationale = "getKittyImagePlacementRows and KittyImagePlacement.rows."
 path = "packages/tui/src/tui-alt-screen.ts"
 change = "modified"
 disposition = "ported"
-evidence = ["test:tui/tui_alt_screen_wezterm_test.go#TestAltScreenRedrawsWezTermKittyImagesAfterWritesToCoveredRows"]
-rationale = "WezTerm redraws Kitty images after a write to a covered row and draws images after text rows (#10319)."
+evidence = ["test:tui/tui_alt_screen_kitty_order_test.go#TestAltScreenRedrawsKittyImagesAfterWritesToCoveredRows"]
+rationale = "Kitty terminals that keep images in the covered cells (WezTerm, Orca) redraw images after a write to a covered row and draw images after text rows (#10319, #11835)."

@@ -4,6 +4,7 @@ package codingagent
 
 import (
 	"context"
+	"fmt"
 	"slices"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -154,4 +155,43 @@ func (m *InteractiveMode) resetExtensionDialogs() {
 		wait.dismiss()
 	}
 	m.showTopExtensionDialog()
+}
+
+// extensionOverlay is an open extension overlay (ui.custom with overlay: true) and the function that removes it.
+type extensionOverlay struct {
+	handle *tui.OverlayHandle
+	remove func()
+}
+
+// nextBlockingOverlaySource numbers the program status source of a blocking overlay, so closing one keeps the others.
+// upstream: interactive-mode.ts nextBlockingOverlayId
+func (m *InteractiveMode) nextBlockingOverlaySource() string {
+	source := fmt.Sprintf("extension-overlay:%d", m.nextBlockingOverlayID)
+	m.nextBlockingOverlayID++
+	return source
+}
+
+// addExtensionOverlay records an open extension overlay, in opening order. upstream: interactive-mode.ts extensionOverlays
+func (m *InteractiveMode) addExtensionOverlay(handle *tui.OverlayHandle, remove func()) {
+	m.extensionOverlays = append(m.extensionOverlays, &extensionOverlay{handle: handle, remove: remove})
+}
+
+// deleteExtensionOverlay forgets the overlay and reports whether it was open.
+func (m *InteractiveMode) deleteExtensionOverlay(handle *tui.OverlayHandle) bool {
+	index := slices.IndexFunc(m.extensionOverlays, func(overlay *extensionOverlay) bool { return overlay.handle == handle })
+	if index < 0 {
+		return false
+	}
+	m.extensionOverlays = slices.Delete(m.extensionOverlays, index, index+1)
+	return true
+}
+
+// removeExtensionOverlays removes every extension overlay, hidden ones included, newest first, the way done does, and leaves pi's own overlays open.
+// Reload and session switches replace every extension without calling done(); the promises stay pending, as for inline dialogs.
+// upstream: interactive-mode.ts resetExtensionUI
+// pig divergence (D310): Pi 1.5.0 hides only the topmost overlay on reset; Pi 80d4d3c86 removes every extension overlay.
+func (m *InteractiveMode) removeExtensionOverlays() {
+	for _, overlay := range slices.Backward(slices.Clone(m.extensionOverlays)) {
+		overlay.remove()
+	}
 }

@@ -52,6 +52,7 @@ func tokensUpstreamCases() []tokensUpstreamCase {
 		{"should include token stats when aborted mid-stream", "qwen-token-plan", "qwen3.7-max", "", false, "", false},
 		// .upstream/v0.87.1/packages/ai/test/tokens.test.ts:306
 		{"should include token stats when aborted mid-stream", "qwen-token-plan-individual", "qwen3.8-max", "", false, "", false},
+		{"should include token stats when aborted mid-stream", "qwen-token-plan-individual-cn", "qwen3.8-max", "", false, "", false},
 		// .upstream/v0.87.1/packages/ai/test/tokens.test.ts:314
 		{"should include token stats when aborted mid-stream", "qwen-token-plan-cn", "qwen3.7-max", "", false, "", false},
 		// .upstream/v0.87.1/packages/ai/test/tokens.test.ts:326

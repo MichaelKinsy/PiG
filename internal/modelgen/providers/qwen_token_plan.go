@@ -8,6 +8,7 @@ import . "github.com/MichaelKinsy/PiG/internal/modelgen" //nolint:staticcheck //
 // endpoints and API keys (sk-sp- prefix). models.dev lists them as
 // "alibaba-token-plan[-cn]".
 const interationalBaseURL = "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"
+const cnBaseURL = "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
 
 func qwenTokenPlanCompat() *Obj {
 	return O(

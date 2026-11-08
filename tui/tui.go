@@ -2086,7 +2086,8 @@ func findCursorPosition(lines []string, height int) (widthx.CursorPosition, int,
 	for row := len(lines) - 1; row >= viewportTop; row-- {
 		before, after, ok := strings.Cut(lines[row], widthx.CursorMarker)
 		if ok {
-			return widthx.CursorPosition{Row: row, Col: widthx.VisibleWidth(before)}, row, before + after, true
+			// pig divergence (D300): all markers leave the line; the first one is the cursor position (Pi main 25490ea49).
+			return widthx.CursorPosition{Row: row, Col: widthx.VisibleWidth(before)}, row, before + strings.ReplaceAll(after, widthx.CursorMarker, ""), true
 		}
 	}
 	return widthx.CursorPosition{}, -1, "", false
@@ -2246,7 +2247,8 @@ func (t *TuiMainScreen) doRender() {
 	if hasCursorPos && unresolved {
 		// Resolving keeps every cursor marker in place, so the marker is on the same row; the cursor-free line is the resolved one.
 		before, after, _ := strings.Cut(widthx.ResolveFakeCursorLine(stripOsc133ZonePrefix(newLines[cursorRow]), t.showHardwareCursor), widthx.CursorMarker)
-		cursorPos.Col, cursorFreeLine = widthx.VisibleWidth(before), before+after
+		// pig divergence (D300): as findCursorPosition, every marker leaves the line.
+		cursorPos.Col, cursorFreeLine = widthx.VisibleWidth(before), before+strings.ReplaceAll(after, widthx.CursorMarker, "")
 	}
 
 	// Mirrors upstream TUI.applyLineResets (tui.ts:427): every non-image
