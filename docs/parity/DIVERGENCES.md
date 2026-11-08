@@ -4104,7 +4104,9 @@ Pi bug: none.
 
 Scope: `chord/next/host` (`Host.Delegate`, `Host.Serves`, `destination`, the closure rule's placement by the staged table), `chord/nextnode/plugins` (`node/destination.mjs`, `node/resolve.mjs`, `RuntimeLoad.ParentServes`), `chord/nextnode/app` (`start`). Nothing changes for a host without a delegate, or a NodeHost without `ParentServes`.
 
-Owner decision: owner sign-off pending (draft).
+Owner decision: approved for 0.8.0 by the owner on 2026-11-08 ('proceed and approve').
+
+SCRUTINIZED:approved 2026-11-08
 
 Remove when: never for the two hosts; the principal difference goes when a child's link can name whom a hold acts for.
 
