@@ -55,3 +55,4 @@ plugins/ports/activity.tsx
 plugins/ports/activity.css
 plugins/locations/contract.ts
 plugins/search/contract.ts
+plugins/prompt/contract.ts
