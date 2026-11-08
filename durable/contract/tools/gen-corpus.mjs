@@ -220,6 +220,12 @@ for (const profile of ["gate", "node"]) {
 	emit("[[scenario]]", `id = ${q(`F-ticks-output-${profile}`)}`, `family = "differential"`, `runner = "diff"`, `source = "durable/contract/scenarios/output-ticks.mjs"`, `seed = 0`, `profile = ${q(profile)}`, `owner = "dcore-host"`,
 		`about = ${q(`microtask passes from a tool's api.output() to its update event and from its return to its end event, on the ${profile} storage profile`)}`, `levels = ["store", "commit", "context", "output", "order"]`, `status = "ready"`)
 }
+// F-ticks-warm: the passes of a warm turn (scenarios/warm-ticks.mjs): five turns of eight sequential lookups, each turn's submit and its wait. The wait is the sum of
+// every await of Pi's turn, so an await the core spends too many or too few moves the count; F-ticks-node pins a cold submit and a short wait only.
+for (const profile of ["gate", "node"]) {
+	emit("[[scenario]]", `id = ${q(`F-ticks-warm-${profile}`)}`, `family = "differential"`, `runner = "diff"`, `source = "durable/contract/scenarios/warm-ticks.mjs"`, `seed = 0`, `profile = ${q(profile)}`, `owner = "dcore-host"`,
+		`about = ${q(`microtask passes of the submit and the wait of five warm turns of eight sequential lookups on the ${profile} storage profile`)}`, `levels = ["store", "commit", "context", "output", "order"]`, `status = "ready"`)
+}
 // F-fail: a Storage `commit` that throws fails the Session (Pi 42a SessionEnd; scenarios/storage-failure.mjs): the commit number k throws once,
 // and the call that hit it, every later call and wait, the event stream and the Harness end exactly as Pi's do, with the same store behind.
 for (const [profile, ks] of [["gate", Array.from({ length: 19 }, (_, i) => i + 2)], ["node", [3, 9, 15]]]) for (const k of ks) {
