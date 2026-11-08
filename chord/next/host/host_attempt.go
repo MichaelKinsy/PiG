@@ -406,8 +406,14 @@ func (o *attemptTableOwner) Label() string { return o.attempt.object.text }
 // Scope is the object's documents: a transaction of another object refuses the handle.
 func (o *attemptTableOwner) Scope() any { return o.attempt.object.documents }
 
-// AssertLive returns `released` once the object ended.
-func (o *attemptTableOwner) AssertLive() error { return o.attempt.object.documents.AssertLive() }
+// AssertLive returns `released` once the object ended. Table reads call it from a handler's goroutine, outside the host's
+// sections, where the object's end (a section) may write the state it reads: it takes a section of its own (Go form of
+// Pi's single thread; Run is inline when the caller is in one).
+func (o *attemptTableOwner) AssertLive() error {
+	var err error
+	o.attempt.object.documents.Do(func() { err = o.attempt.object.documents.AssertLive() })
+	return err
+}
 
 // Fail fails the object `broken` with a row the code cannot read.
 func (o *attemptTableOwner) Fail(err *data.ChordError) {
