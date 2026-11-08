@@ -354,6 +354,8 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/ai/src/utils/oauth-page.ts` | `ai/oauth_page.go (upstream 0.99.1 moved the file unchanged from auth/oauth/oauth-page.ts)` | ✅ |
 | `packages/ai/src/providers/openrouter-api.ts` | `ai/openrouter_api.go (OpenRouterModel, OpenRouterCost and the rest of the row's exported members), cmd/gen-models/` | ✅ |
 | `packages/ai/src/telemetry.ts` | `ai/telemetry.go` | ✅ |
+| `packages/ai/src/lazy-bedrock-provider.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/ai/src/lazy-oauth.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
 
 ## `packages/coding-agent/src/`
 
@@ -694,6 +696,16 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/mcp/src/transports/stdio.ts` | `mcp/stdio.go; mcp/stdio_unix.go; mcp/stdio_windows.go` | ✅ |
 | `packages/mcp/src/transports/streamable-http.ts` | `mcp/streamable_http.go; mcp/sse.go` (Send(ctx) carries McpTransportSendOptions.signal as its context) | ✅ |
 | `packages/mcp/src/transports/transport.ts` | `mcp/transport.go` (Send(ctx) carries McpTransportSendOptions.signal as its context) | ✅ |
+| `packages/mcp/src/config.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/mcp/src/input-schema.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/mcp/src/naming.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/mcp/src/oauth/auth-provider.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/mcp/src/oauth/client-settings.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/mcp/src/oauth/loopback.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/mcp/src/oauth/sign-in.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/mcp/src/output-limit.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/mcp/src/transports/lines.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/mcp/src/transports/pipe.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
 
 ## `packages/codemode/src/`
 
@@ -721,8 +733,6 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 
 | upstream | pig | status |
 |---|---|---|
-| `packages/chord/src/index.ts` | `(re-export barrel: every runtime export has its Go counterpart in chord/host, chord/delta, chord/context and chord/json.go; each is mapped by its own source row)` | n/a |
-| `packages/chord/src/types.ts` | `chord/host/types.go (Context is context.Context; JsonRepresentation, RemoteServiceContract, IsAny are compile-time TypeScript machinery with no Go form, replaced by reflection classification at provide time)` | ✅ |
 | `packages/chord/src/json.ts` | `internal/chord/chordjson/chordjson.go:70 Copy, Stored, IsValue; chord/json.go:12`, `chord/delta/delta.go`, `durable/json.go CopyJson` | ✅ |
 | `packages/chord/src/context/index.ts` | `chord/context/chordctx.go Background, TODO, NewKey, WithValue, WithAbortSignal, WithoutAbortSignal, WithCancel, Await, Telemetry, WithTelemetry, TraceIn (Pi 92ab5360 moves traceIn's context last, traceIn(options, fn, context); TraceIn keeps the context first, as every Go function does)`, `chord/next/host/host_ctx.go` | ✅ |
 | `packages/chord/src/delta/index.ts` | `chord/delta/delta.go:317 AssertValidOpValue, apply.go:227 Apply, ApplyImmutable, apply.go:255 ApplyImmutableBatchesSeq, codec.go:17 Encoder/Decoder, overlap.go:17; ownedSlice is a V8 string-view detail that Go strings.Clone covers where an op or value keeps a cut of a larger string` | ✅ |
@@ -733,250 +743,319 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/delta/apply-immutable-trusted.ts` | `self-produced-op fast path of the tracker; the Go trackers materialize candidates themselves and ApplyImmutable covers the checked path (apply_immutable_upstream_test.go)` | n/a |
 | `packages/chord/src/delta/revision-validator.ts` | `WeakSet memo of validated JS container identities; a decoded Go revision has no shared identity and is validated by chordjson.Validate (state.go:917)` | n/a |
 | `packages/chord/src/output.ts` | `chord/output/output.go OutputBuffer, Progress, BoundOutput, SanitizeOutput, CharacterEnd, Utf8ByteLength, OutputLimits, OutputSlice, BoundedOutput, OutputSkip` | ✅ |
-| `packages/chord/src/node.ts` | `re-exports manager.ts (chord/host/manager.go) and nodeLoader (chord/host/loader.go NodeLoader)` | ✅ |
 | `packages/chord/src/sqlite/cloudflare.ts` | `chord/sqlite/cloudflare/cloudflare.go` | ✅ |
 | `packages/chord/src/sqlite/database.ts` | `chord/sqlite/database.go` | ✅ |
 | `packages/chord/src/sqlite/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
 | `packages/chord/src/sqlite/migrations.ts` | `chord/sqlite/migrations.go` | ✅ |
 | `packages/chord/src/sqlite/node.ts` | `chord/sqlite/node/node.go` | ✅ |
 | `packages/chord/src/sqlite/schema.ts` | `chord/sqlite/schema.go` | ✅ |
-| `packages/chord/src/cell.ts` | `chord/host/cell.go NewCell, Cell, Source, Derived, IsSource, NotReady` | ✅ |
-| `packages/chord/src/publish.ts` | `chord/host/publish.go enqueue, holdPublications` | ✅ |
-| `packages/chord/src/manager.ts` | `chord/host/manager.go CreateHostManager, ChildControl, ControlMessage; manager_unix.go, manager_fork_windows.go, manager_pipe_windows.go ForkDriver, ProcessChannel (Windows run pending); manager_lock.go ProcessLock` | ✅ |
-| `packages/chord/src/loader.ts` | `chord/host/loader.go NodeLoader, NewNodeLoader, NodeLoaderImpl (an isolated Node child per Load over ForkDriver, loader_child.mjs)` | ✅ |
-| `packages/chord/src/link.ts` | `chord/host/link.go Link, MemoryLinkPair, NewIpcLink, NewWebSocketLink, MalformedFrame` | ✅ |
-| `packages/chord/src/connection.ts` | `chord/host/connection.go LinkOptions, AcceptOptions, Connection, RelayRef, RelayCall; websocket.go WebSocketAcceptOptions` | ✅ |
-| `packages/chord/src/object.ts` | `chord/host/object.go ServeOptions, Factory, Self, SelfImpl, ResourceImpl, CtxImpl, RefImpl, ObjectImpl` | ✅ |
-| `packages/chord/src/remote.ts` | `chord/host/remote.go RemoteRef, RemoteChannel` | ✅ |
-| `packages/chord/src/cluster.ts` | `chord/host/cluster.go` | ✅ |
-| `packages/chord/src/contract.ts` | `chord/host/contract.go (link protocol 4)` | ✅ |
-| `packages/chord/src/declare.ts` | `chord/host/declare.go (link protocol 4)` | ✅ |
-| `packages/chord/src/errors.ts` | `chord/host/errors.go` | ✅ |
-| `packages/chord/src/host.ts` | `chord/host/host.go (link protocol 4)` | ✅ |
-| `packages/chord/src/registry.ts` | `chord/host/registry.go` | ✅ |
-| `packages/chord/src/reload.ts` | `chord/host/reload.go (link protocol 4)` | ✅ |
-| `packages/chord/src/schema.ts` | `chord/host/schema.go` | ✅ |
-| `packages/chord/src/state.ts` | `chord/state.go` | ✅ |
 | `packages/chord/src/watch.ts` | `chord/watch.go WatchEnd, WatchEndReason, WatchHandle, Watchable, NativeWatchable (Durable's package re-exports them as type aliases, as Pi's durable index does); chord/watch_impl.go Watch, NativeWatch, NativeWatchHandle, DeliveryScheduler (the delivery goroutines that stand for queueMicrotask); chord/next/documents/handles.go SingletonHandle (Pi's `SingletonHandle<T> extends Watchable<T>`: its Value and Watch are the two members watch.ts's interface contributes to the next layer)` | ✅ |
-| `packages/chord/src/websocket.ts` | `chord/host/websocket.go (link protocol 4)` | ✅ |
-| `packages/chord/src/wire.ts` | `chord/host/wire.go (link protocol 4)` | ✅ |
 | `packages/chord/src/telemetry-sqlite/index.ts` | `chord/telemetrysqlite/index.go` | ✅ |
 | `packages/chord/src/telemetry-sqlite/store.ts` | `chord/telemetrysqlite/store.go` | ✅ |
-| `packages/chord/src/next/contracts/accepts.ts` | `chord/next/contracts/accepts.go` | ✅ |
-| `packages/chord/src/next/contracts/contract.ts` | `chord/next/contracts/contract.go` | ✅ |
-| `packages/chord/src/next/contracts/declare.ts` | `chord/next/contracts/declare.go` | ✅ |
-| `packages/chord/src/next/contracts/evolve.ts` | `chord/next/contracts/evolve.go` | ✅ |
-| `packages/chord/src/next/contracts/fingerprint.ts` | `chord/next/contracts/fingerprint.go` | ✅ |
-| `packages/chord/src/next/contracts/history.ts` | `chord/next/contracts/history.go` | ✅ |
-| `packages/chord/src/next/contracts/host-kind.ts` | `chord/next/contracts/host_kind.go` | ✅ |
-| `packages/chord/src/next/contracts/index.ts` | `(re-export barrel; Go packages export names directly)` | n/a |
-| `packages/chord/src/next/contracts/internal.ts` | `(re-export barrel for Chord's layers)` | n/a |
-| `packages/chord/src/next/contracts/names.ts` | `chord/next/contracts/names.go` | ✅ |
-| `packages/chord/src/next/contracts/params.ts` | `chord/next/contracts/params.go` | ✅ |
-| `packages/chord/src/next/contracts/schema.ts` | `chord/next/contracts/schema.go` | ✅ |
-| `packages/chord/src/next/contracts/snapshot.ts` | `chord/next/contracts/snapshot.go` | ✅ |
-| `packages/chord/src/next/data/args.ts` | `chord/next/data/args.go` | ✅ |
-| `packages/chord/src/next/data/errors.ts` | `chord/next/data/errors.go` | ✅ |
-| `packages/chord/src/next/data/failure.ts` | `chord/next/data/failure.go` | ✅ |
-| `packages/chord/src/next/data/index.ts` | `(re-export barrel)` | n/a |
-| `packages/chord/src/next/data/internal.ts` | `(re-export barrel)` | n/a |
-| `packages/chord/src/next/data/params.ts` | `chord/next/data/params.go` | ✅ |
-| `packages/chord/src/next/data/principal.ts` | `chord/next/data/principal.go` | ✅ |
-| `packages/chord/src/next/data/validator.ts` | `chord/next/data/validator.go` | ✅ |
-| `packages/chord/src/next/index.ts` | `(aggregate barrel of every layer; Go imports the layer packages)` | n/a |
-| `packages/chord/src/next/registries/contribution.ts` | `chord/next/registries/contribution.go` | ✅ |
-| `packages/chord/src/next/registries/entries.ts` | `chord/next/registries/entries.go` | ✅ |
-| `packages/chord/src/next/registries/index.ts` | `(re-export barrel)` | n/a |
-| `packages/chord/src/next/registries/internal.ts` | `chord/next/registries/internal.go` | ✅ |
-| `packages/chord/src/next/registries/record.ts` | `chord/next/registries/record.go` | ✅ |
-| `packages/chord/src/next/registries/registry.ts` | `chord/next/registries/registry.go` | ✅ |
-| `packages/chord/src/next/registries/value.ts` | `chord/next/registries/value.go` | ✅ |
-| `packages/chord/src/next/state/batch.ts` | `chord/next/state/batch.go` | ✅ |
-| `packages/chord/src/next/state/derive.ts` | `chord/next/state/derive.go` | ✅ |
-| `packages/chord/src/next/state/index.ts` | `(re-export barrel)` | n/a |
-| `packages/chord/src/next/state/internal.ts` | `(re-export barrel)` | n/a |
-| `packages/chord/src/next/state/native-source.ts` | `chord/next/state/native_source.go` | ✅ |
-| `packages/chord/src/next/state/watchable.ts` | `chord/next/state/watchable.go, chord/next/state/set.go` | ✅ |
-| `packages/chord/src/next/state/writable.ts` | `chord/next/state/writable.go` | ✅ |
-| `packages/chord/src/next-node/compression.ts` | `chord/nextnode/compression.go` | ✅ |
-| `packages/chord/src/next/link/binary.ts` | `chord/next/link/binary.go` | ✅ |
-| `packages/chord/src/next/link/channel.ts` | `chord/next/link/channel.go` | ✅ |
-| `packages/chord/src/next/link/errors.ts` | `chord/next/link/errors.go` | ✅ |
-| `packages/chord/src/next/link/index.ts` | `(re-export barrel; Go packages export names directly)` | n/a |
-| `packages/chord/src/next/link/internal.ts` | `(re-export barrel for Chord's layers)` | n/a |
-| `packages/chord/src/next/link/ipc.ts` | `chord/next/link/ipc.go` | ✅ |
-| `packages/chord/src/next/link/link.ts` | `chord/next/link/link.go` | ✅ |
-| `packages/chord/src/next/link/message.ts` | `chord/next/link/message.go` | ✅ |
-| `packages/chord/src/next/link/part.ts` | `chord/next/link/part.go` | ✅ |
-| `packages/chord/src/next/link/text.ts` | `chord/next/link/text.go` | ✅ |
-| `packages/chord/src/next/link/values.ts` | `chord/next/link/values.go` | ✅ |
-| `packages/chord/src/next/link/websocket.ts` | `chord/next/link/websocket.go` | ✅ |
-| `packages/chord/src/next/store/table-writes.ts` | `chord/next/store/table_writes.go` | ✅ |
-| `packages/chord/src/next/store/table-changes.ts` | `chord/next/store/table_changes.go` | ✅ |
-| `packages/chord/src/next/store/table-handle.ts` | `chord/next/store/table_handle.go` | ✅ |
-| `packages/chord/src/next/store/engine.ts` | `chord/next/store/engine.go` | ✅ |
-| `packages/chord/src/next/store/outbox.ts` | `chord/next/store/outbox.go` | ✅ |
-| `packages/chord/src/next/store/store.ts` | `chord/next/store/store.go` | ✅ |
-| `packages/chord/src/next/store/applier.ts` | `chord/next/store/applier.go` | ✅ |
-| `packages/chord/src/next/store/apply-batch.ts` | `chord/next/store/apply_batch.go` | ✅ |
-| `packages/chord/src/next/store/index.ts` | `(export barrel: the Go package exports the names directly. Each exported name of the list exists in package store: ArchivePart (ArchiveManifest is ManifestPart), Backend/SqliteBackend, expression builders (Add And ColumnRef Condition Coalesce Concat Expression Eq Gt Gte InArray IsNull Lt Lte Max Min Ne Not Or Prefix ReplacePrefix SetOf Sub When), ImportStore, JsonColumnOptions/Json, DecodeJsonl/EncodeJsonl, Outbox/OutboxCommit, ColumnRefs/Query, OpenStore/Store/StoreOptions, DefineTable/TableDefinition/TableOptions, EvolveTable/TableEditor, Page/PageOptions, CompareText, StoreWrite. Type-level only, designed out by the other D3 agents: Columns PutRowOf RowOf KeyOf PatchOf AddedColumn TableTailEditor TableOf Table)` | n/a |
-| `packages/chord/src/next/store/archive.ts` | `chord/next/store/archive.go` | ✅ |
-| `packages/chord/src/next/store/export.ts` | `chord/next/store/export.go` | ✅ |
-| `packages/chord/src/next/store/import.ts` | `chord/next/store/import.go` | ✅ |
-| `packages/chord/src/next/store/text.ts` | `chord/next/store/text.go` | ✅ |
-| `packages/chord/src/next/store/allocator.ts` | `chord/next/store/allocator.go` | ✅ |
-| `packages/chord/src/next/store/claims.ts` | `chord/next/store/claims.go` | ✅ |
-| `packages/chord/src/next/store/refusal.ts` | `chord/next/store/refusal.go` | ✅ |
-| `packages/chord/src/next/store/columns.ts` | `chord/next/store/columns.go` | ✅ |
-| `packages/chord/src/next/store/json-column.ts` | `chord/next/store/json_column.go` | ✅ |
-| `packages/chord/src/next/store/rows.ts` | `chord/next/store/rows.go` | ✅ |
-| `packages/chord/src/next/store/sql.ts` | `chord/next/store/sql.go` | ✅ |
-| `packages/chord/src/next/store/jsonl.ts` | `chord/next/store/jsonl.go` | ✅ |
-| `packages/chord/src/next/store/catalog.ts` | `chord/next/store/catalog.go` | ✅ |
-| `packages/chord/src/next/store/expression.ts` | `chord/next/store/expression.go` | ✅ |
-| `packages/chord/src/next/store/evaluate.ts` | `chord/next/store/evaluate.go` | ✅ |
-| `packages/chord/src/next/store/query.ts` | `chord/next/store/query.go`, `chord/next/store/expression.go` | ✅ |
-| `packages/chord/src/next/store/table.ts` | `chord/next/store/table.go` | ✅ |
-| `packages/chord/src/next/store/table-history.ts` | `chord/next/store/table_history.go` | ✅ |
-| `packages/chord/src/next/store/table-evolve.ts` | `chord/next/store/table_evolve.go` | ✅ |
-| `packages/chord/src/next/store/table-migration.ts` | `chord/next/store/table_migration.go` | ✅ |
-| `packages/chord/src/next/store/adapter.ts` | `chord/next/store/adapter.go` | ✅ |
-| `packages/chord/src/next/store/backend.ts` | `chord/next/store/backend.go` | ✅ |
-| `packages/chord/src/next/store/schema.ts` | `chord/next/store/schema.go` | ✅ |
-| `packages/chord/src/next/store/step.ts` | `chord/next/store/step.go` | ✅ |
-| `packages/chord/src/next/store/writes.ts` | `(type-only: the StoreWrite union; chord/next/store/writes.go StoreWrite interface)` | n/a |
-| `packages/chord/src/next/documents/address-source.ts` | `chord/next/documents/address_source.go` | ✅ |
-| `packages/chord/src/next/documents/definition.ts` | `chord/next/documents/definition.go` | ✅ |
-| `packages/chord/src/next/documents/documents.ts` | `chord/next/documents/documents.go` | ✅ |
-| `packages/chord/src/next/documents/fence.ts` | `chord/next/documents/fence.go` | ✅ |
-| `packages/chord/src/next/documents/handles.ts` | `chord/next/documents/handles.go` | ✅ |
-| `packages/chord/src/next/documents/index.ts` | `(re-export barrel; the app-facing set is listed in doc.go)` | n/a |
-| `packages/chord/src/next/documents/internal.ts` | `(re-export barrel for Chord's layers)` | n/a |
-| `packages/chord/src/next/documents/keyed-slot.ts` | `chord/next/documents/keyed_slot.go` | ✅ |
-| `packages/chord/src/next/documents/line.ts` | `chord/next/documents/line.go` | ✅ |
-| `packages/chord/src/next/documents/persistence.ts` | `chord/next/documents/persistence.go` | ✅ |
-| `packages/chord/src/next/documents/residency.ts` | `chord/next/documents/residency.go` | ✅ |
-| `packages/chord/src/next/documents/slot.ts` | `chord/next/documents/slot.go` | ✅ |
-| `packages/chord/src/next/documents/transaction.ts` | `chord/next/documents/transaction.go, chord/next/documents/job.go` | ✅ |
-| `packages/chord/src/next/host/backoff.ts` | `chord/next/host/host_backoff.go` | ✅ |
-| `packages/chord/src/next/host/deadline.ts` | `chord/next/host/host_deadline.go` | ✅ |
-| `packages/chord/src/next/host/sleep.ts` | `chord/next/host/host_sleep.go` | ✅ |
-| `packages/chord/src/next/host/uuid.ts` | `chord/next/host/host_uuid.go` | ✅ |
-| `packages/chord/src/next/host/activity.ts` | `chord/next/host/host_activity.go` | 🟡 |
-| `packages/chord/src/next/host/revocation.ts` | `chord/next/host/host_revocation.go` | 🟡 |
-| `packages/chord/src/next/host/unbound.ts` | `chord/next/host/host_unbound.go` | ✅ |
-| `packages/chord/src/next/host/retry-on.ts` | `chord/next/host/host_retry_on.go` | ✅ |
-| `packages/chord/src/next/host/ref-state.ts` | `chord/next/host/host_ref_state.go` | ✅ |
-| `packages/chord/src/next/host/dependencies.ts` | `chord/next/host/host_dependencies.go` | ✅ |
-| `packages/chord/src/next/host/parked.ts` | `chord/next/host/host_parked.go` | 🟡 |
-| `packages/chord/src/next/host/native.ts` | `chord/next/host/host_native.go` | 🟡 |
-| `packages/chord/src/next/host/follow.ts` | `chord/next/host/host_follow.go` | ✅ |
-| `packages/chord/src/next/host/members.ts` | `chord/next/host/host_members.go` | ✅ |
-| `packages/chord/src/next/host/ctx.ts` | `chord/next/host/host_ctx.go` | 🟡 |
-| `packages/chord/src/next/host/root.ts` | `chord/next/host/host_root.go` | ✅ |
-| `packages/chord/src/next/host/routines.ts` | `chord/next/host/host_routines.go` | ✅ |
-| `packages/chord/src/next/host/facet.ts` | `chord/next/host/host_facet.go` | ✅ |
-| `packages/chord/src/next/host/presence.ts` | `chord/next/host/host_presence.go` | 🟡 |
-| `packages/chord/src/next/host/route.ts` | `chord/next/host/host_route.go` | ✅ |
-| `packages/chord/src/next/host/destination.ts` | `chord/next/host/host_destination.go` | ✅ |
-| `packages/chord/src/next/host/index.ts` | `(barrel: Go imports the package (DESIGN-go-layout.md section 2); what it exports is exported by the files above (Ctx, Facet, FacetHost, Host..., Sleep, UntilAborted, Presence, RefState, RevokedBy, RootOptions, RouteOptions, RoutineDeclarations, Native*, Follow*, GetOptions, HostError, Position; Host, HostOptions, LinkOptions, createHost, Factory, Self, StoreSelf, Held, Reference, RefIn are D5a's))` | n/a |
-| `packages/chord/src/next/host/internal.ts` | `(barrel for jobs/remote: one package, identifiers are unexported where Pi keeps them out of index.ts (DESIGN-go-layout.md sections 1-2))` | n/a |
-| `packages/chord/src/next/host/host.ts` | `chord/next/host/host_host.go, chord/next/host/host_error.go` | ✅ |
-| `packages/chord/src/next/host/attempt.ts` | `chord/next/host/host_attempt.go` | ✅ |
-| `packages/chord/src/next/host/object.ts` | `chord/next/host/host_object.go` | ✅ |
-| `packages/chord/src/next/host/reference.ts` | `chord/next/host/host_reference.go` | ✅ |
-| `packages/chord/src/next/jobs/definition.ts` | `chord/next/host/jobs_definition.go` | ✅ |
-| `packages/chord/src/next/jobs/persisted.ts` | `chord/next/host/jobs_persisted.go` | ✅ |
-| `packages/chord/src/next/jobs/records.ts` | `chord/next/host/jobs_records.go` | ✅ |
-| `packages/chord/src/next/jobs/run-states.ts` | `chord/next/host/jobs_run_states.go` | ✅ |
-| `packages/chord/src/next/jobs/run.ts` | `chord/next/host/jobs_run.go, chord/next/documents/job.go` | ✅ |
-| `packages/chord/src/next/jobs/running.ts` | `chord/next/host/jobs_running.go` | ✅ |
-| `packages/chord/src/next/jobs/stored.ts` | `chord/next/host/jobs_stored.go` | ✅ |
-| `packages/chord/src/next/jobs/index.ts` | `(barrel: Go imports the package (DESIGN-go-layout.md section 2); what it exports is exported by the files above: DefineJob, JobAccepts, JobDefinition, JobError, JobOptions, Outcome, JobCtx, JobHandle, JobImplementation, RunState, StartOptions, BlockedReason, Run; RunningEntry is type-level (jobs_running.go))` | n/a |
-| `packages/chord/src/next/jobs/internal.ts` | `(barrel for host/remote: one package, Job, JobRecords, JobContext, Staging, ... are unexported where Pi keeps them out of index.ts (DESIGN-go-layout.md sections 1-2))` | n/a |
-| `packages/chord/src/next/remote/hold.ts` | `chord/next/host/remote_hold.go` | ✅ |
-| `packages/chord/src/next/remote/remote-object.ts` | `chord/next/host/remote_remote_object.go` | ✅ |
-| `packages/chord/src/next/remote/host-link.ts` | `chord/next/host/remote_host_link.go` | ✅ |
-| `packages/chord/src/next/remote/path.ts` | `chord/next/host/remote_path.go` | ✅ |
-| `packages/chord/src/next/remote/calls.ts` | `chord/next/host/remote_calls.go` | ✅ |
-| `packages/chord/src/next/remote/provider.ts` | `chord/next/host/remote_provider.go` | ✅ |
-| `packages/chord/src/next/remote/consumer.ts` | `chord/next/host/remote_consumer.go` | ✅ |
-| `packages/chord/src/next/remote/relay.ts` | `chord/next/host/remote_relay.go` | ✅ |
-| `packages/chord/src/next/remote/replica.ts` | `chord/next/host/remote_replica.go` | ✅ |
-| `packages/chord/src/next/remote/internal.ts` | `(barrel for Chord's own layers: Go imports the package; what it exported (Path, Upstream, HostLink, HoldRequest, actingFor, ...) is unexported in Go (DESIGN-go-layout.md section 2))` | n/a |
-| `packages/chord/src/next/jobs/job.ts` | `chord/next/host/jobs_job.go` | ✅ |
-| `packages/chord/test/next/examples/01-objects.ts` | `chord/next/host/host_example_01_test.go`, `chord/next/host/host_host.go`, `chord/next/host/host_object.go`, `chord/next/data/args.go` | ✅ |
-| `packages/chord/test/next/examples/02-documents.ts` | `chord/next/host/host_example_02_test.go`, `chord/next/documents/transaction.go`, `chord/next/documents/slot.go`, `chord/next/documents/handles.go` | ✅ |
-| `packages/chord/test/next/examples/03-derives.ts` | `chord/next/host/host_example_03_test.go`, `chord/next/state/derive.go` | ✅ |
-| `packages/chord/test/next/examples/04-watches.ts` | `chord/next/host/host_example_04_test.go`, `chord/next/state/derive.go`, `chord/next/documents/address_source.go` | ✅ |
-| `packages/chord/test/next/examples/05-errors.ts` | `chord/next/host/host_example_05_test.go`, `chord/next/host/host_dependencies.go`, `chord/next/host/host_unbound.go`, `chord/next/data/validator.go` | ✅ |
-| `packages/chord/test/next/examples/06-natives.ts` | `chord/next/host/host_example_06_test.go`, `chord/next/host/host_native.go` | ✅ |
-| `packages/chord/test/next/examples/07-failures.ts` | `chord/next/host/host_example_07_test.go`, `chord/next/host/host_backoff.go`, `chord/next/host/host_dependencies.go` | ✅ |
-| `packages/chord/test/next/examples/08-remote.ts` | `chord/next/host/host_example_08_test.go`, `chord/next/host/host_destination.go`, `chord/next/host/remote_remote_object.go`, `chord/next/host/remote_replica.go` | ✅ |
-| `packages/chord/test/next/examples/09-calls.ts` | `chord/next/host/host_example_09_test.go`, `chord/next/link/values.go`, `chord/next/link/errors.go`, `chord/next/host/host_ctx.go`, `chord/next/host/remote_consumer.go`, `chord/next/host/remote_provider.go` | ✅ |
-| `packages/chord/test/next/examples/10-drops.ts` | `chord/next/host/host_example_10_test.go`, `chord/next/host/host_parked.go`, `chord/next/host/host_reference_source.go`, `chord/next/host/host_reference.go` | ✅ |
-| `packages/chord/test/next/examples/11-linger-and-retry.ts` | `chord/next/host/host_example_11_test.go`, `chord/next/host/host_object.go`, `chord/next/host/host_backoff.go` | ✅ |
-| `packages/chord/test/next/examples/12-routes.ts` | `chord/next/host/host_example_12_test.go`, `chord/next/host/host_route.go`, `chord/next/host/host_ctx.go` | ✅ |
-| `packages/chord/test/next/examples/13-relay.ts` | `chord/next/host/host_example_13_test.go`, `chord/next/link/websocket.go`, `chord/next/link/ipc.go`, `chord/next/host/remote_relay.go` | ✅ |
-| `packages/chord/test/next/examples/14-flow-control.ts` | `chord/next/host/host_example_14_test.go`, `chord/next/host/remote_hold.go`, `chord/next/host/remote_provider.go` | ✅ |
-| `packages/chord/test/next/examples/15-revocation.ts` | `chord/next/host/host_example_15_test.go`, `chord/next/host/host_revocation.go`, `chord/next/host/host_host.go`, `chord/next/host/remote_host_link.go` | ✅ |
-| `packages/chord/test/next/examples/16-presence-and-activity.ts` | `chord/next/host/host_example_16_test.go`, `chord/next/host/host_activity.go`, `chord/next/host/host_presence.go` | ✅ |
-| `packages/chord/test/next/examples/17-limits-and-compression.ts` | `chord/next/host/host_example_17_test.go`, `chord/next/link/part.go`, `chord/nextnode/compression.go`, `chord/next/link/channel.go` | ✅ |
-| `packages/chord/test/next/examples/18-routines.ts` | `chord/next/host/host_example_18_test.go`, `chord/next/host/host_routines.go`, `chord/next/host/host_sleep.go` | ✅ |
-| `packages/chord/test/next/examples/19-jobs.ts` | `chord/next/host/host_example_19_test.go`, `chord/next/host/jobs_job.go`, `chord/next/host/jobs_run_states.go`, `chord/next/host/jobs_records.go`, `chord/next/host/jobs_running.go`, `chord/next/host/jobs_run.go` | ✅ |
-| `packages/chord/test/next/examples/20-tables.ts` | `chord/next/host/host_example_20_test.go`, `chord/next/store/query.go`, `chord/next/store/table_handle.go`, `chord/next/store/rows.go`, `chord/next/store/sql.go`, `chord/next/store/columns.go`, `chord/next/store/table_writes.go`, `chord/next/store/table_changes.go` | ✅ |
-| `packages/chord/test/next/examples/21-persisted-documents.ts` | `chord/next/host/host_example_21_test.go`, `chord/next/store/engine.go`, `chord/next/documents/persistence.go`, `chord/next/documents/keyed_slot.go` | ✅ |
-| `packages/chord/test/next/examples/22-migrations.ts` | `chord/next/host/host_example_22_test.go`, `chord/next/store/table_evolve.go`, `chord/next/store/table_migration.go`, `chord/next/store/catalog.go` | ✅ |
-| `packages/chord/test/next/examples/23-keyed-watches.ts` | `chord/next/host/host_example_23_test.go`, `chord/next/documents/keyed_slot.go`, `chord/next/documents/address_source.go` | ✅ |
-| `packages/chord/test/next/examples/24-keyed-members.ts` | `chord/next/host/host_example_24_test.go`, `chord/next/host/host_reference_keys.go`, `chord/next/host/host_members.go` | ✅ |
-| `packages/chord/test/next/examples/25-export-import.ts` | `chord/next/host/host_example_25_test.go`, `chord/next/store/export.go`, `chord/next/store/import.go`, `chord/next/store/jsonl.go`, `chord/next/store/applier.go`, `chord/next/store/archive.go` | ✅ |
-| `packages/chord/test/next/examples/28-persisted-jobs.ts` | `chord/next/host/host_example_28_test.go`, `chord/next/host/jobs_persisted.go`, `chord/next/host/jobs_stored.go`, `chord/next/host/jobs_run_states.go`, `chord/next/host/jobs_records.go` | ✅ |
-| `packages/chord/test/next/examples/29-registries.ts` | `chord/next/host/host_example_29_test.go`, `chord/next/registries/registry.go`, `chord/next/registries/contribution.go`, `chord/next/registries/value.go`, `chord/next/registries/entries.go`, `chord/next/registries/record.go` | ✅ |
-| `packages/chord/test/next/examples/30-host-root.ts` | `chord/next/host/host_example_30_test.go`, `chord/next/host/host_root.go`, `chord/next/host/host_ctx.go` | ✅ |
-| `packages/chord/test/next/examples/31-parked-dependencies.ts` | `chord/next/host/host_example_31_test.go`, `chord/next/host/host_dependencies.go`, `chord/next/host/host_unbound.go` | ✅ |
-| `packages/chord/test/next/examples/32-startup.ts` | `chord/next/host/host_example_32_test.go`, `chord/next/host/remote_remote_object.go`, `chord/next/host/host_host.go` | ✅ |
-| `packages/chord/test/next/support.ts` | `(Pi test scaffolding; ported as the shared helpers in chord/next/host/host_next_support_test.go, tested by host_next_support_helpers_test.go; its fidelity is evidenced by the ported slice and example tests built on it. Forced difference: holdNextCommit holds the next commit step at the statements that close its writes, since the store type is concrete)` | n/a |
-| `packages/chord/src/next-node/http/admission.ts` | `chord/nextnode/http/admission.go` | ✅ |
-| `packages/chord/src/next-node/http/authenticate.ts` | `chord/nextnode/http/authenticate.go` | ✅ |
-| `packages/chord/src/next-node/http/cookies.ts` | `chord/nextnode/http/cookies.go` | ✅ |
-| `packages/chord/src/next-node/http/file.ts` | `chord/nextnode/http/file.go` | ✅ |
-| `packages/chord/src/next-node/http/headers.ts` | `chord/nextnode/http/headers.go` | ✅ |
-| `packages/chord/src/next-node/http/http.ts` | `chord/nextnode/http/http.go` | ✅ |
-| `packages/chord/src/next-node/http/incoming.ts` | `chord/nextnode/http/incoming.go` | ✅ |
-| `packages/chord/src/next-node/http/index.ts` | `(barrel: Go imports the package; exported names are those of Pi's index.ts, the rest is unexported)` | n/a |
-| `packages/chord/src/next-node/http/node.ts` | `chord/nextnode/http/node.go, chord/nextnode/http/url.go` | ✅ |
-| `packages/chord/src/next-node/http/request.ts` | `chord/nextnode/http/request.go` | ✅ |
-| `packages/chord/src/next-node/http/response.ts` | `chord/nextnode/http/response.go, chord/nextnode/http/statuscodes.go` | ✅ |
-| `packages/chord/src/next-node/http/router.ts` | `chord/nextnode/http/router.go` | ✅ |
-| `packages/chord/src/next-node/http/upgrades.ts` | `chord/nextnode/http/upgrades.go, chord/nextnode/http/websocket.go` | ✅ |
-| `packages/chord/src/next-node/plugins/build.ts` | `chord/nextnode/plugins/plugins_build.go, chord/nextnode/plugins/plugins_sourcemap.go` | ✅ |
-| `packages/chord/src/next-node/plugins/discover.ts` | `chord/nextnode/plugins/plugins_discover.go` | ✅ |
-| `packages/chord/src/next-node/plugins/evaluate.ts` | `chord/nextnode/plugins/plugins_runtime.go; Pi's file runs verbatim in the Node subprocess: chord/nextnode/plugins/node/pi/chord/src/next-node/plugins/evaluate.ts, node/host.mjs` | ✅ |
-| `packages/chord/src/next-node/plugins/index.ts` | `(barrel: Go imports the package)` | n/a |
-| `packages/chord/src/next-node/plugins/install.ts` | `chord/nextnode/plugins/plugins_install.go` | ✅ |
-| `packages/chord/src/next-node/plugins/plugins.ts` | `chord/nextnode/plugins/plugins_plugins.go` | ✅ |
-| `packages/chord/src/next-node/plugins/runtime.ts` | `chord/nextnode/plugins/plugins_runtime.go, chord/nextnode/plugins/plugins_node.go; Pi's file runs verbatim in the Node subprocess: chord/nextnode/plugins/node/pi/chord/src/next-node/plugins/runtime.ts` | ✅ |
-| `packages/chord/src/next-node/plugins/stack.ts` | `Pi's file runs verbatim in the Node subprocess: chord/nextnode/plugins/node/pi/chord/src/next-node/plugins/stack.ts; Go sees *NodeError.Stack (chord/nextnode/plugins/plugins_node.go)` | ✅ |
-| `packages/chord/src/next-node/plugins/watcher.ts` | `chord/nextnode/plugins/plugins_watcher.go` | ✅ |
-| `packages/chord/src/next/host/adapted.ts` | `chord/next/host/host_adapted.go` | ✅ |
-| `packages/chord/src/next/host/reference-keys.ts` | `chord/next/host/host_reference_keys.go` | ✅ |
-| `packages/chord/src/next/host/reference-source.ts` | `chord/next/host/host_reference_source.go` | ✅ |
-| `packages/chord/src/next/host/staging.ts` | `chord/next/host/host_staging.go, chord/next/host/host_host.go` | ✅ |
-| `packages/chord/src/next-node/workers/control.ts` | `chord/nextnode/workers/workers_control.go` | ✅ |
-| `packages/chord/src/next-node/workers/index.ts` | `(re-export barrel; the exported set is the package's (CrossedError, ProcessLock, WorkerMain, WorkerStart, WorkerPlugins, WorkerResult, WorkerMainOptions, CreateWorkers, WorkerState, Workers, WorkersError, WorkersOptions))` | n/a |
-| `packages/chord/src/next-node/workers/lock.ts` | `chord/nextnode/workers/workers_lock.go, workers_lock_unix.go` (the Windows named-pipe variant workers_lock_windows is built only on Windows and is run by the native Windows CI job) | ✅ |
-| `packages/chord/src/next-node/workers/main.ts` | `chord/nextnode/workers/workers_main.go` | ✅ |
-| `packages/chord/src/next-node/workers/process.ts` | `chord/nextnode/workers/workers_process.go, workers_process_unix.go, workers_channel.go, workers_channel_unix.go` (the Windows variants workers_process_windows and workers_channel_windows are built only on Windows and are run by the native Windows CI job) | ✅ |
-| `packages/chord/src/next-node/workers/workers.ts` | `chord/nextnode/workers/workers_workers.go, workers_outcome.go` | ✅ |
-| `packages/chord/src/node/app/secrets.ts` | `chord/nextnode/app/secrets.go` | ✅ |
-| `packages/chord/src/node/app/layout.ts` | `chord/nextnode/app/layout.go` | ✅ |
-| `packages/chord/src/node/app/blobs.ts` | `chord/nextnode/app/blobs.go` | ✅ |
-| `packages/chord/src/node/app/uploads.ts` | `chord/nextnode/app/uploads.go (Accept is the synchronous half of Pi's append, D430)` | ✅ |
-| `packages/chord/src/node/app/files-index.ts` | `chord/nextnode/app/files_index.go` | ✅ |
-| `packages/chord/src/node/app/folder-views.ts` | `chord/nextnode/app/folder_views.go` | ✅ |
-| `packages/chord/src/node/app/files.ts` | `chord/nextnode/app/files.go (handlers suspend before their first wait and `turn` is a mutex, D430)` | ✅ |
-| `packages/chord/src/node/app/files-copy.ts` | `chord/nextnode/app/files_copy.go` | ✅ |
-| `packages/chord/src/node/app/files-entry.ts` | `(barrel: Go imports the package; the files-entry exports are FilesFacet, Files, FilesFolder, CopyFiles, PrivateDirectory, PrivateStore and the types)` | n/a |
+| `packages/chord/src/contracts/accepts.ts` | `chord/next/contracts/accepts.go` | ✅ |
+| `packages/chord/src/contracts/contract.ts` | `chord/next/contracts/contract.go` | ✅ |
+| `packages/chord/src/contracts/declare.ts` | `chord/next/contracts/declare.go` | ✅ |
+| `packages/chord/src/contracts/evolve.ts` | `chord/next/contracts/evolve.go` | ✅ |
+| `packages/chord/src/contracts/fingerprint.ts` | `chord/next/contracts/fingerprint.go` | ✅ |
+| `packages/chord/src/contracts/history.ts` | `chord/next/contracts/history.go` | ✅ |
+| `packages/chord/src/contracts/host-kind.ts` | `chord/next/contracts/host_kind.go` | ✅ |
+| `packages/chord/src/contracts/index.ts` | `(re-export barrel; Go packages export names directly)` | n/a |
+| `packages/chord/src/contracts/internal.ts` | `(re-export barrel for Chord's layers)` | n/a |
+| `packages/chord/src/contracts/names.ts` | `chord/next/contracts/names.go` | ✅ |
+| `packages/chord/src/contracts/params.ts` | `chord/next/contracts/params.go` | ✅ |
+| `packages/chord/src/contracts/schema.ts` | `chord/next/contracts/schema.go` | ✅ |
+| `packages/chord/src/contracts/snapshot.ts` | `chord/next/contracts/snapshot.go` | ✅ |
+| `packages/chord/src/data/args.ts` | `chord/next/data/args.go` | ✅ |
+| `packages/chord/src/data/errors.ts` | `chord/next/data/errors.go` | ✅ |
+| `packages/chord/src/data/failure.ts` | `chord/next/data/failure.go` | ✅ |
+| `packages/chord/src/data/index.ts` | `(re-export barrel)` | n/a |
+| `packages/chord/src/data/internal.ts` | `(re-export barrel)` | n/a |
+| `packages/chord/src/data/params.ts` | `chord/next/data/params.go` | ✅ |
+| `packages/chord/src/data/principal.ts` | `chord/next/data/principal.go` | ✅ |
+| `packages/chord/src/data/validator.ts` | `chord/next/data/validator.go` | ✅ |
+| `packages/chord/src/index.ts` | `(aggregate barrel of every layer; Go imports the layer packages)` | n/a |
+| `packages/chord/src/registries/contribution.ts` | `chord/next/registries/contribution.go` | ✅ |
+| `packages/chord/src/registries/entries.ts` | `chord/next/registries/entries.go` | ✅ |
+| `packages/chord/src/registries/index.ts` | `(re-export barrel)` | n/a |
+| `packages/chord/src/registries/internal.ts` | `chord/next/registries/internal.go` | ✅ |
+| `packages/chord/src/registries/record.ts` | `chord/next/registries/record.go` | ✅ |
+| `packages/chord/src/registries/registry.ts` | `chord/next/registries/registry.go` | ✅ |
+| `packages/chord/src/registries/value.ts` | `chord/next/registries/value.go` | ✅ |
+| `packages/chord/src/state/batch.ts` | `chord/next/state/batch.go` | ✅ |
+| `packages/chord/src/state/derive.ts` | `chord/next/state/derive.go` | ✅ |
+| `packages/chord/src/state/index.ts` | `(re-export barrel)` | n/a |
+| `packages/chord/src/state/internal.ts` | `(re-export barrel)` | n/a |
+| `packages/chord/src/state/native-source.ts` | `chord/next/state/native_source.go` | ✅ |
+| `packages/chord/src/state/watchable.ts` | `chord/next/state/watchable.go, chord/next/state/set.go` | ✅ |
+| `packages/chord/src/state/writable.ts` | `chord/next/state/writable.go` | ✅ |
+| `packages/chord/src/node/compression.ts` | `chord/nextnode/compression.go` | ✅ |
+| `packages/chord/src/link/binary.ts` | `chord/next/link/binary.go` | ✅ |
+| `packages/chord/src/link/channel.ts` | `chord/next/link/channel.go` | ✅ |
+| `packages/chord/src/link/errors.ts` | `chord/next/link/errors.go` | ✅ |
+| `packages/chord/src/link/index.ts` | `(re-export barrel; Go packages export names directly)` | n/a |
+| `packages/chord/src/link/internal.ts` | `(re-export barrel for Chord's layers)` | n/a |
+| `packages/chord/src/link/ipc.ts` | `chord/next/link/ipc.go` | ✅ |
+| `packages/chord/src/link/link.ts` | `chord/next/link/link.go` | ✅ |
+| `packages/chord/src/link/message.ts` | `chord/next/link/message.go` | ✅ |
+| `packages/chord/src/link/part.ts` | `chord/next/link/part.go` | ✅ |
+| `packages/chord/src/link/text.ts` | `chord/next/link/text.go` | ✅ |
+| `packages/chord/src/link/values.ts` | `chord/next/link/values.go` | ✅ |
+| `packages/chord/src/link/websocket.ts` | `chord/next/link/websocket.go` | ✅ |
+| `packages/chord/src/store/table-writes.ts` | `chord/next/store/table_writes.go` | ✅ |
+| `packages/chord/src/store/table-changes.ts` | `chord/next/store/table_changes.go` | ✅ |
+| `packages/chord/src/store/table-handle.ts` | `chord/next/store/table_handle.go` | ✅ |
+| `packages/chord/src/store/engine.ts` | `chord/next/store/engine.go` | ✅ |
+| `packages/chord/src/store/outbox.ts` | `chord/next/store/outbox.go` | ✅ |
+| `packages/chord/src/store/store.ts` | `chord/next/store/store.go` | ✅ |
+| `packages/chord/src/store/applier.ts` | `chord/next/store/applier.go` | ✅ |
+| `packages/chord/src/store/apply-batch.ts` | `chord/next/store/apply_batch.go` | ✅ |
+| `packages/chord/src/store/index.ts` | `(export barrel: the Go package exports the names directly. Each exported name of the list exists in package store: ArchivePart (ArchiveManifest is ManifestPart), Backend/SqliteBackend, expression builders (Add And ColumnRef Condition Coalesce Concat Expression Eq Gt Gte InArray IsNull Lt Lte Max Min Ne Not Or Prefix ReplacePrefix SetOf Sub When), ImportStore, JsonColumnOptions/Json, DecodeJsonl/EncodeJsonl, Outbox/OutboxCommit, ColumnRefs/Query, OpenStore/Store/StoreOptions, DefineTable/TableDefinition/TableOptions, EvolveTable/TableEditor, Page/PageOptions, CompareText, StoreWrite. Type-level only, designed out by the other D3 agents: Columns PutRowOf RowOf KeyOf PatchOf AddedColumn TableTailEditor TableOf Table)` | n/a |
+| `packages/chord/src/store/archive.ts` | `chord/next/store/archive.go` | ✅ |
+| `packages/chord/src/store/export.ts` | `chord/next/store/export.go` | ✅ |
+| `packages/chord/src/store/import.ts` | `chord/next/store/import.go` | ✅ |
+| `packages/chord/src/store/text.ts` | `chord/next/store/text.go` | ✅ |
+| `packages/chord/src/store/allocator.ts` | `chord/next/store/allocator.go` | ✅ |
+| `packages/chord/src/store/claims.ts` | `chord/next/store/claims.go` | ✅ |
+| `packages/chord/src/store/refusal.ts` | `chord/next/store/refusal.go` | ✅ |
+| `packages/chord/src/store/columns.ts` | `chord/next/store/columns.go` | ✅ |
+| `packages/chord/src/store/json-column.ts` | `chord/next/store/json_column.go` | ✅ |
+| `packages/chord/src/store/rows.ts` | `chord/next/store/rows.go` | ✅ |
+| `packages/chord/src/store/sql.ts` | `chord/next/store/sql.go` | ✅ |
+| `packages/chord/src/store/jsonl.ts` | `chord/next/store/jsonl.go` | ✅ |
+| `packages/chord/src/store/catalog.ts` | `chord/next/store/catalog.go` | ✅ |
+| `packages/chord/src/store/expression.ts` | `chord/next/store/expression.go` | ✅ |
+| `packages/chord/src/store/evaluate.ts` | `chord/next/store/evaluate.go` | ✅ |
+| `packages/chord/src/store/query.ts` | `chord/next/store/query.go`, `chord/next/store/expression.go` | ✅ |
+| `packages/chord/src/store/table.ts` | `chord/next/store/table.go` | ✅ |
+| `packages/chord/src/store/table-history.ts` | `chord/next/store/table_history.go` | ✅ |
+| `packages/chord/src/store/table-evolve.ts` | `chord/next/store/table_evolve.go` | ✅ |
+| `packages/chord/src/store/table-migration.ts` | `chord/next/store/table_migration.go` | ✅ |
+| `packages/chord/src/store/adapter.ts` | `chord/next/store/adapter.go` | ✅ |
+| `packages/chord/src/store/backend.ts` | `chord/next/store/backend.go` | ✅ |
+| `packages/chord/src/store/schema.ts` | `chord/next/store/schema.go` | ✅ |
+| `packages/chord/src/store/step.ts` | `chord/next/store/step.go` | ✅ |
+| `packages/chord/src/store/writes.ts` | `(type-only: the StoreWrite union; chord/next/store/writes.go StoreWrite interface)` | n/a |
+| `packages/chord/src/documents/address-source.ts` | `chord/next/documents/address_source.go` | ✅ |
+| `packages/chord/src/documents/definition.ts` | `chord/next/documents/definition.go` | ✅ |
+| `packages/chord/src/documents/documents.ts` | `chord/next/documents/documents.go` | ✅ |
+| `packages/chord/src/documents/fence.ts` | `chord/next/documents/fence.go` | ✅ |
+| `packages/chord/src/documents/handles.ts` | `chord/next/documents/handles.go` | ✅ |
+| `packages/chord/src/documents/index.ts` | `(re-export barrel; the app-facing set is listed in doc.go)` | n/a |
+| `packages/chord/src/documents/internal.ts` | `(re-export barrel for Chord's layers)` | n/a |
+| `packages/chord/src/documents/keyed-slot.ts` | `chord/next/documents/keyed_slot.go` | ✅ |
+| `packages/chord/src/documents/line.ts` | `chord/next/documents/line.go` | ✅ |
+| `packages/chord/src/documents/persistence.ts` | `chord/next/documents/persistence.go` | ✅ |
+| `packages/chord/src/documents/residency.ts` | `chord/next/documents/residency.go` | ✅ |
+| `packages/chord/src/documents/slot.ts` | `chord/next/documents/slot.go` | ✅ |
+| `packages/chord/src/documents/transaction.ts` | `chord/next/documents/transaction.go, chord/next/documents/job.go` | ✅ |
+| `packages/chord/src/host/backoff.ts` | `chord/next/host/host_backoff.go` | ✅ |
+| `packages/chord/src/host/deadline.ts` | `chord/next/host/host_deadline.go` | ✅ |
+| `packages/chord/src/host/sleep.ts` | `chord/next/host/host_sleep.go` | ✅ |
+| `packages/chord/src/host/uuid.ts` | `chord/next/host/host_uuid.go` | ✅ |
+| `packages/chord/src/host/activity.ts` | `chord/next/host/host_activity.go` | 🟡 |
+| `packages/chord/src/host/revocation.ts` | `chord/next/host/host_revocation.go` | 🟡 |
+| `packages/chord/src/host/unbound.ts` | `chord/next/host/host_unbound.go` | ✅ |
+| `packages/chord/src/host/retry-on.ts` | `chord/next/host/host_retry_on.go` | ✅ |
+| `packages/chord/src/host/ref-state.ts` | `chord/next/host/host_ref_state.go` | ✅ |
+| `packages/chord/src/host/dependencies.ts` | `chord/next/host/host_dependencies.go` | ✅ |
+| `packages/chord/src/host/parked.ts` | `chord/next/host/host_parked.go` | 🟡 |
+| `packages/chord/src/host/native.ts` | `chord/next/host/host_native.go` | 🟡 |
+| `packages/chord/src/host/follow.ts` | `chord/next/host/host_follow.go` | ✅ |
+| `packages/chord/src/host/members.ts` | `chord/next/host/host_members.go` | ✅ |
+| `packages/chord/src/host/ctx.ts` | `chord/next/host/host_ctx.go` | 🟡 |
+| `packages/chord/src/host/root.ts` | `chord/next/host/host_root.go` | ✅ |
+| `packages/chord/src/host/routines.ts` | `chord/next/host/host_routines.go` | ✅ |
+| `packages/chord/src/host/facet.ts` | `chord/next/host/host_facet.go` | ✅ |
+| `packages/chord/src/host/presence.ts` | `chord/next/host/host_presence.go` | 🟡 |
+| `packages/chord/src/host/route.ts` | `chord/next/host/host_route.go` | ✅ |
+| `packages/chord/src/host/destination.ts` | `chord/next/host/host_destination.go` | ✅ |
+| `packages/chord/src/host/index.ts` | `(barrel: Go imports the package (DESIGN-go-layout.md section 2); what it exports is exported by the files above (Ctx, Facet, FacetHost, Host..., Sleep, UntilAborted, Presence, RefState, RevokedBy, RootOptions, RouteOptions, RoutineDeclarations, Native*, Follow*, GetOptions, HostError, Position; Host, HostOptions, LinkOptions, createHost, Factory, Self, StoreSelf, Held, Reference, RefIn are D5a's))` | n/a |
+| `packages/chord/src/host/internal.ts` | `(barrel for jobs/remote: one package, identifiers are unexported where Pi keeps them out of index.ts (DESIGN-go-layout.md sections 1-2))` | n/a |
+| `packages/chord/src/host/host.ts` | `chord/next/host/host_host.go, chord/next/host/host_error.go` | ✅ |
+| `packages/chord/src/host/attempt.ts` | `chord/next/host/host_attempt.go` | ✅ |
+| `packages/chord/src/host/object.ts` | `chord/next/host/host_object.go` | ✅ |
+| `packages/chord/src/host/reference.ts` | `chord/next/host/host_reference.go` | ✅ |
+| `packages/chord/src/jobs/definition.ts` | `chord/next/host/jobs_definition.go` | ✅ |
+| `packages/chord/src/jobs/persisted.ts` | `chord/next/host/jobs_persisted.go` | ✅ |
+| `packages/chord/src/jobs/records.ts` | `chord/next/host/jobs_records.go` | ✅ |
+| `packages/chord/src/jobs/run-states.ts` | `chord/next/host/jobs_run_states.go` | ✅ |
+| `packages/chord/src/jobs/run.ts` | `chord/next/host/jobs_run.go, chord/next/documents/job.go` | ✅ |
+| `packages/chord/src/jobs/running.ts` | `chord/next/host/jobs_running.go` | ✅ |
+| `packages/chord/src/jobs/stored.ts` | `chord/next/host/jobs_stored.go` | ✅ |
+| `packages/chord/src/jobs/index.ts` | `(barrel: Go imports the package (DESIGN-go-layout.md section 2); what it exports is exported by the files above: DefineJob, JobAccepts, JobDefinition, JobError, JobOptions, Outcome, JobCtx, JobHandle, JobImplementation, RunState, StartOptions, BlockedReason, Run; RunningEntry is type-level (jobs_running.go))` | n/a |
+| `packages/chord/src/jobs/internal.ts` | `(barrel for host/remote: one package, Job, JobRecords, JobContext, Staging, ... are unexported where Pi keeps them out of index.ts (DESIGN-go-layout.md sections 1-2))` | n/a |
+| `packages/chord/src/remote/hold.ts` | `chord/next/host/remote_hold.go` | ✅ |
+| `packages/chord/src/remote/remote-object.ts` | `chord/next/host/remote_remote_object.go` | ✅ |
+| `packages/chord/src/remote/host-link.ts` | `chord/next/host/remote_host_link.go` | ✅ |
+| `packages/chord/src/remote/path.ts` | `chord/next/host/remote_path.go` | ✅ |
+| `packages/chord/src/remote/calls.ts` | `chord/next/host/remote_calls.go` | ✅ |
+| `packages/chord/src/remote/provider.ts` | `chord/next/host/remote_provider.go` | ✅ |
+| `packages/chord/src/remote/consumer.ts` | `chord/next/host/remote_consumer.go` | ✅ |
+| `packages/chord/src/remote/relay.ts` | `chord/next/host/remote_relay.go` | ✅ |
+| `packages/chord/src/remote/replica.ts` | `chord/next/host/remote_replica.go` | ✅ |
+| `packages/chord/src/remote/internal.ts` | `(barrel for Chord's own layers: Go imports the package; what it exported (Path, Upstream, HostLink, HoldRequest, actingFor, ...) is unexported in Go (DESIGN-go-layout.md section 2))` | n/a |
+| `packages/chord/src/jobs/job.ts` | `chord/next/host/jobs_job.go` | ✅ |
+| `packages/chord/test/examples/01-objects.ts` | `chord/next/host/host_example_01_test.go`, `chord/next/host/host_host.go`, `chord/next/host/host_object.go`, `chord/next/data/args.go` | ✅ |
+| `packages/chord/test/examples/02-documents.ts` | `chord/next/host/host_example_02_test.go`, `chord/next/documents/transaction.go`, `chord/next/documents/slot.go`, `chord/next/documents/handles.go` | ✅ |
+| `packages/chord/test/examples/03-derives.ts` | `chord/next/host/host_example_03_test.go`, `chord/next/state/derive.go` | ✅ |
+| `packages/chord/test/examples/04-watches.ts` | `chord/next/host/host_example_04_test.go`, `chord/next/state/derive.go`, `chord/next/documents/address_source.go` | ✅ |
+| `packages/chord/test/examples/05-errors.ts` | `chord/next/host/host_example_05_test.go`, `chord/next/host/host_dependencies.go`, `chord/next/host/host_unbound.go`, `chord/next/data/validator.go` | ✅ |
+| `packages/chord/test/examples/06-natives.ts` | `chord/next/host/host_example_06_test.go`, `chord/next/host/host_native.go` | ✅ |
+| `packages/chord/test/examples/07-failures.ts` | `chord/next/host/host_example_07_test.go`, `chord/next/host/host_backoff.go`, `chord/next/host/host_dependencies.go` | ✅ |
+| `packages/chord/test/examples/08-remote.ts` | `chord/next/host/host_example_08_test.go`, `chord/next/host/host_destination.go`, `chord/next/host/remote_remote_object.go`, `chord/next/host/remote_replica.go` | ✅ |
+| `packages/chord/test/examples/09-calls.ts` | `chord/next/host/host_example_09_test.go`, `chord/next/link/values.go`, `chord/next/link/errors.go`, `chord/next/host/host_ctx.go`, `chord/next/host/remote_consumer.go`, `chord/next/host/remote_provider.go` | ✅ |
+| `packages/chord/test/examples/10-drops.ts` | `chord/next/host/host_example_10_test.go`, `chord/next/host/host_parked.go`, `chord/next/host/host_reference_source.go`, `chord/next/host/host_reference.go` | ✅ |
+| `packages/chord/test/examples/11-linger-and-retry.ts` | `chord/next/host/host_example_11_test.go`, `chord/next/host/host_object.go`, `chord/next/host/host_backoff.go` | ✅ |
+| `packages/chord/test/examples/12-routes.ts` | `chord/next/host/host_example_12_test.go`, `chord/next/host/host_route.go`, `chord/next/host/host_ctx.go` | ✅ |
+| `packages/chord/test/examples/13-relay.ts` | `chord/next/host/host_example_13_test.go`, `chord/next/link/websocket.go`, `chord/next/link/ipc.go`, `chord/next/host/remote_relay.go` | ✅ |
+| `packages/chord/test/examples/14-flow-control.ts` | `chord/next/host/host_example_14_test.go`, `chord/next/host/remote_hold.go`, `chord/next/host/remote_provider.go` | ✅ |
+| `packages/chord/test/examples/15-revocation.ts` | `chord/next/host/host_example_15_test.go`, `chord/next/host/host_revocation.go`, `chord/next/host/host_host.go`, `chord/next/host/remote_host_link.go` | ✅ |
+| `packages/chord/test/examples/16-presence-and-activity.ts` | `chord/next/host/host_example_16_test.go`, `chord/next/host/host_activity.go`, `chord/next/host/host_presence.go` | ✅ |
+| `packages/chord/test/examples/17-limits-and-compression.ts` | `chord/next/host/host_example_17_test.go`, `chord/next/link/part.go`, `chord/nextnode/compression.go`, `chord/next/link/channel.go` | ✅ |
+| `packages/chord/test/examples/18-routines.ts` | `chord/next/host/host_example_18_test.go`, `chord/next/host/host_routines.go`, `chord/next/host/host_sleep.go` | ✅ |
+| `packages/chord/test/examples/19-jobs.ts` | `chord/next/host/host_example_19_test.go`, `chord/next/host/jobs_job.go`, `chord/next/host/jobs_run_states.go`, `chord/next/host/jobs_records.go`, `chord/next/host/jobs_running.go`, `chord/next/host/jobs_run.go` | ✅ |
+| `packages/chord/test/examples/20-tables.ts` | `chord/next/host/host_example_20_test.go`, `chord/next/store/query.go`, `chord/next/store/table_handle.go`, `chord/next/store/rows.go`, `chord/next/store/sql.go`, `chord/next/store/columns.go`, `chord/next/store/table_writes.go`, `chord/next/store/table_changes.go` | ✅ |
+| `packages/chord/test/examples/21-persisted-documents.ts` | `chord/next/host/host_example_21_test.go`, `chord/next/store/engine.go`, `chord/next/documents/persistence.go`, `chord/next/documents/keyed_slot.go` | ✅ |
+| `packages/chord/test/examples/22-migrations.ts` | `chord/next/host/host_example_22_test.go`, `chord/next/store/table_evolve.go`, `chord/next/store/table_migration.go`, `chord/next/store/catalog.go` | ✅ |
+| `packages/chord/test/examples/23-keyed-watches.ts` | `chord/next/host/host_example_23_test.go`, `chord/next/documents/keyed_slot.go`, `chord/next/documents/address_source.go` | ✅ |
+| `packages/chord/test/examples/24-keyed-members.ts` | `chord/next/host/host_example_24_test.go`, `chord/next/host/host_reference_keys.go`, `chord/next/host/host_members.go` | ✅ |
+| `packages/chord/test/examples/25-export-import.ts` | `chord/next/host/host_example_25_test.go`, `chord/next/store/export.go`, `chord/next/store/import.go`, `chord/next/store/jsonl.go`, `chord/next/store/applier.go`, `chord/next/store/archive.go` | ✅ |
+| `packages/chord/test/examples/28-persisted-jobs.ts` | `chord/next/host/host_example_28_test.go`, `chord/next/host/jobs_persisted.go`, `chord/next/host/jobs_stored.go`, `chord/next/host/jobs_run_states.go`, `chord/next/host/jobs_records.go` | ✅ |
+| `packages/chord/test/examples/29-registries.ts` | `chord/next/host/host_example_29_test.go`, `chord/next/registries/registry.go`, `chord/next/registries/contribution.go`, `chord/next/registries/value.go`, `chord/next/registries/entries.go`, `chord/next/registries/record.go` | ✅ |
+| `packages/chord/test/examples/30-host-root.ts` | `chord/next/host/host_example_30_test.go`, `chord/next/host/host_root.go`, `chord/next/host/host_ctx.go` | ✅ |
+| `packages/chord/test/examples/31-parked-dependencies.ts` | `chord/next/host/host_example_31_test.go`, `chord/next/host/host_dependencies.go`, `chord/next/host/host_unbound.go` | ✅ |
+| `packages/chord/test/examples/32-startup.ts` | `chord/next/host/host_example_32_test.go`, `chord/next/host/remote_remote_object.go`, `chord/next/host/host_host.go` | ✅ |
+| `packages/chord/test/support.ts` | `(Pi test scaffolding; ported as the shared helpers in chord/next/host/host_next_support_test.go, tested by host_next_support_helpers_test.go; its fidelity is evidenced by the ported slice and example tests built on it. Forced difference: holdNextCommit holds the next commit step at the statements that close its writes, since the store type is concrete)` | n/a |
+| `packages/chord/src/node/http/admission.ts` | `chord/nextnode/http/admission.go` | ✅ |
+| `packages/chord/src/node/http/authenticate.ts` | `chord/nextnode/http/authenticate.go` | ✅ |
+| `packages/chord/src/node/http/cookies.ts` | `chord/nextnode/http/cookies.go` | ✅ |
+| `packages/chord/src/node/http/file.ts` | `chord/nextnode/http/file.go` | ✅ |
+| `packages/chord/src/node/http/headers.ts` | `chord/nextnode/http/headers.go` | ✅ |
+| `packages/chord/src/node/http/http.ts` | `chord/nextnode/http/http.go` | ✅ |
+| `packages/chord/src/node/http/incoming.ts` | `chord/nextnode/http/incoming.go` | ✅ |
+| `packages/chord/src/node/http/index.ts` | `(barrel: Go imports the package; exported names are those of Pi's index.ts, the rest is unexported)` | n/a |
+| `packages/chord/src/node/http/node.ts` | `chord/nextnode/http/node.go, chord/nextnode/http/url.go` | ✅ |
+| `packages/chord/src/node/http/request.ts` | `chord/nextnode/http/request.go` | ✅ |
+| `packages/chord/src/node/http/response.ts` | `chord/nextnode/http/response.go, chord/nextnode/http/statuscodes.go` | ✅ |
+| `packages/chord/src/node/http/router.ts` | `chord/nextnode/http/router.go` | ✅ |
+| `packages/chord/src/node/http/upgrades.ts` | `chord/nextnode/http/upgrades.go, chord/nextnode/http/websocket.go` | ✅ |
+| `packages/chord/src/node/plugins/build.ts` | `chord/nextnode/plugins/plugins_build.go, chord/nextnode/plugins/plugins_sourcemap.go` | ✅ |
+| `packages/chord/src/node/plugins/discover.ts` | `chord/nextnode/plugins/plugins_discover.go` | ✅ |
+| `packages/chord/src/node/plugins/evaluate.ts` | `chord/nextnode/plugins/plugins_runtime.go; Pi's file runs verbatim in the Node subprocess: chord/nextnode/plugins/node/pi/chord/src/next-node/plugins/evaluate.ts, node/host.mjs` | ✅ |
+| `packages/chord/src/node/plugins/index.ts` | `(barrel: Go imports the package)` | n/a |
+| `packages/chord/src/node/plugins/install.ts` | `chord/nextnode/plugins/plugins_install.go` | ✅ |
+| `packages/chord/src/node/plugins/plugins.ts` | `chord/nextnode/plugins/plugins_plugins.go` | ✅ |
+| `packages/chord/src/node/plugins/runtime.ts` | `chord/nextnode/plugins/plugins_runtime.go, chord/nextnode/plugins/plugins_node.go; Pi's file runs verbatim in the Node subprocess: chord/nextnode/plugins/node/pi/chord/src/next-node/plugins/runtime.ts` | ✅ |
+| `packages/chord/src/node/plugins/stack.ts` | `Pi's file runs verbatim in the Node subprocess: chord/nextnode/plugins/node/pi/chord/src/next-node/plugins/stack.ts; Go sees *NodeError.Stack (chord/nextnode/plugins/plugins_node.go)` | ✅ |
+| `packages/chord/src/node/plugins/watcher.ts` | `chord/nextnode/plugins/plugins_watcher.go` | ✅ |
+| `packages/chord/src/host/adapted.ts` | `chord/next/host/host_adapted.go` | ✅ |
+| `packages/chord/src/host/reference-keys.ts` | `chord/next/host/host_reference_keys.go` | ✅ |
+| `packages/chord/src/host/reference-source.ts` | `chord/next/host/host_reference_source.go` | ✅ |
+| `packages/chord/src/host/staging.ts` | `chord/next/host/host_staging.go, chord/next/host/host_host.go` | ✅ |
+| `packages/chord/src/node/workers/control.ts` | `chord/nextnode/workers/workers_control.go` | ✅ |
+| `packages/chord/src/node/workers/index.ts` | `(re-export barrel; the exported set is the package's (CrossedError, ProcessLock, WorkerMain, WorkerStart, WorkerPlugins, WorkerResult, WorkerMainOptions, CreateWorkers, WorkerState, Workers, WorkersError, WorkersOptions))` | n/a |
+| `packages/chord/src/node/workers/lock.ts` | `chord/nextnode/workers/workers_lock.go, workers_lock_unix.go` (the Windows named-pipe variant workers_lock_windows is built only on Windows and is run by the native Windows CI job) | ✅ |
+| `packages/chord/src/node/workers/main.ts` | `chord/nextnode/workers/workers_main.go` | ✅ |
+| `packages/chord/src/node/workers/process.ts` | `chord/nextnode/workers/workers_process.go, workers_process_unix.go, workers_channel.go, workers_channel_unix.go` (the Windows variants workers_process_windows and workers_channel_windows are built only on Windows and are run by the native Windows CI job) | ✅ |
+| `packages/chord/src/node/workers/workers.ts` | `chord/nextnode/workers/workers_workers.go, workers_outcome.go` | ✅ |
+| `packages/chord/src/host/old-work.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/host/readiness.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/host/reload-cycle.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/host/unbound-clock.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/app/app.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/app/archive.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/app/blobs.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/app/data.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/app/ephemeral-sessions.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/app/ephemeral.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/app/files-copy.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/app/files-entry.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/app/files-index.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/app/files.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/app/folder-views.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/app/index.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/app/info.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/app/invite.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/app/layout.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/app/owner.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/app/pairing.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/app/secrets.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/app/sessions.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/app/tar.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/app/uploads.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/app/users.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/app/worker.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/plugins/base-inputs.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/plugins/css-modules.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/plugins/testing.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/surfaces/bundle.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/surfaces/current.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/surfaces/index.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/surfaces/published.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/surfaces/served.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/surfaces/tui.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/surfaces/web.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/tui/actions.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/tui/credentials.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/tui/filter.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/tui/index.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/tui/launcher.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/tui/pipe.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/tui/sandbox.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/workers/base.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/workers/child.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/react/hooks.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/react/index.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/react/stores.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/store/live-query.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/surfaces/active-language.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/surfaces/active-theme.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/surfaces/client.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/surfaces/connection.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/surfaces/format.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/surfaces/index.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/surfaces/language.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/surfaces/loaded.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/surfaces/locale-choice.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/surfaces/messages.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/surfaces/page-state.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/surfaces/preference.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/surfaces/registered.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/surfaces/scripts.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/surfaces/theme-choice.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/surfaces/themes.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/surfaces/translations.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/sync/batch.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/sync/client.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/sync/files.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/sync/filesystem.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/sync/index.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/sync/lines.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/sync/remote.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/sync/state.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/telemetry-ingest/batch.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/telemetry-ingest/facet.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/telemetry-ingest/index.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/telemetry-ingest/recorder.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/telemetry-ingest/sender.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/telemetry-sqlite/node.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/telemetry-sqlite/schema.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/telemetry.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/tui/bridge.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/tui/channel.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/tui/frames.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/tui/index.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/tui/runtime.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/tui/scope.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/tui/terminal.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/tui/theme.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/web/environment.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/web/index.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/web/language.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/web/page.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/web/scripts.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/web/styles.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/web/themes.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
 
 ## `packages/protocol/src/`
 
@@ -1094,6 +1173,9 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/tool-search/index.ts` | `(barrel re-exports; Go has no barrel exports)` | n/a |
 | `packages/durable/src/tool-search/tool-search.ts` | `durable/toolsearch/` | ✅ |
 | `packages/durable/src/harness/telemetry.ts` | `durable/harness/telemetry.go`; the Durable core's use of the vocabulary: `durable/core/telemetry.go` (notices), `durable/core/session/telemetry.go` (phase spans, metrics), `durable/core/host/cf/src/facade/telemetry.ts` (spans and metrics in the TypeScript host) | ✅ |
+| `packages/durable/src/storage/sqlite/commit.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/durable/src/storage/sqlite/rows.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/durable/src/storage/sqlite/statements.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
 
 ## `packages/env/src/`
 
