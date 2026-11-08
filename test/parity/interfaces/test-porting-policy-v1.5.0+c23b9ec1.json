@@ -3093,6 +3093,15 @@
       "rationale": "Tool admission, arguments, execution, cancellation, or returned output on coding turns."
     },
     {
+      "path": "packages/coding-agent/test/agent-session-queued-images.test.ts",
+      "upstreamTestHash": "sha256:9b32a6ef0b1442d8cc525fe67ba65a542b0cd335891b0695f177ee7f1bc96f1d",
+      "area": "sessions",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Session context, persistence, turn lifecycle, compaction, or recovery: images in queued steering and follow-up messages are resized before the turn that sends them (coding.Session)."
+    },
+    {
       "path": "packages/coding-agent/test/agent-session-retry.test.ts",
       "upstreamTestHash": "sha256:37f22f6cd27c74fe668ea1bd81467016aec3dde2725c2f44c9e12c69450d80ec",
       "area": "sessions",
@@ -3165,6 +3174,24 @@
       "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling."
     },
     {
+      "path": "packages/coding-agent/test/auth-login.test.ts",
+      "upstreamTestHash": "sha256:839cebc1dce9ade4a62ea1dd6ac4bf3539b81affde79e16da7b9e87bc688f8bc",
+      "area": "cli",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "CLI startup, selected execution mode, settings, or command routing: `pi login` runs the provider login flow in the terminal (coding/cli/auth_login.go)."
+    },
+    {
+      "path": "packages/coding-agent/test/auth-logout.test.ts",
+      "upstreamTestHash": "sha256:9dbc5f7ea18231b558c246edac85e31132f545f422f96e47d09f73247f409d18",
+      "area": "cli",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "CLI startup, selected execution mode, settings, or command routing: `pi logout` removes the stored provider credentials (coding/cli/auth_logout.go)."
+    },
+    {
       "path": "packages/coding-agent/test/auth-storage.test.ts",
       "upstreamTestHash": "sha256:0042056147ba08c05368926f1fb368d3dbb92a2fa470f38dd603e389c9c2a8ee",
       "area": "providers",
@@ -3172,6 +3199,15 @@
         "hot-path"
       ],
       "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling."
+    },
+    {
+      "path": "packages/coding-agent/test/auth-terminal.test.ts",
+      "upstreamTestHash": "sha256:a13be777ecf771f5f1f7efa175d2ac8edf9ce28ed04d2f680ce5b96b40e2f189",
+      "area": "cli",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "CLI startup, selected execution mode, settings, or command routing: the login terminal that asks questions, reads secrets and reports the interrupt (coding/cli/auth_terminal.go)."
     },
     {
       "path": "packages/coding-agent/test/auth-url-copy.test.ts",
@@ -3199,6 +3235,15 @@
         "hot-path"
       ],
       "rationale": "Main Screen input, message/tool rendering, terminal integration, or selected presentation."
+    },
+    {
+      "path": "packages/coding-agent/test/bash-executor-truncation.test.ts",
+      "upstreamTestHash": "sha256:3af2e5be5a16db20e6d08cc692b2e979c883a43ab932a29f482f07e6e17876a3",
+      "area": "tools",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Tool admission, arguments, execution, cancellation, or returned output on coding turns: the bash tool output that is truncated and the discarded-chunk report."
     },
     {
       "path": "packages/coding-agent/test/block-images.test.ts",
@@ -3442,6 +3487,15 @@
       "rationale": "CLI startup, selected execution mode, settings, or command routing."
     },
     {
+      "path": "packages/coding-agent/test/config-selector-keybindings.test.ts",
+      "upstreamTestHash": "sha256:392a976c0dd227977187e3881fcd5312d862c6b14cfb4b66516490a9ab41ccc6",
+      "area": "tui",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Main Screen input, message/tool rendering, terminal integration, or selected presentation: the config selector follows the user keybindings."
+    },
+    {
       "path": "packages/coding-agent/test/config-value-migration.test.ts",
       "upstreamTestHash": "sha256:c6813b0c9217ce396c7f5725b387d8c0cea80282181fd99fc361c52a3ca41a3b",
       "area": "utilities",
@@ -3681,6 +3735,15 @@
         "hot-path"
       ],
       "rationale": "Extension renderers' keybinding text and hints on message, entry and tool rendering (Pi 9376c8d1)."
+    },
+    {
+      "path": "packages/coding-agent/test/extension-selector.test.ts",
+      "upstreamTestHash": "sha256:6fdbcb4ada3d8e6fc2bd888aca6f6b1c20366ab89bd973802eccc854c652ec09",
+      "area": "tui",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Main Screen input, message/tool rendering, terminal integration, or selected presentation: the extension selector windows long option lists."
     },
     {
       "path": "packages/coding-agent/test/extensions-discovery.test.ts",
@@ -3951,6 +4014,15 @@
       "rationale": "Production-path review at Pi e7a0df27: Model scope notice in the fullscreen header at startup (Pi 7391dbb0)."
     },
     {
+      "path": "packages/coding-agent/test/interactive-mode-paste.test.ts",
+      "upstreamTestHash": "sha256:66253101f082c38c7337ab04a9640c1585afd975ae0ee9114befc16cefe9a5e2",
+      "area": "tui",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Main Screen input, message/tool rendering, terminal integration, or selected presentation: collapsed paste content survives queue restore and extension custom UI."
+    },
+    {
       "path": "packages/coding-agent/test/interactive-mode-startup-input.test.ts",
       "upstreamTestHash": "sha256:83b8e742a842893e8af364d7da754f672332335f33e5bd03857ea794aa325664",
       "area": "tui",
@@ -4030,6 +4102,15 @@
         "hot-path"
       ],
       "rationale": "Extension API, discovery, runtime callbacks, or Resources on startup and turns."
+    },
+    {
+      "path": "packages/coding-agent/test/llama-ui.test.ts",
+      "upstreamTestHash": "sha256:bb1fa7ca95ef5156e61dddaf1c59a19f9a4731ec6ff5fa6bb2b4eb68e73c8c40",
+      "area": "tui",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Main Screen input, message/tool rendering, terminal integration, or selected presentation: the llama model browser keeps the browsed model selected across searches."
     },
     {
       "path": "packages/coding-agent/test/login-dialog-device-code.test.ts",
@@ -4380,6 +4461,15 @@
         "hot-path"
       ],
       "rationale": "Extension API, discovery, runtime callbacks, or Resources on startup and turns."
+    },
+    {
+      "path": "packages/coding-agent/test/provider-matching.test.ts",
+      "upstreamTestHash": "sha256:7049fe7a5d06daa9238c1d06933b43f5397a8cd11e0e4b695d63d44541448cda",
+      "area": "providers",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling: provider reference matching for --provider and model patterns."
     },
     {
       "path": "packages/coding-agent/test/radius.test.ts",
@@ -4835,6 +4925,15 @@
       "rationale": "CLI startup, selected execution mode, settings, or command routing."
     },
     {
+      "path": "packages/coding-agent/test/subagent-extension.test.ts",
+      "upstreamTestHash": "sha256:9cf1826b09fd6a57b74e51696aa4199a01f2c5c277e46fe2fbca743e36247266",
+      "area": "extensions",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "The subagent example extension: child sessions, the runtime they start and their output reach coding turns through the extension host."
+    },
+    {
       "path": "packages/coding-agent/test/suite/agent-session-bash-persistence.test.ts",
       "upstreamTestHash": "sha256:f50f88222a622b6b975f49d5b7f1decfd580e32b18723db486e5c7ebba0534ff",
       "area": "sessions",
@@ -5013,6 +5112,24 @@
         "hot-path"
       ],
       "rationale": "Production-path review at Pi e7a0df27: SDK compaction and branch summaries resolve auth through the stream (Pi 6fed3cfb)."
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/11613-bash-timeout-after-shell-exit.test.ts",
+      "upstreamTestHash": "sha256:6a13a0eac8ad661c76d9d1bf1af4ba8e6b20f5249276ac836596e50ced1c2f11",
+      "area": "tools",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Tool admission, arguments, execution, cancellation, or returned output on coding turns: the bash timeout after the shell exited."
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/11692-dispose-waits-for-oauth-refresh.test.ts",
+      "upstreamTestHash": "sha256:b1ffb8edc385e9a051380f754b20294591ee45ea2e30cf6b7a090fe1e1884751",
+      "area": "sessions",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Session context, persistence, turn lifecycle, compaction, or recovery: runtime close waits for the rotated token of a started OAuth refresh to be saved."
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/1717-2113-agent-session-event-settlement.test.ts",
@@ -5681,6 +5798,15 @@
       "rationale": "Tool admission, arguments, execution, cancellation, or returned output on coding turns."
     },
     {
+      "path": "packages/coding-agent/test/suite/regressions/9124-runtime-dispose-tool-settlement.test.ts",
+      "upstreamTestHash": "sha256:a8cdfe9a091760bca6b6ea933a451056739937176180886c68c50592421a9352",
+      "area": "sessions",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Session context, persistence, turn lifecycle, compaction, or recovery: runtime close during a tool settles the interrupted turn first."
+    },
+    {
       "path": "packages/coding-agent/test/suite/regressions/9154-prompt-during-tree-navigation.test.ts",
       "upstreamTestHash": "sha256:3cdab06ca9ec5c19b4bd863b90ef04b7b0f604a60f3d5468330c17b84ac87fdb",
       "area": "sessions",
@@ -5697,6 +5823,15 @@
         "hot-path"
       ],
       "rationale": "Session context, persistence, turn lifecycle, compaction, or recovery."
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/9221-reload-during-tool.test.ts",
+      "upstreamTestHash": "sha256:5d0e505bb397a30d4b269d9a6842ab2b8348d8034634c7ff3a12bff3c990532f",
+      "area": "sessions",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Session context, persistence, turn lifecycle, compaction, or recovery: a reload during a running tool is refused and keeps the extension host live."
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/9340-9777-auto-compaction-cancellation.test.ts",
@@ -5814,6 +5949,15 @@
         "hot-path"
       ],
       "rationale": "New in 0.99.1; area and tags follow the sibling tests under packages/coding-agent/test/ until the production-path review."
+    },
+    {
+      "path": "packages/coding-agent/test/terminal-question.test.ts",
+      "upstreamTestHash": "sha256:8b3415d41fdb22ff48724d9dd5adec01abd8757d71415a5d447a78ea5239614a",
+      "area": "tui",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Main Screen input, message/tool rendering, terminal integration, or selected presentation: the terminal question prompt used by the login and setup flows."
     },
     {
       "path": "packages/coding-agent/test/test-harness.test.ts",
@@ -6982,6 +7126,20 @@
       "area": "tools",
       "tags": [],
       "rationale": "New in 1.0.4 with the pi-env package (remote execution over SSH). No coding-agent package reaches it, so it is not tagged hot-path."
+    },
+    {
+      "path": "packages/env/test/process.test.ts",
+      "upstreamTestHash": "sha256:f07cb629df7676da6a7822e29f47a651fbe12d59681d46e730315b263daf8253",
+      "area": "tools",
+      "tags": [],
+      "rationale": "New with the pi-env package (remote execution over SSH). No coding-agent or Durable package reaches it in a default run, so it is not tagged hot-path."
+    },
+    {
+      "path": "packages/env/test/remote-abort.test.ts",
+      "upstreamTestHash": "sha256:f36b11a942c859d032ee7fb65b1bb1943025a1087b3227bc189d37cbb7c9ccf7",
+      "area": "tools",
+      "tags": [],
+      "rationale": "New with the pi-env package (remote execution over SSH). No coding-agent or Durable package reaches it in a default run, so it is not tagged hot-path."
     },
     {
       "path": "packages/env/test/remote.test.ts",
