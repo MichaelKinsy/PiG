@@ -28,7 +28,7 @@ import (
 
 // reloadedKindOfABoard is the kind a reload reports for the board: Pi 2439933cf's `swapped`; Pi main's `restarted` once
 // a5d209afd is ported.
-const reloadedKindOfABoard = ReloadSwapped
+const reloadedKindOfABoard = ReloadRestarted
 
 var (
 	lqItems = mustTableDef("items", store.TableOptions{

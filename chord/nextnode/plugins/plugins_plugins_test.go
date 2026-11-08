@@ -313,7 +313,7 @@ func TestPluginsPerPluginAtReloadRebuildsOnePluginOfThreeOnlyItChangesTheOthersA
 	if want := (host.PluginChanges{Added: []string{}, Changed: []string{"@test/b"}, Removed: []string{}}); !reflect.DeepEqual(report.Plugins, want) {
 		t.Fatalf("plugins = %+v", report.Plugins)
 	}
-	if want := []host.ReloadedObject{{Object: "test.b", Kind: host.ReloadSwapped}}; !reflect.DeepEqual(report.Objects, want) {
+	if want := []host.ReloadedObject{{Object: "test.b", Kind: host.ReloadedObjectKind("swapped")}}; !reflect.DeepEqual(report.Objects, want) {
 		t.Fatalf("objects = %+v", report.Objects)
 	}
 	if got := []string{h.label("a"), h.label("b"), h.label("c")}; !slices.Equal(got, []string{"a1", "b2", "c1"}) {

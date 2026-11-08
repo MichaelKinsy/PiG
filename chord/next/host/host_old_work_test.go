@@ -6,14 +6,17 @@ import (
 	"reflect"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
+	"weak"
 
 	"github.com/MichaelKinsy/PiG/chord"
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
+	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 )
 
 // pi: packages/chord/test/host/old-work.test.ts, packages/chord/test/host/reload-cycle.test.ts, packages/chord/test/host/object.test.ts
@@ -689,4 +692,149 @@ func TestReloadCycleDoesNotFailAWaitWhoseTargetWaitsOnAnotherObjectsDrainOnlyNoC
 	if got := working.wait(t); got != "v2 ping" {
 		t.Fatalf("work = %v, want \"v2 ping\"", got)
 	}
+}
+
+// Mirrors reload-cycle.test.ts "a cut wait keeps neither its target nor the old attempt it ran on".
+func TestReloadCycleACutWaitKeepsNeitherItsTargetNorTheOldAttemptItRanOn(t *testing.T) {
+	raised := mustContract(declareLocal("app.p", contracts.LocalDeclaration{Version: 2, Params: contracts.Params{}, Members: []contracts.LocalEntry{
+		contracts.Mem("work", contracts.NewMethod(contracts.Schema{}, contracts.Str())), contracts.Mem("x", contracts.NewMethod(contracts.Schema{}, contracts.Str())), contracts.Mem("n", contracts.Int()),
+	}}))
+	provider := mustContract(declareLocal("app.p", contracts.LocalDeclaration{Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{
+		contracts.Mem("work", contracts.NewMethod(contracts.Schema{}, contracts.Str())), contracts.Mem("x", contracts.NewMethod(contracts.Schema{}, contracts.Str())),
+	}}))
+	gate := newReloadGate()
+	var mu sync.Mutex
+	var selves []weak.Pointer[attempt]
+	keep := func(self Self) {
+		mu.Lock()
+		selves = append(selves, weak.Make(self.(*attempt)))
+		mu.Unlock()
+	}
+	facet := func(code string) Facet {
+		return DefineFacet(func(h FacetHost, _ FacetSelf) error {
+			if code == "v1" {
+				if err := h.Serve(provider, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+					keep(self)
+					return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+						"work": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+							gate.entered.fire()
+							gate.open.await(t, ctx)
+							return owCall(ctx.(Ctx), rcFresh, jsonObject("id", "fresh"), "ping")
+						},
+						"x": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return "v1 x", nil },
+					}}}, nil
+				}, ServeOptions{}); err != nil {
+					return err
+				}
+			} else if err := h.Serve(raised, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
+				return contracts.Implementation{Members: contracts.VariantImplementation{
+					State: map[string]chord.Watchable[delta.JsonValue]{"n": constant(0.0)},
+					Methods: map[string]contracts.MethodFunction{
+						"work": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return "v2", nil },
+						"x":    func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return "v2 x", nil },
+					},
+				}}, nil
+			}, ServeOptions{}); err != nil {
+				return err
+			}
+			return h.Serve(rcFresh, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+				keep(self)
+				if code == "v1" {
+					self.Get(provider, jsonObject())
+				} else {
+					self.Get(raised, jsonObject())
+				}
+				return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+					"ping": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return code + " f", nil },
+				}}}, nil
+			}, ServeOptions{})
+		})
+	}
+	host := newHost(t, HostOptions{OnError: func(HostError) {}})
+	defer closeHosts(t, host)
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/app", Facet: facet("v1")}}, background))
+	ref := mustGet(t, host, provider, jsonObject())
+	working := startReloadCall(ref, "work", nil)
+	gate.entered.wait(t)
+	reloadMust(t)(host.Reload([]HostFacet{{Name: "@test/app", Facet: facet("v2")}}, background, ReloadOptions{}))
+	gate.open.fire()
+	wantChordError(t, working.rejected(t), data.CodeUnavailable, data.ReasonReloadCycle, "")
+	turn(host)
+	// The old provider and the fresh object's attempts, the wait's chain and target.
+	mu.Lock()
+	all := append([]weak.Pointer[attempt](nil), selves...)
+	mu.Unlock()
+	nexttest.ExpectCollected(t, all...)
+	ref.Release()
+}
+
+// Mirrors reload-cycle.test.ts "an opener's gate wait leaves no wait edge once it ended, nor keeps the old attempt".
+func TestReloadCycleAnOpenersGateWaitLeavesNoWaitEdgeOnceItEndedNorKeepsTheOldAttempt(t *testing.T) {
+	provider := owProvider
+	dependent := rcDependent()
+	gate := newReloadGate()
+	var mu sync.Mutex
+	var selves []weak.Pointer[attempt]
+	facet := func(code string) Facet {
+		return DefineFacet(func(h FacetHost, _ FacetSelf) error {
+			if err := h.Serve(provider, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+				if code == "v1" {
+					mu.Lock()
+					selves = append(selves, weak.Make(self.(*attempt)))
+					mu.Unlock()
+				}
+				return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+					"work": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+						if code == "v1" {
+							gate.entered.fire()
+							gate.open.await(t, ctx)
+						}
+						return code + " work", nil
+					},
+					"x": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return code + " x", nil },
+				}}}, nil
+			}, ServeOptions{}); err != nil {
+				return err
+			}
+			return h.Serve(dependent, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+				held := self.Get(provider, jsonObject())
+				// The new code's opener calls the provider: it waits at its gate while the provider restarts.
+				if code == "v2" {
+					self.Open(func(opening context.Context) (any, error) { _, err := held.Call("x", nil, opening); return nil, err },
+						func(any, NativeCloseReason, context.Context) error { return nil })
+				}
+				return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+					"ping": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return code + " ping", nil },
+				}}}, nil
+			}, ServeOptions{})
+		})
+	}
+	host := newHost(t, HostOptions{OnError: func(HostError) {}})
+	defer closeHosts(t, host)
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/app", Facet: facet("v1")}}, background))
+	ref := mustGet(t, host, provider, jsonObject())
+	dep := mustGet(t, host, dependent, jsonObject())
+	working := startReloadCall(ref, "work", nil)
+	gate.entered.wait(t)
+	reloadMust(t)(host.Reload([]HostFacet{{Name: "@test/app", Facet: facet("v2")}}, background, ReloadOptions{}))
+	gate.open.fire()
+	if got := working.wait(t); got != "v1 work" {
+		t.Fatalf("work = %v, want \"v1 work\"", got)
+	}
+	scopeEventually(t, "the dependent's v2 ping", func() bool {
+		got, err := dep.Call("ping", nil, background)
+		return err == nil && got == "v2 ping"
+	})
+	object := reloadObjectOf(dep)
+	var edges int
+	host.(*chordHost).enter(func() { edges = len(object.waitEdges()) })
+	if edges != 0 {
+		t.Fatalf("the dependent has %d wait edges, want none", edges)
+	}
+	mu.Lock()
+	all := append([]weak.Pointer[attempt](nil), selves...)
+	mu.Unlock()
+	nexttest.ExpectCollected(t, all...)
+	ref.Release()
+	dep.Release()
 }

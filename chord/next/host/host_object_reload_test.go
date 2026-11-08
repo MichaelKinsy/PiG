@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 	"weak"
@@ -21,6 +22,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
+	"github.com/MichaelKinsy/PiG/chord/next/store"
 )
 
 // Ports the reload describes of packages/chord/test/host/object.test.ts: fates (decision "Reload restarts every affected object"), a
@@ -1231,5 +1233,237 @@ func TestObjectParkedWalksADiamondOnOneHostOnceASharedParkedDependencyPassesARet
 	mu.Unlock()
 	if got := memberOf(t, held, "n"); made != 2 || got != 4.0 {
 		t.Fatalf("cores %d, n %v, want 2 and 4", made, got)
+	}
+}
+
+// Mirrors "reload: a restart's readiness while the old attempt drains › shows a failed request while it lasts: a request that recovers shows the object live again, new calls wait".
+func TestReloadReadinessShowsAFailedRequestWhileItLastsARequestThatRecoversShowsTheObjectLiveAgainNewCallsWait(t *testing.T) {
+	flakyType := mustContract(declareLocal("app.flaky", contracts.LocalDeclaration{
+		Version: 1, Params: contracts.Params{contracts.Prop("id", contracts.Int())},
+		Members: []contracts.LocalEntry{contracts.Mem("name", contracts.Str())},
+	}))
+	var failing atomic.Bool
+	failing.Store(true)
+	flaky := func(h FacetHost) error {
+		return h.Serve(flakyType, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			selfOpen(self, func(context.Context) error {
+				if failing.Load() {
+					return errors.New("flaky is down")
+				}
+				return nil
+			}, func(NativeCloseReason) {})
+			return contracts.Implementation{Members: contracts.VariantImplementation{
+				State: map[string]chord.Watchable[delta.JsonValue]{"name": constant("flaky")},
+			}}, nil
+		}, ServeOptions{})
+	}
+	gate := newReloadGate()
+	host := newHost(t, HostOptions{OnError: func(HostError) {}})
+	defer closeHosts(t, host)
+	mustLoad(t)(host.Load([]HostFacet{
+		{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+			return reloadServePure(t, h, "v1", 1, reloadGates(gate))
+		})},
+		{Name: "@test/flaky", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return flaky(h) })},
+	}, background))
+	pure := mustGet(t, host, reloadPure, jsonObject())
+	down, err := host.Hold(background, flakyType, jsonObject("id", 1.0), GetOptions{})
+	must(t, err)
+	untilState(t, down, func(s *RefState) bool { return s.Kind == RefStateFailed })
+	running := startReloadCall(pure, "bump", nil)
+	gate.entered.wait(t)
+	needsFlaky := func(h FacetHost) error {
+		return h.Serve(reloadPure, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			self.Get(flakyType, jsonObject("id", 1.0))
+			return contracts.Implementation{Members: contracts.VariantImplementation{
+				State:   map[string]chord.Watchable[delta.JsonValue]{"n": constant(0.0), "label": constant("v2")},
+				Methods: map[string]contracts.MethodFunction{"bump": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return 2.0, nil }},
+			}}, nil
+		}, ServeOptions{})
+	}
+	reloadMust(t)(host.Reload([]HostFacet{
+		{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return needsFlaky(h) })},
+		{Name: "@test/flaky", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return flaky(h) })},
+	}, background, ReloadOptions{}))
+	// The successor's request failed: holders see it while it lasts (old work still runs on the old attempt).
+	untilState(t, pure, func(s *RefState) bool { return s.Kind == RefStateFailed && s.Cause.Kind == data.FailureWaiting })
+	failing.Store(false)
+	down.Retry()
+	untilState(t, down, func(s *RefState) bool { return s.Kind == RefStateLive })
+	// Recovered during the drain: the old attempt is shown again, and a new call waits for the new code.
+	untilState(t, pure, func(s *RefState) bool { return s.Kind == RefStateLive })
+	next := startReloadCall(pure, "bump", nil)
+	gate.open.fire()
+	if got := running.wait(t); got != 1.0 {
+		t.Fatalf("old call = %v, want 1", got)
+	}
+	if got := next.wait(t); got != 2.0 {
+		t.Fatalf("new call = %v, want 2", got)
+	}
+}
+
+// Mirrors "reload: old work finishes on old code › old work starts a job, writes documents and tables and reads ... on the old code; the new factory runs after". The live query Pi reads (`self.query`) has no Go counterpart: the
+// table is read through its handle's Page.
+func TestReloadOldWorkStartsAJobWritesDocumentsAndTablesAndReadsOnTheOldCodeTheNewFactoryRunsAfter(t *testing.T) {
+	chordStore := memoryStore(t, true)
+	opened := newEventLog()
+	latch, entered := newSignal(), newSignal()
+	checkpoint := func(*delta.JsonObject, []delta.Op, documents.CheckpointInfo) bool { return true }
+	notes1, err := documents.DefineState("notes", documents.StateOptions{
+		Schema: contracts.Obj(contracts.Prop("list", contracts.Arr(contracts.Str()))), Version: 1, Persist: true, CheckpointWhen: checkpoint,
+		Initial: func() *delta.JsonObject { return jsonObject("list", []any{}) },
+	})
+	must(t, err)
+	notes2, err := documents.DefineState("notes", documents.StateOptions{
+		Schema:  contracts.Obj(contracts.Prop("list", contracts.Arr(contracts.Str())), contracts.Prop("count", contracts.Int())),
+		Version: 2, Persist: true, CheckpointWhen: checkpoint,
+		Initial: func() *delta.JsonObject { return jsonObject("list", []any{}, "count", 0.0) },
+		Migrate: func(old *delta.JsonObject, _ int) (*delta.JsonObject, error) {
+			list := old.Value("list").([]any)
+			return jsonObject("list", list, "count", float64(len(list))), nil
+		},
+	})
+	must(t, err)
+	job1, err := DefineJob("app.job", JobOptions{Version: 1, Args: contracts.Obj(contracts.Prop("text", contracts.Str())), Result: contracts.Str()})
+	must(t, err)
+	job2, err := DefineJob("app.job", JobOptions{
+		Version: 2, Args: contracts.Obj(contracts.Prop("text", contracts.Str()), contracts.Prop("priority", contracts.Int())), Result: contracts.Str(),
+		Accepts: JobAccepts{1: JobAdapter{
+			Args: func(old any) (any, error) {
+				return jsonObject("text", old.(*delta.JsonObject).Value("text"), "priority", 0.0), nil
+			},
+			Result: func(old any) (any, error) { return old, nil },
+		}},
+	})
+	must(t, err)
+	items, err := store.DefineTable("items", store.TableOptions{
+		Version: 1, Columns: []store.ColumnProp{store.Col("id", store.Int()), store.Col("text", store.Str())}, Key: []string{"id"},
+	})
+	must(t, err)
+	storeType := mustContract(declareLocal("app.store", contracts.LocalDeclaration{
+		Version: 1, Params: contracts.Params{},
+		Members: []contracts.LocalEntry{
+			contracts.Mem("work", contracts.NewMethod(contracts.Schema{}, contracts.Str())),
+			contracts.Mem("read", contracts.NewMethod(contracts.Schema{}, contracts.Str())),
+		},
+	}))
+	serve := func(h FacetHost, code string, notesDef *documents.StateDefinition, jobDef *JobDefinition) error {
+		return h.Serve(storeType, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			selfOpen(self, func(context.Context) error { opened.add(code); return nil }, func(NativeCloseReason) {})
+			notes := stateOf(self, notesDef)
+			job := self.Job(jobDef, JobImplementation{Run: func(args any, _ JobCtx) (any, error) {
+				return code + " ran " + args.(*delta.JsonObject).Value("text").(string), nil
+			}})
+			table := self.(StoreSelf).Table(items)
+			methods := map[string]contracts.MethodFunction{
+				"read": func(_ delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
+					doc := notes.Value()
+					if doc.Has("count") {
+						return fmt.Sprintf(`%s: {"list":["%s"],"count":%v}`, code, doc.Value("list").([]any)[0], doc.Value("count")), nil
+					}
+					return fmt.Sprintf(`%s: {"list":[]}`, code), nil
+				},
+			}
+			if code == "v1" {
+				methods["work"] = func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+					entered.fire()
+					latch.await(t, ctx)
+					if err := notes.Change(func(draft *delta.Object) { _, _ = draft.Array("list").Push("old") }, ctx); err != nil {
+						return nil, err
+					}
+					if _, err := self.Tx(func(tx documents.Tx) (any, error) {
+						return nil, tx.Put(table, store.Row{"id": int64(1), "text": "old"})
+					}, ctx); err != nil {
+						return nil, err
+					}
+					run, err := job.Start(jsonObject("text", "a"), ctx, StartOptions{})
+					if err != nil {
+						return nil, err
+					}
+					outcome, err := job.Outcome(run.ID(), ctx)
+					if err != nil {
+						return nil, err
+					}
+					result := outcome.Result
+					if outcome.Kind != OutcomeDone {
+						result = string(outcome.Kind)
+					}
+					page, err := table.Page(ctx, store.NewQuery(items), 10, store.PageOptions{})
+					if err != nil {
+						return nil, err
+					}
+					var texts []string
+					for _, row := range page.Items {
+						texts = append(texts, row["text"].(string))
+					}
+					var listed []string
+					for _, entry := range notes.Value().Value("list").([]any) {
+						listed = append(listed, entry.(string))
+					}
+					return fmt.Sprintf("v1: %s | [%s] | %v", strings.Join(listed, ","), strings.Join(texts, ","), result), nil
+				}
+			} else {
+				methods["work"] = func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return "v2", nil }
+			}
+			return contracts.Implementation{Members: contracts.VariantImplementation{Methods: methods}}, nil
+		}, ServeOptions{})
+	}
+	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error { return serve(h, "v1", notes1, job1) }, loadedOptions{Store: chordStore})
+	defer closeHosts(t, host)
+	reference := mustGet(t, host, storeType, jsonObject())
+	working := startReloadCall(reference, "work", nil)
+	entered.wait(t)
+	reloadMust(t)(reloadApp(host, func(h FacetHost) error { return serve(h, "v2", notes2, job2) }))
+	turn(host)
+	requireStrings(t, opened.all(), []string{"v1"})
+	latch.fire()
+	if got := working.wait(t); got != "v1: old | [old] | v1 ran a" {
+		t.Fatalf("work = %v, want \"v1: old | [old] | v1 ran a\"", got)
+	}
+	var read any
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		read, _ = reference.Call("read", nil, background)
+		if read == `v2: {"list":["old"],"count":1}` {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	if read != `v2: {"list":["old"],"count":1}` {
+		t.Fatalf("read = %v, want v2's migrated document", read)
+	}
+	opened.await("v2")
+	requireStrings(t, opened.all(), []string{"v1", "v2"})
+}
+
+// Mirrors "reload: the reload drain bound › cuts a call still running at reloadDrainTimeout (released), reports drain_timeout, then the new code serves".
+func TestReloadDrainBoundCutsACallStillRunningAtReloadDrainTimeoutReleasedReportsDrainTimeoutThenTheNewCodeServes(t *testing.T) {
+	stuck := newReloadGate()
+	t.Cleanup(stuck.open.fire)
+	drain := 300 * time.Millisecond
+	host, errs := loaded(t, func(h FacetHost, _ FacetSelf) error { return reloadServePure(t, h, "v1", 1, reloadGates(stuck)) },
+		loadedOptions{ReloadDrainTimeout: &drain})
+	defer closeHosts(t, host)
+	pure := mustGet(t, host, reloadPure, jsonObject())
+	old := startReloadCall(pure, "bump", nil)
+	stuck.entered.wait(t)
+	reloadMust(t)(reloadApp(host, func(h FacetHost) error { return reloadServePure(t, h, "v2", 10, nil) }))
+	wantChordError(t, old.rejected(t), data.CodeReleased, "", "")
+	kinds := []HostErrorKind{}
+	for _, err := range errs.All() {
+		kinds = append(kinds, err.Kind)
+	}
+	if !reloadContainsKind(kinds, ErrDrainTimeout) {
+		t.Fatalf("error kinds = %v, want drain_timeout among them", kinds)
+	}
+	reloadUntilLabel(t, pure, "v2")
+}
+
+// Mirrors "reload: the reload drain bound › is at most closeTimeout".
+func TestReloadDrainBoundIsAtMostCloseTimeout(t *testing.T) {
+	closeTimeout, drain := time.Second, 5*time.Second
+	host := newHost(t, HostOptions{CloseTimeout: &closeTimeout, ReloadDrainTimeout: &drain, OnError: func(HostError) {}})
+	if got := host.(*chordHost).timeouts.reload; got != time.Second {
+		t.Fatalf("reload drain bound = %v, want %v", got, time.Second)
 	}
 }
