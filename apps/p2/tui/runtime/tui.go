@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync"
 	"sync/atomic"
 
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
@@ -168,6 +169,9 @@ type TuiRuntime struct {
 	commandsRead  func() (any, bool)
 	slotsRead     func() (any, bool)
 	disposed      atomic.Bool
+	// renderGate holds a goroutine's RequestRender (taken shared) apart from Dispose (exclusive): the TUI is stopped after the
+	// runtime is disposed, and its stopped flag is not safe against a request that is still inside it.
+	renderGate sync.RWMutex
 
 	// OnExit and OnReload are the worker runtime's hooks.
 	OnExit   func()
@@ -875,7 +879,9 @@ func (rt *TuiRuntime) helpLine() string {
 func (rt *TuiRuntime) Dispose() {
 	rt.CloseOverlays()
 	rt.ClosePanel()
+	rt.renderGate.Lock()
 	rt.disposed.Store(true)
+	rt.renderGate.Unlock()
 	rt.scope.Dispose()
 	rt.cancel()
 	for _, name := range rt.surfaceOrder {

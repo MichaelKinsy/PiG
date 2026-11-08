@@ -33,8 +33,14 @@ func (c *TuiRuntimeContext) Theme() *theme.ThemeRef { return c.rt.Theme() }
 // KeyText is the formatted keys of a binding id.
 func (c *TuiRuntimeContext) KeyText(id string) string { return c.formatKeys(id, false) }
 
-// RequestRender requests a render.
-func (c *TuiRuntimeContext) RequestRender() { c.rt.TUI.RequestRender() }
+// RequestRender requests a render. Any goroutine may call it; after Dispose it does nothing.
+func (c *TuiRuntimeContext) RequestRender() {
+	c.rt.renderGate.RLock()
+	defer c.rt.renderGate.RUnlock()
+	if !c.rt.disposed.Load() {
+		c.rt.TUI.RequestRender()
+	}
+}
 
 // HintKey is hints.key.
 func (c *TuiRuntimeContext) HintKey(id, description string) string {

@@ -8,6 +8,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/apps/p2/hosts"
 	"github.com/MichaelKinsy/PiG/apps/p2/plugins/codemode/contract"
+	codemodetui "github.com/MichaelKinsy/PiG/apps/p2/plugins/codemode/tui"
 	modelscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/models/contract"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/chord"
@@ -116,7 +117,8 @@ func NewFacet() host.Facet {
 
 func init() {
 	workerFacet = NewFacet()
-	hosts.RegisterPlugin(hosts.Plugin{Name: "codemode", Worker: &workerFacet})
+	tuiFacet := codemodetui.Facet
+	hosts.RegisterPlugin(hosts.Plugin{Name: "codemode", Worker: &workerFacet, TUI: &tuiFacet})
 }
 
 // workerFacet is the plugin's worker facet, set at init.
