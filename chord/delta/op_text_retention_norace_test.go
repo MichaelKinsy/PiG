@@ -5,6 +5,7 @@ package delta
 import (
 	"fmt"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -82,6 +83,39 @@ func TestAppendOpsDoNotRetainTheirSourceText(t *testing.T) {
 			}
 		}
 	})
+}
+
+// A replica kept current by applying the ops of a long stream of appends (a watch, a remote replica, Durable's conversation view) holds the text once, not once per commit (delta-op-text-retention.test.ts "a replica that applies a long stream of appends retains the text once, not once per commit"). The heap is measured after GC with the replica and the tracker still held, and the replica is compared with the tracker's value after measuring.
+func TestAppliedReplicaRetainsTheTextOnce(t *testing.T) {
+	const commits, bound = 300, 2_000_000
+	base := strings.Repeat("x", 100_000)
+	before := heapAfterGC()
+	tracker := Track(JsonObjectOf("text", base))
+	replica := JsonValue(JsonObjectOf("text", base))
+	for index := range commits {
+		change := tracker.BeginChange()
+		state := change.State()
+		_ = state.Set("text", state.Get("text").(string)+fmt.Sprintf("line %d of a long streamed text\n", index))
+		prepared, err := change.Prepare()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := tracker.Adopt(prepared); err != nil {
+			t.Fatal(err)
+		}
+		if replica, err = ApplyImmutable(replica, prepared.Ops()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	retained := int64(heapAfterGC()) - int64(before)
+	if retained > bound {
+		t.Fatalf("a replica and tracker after %d appends retain %d bytes, more than %d", commits, retained, bound)
+	}
+	got := obj(t, replica).Value("text")
+	if want := tracker.Value().Value("text"); got != want {
+		t.Fatalf("the replica's text differs from the tracker's: %d bytes against %d", len(got.(string)), len(want.(string)))
+	}
+	runtime.KeepAlive(tracker)
 }
 
 // BenchmarkAppendOpRetention reports the heap held by the ops of n appends (retained-B) beside the cost of making them.
