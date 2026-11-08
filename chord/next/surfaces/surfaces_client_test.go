@@ -195,7 +195,7 @@ func setup(t *testing.T, initial []RegisteredScript, available []RegisteredScrip
 		OnWake: func(func()) func() { return func() {} },
 	}
 	client, err := StartClient(ClientOptions{
-		Scripts: WebScripts,
+		Scripts: ScriptsContract(WebScripts),
 		Base:    "B1",
 		Initial: initial,
 		Modules: ClientModules{"@test/chord": struct{}{}},
