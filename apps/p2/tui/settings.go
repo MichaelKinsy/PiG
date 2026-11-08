@@ -210,15 +210,18 @@ func (p *ThemePicker) Render(width int) []string {
 // Invalidate drops cached renders.
 func (p *ThemePicker) Invalidate() { p.list.Invalidate() }
 
+// notifySave says what a save came to. It is called from the goroutine that waited for the launcher's answer: the notice is made on the owner loop.
 func notifySave(ctx runtime.TuiContext, noun string, result runtime.GrantResult, applied string) {
-	switch {
-	case result.OK:
-		ctx.Notify(applied, runtime.NoticeInfo)
-	case result.Error == "denied":
-		ctx.Notify(noun+" not saved", runtime.NoticeWarning)
-	default:
-		ctx.Notify(noun+" not saved ("+result.Error+")", runtime.NoticeWarning)
-	}
+	ctx.Post(func() {
+		switch {
+		case result.OK:
+			ctx.Notify(applied, runtime.NoticeInfo)
+		case result.Error == "denied":
+			ctx.Notify(noun+" not saved", runtime.NoticeWarning)
+		default:
+			ctx.Notify(noun+" not saved ("+result.Error+")", runtime.NoticeWarning)
+		}
+	})
 }
 
 // OpenSettings is `/settings`: pi's list; changes stay pending until the overlay closes, then go to the launcher as one patch. The built-in rows, then the
