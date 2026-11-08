@@ -32576,6 +32576,233 @@
       "tests": []
     },
     {
+      "id": "BF-D460",
+      "title": "The app kit's facets are Go core facets beside the plugins' Node host",
+      "symptom": "Not a Pi bug.",
+      "rootCause": "the plugin runtime is Node; the facets are Go because the kit is a Go port. Moving them to the Node host would port the kit to JS; serving HostData from Go needs the Go relay to answer for its child's address, which a chord host does not do.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D460",
+      "removeWhen": "the plugins' host and the kit's facets run in one process (the plugin runtime is not a subprocess), or a chord host can answer for its child's address so `HostData` needs no JavaScript module.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "bdaa14582e",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "5291c9268f",
+          "date": "2026-11-08"
+        },
+        {
+          "hash": "95f0f0d040",
+          "date": "2026-11-08"
+        },
+        {
+          "hash": "bdcd2b1248",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-D461",
+      "title": "`Files` and `FilesFolder` are not reachable from TypeScript plugins",
+      "symptom": "Not a Pi bug.",
+      "rootCause": "the plugins' proxy facets (`plugins/node/proxy.mjs`) forward state members and methods to the Go object; a JS keyed member must be a keyed document handle or a reference's keyed member, and the proxy has neither for an object on another host. Pi has the kit and the plugins in one host, so `self.get(Files, {})` works there.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D461",
+      "removeWhen": "the plugin bridge forwards a contract with a keyed member (a keyed-handle proxy between hosts), or the plugins run in the kit's host.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "d803ffa239",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "5291c9268f",
+          "date": "2026-11-08"
+        },
+        {
+          "hash": "95f0f0d040",
+          "date": "2026-11-08"
+        },
+        {
+          "hash": "bdcd2b1248",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-D462",
+      "title": "The server and each worker have two stores, not one",
+      "symptom": "Not a Pi bug.",
+      "rootCause": "the node-evaluator design (`docs/plan/chord-plugins-node-evaluator.md` §store): the Go store is an in-process engine and a store is not shared over the link; sharing one sqlite file between two engines would corrupt the id allocator.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D462",
+      "removeWhen": "the plugins run in the server's (or worker's) own host process with one store, or one store file can be shared by two hosts.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "bdaa14582e",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "d803ffa239",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "5291c9268f",
+          "date": "2026-11-08"
+        },
+        {
+          "hash": "95f0f0d040",
+          "date": "2026-11-08"
+        },
+        {
+          "hash": "bdcd2b1248",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-D464",
+      "title": "FormatNumber and FormatTime take closed option types and return errors (P1-3)",
+      "symptom": "Not a Pi bug.",
+      "rootCause": "",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D464",
+      "removeWhen": "Go has an `Intl` with the pinned Node's CLDR, or a Pi call site passes an option outside the closed types (the types then grow and the generator with them).",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "17136820e9",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "95f0f0d040",
+          "date": "2026-11-08"
+        },
+        {
+          "hash": "bdcd2b1248",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "chord/next/surfaces/intl_drift_test.go::TestNumbersMatchNode",
+        "chord/next/surfaces/intl_drift_test.go::TestTimesMatchNode",
+        "chord/next/surfaces/intl_fuzz_test.go::FuzzFormatNumber",
+        "chord/next/surfaces/intl_fuzz_test.go::FuzzFormatTime",
+        "chord/next/surfaces/surfaces_format_test.go::TestFormatsNumbersLikeTheOracle"
+      ]
+    },
+    {
+      "id": "BF-D465",
+      "title": "FormatTime takes a time.Time, not `Date | number | string`",
+      "symptom": "Not a Pi bug.",
+      "rootCause": "",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D465",
+      "removeWhen": "never for the `time.Time` parameter (it is the Go form of a `Date`); the zone-data difference goes when Go's tzdata and the pinned Node's ICU zone data agree.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "0950d13d68",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "95f0f0d040",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "chord/next/surfaces/intl_root_test.go::TestFormatTimeShowsTheInstantInTheProcessZone"
+      ]
+    },
+    {
+      "id": "BF-D466",
+      "title": "No per-language formatter cache",
+      "symptom": "Not a Pi bug.",
+      "rootCause": "",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D466",
+      "removeWhen": "never: Go has no formatter object to cache; it goes if a format stops being a table lookup.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "0950d13d68",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "17136820e9",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "95f0f0d040",
+          "date": "2026-11-08"
+        },
+        {
+          "hash": "bdcd2b1248",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "chord/next/surfaces/intl_root_test.go::TestFormatsAllocateOnlyTheResultForCanonicalTags"
+      ]
+    },
+    {
+      "id": "BF-D501",
+      "title": "`npm pack --json` printing an object (npm 12) is read like the list npm 10 and 11 print",
+      "symptom": "With npm 12 Pi's `installPlugin` fails on the object output; to be filed upstream with the repro (`npm pack --json` of any package under npm 12).",
+      "rootCause": "a plugin install that fails on a current npm for a reason of output shape only is worse than Pi's behavior and costs nothing to avoid; the list form, the empty-output errors and the `filename` read are Pi's.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D501",
+      "removeWhen": "Pi's install reads the object form.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "95f0f0d040",
+          "date": "2026-11-08"
+        },
+        {
+          "hash": "bdcd2b1248",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_install_test.go::TestPackedTarballReadsTheListNpm10And11PrintAndTheObjectNpm12Prints"
+      ]
+    },
+    {
       "id": "BF-D540",
       "title": "The plugins watcher's directory identity has no birth time on a system whose stat Go does not expose it for",
       "symptom": "Not a Pi bug.",
@@ -41866,28 +42093,6 @@
       "tests": [
         "durable/harness/harness_generation_recovery_test.go::TestGenerationRecovery",
         "durable/harness/harness_generation_test.go::TestGeneration"
-      ]
-    },
-    {
-      "id": "BF-d803ffa",
-      "title": "Fix in shipped code",
-      "symptom": "Fix in shipped code",
-      "rootCause": "",
-      "rootCauseSource": "",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "origin": "commit",
-      "commits": [
-        {
-          "hash": "d803ffa239",
-          "date": "2026-11-07"
-        }
-      ],
-      "tests": [
-        "chord/nextnode/app/app_test.go::TestAppRefusesASecondServerOnTheSameDataDirectoryThroughASymbolicLink",
-        "chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestABridgedFacetRefusesAContractWithAKeyedMember"
       ]
     },
     {
@@ -53242,6 +53447,41 @@
       "id": "D431",
       "title": "PiG follows Pi main 2439933cf ahead of the v1.5.0 pin: live queries over an object's own tables (self.Query)",
       "entry": "BF-D431"
+    },
+    {
+      "id": "D460",
+      "title": "The app kit's facets are Go core facets beside the plugins' Node host",
+      "entry": "BF-D460"
+    },
+    {
+      "id": "D461",
+      "title": "`Files` and `FilesFolder` are not reachable from TypeScript plugins",
+      "entry": "BF-D461"
+    },
+    {
+      "id": "D462",
+      "title": "The server and each worker have two stores, not one",
+      "entry": "BF-D462"
+    },
+    {
+      "id": "D464",
+      "title": "FormatNumber and FormatTime take closed option types and return errors (P1-3)",
+      "entry": "BF-D464"
+    },
+    {
+      "id": "D465",
+      "title": "FormatTime takes a time.Time, not `Date | number | string`",
+      "entry": "BF-D465"
+    },
+    {
+      "id": "D466",
+      "title": "No per-language formatter cache",
+      "entry": "BF-D466"
+    },
+    {
+      "id": "D501",
+      "title": "`npm pack --json` printing an object (npm 12) is read like the list npm 10 and 11 print",
+      "entry": "BF-D501"
     },
     {
       "id": "D502",

@@ -1172,6 +1172,13 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D371](#bf-d371) | Tool search and codemode follow local schema refs; a malformed `$ref` renders as `unknown` | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D430](#bf-d430) | Go callers start a call and await it apart (Reference.Start, PendingCall) and run a handler's blocking… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D431](#bf-d431) | PiG follows Pi main 2439933cf ahead of the v1.5.0 pin: live queries over an object's own tables (self.Query) | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D460](#bf-d460) | The app kit's facets are Go core facets beside the plugins' Node host | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D461](#bf-d461) | `Files` and `FilesFolder` are not reachable from TypeScript plugins | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D462](#bf-d462) | The server and each worker have two stores, not one | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D464](#bf-d464) | FormatNumber and FormatTime take closed option types and return errors (P1-3) | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D465](#bf-d465) | FormatTime takes a time.Time, not `Date \| number \| string` | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D466](#bf-d466) | No per-language formatter cache | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D501](#bf-d501) | `npm pack --json` printing an object (npm 12) is read like the list npm 10 and 11 print | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D540](#bf-d540) | The plugins watcher's directory identity has no birth time on a system whose stat Go does not expose it for | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D600](#bf-d600) | A Go worker's base is a private copy of its own executable, not an esbuild bundle: no bundle, no… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D604](#bf-d604) | A link's upgrade waits for the bases to be built (Pi's links connect at once) | A Pi defect that PiG fixed first | All platforms | Unreleased |
@@ -1488,7 +1495,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-d7bfea6](#bf-d7bfea6) | A git source whose ref has no repository (`git:#v1`) no longer panics, and a ref split out of an opaque-path… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d7c7f86](#bf-d7c7f86) | fix(runtimecell): start a packed cell's members in order so a later member's factory cannot take the factory… | PiG's own defect | All platforms | Unreleased |
 | [BF-d7fbf00](#bf-d7fbf00) | Stored assistant messages of a durable conversation now carry `thinkingLevel`: a generation records the… | PiG's own defect | All platforms | 0.7.0 |
-| [BF-d803ffa](#bf-d803ffa) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-d80425c](#bf-d80425c) | fix(train): gate repairs after merging train 3 and the ordering stack | PiG's own defect | All platforms | Unreleased |
 | [BF-d80c1cd](#bf-d80c1cd) | Where Pi calls `new URL(value)`, Pig now parses a `ws:`, `wss:`, `ftp:` or `file:` URL, and a bracketed IPv6… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d80cb24](#bf-d80cb24) | A Chord singleton state document's handle reads its value in a section of the host's loop, as its watch does… | PiG's own defect | All platforms | Unreleased |
@@ -17835,6 +17841,111 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `0d59519cff` (2026-11-07), `930ef101d0` (2026-11-07)
 - **Tests:** None recorded.
 
+### BF-D460
+
+**The app kit's facets are Go core facets beside the plugins' Node host**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D460)
+- **Symptom:** Not a Pi bug.
+- **Root cause:** the plugin runtime is Node; the facets are Go because the kit is a Go port. Moving them to the Node host would port the kit to JS; serving HostData from Go needs the Go relay to answer for its child's address, which a chord host does not do.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** the plugins' host and the kit's facets run in one process (the plugin runtime is not a subprocess), or a chord host can answer for its child's address so `HostData` needs no JavaScript module.
+- **Fix commits:** `bdaa14582e` (2026-11-07), `5291c9268f` (2026-11-08), `95f0f0d040` (2026-11-08), `bdcd2b1248` (2026-11-08)
+- **Tests:** None recorded.
+
+### BF-D461
+
+**`Files` and `FilesFolder` are not reachable from TypeScript plugins**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D461)
+- **Symptom:** Not a Pi bug.
+- **Root cause:** the plugins' proxy facets (`plugins/node/proxy.mjs`) forward state members and methods to the Go object; a JS keyed member must be a keyed document handle or a reference's keyed member, and the proxy has neither for an object on another host. Pi has the kit and the plugins in one host, so `self.get(Files, {})` works there.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** the plugin bridge forwards a contract with a keyed member (a keyed-handle proxy between hosts), or the plugins run in the kit's host.
+- **Fix commits:** `d803ffa239` (2026-11-07), `5291c9268f` (2026-11-08), `95f0f0d040` (2026-11-08), `bdcd2b1248` (2026-11-08)
+- **Tests:** None recorded.
+
+### BF-D462
+
+**The server and each worker have two stores, not one**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D462)
+- **Symptom:** Not a Pi bug.
+- **Root cause:** the node-evaluator design (`docs/plan/chord-plugins-node-evaluator.md` §store): the Go store is an in-process engine and a store is not shared over the link; sharing one sqlite file between two engines would corrupt the id allocator.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** the plugins run in the server's (or worker's) own host process with one store, or one store file can be shared by two hosts.
+- **Fix commits:** `bdaa14582e` (2026-11-07), `d803ffa239` (2026-11-07), `5291c9268f` (2026-11-08), `95f0f0d040` (2026-11-08), `bdcd2b1248` (2026-11-08)
+- **Tests:** None recorded.
+
+### BF-D464
+
+**FormatNumber and FormatTime take closed option types and return errors (P1-3)**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D464)
+- **Symptom:** Not a Pi bug.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** Go has an `Intl` with the pinned Node's CLDR, or a Pi call site passes an option outside the closed types (the types then grow and the generator with them).
+- **Fix commits:** `17136820e9` (2026-11-07), `95f0f0d040` (2026-11-08), `bdcd2b1248` (2026-11-08)
+- **Tests:** `chord/next/surfaces/intl_drift_test.go::TestNumbersMatchNode`, `chord/next/surfaces/intl_drift_test.go::TestTimesMatchNode`, `chord/next/surfaces/intl_fuzz_test.go::FuzzFormatNumber`, `chord/next/surfaces/intl_fuzz_test.go::FuzzFormatTime`, `chord/next/surfaces/surfaces_format_test.go::TestFormatsNumbersLikeTheOracle`
+
+### BF-D465
+
+**FormatTime takes a time.Time, not `Date | number | string`**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D465)
+- **Symptom:** Not a Pi bug.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** never for the `time.Time` parameter (it is the Go form of a `Date`); the zone-data difference goes when Go's tzdata and the pinned Node's ICU zone data agree.
+- **Fix commits:** `0950d13d68` (2026-11-07), `95f0f0d040` (2026-11-08)
+- **Tests:** `chord/next/surfaces/intl_root_test.go::TestFormatTimeShowsTheInstantInTheProcessZone`
+
+### BF-D466
+
+**No per-language formatter cache**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D466)
+- **Symptom:** Not a Pi bug.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** never: Go has no formatter object to cache; it goes if a format stops being a table lookup.
+- **Fix commits:** `0950d13d68` (2026-11-07), `17136820e9` (2026-11-07), `95f0f0d040` (2026-11-08), `bdcd2b1248` (2026-11-08)
+- **Tests:** `chord/next/surfaces/intl_root_test.go::TestFormatsAllocateOnlyTheResultForCanonicalTags`
+
+### BF-D501
+
+**`npm pack --json` printing an object (npm 12) is read like the list npm 10 and 11 print**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D501)
+- **Symptom:** With npm 12 Pi's `installPlugin` fails on the object output; to be filed upstream with the repro (`npm pack --json` of any package under npm 12).
+- **Root cause:** a plugin install that fails on a current npm for a reason of output shape only is worse than Pi's behavior and costs nothing to avoid; the list form, the empty-output errors and the `filename` read are Pi's.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** Pi's install reads the object form.
+- **Fix commits:** `95f0f0d040` (2026-11-08), `bdcd2b1248` (2026-11-08)
+- **Tests:** `chord/nextnode/plugins/plugins_install_test.go::TestPackedTarballReadsTheListNpm10And11PrintAndTheObjectNpm12Prints`
+
 ### BF-D540
 
 **The plugins watcher's directory identity has no birth time on a system whose stat Go does not expose it for**
@@ -22215,19 +22326,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `d7fbf0046b` (2026-10-25)
 - **Tests:** `durable/harness/harness_generation_recovery_test.go::TestGenerationRecovery`, `durable/harness/harness_generation_test.go::TestGeneration`
 - **Release note:** Stored assistant messages of a durable conversation now carry `thinkingLevel`: a generation records the thinking level its request asked for on the response, also after polling a deferred one. A poll checkpoint written by an earlier version has no level and records none.
-
-### BF-d803ffa
-
-**Fix in shipped code**
-
-- **Source:** PiG's own defect
-- **Symptom:** Fix in shipped code
-- **Root cause:** Not recorded.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `d803ffa239` (2026-11-07)
-- **Tests:** `chord/nextnode/app/app_test.go::TestAppRefusesASecondServerOnTheSameDataDirectoryThroughASymbolicLink`, `chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestABridgedFacetRefusesAContractWithAKeyedMember`
 
 ### BF-d80425c
 
@@ -26936,6 +27034,13 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D371 | Tool search and codemode follow local schema refs; a malformed `$ref` renders as `unknown` | [BF-D371](#bf-d371) |
 | D430 | Go callers start a call and await it apart (Reference.Start, PendingCall) and run a handler's blocking… | [BF-D430](#bf-d430) |
 | D431 | PiG follows Pi main 2439933cf ahead of the v1.5.0 pin: live queries over an object's own tables (self.Query) | [BF-D431](#bf-d431) |
+| D460 | The app kit's facets are Go core facets beside the plugins' Node host | [BF-D460](#bf-d460) |
+| D461 | `Files` and `FilesFolder` are not reachable from TypeScript plugins | [BF-D461](#bf-d461) |
+| D462 | The server and each worker have two stores, not one | [BF-D462](#bf-d462) |
+| D464 | FormatNumber and FormatTime take closed option types and return errors (P1-3) | [BF-D464](#bf-d464) |
+| D465 | FormatTime takes a time.Time, not `Date \| number \| string` | [BF-D465](#bf-d465) |
+| D466 | No per-language formatter cache | [BF-D466](#bf-d466) |
+| D501 | `npm pack --json` printing an object (npm 12) is read like the list npm 10 and 11 print | [BF-D501](#bf-d501) |
 | D502 | `TestPlugin` tests a plugin on the production topology: its host is the Node subprocess and the stubs are Go… | deliberate difference |
 | D503 | `TestPlugin`'s registries are named, its contributions are data, and `root` is `RootPrincipal`: no JavaScript… | deliberate difference |
 | D540 | The plugins watcher's directory identity has no birth time on a system whose stat Go does not expose it for | [BF-D540](#bf-d540) |
