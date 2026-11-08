@@ -5,20 +5,10 @@
 // port can be diffed byte-for-byte. Reads one JSON object per line from argv[2]:
 //   {md, mode, messageType, isStreaming, availableWidth}
 // and prints {input, out} where out is the transformed markdown string.
-import { homedir } from "node:os";
-import { pathToFileURL } from "node:url";
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { importPiMermaid } from "./mermaid-oracle.mjs";
 
-function version() {
-	const m = readFileSync("internal/coding/pigversion/pigversion.go", "utf8").match(/UpstreamPackageVersion = "([^"]+)"/);
-	if (!m) throw new Error("cannot read UpstreamPackageVersion");
-	return m[1];
-}
-const root = process.env.PI_PACKAGE_ROOT ?? join(homedir(), ".local/share/mise/installs/npm-earendil-works-pi-coding-agent", version(),
-	"lib/node_modules/@earendil-works/pi-coding-agent");
-const { createMermaidMarkdownTransformer } = await import(
-	pathToFileURL(join(root, "dist/modes/interactive/components/mermaid.js")).href);
+const { createMermaidMarkdownTransformer } = await importPiMermaid();
 
 const corpusPath = process.argv[2];
 if (!corpusPath) { console.error("usage: mermaid-transform-pi.mjs <corpus>"); process.exit(2); }

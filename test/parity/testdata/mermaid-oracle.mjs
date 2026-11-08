@@ -26,3 +26,21 @@ export function lovelyRoot() {
 export function importLovely(file) {
 	return import(pathToFileURL(join(lovelyRoot(), "dist", file)).href);
 }
+
+/**
+ * Import Pi's own Mermaid markdown transformer (mermaid.js of a published
+ * coding-agent package, or mermaid.ts of a Pi checkout whose dependencies are
+ * installed and whose pi-tui is built; Node strips the types). Resolution
+ * order: $PI_MERMAID_MODULE; then under $PI_PACKAGE_ROOT (default: the pinned
+ * package in extensions/sdk-ts/node_modules) `dist/.../mermaid.js` and
+ * `packages/coding-agent/src/.../mermaid.ts`.
+ */
+export function importPiMermaid() {
+	const rel = "modes/interactive/components/mermaid";
+	const candidates = [];
+	if (process.env.PI_MERMAID_MODULE) candidates.push(process.env.PI_MERMAID_MODULE);
+	const root = process.env.PI_PACKAGE_ROOT ?? resolve("extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent");
+	candidates.push(join(root, `dist/${rel}.js`), join(root, `packages/coding-agent/src/${rel}.ts`));
+	for (const file of candidates) if (existsSync(file)) return import(pathToFileURL(file).href);
+	throw new Error(`Pi's mermaid module not found; tried ${candidates.join(", ")} (set PI_MERMAID_MODULE)`);
+}
