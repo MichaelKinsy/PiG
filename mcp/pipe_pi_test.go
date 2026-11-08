@@ -456,3 +456,31 @@ func TestPipeTransportLeavesNoGoroutineBehindAfterClose(t *testing.T) {
 	killed.settle(t)
 	baseline.RequireEnded(t, 10*time.Second)
 }
+
+// stuckPipe never reports its exit, even after Close.
+type stuckPipe struct{ fakePipe }
+
+func (p *stuckPipe) Close() {}
+
+// Go mechanic: Close bounds the wait for the exit after the kill by the close timeout, where Pi's close awaits `exited` with no bound.
+func TestPipeTransportCloseFailsWhenTheProgramDoesNotExitAfterTheKill(t *testing.T) {
+	pipe := &stuckPipe{fakePipe{exited: make(chan struct{}), stdinClosed: make(chan struct{}, 4)}}
+	transport := mcp.NewPipeTransport(mcp.PipeTransportOptions{
+		CloseTimeoutMs: 20,
+		Open:           func(mcp.McpPipeHandlers) (mcp.McpPipe, error) { return pipe, nil },
+	})
+	if err := transport.Start(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { pipe.end(nil) })
+	done := make(chan error, 1)
+	go func() { done <- transport.Close() }()
+	select {
+	case err := <-done:
+		if err == nil || !strings.Contains(err.Error(), "did not exit") {
+			t.Fatalf("Close = %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("Close did not return")
+	}
+}

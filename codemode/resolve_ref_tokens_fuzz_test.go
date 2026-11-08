@@ -11,7 +11,7 @@ import (
 )
 
 // resolveSchemaRefJSONByTokens is the one-pass resolver as it read root through json.Decoder.Token, which boxes every token. The byte scanner must
-// agree with it on every text, valid or not.
+// agree with it on every text, valid or not, except a number beyond float64 (`1e400`), which Token cannot parse and the scanner, like Pi's JSON.parse, accepts.
 func resolveSchemaRefJSONByTokens(ref string, root json.RawMessage) (json.RawMessage, bool) {
 	if ref != "#" && !strings.HasPrefix(ref, "#/") {
 		return nil, false
@@ -108,6 +108,7 @@ func tokensCorpus(f interface{ Add(...any) }) {
 		`{"\u0061":{"b":{}}}`, `{"a":{"b":01}}`, `{"a":{"b":1e}}`, `{"a":{"b":-}}`, `{"a":{"b":"\x"}}`, "{\"a\":\"\x01\"}",
 		`{"é":{"b":{}}}`, "{\"\xff\":{\"b\":{}}}", `{"a":{"b":nul}}`, `{"a":{"b":{}}`, `{"a":{"b":[{"a":1}]}}`, `{"a":{"b":tru}}`, `[]`, `{"a":{"b":1.5E+3}}`,
 		`{"a":{"b":"\ud800"}}`, `{"a":{"b":{"c":[[[[]]]]}}}`, `{"a":[{"b":1},{"a"}]}`, `{"a":{"b":{}} "c":1}`,
+		"{\"x\":\"\x01\",\"a\":{\"b\":{}}}", `{"x":[1,],"a":{"b":{}}}`, `{"x":{"k":1,},"a":{"b":{}}}`,
 	} {
 		for _, ref := range []string{"#/a/b", "#/a", "#", "#/\u00e9/b", "#/\ufffd/b", "#/a/b/c", "#/c"} {
 			f.Add(ref, root)

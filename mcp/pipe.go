@@ -152,7 +152,7 @@ func (t *PipeTransport) SendOrdered(_ context.Context, message JSONRPCMessage, p
 	return nil
 }
 
-// Close closes the program's stdin and lets it exit, then kills it once CloseTimeoutMs has passed. It returns after the program exited.
+// Close closes the program's stdin and lets it exit, then kills it once CloseTimeoutMs has passed. It returns after the program exited, or an error when the program has not exited a second CloseTimeoutMs after the kill (Pi's close awaits `exited` with no bound; a Go mechanic, so a pipe that never reports the exit cannot hold Close forever).
 func (t *PipeTransport) Close() error {
 	t.mu.Lock()
 	if t.closed {

@@ -618,7 +618,6 @@ func (s *refScanner) value() {
 
 // refSegments are the members a local `$ref` (`#`, `#/$defs/Item`) walks through, URI-decoded and JSON Pointer unescaped. It reports false for a
 // remote reference and for a segment with a malformed percent escape.
-// pig divergence (D371): Pi main 6d3e342b2 follows local schema refs in tool search and codemode summaries; Pi 1.5.0 throws on a malformed ref.
 func refSegments(ref string) ([]string, bool) {
 	if ref != "#" && !strings.HasPrefix(ref, "#/") {
 		return nil, false
