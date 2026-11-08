@@ -25,7 +25,7 @@ func oldPage(t *testing.T) (started, *reloadPage) {
 		"latch":   latchPlugin(t),
 		"counter": counterPlugin(t, counterCode{Code: "v1", Placement: "worker"}),
 	})
-	page := signIn(t, s)
+	page := reloadSignIn(t, s)
 	page.hold("alpha", counterContract(t, "worker", "v1"), "p1", 0, "label")
 	expectEqual(t, "add 2", page.result(page.call("alpha", "add", 2.0)), okResult("v1:2"))
 	page.waitLabel("alpha", "v1:2")

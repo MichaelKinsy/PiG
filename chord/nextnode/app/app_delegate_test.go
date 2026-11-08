@@ -58,7 +58,7 @@ func memberText(page *reloadPage, name, member string) string {
 
 func TestAServerPluginsObjectHoldsTheTypesTheGoServerServesOverTheNodeHostsLinkAsTheServer(t *testing.T) {
 	s := startReloadApp(t, map[string]map[string]string{"lang": {"server.ts": languagePlugin}})
-	page := signIn(t, s)
+	page := reloadSignIn(t, s)
 	// The page holds the Go server's choice itself, as the owner.
 	page.hold("choice", surfaces.LocaleChoice, "", 0, "pick")
 	page.waitState("choice", "live")
