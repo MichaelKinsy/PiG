@@ -20,6 +20,7 @@ import (
 	"github.com/MichaelKinsy/PiG/apps/p2/web"
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/app"
@@ -355,11 +356,18 @@ func workerValues(h host.Host, session string, ctx context.Context) (*delta.Json
 }
 
 // isOwnerNotice is whether a server host error is an owner notice: not an object that ended, a hold its factory refused
-// (`forbidden`: the caller is told) or a worker's start (the session's own notice has it).
+// (`forbidden`: the caller is told) or a worker's start (the session's own notice has it). As Pi's, it goes by the error's
+// class, never by its text: a refusal's message need not say `forbidden`.
 func isOwnerNotice(failure host.HostError) bool {
-	text := fmt.Sprint(failure)
-	for _, quiet := range []string{"released", "forbidden", "resolve_failed"} {
-		if containsFold(text, quiet) {
+	if failure.Kind == host.ErrResolveFailed {
+		return false
+	}
+	err := failure.Error
+	if err == nil && failure.Failure.Error != nil {
+		err = failure.Failure.Error
+	}
+	for _, quiet := range []data.ChordErrorCode{data.CodeReleased, data.CodeForbidden} {
+		if _, ok := data.IsChordErrorCode(err, quiet); ok {
 			return false
 		}
 	}
@@ -664,10 +672,6 @@ func (s *serverState) dispatch(response http.ResponseWriter, request *http.Reque
 	}
 	p2runtime.SignIn(response, request, http.StatusUnauthorized)
 	return nil
-}
-
-func containsFold(text, part string) bool {
-	return strings.Contains(strings.ToLower(text), part)
 }
 
 // headerHasToken is whether the comma-separated header value lists token (case-insensitive).
