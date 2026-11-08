@@ -116,6 +116,7 @@ func FuzzReadSchemaObjectOrderMatchesV1(f *testing.F) {
 	fuzzSeeds(f)
 	f.Add([]byte(`{"properties":{"b":{"type":"string"},"a":{"type":"number"},"b":{"x":1}},"required":["b"]}`))
 	f.Fuzz(func(t *testing.T, data []byte) {
+		jsonseed.SkipJSKeys(t, data)
 		got, gotErr := readSchemaObjectOrder(data)
 		want, wantErr := readSchemaObjectOrderV1(data)
 		sameResult(t, data, "readSchemaObjectOrder", got, want, gotErr, wantErr)

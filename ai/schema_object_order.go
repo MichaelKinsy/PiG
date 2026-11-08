@@ -12,9 +12,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"unicode/utf8"
 
-	sdkjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
@@ -49,24 +47,12 @@ func readSchemaObjectOrder(data []byte) (schemaObjectOrder, error) {
 			var keys []string
 			var seen map[string]bool // built only for an object with many keys; a few keys are searched in keys
 			for decoder.PeekKind() != '}' {
-				before := decoder.InputOffset()
-				name, err := decoder.ReadToken()
-				if err != nil {
-					return err
-				}
-				if name.Kind() != '"' {
+				if decoder.PeekKind() != '"' {
 					return fmt.Errorf("schema object key is not a string")
 				}
-				key := name.String()
-				if strings.ContainsRune(key, utf8.RuneError) {
-					// encoding/json turns an escaped lone surrogate into U+FFFD, but the decoded object keeps it as JSON.parse does, so the order must name the same key.
-					literal := data[before:decoder.InputOffset()]
-					if quote := bytes.IndexByte(literal, '"'); quote >= 0 {
-						var faithful string
-						if sdkjson.Unmarshal(literal[quote:], &faithful) == nil {
-							key = faithful
-						}
-					}
+				key, err := jsonopts.ReadName(decoder) // the JavaScript key, as the decoded object keeps it: "\ud800" and "\ud801" stay two keys
+				if err != nil {
+					return err
 				}
 				repeated := false
 				if seen != nil {
