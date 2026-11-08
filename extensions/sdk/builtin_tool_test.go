@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"io"
 	"strings"
 	"testing"
 
@@ -146,6 +147,66 @@ func TestBuiltinToolCallbacksRunTheOptionsFunctions(t *testing.T) {
 	}
 }
 
+// CreateReadStream is announced as createReadStream; the host reads the stream a chunk of at most 64 KB per call, an empty chunk is its end, and closeStream closes it and forgets it.
+func TestBuiltinToolCreateReadStreamIsReadInChunksAndClosed(t *testing.T) {
+	closed := false
+	spec, err := readSpec("/factory", &ReadToolOptions{Operations: &ReadOperations{
+		ReadFile: func(string) ([]byte, error) { return nil, errors.New("readFile must not be used") },
+		Access:   func(string) error { return nil },
+		CreateReadStream: func(path string) (io.ReadCloser, error) {
+			if path == "/missing" {
+				return nil, errors.New("ENOENT")
+			}
+			return &closeFlag{Reader: strings.NewReader(strings.Repeat("x", readStreamChunk+3)), closed: &closed}, nil
+		},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Join(spec.options.Operations, ","); got != "readFile,access,createReadStream" {
+		t.Fatalf("announced %s", got)
+	}
+	handle, release := registerBuiltinCallbacks(spec.callbacks)
+	defer release()
+	ext := New("builtin")
+	call := func(member, args string) (any, error) {
+		return ext.dispatchBuiltinToolCallback(json.RawMessage(`{"handle":"` + handle + `","member":"operations.` + member + `","args":` + args + `}`))
+	}
+	if _, err := call("createReadStream", `{"path":"/missing"}`); err == nil || err.Error() != "ENOENT" {
+		t.Fatalf("createReadStream error = %v, want the function's", err)
+	}
+	id, err := call("createReadStream", `{"path":"/f"}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stream := `{"stream":"` + id.(string) + `"}`
+	for i, want := range []int{readStreamChunk, 3} {
+		chunk, err := call("readStream", stream)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if data, _ := base64.StdEncoding.DecodeString(chunk.(string)); len(data) != want {
+			t.Fatalf("chunk %d has %d bytes, want %d", i, len(data), want)
+		}
+	}
+	if chunk, err := call("readStream", stream); err != nil || chunk != "" {
+		t.Fatalf("the end of the stream = %v, %v, want an empty chunk", chunk, err)
+	}
+	if _, err := call("closeStream", stream); err != nil || !closed {
+		t.Fatalf("closeStream = %v, closed %v", err, closed)
+	}
+	if _, err := call("readStream", stream); err == nil || !strings.Contains(err.Error(), "is not open") {
+		t.Fatalf("a closed stream was read: %v", err)
+	}
+}
+
+type closeFlag struct {
+	io.Reader
+	closed *bool
+}
+
+func (c *closeFlag) Close() error { *c.closed = true; return nil }
+
 // Pi's operations objects are complete: a missing required member is refused before the call, as TypeScript refuses it at compile time.
 func TestBuiltinToolOperationsMissingAMemberAreRefused(t *testing.T) {
 	if _, err := readSpec("/c", &ReadToolOptions{Operations: &ReadOperations{ReadFile: func(string) ([]byte, error) { return nil, nil }}}); err == nil || !strings.Contains(err.Error(), "operations.access is required") {
@@ -154,7 +215,7 @@ func TestBuiltinToolOperationsMissingAMemberAreRefused(t *testing.T) {
 	if _, err := bashSpec("/c", &BashToolOptions{Operations: &BashOperations{}}); err == nil || !strings.Contains(err.Error(), "operations.exec is required") {
 		t.Fatalf("err = %v", err)
 	}
-	// detectImageMimeType and grep's readFile are optional.
+	// detectImageMimeType is optional; grep has only isDirectory (Pi main 8da141c2a removed its readFile).
 	spec, err := grepSpec("/c", &GrepToolOptions{Operations: &GrepOperations{IsDirectory: func(string) (bool, error) { return true, nil }}})
 	if err != nil || strings.Join(spec.options.Operations, ",") != "isDirectory" {
 		t.Fatalf("grep spec = %+v, %v", spec.options, err)

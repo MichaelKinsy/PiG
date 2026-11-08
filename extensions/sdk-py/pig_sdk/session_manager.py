@@ -24,13 +24,16 @@ class ReadonlySessionManager:
         return self._read("getSessionDir")
 
     def get_session_id(self) -> str:
-        return self._read("getSessionId")
+        replicated = self._context._replicated_session()
+        return replicated[0] if replicated is not None else self._read("getSessionId")
 
     def get_session_file(self) -> str | None:
-        return self._read("getSessionFile")
+        replicated = self._context._replicated_session()
+        return replicated[2] or None if replicated is not None else self._read("getSessionFile")
 
     def get_session_name(self) -> str | None:
-        return self._read("getSessionName")
+        replicated = self._context._replicated_session()
+        return replicated[1] or None if replicated is not None else self._read("getSessionName")
 
     def get_leaf_id(self) -> str | None:
         return self._read("getLeafId")

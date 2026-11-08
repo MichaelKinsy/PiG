@@ -2,6 +2,7 @@
  * Shared utilities for compaction and branch summarization.
  */
 import { contentText } from "../../../pi-ai/sdk-bundle/index.js";
+import { sliceHead } from "../tools/truncate.js";
 export function createFileOps() {
     return {
         read: new Set(),
@@ -88,7 +89,7 @@ function truncateForSummary(text, maxChars) {
     if (text.length <= maxChars)
         return text;
     const truncatedChars = text.length - maxChars;
-    return `${text.slice(0, maxChars)}\n\n[... ${truncatedChars} more characters truncated]`;
+    return `${sliceHead(text, maxChars)}\n\n[... ${truncatedChars} more characters truncated]`;
 }
 /**
  * Serialize LLM messages to text for summarization.

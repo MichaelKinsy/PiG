@@ -64,6 +64,6 @@ func ComputeEditsDiff(path string, edits []EditReplacement, cwd string) EditDiff
 	if err != nil {
 		return EditDiffError{Error: err.Error()}
 	}
-	diff, firstChangedLine := diffAndFirstLine(applied.baseContent, applied.newContent)
-	return EditDiffResult{Diff: diff, FirstChangedLine: firstChangedLine}
+	diff := generateEditDiff(path, applied.baseContent, applied.newContent, applied.replacements, 4)
+	return EditDiffResult{Diff: diff.diff, FirstChangedLine: diff.firstChangedLine}
 }

@@ -47,13 +47,24 @@ func generateDiffString(oldContent, newContent string, contextLines int) (string
 // diffStringOf is generateDiffString over the line diff d of oldContent and newContent. Upstream splits every part's value into lines;
 // this reads only the lines it shows, so unchanged regions cost their line count.
 func diffStringOf(d *jsdiff.LineDiff, oldContent, newContent string, contextLines int) (string, int) {
-	parts := d.Runs
-	// text.split("\n").length of each side.
-	maxLineNum := max(strings.Count(newContent, "\n"), strings.Count(oldContent, "\n")) + 1
-	lineNumWidth := len(strconv.Itoa(maxLineNum))
-	ellipsis := " " + leftPad("", lineNumWidth) + " ..."
-
 	var output strings.Builder
+	firstChangedLine := writeDisplayDiff(&output, d, 1, 1, displayLineNumWidth(oldContent, newContent), contextLines, false)
+	return output.String(), firstChangedLine
+}
+
+// displayLineNumWidth is the width of the line numbers of a display diff of oldContent and newContent: that of the larger line count
+// (text.split("\n").length of each side).
+func displayLineNumWidth(oldContent, newContent string) int {
+	return len(strconv.Itoa(max(strings.Count(newContent, "\n"), strings.Count(oldContent, "\n")) + 1))
+}
+
+// writeDisplayDiff appends the display diff of the line diff d to output, one line after the lines already there, numbering from the
+// given 1-based old and new lines (upstream formatDisplayDiff), and returns the first changed line, 0 for none. With dropLeadingEllipsis
+// a skip marker that would be the first line it appends is left out.
+func writeDisplayDiff(output *strings.Builder, d *jsdiff.LineDiff, oldStartLine, newStartLine, lineNumWidth, contextLines int, dropLeadingEllipsis bool) int {
+	parts := d.Runs
+	ellipsis := displaySkipMarker(lineNumWidth)
+	startLen := output.Len()
 	numBuf := make([]byte, 0, 20)
 	// writeLine appends one output line: marker, padded number, a space and the line without its "\n".
 	writeLine := func(marker byte, n int, line string) {
@@ -70,12 +81,15 @@ func diffStringOf(d *jsdiff.LineDiff, oldContent, newContent string, contextLine
 		output.WriteString(strings.TrimSuffix(line, "\n"))
 	}
 	writeEllipsis := func() {
+		if dropLeadingEllipsis && output.Len() == startLen {
+			return
+		}
 		if output.Len() > 0 {
 			output.WriteByte('\n')
 		}
 		output.WriteString(ellipsis)
 	}
-	oldLineNum, newLineNum := 1, 1
+	oldLineNum, newLineNum := oldStartLine, newStartLine
 	lastWasChange := false
 	firstChangedLine := 0
 
@@ -144,7 +158,7 @@ func diffStringOf(d *jsdiff.LineDiff, oldContent, newContent string, contextLine
 		lastWasChange = false
 	}
 
-	return output.String(), firstChangedLine
+	return firstChangedLine
 }
 
 func leftPad(s string, width int) string {
@@ -152,13 +166,4 @@ func leftPad(s string, width int) string {
 		return s
 	}
 	return strings.Repeat(" ", width-len(s)) + s
-}
-
-// diffAndFirstLine unpacks GenerateDiffString for details structs that carry the first changed line as a number, 0 meaning none.
-func diffAndFirstLine(oldContent, newContent string) (string, int) {
-	result := GenerateDiffString(oldContent, newContent)
-	if result.FirstChangedLine == nil {
-		return result.Diff, 0
-	}
-	return result.Diff, *result.FirstChangedLine
 }
