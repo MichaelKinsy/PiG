@@ -826,7 +826,7 @@ vendor-chord-plugins-node: parity-deps upstream-mirror ## Regenerate chord/nextn
 vendor-chord-surfaces-client: parity-deps upstream-mirror ## Regenerate chord/nextnode/surfaces/client/pi, Pi's chord sources of the page's and the terminal's client runtimes (D601)
 	@./automation/gen/vendor-chord-surfaces-client.sh
 
-generate-schemas: ## Regenerate schemas/*.schema.json, the JSON Schemas of models.json, settings.json, keybindings.json and themes (Pi scripts/generate-schemas.ts)
+generate-schemas: ## Regenerate schemas/*.schema.json, the JSON Schemas of models.json, settings.json, keybindings.json and themes, and docs/site/docs/models-configuration.md (Pi scripts/generate-schemas.ts and generate-references.ts)
 	@go run ./cmd/generate-schemas
 
 model-catalogs: parity-deps ## Regenerate model catalogs from the pinned published Pi package

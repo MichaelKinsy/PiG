@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -66,6 +67,13 @@ func aiTelemetryEvents(result *AssistantMessage) []AssistantMessageEvent {
 
 func aiTelemetrySetup(t *testing.T, result *AssistantMessage) *Models {
 	t.Helper()
+	models := aiTelemetryModels(result)
+	t.Cleanup(models.Close)
+	return models
+}
+
+// aiTelemetryModels is aiTelemetrySetup without the cleanup, for a test that closes the Models itself and must not leave it reachable.
+func aiTelemetryModels(result *AssistantMessage) *Models {
 	model := aiTelemetryModel()
 	respond := func() (*AssistantMessageEventStream, error) {
 		stream := NewAssistantMessageEventStream()
@@ -78,7 +86,6 @@ func aiTelemetrySetup(t *testing.T, result *AssistantMessage) *Models {
 		return stream, nil
 	}
 	models := CreateModels(CreateModelsOptions{})
-	t.Cleanup(models.Close)
 	models.SetProvider(CreateProvider(CreateProviderOptions{
 		ID: model.ProviderMeta.ProviderID, Models: []AnyModel{model}, Auth: configuredTestAuth(),
 		API: &ProviderStreams{
@@ -303,6 +310,43 @@ func TestAITelemetryBoundsPollErrorMessagesUpstream(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Ports telemetry.test.ts "keeps a bounded error message that does not hold the provider's whole message alive" (#9265). Pi measures V8 heap
+// use after a span keeps a 500-character cut of a 4 MB message. A Go substring is a view of its parent's bytes just as a V8 slice is, so
+// the same hazard exists and the same measurement applies, through runtime.MemStats: the span status keeps the cut, not the message.
+func TestAITelemetryKeepsABoundedErrorMessageThatDoesNotHoldTheProvidersWholeMessageAliveUpstream(t *testing.T) {
+	heap := func() uint64 {
+		runtime.GC()
+		runtime.GC()
+		var stats runtime.MemStats
+		runtime.ReadMemStats(&stats)
+		return stats.HeapAlloc
+	}
+	recorder := telemetry.NewInMemoryTelemetryContext()
+	before := heap()
+	func() {
+		result := aiTelemetryMessage(StopReasonError)
+		result.ErrorMessage = strings.Repeat("x", 4_000_000) + "tail"
+		models := aiTelemetryModels(result)
+		model := aiTelemetryModel()
+		aiTelemetryCaller(t, recorder, func(span telemetry.TelemetrySpan) *AssistantMessage {
+			return models.FetchDeferred(t.Context(), model, aiTelemetryHandle(model), DeferredFetchOptions{StreamOptions: StreamOptions{Telemetry: span}})
+		})
+		aiTelemetrySettled(t, recorder)
+		models.Close()
+	}()
+	after := heap()
+	span := recorder.GetSpans()[1]
+	want := telemetry.SpanStatus{Status: telemetry.SpanStatusCodeError, Error: &telemetry.SpanStatusError{Name: "provider_error", Message: strings.Repeat("x", 500)}}
+	if !reflect.DeepEqual(span.Status, want) {
+		t.Fatalf("status = %+v", span.Status)
+	}
+	// A cut of the 4 MB message would keep all of it alive with the span.
+	if grown := int64(after) - int64(before); grown >= 2_000_000 {
+		t.Fatalf("the recorder holds %d more bytes than before the call; the span status keeps the provider's whole message alive", grown)
+	}
+	runtime.KeepAlive(recorder)
 }
 
 // Ports telemetry.test.ts "includes setup failures and omits non-scalar native reasoning". Pi's native reasoning object

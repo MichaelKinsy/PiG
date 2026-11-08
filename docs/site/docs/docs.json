@@ -30,6 +30,7 @@
     "llama-cpp.md": "adapted-pi",
     "mcp.md": "adapted-pi",
     "message-types.md": "adapted-pi",
+    "models-configuration.md": "adapted-pi",
     "models.md": "adapted-pi",
     "nvidia-rtx-llama-cpp.md": "adapted-pi",
     "packages.md": "adapted-pi",
@@ -288,6 +289,10 @@
         {
           "title": "Settings",
           "path": "settings.md"
+        },
+        {
+          "title": "Models Configuration",
+          "path": "models-configuration.md"
         },
         {
           "title": "Settings by Example",

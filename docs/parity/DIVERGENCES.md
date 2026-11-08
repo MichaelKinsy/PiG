@@ -16,6 +16,7 @@ Every active divergence must have:
 - `// pig divergence (D<N>): ...` at each call site
 - parity coverage or an explicit parity allowance
 - `SCRUTINIZED:approved`
+- if a test-mapping entry names it, the labeled paragraphs `Protects:`, `PiG-shaped test considered:` and `Why not:` (see AGENTS.md, Upstream test parity)
 
 ## Retired divergences
 
@@ -248,6 +249,12 @@ Call site:
 - `coding/session_extension_replacement.go`: the extension-driven replacement of a bare Session (Part 2).
 
 Parity allowance: no paired scenario drives either part. Part 1 needs an extension that uses a captured `ctx` after a replacement, which no parity fixture does; Part 2 is a library path no Stock PiG mode reaches. The Stock modes are covered by the paired session-replacement scenarios and the tests named above.
+
+Protects: the stale-context expectations of Pi's `2860-replaced-session-context.test.ts` (:147-205) and `agent-session-branching.test.ts`: after a Session is replaced, calls from its old ctx and extension host fail with Pi's stale message and never start a turn in the replacement.
+
+PiG-shaped test considered: the Go tests named in Evidence (`TestReplacedSession2860*`, `TestPrintModeReplacedSessionHostCallsFailWithThePiStaleMessage`, `TestReplacedSession2860AcrossSDKs`) run the same expectations on the Node runtime and in-process; the same cases on the Go, Rust and Python SDK getters were considered.
+
+Why not: the Go, Rust and Python getters return plain values with no error to carry Pi's stale message, and a bare `coding.Session` owns no factory to replace itself; running Pi's cases there needs an SDK interface change that needs an approved spec (Why deferred, not ported).
 
 Remove when: the Go, Rust and Python SDKs apply the invalidate notification and every SDK-local ctx and pi member fails with Pi's stale message after it (Part 1), and the in-place `Session` replacement methods and the default `Session.ExtensionCommandActions` replacement actions are deleted or routed through `Runtime`, so no caller can replace a Session without invalidating its runner (Part 2).
 
@@ -718,6 +725,12 @@ Regression: `internal/codingagent/debug_hotkey_release_test.go`
 back to `addTerminalInputListener`.
 SCRUTINIZED:approved
 
+Protects: the global debug hotkey runs its handler once per press rather than once per press and once per Kitty key release. No Pi test covers the hotkey after its key-release filter.
+
+PiG-shaped test considered: `TestDebugHotkeyFiresOncePerPress` (`internal/codingagent/debug_hotkey_release_test.go`), which fails when the registration moves back to `addTerminalInputListener`.
+
+Why not: Pi has no case for the release behavior to run against, so no upstream test is replaced; the PiG test is the only one.
+
 Remove when: upstream tests the debug hotkey after its key-release filter, or
 `matchesKey` stops matching a release, at which point the raw registration
 becomes correct on its own.
@@ -890,6 +903,12 @@ Call sites:
 
 Locked by: `internal/codingagent` `TestShareSessionUploadsJSONLWithPrivacyNotice`, `TestShareSessionKeepsConcurrentExportsIsolated`, `TestUploadShareArtifactHonorsCancellationAndCanonicalOrigin`, `TestShareLoaderEscapeCancelsUpload`, `TestSharePrivacyNoticeRemainsVisibleAfterResult`, `TestShareGatewayURLDefaultAndOverride`, `TestShareBuiltinDescribesUnlistedExpiry`, `TestShareHandlerUploadsToPiGForEveryShareDestination`, and `TestSettingsSelectorOmitsShareDestination`; `cmd/pig` `TestHelpOmitsUnusedShareViewerURL`; the private-platform patch's `worker/test/share.test.ts` covers route shape, R2 limits, expiry, escaping, and hashed rate limiting. `TestReportInstallTelemetry_SendsOnlyVersionToConfiguredEndpoint`, `TestReportInstallTelemetry_DefaultURLIsPiInGoDevNotPiDev`, `TestReportInstallTelemetry_SettingDisabledSkipsRequest`, `TestReportInstallTelemetry_EnvOverrideDisablesEvenWhenSettingIsOn`, `TestReportInstallTelemetry_PIOfflineSkipsEvenWhenTelemetryIsOn`, `TestReportInstallTelemetry_NeverContactsPiDotDev`, `TestRecordChangelogVersionAndMaybeReportInstall_FreshInstallPingsAndRecordsNoBanner`, `TestRecordChangelogVersionAndMaybeReportInstall_UpdateWithNewEntriesPingsAndShowsBanner`, `TestRecordChangelogVersionAndMaybeReportInstall_SameVersionNeverPings`, and `TestRecordChangelogVersionAndMaybeReportInstall_VersionBumpWithNoNewEntriesNeverPings` lock the install-telemetry ping.
 
+Protects: the upstream session-share cases of Pi cea25743 ('forces gist sharing without checking Radius authentication' and 'reports missing Radius authentication when Radius is forced') check that the sessionShareDestination setting picks the share target.
+
+PiG-shaped test considered: `TestShareHandlerUploadsToPiGForEveryShareDestination` runs the share handler for auto, gist and radius and asserts that each runs one PiG upload with no Radius error; `TestSettingsSelectorOmitsShareDestination` covers the /settings item.
+
+Why not: Pi's cases assert a GitHub gist request and a Radius authentication error. PiG has neither target, so the same inputs cannot give the same outputs; the PiG-shaped tests lock that every setting value shares through PiG.
+
 Remove when: never, unless PiG's owner selects another PiG-operated host, or returns `/share` to Pi's Radius/GitHub flow (update this entry and every call-site marker then).
 
 SCRUTINIZED:approved
@@ -909,6 +928,12 @@ Call sites:
 - `internal/codingagent/selfupdate.go`: `FetchUpdateManifest`, which sends the identity with the update-manifest request as upstream `getLatestPiRelease` sends its `User-Agent` and `accept` headers to the version-check API.
 
 Locked by: `ai/identity_test.go` (`TestFormatUserAgentForms`), `ai/user_agent_test.go` (`TestPiUserAgentFormat`, `TestProviderDefaultUserAgent`, `TestProviderUserAgentOverridePrecedence`), `ai/anthropic_oauth_test.go` `TestAnthropicClientUserAgent`, `internal/codingagent/bug_report_test.go` `TestBugReportEnvironmentUsesPiGUserAgent`, and `internal/codingagent/version_check_upstream_test.go` `TestVersionChecks` (the update-manifest request).
+
+Protects: the upstream user-agent case checks the product identity string that names the product, version, platform, runtime and architecture on provider and management requests.
+
+PiG-shaped test considered: Go tests of PiG's own identity: `TestFormatUserAgentForms`, `TestPiUserAgentFormat`, `TestProviderDefaultUserAgent`, `TestProviderUserAgentOverridePrecedence` and `TestBugReportEnvironmentUsesPiGUserAgent`. Running Pi's case against the vendored Pi TypeScript in the Node host was considered too: the host names PiG's composite version in `PIG_PRODUCT_VERSION`, so the vendored formatter also yields PiG's form.
+
+Why not: Pi's case asserts Pi's `pi/<version> (<platform>; <runtime>; <arch>)` form, which D65 replaces on purpose, so the same inputs cannot give the same output. The PiG-shaped tests assert the approved form.
 
 Remove when: never, unless the owner changes PiG's product identity.
 
@@ -1296,6 +1321,12 @@ Evidence: `TestShouldRunFirstTimeSetupGate` (interactive with and without `setti
 
 Parity allowance: Pi never shows the dialog for a fork, and parity fixtures carry `settings.json`, so no paired scenario compares it.
 
+Protects: Pi's first-time-setup cases check when the setup dialog appears (its gate: the official distribution, `PI_EXPERIMENTAL=1`, the default agent directory and no `settings.json`) and what Esc and each step save.
+
+PiG-shaped test considered: Pi's gate inputs run against PiG's real CLI (`TestFirstTimeSetupOriginalCasesAsFork`, `TestForkedDistributionDoesNotBlockOnOfficialFirstTimeSetup`), PiG's own gate `TestShouldRunFirstTimeSetupGate`, and PTY runs of the real CLI for Esc and for saving the theme, sprite and analytics choice. Running Pi's component test unchanged was considered.
+
+Why not: Pi's cases expect the dialog only for Pi's official distribution; PiG shows it in every default agent directory without `settings.json` and adds a sprite step, so the same inputs cannot give the same results. The PiG-shaped tests assert the approved gate and steps.
+
 Remove when: never; the first-run setup is PiG's.
 
 SCRUTINIZED:approved
@@ -1330,6 +1361,12 @@ Call-site markers: `internal/codingagent/llama/provider.go` (`toPiModel`).
 Evidence: `TestLlamaReasoningModelOffersBudgetedThinkingLevels` (cmd/pig: the built-in host's model offers off through high and each level's request carries its `thinking_budget_tokens`; red before the change with `[off medium]`), `TestRefreshModelsDiscoversChatTemplateThinkingSupportForLoadedModels` (the ported Pi test, with Pi's expected map recorded at the assertion).
 
 Parity allowance: no paired scenario runs a llama.cpp server; Pi's own test `packages/coding-agent/test/llama-extension.test.ts` asserts the two-level map this entry replaces.
+
+Protects: the upstream llama-extension case checks the thinking levels a llama.cpp reasoning model offers and the request each level sends.
+
+PiG-shaped test considered: `TestLlamaReasoningModelOffersBudgetedThinkingLevels` asserts the five-level map and each level's `thinking_budget_tokens`; `TestRefreshModelsDiscoversChatTemplateThinkingSupportForLoadedModels` runs Pi's case with Pi's expected map recorded at the assertion. Running Pi's case against the vendored TypeScript was considered.
+
+Why not: Pi's case asserts the two-level (`off`, `medium`) map this entry replaces on purpose, so Pi's inputs cannot give Pi's expected output in PiG; the PiG-shaped tests assert the approved map.
 
 Remove when: Pi offers more than off and medium for a llama.cpp reasoning model, then follow Pi.
 
@@ -1561,6 +1598,12 @@ Evidence: `TestNewAgentSessionDrivesTheSuppliedAgentAndChainsItsHooks` and `Test
 
 Parity allowance: no paired scenario builds an Agent through the public Pi constructor, because Pi's only caller is `sdk.ts`.
 
+Protects: the property Pi's `extensionRunnerRef` serves: the hooks of a caller-supplied Agent and cache warmer read the Session's current extension runner after every replacement. No Pi test covers the cell itself; Pi's suite helper (`test/suite/harness.ts`) builds one.
+
+PiG-shaped test considered: `TestNewAgentSessionDrivesTheSuppliedAgentAndChainsItsHooks` and `TestNewAgentSessionDrivesTheSuppliedCacheWarmer` drive a supplied Agent and warmer through the Session and its `ExtensionRunner()` accessor.
+
+Why not: a test of the cell needs the cell, and PiG has none by design (a second source of truth for the runner); the property is held by the two tests above.
+
 Remove when: PiG's SDK needs a caller-owned runner cell.
 
 SCRUTINIZED:approved
@@ -1580,6 +1623,12 @@ Call-site markers: `tui/stdin_buffer.go` (`StdinBuffer`) and `tui/stdin_buffer_e
 Evidence: none beyond the absence of any Pi caller. `TestStdinBufferEventsMatchPi` pins the events that Pi's callers read.
 
 Parity allowance: no paired scenario adds an eleventh listener to a `StdinBuffer`.
+
+Protects: Node's listener limit of 10 per event and its `MaxListenersExceededWarning` on the eleventh registration. No Pi test asserts it; the tui tests rely on the events Pi's callers read.
+
+PiG-shaped test considered: `TestStdinBufferEventsMatchPi` pins those events. A test that adds eleven listeners and expects Node's warning was considered.
+
+Why not: the owner ruled on 2026-10-10 (Q3, option A) against a magic limit of 10, so a test of the warning would assert behavior PiG does not have; no Pi code reaches the limit.
 
 Remove when: PiG's `StdinBuffer` gets Node's listener limit and warning (design-out audit Q3 option B).
 
