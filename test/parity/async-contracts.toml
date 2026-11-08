@@ -100,11 +100,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/goog
 
 [[files]]
 path = "packages/ai/src/api/lazy.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
-
+disposition = "deferred"
+contracts = ["awaited", "cancellable", "microtask-ordering"]
+evidence = ["test:ai/models_provider_setup_abort_pi_test.go#TestModelsProviderSetupFailureReasonFollowsTheRequestSignal", "test:ai/models_runtime_result_test.go", "test:coding/model_refresh_metadata_test.go", "scenario:test/parity/scenarios/providers-faux-streaming/23-metadata-refresh-and-native-result.toml", "test:ai/telemetry_upstream_test.go#TestLazyStreamObservationOrdersEventResolvedResultUpstream", "test:ai/telemetry_upstream_test.go#TestLazyStreamObservationReportsTerminalResultOnceUpstream", "test:ai/telemetry_upstream_test.go#TestLazyStreamObservationReportsSetupFailureOnceUpstream"]
+rationale = "Setup returns an outer stream immediately; the Models operation owner forwards inner events in order and awaits the independent result before settling the outer result. Setup errors become error events. An end-only result is not a fabricated terminal event. Dynamic module loading uses static linking in Go. Full setup rejection, cancellation during iteration, and owner shutdown across every deferred API remain under review; this file is not async-closed. Pi 2ec55d80 adds the observer: ai.LazyStreamObserver{OnEvent, OnResult} is synchronous and read-only, runs inside the forwarding turn, calls OnEvent after each push and OnResult once after the outer stream ends, and observes a setup failure as the error event and then the result; it adds no cancellation and no tick (tick positions are unchanged). Delta at Pi c23b9ec1: f3a64af07 (#8635) adds the signal parameter of lazyStream; a setup that rejects ends with stopReason \"aborted\" instead of \"error\" when the signal is aborted (lazy.ts:83), whatever the cause. In Go the request context is that signal (ai.LazyStream, pushModelsSetupError); the cancellable contract now includes the reason of a setup failure under a cancelled context, covered by test:ai/models_provider_setup_abort_pi_test.go and test:ai/api_streams_aliases_pi_test.go."
 [[files]]
 path = "packages/ai/src/api/llama-cpp-classify.lazy.ts"
 disposition = "deferred"
@@ -387,11 +386,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/mode
 
 [[files]]
 path = "packages/ai/src/models.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
-
+disposition = "deferred"
+contracts = ["awaited", "concurrent-joined", "detached-owned", "cancellable"]
+evidence = ["test:ai/models_provider_setup_abort_pi_test.go#TestModelsProviderSetupFailureReasonFollowsTheRequestSignal", "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream", "test:ai/models_runtime_auth_upstream_test.go#TestModelsRuntimeAuthUpstream", "test:ai/models_runtime_available_test.go#TestModelsGetAvailableRejectsBeforeOtherChecksSettle", "test:ai/models_runtime_lifetime_test.go#TestModelsCompletedRefreshSignalFollowsItsCaller", "scenario:test/parity/scenarios/model-runtime-store-catalog/19-models-runtime.toml"]
+rationale = "Reviewed against 0.87.1 only. packages/ai/src/images-models.ts was removed upstream in 0.99.1 and its image-catalog refresh and generation contract (auth and generation are blocking awaited calls; all-provider refresh joins every operation and swallows individual failures) now lives in models.ts; those image-models tests no longer exist; Pi 0.99.1 adds async members (Models.generateImages, Models.classify, getAvailableOfType, getAllAvailable, the getAuthenticatedProviders helper, login options) whose ordering, cancellation and error contract is not yet reviewed (ai/src/models.ts in packages/ai 0.99.1). Cache restoration precedes network auth. Refresh phases share one concrete provider signal and serialized, generation-checked publication; persistence completes before synchronous update. Replacement cancels the prior refresh. Aborted callers receive immutable result snapshots while owned non-cooperative callbacks settle without late publication. getAvailable starts checks concurrently and rejects on the first failure while retaining ownership of other checks. Auth and login preserve caller contexts; login distinguishes queued from started mutations. Stream setup runs in an owned worker and forwards all terminal events. Completed refresh signals stay non-aborted and follow later caller cancellation; weak parent forwarding releases unused subscriptions without changing retained signals. Delta at Pi bd3c9b82: adc5fa9f/04a93bad add CreateModelsOptions.identity, its merge into every request and the default login agentName; no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged. Delta at Pi c23b9ec1: f3a64af07 (#8635) passes options.signal to lazyStream at the five lazyStream sites (stream, streamSimple, streamDeferred, the provider dispatch without an API implementation, fetchDeferred), so a rejected setup under an aborted signal is \"aborted\"; the Go Models and CreateProvider pass the request context to the same setup-error path (test:ai/models_provider_setup_abort_pi_test.go, test:coding/model_runtime_abort_upstream_test.go)."
 [[files]]
 path = "packages/ai/src/providers/amazon-bedrock.ts"
 disposition = "deferred"
