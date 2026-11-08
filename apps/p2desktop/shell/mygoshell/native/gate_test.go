@@ -28,7 +28,8 @@ func TestGateShot(t *testing.T) {
 		t.Skip("P2_GATE_OUT is not set")
 	}
 	t.Setenv("P2_DESKTOP_THEME", os.Getenv("P2_GATE_THEME"))
-	fake, zero := true, 0
+	// P2_GATE_PROVIDERS=1: the real catalog (the Providers sheet needs providers with login methods) and the sheet open.
+	fake, zero := os.Getenv("P2_GATE_PROVIDERS") != "1", 0
 	options := hosts.ServerOptions{DataDir: t.TempDir(), Port: &zero, Fake: &fake, Facets: []host.HostFacet{surfacehost.ServerFacet(nil)}}
 	if home, err := brandsprite.DefaultHome(); err == nil {
 		if source, err := brandsprite.Open(home); err == nil {
@@ -117,7 +118,13 @@ func TestGateShot(t *testing.T) {
 			want = "bash"
 		}
 	}
-	if opened == "" {
+	if os.Getenv("P2_GATE_PROVIDERS") == "1" {
+		app.pickProvider = true
+		app.Invalidate()
+		until(t, tt, "the providers", func() bool { return tt.HasText("Anthropic") && tt.HasText("OpenAI") })
+		want = "Anthropic"
+	}
+	if opened == "" && os.Getenv("P2_GATE_PROVIDERS") != "1" {
 		until(t, tt, "the first frame", func() bool { return tt.HasText(want) && tt.HasText("What should PiG do?") })
 	} else {
 		until(t, tt, "the first frame", func() bool { return tt.HasText(want) })
