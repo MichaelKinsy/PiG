@@ -966,6 +966,26 @@
       ]
     },
     {
+      "id": "BF-07f4072",
+      "title": "A Durable session on a Chord store no longer races the host's loop when a commit is published: the…",
+      "symptom": "A Durable session on a Chord store no longer races the host's loop when a commit is published: the publication of each commit now runs as a section of the host's loop instead of on the writer's goroutine, which touched the host's batch while the loop ran its own commits (a data race, seen under `-race` when a p2 server reloads a plugin while a worker streams).",
+      "rootCause": "The commit's writer calls Publishing from a goroutine of its own while the host's loop runs its own commits on the batch, which has no locks: a DATA RACE under -race in p2's m1 reload case. The publication now runs through Batch.Section, as Pi's continuation after the commit's await runs on its one event loop. Its doc comment says what that costs a caller: blocking on a durable commit inside a host section deadlocks.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Durable session on a Chord store no longer races the host's loop when a commit is published: the publication of each commit now runs as a section of the host's loop instead of on the writer's goroutine, which touched the host's batch while the loop ran its own commits (a data race, seen under `-race` when a p2 server reloads a plugin while a worker streams). A caller that blocks on a durable commit from inside a host section now waits for itself; commit from a goroutine of its own.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "07f40724ef",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-081e8c3",
       "title": "Bug report files against live Pi: new `TestBugReportFilesMatchPi`…",
       "symptom": "Bug report files against live Pi: new `TestBugReportFilesMatchPi` (`internal/codingagent/bug_report_files_oracle_test.go`; `collectBugReportDiagnostics` over a `SessionManager` opened on 500 generated session files plus a crash log, and `bugReportFiles`; bytes of diagnostics.json, member list, session.jsonl and summary.md).",

@@ -54,6 +54,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-07151d0](#bf-07151d0) | In print and JSON mode, Node extensions in separate processes now keep Pi's order when a later extension's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0790d5e](#bf-0790d5e) | `String.prototype.trim` vs `strings.TrimSpace`: four Pi `.trim()` sites used Go's `strings.TrimSpace`, which… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-07da4ea](#bf-07da4ea) | A configured package or `-e` source that cannot be installed no longer ends startup | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
+| [BF-07f4072](#bf-07f4072) | A Durable session on a Chord store no longer races the host's loop when a commit is published: the… | PiG's own defect | All platforms | Unreleased |
 | [BF-081e8c3](#bf-081e8c3) | Bug report files against live Pi: new `TestBugReportFilesMatchPi`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-082355f](#bf-082355f) | The session picker checks its keys in Pi's order when bindings overlap (delete before rename, list actions… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-082f350](#bf-082f350) | `markdown.codeBlockIndent`: Pi's getter is `markdown?.codeBlockIndent ?? " "`, so an authored `""` means no… | PiG's own defect | All platforms | 0.5.0 |
@@ -2290,6 +2291,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `07da4ea3a6` (2026-10-23)
 - **Tests:** `coding/resource_loader_extension_files_test.go::TestDefaultResourceLoaderPointsProjectPackagesAtRemoveLocal`, `coding/resource_loader_extension_files_test.go::TestDefaultResourceLoaderPointsTemporaryExtensionSourcesAtTheSource`, `coding/resource_loader_extension_files_test.go::TestDefaultResourceLoaderWarnsAndKeepsLoadingWhenAConfiguredPackageCannotBeInstalled`, `coding/resource_loader_extension_files_test.go::TestDefaultResourceLoaderWarnsOnceAboutAFailingInstallWhenProjectTrustIsResolved`, `internal/packagemanager/managed_root_cwd_test.go::TestEmptyAgentDirNeverWritesIntoTheProcessDirectory`, `internal/packagemanager/resolve_gaps_test.go::TestResolveExtensionSourcesReportsATemporarySourceThatFailsToInstall`, `internal/packagemanager/resolve_gaps_test.go::TestResolveReportsNoInstallFailureForASkippedSourceAndKeepsTheErrorDecision`, `internal/packagemanager/resolve_gaps_test.go::TestResolveSkipsAPackageSourceThatFailsToInstallAndReportsIt`
 - **Release note:** A configured package or `-e` source that cannot be installed no longer ends startup. It is skipped, as in offline mode, and reported as an extension warning that says how to remove it (`pig remove <source>`, with `--local` for a project package) or to check the source; `--help` and `--list-models` print it too.
+
+### BF-07f4072
+
+**A Durable session on a Chord store no longer races the host's loop when a commit is published: the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Durable session on a Chord store no longer races the host's loop when a commit is published: the publication of each commit now runs as a section of the host's loop instead of on the writer's goroutine, which touched the host's batch while the loop ran its own commits (a data race, seen under `-race` when a p2 server reloads a plugin while a worker streams).
+- **Root cause:** The commit's writer calls Publishing from a goroutine of its own while the host's loop runs its own commits on the batch, which has no locks: a DATA RACE under -race in p2's m1 reload case. The publication now runs through Batch.Section, as Pi's continuation after the commit's await runs on its one event loop. Its doc comment says what that costs a caller: blocking on a durable commit inside a host section deadlocks.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `07f40724ef` (2026-11-08)
+- **Tests:** None recorded.
+- **Release note:** A Durable session on a Chord store no longer races the host's loop when a commit is published: the publication of each commit now runs as a section of the host's loop instead of on the writer's goroutine, which touched the host's batch while the loop ran its own commits (a data race, seen under `-race` when a p2 server reloads a plugin while a worker streams). A caller that blocks on a durable commit from inside a host section now waits for itself; commit from a goroutine of its own.
 
 ### BF-081e8c3
 
