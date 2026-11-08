@@ -75,3 +75,22 @@
 {"md": "```mermaid\nsequenceDiagram\n  participant Alice\n  participant Bob\n  Alice->>Bob: hello there\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 50}
 {"md": "```mermaid\nsequenceDiagram\n  participant Alice\n  participant Bob\n  Alice->>Bob: hello there\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 100}
 {"md": "```mermaid\nsequenceDiagram\n  participant Alice\n  participant Bob\n  Alice->>Bob: hello there\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 200}
+# lovely-mermaid 0.3.3 additions
+{"md": "```mermaid\npie\n  title Pets\n  \"Dogs\" : 4\n  \"Cats\" : 2\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 80}
+{"md": "```mermaid\npie showData\n  \"A\" : 1\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 100}
+{"md": "```mermaid\ngantt\n  title Plan\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 80}
+{"md": "```mermaid\nflowchart LR\n  A[Hot]:::highlight --> B[Plain]\n  classDef highlight fill:#f96\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 80}
+{"md": "```mermaid\nflowchart TD\n  A[Docs] --> B[Done]\n  click A \"https://example.com/docs\"\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 80}
+{"md": "```mermaid\nflowchart LR\n  A --> B\n  broken !\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 80}
+{"md": "```mermaid\nflowchart LR\n  A --> B\n  broken !\n  other ?\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 80}
+{"md": "```mermaid\nflowchart LR\n  A --> B\n  broken !\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": true, "availableWidth": 80}
+{"md": "```mermaid\ntimeline\n  title History\n  2002 : LinkedIn\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 80}
+{"md": "```mermaid\nmindmap\n  root((Core))\n    Tools\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 80}
+{"md": "```mermaid\ngitGraph\n  commit\n  branch dev\n  commit\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 80}
+{"md": "```mermaid\nstateDiagram-v2\n  state C {\n    [*] --> A\n  }\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 80}
+{"md": "```mermaid\nsequenceDiagram\n  A->>+B: hi\n  B-->>-A: yo\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 80}
+{"md": "---\n\n```mermaid\n---\ntitle: Framed\n---\nflowchart TD\n  A --> B\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 80}
+{"md": "```mermaid\nsequenceDiagram\n  A->>B: seq [1;1:1A]\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 200}
+{"md": "```mermaid\nsequenceDiagram\n  A->>B: seq [1;1:1A]\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": true, "availableWidth": 200}
+{"md": "```mermaid\nsequenceDiagram\n  A->>\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 200}
+{"md": "```mermaid\nsequenceDiagram\n  A->>\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": true, "availableWidth": 200}

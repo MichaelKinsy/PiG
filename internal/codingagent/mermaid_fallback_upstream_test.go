@@ -31,13 +31,13 @@ const wideMermaidSource = `flowchart LR
   NBENV -. "four five six" .-> PGGW
   PGPIG ==> PGGW`
 
-// Upstream packages/coding-agent/test/mermaid.test.ts:40 and components/mermaid.ts:76-77 return token.raw for unsupported or naturally oversized diagrams, without a warning or a second layout with narrowed labels.
+// Upstream packages/coding-agent/test/mermaid.test.ts:43 and components/mermaid.ts:76-77 return token.raw for unsupported or naturally oversized diagrams, without a warning or a second layout with narrowed labels.
 func TestMermaidUnsupportedAndOversizedRemainSource(t *testing.T) {
 	for _, tc := range []struct {
 		name, body string
 		width      int
 	}{
-		{"unsupported pie", "pie\n  title Pets\n  \"Dogs\" : 4", 100},
+		{"unsupported gantt", "gantt\n  title Plan", 100},
 		{"oversized original", "flowchart LR\n  A[Start] --> B[Done]", 10},
 		{"would fit only by narrowing", wideMermaidSource, 80},
 		{"unmeasured area", "sequenceDiagram\n  A->>B: hello", 0},
@@ -61,7 +61,7 @@ func TestMermaidUnsupportedAndOversizedRemainSource(t *testing.T) {
 }
 
 func TestMermaidFallbackAssistantBlockMatchesDisabledTransform(t *testing.T) {
-	for _, body := range []string{"pie\n  title Pets\n  \"Dogs\" : 4", wideMermaidSource} {
+	for _, body := range []string{"gantt\n  title Plan", wideMermaidSource} {
 		source := "Before\n\n```mermaid\n" + body + "\n```\n\nAfter"
 		render := func(mode string) []string {
 			block := tui.NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")
