@@ -48,7 +48,7 @@ func project(t *testing.T, files map[string]string, linked ...string) string {
 func chordish() map[string]string {
 	return map[string]string{
 		// Written as text: the order of an `exports` object's conditions matters.
-		"workspace/chordish/package.json": `{"name":"chordish","type":"module","exports":{".":{"source":"./src/index.ts","default":"./dist/index.js"}}}`,
+		"workspace/chordish/package.json":  `{"name":"chordish","type":"module","exports":{".":{"source":"./src/index.ts","default":"./dist/index.js"}}}`,
 		"workspace/chordish/src/index.ts":  "export const from: string = \"source\";\n",
 		"workspace/chordish/dist/index.js": "export const from = \"dist\";\n",
 		"main.ts":                          "import { from } from \"chordish\";\nconsole.log(from);\n",
@@ -124,13 +124,13 @@ func TestConditionsTakesTheServerProcessesConditionsByDefaultItsFlagsAndAQuotedN
 
 func TestConditionsKeepsABrowserBuildsModuleConditionAndBrowserFieldWithCustomConditions(t *testing.T) {
 	dir := project(t, map[string]string{
-		"workspace/dual/package.json": `{"name":"dual","exports":{".":{"module":"./esm.js","default":"./cjs.js"}}}`,
-		"workspace/dual/esm.js": "export const dual = \"module\";\n",
-		"workspace/dual/cjs.js": "exports.dual = \"default\";\n",
+		"workspace/dual/package.json":    `{"name":"dual","exports":{".":{"module":"./esm.js","default":"./cjs.js"}}}`,
+		"workspace/dual/esm.js":          "export const dual = \"module\";\n",
+		"workspace/dual/cjs.js":          "exports.dual = \"default\";\n",
 		"workspace/fielded/package.json": `{"name":"fielded","main":"./node.js","browser":{"./node.js":"./browser.js"}}`,
-		"workspace/fielded/node.js":    "exports.fielded = \"node\";\n",
-		"workspace/fielded/browser.js": "exports.fielded = \"browser\";\n",
-		"main.ts":                      "import { dual } from \"dual\";\nimport { fielded } from \"fielded\";\nconsole.log(dual, fielded);\n",
+		"workspace/fielded/node.js":      "exports.fielded = \"node\";\n",
+		"workspace/fielded/browser.js":   "exports.fielded = \"browser\";\n",
+		"main.ts":                        "import { dual } from \"dual\";\nimport { fielded } from \"fielded\";\nconsole.log(dual, fielded);\n",
 	}, "dual", "fielded")
 	bundle, err := BuildBase(filepath.Join(dir, "main.ts"), PlatformBrowser, "/p/", []string{"source"})
 	if err != nil {
