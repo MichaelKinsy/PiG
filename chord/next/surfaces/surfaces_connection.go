@@ -87,6 +87,7 @@ type Connection struct{ loop *loop }
 
 // KeepConnected keeps a client connected until Stop.
 func KeepConnected(options LoopOptions) *Connection {
+	//portlint:allow ctxbackground Pi's `keepConnected(options)` takes no signal: the loop's lifetime is its `stop()`, which cancels this context
 	ctx, cancel := context.WithCancel(context.Background())
 	l := &loop{options: options, env: options.Environment, ctx: ctx, cancel: cancel}
 	l.box.run(func() {

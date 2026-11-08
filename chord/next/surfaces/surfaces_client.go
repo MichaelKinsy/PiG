@@ -388,6 +388,7 @@ func (u *updates) enqueue(set *ScriptSet) {
 	}
 	u.working = true
 	u.mu.Unlock()
+	//portlint:allow golifetime work drains the queue and returns when none is left (the `working` flag admits one drainer); there is no longer-lived owner to join
 	go u.work()
 }
 
