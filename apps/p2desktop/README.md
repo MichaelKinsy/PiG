@@ -1,6 +1,6 @@
 # p2 desktop
 
-The p2 server running in the app's own process on a loopback port, shown in one window of the system's web view, with the menus, tray icon, notifications and `pig://` links of a desktop app. It is a client of p2 like a browser tab: the server, its protocol and its data are `apps/p2`'s and are not changed (additive record D480, `docs/additive-features.md` once landed; the draft is `handoffs/next/specs/p2/DESKTOP-ADDITIVE-DRAFT.md`).
+The p2 server running in the app's own process on a loopback port, shown in one window of the system's web view, with the menus, tray icon, notifications and `pig://` links of a desktop app. It is a client of p2 like a browser tab: the server, its protocol and its data are `apps/p2`'s and are not changed (additive record D481, `docs/additive-features.md` once landed; the draft is `handoffs/next/specs/p2/DESKTOP-ADDITIVE-DRAFT.md`).
 
 **Status: experimental, follows p2's own label (D477).** The window shows p2's own web UI (the embedded Pi bundle `apps/p2` serves, D471); it holds the web facets of the plugins linked so far, so the desktop app grows with `apps/p2`.
 

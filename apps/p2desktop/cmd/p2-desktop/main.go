@@ -11,7 +11,21 @@ import (
 	"github.com/MichaelKinsy/PiG/apps/p2/hosts"
 	"github.com/MichaelKinsy/PiG/apps/p2desktop/internal/desktop"
 	"github.com/MichaelKinsy/PiG/apps/p2desktop/shell/mygoshell"
+	"github.com/MichaelKinsy/PiG/apps/p2desktop/shell/mygoshell/native"
 )
+
+// webview says the debug fallback was asked for: the web UI in the system's web view instead of the native screens.
+func webview() bool {
+	if os.Getenv("P2_DESKTOP_WEBVIEW") == "1" {
+		return true
+	}
+	for _, arg := range os.Args[1:] {
+		if arg == "--webview" {
+			return true
+		}
+	}
+	return false
+}
 
 // The tray icons are the PiG pixel pig, made by icons/gen: a monochrome template image for the macOS menu bar, a coloured one
 // for the Windows notification area and the Linux panel.
@@ -34,7 +48,7 @@ func trayIcon() (icon []byte, template bool) {
 	return trayColor64, false
 }
 
-// pig additive (D480): the desktop app is one executable that is the app and the session worker the in-process server forks.
+// pig additive (D481): the desktop app is one executable that is the app and the session worker the in-process server forks.
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == hosts.WorkerArg {
 		hosts.RunWorker()
@@ -48,6 +62,11 @@ func main() {
 		TrayIcon:     icon,
 		TrayTemplate: template,
 		LeakCheck:    os.Getenv("P2_DESKTOP_LEAKCHECK") == "1",
+	}
+	// The native client is the app; the web view of p2's page is the debug fallback (--webview, P2_DESKTOP_WEBVIEW=1) until the
+	// owner decides.
+	if !webview() {
+		cfg.Native = native.New()
 	}
 	app := desktop.New(cfg)
 	if err := app.Run(); err != nil {

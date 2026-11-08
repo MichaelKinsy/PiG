@@ -381,7 +381,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 		}
 	}
 	a.Plugins = plugins.CreatePlugins(plugins.PluginsOptions{
-		Roots: []string{root, opened.layout.Plugins}, Kinds: kinds, Install: options.Install, Base: base,
+		Roots: []plugins.PluginRoot{{Path: root}, {Path: opened.layout.Plugins}}, Kinds: kinds, Install: options.Install, Base: base,
 		OnError: func(err plugins.PluginsError) { a.report(AppErrorPlugins, err) }, Node: options.Node,
 	}, ctx)
 	workerHosts := &workerHosts{keys: map[string]string{}}
