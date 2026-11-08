@@ -2,6 +2,9 @@ package codemode
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -88,16 +91,32 @@ func (r *runningCalls) cancel(ctx context.Context, session harness.Harness) {
 		go func() {
 			defer group.Done()
 			// Already settling: the abort below decides.
-			func() {
-				defer func() { _ = recover() }()
-				api.Output(removedMessage + "\n")
-				reported(ctx, session, api)
-			}()
+			if unexpected := announceRemoval(ctx, session, api); unexpected != nil {
+				fmt.Fprintln(os.Stderr, "p2 codemode: telling a running script that code mode was removed failed:", unexpected)
+			}
 			_, _ = session.AbortTask(ctx, api.TaskId())
 			_, _ = session.WaitForTask(ctx, api.TaskId())
 		}()
 	}
 	group.Wait()
+}
+
+// settledCall is the panic of a call's api used once the call settled (Durable's `Tool call <id> has settled`).
+var settledCall = regexp.MustCompile(`^Tool call .+ has settled$`)
+
+// announceRemoval writes the removal message to api's output and waits for it to show. A call that settled already is the
+// expected end (Pi's catch there: the abort decides); any other panic is returned, and nil when there was none.
+func announceRemoval(ctx context.Context, session harness.Harness, api durable.ToolExecutionApi) (unexpected any) {
+	defer func() {
+		recovered := recover()
+		if err, ok := recovered.(error); ok && settledCall.MatchString(err.Error()) {
+			return
+		}
+		unexpected = recovered
+	}()
+	api.Output(removedMessage + "\n")
+	reported(ctx, session, api)
+	return nil
 }
 
 type liveObserver struct {
