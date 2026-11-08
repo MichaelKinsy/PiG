@@ -215,12 +215,14 @@ func AttachTerminalHost(directory string, onFrame func(Frame), onDetached func()
 		//portlint:allow golifetime the writer ends when the socket is destroyed
 		go writer.run()
 		_ = ReadFrames(conn, func(frame Frame) {
+			// The handler first: what a waiter for Ready reads (the host's version, from the hello) is the handler's. Pi's waiter
+			// continues in a later microtask, after the handler returned; here it would run beside it.
+			onFrame(frame)
 			if !frame.Raw {
 				if event, err := ParseEvent(frame.JSON); err == nil && event.Type == EventHello {
 					a.resolve(nil)
 				}
 			}
-			onFrame(frame)
 		})
 		a.end(true)
 	}()
