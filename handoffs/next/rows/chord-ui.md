@@ -99,7 +99,7 @@ Owner decision: owner sign-off pending.
 - Noticed (not changed): `telemetry/memory.go` AddEvent appends `eventTimes` twice per event (lines ~340-341), so `eventTimes[index]` misaligns after the first event.
 - Still pending T6: chord `telemetry.ts`, host/remote/jobs/link/store/http spans, `telemetry-ingest`, `telemetry-sqlite` v2.
 
-## T10 app kit (nextnode/app) D records (owner sign-off pending; renumbered from drafts D470-D475, which collided with p2's approved D470-D477)
+## T10 app kit (nextnode/app) D records (D460-D462 approved 2026-11-08; renumbered from drafts D470-D475, which collided with p2's approved D470-D477)
 
 Reassessed for a faithful fix first. Dropped: the old D474 (principalAttributes, reloadDrainTimeout, installPlugin, web/tui, worker translations are pending ports, listed in app.go's header and gap-chord-ui.md, not divergences) and the old D475 (`links.opened` is Pi main's feature, ported as `LinksOptions.Opened`: its Go form is a func returning the cleanup, not an observable difference).
 
@@ -109,7 +109,9 @@ What: Pi loads the kit's facets and the plugins into one host. PiG's plugins run
 Why: the plugin runtime is Node; the facets are Go because the kit is a Go port. Moving them to the Node host would port the kit to JS; serving HostData from Go needs the Go relay to answer for its child's address, which a chord host does not do.
 Scope: `chord/nextnode/app`, `chord/nextnode/plugins` (bridge).
 Evidence: `app_test.go`, `app_workers_test.go`, `app_export_test.go`.
-Owner decision: owner sign-off pending.
+Owner decision: approved by the owner (Michael Kinsy) on 2026-11-08, OWNER-DECISIONS #19.
+
+SCRUTINIZED:approved 2026-11-08
 
 ## D461 `Files` and `FilesFolder` are not reachable from TypeScript plugins
 
@@ -117,7 +119,9 @@ What: `Files` has a keyed member (`summary`), and the plugin bridge refuses cont
 Why: the plugins' proxy facets (`plugins/node/proxy.mjs`) forward state members and methods to the Go object; a JS keyed member must be a keyed document handle or a reference's keyed member, and the proxy has neither for an object on another host. Pi has the kit and the plugins in one host, so `self.get(Files, {})` works there.
 Scope: `chord/nextnode/app` (the Files facet), `chord/nextnode/plugins` (the bridge refuses a contract with a keyed member at start). Observable: a TypeScript plugin loses Pi's public `chord/app/files` API (`Files`, `FilesFolder`); Go code and the kit's own routes keep them. Pi's own p2 plugins call `self.get(Files, {})`; PiG's p2 lane ports them to Go, so p2 itself is not affected.
 Evidence: `plugins_node_bridged_keyed_test.go` (the refusal); `files_test.go` (the facet from Go).
-Owner decision: owner sign-off pending.
+Owner decision: accepted for 0.8.0 by the owner (Michael Kinsy) on 2026-11-08, OWNER-DECISIONS #19: the limitation stands.
+
+SCRUTINIZED:approved 2026-11-08 (accepted limitation)
 
 ## D462 The server and each worker have two stores, not one
 
@@ -125,4 +129,6 @@ What: Pi's host has one store and one commit queue. PiG has two hosts per server
 Archive interop, both directions (accepted incompatibilities; owner to decide whether to build a converter): PiG to Pi: Pi's `unpackEntries` refuses any entry besides the manifest, `store.archive` and `files/`, so Pi cannot import a PiG app-kit archive that has `kit.archive`. Pi to PiG: a Pi archive's single `store.archive` holds the kit's Files tables beside the plugins' records and is imported into the plugins' store; the Go Files facet reads the kit store, which stays empty, so the files arrive (`files/`) but their index does not. [INFERENCE: the second direction is read from the code, not run with a Pi-made archive.] Options if the owner wants interop: split the kit-owned tables into `kit.sqlite` on import, or export a single Pi-compatible archive.
 Why: the node-evaluator design (`docs/plan/chord-plugins-node-evaluator.md` §store): the Go store is an in-process engine and a store is not shared over the link; sharing one sqlite file between two engines would corrupt the id allocator.
 Evidence: `app_export_test.go`, `archive_upstream_test.go` (PiG round trip only), `data_export_test.go` (both stores written during 25 exports: each archive holds exactly the rows its manifest counts, and the plugins' ticks are the kit's or one more).
-Owner decision: owner sign-off pending.
+Owner decision: approved by the owner (Michael Kinsy) on 2026-11-08, OWNER-DECISIONS #19.
+
+SCRUTINIZED:approved 2026-11-08
