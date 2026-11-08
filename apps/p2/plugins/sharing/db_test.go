@@ -3,6 +3,7 @@ package sharing
 import (
 	"context"
 	"database/sql"
+	"github.com/MichaelKinsy/PiG/apps/p2/p2test"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -35,6 +36,7 @@ func openShareDB(t *testing.T, directory string) *ShareDB {
 }
 
 func TestShareStoreUpgradesVersion1GuestsToGrants(t *testing.T) {
+	p2test.NoLeakedGoroutines(t)
 	directory := t.TempDir()
 	old, err := sql.Open("sqlite", filepath.Join(directory, "shares.sqlite"))
 	if err != nil {
@@ -82,6 +84,7 @@ func sessionModes(grants []GrantRow) [][2]string {
 }
 
 func TestAGuestHoldsSeveralSessionsRemovalAndLinkResetsEndOneGrantEach(t *testing.T) {
+	p2test.NoLeakedGoroutines(t)
 	db := openShareDB(t, t.TempDir())
 	mustDo[[]string](t)(db.MakeLink(background, "s1", "view", false))
 	mustDo[[]string](t)(db.MakeLink(background, "s2", "full", false))
@@ -152,6 +155,7 @@ func TestAGuestHoldsSeveralSessionsRemovalAndLinkResetsEndOneGrantEach(t *testin
 }
 
 func TestEmailsNormalizeAsRadiusNormalizesThem(t *testing.T) {
+	p2test.NoLeakedGoroutines(t)
 	for email, want := range map[string]string{
 		" Ann.Example@GoogleMail.com ": "annexample@gmail.com",
 		"Bob@Bücher.example":           "bob@xn--bcher-kva.example",
