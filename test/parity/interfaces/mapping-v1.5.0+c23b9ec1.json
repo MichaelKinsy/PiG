@@ -103022,13 +103022,43 @@
     },
     {
       "id": "pkg:chord/.#activeTheme",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:cf1bce59317f9fc98ab22e738fe91eaf8ef86740232acc346df353366e4caa65"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:cf1bce59317f9fc98ab22e738fe91eaf8ef86740232acc346df353366e4caa65",
+      "rationale": "Derived by the interface gap detector: activeTheme is Go chord/next/surfaces/surfaces_themes.go#ActiveTheme (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_themes.go#ActiveTheme"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_themes.go#ActiveTheme"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_themes_test.go#TestActiveThemeIsThePickedOneOfTheModeElseTheFirstOfTheModeElseTheFallback"
+      ]
     },
     {
       "id": "pkg:chord/.#activeTheme::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:1bb12112ebf858a904953c4b8abb4d5d70879d9a74e465fd51b8d3724019bd9f"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:1bb12112ebf858a904953c4b8abb4d5d70879d9a74e465fd51b8d3724019bd9f",
+      "rationale": "Derived by the interface gap detector: activeTheme::call:0 is Go chord/next/surfaces/surfaces_themes.go#ActiveTheme (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_themes.go#ActiveTheme"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_themes.go#ActiveTheme"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_themes_test.go#TestActiveThemeIsThePickedOneOfTheModeElseTheFirstOfTheModeElseTheFallback"
+      ]
     },
     {
       "id": "pkg:chord/.#ActivityCounts",
@@ -103406,8 +103436,25 @@
     },
     {
       "id": "pkg:chord/.#Catalog",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:c2639180a85cd142d88ac141a4c2fcfeb0ab5985084ef0ea71bc363085722f6e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:c2639180a85cd142d88ac141a4c2fcfeb0ab5985084ef0ea71bc363085722f6e",
+      "rationale": "Derived by the interface gap detector: Catalog is Go chord/next/surfaces/surfaces_messages.go#Catalog (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_messages.go#Catalog"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_messages.go#Catalog"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_messages_test.go#TestDefineMessagesListsItsCatalogsAsContributionsByCanonicalLocale",
+        "test:chord/next/surfaces/surfaces_messages_test.go#TestDefineMessagesRefusesANamespaceThatIsNoNameAndACatalogKeyThatIsNoLanguageTag",
+        "test:chord/next/surfaces/surfaces_messages_test.go#TestPrefersTheHostsContributedCatalogFallingBackKeyByKeyDownTheChainReported"
+      ]
     },
     {
       "id": "pkg:chord/.#CatalogShape",
@@ -104311,8 +104358,25 @@
     },
     {
       "id": "pkg:chord/.#Client",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:63756e62f0714d7d59156a748e5fccb0646978450a2f5ff8099f1e314c503af4"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:63756e62f0714d7d59156a748e5fccb0646978450a2f5ff8099f1e314c503af4",
+      "rationale": "Derived by the interface gap detector: Client is Go chord/next/surfaces/surfaces_client.go#Client (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_client.go#Client"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_client.go#Client"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_client_test.go#TestDropsTheRetryOfASetANewerOneReplacedAndAppliesTheNewerOne",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestEndsTheWaitForStylesheetsAtTheClientsStopTheUpdateStopsThere",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestFetchesOnlyChangedScriptsReloadsTheHostKeepsAnUnchangedPluginsFacet"
+      ]
     },
     {
       "id": "pkg:chord/.#ClientError",
@@ -104321,8 +104385,25 @@
     },
     {
       "id": "pkg:chord/.#ClientModules",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:6f21f4220609ad9c077b46a359ffa568a6b108be310091d895fab24425e418b5"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:6f21f4220609ad9c077b46a359ffa568a6b108be310091d895fab24425e418b5",
+      "rationale": "Derived by the interface gap detector: ClientModules is Go chord/next/surfaces/surfaces_registered.go#ClientModules (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_registered.go#ClientModules"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_registered.go#ClientModules"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_registered_test.go#TestEvaluatingARegisteredScriptThrowsWhatTheScriptThrows",
+        "test:chord/next/surfaces/surfaces_registered_test.go#TestRegisteredScriptsAnswerOnlyTheClientsModulesNamingThePlugin",
+        "test:chord/next/surfaces/surfaces_registered_test.go#TestRegisteredScriptsRefuseADefaultExportThatIsNoFacet"
+      ]
     },
     {
       "id": "pkg:chord/.#ClientOptions",
@@ -104883,8 +104964,25 @@
     },
     {
       "id": "pkg:chord/.#ConnectionState",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:673793acf8689acea9036bd8cd9fcecc20d2941eb405eb8390111963db19a453"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:673793acf8689acea9036bd8cd9fcecc20d2941eb405eb8390111963db19a453",
+      "rationale": "Derived by the interface gap detector: ConnectionState is Go chord/next/surfaces/surfaces_connection.go#ConnectionState (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_connection.go#ConnectionState"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_connection.go#ConnectionState"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestAnOpenLandingAsTheLoopStopsReportsNothing",
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestReconnectsAfterAGrowingPauseAndReportsItsStates",
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestStartsThePausesAgainAfterAConnectionThatStayedOpen10s"
+      ]
     },
     {
       "id": "pkg:chord/.#constant",
@@ -105011,13 +105109,47 @@
     },
     {
       "id": "pkg:chord/.#createLanguage",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:a2a4d9e263bc125422b0fc5b7a5046feb68b054ad2ad60722852e6b595a3e56b"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:a2a4d9e263bc125422b0fc5b7a5046feb68b054ad2ad60722852e6b595a3e56b",
+      "rationale": "Derived by the interface gap detector: createLanguage is Go chord/next/surfaces/surfaces_language.go#CreateLanguage (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_language.go#CreateLanguage"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_language.go#CreateLanguage"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_language_test.go#TestCreateLanguageRefusesATagThatIsNone",
+        "test:chord/next/tui/tui_scope_test.go#TestScopeMessagesRenderInTheHostsLanguageAtEachCallAChangeOfItCallingChangedUntilDispose",
+        "test:chord/next/surfaces/surfaces_format_test.go#TestFormatNumberFractionDigits"
+      ]
     },
     {
       "id": "pkg:chord/.#createLanguage::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:721313fa15bb5c50077332251dc507b45e8f32bd6c880dbbb2a2b96532ae1993"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:721313fa15bb5c50077332251dc507b45e8f32bd6c880dbbb2a2b96532ae1993",
+      "rationale": "Derived by the interface gap detector: createLanguage::call:0 is Go chord/next/surfaces/surfaces_language.go#CreateLanguage (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_language.go#CreateLanguage"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_language.go#CreateLanguage"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_language_test.go#TestCreateLanguageRefusesATagThatIsNone",
+        "test:chord/next/tui/tui_scope_test.go#TestScopeMessagesRenderInTheHostsLanguageAtEachCallAChangeOfItCallingChangedUntilDispose",
+        "test:chord/next/surfaces/surfaces_format_test.go#TestFormatNumberFractionDigits"
+      ]
     },
     {
       "id": "pkg:chord/.#Ctx",
@@ -105664,13 +105796,47 @@
     },
     {
       "id": "pkg:chord/.#evaluateRegistered",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0aeb5af552ab553f43e4ad11b4bafcd13c8694fa5224afa03c80fbf7d8325a76"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:0aeb5af552ab553f43e4ad11b4bafcd13c8694fa5224afa03c80fbf7d8325a76",
+      "rationale": "Derived by the interface gap detector: evaluateRegistered is Go chord/next/surfaces/surfaces_registered.go#EvaluateRegistered (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_registered.go#EvaluateRegistered"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_registered.go#EvaluateRegistered"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_registered_test.go#TestEvaluatingARegisteredScriptThrowsWhatTheScriptThrows",
+        "test:chord/next/surfaces/surfaces_registered_test.go#TestRegisteredScriptsAnswerOnlyTheClientsModulesNamingThePlugin",
+        "test:chord/next/surfaces/surfaces_registered_test.go#TestRegisteredScriptsRefuseADefaultExportThatIsNoFacet"
+      ]
     },
     {
       "id": "pkg:chord/.#evaluateRegistered::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:a17dbb80406a9da6ab8e75b18b50c9cc2b7e07809cb2dba2720f58c6d35122f1"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:a17dbb80406a9da6ab8e75b18b50c9cc2b7e07809cb2dba2720f58c6d35122f1",
+      "rationale": "Derived by the interface gap detector: evaluateRegistered::call:0 is Go chord/next/surfaces/surfaces_registered.go#EvaluateRegistered (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_registered.go#EvaluateRegistered"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_registered.go#EvaluateRegistered"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_registered_test.go#TestEvaluatingARegisteredScriptThrowsWhatTheScriptThrows",
+        "test:chord/next/surfaces/surfaces_registered_test.go#TestRegisteredScriptsAnswerOnlyTheClientsModulesNamingThePlugin",
+        "test:chord/next/surfaces/surfaces_registered_test.go#TestRegisteredScriptsRefuseADefaultExportThatIsNoFacet"
+      ]
     },
     {
       "id": "pkg:chord/.#evolve",
@@ -105929,8 +106095,23 @@
     },
     {
       "id": "pkg:chord/.#FALLBACK_THEMES",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:fbafb87a9b5cbfdf5f2b6eb025a9f6f63a837584fd2384bec012d3ce05953e7e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:fbafb87a9b5cbfdf5f2b6eb025a9f6f63a837584fd2384bec012d3ce05953e7e",
+      "rationale": "Derived by the interface gap detector: FALLBACK_THEMES is Go chord/next/surfaces/surfaces_themes.go#FallbackThemes (name rule N2), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_themes.go#FallbackThemes"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_themes.go#FallbackThemes"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_themes_test.go#TestActiveThemeIsThePickedOneOfTheModeElseTheFirstOfTheModeElseTheFallback"
+      ]
     },
     {
       "id": "pkg:chord/.#findDocument",
@@ -105954,23 +106135,95 @@
     },
     {
       "id": "pkg:chord/.#followActiveLanguage",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:18a1b52256a90a6c4510bcbe06f9782116f272f3a58579d437e95025861bcf0e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:18a1b52256a90a6c4510bcbe06f9782116f272f3a58579d437e95025861bcf0e",
+      "rationale": "Derived by the interface gap detector: followActiveLanguage is Go chord/next/surfaces/surfaces_active_language.go#FollowActiveLanguage (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_active_language.go#FollowActiveLanguage"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_active_language.go#FollowActiveLanguage"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState",
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestPassesEachDistinctReportOnOnce",
+        "test:chord/next/surfaces/surfaces_follower_cancel_test.go#TestCancellingAFollowersContextBeforeItsPickWatchBindsEndsQuietly"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/.#followActiveLanguage::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:8c31fed5a3f27f918a3fac57cf70190c9a7b7ca6036f93ef81e87280009beab3"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:8c31fed5a3f27f918a3fac57cf70190c9a7b7ca6036f93ef81e87280009beab3",
+      "rationale": "Derived by the interface gap detector: followActiveLanguage::call:0 is Go chord/next/surfaces/surfaces_active_language.go#FollowActiveLanguage (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_active_language.go#FollowActiveLanguage"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_active_language.go#FollowActiveLanguage"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState",
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestPassesEachDistinctReportOnOnce",
+        "test:chord/next/surfaces/surfaces_follower_cancel_test.go#TestCancellingAFollowersContextBeforeItsPickWatchBindsEndsQuietly"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/.#followActiveTheme",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:dab3f6cb63293a32cfac08fba8969ef0bb8c7f5d7da0323d364e375f010a0aa3"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:dab3f6cb63293a32cfac08fba8969ef0bb8c7f5d7da0323d364e375f010a0aa3",
+      "rationale": "Derived by the interface gap detector: followActiveTheme is Go chord/next/surfaces/surfaces_active_theme.go#FollowActiveTheme (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_active_theme.go#FollowActiveTheme"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_active_theme.go#FollowActiveTheme"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsTheRegistryThePrincipalsPickAndTheMode",
+        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestAThemeFollowersCallbackMayStopItAndSetTheMode",
+        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestStoppingAThemeFollowerBeforeItsPickWatchBindsEndsQuietly"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/.#followActiveTheme::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:eb16b7c7c4f67ddb72b34ff13cde0a75abe6eb0ecf91b67dcf01e467ba1932e8"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:eb16b7c7c4f67ddb72b34ff13cde0a75abe6eb0ecf91b67dcf01e467ba1932e8",
+      "rationale": "Derived by the interface gap detector: followActiveTheme::call:0 is Go chord/next/surfaces/surfaces_active_theme.go#FollowActiveTheme (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_active_theme.go#FollowActiveTheme"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_active_theme.go#FollowActiveTheme"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsTheRegistryThePrincipalsPickAndTheMode",
+        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestAThemeFollowersCallbackMayStopItAndSetTheMode",
+        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestStoppingAThemeFollowerBeforeItsPickWatchBindsEndsQuietly"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/.#FollowAttach",
@@ -106690,13 +106943,47 @@
     },
     {
       "id": "pkg:chord/.#hostLanguage",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e63b57bf64fbe792dd5e22a78cb1bebf17dc3627b3cd59c8866039f8e5a61589"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e63b57bf64fbe792dd5e22a78cb1bebf17dc3627b3cd59c8866039f8e5a61589",
+      "rationale": "Derived by the interface gap detector: hostLanguage is Go chord/next/surfaces/surfaces_page_state.go#HostLanguage (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_page_state.go#HostLanguage"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_page_state.go#HostLanguage"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState",
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestPassesEachDistinctReportOnOnce",
+        "test:chord/next/tui/tui_scope_test.go#TestScopeMessagesRenderInTheHostsLanguageAtEachCallAChangeOfItCallingChangedUntilDispose"
+      ]
     },
     {
       "id": "pkg:chord/.#hostLanguage::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:587225aac0e5e815f6b843ca2c9321986cb213b6fcea58f4d6c8c96005f722ac"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:587225aac0e5e815f6b843ca2c9321986cb213b6fcea58f4d6c8c96005f722ac",
+      "rationale": "Derived by the interface gap detector: hostLanguage::call:0 is Go chord/next/surfaces/surfaces_page_state.go#HostLanguage (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_page_state.go#HostLanguage"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_page_state.go#HostLanguage"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState",
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestPassesEachDistinctReportOnOnce",
+        "test:chord/next/tui/tui_scope_test.go#TestScopeMessagesRenderInTheHostsLanguageAtEachCallAChangeOfItCallingChangedUntilDispose"
+      ]
     },
     {
       "id": "pkg:chord/.#HostOptions",
@@ -107525,13 +107812,47 @@
     },
     {
       "id": "pkg:chord/.#keepConnected",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:ad3748792b8356c270404a01e1285f1f673603956211dd3f1ae870b2f8d4a746"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:ad3748792b8356c270404a01e1285f1f673603956211dd3f1ae870b2f8d4a746",
+      "rationale": "Derived by the interface gap detector: keepConnected is Go chord/next/surfaces/surfaces_connection.go#KeepConnected (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_connection.go#KeepConnected"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_connection.go#KeepConnected"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestASilentSocketIsReplacedOnAWakeOnceItsNextPingIsOverdueAndOneWithRecentFramesStays",
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestAnErrorFromCanRetryRetries",
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestAnOpenLandingAsTheLoopStopsReportsNothing"
+      ]
     },
     {
       "id": "pkg:chord/.#keepConnected::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2e48da5973107df1a54f6f7e4e4641b363f4cff7cd6b58272aa11125a9defba1"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:2e48da5973107df1a54f6f7e4e4641b363f4cff7cd6b58272aa11125a9defba1",
+      "rationale": "Derived by the interface gap detector: keepConnected::call:0 is Go chord/next/surfaces/surfaces_connection.go#KeepConnected (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_connection.go#KeepConnected"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_connection.go#KeepConnected"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestASilentSocketIsReplacedOnAWakeOnceItsNextPingIsOverdueAndOneWithRecentFramesStays",
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestAnErrorFromCanRetryRetries",
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestAnOpenLandingAsTheLoopStopsReportsNothing"
+      ]
     },
     {
       "id": "pkg:chord/.#keyed",
@@ -108005,13 +108326,47 @@
     },
     {
       "id": "pkg:chord/.#Language",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:8b7a289624e27f889702ff330d25076e4e531c3930146d9c9a769ff47706b508"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:8b7a289624e27f889702ff330d25076e4e531c3930146d9c9a769ff47706b508",
+      "rationale": "Derived by the interface gap detector: Language is Go chord/next/surfaces/surfaces_language.go#Language (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_language.go#Language"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_language.go#Language"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/intl_drift_test.go#TestNumbersMatchNode",
+        "test:chord/next/surfaces/intl_drift_test.go#TestTimesMatchNode",
+        "test:chord/next/surfaces/intl_root_test.go#TestAnUnavailableTagTakesThePlatformLocaleWhenItHasData"
+      ]
     },
     {
       "id": "pkg:chord/.#LanguageFollower",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:3a2e8ab8034c2657d18b5db541401a0341ccbe67030247b1cdb36527e2ea3e00"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:3a2e8ab8034c2657d18b5db541401a0341ccbe67030247b1cdb36527e2ea3e00",
+      "rationale": "Derived by the interface gap detector: LanguageFollower is Go chord/next/surfaces/surfaces_active_language.go#LanguageFollower (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_active_language.go#LanguageFollower"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_active_language.go#LanguageFollower"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState",
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestPassesEachDistinctReportOnOnce",
+        "test:chord/next/surfaces/surfaces_follower_cancel_test.go#TestCancellingAFollowersContextBeforeItsPickWatchBindsEndsQuietly"
+      ]
     },
     {
       "id": "pkg:chord/.#Link",
@@ -108349,18 +108704,68 @@
     },
     {
       "id": "pkg:chord/.#LocaleChoice",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:336b61c5a5a78c79c5c8c2c50a100ea3d7d20cc92717a7d1b905dc1174fb959d"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:336b61c5a5a78c79c5c8c2c50a100ea3d7d20cc92717a7d1b905dc1174fb959d",
+      "rationale": "Derived by the interface gap detector: LocaleChoice is Go chord/next/surfaces/surfaces_locale_choice.go#LocaleChoice (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_locale_choice.go#LocaleChoice"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_locale_choice.go#LocaleChoice"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState",
+        "test:chord/next/surfaces/surfaces_preference_test.go#TestLocaleChoiceKeepsALanguageTagOrNullPerPrincipalAndRefusesAnythingElse"
+      ]
     },
     {
       "id": "pkg:chord/.#localeChoiceFacet",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:8b5da68788912006b4e3419e1490b453903b9f69c5c1e7e971a97b04f2112fc3"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:8b5da68788912006b4e3419e1490b453903b9f69c5c1e7e971a97b04f2112fc3",
+      "rationale": "Derived by the interface gap detector: localeChoiceFacet is Go chord/next/surfaces/surfaces_locale_choice.go#LocaleChoiceFacet (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_locale_choice.go#LocaleChoiceFacet"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_locale_choice.go#LocaleChoiceFacet"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_preference_test.go#TestLocaleChoiceKeepsALanguageTagOrNullPerPrincipalAndRefusesAnythingElse",
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState",
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestPassesEachDistinctReportOnOnce"
+      ]
     },
     {
       "id": "pkg:chord/.#localeChoiceFacet::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:62964b2eedc2728e48a3d350a5e03541ca9a3b132e68fdbeaa608c9e0365db33"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:62964b2eedc2728e48a3d350a5e03541ca9a3b132e68fdbeaa608c9e0365db33",
+      "rationale": "Derived by the interface gap detector: localeChoiceFacet::call:0 is Go chord/next/surfaces/surfaces_locale_choice.go#LocaleChoiceFacet (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_locale_choice.go#LocaleChoiceFacet"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_locale_choice.go#LocaleChoiceFacet"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_preference_test.go#TestLocaleChoiceKeepsALanguageTagOrNullPerPrincipalAndRefusesAnythingElse",
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState",
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestPassesEachDistinctReportOnOnce"
+      ]
     },
     {
       "id": "pkg:chord/.#LoopEnvironment",
@@ -108434,8 +108839,25 @@
     },
     {
       "id": "pkg:chord/.#LoopOptions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:54d74d1dc1ba650d7bf50ca9f9c042b357652d48374950d0009b541373be7714"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:54d74d1dc1ba650d7bf50ca9f9c042b357652d48374950d0009b541373be7714",
+      "rationale": "Derived by the interface gap detector: LoopOptions is Go chord/next/surfaces/surfaces_connection.go#LoopOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_connection.go#LoopOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_connection.go#LoopOptions"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestASilentSocketIsReplacedOnAWakeOnceItsNextPingIsOverdueAndOneWithRecentFramesStays",
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestAnErrorFromCanRetryRetries",
+        "test:chord/next/surfaces/surfaces_connection_test.go#TestAnOpenLandingAsTheLoopStopsReportsNothing"
+      ]
     },
     {
       "id": "pkg:chord/.#lt",
@@ -108694,8 +109116,25 @@
     },
     {
       "id": "pkg:chord/.#MessageData",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:79f4638482bd2c29b962593811a1490953b99171713b8ab519601e208b4a5101"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:79f4638482bd2c29b962593811a1490953b99171713b8ab519601e208b4a5101",
+      "rationale": "Derived by the interface gap detector: MessageData is Go chord/next/surfaces/surfaces_messages.go#MessageData (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_messages.go#MessageData"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_messages.go#MessageData"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_messages_test.go#TestAMessageWithNoArgumentsHasEmptyParamsAndRenders",
+        "test:chord/next/surfaces/surfaces_messages_test.go#TestBuildsDataAndRendersItInTheViewersLanguage",
+        "test:chord/next/surfaces/surfaces_messages_test.go#TestShowsTheKeyOfAForeignOrUnknownMessageFromALinkReported"
+      ]
     },
     {
       "id": "pkg:chord/.#MessageParam",
@@ -108714,22 +109153,54 @@
     },
     {
       "id": "pkg:chord/.#MessageSchema",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:deebd2042e51404670f26dcd7568cb74b3ebb3025a2c0e8a40001f24a8e3e096"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:deebd2042e51404670f26dcd7568cb74b3ebb3025a2c0e8a40001f24a8e3e096",
+      "rationale": "Derived by the interface gap detector: MessageSchema is Go chord/next/surfaces/surfaces_messages.go#MessageSchema (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_messages.go#MessageSchema"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_messages.go#MessageSchema"
+      ],
+      "evidence": [
+        "test:chord/nextnode/plugins/plugins_examples_tutorial_test.go#TestTutorialListsPluginOnAListsWorker"
+      ]
     },
     {
       "id": "pkg:chord/.#MessagesOf",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:b816299ae0af44ab2ee3fd8888d01c1135d2a2b263826b1963642fb882db1333",
-      "rationale": "TL: MessagesOf<T> is a TypeScript type-level computation over its type parameters (T extends Messages<string, infer M> ? M : never); it has no value, member or call, so nothing of it exists at run time and Go generics cannot express it. PiG's concrete Go types carry the shapes it computes where they are used, here chord/next/registries/entries.go#TableItem. Designed out as a TypeScript-only artifact with no Go runtime meaning (reason class c of the design-out audit; the lead ruling LEAD-RULINGS-1520 of 2026-10-07 names the class).",
+      "rationale": "TL: MessagesOf<T> is a TypeScript type-level computation over its type parameters (T extends Messages<string, infer M> ? M : never); it has no value, member or call, so nothing of it exists at run time and Go generics cannot express it. PiG's concrete Go types carry the shapes it computes where they are used, here chord/next/surfaces/surfaces_messages.go#Messages. Designed out as a TypeScript-only artifact with no Go runtime meaning (reason class c of the design-out audit; the lead ruling LEAD-RULINGS-1520 of 2026-10-07 names the class).",
       "pigTargets": [
-        "chord/next/registries/entries.go#TableItem"
+        "chord/next/surfaces/surfaces_messages.go#Messages"
       ]
     },
     {
       "id": "pkg:chord/.#MessagesReport",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:11cd7a660e732475ae3b0e45ad7c3331cd5599354b95a24d87dc502cfd6ee6d7"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:11cd7a660e732475ae3b0e45ad7c3331cd5599354b95a24d87dc502cfd6ee6d7",
+      "rationale": "Derived by the interface gap detector: MessagesReport is Go chord/next/surfaces/surfaces_language.go#MessagesReport (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_language.go#MessagesReport"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_language.go#MessagesReport"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState",
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestPassesEachDistinctReportOnOnce",
+        "test:chord/next/surfaces/surfaces_follower_cancel_test.go#TestCancellingAFollowersContextBeforeItsPickWatchBindsEndsQuietly"
+      ]
     },
     {
       "id": "pkg:chord/.#MessageValue",
@@ -110561,18 +111032,65 @@
     },
     {
       "id": "pkg:chord/.#RegisteredScript",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:79e601aeaa83f25621e02f07b9c574181c4e7311223c24a17669ed2364f76ad3"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:79e601aeaa83f25621e02f07b9c574181c4e7311223c24a17669ed2364f76ad3",
+      "rationale": "Derived by the interface gap detector: RegisteredScript is Go chord/next/surfaces/surfaces_registered.go#RegisteredScript (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_registered.go#RegisteredScript"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_registered.go#RegisteredScript"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_client_test.go#TestDropsTheRetryOfASetANewerOneReplacedAndAppliesTheNewerOne",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestEndsTheWaitForStylesheetsAtTheClientsStopTheUpdateStopsThere",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestFetchesOnlyChangedScriptsReloadsTheHostKeepsAnUnchangedPluginsFacet"
+      ]
     },
     {
       "id": "pkg:chord/.#registeredSource",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:fb9f99bb8117169285c0d14cfb59cb716864d81be82a8ad3522918de86e1e50e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:fb9f99bb8117169285c0d14cfb59cb716864d81be82a8ad3522918de86e1e50e",
+      "rationale": "Derived by the interface gap detector: registeredSource is Go chord/next/surfaces/surfaces_registered.go#RegisteredSource (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_registered.go#RegisteredSource"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_registered.go#RegisteredSource"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_registered_test.go#TestRegisteredScriptsRegisterTheirPluginDigestAndFunctionTheSourceMapCommentKeptInsideTheCall"
+      ]
     },
     {
       "id": "pkg:chord/.#registeredSource::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:7d2bcc426beb65c87cd4f9cf47cb6ffa0b608e4f7b2985e13f373ca2a889facd"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:7d2bcc426beb65c87cd4f9cf47cb6ffa0b608e4f7b2985e13f373ca2a889facd",
+      "rationale": "Derived by the interface gap detector: registeredSource::call:0 is Go chord/next/surfaces/surfaces_registered.go#RegisteredSource (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_registered.go#RegisteredSource"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_registered.go#RegisteredSource"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_registered_test.go#TestRegisteredScriptsRegisterTheirPluginDigestAndFunctionTheSourceMapCommentKeptInsideTheCall"
+      ]
     },
     {
       "id": "pkg:chord/.#Registry",
@@ -111104,8 +111622,25 @@
     },
     {
       "id": "pkg:chord/.#ScriptEntry",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:5fa3aebfa99c3d6d46b16475ba5a5a43c6256b4d1827c9305699265173374667"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:5fa3aebfa99c3d6d46b16475ba5a5a43c6256b4d1827c9305699265173374667",
+      "rationale": "Derived by the interface gap detector: ScriptEntry is Go chord/next/surfaces/surfaces_scripts.go#ScriptEntry (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_scripts.go#ScriptEntry"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_scripts.go#ScriptEntry"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAsksTheServersBaseBeforeReconnectingAnotherOneCallsOutdatedAndStops",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestCallsOutdatedForASetWithAnotherBase",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestDropsTheRetryOfASetANewerOneReplacedAndAppliesTheNewerOne"
+      ]
     },
     {
       "id": "pkg:chord/.#ScriptsContract",
@@ -111114,8 +111649,25 @@
     },
     {
       "id": "pkg:chord/.#ScriptSet",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:bd7ada610bf0e7aaf8204fd5281aee929cadfe4e214b3c9e6521f355c0246ab1"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:bd7ada610bf0e7aaf8204fd5281aee929cadfe4e214b3c9e6521f355c0246ab1",
+      "rationale": "Derived by the interface gap detector: ScriptSet is Go chord/next/surfaces/surfaces_scripts.go#ScriptSet (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_scripts.go#ScriptSet"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_scripts.go#ScriptSet"
+      ],
+      "evidence": [
+        "test:chord/nextnode/surfaces/surfaces_current_test.go#TestScriptsFacetRefusesAnUnknownSurface",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAsksTheServersBaseBeforeReconnectingAnotherOneCallsOutdatedAndStops",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestCallsOutdatedForASetWithAnotherBase"
+      ]
     },
     {
       "id": "pkg:chord/.#Self",
@@ -113666,13 +114218,45 @@
     },
     {
       "id": "pkg:chord/.#terminalColor",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d2e11206970d30d50acbebff69fee7c9eb518aa224f5bf3ac535227f15780c65"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:d2e11206970d30d50acbebff69fee7c9eb518aa224f5bf3ac535227f15780c65",
+      "rationale": "Derived by the interface gap detector: terminalColor is Go chord/next/surfaces/surfaces_themes.go#TerminalColor (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_themes.go#TerminalColor"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_themes.go#TerminalColor"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_themes_test.go#TestTerminalColorGivesTrueColourOrTheNearestOf256ForARole",
+        "test:chord/next/surfaces/surfaces_themes_test.go#TestTerminalColorTakesTheThemesTuiOverrideFirstTheFallbackForAMissingRoleTheDefaultForAnUnknownOne"
+      ]
     },
     {
       "id": "pkg:chord/.#terminalColor::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b1ed2d3fb4e39c46a38296fbd37ab9bfc30c589f2d48e421fdfaf93c57743971"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:b1ed2d3fb4e39c46a38296fbd37ab9bfc30c589f2d48e421fdfaf93c57743971",
+      "rationale": "Derived by the interface gap detector: terminalColor::call:0 is Go chord/next/surfaces/surfaces_themes.go#TerminalColor (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_themes.go#TerminalColor"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_themes.go#TerminalColor"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_themes_test.go#TestTerminalColorGivesTrueColourOrTheNearestOf256ForARole",
+        "test:chord/next/surfaces/surfaces_themes_test.go#TestTerminalColorTakesTheThemesTuiOverrideFirstTheFallbackForAMissingRoleTheDefaultForAnUnknownOne"
+      ]
     },
     {
       "id": "pkg:chord/.#textCodec",
@@ -113698,23 +114282,91 @@
     },
     {
       "id": "pkg:chord/.#Theme",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e58dbd065fd8f2644e1347ca3fb42dc821de7a3ba5de804ed8ba5c51495fc2ef"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e58dbd065fd8f2644e1347ca3fb42dc821de7a3ba5de804ed8ba5c51495fc2ef",
+      "rationale": "Derived by the interface gap detector: Theme is Go chord/next/surfaces/surfaces_themes.go#Theme (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_themes.go#Theme"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_themes.go#Theme"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsTheRegistryThePrincipalsPickAndTheMode",
+        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestAThemeFollowersCallbackMayStopItAndSetTheMode",
+        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestStoppingAThemeFollowerBeforeItsPickWatchBindsEndsQuietly"
+      ]
     },
     {
       "id": "pkg:chord/.#ThemeChoice",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:3e96ca18ec4e1920beaf61a98d2bf9ae352d52f8a6abc0d5c51eaacbb54b06b7"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:3e96ca18ec4e1920beaf61a98d2bf9ae352d52f8a6abc0d5c51eaacbb54b06b7",
+      "rationale": "Derived by the interface gap detector: ThemeChoice is Go chord/next/surfaces/surfaces_theme_choice.go#ThemeChoice (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_theme_choice.go#ThemeChoice"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_theme_choice.go#ThemeChoice"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsTheRegistryThePrincipalsPickAndTheMode",
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestThemeChoicesAreKeptPerPrincipal",
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestThemeChoicesRefuseAnIDOver128Characters"
+      ]
     },
     {
       "id": "pkg:chord/.#themeChoiceFacet",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b017020edafe912b3e1afad1a3062d281d08c29988401d3916b0701c954d1cd0"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:b017020edafe912b3e1afad1a3062d281d08c29988401d3916b0701c954d1cd0",
+      "rationale": "Derived by the interface gap detector: themeChoiceFacet is Go chord/next/surfaces/surfaces_theme_choice.go#ThemeChoiceFacet (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_theme_choice.go#ThemeChoiceFacet"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_theme_choice.go#ThemeChoiceFacet"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsTheRegistryThePrincipalsPickAndTheMode",
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestThemeChoicesAreKeptPerPrincipal",
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestThemeChoicesRefuseAnIDOver128Characters"
+      ]
     },
     {
       "id": "pkg:chord/.#themeChoiceFacet::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:62964b2eedc2728e48a3d350a5e03541ca9a3b132e68fdbeaa608c9e0365db33"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:62964b2eedc2728e48a3d350a5e03541ca9a3b132e68fdbeaa608c9e0365db33",
+      "rationale": "Derived by the interface gap detector: themeChoiceFacet::call:0 is Go chord/next/surfaces/surfaces_theme_choice.go#ThemeChoiceFacet (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_theme_choice.go#ThemeChoiceFacet"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_theme_choice.go#ThemeChoiceFacet"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsTheRegistryThePrincipalsPickAndTheMode",
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestThemeChoicesAreKeptPerPrincipal",
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestThemeChoicesRefuseAnIDOver128Characters"
+      ]
     },
     {
       "id": "pkg:chord/.#ThemeFollower",
@@ -113723,58 +114375,237 @@
     },
     {
       "id": "pkg:chord/.#ThemePick",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:aa0492f43ef32a511a71dc7272effe5813a87111e78698ff29ed87dd1e748a69"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:aa0492f43ef32a511a71dc7272effe5813a87111e78698ff29ed87dd1e748a69",
+      "rationale": "Derived by the interface gap detector: ThemePick is Go chord/next/surfaces/surfaces_themes.go#ThemePick (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_themes.go#ThemePick"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_themes.go#ThemePick"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_themes_test.go#TestActiveThemeIsThePickedOneOfTheModeElseTheFirstOfTheModeElseTheFallback"
+      ]
     },
     {
       "id": "pkg:chord/.#Themes",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:a4d886877cc80a9d6fcccd419750a2b7a9ae37c6659cea9828a18521da152e61"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:a4d886877cc80a9d6fcccd419750a2b7a9ae37c6659cea9828a18521da152e61",
+      "rationale": "Derived by the interface gap detector: Themes is Go chord/next/surfaces/surfaces_themes.go#Themes (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_themes.go#Themes"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_themes.go#Themes"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsTheRegistryThePrincipalsPickAndTheMode"
+      ]
     },
     {
       "id": "pkg:chord/.#themesFacet",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:bcde14a8049743192a2b53240dd08e44366f6ed3b19b168126230562a8c5beb5"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:bcde14a8049743192a2b53240dd08e44366f6ed3b19b168126230562a8c5beb5",
+      "rationale": "Derived by the interface gap detector: themesFacet is Go chord/next/surfaces/surfaces_themes.go#ThemesFacet (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_themes.go#ThemesFacet"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_themes.go#ThemesFacet"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsTheRegistryThePrincipalsPickAndTheMode",
+        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestAThemeFollowersCallbackMayStopItAndSetTheMode",
+        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestStoppingAThemeFollowerBeforeItsPickWatchBindsEndsQuietly"
+      ]
     },
     {
       "id": "pkg:chord/.#themesFacet::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:62964b2eedc2728e48a3d350a5e03541ca9a3b132e68fdbeaa608c9e0365db33"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:62964b2eedc2728e48a3d350a5e03541ca9a3b132e68fdbeaa608c9e0365db33",
+      "rationale": "Derived by the interface gap detector: themesFacet::call:0 is Go chord/next/surfaces/surfaces_themes.go#ThemesFacet (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_themes.go#ThemesFacet"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_themes.go#ThemesFacet"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsTheRegistryThePrincipalsPickAndTheMode",
+        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestAThemeFollowersCallbackMayStopItAndSetTheMode",
+        "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestStoppingAThemeFollowerBeforeItsPickWatchBindsEndsQuietly"
+      ]
     },
     {
       "id": "pkg:chord/.#themeVariables",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:5cd838468b7e9e30c339f1285d1359c798270b0ca924a1b1f607938f6c940cb3"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:5cd838468b7e9e30c339f1285d1359c798270b0ca924a1b1f607938f6c940cb3",
+      "rationale": "Derived by the interface gap detector: themeVariables is Go chord/next/surfaces/surfaces_themes.go#ThemeVariables (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_themes.go#ThemeVariables"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_themes.go#ThemeVariables"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_themes_test.go#TestThemeVariablesGivesEveryRoleAndEveryWebExtraACustomProperty"
+      ]
     },
     {
       "id": "pkg:chord/.#themeVariables::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:6cf84327a78324f876e4168d4f6aeae373b747f792280316157d7d1f992eab24"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:6cf84327a78324f876e4168d4f6aeae373b747f792280316157d7d1f992eab24",
+      "rationale": "Derived by the interface gap detector: themeVariables::call:0 is Go chord/next/surfaces/surfaces_themes.go#ThemeVariables (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_themes.go#ThemeVariables"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_themes.go#ThemeVariables"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_themes_test.go#TestThemeVariablesGivesEveryRoleAndEveryWebExtraACustomProperty"
+      ]
     },
     {
       "id": "pkg:chord/.#Translation",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:82e3a03ccd08416f2400e14603f77c5802adb89ec910bc0c449a4c22ddf427f7"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:82e3a03ccd08416f2400e14603f77c5802adb89ec910bc0c449a4c22ddf427f7",
+      "rationale": "Derived by the interface gap detector: Translation is Go chord/next/surfaces/surfaces_translations.go#Translation (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_translations.go#Translation"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_translations.go#Translation"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_messages_test.go#TestDefineMessagesListsItsCatalogsAsContributionsByCanonicalLocale",
+        "test:chord/next/surfaces/surfaces_messages_test.go#TestPrefersTheHostsContributedCatalogFallingBackKeyByKeyDownTheChainReported",
+        "test:chord/next/surfaces/surfaces_messages_test.go#TestReportsAContributedMessageThatThrowsAndGoesOn"
+      ]
     },
     {
       "id": "pkg:chord/.#TranslationIndex",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:cab6fbeaccb537c0a4c8247d1da6def1c8182782b580d912ab62e4c090837d34"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:cab6fbeaccb537c0a4c8247d1da6def1c8182782b580d912ab62e4c090837d34",
+      "rationale": "Derived by the interface gap detector: TranslationIndex is Go chord/next/surfaces/surfaces_translations.go#TranslationIndex (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_translations.go#TranslationIndex"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_translations.go#TranslationIndex"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_translations_test.go#TestComposeKeysCatalogsByCanonicalLocaleLeavesInvalidOnesOutAndListsTheLocalesOffered",
+        "test:chord/next/surfaces/surfaces_translations_test.go#TestTranslationsFacetServesTheRegistryComposingItsPluginsContributions",
+        "test:chord/next/surfaces/surfaces_translations_test.go#TestComposeKeepsTheFirstByPluginNameReportingTheOther"
+      ]
     },
     {
       "id": "pkg:chord/.#Translations",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:34b69e298e2ca01eeb328a18e4325ffbdbda3546861e457193ddfc8d12185d5c"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:34b69e298e2ca01eeb328a18e4325ffbdbda3546861e457193ddfc8d12185d5c",
+      "rationale": "Derived by the interface gap detector: Translations is Go chord/next/surfaces/surfaces_translations.go#Translations (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_translations.go#Translations"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_translations.go#Translations"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_translations_test.go#TestTranslationsFacetServesTheRegistryComposingItsPluginsContributions",
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState",
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestPassesEachDistinctReportOnOnce"
+      ]
     },
     {
       "id": "pkg:chord/.#translationsFacet",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:a7bcdb9d145a51585f39b07c782989764c32766f6d165a51ddca087576b46d92"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:a7bcdb9d145a51585f39b07c782989764c32766f6d165a51ddca087576b46d92",
+      "rationale": "Derived by the interface gap detector: translationsFacet is Go chord/next/surfaces/surfaces_translations.go#TranslationsFacet (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_translations.go#TranslationsFacet"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_translations.go#TranslationsFacet"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_translations_test.go#TestTranslationsFacetServesTheRegistryComposingItsPluginsContributions",
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState",
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestPassesEachDistinctReportOnOnce"
+      ]
     },
     {
       "id": "pkg:chord/.#translationsFacet::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:62964b2eedc2728e48a3d350a5e03541ca9a3b132e68fdbeaa608c9e0365db33"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:62964b2eedc2728e48a3d350a5e03541ca9a3b132e68fdbeaa608c9e0365db33",
+      "rationale": "Derived by the interface gap detector: translationsFacet::call:0 is Go chord/next/surfaces/surfaces_translations.go#TranslationsFacet (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_translations.go#TranslationsFacet"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_translations.go#TranslationsFacet"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_translations_test.go#TestTranslationsFacetServesTheRegistryComposingItsPluginsContributions",
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState",
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestPassesEachDistinctReportOnOnce"
+      ]
     },
     {
       "id": "pkg:chord/.#Translator",
@@ -114137,8 +114968,25 @@
     },
     {
       "id": "pkg:chord/.#WebScripts",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e39d7386161c5c130cc4fc52526b01321424234654a29d460e58e5cf00e81966"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e39d7386161c5c130cc4fc52526b01321424234654a29d460e58e5cf00e81966",
+      "rationale": "Derived by the interface gap detector: WebScripts is Go chord/next/surfaces/surfaces_scripts.go#WebScripts (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_scripts.go#WebScripts"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_scripts.go#WebScripts"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_client_test.go#TestAsksTheServersBaseBeforeReconnectingAnotherOneCallsOutdatedAndStops",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestCallsOutdatedForASetWithAnotherBase",
+        "test:chord/next/surfaces/surfaces_client_test.go#TestDropsTheRetryOfASetANewerOneReplacedAndAppliesTheNewerOne"
+      ]
     },
     {
       "id": "pkg:chord/.#WebSocketLike",
@@ -121064,7 +121912,7 @@
       "evidence": [
         "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginTestsASingleFilePluginAndAPluginInACheckoutOfSeveralOpusL4",
         "test:chord/nextnode/plugins/plugins_examples_testplugin_test.go#TestExample52TestPlugin",
-        "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginCollectsUntilNoNewRegistryAppearsAnObjectLiveAfterTheFirstCollectionContributesTooSol"
+        "test:chord/nextnode/plugins/plugins_examples_tutorial_test.go#TestTutorialListsPluginOnAListsWorker"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -121087,7 +121935,7 @@
       "evidence": [
         "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginTestsASingleFilePluginAndAPluginInACheckoutOfSeveralOpusL4",
         "test:chord/nextnode/plugins/plugins_examples_testplugin_test.go#TestExample52TestPlugin",
-        "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginCollectsUntilNoNewRegistryAppearsAnObjectLiveAfterTheFirstCollectionContributesTooSol"
+        "test:chord/nextnode/plugins/plugins_examples_tutorial_test.go#TestTutorialListsPluginOnAListsWorker"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -121159,6 +122007,7 @@
       ],
       "evidence": [
         "test:chord/nextnode/plugins/plugins_examples_testplugin_test.go#TestExample52TestPlugin",
+        "test:chord/nextnode/plugins/plugins_examples_tutorial_test.go#TestTutorialListsPluginOnAListsWorker",
         "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginLoadsThePluginBuiltAgainstTheAPIBesideAStubCollectsItsContributionsAndListsWhatItWaitsFor"
       ]
     },
@@ -121180,6 +122029,7 @@
       ],
       "evidence": [
         "test:chord/nextnode/plugins/plugins_examples_testplugin_test.go#TestExample52TestPlugin",
+        "test:chord/nextnode/plugins/plugins_examples_tutorial_test.go#TestTutorialListsPluginOnAListsWorker",
         "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginLoadsThePluginBuiltAgainstTheAPIBesideAStubCollectsItsContributionsAndListsWhatItWaitsFor"
       ]
     },
@@ -125688,8 +126538,25 @@
     },
     {
       "id": "pkg:chord/tui#PageState",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:233027f91c4e8a086fb2f3972b9e4ec6892720bbf5461979a190a8deed5c63a2"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:233027f91c4e8a086fb2f3972b9e4ec6892720bbf5461979a190a8deed5c63a2",
+      "rationale": "Derived by the interface gap detector: PageState is Go chord/next/surfaces/surfaces_page_state.go#PageState (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_page_state.go#PageState"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_page_state.go#PageState"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState",
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestPassesEachDistinctReportOnOnce",
+        "test:chord/next/surfaces/surfaces_page_state_test.go#TestPageStateCallsEverySubscriberAfterASetThatChangedTheValueUntilItUnsubscribes"
+      ]
     },
     {
       "id": "pkg:chord/tui#SandboxMessage",
@@ -125778,18 +126645,69 @@
     },
     {
       "id": "pkg:chord/tui#TuiScope::construct:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:68e01aa51cced17584e2538bfc63644049e24bdb9975cba6707bacd0dd36faf4"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:68e01aa51cced17584e2538bfc63644049e24bdb9975cba6707bacd0dd36faf4",
+      "rationale": "Derived by the interface gap detector: TuiScope::construct:0 is Go chord/next/tui/tui_scope.go#NewTuiScope (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/tui/tui_scope.go#NewTuiScope"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/tui/tui_scope.go#NewTuiScope"
+      ],
+      "evidence": [
+        "test:chord/next/tui/tui_scope_release_test.go#TestAHoldersOwnReleaseBeforeTheScopesWatchStartsEndsQuietly",
+        "test:chord/next/tui/tui_scope_test.go#TestOptimisticAppliesAReducerOverEveryActionInFlightInOrderAndSaysWhetherACallIsPending",
+        "test:chord/next/tui/tui_scope_test.go#TestOptimisticNeverCallsChangedAfterDispose"
+      ]
     },
     {
       "id": "pkg:chord/tui#TuiScope::property:dispose",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:38ae7b309a81dcb42836da521f0ee31861d5a3d387d7b590f32ae4bef2920bf7"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:38ae7b309a81dcb42836da521f0ee31861d5a3d387d7b590f32ae4bef2920bf7",
+      "rationale": "Derived by the interface gap detector: TuiScope::property:dispose is Go chord/next/tui/tui_scope.go#TuiScope.Dispose (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/tui/tui_scope.go#TuiScope.Dispose"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:internal/codingagent/ext_ui_custom.go#customCall.dispose"
+      ],
+      "evidence": [
+        "test:chord/next/tui/tui_scope_release_test.go#TestAHoldersOwnReleaseBeforeTheScopesWatchStartsEndsQuietly",
+        "test:chord/next/tui/tui_scope_test.go#TestOptimisticAppliesAReducerOverEveryActionInFlightInOrderAndSaysWhetherACallIsPending",
+        "test:chord/next/tui/tui_scope_test.go#TestOptimisticNeverCallsChangedAfterDispose"
+      ]
     },
     {
       "id": "pkg:chord/tui#TuiScope::property:dispose::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9ca6a314a982a3e688c5c5ffde6bd32f25f07554352674c9e2234fc7f4b40b92"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9ca6a314a982a3e688c5c5ffde6bd32f25f07554352674c9e2234fc7f4b40b92",
+      "rationale": "Derived by the interface gap detector: TuiScope::property:dispose::call:0 is Go chord/next/tui/tui_scope.go#TuiScope.Dispose (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/tui/tui_scope.go#TuiScope.Dispose"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:internal/codingagent/ext_ui_custom.go#customCall.dispose"
+      ],
+      "evidence": [
+        "test:chord/next/tui/tui_scope_release_test.go#TestAHoldersOwnReleaseBeforeTheScopesWatchStartsEndsQuietly",
+        "test:chord/next/tui/tui_scope_test.go#TestOptimisticAppliesAReducerOverEveryActionInFlightInOrderAndSaysWhetherACallIsPending",
+        "test:chord/next/tui/tui_scope_test.go#TestOptimisticNeverCallsChangedAfterDispose"
+      ]
     },
     {
       "id": "pkg:chord/tui#TuiScope::property:hold",
@@ -125813,38 +126731,145 @@
     },
     {
       "id": "pkg:chord/tui#TuiScope::property:optimistic",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:36fa67870a46e9dda3900c7c5fc9587195c2d2b1c188eccf219878e421270a05"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:36fa67870a46e9dda3900c7c5fc9587195c2d2b1c188eccf219878e421270a05",
+      "rationale": "Derived by the interface gap detector: TuiScope::property:optimistic is Go chord/next/tui/tui_scope.go#Optimistic (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/tui/tui_scope.go#Optimistic"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/tui/tui_scope.go#Optimistic"
+      ],
+      "evidence": [
+        "test:chord/next/tui/tui_scope_test.go#TestOptimisticAppliesAReducerOverEveryActionInFlightInOrderAndSaysWhetherACallIsPending"
+      ]
     },
     {
       "id": "pkg:chord/tui#TuiScope::property:optimistic::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:f390385a689ea9abd6eff2a439bd06fd76e9672491761fac921c0e6f4ba32e80"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:f390385a689ea9abd6eff2a439bd06fd76e9672491761fac921c0e6f4ba32e80",
+      "rationale": "Derived by the interface gap detector: TuiScope::property:optimistic::call:0 is Go chord/next/tui/tui_scope.go#Optimistic (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/tui/tui_scope.go#Optimistic"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/tui/tui_scope.go#Optimistic"
+      ],
+      "evidence": [
+        "test:chord/next/tui/tui_scope_test.go#TestOptimisticAppliesAReducerOverEveryActionInFlightInOrderAndSaysWhetherACallIsPending"
+      ]
     },
     {
       "id": "pkg:chord/tui#TuiScope::property:optimistic::call:1",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:a5ac5738aa54c39edbb8bd262084cfc6a438cbb08a2c9ebc5fc444d02475cd77"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:a5ac5738aa54c39edbb8bd262084cfc6a438cbb08a2c9ebc5fc444d02475cd77",
+      "rationale": "Derived by the interface gap detector: TuiScope::property:optimistic::call:1 is Go chord/next/tui/tui_scope.go#Optimistic (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/tui/tui_scope.go#Optimistic"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/tui/tui_scope.go#Optimistic"
+      ],
+      "evidence": [
+        "test:chord/next/tui/tui_scope_test.go#TestOptimisticAppliesAReducerOverEveryActionInFlightInOrderAndSaysWhetherACallIsPending"
+      ]
     },
     {
       "id": "pkg:chord/tui#TuiScope::property:pageState",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:5dc08b351a760216b06405e00e0b31c585a501c13784b06575c04cd376ed96d4"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:5dc08b351a760216b06405e00e0b31c585a501c13784b06575c04cd376ed96d4",
+      "rationale": "Derived by the interface gap detector: TuiScope::property:pageState is Go chord/next/tui/tui_scope.go#PageState (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/tui/tui_scope.go#PageState"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/tui/tui_scope.go#PageState"
+      ],
+      "evidence": [
+        "test:chord/next/tui/tui_scope_test.go#TestScopePageStateCallsChangedOnEachOpenScopeFollowingTheKeyAndNeverAfterDispose",
+        "test:chord/next/tui/tui_scope_test.go#TestScopePageStateIsTheHostsAScopeOpenedAfterAnotherWasDisposedFindsItsValue"
+      ]
     },
     {
       "id": "pkg:chord/tui#TuiScope::property:pageState::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:8cc390125861494b28de559b7ff11cb336f3f722603ca805cbe6350ef1321057"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:8cc390125861494b28de559b7ff11cb336f3f722603ca805cbe6350ef1321057",
+      "rationale": "Derived by the interface gap detector: TuiScope::property:pageState::call:0 is Go chord/next/tui/tui_scope.go#PageState (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/tui/tui_scope.go#PageState"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/tui/tui_scope.go#PageState"
+      ],
+      "evidence": [
+        "test:chord/next/tui/tui_scope_test.go#TestScopePageStateCallsChangedOnEachOpenScopeFollowingTheKeyAndNeverAfterDispose",
+        "test:chord/next/tui/tui_scope_test.go#TestScopePageStateIsTheHostsAScopeOpenedAfterAnotherWasDisposedFindsItsValue"
+      ]
     },
     {
       "id": "pkg:chord/tui#TuiScope::property:registry",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:ee3892380133c05f55573a450877f0a11ee8ab95b6a14ddf56bac24cd9836d23"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:ee3892380133c05f55573a450877f0a11ee8ab95b6a14ddf56bac24cd9836d23",
+      "rationale": "Derived by the interface gap detector: TuiScope::property:registry is Go chord/next/tui/tui_scope.go#Registry (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/tui/tui_scope.go#Registry"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/tui/tui_scope.go#Registry"
+      ],
+      "evidence": [
+        "test:chord/next/tui/tui_scope_test.go#TestScopeHoldsFollowsAndCallsChangedOnEveryChangeReleasingEverythingAtDispose"
+      ]
     },
     {
       "id": "pkg:chord/tui#TuiScope::property:registry::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:96824affe6cac388fa1cc989afae550309b1c292ef21b3225a7b713825a9fa89"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:96824affe6cac388fa1cc989afae550309b1c292ef21b3225a7b713825a9fa89",
+      "rationale": "Derived by the interface gap detector: TuiScope::property:registry::call:0 is Go chord/next/tui/tui_scope.go#Registry (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/tui/tui_scope.go#Registry"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/tui/tui_scope.go#Registry"
+      ],
+      "evidence": [
+        "test:chord/next/tui/tui_scope_test.go#TestScopeHoldsFollowsAndCallsChangedOnEveryChangeReleasingEverythingAtDispose"
+      ]
     },
     {
       "id": "pkg:chord/tui#TuiScope::property:watch",
