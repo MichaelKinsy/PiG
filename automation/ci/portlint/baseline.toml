@@ -4935,13 +4935,13 @@ count = 2
 [[hit]]
 check = "utf16units"
 file = "internal/codingagent/mermaid_transform.go"
-func = "transformMermaidBlocks"
+func = "ReplaceMermaidFences"
 snippet = "out.WriteString(markdown[offset:fence.start])"
 
 [[hit]]
 check = "utf16units"
 file = "internal/codingagent/mermaid_transform.go"
-func = "transformMermaidBlocks"
+func = "ReplaceMermaidFences"
 snippet = "out.WriteString(markdown[offset:])"
 
 [[hit]]
