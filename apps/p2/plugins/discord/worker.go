@@ -134,10 +134,12 @@ func serveIngress(_ *delta.JsonObject, principal data.Principal, raw host.Self) 
 		"deliver": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 			dbg("DBG deliver start")
 			in := argsOf(args)
+			dbg("session()")
 			durableSession, err := session()
 			if err != nil {
 				return nil, err
 			}
+			dbg("MirrorLock")
 			if err := sessions.MirrorLock(ctx, durableSession, in.Value("lock")); err != nil {
 				return nil, err
 			}
