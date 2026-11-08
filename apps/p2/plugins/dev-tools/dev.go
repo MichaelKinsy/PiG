@@ -87,7 +87,7 @@ func inside(parent, child string) bool {
 }
 
 func init() {
-	worker := host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+	workerFacet = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 		return p2runtime.Contribute(facet, "p2.dev-tools", func(self host.StoreSelf) error {
 			workerOf := p2runtime.WorkerOf(self)
 			onCheckout := func() bool {
@@ -135,7 +135,13 @@ func init() {
 			return nil
 		})
 	})
-	hosts.RegisterPlugin(hosts.Plugin{Name: "dev-tools", Worker: &worker})
+	hosts.RegisterPlugin(hosts.Plugin{Name: "dev-tools", Worker: &workerFacet})
 }
 
 func boolPointer(value bool) *bool { return &value }
+
+// workerFacet is the plugin's worker facet, set at init.
+var workerFacet host.Facet
+
+// Facet is the plugin's worker facet.
+func Facet() host.Facet { return workerFacet }

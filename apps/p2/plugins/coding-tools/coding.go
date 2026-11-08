@@ -20,7 +20,7 @@ const preamble = "You are a concise coding assistant. Inspect files before editi
 const extensionName = "p2-coding"
 
 func init() {
-	worker := host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+	workerFacet = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 		return p2runtime.Contribute(facet, "p2.coding-tools", func(self host.StoreSelf) error {
 			harnessOf := p2runtime.HarnessOf(self)
 			environments := self.Registry(p2runtime.HarnessEnvironments.Registry)
@@ -76,7 +76,7 @@ func init() {
 			return nil
 		})
 	})
-	hosts.RegisterPlugin(hosts.Plugin{Name: "coding-tools", Worker: &worker})
+	hosts.RegisterPlugin(hosts.Plugin{Name: "coding-tools", Worker: &workerFacet})
 }
 
 // plain is an extension whose tools declare no requirements.
@@ -87,3 +87,9 @@ func plain(extension *durable.Extension) *p2runtime.P2Extension {
 	}
 	return wrapped
 }
+
+// workerFacet is the plugin's worker facet, set at init.
+var workerFacet host.Facet
+
+// Facet is the plugin's worker facet.
+func Facet() host.Facet { return workerFacet }

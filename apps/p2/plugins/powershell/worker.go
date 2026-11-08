@@ -344,8 +344,14 @@ func mapKeys[V any](m map[string]V) func(func(string) bool) {
 }
 
 func init() {
-	worker := host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+	workerFacet = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 		return facet.Serve(contract.PowerShell, host.LocalFactory(servePowerShell), host.ServeOptions{})
 	})
-	hosts.RegisterPlugin(hosts.Plugin{Name: "powershell", Worker: &worker})
+	hosts.RegisterPlugin(hosts.Plugin{Name: "powershell", Worker: &workerFacet})
 }
+
+// workerFacet is the plugin's worker facet, set at init.
+var workerFacet host.Facet
+
+// Facet is the plugin's worker facet.
+func Facet() host.Facet { return workerFacet }
