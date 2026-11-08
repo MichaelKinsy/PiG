@@ -91,12 +91,6 @@ func (e *appErrors) add(err AppError) {
 	e.list = append(e.list, err)
 }
 
-func (e *appErrors) all() []AppError {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	return append([]AppError(nil), e.list...)
-}
-
 // started is a started test app and what it reported.
 type started struct {
 	app     *App
