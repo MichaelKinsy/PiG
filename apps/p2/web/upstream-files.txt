@@ -21,3 +21,4 @@ src/runtime/shell.ts
 src/runtime/tool-calls.ts
 plugins/sessions/contract.ts
 plugins/status/contract.ts
+plugins/models/contract.ts

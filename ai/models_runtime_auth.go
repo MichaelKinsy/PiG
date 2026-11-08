@@ -124,6 +124,11 @@ func (m *Models) GetModelAuth(ctx context.Context, anyModel AnyModel, overrides 
 		}
 		return m.modelAuth(ctx, model, opts)
 	}
+	return m.providerModelAuth(ctx, anyModel, overrides...)
+}
+
+// providerModelAuth is the provider's auth with the model's own headers merged in: GetModelAuth without a model-auth callback.
+func (m *Models) providerModelAuth(ctx context.Context, anyModel AnyModel, overrides ...AuthResolutionOverrides) (*AuthResult, error) {
 	result, err := m.GetAuth(ctx, anyModel.ProviderID(), overrides...)
 	modelHeaders := anyModelHeaders(anyModel)
 	if err != nil || result == nil || modelHeaders == nil {

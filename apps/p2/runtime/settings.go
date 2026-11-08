@@ -135,3 +135,6 @@ func SaveSettings(ctx context.Context, path string, value any) error {
 	})
 	return err
 }
+
+// StringifyIndented is `JSON.stringify(value, null, 2)`, for the configuration files p2 writes.
+func StringifyIndented(value any) (string, error) { return stringifyIndented(value) }
