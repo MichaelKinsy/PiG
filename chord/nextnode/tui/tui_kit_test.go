@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -103,6 +105,10 @@ func tuiApp(t testing.TB, text string) started {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Registered first, so it runs after the launchers stopped and the app closed: none of their goroutines outlives the test.
+	t.Cleanup(func() {
+		noGoroutinesOf(t, "chord/nextnode/tui.", "chord/nextnode/app.", "chord/nextnode/http.", "chord/nextnode/workers.", "chord/nextnode/plugins.")
+	})
 	t.Cleanup(func() { _ = started.Close(background) })
 	var port int
 	_, _ = fmt.Sscanf(started.OwnerLink(), "http://127.0.0.1:%d/", &port)
@@ -323,4 +329,33 @@ func httpDo(t testing.TB, port int, method, path string, headers map[string]stri
 func jsQuote(text string) (string, error) {
 	quoted, err := jsstring.MarshalJSON(text)
 	return string(quoted), err
+}
+
+// noGoroutinesOf fails the test when a goroutine whose stack names one of markers is still running 10 s after the call (the
+// goroutines of a launcher, its sandbox process and an app end asynchronously, so each gets its time).
+func noGoroutinesOf(t testing.TB, markers ...string) {
+	t.Helper()
+	deadline := time.NewTimer(10 * time.Second)
+	defer deadline.Stop()
+	tick := time.NewTicker(10 * time.Millisecond)
+	defer tick.Stop()
+	for {
+		buf := make([]byte, 1<<20)
+		buf = buf[:runtime.Stack(buf, true)]
+		var leaked []string
+		for _, stack := range strings.Split(string(buf), "\n\n") {
+			if slices.ContainsFunc(markers, func(marker string) bool { return strings.Contains(stack, marker) }) &&
+				!strings.Contains(stack, "testing.tRunner") && !strings.Contains(stack, "runtime.Stack") {
+				leaked = append(leaked, stack)
+			}
+		}
+		if len(leaked) == 0 {
+			return
+		}
+		select {
+		case <-deadline.C:
+			t.Fatalf("goroutines outlive the test:\n%s", strings.Join(leaked, "\n\n"))
+		case <-tick.C:
+		}
+	}
 }

@@ -386,10 +386,14 @@ func (b *Browser) Run(expression string) {
 	}
 }
 
-// Wait waits until expression is truthy in the page (30 s at most); the test fails otherwise, with the page's console.
-func (b *Browser) Wait(expression string) {
+// Wait waits until expression is truthy in the page (30 s at most, or timeout); the test fails otherwise, with the page's console.
+func (b *Browser) Wait(expression string, timeout ...time.Duration) {
 	b.t.Helper()
-	err := Poll(context.Background(), 30*time.Second, expression, func(ctx context.Context) (bool, error) {
+	limit := 30 * time.Second
+	if len(timeout) > 0 {
+		limit = timeout[0]
+	}
+	err := Poll(context.Background(), limit, expression, func(ctx context.Context) (bool, error) {
 		var ok bool
 		err := b.Evaluate(ctx, "Boolean("+expression+")", &ok)
 		return ok, err
