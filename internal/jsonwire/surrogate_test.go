@@ -1,6 +1,9 @@
 package jsonwire
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestHasLoneSurrogateEscape(t *testing.T) {
 	for text, want := range map[string]bool{
@@ -19,5 +22,21 @@ func TestHasLoneSurrogateEscape(t *testing.T) {
 		if got := HasLoneSurrogateEscape([]byte(text)); got != want {
 			t.Errorf("%q: %v, want %v", text, got, want)
 		}
+	}
+}
+
+// BenchmarkHasLoneSurrogateEscape scans the frames a host reads: mostly text without a backslash, and text dense in escapes.
+func BenchmarkHasLoneSurrogateEscape(b *testing.B) {
+	plain := []byte(`{"type":"response","id":"7","response":{"result":{"content":[{"type":"text","text":"` + strings.Repeat("file contents é ", 4096) + `"}]}}}`)
+	escaped := []byte(`{"type":"response","response":{"result":"` + strings.Repeat(`line\n\t\"q\" \u00e9 \ud83d\ude00 \\ `, 2048) + `"}}`)
+	for name, data := range map[string][]byte{"plain": plain, "escaped": escaped} {
+		b.Run(name, func(b *testing.B) {
+			b.SetBytes(int64(len(data)))
+			for b.Loop() {
+				if HasLoneSurrogateEscape(data) {
+					b.Fatal("reported a lone surrogate")
+				}
+			}
+		})
 	}
 }

@@ -1,28 +1,40 @@
 package jsonwire
 
-import "bytes"
-
-// HasLoneSurrogateEscape reports whether the JSON text holds a \uD800-\uDFFF escape that is not half of a well-formed pair, as a string of the
-// text does not hold in Go: encoding/json/v2 decodes it to U+FFFD, where JSON.parse keeps the UTF-16 unit and the sdk decoder keeps it as the
-// surrogate escape. It may report true for text that has none (an escaped backslash before a "u"), never false for text that has one, so a caller
-// that must keep the unit sends such text to the sdk decoder and everything else to v2.
+// HasLoneSurrogateEscape reports whether the JSON text holds a lone UTF-16 surrogate in either form a string of the text can keep it in, which the
+// sdk decoder keeps as the surrogate unit and encoding/json/v2 replaces with U+FFFD, where JSON.parse keeps the unit:
+//   - a \uD800-\uDFFF escape that is not half of a well-formed pair;
+//   - the three-byte form of a surrogate, ED A0..BF xx, which is not UTF-8.
+//
+// The scan reads each backslash with the byte after it, so the second byte of an escaped backslash starts nothing. It may report true for text that
+// has none (the bytes ED A0..BF outside a string, or inside a name or a raw message), never false for text that has one, so a caller that must keep
+// the unit sends such text to the sdk decoder and everything else to v2.
 func HasLoneSurrogateEscape(data []byte) bool {
-	for {
-		i := bytes.Index(data, []byte(`\u`))
-		if i < 0 {
-			return false
-		}
-		data = data[i+2:]
-		switch surrogateKind(data) {
-		case lowSurrogate:
-			return true
-		case highSurrogate:
-			if len(data) < 10 || data[4] != '\\' || data[5] != 'u' || surrogateKind(data[6:]) != lowSurrogate {
+	for i := 0; i+1 < len(data); i++ {
+		switch data[i] {
+		case 0xED:
+			if data[i+1] >= 0xA0 && data[i+1] <= 0xBF {
 				return true
 			}
-			data = data[10:]
+		case '\\':
+			if data[i+1] != 'u' {
+				i++ // a two-character escape, an escaped backslash among them: the byte after it starts nothing
+				continue
+			}
+			rest := data[i+2:]
+			switch surrogateKind(rest) {
+			case lowSurrogate:
+				return true
+			case highSurrogate:
+				if len(rest) < 10 || rest[4] != '\\' || rest[5] != 'u' || surrogateKind(rest[6:]) != lowSurrogate {
+					return true
+				}
+				i += 11 // both escapes of the pair
+				continue
+			}
+			i += 5 // the escape
 		}
 	}
+	return false
 }
 
 const (
