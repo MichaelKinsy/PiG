@@ -56,6 +56,7 @@ func ScopeCSSModule(plugin, dir, file, contents string) (ScopedCSS, error) {
 		return ScopedCSS{}, err
 	}
 	sum := sha256.Sum256([]byte(plugin + "\x00" + rel))
+	//portlint:allow utf16units the hex digits are ASCII: bytes are code units
 	scope := hex.EncodeToString(sum[:])[:8]
 	// esbuild names a local class `<file name>_<class>`: the file name carries the prefix.
 	stem := filepath.Base(file)
@@ -330,6 +331,7 @@ func (p *classMapParser) str() (string, error) {
 				if p.at+2 > len(p.text) {
 					return "", p.fail("bad \\x escape")
 				}
+				//portlint:allow numbers two hex digits written by esbuild, which parseInt(…, 16) reads the same
 				n, err := strconv.ParseUint(p.text[p.at:p.at+2], 16, 8)
 				if err != nil {
 					return "", p.fail("bad \\x escape")
@@ -365,6 +367,7 @@ func (p *classMapParser) unicodeEscape(out *units) error {
 		digits = p.text[p.at : p.at+4]
 		p.at += 4
 	}
+	//portlint:allow numbers hex digits written by esbuild (four, or braced), which parseInt(…, 16) reads the same
 	n, err := strconv.ParseUint(digits, 16, 32)
 	if err != nil || n > utf8.MaxRune {
 		return p.fail("bad \\u escape")
