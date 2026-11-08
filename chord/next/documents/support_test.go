@@ -233,8 +233,9 @@ func (o *object) Metrics() *chordtelemetry.Instruments {
 	}
 	return chordtelemetry.Metrics(nil)
 }
-func (o *object) Do(work func()) { o.loop.do(work) }
-func (o *object) Now() int64     { return o.clock.Now() }
+func (o *object) Do(work func())  { o.loop.do(work) }
+func (o *object) InSection() bool { return o.loop.holder.Load() == goroutineID() }
+func (o *object) Now() int64      { return o.clock.Now() }
 func (o *object) AfterFunc(d time.Duration, job func()) func() {
 	return o.clock.AfterFunc(d, func() { job() })
 }

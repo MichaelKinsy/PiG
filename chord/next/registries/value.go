@@ -78,6 +78,8 @@ type RegistryValueSource struct {
 	Name    string
 	Version int
 	record  *RegistryRecord
+	// section is the host's batch, which runs a read from another goroutine as a section of the host's loop.
+	section *state.Batch
 	// last is its last start, kept once the host closed (record nil).
 	last    state.NativeStart[any]
 	readers map[*readToken]struct{}
@@ -94,7 +96,7 @@ var (
 
 // NewRegistryValueSource makes the value of record's registry for readers of version.
 func NewRegistryValueSource(record *RegistryRecord, version int, batch *state.Batch) *RegistryValueSource {
-	source := &RegistryValueSource{Name: record.Name, Version: version, record: record, readers: map[*readToken]struct{}{}}
+	source := &RegistryValueSource{Name: record.Name, Version: version, record: record, section: batch, readers: map[*readToken]struct{}{}}
 	source.Init(batch, source)
 	return source
 }
@@ -221,7 +223,24 @@ func (v *RegistryValueSource) Unfollowed() {
 	}
 }
 
+// start reads the composition as a section of the host's loop (inline when the caller is in one): a source composes when it
+// is read, so a read from another goroutine (a native's open callback, a request) races the contribution an object adds
+// as it goes live, and a waiter registering.
 func (v *RegistryValueSource) start() (state.NativeStart[any], error) {
+	if v.section == nil || v.section.InSection() {
+		return v.startInSection()
+	}
+	return v.startFromOutside()
+}
+
+// startFromOutside is start for a caller outside the host's loop: it takes a section (the closure is made here only, so a
+// read inside a section costs none).
+func (v *RegistryValueSource) startFromOutside() (start state.NativeStart[any], err error) {
+	v.section.Section(func() { start, err = v.startInSection() })
+	return start, err
+}
+
+func (v *RegistryValueSource) startInSection() (state.NativeStart[any], error) {
 	record := v.record
 	if record == nil {
 		return v.last, nil
