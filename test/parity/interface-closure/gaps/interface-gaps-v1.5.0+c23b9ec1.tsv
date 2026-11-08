@@ -254,8 +254,6 @@ pkg:chord/.#StagedWrite	chord	undecidable	chord/next/store/step.go#StagedWrite
 pkg:chord/.#StateDefinition	chord	child-gap	chord/next/documents/definition.go#StateDefinition
 pkg:chord/.#StateDefinition::construct:0	chord	no-go-symbol	chord/next/documents/definition.go#StateDefinition
 pkg:chord/.#Static	chord	no-go-symbol	
-pkg:chord/.#Step	chord	child-gap	chord/next/store/step.go#Step
-pkg:chord/.#Step::property:rows	chord	member-missing	chord/next/store/step.go#Step
 pkg:chord/.#Store	chord	child-gap	chord/next/store/store.go#Store
 pkg:chord/.#Store::property:export	chord	child-gap	chord/next/store/store.go#Store.Export
 pkg:chord/.#Store::property:export::call:0	chord	undecidable	chord/next/store/store.go#Store.Export
@@ -633,10 +631,6 @@ pkg:chord/react#useWatch	chord	no-go-symbol
 pkg:chord/react#useWatch::call:0	chord	child-gap	
 pkg:chord/react#watchStore	chord	no-go-symbol	
 pkg:chord/react#watchStore::call:0	chord	child-gap	
-pkg:chord/sqlite/node#NodeSqliteDatabase	chord	child-gap	chord/sqlite/node/node.go#NodeSqliteDatabase
-pkg:chord/sqlite/node#NodeSqliteDatabase::construct:0	chord	signature-mismatch	chord/sqlite/node/node.go#NewNodeSqliteDatabase
-pkg:chord/sqlite/node#NodeSqliteDatabaseOptions	chord	type-mismatch	chord/sqlite/node/node.go#NodeSqliteDatabaseOptions
-pkg:chord/sqlite/node#NodeSqliteMode	chord	no-go-symbol	
 pkg:chord/surfaces#BaseBundle	chord	no-go-symbol	
 pkg:chord/surfaces#PageAssets	chord	no-go-symbol	
 pkg:chord/surfaces#ServedFile	chord	no-go-symbol	
@@ -894,8 +888,6 @@ pkg:durable/storage/indexeddb#IndexedDbStorage::property:commit	durable	child-ga
 pkg:durable/storage/indexeddb#IndexedDbStorage::property:commit::call:0	durable	child-gap	
 pkg:durable/storage/sqlite/node#NodeSqliteDatabase	durable	child-gap	durable/storage/sqlite/node/node.go#NodeSqliteDatabase
 pkg:durable/storage/sqlite/node#NodeSqliteDatabase::construct:0	durable	signature-mismatch	durable/storage/sqlite/node/node.go#NewNodeSqliteDatabase
-pkg:durable/storage/sqlite/node#NodeSqliteDatabaseOptions	durable	type-mismatch	durable/storage/sqlite/node/node.go#NodeSqliteDatabaseOptions
-pkg:durable/storage/sqlite/node#NodeSqliteStorageOptions	durable	type-mismatch	durable/storage/sqlite/node/node.go#NodeSqliteStorageOptions
 pkg:mcp/.#McpHttpServerConfig	mcp	no-go-symbol	
 pkg:mcp/.#McpHttpServerConfig::property:description	mcp	child-gap	
 pkg:mcp/.#McpHttpServerConfig::property:enabled	mcp	child-gap	
