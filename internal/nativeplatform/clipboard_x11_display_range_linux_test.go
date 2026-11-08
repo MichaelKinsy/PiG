@@ -85,6 +85,23 @@ int main(void) {
 }
 `
 
+// xcbOracleFlags links the oracle against pkg-config's libxcb, which must be 1.16 or later.
+func xcbOracleFlags(t *testing.T) []string {
+	t.Helper()
+	const hint = "the X11 display oracle needs libxcb 1.16 or later; run automation/ci/build-libxcb.sh and set the PKG_CONFIG_PATH it prints"
+	if output, err := exec.CommandContext(t.Context(), "pkg-config", "--atleast-version=1.16", "xcb").CombinedOutput(); err != nil {
+		t.Fatalf("pkg-config --atleast-version=1.16 xcb: %v %s(%s)", err, output, hint)
+	}
+	pkgConfig := func(arguments ...string) string {
+		output, err := exec.CommandContext(t.Context(), "pkg-config", append(arguments, "xcb")...).Output()
+		if err != nil {
+			t.Fatalf("pkg-config %v xcb: %v", arguments, err)
+		}
+		return strings.TrimSpace(string(output))
+	}
+	return append(strings.Fields(pkgConfig("--cflags", "--libs")), "-Wl,-rpath,"+pkgConfig("--variable=libdir"))
+}
+
 // Each DISPLAY spelling reaches the same screen as Pi's xcb_connect on a two-screen server that listens on its Unix socket and on TCP, or fails as Pi's does.
 func TestX11DisplaySpellingsConnectAsPiDoes(t *testing.T) {
 	for _, command := range []string{"cc", "Xvfb"} {
@@ -97,7 +114,8 @@ func TestX11DisplaySpellingsConnectAsPiDoes(t *testing.T) {
 	if err := os.WriteFile(source, []byte(x11OpenOracle), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if output, err := exec.CommandContext(t.Context(), "cc", "-std=c11", "-Wall", "-Wextra", "-Werror", source, "-lxcb", "-o", oracle).CombinedOutput(); err != nil {
+	arguments := append([]string{"-std=c11", "-Wall", "-Wextra", "-Werror", source}, xcbOracleFlags(t)...)
+	if output, err := exec.CommandContext(t.Context(), "cc", append(arguments, "-o", oracle)...).CombinedOutput(); err != nil {
 		t.Fatalf("compile the xcb oracle: %v\n%s", err, output)
 	}
 	// Each spelling connects the oracle and then PiG, one client at a time. Without -noreset the server resets whenever its
@@ -161,7 +179,7 @@ func pigX11Root(ctx context.Context, spelling string) (string, error) {
 	return fmt.Sprintf("root %d", root), nil
 }
 
-// libxcb 1.16 commit 095255531 "DISPLAY starting with / or unix: is always a socket path"; the rows are xcb_parse_display on libxcb 1.17.
+// The rows are xcb_parse_display on libxcb 1.17.
 func TestX11SocketPathDisplaysParseAsXcbDoes(t *testing.T) {
 	directory := t.TempDir()
 	socket := filepath.Join(directory, "X0")
