@@ -158,6 +158,7 @@ func writeStringMember(encoder *jsontext.Encoder, name, value string) error {
 // MarshalJSON is the JSON.stringify text of the messages for an encoder that does not call MarshalJSONTo: the one that keeps a lone UTF-16 unit as an
 // escape (encodeRequestBody falls back to it for such a request). It writes the messages from the structs the encoder lowers them to.
 func (messages mistralWireMessages) MarshalJSON() ([]byte, error) {
+	//perf:ok cold path: runs only for a request with a lone UTF-16 surrogate, which the typed MarshalJSONTo writes as U+FFFD; the lowered copy is what JSON.stringify's escape needs
 	return jsstring.MarshalJSON(messages.lowered())
 }
 
