@@ -113,9 +113,9 @@ func bottomSheet() pitui.OverlaySpec {
 	return pitui.OverlaySpec{Width: p2tui.Percent(100), Anchor: "bottom-center"}
 }
 
-// moveTo is `/envs`, Enter on an environment: the viewed session moves there. The directory prompt opens on that environment, prefilled with the session's
+// moveToEnv is `/envs`, Enter on an environment: the viewed session moves there. The directory prompt opens on that environment, prefilled with the session's
 // directory when it exists there, else that machine's home; its note confirms the move (as in `/cd`), then `Sessions.relocate`.
-func moveTo(ctx runtime.TuiContext, env *string) error {
+func moveToEnv(ctx runtime.TuiContext, env *string) error {
 	surface := surfaceOf(ctx)
 	var session *contract.Session
 	if surface != nil {
@@ -172,7 +172,7 @@ var place = runtime.TuiSessionPlace{
 		}
 		return &runtime.SessionWhere{Env: envOfSession(*session), Cwd: session.Cwd}
 	},
-	MoveTo: moveTo,
+	MoveTo: moveToEnv,
 }
 
 func changeDirectory(ctx runtime.TuiContext, argument string) error {
