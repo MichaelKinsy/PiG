@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-// Ports packages/chord/src/next-node/http/node.ts. Chord's own listener (decision "The HTTP server is a native object"; "The
+// Ports packages/chord/src/node/http/node.ts. Chord's own listener (decision "The HTTP server is a native object"; "The
 // HTTP core is a fetch handler; Chord's own Node server is the easy path"): the listener's native, a net/http server that
 // hands each request to the component as it reads requests (origin-form targets only), and writes its answer: whole, or
 // pulled piece by piece as the socket drains. A body the route left unread is drained after the response when small, else

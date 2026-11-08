@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/apps/p2/p2test"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
@@ -189,6 +190,7 @@ func equal(t *testing.T, got, want any) {
 }
 
 func TestCodeModeOnlyWhileCodeModeIsOnToolSearchReachesItOtherwise(t *testing.T) {
+	p2test.NoLeakedGoroutines(t)
 	backend := &recording{}
 	tool := terminalTool(t, backend, ReachCodemode, "")
 	equal(t, tool.Callers, []durable.ToolCaller{durable.CallerTools})
@@ -205,6 +207,7 @@ func TestCodeModeOnlyWhileCodeModeIsOnToolSearchReachesItOtherwise(t *testing.T)
 }
 
 func TestNewWindowOpensAtTheCallingConversationsLocationKeyedByTheCallAndReadsFromItsStart(t *testing.T) {
+	p2test.NoLeakedGoroutines(t)
 	backend := &recording{reads: []func(*TerminalRead){func(r *TerminalRead) { r.Text, r.Terminal = "$ ", info(3, nil) }}}
 	result := run(t, backend, "new-window", "-n", "dev", "-c", "../web", "npm", "run", "dev")
 	equal(t, backend.calls, []call{
@@ -223,6 +226,7 @@ func TestNewWindowOpensAtTheCallingConversationsLocationKeyedByTheCallAndReadsFr
 }
 
 func TestSendKeysAndReadWaitByDefaultAsDocumentedWAndTOverride(t *testing.T) {
+	p2test.NoLeakedGoroutines(t)
 	backend := &recording{}
 	tool := terminalTool(t, backend, ReachCodemode, "")
 	execute(t, tool, "send-keys", []string{"-t", "1", "q"}, newCallAPI(1))
@@ -244,6 +248,7 @@ func TestSendKeysAndReadWaitByDefaultAsDocumentedWAndTOverride(t *testing.T) {
 }
 
 func TestARerunOfTheSameCallReadsFromTheSameStartAndClosesTheSameWindow(t *testing.T) {
+	p2test.NoLeakedGoroutines(t)
 	backend := &recording{}
 	tool := terminalTool(t, backend, ReachCodemode, "")
 	api := newCallAPI(9)
@@ -273,6 +278,7 @@ func TestARerunOfTheSameCallReadsFromTheSameStartAndClosesTheSameWindow(t *testi
 }
 
 func TestResultsTheScreenOfFullScreenProgramsSkippedOutputTimeoutsWindowsErrors(t *testing.T) {
+	p2test.NoLeakedGoroutines(t)
 	long := strings.Repeat("x", 20_000)
 	backend := &recording{reads: []func(*TerminalRead){
 		func(r *TerminalRead) {
@@ -319,6 +325,7 @@ func TestResultsTheScreenOfFullScreenProgramsSkippedOutputTimeoutsWindowsErrors(
 }
 
 func TestACallerInASandboxSeesAndDrivesOnlyTheSessionsTerminalsInIt(t *testing.T) {
+	p2test.NoLeakedGoroutines(t)
 	backend := &recording{}
 	confined := terminalTool(t, backend, ReachCodemode, "gpu")
 	listed := execute(t, confined, "list-windows", nil, newCallAPI(1))

@@ -50,10 +50,17 @@ func currentContract(name string) *contracts.Contract {
 	return contract
 }
 
-// ScriptsFacet is the surface's facet serving its published set (starting at published(), the set taken before the load: it is
-// read at each attempt) and its scripts object for every principal that may hold it.
+// ScriptsFacet is the surface's facet serving its published set (starting at published() when first held: the surface's first set,
+// or an empty one before its build, which publishes the first; it is read at each attempt) and its scripts object for every principal that may hold it.
+//
+// A surface that is none of the two fails the facet's load, as PublishTo refuses it.
 func ScriptsFacet(surface SurfaceName, published func() next.ScriptSet) host.Facet {
-	contract := current[surface]
+	contract, ok := current[surface]
+	if !ok {
+		return host.DefineFacet(func(host.FacetHost, host.FacetSelf) error {
+			return fmt.Errorf("surfaces: unknown surface %q", surface)
+		})
+	}
 	return host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
 		err := h.Serve(contract, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
 			// The latest set: an attempt after a failure starts at what was published last.

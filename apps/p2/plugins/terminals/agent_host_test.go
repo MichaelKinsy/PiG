@@ -302,14 +302,8 @@ func TestTerminalHostTheAgentsCalls(t *testing.T) {
 		}
 		agent.read(HostCall{SessionID: "s1", Target: "2", Wait: prompt("[$#] $", 10_000)})
 		sendOK("2", "plain-1", "printf 'a\\033[31mred\\033[0m\\r\\n10%%\\r50%%\\r100%%\\n'", "Enter")
-		plain := agent.read(HostCall{SessionID: "s1", Target: "2", Wait: prompt("[$#] $", 10_000)})
-		_ = plain
+		plain := agent.read(HostCall{SessionID: "s1", Target: "2", Wait: matchWait("100%\\n", 10_000)})
 		agentPlain := plain.Text
-		if !regexp.MustCompile(`(?m)^ared$`).MatchString(agentPlain) || !regexp.MustCompile(`(?m)^100%$`).MatchString(agentPlain) {
-			// The wait may end before the whole output: read on until the prompt follows it.
-			more := agent.read(HostCall{SessionID: "s1", Target: "2", From: ptrInt64(0), Wait: matchWait("100%\\n", 10_000)})
-			agentPlain = more.Text
-		}
 		if !regexp.MustCompile(`(?m)^ared$`).MatchString(agentPlain) || !regexp.MustCompile(`(?m)^100%$`).MatchString(agentPlain) {
 			t.Fatalf("plain text = %q", agentPlain)
 		}

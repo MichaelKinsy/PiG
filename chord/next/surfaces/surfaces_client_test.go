@@ -61,6 +61,9 @@ func script(plugin, digest, text string, failing ...int) RegisteredScript {
 		fails.Store(int32(failing[0]))
 	}
 	return RegisteredScript{Plugin: plugin, Digest: digest, Run: func(require func(string) (any, error), module *Module) error {
+		if text == "panic" {
+			panic("plugin threw")
+		}
 		if text == "broken" || fails.Add(-1) >= 0 {
 			return errors.New("broken plugin")
 		}
@@ -353,6 +356,33 @@ func TestKeepsAPluginsOldFacetWhenItsNewScriptFailsAndReportsIt(t *testing.T) {
 		t.Fatalf("greeting = %q", got)
 	}
 	s.finish(t)
+}
+
+// A script that panics, or has no function, is what a script that throws is in Pi (client.ts `entryOf.prepare` catches what
+// evaluateRegistered throws): the plugin is reported failed and keeps its old facet; the client lives on.
+func TestKeepsAPluginsOldFacetWhenItsNewScriptPanicsOrHasNoFunctionAndReportsIt(t *testing.T) {
+	a1 := script("@test/a", "d1", "hello")
+	for name, broken := range map[string]RegisteredScript{
+		"panics":      script("@test/a", "d2", "panic"),
+		"no function": {Plugin: "@test/a", Digest: "d2"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			s := setup(t, []RegisteredScript{a1}, []RegisteredScript{broken}, more{})
+			g := text(t, s.client.Host, greeting)
+			s.publish(t, setOf("B1", broken))
+			until(t, func() bool { return len(s.errorKinds()) > 0 })
+			s.mu.Lock()
+			first := s.errs[0]
+			s.mu.Unlock()
+			if first.Kind != ClientPluginsError || len(first.Failed) != 1 || first.Failed[0].Plugin != "@test/a" || first.Failed[0].Error == nil {
+				t.Fatalf("error = %+v", first)
+			}
+			if got := valueOf(g); got != "hello" {
+				t.Fatalf("greeting = %q", got)
+			}
+			s.finish(t)
+		})
+	}
 }
 
 func TestTriesAFailedPluginsScriptAgainWhenAReconnectsSnapshotHasItNotTakenAsApplied(t *testing.T) {

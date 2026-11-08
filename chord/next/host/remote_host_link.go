@@ -85,7 +85,7 @@ func newHostLink(host *chordHost, made link.Link, options hostLinkOptions, ctx c
 	report := func(err error) { host.report(HostError{Kind: ErrProtocolError, Error: err}) }
 	channel, err := link.NewChannel(made, l, link.ChannelOptions{
 		Codec: options.codec, Incarnation: host.incarnation, Calls: linkCalls, Trusted: options.trusted, Report: report,
-		Now: host.loop().Now,
+		Now: host.loop().Now, Metrics: host.metrics,
 	}, ctx)
 	if err != nil {
 		// A `hello` the codec cannot write: nothing was started; the link is closed.
@@ -95,6 +95,7 @@ func newHostLink(host *chordHost, made link.Link, options hostLinkOptions, ctx c
 		return l
 	}
 	l.channel = channel
+	host.metrics.UpDownCounter("chord.links.open").Add(1, nil)
 	if taker, ok := made.(DeliveryAwaiter); ok {
 		taker.Taken(l.awaitDeliveries)
 	}
@@ -250,6 +251,7 @@ func (l *hostLink) revokeUnbound(revoked func(principal data.Principal) bool, er
 // Closed implements link.ChannelHandler: the link closed, from either end.
 func (l *hostLink) Closed() {
 	l.host.loop().Run(func() {
+		l.host.metrics.UpDownCounter("chord.links.open").Add(-1, nil)
 		l.closingCancel(nil)
 		for _, provider := range l.providers.values() {
 			provider.closed()

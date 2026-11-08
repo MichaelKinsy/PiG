@@ -20,6 +20,8 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
+	chordtelemetry "github.com/MichaelKinsy/PiG/chord/next/telemetry"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Ports packages/chord/src/next/host/attempt.ts. Attempts (§6, §13, §14, §15): one activation of an object, a fresh
@@ -265,6 +267,12 @@ type pinnedKey struct {
 // off), then the drain, the closes in reverse, derives detached; its object releases its references. Documents and job runs
 // stay on the object.
 type attempt struct {
+	// trace is what its activation span links to and its number; activation its current `chord.activate` span (nil when
+	// the host records nothing); parkedAt when it parked, for the park's duration.
+	trace      attemptTrace
+	activation *chordtelemetry.OpenSpan
+	parkedAt   time.Time
+
 	object *chordObject
 	// served is the type its object was served as when it was made: its provider's `accepts` map its older consumers.
 	served *served
@@ -525,18 +533,11 @@ type attemptWritableOwner struct{ attempt *attempt }
 
 func (o *attemptWritableOwner) Context() context.Context { return o.attempt.ctx }
 
-// InSection reports whether the caller runs in a section of the host's loop. A loop that cannot tell (a test's virtual-time
-// loop) answers false: Do nests either way.
-func (o *attemptWritableOwner) InSection() bool {
-	inside, ok := o.attempt.object.host.events.(interface{ onLoop() bool })
-	return ok && inside.onLoop()
-}
+// InSection reports whether the caller runs in a section of the host's loop.
+func (o *attemptWritableOwner) InSection() bool { return o.attempt.object.host.batch.InSection() }
 
 // Do runs work as one section of the host's loop (nested when the caller is in one).
 func (o *attemptWritableOwner) Do(work func()) { o.attempt.object.host.enter(work) }
-
-// OnLoop reports whether the caller runs a section of the host's loop.
-func (o *attemptWritableOwner) OnLoop() bool { return o.attempt.object.host.onLoop() }
 
 func (o *attemptWritableOwner) AssertUsable() error {
 	if o.attempt.token.Sealed() {
@@ -590,6 +591,7 @@ func (a *attempt) Open(
 	}
 	owner := nativeOwner{
 		object: a.object.text, position: len(a.natives) + 1, context: a.ctx, report: host.report, loop: host.loop(),
+		typ: a.served.contract.Name, hostKey: host.spanHost, telemetry: host.telemetry,
 	}
 	native := newNativeHandle[any](open, closer, closeTimeout, owner)
 	a.natives = append(a.natives, native)
@@ -661,6 +663,7 @@ func (a *attempt) Job(definition *JobDefinition, implementation JobImplementatio
 // both (an attempt abandoned while it waits has opened nothing). The factory runs in this section when nothing is
 // waited for.
 func (a *attempt) activate(ending *keyedPromise[struct{}]) *keyedPromise[activation] {
+	a.startActivation(a.trace.trigger)
 	host := a.object.host
 	ready := host.timeouts.ready
 	result := newKeyedPromise[activation](a.loop())
@@ -755,7 +758,7 @@ func (a *attempt) startRoutines() {
 	run.ctx, run.abort = chordctx.WithCancel(a.ctx)
 	a.routineRun = run
 	a.routines.start(routineOwner{
-		label: object.text, host: object.host, caller: a.caller(), context: run.ctx,
+		label: object.text, typ: a.served.contract.Name, host: object.host, caller: a.caller(), context: run.ctx,
 		admit: func(cleanup func()) func(err error) { return a.admitTo(run.calls, cleanup) },
 	})
 }
@@ -821,12 +824,6 @@ func (a *attempt) drainCalls(due int64) *keyedPromise[struct{}] {
 	}
 	round()
 	return result
-}
-
-// drained is `drained` of the work in calls, bounded by `closeTimeout`: the promise settles in a section (at once when there
-// is no work).
-func (a *attempt) drained(calls []*nativeWork) *keyedPromise[withinResult] {
-	return a.drainedWithin(calls, a.object.host.timeouts.close)
 }
 
 // drainedWithin is `drained` of the work in calls, bounded by ms: the promise settles in a section (at once when there is no
@@ -928,7 +925,7 @@ func (a *attempt) stateMembers() []stateMember {
 // admitted to the drain before it runs. Either rejects the caller at once; the handler runs on, its transactions refused,
 // and the drain waits for it. Its `ctx.get` references are released when it settles. The admission is this section's; the
 // result settles later.
-func (a *attempt) call(method string, args any, ctx context.Context, from caller, version int) *parkedCallResult {
+func (a *attempt) call(method string, args any, ctx context.Context, parent telemetry.TelemetrySpan, from caller, version int) *parkedCallResult {
 	result := newParkedCallResult()
 	if ctx.Err() != nil {
 		result.settle(nil, context.Cause(ctx))
@@ -966,17 +963,28 @@ func (a *attempt) call(method string, args any, ctx context.Context, from caller
 	if entry.kind == servedRemote {
 		acting = from
 	}
+	// Its span only when something records (§30: nothing else is made per call).
+	var span *chordtelemetry.OpenSpan
+	if entry.traced && !chordtelemetry.Untraced(parent) {
+		span = a.methodSpan(parent, method, acting, ctx)
+		callContext = chordctx.WithTelemetry(callContext, span.Span())
+	}
 	handlerCtx := newCallContext(callContext, acting, host, a)
 	// Admitted to the drain before the handler runs: the handler may end its own object before it returns.
 	host.count(activityCalls, 1)
+	host.metrics.UpDownCounter("chord.calls.in_flight").Add(1, nil)
 	settle := a.admit(func() {
 		host.count(activityCalls, -1)
+		host.metrics.UpDownCounter("chord.calls.in_flight").Add(-1, nil)
 		linked.release()
 		handlerCtx.settle()
 	})
 	// The caller's wait ends at once when the call's context is aborted: awaitWithContext(running, callContext).
 	stopWait := context.AfterFunc(callContext, func() { result.settle(nil, context.Cause(callContext)) })
 	loop := host.loop()
+	if span != nil {
+		result.then(loop, func(_ any, err error) { span.EndWith(err, "method_failed", callContext) })
+	}
 	// The handler's synchronous part runs inside this section, as Pi's does: the section is lent to it (Loop.Lend) until it
 	// returns or parks (Park of its ctx, at the first wait for something that is not a section of the host).
 	signal := parking.New()
@@ -1013,6 +1021,26 @@ func (a *attempt) call(method string, args any, ctx context.Context, from caller
 		})
 	})
 	return result
+}
+
+// methodSpan is the `chord.method` span of a call of method acting as acting, under parent.
+func (a *attempt) methodSpan(parent telemetry.TelemetryContext, method string, acting caller, ctx context.Context) *chordtelemetry.OpenSpan {
+	object := a.object
+	kind := "none"
+	if acting.principal != nil {
+		if text, ok := acting.principal.Value("kind").(string); ok {
+			kind = text
+		}
+	}
+	attributes := telemetry.SpanAttributes{
+		telemetry.Attr("chord.host", object.host.spanHost),
+		telemetry.Attr("type", a.served.contract.Name),
+		telemetry.Attr("member", method),
+		telemetry.Attr("object", chordtelemetry.Capped(object.text)),
+		telemetry.Attr("principal.kind", chordtelemetry.Capped(kind)),
+	}
+	attributes = append(attributes, object.host.principalAttributes(acting.principal, ctx)...)
+	return chordtelemetry.NewOpenSpan(parent, "chord.method", attributes)
 }
 
 // noMethod is the `invalid/member` error of a method outside the variant.
@@ -1448,6 +1476,7 @@ func (a *attempt) park(dependencies []dependency, dl *deadline, done func(*activ
 	}
 	long := newParkedLong(a.loop(), object)
 	finished := func(outcome *activation) {
+		a.parkEnded()
 		long.stop()
 		for _, release := range waits {
 			release()
@@ -1491,11 +1520,13 @@ func (a *attempt) park(dependencies []dependency, dl *deadline, done func(*activ
 				if pinned == nil && !a.moved {
 					// Its own steps follow: `loading` until its outcome (a failure shows as the failure, not this).
 					object.unparked(a)
+					a.unparkedTrace()
 					finished(nil)
 					return
 				}
 				if pinned != nil {
 					object.parked(a, pinned, true)
+					a.parkedOn(pinned)
 				}
 				waitForChange()
 			})
@@ -1504,6 +1535,7 @@ func (a *attempt) park(dependencies []dependency, dl *deadline, done func(*activ
 			cause := parkedCause(check)
 			a.settleCheck(&cause)
 			long.blockedBy(check.blocker)
+			a.parkedOn(check.shown)
 			waitForChange()
 		}
 	}
@@ -1749,7 +1781,7 @@ func (a *attempt) prepareTables(dl *deadline) *keyedPromise[struct{}] {
 			a.object.host.enter(func() { admitted = !a.token.Sealed() && a.abandoned == nil })
 			return admitted
 		},
-		Adopt: func(int64, []int64) error { return nil },
+		Adopt: func(int64, []int64, int) error { return nil },
 	}
 	dl.pause()
 	prepared := awaitTask(a.object.host, func() (struct{}, error) {
@@ -2031,6 +2063,10 @@ func unwrapMember(value any) any {
 		return wrapped.source
 	case *exposedKeyed:
 		return wrapped.handle
+	case stateWatchable:
+		// `ref.state` for a caller outside the host's sections wraps its source in a section; a derive reads the source
+		// itself, in the sections it computes in.
+		return wrapped.inner
 	}
 	return value
 }
