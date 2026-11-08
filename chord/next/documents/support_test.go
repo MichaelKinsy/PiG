@@ -172,6 +172,7 @@ type object struct {
 	loop      *loop
 	clock     *fakeClock
 	batch     *state.Batch
+	telemetry telemetry.TelemetryContext
 	scheduler *chord.DeliveryScheduler
 	ctx       context.Context
 	store     *store.ChordStore
@@ -216,12 +217,17 @@ func newObject(t *testing.T, options objectOptions) *object {
 	return o
 }
 
-func (o *object) Label() string                         { return o.label }
-func (o *object) Batch() *state.Batch                   { return o.batch }
-func (o *object) Context() context.Context              { return o.ctx }
-func (o *object) Telemetry() telemetry.TelemetryContext { return telemetry.NoopTelemetryContext }
-func (o *object) Do(work func())                        { o.loop.do(work) }
-func (o *object) Now() int64                            { return o.clock.Now() }
+func (o *object) Label() string            { return o.label }
+func (o *object) Batch() *state.Batch      { return o.batch }
+func (o *object) Context() context.Context { return o.ctx }
+func (o *object) Telemetry() telemetry.TelemetryContext {
+	if o.telemetry != nil {
+		return o.telemetry
+	}
+	return telemetry.NoopTelemetryContext
+}
+func (o *object) Do(work func()) { o.loop.do(work) }
+func (o *object) Now() int64     { return o.clock.Now() }
 func (o *object) AfterFunc(d time.Duration, job func()) func() {
 	return o.clock.AfterFunc(d, func() { job() })
 }
