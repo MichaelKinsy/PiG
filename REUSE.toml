@@ -190,7 +190,7 @@ SPDX-FileCopyrightText = "Copyright (c) 2025 Mario Zechner"
 SPDX-License-Identifier = "MIT"
 
 [[annotations]]
-path = "chord/nextnode/plugins/node/pi/schema/LICENSES/typebox-LICENSE"
+path = "chord/nextnode/plugins/node/pi/schema/THIRD_PARTY_NOTICES/typebox-LICENSE"
 precedence = "override"
 SPDX-FileCopyrightText = "Copyright (c) 2017-2026 Haydn Paterson"
 SPDX-License-Identifier = "MIT"

@@ -1,0 +1,6 @@
+// The tasks' web facet: registers the contract for the page's probe.
+import { defineFacet } from "@test/app/v1";
+import { probe } from "@test/app/v1/web";
+import { Tasks } from "./contract.ts";
+probe.contracts.tasks = Tasks;
+export default defineFacet(() => {});

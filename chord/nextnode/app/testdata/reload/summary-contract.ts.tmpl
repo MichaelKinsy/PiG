@@ -1,0 +1,9 @@
+// The summary's contract.
+import { hostKind, int, method, remote, str } from "@test/app/v1";
+const Server = hostKind("server");
+export const Summary = remote("reload.summary", {
+	version: 1,
+	params: { id: str() },
+	hostAddress: () => Server(),
+	variants: { main: { state: { label: str(), count: int() }, methods: { code: method(undefined, str()) } } },
+});

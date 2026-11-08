@@ -384,6 +384,7 @@ type callbacksWire struct {
 	Telemetry    *telemetryWire `json:"telemetry,omitempty"`
 	PrincipalKey bool           `json:"principalKey,omitempty"`
 	RevokedBy    bool           `json:"revokedBy,omitempty"`
+	ParentServes bool           `json:"parentServes,omitempty"`
 }
 
 // enableCallbacks registers the app's callbacks of options on h (the Go packages' functions, the synchronous `principalKey`
@@ -427,7 +428,17 @@ func (h *NodeHost) enableCallbacks(options RuntimeLoad, packages []goPackageWire
 			return append([]delta.JsonValue{}, revocations...), nil
 		})
 	}
-	if wire.PrincipalKey || wire.RevokedBy {
+	if serves := options.ParentServes; serves != nil {
+		wire.ParentServes = true
+		h.handleSync("parentServes", func(_ context.Context, args json.RawMessage) (any, error) {
+			var name string
+			if err := json.Unmarshal(args, &name); err != nil {
+				return nil, fmt.Errorf("parentServes: the type name is not a string: %w", err)
+			}
+			return serves(name), nil
+		})
+	}
+	if wire.PrincipalKey || wire.RevokedBy || wire.ParentServes {
 		wire.SyncToken = h.listenSync()
 	} else {
 		h.releaseListener()
