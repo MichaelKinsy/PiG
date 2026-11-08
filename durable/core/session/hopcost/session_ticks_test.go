@@ -86,7 +86,7 @@ func span(j Job, p Profile, batches []Writes) int {
 }
 
 // terminalWrites is the commit of a task going terminal that has one task document (retired with it: a task document keeps only current state).
-var terminalWrites = Writes{Tables: 1, DocEdits: 1, Actions: []Action{{Retire: true, CurrentOnly: true}}}
+var terminalWrites = Writes{Tasks: 1, Actions: []Action{{Doc: 1, Retire: true, CurrentOnly: true}}}
 
 // commitModel is the model's ticks of one measured commit. The callbacks are `async (tx) => {...}` over the awaits named.
 func commitModel(t *testing.T, p Profile, name string) int {
@@ -97,22 +97,22 @@ func commitModel(t *testing.T, p Profile, name string) int {
 		// The second owned task finds the owner's committed read settled (CurrentTask: 1) and the conversation cached.
 		return TxCreateTask(p, true, false, !first, CacheHit, false, CacheHit)
 	}
-	delta := []Writes{{DocEdits: 1, Actions: []Action{{Content: Delta}}}}
+	delta := []Writes{{Actions: []Action{{Doc: 1, Content: Delta}}}}
 	settle := Settle(0, 0, 0)
 	owner := CurrentTask(p, false, true, CacheHit) // validateOwners awaits the owner of a created owned task: its read is settled already
 	switch name {
 	case "commit warm (no write)":
 		return span(Job{Settle: settle}, p, nil)
 	case "commit warm (entry)":
-		return span(Job{Change: appendEntry(CacheHit), Settle: settle}, p, []Writes{{Tables: 1}})
+		return span(Job{Change: appendEntry(CacheHit), Settle: settle}, p, []Writes{{Entries: 1}})
 	case "commit warm (task)":
-		return span(Job{Change: createTask(CacheHit), Settle: settle}, p, []Writes{{Tables: 1}})
+		return span(Job{Change: createTask(CacheHit), Settle: settle}, p, []Writes{{Tasks: 1}})
 	case "commit warm (entry, task)":
-		return span(Job{Change: appendEntry(CacheHit) + createTask(CacheHit), Settle: settle}, p, []Writes{{Tables: 2}})
+		return span(Job{Change: appendEntry(CacheHit) + createTask(CacheHit), Settle: settle}, p, []Writes{{Entries: 1, Tasks: 1}})
 	case "commit warm (task owned)":
-		return span(Job{Change: ownedTask(true), Settle: Settle(owner, 0, 0)}, p, []Writes{{Tables: 1}})
+		return span(Job{Change: ownedTask(true), Settle: Settle(owner, 0, 0)}, p, []Writes{{Tasks: 1}})
 	case "commit warm (2 tasks owned)":
-		return span(Job{Change: ownedTask(true) + ownedTask(false), Settle: Settle(2*owner, 0, 0)}, p, []Writes{{Tables: 2}})
+		return span(Job{Change: ownedTask(true) + ownedTask(false), Settle: Settle(2*owner, 0, 0)}, p, []Writes{{Tasks: 2}})
 	case "commit warm (doc)":
 		return span(Job{Change: TxDoc(p, false, DocCached, 'c', false, false, false, CacheHit), Settle: settle}, p, delta)
 	case "commit warm (task terminal, documents known)":
@@ -120,12 +120,12 @@ func commitModel(t *testing.T, p Profile, name string) int {
 		// for the publication of its retired document; the task's documents are the Session's, so nothing is scanned.
 		return span(Job{Change: TxTask(p, false, CacheHit), Settle: Settle(0, 1, CurrentTask(p, true, false, CacheMiss))}, p, []Writes{terminalWrites})
 	case "commit cold (entry)":
-		return span(Job{Change: appendEntry(CacheMiss), Settle: settle}, p, []Writes{{Tables: 1}})
+		return span(Job{Change: appendEntry(CacheMiss), Settle: settle}, p, []Writes{{Entries: 1}})
 	case "commit cold (doc)":
 		return span(Job{Change: TxDoc(p, false, DocStored, 'c', false, false, false, CacheMiss), Settle: settle}, p, delta)
 	case "commit cold (task terminal)":
 		// The Session did not create the task: its documents are scanned, one page.
-		return span(Job{Change: TxTask(p, false, CacheMiss), Settle: Settle(0, 1, ReadHops(p, ReadRow))}, p, []Writes{{Tables: 1}})
+		return span(Job{Change: TxTask(p, false, CacheMiss), Settle: Settle(0, 1, ReadHops(p, ReadRow))}, p, []Writes{{Tasks: 1}})
 	}
 	t.Fatalf("no model for %q", name)
 	return 0
@@ -183,7 +183,7 @@ func TestPairedCommitsMatchPi(t *testing.T) {
 	for backend, calls := range table.Profiles {
 		p := profileOf[backend]
 		job := Job{Change: TxAppendEntry(p, false, CacheHit), Settle: Settle(0, 0, 0)}
-		batches := []Writes{{Tables: 1}}
+		batches := []Writes{{Entries: 1}}
 		admitted := 1 + job.Return()
 		resumed := admitted + Commit(p, batches)
 		first := resumed + OutcomeAfterPublication + FenceAfterOutcome + Delivery

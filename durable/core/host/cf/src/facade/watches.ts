@@ -3,7 +3,8 @@
 // (host/PROTOCOL.md). A frame is `{value, ops}`, `{retired: true}` for the retirement of the document a watch follows, or `{end: true}`
 // once the owner task of a task document ended; a watch follows its address across retirements (session.ts #observeDocument).
 import { withColdLoad } from "./coldload.ts"
-import { replicatedState, Watch, type AttachedReplicatedState, type Context, type WatchCall, type WatchEnd } from "@earendil-works/chord"
+import type { Context } from "@earendil-works/chord/context"
+import { Watch, type WatchCall, type WatchEnd } from "@earendil-works/chord/watch"
 import { BACKGROUND_CONTEXT, awaitWithContext } from "@earendil-works/chord/context"
 import { applyImmutable, type Op } from "@earendil-works/chord/delta"
 import type { CoreClient } from "../client.ts"
@@ -11,7 +12,7 @@ import { migrateRead } from "./tx.ts"
 import { currentCommit } from "./commit-context.ts"
 import { rememberSnapshot, revisionAt, sameContent, shareSnapshot } from "./snapshots.ts"
 import { sharedChange } from "./publications.ts"
-import { CommittedStateSource, ENDED, guardObserver, observation, RETIREMENT_OPERATIONS, type GuardedObserver } from "./observation.ts"
+import { ENDED, guardObserver, observation, type GuardedObserver } from "./observation.ts"
 import type { Observation, Observer } from "./watch-types.ts"
 
 /** What a watch observes. */
@@ -265,18 +266,6 @@ export class WatchHub {
       throw signal.reason
     }
     return observation(value, guarded)
-  }
-
-  /** Disposable read-only Chord state of the target, or undefined when absent. */
-  async state<T>(target: WatchTarget, context: Context): Promise<AttachedReplicatedState<T> | undefined> {
-    let source: CommittedStateSource<T> | undefined
-    await this.open<T>(target, context, (value, release) => {
-      const made = source = new CommittedStateSource<T>(value, release)
-      // The source is retired by a null value: the host's state does not follow the address (a Chord source has no such state).
-      // Durable's failures are final: a state sees value calls only.
-      return { advance: (call, context) => { if (call.kind === "value") call.retired ? made.advance(null as never, RETIREMENT_OPERATIONS, context) : made.advance(call.value as T, call.ops, context) }, ownerEnded: () => made.closeSession(), end: () => made.closeSession() }
-    })
-    return source ? replicatedState(source as never) as AttachedReplicatedState<T> : undefined
   }
 
   /** Attach a custom observer to a target (conversationViews().attach): `make` receives the first value and the release function. Undefined when the target is absent. */

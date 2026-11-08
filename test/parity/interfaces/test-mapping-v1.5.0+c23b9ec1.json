@@ -7673,8 +7673,35 @@
     },
     {
       "path": "packages/durable/test/harness-compaction.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:7d73105fd8f7b02e666e85a35a3660b052ad421209784be95b6548d21e262aab"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:7d73105fd8f7b02e666e85a35a3660b052ad421209784be95b6548d21e262aab",
+      "evidence": [
+        "durable/harness/harness_compaction_test.go#TestRangeSelection",
+        "durable/harness/harness_compaction_test.go#TestSerialization",
+        "durable/harness/harness_compaction_test.go#TestManualCompaction",
+        "durable/harness/harness_compaction_test.go#TestManualCompactionConcurrency",
+        "durable/harness/harness_compaction_test.go#TestCompactionOutcomes",
+        "durable/harness/harness_compaction_test.go#TestBackgroundThresholdCompaction",
+        "durable/harness/harness_compaction_test.go#TestBlockingThresholdCompaction",
+        "durable/harness/harness_compaction_test.go#TestOverflowCompaction",
+        "durable/harness/harness_compaction_test.go#TestCompactionEstimates",
+        "durable/harness/harness_compaction_test.go#TestCompactionInteractions",
+        "durable/harness/harness_compaction_test.go#TestCompactionLiveStatus",
+        "durable/harness/harness_compaction_test.go#TestCompactionRecovery",
+        "durable/harness/harness_compaction_test.go#TestCompactionAndTheInbox",
+        "durable/harness/harness_compaction_test.go#TestCompactionEdgeCases",
+        "durable/harness/harness_compaction_test.go#TestCompactionEdgeCasesLater",
+        "durable/harness/harness_compaction_test.go#TestBlockingAndManualCompaction",
+        "durable/harness/harness_compaction_test.go#TestCompactionPinning",
+        "durable/harness/harness_compaction_test.go#TestBlockedCompaction",
+        "durable/harness/harness_compaction_test.go#TestContextContributions",
+        "durable/harness/harness_compaction_test.go#TestPerModelCompactionOverrides",
+        "durable/harness/harness_compaction_test.go#TestPiLiveMigrations",
+        "durable/core/driver/compaction_failure_core_test.go#TestCorePerModelCompactionOverrideSetsTheBlockingThreshold",
+        "durable/core/driver/compaction_failure_core_test.go#TestCoreACompactionFailureIsVisibleUntilASummaryIsProduced",
+        "durable/harness/harness_compaction_test.go#TestPerConversationCompactionSettings"
+      ],
+      "rationale": "102 it() sites (6 parameterized: three orders, five failures, three policies, three preparations, two clocks, two responses), all ported under Pi's names across the Test functions of harness_compaction_test.go, with the variant lists equal to Pi's. Pi b3a29f11 to 1.5.0: pi.live compactions and compactionFailure carry `trigger` instead of `reason` (the Go expectations read Trigger / \"trigger\"); Harness.closed is {kind: failed} (End().Kind, the blocking-compaction-fault case); the two new 'pi.live migrations' cases (a version 1 value read with `reason` as `trigger` and stored migrated on its next write, a version 2 run without turns counted as 0) are the subtests of TestPiLiveMigrations; imports change Type.Object to obj only. Bodies compared line by line; 'fails the run when its blocking compaction faults' runs Pi's input: the Harness's Models is a wrapper whose CompleteSimple panics with 'no credentials' (Pi replaces completeSimple with a function that throws), which the scheduler turns into a task fault. Two cases keep a Go form with Pi's assertions: the 300 ms wall-clock race of the background summary through retry backoff holds the Harness clock, and the retry-backoff and overflow-after-reopen cases queue their responses before the reopen because Go's resume runs pending work at once. Pi c4cf7957 to c23b9ec1 (#11771): the four 'per-conversation compaction settings' cases are the subtests of TestPerConversationCompactionSettings under Pi's names (model-specific over general with the four maxTokens, the conversation's enabled: false over the Harness's model override, no overflow compaction when the conversation turns it off, undefined fields dropped / RangeError for token counts that are not integers 0 or more / null clears); the order of modelOverrides in the stored value is asserted in an added subtest (Pi keeps insertion order)."
     },
     {
       "path": "packages/durable/test/harness-context-range.test.ts",
@@ -7759,8 +7786,15 @@
     },
     {
       "path": "packages/durable/test/harness-generation.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f30df0dc101da156dc366ff08961ac9d346d549b2fc158461e9a5df4030d54d6"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:f30df0dc101da156dc366ff08961ac9d346d549b2fc158461e9a5df4030d54d6",
+      "evidence": [
+        "durable/harness/harness_generation_test.go#TestGeneration",
+        "durable/harness/harness_generation_test.go#resolves settings over the built-in defaults",
+        "durable/harness/harness_generation_test.go#attributes model requests by default and merges the Harness identity over it",
+        "durable/harness/harness_run_failure_test.go#TestRunFailure"
+      ],
+      "rationale": "All 26 cases stay in TestGeneration under Pi's names. Pi b3a29f11 to 1.5.0: every runFailure carries `first`, the entry id the run started from (aborted x4, no_model, faulted, model_error: arFirstUser / failure.First in the Go expectations); the orphaning case seeds a run task of GenerationTask.Definition.Version + 1 with run turns 0; the 'stores partials as deltas' case sets progress.persistWithinMs 100 so deferred partials reach Storage before the answer (harness_generation_test.go, 'stores partials as deltas'). Bodies compared line by line; 'faults a run task' asserts the whole live document (a non-zero taskId and nothing but runFailure) and its input is Pi's: the final message holds a function (a diagnostic's Details member, the only free-form member of a Go message) and the submission's and pi.live.runFailure's detail read 'non-JSON function', chord's copyJson text (json.ts:42), which durable/internal/strictjson now gives where encoding/json's 'unsupported type: func()' used to arrive. Pi 1.5.0 to c23b9ec1 (dbc61d64): the 'forwards stream options and the thinking level' case sets websocketConnectTimeoutMs and thinkingBudgets and expects them on the first request and absent on the second (harness_generation_test.go, same case)."
     },
     {
       "path": "packages/durable/test/harness-group-commit.test.ts",
@@ -8026,8 +8060,13 @@
     },
     {
       "path": "packages/durable/test/harness-submit-in-commit.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:b01100134779c62fe2cc94ab9facc074c7bd545981af9e44f57ce205360adb34"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:b01100134779c62fe2cc94ab9facc074c7bd545981af9e44f57ce205360adb34",
+      "evidence": [
+        "durable/harness/harness_submit_in_commit_test.go#TestWhenIdleReject",
+        "durable/harness/harness_submit_in_commit_test.go#TestSubmitInsideTheCallersCommit"
+      ],
+      "rationale": "All 24 cases ported against durable/harness, compared body to body (5 TestWhenIdleReject, 19 TestSubmitInsideTheCallersCommit); the trace-carrier case asserts both links with empty attributes. Pi 1.5.0 to c23b9ec1 (9ca15920): 'reads a submission by ID in a commit, with the entry its input was placed at' is the subtest of that name (Tx.Submission)."
     },
     {
       "path": "packages/durable/test/harness-task-graph.test.ts",
@@ -8318,8 +8357,14 @@
     },
     {
       "path": "packages/durable/test/sqlite-commit.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:9722217086fe556301114e5662dd2ce34307534f5341bcaecb0f64c970457897"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:9722217086fe556301114e5662dd2ce34307534f5341bcaecb0f64c970457897",
+      "evidence": [
+        "durable/storage/sqlite/sqlite_commit_test.go#TestSqliteStorageBatchCommitsAgainstMemoryReference",
+        "durable/storage/sqlite/sqlite_commit_test.go#TestSqliteStorageBatchCommitStatements",
+        "durable/storage/sqlite/sqlite_commit_test.go#TestSqliteStorageBatchCommitRegressions"
+      ],
+      "rationale": "All 6 cases ported under Pi's names (the random batch calls against MemoryStorage per seed, the four statement-count cases: the same eight statements for one batch and 150, the 512 Ki character split, column-bound large rows, no table scans by EXPLAIN QUERY PLAN, and the regression of a third incarnation after a replacement in an earlier batch for each order). The Go suite adds a stored document record that cannot be parsed, which rejects the whole call as a storage failure."
     },
     {
       "path": "packages/durable/test/sqlite-facade.test.ts",
@@ -8342,8 +8387,16 @@
     },
     {
       "path": "packages/durable/test/sqlite-storage.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d5972b12edc30d74f4399beecac3581dd519eb0d6182d4922f1e98c8d47a0eab"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:d5972b12edc30d74f4399beecac3581dd519eb0d6182d4922f1e98c8d47a0eab",
+      "evidence": [
+        "durable/storage/sqlite/sqlite_storage_test.go",
+        "durable/durabletest/storage_conformance_cases_test.go#TestCreateStorageConformanceCasesMatchUpstream",
+        "durable/storage/sqlite/sqlite_storage_test.go#TestSqliteStorageConformance",
+        "durable/storage/sqlite/sqlite_storage_test.go#TestSqliteStorageBatches",
+        "durable/storage/backend_reads_test.go#TestBackendReadsAgreeWithMemory"
+      ],
+      "rationale": "Pi v1.5.0 re-record: the 32-case conformance suite (durabletest, including the continue submissions and the creation-plus-change refusal new in v1.5.0), the pico storage, the record key order, the batches and the reads agreeing with memory run in the evidence files; the six upstream cases of SqliteStorage batches run as TestSqliteStorageBatches with each failure mode of the check read: Error, primitive and undefined rejections become the error the read returns (a message, a bare string, an empty one) and the synchronous throw its panic, each rejecting the whole call with nothing received or stored. Pi 1.5.0 to c23b9ec1 (fabf916f): the batch failure cases moved to a faultyDatabase helper and the first now fails a copy's source read (the batches before it are written first, so the whole call, the written batches included, is rejected with nothing received or stored): TestSqliteStorageBatches 'rejects the whole call, the batches written before it included, when a copy's source read fails with a ...' for the undefined rejection and the synchronous throw, and the check-read failures of record types for each failure mode."
     },
     {
       "path": "packages/durable/test/storage-runtime-boundary.test.ts",

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 // SPDX-License-Identifier: MIT
 
-import type { Context } from "@earendil-works/chord"
+import type { Context } from "@earendil-works/chord/context"
 
 /** Ports packages/durable/src/harness/util.ts Waiters: pending waits by key. Each settles once, through `resolve`, `rejectAll` or the abort of its context. The promise `add` returns is the waiter's own, so the caller's resumption spends exactly Pi's ticks. */
 export class Waiters<K, T> {

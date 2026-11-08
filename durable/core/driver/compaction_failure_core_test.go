@@ -307,7 +307,7 @@ func TestCorePerModelCompactionOverrideSetsTheBlockingThreshold(t *testing.T) {
 			)
 			policy := thresholdPolicy()
 			policy.Enabled = new(false)
-			policy.ModelOverrides = map[string]durable.CompactionPolicyOverride{key: {Enabled: new(true)}}
+			policy.ModelOverrides = durable.NewCompactionOverrides(durable.CompactionModelOverride{Model: key, Override: durable.CompactionPolicyOverride{Enabled: new(true)}})
 			r.changeSettings(func(settings *harness.HarnessSettings) { settings.Compaction = policy })
 			r.firstTurn(t)
 			if second := r.submit(t, strings.Repeat("y", 500)); second.Status != durable.SubmissionDone {

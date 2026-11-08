@@ -46,7 +46,7 @@ func TestTheSessionGuardWrapsEveryStorageCall(t *testing.T) {
 				t.Errorf("%s read %d = %d, want %d", p, r, got, want)
 			}
 		}
-		w := []Writes{{Tables: 2}, {Tables: 1}}
+		w := []Writes{{Entries: 2}, {Tasks: 1}}
 		if got, want := Commit(p, w), guarded(commitBackend(p, w)); got != want {
 			t.Errorf("%s commit = %d, want %d", p, got, want)
 		}
@@ -56,12 +56,12 @@ func TestTheSessionGuardWrapsEveryStorageCall(t *testing.T) {
 // The statements of a call land CommitTail ticks before the writer resumes from Storage.commit: the COMMIT is one of the call's last ticks.
 func TestCommitTailIsWithinTheCommit(t *testing.T) {
 	for _, p := range []Profile{GateCapsql, Node, Gate} {
-		w := []Writes{{Tables: 1}}
+		w := []Writes{{Entries: 1}}
 		if tail := CommitTail(p); tail >= Commit(p, w) {
 			t.Errorf("%s: the COMMIT is %d ticks before the resumption, a commit takes only %d", p, tail, Commit(p, w))
 		}
 	}
-	if got := Commit(Memory, []Writes{{Tables: 3}}); got != MemoryCommitResume {
+	if got := Commit(Memory, []Writes{{Entries: 3}}); got != MemoryCommitResume {
 		t.Errorf("a MemoryStorage commit takes %d ticks, want %d", got, MemoryCommitResume)
 	}
 	if HitTicks != guarded(1) {

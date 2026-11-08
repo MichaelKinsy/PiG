@@ -507,8 +507,8 @@ type CompactionPolicy struct {
 	BackgroundTokens int `json:"backgroundTokens"`
 	// ModelOverrides is the resolved CompactionSettings.modelOverrides, keyed by exact "provider/modelId"; nil without
 	// any. PolicyFor applies it.
-	//portlint:allow emptydrop a nil map is Pi's absent modelOverrides (Settings spreads only the keys a host set); an explicit {} is kept
-	ModelOverrides map[string]CompactionPolicyOverride `json:"modelOverrides,omitzero"`
+	//portlint:allow emptydrop an unset ModelOverrides is Pi's absent modelOverrides (Settings spreads only the keys a host set); an explicit {} is kept
+	ModelOverrides CompactionOverrides `json:"modelOverrides,omitzero"`
 }
 
 // CompactionPolicyOverride is Partial<CompactionPolicy>: one model's entry of modelOverrides; nil fields keep the
@@ -528,8 +528,8 @@ type CompactionSettings struct {
 	ReserveTokens    *int  `json:"reserveTokens,omitempty"`
 	KeepRecentTokens *int  `json:"keepRecentTokens,omitempty"`
 	BackgroundTokens *int  `json:"backgroundTokens,omitempty"`
-	//portlint:allow emptydrop a nil map is Pi's absent modelOverrides; an explicit {} is stored as {}
-	ModelOverrides map[string]CompactionPolicyOverride `json:"modelOverrides,omitzero"`
+	//portlint:allow emptydrop an unset ModelOverrides is Pi's absent modelOverrides; an explicit {} is stored as {}
+	ModelOverrides CompactionOverrides `json:"modelOverrides,omitzero"`
 }
 
 // own is the settings' own fields as a layer of the resolution.
@@ -547,10 +547,10 @@ func (policy CompactionPolicy) PolicyFor(model ModelRef, conversation *Compactio
 	var layers [3]CompactionPolicyOverride
 	var conversationModel CompactionPolicyOverride
 	if conversation != nil {
-		conversationModel = conversation.ModelOverrides[key]
+		conversationModel = conversation.ModelOverrides.Get(key)
 		layers[0], layers[2] = conversationModel, conversation.own()
 	}
-	layers[1] = policy.ModelOverrides[key]
+	layers[1] = policy.ModelOverrides.Get(key)
 	field := func(pick func(CompactionPolicyOverride) *int, harness int) int {
 		for _, layer := range layers {
 			if value := pick(layer); value != nil {

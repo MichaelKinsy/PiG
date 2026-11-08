@@ -29,52 +29,50 @@ var readOf = map[string]Read{
 
 // parseShape reads the shape of a measured commit, `commit[a,b;c]`'s `a,b;c`: batches separated by `;`, writes by `,`. A write is a table
 // kind (conversation, entry, task, submission) or a document write: `doc.create:base[:latest]`, `doc.change:delta`, `doc.change:base[:latest]`,
-// `doc.retire[:latest]`, `doc.copy`. A `doc.retire` right after a `doc.create` of its batch retires that document (one merged action); writes
-// marked `@a` name one document address, so every later action of it finds the address already looked up. A write marked `!taken` is the
-// one Durable's checks refuse.
+// `doc.retire[:latest]`, `doc.copy`. A `doc.retire` right after a `doc.create` of its batch retires that document (one merged action); the
+// other document writes name documents of their own (`@a` marks an address the commit reads in bulk, which the model does not tell apart).
+// A write marked `!taken` is the one Durable's checks refuse.
 func parseShape(t *testing.T, shape string) []Writes {
 	t.Helper()
 	var batches []Writes
+	var docs int64
 	for batch := range strings.SplitSeq(shape, ";") {
 		var w Writes
-		looked := map[string]bool{}
-		claims := 0
 		for i, write := range strings.Split(batch, ",") {
-			taken := false
 			if before, ok := strings.CutSuffix(write, "!taken"); ok {
-				write, taken = before, true
+				write, w.Refused = before, true
 			}
-			address := ""
-			if before, after, ok := strings.Cut(write, "@"); ok {
-				write, address = before, after
+			address := false
+			if before, _, ok := strings.Cut(write, "@"); ok {
+				write, address = before, true
 			}
 			parts := strings.Split(write, ":")
 			latest := len(parts) > 1 && parts[len(parts)-1] == "latest"
-			a := Action{CurrentOnly: latest, KnownAddress: address != "" && looked[address]}
+			docs++
+			a := Action{Doc: docs, CurrentOnly: latest}
 			switch kind := parts[0]; kind {
-			case "conversation", "entry", "task", "submission":
-				w.Tables++
-				claims++
+			case "conversation":
+				w.Conversations++
+			case "entry":
+				w.Entries++
+			case "task":
+				w.Tasks++
+			case "submission":
+				w.Submissions++
 			case "doc.create":
-				w.DocCreates++
-				claims++
 				a.Create, a.Content = true, Base
 				w.Actions = append(w.Actions, a)
 			case "doc.copy":
-				w.DocCreates++
-				claims++
 				a.Create, a.Copy, a.Content = true, true, Base
 				w.Actions = append(w.Actions, a)
 			case "doc.change":
-				w.DocEdits++
 				a.Content = Base
 				if parts[1] == "delta" {
 					a.Content = Delta
 				}
 				w.Actions = append(w.Actions, a)
 			case "doc.retire":
-				w.DocEdits++
-				if last := len(w.Actions) - 1; i > 0 && last >= 0 && w.Actions[last].Create && address == "" {
+				if last := len(w.Actions) - 1; i > 0 && last >= 0 && w.Actions[last].Create && !address {
 					w.Actions[last].Retire = true
 					break
 				}
@@ -82,12 +80,6 @@ func parseShape(t *testing.T, shape string) []Writes {
 				w.Actions = append(w.Actions, a)
 			default:
 				t.Fatalf("shape %q: unknown write %q", shape, write)
-			}
-			if address != "" {
-				looked[address] = true
-			}
-			if taken {
-				w.Refused = claims
 			}
 		}
 		batches = append(batches, w)
@@ -143,7 +135,7 @@ func TestModelMatchesTheGeneratedBackendTables(t *testing.T) {
 
 // The Memory profile stores in the tick of the call and resumes MemoryCommitResume ticks later, whatever the batches.
 func TestCommitCallMemory(t *testing.T) {
-	for _, batches := range [][]Writes{{{Tables: 1}}, {{Tables: 2}, {Tables: 1}}} {
+	for _, batches := range [][]Writes{{{Entries: 1}}, {{Entries: 2}, {Tasks: 1}}} {
 		if receive, resume := CommitCall(Memory, batches); receive != 0 || resume != MemoryCommitResume {
 			t.Errorf("CommitCall(Memory, %d batches) = %d, %d, want 0, %d", len(batches), receive, resume, MemoryCommitResume)
 		}
@@ -153,7 +145,7 @@ func TestCommitCallMemory(t *testing.T) {
 // A call's COMMIT is CommitTail ticks before the writer resumes and the receipts ReceiveTail ticks before it: the receipts follow the COMMIT.
 func TestCommitCall(t *testing.T) {
 	for _, p := range []Profile{GateCapsql, Gate, Node} {
-		batches := []Writes{{Tables: 1}, {Tables: 2}}
+		batches := []Writes{{Entries: 1}, {Tasks: 2}}
 		receive, resume := CommitCall(p, batches)
 		if resume != Commit(p, batches) || receive != resume-CommitTail(p) {
 			t.Errorf("%s: CommitCall = %d, %d", p, receive, resume)

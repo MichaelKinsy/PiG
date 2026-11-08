@@ -1,7 +1,7 @@
 // The Context of the Session commit whose publication the host is delivering (session.ts: a publication carries its commit's Context,
 // and observers' deliveries take its values). The core's `published` notice names no commit, but commits hold the Session line one at
 // a time and a commit's publication arrives before its answer settles, so the commit that holds the line is the producer.
-import type { Context } from "@earendil-works/chord"
+import type { Context } from "@earendil-works/chord/context"
 import type { CoreClient } from "../client.ts"
 
 const holding = new WeakMap<CoreClient, Context[]>()

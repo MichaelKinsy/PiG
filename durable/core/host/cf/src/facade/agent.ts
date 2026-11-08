@@ -1,7 +1,7 @@
 // Agent state, settings and resolution (src/harness/agent.ts). Resolution is host code in pi-durable, wraps included, so it
 // stays in the host here: the core asks for it with the `resolveAgent` hook (PROTOCOL.md) and caches the answer per registry
 // publication and stored state.
-import { copyJson } from "@earendil-works/chord"
+import { copyJson } from "@earendil-works/chord/json"
 import { defineDoc } from "./documents.ts"
 import type { HostExtension, HostRegistrySource, HostSection, HostTool } from "../registry.ts"
 

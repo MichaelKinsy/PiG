@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"maps"
 	"math"
 	"slices"
 
@@ -603,10 +602,9 @@ func applyChange(state durable.Draft[AgentState], change AgentChange) error {
 // keepRecentTokens, backgroundTokens, then modelOverrides.
 func compactionJSON(settings durable.CompactionSettings) *delta.JsonObject {
 	object := policyJSON(settings.Enabled, settings.ReserveTokens, settings.KeepRecentTokens, settings.BackgroundTokens)
-	if settings.ModelOverrides != nil {
-		overrides := delta.NewJsonObject(len(settings.ModelOverrides))
-		for _, key := range slices.Sorted(maps.Keys(settings.ModelOverrides)) {
-			override := settings.ModelOverrides[key]
+	if settings.ModelOverrides.IsSet() {
+		overrides := delta.NewJsonObject(settings.ModelOverrides.Len())
+		for key, override := range settings.ModelOverrides.All() {
 			overrides.Set(key, policyJSON(override.Enabled, override.ReserveTokens, override.KeepRecentTokens, override.BackgroundTokens))
 		}
 		object.Set("modelOverrides", overrides)
@@ -638,17 +636,16 @@ func compactionSettings(settings durable.CompactionSettings) (durable.Compaction
 	if stored.Enabled, stored.ReserveTokens, stored.KeepRecentTokens, stored.BackgroundTokens, err = compactionFields("compaction", settings.Enabled, settings.ReserveTokens, settings.KeepRecentTokens, settings.BackgroundTokens); err != nil {
 		return stored, err
 	}
-	if settings.ModelOverrides == nil {
+	if !settings.ModelOverrides.IsSet() {
 		return stored, nil
 	}
-	stored.ModelOverrides = make(map[string]durable.CompactionPolicyOverride, len(settings.ModelOverrides))
-	for _, key := range slices.Sorted(maps.Keys(settings.ModelOverrides)) {
-		override := settings.ModelOverrides[key]
+	stored.ModelOverrides = durable.NewCompactionOverrides()
+	for key, override := range settings.ModelOverrides.All() {
 		var fields durable.CompactionPolicyOverride
 		if fields.Enabled, fields.ReserveTokens, fields.KeepRecentTokens, fields.BackgroundTokens, err = compactionFields("compaction.modelOverrides", override.Enabled, override.ReserveTokens, override.KeepRecentTokens, override.BackgroundTokens); err != nil {
 			return stored, err
 		}
-		stored.ModelOverrides[key] = fields
+		stored.ModelOverrides.Set(key, fields)
 	}
 	return stored, nil
 }
