@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	chatcontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/chat/contract"
+	statuscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/status/contract"
 	"github.com/MichaelKinsy/PiG/apps/p2/tui/transcript"
 	"github.com/MichaelKinsy/PiG/apps/p2desktop/internal/surfacehost"
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -30,6 +31,9 @@ type Chat struct {
 	viewRaw  func() (delta.JsonValue, bool)
 	modelRaw func() (delta.JsonValue, bool)
 	statsRaw func() (delta.JsonValue, bool)
+	// clientsRaw and usageRaw are the session's metrics (p2.session-metrics): the viewers and the spend.
+	clientsRaw func() (delta.JsonValue, bool)
+	usageRaw   func() (delta.JsonValue, bool)
 
 	mu      sync.Mutex
 	changed func()
@@ -55,6 +59,12 @@ func OpenChat(h *surfacehost.Host, scope *tui.TuiScope, session string, conversa
 	c.viewRaw = tui.WatchMember(scope, ref.Member("view"))
 	c.modelRaw = tui.WatchMember(scope, ref.Member("model"))
 	c.statsRaw = tui.WatchMember(scope, ref.Member("stats"))
+	metrics, err := scope.Hold(statuscontract.SessionMetrics, delta.JsonObjectOf("session", session, "viewer", "p2-desktop"))
+	if err != nil {
+		return nil, err
+	}
+	c.clientsRaw = tui.WatchMember(scope, metrics.Member("clients"))
+	c.usageRaw = tui.WatchMember(scope, metrics.Member("usage"))
 	joined, err := harness.NewConversationTranscript(c.loadEntries, nil)
 	if err != nil {
 		return nil, err
@@ -188,6 +198,15 @@ type Stats struct {
 	Latest        map[string]float64
 }
 
+// CacheHit is the cache hit share of the latest response (the web's "chr"): cache reads over the whole prompt; ok is false without one.
+func (s Stats) CacheHit() (rate float64, ok bool) {
+	prompt := s.Latest["input"] + s.Latest["cacheRead"] + s.Latest["cacheWrite"]
+	if prompt <= 0 {
+		return 0, false
+	}
+	return s.Latest["cacheRead"] / prompt, true
+}
+
 // Stats reads the context numbers (the zero value until computed).
 func (c *Chat) Stats() Stats {
 	value, ok := c.statsRaw()
@@ -206,6 +225,30 @@ func (c *Chat) Stats() Stats {
 		}
 	}
 	return s
+}
+
+// Metrics are the session's viewers and spend (p2.session-metrics): Cost is the session's total cost in dollars, HasCost whether the
+// session has any usage yet.
+type Metrics struct {
+	Clients float64
+	Cost    float64
+	HasCost bool
+}
+
+// Metrics reads the session's metrics (the zero value until they arrive).
+func (c *Chat) Metrics() Metrics {
+	var m Metrics
+	if v, ok := c.clientsRaw(); ok {
+		m.Clients, _ = v.(float64)
+	}
+	if v, ok := c.usageRaw(); ok {
+		if usage, _ := v.(*delta.JsonObject); usage != nil {
+			if cost, _ := usage.Value("cost").(*delta.JsonObject); cost != nil {
+				m.Cost, m.HasCost = cost.Value("total").(float64)
+			}
+		}
+	}
+	return m
 }
 
 // Send sends text as the user's message (steering the run when one is going), with a fresh request ID.
