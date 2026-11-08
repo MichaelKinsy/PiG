@@ -132,9 +132,10 @@ type Transaction struct {
 	// persistence is when its commit reaches the store (a run state's deferred change, D8).
 	persistence CommitPersistence
 	state       txState
-	// adopted counts the documents its commit adopted, ops their prepared changes' ops, rows the table rows its commit's
-	// step changed (what Committed says).
-	adopted, ops, rows int64
+	// adoptions are what its commit adopts (set at its preparation, counted when Committed asks); rows the table rows its
+	// commit's step changed.
+	adoptions []*adoption
+	rows      int64
 	// queued rejects the commit while it waits in the store's queue (cut): its caller is told at once (rule 3).
 	queued chan error
 }
@@ -482,12 +483,6 @@ func (tx *Transaction) Commit() error {
 	var writes *txWrites
 	tx.documents.Do(func() {
 		writes = tx.writes
-		tx.adopted = int64(len(adoptions))
-		for _, a := range adoptions {
-			if a.prepared != nil {
-				tx.ops += int64(len(a.prepared.Ops()))
-			}
-		}
 	})
 	if writes == nil {
 		tx.documents.Do(func() {
@@ -552,6 +547,7 @@ func (tx *Transaction) prepareCommit() ([]*adoption, error) {
 		}
 		adoptions = append(adoptions, &adoption{entry: e, prepared: prepared, retires: retires, stored: stored})
 	}
+	tx.adoptions = adoptions
 	return adoptions, nil
 }
 
@@ -653,10 +649,15 @@ func (tx *Transaction) adopt(adoptions []*adoption) error {
 // Committed is what its commit adopted: its documents, their ops, its store writes and the table rows they changed (all 0
 // before it committed). A section.
 func (tx *Transaction) Committed() (documents, ops, writes, rows int64) {
+	for _, a := range tx.adoptions {
+		if a.prepared != nil {
+			ops += int64(len(a.prepared.Ops()))
+		}
+	}
 	if tx.writes != nil {
 		writes = int64(len(tx.writes.staged))
 	}
-	return tx.adopted, tx.ops, writes, tx.rows
+	return int64(len(tx.adoptions)), ops, writes, tx.rows
 }
 
 // Discard aborts every draft and prepared change. A section.
