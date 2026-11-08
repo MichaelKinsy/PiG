@@ -122,7 +122,9 @@ func TestMcpToolsInASessionsWorkerCodeModeScriptsCallThemAndToolSearchLoadsThemW
 		t.Fatalf("errors: %v", errs)
 	}
 	serial := 0
-	view := func(predicate func(delta.JsonValue) bool) delta.JsonValue { return until(chat.Member("view"), predicate) }
+	view := func(predicate func(delta.JsonValue) bool) delta.JsonValue {
+		return until(chat.Member("view"), predicate)
+	}
 	call := func(prompt string) *delta.JsonObject {
 		t.Helper()
 		count := len(results(view(func(v delta.JsonValue) bool { return v != nil })))
