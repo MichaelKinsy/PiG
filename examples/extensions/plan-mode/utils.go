@@ -1,7 +1,6 @@
 package planmode
 
 import (
-	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -105,9 +104,13 @@ var (
 	leadingActionPattern    = compilePlanPattern(`(?i)^(Use|Run|Execute|Create|Write|Read|Check|Verify|Update|Modify|Add|Remove|Delete|Install)\s+(the\s+)?`)
 	whitespacePattern       = compilePlanPattern(`\s+`)
 	planHeaderPattern       = compilePlanPattern(`(?i)\*{0,2}Plan:\*{0,2}\s*\n`)
-	numberedStepPattern     = compilePlanPattern(`(?:^|[\r\n\x{2028}\x{2029}])\s*(\d+)[.)]\s+\*{0,2}([^*\n]+)`)
+	numberedStepPattern     = compilePlanPattern(`(?:^|[\r\n\x{2028}\x{2029}])\s*(\d+)[.)]\s+([^\r\n\x{2028}\x{2029}]+)`)
 	trailingEmphasisPattern = compilePlanPattern(`\*{1,2}$`)
-	doneStepPattern         = compilePlanPattern(`(?i)\[DONE:(\d+)\]`)
+	doneBracketPattern      = compilePlanPattern(`(?i)\[DONE\s*:?\s*(\d+)\]`)
+	doneColonPattern        = compilePlanPattern(`(?i)\bDone\s*:\s*(\d+)\b`)
+	doneProsePattern        = compilePlanPattern(`(?i)\bStep\s*(\d+)\s+(?:is\s+)?(?:done|complete|completed|finished)\b`)
+	wholePlanAllPattern     = compilePlanPattern(`(?i)(?:all|every)\s+steps?\s+(?:are|is\s+)?(?:done|complete|completed|finished)`)
+	wholePlanPlanPattern    = compilePlanPattern(`(?i)\b(?:the\s+)?plan\s+(?:is\s+)?(?:complete|completed|done)\b`)
 )
 
 func compileCommandPatterns(sources []string) []*regexp.Regexp {
@@ -191,16 +194,13 @@ func hasUnquotedOutputRedirect(command string) bool {
 	return false
 }
 
-// CleanStepText removes lightweight Markdown and leading action words, then applies JavaScript whitespace and first-code-unit uppercase semantics for the progress display.
+// CleanStepText removes lightweight Markdown and leading action words, then applies JavaScript whitespace and first-code-unit uppercase semantics. It keeps the full text; the widget truncates for display.
 func CleanStepText(text string) string {
 	cleaned := markdownEmphasisPattern.ReplaceAllString(text, "$1")
 	cleaned = markdownCodePattern.ReplaceAllString(cleaned, "$1")
 	cleaned = leadingActionPattern.ReplaceAllString(cleaned, "")
 	cleaned = jsTrim(whitespacePattern.ReplaceAllString(cleaned, " "))
 	cleaned = capitalizeFirstCodeUnit(cleaned)
-	if utf16Length(cleaned) > 50 {
-		cleaned = utf16Slice(cleaned, 47) + "..."
-	}
 	return cleaned
 }
 
@@ -221,19 +221,20 @@ func utf16Slice(text string, end int) string {
 	return string(utf16.Decode(units[:min(end, len(units))]))
 }
 
-// ExtractTodoItems returns valid numbered steps under the first Plan header.
+// ExtractTodoItems returns valid numbered steps under the last Plan header, so a draft in a thinking block does not duplicate the plan in the text block.
 func ExtractTodoItems(message string) []TodoItem {
-	header := planHeaderPattern.FindStringIndex(message)
-	if header == nil {
+	headers := planHeaderPattern.FindAllStringIndex(message, -1)
+	if len(headers) == 0 {
 		return []TodoItem{}
 	}
+	header := headers[len(headers)-1]
 
 	matches := numberedStepPattern.FindAllStringSubmatch(message[header[1]:], -1)
 	items := make([]TodoItem, 0, len(matches))
 	for _, match := range matches {
 		text := jsTrim(match[2])
 		text = jsTrim(trailingEmphasisPattern.ReplaceAllString(text, ""))
-		if utf16Length(text) <= 5 || strings.HasPrefix(text, "`") || strings.HasPrefix(text, "/") || strings.HasPrefix(text, "-") {
+		if utf16Length(text) <= 5 || strings.HasPrefix(text, "/") || strings.HasPrefix(text, "-") {
 			continue
 		}
 		cleaned := CleanStepText(text)
@@ -244,30 +245,41 @@ func ExtractTodoItems(message string) []TodoItem {
 	return items
 }
 
-// ExtractDoneSteps returns every finite JavaScript Number from well-formed DONE markers in source order.
+// ExtractDoneSteps returns the distinct JavaScript Numbers named by DONE markers ([DONE:1], [DONE: 1], [DONE 1]), "Done: 1" and "Step 1 done / is complete / finished", in the order of those three forms. Phrases are adjacency-anchored, so "Step 9 is not done" never matches.
 func ExtractDoneSteps(message string) []float64 {
-	matches := doneStepPattern.FindAllStringSubmatch(message, -1)
-	steps := make([]float64, 0, len(matches))
-	for _, match := range matches {
-		value, err := strconv.ParseFloat(match[1], 64)
-		if err != nil || math.IsInf(value, 0) {
-			continue
+	var steps []float64
+	seen := map[float64]bool{}
+	for _, pattern := range []*regexp.Regexp{doneBracketPattern, doneColonPattern, doneProsePattern} {
+		for _, match := range pattern.FindAllStringSubmatch(message, -1) {
+			value, _ := strconv.ParseFloat(match[1], 64) // out of range is +Inf, as Number(...)
+			if !seen[value] {
+				seen[value] = true
+				steps = append(steps, value)
+			}
 		}
-		steps = append(steps, value)
+	}
+	if steps == nil {
+		steps = []float64{}
 	}
 	return steps
 }
 
-// MarkCompletedSteps applies DONE markers to matching items and returns the number of markers found, including markers for unknown steps.
+// MarkCompletedSteps applies DONE markers to matching incomplete items and returns the number of items it newly completed.
 func MarkCompletedSteps(text string, items []TodoItem) int {
-	doneSteps := ExtractDoneSteps(text)
-	for _, step := range doneSteps {
+	marked := 0
+	for _, step := range ExtractDoneSteps(text) {
 		for i := range items {
-			if float64(items[i].Step) == step {
+			if float64(items[i].Step) == step && !items[i].Completed {
 				items[i].Completed = true
+				marked++
 				break
 			}
 		}
 	}
-	return len(doneSteps)
+	return marked
+}
+
+// AllStepsComplete reports whole-plan completion phrasing ("All steps complete", "The plan is done"), the fallback when the model summarizes without DONE tags. Consulted on the run's final message only.
+func AllStepsComplete(message string) bool {
+	return wholePlanAllPattern.MatchString(message) || wholePlanPlanPattern.MatchString(message)
 }

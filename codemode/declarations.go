@@ -5,14 +5,13 @@ import (
 	"encoding/json"
 	"maps"
 	"math"
-	"net/url"
 	"slices"
 	"strings"
 	"sync"
-	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/schemaref"
 )
 
 const (
@@ -280,7 +279,7 @@ func schemaToType(schema any, maxChars *int) string {
 //
 // Ports packages/codemode/src/declarations.ts (resolveSchemaRef).
 func ResolveSchemaRef(ref string, root any) (any, bool) {
-	segments, ok := refSegments(ref)
+	segments, ok := schemaref.Segments(ref)
 	if !ok {
 		return nil, false
 	}
@@ -308,7 +307,7 @@ func ResolveSchemaRef(ref string, root any) (any, bool) {
 // order root has them. It reads root once, as bytes, without building a tree or boxing tokens: the cost is the size of root, not its depth times its
 // size. Text that is not valid JSON up to the end of the value it names resolves nothing.
 func ResolveSchemaRefJSON(ref string, root json.RawMessage) (json.RawMessage, bool) {
-	segments, ok := refSegments(ref)
+	segments, ok := schemaref.Segments(ref)
 	if !ok {
 		return nil, false
 	}
@@ -617,30 +616,6 @@ func (s *refScanner) value() {
 			}
 		}
 	}
-}
-
-// refSegments are the members a local `$ref` (`#`, `#/$defs/Item`) walks through, URI-decoded and JSON Pointer unescaped. It reports false for a
-// remote reference and for a segment with a malformed percent escape.
-func refSegments(ref string) ([]string, bool) {
-	if ref != "#" && !strings.HasPrefix(ref, "#/") {
-		return nil, false
-	}
-	if ref == "#" {
-		return nil, true
-	}
-	var segments []string
-	//portlint:allow utf16units ref[2:] drops the two ASCII characters `#/` (declarations.ts resolveSchemaRef)
-	for segment := range strings.SplitSeq(ref[2:], "/") {
-		if segment == "" {
-			continue
-		}
-		decoded, err := url.PathUnescape(segment)
-		if err != nil || !utf8.ValidString(decoded) {
-			return nil, false
-		}
-		segments = append(segments, strings.ReplaceAll(strings.ReplaceAll(decoded, "~1", "/"), "~0", "~"))
-	}
-	return segments, true
 }
 
 func toType(schema any, ctx *schemaContext) string {

@@ -46,6 +46,15 @@ func (m *InteractiveMode) markdownThemeWithSettings() *tui.MarkdownTheme {
 // context's messageId and timestamp (Pi #11270 messageMeta). It is the zero value for a live message.
 type messageMeta struct{ ID, Timestamp string }
 
+// entryMeta is the messageMeta of a message drawn from a persisted session entry of a restored transcript, as Pi's renderSessionEntries
+// fills it. An entry without an id gives the zero value.
+func entryMeta(base SessionEntryBase) messageMeta {
+	if base.ID == "" {
+		return messageMeta{}
+	}
+	return messageMeta{ID: base.ID, Timestamp: base.Timestamp}
+}
+
 func (m *InteractiveMode) newUserMessageBlock(text string, meta messageMeta) *tui.UserMessageComponent {
 	block := tui.NewUserMessageComponent(text, m.markdownThemeWithSettings(), m.outputPad, nil, meta.ID, meta.Timestamp)
 	retry := &markdownRetry{m: m}
@@ -122,9 +131,14 @@ func (r *markdownRetry) state() string {
 	return ""
 }
 
+// hasExtensionMarkdownTransformers reports whether an extension registered a Markdown transformer.
+func (m *InteractiveMode) hasExtensionMarkdownTransformers() bool {
+	return m.newRunner != nil && len(m.newRunner.GetMarkdownTransformers()) > 0
+}
+
 // hasAsyncMarkdownTransformers reports whether asyncMarkdownTransform yields a transform; callers skip building its arguments when it does not.
 func (m *InteractiveMode) hasAsyncMarkdownTransformers() bool {
-	return m.backgroundCtx != nil && m.newRunner != nil && len(m.newRunner.GetMarkdownTransformers()) > 0
+	return m.backgroundCtx != nil && m.hasExtensionMarkdownTransformers()
 }
 
 // Ports packages/coding-agent/src/modes/interactive/components/markdown-transform.ts.
@@ -221,6 +235,58 @@ func (m *InteractiveMode) markdownTransformers() []extension.MarkdownTransformer
 	return transformers
 }
 
+// surfaceMarkdownTransform is the display-only transform of a Markdown surface that is not a transcript message: custom messages and skill blocks
+// ("custom"), branch and compaction summaries ("summary"), the changelog notices ("changelog"). It is Pi's createMarkdownTransform(messageType, () => false,
+// getMarkdownTransformers(), messageId, timestamp); meta is the zero value for a message that is not rendered from a restored session entry.
+//
+// Pi only re-renders a Markdown when its text or width changes, so a surface is static unless an extension registered a transformer: only then does it
+// carry the state its chain reads, which makes the component polled every frame, and run the chain off the render loop (asyncMarkdownTransform, D19) as the
+// user and assistant messages do.
+func (m *InteractiveMode) surfaceMarkdownTransform(messageType extension.MarkdownMessageType, meta messageMeta) tui.MarkdownSurface {
+	retry := &markdownRetry{m: m}
+	surface := tui.MarkdownSurface{Transform: func(markdown string, width int) string {
+		return markdowntransform.ApplyMarkdownTransformers(markdown, extension.MarkdownTransformContext{MessageType: messageType, AvailableWidth: width, MessageID: meta.ID, Timestamp: meta.Timestamp, Retry: retry.requester()}, m.markdownTransformers())
+	}}
+	if m.hasExtensionMarkdownTransformers() {
+		surface.State = m.surfaceMarkdownTransformState(retry)
+		surface.Async = m.asyncMarkdownTransform(nil, messageType, retry, meta)
+	}
+	return surface
+}
+
+// surfaceMarkdownTransformState is the state a surface's chain reads for the render cache key: the Mermaid mode, the retry count and the theme. The
+// string is rebuilt only when one of them changes, so a frame that reads it allocates nothing.
+func (m *InteractiveMode) surfaceMarkdownTransformState(retry *markdownRetry) func() string {
+	var (
+		state string
+		mode  string
+		count uint64
+		theme *tui.Theme
+		built bool
+	)
+	return func() string {
+		currentMode, currentCount, currentTheme := m.mermaidRenderingMode(), retry.count.Load(), tui.ActiveTheme()
+		if !built || mode != currentMode || count != currentCount || theme != currentTheme {
+			state = currentMode + retry.state()
+			if currentTheme != nil {
+				state += " " + currentTheme.Name
+			}
+			mode, count, theme, built = currentMode, currentCount, currentTheme, true
+		}
+		return state
+	}
+}
+
+// newChangelogMarkdown is InteractiveMode.createChangelogMarkdown: the Markdown of a changelog or release note, which runs the transformers of the
+// "changelog" type.
+func (m *InteractiveMode) newChangelogMarkdown(markdown string, paddingX, paddingY int, style *tui.DefaultTextStyle) *tui.Markdown {
+	surface := m.surfaceMarkdownTransform(extension.MarkdownMessageChangelog, messageMeta{})
+	block := tui.NewMarkdownWithOptions(markdown, paddingX, paddingY, m.markdownThemeWithSettings(), style, &tui.MarkdownOptions{Transform: surface.Transform})
+	block.TransformState = surface.State
+	block.AsyncTransform = surface.Async
+	return block
+}
+
 // assistantMarkdownTransformState fingerprints the live state
 // assistantMarkdownTransform reads, for the Markdown render cache key.
 func (m *InteractiveMode) assistantMarkdownTransformState(block *tui.AssistantMessageComponent, retry *markdownRetry) func() string {
@@ -292,7 +358,7 @@ func (m *InteractiveMode) showNewVersionNotification(release LatestPiRelease) {
 	blocks := []tui.Component{tui.NewThemedText(func() string { return binaryUpdateNoticeBody(tui.ActiveTheme(), release.Version, AppName+" update") }, 1, 0)}
 	if note != "" {
 		muted := func(text string) string { return noticeFg(t.Muted, text) }
-		noteBody := tui.NewMarkdownWithOptions(note, 1, 0, m.markdownThemeWithSettings(), &tui.DefaultTextStyle{Color: muted}, nil)
+		noteBody := m.newChangelogMarkdown(note, 1, 0, &tui.DefaultTextStyle{Color: muted})
 		noteBody.FinishStreaming()
 		blocks = append(blocks,
 			tui.NewSpacer(1),

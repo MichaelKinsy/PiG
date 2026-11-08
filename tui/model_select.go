@@ -447,7 +447,7 @@ func (m *ModelSelectorComponent) applyFilter() { m.applyFilterPreferring("") }
 // applyFilterPreferring is filterModels(query, preferredModel): it keeps the preferred model ("<provider>/<id>") selected if it is still listed. Otherwise,
 // when filtering by a query, it moves the cursor to the top row so the best match is highlighted; when the query is cleared, it keeps the current position
 // clamped to the (restored) list length.
-// pig divergence (D312): Pi df0d88aac keeps the selection through a catalog refresh; Pi 1.5.0 has no preferred model.
+// preferred is the model id whose row stays selected through a catalog refresh (Pi df0d88aac).
 func (m *ModelSelectorComponent) applyFilterPreferring(preferred string) {
 	indices := make([]int, len(m.active))
 	for i := range m.active {
@@ -477,11 +477,12 @@ func (m *ModelSelectorComponent) applyFilterPreferring(preferred string) {
 	if preferred != "" {
 		preferredIndex = slices.IndexFunc(m.filtered, func(index int) bool { return m.active[index].FQ() == preferred })
 	}
-	if preferredIndex >= 0 {
+	switch {
+	case preferredIndex >= 0:
 		m.cursor = preferredIndex
-	} else if query != "" {
+	case query != "":
 		m.cursor = 0
-	} else if m.cursor >= len(m.filtered) {
+	case m.cursor >= len(m.filtered):
 		m.cursor = len(m.filtered) - 1
 	}
 	if m.cursor < 0 {

@@ -197,10 +197,11 @@ func (m *InteractiveMode) addUserMessageToChat(msg agent.AgentMessage, text stri
 		m.chatContainer.Add(block)
 		return
 	}
-	comp := tui.NewSkillInvocationMessageComponent(tui.ParsedSkillBlock{
+	comp := tui.NewSkillInvocationMessageComponentWithSurface(tui.ParsedSkillBlock{
 		Name:    parsed.Name,
 		Content: parsed.Content,
-	}, m.markdownThemeWithSettings(), m.outputPad)
+	}, m.markdownThemeWithSettings(), m.outputPad, m.surfaceMarkdownTransform(extension.MarkdownMessageCustom, meta))
+	m.markdownBlocks = append(m.markdownBlocks, comp)
 	if m.toolsExpanded {
 		comp.SetExpanded(true)
 	}
@@ -218,6 +219,13 @@ func (m *InteractiveMode) renderSessionEntryList(entries []SessionEntry, trim bo
 }
 
 func (m *InteractiveMode) renderSessionEntryListWithHistory(entries []SessionEntry, trim, populateHistory bool) {
+	m.renderSessionEntryListWithLive(entries, trim, populateHistory, "")
+}
+
+// renderSessionEntryListWithLive renders entries as renderSessionEntryListWithHistory does, except the compaction or branch summary entry whose id
+// is liveID, which a live event just appended: Pi draws it with addMessageToChat and no messageId or timestamp, where a restored
+// entry's summary gets them (renderSessionEntries).
+func (m *InteractiveMode) renderSessionEntryListWithLive(entries []SessionEntry, trim, populateHistory bool, liveID string) {
 	// Selection coordinates point into the transcript being replaced (upstream interactive-mode.ts renderSessionEntries, #9311).
 	if m.altScreen != nil {
 		m.altScreen.ResetTextSelection()
@@ -457,17 +465,17 @@ func (m *InteractiveMode) renderSessionEntryListWithHistory(entries []SessionEnt
 		case msg.Role() == agent.RoleCustom:
 			// upstream addMessageToChat case "custom" (interactive-mode.ts:3901-3913): only a displayed message is drawn.
 			if entry, display := customMessageEntryOf(msg.Custom); display {
-				m.appendCustomMessage(entry)
+				m.appendCustomMessage(entry, meta)
 			}
 		case msg.Role() == agent.RoleCompactionSummary:
 			// upstream case "compactionSummary" (interactive-mode.ts:3915-3924): a message carries no usage, so no cost notice follows.
 			summary, _ := msg.Custom["summary"].(string)
 			tokensBefore, _ := msg.Custom["tokensBefore"].(float64)
-			m.addCompactionSummary(summary, int(tokensBefore), nil)
+			m.addCompactionSummary(summary, int(tokensBefore), nil, messageMeta{})
 		case msg.Role() == agent.RoleBranchSummary:
 			// upstream case "branchSummary" (interactive-mode.ts:3926-3935).
 			summary, _ := msg.Custom["summary"].(string)
-			m.addBranchSummary(summary, nil)
+			m.addBranchSummary(summary, nil, messageMeta{})
 		case msg.ToolResult != nil:
 			r := msg.ToolResult
 			call, pending := pendingCalls[r.ToolCallID]
@@ -505,17 +513,21 @@ func (m *InteractiveMode) renderSessionEntryListWithHistory(entries []SessionEnt
 		case "compaction":
 			var ce CompactionEntry
 			if err := json.Unmarshal(pe.entry.Raw(), &ce); err == nil {
-				m.addCompactionSummary(ce.Summary, ce.TokensBefore, ce.Usage)
+				meta := entryMeta(ce.SessionEntryBase)
+				if liveID != "" && ce.ID == liveID {
+					meta = messageMeta{}
+				}
+				m.addCompactionSummary(ce.Summary, ce.TokensBefore, ce.Usage, meta)
 			}
 		case "branch_summary":
 			var be BranchSummaryEntry
 			if err := json.Unmarshal(pe.entry.Raw(), &be); err == nil && be.Summary != "" {
-				m.addBranchSummary(be.Summary, be.Usage)
+				m.addBranchSummary(be.Summary, be.Usage, entryMeta(be.SessionEntryBase))
 			}
 		case "custom_message":
 			var cm CustomMessageEntry
 			if err := json.Unmarshal(pe.entry.Raw(), &cm); err == nil && cm.Display {
-				m.appendCustomMessage(cm)
+				m.appendCustomMessage(cm, entryMeta(cm.SessionEntryBase))
 			}
 		case "custom":
 			var ce CustomEntry
@@ -565,8 +577,9 @@ func (m *InteractiveMode) addCustomEntryToChat(entry CustomEntry) {
 }
 
 // appendCustomMessage mounts a CustomMessageComponent for a displayed custom message, as upstream interactive-mode.ts:3861-3872
-// does: the registered renderer (if any) is handed to the component, which rebuilds it when expansion or padding changes.
-func (m *InteractiveMode) appendCustomMessage(message CustomMessageEntry) {
+// does: the registered renderer (if any) is handed to the component, which rebuilds it when expansion or padding changes. meta is the
+// persisted entry of a restored transcript; a live message passes the zero value, as Pi's addMessageToChat gets no options for it.
+func (m *InteractiveMode) appendCustomMessage(message CustomMessageEntry, meta messageMeta) {
 	var renderer tui.MessageRenderer
 	if m.newRunner != nil {
 		if registered := m.newRunner.MessageRenderer(message.CustomType); registered != nil {
@@ -582,7 +595,8 @@ func (m *InteractiveMode) appendCustomMessage(message CustomMessageEntry) {
 			}
 		}
 	}
-	component := tui.NewCustomMessageComponent(&tui.CustomMessage{CustomType: message.CustomType, Content: message.Content}, renderer, m.markdownThemeWithSettings(), m.outputPad)
+	component := tui.NewCustomMessageComponentWithSurface(&tui.CustomMessage{CustomType: message.CustomType, Content: message.Content}, renderer, m.markdownThemeWithSettings(), m.outputPad, m.surfaceMarkdownTransform(extension.MarkdownMessageCustom, meta))
+	m.markdownBlocks = append(m.markdownBlocks, component)
 	component.SetExpanded(m.toolsExpanded)
 	m.customMessageOrder = append(m.customMessageOrder, component)
 	m.chatContainer.Add(component)
@@ -609,8 +623,9 @@ func customMessageEntryOf(custom map[string]any) (entry CustomMessageEntry, disp
 
 // addBranchSummary draws a branch summary as upstream addMessageToChat case "branchSummary" (interactive-mode.ts:3926-3935)
 // does: a spacer, then the component at the current expansion. A branch_summary entry's usage adds its cost notice.
-func (m *InteractiveMode) addBranchSummary(summary string, usage *ai.Usage) {
-	component := tui.NewBranchSummaryMessageComponent(tui.BranchSummaryMessage{Summary: summary}, m.markdownThemeWithSettings(), m.outputPad)
+func (m *InteractiveMode) addBranchSummary(summary string, usage *ai.Usage, meta messageMeta) {
+	component := tui.NewBranchSummaryMessageComponentWithSurface(tui.BranchSummaryMessage{Summary: summary}, m.markdownThemeWithSettings(), m.outputPad, m.surfaceMarkdownTransform(extension.MarkdownMessageSummary, meta))
+	m.markdownBlocks = append(m.markdownBlocks, component)
 	component.SetExpanded(m.toolsExpanded)
 	m.branchSummaryOrder = append(m.branchSummaryOrder, component)
 	m.chatContainer.Add(tui.NewSpacer(1))

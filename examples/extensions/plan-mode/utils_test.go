@@ -79,11 +79,11 @@ func TestCleanStepText(t *testing.T) {
 			}
 		})
 	}
-	// .upstream/v0.87.1/packages/coding-agent/test/plan-mode-utils.test.ts:122
-	t.Run("truncates long text", func(t *testing.T) {
-		got := CleanStepText("This is a very long step description that exceeds the maximum allowed length for display")
-		if len(got) != 50 || !strings.HasSuffix(got, "...") {
-			t.Fatalf("long text = %q, want 50 characters ending in ...", got)
+	// .upstream/v0.87.1/packages/coding-agent/test/plan-mode-utils.test.ts:123
+	t.Run("keeps full text (truncation moved to the widget display)", func(t *testing.T) {
+		long := "This is a very long step description that exceeds the maximum allowed length for display"
+		if got := CleanStepText(long); got != long {
+			t.Fatalf("long text = %q, want it unchanged", got)
 		}
 	})
 }
@@ -110,8 +110,8 @@ func TestExtractTodoItems(t *testing.T) {
 		{"handles parenthesis-style numbering", "Plan:\n1) First item\n2) Second item", 2},
 		// .upstream/v0.87.1/packages/coding-agent/test/plan-mode-utils.test.ts:167
 		{"returns empty array without Plan header", "Here are some steps:\n1. First step\n2. Second step", 0},
-		// .upstream/v0.87.1/packages/coding-agent/test/plan-mode-utils.test.ts:186
-		{"filters out code-like items", "Plan:\n1. `npm install`\n2. Run the build process", 1},
+		// Pi ee962fb4 plan-mode-utils.test.ts "keeps steps that start with backticks (code-file steps)"
+		{"keeps steps that start with backticks", "Plan:\n1. `npm install`\n2. Run the build process", 2},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
@@ -120,6 +120,19 @@ func TestExtractTodoItems(t *testing.T) {
 			}
 		})
 	}
+	// Pi ee962fb4 plan-mode-utils.test.ts
+	t.Run("extracts only the last Plan: section (thinking draft + text plan)", func(t *testing.T) {
+		items := ExtractTodoItems("Some reasoning...\nPlan:\n1. Draft one\n2. Draft two\nNow the answer.\nPlan:\n1. Print 1\n2. Print 2\n3. Print 3")
+		if len(items) != 3 || items[0].Text != "Print 1" || items[2].Text != "Print 3" {
+			t.Fatalf("items = %+v", items)
+		}
+	})
+	t.Run("extracts markdown step titles fully", func(t *testing.T) {
+		items := ExtractTodoItems("Plan:\n1. **Explore** the repo structure\n2. `index.ts` — fix getTextContent")
+		if len(items) != 2 || items[0].Text != "Explore the repo structure" || items[1].Text != "Index.ts — fix getTextContent" {
+			t.Fatalf("items = %+v", items)
+		}
+	})
 	// .upstream/v0.87.1/packages/coding-agent/test/plan-mode-utils.test.ts:176
 	t.Run("filters out short items", func(t *testing.T) {
 		items := ExtractTodoItems("Plan:\n1. OK\n2. This is a proper step")
@@ -141,6 +154,11 @@ func TestExtractDoneSteps(t *testing.T) {
 		{"extracts multiple DONE markers", "Did steps [DONE:1] and [DONE:2] and [DONE:3]", []float64{1, 2, 3}},
 		// .upstream/v0.87.1/packages/coding-agent/test/plan-mode-utils.test.ts:207
 		{"handles case insensitivity", "[done:1] [DONE:2] [Done:3]", []float64{1, 2, 3}},
+		// Pi ee962fb4 plan-mode-utils.test.ts
+		{"extracts DONE marker variants", "[DONE:1] [DONE: 2] [DONE3] [Done:4] Done: 5", []float64{1, 2, 3, 4, 5}},
+		{"extracts prose completion phrasings", "Step 6 done, Step 7 is complete, Step 8 finished", []float64{6, 7, 8}},
+		{"does not match negated or unfinished phrasings", "Step 9 is not done, Step 10 incomplete", []float64{}},
+		{"collapses duplicate markers", "[DONE:1] [DONE: 1]", []float64{1}},
 		// .upstream/v0.87.1/packages/coding-agent/test/plan-mode-utils.test.ts:212
 		{"returns empty array with no markers", "No markers here", []float64{}},
 		// .upstream/v0.87.1/packages/coding-agent/test/plan-mode-utils.test.ts:217
@@ -180,11 +198,19 @@ func TestMarkCompletedSteps(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/test/plan-mode-utils.test.ts:246
 	t.Run("ignores markers for non-existent steps", func(t *testing.T) {
 		items := []TodoItem{{Step: 1, Text: "First"}}
-		if count := MarkCompletedSteps("[DONE:99]", items); count != 1 {
-			t.Fatalf("count = %d", count)
+		if count := MarkCompletedSteps("[DONE:99]", items); count != 0 {
+			t.Fatalf("count = %d, want 0 (counts only newly marked items)", count)
 		}
 		if items[0].Completed {
 			t.Fatal("unknown marker completed an item")
+		}
+	})
+	// Pi ee962fb4 plan-mode-utils.test.ts
+	t.Run("recognizes whole-plan completion phrasings", func(t *testing.T) {
+		for message, want := range map[string]bool{"All steps complete, wrapping up": true, "Every step is finished": true, "The plan is done": true, "Step 1 complete, moving on": false} {
+			if got := AllStepsComplete(message); got != want {
+				t.Errorf("AllStepsComplete(%q) = %v, want %v", message, got, want)
+			}
 		}
 	})
 	// .upstream/v0.87.1/packages/coding-agent/test/plan-mode-utils.test.ts:255

@@ -4522,6 +4522,7 @@ class Extension:
         self._renderers: list[dict[str, Any]] = []
         self._entry_renderers: list[dict[str, Any]] = []
         self._markdown_transformer: Callable[[str, dict[str, Any]], Any] | None = None
+        self._markdown_message_types: list[str] | None = None
         self._owns_thinking_runs = False
         self._tool_renderer_resolvers: list[ToolRendererResolver] = []
         self._resolved_tool_renderers: dict[str, ToolRenderers] = {}
@@ -5272,16 +5273,23 @@ class Extension:
             self._entry_view_renderers[custom_type] = handler
             self._publish_declaration({"entry_renderers": [declaration]})
 
-    def markdown_transformer(self, transformer: Callable[[str, dict[str, Any]], Any]) -> None:
+    def markdown_transformer(self, transformer: Callable[[str, dict[str, Any]], Any], message_types: list[str] | None = None) -> None:
         """Register the extension's display-only Markdown transform (Pi's
-        pi.registerMarkdownTransformer). The host applies it to user and
-        assistant Markdown in the interactive transcript, after its own
-        transformers; a later registration replaces an earlier one. It receives
+        pi.registerMarkdownTransformer). The host applies it to user, assistant
+        and thinking Markdown in the interactive transcript, after its own
+        transformers, or to the surfaces message_types lists (Pi's
+        options.messageTypes): "user", "assistant", "assistant-thinking",
+        "custom" (custom messages without a message renderer, expanded skill
+        blocks), "summary" (expanded branch and compaction summaries) and
+        "changelog" (What's New, /changelog, Extension Updates, the Update
+        Available note). None selects the first three; an empty list runs the
+        transformer nowhere. A later registration replaces an earlier one. It receives
         the Markdown and Pi's MarkdownTransformContext (messageType,
         isStreaming, availableWidth, and messageId and timestamp when rendering a
         persisted session entry); anything but a str return, or a raise,
         keeps the input."""
         self._markdown_transformer = transformer
+        self._markdown_message_types = None if message_types is None else list(message_types)
 
     # pig additive (D214)
     def own_thinking_runs(self, enabled: bool = True) -> None:
@@ -5378,7 +5386,7 @@ class Extension:
 
         self._bus.register_pending()
         with self._tool_registration_lock:
-            self._send({"type": "register", "register": {"name": self._name, "tools": self._tools, "commands": self._commands, "shortcuts": self._shortcuts, "handlers": self._handlers, "flags": self._flags, "providers": self._providers, "message_renderers": self._renderers, "entry_renderers": self._entry_renderers, **({"markdown_transformer": True} if self._markdown_transformer is not None else {}), **({"owns_thinking_runs": True} if self._owns_thinking_runs else {}), **({"tool_renderers": len(self._tool_renderer_resolvers)} if self._tool_renderer_resolvers else {}), **({"mcp_servers": self._mcp_servers_pending} if self._mcp_servers_pending else {}), **({"virtual_models": self._virtual_models_pending} if self._virtual_models_pending else {}), **({"unregister_virtual_models": self._virtual_model_unregistrations} if self._virtual_model_unregistrations else {})}})
+            self._send({"type": "register", "register": {"name": self._name, "tools": self._tools, "commands": self._commands, "shortcuts": self._shortcuts, "handlers": self._handlers, "flags": self._flags, "providers": self._providers, "message_renderers": self._renderers, "entry_renderers": self._entry_renderers, **({"markdown_transformer": True, "markdown_message_types": ["user", "assistant", "assistant-thinking"] if self._markdown_message_types is None else self._markdown_message_types} if self._markdown_transformer is not None else {}), **({"owns_thinking_runs": True} if self._owns_thinking_runs else {}), **({"tool_renderers": len(self._tool_renderer_resolvers)} if self._tool_renderer_resolvers else {}), **({"mcp_servers": self._mcp_servers_pending} if self._mcp_servers_pending else {}), **({"virtual_models": self._virtual_models_pending} if self._virtual_models_pending else {}), **({"unregister_virtual_models": self._virtual_model_unregistrations} if self._virtual_model_unregistrations else {})}})
             if self._shutdown_noted or host_helpers.take_shutdown(self._served_socket):
                 raise _ShutdownBeforeReady()
             ready = self._read_during_load()

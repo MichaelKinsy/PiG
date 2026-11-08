@@ -21,6 +21,7 @@ type CompactionSummaryMessageComponent struct {
 	tokensBefore  int
 	expanded      bool
 	markdownTheme *MarkdownTheme
+	surface       markdownSurface
 }
 
 // CompactionSummaryMessage is the part of Pi's CompactionSummaryMessage (coding-agent core/messages.ts:62) that
@@ -38,12 +39,18 @@ func NewCompactionSummaryMessageComponent(message CompactionSummaryMessage, mark
 	if len(outputPad) > 0 {
 		padX = outputPad[0]
 	}
+	return NewCompactionSummaryMessageComponentWithSurface(message, markdownTheme, padX, MarkdownSurface{})
+}
+
+// NewCompactionSummaryMessageComponentWithSurface is the constructor with the transformers, messageId and timestamp Pi's takes after outputPad.
+func NewCompactionSummaryMessageComponentWithSurface(message CompactionSummaryMessage, markdownTheme *MarkdownTheme, padX int, surface MarkdownSurface) *CompactionSummaryMessageComponent {
 	component := &CompactionSummaryMessageComponent{
 		Box:           NewPaddedBox(padX, 1, func(text string) string { return ActiveTheme().Bg("customMessageBg", text) }),
 		summary:       message.Summary,
 		tokensBefore:  message.TokensBefore,
 		markdownTheme: markdownTheme,
 	}
+	component.surface.install(surface, &component.invalidatable)
 	component.updateDisplay()
 	return component
 }
@@ -69,9 +76,9 @@ func (c *CompactionSummaryMessageComponent) updateDisplay() {
 	content.Add(NewSpacer(1))
 	if c.expanded {
 		header := "**Compacted from " + tokenStr + " tokens**\n\n"
-		content.Add(finishedMarkdown(NewMarkdownWithOptions(header+c.summary, 0, 0, c.markdownTheme, &DefaultTextStyle{
+		content.Add(c.surface.markdown(header, c.summary, c.markdownTheme, &DefaultTextStyle{
 			Color: func(text string) string { return ActiveTheme().Fg("customMessageText", text) },
-		}, nil)))
+		}))
 	} else {
 		content.Add(NewText(theme.Fg("customMessageText", "Compacted from "+tokenStr+" tokens (") +
 			theme.Fg("dim", AppKeyText("app.tools.expand", "ctrl+o")) +
@@ -112,3 +119,6 @@ func formatThousands(n int) string {
 func (c *CompactionSummaryMessageComponent) SetOutputPad(outputPad int) {
 	c.SetPaddingX(outputPad)
 }
+
+// Dispose releases the expanded body's pending Markdown generation.
+func (c *CompactionSummaryMessageComponent) Dispose() { c.surface.Dispose() }

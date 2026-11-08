@@ -149,6 +149,25 @@ once the response arrives. A responder that returns (values nil message) answers
         (check-equal t (pig:jget r "markdown_transformer"))
         (check-equal 1 (pig:jget r "tool_renderers"))))))
 
+(deftest a-markdown-transformer-registers-the-surfaces-it-lists
+  ;; Pi eebd5d90, options.messageTypes: :message-types lists the surfaces, no key the three transcript types, NIL none.
+  (flet ((types (&rest options)
+           (let ((ext (pt-ext)))
+             (apply #'pig:markdown-transformer ext (lambda (md context) (declare (ignore context)) md) options)
+             (with-host (host ext register)
+               (let ((r (pig:jget register "register")))
+                 (check-equal t (pig:jget r "markdown_transformer"))
+                 (coerce (pig:jget r "markdown_message_types") 'list))))))
+    (check-equal '("user" "assistant" "assistant-thinking") (types))
+    (check-equal '("assistant" "custom" "summary" "changelog") (types :message-types '("assistant" "custom" "summary" "changelog")))
+    (check-equal nil (types :message-types nil))
+    ;; An empty list is a key with an empty value; an absent key reads as NIL too, so the key itself is checked.
+    (let ((ext (pt-ext)))
+      (pig:markdown-transformer ext (lambda (md context) (declare (ignore context)) md) :message-types nil)
+      (with-host (host ext register)
+        (let ((r (pig:jget register "register")))
+          (check (nth-value 1 (gethash "markdown_message_types" r)) "markdown_message_types key present for an empty list"))))))
+
 (deftest a-provider-without-renderers-or-registrations-adds-nothing-but-empty-lists
   (with-host (host (pt-ext) register)
     (let ((r (pig:jget register "register")))

@@ -30,7 +30,7 @@ func TestCustomMessageUsesRegisteredProductionRenderer(t *testing.T) {
 	}
 	entry := CustomMessageEntry{CustomType: "notice", Content: "hello", Display: true}
 	entry.Timestamp = "2026-01-02T03:04:05.678Z"
-	m.appendCustomMessage(entry)
+	m.appendCustomMessage(entry, messageMeta{})
 
 	lines := m.chatContainer.Render(80)
 	// Pi custom-message.ts:33 adds Spacer(1) ahead of a custom renderer's component too.
@@ -67,7 +67,7 @@ func TestCustomMessageFallsBackWhenRendererReturnsNoComponent(t *testing.T) {
 		newRunner:     inproc.NewRunner([]extension.Extension{ext}, t.TempDir()),
 		chatContainer: tui.NewContainer(),
 	}
-	m.appendCustomMessage(CustomMessageEntry{CustomType: "notice", Content: "fallback", Display: true})
+	m.appendCustomMessage(CustomMessageEntry{CustomType: "notice", Content: "fallback", Display: true}, messageMeta{})
 	lines := m.chatContainer.Render(80)
 	if len(lines) == 0 {
 		t.Fatal("fallback renderer produced no lines")
@@ -82,7 +82,7 @@ func TestMessageRendererReturnsTheTuiComponentTheTranscriptMounts(t *testing.T) 
 	}
 	ext := extension.Extension{MessageRenderers: map[string]extension.MessageRenderer{"notice": renderer}}
 	m := &InteractiveMode{newRunner: inproc.NewRunner([]extension.Extension{ext}, t.TempDir()), chatContainer: tui.NewContainer()}
-	m.appendCustomMessage(CustomMessageEntry{CustomType: "notice", Content: "body", Display: true})
+	m.appendCustomMessage(CustomMessageEntry{CustomType: "notice", Content: "body", Display: true}, messageMeta{})
 	if joined := strings.Join(m.chatContainer.Render(80), "\n"); !strings.Contains(joined, "from the renderer") {
 		t.Fatalf("transcript = %q, want the renderer's component", joined)
 	}

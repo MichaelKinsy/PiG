@@ -80,7 +80,7 @@ func (m *InteractiveMode) appendCustomMessageNow(msg extension.CustomMessageRef)
 	// The agent renders a message it takes at its message_start (interactive_events.go); only a message that is persisted here without a run is rendered now.
 	if msg.Display {
 		m.runOnMain(m.runCtx, func() {
-			m.appendCustomMessage(entry)
+			m.appendCustomMessage(entry, messageMeta{})
 			m.tuiInst.Render()
 		})
 	}

@@ -142,6 +142,8 @@ type RegisterPayload struct {
 	// MarkdownTransformer reports that the extension registered a Markdown
 	// transformer. The host runs it with RequestMarkdownTransform.
 	MarkdownTransformer bool `json:"markdown_transformer,omitempty"`
+	// MarkdownMessageTypes are the surfaces the transformer runs on. Absent selects the default types; an empty list runs it nowhere.
+	MarkdownMessageTypes *[]string `json:"markdown_message_types,omitempty"`
 	// OwnsThinkingRuns reports that the extension owns the thinking runs of assistant messages (pi.ownThinkingRuns), as of the register frame. Later changes arrive as CallOwnThinkingRuns.
 	// pig additive (D214)
 	OwnsThinkingRuns bool `json:"owns_thinking_runs,omitempty"`

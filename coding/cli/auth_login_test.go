@@ -37,9 +37,9 @@ func newScriptedTerminal(answers ...string) *scriptedTerminal {
 	return &scriptedTerminal{interactive: true, answers: answers}
 }
 
-func (t *scriptedTerminal) Interactive() bool { return t.interactive }
-func (t *scriptedTerminal) Write(line string) { t.lines = append(t.lines, line) }
-func (t *scriptedTerminal) Error(line string) { t.errors = append(t.errors, line) }
+func (t *scriptedTerminal) Interactive() bool  { return t.interactive }
+func (t *scriptedTerminal) Write(line string)  { t.lines = append(t.lines, line) }
+func (t *scriptedTerminal) Error(line string)  { t.errors = append(t.errors, line) }
 func (t *scriptedTerminal) OpenURL(url string) { t.opened = append(t.opened, url) }
 func (t *scriptedTerminal) answer(ctx context.Context, message string) (string, error) {
 	t.questions = append(t.questions, message)
@@ -115,7 +115,9 @@ func bothMethods() ai.ProviderAuth {
 				return oauthResult("access-" + code), nil
 			},
 			Refresh: func(_ context.Context, credential ai.Credential) (ai.Credential, error) { return credential, nil },
-			ToAuth:  func(credential ai.Credential) (ai.ModelAuth, error) { return ai.ModelAuth{APIKey: credential.Access}, nil },
+			ToAuth: func(credential ai.Credential) (ai.ModelAuth, error) {
+				return ai.ModelAuth{APIKey: credential.Access}, nil
+			},
 		},
 		APIKey: apiKeyOnly().APIKey,
 	}
@@ -495,6 +497,22 @@ func TestAuthLoginReportsCancellation(t *testing.T) {
 	cancel()
 	terminal := newScriptedTerminal("sk-test")
 	code := runAuthLoginForTest(ctx, []string{authLoginTestProviderID}, runtime, terminal, nonexistentAgentDir)
+	if code != 1 || !reflect.DeepEqual(terminal.errors, []string{"Login cancelled."}) {
+		t.Fatalf("code %d, errors %q", code, terminal.errors)
+	}
+	if got := readStoredCredential(t, store, authLoginTestProviderID); got != nil {
+		t.Fatalf("stored %+v", got)
+	}
+}
+
+func TestAuthLoginReportsAProviderOwnLoginCancelledErrorAsCancelledWhileTheContextIsLive(t *testing.T) {
+	// upstream: auth-login.ts:78 compares the message; ai providers create their own errors.New("Login cancelled").
+	auth := oauthOnly(func(context.Context, ai.AuthInteraction, ai.LoginOptions) (ai.Credential, error) {
+		return ai.Credential{}, errors.New("Login cancelled")
+	})
+	runtime, store := authTestRuntime(t, nil, authTestProvider(auth, authLoginTestProviderID))
+	terminal := newScriptedTerminal()
+	code := runAuthLoginForTest(t.Context(), []string{authLoginTestProviderID}, runtime, terminal, nonexistentAgentDir)
 	if code != 1 || !reflect.DeepEqual(terminal.errors, []string{"Login cancelled."}) {
 		t.Fatalf("code %d, errors %q", code, terminal.errors)
 	}

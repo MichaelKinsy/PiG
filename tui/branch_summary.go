@@ -10,6 +10,7 @@ type BranchSummaryMessageComponent struct {
 	summary       string
 	expanded      bool
 	markdownTheme *MarkdownTheme
+	surface       markdownSurface
 }
 
 // BranchSummaryMessage is the part of Pi's BranchSummaryMessage (coding-agent core/messages.ts:55) that
@@ -22,11 +23,17 @@ type BranchSummaryMessage struct {
 // (branch-summary-message.ts:15). The expanded body renders the summary with markdownTheme (nil selects the active theme's
 // markdown theme) and the Box pads its rows by outputPad columns.
 func NewBranchSummaryMessageComponent(message BranchSummaryMessage, markdownTheme *MarkdownTheme, outputPad int) *BranchSummaryMessageComponent {
+	return NewBranchSummaryMessageComponentWithSurface(message, markdownTheme, outputPad, MarkdownSurface{})
+}
+
+// NewBranchSummaryMessageComponentWithSurface is the constructor with the transformers, messageId and timestamp Pi's takes after outputPad.
+func NewBranchSummaryMessageComponentWithSurface(message BranchSummaryMessage, markdownTheme *MarkdownTheme, outputPad int, surface MarkdownSurface) *BranchSummaryMessageComponent {
 	component := &BranchSummaryMessageComponent{
 		Box:           NewPaddedBox(outputPad, 1, func(text string) string { return ActiveTheme().Bg("customMessageBg", text) }),
 		summary:       message.Summary,
 		markdownTheme: markdownTheme,
 	}
+	component.surface.install(surface, &component.invalidatable)
 	component.updateDisplay()
 	return component
 }
@@ -50,9 +57,9 @@ func (c *BranchSummaryMessageComponent) updateDisplay() {
 	content.Add(NewText(theme.Fg("customMessageLabel", "\x1b[1m[branch]\x1b[22m")))
 	content.Add(NewSpacer(1))
 	if c.expanded {
-		content.Add(finishedMarkdown(NewMarkdownWithOptions("**Branch Summary**\n\n"+c.summary, 0, 0, c.markdownTheme, &DefaultTextStyle{
+		content.Add(c.surface.markdown("**Branch Summary**\n\n", c.summary, c.markdownTheme, &DefaultTextStyle{
 			Color: func(text string) string { return ActiveTheme().Fg("customMessageText", text) },
-		}, nil)))
+		}))
 	} else {
 		content.Add(NewText(theme.Fg("customMessageText", "Branch summary (") +
 			theme.Fg("dim", AppKeyText("app.tools.expand", "ctrl+o")) +
@@ -71,3 +78,6 @@ func (c *BranchSummaryMessageComponent) updateDisplay() {
 func (c *BranchSummaryMessageComponent) SetOutputPad(outputPad int) {
 	c.SetPaddingX(outputPad)
 }
+
+// Dispose releases the expanded body's pending Markdown generation.
+func (c *BranchSummaryMessageComponent) Dispose() { c.surface.Dispose() }

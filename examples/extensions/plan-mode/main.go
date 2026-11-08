@@ -239,10 +239,10 @@ func (p *planMode) onTurnEnd(ctx sdk.Context, data map[string]any) (any, error) 
 	if !ok {
 		return nil, nil
 	}
-	if MarkCompletedSteps(text, p.todos) > 0 {
-		if err := p.updateStatus(ctx); err != nil {
-			return nil, err
-		}
+	MarkCompletedSteps(text, p.todos)
+	// Always refresh: cheap, and the widget stays consistent when nothing matched.
+	if err := p.updateStatus(ctx); err != nil {
+		return nil, err
 	}
 	return nil, p.persistState(ctx)
 }
@@ -252,6 +252,12 @@ func (p *planMode) onAgentEnd(ctx sdk.Context, data map[string]any) (any, error)
 	defer p.mu.Unlock()
 
 	if p.executing && len(p.todos) > 0 {
+		// Fallback: the model wrapped up without [DONE:n] tags ("All steps complete").
+		if text, ok := lastAssistantText(data["messages"]); ok && AllStepsComplete(text) {
+			for i := range p.todos {
+				p.todos[i].Completed = true
+			}
+		}
 		if !allTodosCompleted(p.todos) {
 			return nil, nil
 		}
@@ -259,7 +265,7 @@ func (p *planMode) onAgentEnd(ctx sdk.Context, data map[string]any) (any, error)
 		for _, item := range p.todos {
 			completed = append(completed, "~~"+item.Text+"~~")
 		}
-		if err := ctx.SendMessage("plan-complete", "**Plan Complete!** ✓\n\n"+strings.Join(completed, "\n"), true, sdk.SendMessageOptions{}); err != nil {
+		if err := ctx.SendMessage("plan-complete", "**Plan Complete!** ✓\n\n"+strings.Join(completed, "\n"), true, sdk.SendMessageOptions{DeliverAs: "nextTurn"}); err != nil {
 			return nil, err
 		}
 		p.executing = false
@@ -443,10 +449,14 @@ func (p *planMode) updateStatus(ctx sdk.Context) error {
 	if p.executing && len(p.todos) > 0 {
 		lines := make([]string, 0, len(p.todos))
 		for _, item := range p.todos {
+			text := item.Text
+			if utf16Length(text) > 60 {
+				text = utf16Slice(text, 57) + "..."
+			}
 			if item.Completed {
-				lines = append(lines, "☑ \x1b[9m"+item.Text+"\x1b[29m")
+				lines = append(lines, "☑ \x1b[9m"+text+"\x1b[29m")
 			} else {
-				lines = append(lines, "☐ "+item.Text)
+				lines = append(lines, "☐ "+text)
 			}
 		}
 		return ctx.SetWidget("plan-todos", lines)
@@ -565,9 +575,16 @@ func assistantText(message map[string]any) (string, bool) {
 	var texts []string
 	for _, raw := range content {
 		block, _ := raw.(map[string]any)
-		if block["type"] == "text" {
+		// Thinking blocks count: with reasoning-max models the [DONE:n] tags and plan drafts usually land there.
+		switch block["type"] {
+		case "text":
 			text, _ := block["text"].(string)
 			texts = append(texts, text)
+		case "thinking":
+			text, _ := block["thinking"].(string)
+			texts = append(texts, text)
+		default:
+			texts = append(texts, "")
 		}
 	}
 	return strings.Join(texts, "\n"), true

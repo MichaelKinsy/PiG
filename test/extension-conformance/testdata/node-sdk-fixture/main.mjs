@@ -260,7 +260,8 @@ export default function (pi) {
   pi.registerMessageRenderer("keyhints-message", (message, options) => ({ render: () => [hintsOf(options, message.content)], invalidate() {} }));
   pi.registerEntryRenderer("keyhints-entry", (entry, options) => ({ render: () => [hintsOf(options, entry.data)], invalidate() {} }));
   pi.registerMarkdownTransformer((markdown, context) =>
-    `md:${markdown}:${context.messageType}:streaming=${context.isStreaming}:width=${context.availableWidth}`);
+    `md:${markdown}:${context.messageType}:streaming=${context.isStreaming}:width=${context.availableWidth}`,
+  { messageTypes: ["user", "assistant", "assistant-thinking", "custom", "summary", "changelog"] });
   const resolvedLine = (prefix, toolName) => (args) => ({ render: () => [`${prefix}:${toolName}:${args?.q}`], invalidate: () => {} });
   pi.registerToolRenderer((toolName, next) => {
     switch (toolName) {

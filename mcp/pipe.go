@@ -188,7 +188,7 @@ func (t *PipeTransport) Close() error {
 	case <-timer.C:
 	}
 	pipe.Close()
-	// Pi awaits `exited` after the kill; Go bounds the wait by the same time, so a pipe that never reports the exit cannot hold Close forever.
+	// pig divergence (D603): Pi awaits `exited` after the kill; Go bounds the wait by the same time and reports the failure, so a pipe that never reports the exit cannot hold Close forever.
 	kill := time.NewTimer(timeout)
 	defer kill.Stop()
 	select {

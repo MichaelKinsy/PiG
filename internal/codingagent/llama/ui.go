@@ -387,7 +387,7 @@ func (s *HuggingFaceSearch) runSearch(query string) {
 		s.filterResults("")
 		return
 	}
-	// pig divergence (D312): Pi df0d88aac keeps the row the user browsed to while the search was in flight; otherwise the best match shows.
+	// Pi df0d88aac: keep the row the user browsed to while the search was in flight; otherwise the best match shows.
 	selectedID := ""
 	if s.selectionTouched && s.selectedIndex < len(s.filteredResults) {
 		selectedID = s.filteredResults[s.selectedIndex].ID

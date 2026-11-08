@@ -13,7 +13,7 @@ import (
 func TestCompactionSummaryUsesOutputPadProduction(t *testing.T) {
 	for _, pad := range []int{0, 1} {
 		m := &InteractiveMode{chatContainer: tui.NewContainer(), outputPad: pad}
-		m.addCompactionSummary("kept the plan", 1200, nil)
+		m.addCompactionSummary("kept the plan", 1200, nil, messageMeta{})
 		var indent = -1
 		for _, line := range m.compactionOrder[0].Render(60) {
 			plain := widthx.StripAnsi(line)
