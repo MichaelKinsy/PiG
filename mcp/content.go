@@ -248,7 +248,8 @@ func jsString(raw json.RawMessage, present bool) string {
 		return "undefined"
 	}
 	var v any
-	if err := deepFallback(json.Unmarshal(raw, &v), raw, &v, func(shallow []byte) error { return json.Unmarshal(shallow, &v) }); err != nil {
+	decode := func(data []byte) error { return json.Unmarshal(data, &v) }
+	if err := deepFallback(decode(raw), raw, &v, decode); err != nil {
 		return "undefined"
 	}
 	return jsValueString(v)
