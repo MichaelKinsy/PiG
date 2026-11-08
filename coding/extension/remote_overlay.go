@@ -35,7 +35,7 @@ type RemoteOverlayOptions struct {
 	// component-framed with exactly upstream's showOverlay geometry.
 	Layout *OverlayLayout `json:"overlayOptions,omitempty"`
 	// Blocked mirrors upstream ui.custom()'s blocked option: while an inline component is visible the program status reports pi as
-	// blocked on it. An overlay ignores it.
+	// blocked on it; an overlay reports it until it ends, also while hidden.
 	Blocked *CustomBlocked `json:"blocked,omitempty"`
 }
 

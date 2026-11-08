@@ -47,7 +47,9 @@ func ExtractCursorPosition(lines []string, height int) (CursorPosition, bool) {
 			continue
 		}
 		col := VisibleWidth(before)
-		lines[row] = before + after
+		// pig divergence (D300): strip all markers from the selected line. The first marker determines the hardware cursor
+		// position; any others are stale internal sentinels (Pi main 25490ea49).
+		lines[row] = before + strings.ReplaceAll(after, CursorMarker, "")
 		return CursorPosition{Row: row, Col: col}, true
 	}
 	return CursorPosition{}, false
