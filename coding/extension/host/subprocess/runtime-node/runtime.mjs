@@ -2971,10 +2971,9 @@ export class Runtime {
   attachConnection(socket) {
     const conn = new Connection(socket);
     conn.nestedEvent = (env) => {
-      const handed = conn.handedOff;
-      if (!((conn.nestedWrites ?? 0) > 0 || this.activeRequest()?.pendingHostCalls.size > 0) || (handed !== undefined && handed.type !== "notify" && handed.type !== "call_result") || conn.queue.some((queued) => queued.type !== "notify" && queued.type !== "call_result")) return false;
-      // The host sent these notifications, such as a state push, and the results of earlier asynchronous calls, such as an appendEntry, before the event: they apply first, as the serve loop would, the one it was handed and has not read before the ones queued.
-      const ahead = conn.takeHandedOff(() => true);
+      if (!((conn.nestedWrites ?? 0) > 0 || this.activeRequest()?.pendingHostCalls.size > 0) || conn.queue.some((queued) => queued.type !== "notify" && queued.type !== "call_result")) return false;
+      // The host sent these notifications, such as a state push, and the results of earlier asynchronous calls, such as an appendEntry, before the event: they apply first, as the serve loop would, the one it was handed and has not read before the ones queued. A request it holds is left to the loop, as it was before the loop's frames were visible here: the setter's event starts in the setter, as the host waits for it to start before it answers the setter.
+      const ahead = conn.takeHandedOff((held) => held.type === "notify" || held.type === "call_result");
       for (const queued of ahead === undefined ? conn.queue.splice(0) : [ahead, ...conn.queue.splice(0)]) {
         if (queued.type === "call_result") conn.resolveCall(queued);
         else if (queued.notify) this.handleNotify(queued.notify);

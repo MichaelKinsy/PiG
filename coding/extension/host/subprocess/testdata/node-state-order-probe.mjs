@@ -17,6 +17,9 @@ class FakeHost {
     this.frames = [];
     this.afterLeafRead = undefined;
     this.eventAfterWrite = undefined;
+    this.beforePush = undefined;
+    // order records the frames the runtime sent that a scenario compares with what its handlers did.
+    this.order = [];
     this.socket = new EventEmitter();
     this.socket.write = () => {};
     this.socket.destroy = () => {};
@@ -44,9 +47,13 @@ class FakeHost {
 
   // handle answers one frame the runtime sent.
   handle(env) {
+    if (env.type === "request_state" && env.request_state.state === "started") this.order.push(`started ${env.request_state.request_id}`);
     if (env.type !== "call") return;
     const { method, args } = env.call;
     if (method === "setSessionName") {
+      const before = this.beforePush;
+      this.beforePush = undefined;
+      if (before) this.frames.push(...before());
       this.frames.push(this.push(this.append("session_info", { name: args.name })));
       if (this.eventAfterWrite) this.frames.push(this.eventAfterWrite());
       this.frames.push(this.result(env.id, {}));
@@ -141,17 +148,52 @@ out.limboNoLoaded = await limbo(false);
   out.nested = result;
 }
 
-// A replicated log is replaced by a page the host sends from 0 when its cursor is out of range (Session.RawEntriesPage): a page with a lower count replaces the log, and the pages after it extend it.
+// A setter's session_info_changed handler starts inside the setter (Pi runs it in the call, and the host waits for it to start before it answers the setter),
+// also when the serve loop holds a request of the extension: a request handed to the waiting loop by the pump of the setter's own call ("handed"), and
+// a request the loop took from its queue and has not started, while a handler that began first writes ("queued"). Refusing the nested start there leaves the
+// event to the loop, which cannot read it until the setter returns, and the host's wait for the event deadlocks the setter.
+async function nestedWithRequest(shape) {
+  const order = [];
+  const state = await start((pi) => {
+    pi.onLoaded(() => {});
+    pi.on("session_info_changed", () => {});
+    pi.registerCommand("a", { handler: async () => {
+      await timer(5);
+      pi.setSessionName(shape === "handed" ? "x" : "a-name");
+      if (shape === "handed") order.push("setter returned");
+    } });
+    pi.registerCommand("b", { handler: async () => { pi.setSessionName("b-name"); order.push("setter returned"); } });
+    pi.registerCommand("c", { handler: async () => { order.push("c ran"); } });
+  });
+  const { host, runtime } = state;
+  host.order = order;
+  const event = () => ({ type: "request", id: "ev", request: { method: "event", event: "session_info_changed", handler_id: runtime.handlers.get("session_info_changed")[0].id, args: {} } });
+  if (shape === "handed") {
+    host.beforePush = () => [command("rc", "c")];
+    host.eventAfterWrite = event;
+  } else {
+    host.afterLeafRead = () => { host.eventAfterWrite = event; return [command("rb", "b"), command("rc", "c")]; };
+  }
+  await host.deliver(command("ra", "a"));
+  await timer(60);
+  await state.stop();
+  return order.filter((item) => item === "started ev" || item === "setter returned").join(" | ");
+}
+out.nestedHanded = await nestedWithRequest("handed");
+out.nestedQueued = await nestedWithRequest("queued");
+
+// A replicated log is replaced by a page with a lower count that holds the whole log: the page the host sends from 0 when its cursor is out of range
+// (Session.RawEntriesPage restarts at 0 and the push's count is the cursor after the page), and the pages after it extend it.
 {
   const { runtime, stop } = await start(() => {});
   const page = (entries, count) => ({ session: { sessionId: "s", entriesAppended: entries, entryCount: count } });
   const log = () => runtime.state.session.entries.map((entry) => entry.id).join(",");
   runtime.applyState(page([{ id: "e3" }], 3));
   const grown = log();
-  runtime.applyState(page([{ id: "n1" }], 2));
-  const afterShrink = log();
-  runtime.applyState(page([{ id: "n2" }], 2));
-  out.replaced = `${grown} ${afterShrink} ${log()}`;
+  runtime.applyState(page([{ id: "n1" }, { id: "n2" }], 2));
+  const afterReset = log();
+  runtime.applyState(page([{ id: "n3" }], 3));
+  out.replaced = `${grown} ${afterReset} ${log()}`;
   await stop();
 }
 
