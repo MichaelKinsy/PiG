@@ -121,6 +121,56 @@ func TestTheHeartbeatPingsASilentLinkAfter15sAndClosesItAfter30sWithoutAnAnswerR
 	})
 }
 
+// awaitLinkOpened waits until host's first link has the peer's hello (link.Channel.Opened): its silence is counted from the
+// clock's time then, so a test that moves the clock waits for it first (Pi's `rawLinked` awaits `transported()`).
+func awaitLinkOpened(t testing.TB, host Host) {
+	t.Helper()
+	scopeEventually(t, "the peer's hello arrived", func() bool {
+		opened := false
+		h := host.(*chordHost)
+		h.enter(func() { opened = len(h.links) > 0 && h.links[0].channel.Opened() })
+		return opened
+	})
+}
+
+func TestTheHeartbeatCountsNoPauseOfThisProcessAsSilenceASleepingLaptopPingsAtOnceClosesFifteenSecondsLaterUnanswered(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		loop := newScopeLoop().fakeIntervals()
+		linked := rawLinked(t, func(FacetHost) error { return nil }, rawLinkedOptions{Loop: loop})
+		awaitLinkOpened(t, linked.Server)
+		channelElapse(loop, 3_000)
+		// The process sleeps 10 minutes: no timer runs meanwhile, the clock jumps.
+		loop.JumpClock(600_000)
+		channelElapse(loop, 1_500)
+		scopeEventually(t, "the ping at once", func() bool { return reflect.DeepEqual(linked.Peer.Kinds(), []string{"hello", "ping"}) })
+		if linked.Peer.Closed() {
+			t.Fatal("closed at the first tick after the pause")
+		}
+		channelElapse(loop, 13_500)
+		if linked.Peer.Closed() {
+			t.Fatal("closed 13.5 s after the pause")
+		}
+		channelElapse(loop, 1_500)
+		scopeEventually(t, "the link closed 15 s after the pause", linked.Peer.Closed)
+	})
+}
+
+func TestTheHeartbeatKeepsALinkThroughAPauseWhenItsPeerAnswersThePing(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		loop := newScopeLoop().fakeIntervals()
+		linked := rawLinked(t, func(FacetHost) error { return nil }, rawLinkedOptions{Loop: loop})
+		awaitLinkOpened(t, linked.Server)
+		channelElapse(loop, 20_000)
+		loop.JumpClock(600_000)
+		channelElapse(loop, 1_500)
+		linked.Peer.Send(&link.PongMessage{})
+		channelElapse(loop, 25_000)
+		if linked.Peer.Closed() {
+			t.Fatal("closed although the peer answered")
+		}
+	})
+}
+
 func TestTheHeartbeatRunsOneTimerPerHostOnlyWhileItHasLinksNonePerMessage(t *testing.T) {
 	forEachCodec(t, func(t *testing.T) {
 		loop := newScopeLoop().fakeIntervals()
