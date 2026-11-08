@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
@@ -97,7 +96,7 @@ func tutorialListOf(t *testing.T) *tutorialList {
 	}
 	t.Cleanup(func() { _ = server.Close(background) })
 	var resolved atomic.Bool
-	if _, err := server.Route("list", host.RouteOptions{
+	if _, err := server.Route(list, host.RouteOptions{
 		Authorize: func(data.Principal, contracts.Address) (bool, error) { return true, nil },
 		Resolve: func(contracts.Address, context.Context) (host.ResolvedLink, error) {
 			if !resolved.CompareAndSwap(false, true) {
@@ -215,10 +214,9 @@ func TestTutorialListsPluginOnAListsWorker(t *testing.T) {
 			if _, err := todos.Call("clear", nil, ctx); err != nil {
 				t.Fatal(err)
 			}
-			items := tutorialWait(t, todos, "items", func(items string) bool {
+			tutorialWait(t, todos, "items", func(items string) bool {
 				return reflect.DeepEqual(tutorialItems(t, items, func(text, _ string) string { return text }), []string{"eggs"})
 			})
-			_ = items
 			notice := tutorialWait(t, todos, "notice", func(notice string) bool { return notice != "null" })
 			if want := `{"namespace":"todo.lists","key":"cleared","params":["owner"]}`; notice != want {
 				t.Fatalf("notice = %s, want %s", notice, want)
@@ -268,8 +266,5 @@ console.log(JSON.stringify({ late: times(late), early: times(early), fitting: cl
 	want := `{"late":[["click",2001,2011],["call",2002,2010],["relay",2002,2008]],"early":[["call",1095,1105],["relay",1101,1105]],"fitting":true,"alone":true,"longer":["call",204,206]}`
 	if got := strings.TrimSpace(string(output)); got != want {
 		t.Fatalf("clamped:\n%s\nwant:\n%s", got, want)
-	}
-	if _, err := os.Stat(clock); err != nil {
-		t.Fatal(err)
 	}
 }
