@@ -432,9 +432,9 @@ func (r *recordingSelf) Get(typ *contracts.Contract, params *delta.JsonObject) *
 		panic(err)
 	}
 	r.requests = append(r.requests, request{kind: requestType, contract: typ, params: checked.params})
-	// A reference nothing binds and nothing indexes: inert, whatever its members are asked.
+	// A reference nothing binds and nothing indexes: inert, whatever its members are asked (its `at(key)` too: Pi's INERT takes any call).
 	host := r.object.host
-	inert, err := host.reference(typ, nil, host.own(), GetOptions{})
+	inert, err := host.reference(typ, r.object, host.own(), GetOptions{})
 	if err != nil {
 		panic(err)
 	}

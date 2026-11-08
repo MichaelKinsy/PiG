@@ -17,8 +17,7 @@ import (
 
 // pi: packages/chord/src/next-node/workers/lock.ts
 // Ports packages/chord/test/next-node/workers/lock.test.ts: one holder at a time, a waiter taking the lock when the
-// holder releases it (told by its connection's close, no polling), a waiter's abort, socket files failing closed when stale,
-// and clearing a stale one.
+// holder releases it (told by its connection's close, no polling), a waiter's abort; socket file locks.
 
 func TestProcessLockMakesASecondTakerWaitUntilTheHolderReleasesThenTakesIt(t *testing.T) {
 	name := fmt.Sprintf("chord-test-lock-%d-%d", os.Getpid(), time.Now().UnixNano())
@@ -152,37 +151,24 @@ func shortLockDir(t *testing.T) string {
 }
 
 func TestSocketFileLocksFailClosedOnAStaleLockFileNamingItTwoTakersNeverBothTakeItOver(t *testing.T) {
-	dir := shortLockDir(t)
-	// What a holder killed without its exit hooks leaves (a socket nobody listens on), and a regular file (ENOTSOCK on
-	// macOS: it once made the taker spin until its context ended).
-	for _, left := range []struct {
-		name  string
-		leave func(t *testing.T, path string)
-	}{
-		{"killed.sock", leaveSocketFile},
-		{"regular.sock", func(t *testing.T, path string) {
-			t.Helper()
-			if err := os.WriteFile(path, nil, 0o600); err != nil {
-				t.Fatal(err)
-			}
-		}},
-	} {
-		address := filepath.Join(dir, left.name)
-		left.leave(t, address)
-		type outcome struct{ err error }
-		results := make(chan outcome, 2)
-		for range 2 {
-			go func() {
-				_, err := lockAt(lockLocation{kind: lockFile, address: address}, chordctx.Background())
-				results <- outcome{err}
-			}()
-		}
-		want := fmt.Sprintf("lock: %s is a stale lock file", address)
-		for range 2 {
-			result := <-results
-			if result.err == nil || !strings.HasPrefix(result.err.Error(), want) {
-				t.Fatalf("%s: taker error = %v, want a message starting %q", left.name, result.err, want)
-			}
+	address := filepath.Join(shortLockDir(t), "lock.sock")
+	// What a crashed holder leaves: a path nobody accepts on.
+	if err := os.WriteFile(address, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	type outcome struct{ err error }
+	results := make(chan outcome, 2)
+	for range 2 {
+		go func() {
+			_, err := lockAt(lockLocation{kind: lockFile, address: address}, chordctx.Background())
+			results <- outcome{err}
+		}()
+	}
+	want := fmt.Sprintf("lock: %s is a stale lock file", address)
+	for range 2 {
+		result := <-results
+		if result.err == nil || !strings.HasPrefix(result.err.Error(), want) {
+			t.Fatalf("taker error = %v, want a message starting %q", result.err, want)
 		}
 	}
 }
@@ -211,77 +197,95 @@ func TestSocketFileLocksAreTakenWaitedForAndReleasedLikeTheOthers(t *testing.T) 
 	}
 }
 
-// leaveSocketFile is `leaveSocketFile` of lock.test.ts: it leaves a socket file at path as a holder killed without its exit
-// hooks does: a listener that closed without removing its file (Go's listener unlinks on close unless told not to).
+// leaveSocketFile leaves a socket file at path as a holder killed without its exit hooks does: a listener that was
+// closed without unlinking (lock.test.ts `leaveSocketFile`).
 func leaveSocketFile(t *testing.T, path string) {
 	t.Helper()
-	listener, err := net.ListenUnix("unix", &net.UnixAddr{Name: path, Net: "unix"})
+	listener, err := net.Listen("unix", path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	listener.SetUnlinkOnClose(false)
+	listener.(*net.UnixListener).SetUnlinkOnClose(false)
 	if err := listener.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Lstat(path); err != nil {
-		t.Fatalf("the killed holder's socket file is gone: %v", err)
+}
+
+// Ports lock.test.ts "fail closed on a stale lock file, naming it": a killed holder's socket file too, not only a regular file.
+func TestSocketFileLocksFailClosedOnAKilledHoldersSocketFileAndOnARegularFile(t *testing.T) {
+	dir := shortLockDir(t)
+	for name, leave := range map[string]func(string){
+		"killed.sock":  func(path string) { leaveSocketFile(t, path) },
+		"regular.sock": func(path string) { _ = os.WriteFile(path, nil, 0o600) },
+	} {
+		address := filepath.Join(dir, name)
+		leave(address)
+		for range 2 {
+			_, err := lockAt(lockLocation{kind: lockFile, address: address}, chordctx.Background())
+			want := fmt.Sprintf("lock: %s is a stale lock file", address)
+			if err == nil || !strings.HasPrefix(err.Error(), want) {
+				t.Fatalf("%s: taker error = %v, want a message starting %q", name, err, want)
+			}
+		}
 	}
 }
 
-func TestClearStaleLockAtRemovesASocketFileNobodyAcceptsOnTheLockCanBeTakenAgain(t *testing.T) {
+// Ports lock.test.ts "clearStaleLockAt removes a socket file nobody accepts on: the lock can be taken again".
+func TestClearStaleLockAtRemovesASocketFileNobodyAcceptsOnAndTheLockCanBeTakenAgain(t *testing.T) {
 	address := filepath.Join(shortLockDir(t), "lock.sock")
 	leaveSocketFile(t, address)
-	location := lockLocation{kind: lockFile, address: address}
-	cleared, err := clearStaleLockAt(location, chordctx.Background())
+	cleared, err := clearStaleLockAt(lockLocation{kind: lockFile, address: address}, chordctx.Background())
 	if err != nil || !cleared {
-		t.Fatalf("clearStaleLockAt = %v, %v, want true", cleared, err)
+		t.Fatalf("clearStaleLockAt = %v, %v, want true, nil", cleared, err)
 	}
-	lock, err := lockAt(location, chordctx.Background())
+	again, err := lockAt(lockLocation{kind: lockFile, address: address}, chordctx.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := lock.Release(); err != nil {
+	if err := again.Release(); err != nil {
 		t.Fatal(err)
 	}
 }
 
+// Ports lock.test.ts "clearStaleLockAt keeps a held lock's file, and does nothing without a file or for abstract sockets
+// and pipes".
 func TestClearStaleLockAtKeepsAHeldLocksFileAndDoesNothingWithoutAFileOrForAbstractSocketsAndPipes(t *testing.T) {
 	address := filepath.Join(shortLockDir(t), "lock.sock")
 	location := lockLocation{kind: lockFile, address: address}
-	background := chordctx.Background()
-	if cleared, err := clearStaleLockAt(location, background); err != nil || cleared {
-		t.Fatalf("without a file: clearStaleLockAt = %v, %v, want false", cleared, err)
+	check := func(location lockLocation, want bool) {
+		t.Helper()
+		cleared, err := clearStaleLockAt(location, chordctx.Background())
+		if err != nil || cleared != want {
+			t.Fatalf("clearStaleLockAt(%v) = %v, %v, want %v, nil", location, cleared, err, want)
+		}
 	}
-	held, err := lockAt(location, background)
+	check(location, false)
+	held, err := lockAt(location, chordctx.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cleared, err := clearStaleLockAt(location, background); err != nil || cleared {
-		t.Fatalf("held: clearStaleLockAt = %v, %v, want false", cleared, err)
-	}
-	// Still held: a second taker waits.
-	second := make(chan *ProcessLockHandle, 1)
+	check(location, false)
+	var taken atomic.Bool
+	secondResult := make(chan *ProcessLockHandle, 1)
 	go func() {
-		lock, err := lockAt(location, background)
+		lock, err := lockAt(location, chordctx.Background())
 		if err != nil {
 			t.Error(err)
 		}
-		second <- lock
+		taken.Store(true)
+		secondResult <- lock
 	}()
-	select {
-	case <-second:
+	time.Sleep(100 * time.Millisecond)
+	if taken.Load() {
 		t.Fatal("a second taker took a held lock")
-	case <-time.After(100 * time.Millisecond):
 	}
 	if err := held.Release(); err != nil {
 		t.Fatal(err)
 	}
-	if err := (<-second).Release(); err != nil {
+	second := <-secondResult
+	if err := second.Release(); err != nil {
 		t.Fatal(err)
 	}
-	for _, other := range []lockLocation{{kind: lockAbstract, address: "@chord-test-unused"}, {kind: lockPipe, address: `\\.\pipe\chord-test-unused`}} {
-		if cleared, err := clearStaleLockAt(other, background); err != nil || cleared {
-			t.Fatalf("%s: clearStaleLockAt = %v, %v, want false", other.kind, cleared, err)
-		}
-	}
+	check(lockLocation{kind: lockAbstract, address: "@chord-test-unused"}, false)
+	check(lockLocation{kind: lockPipe, address: `\\.\pipe\chord-test-unused`}, false)
 }

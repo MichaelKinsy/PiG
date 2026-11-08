@@ -152,69 +152,6 @@ classification = "release-content"
 rationale = "Identifies released content, a dependency constraint, or a runtime/toolchain requirement rather than selecting a Pig schema reader."
 
 [[fields]]
-id = "chord/host/contract.go#Contract.Version:go:-"
-path = "chord/host/contract.go"
-owner = "Contract"
-field = "Version"
-wire_name = "-"
-classification = "upstream"
-rationale = "pi-chord ContractBase.version (packages/chord/src/contract.ts): the version a contract is declared with, checked by checkHeader as a positive integer; the application owns it, not Pig."
-
-[[fields]]
-id = "chord/host/contract.go#Description.Version:go:-"
-path = "chord/host/contract.go"
-owner = "Description"
-field = "Version"
-wire_name = "-"
-classification = "upstream"
-rationale = "pi-chord Description.version (packages/chord/src/contract.ts), the declared contract version a contract's description carries."
-
-[[fields]]
-id = "chord/host/contract.go#LocalDef.Version:go:-"
-path = "chord/host/contract.go"
-owner = "LocalDef"
-field = "Version"
-wire_name = "-"
-classification = "upstream"
-rationale = "pi-chord LocalDef.version (packages/chord/src/contract.ts), the version a local contract definition declares."
-
-[[fields]]
-id = "chord/host/contract.go#RemoteDef.Version:go:-"
-path = "chord/host/contract.go"
-owner = "RemoteDef"
-field = "Version"
-wire_name = "-"
-classification = "upstream"
-rationale = "pi-chord RemoteDef.version (packages/chord/src/contract.ts), the version a remote contract definition declares."
-
-[[fields]]
-id = "chord/host/declare.go#ResourceDeclaration.Version:go:-"
-path = "chord/host/declare.go"
-owner = "ResourceDeclaration"
-field = "Version"
-wire_name = "-"
-classification = "upstream"
-rationale = "pi-chord resource declaration version (packages/chord/src/declare.ts:12): declared by the application's object; a bump replaces the resource at the next reload. The application owns it, not Pig."
-
-[[fields]]
-id = "chord/host/object.go#StateOptions.Version:go:-"
-path = "chord/host/object.go"
-owner = "StateOptions"
-field = "Version"
-wire_name = "-"
-classification = "upstream"
-rationale = "pi-chord state cell version (packages/chord/src/object.ts:136, reload.ts:388): the meaning of a cell's value, declared by the application; a reload that raises it runs migrate."
-
-[[fields]]
-id = "chord/host/wire.go#const.ProtocolVersion:go:-"
-path = "chord/host/wire.go"
-owner = "<package>"
-field = "ProtocolVersion"
-wire_name = "-"
-classification = "upstream"
-rationale = "pi-chord PROTOCOL_VERSION (packages/chord/src/wire.ts:24), announced in hello; peers of another version close the link. Pig speaks 2 while the pinned Pi speaks 4: protocols 3 and 4 are the owner-approved 0.5.0 Chord exception finished in 0.5.1."
-
-[[fields]]
 id = "chord/next/contracts/accepts.go#AcceptedVersion.Version:go:-"
 path = "chord/next/contracts/accepts.go"
 owner = "AcceptedVersion"
