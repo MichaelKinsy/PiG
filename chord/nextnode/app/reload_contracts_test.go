@@ -12,8 +12,8 @@ import (
 // with the cause (`contract_mismatch`, `unavailable` not served); state unchanged. The page's web plugin keeps its own copy of the
 // contract (an old page) while the counter on the worker moves. Through a real page in Chromium (reload_web_support_test.go), as Pi's.
 
-// parkMs is the page's short reference's `readyTimeout`: a call failing at once answers well before it.
-const parkMs = 1500 * time.Millisecond
+// parkFor is the page's short reference's `readyTimeout`: a call failing at once answers well before it.
+const parkFor = 1500 * time.Millisecond
 
 // oldPage is the app with the counter at v1 on worker `p1`, the page showing it (`alpha`) with a count of 2.
 func oldPage(t *testing.T) (started, *reloadTab) {
@@ -96,7 +96,7 @@ func TestAReloadChangingAContractFailsACallAtOnceWithTheCauseWhile(t *testing.T)
 	} {
 		t.Run(change.name, func(t *testing.T) {
 			s, tab := oldPage(t)
-			tab.hold("short", "alpha", parkMs, "p1", "label")
+			tab.hold("short", "alpha", parkFor, "p1", "label")
 			tab.waitState("short", "live")
 			if change.name == "the type is removed" {
 				s.removeAndApply(t, "counter")
@@ -110,8 +110,8 @@ func TestAReloadChangingAContractFailsACallAtOnceWithTheCauseWhile(t *testing.T)
 				t.Fatalf("the call = %+v, want an error %s", failed, change.code)
 			}
 			// Not parked: well before the reference's `readyTimeout`.
-			if elapsed := time.Since(started); elapsed >= parkMs {
-				t.Fatalf("the call failed after %v, want before %v", elapsed, parkMs)
+			if elapsed := time.Since(started); elapsed >= parkFor {
+				t.Fatalf("the call failed after %v, want before %v", elapsed, parkFor)
 			}
 		})
 	}
