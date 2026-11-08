@@ -3,8 +3,10 @@ package ai
 import (
 	"bytes"
 	"encoding/json"
+	"encoding/json/jsontext"
 	"fmt"
 
+	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
@@ -45,23 +47,22 @@ func ErrorKeyBeforeTimestamp(data []byte) bool {
 	if !bytes.Contains(data, []byte(`"errorMessage"`)) {
 		return false
 	}
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	if token, err := decoder.Token(); err != nil || token != json.Delim('{') {
+	decoder := jsontext.NewDecoder(bytes.NewReader(data), jsonopts.Parse)
+	if token, err := decoder.ReadToken(); err != nil || token.Kind() != '{' {
 		return false
 	}
-	for decoder.More() {
-		key, err := decoder.Token()
+	for decoder.PeekKind() != '}' {
+		key, err := decoder.ReadToken()
 		if err != nil {
 			return false
 		}
-		switch key {
+		switch key.String() {
 		case "errorMessage":
 			return true
 		case "timestamp":
 			return false
 		}
-		var skip json.RawMessage
-		if decoder.Decode(&skip) != nil {
+		if decoder.SkipValue() != nil {
 			return false
 		}
 	}

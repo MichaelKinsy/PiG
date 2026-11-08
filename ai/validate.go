@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"math/big"
 	"strings"
 	"sync"
 
@@ -56,6 +57,10 @@ func validateToolArgsSchema(toolName string, rawSchema, args json.RawMessage) (j
 	}
 	if !result.OK {
 		return nil, validationError(toolName, result.Errors, args)
+	}
+	if result.Value == schema.Undefined {
+		// JSON.stringify(undefined) is undefined, which has no text: arguments a schema of `{"type":"undefined"}` converted from null.
+		return nil, nil
 	}
 	if sameValue(result.Value, instance) && jsonstringify.IsCanonical(args) {
 		return args, nil
@@ -138,9 +143,11 @@ func sameValue(a, b any) bool {
 	return false
 }
 
-// appendStringify appends JSON.stringify of a decoded or coerced JSON value: objects in own-key order, numbers and strings as JavaScript writes them (a lone surrogate as its \u escape).
+// appendStringify appends JSON.stringify of a decoded or coerced JSON value: objects in own-key order, numbers and strings as JavaScript writes them (a lone surrogate as its \u escape). The two values coercion makes that JSON has no form for are written as Pi's probes write them (validation-probes.test.ts outcome()) and as JSON.stringify writes undefined: a bigint (Type.BigInt) as the string `<digits>n`, undefined as no member of an object and null in an array.
 func appendStringify(dst []byte, value any) []byte {
 	switch value := value.(type) {
+	case *big.Int:
+		return append(append(append(dst, '"'), value.String()...), 'n', '"')
 	case nil:
 		return append(dst, "null"...)
 	case bool:
@@ -158,6 +165,10 @@ func appendStringify(dst []byte, value any) []byte {
 			if i > 0 {
 				dst = append(dst, ',')
 			}
+			if _, undefined := item.(schema.UndefinedType); undefined {
+				dst = append(dst, "null"...)
+				continue
+			}
 			dst = appendStringify(dst, item)
 		}
 		return append(dst, ']')
@@ -165,6 +176,9 @@ func appendStringify(dst []byte, value any) []byte {
 		dst = append(dst, '{')
 		first := true
 		for key, member := range value.All() {
+			if _, undefined := member.(schema.UndefinedType); undefined {
+				continue
+			}
 			if !first {
 				dst = append(dst, ',')
 			}
@@ -177,10 +191,15 @@ func appendStringify(dst []byte, value any) []byte {
 	case map[string]any:
 		keys := chordjson.MapOwnKeys(value)
 		dst = append(dst, '{')
-		for i, key := range keys {
-			if i > 0 {
+		first := true
+		for _, key := range keys {
+			if _, undefined := value[key].(schema.UndefinedType); undefined {
+				continue
+			}
+			if !first {
 				dst = append(dst, ',')
 			}
+			first = false
 			dst = sdkjson.AppendStringifyString(dst, key)
 			dst = append(dst, ':')
 			dst = appendStringify(dst, value[key])

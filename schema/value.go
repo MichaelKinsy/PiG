@@ -1,9 +1,10 @@
 package schema
 
-// Go forms of the JavaScript value operations the upstream sources use directly. JSON data is nil, bool, float64 (any Go numeric kind reads as a number), string, []any, *Object, map[string]any, and []byte for Uint8Array.
+// Go forms of the JavaScript value operations the upstream sources use directly. JSON data is nil, bool, float64 (any Go numeric kind reads as a number), string, []any, *Object, map[string]any, and []byte for Uint8Array. The two values that never pass through JSON are a *big.Int, JavaScript's bigint (TypeBox's `Type.BigInt`), and Undefined, JavaScript's undefined: a coercion of a JSON null produces one, and a value built in code may hold one.
 
 import (
 	"math"
+	"math/big"
 	"reflect"
 	"strconv"
 	"strings"
@@ -13,6 +14,22 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
+
+// UndefinedType is the type of Undefined.
+type UndefinedType struct{}
+
+// Undefined is JavaScript's `undefined`, the value of `{ "type": "undefined" }` (TypeBox's `Type.Undefined`). A member holding it is present for the check of its schema, and absent to everything that serializes it: JSON.stringify leaves such a member out, and an optional property holding it counts as absent.
+var Undefined = UndefinedType{}
+
+func isUndefined(v any) bool {
+	_, ok := v.(UndefinedType)
+	return ok
+}
+
+func isBigInt(v any) bool {
+	_, ok := v.(*big.Int)
+	return ok
+}
 
 // jsonObject views an object value, an *Object or a map[string]any, without allocating.
 type jsonObject struct {
@@ -155,6 +172,18 @@ func (o jsonObject) numberMember(key string) (float64, bool) {
 	return asNumber(value)
 }
 
+// boundMember is a number keyword's value: a number (as a float64) or a bigint, as `typeof node[key] === "number" || typeof node[key] === "bigint"`.
+func (o jsonObject) boundMember(key string) (any, bool) {
+	value, _ := o.get(key)
+	if n, ok := asNumber(value); ok {
+		return n, true
+	}
+	if i, ok := value.(*big.Int); ok {
+		return i, true
+	}
+	return nil, false
+}
+
 func (o jsonObject) stringMember(key string) (string, bool) {
 	value, _ := o.get(key)
 	return stringValue(value)
@@ -210,8 +239,53 @@ func strictEquals(a, b any) bool {
 	case string:
 		y, ok := b.(string)
 		return ok && x == y
+	case *big.Int:
+		y, ok := b.(*big.Int)
+		return ok && x.Cmp(y) == 0
+	case UndefinedType:
+		return isUndefined(b)
 	}
 	return false
+}
+
+// compareNumeric orders two numbers or bigints (a float64 or any Go numeric kind, or a *big.Int) exactly, as JavaScript's relational operators do for a bigint and a number: ok is false when either is NaN, which no relational operator holds for.
+func compareNumeric(a, b any) (order int, ok bool) {
+	x, aIsNumber := asNumber(a)
+	y, bIsNumber := asNumber(b)
+	switch {
+	case aIsNumber && bIsNumber:
+		if math.IsNaN(x) || math.IsNaN(y) {
+			return 0, false
+		}
+		switch {
+		case x < y:
+			return -1, true
+		case x > y:
+			return 1, true
+		}
+		return 0, true
+	case aIsNumber:
+		order, ok = compareNumeric(b, a)
+		return -order, ok
+	case bIsNumber:
+		i, isBig := a.(*big.Int)
+		if !isBig || math.IsNaN(y) {
+			return 0, false
+		}
+		if math.IsInf(y, 0) {
+			if y > 0 {
+				return -1, true
+			}
+			return 1, true
+		}
+		return new(big.Float).SetInt(i).Cmp(new(big.Float).SetFloat64(y)), true
+	}
+	i, aIsBig := a.(*big.Int)
+	j, bIsBig := b.(*big.Int)
+	if !aIsBig || !bIsBig {
+		return 0, false
+	}
+	return i.Cmp(j), true
 }
 
 // sameValueZero is the comparison of Set and Array.prototype.includes: strict equality, except that NaN equals NaN.

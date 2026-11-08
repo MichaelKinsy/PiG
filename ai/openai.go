@@ -9,6 +9,7 @@ import (
 	"cmp"
 	"context"
 	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"io"
@@ -21,7 +22,7 @@ import (
 	"unicode/utf16"
 
 	"github.com/MichaelKinsy/PiG/internal/jsjson"
-
+	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 	"github.com/MichaelKinsy/PiG/internal/jsonwire"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
@@ -994,25 +995,23 @@ func decodeOpenAIReasoningDetail(raw json.RawMessage) (*openAIReasoningDetail, b
 		return nil, false
 	}
 
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	if token, err := decoder.Token(); err != nil || token != json.Delim('{') {
+	decoder := jsontext.NewDecoder(bytes.NewReader(raw), jsonopts.Parse)
+	if token, err := decoder.ReadToken(); err != nil || token.Kind() != '{' {
 		return nil, false
 	}
 	detail := &openAIReasoningDetail{typ: typ}
 	positions := map[string]int{}
-	for decoder.More() {
-		nameToken, err := decoder.Token()
+	for decoder.PeekKind() != '}' {
+		nameToken, err := decoder.ReadToken()
 		if err != nil {
 			return nil, false
 		}
-		name, ok := nameToken.(string)
-		if !ok {
+		name := nameToken.String() // a Token and the bytes ReadValue returns are void after the next call on the decoder
+		valueBytes, err := decoder.ReadValue()
+		if err != nil {
 			return nil, false
 		}
-		var value json.RawMessage
-		if err := decoder.Decode(&value); err != nil {
-			return nil, false
-		}
+		value := json.RawMessage(bytes.Clone(valueBytes))
 		if position, exists := positions[name]; exists {
 			detail.fields[position].value = value
 			continue

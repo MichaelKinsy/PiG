@@ -4,10 +4,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"encoding/json/jsontext"
+	"errors"
 	"fmt"
 	"io"
 	"slices"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 )
 
 const (
@@ -630,44 +634,43 @@ func rejectOrphanClaims(dataset string, claims map[string]ProvisionalClaim) erro
 }
 
 func decodeJSONObject(value []byte) ([]jsonReportField, error) {
-	decoder := json.NewDecoder(bytes.NewReader(value))
-	start, err := decoder.Token()
+	decoder := jsontext.NewDecoder(bytes.NewReader(value), jsonopts.Parse)
+	start, err := decoder.ReadToken()
 	if err != nil {
 		return nil, err
 	}
-	if delimiter, ok := start.(json.Delim); !ok || delimiter != '{' {
+	if start.Kind() != '{' {
 		return nil, fmt.Errorf("expected object")
 	}
 	fields := make([]jsonReportField, 0)
 	seen := make(map[string]struct{})
-	for decoder.More() {
-		token, err := decoder.Token()
+	for decoder.PeekKind() != '}' {
+		token, err := decoder.ReadToken()
 		if err != nil {
 			return nil, err
 		}
-		name, ok := token.(string)
-		if !ok || name == "" {
+		name := token.String() // a Token and the bytes ReadValue returns are void after the next call on the decoder
+		if token.Kind() != '"' || name == "" {
 			return nil, fmt.Errorf("invalid field name")
 		}
 		if _, duplicate := seen[name]; duplicate {
 			return nil, fmt.Errorf("duplicate field %s", name)
 		}
 		seen[name] = struct{}{}
-		var raw json.RawMessage
-		if err := decoder.Decode(&raw); err != nil {
+		raw, err := decoder.ReadValue()
+		if err != nil {
 			return nil, err
 		}
-		fields = append(fields, jsonReportField{name: name, value: raw})
+		fields = append(fields, jsonReportField{name: name, value: json.RawMessage(bytes.Clone(raw))})
 	}
-	end, err := decoder.Token()
+	end, err := decoder.ReadToken()
 	if err != nil {
 		return nil, err
 	}
-	if delimiter, ok := end.(json.Delim); !ok || delimiter != '}' {
+	if end.Kind() != '}' {
 		return nil, fmt.Errorf("object is not closed")
 	}
-	var trailing json.RawMessage
-	if err := decoder.Decode(&trailing); err != io.EOF {
+	if _, err := decoder.ReadValue(); !errors.Is(err, io.EOF) {
 		if err == nil {
 			return nil, fmt.Errorf("trailing JSON")
 		}

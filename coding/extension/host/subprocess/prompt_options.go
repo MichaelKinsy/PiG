@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"encoding/json/jsontext"
 	"fmt"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
+	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 )
 
 // renderSystemPromptCall is runner.ts:1426 renderCurrentSystemPrompt for an extension process. A before_agent_start
@@ -78,21 +80,22 @@ type objectMember struct {
 
 // objectMembers reads a JSON object's members in document order; the extension sees the event's members in the order Pi builds them.
 func objectMembers(raw json.RawMessage) ([]objectMember, error) {
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	if _, err := decoder.Token(); err != nil {
+	decoder := jsontext.NewDecoder(bytes.NewReader(raw), jsonopts.Parse)
+	if _, err := decoder.ReadToken(); err != nil {
 		return nil, err
 	}
 	var members []objectMember
-	for decoder.More() {
-		key, err := decoder.Token()
+	for decoder.PeekKind() != '}' {
+		keyToken, err := decoder.ReadToken()
 		if err != nil {
 			return nil, err
 		}
-		var value json.RawMessage
-		if err := decoder.Decode(&value); err != nil {
+		key := keyToken.String() // a Token and the bytes ReadValue returns are void after the next call on the decoder
+		value, err := decoder.ReadValue()
+		if err != nil {
 			return nil, err
 		}
-		members = append(members, objectMember{key.(string), value})
+		members = append(members, objectMember{key, json.RawMessage(bytes.Clone(value))})
 	}
 	return members, nil
 }

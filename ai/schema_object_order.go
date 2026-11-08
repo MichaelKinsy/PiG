@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"cmp"
 	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"math"
@@ -14,6 +15,7 @@ import (
 	"unicode/utf8"
 
 	sdkjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
+	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
@@ -25,18 +27,17 @@ func schemaPath(path, key string) string {
 }
 
 func readSchemaObjectOrder(data []byte) (schemaObjectOrder, error) {
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.UseNumber()
+	decoder := jsontext.NewDecoder(bytes.NewReader(data), jsonopts.Parse)
 	order := make(schemaObjectOrder)
 	// read decodes the value at segment below parent (the root has no segment). Only a container needs its path, so a scalar allocates none.
 	var read func(parent, segment string, nested bool) error
 	read = func(parent, segment string, nested bool) error {
-		token, err := decoder.Token()
+		token, err := decoder.ReadToken()
 		if err != nil {
 			return err
 		}
-		delimiter, ok := token.(json.Delim)
-		if !ok {
+		delimiter := token.Kind()
+		if delimiter != '{' && delimiter != '[' && delimiter != '}' && delimiter != ']' {
 			return nil
 		}
 		path := parent
@@ -47,16 +48,16 @@ func readSchemaObjectOrder(data []byte) (schemaObjectOrder, error) {
 		case '{':
 			var keys []string
 			var seen map[string]bool // built only for an object with many keys; a few keys are searched in keys
-			for decoder.More() {
+			for decoder.PeekKind() != '}' {
 				before := decoder.InputOffset()
-				name, err := decoder.Token()
+				name, err := decoder.ReadToken()
 				if err != nil {
 					return err
 				}
-				key, ok := name.(string)
-				if !ok {
+				if name.Kind() != '"' {
 					return fmt.Errorf("schema object key is not a string")
 				}
+				key := name.String()
 				if strings.ContainsRune(key, utf8.RuneError) {
 					// encoding/json turns an escaped lone surrogate into U+FFFD, but the decoded object keeps it as JSON.parse does, so the order must name the same key.
 					literal := data[before:decoder.InputOffset()]
@@ -97,15 +98,15 @@ func readSchemaObjectOrder(data []byte) (schemaObjectOrder, error) {
 				delete(order, path)
 			}
 		case '[':
-			for i := 0; decoder.More(); i++ {
+			for i := 0; decoder.PeekKind() != ']'; i++ {
 				if err = read(path, strconv.Itoa(i), true); err != nil {
 					return err
 				}
 			}
 		default:
-			return fmt.Errorf("unexpected schema delimiter %q", delimiter)
+			return fmt.Errorf("unexpected schema delimiter %q", rune(delimiter))
 		}
-		_, err = decoder.Token()
+		_, err = decoder.ReadToken()
 		return err
 	}
 	if err := read("", "", false); err != nil {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -14,9 +15,9 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 	"github.com/MichaelKinsy/PiG/internal/jsonparse"
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
-
 	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 	"github.com/MichaelKinsy/PiG/internal/pilock"
 )
@@ -396,22 +397,23 @@ func parseStoredModels(data []byte) ([]storedModels, modelsRoot, error) {
 			return []storedModels{}, modelsRoot{kind: modelsRootScalar, scalar: string(canonical), scalarType: "number"}, nil
 		}
 	}
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	if token, err := decoder.Token(); err != nil || token != json.Delim('{') {
+	decoder := jsontext.NewDecoder(bytes.NewReader(data), jsonopts.Parse)
+	if token, err := decoder.ReadToken(); err != nil || token.Kind() != '{' {
 		return nil, modelsRoot{}, fmt.Errorf("models store: parse: expected a JSON object")
 	}
 	var entries []storedModels
 	positions := make(map[string]int)
-	for decoder.More() {
-		key, err := decoder.Token()
+	for decoder.PeekKind() != '}' {
+		key, err := decoder.ReadToken()
 		if err != nil {
 			return nil, modelsRoot{}, fmt.Errorf("models store: parse: %w", err)
 		}
-		var raw json.RawMessage
-		if err := decoder.Decode(&raw); err != nil {
+		providerID := key.String() // a Token and the bytes ReadValue returns are void after the next call on the decoder
+		rawValue, err := decoder.ReadValue()
+		if err != nil {
 			return nil, modelsRoot{}, fmt.Errorf("models store: parse: %w", err)
 		}
-		providerID := key.(string)
+		raw := json.RawMessage(bytes.Clone(rawValue))
 		if index, exists := positions[providerID]; exists {
 			entries[index].raw = raw
 		} else {

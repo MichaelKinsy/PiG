@@ -6,6 +6,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"encoding/json/jsontext"
+	jsonv2 "encoding/json/v2"
 	"fmt"
 	"maps"
 	"os"
@@ -21,6 +23,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent/configschema"
 	"github.com/MichaelKinsy/PiG/internal/configvalue"
 	"github.com/MichaelKinsy/PiG/internal/jsjson"
+	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 	"github.com/MichaelKinsy/PiG/internal/jsonparse"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/pigstrip"
@@ -253,22 +256,21 @@ func (override *modelOverrideJSON) UnmarshalJSON(data []byte) error {
 }
 
 func decodeOrderedHeaderEntries(data []byte) ([]orderedHeaderEntry, error) {
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	token, err := decoder.Token()
+	decoder := jsontext.NewDecoder(bytes.NewReader(data), jsonopts.Parse)
+	token, err := decoder.ReadToken()
 	if err != nil {
 		return nil, err
 	}
-	if token != json.Delim('{') {
+	if token.Kind() != '{' {
 		return nil, fmt.Errorf("model configuration must be an object")
 	}
-	for decoder.More() {
-		key, err := decoder.Token()
+	for decoder.PeekKind() != '}' {
+		key, err := decoder.ReadToken()
 		if err != nil {
 			return nil, err
 		}
-		if key != "headers" {
-			var discard json.RawMessage
-			if err := decoder.Decode(&discard); err != nil {
+		if key.String() != "headers" {
+			if err := decoder.SkipValue(); err != nil {
 				return nil, err
 			}
 			continue
@@ -278,27 +280,28 @@ func decodeOrderedHeaderEntries(data []byte) ([]orderedHeaderEntry, error) {
 	return nil, nil
 }
 
-func decodeOrderedHeaderObject(decoder *json.Decoder) ([]orderedHeaderEntry, error) {
-	token, err := decoder.Token()
+func decodeOrderedHeaderObject(decoder *jsontext.Decoder) ([]orderedHeaderEntry, error) {
+	token, err := decoder.ReadToken()
 	if err != nil {
 		return nil, err
 	}
-	if token != json.Delim('{') {
+	if token.Kind() != '{' {
 		return nil, fmt.Errorf("headers must be an object")
 	}
 	var entries []orderedHeaderEntry
-	for decoder.More() {
-		name, err := decoder.Token()
+	for decoder.PeekKind() != '}' {
+		nameToken, err := decoder.ReadToken()
 		if err != nil {
 			return nil, err
 		}
+		name := nameToken.String() // a Token is void after the next call on the decoder
 		var value *string
-		if err := decoder.Decode(&value); err != nil {
+		if err := jsonv2.UnmarshalDecode(decoder, &value, jsonopts.Parse); err != nil {
 			return nil, err
 		}
-		entries = append(entries, orderedHeaderEntry{Name: name.(string), Value: value})
+		entries = append(entries, orderedHeaderEntry{Name: name, Value: value})
 	}
-	_, err = decoder.Token()
+	_, err = decoder.ReadToken()
 	return entries, err
 }
 

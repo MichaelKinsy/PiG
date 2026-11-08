@@ -113,7 +113,11 @@ fn detect_from_environment(
     if !get("WT_SESSION").is_empty() {
         return caps(None, true, true);
     }
-    if matches!(term_program.as_str(), "alacritty" | "vscode" | "zed") {
+    // Alacritty does not set TERM_PROGRAM: it sets TERM=alacritty when its terminfo entry is installed and ALACRITTY_WINDOW_ID on Unix and macOS (Pi 2af8a42f5).
+    if matches!(term_program.as_str(), "alacritty" | "vscode" | "zed")
+        || term.starts_with("alacritty")
+        || !get("ALACRITTY_WINDOW_ID").is_empty()
+    {
         return caps(None, true, true);
     }
     if terminal_emulator == "jetbrains-jediterm" {
