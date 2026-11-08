@@ -14,5 +14,5 @@
 
 ### Fixed
 
-- A connection failure with no status or body keeps its cause in the error message, for example `fetch failed: connect ECONNREFUSED 127.0.0.1:8080`, instead of only the generic text. <!-- fix: 2d3121b71c -->
+- A connection failure with no status or body keeps its cause in the error message, for example `Connection error.: connect ECONNREFUSED 127.0.0.1:8080` on `openai-completions`, `openai-responses` and `anthropic-messages` (`fetch failed: connect ECONNREFUSED ...` elsewhere), instead of only the generic text. <!-- fix: 2d3121b71c -->
 - A gateway's `cut short after the reply had begun` stream error is retried like other dropped streams. <!-- fix: 2d3121b71c -->

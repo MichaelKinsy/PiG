@@ -1953,26 +1953,6 @@ Remove when: Pi keeps a split private CSI reply buffered until its final byte.
 
 SCRUTINIZED:approved
 
-## D144 A dropped response stream keeps its cause in the error message (Pi #10697)
-
-What: undici reports every response-body failure that is not a user abort as `TypeError("terminated")` with the real failure in `error.cause`, such as `SocketError: other side closed` or `BodyTimeoutError`. Pi drops the cause, so a peer disconnect and an idle timeout both end a run with the message `terminated`. PiG ends the message with the Go cause: `terminated (cause: unexpected EOF)`. The message still contains `terminated`, so Pi's retry classification matches it as before. Failures before the response headers (`fetch failed`, the OpenAI SDK's `Connection error.`) are unchanged.
-
-Why: A user cannot tell a server disconnect from a client timeout without instrumenting the process.
-
-Scope: response-body read failures in `ai/transport_error.go` (`nodeFetchBody.Read`). The cause text is Go's, not undici's class and code.
-
-Owner decision: 2026-10-10, owner ruling that every confirmed Pi bug is fixed now, ported from Pi or not.
-
-Call-site markers: `ai/transport_error.go` (`nodeTransportError.withCause`).
-
-Evidence: `TestProviderTransportFailureMidStreamKeepsTheCause` in `ai/transport_error_test.go` closes the connection after one SSE event. It failed before the change with the message `terminated`. `TestProviderTransportFailureMidStreamMatchesTerminated` still passes, so the retry classification is unchanged.
-
-Parity allowance: none.
-
-Remove when: Pi includes `error.cause` in the message of a transport failure.
-
-SCRUTINIZED:approved
-
 ## D145 Nested Errors keep their name and message in codemode output (Pi #10650)
 
 What: an Error's `name` and `message` are not enumerable, so Pi's codemode serializes a nested rejection as `{}`. `text(await Promise.allSettled([...]))`, console output and the returned value then show `"reason":{}` although the message is available in the VM. PiG serializes `text()`, console output and the returned value with a replacer that writes an Error as `{"name":...,"message":...}` followed by the own enumerable fields Pi already writes, such as `code` or `status`. A value whose prototype, `name` or `message` cannot be read is written as Pi writes it. Stacks are not written. Arguments a script passes to a tool, and an explicit `JSON.stringify` in the script, keep normal JavaScript semantics.
@@ -3289,28 +3269,6 @@ Evidence: `TestGetNewEntriesIgnoresPrereleaseAndBuildSuffixes`, `TestRecordChang
 
 Parity allowance: Pi 1.5.0's oracle differs on exactly the recorded versions the oracle tests skip.
 
-## D246 OpenAI Responses sends session-id, not session_id
-
-What: PiG's OpenAI Responses request ports Pi main c5d397835 (`fix(ai): send session-id instead of session_id on OpenAI Responses`, #11793, fixing #11639), which is not in Pi 1.5.0. With the default `openai` session-affinity format the Responses path sends the header `session-id` (Pi 1.5.0: `session_id`). `x-client-request-id`, `prompt_cache_key`, the `openai-nosession` and `openrouter` formats, and the Codex path (already `session-id`) are unchanged. The Completions path keeps `session_id` (and `x-session-affinity`), as in Pi.
-
-Why: Proxies such as nginx with `underscores_in_headers off` drop an underscored header silently and Envoy can be configured to reject it, so cache affinity was lost.
-
-Pi bug: 1.5.0 sends `session_id` on Responses (#11639).
-
-Scope: `applyOpenAISessionAffinityHeaders` for the Responses callers (`ai/openai.go`, `ai/openai_responses.go`), including xAI and every other provider on the Responses API with the `openai` format. Not changed: the `sessionAffinityFormat` schema description in `internal/codingagent/configschema/compat_a.go` still says `session_id`; the rendered schemas stay byte-equal to the pinned Pi package until the pin reaches c5d397835.
-
-Owner decision: approved by owner Michael Kinsy on 2026-11-05 for 0.7.1 (SCOPE-PROPOSAL S4).
-
-SCRUTINIZED:approved
-
-Remove when: the pinned Pi release contains c5d397835. Then the call-site marker and this record go, and the schema description follows the pin.
-
-Call-site markers: `ai/openai.go` (`applyOpenAISessionAffinityHeaders`), `test/parity/testdata/openai-cache-affinity-pig/main.go` (the allowance).
-
-Evidence: `TestOpenAIResponsesCompatHeadersUpstream`, `TestOpenAIResponsesCacheAffinityE2EUpstream` and `TestXAIResponsesRequestUpstream` (Pi's three changed tests; red on 989927eff4: `header session-id="" want="session-123"`, `header session_id="session-123" want=""`); `TestOpenAICompletionsSessionAffinityHeadersFollowThePiCompat` keeps `session_id` on the Completions path.
-
-Parity allowance: three comparisons against the pinned Pi 1.5.0 follow the header rename on the Responses path and nothing else. `TestProviderIdentityHeadersMatchPi/openai-responses` and `TestProviderRequestHeadersMatchPi/openai-responses` rename Pi's `session_id` request header to `session-id` for `openai-responses` only (`d246PiResponsesSessionHeader`, `ai/response_oracle_support_test.go`). Parity scenario `providers-faux-streaming/15-openai-cache-affinity` has its pig probe read the Responses affinity header as `session-id` where Pi's probe reads `session_id`, and reports a Responses request that carries a `session_id` the model did not configure. A `session_id` header the model itself configures is no longer replaced by the affinity header on the Responses path (it is a different header now, as in Pi main), so it reaches the server next to `session-id`; the scenario's `override` case does not report it. The schema description stays at the pinned text (see Scope).
-
 ## D247 Quit settles the interrupted run before session_shutdown and disposal
 
 What: PiG ports Pi main 7a53c310a (`fix(coding-agent): settle tool results before disposal`, #9126, fixing #9124), which is not in Pi 1.5.0. `Runtime.EmitQuitShutdown`, the first step of `Runtime.Close` and of the interactive quit, now aborts the current Session and waits until it is idle before it emits `session_shutdown` with reason `quit`. The interrupted tool's result and the final assistant message are persisted first, so extensions see `session_shutdown` after the settled turn. Like Pi's `await this.session.abort()`, and like the replacement path's `teardownCurrent`, the wait has no timeout: a tool that ignores cancellation holds the quit.
@@ -3868,68 +3826,34 @@ Evidence: the ported `model-selector.test.ts` and `llama-ui.test.ts` cases of Pi
 
 Parity allowance: none needed; Pi 1.5.0 has no test of this behavior.
 
-## D350 OpenCode Zen and Go Claude models send per-message effort
+## D370 The OAuth callback server drops connections that have not sent a request when it closes
 
-What: PiG's catalog generator (`internal/modelgen/providers/opencode.go`) gives OpenCode Zen and Go Claude models per-message effort and `block_binding: drop_block`, as Pi main does. Pi 1.5.0 sends neither. Ports Pi main 9ee7586a9 (`fix(ai): send drop_block for OpenCode Zen and Go Claude models`, #10954), which is not in Pi 1.5.0.
+What: PiG ports Pi main 63ea042ce (`fix(mcp): close remaining connections when the OAuth callback server closes`, #11855, fixing #11311), which is not in Pi 1.5.0. Pi calls `server.closeAllConnections()`; Go has no equivalent that spares a response being written, so `OAuthCallbackServer.Close` closes the connections that never sent a request (a browser's preconnect) and leaves idle and in-flight ones to `Shutdown`.
 
-Why: OpenCode serves these Claude models over an Anthropic-messages endpoint that needs the per-message effort and the drop_block binding to keep thinking blocks coherent across turns.
+Why: Go's `Shutdown` waits up to 5 s for a connection that never sent a request, so `/mcp login` stalled up to the 2 s bound.
 
-Pi bug: 1.5.0 omits both for OpenCode Claude models.
+Pi bug: 1.5.0 waits for the browser to drop the socket, for minutes.
 
-Scope: the OpenCode Zen and Go Claude records in the generated catalog.
+Owner decision: owner sign-off pending.
 
-Owner decision: owner sign-off pending (drafted by the FollowAi lane on 2026-11-07; PiG carried the change since 9fcb1c0790).
+SCRUTINIZED:pending
 
-SCRUTINIZED:approved
+Remove when: the pinned Pi release contains 63ea042ce and PiG's close matches it.
 
-Remove when: the pinned Pi release contains 9ee7586a9. Then the call-site marker and this record go.
+Evidence: `TestOAuthCallbackServerClosesWhileTheBrowserKeepsAnUnusedConnectionOpen` (`mcp/oauth/oauth_test.go`).
 
-Call-site markers: `internal/modelgen/providers/opencode.go`.
+## D371 Tool search and codemode follow local schema refs; a malformed `$ref` renders as `unknown`
 
-Evidence: `TestOpencodeModelGeneration` (`cmd/gen-models/opencode_model_generation_test.go`) and `TestCatalogGenerationMatchesPi` (golden re-recorded with 9ee7586a9 applied).
+What: PiG ports Pi main 6d3e342b2 (`fix(coding-agent): follow local schema refs in tool search and codemode summaries`, #11850, fixing #11803), which is not in Pi 1.5.0. `tool_search` reads names and descriptions behind local `$ref`s, the codemode summary resolves `$ref` chains, and a `$ref` with a malformed percent escape names nothing, so the `codemode` render functions return a string only (they returned the URIError as an error).
 
-Parity allowance: none needed; Pi 1.5.0 has no test of this behavior and Pi main's tests are ported.
+Why: One MCP tool with such a ref failed every codemode run.
 
-## D351 Anthropic non-strict tool schemas keep root $defs
+Pi bug: 1.5.0 throws `URI malformed` out of every codemode run.
 
-What: PiG keeps a tool schema's root `$defs` and `definitions` when it sends the schema to an Anthropic Messages endpoint without strict mode, as Pi main does. Pi 1.5.0 strips them, which leaves dangling `$ref`s. Ports Pi main 4a6a58eb (`fix(ai): keep root $defs in Anthropic non-strict tool schemas`), which is not in Pi 1.5.0.
+Owner decision: owner sign-off pending.
 
-Why: A `$ref` into a removed `$defs` makes Anthropic reject the tool definition.
+SCRUTINIZED:pending
 
-Pi bug: 1.5.0 drops root `$defs` in non-strict mode.
+Remove when: the pinned Pi release contains 6d3e342b2.
 
-Scope: the Anthropic non-strict tool schema path (`ai/anthropic.go`, `ai/anthropic_stream.go`, `ai/direct_simple.go`).
-
-Owner decision: owner sign-off pending (drafted by the FollowAi lane on 2026-11-07; PiG carried the change since d3f6c2b6ff).
-
-SCRUTINIZED:approved
-
-Remove when: the pinned Pi release contains 4a6a58eb. Then the call-site marker and this record go.
-
-Call-site markers: `ai/anthropic.go`.
-
-Evidence: `TestAnthropicStrictToolSchemas` and `TestAnthropicRequestBodyKeepsRootDefsInLegacyToolSchema` (`ai/anthropic_strict_tool_schema_upstream_test.go`, Pi's `anthropic-strict-tool-schema.test.ts`).
-
-Parity allowance: none needed; Pi 1.5.0 has no test of this behavior and Pi main's tests are ported.
-
-## D352 Anthropic message threads
-
-What: PiG ports Anthropic message threads (`ai/anthropic_threads.go`): with a session id and cache retention other than none, requests continue from the previous reply and send only new messages, a rejected continue is resent in full as a new thread, and an endpoint that rejects threads turns them off for the session. `compat.supportsMessageThreads` overrides the default (on for provider `anthropic` on api.anthropic.com), and `StreamOptions.DisableContinuation` keeps a request off thread state (the cache warmer sets it). Pi 1.5.0 has none of this. Ports Pi main a758f3ae4 (`feat(ai): Anthropic message threads`, #11545), which is not in Pi 1.5.0.
-
-Why: Smaller requests and cache continuity on long Anthropic sessions.
-
-Pi bug: Not a Pi bug: a feature ahead of the pin.
-
-Scope: the Anthropic Messages request path, `agent/proxy.go` options, `internal/codingagent/cache_warmer.go`, `schemas/models.schema.json`.
-
-Owner decision: owner sign-off pending (drafted by the FollowAi lane on 2026-11-07; PiG carried the change since 559eb57d05).
-
-SCRUTINIZED:approved
-
-Remove when: the pinned Pi release contains a758f3ae4. Then the call-site marker and this record go.
-
-Call-site markers: `ai/anthropic_threads.go`.
-
-Evidence: `TestAnthropicMessageThreadsCreateThenContinue` and the other `TestAnthropicMessageThreads*` cases (`ai/anthropic_message_threads_test.go`, Pi's `anthropic-message-threads.test.ts`).
-
-Parity allowance: none needed; Pi 1.5.0 has no test of this behavior and Pi main's tests are ported.
+Evidence: `TestMalformedRefPercentEncodingRendersAsUnknown`, `TestResolveSchemaRef*` (`codemode/declarations_test.go`), `TestSchemaRefs*` (`coding/extension/builtin/toolsearch/schema_refs_pi_test.go`), `TestFindsAToolByAParameterDescriptionBehindALocalReference...` (`durable/toolsearch/toolsearch_test.go`), `TestDescribeOutputSummarizesFieldsBehindLocalSchemaReferences`.

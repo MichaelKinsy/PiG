@@ -182,7 +182,7 @@ func finalizeOpencodeModel(model ChatModel) {
 		if provider == "opencode" && SupportsClaudeMidConvoSystemMessages(id) {
 			MergeCompat(model, O("supportsMidConvoSystemMessages", true))
 		}
-		// pig divergence (D350): Pi main 9ee7586a9 (not in Pi 1.5.0). Zen and Go forward per-message effort and `thinking.block_binding`. Without
+		// Pi 9ee7586a9: Zen and Go forward per-message effort and `thinking.block_binding`. Without
 		// `drop_block`, Go rejects replayed thinking after the system prompt or tools change.
 		if SupportsClaudeMidConvoEffort(id) {
 			EnableClaudeMidConvoEffort(model)

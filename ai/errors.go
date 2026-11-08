@@ -7,10 +7,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"reflect"
 	"strings"
 	"sync"
+	"syscall"
 	"unicode"
 
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
@@ -85,10 +87,18 @@ func WithCauseDetail(err error) string {
 	message := err.Error()
 	var detail, code string
 	if transport, ok := errors.AsType[*nodeTransportError](err); ok {
-		if transport.message != "fetch failed" {
-			return message
+		// An SDK's "Connection error." wraps the "fetch failed" rejection whose cause names the failure.
+		if transport.message == "Connection error." {
+			if inner, ok := errors.AsType[*nodeTransportError](transport.cause); ok {
+				transport = inner
+			}
 		}
-		detail, code = nodeConnectionFailure(transport.cause)
+		switch transport.message {
+		case "fetch failed":
+			detail, code = nodeConnectionFailure(transport.cause)
+		case "terminated":
+			detail, code = nodeBodyFailure(transport.cause)
+		}
 		if detail == "" {
 			return message
 		}
@@ -233,10 +243,29 @@ func (state *safeJSONEncoder) stringify(value any) []byte {
 	return canonical
 }
 
+// nodeBodyFailure is the message and code of the cause undici attaches to "terminated" for a response body that failed after the headers:
+// SocketError `other side closed` (UND_ERR_SOCKET) for a connection the peer closed or reset, BodyTimeoutError (UND_ERR_BODY_TIMEOUT) for an idle body.
+// It is empty for a failure with no such Node counterpart.
+func nodeBodyFailure(cause error) (message, code string) {
+	if idle, ok := errors.AsType[*sseIdleError](cause); ok {
+		return idle.Error(), ""
+	}
+	if timeout, ok := errors.AsType[net.Error](cause); ok && timeout.Timeout() {
+		return "Body Timeout Error", "UND_ERR_BODY_TIMEOUT"
+	}
+	if errors.Is(cause, io.ErrUnexpectedEOF) || errors.Is(cause, io.EOF) || errors.Is(cause, syscall.ECONNRESET) || errors.Is(cause, syscall.EPIPE) || errors.Is(cause, net.ErrClosed) {
+		return "other side closed", "UND_ERR_SOCKET"
+	}
+	return "", ""
+}
+
 // nodeConnectionFailure is the message and code of the cause undici attaches to "fetch failed" for a failed connection: Node's
 // `connect ECONNREFUSED 127.0.0.1:8080` for a refused or unreachable dial and `getaddrinfo ENOTFOUND host` for a name that does not
 // resolve. It is empty for a failure with no such Node counterpart.
 func nodeConnectionFailure(cause error) (message, code string) {
+	if errors.Is(cause, errFetchBadPort) {
+		return "bad port", ""
+	}
 	if dns, ok := errors.AsType[*net.DNSError](cause); ok && dns.IsNotFound {
 		return "getaddrinfo ENOTFOUND " + dns.Name, "ENOTFOUND"
 	}
