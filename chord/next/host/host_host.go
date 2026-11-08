@@ -179,9 +179,10 @@ type Host interface {
 	// of it (the closure rule); both are reported (ReloadReport.Failed); options.Failed names plugins the caller passes as
 	// their loaded facet because their new code failed before (a build, an evaluation): the same for the closure rule and
 	// the report. Then it commits in one batch (types, registries, contributions; a publication waking the requests for
-	// the names it serves) and every object of a changed or removed plugin takes its fate: swapped in place, restarted
-	// after its drain, retried, or ended (its type removed). Returns the report once every fate started (swaps and retries
-	// checked their dependencies; it does not wait for objects to go live). Reloads run one after another. It fails before
+	// the names it serves) and every object of a changed or removed plugin takes its fate: restarted (its old attempt
+	// finishes its old work, then a new attempt runs on the new code), retried, or ended (its type removed). Returns the
+	// report once every restart started and every retry checked its dependencies; it does not wait for objects to go
+	// live. Reloads run one after another. It fails before
 	// `Load` returned; fails `released/closed` after `Close`; ctx's abort before the commit fails `aborted` and changes
 	// nothing, after it only ends the wait (`aborted`, its details.committed naming what the commit applied:
 	// CommittedReload).
@@ -918,6 +919,61 @@ func (h *chordHost) Root(fn func(ctx Ctx) (any, error), ctx context.Context, opt
 	}
 	// The scope's ctx acts as principal.
 	return h.roots.run(fn, principal, ctx)
+}
+
+// UnservedNames are the names requests here wait for unbound that no plugin here serves (types and registries:
+// `not_served`), sorted; a name served at another version (`version`) is not among them.
+func (h *chordHost) UnservedNames() []string {
+	var names []string
+	h.enter(func() {
+		for _, name := range h.unbound.Names() {
+			if h.types.has(name) {
+				continue
+			}
+			if record := h.registries[name]; record != nil {
+				if _, provided := record.ProvidedVersion(); provided {
+					continue
+				}
+			}
+			names = append(names, name)
+		}
+	})
+	return names
+}
+
+// ActivationsUnderWay is how many objects here have an activation under way (`chordObject.Activating`).
+func (h *chordHost) ActivationsUnderWay() int {
+	count := 0
+	h.enter(func() {
+		for _, object := range h.objects {
+			if object.Activating() {
+				count++
+			}
+		}
+	})
+	return count
+}
+
+// UndeclaredRegistry is a registry with contributions and no provider, with the newest version contributed.
+type UndeclaredRegistry struct {
+	Name    string
+	Version int
+}
+
+// UndeclaredRegistries are the registries with contributions here and no provider, each with the newest version
+// contributed, by name.
+func (h *chordHost) UndeclaredRegistries() []UndeclaredRegistry {
+	var found []UndeclaredRegistry
+	h.enter(func() {
+		for _, record := range h.registries {
+			version, contributed := record.NewestContribution()
+			if _, provided := record.ProvidedVersion(); contributed && !provided {
+				found = append(found, UndeclaredRegistry{Name: record.Name, Version: version})
+			}
+		}
+	})
+	slices.SortFunc(found, func(a, b UndeclaredRegistry) int { return strings.Compare(a.Name, b.Name) })
+	return found
 }
 
 // registryRecord is the record of registry name on this host, made by its first use.

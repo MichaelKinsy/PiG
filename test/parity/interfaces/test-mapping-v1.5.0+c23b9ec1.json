@@ -2069,8 +2069,12 @@
     },
     {
       "path": "packages/chord/test/data/principal.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:6bd737329d34b7a713827133bd787f242ec673fed2d913b9d9a574d4d406f40d"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:6bd737329d34b7a713827133bd787f242ec673fed2d913b9d9a574d4d406f40d",
+      "evidence": [
+        "chord/next/data/principal_test.go"
+      ],
+      "rationale": "All 10 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/data/validator.test.ts",
@@ -2665,8 +2669,12 @@
     },
     {
       "path": "packages/chord/test/node/app/blobs.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ee6582c90375ec9ad86fe520efbc8f877357f41d427b55a3a82e29e5eb8d8eff"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ee6582c90375ec9ad86fe520efbc8f877357f41d427b55a3a82e29e5eb8d8eff",
+      "evidence": [
+        "chord/nextnode/app/blobs_test.go"
+      ],
+      "rationale": "All 3 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/node/app/ephemeral-sessions.test.ts",
@@ -2680,23 +2688,40 @@
     },
     {
       "path": "packages/chord/test/node/app/files-copy.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:3cc424cacb23a58e2f24196715d180985a7d73e4c1b7996575306cd78137cc7b"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:3cc424cacb23a58e2f24196715d180985a7d73e4c1b7996575306cd78137cc7b",
+      "evidence": [
+        "chord/nextnode/app/files_copy_test.go"
+      ],
+      "rationale": "All 2 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/node/app/files-index.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:984734e58283ec1fde9d0bb2f33484c445b165da08fda9c2d451c82b1f221476"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:984734e58283ec1fde9d0bb2f33484c445b165da08fda9c2d451c82b1f221476",
+      "evidence": [
+        "chord/nextnode/app/files_index_test.go"
+      ],
+      "rationale": "All 3 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/node/app/files.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:6e263eca7289c8131323e141149c0247aec04b648c3018f1d3627bfc5fbd1a64"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:6e263eca7289c8131323e141149c0247aec04b648c3018f1d3627bfc5fbd1a64",
+      "evidence": [
+        "chord/nextnode/app/files_test.go",
+        "chord/nextnode/app/files_support_test.go"
+      ],
+      "rationale": "All 29 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/node/app/folder-views.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:97a757b358bea1a92a9b76b154c88d2bad38614e14b3275b41876105ef1a2334"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:97a757b358bea1a92a9b76b154c88d2bad38614e14b3275b41876105ef1a2334",
+      "evidence": [
+        "chord/nextnode/app/folder_views_test.go"
+      ],
+      "rationale": "All 4 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/node/app/info.test.ts",
@@ -2710,8 +2735,12 @@
     },
     {
       "path": "packages/chord/test/node/app/layout.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:22920a2be00f0a12133dbc50debfcf8d06d21eae7f63e5803f9285ae39129e66"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:22920a2be00f0a12133dbc50debfcf8d06d21eae7f63e5803f9285ae39129e66",
+      "evidence": [
+        "chord/nextnode/app/layout_test.go"
+      ],
+      "rationale": "All 4 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/node/app/owner.test.ts",
@@ -2725,8 +2754,13 @@
     },
     {
       "path": "packages/chord/test/node/app/secrets.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:9c5da2ee36ae8b6f13f1ff69ff16a8d719a39ebb6b1508943b6134ed2c1400ee"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:9c5da2ee36ae8b6f13f1ff69ff16a8d719a39ebb6b1508943b6134ed2c1400ee",
+      "evidence": [
+        "chord/nextnode/app/secrets_test.go",
+        "chord/nextnode/app/secrets_umask_unix_test.go"
+      ],
+      "rationale": "All 4 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/node/app/sessions.test.ts",
@@ -2740,8 +2774,12 @@
     },
     {
       "path": "packages/chord/test/node/app/uploads.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ca237dda3ce284a22002de0c98e0cb3872809179f212d89d6d0ed8789484262e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ca237dda3ce284a22002de0c98e0cb3872809179f212d89d6d0ed8789484262e",
+      "evidence": [
+        "chord/nextnode/app/uploads_test.go"
+      ],
+      "rationale": "All 2 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/node/app/users.test.ts",
@@ -2835,38 +2873,73 @@
     },
     {
       "path": "packages/chord/test/node/plugins/base-inputs.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:6a00a348d8e11c0febd25e446cb2b81bbfe58e4ef977920c83cd11b3cedb5c3e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:6a00a348d8e11c0febd25e446cb2b81bbfe58e4ef977920c83cd11b3cedb5c3e",
+      "evidence": [
+        "chord/nextnode/plugins/plugins_baseinputs_test.go"
+      ],
+      "rationale": "All 2 upstream cases run in the evidence files, against the real esbuild Go API and the real Node subprocess running Pi's own sources where the case needs one; each test comment names its case and any process-boundary adaptation."
     },
     {
       "path": "packages/chord/test/node/plugins/build.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:0cf142af28726b7ef9b76f515d07340ecac657d6153556e2a7522073a7f7485b"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:0cf142af28726b7ef9b76f515d07340ecac657d6153556e2a7522073a7f7485b",
+      "evidence": [
+        "chord/nextnode/plugins/plugins_build_test.go",
+        "chord/nextnode/plugins/plugins_cssmodules_test.go"
+      ],
+      "rationale": "All 30 upstream cases run in the evidence files, against the real esbuild Go API and the real Node subprocess running Pi's own sources where the case needs one; each test comment names its case and any process-boundary adaptation."
     },
     {
       "path": "packages/chord/test/node/plugins/discover.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c2c44f15e621cbbf7f1bdcda1027e00bcaeeaad4c2f9a6f12f860854028249ea"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c2c44f15e621cbbf7f1bdcda1027e00bcaeeaad4c2f9a6f12f860854028249ea",
+      "evidence": [
+        "chord/nextnode/plugins/plugins_discover_test.go"
+      ],
+      "rationale": "All 13 upstream cases run in the evidence files, against the real esbuild Go API and the real Node subprocess running Pi's own sources where the case needs one; each test comment names its case and any process-boundary adaptation."
     },
     {
       "path": "packages/chord/test/node/plugins/evaluate.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:7ff1ce2c08a4b03bfe247b67dbbca3e8b981c9016a2049ac474d3558a0932ea5"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:7ff1ce2c08a4b03bfe247b67dbbca3e8b981c9016a2049ac474d3558a0932ea5",
+      "evidence": [
+        "chord/nextnode/plugins/plugins_evaluate_test.go",
+        "chord/nextnode/plugins/plugins_node_test.go"
+      ],
+      "rationale": "All 10 upstream cases run in the evidence files, against the real esbuild Go API and the real Node subprocess running Pi's own sources where the case needs one; each test comment names its case and any process-boundary adaptation."
     },
     {
       "path": "packages/chord/test/node/plugins/install.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ae9f02459719ce69b1f910b53a22187379796cca8304a21ffbc80ae7bb123472"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ae9f02459719ce69b1f910b53a22187379796cca8304a21ffbc80ae7bb123472",
+      "evidence": [
+        "chord/nextnode/plugins/plugins_install_test.go"
+      ],
+      "rationale": "All 14 upstream cases run in the evidence files, against the real esbuild Go API and the real Node subprocess running Pi's own sources where the case needs one; each test comment names its case and any process-boundary adaptation."
     },
     {
       "path": "packages/chord/test/node/plugins/plugins.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:2130f7a727ac19aa03a900b8a8ce9c3d56a90ba8ac7e96c5524f3dc0b99a7c8d"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:2130f7a727ac19aa03a900b8a8ce9c3d56a90ba8ac7e96c5524f3dc0b99a7c8d",
+      "evidence": [
+        "chord/nextnode/plugins/plugins_endtoend_test.go",
+        "chord/nextnode/plugins/plugins_examples_test.go",
+        "chord/nextnode/plugins/plugins_node_bridged_test.go",
+        "chord/nextnode/plugins/plugins_node_test.go",
+        "chord/nextnode/plugins/plugins_plugins_test.go",
+        "chord/nextnode/plugins/plugins_runtime_test.go"
+      ],
+      "rationale": "All 25 upstream cases run in the evidence files, against the real esbuild Go API and the real Node subprocess running Pi's own sources where the case needs one; each test comment names its case and any process-boundary adaptation."
     },
     {
       "path": "packages/chord/test/node/plugins/runtime.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:932547aca8c5d5bd5633a46ab4f747aa131c97a590e82827a4e8d23095a9598c"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:932547aca8c5d5bd5633a46ab4f747aa131c97a590e82827a4e8d23095a9598c",
+      "evidence": [
+        "chord/nextnode/plugins/plugins_runtime_test.go"
+      ],
+      "rationale": "All 6 upstream cases run in the evidence files, against the real esbuild Go API and the real Node subprocess running Pi's own sources where the case needs one; each test comment names its case and any process-boundary adaptation."
     },
     {
       "path": "packages/chord/test/node/plugins/stack.test.ts",
@@ -2884,8 +2957,14 @@
     },
     {
       "path": "packages/chord/test/node/plugins/watcher.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c7f0de0a08218fae9c2d89014cb4a498304b2bd5b82a213dd00622532e3e30d7"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c7f0de0a08218fae9c2d89014cb4a498304b2bd5b82a213dd00622532e3e30d7",
+      "evidence": [
+        "chord/nextnode/plugins/plugins_watcher_test.go",
+        "chord/nextnode/plugins/plugins_watcher_base_test.go",
+        "chord/nextnode/plugins/plugins_watcher_linux_test.go"
+      ],
+      "rationale": "All 23 upstream cases run in the evidence files, against the real esbuild Go API and the real Node subprocess running Pi's own sources where the case needs one; each test comment names its case and any process-boundary adaptation."
     },
     {
       "path": "packages/chord/test/node/react/hooks.test.ts",
@@ -3416,8 +3495,13 @@
     },
     {
       "path": "packages/chord/test/store/live-query.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c8f5fe3c9eb996a99d97890a61443f2699e2b8783ba197a829b7e63298ebd308"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c8f5fe3c9eb996a99d97890a61443f2699e2b8783ba197a829b7e63298ebd308",
+      "evidence": [
+        "chord/next/host/host_live_query_test.go",
+        "chord/next/store/live_query_test.go"
+      ],
+      "rationale": "All 12 upstream cases run in the evidence files: eleven in host_live_query_test.go (the objects, the host and the reload), the refresh applied again in live_query_test.go. The reload case reports `swapped` where Pi main says `restarted` until Pi a5d209afd (the reload restart model) is ported (D431); the limit cases take an int64, so the fractional and absent limits Pi's type admits cannot be written."
     },
     {
       "path": "packages/chord/test/store/outbox.test.ts",
@@ -3471,8 +3555,17 @@
     },
     {
       "path": "packages/chord/test/store/store.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:65a12ac4b523b6c94be83390ef602104946e059715d4c43ed548ed373e6d6124"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:65a12ac4b523b6c94be83390ef602104946e059715d4c43ed548ed373e6d6124",
+      "evidence": [
+        "chord/next/store/store_test.go",
+        "chord/next/store/group_commit_test.go"
+      ],
+      "rationale": "42 of the 44 upstream cases run in store_test.go and the group commit cases in group_commit_test.go, among them 'rejects a grouped commit whose admission throws with that error' (Admit is recovered per commit; only that commit rejects, with the panic value, an error itself or a ThrownError) and 'rejects a group's commits with what its turn throws after COMMIT' (the host listener's panic rejects the commits not settled, with that error itself). The other two are drafted as designed out, DRAFT FOR OWNER REVIEW (no owner approval recorded yet; they stay open until the owner decides), because each asserts what a TypeScript metrics adapter throws and Go's callbacks do not throw: Both 'stops the store when a metrics adapter throws after a group's COMMIT: memory takes the whole group, no seq repeats' and '... after a lone commit's COMMIT too': telemetry.TelemetryCounter.Add returns nothing, so an adapter's failure is a panic; the store stops, memory takes the whole group or the lone commit (it is durable), no seq repeats, and later commits and reads reject storage_failed, as in Pi. The differences are the caller of the commit whose turn it was: Pi rejects its promise with storage_failed, Go re-panics in the caller of the group's first commit (or the lone commit), and the others of the group reject storage_failed. The panicking-adapter cases 'stops the store when a metrics adapter panics after a group's COMMIT' and '... after a lone commit's COMMIT too' in group_commit_test.go assert the Go form. Pi's int() key typing (d7704516e) is TypeScript typing and has no case.",
+      "designedOutCases": [
+        "group commit \u203a stops the store when a metrics adapter throws after a group's COMMIT: memory takes the whole group, no seq repeats",
+        "group commit \u203a stops the store when a metrics adapter throws after a lone commit's COMMIT too"
+      ]
     },
     {
       "path": "packages/chord/test/store/table-changes.test.ts",
@@ -3605,13 +3698,21 @@
     },
     {
       "path": "packages/chord/test/sync/lines.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:2ea5d667417d4d9e723bd804190863d36effab9581d0780cd53f1f76fe94fa99"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:2ea5d667417d4d9e723bd804190863d36effab9581d0780cd53f1f76fe94fa99",
+      "evidence": [
+        "chord/sync/lines_test.go"
+      ],
+      "rationale": "All 7 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/sync/sync.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:205560922cb58d3488db139a10ac5e85835daed045d005ed8977200b924c048b"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:205560922cb58d3488db139a10ac5e85835daed045d005ed8977200b924c048b",
+      "evidence": [
+        "chord/sync/sync_test.go"
+      ],
+      "rationale": "All 24 upstream cases run in the evidence files. Pi's `overriding` Proxy is an embedding struct, its monkeypatch of `chord.replay` the unexported `apply` of PullOptions, and its promise settling channel waits."
     },
     {
       "path": "packages/chord/test/telemetry-ingest/facet.test.ts",

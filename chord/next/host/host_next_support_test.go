@@ -575,13 +575,17 @@ func faultyStore(t testing.TB, outbox ...bool) (st *store.ChordStore, fail func(
 type testOwner struct {
 	failures []*data.ChordError
 	scope    *struct{}
+	queries  *store.LiveQueries
 }
 
-func (owner *testOwner) Label() string             { return "app.store" }
-func (owner *testOwner) Scope() any                { return owner.scope }
-func (owner *testOwner) AssertLive() error         { return nil }
-func (owner *testOwner) Fail(err *data.ChordError) { owner.failures = append(owner.failures, err) }
-func tableOwner() *testOwner                       { return &testOwner{scope: new(struct{})} }
+func (owner *testOwner) Label() string               { return "app.store" }
+func (owner *testOwner) Scope() any                  { return owner.scope }
+func (owner *testOwner) Queries() *store.LiveQueries { return owner.queries }
+func (owner *testOwner) AssertLive() error           { return nil }
+func (owner *testOwner) Fail(err *data.ChordError)   { owner.failures = append(owner.failures, err) }
+func tableOwner() *testOwner {
+	return &testOwner{scope: new(struct{}), queries: store.NewLiveQueries()}
+}
 func openFence() store.CommitFence {
 	return store.CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64) error { return nil }}
 }

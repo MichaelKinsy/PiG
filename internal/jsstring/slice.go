@@ -27,6 +27,30 @@ func Length(text string) int {
 	return count
 }
 
+// LengthBytes is Length of UTF-8/WTF-8 text held as bytes, without copying it into a string.
+func LengthBytes(text []byte) int {
+	count := 0
+	for len(text) > 0 {
+		if text[0] < utf8.RuneSelf {
+			text = text[1:]
+			count++
+			continue
+		}
+		if len(text) >= 3 && text[0] == 0xed && text[1] >= 0xa0 && text[1] <= 0xbf && text[2] >= 0x80 && text[2] <= 0xbf {
+			text = text[3:]
+			count++
+			continue
+		}
+		r, size := utf8.DecodeRune(text)
+		text = text[size:]
+		count++
+		if r > 0xffff {
+			count++
+		}
+	}
+	return count
+}
+
 // ASCIIPrefix returns the length of text's leading run of ASCII bytes, one UTF-16 unit each. It tests eight bytes per step.
 func ASCIIPrefix(text string) int {
 	i := 0
