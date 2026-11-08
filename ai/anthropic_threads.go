@@ -236,6 +236,7 @@ func normalizeThreadValue(value json.RawMessage) (json.RawMessage, error) {
 			}
 			members[key] = normalized
 		}
+		//portlint:allow mapkeyorder the result only feeds the thread hash, which wants one order for equal messages: sorted keys, as the map[string]any it replaced encoded
 		return json.Marshal(members)
 	case '[':
 		var members []json.RawMessage
@@ -249,6 +250,7 @@ func normalizeThreadValue(value json.RawMessage) (json.RawMessage, error) {
 			}
 			members[i] = normalized
 		}
+		//portlint:allow nilslicenull members came from a JSON array, so it is non-nil and encodes as [] when empty
 		return json.Marshal(members)
 	case '"':
 		var text string
