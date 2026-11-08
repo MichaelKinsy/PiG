@@ -581,7 +581,7 @@ func (l *Launcher) openSocket(id int) {
 		socket.conn = conn
 		socket.state.Store(socketOpen)
 		sandbox.Post(LauncherMessage{Kind: "socket_opened", Socket: id})
-//portlint:allow golifetime ends when the socket closes (close ends out and the connection), which the launcher's finish does for every socket
+		//portlint:allow golifetime ends when the socket closes (close ends out and the connection), which the launcher's finish does for every socket
 		go socket.writeLoop()
 		for {
 			_, payload, err := conn.ReadMessage()
