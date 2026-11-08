@@ -181,7 +181,7 @@ func (a *App) baseBuilds() []baseBuild {
 // Pi's client has that window too; its build is quicker than a Go server's, which starts the plugins' Node. A request the server
 // closes meanwhile is refused. The options are the zero ones the links endpoint gave every socket.
 //
-// pig divergence (D604): Pi's links connect at once; here an upgrade waits for the bases.
+// Pi's links connect at once; here an upgrade waits for the bases.
 func (a *App) linksAfterTheBases(chordhttp.HttpRequest, data.Principal) (chordhttp.LinkOptions, error) {
 	select {
 	case <-a.basesBuilt:

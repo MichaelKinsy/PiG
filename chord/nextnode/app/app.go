@@ -54,7 +54,7 @@ import (
 //
 // Not ported yet (pending, no divergence): the `principalAttributes` hook (T6 host spans: the Go host has none).
 
-// pig divergence (D600): a Go worker is the program's own executable, so Pi's esbuild bundle of the worker's Node entry (base.ts, child.ts) has no Go
+// a Go worker is the program's own executable, so Pi's esbuild bundle of the worker's Node entry (base.ts, child.ts) has no Go
 // form: the worker base is a copy of the executable made by `Workers.Build` into `cache/workers/<kind>/`.
 
 // Server is the server's host kind: the kit's server host is Server().
