@@ -130,6 +130,7 @@ func serveIngress(_ *delta.JsonObject, principal data.Principal, raw host.Self) 
 	}
 	return contracts.Implementation{Variant: "server", Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
 		"deliver": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+			println("DBG deliver start")
 			in := argsOf(args)
 			durableSession, err := session()
 			if err != nil {
@@ -138,6 +139,7 @@ func serveIngress(_ *delta.JsonObject, principal data.Principal, raw host.Self) 
 			if err := sessions.MirrorLock(ctx, durableSession, in.Value("lock")); err != nil {
 				return nil, err
 			}
+			println("DBG lock mirrored")
 			var target int
 			var thread *string
 			where := argsOf(in.Value("context"))
@@ -169,6 +171,7 @@ func serveIngress(_ *delta.JsonObject, principal data.Principal, raw host.Self) 
 			}); err != nil {
 				return nil, err
 			}
+			println("DBG committed")
 			type uploaded struct{ id, name string }
 			var ids []uploaded
 			downloads, _ := in.Value("files").([]any)
@@ -182,12 +185,14 @@ func serveIngress(_ *delta.JsonObject, principal data.Principal, raw host.Self) 
 					ids = append(ids, uploaded{id, str(file, "name")})
 				}
 			}
+			println("DBG downloaded")
 			// The Files sheet lists them as it lists the composer's uploads.
 			if len(ids) > 0 {
 				if _, err := mirror.Call("push", p2runtime.UploadsSpace, ctx); err != nil {
 					return nil, err
 				}
 			}
+			println("DBG pushed")
 			var resolved delta.JsonValue
 			if len(ids) > 0 {
 				keys := make([]any, len(ids))
@@ -198,6 +203,7 @@ func serveIngress(_ *delta.JsonObject, principal data.Principal, raw host.Self) 
 					return nil, err
 				}
 			}
+			println("DBG resolved")
 			author := argsOf(in.Value("author"))
 			who := delta.JsonObjectOf("kind", "guest", "id", "discord:"+str(author, "id"), "name", str(author, "name")+" · Discord")
 			listed := make([]any, len(ids))
@@ -215,6 +221,7 @@ func serveIngress(_ *delta.JsonObject, principal data.Principal, raw host.Self) 
 			if err != nil {
 				return nil, err
 			}
+			println("DBG submitting")
 			submitted, err := chat.Call("submit", submit, ctx)
 			if err != nil {
 				return nil, err
