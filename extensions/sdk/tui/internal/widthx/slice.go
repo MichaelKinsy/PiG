@@ -49,7 +49,7 @@ func SliceWithWidth(line string, startCol, length int, strict bool) SliceResult 
 				result.WriteString(code)
 				pendingAnsi = ""
 			} else if currentCol < startCol && !strings.HasPrefix(code, "\x1b_") {
-				// pig divergence (D300): APC sequences (cursor markers) are positional one-shot commands, not persistent style
+				// APC sequences (cursor markers) are positional one-shot commands, not persistent style
 				// state, so codes before the range carry over only when they are not APC (Pi main 25490ea49).
 				pendingAnsi += code
 			}

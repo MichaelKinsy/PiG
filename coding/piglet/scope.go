@@ -11,7 +11,7 @@ const MCPAdapterExtensionName = extension.McpAdapterEntry
 type ToolInfo struct {
 	Name   string
 	Source string
-	// Namespace is the tool's namespace name, `mcp__<server>` for a built-in MCP tool (extension.McpNamespace). Empty when the tool has none.
+	// Namespace is the tool's namespace name, `mcp__<server>` for a built-in MCP tool (mcp.McpNamespace). Empty when the tool has none.
 	Namespace string
 }
 
