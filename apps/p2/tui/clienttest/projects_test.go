@@ -465,10 +465,9 @@ func (s *projectsSetup) relocated(index int) location {
 	return s.calls.get("relocate")[index].(location)
 }
 
+// surface is the sessions surface; call it on the owner loop (inside Do).
 func (s *projectsSetup) surface() *sessionstui.Surface {
-	var surface *sessionstui.Surface
-	s.Do(func() { surface = s.Runtime.Ctx.Surface("sessions").(*sessionstui.Surface) })
-	return surface
+	return s.Runtime.Ctx.Surface("sessions").(*sessionstui.Surface)
 }
 
 func (s *projectsSetup) projectOf(id string) (name string, ok bool) {
