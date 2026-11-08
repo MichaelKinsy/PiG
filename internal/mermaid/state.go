@@ -17,25 +17,27 @@ import "strings"
 
 var stateHeaders = []string{"statediagram", "statediagram-v2"}
 
-var stateDiagram = diagram{
-	kind:    "state",
-	headers: stateHeaders,
-	render: func(src string) (*canvas, drawnMeta, bool) {
-		g := parseState(src)
-		if g == nil {
-			return nil, drawnMeta{}, false
-		}
-		var c *canvas
-		if len(g.groups) == 0 {
-			c = layoutFlowchart(g)
-		} else {
-			c = layoutGrouped(g)
-		}
-		if c == nil {
-			return nil, drawnMeta{}, false
-		}
-		return c, drawnMeta{warnings: g.warnings, classDefs: g.classDefs}, true
-	},
+func stateDiagram() *diagram {
+	return &diagram{
+		kind:    "state",
+		headers: stateHeaders,
+		render: func(src string) (*canvas, drawnMeta, bool) {
+			g := parseState(src)
+			if g == nil {
+				return nil, drawnMeta{}, false
+			}
+			var c *canvas
+			if len(g.groups) == 0 {
+				c = layoutFlowchart(g)
+			} else {
+				c = layoutGrouped(g)
+			}
+			if c == nil {
+				return nil, drawnMeta{}, false
+			}
+			return c, drawnMeta{warnings: g.warnings, classDefs: g.classDefs}, true
+		},
+	}
 }
 
 // stateScope is an open composite: the group itself and its current `--`

@@ -24,58 +24,60 @@ type timelineRow struct {
 	section bool
 }
 
-var timelineDiagram = diagram{
-	kind:    "timeline",
-	headers: []string{"timeline"},
-	render: func(src string) (*canvas, drawnMeta, bool) {
-		title, rows, warnings, ok := parseTimeline(src)
-		if !ok {
-			return nil, drawnMeta{}, false
-		}
+func timelineDiagram() *diagram {
+	return &diagram{
+		kind:    "timeline",
+		headers: []string{"timeline"},
+		render: func(src string) (*canvas, drawnMeta, bool) {
+			title, rows, warnings, ok := parseTimeline(src)
+			if !ok {
+				return nil, drawnMeta{}, false
+			}
 
-		periodW := 0
-		for _, r := range rows {
-			if !r.section {
-				periodW = max(periodW, stringWidth(r.period))
+			periodW := 0
+			for _, r := range rows {
+				if !r.section {
+					periodW = max(periodW, stringWidth(r.period))
+				}
 			}
-		}
-		top := 0
-		width := 0
-		if title != nil {
-			top = 1
-			width = stringWidth(*title) + 6
-		}
-		for _, r := range rows {
-			if r.section {
-				width = max(width, stringWidth(r.event))
-			} else {
-				width = max(width, periodW+3+stringWidth(r.event))
+			top := 0
+			width := 0
+			if title != nil {
+				top = 1
+				width = stringWidth(*title) + 6
 			}
-		}
-		c := newCanvas(width, top+len(rows))
+			for _, r := range rows {
+				if r.section {
+					width = max(width, stringWidth(r.event))
+				} else {
+					width = max(width, periodW+3+stringWidth(r.event))
+				}
+			}
+			c := newCanvas(width, top+len(rows))
 
-		if title != nil {
-			t := " " + *title + " "
-			x := max(0, floorDiv(width-stringWidth(t)-4, 2))
-			drawText(c, "──", x, 0, RoleEdge)
-			drawText(c, t, x+2, 0, RoleTitle)
-			drawText(c, "──", x+2+stringWidth(t), 0, RoleEdge)
-		}
-		for i, row := range rows {
-			y := top + i
-			if row.section {
-				drawText(c, row.event, 0, y, RoleTitle)
-				continue
+			if title != nil {
+				t := " " + *title + " "
+				x := max(0, floorDiv(width-stringWidth(t)-4, 2))
+				drawText(c, "──", x, 0, RoleEdge)
+				drawText(c, t, x+2, 0, RoleTitle)
+				drawText(c, "──", x+2+stringWidth(t), 0, RoleEdge)
 			}
-			drawText(c, row.period, 0, y, RoleText)
-			if row.event == "" {
-				continue
+			for i, row := range rows {
+				y := top + i
+				if row.section {
+					drawText(c, row.event, 0, y, RoleTitle)
+					continue
+				}
+				drawText(c, row.period, 0, y, RoleText)
+				if row.event == "" {
+					continue
+				}
+				drawText(c, "─", periodW+1, y, RoleEdge)
+				drawText(c, row.event, periodW+3, y, RoleEdgeLabel)
 			}
-			drawText(c, "─", periodW+1, y, RoleEdge)
-			drawText(c, row.event, periodW+3, y, RoleEdgeLabel)
-		}
-		return c, drawnMeta{warnings: warnings, classDefs: map[string]map[string]string{}}, true
-	},
+			return c, drawnMeta{warnings: warnings, classDefs: map[string]map[string]string{}}, true
+		},
+	}
 }
 
 // floorDiv is Math.floor(a / b) for b > 0.
