@@ -285,20 +285,23 @@ func TestStopSuspendsWhileHeldHoldersFailWaitingSuspendedNothingStartsForgottenW
 }
 
 // Forgotten is how an app ends the per-address bookkeeping it made at Start: called once, for the address, when it has no worker, no
-// operation and no failure left: not while a holder keeps a stopped worker's address, not while the address is failed.
-func TestForgottenRunsOnceWhenAnAddressHasNothingLeftNotWhileItIsSuspendedWithAHolder(t *testing.T) {
+// operation and no failure left: not while its worker runs, not while the address is failed.
+func TestForgottenRunsOnceWhenTheAddressHasNothingLeftNotWhileItsWorkerRuns(t *testing.T) {
 	f := newFleet(t, fleetOptions{})
 	held := f.get(fixtureNotes, "F1")
+	if got := f.forgotten.all(); len(got) != 0 {
+		t.Fatalf("forgotten while the worker runs = %v", got)
+	}
 	if err := f.workers.Stop(session("F1"), background); err != nil {
 		t.Fatal(err)
 	}
-	if got := f.forgotten.all(); len(got) != 0 {
-		t.Fatalf("forgotten while a holder keeps the suspended address = %v", got)
-	}
-	held.Release()
 	until(t, func() bool { return len(f.forgotten.all()) > 0 })
+	held.Release()
+	if err := f.workers.Close(background); err != nil {
+		t.Fatal(err)
+	}
 	if got := f.forgotten.all(); !reflect.DeepEqual(got, []string{"session|F1"}) {
-		t.Fatalf("forgotten = %v", got)
+		t.Fatalf("forgotten = %v, want once", got)
 	}
 }
 
