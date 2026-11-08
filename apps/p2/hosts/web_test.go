@@ -338,3 +338,28 @@ func TestDevEndpointAnswersAsAServerWithoutDevMode(t *testing.T) {
 }
 
 func itoa(n int) string { return strconv.Itoa(n) }
+
+// The page names the app as its bundle's brand says, and the brand's own files are the public files.
+func TestPageAndPublicFilesFollowTheBundlesBrand(t *testing.T) {
+	bundle, err := web.Embedded()
+	if err != nil {
+		t.Fatal(err)
+	}
+	port := webFixture(t).Server.Port
+	page := get(t, port, "/", nil).Body
+	for _, want := range []string{
+		"<title>" + bundle.Brand.Name + "</title>",
+		`content="` + bundle.Brand.Name + `" />`,
+		`media="(prefers-color-scheme: dark)" content="` + bundle.Brand.Dark + `"`,
+		`background: ` + bundle.Brand.Light + `;`,
+	} {
+		if !strings.Contains(page, want) {
+			t.Errorf("page lacks %s", want)
+		}
+	}
+	for path, name := range map[string]string{"/icons/favicon.svg": "icons/favicon.svg", "/apple-touch-icon.png": "icons/apple-touch-icon.png", "/manifest.webmanifest": "manifest.webmanifest"} {
+		if got := get(t, port, path, nil).Body; got != string(bundle.Public[name]) {
+			t.Errorf("%s is not the bundle's %s", path, name)
+		}
+	}
+}
