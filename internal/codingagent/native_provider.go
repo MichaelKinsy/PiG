@@ -61,6 +61,7 @@ func (r *ModelRegistry) RegisterNativeProvider(ctx context.Context, p *extension
 	r.noteDynamicLocked(p.ID)
 	r.noteRegistrationLocked(p.ID, true)
 	listener := r.onChange
+	observers := slices.Clone(r.observers)
 	r.mu.Unlock()
 	extension.CallInitiated(ctx)
 	// Pi's registerNativeProvider stores, recomposes and republishes the snapshot, then starts its unawaited refresh (model-runtime.ts:744-750). Authentication and catalog refresh run in that refresh.
@@ -70,6 +71,10 @@ func (r *ModelRegistry) RegisterNativeProvider(ctx context.Context, p *extension
 		provisional.Type = ai.CredentialOAuth
 	}
 	r.syncRegistration(p.ID, provisional)
+	// upstream: agent-session.ts registerNativeProvider binding (_refreshCurrentModelFromRegistry after the registration): the observers refresh the Session's active model from the catalog the registration changed, as they do after a legacy registration (commitRegisteredProvider).
+	for _, observer := range observers {
+		observer.publish()
+	}
 	listener.publish()
 	return nil
 }

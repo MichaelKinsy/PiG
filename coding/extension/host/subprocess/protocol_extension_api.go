@@ -420,6 +420,11 @@ const CallFileMutationExit = "fileMutation.exit"
 // directory, as Pi's `resolve(filePath)` does; the host takes its real path as the queue key (a missing path or one below a regular file keys by itself).
 type FileMutationEnterArgs struct {
 	Path string `json:"path"`
+	// Request, when set, is the id of the tool_call request the enter serves (an SDK's Context sends its own request id; the free function has none). The host
+	// registers the enter once the start windows of the extension tools before that request in its batch closed, which is the order Pi's one thread gives the
+	// registrations of tools that reach withFileMutationQueue after the same number of awaits, and closes the request's own window when the turn is registered.
+	// An id that names no pending tool call, or a tool with no extension tool before it in its batch, waits for nothing.
+	Request string `json:"request,omitempty"`
 }
 
 // FileMutationEnterResult is the result of CallFileMutationEnter.
