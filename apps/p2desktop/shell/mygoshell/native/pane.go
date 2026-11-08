@@ -53,16 +53,11 @@ func (a *App) pane(c *ui.Context, h *surfacehost.Host, sessions *screens.Session
 	})
 }
 
-// emptyState is the web's and the terminal's startup: the sprite's banner (the pig beside its "PiG." wordmark) at 6x of its
-// 54x18 grid (5x under 560 px wide, as the web's), the tagline, "What should PiG do?", the folder, and the way to begin.
+// emptyState is the web's startup (Pi's welcome): the sprite's head beside "What should PiG do?", the folder, and the way to begin.
 func (a *App) emptyState(c *ui.Context, h *surfacehost.Host, sessions *screens.Sessions) {
 	v := sprite.Active()
-	scale := 6
-	if width, _ := c.Size(); width < 560 {
-		scale = 5
-	}
 	ui.Column(c).Grow(1).Children(func() {
-		ui.Column(c).Grow(1).Center().Gap(14).Children(func() { a.hero(c, sessions, v, scale) })
+		ui.Column(c).Grow(1).Center().Gap(14).Children(func() { a.hero(c, sessions, v) })
 		a.promptBar(c, promptBar{
 			Model: "",
 			Send: func(text string, _ []string) {
@@ -82,14 +77,14 @@ func (a *App) emptyState(c *ui.Context, h *surfacehost.Host, sessions *screens.S
 	})
 }
 
-// hero is the empty state's head: the banner, tagline, question and folder.
-func (a *App) hero(c *ui.Context, sessions *screens.Sessions, v sprite.Variant, scale int) {
+// hero is the empty state's head: the pig head inline left of the question (Pi's hero-title: the mark, a 12 px gap, the 22 px
+// heading), then the folder and sign-in.
+func (a *App) hero(c *ui.Context, sessions *screens.Sessions, v sprite.Variant) {
 	t := c.Theme()
-	ui.Image(c, marks.banner(v, c.Theme().Dark, scale)).Size(float32(sprite.BannerWidth*scale), float32(sprite.BannerHeight*scale)).Fit(ui.Contain)
-	if v.Tagline != "" {
-		ui.Text(c, v.Tagline).FontSize(14).TextColor(t.TextMuted)
-	}
-	ui.Text(c, "What should PiG do?").Bold().FontSize(22)
+	ui.Row(c).AlignItems(ui.Center).Gap(12).Children(func() {
+		mark(c, v, 2)
+		ui.Text(c, "What should PiG do?").Bold().FontSize(22)
+	})
 	if cwd := sessions.DefaultCwd(); cwd != "" {
 		// The web's cwd-pick: the folder, where the session will work, and a chevron; it opens the new session's form.
 		chip := ui.Row(c).AlignItems(ui.Center).Gap(8).Padding(6, 10).Radius(6).Focusable().Label("Choose the folder").Children(func() {

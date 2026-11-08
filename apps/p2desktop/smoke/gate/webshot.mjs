@@ -1,5 +1,5 @@
 // The branded web UI's screenshot for the visual gate, in a chosen theme (the page's own "pi-theme" choice, as the sidebar's
-// toggle stores it) at the native window's content size, after the empty state's banner is drawn and the lists settled.
+// toggle stores it) at the native window's content size, after the empty state's head is drawn and the lists settled.
 //   P2_UI_NODE_PATH=<node_modules with playwright-core> node webshot.mjs <base url> <light|dark> <out.png> [wait for text]
 import { createRequire } from "node:module";
 import { join } from "node:path";
@@ -16,7 +16,7 @@ await context.addInitScript((value) => localStorage.setItem("pi-theme", value), 
 const page = await context.newPage();
 const chat = new URL(base).pathname.startsWith("/s/");
 await page.goto(chat ? base : `${base}/`);
-if (!chat) await page.waitForSelector(".brand-banner", { timeout: 60000 });
+if (!chat) await page.waitForSelector(".hero-title .pi-logo", { timeout: 60000 });
 if (text) await page.getByText(text).first().waitFor({ timeout: 30000 });
 if (process.env.P2_WEB_CLICK) {
 	// the tool cards: open the activity rows named by the selector (the last one), as the native half opens its own
