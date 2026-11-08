@@ -810,12 +810,6 @@ func (a *attempt) drainCalls(due int64) *keyedPromise[struct{}] {
 	return result
 }
 
-// drained is `drained` of the work in calls, bounded by `closeTimeout`: the promise settles in a section (at once when there
-// is no work).
-func (a *attempt) drained(calls []*nativeWork) *keyedPromise[withinResult] {
-	return a.drainedWithin(calls, a.object.host.timeouts.close)
-}
-
 // drainedWithin is `drained` of the work in calls, bounded by ms: the promise settles in a section (at once when there is no
 // work).
 func (a *attempt) drainedWithin(calls []*nativeWork, ms time.Duration) *keyedPromise[withinResult] {
