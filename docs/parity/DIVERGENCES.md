@@ -4019,28 +4019,6 @@ Evidence: `TestModelSelectorUpdateModels`, `TestModelSelectorUpdateModelsKeepsTh
 
 Parity allowance: none needed; Pi 1.5.0 has no test of this behavior.
 
-## D313 Markdown transformers opt into custom, summary and changelog surfaces
-
-What: PiG ports Pi main eebd5d90c (`feat(coding-agent): let Markdown transformers opt into more surfaces`, #11756), which is not in Pi 1.5.0. `registerMarkdownTransformer(transformer, { messageTypes })` lists the surfaces a transformer runs on; without options it runs on user, assistant and assistant-thinking Markdown as before. New types: `custom` (custom messages without a message renderer, and the content of expanded skill blocks), `summary` (expanded branch and compaction summaries) and `changelog` (What's New, `/changelog`, Extension Updates and the Update Available note). The runner wraps each transformer so Markdown of an unlisted type passes through unchanged. Skill blocks and summaries hand the transformers their content only; Pi's bold header is put in front of the result. Custom, skill and summary messages drawn from a session entry carry its `messageId` and `timestamp`; changelog notices carry neither. The built-in Mermaid transformer also renders in summaries, and still skips thinking, custom messages and changelogs. The Go SDK takes `MarkdownTransformerOptions` (`Extension.MarkdownTransformer(fn, opts...)`), the Go in-process API takes the same as a variadic argument, and the Node extension runtime reads `options.messageTypes`.
-
-Why: Pi renders other Markdown that extensions could not reach, and running every transformer everywhere would break existing ones.
-
-Pi bug: none; Pi 1.5.0 predates the option.
-
-Scope: `extension.API.RegisterMarkdownTransformer`, `Extension.MarkdownMessageTypes`, `Runner.GetMarkdownTransformers` (`coding/extension`, `coding/extension/host/inproc`), the subprocess register frame (`markdown_message_types`), the Go SDK and the Node runtime, the tui message components (`tui/markdown_surface.go`), `InteractiveMode` (`interactive_chat.go`, `interactive_transcript.go`, `interactive_compaction.go`, `interactive_changelog.go`) and the Mermaid transformer.
-
-Owner decision: owner sign-off pending (draft; Pi main follow of 2026-11-07).
-
-SCRUTINIZED:approved
-
-Remove when: the pinned Pi release contains eebd5d90c. Then the call-site markers and this record go.
-
-Call-site markers: `coding/extension/markdowntransform/markdowntransform.go` (new message types), `coding/extension/host/inproc/runner.go` (`restrictMarkdownTransformer`), `internal/codingagent/interactive_chat.go` (`surfaceMarkdownTransform`), `internal/codingagent/mermaid_transform.go` (surfaces), `tui/markdown_surface.go`.
-
-Evidence: `TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes` (`coding/extension/host/inproc/upstream_markdown_collection_test.go`, port Pi's `extensions-runner.test.ts`); `TestExpandedMessageComponentsRunMarkdownTransformersOnTheContentWithoutPisHeader`, `TestCustomMessageRunsMarkdownTransformersOnDefaultRenderedContent` (`tui/markdown_surface_test.go`, port Pi's `collapsible-message-components.test.ts` and `custom-message.test.ts`); `TestStartupChangelogRunsTheChangelogMarkdownTransformers` (`internal/codingagent/interactive_extension_changelog_test.go`, port Pi's `interactive-mode-extension-changelog.test.ts`); the surfaces case of "respects rendering modes and skips thinking blocks and non-transcript surfaces" (`internal/codingagent/mermaid_upstream_test.go`, port Pi's `mermaid.test.ts`).
-
-Parity allowance: none needed; Pi 1.5.0 has no test of this behavior.
-
 ## D350 OpenCode Zen and Go Claude models send per-message effort
 
 What: PiG's catalog generator (`internal/modelgen/providers/opencode.go`) gives OpenCode Zen and Go Claude models per-message effort and `block_binding: drop_block`, as Pi main does. Pi 1.5.0 sends neither. Ports Pi main 9ee7586a9 (`fix(ai): send drop_block for OpenCode Zen and Go Claude models`, #10954), which is not in Pi 1.5.0.
@@ -4106,3 +4084,35 @@ Call-site markers: `ai/anthropic_threads.go`.
 Evidence: `TestAnthropicMessageThreadsCreateThenContinue` and the other `TestAnthropicMessageThreads*` cases (`ai/anthropic_message_threads_test.go`, Pi's `anthropic-message-threads.test.ts`).
 
 Parity allowance: none needed; Pi 1.5.0 has no test of this behavior and Pi main's tests are ported.
+
+## D370 The OAuth callback server drops connections that have not sent a request when it closes
+
+What: PiG ports Pi main 63ea042ce (`fix(mcp): close remaining connections when the OAuth callback server closes`, #11855, fixing #11311), which is not in Pi 1.5.0. Pi calls `server.closeAllConnections()`; Go has no equivalent that spares a response being written, so `OAuthCallbackServer.Close` closes the connections that never sent a request (a browser's preconnect) and leaves idle and in-flight ones to `Shutdown`.
+
+Why: Go's `Shutdown` waits up to 5 s for a connection that never sent a request, so `/mcp login` stalled up to the 2 s bound.
+
+Pi bug: 1.5.0 waits for the browser to drop the socket, for minutes.
+
+Owner decision: owner sign-off pending.
+
+SCRUTINIZED:pending
+
+Remove when: the pinned Pi release contains 63ea042ce and PiG's close matches it.
+
+Evidence: `TestOAuthCallbackServerClosesWhileTheBrowserKeepsAnUnusedConnectionOpen` (`mcp/oauth/oauth_test.go`).
+
+## D371 Tool search and codemode follow local schema refs; a malformed `$ref` renders as `unknown`
+
+What: PiG ports Pi main 6d3e342b2 (`fix(coding-agent): follow local schema refs in tool search and codemode summaries`, #11850, fixing #11803), which is not in Pi 1.5.0. `tool_search` reads names and descriptions behind local `$ref`s, the codemode summary resolves `$ref` chains, and a `$ref` with a malformed percent escape names nothing, so the `codemode` render functions return a string only (they returned the URIError as an error).
+
+Why: One MCP tool with such a ref failed every codemode run.
+
+Pi bug: 1.5.0 throws `URI malformed` out of every codemode run.
+
+Owner decision: owner sign-off pending.
+
+SCRUTINIZED:pending
+
+Remove when: the pinned Pi release contains 6d3e342b2.
+
+Evidence: `TestMalformedRefPercentEncodingRendersAsUnknown`, `TestResolveSchemaRef*` (`codemode/declarations_test.go`), `TestSchemaRefs*` (`coding/extension/builtin/toolsearch/schema_refs_pi_test.go`), `TestFindsAToolByAParameterDescriptionBehindALocalReference...` (`durable/toolsearch/toolsearch_test.go`), `TestDescribeOutputSummarizesFieldsBehindLocalSchemaReferences`.

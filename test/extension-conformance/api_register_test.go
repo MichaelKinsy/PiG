@@ -44,6 +44,7 @@ func extensionFromRegistrations(f *extensiontest.Fake) extension.Extension {
 	}
 	if n := len(f.RegisterMarkdownTransformers); n > 0 {
 		ext.MarkdownTransformer = f.RegisterMarkdownTransformers[n-1]
+		ext.MarkdownMessageTypes = f.RegisterMarkdownTransformerOptions[n-1].MessageTypes
 	}
 	return ext
 }
