@@ -355,7 +355,7 @@ func ssOwnerFacet(t testing.TB, d *ssDeclarations, edits *store.TableDefinition,
 
 // ssPage is `(await table.page(query(definition), 10, ctx)).items` as JSON: each row's keys in column order, an absent
 // optional column left out as JSON.stringify leaves out `undefined`.
-func ssPage(table *store.TableHandle, definition *store.TableDefinition, ctx context.Context) ([]any, error) {
+func ssPage(table store.Table, definition *store.TableDefinition, ctx context.Context) ([]any, error) {
 	page, err := table.Page(ctx, store.NewQuery(definition), 10, store.PageOptions{})
 	if err != nil {
 		return nil, err
