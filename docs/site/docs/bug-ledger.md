@@ -1168,6 +1168,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D430](#bf-d430) | Go callers start a call and await it apart (Reference.Start, PendingCall) and run a handler's blocking… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D431](#bf-d431) | PiG follows Pi main 2439933cf ahead of the v1.5.0 pin: live queries over an object's own tables (self.Query) | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D540](#bf-d540) | The plugins watcher's directory identity has no birth time on a system whose stat Go does not expose it for | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D600](#bf-d600) | A Go worker's base is a private copy of its own executable, not an esbuild bundle: no bundle, no… | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D605](#bf-d605) | The server's two hosts serve one union: `Host.Delegate` one way, the Node host's destination the other | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26-2](#bf-a09da26-2) | A bash or PowerShell tool card reads the result's `truncation` details by their exact keys, as Pi does: a… | PiG's own defect | Windows | 0.5.0 |
@@ -17770,6 +17772,36 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `018a05add9` (2026-11-07), `0bbbe98158` (2026-11-07)
 - **Tests:** `chord/nextnode/plugins/plugins_watcher_identity_test.go::TestIdentityOfADirectoryIsItsInodeAndBirthTimeAndNoneForNoEntry`
 
+### BF-D600
+
+**A Go worker's base is a private copy of its own executable, not an esbuild bundle: no bundle, no…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D600)
+- **Symptom:** Not a Pi bug.
+- **Root cause:** a program cannot be held in memory as Pi's bundle is, so the snapshot is a file made at the build, not at the first fork: it keeps what Pi's test pins ("a worker started after an edit of the entry's imported source runs the code the base was built with"). There is no module graph to bundle, no Node compile cache for a compiled executable, and no esbuild error to report: the Go build error is an entry that cannot be started or copied.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** PiG's worker is a Node entry again.
+- **Fix commits:** `70b2b7bf42` (2026-11-07), `23978e4efb` (2026-11-08), `981a62878f` (2026-11-08), `d6646c05d7` (2026-11-08)
+- **Tests:** None recorded.
+
+### BF-D605
+
+**The server's two hosts serve one union: `Host.Delegate` one way, the Node host's destination the other**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D605)
+- **Symptom:** none.
+- **Root cause:** process boundary (a Node subprocess for the plugins) and the Go server's two hosts (D462). Without the first direction a TypeScript server plugin cannot serve a remote type (`a host without an address serves only local types`, or, with the address, `unavailable`), which every reload row on the server needs; without the second a server plugin cannot hold any type the Go server serves.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** never for the two hosts; the principal difference goes when a child's link can name whom a hold acts for.
+- **Fix commits:** `612e5b6ab7` (2026-11-07), `6871fcf20e` (2026-11-07), `70b2b7bf42` (2026-11-07), `23978e4efb` (2026-11-08), `595c3b4930` (2026-11-08), `981a62878f` (2026-11-08)
+- **Tests:** `chord/next/host/host_delegate_test.go::TestDelegateAHoldMadeWhileItIsDownWaitsOnTheResolvesErrorAndBindsOnceItIsBack`, `chord/next/host/host_delegate_test.go::TestDelegateWhatTheDelegatesOwnLinkAsksForAndNothingServesIsNotSentBackToIt`, `chord/next/host/host_delegate_test.go::TestDelegateWhenItIsDownItsTypesWaitAndTheHostsOwnAreUntouched`, `chord/next/host/host_delegate_test.go::TestHostServesTheTypesOfItsPublishedTableAndNoOtherName`, `chord/nextnode/app/app_delegate_test.go::TestAServerPluginsObjectHoldsTheTypesTheGoServerServesOverTheNodeHostsLinkAsTheServer`
+
 ### BF-a076a50
 
 **A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…**
@@ -26787,6 +26819,8 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D502 | `TestPlugin` tests a plugin on the production topology: its host is the Node subprocess and the stubs are Go… | deliberate difference |
 | D503 | `TestPlugin`'s registries are named, its contributions are data, and `root` is `RootPrincipal`: no JavaScript… | deliberate difference |
 | D540 | The plugins watcher's directory identity has no birth time on a system whose stat Go does not expose it for | [BF-D540](#bf-d540) |
+| D600 | A Go worker's base is a private copy of its own executable, not an esbuild bundle: no bundle, no… | [BF-D600](#bf-d600) |
+| D605 | The server's two hosts serve one union: `Host.Delegate` one way, the Node host's destination the other | [BF-D605](#bf-d605) |
 
 ## Fix-titled commits that are not bugs in a release
 

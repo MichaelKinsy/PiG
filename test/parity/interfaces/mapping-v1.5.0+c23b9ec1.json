@@ -106264,7 +106264,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/app/app.go#App.start"
+        "call:chord/nextnode/http/upgrades.go#Upgrades.Link"
       ],
       "evidence": [
         "test:chord/next/host/host_channel_test.go#TestACodecMismatchFailsTheFirstHelloAsAProtocolErrorNamingTheExpectedCodec",
@@ -106286,7 +106286,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/app/app.go#App.start"
+        "call:chord/nextnode/http/upgrades.go#Upgrades.Link"
       ],
       "evidence": [
         "test:chord/next/host/host_channel_test.go#TestACodecMismatchFailsTheFirstHelloAsAProtocolErrorNamingTheExpectedCodec",
@@ -106336,9 +106336,9 @@
         "call:chord/next/surfaces/surfaces_client.go#Client.Stop"
       ],
       "evidence": [
-        "test:chord/next/host/host_dependencies_test.go#TestParkedLongNamesAReferenceWhosePinnedKeyStillLoadsTheEpisodesClockIncludesTheLoadSol",
-        "test:chord/next/host/host_documents_cancel_test.go#TestDocumentsTransactionsTheirContextsEndCancelledAreReportedBesidesRejectingAChangeStartedInARootAndNotAwaitedItsFnSettledFirst",
-        "test:chord/next/host/host_documents_cancel_test.go#TestDocumentsTransactionsTheirContextsEndCancelledAreReportedForACallersCancellationWhileTheChangeWaitsOnTheLineOnAHost"
+        "test:chord/next/host/host_delegate_test.go#TestDelegateAHoldMadeWhileItIsDownWaitsOnTheResolvesErrorAndBindsOnceItIsBack",
+        "test:chord/next/host/host_delegate_test.go#TestDelegateWhenItIsDownItsTypesWaitAndTheHostsOwnAreUntouched",
+        "test:chord/next/host/host_dependencies_test.go#TestParkedLongNamesAReferenceWhosePinnedKeyStillLoadsTheEpisodesClockIncludesTheLoadSol"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -106359,9 +106359,9 @@
         "call:chord/next/surfaces/surfaces_client.go#Client.Stop"
       ],
       "evidence": [
-        "test:chord/next/host/host_dependencies_test.go#TestParkedLongNamesAReferenceWhosePinnedKeyStillLoadsTheEpisodesClockIncludesTheLoadSol",
-        "test:chord/next/host/host_documents_cancel_test.go#TestDocumentsTransactionsTheirContextsEndCancelledAreReportedBesidesRejectingAChangeStartedInARootAndNotAwaitedItsFnSettledFirst",
-        "test:chord/next/host/host_documents_cancel_test.go#TestDocumentsTransactionsTheirContextsEndCancelledAreReportedForACallersCancellationWhileTheChangeWaitsOnTheLineOnAHost"
+        "test:chord/next/host/host_delegate_test.go#TestDelegateAHoldMadeWhileItIsDownWaitsOnTheResolvesErrorAndBindsOnceItIsBack",
+        "test:chord/next/host/host_delegate_test.go#TestDelegateWhenItIsDownItsTypesWaitAndTheHostsOwnAreUntouched",
+        "test:chord/next/host/host_dependencies_test.go#TestParkedLongNamesAReferenceWhosePinnedKeyStillLoadsTheEpisodesClockIncludesTheLoadSol"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -106736,8 +106736,8 @@
       ],
       "evidence": [
         "test:chord/next/contracts/host_kind_test.go#TestHostKinds",
-        "test:chord/nextnode/app/app_export_test.go#TestAppExportsARunningWorkersDataWithoutStoppingItTheWorkerPacksItsOwnStore",
-        "test:chord/nextnode/app/app_export_test.go#TestAppExportsWithoutAWorkerUnderItsLockAHoldArrivingMeanwhileStartsTheWorkerAfterIt"
+        "test:chord/nextnode/app/app_delegate_test.go#TestAServerPluginsObjectHoldsTheTypesTheGoServerServesOverTheNodeHostsLinkAsTheServer",
+        "test:chord/nextnode/app/app_export_test.go#TestAppExportsARunningWorkersDataWithoutStoppingItTheWorkerPacksItsOwnStore"
       ]
     },
     {
@@ -110769,8 +110769,8 @@
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestNativeWatchableWatchHoldsTheCurrentValueThenOneFramePerNewValueAndEndsWithItsContext",
-        "test:chord/next/host/host_dependencies_test.go#TestTheDependencyCheckSettlesAWaitingRingAcrossHostsAfterOneRound",
-        "test:chord/next/host/host_example_08_test.go#TestExample08Remote"
+        "test:chord/next/host/host_delegate_test.go#TestDelegateHoldsKeepTheirOrderAcrossTheDelegatesRestartAndTheServersTypesNeverMove",
+        "test:chord/next/host/host_dependencies_test.go#TestTheDependencyCheckSettlesAWaitingRingAcrossHostsAfterOneRound"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -110856,8 +110856,8 @@
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestNativeWatchableWatchHoldsTheCurrentValueThenOneFramePerNewValueAndEndsWithItsContext",
-        "test:chord/next/host/host_dependencies_test.go#TestTheDependencyCheckSettlesAWaitingRingAcrossHostsAfterOneRound",
-        "test:chord/next/host/host_example_29_test.go#TestExample29Registries"
+        "test:chord/next/host/host_delegate_test.go#TestDelegateHoldsKeepTheirOrderAcrossTheDelegatesRestartAndTheServersTypesNeverMove",
+        "test:chord/next/host/host_dependencies_test.go#TestTheDependencyCheckSettlesAWaitingRingAcrossHostsAfterOneRound"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -110879,8 +110879,8 @@
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestNativeWatchableWatchHoldsTheCurrentValueThenOneFramePerNewValueAndEndsWithItsContext",
-        "test:chord/next/host/host_dependencies_test.go#TestTheDependencyCheckSettlesAWaitingRingAcrossHostsAfterOneRound",
-        "test:chord/next/host/host_example_29_test.go#TestExample29Registries"
+        "test:chord/next/host/host_delegate_test.go#TestDelegateHoldsKeepTheirOrderAcrossTheDelegatesRestartAndTheServersTypesNeverMove",
+        "test:chord/next/host/host_dependencies_test.go#TestTheDependencyCheckSettlesAWaitingRingAcrossHostsAfterOneRound"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -110945,9 +110945,9 @@
         "call:chord/next/host/host_host.go#chordHost.Reload"
       ],
       "evidence": [
-        "test:chord/next/host/host_example_33_test.go#TestExample33Reload",
-        "test:chord/next/host/host_facet_test.go#TestAReloadWithACopyOfTheLoadedFacetChangesNothing",
-        "test:chord/next/host/host_host_test.go#TestHostReloadAWatchListenerMayCallReloadItself"
+        "test:chord/next/host/host_delegate_test.go#TestDelegateHoldsKeepTheirOrderAcrossTheDelegatesRestartAndTheServersTypesNeverMove",
+        "test:chord/next/host/host_delegate_test.go#TestDelegateTheClosureRuleReadsTheStagedTableAChangedPluginsRequestForATypeTheReloadStopsServingGoesToTheDelegate",
+        "test:chord/next/host/host_example_33_test.go#TestExample33Reload"
       ]
     },
     {
@@ -111101,12 +111101,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/host/host_host.go#chordHost.Route"
+        "call:chord/next/host/host_host.go#chordHost.Delegate"
       ],
       "evidence": [
+        "test:chord/next/host/host_delegate_test.go#TestDelegateIsRefusedForAKindThatIsNotTheHostsAddressAfterLoadAndTwice",
         "test:chord/next/host/host_example_12_test.go#TestExample12Routes",
-        "test:chord/next/host/host_example_13_test.go#TestExample13Relay",
-        "test:chord/next/host/host_example_14_test.go#TestExample14FlowControl"
+        "test:chord/next/host/host_example_13_test.go#TestExample13Relay"
       ]
     },
     {
@@ -114625,8 +114625,8 @@
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestNativeWatchableWatchHoldsTheCurrentValueThenOneFramePerNewValueAndEndsWithItsContext",
-        "test:chord/next/host/host_dependencies_test.go#TestTheDependencyCheckSettlesAWaitingRingAcrossHostsAfterOneRound",
-        "test:chord/next/host/host_example_08_test.go#TestExample08Remote"
+        "test:chord/next/host/host_delegate_test.go#TestDelegateHoldsKeepTheirOrderAcrossTheDelegatesRestartAndTheServersTypesNeverMove",
+        "test:chord/next/host/host_dependencies_test.go#TestTheDependencyCheckSettlesAWaitingRingAcrossHostsAfterOneRound"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -114714,8 +114714,8 @@
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestNativeWatchableWatchHoldsTheCurrentValueThenOneFramePerNewValueAndEndsWithItsContext",
-        "test:chord/next/host/host_dependencies_test.go#TestTheDependencyCheckSettlesAWaitingRingAcrossHostsAfterOneRound",
-        "test:chord/next/host/host_example_29_test.go#TestExample29Registries"
+        "test:chord/next/host/host_delegate_test.go#TestDelegateHoldsKeepTheirOrderAcrossTheDelegatesRestartAndTheServersTypesNeverMove",
+        "test:chord/next/host/host_dependencies_test.go#TestTheDependencyCheckSettlesAWaitingRingAcrossHostsAfterOneRound"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -114737,8 +114737,8 @@
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestNativeWatchableWatchHoldsTheCurrentValueThenOneFramePerNewValueAndEndsWithItsContext",
-        "test:chord/next/host/host_dependencies_test.go#TestTheDependencyCheckSettlesAWaitingRingAcrossHostsAfterOneRound",
-        "test:chord/next/host/host_example_29_test.go#TestExample29Registries"
+        "test:chord/next/host/host_delegate_test.go#TestDelegateHoldsKeepTheirOrderAcrossTheDelegatesRestartAndTheServersTypesNeverMove",
+        "test:chord/next/host/host_dependencies_test.go#TestTheDependencyCheckSettlesAWaitingRingAcrossHostsAfterOneRound"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -128013,8 +128013,8 @@
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestNativeWatchableWatchHoldsTheCurrentValueThenOneFramePerNewValueAndEndsWithItsContext",
-        "test:chord/next/host/host_dependencies_test.go#TestTheDependencyCheckSettlesAWaitingRingAcrossHostsAfterOneRound",
-        "test:chord/next/host/host_example_08_test.go#TestExample08Remote"
+        "test:chord/next/host/host_delegate_test.go#TestDelegateHoldsKeepTheirOrderAcrossTheDelegatesRestartAndTheServersTypesNeverMove",
+        "test:chord/next/host/host_dependencies_test.go#TestTheDependencyCheckSettlesAWaitingRingAcrossHostsAfterOneRound"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -128058,8 +128058,8 @@
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestNativeWatchableWatchHoldsTheCurrentValueThenOneFramePerNewValueAndEndsWithItsContext",
-        "test:chord/next/host/host_dependencies_test.go#TestTheDependencyCheckSettlesAWaitingRingAcrossHostsAfterOneRound",
-        "test:chord/next/host/host_example_29_test.go#TestExample29Registries"
+        "test:chord/next/host/host_delegate_test.go#TestDelegateHoldsKeepTheirOrderAcrossTheDelegatesRestartAndTheServersTypesNeverMove",
+        "test:chord/next/host/host_dependencies_test.go#TestTheDependencyCheckSettlesAWaitingRingAcrossHostsAfterOneRound"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -128081,8 +128081,8 @@
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestNativeWatchableWatchHoldsTheCurrentValueThenOneFramePerNewValueAndEndsWithItsContext",
-        "test:chord/next/host/host_dependencies_test.go#TestTheDependencyCheckSettlesAWaitingRingAcrossHostsAfterOneRound",
-        "test:chord/next/host/host_example_29_test.go#TestExample29Registries"
+        "test:chord/next/host/host_delegate_test.go#TestDelegateHoldsKeepTheirOrderAcrossTheDelegatesRestartAndTheServersTypesNeverMove",
+        "test:chord/next/host/host_dependencies_test.go#TestTheDependencyCheckSettlesAWaitingRingAcrossHostsAfterOneRound"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
