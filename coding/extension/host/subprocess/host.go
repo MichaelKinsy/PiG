@@ -3905,6 +3905,12 @@ func (h *Host) buildExtension(me *managedExt, reg *RegisterPayload) *extension.E
 	if reg.MarkdownTransformer {
 		proxy := &markdownTransformProxy{conn: func() *Conn { return me.current().connection() }, inactivity: rendererInactivity}
 		ext.MarkdownTransformer = proxy.transform
+		if reg.MarkdownMessageTypes != nil {
+			ext.MarkdownMessageTypes = make([]extension.MarkdownMessageType, 0, len(*reg.MarkdownMessageTypes))
+			for _, messageType := range *reg.MarkdownMessageTypes {
+				ext.MarkdownMessageTypes = append(ext.MarkdownMessageTypes, extension.MarkdownMessageType(messageType))
+			}
+		}
 	}
 
 	// Build event handlers.

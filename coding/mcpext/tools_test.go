@@ -22,25 +22,25 @@ import (
 // Ports packages/coding-agent/test/mcp-extension.test.ts ("MCP tools").
 
 func TestMCPToolsCreatesProviderSafeToolNames(t *testing.T) {
-	if got := mcpext.CreateMcpToolName("docs", "search", nil); got != "mcp__docs__search" {
+	if got := mcp.CreateMcpToolName("docs", "search", nil); got != "mcp__docs__search" {
 		t.Fatalf("got %s", got)
 	}
-	if got := mcpext.CreateMcpToolName("my-server", "get.item/v2", nil); got != "mcp__my_server__get_item_v2" {
+	if got := mcp.CreateMcpToolName("my-server", "get.item/v2", nil); got != "mcp__my_server__get_item_v2" {
 		t.Fatalf("got %s", got)
 	}
-	long := mcpext.CreateMcpToolName("server", strings.Repeat("x", 100), nil)
+	long := mcp.CreateMcpToolName("server", strings.Repeat("x", 100), nil)
 	if len(long) != 64 {
 		t.Fatalf("long name has %d chars", len(long))
 	}
 	if !regexp.MustCompile(`^mcp__server__x+_[0-9a-f]{8}$`).MatchString(long) {
 		t.Fatalf("long name = %s", long)
 	}
-	if other := mcpext.CreateMcpToolName("server", strings.Repeat("x", 100)+"y", nil); other == long {
+	if other := mcp.CreateMcpToolName("server", strings.Repeat("x", 100)+"y", nil); other == long {
 		t.Fatal("different tools got the same shortened name")
 	}
 	// Names that sanitize to one already taken by another tool get a hash suffix.
-	taken := mcpext.CreateMcpToolName("s", "a_b", nil)
-	second := mcpext.CreateMcpToolName("s", "a-b", func(name string) bool { return name == taken })
+	taken := mcp.CreateMcpToolName("s", "a_b", nil)
+	second := mcp.CreateMcpToolName("s", "a-b", func(name string) bool { return name == taken })
 	if !regexp.MustCompile(`^mcp__s__a_b_[0-9a-f]{8}$`).MatchString(second) {
 		t.Fatalf("second = %s", second)
 	}
@@ -50,10 +50,7 @@ func TestMCPToolsCreatesProviderSafeToolNames(t *testing.T) {
 func TestMCPToolsDeclaresTheCallToolResultScriptsReceiveKeepingReferencesInTheServersOutputSchema(t *testing.T) {
 	content := `content: Array<{ data?: string; mimeType?: string; text?: string; type: "text" | "image" | "audio" | "resource_link" | "resource"; [key: string]: unknown; }>; isError?: boolean;`
 	// #10416: without an output schema, structured content may be any JSON value.
-	rendered, err := codemode.RenderToolOutputType(mcpext.CreateMcpResultSchema(nil))
-	if err != nil {
-		t.Fatal(err)
-	}
+	rendered := codemode.RenderToolOutputType(mcpext.CreateMcpResultSchema(nil))
 	if want := "{ " + content + " structuredContent?: unknown; [key: string]: unknown; }"; rendered != want {
 		t.Errorf("without an output schema:\n got %s\nwant %s", rendered, want)
 	}
@@ -86,10 +83,7 @@ func TestMCPToolsDeclaresTheCallToolResultScriptsReceiveKeepingReferencesInTheSe
 	}
 	// Data that looks like a reference is kept as is.
 	jsonEqual(t, decoded.Properties.StructuredContent.Defs["Hit/v1"].Default, `{"$ref":"#/stays"}`)
-	rendered, err = codemode.RenderToolOutputType(schema)
-	if err != nil {
-		t.Fatal(err)
-	}
+	rendered = codemode.RenderToolOutputType(schema)
 	if want := "{ " + content + " structuredContent?: { again?: Array<{ id: string; }>; children?: Array<{ again?: Array<{ id: string; }>; children?: Array<unknown>; default?: { id: string; }; hits: Array<{ id: string; }>; remote?: unknown; }>; default?: { id: string; }; hits: Array<{ id: string; }>; remote?: unknown; }; [key: string]: unknown; }"; rendered != want {
 		t.Errorf("with an output schema:\n got %s\nwant %s", rendered, want)
 	}

@@ -131,15 +131,20 @@ func TestMermaidRenderingUpstream(t *testing.T) {
 			{"off", false, extension.MarkdownMessageAssistant},
 			{"final", true, extension.MarkdownMessageAssistant},
 			{"streaming", false, extension.MarkdownMessageAssistantThinking},
-			{"final", false, extension.MarkdownMessageType("custom")},
-			{"final", false, extension.MarkdownMessageType("changelog")},
 		} {
 			if out := transform(md, tc.mode, tc.streaming, 100, tc.kind, nil); out != md {
 				t.Fatalf("%+v changed source: %q", tc, out)
 			}
 		}
 		lacks(t, transform(md, "final", false, 100, extension.MarkdownMessageAssistant, nil), "```mermaid")
-		lacks(t, transform(md, "final", false, 100, extension.MarkdownMessageUser, nil), "```mermaid")
-		lacks(t, transform(md, "final", false, 100, extension.MarkdownMessageType("summary"), nil), "```mermaid")
+		// Pi eebd5d90: diagrams also render in user text and summaries, and stay source in custom messages and changelogs.
+		for _, kind := range []extension.MarkdownMessageType{extension.MarkdownMessageUser, extension.MarkdownMessageSummary} {
+			lacks(t, transform(md, "streaming", false, 100, kind, nil), "```mermaid")
+		}
+		for _, kind := range []extension.MarkdownMessageType{extension.MarkdownMessageCustom, extension.MarkdownMessageChangelog} {
+			if out := transform(md, "streaming", false, 100, kind, nil); out != md {
+				t.Fatalf("%s changed source: %q", kind, out)
+			}
+		}
 	})
 }

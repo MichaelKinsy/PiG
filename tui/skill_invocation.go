@@ -20,6 +20,7 @@ type SkillInvocationMessageComponent struct {
 	skillBlock    ParsedSkillBlock
 	expanded      bool
 	markdownTheme *MarkdownTheme
+	surface       markdownSurface
 }
 
 // NewSkillInvocationMessageComponent creates a skill invocation component (constructor(skillBlock, markdownTheme = getMarkdownTheme(), outputPad = 1), skill-invocation-message.ts:16). A nil markdownTheme is the default markdown theme; outputPad is the horizontal padding of the Box.
@@ -53,9 +54,9 @@ func (s *SkillInvocationMessageComponent) updateDisplay() {
 		label := theme.Fg("customMessageLabel", "\x1b[1m[skill]\x1b[22m")
 		content.Add(NewText(label))
 		header := "**" + s.skillBlock.Name + "**\n\n"
-		content.Add(finishedMarkdown(NewMarkdownWithOptions(header+s.skillBlock.Content, 0, 0, s.markdownTheme, &DefaultTextStyle{
+		content.Add(s.surface.markdown(header, s.skillBlock.Content, s.markdownTheme, &DefaultTextStyle{
 			Color: func(text string) string { return ActiveTheme().Fg("customMessageText", text) },
-		}, nil)))
+		}))
 	} else {
 		line := theme.Fg("customMessageLabel", "\x1b[1m[skill]\x1b[22m ") +
 			theme.Fg("customMessageText", s.skillBlock.Name) +
@@ -74,4 +75,10 @@ func (s *SkillInvocationMessageComponent) updateDisplay() {
 // SetOutputPad is Pi's setOutputPad(outputPad): the horizontal padding of the Box is the outputPad setting.
 func (c *SkillInvocationMessageComponent) SetOutputPad(outputPad int) {
 	c.SetPaddingX(outputPad)
+}
+
+// SetMarkdownTransform installs the display-only Markdown transform of the expanded body, which sees the skill content without the header, and the state it reads for the Markdown render cache key. It is Pi's markdownTransformers, messageId and timestamp of the skill block component; a nil transform shows the Markdown as it is.
+func (c *SkillInvocationMessageComponent) SetMarkdownTransform(transform func(markdown string, availableWidth int) string, state func() string) {
+	c.surface.transform, c.surface.state = transform, state
+	c.updateDisplay()
 }

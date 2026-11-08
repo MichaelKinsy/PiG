@@ -37,9 +37,9 @@ func newScriptedTerminal(answers ...string) *scriptedTerminal {
 	return &scriptedTerminal{interactive: true, answers: answers}
 }
 
-func (t *scriptedTerminal) Interactive() bool { return t.interactive }
-func (t *scriptedTerminal) Write(line string) { t.lines = append(t.lines, line) }
-func (t *scriptedTerminal) Error(line string) { t.errors = append(t.errors, line) }
+func (t *scriptedTerminal) Interactive() bool  { return t.interactive }
+func (t *scriptedTerminal) Write(line string)  { t.lines = append(t.lines, line) }
+func (t *scriptedTerminal) Error(line string)  { t.errors = append(t.errors, line) }
 func (t *scriptedTerminal) OpenURL(url string) { t.opened = append(t.opened, url) }
 func (t *scriptedTerminal) answer(ctx context.Context, message string) (string, error) {
 	t.questions = append(t.questions, message)
@@ -115,7 +115,9 @@ func bothMethods() ai.ProviderAuth {
 				return oauthResult("access-" + code), nil
 			},
 			Refresh: func(_ context.Context, credential ai.Credential) (ai.Credential, error) { return credential, nil },
-			ToAuth:  func(credential ai.Credential) (ai.ModelAuth, error) { return ai.ModelAuth{APIKey: credential.Access}, nil },
+			ToAuth: func(credential ai.Credential) (ai.ModelAuth, error) {
+				return ai.ModelAuth{APIKey: credential.Access}, nil
+			},
 		},
 		APIKey: apiKeyOnly().APIKey,
 	}

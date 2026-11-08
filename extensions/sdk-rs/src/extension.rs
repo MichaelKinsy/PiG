@@ -507,6 +507,17 @@ pub struct MarkdownTransformContext {
 pub type MarkdownTransformerHandler =
     Box<dyn Fn(&str, &MarkdownTransformContext) -> Option<String> + Send + Sync>;
 
+/// Pi's `MarkdownTransformerOptions`: the surfaces a Markdown transformer runs on.
+#[derive(Debug, Clone, Default)]
+pub struct MarkdownTransformerOptions {
+    /// The `MarkdownTransformContext::message_type` values the transformer runs on: `"user"`, `"assistant"`,
+    /// `"assistant-thinking"` (the default), `"custom"` (custom messages without a message renderer and expanded skill
+    /// blocks), `"summary"` (expanded branch and compaction summaries) and `"changelog"` (What's New, `/changelog`,
+    /// Extension Updates and the Update Available note). `None` selects the default types; `Some(vec![])` runs the
+    /// transformer nowhere.
+    pub message_types: Option<Vec<String>>,
+}
+
 /// Flag type for extension CLI flags.
 #[derive(Debug, Clone, Copy)]
 pub enum FlagType {
@@ -835,6 +846,7 @@ pub struct Extension {
     renderer_fns: HashMap<String, MessageRenderFn>,
     entry_renderer_fns: HashMap<String, EntryRenderFn>,
     markdown_transformer: Option<MarkdownTransformerHandler>,
+    markdown_message_types: Option<Vec<String>>,
     /// PiG-only: the extension owns the thinking runs of assistant messages (`own_thinking_runs`); the register frame carries it.
     owns_thinking_runs: bool,
     // oauth_fns holds OAuth closures for providers registered with an OAuth
@@ -873,6 +885,7 @@ impl Extension {
             renderer_fns: HashMap::new(),
             entry_renderer_fns: HashMap::new(),
             markdown_transformer: None,
+            markdown_message_types: None,
             owns_thinking_runs: false,
             oauth_fns: HashMap::new(),
             tool_renderers: ToolRenderers::default(),
@@ -1539,14 +1552,27 @@ impl Extension {
     }
 
     /// Register the extension's display-only Markdown transform (Pi's
-    /// `pi.registerMarkdownTransformer`). The host applies it to user and
-    /// assistant Markdown in the interactive transcript, after its own
-    /// transformers; a later registration replaces an earlier one.
+    /// `pi.registerMarkdownTransformer`). The host applies it to user,
+    /// assistant and thinking Markdown in the interactive transcript, after its
+    /// own transformers; a later registration replaces an earlier one. See
+    /// [`Extension::markdown_transformer_with_options`] to choose the surfaces.
     pub fn markdown_transformer(
         &mut self,
         transformer: impl Fn(&str, &MarkdownTransformContext) -> Option<String> + Send + Sync + 'static,
     ) {
+        self.markdown_transformer_with_options(transformer, MarkdownTransformerOptions::default());
+    }
+
+    /// Like [`Extension::markdown_transformer`], with Pi's `options.messageTypes`: the transformer runs on the surfaces
+    /// listed (`"user"`, `"assistant"`, `"assistant-thinking"`, `"custom"`, `"summary"` and `"changelog"`), see
+    /// [`MarkdownTransformerOptions`].
+    pub fn markdown_transformer_with_options(
+        &mut self,
+        transformer: impl Fn(&str, &MarkdownTransformContext) -> Option<String> + Send + Sync + 'static,
+        options: MarkdownTransformerOptions,
+    ) {
         self.markdown_transformer = Some(Box::new(transformer));
+        self.markdown_message_types = options.message_types;
     }
 
     /// PiG-only, product-neutral: declare that this extension owns the thinking runs of assistant messages, so a thinking run that is hidden or draws
@@ -1753,6 +1779,11 @@ impl Extension {
                 renderers: self.renderers.clone(),
                 entry_renderers: self.entry_renderers.clone(),
                 markdown_transformer: self.markdown_transformer.is_some(),
+                markdown_message_types: self.markdown_transformer.is_some().then(|| {
+                    self.markdown_message_types
+                        .clone()
+                        .unwrap_or_else(|| ["user", "assistant", "assistant-thinking"].map(String::from).to_vec())
+                }),
                 owns_thinking_runs: self.owns_thinking_runs,
                 tool_renderers: self.tool_renderers.resolvers.len(),
                 mcp_servers: self.mcp_servers.clone(),

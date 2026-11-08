@@ -159,3 +159,17 @@ func (e *McpOAuthAuthorizationRequiredError) Name() string {
 func (e *McpOAuthAuthorizationRequiredError) Error() string {
 	return "MCP OAuth authorization requires user interaction"
 }
+
+// McpRefreshLockBusyError is returned by [McpOAuthServerStore.WithRefreshLock] when another process holds the refresh lock for the whole wait.
+// [StartMcpSignIn] then skips the refresh and goes to the browser step.
+type McpRefreshLockBusyError struct{}
+
+// NewMcpRefreshLockBusyError is `new McpRefreshLockBusyError()`.
+func NewMcpRefreshLockBusyError() *McpRefreshLockBusyError { return &McpRefreshLockBusyError{} }
+
+// Name is the `name` property, "McpRefreshLockBusyError".
+func (e *McpRefreshLockBusyError) Name() string { return "McpRefreshLockBusyError" }
+
+func (e *McpRefreshLockBusyError) Error() string {
+	return "Another process is refreshing the MCP server's tokens"
+}
