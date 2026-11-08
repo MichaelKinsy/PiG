@@ -44,6 +44,7 @@ func everyKind() []link.Message {
 	origin := hold(0, link.Text("{}"))
 	origin.Type = "t"
 	origin.Origin = some(2)
+	oldOrigin := &link.CallMessage{Origin: some(2), Call: 1, Hold: 3, Method: 0, Args: link.Text("[1]"), Old: true}
 	return []link.Message{
 		&link.HelloMessage{Protocol: 1, Incarnation: incarnation, Calls: 256},
 		first,
@@ -52,6 +53,9 @@ func everyKind() []link.Message {
 		&link.ReleaseMessage{Hold: 0},
 		&link.CallMessage{Call: 3, Hold: 0, Method: 1, Args: link.Text(`{"text":"x"}`)},
 		&link.CallMessage{Call: 4, Hold: 0, Method: 0},
+		// A call that is old work (a restart's), alone and under an origin (Pi's also carries a trace: T6, no Trace here).
+		&link.CallMessage{Call: 9, Hold: 0, Method: 1, Args: link.Text(`{"text":"x"}`), Old: true},
+		oldOrigin,
 		&link.AbortMessage{Call: 3},
 		&link.BoundMessage{Holds: []link.BoundEntry{{Hold: 0, Variant: 1, Members: []link.BoundMember{{Member: 0, Value: link.Text(`[1,"a"]`)}}, Failed: []link.FailedMember{{Member: 1, Error: released}}}}},
 		&link.BoundMessage{Holds: []link.BoundEntry{
@@ -497,6 +501,8 @@ func TestTheTextCodec(t *testing.T) {
 	})
 
 	t.Run("writes a call's old-work flag after its carrier (null when absent), its payload's fields positional then", func(t *testing.T) {
+		// Pi's second case carries a trace ({a:"b"}) in the carrier slot; link.Message has no Trace yet (T6, 0x40 stays
+		// reserved), so the slot is null here.
 		call := &link.CallMessage{Call: 0, Hold: 1, Method: 2, Old: true}
 		if got := text(call); got != `["c",0,1,2,null,null,null,true]` {
 			t.Fatalf("old call = %s", got)
