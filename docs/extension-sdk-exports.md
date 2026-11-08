@@ -10,10 +10,10 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 
 | Module | Rows | type-only (identity by kind) | Node served | Go gaps | Rust gaps | Python gaps | Lisp gaps |
 |---|---|---|---|---|---|---|---|
-| `pi-coding-agent` | 927 | 307 | 917 | 325 | 325 | 325 | 325 |
+| `pi-coding-agent` | 928 | 310 | 917 | 325 | 325 | 325 | 325 |
 | `pi-tui` | 370 | 85 | 369 | 102 | 102 | 102 | 102 |
 | `pi-ai` | 105 | 197 | 105 | 73 | 73 | 73 | 73 |
-| `pi-ai/compat` | 164 | 204 | 164 | 129 | 129 | 129 | 129 |
+| `pi-ai/compat` | 165 | 204 | 164 | 129 | 129 | 129 | 129 |
 | `pi-agent-core` | 45 | 35 | 45 | 45 | 45 | 45 | 45 |
 
 ## Lanes that own gaps
@@ -479,6 +479,7 @@ None.
 | `ModelRuntime.removeRuntimeApiKey` | 0 | served | native:ModelRuntime.RemoveRuntimeAPIKey | native:ModelRuntime::remove_runtime_api_key | native:ModelRuntime.remove_runtime_api_key | native:pig:runtime-remove-runtime-api-key |
 | `ModelRuntime.resolveModel` | 0 | served | native:ModelRuntime.ResolveModel | native:ModelRuntime::resolve_model | native:ModelRuntime.resolve_model | native:pig:runtime-resolve-model |
 | `ModelRuntime.setRuntimeApiKey` | 0 | served | native:ModelRuntime.SetRuntimeAPIKey | native:ModelRuntime::set_runtime_api_key | native:ModelRuntime.set_runtime_api_key | native:pig:runtime-set-runtime-api-key |
+| `ModelRuntime.settleCredentialWrites` | 0 | unclassified | unclassified | unclassified | unclassified | unclassified |
 | `ModelRuntime.stream` | 0 | served | native:ModelRuntime.Stream | native:ModelRuntime::stream | native:ModelRuntime.stream | native:pig:runtime-stream |
 | `ModelRuntime.streamDeferred` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
 | `ModelRuntime.streamSimple` | 0 | served | native:ModelRuntime.StreamSimple | native:ModelRuntime::stream_simple | native:ModelRuntime.stream_simple | native:pig:runtime-stream-simple |
@@ -1597,6 +1598,7 @@ None.
 | `resolveTranscriptTools` | 1 | served | native:ResolveTranscriptTools | native:resolve_transcript_tools | native:resolve_transcript_tools | native:pig:resolve-transcript-tools |
 | `retryAssistantCall` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `retryDelayMs` | 1 | served | native:RetryDelayMs | native:retry_delay_ms | native:retry_delay_ms | native:pig:retry-delay-ms |
+| `setBedrockProviderLoader` | 0 | unclassified | unclassified | unclassified | unclassified | unclassified |
 | `setBedrockProviderModule` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `stream` | 2 | served | host:ModelRegistry.Stream | host:ModelRegistry::stream | host:ModelRegistry.stream | host:pig:registry-stream |
 | `streamAnthropic` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |

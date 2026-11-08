@@ -57,7 +57,7 @@ func ApplyLineReset(line string) string {
 	if IsImageLine(line) {
 		return line
 	}
-	// pig divergence (D300): cursor markers are internal render metadata and must never reach terminal output (Pi main 25490ea49).
+	// cursor markers are internal render metadata and must never reach terminal output (Pi main 25490ea49).
 	return NormalizeTerminalOutput(strings.ReplaceAll(line, CursorMarker, "")) + SegmentReset
 }
 
