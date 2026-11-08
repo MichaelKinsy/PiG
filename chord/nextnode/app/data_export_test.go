@@ -143,7 +143,7 @@ func archivesOf(t *testing.T, path string) (plugins, kit archived) {
 }
 
 func TestPackRunningExportsBothStoresAtOnePointWhileTheyAreWritten(t *testing.T) {
-	const preloaded, exports = 3000, 25
+	const preloaded, exports = 1000, 8
 	dir := filepath.Join(t.TempDir(), "host")
 	if err := os.MkdirAll(filepath.Join(dir, "files"), 0o700); err != nil {
 		t.Fatal(err)

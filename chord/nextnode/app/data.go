@@ -22,6 +22,10 @@ import (
 // it reads: one consistent point) and its finished files into the archive at the path the server names. Only the server may ask (its
 // principal); the worker's plugins never see it.
 //
+// The worker has two stores (D462): the kit's own, which its Go host holds, and the plugins', which its NodeHost's process holds, so the
+// worker's export holds the kit's commit queue and reads the plugins' file from a snapshot taken meanwhile (PackRunning): both
+// archives are one point, as Pi's one store's export is.
+//
 // Go forced differences (D460): the generic principal parameter is designed out (a principal is a JSON object). The worker's plugins run in a
 // Node subprocess that serves the worker's address, so HostData is a JavaScript core facet (host_data.mjs) forwarding to a Go local
 // object (HostDataExport) through the bridge.
