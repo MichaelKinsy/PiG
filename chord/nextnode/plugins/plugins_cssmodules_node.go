@@ -34,27 +34,25 @@ lines.on("line", (line) => {
 	process.stdout.write(JSON.stringify(reply) + "\n");
 });`
 
-// mappingEvaluator evaluates mapping modules in one Node subprocess, started by the first and ended by close. It serves one
-// evaluation at a time. The process is the one NodeOptions starts Node with (discoverNode, Command), ended with ctx.
+// mappingEvaluator evaluates mapping modules in one Node subprocess, started by the first evaluation and ended by close (or
+// by a failed or abandoned evaluation: the next one starts another). It serves one evaluation at a time and is shared by the
+// builds of a component. The process is the one NodeOptions starts Node with (discoverNode, Command).
 type mappingEvaluator struct {
 	options NodeOptions
-	ctx     context.Context
 
 	mu     sync.Mutex
 	cmd    *exec.Cmd
 	input  io.WriteCloser
 	output *bufio.Reader
-	stderr tailWriter
-	// failed is why the process cannot evaluate any more (it did not start, died or lost ctx): every later evaluation fails
-	// with it.
-	failed error
-	// aborted is set when ctx ended an evaluation: the build is aborted, not failed.
-	aborted bool
+	stderr *tailWriter
+	closed bool
+	// killThrough, when set (a test), runs a kill of the process through it: it may hold the kill back.
+	killThrough func(kill func())
 }
 
 // newMappingEvaluator is an evaluator that starts its process when it is first used.
-func newMappingEvaluator(options NodeOptions, ctx context.Context) *mappingEvaluator {
-	return &mappingEvaluator{options: options, ctx: ctx}
+func newMappingEvaluator(options NodeOptions) *mappingEvaluator {
+	return &mappingEvaluator{options: options}
 }
 
 // mappingRequest is a line of the process's input.
@@ -69,52 +67,47 @@ type mappingReply struct {
 }
 
 // evaluate runs the mapping module js and returns its mapping as `JSON.stringify` writes it. It is the cause of ctx when ctx
-// ended the evaluation, and an error of the process (it did not start, died, did not answer) for this and every later one; a
-// module that does not evaluate is that module's error alone.
-func (e *mappingEvaluator) evaluate(js string) (string, error) {
+// ends before or during the evaluation (the process is killed: the next evaluation starts another). An error of the process (it
+// did not start, died, did not answer) is this evaluation's alone, and so is a module that does not evaluate.
+func (e *mappingEvaluator) evaluate(ctx context.Context, js string) (string, error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	if e.failed != nil {
-		return "", e.failed
+	if e.closed {
+		return "", errors.New("the evaluator of CSS module mappings is closed")
 	}
-	reply, err := e.ask(js)
+	if err := ctx.Err(); err != nil {
+		return "", context.Cause(ctx)
+	}
+	reply, err := e.ask(ctx, js)
 	if err != nil {
-		if e.ctx.Err() != nil {
-			e.aborted = true
-			err = context.Cause(e.ctx)
-		} else if tail := e.stderr.text(); tail != "" {
-			err = fmt.Errorf("%w: %s", err, tail)
+		tail := ""
+		if e.stderr != nil {
+			tail = e.stderr.text()
 		}
-		e.failed = err
 		e.stop()
+		switch {
+		case ctx.Err() != nil:
+			return "", context.Cause(ctx)
+		case tail != "":
+			return "", fmt.Errorf("%w: %s", err, tail)
+		}
 		return "", err
 	}
 	switch {
 	case reply.Error != nil:
 		return "", errors.New("evaluating the mapping: " + *reply.Error)
 	case reply.Classes == nil:
-		e.failed = errors.New("the Node subprocess that evaluates CSS module mappings answered neither a mapping nor an error")
 		e.stop()
-		return "", e.failed
+		return "", errors.New("the Node subprocess that evaluates CSS module mappings answered neither a mapping nor an error")
 	}
 	return *reply.Classes, nil
 }
 
-// abort is the cause of ctx when it ended an evaluation, else nil: what a build that read a CSS module returns instead of a
-// failed result.
-func (e *mappingEvaluator) abort() error {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	if e.aborted {
-		return context.Cause(e.ctx)
-	}
-	return nil
-}
-
-// close ends the process, if one started.
+// close ends the process, if one started; later evaluations fail.
 func (e *mappingEvaluator) close() {
 	e.mu.Lock()
 	defer e.mu.Unlock()
+	e.closed = true
 	e.stop()
 }
 
@@ -138,10 +131,10 @@ func (e *mappingEvaluator) timeout() time.Duration {
 	return defaultReadyTimeout
 }
 
-// start starts the process.
-func (e *mappingEvaluator) start() error {
+// start starts the process. It outlives ctx, which only bounds finding Node: close or a failed evaluation ends it.
+func (e *mappingEvaluator) start(ctx context.Context) error {
 	timeout := e.timeout()
-	finding, stopFinding := context.WithTimeoutCause(e.ctx, timeout, fmt.Errorf("finding a Node.js executable did not finish within %s", timeout))
+	finding, stopFinding := context.WithTimeoutCause(ctx, timeout, fmt.Errorf("finding a Node.js executable did not finish within %s", timeout))
 	nodePath, err := discoverNode(finding, e.options.Command)
 	stopFinding()
 	if err != nil {
@@ -151,8 +144,9 @@ func (e *mappingEvaluator) start() error {
 	if command == nil {
 		command = exec.CommandContext
 	}
-	cmd := command(e.ctx, nodePath, "-e", mappingScript)
-	cmd.Stderr = &e.stderr
+	cmd := command(context.WithoutCancel(ctx), nodePath, "-e", mappingScript)
+	e.stderr = &tailWriter{}
+	cmd.Stderr = e.stderr
 	input, err := cmd.StdinPipe()
 	if err != nil {
 		return err
@@ -168,13 +162,11 @@ func (e *mappingEvaluator) start() error {
 	return nil
 }
 
-// ask sends js to the process (started if it is not) and reads its reply.
-func (e *mappingEvaluator) ask(js string) (mappingReply, error) {
-	if err := e.ctx.Err(); err != nil {
-		return mappingReply{}, err
-	}
+// ask sends js to the process (started if it is not) and reads its reply. A ctx that ends, or a process that does not answer
+// within the timeout, kills the process, which ends the read.
+func (e *mappingEvaluator) ask(ctx context.Context, js string) (mappingReply, error) {
 	if e.cmd == nil {
-		if err := e.start(); err != nil {
+		if err := e.start(ctx); err != nil {
 			return mappingReply{}, err
 		}
 	}
@@ -182,17 +174,51 @@ func (e *mappingEvaluator) ask(js string) (mappingReply, error) {
 	if err != nil {
 		return mappingReply{}, err
 	}
-	// A process that does not answer is killed, which ends the read.
 	timeout := e.timeout()
 	cmd := e.cmd
-	silent := time.AfterFunc(timeout, func() { _ = cmd.Process.Kill() })
-	defer silent.Stop()
+	// A kill runs on a goroutine of its own, and may be late: it only counts while this ask is, so it never lands on the process
+	// of the next one. A process killed during the ask is ended before ask returns, whatever the ask got.
+	var guard sync.Mutex
+	live, killed, silenced := true, false, false
+	kill := func(byTimer bool) func() {
+		do := func() {
+			guard.Lock()
+			defer guard.Unlock()
+			if live {
+				killed, silenced = true, silenced || byTimer
+				_ = cmd.Process.Kill()
+			}
+		}
+		return func() {
+			if e.killThrough != nil {
+				e.killThrough(do)
+				return
+			}
+			do()
+		}
+	}
+	silent := time.AfterFunc(timeout, kill(true))
+	stopWatching := context.AfterFunc(ctx, kill(false))
+	defer func() {
+		silent.Stop()
+		stopWatching()
+		guard.Lock()
+		live = false
+		ended := killed
+		guard.Unlock()
+		if ended {
+			e.stop()
+		}
+	}()
 	if _, err := e.input.Write(append(request, '\n')); err != nil {
 		return mappingReply{}, fmt.Errorf("the Node subprocess that evaluates CSS module mappings did not take the module: %w", err)
 	}
 	line, err := readLine(e.output, maxFrame)
 	if err != nil {
-		if !silent.Stop() {
+		guard.Lock()
+		timedOut := silenced
+		guard.Unlock()
+		if timedOut {
 			return mappingReply{}, fmt.Errorf("the Node subprocess that evaluates CSS module mappings did not answer within %s", timeout)
 		}
 		return mappingReply{}, fmt.Errorf("the Node subprocess that evaluates CSS module mappings ended: %w", err)

@@ -1,4 +1,4 @@
-//go:build unix && !linux && !darwin && !freebsd
+//go:build unix && !linux && !darwin && !freebsd && !netbsd && !openbsd
 
 package plugins
 
