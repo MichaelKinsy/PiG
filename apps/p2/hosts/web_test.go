@@ -312,7 +312,7 @@ func TestDevEndpointAnswersAsAServerWithoutDevMode(t *testing.T) {
 	if got := post(nil, `{"action":"reload"}`).Status; got != 403 {
 		t.Fatalf("POST without Origin: %d", got)
 	}
-	for _, body := range []string{`{"action":"reload"}`, `{"action":"reload","plugins":["chat","chat"]}`, `{"action":"restart"}`} {
+	for _, body := range []string{`{"action":"reload"}`, `{"action":"reload","plugins":["chat","chat"]}`, `{"action":"restart"}`, `{"action":"restart","n":1e400}`, ` {"action":"reload"} `} {
 		response := post(own, body)
 		if response.Status != 409 || response.Body != `{"ok":false,"message":"Dev mode is not enabled"}` {
 			t.Fatalf("%s: %d %s", body, response.Status, response.Body)
