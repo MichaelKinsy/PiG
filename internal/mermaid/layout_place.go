@@ -338,7 +338,7 @@ func placeTd(ranks []int, maxRank int, byRank [][]int, sizes nodeSizes, g *graph
 		entryX := edgeEntryX[i]
 		straight := true
 		for j := range g.nodes {
-			if !(ranks[j] <= ranks[e.from] || ranks[j] >= ranks[e.to] || entryX < boxL(j) || entryX > boxR(j)) {
+			if ranks[j] > ranks[e.from] && ranks[j] < ranks[e.to] && entryX >= boxL(j) && entryX <= boxR(j) {
 				straight = false
 				break
 			}
@@ -560,8 +560,8 @@ func placeLr(ranks []int, maxRank int, byRank [][]int, sizes nodeSizes, g *graph
 		straight := !stubRows[row]
 		if straight {
 			for j := range g.nodes {
-				if !(ranks[j] <= ranks[e.from] || ranks[j] >= ranks[e.to] ||
-					absInt(centers[j]-row) > half(sizes.boxH[j]+sizes.extraH[j])) {
+				if ranks[j] > ranks[e.from] && ranks[j] < ranks[e.to] &&
+					absInt(centers[j]-row) <= half(sizes.boxH[j]+sizes.extraH[j]) {
 					straight = false
 					break
 				}

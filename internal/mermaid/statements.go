@@ -159,11 +159,12 @@ func splitTop(s string, isSep func(rune) bool) []string {
 	inQuotes := false
 	depth := 0
 	for _, c := range s {
-		if c == '"' {
+		switch {
+		case c == '"':
 			inQuotes = !inQuotes
-		} else if !inQuotes && c == '(' {
+		case !inQuotes && c == '(':
 			depth++
-		} else if !inQuotes && c == ')' && depth > 0 {
+		case !inQuotes && c == ')' && depth > 0:
 			depth--
 		}
 		if !inQuotes && depth == 0 && isSep(c) {

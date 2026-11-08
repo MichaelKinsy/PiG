@@ -282,9 +282,11 @@ func backtickRuns(s string) []int {
 func themedLines(art mermaid.Art, theme *tui.Theme) []string {
 	foreground := func(color string) string {
 		ansi := theme.GetFgAnsi(color)
+		//portlint:allow utf16units theme escapes are ASCII (ESC [ ... m, plus ESC[2m for faint tokens), so byte offsets equal UTF-16 offsets
 		if len(ansi) < 3 {
 			return ""
 		}
+		//portlint:allow utf16units theme escapes are ASCII (ESC [ ... m, plus ESC[2m for faint tokens), so byte offsets equal UTF-16 offsets
 		return ansi[2 : len(ansi)-1]
 	}
 	ansiTheme := mermaid.AnsiTheme{
