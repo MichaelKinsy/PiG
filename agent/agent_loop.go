@@ -418,6 +418,7 @@ func (r *loopRun) appendMessage(msg AgentMessage) {
 // and must not reach a message_start a listener may still be reading.
 func startEventMessage(msg AgentMessage) AgentMessage {
 	out := msg
+	out.origin = msg.Identity()
 	switch {
 	case msg.System != nil:
 		out.System = new(*msg.System)

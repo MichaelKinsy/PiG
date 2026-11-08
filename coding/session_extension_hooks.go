@@ -331,13 +331,14 @@ func (s *Session) extensionEventHook(ev agent.AgentEvent) {
 	}
 	end, ok := ev.(agent.MessageEndEvent)
 	if !ok {
-		icodingagent.DispatchAgentLoopEvent(runner, ev, &s.extCurrentMessage)
+		icodingagent.DispatchAgentLoopEvent(runner, ev, &s.extCurrentMessage, &s.messageSeqs)
 		return
 	}
 	if !runner.HasHandlers(icodingagent.EventMessageEnd) {
 		return
 	}
-	replacement, err := runner.EmitMessageEnd(icodingagent.AgentEventContext(ev), extension.MessageEndEvent{Type: "message_end", Message: end.Message})
+	ctx := extension.WithMessageSequences(icodingagent.AgentEventContext(ev), []uint64{s.messageSeqs.Sequence(end.Message)})
+	replacement, err := runner.EmitMessageEnd(ctx, extension.MessageEndEvent{Type: "message_end", Message: end.Message})
 	if err != nil || replacement == nil {
 		return
 	}

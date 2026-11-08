@@ -920,6 +920,7 @@ func (h *Host) acceptPackedExt(ctx context.Context, me *managedExt, ln net.Liste
 		// whole log once, then only what is new.
 		me.entryCursorMu.Lock()
 		me.entryCursor = 0
+		me.entryPairCursor = 0
 		readyPayload.State = h.uiBridge.Snapshot(me.flagNames, 0, h.subscribedToSessionLog(me.config.Name))
 		if readyPayload.State.Session != nil {
 			me.entryCursor = readyPayload.State.Session.EntryCount

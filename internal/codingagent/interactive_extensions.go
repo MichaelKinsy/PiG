@@ -667,6 +667,12 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 		}
 		return page, next, next < total, leafID
 	})
+	b.SetHostAction("getMessageEntries", func(cursor int) ([]sessionentry.MessageSeq, int) {
+		if m.currentSession() == nil {
+			return nil, 0
+		}
+		return m.currentSession().MessageEntriesAfter(cursor)
+	})
 	b.SetHostAction("sessionRead", func(method string, args json.RawMessage) (any, error) {
 		return ExtensionSessionRead(ExtensionSessionView{Session: m.currentSession(), CWD: m.opts.CWD, SessionDir: ExtensionSessionDir(m.opts.SessionDir)}, method, args)
 	})

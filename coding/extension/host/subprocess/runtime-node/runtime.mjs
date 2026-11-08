@@ -123,13 +123,45 @@ process.on("unhandledRejection", (reason) => {
 
 const USER_BLOCKING_CALLS = new Set(["ui.select", "ui.confirm", "ui.input", "ui.editor", "ui.custom"]);
 const MAX_FRAME_SIZE = 128 * 1024 * 1024;
-// shareEventMessage keeps this many message_end messages, and looks this many of the newest log entries over for the one an event's message belongs to.
-const EVENT_MESSAGE_LIMIT = 64;
-const EVENT_MESSAGE_RECENT_ENTRIES = 16;
+// A process keeps this many of the message objects its events carried (messageObjects), and this many message entries the host named that no log it holds has shown yet (Runtime.entrySeqs).
+const MESSAGE_OBJECT_LIMIT = 128;
+const MESSAGE_ENTRY_LIMIT = 256;
 
-// eventMessageKey narrows the messages a message_end event and a log entry can share to those that agree on role, timestamp and tool call id; shareEventMessage then compares values.
-function eventMessageKey(message) {
-  return `${message.role}\u0000${message.timestamp ?? ""}\u0000${message.toolCallId ?? ""}`;
+// Pi hands one object to every payload that holds a message: message_end's message is the object agent-session.ts appendMessage stores in the session entry, message_start (system, user, toolResult), turn_end and agent_end carry it too, and extensions of one process share it. The host numbers each message (RequestPayload.message_seqs) and names the entry that persisted it (SessionStatePayload.messageEntries), and this table, one per process so the extensions packed in a cell share it, holds the object the first event gave for each number. The newest message_end handlers hold the object the entry shows.
+const messageObjects = new Map();
+
+// replaceMessageInPlace makes target hold the members of source and no others, as agent-session.ts _replaceMessageInPlace overwrites the object a message_end replacement replaces.
+function replaceMessageInPlace(target, source) {
+  if (target === source) return;
+  for (const key of Object.keys(target)) delete target[key];
+  Object.assign(target, source);
+}
+
+// sharedMessage is the object this process holds for the message the host numbered seq, which an event carries as message: the object an earlier event or the session entry gave it, made to hold the value the event carries, or message itself the first time. A message the host did not number, or one this process cannot tell from another, stays as it came.
+function sharedMessage(seq, message) {
+  if (!Number.isSafeInteger(seq) || seq <= 0 || !message || typeof message !== "object") return message;
+  const held = messageObjects.get(seq);
+  if (held === undefined) {
+    messageObjects.set(seq, message);
+    if (messageObjects.size > MESSAGE_OBJECT_LIMIT) messageObjects.delete(messageObjects.keys().next().value);
+    return message;
+  }
+  if (held !== message && !isDeepStrictEqual(held, message)) replaceMessageInPlace(held, message);
+  return held;
+}
+
+// shareEventMessages gives the messages of a message_start, message_end, turn_end or agent_end event the objects this process holds for them, numbered by seqs in the order the event holds them: message_start and message_end have one, turn_end its message and then its tool results, agent_end its messages. An assistant message_start carries the partial message, which the host does not number.
+function shareEventMessages(name, event, seqs) {
+  if (name === "message_start" || name === "message_end") {
+    event.message = sharedMessage(seqs[0], event.message);
+  } else if (name === "turn_end") {
+    event.message = sharedMessage(seqs[0], event.message);
+    if (Array.isArray(event.toolResults)) {
+      for (let i = 0; i < event.toolResults.length; i++) event.toolResults[i] = sharedMessage(seqs[1 + i], event.toolResults[i]);
+    }
+  } else if (name === "agent_end" && Array.isArray(event.messages)) {
+    for (let i = 0; i < event.messages.length; i++) event.messages[i] = sharedMessage(seqs[i], event.messages[i]);
+  }
 }
 
 const REMOTE_RENDER_INTERVAL_MS = 16;
@@ -2205,9 +2237,8 @@ export class Runtime {
     // Entries ctx.sessionManager.appendCustomEntry showed that the host's
     // replicated log does not hold yet and has not refused.
     this.pendingEntries = [];
-    // The messages the message_end events carried to this extension, newest last, so the session entries that hold them share the object (shareEventMessage).
-    this.eventMessages = new Map();
-    this.eventMessageOrder = [];
+    // The sequence the host numbered the message of each recent message entry by (SessionStatePayload.messageEntries), by entry id, so the entry gets the object its event carried (bindEntryMessage) whenever this process sees the entry, in a page or in the session file.
+    this.entrySeqs = new Map();
     // After the register frame the host has this extension's providers, and
     // a registration applies immediately, as after upstream's bindCore.
     this.providersSent = false;
@@ -3377,11 +3408,6 @@ export class Runtime {
       // A cursor belongs to one session. Even an empty replacement must drop
       // the outgoing log before folding pages from the destination.
       if (snapshot.session.sessionId && snapshot.session.sessionId !== this.state.session.sessionId) {
-        // Messages of the outgoing session are not the destination's; the first id an extension sees is no switch.
-        if (this.state.session.sessionId) {
-          this.eventMessages.clear();
-          this.eventMessageOrder.length = 0;
-        }
         this.pendingEntries = [];
         this.contextValues.sessionManager._cachedIndex = undefined;
         this.dropBranchCache();
@@ -3406,6 +3432,7 @@ export class Runtime {
       };
       // The branch cache and its index belong to one log array, which an append extends in place; a replaced log releases them.
       if (this.state.session.entries !== previousEntries) this.dropBranchCache();
+      this.noteMessageEntries(snapshot.session.messageEntries);
     }
     if (typeof snapshot.isIdle === "boolean") this.state.isIdle = snapshot.isIdle;
     if (typeof snapshot.projectTrusted === "boolean") this.state.projectTrusted = snapshot.projectTrusted;
@@ -3512,7 +3539,7 @@ export class Runtime {
     if (this.sessionLogRequested) return;
     this.sessionLogRequested = true;
     const entries = this.readSessionFile();
-    this.shareEventMessages(entries);
+    this.bindEntryMessages(entries);
     this.state.session.entries = entries;
     this.dropBranchCache();
     const owner = this.activeRequest();
@@ -3547,44 +3574,34 @@ export class Runtime {
     }
   }
 
-  // Pi's extensions and its session log share one message object: agent-session.ts emits message_end to the extensions and then calls sessionManager.appendMessage(event.message), whose entry keeps that object, and every handler of the message_end shares that message (runner.ts emitMessageEnd gives each its own event object around it). The host sends this process the event and the log as separate payloads, so a message from the event and the entry that holds it arrive as two equal objects. This process makes them one again, matching by role, timestamp and tool call id and then by value, so an extension that finds an entry by `entry.message === message` (Paseo's Pi integration does) finds it here as it does in Pi. A message no entry holds stays as it came, and so does an entry no event carried.
-  shareEventMessage(message) {
-    if (!message || typeof message !== "object") return message;
-    const key = eventMessageKey(message);
-    const known = this.eventMessages.get(key)?.find((candidate) => isDeepStrictEqual(candidate, message));
-    if (known) return known;
-    const bucket = this.eventMessages.get(key);
-    if (bucket) bucket.push(message);
-    else this.eventMessages.set(key, [message]);
-    this.eventMessageOrder.push(key);
-    if (this.eventMessageOrder.length > EVENT_MESSAGE_LIMIT) {
-      const oldest = this.eventMessageOrder.shift();
-      const oldBucket = this.eventMessages.get(oldest);
-      oldBucket.shift();
-      if (oldBucket.length === 0) this.eventMessages.delete(oldest);
-    }
-    // The log may already hold the entry, which Pi appends right after the event: the newest entries are the candidates.
-    const entries = this.state.session?.entries;
-    if (Array.isArray(entries)) {
-      for (let i = entries.length - 1; i >= 0 && i >= entries.length - EVENT_MESSAGE_RECENT_ENTRIES; i--) {
-        const entry = entries[i];
-        if (entry?.type === "message" && entry.message !== message && isDeepStrictEqual(entry.message, message)) {
-          entry.message = message;
-          break;
-        }
-      }
-    }
-    return message;
+  // bindEntryMessage gives the message entry the object its message_end event carried, as in Pi, where the entry holds the event's own message: the object takes the value the entry holds (a handler's replacement, which Pi writes into the original object in place), so every handler that held it sees the stored message. An entry the host did not name, or whose event this process did not see, is left as it is.
+  bindEntryMessage(entry) {
+    if (entry?.type !== "message" || !entry.message || typeof entry.message !== "object") return;
+    const seq = this.entrySeqs.get(entry.id);
+    if (seq === undefined) return;
+    const held = messageObjects.get(seq);
+    if (held === undefined || held === entry.message) return;
+    replaceMessageInPlace(held, entry.message);
+    entry.message = held;
   }
 
-  // shareEventMessages gives the entries of a log page the message objects their events carried.
-  shareEventMessages(entries) {
-    if (this.eventMessages.size === 0) return;
-    for (const entry of entries) {
-      if (entry?.type !== "message" || !entry.message || typeof entry.message !== "object") continue;
-      const known = this.eventMessages.get(eventMessageKey(entry.message))?.find((candidate) => isDeepStrictEqual(candidate, entry.message));
-      if (known) entry.message = known;
+  bindEntryMessages(entries) {
+    if (this.entrySeqs.size === 0) return;
+    for (const entry of entries) this.bindEntryMessage(entry);
+  }
+
+  // noteMessageEntries records the entries the host says message_end persisted, and binds those this process already holds: the newest entries of the log are the candidates.
+  noteMessageEntries(pairs) {
+    if (!Array.isArray(pairs) || pairs.length === 0) return;
+    for (const pair of pairs) {
+      if (typeof pair?.id !== "string" || !Number.isSafeInteger(pair.seq)) continue;
+      this.entrySeqs.delete(pair.id);
+      this.entrySeqs.set(pair.id, pair.seq);
+      if (this.entrySeqs.size > MESSAGE_ENTRY_LIMIT) this.entrySeqs.delete(this.entrySeqs.keys().next().value);
     }
+    const entries = this.state.session.entries;
+    if (!Array.isArray(entries)) return;
+    for (let i = entries.length - 1, scanned = 0; i >= 0 && scanned < MESSAGE_ENTRY_LIMIT; i--, scanned++) this.bindEntryMessage(entries[i]);
   }
 
   // applyEntryAppend folds a bounded ordered session page into the local log.
@@ -3593,7 +3610,7 @@ export class Runtime {
   applyEntryAppend(session) {
     const local = this.state.session.entries || [];
     const appended = Array.isArray(session.entriesAppended) ? session.entriesAppended : [];
-    this.shareEventMessages(appended);
+    this.bindEntryMessages(appended);
     const total = typeof session.entryCount === "number" ? session.entryCount : undefined;
     if (total === undefined) return local;
     // No entries and a zero count is the shape sent to an extension that has
@@ -5043,6 +5060,7 @@ export class Runtime {
           const selected = handlers.find(({ id: handlerId }) => handlerId === request.handler_id);
           if (!selected) throw new Error(`unknown event handler ${request.handler_id} for ${request.event}`);
           const event = request.args ?? {};
+          if (Array.isArray(request.message_seqs)) shareEventMessages(request.event, event, request.message_seqs);
           // Upstream preparation.fileOps holds Set<string> values; the wire
           // carries arrays (FileOperations.MarshalJSON).
           const fileOps = request.event === "session_before_compact" ? event.preparation?.fileOps : undefined;
@@ -5117,7 +5135,6 @@ export class Runtime {
             await this.respond(id, { _pigPromptSections: options.sections, _pigPromptSelectedTools: options.selectedTools, _pigPromptOptions: options, _pigPromptResult: result }, error);
             return;
           }
-          if (request.event === "message_end") event.message = this.shareEventMessage(event.message);
           const messages = event.messages;
           const snapshot = Array.isArray(messages) ? messages.slice() : undefined;
           // A reply for a list the handler left as it was, with no edit to any message, omits the list: the host already holds it.
