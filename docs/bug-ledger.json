@@ -3413,6 +3413,29 @@
       "tests": []
     },
     {
+      "id": "BF-1a9093e",
+      "title": "The pi-env daemon on macOS: a small reply (an `lstat`, a ping) could come after megabytes of queued command…",
+      "symptom": "The pi-env daemon on macOS: a small reply (an `lstat`, a ping) could come after megabytes of queued command output, more than a client buffers, where Pi's daemon answers between output frames.",
+      "rootCause": "The writer buffered up to 1 MiB of frames and flushed only when the queue ran empty, so a reply queued behind a full buffer; Pi flushes after every frame (output.rs, frame.rs write_frame). The inherited stdin and stdout were also blocking descriptors: a goroutine reading or writing one held its scheduler slot until sysmon took it back, up to 10 ms, so a request that arrived with every slot held waited that long before a worker ran it, and 1.4 to 2 MB of command output flowed past the reply meanwhile (macOS CI, 64 KiB pipes: 2,162,688 bytes against the 1,600,000 bound). Serve now moves pipes and sockets it is given onto a poller duplicate and restores the mode on return.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "macOS",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The pi-env daemon on macOS: a small reply (an `lstat`, a ping) could come after megabytes of queued command output, more than a client buffers, where Pi's daemon answers between output frames. The writer now flushes after every frame as Pi's does instead of holding up to 1 MiB, and the daemon waits on its inherited stdin and stdout through the runtime poller, so a request that arrives while the runtime is busy with the output no longer waits up to 10 ms for a worker.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1a9093eb86",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "env/daemon/pollable_unix_test.go::TestPollableLeavesOtherFilesAlone",
+        "env/daemon/pollable_unix_test.go::TestPollableMovesInheritedPipesIntoThePoller"
+      ]
+    },
+    {
       "id": "BF-1b5540a",
       "title": "`client.Client.Disconnect` takes the reason string as Pi's `Client.disconnect(reason)` does (it was an…",
       "symptom": "`client.Client.Disconnect` takes the reason string as Pi's `Client.disconnect(reason)` does (it was an `error`); the connection fails with a `DisconnectedError` carrying it.",
@@ -4406,6 +4429,29 @@
       "tests": [
         "durable/core/hops_host_answer_test.go::TestAHostCommitIsAnsweredHostAnswerLeadTicksBeforeItsCallerResumes",
         "durable/core/session/sched_restart_test.go::TestTheAbortStepIsEnqueuedAbortReturnHopsAfterTheHandlerCommit"
+      ]
+    },
+    {
+      "id": "BF-22ef80f",
+      "title": "`pi.exec` reports `killed: true` for a timeout that came due while the call waited, as Pi does: a host that…",
+      "symptom": "`pi.exec` reports `killed: true` for a timeout that came due while the call waited, as Pi does: a host that kept the process off the CPU past the timer and past the child's end (a command that traps SIGTERM and finishes by itself) settled with the cancellation not yet delivered and reported `killed: false`.",
+      "rootCause": "Nightly 42514658073 (, Linux test-fast): TestExecOracleTimerScenariosHoldWhileTheCallerStalls scenario 3 (trap TERM, sleep 4) reported killed:false where Pi reports true. ExecCommand sets killed only when the watcher took ctx.Done before stopWatch; a host that kept the process off the CPU past the timer and past the child end made both ready, or the deadline due with its cancellation not yet delivered. exec.ts keeps its timer until the call settles, so the settle now checks the context and its deadline (the same change as on follow/pi-main).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pi.exec` reports `killed: true` for a timeout that came due while the call waited, as Pi does: a host that kept the process off the CPU past the timer and past the child's end (a command that traps SIGTERM and finishes by itself) settled with the cancellation not yet delivered and reported `killed: false`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "22ef80f126",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "coding/extension/exec_oracle_stall_unix_test.go::TestExecOracleTimerScenariosHoldWhileTheCallerStalls",
+        "coding/extension/exec_timeout_unix_test.go::TestExecCommandReportsKilledWhenTheDeadlineIsDueAtSettle"
       ]
     },
     {
@@ -33104,6 +33150,28 @@
         "test/ci-images/verification_shards_test.go::TestGroupedTestsDoNotRunWhenTheAgentDirectoriesCannotBeSeeded",
         "test/ci-images/verification_shards_test.go::TestGroupedTestsIsolateAndGuardTheAgentDirectories",
         "test/ci-images/verification_shards_test.go::TestIsUnderDirComparesFileIdentity"
+      ]
+    },
+    {
+      "id": "BF-c0649a6",
+      "title": "On Windows, a chord plugin's Node host whose link had closed could be killed by the host after its…",
+      "symptom": "The process had ended its channel and run its exit handlers within 50 ms; what kept it alive was Node writing the V8 compile cache of every module it compiled, one file after another, as it exited, which on a loaded Windows machine and a cold cache (a new extraction directory or new plugins) took from one to over five seconds.",
+      "rootCause": "A host whose link closed was killed on Windows after the 5 s stop grace (exit status 1, \"its link closed and it did not exit within 5s\"). The process had ended its channel, run its exit handlers and reached its `exit` event 50 ms after the link closed; what kept it alive was Node writing the V8 compile cache of every module it compiled, one file after another, as the process exits (mkstemp, write, rename: Node's CompileCacheHandler::Persist, run at exit). A cold cache (a tree extracted for a new CacheDir, new plugins) made that many writes, and on a loaded Windows runner they took from 1 to over 5 s: 30 of about 8000 exits of the target test took over 2 s and 7 were killed (Windows…",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "On Windows, a chord plugin's Node host whose link had closed could be killed by the host after its five-second stop grace instead of exiting by itself (exit status 1, \"its link closed and it did not exit within 5s\"). The process had ended its channel and run its exit handlers within 50 ms; what kept it alive was Node writing the V8 compile cache of every module it compiled, one file after another, as it exited, which on a loaded Windows machine and a cold cache (a new extraction directory or new plugins) took from one to over five seconds. The host now writes the cache once it is up and after each load and reload, so its exit has none left to write.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c0649a6934",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_node_test.go::TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits"
       ]
     },
     {

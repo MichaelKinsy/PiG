@@ -134,6 +134,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-19a2d2d](#bf-19a2d2d) | fix(durable/core): match Pi's passes in the cut-off flows: drain resumes after the async reserve, open and… | PiG's own defect | All platforms | Unreleased |
 | [BF-1a855cd](#bf-1a855cd) | The `/session` block now follows a later theme change and shows the cache-warming countdown as of each… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1a893bc](#bf-1a893bc) | fix(durable/core): report task_interrupted from the runtime's commit path for every task (Pi scheduler.ts) | PiG's own defect | All platforms | Unreleased |
+| [BF-1a9093e](#bf-1a9093e) | The pi-env daemon on macOS: a small reply (an `lstat`, a ping) could come after megabytes of queued command… | PiG's own defect | macOS | Unreleased |
 | [BF-1b5540a](#bf-1b5540a) | `client.Client.Disconnect` takes the reason string as Pi's `Client.disconnect(reason)` does (it was an… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1b9718b](#bf-1b9718b) | fix(photonimage): register the lossless decoders Decode falls back to and decode test sources with Photon | PiG's own defect | All platforms | Unreleased |
 | [BF-1c1887a](#bf-1c1887a) | Closing a Chord host no longer hangs when a hold arrives over a link that closes at the same time | PiG's own defect | Windows | 0.7.0 |
@@ -166,6 +167,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-227a4c1](#bf-227a4c1) | A Piglet's tool scope now bounds the Session's tool registry, not only its active tools | PiG's own defect | All platforms | 0.7.0 |
 | [BF-2280bf8](#bf-2280bf8) | The per-API stream entry points (`ai.AnthropicMessagesAPI()` through `ai.PiMessagesAPI()` and the deprecated… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-228dbea](#bf-228dbea) | fix(durable/core): follow the microtask schedule of Pi | PiG's own defect | All platforms | Unreleased |
+| [BF-22ef80f](#bf-22ef80f) | `pi.exec` reports `killed: true` for a timeout that came due while the call waited, as Pi does: a host that… | PiG's own defect | All platforms | Unreleased |
 | [BF-2309604](#bf-2309604) | Tool schemas in OpenAI Completions, OpenAI Responses, Codex and Mistral request bodies keep the members in… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2316fe3](#bf-2316fe3) | The Piglet JSON Schema that `pig piglet schema` prints rejected `powershell` in `tools`, which `pig piglet… | PiG's own defect | Windows | 0.5.3 |
 | [BF-2323d94](#bf-2323d94) | `ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., { triggerTurn: true })` is busy… | PiG's own defect | All platforms | 0.7.0 |
@@ -1186,6 +1188,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-bf9911e](#bf-bf9911e) | Append ops from the Chord delta tracker and `DiffRevisions` own their text, as under Pi, instead of holding a… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-bfae6a0](#bf-bfae6a0) | Fullscreen double-click selection no longer splits paths and tokens at `~`, `.`, `\`, `+` and `_`: the word… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-c019ea9](#bf-c019ea9) | A panic in a background goroutine of an interactive session no longer ends PiG with only a stderr dump | PiG's own defect | All platforms | 0.5.0 |
+| [BF-c0649a6](#bf-c0649a6) | On Windows, a chord plugin's Node host whose link had closed could be killed by the host after its… | PiG's own defect | Windows | Unreleased |
 | [BF-c1055c4](#bf-c1055c4) | Package manifest globs match as Node's `fs.globSync` does in Pi: brace sets and sequences, extglobs such as… | PiG's own defect | Windows, macOS | 0.5.0 |
 | [BF-c10ae73](#bf-c10ae73) | In RPC mode, runs that an extension command's handler sends with `sendMessage` or `sendUserMessage` start in… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c1162b4](#bf-c1162b4) | `Shift+Enter` inserts a newline instead of queueing a follow-up in Apple Terminal setups that send `ESC` +… | A fix Pi shipped that PiG ported | Windows | 0.7.0 |
@@ -3195,6 +3198,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `1a893bc60d` (2026-10-27)
 - **Tests:** None recorded.
 
+### BF-1a9093e
+
+**The pi-env daemon on macOS: a small reply (an `lstat`, a ping) could come after megabytes of queued command…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The pi-env daemon on macOS: a small reply (an `lstat`, a ping) could come after megabytes of queued command output, more than a client buffers, where Pi's daemon answers between output frames.
+- **Root cause:** The writer buffered up to 1 MiB of frames and flushed only when the queue ran empty, so a reply queued behind a full buffer; Pi flushes after every frame (output.rs, frame.rs write_frame). The inherited stdin and stdout were also blocking descriptors: a goroutine reading or writing one held its scheduler slot until sysmon took it back, up to 10 ms, so a request that arrived with every slot held waited that long before a worker ran it, and 1.4 to 2 MB of command output flowed past the reply meanwhile (macOS CI, 64 KiB pipes: 2,162,688 bytes against the 1,600,000 bound). Serve now moves pipes and sockets it is given onto a poller duplicate and restores the mode on return.
+- **User impact:** Wrong output or ordering
+- **Platform:** macOS
+- **Fixed in:** Unreleased
+- **Fix commits:** `1a9093eb86` (2026-11-08)
+- **Tests:** `env/daemon/pollable_unix_test.go::TestPollableLeavesOtherFilesAlone`, `env/daemon/pollable_unix_test.go::TestPollableMovesInheritedPipesIntoThePoller`
+- **Release note:** The pi-env daemon on macOS: a small reply (an `lstat`, a ping) could come after megabytes of queued command output, more than a client buffers, where Pi's daemon answers between output frames. The writer now flushes after every frame as Pi's does instead of holding up to 1 MiB, and the daemon waits on its inherited stdin and stdout through the runtime poller, so a request that arrives while the runtime is busy with the output no longer waits up to 10 ms for a worker.
+
 ### BF-1b5540a
 
 **`client.Client.Disconnect` takes the reason string as Pi's `Client.disconnect(reason)` does (it was an…**
@@ -3634,6 +3651,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `228dbea36a` (2026-10-27)
 - **Tests:** `durable/core/hops_host_answer_test.go::TestAHostCommitIsAnsweredHostAnswerLeadTicksBeforeItsCallerResumes`, `durable/core/session/sched_restart_test.go::TestTheAbortStepIsEnqueuedAbortReturnHopsAfterTheHandlerCommit`
+
+### BF-22ef80f
+
+**`pi.exec` reports `killed: true` for a timeout that came due while the call waited, as Pi does: a host that…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `pi.exec` reports `killed: true` for a timeout that came due while the call waited, as Pi does: a host that kept the process off the CPU past the timer and past the child's end (a command that traps SIGTERM and finishes by itself) settled with the cancellation not yet delivered and reported `killed: false`.
+- **Root cause:** Nightly 42514658073 (, Linux test-fast): TestExecOracleTimerScenariosHoldWhileTheCallerStalls scenario 3 (trap TERM, sleep 4) reported killed:false where Pi reports true. ExecCommand sets killed only when the watcher took ctx.Done before stopWatch; a host that kept the process off the CPU past the timer and past the child end made both ready, or the deadline due with its cancellation not yet delivered. exec.ts keeps its timer until the call settles, so the settle now checks the context and its deadline (the same change as on follow/pi-main).
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `22ef80f126` (2026-11-08)
+- **Tests:** `coding/extension/exec_oracle_stall_unix_test.go::TestExecOracleTimerScenariosHoldWhileTheCallerStalls`, `coding/extension/exec_timeout_unix_test.go::TestExecCommandReportsKilledWhenTheDeadlineIsDueAtSettle`
+- **Release note:** `pi.exec` reports `killed: true` for a timeout that came due while the call waited, as Pi does: a host that kept the process off the CPU past the timer and past the child's end (a command that traps SIGTERM and finishes by itself) settled with the cancellation not yet delivered and reported `killed: false`.
 
 ### BF-2309604
 
@@ -17765,6 +17796,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `c019ea9155` (2026-10-06, #163)
 - **Tests:** `internal/codingagent/agent_env_isolation_test.go::TestPackageTestsDoNotReachTheExportedAgentDirectory`, `internal/codingagent/settings_secret_input_test.go::TestMaskedLoginErrorDoesNotEnterFramesOrSession`, `internal/npmpublish/main_test.go::TestMain`, `internal/npmpublish/main_test.go::TestPackageTestsDoNotReachTheExportedAgentDirectory`, `internal/testenv/agent_dir_guard_test.go::TestAgentDirGuardFailsWhenATestTouchesTheSeededDirectories`, `internal/testenv/tempscope_test.go::TestRequireIsolatedAgentEnvAcceptsOnlyTheScopedDirectories`, `internal/testenv/tempscope_test.go::TestScopeTempDirIsolatesAgentDirectoryEnvironment`, `test/ci-images/verification_shards_test.go::TestGroupedTestsDoNotRunWhenTheAgentDirectoriesCannotBeSeeded` and 2 more in docs/bug-ledger.json
 - **Release note:** A panic in a background goroutine of an interactive session no longer ends PiG with only a stderr dump. PiG restores the terminal, prints the error, records it in `crashes.json` and exits 1, as Pi does for an uncaught exception. Any other goroutine panic or runtime fatal error is copied to `<agent dir>/crash-output/` and becomes a crash record at the next start.
+
+### BF-c0649a6
+
+**On Windows, a chord plugin's Node host whose link had closed could be killed by the host after its…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The process had ended its channel and run its exit handlers within 50 ms; what kept it alive was Node writing the V8 compile cache of every module it compiled, one file after another, as it exited, which on a loaded Windows machine and a cold cache (a new extraction directory or new plugins) took from one to over five seconds.
+- **Root cause:** A host whose link closed was killed on Windows after the 5 s stop grace (exit status 1, "its link closed and it did not exit within 5s"). The process had ended its channel, run its exit handlers and reached its `exit` event 50 ms after the link closed; what kept it alive was Node writing the V8 compile cache of every module it compiled, one file after another, as the process exits (mkstemp, write, rename: Node's CompileCacheHandler::Persist, run at exit). A cold cache (a tree extracted for a new CacheDir, new plugins) made that many writes, and on a loaded Windows runner they took from 1 to over 5 s: 30 of about 8000 exits of the target test took over 2 s and 7 were killed (Windows…
+- **User impact:** Wrong output or ordering
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `c0649a6934` (2026-11-05)
+- **Tests:** `chord/nextnode/plugins/plugins_node_test.go::TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits`
+- **Release note:** On Windows, a chord plugin's Node host whose link had closed could be killed by the host after its five-second stop grace instead of exiting by itself (exit status 1, "its link closed and it did not exit within 5s"). The process had ended its channel and run its exit handlers within 50 ms; what kept it alive was Node writing the V8 compile cache of every module it compiled, one file after another, as it exited, which on a loaded Windows machine and a cold cache (a new extraction directory or new plugins) took from one to over five seconds. The host now writes the cache once it is up and after each load and reload, so its exit has none left to write.
 
 ### BF-c1055c4
 
