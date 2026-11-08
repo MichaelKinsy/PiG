@@ -1332,6 +1332,8 @@ export class Connection {
     this.queue = [];
     this.waiters = [];
     this.held = [];
+    this.handedOff = undefined;
+    this.takenFrame = undefined;
     this.closed = false;
     this.streamStarts = new Map();
     socket.on("envelope", env => this.onEnvelope(env));
@@ -1422,9 +1424,21 @@ export class Connection {
     this.deliver(env);
   }
 
+  // A frame handed to the waiting serve loop is read by the loop in a microtask, which a synchronous host call made before then cannot wait for: a handler that resumed from an await ahead of the loop is such a caller, and the frames its call reads (the state the host pushes before the call's result) reach the waiting loop, not the queue. handedOff keeps the frame where takeHandedOff finds it, until the loop reads it.
   deliver(env) {
-    if (this.waiters.length > 0) this.waiters.shift()(env);
-    else this.queue.push(env);
+    if (this.waiters.length > 0) {
+      this.handedOff = env;
+      this.waiters.shift()(env);
+    } else this.queue.push(env);
+  }
+
+  // takeHandedOff returns the frame handed to the serve loop that the loop has not read, when accept takes it, and the caller applies it in the loop's place. The loop skips the frame it finds in takenFrame, and clears handedOff when it starts on one: its handler's synchronous run, a command request's first run among them, then finds nothing handed off.
+  takeHandedOff(accept) {
+    const env = this.handedOff;
+    if (env === undefined || !accept(env)) return undefined;
+    this.handedOff = undefined;
+    this.takenFrame = env;
+    return env;
   }
 
   releaseHeld() {
@@ -1458,7 +1472,12 @@ export class Connection {
   }
 
   next() {
-    if (this.queue.length > 0) return Promise.resolve(this.queue.shift());
+    if (this.queue.length > 0) {
+      // The frame is read by the loop's await a microtask later, as a delivered one is: a synchronous host call made before then applies it first (takeHandedOff), and the frames still queued are newer.
+      const env = this.queue.shift();
+      this.handedOff = env;
+      return Promise.resolve(env);
+    }
     if (this.closed) return Promise.resolve(null);
     return new Promise((resolve) => this.waiters.push(resolve));
   }
@@ -3027,8 +3046,9 @@ export class Runtime {
     const conn = new Connection(socket);
     conn.nestedEvent = (env) => {
       if (!((conn.nestedWrites ?? 0) > 0 || this.activeRequest()?.pendingHostCalls.size > 0) || conn.queue.some((queued) => queued.type !== "notify" && queued.type !== "call_result")) return false;
-      // The host sent these notifications, such as a state push, and the results of earlier asynchronous calls, such as an appendEntry, before the event: they apply first, as the serve loop would.
-      for (const queued of conn.queue.splice(0)) {
+      // The host sent these notifications, such as a state push, and the results of earlier asynchronous calls, such as an appendEntry, before the event: they apply first, as the serve loop would, the one it was handed and has not read before the ones queued. A request it holds is left to the loop, as it was before the loop's frames were visible here: the setter's event starts in the setter, as the host waits for it to start before it answers the setter.
+      const ahead = conn.takeHandedOff((held) => held.type === "notify" || held.type === "call_result");
+      for (const queued of ahead === undefined ? conn.queue.splice(0) : [ahead, ...conn.queue.splice(0)]) {
         if (queued.type === "call_result") conn.resolveCall(queued);
         else if (queued.notify) this.handleNotify(queued.notify);
       }
@@ -3041,6 +3061,9 @@ export class Runtime {
     conn.applyQueuedStateUpdates = () => {
       // A synchronous call made while the ready frame is handled settles before the ready state is applied: leave the queued states to the loop, which applies them after it, in frame order.
       if (!this.readyStateApplied) return;
+      // The state the serve loop was handed and has not read is older than any queued.
+      const handedOff = conn.takeHandedOff((env) => env.type === "notify" && env.notify?.method === "state_update");
+      if (handedOff !== undefined) this.handleNotify(handedOff.notify);
       for (let i = 0; i < conn.queue.length; i++) {
         const queued = conn.queue[i];
         if (queued.type !== "notify" || queued.notify?.method !== "state_update") continue;
@@ -3192,6 +3215,11 @@ export class Runtime {
       while (true) {
         const env = await this.conn.next();
         if (!env) return;
+        if (env === this.conn.takenFrame) {
+          this.conn.takenFrame = undefined;
+          continue;
+        }
+        this.conn.handedOff = undefined;
         if (env.type === "call_result") {
           // Apply earlier state and stream notifications before an awaited call resumes its handler.
           this.conn.resolveCall(env);
