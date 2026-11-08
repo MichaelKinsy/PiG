@@ -97,7 +97,7 @@ const differentialNodeCases = 3000
 // spread, `JSON.stringify`ed), with the keys in the object's order: 3000 generated modules, 0 differences.
 func TestScopeCSSModuleGivesWhatNodeGivesForEsbuildsMappingModuleOverGeneratedCases(t *testing.T) {
 	oracle := startNodeOracle(t)
-	evaluator := newMappingEvaluator(NodeOptions{}, context.Background())
+	evaluator := newMappingEvaluator(NodeOptions{})
 	defer evaluator.close()
 	differing := 0
 	for i, css := range cssModuleCases(differentialNodeCases) {
@@ -122,7 +122,7 @@ func agreesWithNode(t testing.TB, oracle *nodeOracle, evaluator *mappingEvaluato
 		// esbuild refuses the module: nothing is evaluated.
 		return true
 	}
-	scoped, err := scopeCSSModule("p", "/d", "/d/x.module.css", css, evaluator)
+	scoped, err := scopeCSSModule("p", "/d", "/d/x.module.css", css, evaluator, context.Background())
 	if err != nil {
 		t.Errorf("scoping: %v", err)
 		return false
@@ -143,7 +143,7 @@ func FuzzScopeCSSModuleMatchesNode(f *testing.F) {
 	for _, css := range []string{`.a\"\'{color:red}`, `.__proto__{} .\31 {} .\30 {} .a{}`, `.\34 294967295{} .\34 294967294{}`, `.a\2028 {} .a\2029 b{} .\D800 {}`} {
 		f.Add(css)
 	}
-	evaluator := newMappingEvaluator(NodeOptions{}, context.Background())
+	evaluator := newMappingEvaluator(NodeOptions{})
 	defer evaluator.close()
 	oracle := startNodeOracle(f)
 	f.Fuzz(func(t *testing.T, css string) {
@@ -155,52 +155,99 @@ func FuzzScopeCSSModuleMatchesNode(f *testing.F) {
 
 // A module that does not evaluate is that module's error: the process stays, and the next module is read.
 func TestMappingEvaluatorReportsAModuleThatDoesNotEvaluateAndGoesOn(t *testing.T) {
-	evaluator := newMappingEvaluator(NodeOptions{}, context.Background())
+	evaluator := newMappingEvaluator(NodeOptions{})
 	defer evaluator.close()
-	if _, err := evaluator.evaluate(`throw new Error("no");`); err == nil || !strings.Contains(err.Error(), "Error: no") {
+	if _, err := evaluator.evaluate(context.Background(), `throw new Error("no");`); err == nil || !strings.Contains(err.Error(), "Error: no") {
 		t.Fatalf("err = %v, want the module's Error: no", err)
 	}
-	got, err := evaluator.evaluate(`module.exports = { default: { a: "b", 1: "c" } };`)
+	got, err := evaluator.evaluate(context.Background(), `module.exports = { default: { a: "b", 1: "c" } };`)
 	if err != nil || got != `{"1":"c","a":"b"}` {
 		t.Fatalf("got %q, %v", got, err)
 	}
 	// A module with no default export has an empty mapping, as `{ ...undefined }` is.
-	if got, err := evaluator.evaluate(``); err != nil || got != `{}` {
+	if got, err := evaluator.evaluate(context.Background(), ``); err != nil || got != `{}` {
 		t.Fatalf("got %q, %v", got, err)
 	}
 }
 
-// The evaluation ends with the build's context, which is then the build's abort, not a failure of the module.
-func TestMappingEvaluatorEndsWithItsContextAndSaysSo(t *testing.T) {
+// A ctx that ends before or during an evaluation is that evaluation's error (its cause) and ends the process; the next
+// evaluation, with a ctx that lives, starts another.
+func TestMappingEvaluatorEndsAnEvaluationWithItsContextAndGoesOnWithTheNext(t *testing.T) {
 	cause := errors.New("the build was cancelled")
-	ctx, cancel := context.WithCancelCause(context.Background())
-	evaluator := newMappingEvaluator(NodeOptions{}, ctx)
+	evaluator := newMappingEvaluator(NodeOptions{})
 	defer evaluator.close()
-	if _, err := evaluator.evaluate(`module.exports = { default: {} };`); err != nil {
+	if _, err := evaluator.evaluate(context.Background(), `module.exports = { default: {} };`); err != nil {
 		t.Fatal(err)
 	}
-	if evaluator.abort() != nil {
-		t.Fatal("aborted before the context ended")
-	}
-	cancel(cause)
-	if _, err := evaluator.evaluate(`module.exports = { default: {} };`); !errors.Is(err, cause) {
+	ended, end := context.WithCancelCause(context.Background())
+	end(cause)
+	if _, err := evaluator.evaluate(ended, `module.exports = { default: {} };`); !errors.Is(err, cause) {
 		t.Fatalf("err = %v, want the cause of the context", err)
 	}
-	if !errors.Is(evaluator.abort(), cause) {
-		t.Fatalf("abort = %v, want the cause of the context", evaluator.abort())
+	// Cancelled while the module runs.
+	running, stop := context.WithCancelCause(context.Background())
+	time.AfterFunc(200*time.Millisecond, func() { stop(cause) })
+	if _, err := evaluator.evaluate(running, `while (true) {}`); !errors.Is(err, cause) {
+		t.Fatalf("err = %v, want the cause of the context", err)
+	}
+	if got, err := evaluator.evaluate(context.Background(), `module.exports = { default: { a: "b" } };`); err != nil || got != `{"a":"b"}` {
+		t.Fatalf("got %q, %v after the process was ended", got, err)
 	}
 }
 
-// A process that does not answer is killed after NodeOptions.ReadyTimeout, and that is the evaluation's error.
+// A closed evaluator evaluates nothing, and close ends its process.
+func TestMappingEvaluatorRefusesAfterCloseAndEndsItsProcess(t *testing.T) {
+	evaluator := newMappingEvaluator(NodeOptions{})
+	if _, err := evaluator.evaluate(context.Background(), `module.exports = { default: {} };`); err != nil {
+		t.Fatal(err)
+	}
+	cmd := evaluator.cmd
+	evaluator.close()
+	if cmd.ProcessState == nil {
+		t.Fatal("the process is still running after close")
+	}
+	if _, err := evaluator.evaluate(context.Background(), `module.exports = {};`); err == nil {
+		t.Fatal("a closed evaluator evaluated a module")
+	}
+}
+
+// A process that does not answer is killed after NodeOptions.ReadyTimeout, and that is the evaluation's error; the next
+// evaluation starts another process.
 func TestMappingEvaluatorKillsAProcessThatDoesNotAnswer(t *testing.T) {
 	timeout := 300 * time.Millisecond
-	evaluator := newMappingEvaluator(NodeOptions{ReadyTimeout: &timeout}, context.Background())
+	evaluator := newMappingEvaluator(NodeOptions{ReadyTimeout: &timeout})
 	defer evaluator.close()
-	_, err := evaluator.evaluate(`while (true) {}`)
+	_, err := evaluator.evaluate(context.Background(), `while (true) {}`)
 	if err == nil || !strings.Contains(err.Error(), "did not answer within 300ms") {
 		t.Fatalf("err = %v, want it to say the process did not answer within 300ms", err)
 	}
-	if _, again := evaluator.evaluate(`module.exports = {};`); again == nil {
-		t.Fatal("a process that was killed answered a later module")
+	if got, err := evaluator.evaluate(context.Background(), `module.exports = { default: {} };`); err != nil || got != `{}` {
+		t.Fatalf("got %q, %v after the process was killed", got, err)
+	}
+}
+
+// A kill that an evaluation's timer or context made runs late, on a goroutine of its own: it must not land on the process of the
+// evaluation after it. Here the timer of a slow module fires, the kill is held back until the module has answered, and then
+// it is let go: the next module is evaluated on a live process.
+func TestMappingEvaluatorALateKillOfAnEvaluationDoesNotHitTheNextOne(t *testing.T) {
+	timeout := 50 * time.Millisecond
+	evaluator := newMappingEvaluator(NodeOptions{ReadyTimeout: &timeout})
+	defer evaluator.close()
+	release, finished := make(chan struct{}), make(chan struct{})
+	evaluator.killThrough = func(kill func()) {
+		<-release
+		kill()
+		close(finished)
+	}
+	// The timer fires 50 ms in; the module answers after 150 ms, with the kill still held.
+	got, err := evaluator.evaluate(context.Background(), `const t = Date.now(); while (Date.now() - t < 150) {} module.exports = { default: { a: "b" } };`)
+	if err != nil || got != `{"a":"b"}` {
+		t.Fatalf("got %q, %v: the held kill ended the evaluation", got, err)
+	}
+	close(release)
+	<-finished
+	evaluator.killThrough = nil
+	if got, err := evaluator.evaluate(context.Background(), `module.exports = { default: { c: "d" } };`); err != nil || got != `{"c":"d"}` {
+		t.Fatalf("got %q, %v: the late kill of the evaluation before landed on this one", got, err)
 	}
 }

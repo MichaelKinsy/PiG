@@ -40,6 +40,8 @@ type getRequest struct {
 	Params   json.RawMessage `json:"params"`
 	// ReadyTimeout is milliseconds.
 	ReadyTimeout *int64 `json:"readyTimeout,omitempty"`
+	// Hold asks for `host.hold` (NodeHost.Hold): the reference at once, in whatever state its object is.
+	Hold bool `json:"hold,omitempty"`
 }
 
 // memberRequest is the `value` control request: a state member's value, or a keyed member's document at Key.
@@ -198,6 +200,19 @@ type NodeReference struct {
 // aborting ctx aborts the request there. Only a local contract is held this way: a remote one is held through a Go host
 // that routes its kind to the node (NodeHost.Link). params is the type's params object (a *delta.JsonObject).
 func (h *NodeHost) Get(ctx context.Context, contract *contracts.Contract, params any, options host.GetOptions) (*NodeReference, error) {
+	return h.reference(ctx, contract, params, options, false)
+}
+
+// Hold is Pi's `host.hold(Type, params)` for a local type the Node host's plugins serve, the reference at once whatever the
+// state of its object (`loading`, `failed { waiting }` while nobody serves its type, ...), following it until released. It
+// sends `get` with `hold` set, so the Node host's own `hold` makes the reference and the Go side watches its state
+// (NodeReference.State). It fails only for invalid params, an unloaded host or an ended process.
+func (h *NodeHost) Hold(ctx context.Context, contract *contracts.Contract, params any) (*NodeReference, error) {
+	return h.reference(ctx, contract, params, host.GetOptions{}, true)
+}
+
+// reference is Get's and Hold's request.
+func (h *NodeHost) reference(ctx context.Context, contract *contracts.Contract, params any, options host.GetOptions, hold bool) (*NodeReference, error) {
 	declared, err := contracts.ContractDataOf(contract)
 	if err != nil {
 		return nil, err
@@ -215,7 +230,7 @@ func (h *NodeHost) Get(ctx context.Context, contract *contracts.Contract, params
 	}
 	// Registered before the request is sent: the state changes that follow its reply find the reference.
 	reference := newNodeReference(h, contract, declared)
-	request := &getRequest{Contract: wire, Params: encoded, Handle: reference.handle}
+	request := &getRequest{Contract: wire, Params: encoded, Handle: reference.handle, Hold: hold}
 	if options.ReadyTimeout != nil {
 		ms := options.ReadyTimeout.Milliseconds()
 		request.ReadyTimeout = &ms
