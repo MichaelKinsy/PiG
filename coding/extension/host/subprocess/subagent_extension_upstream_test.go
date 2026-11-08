@@ -154,8 +154,6 @@ func newSubagentRig(t *testing.T, cwd string, interactive, trusted bool) *subage
 	return rig
 }
 
-func shellQuote(s string) string { return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'" }
-
 func (r *subagentRig) createProjectAgent(cwd, name, model string) {
 	r.t.Helper()
 	front := "---\nname: " + name + "\ndescription: " + name + " test agent\n"
