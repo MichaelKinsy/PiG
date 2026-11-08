@@ -263,6 +263,8 @@ type connState struct {
 	timer  *time.Timer
 	// cancel ends the open and the connect under way.
 	cancel context.CancelFunc
+	// ctx is the context cancel ends (the open's and the connect's).
+	ctx context.Context
 }
 
 // failure is why the last attempt failed: the message for everybody, the stderr tail for the owner only.
@@ -395,7 +397,9 @@ func (c *connection) restart() {
 	c.mu.Lock()
 	c.delay = c.backoff.First
 	c.mu.Unlock()
-	c.spawn(c.connect)
+	if opening := c.begin(); opening != nil {
+		c.spawn(func() { c.open(opening) })
+	}
 }
 
 // close closes the client, then lets go of what its transports held (an environment's connection, maybe its last user).
@@ -458,19 +462,32 @@ func (c *connection) isState(state *connState) bool {
 	return c.state == state
 }
 
-func (c *connection) connect() {
+func (c *connection) connect() { c.open(c.begin()) }
+
+// begin is the synchronous start of a connect (Pi's `connect` runs to its first await in its caller's step, so a restart
+// answers with the instance already starting): the opening state, shown. nil: the connection is closed.
+func (c *connection) begin() *connState {
 	ctx, cancel := context.WithCancel(c.root)
-	opening := &connState{kind: stateOpening, cancel: cancel}
+	opening := &connState{kind: stateOpening, cancel: cancel, ctx: ctx}
 	c.mu.Lock()
 	if c.state.kind == stateClosed {
 		c.mu.Unlock()
 		cancel()
-		return
+		return nil
 	}
 	c.state = opening
 	previous := c.failure
 	c.mu.Unlock()
 	c.show("starting", previous)
+	return opening
+}
+
+// open opens the transports of an opening state and initializes the client on them.
+func (c *connection) open(opening *connState) {
+	if opening == nil {
+		return
+	}
+	ctx := opening.ctx
 	opened, err := c.transports.Open(ctx)
 	if err != nil {
 		if c.isState(opening) {
