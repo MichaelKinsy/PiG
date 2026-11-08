@@ -7,7 +7,7 @@
 //      <root>/packages/coding-agent/node_modules/lovely-mermaid. `make upstream-mirror`
 //      installs the mirror's node_modules, so a mirrored Pi checkout needs no setup.
 import { existsSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 export function lovelyRoot() {
@@ -35,12 +35,28 @@ export function importLovely(file) {
  * package in extensions/sdk-ts/node_modules) `dist/.../mermaid.js` and
  * `packages/coding-agent/src/.../mermaid.ts`.
  */
-export function importPiMermaid() {
+export function piMermaidFile() {
 	const rel = "modes/interactive/components/mermaid";
 	const candidates = [];
 	if (process.env.PI_MERMAID_MODULE) candidates.push(process.env.PI_MERMAID_MODULE);
 	const root = process.env.PI_PACKAGE_ROOT ?? resolve("extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent");
 	candidates.push(join(root, `dist/${rel}.js`), join(root, `packages/coding-agent/src/${rel}.ts`));
-	for (const file of candidates) if (existsSync(file)) return import(pathToFileURL(file).href);
+	for (const file of candidates) if (existsSync(file)) return file;
 	throw new Error(`Pi's mermaid module not found; tried ${candidates.join(", ")} (set PI_MERMAID_MODULE)`);
+}
+
+export function importPiMermaid() {
+	return import(pathToFileURL(piMermaidFile()).href);
+}
+
+/**
+ * Import the pi-tui instance Pi's mermaid module reads terminal capabilities
+ * from (resolved from the mermaid module's own location, so setCapabilities
+ * changes what mermaid.ts sees through getCapabilities).
+ */
+export async function importPiTui() {
+	const { findPackageJSON } = await import("node:module");
+	const pkg = findPackageJSON("@earendil-works/pi-tui", pathToFileURL(piMermaidFile()).href);
+	if (!pkg) throw new Error("@earendil-works/pi-tui not resolvable from Pi's mermaid module");
+	return import(pathToFileURL(join(dirname(pkg), "dist/index.js")).href);
 }
