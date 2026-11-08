@@ -93,10 +93,10 @@
     "reference": "node-deps/minimatch/index.js",
     "manifest": ".node-version",
     "package": "node",
-    "version": "24.22.1",
-    "source": "test/parity/dependency-sources/node/24.22.1/deps/minimatch/index.js",
+    "version": "24.22.2",
+    "source": "test/parity/dependency-sources/node/24.22.2/deps/minimatch/index.js",
     "sha256": "f96315be454e1579bb685f035b015aca6c33d7275f03707f74d6c82089250c30",
-    "integrity": "sha256-001773d9bd53fbd27a25efd42aa6a9693ebfe500998ca9bec635e9b6ee79bc91"
+    "integrity": "sha256-b2f5443a34a38d863e87c0f5f80c03630fc16917dfe16f26c1cec44c0b542959"
   },
   {
     "reference": "node_modules/lovely-mermaid/src/graph.ts",

@@ -16,6 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/pigstrip"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -519,7 +520,7 @@ func (r *SlashRegistry) All() []HelpCommandInfo {
 			Source:      SlashSourceExtension,
 		})
 	}
-	slices.SortFunc(out, func(a, b HelpCommandInfo) int { return cmp.Compare(a.Name, b.Name) })
+	sortx.Func(out, func(a, b HelpCommandInfo) int { return cmp.Compare(a.Name, b.Name) })
 	return out
 }
 

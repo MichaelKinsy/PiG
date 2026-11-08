@@ -6,6 +6,7 @@ use crate::context::{
 use crate::kit::{Rendered, View};
 use crate::oauth::{OAuthLoginCallbacks, OAuthProvider, ProviderOAuthConfig};
 use crate::protocol::*;
+use crate::render_card::{RenderCards, RenderState};
 use crate::theme::UiState;
 use crate::tool_render::{
     ToolRenderCallHandler, ToolRenderCallViewHandler, ToolRenderContext, ToolRenderResult,
@@ -399,6 +400,10 @@ pub struct MessageRenderOptions {
     /// Horizontal padding configured by the outputPad setting.
     #[serde(rename = "outputPad")]
     pub output_pad: u32,
+    /// The renderer state of this message: it starts empty and every render of the same displayed message, and every event handler registered
+    /// with [`Extension::message_view_event`], shares it, as the WeakMap a Pi renderer keeps by message does. Not part of the wire options.
+    #[serde(skip)]
+    pub state: RenderState,
 }
 
 /// Options supplied to custom session-entry renderers.
@@ -406,6 +411,10 @@ pub struct MessageRenderOptions {
 pub struct EntryRenderOptions {
     #[serde(default)]
     pub expanded: bool,
+    /// The renderer state of this entry: see [`MessageRenderOptions::state`]; the event handler is registered with
+    /// [`Extension::entry_view_event`].
+    #[serde(skip)]
+    pub state: RenderState,
 }
 
 /// The commands, shortcuts and renderers a handler registered after load through [`Context`]. They replace a load-time registration with the same key, as a later `registerCommand` replaces an earlier one in Pi's Map (loader.ts).
@@ -483,6 +492,19 @@ pub(crate) type MessageRenderFn = Box<
 /// A registered entry renderer, line or view form.
 pub(crate) type EntryRenderFn =
     Box<dyn Fn(&Context, Value, EntryRenderOptions, u32) -> Result<Rendered, String> + Send + Sync>;
+
+/// The handler of the events of a message view renderer's view.
+pub(crate) type MessageViewEventFn = Box<
+    dyn Fn(&Context, Value, MessageRenderOptions, crate::kit::Event) -> Result<(), String>
+        + Send
+        + Sync,
+>;
+/// The handler of the events of an entry view renderer's view.
+pub(crate) type EntryViewEventFn = Box<
+    dyn Fn(&Context, Value, EntryRenderOptions, crate::kit::Event) -> Result<(), String>
+        + Send
+        + Sync,
+>;
 
 /// Pi's MarkdownTransformContext: the transcript message being rendered
 /// ("user", "assistant" or "assistant-thinking"), whether it is still
@@ -846,6 +868,10 @@ pub struct Extension {
     shortcut_fns: HashMap<String, ShortcutHandler>,
     renderer_fns: HashMap<String, MessageRenderFn>,
     entry_renderer_fns: HashMap<String, EntryRenderFn>,
+    message_view_event_fns: HashMap<String, MessageViewEventFn>,
+    entry_view_event_fns: HashMap<String, EntryViewEventFn>,
+    /// The renderer state of the messages and entries the host shows, by the host's key.
+    render_cards: RenderCards,
     markdown_transformer: Option<MarkdownTransformerHandler>,
     markdown_message_types: Option<Vec<String>>,
     /// PiG-only: the extension owns the thinking runs of assistant messages (`own_thinking_runs`); the register frame carries it.
@@ -885,6 +911,9 @@ impl Extension {
             shortcut_fns: HashMap::new(),
             renderer_fns: HashMap::new(),
             entry_renderer_fns: HashMap::new(),
+            message_view_event_fns: HashMap::new(),
+            entry_view_event_fns: HashMap::new(),
+            render_cards: RenderCards::default(),
             markdown_transformer: None,
             markdown_message_types: None,
             owns_thinking_runs: false,
@@ -1552,6 +1581,41 @@ impl Extension {
         );
     }
 
+    /// Register the handler of the events of `custom_type`'s message view renderer ([`Self::message_view_renderer`]). The host answers the
+    /// terminal from the description of a [`crate::kit::MouseRegion`] at once and reports the events its handler ran for; the handler changes
+    /// the message's [`MessageRenderOptions::state`] here, and the next render request, which runs after every event the host had taken, draws
+    /// the message again. `message` and `options` are those of the message's last render; the events of one message arrive in order. A later
+    /// registration replaces an earlier one. This is local to the extension: nothing is declared to the host.
+    ///
+    /// pig additive (D276)
+    pub fn message_view_event(
+        &mut self,
+        custom_type: impl Into<String>,
+        handler: impl Fn(&Context, Value, MessageRenderOptions, crate::kit::Event) -> Result<(), String>
+        + Send
+        + Sync
+        + 'static,
+    ) {
+        self.message_view_event_fns
+            .insert(custom_type.into(), Box::new(handler));
+    }
+
+    /// Register the handler of the events of `custom_type`'s entry view renderer ([`Self::entry_view_renderer`]); see
+    /// [`Self::message_view_event`].
+    ///
+    /// pig additive (D276)
+    pub fn entry_view_event(
+        &mut self,
+        custom_type: impl Into<String>,
+        handler: impl Fn(&Context, Value, EntryRenderOptions, crate::kit::Event) -> Result<(), String>
+        + Send
+        + Sync
+        + 'static,
+    ) {
+        self.entry_view_event_fns
+            .insert(custom_type.into(), Box::new(handler));
+    }
+
     /// Register the extension's display-only Markdown transform (Pi's
     /// `pi.registerMarkdownTransformer`). The host applies it to user,
     /// assistant and thinking Markdown in the interactive transcript, after its
@@ -2152,6 +2216,7 @@ impl Extension {
                             "tool_render_release" => {
                                 ext.tool_renderers.release(notify.args.as_ref());
                             }
+                            "render_release" => ext.render_cards.release(notify.args.as_ref()),
                             "autocomplete.release" => {
                                 if let Some(id) =
                                     notify.args.as_ref().and_then(|args| args["id"].as_str())
@@ -3464,19 +3529,28 @@ impl Extension {
                         .args
                         .clone()
                         .unwrap_or(Value::Object(Default::default()));
-                    let message = args
-                        .get("message")
-                        .cloned()
-                        .unwrap_or(Value::Object(Default::default()));
-                    let options = args
-                        .get("options")
-                        .cloned()
-                        .and_then(|v| serde_json::from_value(v).ok())
-                        .unwrap_or_default();
+                    let options = |state: &RenderState| {
+                        let mut options: MessageRenderOptions = args
+                            .get("options")
+                            .cloned()
+                            .and_then(|v| serde_json::from_value(v).ok())
+                            .unwrap_or_default();
+                        options.state = state.clone();
+                        options
+                    };
                     let width = args.get("width").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
-                    match handler(&ctx, message, options, width)
-                        .and_then(|rendered| rendered.into_result(&conn.views))
-                    {
+                    match self.render_cards.run(
+                        &args,
+                        "message",
+                        |message, state, event| match self.message_view_event_fns.get(custom_type) {
+                            Some(handle) => handle(&ctx, message, options(state), event),
+                            None => Ok(()),
+                        },
+                        |message, state| {
+                            handler(&ctx, message, options(state), width)
+                                .and_then(|rendered| rendered.into_result(&conn.views))
+                        },
+                    ) {
                         Ok(result) => {
                             let _ = conn.respond(id, Some(result), None);
                         }
@@ -3596,19 +3670,28 @@ impl Extension {
                         .args
                         .clone()
                         .unwrap_or(Value::Object(Default::default()));
-                    let entry = args
-                        .get("entry")
-                        .cloned()
-                        .unwrap_or(Value::Object(Default::default()));
-                    let options = args
-                        .get("options")
-                        .cloned()
-                        .and_then(|v| serde_json::from_value(v).ok())
-                        .unwrap_or_default();
+                    let options = |state: &RenderState| {
+                        let mut options: EntryRenderOptions = args
+                            .get("options")
+                            .cloned()
+                            .and_then(|v| serde_json::from_value(v).ok())
+                            .unwrap_or_default();
+                        options.state = state.clone();
+                        options
+                    };
                     let width = args.get("width").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
-                    match handler(&ctx, entry, options, width)
-                        .and_then(|rendered| rendered.into_result(&conn.views))
-                    {
+                    match self.render_cards.run(
+                        &args,
+                        "entry",
+                        |entry, state, event| match self.entry_view_event_fns.get(custom_type) {
+                            Some(handle) => handle(&ctx, entry, options(state), event),
+                            None => Ok(()),
+                        },
+                        |entry, state| {
+                            handler(&ctx, entry, options(state), width)
+                                .and_then(|rendered| rendered.into_result(&conn.views))
+                        },
+                    ) {
                         Ok(result) => {
                             let _ = conn.respond(id, Some(result), None);
                         }
@@ -3657,10 +3740,16 @@ pub fn context_unchanged() -> Option<Value> {
     Some(serde_json::json!({ "_pigContextUnchanged": true }))
 }
 
-/// Connect and close a failed packed member's socket so the host stops waiting for registration.
+/// End the host's wait for a failed packed member after its factory failed (it panicked), so the host stops waiting for registration.
+/// A factory that called a host helper (`parse_frontmatter`, `parse_date`, a `pi.events` call) before it failed left the connection that call dialled open, and the host
+/// reads the registration of the connection it accepted first: that one is closed. With no such connection the socket is connected to and closed.
 /// Uses the same transport as `Extension::run_with_socket` and sends no registration frame.
 // pig additive (D20): generated packed runners report factory failures independently of live siblings.
 pub fn report_load_failure(sock_path: &str) -> io::Result<()> {
+    if let Some(conn) = crate::host_helpers::take_dialled(sock_path) {
+        conn.close_transport();
+        return Ok(());
+    }
     UnixStream::connect(sock_path).map(drop)
 }
 

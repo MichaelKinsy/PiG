@@ -311,21 +311,7 @@ func (e *Extension) viewImagesEvicted(raw json.RawMessage) {
 // viewEvent routes a ui.view.event to its overlay's input queue. Events for
 // an overlay that has closed are dropped.
 func (e *Extension) viewEvent(raw json.RawMessage) {
-	var payload struct {
-		Key   string `json:"key"`
-		Node  string `json:"node"`
-		Type  string `json:"type"`
-		Index int    `json:"index"`
-		Item  *struct {
-			Value       string `json:"value"`
-			Label       string `json:"label"`
-			Description string `json:"description"`
-		} `json:"item"`
-		ID     string      `json:"id"`
-		Value  string      `json:"value"`
-		Cursor *kit.Cursor `json:"cursor"`
-		Mouse  *kit.Mouse  `json:"mouse"`
-	}
+	var payload viewEventWire
 	if json.Unmarshal(raw, &payload) != nil || payload.Key == "" {
 		return
 	}
@@ -335,9 +321,6 @@ func (e *Extension) viewEvent(raw json.RawMessage) {
 	if overlay == nil {
 		return
 	}
-	event := &kit.Event{Node: payload.Node, Type: payload.Type, Index: payload.Index, ID: payload.ID, Value: payload.Value, Cursor: payload.Cursor, Mouse: payload.Mouse}
-	if payload.Item != nil {
-		event.Item = &kit.SelectItem{Value: payload.Item.Value, Label: payload.Item.Label, Description: payload.Item.Description}
-	}
-	overlay.enqueue(e.conn, payload.Key, overlayMessage{event: event})
+	event := payload.event()
+	overlay.enqueue(e.conn, payload.Key, overlayMessage{event: &event})
 }

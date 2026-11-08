@@ -8,7 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/agent"
 )
 
-// pig divergence (D86): Pig reads stdin on a goroutine of its own, so the gate reproduces the ordering that Pi's single event loop gives for free; a settle-tail handler of a runtime that reports no window keeps it closed while the handler runs, where Pi reads stdin.
+// pig divergence (D86): Pig reads stdin on a goroutine of its own, so the gate reproduces the ordering that Pi's single event loop gives for free; a settle-tail handler of a runtime that reports no window keeps it closed until the handler outlives subprocess.HandlerWaitQuantum, where Pi reads stdin as soon as the handler waits.
 //
 // rpcSettleGate holds stdin input between a published agent_end and the agent_settled that follows it. Pi's path from agent_end to agent_settled (agent-session.ts:1752-1777 _runAgentPrompt, 1044-1058 _emitAgentSettled) runs in microtasks unless it waits on something real, so no stdin line is read inside it (rpc-mode.ts:355-360,808-810). Pig reads stdin on its own goroutine, so a command sent on seeing agent_end would otherwise be answered before agent_settled.
 //

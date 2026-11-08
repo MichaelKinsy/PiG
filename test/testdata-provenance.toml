@@ -140,8 +140,23 @@ paths = ["durable/core/probe/testdata/*.events", "durable/core/contracttest/bind
 [[input]]
 paths = ["coding/cli/testdata/session-replaced-2860.lisp"]
 
+[[golden]]
+paths = ["internal/yaml12/testdata/v3diff/differences.txt"]
+owner = "pig"
+invariant = "TestParseMatchesTheLibrary"
+why = "The file lists where go.yaml.in/yaml/v3, which PiG links for Piglets and Compose files, reads a document differently from internal/yaml12, which is held to the yaml library Pi uses by TestParseMatchesTheLibrary. Pi has no second parser, so the list is PiG's own: it records the exact documents whose meaning moves if one parser replaces the other."
+
+# The yaml12 differential test reads piglet-corpus.json as its input documents (the Piglet test YAML it harvested); it rewrites only differences.txt.
 [[input]]
-paths = ["coding/cli/testdata/*/go.mod", "coding/cli/testdata/*/LICENSE", "coding/cli/testdata/*/Cargo.toml", "coding/cli/testdata/*/Cargo.lock"]
+paths = ["internal/yaml12/testdata/v3diff/piglet-corpus.json"]
+
+[[input]]
+paths = ["coding/cli/testdata/go.mod", "coding/cli/testdata/*/go.mod", "coding/cli/testdata/*/LICENSE", "coding/cli/testdata/*/Cargo.toml", "coding/cli/testdata/*/Cargo.lock"]
+
+# rpc-settle-wait.lisp is the Lisp SDK realization of the settle-wait fixture program that rpc-settle-wait.py and the -go and -rs directories
+# realize: a test program, not expected output.
+[[input]]
+paths = ["coding/cli/testdata/rpc-settle-wait.lisp"]
 
 [[golden]]
 paths = ["coding/cli/testdata/d82-w7/rpc-usage-pi.json", "coding/cli/testdata/d82-w7/rpc-usage-extension-pi.json"]

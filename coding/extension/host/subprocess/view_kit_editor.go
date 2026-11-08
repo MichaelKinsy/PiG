@@ -57,7 +57,7 @@ func init() {
 
 // editorViewBuilder is buildEditor once EnableEditorViews ran. The widget registered above reaches the builder only through
 // this variable, so a program that never enables editor views does not link tui.Editor or the word-segmentation
-// dictionaries behind it (6.3 MB): the linker keeps a function only when something refers to it.
+// dictionaries behind it (2.8 MB): the linker keeps a function only when something refers to it.
 var editorViewBuilder atomic.Pointer[editorBuildFunc]
 
 type editorBuildFunc func(*viewBuilder, *ViewNode, *frontend.ViewNode) (tui.Component, error)

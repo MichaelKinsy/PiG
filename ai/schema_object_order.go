@@ -15,6 +15,7 @@ import (
 
 	sdkjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // schemaObjectOrder retains object-key enumeration across Go map normalization. JSON Schema's required array is emitted in properties enumeration order by Pi.
@@ -210,7 +211,7 @@ func javascriptObjectKeyOrder(keys []string) []string {
 		}
 		names = append(names, key)
 	}
-	slices.SortFunc(indices, func(a, b indexKey) int { return cmp.Compare(a.index, b.index) })
+	sortx.Func(indices, func(a, b indexKey) int { return cmp.Compare(a.index, b.index) })
 	result := make([]string, 0, len(keys))
 	for _, key := range indices {
 		result = append(result, key.key)

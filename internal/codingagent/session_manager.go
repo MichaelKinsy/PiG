@@ -248,7 +248,7 @@ func (sm *SessionManager) Clone(source *Session, leafID string) (*Session, error
 			if err := emit(headerJSON); err != nil {
 				return err
 			}
-			return source.writeBranchedSession(plan, emit)
+			return source.writeBranchedSession(plan, func(_ SessionEntry, _ *string, parts ...[]byte) error { return emit(parts...) })
 		})
 		if err != nil {
 			return nil, err
@@ -262,8 +262,13 @@ func (sm *SessionManager) Clone(source *Session, leafID string) (*Session, error
 		}
 	} else {
 		records := []FileEntry{header}
-		err = source.writeBranchedSession(plan, func(parts ...[]byte) error {
-			records = append(records, sessionentry.DecodeFileEntry(slices.Concat(parts...)))
+		err = source.writeBranchedSession(plan, func(entry SessionEntry, parent *string, parts ...[]byte) error {
+			raw := slices.Concat(parts...)
+			record := rebasedMessage(entry, parent, raw)
+			if record == nil {
+				record = sessionentry.DecodeFileEntry(raw)
+			}
+			records = append(records, record)
 			return nil
 		})
 		if err != nil {

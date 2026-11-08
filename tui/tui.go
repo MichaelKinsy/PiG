@@ -1451,12 +1451,12 @@ func (w utf8Writer) Write(data []byte) (int, error) {
 	return len(data), nil
 }
 
-// WriteString is Write without the copy io.WriteString makes for a writer that is not an io.StringWriter.
+// WriteString is Write without the copy io.WriteString makes for a writer that is not an io.StringWriter (writeString reuses one).
 func (w utf8Writer) WriteString(data string) (int, error) {
 	if utf8.ValidString(data) {
-		return io.WriteString(w.out, data)
+		return writeString(w.out, data)
 	}
-	if _, err := io.WriteString(w.out, jsstring.StreamText(data)); err != nil {
+	if _, err := writeString(w.out, jsstring.StreamText(data)); err != nil {
 		return 0, err
 	}
 	return len(data), nil

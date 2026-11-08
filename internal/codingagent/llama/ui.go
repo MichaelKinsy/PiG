@@ -14,6 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -519,7 +520,7 @@ func (v *LlamaView) showList(list *tui.FilterableList, title string, before []tu
 // ShowModels mirrors LlamaView.showModels.
 func (v *LlamaView) ShowModels(serverURL string, models []LlamaModelInfo) LlamaManagerAction {
 	sorted := slices.Clone(models)
-	slices.SortStableFunc(sorted, func(left, right LlamaModelInfo) int {
+	sortx.Stable(sorted, func(left, right LlamaModelInfo) int {
 		leftLoaded := left.Status.Value == LlamaModelStatusLoaded
 		rightLoaded := right.Status.Value == LlamaModelStatusLoaded
 		if leftLoaded != rightLoaded {

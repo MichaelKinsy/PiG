@@ -3,6 +3,8 @@ package tui
 import (
 	"cmp"
 	"slices"
+
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 type overlayID uint64
@@ -539,7 +541,7 @@ func (m *overlayModel) snapshot() overlayStateSnapshot {
 		snapshot.Entries = append(snapshot.Entries, copy)
 		snapshot.VisibleAny = snapshot.VisibleAny || copy.visible()
 	}
-	slices.SortStableFunc(snapshot.Entries, func(a, b overlayEntry) int {
+	sortx.Stable(snapshot.Entries, func(a, b overlayEntry) int {
 		return cmp.Compare(a.focusOrder, b.focusOrder)
 	})
 	return snapshot

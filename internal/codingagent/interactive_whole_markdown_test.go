@@ -49,13 +49,18 @@ func TestWholeMarkdownBlocksRenderBytes(t *testing.T) {
 	}
 	// The /hotkeys text is the host's: upstream's handleHotkeysCommand adds " (Ctrl+Enter on Windows Terminal)" to a row on win32 only, and Windows
 	// keybindings (native Windows and WSL) change the keys, so its rows have one hash on Windows (not taken here), one on WSL, with the Windows keys and no
-	// Ctrl+Enter row, and one elsewhere; the Linux one was taken on Linux and the WSL one on Linux with WSL_DISTRO_NAME set.
+	// Ctrl+Enter row, one on macOS, where keys display Alt as Option (formatKeyText, keybinding-hints.ts), and one elsewhere; the Linux one was taken on Linux
+	// and the WSL one on Linux with WSL_DISTRO_NAME set. The macOS one is what the macOS runner printed; it is also what Linux computes with the Option
+	// display forced.
 	if runtime.GOOS == "windows" {
 		return
 	}
 	want := "6c6e446dd091ddae67cc390a41ffa268a9c7418088c7a9c5274abd08eb345e76"
-	if tui.HostKeybindingPlatform() == tui.KeybindingPlatformLinuxWSL {
+	switch {
+	case tui.HostKeybindingPlatform() == tui.KeybindingPlatformLinuxWSL:
 		want = "4c4149c4b245033e7f8446c0d683ee902e7528c3d75315f52d00d4015faed4fc"
+	case runtime.GOOS == "darwin":
+		want = "ab2af2a15656f36e688c7975b31fdf80fd6c781d76ab4bf3b96223340b4cee88"
 	}
 	if got := hex.EncodeToString(hash.Sum(nil)); got != want {
 		t.Errorf("rows hash %s, want %s", got, want)

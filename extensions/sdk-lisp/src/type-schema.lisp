@@ -133,9 +133,14 @@ JSON fails, with Pi's message. A Lisp integer is a JavaScript number."
 ;;; ---------------------------------------------------------------- JSON
 
 (defun ts-holds-big-int (value)
-  (cond ((big-int-p value) t)
-        ((hash-table-p value) (loop for member being the hash-values of value thereis (ts-holds-big-int member)))
-        ((ts-array-p value) (some #'ts-holds-big-int value))))
+  "Whether VALUE holds a bigint anywhere. The members are walked with a stack of the function's own: a value nested thousands of levels deep does not depend on the thread's control stack."
+  (let ((stack (list value)))
+    (loop while stack
+          do (let ((item (pop stack)))
+               (cond ((big-int-p item) (return-from ts-holds-big-int t))
+                     ((hash-table-p item) (maphash (lambda (k member) (declare (ignore k)) (push member stack)) item))
+                     ((ts-array-p item) (loop for member across item do (push member stack))))))
+    nil))
 
 (defun type-to-json (value)
   "JSON.stringify of a schema (any value of hash-tables, vectors, strings, numbers and the JSON constants). A schema that holds a bigint

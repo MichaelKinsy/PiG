@@ -717,6 +717,10 @@ Source: <https://github.com/libuv/libuv/blob/v1.51.0/src/win/process.c>
 
 `extensions/sdk/json/` derives from the Go Authors' Go 1.27.1 `src/encoding/json` implementation, with lossless UTF-16 surrogate handling for the extension wire. It retains the Go Authors' copyright headers and BSD-3-Clause license in `extensions/sdk/json/LICENSE`. `extensions/sdk/json/README.md` records the source files and local modifications. The SDK source bundle carries this license.
 
+## Go sort
+
+`internal/sortx/zsortfunc.go` is the Go Authors' Go 1.27.3 `src/sort/zsortfunc.go` with the `lessSwap`, `sortedHint`, `xorshift` and `nextPowerOfTwo` declarations of `src/sort/sort.go` that it needs, under the package name `sortx`. It retains the Go Authors' copyright header, under the BSD-3-Clause license in `LICENSES/BSD-3-Clause.txt`.
+
 ## Unicode 17.0.0 character data
 
 The generated `tui/widthx/unicode_tables.go` derives character properties and emoji sequences from the Unicode Character Database and Unicode emoji data, pinned in `tui/widthx/gen/inputs.sha256`. Copyright © 1991-2026 Unicode, Inc. Used under Unicode License V3, reproduced in `LICENSES/Unicode-3.0.txt` (source: https://www.unicode.org/license.txt). This data license supplements the MIT license for the Go implementation.
@@ -781,6 +785,15 @@ Distributed files: `third_party/semver/`, a package of the root module. The dire
 
 - Copyright (C) 2014-2019 Matt Butcher and Matt Farina.
 - License: MIT, in `third_party/semver/LICENSE.txt` and `LICENSES/MIT.txt`.
+
+## golang.org/x/text v0.43.0 (collation, PiG fork)
+
+Source: <https://github.com/golang/text/tree/v0.43.0>
+
+Distributed files: `third_party/collate/`, a package of the root module. It holds the algorithm of `collate` and `internal/colltab` of v0.43.0 for the root locale and the default options, and the root part of the tables of `collate/tables.go`, with the changes listed in `third_party/collate/FORK.md` (the tables of the other locales are not copied).
+
+- Copyright 2009 The Go Authors.
+- License: BSD-3-Clause, in `third_party/collate/LICENSE` and `LICENSES/BSD-3-Clause.txt`.
 
 ## evanw/esbuild v0.28.2 (plugin builds)
 

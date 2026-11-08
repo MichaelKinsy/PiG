@@ -76,13 +76,18 @@ type cliRuntimeBuilder struct {
 	settingsDiagnostics []codingagent.AgentSessionRuntimeDiagnostic
 	startupUIOptions    codingagent.StartupUIOptions
 	trustStore          *codingagent.ProjectTrustStore
-	trustByCWD          map[string]bool
+	// trustMu guards trustByCWD: a --listen server's concurrent builds read and write it (pig additive (D232)).
+	trustMu    sync.Mutex
+	trustByCWD map[string]bool
 	// stageExtensionSDKs stages the embedded extension SDKs and returns the failure to report (stageExtensionSDKsFor). stageSDKs runs it once per
 	// process, before the first extension load that starts an extension: a run that loads none stages nothing.
 	stageExtensionSDKs func() error
 	stageSDKs          sync.Once
 	// extensionFactories are MainOptions.ExtensionFactories, the compiled-in extensions the program's main adds after the built-in ones (main.ts:575).
 	extensionFactories []extension.InlineExtension
+	// buildMu and cellRegistry are set only by a --listen server started with --listen-share-extensions (pig additive (D232)): the mutex that serializes its builds, and the registry its Hosts share cell processes through. A default --listen server builds its sessions concurrently.
+	cellRegistry *subprocess.CellRegistry
+	buildMu      *sync.Mutex
 }
 
 // cliBuildInput selects one build.
@@ -197,7 +202,9 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 		}
 		projectTrusted = saved == nil || *saved
 	}
+	b.trustMu.Lock()
 	cached, hasCached := b.trustByCWD[cwd]
+	b.trustMu.Unlock()
 	if flags.ProjectTrustOverride == nil && hasTrustResources && hasCached {
 		projectTrusted = cached
 	}
@@ -256,6 +263,8 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 	if startupExtensions == nil {
 		startupExtensions = &startupExtensionSet{}
 	}
+	// pig additive (D232): with --listen-share-extensions every build of a --listen server creates its extension Host on the server's cell registry; without it the registry is nil and the Host keeps its own processes.
+	startupExtensions.cells = b.cellRegistry
 	build.SourceResolver = newStartupExtensionSourceResolver(nil)
 	resolver := build.SourceResolver
 	failed := true
@@ -301,7 +310,7 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 		if extensionset.HasInline(b.extensionFactories) {
 			if startupExtensions.host == nil {
 				// The inline extensions register against the runtime of the host the final pass adopts.
-				startupExtensions.host, startupExtensions.bridge = newSubprocessExtensionHost(cwd, b.mode.extensionMode(), services.Registry().ModelRegistry)
+				startupExtensions.host, startupExtensions.bridge = newSubprocessExtensionHost(cwd, b.mode.extensionMode(), services.Registry().ModelRegistry, startupExtensions.cells)
 			}
 			preTrustInline, inlineErrs = (&extensionSetLoader{CWD: cwd, Settings: services.SettingsManager(), Flags: resourceFlags, Inline: b.extensionFactories, Runtime: startupExtensions.host.Runtime(), EventBus: inlineBus}).loadInlineExtensions()
 			// Non-nil even when every factory failed: the final pass runs no factory again (resource-loader.ts:772-773).
@@ -348,7 +357,9 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 		if err != nil {
 			return nil, cliCLIError("resolve project trust: %v", err)
 		}
+		b.trustMu.Lock()
 		b.trustByCWD[cwd] = projectTrusted
+		b.trustMu.Unlock()
 		services.SettingsManager().SetProjectTrusted(projectTrusted)
 		settings = services.Settings()
 		trace.Mark("trust-resolved")

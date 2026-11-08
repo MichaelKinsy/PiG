@@ -19,17 +19,17 @@ package main
 
 import (
 	"bytes"
-	"compress/gzip"
 	_ "embed"
 	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/zstdblob"
 )
 
 //go:embed legacy.txt
@@ -317,7 +317,7 @@ func foldInto(dir, changelogPath, legacyPath, recordsPath, version string, fragm
 	if err := os.WriteFile(changelogPath, []byte(out), 0o644); err != nil {
 		return err
 	}
-	if err := os.WriteFile(changelogPath+".gz", gzipChangelog([]byte(out)), 0o644); err != nil {
+	if err := writeChangelogFrame(changelogPath, []byte(out)); err != nil {
 		return err
 	}
 	folded := map[string]bool{}
@@ -376,7 +376,7 @@ func run(args []string, stdout *os.File) error {
 		return fmt.Errorf("%s", strings.Join(msg, "\n"))
 	}
 	if check {
-		if err := checkChangelogGzip("CHANGELOG.md"); err != nil {
+		if err := checkChangelogFrame("CHANGELOG.md"); err != nil {
 			return err
 		}
 	}
@@ -397,33 +397,32 @@ func main() {
 	}
 }
 
-// gzipChangelog is the embedded form of CHANGELOG.md (embed.go): best compression, no name or mtime, so it is deterministic.
-func gzipChangelog(text []byte) []byte {
-	var buf bytes.Buffer
-	w, _ := gzip.NewWriterLevel(&buf, gzip.BestCompression)
-	_, _ = w.Write(text)
-	_ = w.Close()
-	return buf.Bytes()
+// writeChangelogFrame writes the embedded form of CHANGELOG.md (embed.go), one zstd frame, beside path. A frame that already decodes to text stays as it is.
+func writeChangelogFrame(path string, text []byte) error {
+	existing, err := os.ReadFile(path + ".zst")
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	return os.WriteFile(path+".zst", zstdblob.Reuse(existing, text), 0o644)
 }
 
-// checkChangelogGzip fails when path+".gz", which the binary embeds, does not inflate to exactly path.
-func checkChangelogGzip(path string) error {
-	fix := "run: gzip -9nc " + path + " > " + path + ".gz"
+// checkChangelogFrame fails when path+".zst", which the binary embeds, does not decode to exactly path.
+func checkChangelogFrame(path string) error {
+	fix := "run: go run ./automation/gen/zstdfile " + path + " " + path + ".zst"
 	want, err := os.ReadFile(path)
 	if err != nil {
 		return err
 	}
-	data, err := os.ReadFile(path + ".gz")
+	data, err := os.ReadFile(path + ".zst")
 	if err != nil {
-		return fmt.Errorf("%s.gz: %w; %s", path, err, fix)
+		return fmt.Errorf("%s.zst: %w; %s", path, err, fix)
 	}
-	r, err := gzip.NewReader(bytes.NewReader(data))
+	got, err := zstdblob.Decode(data)
 	if err != nil {
-		return fmt.Errorf("%s.gz is not gzip: %w; %s", path, err, fix)
+		return fmt.Errorf("%s.zst is not a zstd frame: %w; %s", path, err, fix)
 	}
-	got, err := io.ReadAll(r)
-	if err != nil || !bytes.Equal(got, want) {
-		return fmt.Errorf("%s.gz does not inflate to exactly %s; %s", path, path, fix)
+	if !bytes.Equal(got, want) {
+		return fmt.Errorf("%s.zst does not decode to exactly %s; %s", path, path, fix)
 	}
 	return nil
 }

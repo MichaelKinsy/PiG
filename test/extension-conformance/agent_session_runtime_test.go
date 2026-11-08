@@ -1,7 +1,6 @@
 package extensionconformance
 
 import (
-	_ "embed"
 	"encoding/json"
 	"os"
 	"testing"
@@ -11,14 +10,10 @@ import (
 )
 
 // agentSessionRuntimeProbe is the extension every session of the agent_session_runtime row loads (testdata/agent-session-runtime.mjs is the Node script that defines the expectation).
-//
-//go:embed testdata/agent-session-runtime-probe.mjs
-var agentSessionRuntimeProbe string
+var agentSessionRuntimeProbe = testdataString("agent-session-runtime-probe.mjs")
 
 // sessionGraphAgentSessionRuntimeWant is the report of Pi's own createAgentSessionRuntime and AgentSessionRuntime (the Node row).
-//
-//go:embed testdata/session-graph-agent-session-runtime.json
-var sessionGraphAgentSessionRuntimeWant string
+var sessionGraphAgentSessionRuntimeWant = testdataString("session-graph-agent-session-runtime.json")
 
 // createAgentSessionRuntime and AgentSessionRuntime (agent-session-runtime.ts) for every SDK, against the report of Pi's own run (the Node row): a factory that builds cwd-bound services and a session, and every replacement method (newSession with a parent and a setup, fork before and at an entry, switchSession, importFromJsonl) with the session_before_switch, session_before_fork and session_shutdown events a handler sees, a handler that cancels, the rebind and before-invalidate callbacks, refreshContext after a setup, and dispose.
 func TestSessionGraphAgentSessionRuntimeAcrossSDKs(t *testing.T) {
