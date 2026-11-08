@@ -62,13 +62,25 @@ type Admission struct {
 }
 
 var (
-	cookieSyntax = lazyregexp.New(`^[\x21-\x7e]{1,4096}$`)
-	sessionID    = lazyregexp.New(`^[\w-]{1,128}$`)
-	guestCookie  = lazyregexp.New(`^p2_guest_\d+=`)
-	hashToken    = lazyregexp.New(`^#[a-f0-9]{64}$`)
-	joinPath     = lazyregexp.New(`^/join/([\w-]{43})$`)
-	serverID     = lazyregexp.New(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+	sessionID   = lazyregexp.New(`^[\w-]{1,128}$`)
+	guestCookie = lazyregexp.New(`^p2_guest_\d+=`)
+	hashToken   = lazyregexp.New(`^#[a-f0-9]{64}$`)
+	joinPath    = lazyregexp.New(`^/join/([\w-]{43})$`)
+	serverID    = lazyregexp.New(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 )
+
+// validCookie is `^[\x21-\x7e]{1,4096}$`.
+func validCookie(cookie string) bool {
+	if len(cookie) == 0 || len(cookie) > 4096 {
+		return false
+	}
+	for i := 0; i < len(cookie); i++ {
+		if cookie[i] < 0x21 || cookie[i] > 0x7e {
+			return false
+		}
+	}
+	return true
+}
 
 // ReadConfig reads config.json from directory; a missing file is an empty config.
 func ReadConfig(directory string) (Config, error) {
@@ -107,7 +119,7 @@ func ReadConfig(directory string) (Config, error) {
 		var guest map[string]any
 		if json.Unmarshal(entry.Guest, &guest) == nil && guest != nil {
 			if cookie, ok := guest["cookie"].(string); ok {
-				if !cookieSyntax.MatchString(cookie) {
+				if !validCookie(cookie) {
 					return Config{}, bad
 				}
 				connection.Guest = &Guest{Cookie: cookie}
@@ -172,7 +184,7 @@ var httpClient = &http.Client{
 	CheckRedirect: func(*http.Request, []*http.Request) error { return errors.New("redirect refused") },
 }
 
-func fixedRequest(ctx context.Context, method string, target *url.URL, path string, headers http.Header, body []byte) (*http.Response, error) {
+func fixedRequest(client *http.Client, ctx context.Context, method string, target *url.URL, path string, headers http.Header, body []byte) (*http.Response, error) {
 	next, err := target.Parse(path)
 	if err != nil {
 		return nil, err
@@ -188,7 +200,10 @@ func fixedRequest(ctx context.Context, method string, target *url.URL, path stri
 	for name, values := range headers {
 		request.Header[name] = values
 	}
-	return httpClient.Do(request)
+	if client == nil {
+		client = httpClient
+	}
+	return client.Do(request)
 }
 
 func setCookies(response *http.Response) []string {
@@ -229,11 +244,11 @@ func OwnerLinkToken(value string, origin *url.URL) (string, error) {
 }
 
 // ClaimOwner redeems an owner link's token (POST /owner/claim).
-func ClaimOwner(ctx context.Context, target *url.URL, token string, credentials Credentials) (Credentials, error) {
+func ClaimOwner(client *http.Client, ctx context.Context, target *url.URL, token string, credentials Credentials) (Credentials, error) {
 	body, _ := json.Marshal(map[string]string{"token": token})
 	headers := ConnectionHeaders(target, credentials)
 	headers.Set("Content-Type", "application/json")
-	response, err := fixedRequest(ctx, http.MethodPost, target, "/owner/claim", headers, body)
+	response, err := fixedRequest(client, ctx, http.MethodPost, target, "/owner/claim", headers, body)
 	if err != nil {
 		return Credentials{}, err
 	}
@@ -300,7 +315,7 @@ func readLimited(response *http.Response, limit int) (string, error) {
 }
 
 // RedeemJoin redeems a share link (POST /join): exact Origin, no redirects, bounded body; keeps an existing guest identity.
-func RedeemJoin(ctx context.Context, target *url.URL, token, name string, guest *Guest) (Guest, error) {
+func RedeemJoin(client *http.Client, ctx context.Context, target *url.URL, token, name string, guest *Guest) (Guest, error) {
 	credentials := Credentials{}
 	if guest != nil {
 		credentials.Cookie = guest.Cookie
@@ -308,7 +323,7 @@ func RedeemJoin(ctx context.Context, target *url.URL, token, name string, guest 
 	body, _ := json.Marshal(map[string]string{"token": token, "name": name})
 	headers := ConnectionHeaders(target, credentials)
 	headers.Set("Content-Type", "application/json")
-	response, err := fixedRequest(ctx, http.MethodPost, target, "/join", headers, body)
+	response, err := fixedRequest(client, ctx, http.MethodPost, target, "/join", headers, body)
 	if err != nil {
 		return Guest{}, err
 	}
@@ -346,15 +361,15 @@ func RedeemJoin(ctx context.Context, target *url.URL, token, name string, guest 
 	if cookie == "" && guest != nil {
 		cookie = guest.Cookie
 	}
-	if cookie == "" || !cookieSyntax.MatchString(cookie) {
+	if cookie == "" || !validCookie(cookie) {
 		return Guest{}, errors.New("Join did not return a guest cookie")
 	}
 	return Guest{Cookie: cookie, Session: session}, nil
 }
 
 // CheckGuest is whether a guest cookie is still admitted: `/__p2_tui` serves admitted guests only (401/403 when it ended).
-func CheckGuest(ctx context.Context, target *url.URL, guest Guest) (bool, error) {
-	response, err := fixedRequest(ctx, http.MethodHead, target, "/__p2_tui", ConnectionHeaders(target, Credentials{Cookie: guest.Cookie}), nil)
+func CheckGuest(client *http.Client, ctx context.Context, target *url.URL, guest Guest) (bool, error) {
+	response, err := fixedRequest(client, ctx, http.MethodHead, target, "/__p2_tui", ConnectionHeaders(target, Credentials{Cookie: guest.Cookie}), nil)
 	if err != nil {
 		return false, err
 	}
@@ -377,6 +392,8 @@ type AuthOptions struct {
 	URL       *url.URL
 	OwnerLink string
 	JoinLink  string
+	// HTTP is the client of the sign-in requests (a test's); nil refuses redirects and times out after 10 s.
+	HTTP *http.Client
 }
 
 // Authenticate is the sign-in (section 4.1). An expired or remotely revoked cookie leads back to sign-in, not an endless unauthenticated reconnect.
@@ -402,7 +419,7 @@ func Authenticate(ctx context.Context, options AuthOptions, config *Config, prom
 				return Admission{}, err
 			}
 		}
-		guest, err := RedeemJoin(ctx, target, token, name, stored.Guest)
+		guest, err := RedeemJoin(options.HTTP, ctx, target, token, name, stored.Guest)
 		if err != nil {
 			return Admission{}, err
 		}
@@ -425,7 +442,7 @@ func Authenticate(ctx context.Context, options AuthOptions, config *Config, prom
 		if loopback {
 			path = "/__p2_dev"
 		}
-		response, err := fixedRequest(ctx, http.MethodGet, target, path, ConnectionHeaders(target, credentials), nil)
+		response, err := fixedRequest(options.HTTP, ctx, http.MethodGet, target, path, ConnectionHeaders(target, credentials), nil)
 		if err != nil {
 			return Admission{}, err
 		}
@@ -449,7 +466,7 @@ func Authenticate(ctx context.Context, options AuthOptions, config *Config, prom
 		}
 	}
 	if options.OwnerLink == "" && !loopback && stored.Guest != nil {
-		ok, err := CheckGuest(ctx, target, *stored.Guest)
+		ok, err := CheckGuest(options.HTTP, ctx, target, *stored.Guest)
 		if err != nil {
 			return Admission{}, err
 		}
@@ -475,7 +492,7 @@ func Authenticate(ctx context.Context, options AuthOptions, config *Config, prom
 	if err != nil {
 		return Admission{}, err
 	}
-	credentials, err = ClaimOwner(ctx, target, token, credentials)
+	credentials, err = ClaimOwner(options.HTTP, ctx, target, token, credentials)
 	if err != nil {
 		return Admission{}, err
 	}
