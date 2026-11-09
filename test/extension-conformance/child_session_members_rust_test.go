@@ -281,15 +281,16 @@ func TestChildAgentSessionMembersRustAbortBash(t *testing.T) {
 // TestChildAgentSessionMembersRustAbortNotHeld: with one awaited member held in the host for 3 s, an abort_bash called 0.4 s later from another thread is served by the host before the member is released (heldProbe, child_session_held_test.go), isolated and packed with a sibling. A member sent over the synchronous childSession.op holds it.
 func TestChildAgentSessionMembersRustAbortNotHeld(t *testing.T) {
 	for _, isolation := range []string{"strict", "shared-ok"} {
-		for _, member := range []string{"cycleModel", "executeBash", "setModel"} {
-			t.Run(isolation+"/"+member, func(t *testing.T) {
-				probe := newHeldProbe(member)
+		for _, held := range heldCases() {
+			member := held.member
+			t.Run(isolation+"/"+held.name, func(t *testing.T) {
+				probe := newHeldProbe(member, held.delay)
 				ext := loadChildMembersRustWith(t, isolation, probe.wrap)
 				probe.start(3 * time.Second)
 				if _, err := ext.Tools["child_order_probe"].Definition.Execute(t.Context(), "call", json.RawMessage(`{"first":"`+member+`"}`), nil); err != nil {
 					t.Fatal(err)
 				}
-				probe.check(t, "abortBash")
+				probe.check(t)
 			})
 		}
 	}

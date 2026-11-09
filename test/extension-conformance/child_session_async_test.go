@@ -68,13 +68,14 @@ func TestChildAgentSessionAwaitedMemberCancelledByCtx(t *testing.T) {
 // TestChildAgentSessionAbortNotHeldBehindAwaitedMember: with one awaited member held in the host for 3 s, an AbortBash sent 0.4 s later from another goroutine is served by the host before the member is released (heldProbe, child_session_held_test.go). Every member Pi declares `async` that reaches childSession.op is listed (steer, followUp and prompt have calls of their own).
 func TestChildAgentSessionAbortNotHeldBehindAwaitedMember(t *testing.T) {
 	for _, placement := range []string{"fused", "isolated"} {
-		for _, member := range []string{"cycleModel", "executeBash", "setModel"} {
-			t.Run(placement+"/"+member, func(t *testing.T) {
-				probe := newHeldProbe(member)
+		for _, held := range heldCases() {
+			member := held.member
+			t.Run(placement+"/"+held.name, func(t *testing.T) {
+				probe := newHeldProbe(member, held.delay)
 				ext := loadChildProbeHost(t, placement, probe.wrap)
 				probe.start(3 * time.Second)
 				runChildProbe(t, ext, "child_order_probe", `{"first":"`+member+`"}`)
-				probe.check(t, "abortBash")
+				probe.check(t)
 			})
 		}
 	}

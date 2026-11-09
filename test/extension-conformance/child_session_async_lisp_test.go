@@ -63,13 +63,14 @@ func TestChildAgentSessionAbortEndsAwaitedMemberLisp(t *testing.T) {
 // TestChildAgentSessionAbortNotHeldBehindAwaitedMemberLisp: with one awaited member held in the host for 3 s, an abort-bash sent 0.4 s later from another thread is served by the host before the member is released (heldProbe, child_session_held_test.go), isolated and packed with a sibling. Every member Pi declares `async` that reaches childSession.op and can be held without a run is listed.
 func TestChildAgentSessionAbortNotHeldBehindAwaitedMemberLisp(t *testing.T) {
 	for _, isolation := range []string{"strict", "shared-ok"} {
-		for _, member := range []string{"cycleModel", "executeBash", "setModel"} {
-			t.Run(isolation+"/"+member, func(t *testing.T) {
-				probe := newHeldProbe(member)
+		for _, held := range heldCases() {
+			member := held.member
+			t.Run(isolation+"/"+held.name, func(t *testing.T) {
+				probe := newHeldProbe(member, held.delay)
 				ext, _ := loadChildAsyncLispIn(t, isolation, probe.wrap)
 				probe.start(3 * time.Second)
 				runChildAsyncLispProbe(t, ext, "child_order_probe", `{"first":"`+member+`"}`)
-				probe.check(t, "abortBash")
+				probe.check(t)
 			})
 		}
 	}
