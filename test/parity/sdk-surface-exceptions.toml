@@ -21,11 +21,6 @@ sdks = ["node", "go", "rust", "python", "lisp"]
 reason = "The theme snapshot carries sourcePath but no SourceInfo. Requires theme resource provenance publication."
 
 [[exception]]
-key = "user_bash return.operations"
-sdks = ["node", "go", "rust", "python", "lisp"]
-reason = "The wire has no host-invoked streaming BashOperations executor callback. Returning a completed result works; operations requires callback/stream ownership."
-
-[[exception]]
 key = "tool render context.lastComponent"
 sdks = ["go", "rust", "python", "lisp"]
 reason = "Native renderers return lines rather than Components (D56), so no previous component is returned. Card state persists separately in context.state/State."

@@ -25,11 +25,11 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Runtime | implemented | stand-in/partial | missing (all with a reviewed exception) |
 |---|---|---|---|
-| Node runtime | 492 | 27 | 10 |
-| Go | 494 | 26 | 9 |
-| Rust | 494 | 26 | 9 |
-| Python | 494 | 26 | 9 |
-| Lisp | 501 | 19 | 9 |
+| Node runtime | 493 | 27 | 9 |
+| Go | 495 | 26 | 8 |
+| Rust | 495 | 26 | 8 |
+| Python | 495 | 26 | 8 |
+| Lisp | 502 | 19 | 8 |
 
 35 PiG-only surfaces:
 
@@ -866,7 +866,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
 |---|---|---|---|---|---|---|
-| `user_bash return.operations` | `UserBashEventResult.operations` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
+| `user_bash return.operations` | `UserBashEventResult.operations` | implemented `read:result.operations` | implemented `BashOperations` | implemented `Context::bash_operations` | implemented `BashOperations` | implemented `pig:make-bash-operations` |
 | `user_bash return.result` | `UserBashEventResult.result` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
@@ -3110,7 +3110,6 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi.sendUserMessage(options.expandPromptTemplates)` | Node runtime, Go, Rust, Python, Lisp | The host SendUserMessageOptions carries deliverAs only; expandPromptTemplates would be dropped. Requires host prompt-expansion control. |
 | `withSession ctx.sendUserMessage(options.expandPromptTemplates)` | Node runtime, Go, Rust, Python, Lisp | The host SendUserMessageOptions carries deliverAs only; expandPromptTemplates would be dropped. Requires host prompt-expansion control. |
 | `ctx.ui.theme.sourceInfo` | Node runtime, Go, Rust, Python, Lisp | The theme snapshot carries sourcePath but no SourceInfo. Requires theme resource provenance publication. |
-| `user_bash return.operations` | Node runtime, Go, Rust, Python, Lisp | The wire has no host-invoked streaming BashOperations executor callback. Returning a completed result works; operations requires callback/stream ownership. |
 | `tool render context.lastComponent` | Go, Rust, Python, Lisp | Native renderers return lines rather than Components (D56), so no previous component is returned. Card state persists separately in context.state/State. |
 | `provider.streamSimple` | Node runtime, Go, Rust, Python, Lisp | The host cannot invoke an extension-served provider EventStream. Requires provider callback and streaming transport, not the existing host-served modelStream direction. |
 | `provider.refreshModels` | Node runtime, Go, Rust, Python, Lisp | The provider bridge has no host-to-extension refreshModels request or publication callback handles. |

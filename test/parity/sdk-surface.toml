@@ -450,11 +450,12 @@ wire = "extension.InputEventResultTransform.images"
 
 [[row]]
 key = "user_bash return.operations"
-node = "-"
-go = "-"
-rust = "-"
-python = "-"
-lisp = "-"
+node = "read:result.operations"
+go = "BashOperations"
+rust = "Context::bash_operations"
+python = "BashOperations"
+lisp = "pig:make-bash-operations"
+wire = "literal:operations"
 
 # ── ctx (ExtensionContext) ─────────────────────────────────────────────────
 
