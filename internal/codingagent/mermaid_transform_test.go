@@ -5,6 +5,7 @@ package codingagent
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -77,6 +78,28 @@ func TestMermaidTransformMatchesUpstream(t *testing.T) {
 // hyperlink capability. The goldens carry the palette they were generated
 // with; a theme change that moves it needs a regeneration.
 func TestMermaidThemedTransformMatchesUpstream(t *testing.T) {
+	checkMermaidThemedGoldens(t)
+}
+
+// TestMermaidThemedTransformIgnoresTheActiveTheme runs the themed goldens with each theme and color depth another test can leave active
+// (the process-global theme is shared by every test in the package, and a test that selects the light theme, or a theme by name in a 256-color
+// environment, leaves it selected for whichever test runs next under -shuffle or a narrower -run). The goldens name their own palette and color
+// depth, so the result must not depend on which theme was active.
+func TestMermaidThemedTransformIgnoresTheActiveTheme(t *testing.T) {
+	for _, name := range []string{"dark", "light"} {
+		for _, truecolor := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/truecolor=%v", name, truecolor), func(t *testing.T) {
+				restoreStartupTheme(t)
+				tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: truecolor})
+				tui.SetThemeByName(name)
+				checkMermaidThemedGoldens(t)
+			})
+		}
+	}
+}
+
+func checkMermaidThemedGoldens(t *testing.T) {
+	t.Helper()
 	f, err := os.Open("testdata/mermaid-transform-themed-golden.jsonl")
 	if err != nil {
 		t.Fatalf("open goldens: %v", err)
