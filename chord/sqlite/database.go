@@ -83,3 +83,11 @@ type CommitTokener interface {
 	AttachCommitToken() error
 	CommitToken() (token CommitToken, ok bool)
 }
+
+// RowReader is implemented by an executor that can hand the values of each result row to a callback as the row is
+// read, in column order, without building a map per row. The slice is reused for the next row, and a string or byte
+// slice in it is the callback's to keep. The callback must not call the database.
+// pig additive (D104): row reading without per-row maps has no Pi counterpart.
+type RowReader interface {
+	EachRow(sql string, params []SqliteValue, fn func(values []SqliteValue) error) error
+}

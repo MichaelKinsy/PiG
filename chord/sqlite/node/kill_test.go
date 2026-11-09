@@ -18,8 +18,8 @@ const killChildEnv = "PIG_SQLITE_KILL_CHILD"
 const killRowsPerTransaction = 20
 
 // TestKilledWriterLeavesAnIntactDatabase kills a process that commits transactions in a loop and checks what a reader
-// finds. A transaction that committed (the child had printed its number) is there whole, the transaction that was
-// running is there whole or not at all, and the file passes integrity_check. This is the crash behaviour of WAL with
+// finds. A transaction that committed (the child had printed its number) is there whole, the transactions that were
+// running or committed after the last number the parent read are there whole or not at all, and the file passes integrity_check. This is the crash behaviour of WAL with
 // synchronous = NORMAL against a process kill; a power cut can lose the last transactions and is not tested.
 func TestKilledWriterLeavesAnIntactDatabase(t *testing.T) {
 	if path := os.Getenv(killChildEnv); path != "" {
@@ -67,8 +67,9 @@ func TestKilledWriterLeavesAnIntactDatabase(t *testing.T) {
 			t.Fatal(err)
 		}
 		rows := counted["rows"].(int64)
-		if rows%killRowsPerTransaction != 0 || rows < int64(acknowledged*killRowsPerTransaction) ||
-			rows > int64((acknowledged+1)*killRowsPerTransaction) || counted["distinct_rows"] != rows {
+		// The child keeps committing while the parent reads its acknowledgement and kills it, so any number of
+		// transactions past the acknowledged one may have committed whole: no upper bound is a property of the database.
+		if rows%killRowsPerTransaction != 0 || rows < int64(acknowledged*killRowsPerTransaction) || counted["distinct_rows"] != rows {
 			t.Fatalf("round %d: %d rows after %d acknowledged transactions of %d rows", round, rows, acknowledged,
 				killRowsPerTransaction)
 		}
