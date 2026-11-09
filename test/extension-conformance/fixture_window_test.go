@@ -11,10 +11,13 @@ import (
 
 // A harness's first use of an SDK fixture compiles it (a cold Cargo target takes 20 to 60 s on a CI runner, on Windows 30 s and more). A bound that
 // starts before that build spends its time on the compiler: TestModelEventPayloadsMatchAcrossSDKs/subprocess-rust started a 30 s context, built the
-// fixture in test.make, and emitted its events with the context already expired. A handler error is routed to the runner's error listeners and not
-// returned, so Emit reported success, the events were never delivered, and the test waited out its whole 120 s budget for them.
+// fixture in test.make, and emitted its events with the context already expired. Runner.Emit does not return an error for that: recordHandlerError drops
+// a handler error that is the dispatch context's own cancellation, so Emit reported success, the events were never delivered, and the test waited out
+// its whole 120 s budget for them.
 //
-// So a context with a deadline starts after the harness is built, never before it in the same block.
+// So a context with a deadline starts after the harness is built, never before it in the same block. This guard is a narrow tripwire: it sees only
+// that shape, a context assigned in a block and a make or build call in a later statement of the same block. A context that reaches a test any other way
+// (a helper, a parent block, a field) is not seen; TestModelEventPayloadsMatchAcrossSDKs fails at once if its emit context ended, whatever the cause.
 func TestDeadlineContextsStartAfterTheHarnessBuildsItsFixtures(t *testing.T) {
 	entries, err := os.ReadDir(".")
 	if err != nil {

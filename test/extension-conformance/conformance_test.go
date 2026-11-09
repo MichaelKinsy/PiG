@@ -516,6 +516,9 @@ func TestModelEventPayloadsMatchAcrossSDKs(t *testing.T) {
 					t.Fatalf("emit %T: %v", event, err)
 				}
 			}
+			if err := ctx.Err(); err != nil {
+				t.Fatalf("the emit context ended before every event was delivered: %v", err)
+			}
 			waitFor(t, func() bool { return len(h.ui.Recorded()) >= len(want) })
 			if got := h.ui.Recorded(); !reflect.DeepEqual(got, want) {
 				t.Fatalf("event payloads = %#v, want %#v", got, want)
