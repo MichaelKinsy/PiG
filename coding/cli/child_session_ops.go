@@ -16,16 +16,15 @@ import (
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
-// opArgs decodes the argument object of a member into T; no argument is T's zero value.
-func opArgs[T any](args json.RawMessage) (T, error) {
-	var value T
+// opArgs runs decode over the argument object of a member; no argument leaves the destination at its zero value. The caller's closure decodes into its own concrete struct, so no destination is generic or an interface.
+func opArgs(args json.RawMessage, decode func(json.RawMessage) error) error {
 	if len(args) == 0 || string(args) == "null" {
-		return value, nil
+		return nil
 	}
-	if err := json.Unmarshal(args, &value); err != nil {
-		return value, fmt.Errorf("decode arguments: %w", err)
+	if err := decode(args); err != nil {
+		return fmt.Errorf("decode arguments: %w", err)
 	}
-	return value, nil
+	return nil
 }
 
 // opScopedModel is one entry of scopedModels on the wire: a Pi Model object and the optional thinking level.
@@ -131,9 +130,10 @@ func (c *childSession) Op(ctx context.Context, op string, args json.RawMessage) 
 		}
 		return opMarshal(out)
 	case "getToolDefinition":
-		p, err := opArgs[struct {
+		var p struct {
 			Name string `json:"name"`
-		}](args)
+		}
+		err := opArgs(args, func(raw json.RawMessage) error { return json.Unmarshal(raw, &p) })
 		if err != nil {
 			return nil, err
 		}
@@ -163,18 +163,20 @@ func (c *childSession) Op(ctx context.Context, op string, args json.RawMessage) 
 	case "cacheWarmingStatus":
 		return opMarshal(s.CacheWarmingStatus())
 	case "hasExtensionHandlers":
-		p, err := opArgs[struct {
+		var p struct {
 			EventType string `json:"eventType"`
-		}](args)
+		}
+		err := opArgs(args, func(raw json.RawMessage) error { return json.Unmarshal(raw, &p) })
 		if err != nil {
 			return nil, err
 		}
 		return opMarshal(s.HasExtensionHandlers(p.EventType))
 	case "setModel":
-		p, err := opArgs[struct {
+		var p struct {
 			Model   json.RawMessage `json:"model"`
 			Persist bool            `json:"persist"`
-		}](args)
+		}
+		err := opArgs(args, func(raw json.RawMessage) error { return json.Unmarshal(raw, &p) })
 		if err != nil {
 			return nil, err
 		}
@@ -184,10 +186,11 @@ func (c *childSession) Op(ctx context.Context, op string, args json.RawMessage) 
 		}
 		return nil, s.SetModel(model, coding.ModelMutationOptions{Persist: p.Persist})
 	case "cycleModel":
-		p, err := opArgs[struct {
+		var p struct {
 			Direction string `json:"direction"`
 			Persist   bool   `json:"persist"`
-		}](args)
+		}
+		err := opArgs(args, func(raw json.RawMessage) error { return json.Unmarshal(raw, &p) })
 		if err != nil {
 			return nil, err
 		}
@@ -207,18 +210,20 @@ func (c *childSession) Op(ctx context.Context, op string, args json.RawMessage) 
 			IsScoped      bool                 `json:"isScoped"`
 		}{extension.ModelValue{Model: result.Model}, string(result.ThinkingLevel), result.IsScoped})
 	case "setThinkingLevel":
-		p, err := opArgs[struct {
+		var p struct {
 			Level   string `json:"level"`
 			Persist bool   `json:"persist"`
-		}](args)
+		}
+		err := opArgs(args, func(raw json.RawMessage) error { return json.Unmarshal(raw, &p) })
 		if err != nil {
 			return nil, err
 		}
 		return nil, s.SetThinkingLevel(ai.ModelThinkingLevel(p.Level), coding.ModelMutationOptions{Persist: p.Persist})
 	case "cycleThinkingLevel":
-		p, err := opArgs[struct {
+		var p struct {
 			Persist bool `json:"persist"`
-		}](args)
+		}
+		err := opArgs(args, func(raw json.RawMessage) error { return json.Unmarshal(raw, &p) })
 		if err != nil {
 			return nil, err
 		}
@@ -231,9 +236,10 @@ func (c *childSession) Op(ctx context.Context, op string, args json.RawMessage) 
 		}
 		return opMarshal(string(level))
 	case "setScopedModels":
-		p, err := opArgs[struct {
+		var p struct {
 			Models []opScopedModel `json:"models"`
-		}](args)
+		}
+		err := opArgs(args, func(raw json.RawMessage) error { return json.Unmarshal(raw, &p) })
 		if err != nil {
 			return nil, err
 		}
@@ -248,60 +254,67 @@ func (c *childSession) Op(ctx context.Context, op string, args json.RawMessage) 
 		s.SetScopedModels(models)
 		return nil, nil
 	case "setActiveToolsByName":
-		p, err := opArgs[struct {
+		var p struct {
 			Names []string `json:"names"`
-		}](args)
+		}
+		err := opArgs(args, func(raw json.RawMessage) error { return json.Unmarshal(raw, &p) })
 		if err != nil {
 			return nil, err
 		}
 		s.SetActiveToolsByName(p.Names)
 		return nil, nil
 	case "setSteeringMode":
-		p, err := opArgs[struct {
+		var p struct {
 			Mode string `json:"mode"`
-		}](args)
+		}
+		err := opArgs(args, func(raw json.RawMessage) error { return json.Unmarshal(raw, &p) })
 		if err != nil {
 			return nil, err
 		}
 		return nil, s.SetSteeringMode(agent.QueueMode(p.Mode))
 	case "setFollowUpMode":
-		p, err := opArgs[struct {
+		var p struct {
 			Mode string `json:"mode"`
-		}](args)
+		}
+		err := opArgs(args, func(raw json.RawMessage) error { return json.Unmarshal(raw, &p) })
 		if err != nil {
 			return nil, err
 		}
 		return nil, s.SetFollowUpMode(agent.QueueMode(p.Mode))
 	case "setAutoCompactionEnabled":
-		p, err := opArgs[struct {
+		var p struct {
 			Enabled bool `json:"enabled"`
-		}](args)
+		}
+		err := opArgs(args, func(raw json.RawMessage) error { return json.Unmarshal(raw, &p) })
 		if err != nil {
 			return nil, err
 		}
 		s.SetAutoCompactionEnabled(p.Enabled)
 		return nil, nil
 	case "setAutoRetryEnabled":
-		p, err := opArgs[struct {
+		var p struct {
 			Enabled bool `json:"enabled"`
-		}](args)
+		}
+		err := opArgs(args, func(raw json.RawMessage) error { return json.Unmarshal(raw, &p) })
 		if err != nil {
 			return nil, err
 		}
 		s.SetAutoRetryEnabled(p.Enabled)
 		return nil, nil
 	case "setCacheWarmingMode":
-		p, err := opArgs[struct {
+		var p struct {
 			Mode string `json:"mode"`
-		}](args)
+		}
+		err := opArgs(args, func(raw json.RawMessage) error { return json.Unmarshal(raw, &p) })
 		if err != nil {
 			return nil, err
 		}
 		return nil, s.SetCacheWarmingMode(icodingagent.CacheWarmingMode(p.Mode))
 	case "setSessionName":
-		p, err := opArgs[struct {
+		var p struct {
 			Name string `json:"name"`
-		}](args)
+		}
+		err := opArgs(args, func(raw json.RawMessage) error { return json.Unmarshal(raw, &p) })
 		if err != nil {
 			return nil, err
 		}
@@ -329,9 +342,10 @@ func (c *childSession) Op(ctx context.Context, op string, args json.RawMessage) 
 	case "reload":
 		return nil, s.Reload(ctx)
 	case "compact":
-		p, err := opArgs[struct {
+		var p struct {
 			CustomInstructions string `json:"customInstructions"`
-		}](args)
+		}
+		err := opArgs(args, func(raw json.RawMessage) error { return json.Unmarshal(raw, &p) })
 		if err != nil {
 			return nil, err
 		}
@@ -341,13 +355,14 @@ func (c *childSession) Op(ctx context.Context, op string, args json.RawMessage) 
 		}
 		return opMarshal(result)
 	case "navigateTree":
-		p, err := opArgs[struct {
+		var p struct {
 			TargetID            string `json:"targetId"`
 			Summarize           bool   `json:"summarize"`
 			CustomInstructions  string `json:"customInstructions"`
 			ReplaceInstructions bool   `json:"replaceInstructions"`
 			Label               string `json:"label"`
-		}](args)
+		}
+		err := opArgs(args, func(raw json.RawMessage) error { return json.Unmarshal(raw, &p) })
 		if err != nil {
 			return nil, err
 		}
@@ -362,10 +377,11 @@ func (c *childSession) Op(ctx context.Context, op string, args json.RawMessage) 
 			SummaryEntry *coding.BranchSummaryEntry `json:"summaryEntry,omitempty"`
 		}{result.Cancelled, result.Aborted, result.EditorText, result.SummaryEntry})
 	case "executeBash":
-		p, err := opArgs[struct {
+		var p struct {
 			Command            string `json:"command"`
 			ExcludeFromContext *bool  `json:"excludeFromContext"`
-		}](args)
+		}
+		err := opArgs(args, func(raw json.RawMessage) error { return json.Unmarshal(raw, &p) })
 		if err != nil {
 			return nil, err
 		}
@@ -375,20 +391,22 @@ func (c *childSession) Op(ctx context.Context, op string, args json.RawMessage) 
 		}
 		return opMarshal(result)
 	case "recordBashResult":
-		p, err := opArgs[struct {
+		var p struct {
 			Command            string            `json:"command"`
 			Result             coding.BashResult `json:"result"`
 			ExcludeFromContext *bool             `json:"excludeFromContext"`
-		}](args)
+		}
+		err := opArgs(args, func(raw json.RawMessage) error { return json.Unmarshal(raw, &p) })
 		if err != nil {
 			return nil, err
 		}
 		return nil, s.RecordBashResult(p.Command, p.Result, p.ExcludeFromContext)
 	case "exportToHtml":
-		p, err := opArgs[struct {
+		var p struct {
 			OutputPath string `json:"outputPath"`
 			ThemeName  string `json:"themeName"`
-		}](args)
+		}
+		err := opArgs(args, func(raw json.RawMessage) error { return json.Unmarshal(raw, &p) })
 		if err != nil {
 			return nil, err
 		}
@@ -398,9 +416,10 @@ func (c *childSession) Op(ctx context.Context, op string, args json.RawMessage) 
 		}
 		return opMarshal(path)
 	case "exportToJsonl":
-		p, err := opArgs[struct {
+		var p struct {
 			OutputPath string `json:"outputPath"`
-		}](args)
+		}
+		err := opArgs(args, func(raw json.RawMessage) error { return json.Unmarshal(raw, &p) })
 		if err != nil {
 			return nil, err
 		}
@@ -410,9 +429,10 @@ func (c *childSession) Op(ctx context.Context, op string, args json.RawMessage) 
 		}
 		return opMarshal(path)
 	case "summarizeForBugReport":
-		p, err := opArgs[struct {
+		var p struct {
 			Hint string `json:"hint"`
-		}](args)
+		}
+		err := opArgs(args, func(raw json.RawMessage) error { return json.Unmarshal(raw, &p) })
 		if err != nil {
 			return nil, err
 		}
@@ -422,19 +442,21 @@ func (c *childSession) Op(ctx context.Context, op string, args json.RawMessage) 
 		}
 		return opMarshal(text)
 	case "sendCustomMessage":
-		p, err := opArgs[struct {
+		var p struct {
 			Message extension.CustomMessageRef    `json:"message"`
 			Options *extension.SendMessageOptions `json:"options"`
-		}](args)
+		}
+		err := opArgs(args, func(raw json.RawMessage) error { return json.Unmarshal(raw, &p) })
 		if err != nil {
 			return nil, err
 		}
 		return nil, s.SendCustomMessage(ctx, p.Message, p.Options)
 	case "sendUserMessage":
-		p, err := opArgs[struct {
+		var p struct {
 			Content any                               `json:"content"`
 			Options *extension.SendUserMessageOptions `json:"options"`
-		}](args)
+		}
+		err := opArgs(args, func(raw json.RawMessage) error { return json.Unmarshal(raw, &p) })
 		if err != nil {
 			return nil, err
 		}

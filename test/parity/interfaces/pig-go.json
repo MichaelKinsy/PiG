@@ -95823,9 +95823,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func[T any](args github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage) (T, error)"
+        "type": "func(args github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage, decode func(github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage) error) error"
       },
-      "shapeHash": "sha256:298821268e77c2dffdd60c79874ac412323469392af0e9f0c1027487ac98c9e0"
+      "shapeHash": "sha256:e83c772eda70ffcfa6aa642dc1b0779d732fd0f2fb7d345eed03067377eee2a7"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#opList",
