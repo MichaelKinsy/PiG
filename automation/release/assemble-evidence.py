@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
-"""Retain each pig and pig-acp target's archive, signing bundle and scan evidence in a release."""
+"""Retain each pig, pig-acp and pig-standard target's archive, signing bundle and scan evidence in a release."""
 import argparse
 import hashlib
 from pathlib import Path
@@ -11,11 +11,17 @@ TARGETS = ('android-arm64', 'linux-amd64', 'linux-arm64', 'darwin-amd64', 'darwi
 # pig-acp ships for every target a hosted ACP client runs on; Termux has none.
 ACP_TARGETS = ('linux-amd64', 'linux-arm64', 'darwin-amd64', 'darwin-arm64',
                'windows-amd64', 'windows-arm64')
+# PiG Standard is a Piglet Binary. The native Piglet builder compiles only its host target, and no hosted
+# runner runs Android, so Standard ships for the hosted targets and Termux has none.
+STANDARD_TARGETS = ('linux-amd64', 'linux-arm64', 'darwin-amd64', 'darwin-arm64',
+                    'windows-amd64', 'windows-arm64')
+# Each product's archives are named <product>-<version>-<target>, so no product reuses another's evidence.
+PRODUCTS = (('pig', TARGETS), ('pig-acp', ACP_TARGETS), ('pig-standard', STANDARD_TARGETS))
 
 
 def assemble(candidates, release, version):
     plan = []
-    for product, target in [('pig', t) for t in TARGETS] + [('pig-acp', t) for t in ACP_TARGETS]:
+    for product, target in [(product, t) for product, targets in PRODUCTS for t in targets]:
         name = f'{product}-{version}-{target}'
         directory = candidates / name
         archive = name + ('.zip' if target.startswith('windows-') else '.tar.gz')

@@ -318,3 +318,69 @@ func assertSmokeResult(t *testing.T, out string, err error, wantError bool, vers
 		t.Fatalf("smoke step failed for a pig that reports %s: %v\n%s", version, err, out)
 	}
 }
+
+// fakeStandard is a PiG Standard Binary whose invoked commands print what the
+// real ones print: `version` names PiG's version, `verify --json` carries the
+// baked Piglet release, and `status` names the active Piglet.
+func fakeStandard(pigLine, pigletRelease, activePiglet string) string {
+	verify := "{\\n  \"verified\": true,\\n  \"identity\": {\\n    \"pigVersion\": \"x\",\\n    \"platform\": \"linux/amd64\",\\n    \"build\": \"dev\""
+	if pigletRelease != "" {
+		verify += ",\\n    \"pigletRelease\": \"" + pigletRelease + "\""
+	}
+	verify += "\\n  }\\n}"
+	return "#!/bin/sh\n" +
+		"[ \"$PIG_OFFLINE\" = 1 ] || { echo 'not offline' >&2; exit 9; }\n" +
+		"case \"$1\" in\n--help) echo usage;;\n--version) echo 1.5.0;;\n" +
+		"version) printf '%s\\nupstream pi: 1.5.0+c23b9ec1\\nbuild: dev\\n' '" + pigLine + "';;\n" +
+		"verify) printf '" + verify + "\\n';;\n" +
+		"status) printf 'Pig status: healthy\\n  active Piglet: " + activePiglet + "\\n';;\nesac\n"
+}
+
+// The PiG Standard packaged smoke starts the archive's Binary offline and
+// requires it to identify as PiG Standard at exactly the release version, in
+// `pig version`, in its baked Piglet release and in its active Piglet.
+func TestReleaseCandidateStandardSmokeAssertsStandardIdentity(t *testing.T) {
+	const version = "0.8.0"
+	step := releaseWorkflowStep(t, "standard-native-smoke", "Verify and run packaged candidate")
+	for _, tc := range []struct {
+		name      string
+		pigLine   string
+		release   string
+		active    string
+		wantError bool
+	}{
+		{"release version", "pig: " + version, version, "pig-standard (pig-standard)", false},
+		{"stock pig version", "pig: 0.7.0", version, "pig-standard (pig-standard)", true},
+		{"development version", "pig: " + version + "-dev", version, "pig-standard (pig-standard)", true},
+		{"no baked Piglet release (Stock)", "pig: " + version, "", "none", true},
+		{"another Piglet release", "pig: " + version, "0.7.0-dev", "pig-standard (pig-standard)", true},
+		{"longer Piglet release", "pig: " + version, version + "1", "pig-standard (pig-standard)", true},
+		{"another active Piglet", "pig: " + version, version, "pig-bolt (pig-bolt)", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			candidate := filepath.Join(dir, "candidate")
+			name := "pig-standard-" + version + "-linux-amd64"
+			stage := filepath.Join(dir, "stage", name)
+			writeExecutable(t, filepath.Join(stage, "pig-standard"), fakeStandard(tc.pigLine, tc.release, tc.active))
+			archive := filepath.Join(candidate, name+".tar.gz")
+			if err := os.MkdirAll(candidate, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if out, err := exec.Command("tar", "-C", filepath.Dir(stage), "-czf", archive, filepath.Base(stage)).CombinedOutput(); err != nil {
+				t.Fatalf("tar: %v\n%s", err, out)
+			}
+			data, err := os.ReadFile(archive)
+			if err != nil {
+				t.Fatal(err)
+			}
+			sum := sha256.Sum256(data)
+			if err := os.WriteFile(filepath.Join(candidate, "SHA256SUMS"), []byte(hex.EncodeToString(sum[:])+"  "+filepath.Base(archive)+"\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			env := map[string]string{"VERSION": version, "GOOS": "linux", "GOARCH": "amd64", "FORMAT": "tar"}
+			out, err := runWorkflowStep(t, step, dir, env, "")
+			assertSmokeResult(t, out, err, tc.wantError, version)
+		})
+	}
+}

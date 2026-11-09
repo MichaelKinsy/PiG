@@ -17,6 +17,14 @@ pig piglet build piglets/standard/pig-standard.yaml \
   --out ./pig-standard
 ```
 
+Each PiG release also publishes this Binary as its own archive,
+`pig-standard-<version>-<os>-<arch>.tar.gz` (`.zip` on Windows), for Linux, macOS
+and Windows on `amd64` and `arm64`. It is separate from the Stock `pig-<version>-<os>-<arch>`
+archive and has its own checksums, SBOMs, vulnerability scan and build-provenance
+attestation in the release. Run `pig-standard version`: it prints the release
+version, and `pig-standard status` names `pig-standard` as the active Piglet.
+Termux has no Standard archive.
+
 The current composition selects `extensions/piglogin`, `extensions/pigrunner`,
 `extensions/angrypigs` and `extensions/bunruntime`. The login extension owns the PiG login, sprite
 catalogue, `/sprite` command, and selected-sprite state. The composition strips Stock PiG's built-in `pig-login` extension, which registers `/sprite` as well (`strip.extensions`, D92). The default sprite is
