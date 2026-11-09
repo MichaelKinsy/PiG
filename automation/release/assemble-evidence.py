@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
-"""Retain each target's archive, signing bundle and scan evidence in a release."""
+"""Retain each pig and pig-acp target's archive, signing bundle and scan evidence in a release."""
 import argparse
 import hashlib
 from pathlib import Path
@@ -8,12 +8,15 @@ import shutil
 
 TARGETS = ('android-arm64', 'linux-amd64', 'linux-arm64', 'darwin-amd64', 'darwin-arm64',
            'windows-amd64', 'windows-arm64', 'source')
+# pig-acp ships for every target a hosted ACP client runs on; Termux has none.
+ACP_TARGETS = ('linux-amd64', 'linux-arm64', 'darwin-amd64', 'darwin-arm64',
+               'windows-amd64', 'windows-arm64')
 
 
 def assemble(candidates, release, version):
     plan = []
-    for target in TARGETS:
-        name = f'pig-{version}-{target}'
+    for product, target in [('pig', t) for t in TARGETS] + [('pig-acp', t) for t in ACP_TARGETS]:
+        name = f'{product}-{version}-{target}'
         directory = candidates / name
         archive = name + ('.zip' if target.startswith('windows-') else '.tar.gz')
         prefix = 'source' if target == 'source' else 'sbom'

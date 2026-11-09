@@ -117,11 +117,24 @@ The planned targets are:
 
 Do not list a target as supported until its native or approved equivalent verification passes for the release candidate.
 
+## pig-acp archives
+
+`pig-acp` is the Agent Client Protocol adapter an ACP client (Zed, JetBrains, the ACP registry) starts. Its source lives in the Pigpen Package `@pi-in-go/pigpen-acp`, not in this repository, and has its own version (0.2.x). Every release also publishes one `pig-acp-<version>-<goos>-<goarch>.tar.gz` (`.zip` on Windows) for `linux`, `darwin` and `windows` on `amd64` and `arm64`; Termux has no ACP client and gets none. `<version>` is PiG's version.
+
+Each archive is `pig-acp-<version>-<goos>-<goarch>/` holding `pig-acp`, `pig` (both `.exe` on Windows), the notices of the pig archive, and `PIG-ACP/` with pig-acp's license, its credits and the license of the pi-acp port it derives from. The `pig` is the one from the same release's `pig-<version>-<goos>-<goarch>` archive: the `acp` job takes it from that candidate after `sha256sum -c`, so no second pig build exists and the bytes equal the pig archive's.
+
+`automation/release/pig-acp.lock` pins the Package source by version, tarball URL, exact size and npm sha512 integrity. `automation/release/pig-acp-source.py` refuses a tarball of any other size or digest, a package.json of another name or version, and any tar member that is not a regular file or directory inside `package/`. `automation/release/build-pig-acp.sh` builds pig-acp with `CGO_ENABLED=0 -trimpath` and the lock's version as `main.version`, so `pig-acp --version` reports the pinned Package version, not PiG's. Change the pin by editing the lock: fetch the new tarball, record its `size` and `integrity` (`npm view <package>@<version> dist.integrity`), and run `python3 -m unittest discover -s automation/release -p 'test_pig_acp_*.py'`.
+
+The `acp` job gives each archive the evidence a pig archive has: SPDX and CycloneDX SBOMs, inventory validation, a grype scan that fails the build at high severity, per-archive checksums, a build-provenance attestation and a `.sigstore.json` bundle. `acp-native-smoke` extracts the archive on linux/amd64, darwin/arm64 and windows/amd64 and runs `automation/release/pig-acp-smoke.py`, which starts the archive's `pig-acp` from a directory outside the archive, speaks ACP over stdio, and requires `initialize` and a `session/new` answered through the bundled `pig --mode rpc` (a session id, or, without credentials, pig-acp's terminal-login authentication error). `publish` waits for both jobs. `assemble-evidence.py` keeps each archive, bundle and evidence file; `combine-checksums.py` lists the archives in the one release `SHA256SUMS`, which the ACP registry entry's `sha256` values come from.
+
+pig-acp 0.2.1 resolves a relative `--pig` against the session's working directory (Go's `exec.Command` with `Dir`), and without `--pig` it looks `pig` up on `PATH`, not beside itself. The archives still work when a client passes an absolute `--pig`, which is what the smoke test does. A registry entry that starts `./pig-acp` needs a pig-acp that defaults to the `pig` beside its own executable; that change belongs to Pigpen, and the lock moves to the release that carries it.
+
 ## Required artifacts
 
 A release includes:
 
 - one archive for each supported target;
+- one `pig-acp` archive for each hosted ACP-client target (see "pig-acp archives");
 - `SHA256SUMS`;
 - `LICENSE`, `LICENSES/`, `NOTICE`, and `THIRD_PARTY_NOTICES.md`;
 - an SPDX 2.3 JSON SBOM for each artifact;

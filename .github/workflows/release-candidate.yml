@@ -266,6 +266,205 @@ jobs:
           "$binary" version
           PIG_HOME="$RUNNER_TEMP/pig-home" "$binary" docs show install >/dev/null
 
+  acp:
+    name: ${{ matrix.goos }}/${{ matrix.goarch }} pig-acp candidate
+    # pig-acp ships beside the pig executable taken from this target's own pig
+    # candidate, so the bundled pig bytes are the bytes that candidate's
+    # checksums, smoke test and attestation cover. The ACP registry points at
+    # these archives.
+    needs: binary
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            format: tar
+          - goos: linux
+            goarch: arm64
+            format: tar
+          - goos: darwin
+            goarch: amd64
+            format: tar
+          - goos: darwin
+            goarch: arm64
+            format: tar
+          - goos: windows
+            goarch: amd64
+            format: zip
+          - goos: windows
+            goarch: arm64
+            format: zip
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - name: Download the pig candidate for this target
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: pig-${{ inputs.version }}-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: pig-candidate
+      - name: Verify the pig archive before taking pig from it
+        shell: bash
+        working-directory: pig-candidate
+        run: sha256sum -c SHA256SUMS
+      - name: Build archive
+        id: build
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          FORMAT: ${{ matrix.format }}
+        run: |
+          set -euo pipefail
+          python3 -B -m unittest discover -s automation/release -p test_pig_acp_source.py
+          mkdir -p out/evidence
+          pig_archive="pig-candidate/pig-${VERSION}-${GOOS}-${GOARCH}.tar.gz"
+          if [ "$FORMAT" = zip ]; then pig_archive="pig-candidate/pig-${VERSION}-${GOOS}-${GOARCH}.zip"; fi
+          automation/release/build-pig-acp.sh "$pig_archive" out "$RUNNER_TEMP/pig-acp" >> "$GITHUB_OUTPUT"
+      - name: Generate SPDX SBOM
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        with:
+          path: ${{ steps.build.outputs.stage }}
+          format: spdx-json
+          output-file: out/evidence/sbom.spdx.json
+          upload-artifact: false
+      - name: Generate CycloneDX SBOM
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        with:
+          path: ${{ steps.build.outputs.stage }}
+          format: cyclonedx-json
+          output-file: out/evidence/sbom.cyclonedx.json
+          upload-artifact: false
+      - name: Validate inventory
+        shell: bash
+        env:
+          STAGE: ${{ steps.build.outputs.stage }}
+        run: |
+          set -euo pipefail
+          python automation/release/validate-sbom.py \
+            --spdx out/evidence/sbom.spdx.json \
+            --cyclonedx out/evidence/sbom.cyclonedx.json \
+            --root "$STAGE" \
+            --licenses out/evidence/licenses.csv \
+            --out out/evidence/inventory-validation.json
+      - name: Scan artifact SBOM
+        uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
+        with:
+          sbom: out/evidence/sbom.spdx.json
+          fail-build: true
+          output-format: sarif
+          output-file: out/evidence/grype-report.sarif
+          severity-cutoff: high
+          only-fixed: false
+      - name: Write and verify checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd out
+          find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > "$RUNNER_TEMP/SHA256SUMS"
+          mv "$RUNNER_TEMP/SHA256SUMS" SHA256SUMS
+          sha256sum -c SHA256SUMS
+      - name: Attest binary archive
+        id: attest
+        if: github.event.repository.private == false
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: ${{ steps.build.outputs.artifact }}
+      - name: Ship the Sigstore bundle beside the archive
+        if: steps.attest.outcome == 'success'
+        shell: bash
+        env:
+          BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+          ARTIFACT: ${{ steps.build.outputs.artifact }}
+        run: cp "$BUNDLE" "out/$(basename "$ARTIFACT").sigstore.json"
+      - name: Upload candidate and evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: pig-acp-${{ inputs.version }}-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: out/
+          retention-days: 30
+
+  acp-native-smoke:
+    name: ${{ matrix.goos }}/${{ matrix.goarch }} packaged pig-acp smoke
+    needs: acp
+    permissions:
+      actions: read
+      contents: read
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            goos: linux
+            goarch: amd64
+            format: tar
+          - runner: macos-15
+            goos: darwin
+            goarch: arm64
+            format: tar
+          - runner: windows-2025
+            goos: windows
+            goarch: amd64
+            format: zip
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - name: Download packaged candidate
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: pig-acp-${{ inputs.version }}-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: candidate
+      - name: Verify and run packaged candidate
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          FORMAT: ${{ matrix.format }}
+        run: |
+          set -euo pipefail
+          name="pig-acp-${VERSION}-${GOOS}-${GOARCH}"
+          (cd candidate && sha256sum -c SHA256SUMS)
+          acp_version=$(python -c 'import json; print(json.load(open("automation/release/pig-acp.lock"))["version"])')
+          mkdir -p extracted
+          if [ "$FORMAT" = zip ]; then
+            ARCHIVE_PATH="$(cygpath -w "candidate/$name.zip")"
+            DESTINATION_PATH="$(cygpath -w extracted)"
+            export ARCHIVE_PATH DESTINATION_PATH
+            # shellcheck disable=SC2016 # PowerShell, not bash, expands $env: variables.
+            powershell.exe -NoProfile -NonInteractive -Command \
+              'Expand-Archive -LiteralPath $env:ARCHIVE_PATH -DestinationPath $env:DESTINATION_PATH -Force'
+            suffix=.exe
+          else
+            tar -xzf "candidate/$name.tar.gz" -C extracted
+            suffix=
+          fi
+          python automation/release/pig-acp-smoke.py --version "$acp_version" \
+            --pig-acp "extracted/$name/pig-acp$suffix" --pig "extracted/$name/pig$suffix"
+          "extracted/$name/pig$suffix" --version
+
   source:
     name: Source candidate
     permissions:
@@ -392,7 +591,7 @@ jobs:
     # RELEASING.md requires a publication job to run in an approved
     # protected environment and forbids publishing before every release
     # gate is complete.
-    needs: [binary, native-smoke, source]
+    needs: [binary, native-smoke, acp, acp-native-smoke, source]
     permissions:
       contents: write
     environment:
@@ -407,6 +606,11 @@ jobs:
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: pig-${{ inputs.version }}-*
+          path: candidates
+      - name: Download every pig-acp candidate
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: pig-acp-${{ inputs.version }}-*
           path: candidates
       - name: Assemble the release archives
         shell: bash
