@@ -11209,6 +11209,26 @@
       ]
     },
     {
+      "id": "BF-4106324",
+      "title": "A `session_tree` handler is no longer cancelled, and later extensions no longer miss the event, when the…",
+      "symptom": "A `session_tree` handler is no longer cancelled, and later extensions no longer miss the event, when the context of the tree navigation ended while it ran.",
+      "rootCause": "Pi awaits runner.emit({ type: \"session_tree\" }) after the leaf moved with no signal (agent-session.ts:4221-4230). PiG emitted it with the navigation's context, so a context that ended while the navigation ran cancelled the running handler and dropped every later one. The emit now detaches the cancellation. The parity doc lists the audit of the other signal-carrying events.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A `session_tree` handler is no longer cancelled, and later extensions no longer miss the event, when the context of the tree navigation ended while it ran. As in Pi, the event reaches every extension after the leaf moved.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "41063244c4",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-410d733",
       "title": "`settings.json`, `trust.json` and `auth.json` are written as Pi's `JSON.stringify` writes them: `\u003c`, `\u003e` and…",
       "symptom": "`settings.json`, `trust.json` and `auth.json` are written as Pi's `JSON.stringify` writes them: `\u003c`, `\u003e` and `\u0026` stay literal instead of `\\u0026`-style escapes, so a command-backed key or a `shellCommandPrefix` such as `source x \u0026\u0026 ` keeps its text.",
