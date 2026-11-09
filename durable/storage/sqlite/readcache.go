@@ -12,7 +12,7 @@ import (
 
 // DefaultReadCacheBytes is the default bound on the estimated size of the results a SqliteStorage keeps for its reads.
 // pig additive (D104): the read cache has no Pi counterpart.
-const DefaultReadCacheBytes = 8 << 20
+const DefaultReadCacheBytes = 2 << 20
 
 // ReadCacheStats counts what a storage's read cache did since it opened.
 // pig additive (D104): the read cache has no Pi counterpart.
