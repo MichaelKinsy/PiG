@@ -30,6 +30,10 @@ regexes = [
   '''^v4Internal\.AmzSignedHeadersKey$''',
   # Keybinding lists in Pi's SDK helper fixtures (test/parity/sdk-bulk): modifier combos joined by "/", e.g. "Alt+X/Ctrl+Shift+F5/Alt+/".
   '''^(?i)(?:(?:ctrl|shift|alt|meta|super|cmd)\+)*(?:escape|enter|tab|up|down|left|right|f\d{1,2}|[a-z0-9]|/)(?:/(?:(?:ctrl|shift|alt|meta|super|cmd)\+)*(?:escape|enter|tab|up|down|left|right|f\d{1,2}|[a-z0-9]|/))+$''',
+  # A malformed owner cookie in apps/p2/plugins/devices/contract/owner_access_test.go ("p2_owner_<port>=bad"; the rejected input of a test).
+  '''^p2_owner_8788=bad$''',
+  # A fixture secret in apps/p2/plugins/login/tui/tui_test.go (the value the test types into the sign-in form and checks is not echoed).
+  '''^sk-fixture-SECRET-42$''',
 ]
 paths = [
   # Stored archive fixture: "key" fields are UUIDv7 document keys, not credentials.
