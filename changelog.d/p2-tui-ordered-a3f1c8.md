@@ -1,0 +1,3 @@
+### Fixed
+
+- p2 TUI: the chat surface sends its actions to the server in the order the visitor made them, as Pi's calls leave in the order its keys are handled: each action ran in a goroutine of its own, so Alt+Enter's follow-up and Alt+Up's restore could arrive reversed and Alt+Up found nothing queued. The server's HTTP handler no longer writes an error to a response its dispatch is still writing when the host closes under the request, the worker's activity watch opens inside a section of the host, and a transcript follow stopped before its watch started ends quietly (a `Watch is stopped` panic under load). <!-- fix: p2-tui -->
