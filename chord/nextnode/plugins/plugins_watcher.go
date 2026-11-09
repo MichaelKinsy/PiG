@@ -993,8 +993,12 @@ func (w *pluginWatcher) baseEvent(path string, op fsnotify.Op) {
 
 // keepWatches puts back the watches at and under path that the watcher no longer holds, those alone and those of a base
 // directory's tree, for the directory there is the one they watched, moved away and back: libuv's watch follows it (inotify) or
-// its path (FSEvents), and some of fsnotify's end with the move (kqueue removes the watch of a directory that is renamed).
-// Nothing is compared: as Pi, it renewed nothing.
+// its path (FSEvents), and some of fsnotify's end with the move (kqueue removes the watch of a directory that is renamed) or
+// with the removal of the directory (inotify). Nothing is compared: as Pi, it renewed nothing. A watch it cannot put back (its
+// directory is missing for now) takes its identity with it, as `reconcile` and `unwatchDirs` do: the directory made again is
+// then another one, and its watches are renewed. A record of the identity of a directory not watched would call it the same,
+// as a file system that reuses the inode and stamps the birth time in coarse ticks (ext4) gives it that identity, and nothing
+// would watch it again.
 func (w *pluginWatcher) keepWatches(path string) {
 	if w.fs == nil {
 		return
@@ -1008,6 +1012,7 @@ func (w *pluginWatcher) keepWatches(path string) {
 	}
 	for _, dir := range lost {
 		delete(w.baseWatched, dir)
+		delete(w.identities, dir)
 		w.watchAlone(dir)
 	}
 	var lostTree []string
@@ -1018,6 +1023,7 @@ func (w *pluginWatcher) keepWatches(path string) {
 	}
 	for _, dir := range lostTree {
 		delete(w.watched, dir)
+		delete(w.identities, dir)
 	}
 	for _, dir := range lostTree {
 		w.watchDirs(dir)
