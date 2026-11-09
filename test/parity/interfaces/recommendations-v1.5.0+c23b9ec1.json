@@ -218808,22 +218808,24 @@
     {
       "id": "pkg:coding-agent/.#CacheWarmingDecision",
       "upstreamShapeHash": "sha256:3092e50f08c76118aae7cd071351b8d41e5216d8a01b4a9d2da6a5d9baa77e90",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/ai#CacheWarmingDecision",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#CacheWarmingDecision"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
