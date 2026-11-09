@@ -3893,11 +3893,9 @@
     {
       "path": "packages/chord/test/telemetry-sqlite-node.test.ts",
       "upstreamTestHash": "sha256:80c33d2ee955433d8baf75df4f60de9456cfbd742a32c36027d3b9009edd342c",
-      "area": "cli",
-      "tags": [
-        "hot-path"
-      ],
-      "rationale": "Telemetry recording, propagation, storage, or rendering (Pi 2ec55d80 and d9025a5f)."
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (telemetry_sqlite_v2_test.go) runs in package chord/telemetrysqlite through exported production functions such as OpenTelemetryStore, CreateSqliteTelemetry; no export_test seam or test-only stand-in replaces the code under test."
     },
     {
       "path": "packages/chord/test/telemetry-sqlite-store.test.ts",
@@ -3920,11 +3918,9 @@
     {
       "path": "packages/chord/test/telemetry.test.ts",
       "upstreamTestHash": "sha256:e2411807ef5c1a744489182c765f92fbb54395eaa52bfc6e9d8964fe781b60df",
-      "area": "cli",
-      "tags": [
-        "hot-path"
-      ],
-      "rationale": "Telemetry recording, propagation, storage, or rendering (Pi 2ec55d80 and d9025a5f)."
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_telemetry_test.go, telemetry_upstream_test.go) runs in package chord/next/host, chord/next/telemetry through exported production functions such as Metrics, NewOpenSpan, ParentOf, Untraced; no export_test seam or test-only stand-in replaces the code under test."
     },
     {
       "path": "packages/chord/test/tui/frames.test.ts",
