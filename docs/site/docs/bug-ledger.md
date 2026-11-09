@@ -965,6 +965,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-930c88e](#bf-930c88e) | Claude models with per-message effort no longer fail with `Invalid effort level` on accounts whose… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-9327bc7](#bf-9327bc7) | A closed Harness or Session no longer stays reachable from Go's timer heap | PiG's own defect | All platforms | 0.7.0 |
 | [BF-93319f4](#bf-93319f4) | The terminal UI worked example now describes the typed `/model` prefix in words | PiG's own defect | All platforms | 0.5.0 |
+| [BF-9358596](#bf-9358596) | Aborting a compaction while extensions were being told it finished no longer keeps the extensions after the… | PiG's own defect | All platforms | Unreleased |
 | [BF-93c09d6](#bf-93c09d6) | A local package source that is a file Node cannot import, such as a packed `.tgz`, fails to load as in Pi… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-93c09d6-2](#bf-93c09d6-2) | `pig install --validate-only` on a Package root validates every extension the Package names in… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-93c5def](#bf-93c5def) | A built-in extension named with `-e builtin:<name>` loads before the extensions from settings and the… | PiG's own defect | All platforms | 0.5.0 |
@@ -14706,6 +14707,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Commit that wrote the release note (the fix commit is not identified):** `93319f4284` (2026-10-11)
 - **Tests:** `test/docs-drift/docs_drift_test.go::TestDocumentedSlashCommandsExist`
 - **Release note:** The terminal UI worked example now describes the typed `/model` prefix in words. A docs check no longer reports a nonexistent command from that page.
+
+### BF-9358596
+
+**Aborting a compaction while extensions were being told it finished no longer keeps the extensions after the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Aborting a compaction while extensions were being told it finished no longer keeps the extensions after the first from hearing about it.
+- **Root cause:** Pi awaits runner.emit({ type: "session_compact" }) after the compaction entry is saved, and emit() takes no signal: an abort raised while the handlers run neither skips an extension nor fails the compaction. PiG passed the abortable compaction context to the dispatch, so AbortCompaction during the first handler cancelled that handler's request and every later subprocess extension's, which never received the event. Dispatch now detaches from the cancellation, as emitSessionCompactFailed already does.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `935859696f` (2026-11-09)
+- **Tests:** `coding/session_compact_abort_dispatch_test.go::TestSessionCompactReachesEveryExtensionWhenAbortedDuringDispatch`, `test/extension-conformance/session_compact_abort_test.go::TestNodeSessionCompactReachesTheNextExtensionWhenAbortedDuringDispatch`, `test/extension-conformance/session_compact_abort_test.go::TestSessionCompactIsDeliveredToEverySDKWhenAbortedDuringDispatch`
+- **Release note:** Aborting a compaction while extensions were being told it finished no longer keeps the extensions after the first from hearing about it. `session_compact` now reaches every extension, in order, as in Pi, whichever of them calls `abortCompaction()` or has the compaction aborted while its handler runs; the saved compaction still completes.
 
 ### BF-93c09d6
 
