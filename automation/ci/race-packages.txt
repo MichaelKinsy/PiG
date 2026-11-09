@@ -80,7 +80,7 @@ libs  ./internal/terminalquestion
 libs  ./internal/testenv
 libs  ./mcp/mcptest
 libs  ./piglets/pig-bolt
-libs  ./piglets/porter/extensions/pig-porter workspace
+libs  ./piglets/porter/extensions/pig-porter
 libs  ./piglets/standard
 libs  ./durable/images
 libs  ./internal/nodefs
