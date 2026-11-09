@@ -296,6 +296,16 @@ struct RenderToolWire {
 }
 
 impl CardState {
+    /// Hands the phase's slot to the run that starts: the slot is empty until the run succeeds, so a run that fails (and never reaches
+    /// [`CardState::finish`]) leaves the next run no component, as upstream clears the slot of a throwing renderer.
+    fn begin(&mut self, result_phase: bool) -> Option<ToolRenderComponent> {
+        if result_phase {
+            self.result.take()
+        } else {
+            self.call.take()
+        }
+    }
+
     /// Keeps the card's state and the phase's output for the next run: no component after an error.
     fn finish(&mut self, result_phase: bool, state: Map<String, Value>, rendered: &Result<Rendered, String>) {
         self.state = state;
@@ -350,11 +360,7 @@ impl ToolRenderers {
             is_error: request.context.is_error,
             output_pad: request.context.output_pad,
             duration_ms: request.context.duration_ms,
-            last_component: if result_phase {
-                card_state.result.take()
-            } else {
-                card_state.call.take()
-            },
+            last_component: card_state.begin(result_phase),
             state: std::mem::take(&mut card_state.state),
             invalidate: Arc::new(move || {
                 let _ = notify_conn.notify(
@@ -525,5 +531,46 @@ impl ToolRenderers {
         {
             self.cards.lock().unwrap().remove(card);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn lines(text: &str) -> Result<Rendered, String> {
+        Ok(Rendered::Lines(vec![text.to_string()]))
+    }
+
+    /// Upstream keeps one slot per phase (tool-execution.ts): it holds the component the phase's renderer returned, and a renderer that throws
+    /// leaves it empty.
+    #[test]
+    fn last_component_is_the_previous_run_and_none_after_a_failed_run() {
+        let mut card = CardState::default();
+        assert_eq!(card.begin(false), None, "first run");
+        card.finish(false, Map::new(), &lines("run1"));
+        assert_eq!(
+            card.begin(false),
+            Some(ToolRenderComponent::Lines(vec!["run1".to_string()]))
+        );
+        // that run failed: it never reaches finish, so the next run finds nothing, not run 1's lines
+        assert_eq!(card.begin(false), None, "after a failed run");
+        card.finish(false, Map::new(), &lines("run3"));
+        card.finish(false, Map::new(), &Err("boom".to_string()));
+        assert_eq!(card.begin(false), None, "an error result keeps no component");
+    }
+
+    #[test]
+    fn the_phases_have_slots_of_their_own_and_a_view_stands_in_for_the_component() {
+        let mut card = CardState::default();
+        card.finish(false, Map::new(), &lines("call"));
+        assert_eq!(card.begin(true), None, "the result slot is not the call slot");
+        let view = View::new(crate::kit::Container::new());
+        card.finish(true, Map::new(), &Ok(Rendered::view(view.clone())));
+        assert_eq!(card.begin(true), Some(ToolRenderComponent::View(view)));
+        assert_eq!(
+            card.begin(false),
+            Some(ToolRenderComponent::Lines(vec!["call".to_string()]))
+        );
     }
 }

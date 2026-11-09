@@ -2575,6 +2575,24 @@ fn main() {
             }));
             Some(set)
         }
+        "last_view_probe" => {
+            // A view renderer that reads the view form of ToolRenderContext::last_component: the kind of what its previous run returned, and the run's own n.
+            let mut set = pig_sdk::ToolRendererSet::default();
+            set.call_view = Some(Arc::new(|_ctx, args, render, _width| {
+                let kind = match &render.last_component {
+                    None => "none",
+                    Some(pig_sdk::ToolRenderComponent::View(_)) => "view",
+                    Some(_) => "lines",
+                };
+                let n = args.get("n").map(Value::to_string).unwrap_or_default();
+                Ok(kit::View::new(Container::new().child(Text::new(
+                    format!("lastview:{kind}:n={n}"),
+                    0,
+                    0,
+                ))))
+            }));
+            Some(set)
+        }
         "conformance_keyhints" => Some(pig_sdk::ToolRendererSet::with_call(
             |_ctx, args, render, _width| {
                 let id = args.get("q").and_then(Value::as_str).unwrap_or("");

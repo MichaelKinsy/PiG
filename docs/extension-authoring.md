@@ -354,7 +354,7 @@ Pig accepts exactly one conventional factory or exact standalone form.
 | Rust | `src/lib.rs` with `pub fn new_extension() -> Extension` | exact crate with `src/main.rs` only |
 | Python | one module with `def new_extension() -> Extension` | executable `main.py` with a shebang |
 | Lisp | one ASDF system (`<name>.asd`) or one `<name>.lisp` file that defines `(defun new-extension ())`, usually through `(pig:define-extension ...)` | executable `main.lisp` with a shebang |
-| Node | Pi-compatible default export | exact executable script with a shebang |
+| Node | Pi-compatible default export | exact executable script with a shebang, run as a native executable that speaks the wire itself (Node has no SDK, so `pig extension init` scaffolds no isolated Node form) |
 | Native | n/a | exact executable file |
 
 Factories of one language may share a generated language cell. Packed TypeScript and JavaScript factories share one Node process (D20). Every standalone remains isolated. Pig rejects mixed languages, several factories, factory-plus-standalone roots, nonstandard factory symbols, missing entrypoints, and identity mismatches. A direct directory uses its directory name as the expected identity. A Package or Piglet supplies its declared member name. Select a narrower exact root instead of relying on scan order.

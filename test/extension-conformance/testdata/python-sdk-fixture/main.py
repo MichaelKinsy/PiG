@@ -1768,6 +1768,16 @@ def new_extension() -> pig_sdk.Extension:
             renderers.call_view = lambda _ctx, _args, _render, _width: kit_probe_view()
             renderers.result_view = lambda _ctx, _result, _options, _render, _width: kit_probe_view()
             return renderers
+        if tool == "last_view_probe":
+            # A view renderer that reads the view form of ToolRenderContext.last_component: the kind of what its previous run returned, and the run's own n.
+            def last_view_call(_ctx, args, render, _width):
+                last = render.last_component
+                kind = "none" if last is None else ("view" if isinstance(last, kit.View) else "lines")
+                return kit.View(kit.Container([kit.Text("lastview:%s:n=%s" % (kind, args.get("n")), 0, 0)]))
+
+            renderers = pig_sdk.ToolRenderers()
+            renderers.call_view = last_view_call
+            return renderers
         if tool == "conformance_keyhints":
             return pig_sdk.ToolRenderers(render_call=lambda _ctx, args, render, _width: [hints_of(render, args.get("q", ""))])
         if tool == "conformance_no_renderer":

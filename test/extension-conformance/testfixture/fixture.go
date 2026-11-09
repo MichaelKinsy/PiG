@@ -667,6 +667,18 @@ func Extension() *sdk.Extension {
 				return (&kitProbe{}).View(0), nil
 			}
 			return &renderers
+		case "last_view_probe":
+			// A view renderer that reads the view form of ToolRenderContext.LastComponent: the kind of what its previous run returned, and the run's own n.
+			return &sdk.ToolRenderers{CallView: func(_ sdk.Context, args map[string]any, render sdk.ToolRenderContext, _ int) (kit.View, error) {
+				kind := "none"
+				if last := render.LastComponent; last != nil {
+					kind = "lines"
+					if last.View != nil {
+						kind = "view"
+					}
+				}
+				return kit.View{Root: kit.NewText(fmt.Sprintf("lastview:%s:n=%v", kind, args["n"]), 0, 0)}, nil
+			}}
 		case "conformance_keyhints":
 			return &sdk.ToolRenderers{Call: func(_ sdk.Context, args map[string]any, render sdk.ToolRenderContext, _ int) ([]string, error) {
 				id, _ := args["q"].(string)

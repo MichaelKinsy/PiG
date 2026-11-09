@@ -389,12 +389,12 @@ wire = "subprocess.CommandInfo.sourceInfo"
 [[row]]
 key = "pi.registerProvider"
 node_partial = "config registration reaches the host; native callback providers remain process-local"
-rust_partial = "Extension::register_provider queues at load (the extension is moved into run, so a later call does not compile); after load Context::register_provider applies the config at once through the host"
+rust_partial = "Extension::register_provider queues at load (the extension is moved into run, so a later call does not compile); after load a handler calls ModelRegistry::register_provider through Context::model_registry, which applies the config at once through the host"
 
 [[row]]
 key = "pi.unregisterProvider"
 node_partial = "config removal reaches the host; native providers remain process-local"
-rust_partial = "Extension::unregister_provider drops a queued registration at load; after load Context::unregister_provider removes the provider at once through the host"
+rust_partial = "Extension::unregister_provider drops a queued registration at load; after load a handler calls ModelRegistry::unregister_provider through Context::model_registry, which removes the provider at once through the host"
 
 [[row]]
 key = "pi.getThinkingLevel"

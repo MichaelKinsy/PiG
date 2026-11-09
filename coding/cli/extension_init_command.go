@@ -79,7 +79,7 @@ func runExtensionInit(args []string) int {
 		return printExtensionInitReport(extensionInitReport{Language: opts.lang, Error: "--login currently supports --lang go only"}, opts.jsonOutput)
 	}
 	if opts.isolated && opts.lang == "node" {
-		return printExtensionInitReport(extensionInitReport{Language: opts.lang, Error: "--isolated is not available for --lang node: a Node extension is Pi's default-export factory, and an executable Node script has no SDK to speak the wire with"}, opts.jsonOutput)
+		return printExtensionInitReport(extensionInitReport{Language: opts.lang, Error: "--isolated is not available for --lang node: Node has no SDK, so an exact standalone Node script would be a native executable that speaks the wire itself; scaffold the default-export factory instead"}, opts.jsonOutput)
 	}
 	if opts.login && opts.isolated {
 		return printExtensionInitReport(extensionInitReport{Language: opts.lang, Error: "--login requires the conventional Go factory form"}, opts.jsonOutput)
