@@ -111,7 +111,8 @@ func TestMermaidThemedTransformMatchesUpstream(t *testing.T) {
 			t.Fatalf("bad golden %q: %v", sc.Bytes(), err)
 		}
 		total++
-		theme := tui.ActiveTheme()
+		// The active theme is created in the color depth the environment reports (COLORTERM) when an earlier test selects a theme by name, so the mode the golden names is set here and not assumed.
+		theme := tui.ActiveTheme().WithColorMode(tui.TerminalColorModeTrueColor)
 		if g.Input.Theme.ColorMode == "256" {
 			theme = theme.WithColorMode(tui.TerminalColorMode256)
 		}
