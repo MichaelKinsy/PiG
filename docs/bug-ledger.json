@@ -22293,15 +22293,15 @@
     },
     {
       "id": "BF-81a9b76",
-      "title": "Opening the model selector no longer leaves a catalog refresh running after the session ends",
-      "symptom": "The refresh the selector starts and the shared catalog operation behind it were not joined by anything, so with a file-backed registry the operation could still write `auth.json` and `models-store.json` in the agent directory after shutdown or after the registry's model tasks were closed.",
+      "title": "Releasing a session's services no longer leaves the model selector's catalog refresh running",
+      "symptom": "The refresh the selector starts and the shared catalog operation behind it were not joined by anything, so with a file-backed registry the operation could still write `auth.json` and `models-store.json` in the agent directory after the registry's model tasks were closed.",
       "rootCause": "- the registry runs the shared operation as a model task, so CloseModelTasks cancels and joins it, and a closed registry returns an aborted result; - the selector's refresh is a task of its runtime's ModelSelectorTaskOwner, which the interactive mode backs with its background tasks, so Run's teardown cancels and joins it, including the runtime call it raced with the selector's signal; Dispose still cancels from the constructor's return.",
       "rootCauseSource": "commit",
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "Opening the model selector no longer leaves a catalog refresh running after the session ends. Before, the refresh the selector starts and the shared catalog operation behind it were not joined by anything, so with a file-backed registry the operation could still write `auth.json` and `models-store.json` in the agent directory after shutdown or after the registry's model tasks were closed. The selector's refresh is now an owned task of the interactive mode, and the operation a task of the model registry, and shutdown cancels and joins both; the refresh result and the picker are unchanged.",
+      "releaseNote": "Releasing a session's services no longer leaves the model selector's catalog refresh running. Before, the refresh the selector starts and the shared catalog operation behind it were not joined by anything, so with a file-backed registry the operation could still write `auth.json` and `models-store.json` in the agent directory after the registry's model tasks were closed. The selector's refresh is now an owned task of the interactive mode, and the operation a task of the model registry; both are cancelled and joined when the session's services are released (for example on session replacement), while at quit the process exits, as Pi's does. The refresh result and the picker are unchanged.",
       "origin": "release note",
       "commits": [
         {

@@ -44,7 +44,7 @@ type modelSelectorRuntime struct {
 	ctx context.Context
 }
 
-// StartModelSelectorTask is where Pi's unawaited `void this.refreshModels()` (model-selector.ts:158) lives in the interactive mode: an owned background task that ends when the selector's caller or the session shuts down, and that the session's shutdown joins with the other background tasks. A mode that is already shutting down admits none.
+// StartModelSelectorTask is where Pi's unawaited `void this.refreshModels()` (model-selector.ts:162) lives in the interactive mode: an owned background task that ends when the selector's caller or the session shuts down, and that the session's shutdown joins with the other background tasks. A mode that is already shutting down admits none.
 func (r modelSelectorRuntime) StartModelSelectorTask(refresh func(context.Context)) bool {
 	background := r.m.backgroundCtx
 	if background != nil && background.Err() != nil {
