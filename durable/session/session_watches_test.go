@@ -137,15 +137,14 @@ func TestSessionDocumentWatches(t *testing.T) {
 		if !same(watch.Value(), initial) {
 			t.Fatal("the value stays at acquisition before start")
 		}
-		var mu sync.Mutex
-		inline := true
 		recorder := &watchRecorder{}
+		// Pi: `inline` is true until start returns, and the listener expects it false. A listener here runs on the watch's
+		// delivery goroutine, which may start it before Start returns to this one, so the flag would misread that for an inline
+		// run: inline is the listener running on the stack of this function, inside its call of Start.
+		here := sessiontest.Here()
 		watch.Start(func(_ context.Context, change durable.WatchCall[obj]) error {
 			value, ops := change.Value, change.Ops
-			mu.Lock()
-			wasInline := inline
-			mu.Unlock()
-			if wasInline {
+			if here.OnStack() {
 				t.Error("the listener never runs inline")
 			}
 			if !same(watch.Value(), value) {
@@ -154,9 +153,6 @@ func TestSessionDocumentWatches(t *testing.T) {
 			recorder.record(value, ops)
 			return nil
 		})
-		mu.Lock()
-		inline = false
-		mu.Unlock()
 		flush(harness)
 		deliveries := recorder.all()
 		// Both commits set value: folded, the second set replaces the first.
