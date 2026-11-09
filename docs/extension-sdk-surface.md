@@ -25,11 +25,11 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Runtime | implemented | stand-in/partial | missing (all with a reviewed exception) |
 |---|---|---|---|
-| Node runtime | 491 | 27 | 11 |
-| Go | 493 | 26 | 10 |
-| Rust | 493 | 26 | 10 |
-| Python | 493 | 26 | 10 |
-| Lisp | 500 | 19 | 10 |
+| Node runtime | 492 | 27 | 10 |
+| Go | 494 | 26 | 9 |
+| Rust | 494 | 26 | 9 |
+| Python | 494 | 26 | 9 |
+| Lisp | 501 | 19 | 9 |
 
 35 PiG-only surfaces:
 
@@ -1017,7 +1017,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
 |---|---|---|---|---|---|---|
 | `ctx.newSession(options.parentSession)` | `ExtensionCommandContext.newSession(options.parentSession)` | implemented `RuntimeContext.newSession` | implemented `Context.NewSession` | implemented `Context::new_session` | implemented `Context.new_session` | implemented `pig:ctx-new-session` |
-| `ctx.newSession(options.setup)` | `ExtensionCommandContext.newSession(options.setup)` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
+| `ctx.newSession(options.setup)` | `ExtensionCommandContext.newSession(options.setup)` | implemented `read:entry.callback` | implemented `SetupFunc` | implemented `Context::new_session_setup` | implemented `SetupSessionManager` | implemented `pig:ctx-new-session(setup)` |
 | `ctx.newSession(options.withSession)` | `ExtensionCommandContext.newSession(options.withSession)` | implemented `read:entry.callback` | implemented `WithSessionFunc` | implemented `Context::new_session_with` | implemented `ReplacedSessionContext` | implemented `pig:ctx-new-session(with-session)` |
 | `ctx.newSession → cancelled` | `ExtensionCommandContext.newSession → cancelled` | implemented `RuntimeContext.newSession` | implemented `CancelledResult.Cancelled` | implemented `Context::new_session` | implemented `Context.new_session` | implemented `pig:ctx-new-session` |
 
@@ -3108,7 +3108,6 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | Surface | Runtimes | Reason |
 |---|---|---|
 | `pi.sendUserMessage(options.expandPromptTemplates)` | Node runtime, Go, Rust, Python, Lisp | The host SendUserMessageOptions carries deliverAs only; expandPromptTemplates would be dropped. Requires host prompt-expansion control. |
-| `ctx.newSession(options.setup)` | Node runtime, Go, Rust, Python, Lisp | The wire has no writable replacement SessionManager callback handle. Requires replacement callback ownership in the Pi runner bridge (0.3.0), not JSON serialization of a function. |
 | `withSession ctx.sendUserMessage(options.expandPromptTemplates)` | Node runtime, Go, Rust, Python, Lisp | The host SendUserMessageOptions carries deliverAs only; expandPromptTemplates would be dropped. Requires host prompt-expansion control. |
 | `ctx.ui.theme.sourceInfo` | Node runtime, Go, Rust, Python, Lisp | The theme snapshot carries sourcePath but no SourceInfo. Requires theme resource provenance publication. |
 | `user_bash return.operations` | Node runtime, Go, Rust, Python, Lisp | The wire has no host-invoked streaming BashOperations executor callback. Returning a completed result works; operations requires callback/stream ownership. |

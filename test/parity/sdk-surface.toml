@@ -575,11 +575,12 @@ wire = "extension.NewSessionOptions.parentSession"
 
 [[row]]
 key = "ctx.newSession(options.setup)"
-node = "-"
-go = "-"
-rust = "-"
-python = "-"
-lisp = "-"
+node = "read:entry.callback"
+go = "SetupFunc"
+rust = "Context::new_session_setup"
+python = "SetupSessionManager"
+lisp = "pig:ctx-new-session(setup)"
+wire = "subprocess.SetupArgs.handle"
 
 [[row]]
 key = "ctx.newSession(options.withSession)"

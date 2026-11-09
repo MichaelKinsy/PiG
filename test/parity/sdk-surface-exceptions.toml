@@ -11,11 +11,6 @@ sdks = ["node", "go", "rust", "python", "lisp"]
 reason = "The host SendUserMessageOptions carries deliverAs only; expandPromptTemplates would be dropped. Requires host prompt-expansion control."
 
 [[exception]]
-key = "ctx.newSession(options.setup)"
-sdks = ["node", "go", "rust", "python", "lisp"]
-reason = "The wire has no writable replacement SessionManager callback handle. Requires replacement callback ownership in the Pi runner bridge (0.3.0), not JSON serialization of a function."
-
-[[exception]]
 key = "withSession ctx.sendUserMessage(options.expandPromptTemplates)"
 sdks = ["node", "go", "rust", "python", "lisp"]
 reason = "The host SendUserMessageOptions carries deliverAs only; expandPromptTemplates would be dropped. Requires host prompt-expansion control."
