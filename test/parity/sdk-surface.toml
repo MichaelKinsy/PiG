@@ -389,16 +389,12 @@ wire = "subprocess.CommandInfo.sourceInfo"
 [[row]]
 key = "pi.registerProvider"
 node_partial = "config registration reaches the host; native callback providers remain process-local"
-go_partial = "registration declaration is applied at load; use ModelRegistry.RegisterProvider for live config registration"
-rust_partial = "registration declaration is applied at load; use ModelRegistry.register_provider for live config registration"
-python_partial = "registration declaration is applied at load; use ModelRegistry.register_provider for live config registration"
+rust_partial = "Extension::register_provider queues at load (the extension is moved into run, so a later call does not compile); after load a handler calls ModelRegistry::register_provider through Context::model_registry, which applies the config at once through the host"
 
 [[row]]
 key = "pi.unregisterProvider"
 node_partial = "config removal reaches the host; native providers remain process-local"
-go_partial = "registration declarations are removed at load; live config removal is exposed by ModelRegistry.UnregisterProvider"
-rust_partial = "registration declarations are removed at load; live config removal is exposed by ModelRegistry.unregister_provider"
-python_partial = "registration declarations are removed at load; live config removal is exposed by ModelRegistry.unregister_provider"
+rust_partial = "Extension::unregister_provider drops a queued registration at load; after load a handler calls ModelRegistry::unregister_provider through Context::model_registry, which removes the provider at once through the host"
 
 [[row]]
 key = "pi.getThinkingLevel"
@@ -556,9 +552,6 @@ wire = "literal:awaitCompletion"
 [[row]]
 key = "ctx.modelRegistry.registerProvider"
 node_partial = "config registration reaches the host; native callback providers remain process-local"
-go_partial = "config overload only; native Provider callback objects are not implemented"
-rust_partial = "config overload only; native Provider callback objects are not implemented"
-python_partial = "config overload only; native Provider callback objects are not implemented"
 
 [[row]]
 key = "ctx.modelRegistry.getAvailable"
@@ -1180,11 +1173,11 @@ lisp = "pig:tool-render-context-invalidate|pig:tool-render-context-invalidate-p"
 [[row]]
 key = "tool render context.lastComponent"
 node = "read:card.state"
-go = "-"
-rust = "-"
-python = "-"
-lisp = "-"
-node_partial = "the component this card's renderer last returned, kept inside the extension process"
+
+[[row]]
+key = "tool render context.durationMs"
+node = "read:payload.context"
+wire = "subprocess.RenderToolContext.durationMs"
 
 [[row]]
 key = "tool render context.state"

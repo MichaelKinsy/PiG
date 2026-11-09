@@ -223878,8 +223878,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitResolverDrawsCallAndResultViews",
-        "test:test/extension-conformance/keybinding_hints_test.go#TestKeybindingHintsAcrossSDKs",
-        "test:coding/extension/host/inproc/upstream_tool_renderers_test.go#TestUpstreamRunnerResolvesToolRenderersInExtensionLoadOrderEachAbleToDeferToTheNext"
+        "test:test/extension-conformance/component_kit_test.go#TestConformance_ToolRenderLastComponentIsTheViewTheRendererReturned",
+        "test:test/extension-conformance/keybinding_hints_test.go#TestKeybindingHintsAcrossSDKs"
       ]
     },
     {

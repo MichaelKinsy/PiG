@@ -11,9 +11,12 @@ RENDER-SHELL is \"default\" or \"self\"."
   render-call render-result (render-shell "default") call-view result-view)
 
 (defstruct tool-render-context
-  "What the host tells a tool renderer. STATE is a hash-table that lives as long as the card; INVALIDATE is a function without arguments."
+  "What the host tells a tool renderer. STATE is a hash-table that lives as long as the card; INVALIDATE is a function without arguments.
+LAST-COMPONENT is what this card's renderer of the same phase (call or result) returned on its previous run, as Pi's lastComponent is the
+component the renderer returned before: a renderer that returns lines or a kit view returns no component object, so those lines or that
+view stand in for it. NIL on the card's first run of the phase and after a run that signalled (Pi forgets the component a throwing renderer left)."
   (args (obj)) (tool-call-id "") (cwd "") execution-started args-complete is-partial expanded show-images is-error (output-pad 0)
-  duration-ms (state (obj)) invalidate)
+  duration-ms last-component (state (obj)) invalidate)
 
 ;;; Pi 9376c8d1 (#4748) hands renderers the host's keyText and keyHint on the tool render context and the message and entry
 ;;; options (KeybindingHints). The message and entry options are the host's JSON object, so each form takes it as its first
@@ -238,9 +241,13 @@ function arguments). A tool this extension did not register is left alone."
         (when (extension-live ext) (host-call ext "registerTool" declaration)))))
   nil)
 
+(defstruct tool-card
+  "One tool card: its renderer lock, its STATE and the last output of each phase's renderer (LAST-COMPONENT)."
+  (mutex (sb-thread:make-mutex :name "pig card")) (state (obj)) call result)
+
 (defun rd-card (rd card)
   (sb-thread:with-mutex ((rd-lock rd))
-    (or (gethash card (rd-cards rd)) (setf (gethash card (rd-cards rd)) (cons (sb-thread:make-mutex :name "pig card") (obj))))))
+    (or (gethash card (rd-cards rd)) (setf (gethash card (rd-cards rd)) (make-tool-card)))))
 
 (defun tool-hook (ext name key)
   (getf (sb-thread:with-mutex ((extension-reg-lock ext)) (gethash name (extension-tool-hooks ext))) key))
@@ -251,7 +258,7 @@ function arguments). A tool this extension did not register is left alone."
 (def-request "render_tool" (ext ctx req)
   (let* ((rd (rd-of ext)) (name (jget req "tool" "")) (args (prov-object (jget req "args")))
          (card-id (let ((c (jget args "card"))) (if (stringp c) c ""))) (card (rd-card rd card-id)))
-    (sb-thread:with-mutex ((car card))
+    (sb-thread:with-mutex ((tool-card-mutex card))
       (let* ((wire (prov-object (jget args "context")))
              (render (make-tool-render-context
                       :args (prov-object (jget args "args"))
@@ -262,7 +269,8 @@ function arguments). A tool this extension did not register is left alone."
                       :show-images (eq (jget wire "showImages") t) :is-error (eq (jget wire "isError") t)
                       :output-pad (let ((v (jget wire "outputPad"))) (if (integerp v) v 0))
                       :duration-ms (let ((v (jget wire "durationMs"))) (and (realp v) (round v)))
-                      :state (cdr card)
+                      :last-component (if (equal (jget args "phase") "result") (shiftf (tool-card-result card) nil) (shiftf (tool-card-call card) nil))
+                      :state (tool-card-state card)
                       :invalidate (lambda () (notify-host ext "tool_render_invalidate" (obj "card" card-id)))))
              (width (let ((w (jget args "width"))) (if (integerp w) w 0)))
              (resolved (let ((id (jget args "renderers"))) (and (stringp id) (plusp (length id)) (gethash id (rd-resolved rd)))))
@@ -275,12 +283,13 @@ function arguments). A tool this extension did not register is left alone."
                   (t (values (tool-hook ext name :call-view) (tool-hook ext name :render-call))))
           (let ((handler (or view lines)))
             (unless handler (error "tool ~A has no ~A renderer" name (if result-phase "result" "call")))
-            (rd-result ext
-                       (if result-phase
-                           (funcall handler ctx (let ((r (jget args "result"))) (if (hash-table-p r) r (obj "content" (vector))))
-                                    (prov-object (jget args "options")) render width)
-                           (funcall handler ctx (prov-object (jget args "args")) render width))
-                       (and view t))))))))
+            (let ((rendered (if result-phase
+                                (funcall handler ctx (let ((r (jget args "result"))) (if (hash-table-p r) r (obj "content" (vector))))
+                                         (prov-object (jget args "options")) render width)
+                                (funcall handler ctx (prov-object (jget args "args")) render width))))
+              ;; a handler that signalled left no component: LAST-COMPONENT was cleared above and is not restored
+              (if result-phase (setf (tool-card-result card) rendered) (setf (tool-card-call card) rendered))
+              (rd-result ext rendered (and view t)))))))))
 
 (defun tool-renderer (ext resolver)
   "Register a tool renderer resolver, (lambda (tool next)) -> tool-renderers or NIL. NEXT is a function without arguments returning the
