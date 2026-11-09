@@ -174,6 +174,8 @@ func TestReleaseCandidateShipsPiGStandardAsItsOwnArtifact(t *testing.T) {
 		"steps.attest.outputs.bundle-path",
 		"find . -type f ! -name SHA256SUMS",
 		"name: pig-standard-${{ inputs.version }}-${{ matrix.goos }}-${{ matrix.goarch }}",
+		// The Binary reports build: dev, so the Piglet build record that names the commit ships as evidence.
+		`cp standard-binary/pig-standard-build-record.json "$GITHUB_WORKSPACE/out/evidence/build-record.json"`,
 	} {
 		if !strings.Contains(standard, want) {
 			t.Errorf("standard job missing %q", want)

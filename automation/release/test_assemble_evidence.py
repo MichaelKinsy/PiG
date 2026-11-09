@@ -19,7 +19,8 @@ class ReleaseEvidenceTests(unittest.TestCase):
             archive = name + ('.zip' if target.startswith('windows-') else '.tar.gz')
             names = [archive, archive + '.sigstore.json'] + ['evidence/' + suffix for suffix in
                      [prefix + '.spdx.json', prefix + '.cyclonedx.json', 'licenses.csv',
-                      'inventory-validation.json', 'grype-report.sarif']]
+                      'inventory-validation.json', 'grype-report.sarif']
+                     + (['build-record.json'] if product == 'pig-standard' else [])]
             hashes = []
             for relative in names:
                 path = root / name / relative
@@ -38,8 +39,8 @@ class ReleaseEvidenceTests(unittest.TestCase):
             root = Path(tmp)
             expected = self.fixture(root / 'candidates')
             assembler.assemble(root / 'candidates', root / 'release', '0.2.0')
-            # Each target keeps its archive, its signing bundle and five evidence files.
-            self.assertEqual(len(expected), 7 * (len(assembler.TARGETS) + len(assembler.ACP_TARGETS) + len(assembler.STANDARD_TARGETS)))
+            # Each target keeps its archive, its signing bundle and five evidence files; a Standard target also keeps its Piglet build record.
+            self.assertEqual(len(expected), 7 * (len(assembler.TARGETS) + len(assembler.ACP_TARGETS) + len(assembler.STANDARD_TARGETS)) + len(assembler.STANDARD_TARGETS))
             self.assertIn('pig-0.2.0-android-arm64.tar.gz', expected)
             self.assertIn('pig-acp-0.2.0-linux-arm64.tar.gz', expected)
             self.assertIn('pig-acp-0.2.0-windows-arm64.zip', expected)
@@ -50,7 +51,7 @@ class ReleaseEvidenceTests(unittest.TestCase):
                 self.assertIn(archive, expected)
                 self.assertIn(archive + '.sigstore.json', expected)
                 for evidence in ('sbom.spdx.json', 'sbom.cyclonedx.json', 'licenses.csv',
-                                 'inventory-validation.json', 'grype-report.sarif'):
+                                 'inventory-validation.json', 'grype-report.sarif', 'build-record.json'):
                     self.assertIn(f'pig-standard-0.2.0-{target}-{evidence}', expected)
             self.assertNotIn('pig-standard-0.2.0-android-arm64.tar.gz', expected)
             actual = {p.name: p.read_bytes() for p in (root / 'release').iterdir() if p.name != 'EVIDENCE-SHA256SUMS'}
@@ -83,7 +84,8 @@ class ReleaseEvidenceTests(unittest.TestCase):
         for target, missing in [('darwin-arm64', 'pig-standard-0.2.0-darwin-arm64.tar.gz'),
                                 ('linux-amd64', 'pig-standard-0.2.0-linux-amd64.tar.gz.sigstore.json'),
                                 ('windows-arm64', 'evidence/sbom.spdx.json'),
-                                ('linux-arm64', 'evidence/grype-report.sarif')]:
+                                ('linux-arm64', 'evidence/grype-report.sarif'),
+                                ('darwin-amd64', 'evidence/build-record.json')]:
             with self.subTest(target=target, missing=missing), tempfile.TemporaryDirectory() as tmp:
                 root = Path(tmp)
                 self.fixture(root / 'candidates')

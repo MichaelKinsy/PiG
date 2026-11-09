@@ -23,7 +23,10 @@ and Windows on `amd64` and `arm64`. It is separate from the Stock `pig-<version>
 archive and has its own checksums, SBOMs, vulnerability scan and build-provenance
 attestation in the release. Run `pig-standard version`: it prints the release
 version, and `pig-standard status` names `pig-standard` as the active Piglet.
-Termux has no Standard archive.
+Termux has no Standard archive. The build-provenance attestation covers the
+archive, so check it with `pig verify --provenance <archive>` on the downloaded
+archive, not on the extracted Binary. The Binary reports `build: dev`; the release
+ships a `-build-record.json` per archive with the source commit it was built from.
 
 The current composition selects `extensions/piglogin`, `extensions/pigrunner`,
 `extensions/angrypigs` and `extensions/bunruntime`. The login extension owns the PiG login, sprite

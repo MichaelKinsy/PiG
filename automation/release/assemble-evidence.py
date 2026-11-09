@@ -27,8 +27,12 @@ def assemble(candidates, release, version):
         archive = name + ('.zip' if target.startswith('windows-') else '.tar.gz')
         prefix = 'source' if target == 'source' else 'sbom'
         names = [(archive, archive), (archive + '.sigstore.json', archive + '.sigstore.json')]
-        for evidence in (prefix + '.spdx.json', prefix + '.cyclonedx.json',
-                         'licenses.csv', 'inventory-validation.json', 'grype-report.sarif'):
+        files = [prefix + '.spdx.json', prefix + '.cyclonedx.json',
+                 'licenses.csv', 'inventory-validation.json', 'grype-report.sarif']
+        if product == 'pig-standard':
+            # The Binary reports build: dev; its Piglet build record names the source commit.
+            files.append('build-record.json')
+        for evidence in files:
             names.append(('evidence/' + evidence, name + '-' + evidence))
         recorded = {}
         for line in (directory / 'SHA256SUMS').read_text().splitlines():

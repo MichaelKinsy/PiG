@@ -633,6 +633,8 @@ jobs:
           # The Binary is what the native runner built and recorded: refuse any other bytes.
           (cd standard-binary && sha256sum -c pig-standard.sha256)
           cp "standard-binary/$binary" "$stage/$binary"
+          # The Binary reports build: dev; the Piglet build record names the source commit it was built from.
+          cp standard-binary/pig-standard-build-record.json "$GITHUB_WORKSPACE/out/evidence/build-record.json"
           # Artifact upload does not keep the executable bit.
           chmod 0755 "$stage/$binary"
           cp "$source_root/LICENSE" "$source_root/NOTICE" "$source_root/THIRD_PARTY_NOTICES.md" "$stage/"

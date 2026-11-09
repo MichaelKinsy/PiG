@@ -22,8 +22,15 @@
 # must equal VERSION. OUT_DIR and WORK_DIR must lie outside SOURCE_ROOT, which
 # the builder hashes.
 #
-# Writes OUT_DIR/pig-standard[.exe] and OUT_DIR/pig-standard.sha256 (a
-# sha256sum line for that file). Prints "binary=<path>" for $GITHUB_OUTPUT.
+# The Binary reports `build: dev`: the Piglet builder stamps the Piglet release
+# version into it but not a source commit. The Piglet build record carries the
+# commit (pigSourceRevision), the PiG source digest, target and toolchain, so the
+# script keeps it as release evidence next to the Binary after checking that it
+# names this commit, this target and this exact Binary.
+#
+# Writes OUT_DIR/pig-standard[.exe], OUT_DIR/pig-standard.sha256 (a sha256sum
+# line for that file) and OUT_DIR/pig-standard-build-record.json. Prints
+# "binary=<path>" for $GITHUB_OUTPUT.
 set -euo pipefail
 
 source_root=${1:?usage: build-pig-standard.sh SOURCE_ROOT OUT_DIR WORK_DIR}
@@ -64,4 +71,22 @@ export CGO_ENABLED=0 GOTOOLCHAIN=local
     --out "$out/pig-standard$exe" --no-input
 )
 (cd "$out" && sha256sum "pig-standard$exe" > pig-standard.sha256)
+
+# Keep the build record of this Binary: exactly one, and it must describe this
+# commit, this target and these bytes.
+records=("$work"/home/receipts/piglets/pig-standard/*/"$VERSION"/piglet-binary/"$GOOS-$GOARCH"/*.json)
+if [ "${#records[@]}" -ne 1 ] || [ ! -f "${records[0]}" ]; then
+  echo "build-pig-standard: expected one Piglet build record for $GOOS/$GOARCH under $work/home/receipts, found ${#records[@]}" >&2
+  exit 1
+fi
+commit=$(git -C "$source_root" rev-parse HEAD)
+digest=$(sha256sum "$out/pig-standard$exe")
+digest=${digest%% *}
+for want in "\"pigSourceRevision\": \"$commit\"" "\"target\": \"$GOOS/$GOARCH\"" "\"digest\": \"sha256:$digest\""; do
+  if ! grep -qF -- "$want" "${records[0]}"; then
+    echo "build-pig-standard: the Piglet build record does not contain $want" >&2
+    exit 1
+  fi
+done
+cp "${records[0]}" "$out/pig-standard-build-record.json"
 printf 'binary=%s\n' "$out/pig-standard$exe"
