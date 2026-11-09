@@ -3,6 +3,8 @@ package codingagent
 import (
 	"slices"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/ai"
 )
 
 // settings-manager.ts CacheWarmingMode = "off" | "streaming" | "idle" (CACHE_WARMING_MODES): every member of the union is a mode the settings accept and the warmer
@@ -27,7 +29,7 @@ func TestCacheWarmingModeUnionAllKindsAreHandled(t *testing.T) {
 		}
 		warmer := &CacheWarmer{getMode: func() CacheWarmingMode { return mode }}
 		for phase, want := range stopReasons[mode] {
-			if got := warmer.modeStopReason(&cacheWarmingRun{phase: phase}); got != want {
+			if got := warmer.modeStopReason(&cacheWarmingRun{phase: ai.CacheWarmingPhase(phase)}); got != want {
 				t.Errorf("mode %q in phase %q stops with %q, want %q", mode, phase, got, want)
 			}
 		}

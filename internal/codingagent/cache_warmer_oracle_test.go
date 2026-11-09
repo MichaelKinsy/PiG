@@ -64,7 +64,7 @@ emit(input.map((c) => {
 				model.ProviderMeta.Compat = &ai.ModelCompat{ForceAdaptiveThinking: c.ForceAdaptive}
 			}
 			options := ai.StreamOptions{CacheRetention: ai.CacheRetention(c.CacheRetention), Env: ai.ProviderEnv(c.Env), Thinking: ai.ThinkingLevel(c.Reasoning)}
-			ttl, ok := GetPromptCacheTtlMs(model, options)
+			ttl, ok := ai.GetPromptCacheTtlMs(model, options)
 			gotTTL, wantTTL := "none", "none"
 			if ok {
 				gotTTL = fmt.Sprint(ttl)
@@ -72,9 +72,9 @@ emit(input.map((c) => {
 			if want[i].TTL != nil {
 				wantTTL = fmt.Sprint(*want[i].TTL)
 			}
-			if gotTTL != wantTTL || IsReplayable(model, options) != want[i].Replayable {
+			if gotTTL != wantTTL || ai.IsCacheWarmingReplayable(model, options) != want[i].Replayable {
 				if failures++; failures <= 8 {
-					t.Errorf("process env %q case %d %+v\n  Pig ttl %s replayable %t\n  Pi  ttl %s replayable %t", processEnv, i, c, gotTTL, IsReplayable(model, options), wantTTL, want[i].Replayable)
+					t.Errorf("process env %q case %d %+v\n  Pig ttl %s replayable %t\n  Pi  ttl %s replayable %t", processEnv, i, c, gotTTL, ai.IsCacheWarmingReplayable(model, options), wantTTL, want[i].Replayable)
 				}
 			}
 		}
@@ -94,7 +94,7 @@ func TestCacheWarmingDelayMatchesPi(t *testing.T) {
 const mod = await load("pi-coding-agent/core/cache-warmer.js");
 emit(input.map((ttl) => { const delay = mod.getCacheWarmingDelayMs(ttl); return delay === undefined ? null : delay; }));`, ttls, &want)
 	for i, ttl := range ttls {
-		got, ok := GetCacheWarmingDelayMs(ttl)
+		got, ok := ai.GetCacheWarmingDelayMs(ttl)
 		gotText, wantText := "none", "none"
 		if ok {
 			gotText = fmt.Sprint(got)
