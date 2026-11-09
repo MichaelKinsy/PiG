@@ -3775,7 +3775,7 @@ func validateRegisterPayload(expectedName string, reg *RegisterPayload) error {
 	if reg.Flags, err = lastRegistrationWins("flag", reg.Flags, func(f FlagDecl) string { return f.Name }); err != nil {
 		return err
 	}
-	// Pi queues every registerProvider call of the load in an array (loader.ts:218-219; unregisterProvider filters the name's entries out, :224-225) and applies each in order through the registry, which merges defined values over the earlier registration (runner.ts:463-480, model-runtime.ts:919-940), so every declaration of a name is kept here and queued in order; only an empty name is refused. Tools, commands, shortcuts, flags and renderers are Maps in Pi's loader, hence lastRegistrationWins above and below.
+	// Pi queues every registerProvider call of the load in an array (loader.ts:221-231, where unregisterProvider also filters the name's entries out) and applies each in order through the registry (runner.ts:471-487, agent-session-services.ts:158-169), which merges defined values over the earlier registration (model-runtime.ts:965-986), so every declaration of a name is kept here and queued in order; only an empty name is refused. Tools, commands, shortcuts, flags and renderers are Maps in Pi's loader, hence lastRegistrationWins above and below.
 	for _, provider := range reg.Providers {
 		if provider.Name == "" {
 			return errors.New("provider name is required")

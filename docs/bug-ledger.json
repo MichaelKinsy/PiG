@@ -31996,6 +31996,29 @@
       "tests": []
     },
     {
+      "id": "BF-9910d00",
+      "title": "An extension that declared one provider name in several `registerProvider` calls while it loaded kept only…",
+      "symptom": "An extension that declared one provider name in several `registerProvider` calls while it loaded kept only the last call on the host: `refreshModels` or `oauth` declared first and the other fields declared second lost the first.",
+      "rootCause": "Pi pushes each registerProvider call of an extension load onto an array (loader.ts:218-219) and applies each in order through the registry, which merges the defined values over the earlier registration (runner.ts:463-480, model-runtime.ts:919-940). The host kept only the last declaration of a provider name (lastRegistrationWins), so an extension that declared refreshModels in one call and oauth in another lost the first. The host now keeps every declaration of the registration in order; only tools, commands, shortcuts, flags and renderers, which are Maps in Pi, keep the last of a name.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension that declared one provider name in several `registerProvider` calls while it loaded kept only the last call on the host: `refreshModels` or `oauth` declared first and the other fields declared second lost the first. Pi pushes every call onto an array and applies each in order through the registry, which merges the defined values over the earlier registration (`loader.ts:221-231`, `runner.ts:471-487`, `agent-session-services.ts:158-169`, `model-runtime.ts:965-986`), so the host now queues every declaration of a name in order, which fixes it for Go, Rust, Python and Lisp extensions. Node extensions were never affected: the Node runtime merges the registrations of a name before it sends them. Tools, commands, shortcuts, flags and renderers still keep the last of a name, as the Maps of Pi's loader do.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "9910d00910",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/provider_refresh_entries_test.go::TestConfigRefreshEntryIsFreedWhenTheRequestSettles",
+        "test/extension-conformance/provider_oauth_refresh_test.go::TestProviderOAuthModifyModelsNonIterableNode"
+      ]
+    },
+    {
       "id": "BF-992f3cb",
       "title": "A `before_provider_request` replacement that is not an object leaves Anthropic Messages as Pi's `{ ...value…",
       "symptom": "A `before_provider_request` replacement that is not an object leaves Anthropic Messages as Pi's `{ ...value, stream: true }` (`null`, a number or a boolean send `{\"stream\":true}`, an array or string its index members), `\"betas\": null` sends no `anthropic-beta` header, array-index keys lead a replacement body as in JavaScript, and a Codex WebSocket body's own `type` keeps the first position; a Codex payload hook that returns `null` no longer crashes PiG.",
@@ -36155,6 +36178,36 @@
       "tests": [
         "chord/delta/retention_upstream_test.go::TestDeltaTrackerRetentionAcrossGCJobs",
         "chord/delta/retention_upstream_test.go::TestTrackerReleasesADroppedOpenChangeWhenTheNextOpens"
+      ]
+    },
+    {
+      "id": "BF-abc54d0",
+      "title": "`pi.sendUserMessage(content, { expandPromptTemplates: true })` and the same option on a `withSession` context…",
+      "symptom": "The host used to drop the option, so a message such as `/my-command` or `/skill:name` was sent to the model as plain text.",
+      "rootCause": "go fix: maps.Copy, range over int, SplitSeq, Cut, WaitGroup.Go, new(expr) in the chord surfaces, nextnode app and a few tests; the now-unused ptr helper of surfaces_themes_test.go is gone. The normalization inventory follows the login picker label of its scenario (OpenAI Codex).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pi.sendUserMessage(content, { expandPromptTemplates: true })` and the same option on a `withSession` context now reach the Session from Go, Rust, Python, Lisp and Node extensions (`Context.SendUserMessageWith`, `send_user_message_with`, `expand_prompt_templates=`, `:expand-prompt-templates`). The host used to drop the option, so a message such as `/my-command` or `/skill:name` was sent to the model as plain text. `ctx.ui.theme.sourceInfo` is now set on the Node runtime theme. \u003c!-- fix: sdkhostgaps --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a73ac9e471",
+          "date": "2026-11-08"
+        },
+        {
+          "hash": "abc54d0438",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "chord/next/surfaces/intl_drift_test.go::TestTimesMatchNode",
+        "chord/next/surfaces/surfaces_themes_test.go::TestActiveThemeIsThePickedOneOfTheModeElseTheFirstOfTheModeElseTheFallback",
+        "chord/nextnode/app/app_changes_test.go::TestAppAppliesChangesOneAfterAnotherSoTheNewestBuildStaysDeployed",
+        "internal/codingagent/tools/grep_ripgrep_context_test.go::TestGrepPrintsOverlappingContextOnceAndKeepsTheLastMatchsTrailingContext",
+        "test/extension-conformance/send_user_message_expand_test.go::TestSendUserMessageExpandPromptTemplatesAcrossSDKs"
       ]
     },
     {

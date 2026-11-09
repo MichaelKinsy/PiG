@@ -114,7 +114,7 @@ func TestConfigRefreshEntryIsFreedWhenTheRequestSettles(t *testing.T) {
 	if n := configRefreshCount(host); n != 1 {
 		t.Fatalf("exit in flight: entries=%d, want 1", n)
 	}
-	(<-connCh).Close()
+	_ = (<-connCh).Close()
 	select {
 	case err := <-done:
 		if err == nil {

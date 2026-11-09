@@ -1169,6 +1169,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-98a21df](#bf-98a21df) | Tool output bounded by `chord/output`, the durable core and the Cloudflare host now loses whole ANSI escape… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-98f0403](#bf-98f0403) | `AgentSessionRuntime.dispose` in the Go, Python, Rust and Lisp extension SDKs now settles a run still in… | PiG's own defect | All platforms | Unreleased |
 | [BF-98f0403-2](#bf-98f0403-2) | `pig --help` in a build that strips a built-in no longer shows the `pig --tools +codemode` example when… | PiG's own defect | All platforms | Unreleased |
+| [BF-9910d00](#bf-9910d00) | An extension that declared one provider name in several `registerProvider` calls while it loaded kept only… | PiG's own defect | All platforms | Unreleased |
 | [BF-992f3cb](#bf-992f3cb) | A `before_provider_request` replacement that is not an object leaves Anthropic Messages as Pi's `{ ...value… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-99a06cf](#bf-99a06cf) | Interactive startup paints the editor and footer first and adds the startup header once the terminal reports… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-99d6e28](#bf-99d6e28) | Resizing an image no longer differs from Photon's by one in a channel of a rare pixel | PiG's own defect | All platforms | 0.7.0 |
@@ -1304,6 +1305,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ab5be97](#bf-ab5be97) | Long streamed answers render each frame faster: the Markdown view re-wraps and re-renders only the lines and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ab8e9e4](#bf-ab8e9e4) | Tool output and `!` command output no longer show the parameters of control sequences with a `<`, `=` or `>`… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-ab99da4](#bf-ab99da4) | fix(chord/delta): the tracker holds its one open change without a weak registration | PiG's own defect | All platforms | Unreleased |
+| [BF-abc54d0](#bf-abc54d0) | `pi.sendUserMessage(content, { expandPromptTemplates: true })` and the same option on a `withSession` context… | PiG's own defect | All platforms | Unreleased |
 | [BF-abe0137](#bf-abe0137) | fix(durable/core): deliver the extra hops of Pi without closures | PiG's own defect | All platforms | Unreleased |
 | [BF-ac0dc3b](#bf-ac0dc3b) | An empty list item ends its list: a following unindented line is no longer taken for its lazy continuation… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ac6fcea](#bf-ac6fcea) | A `session_start` handler that calls `ctx.shutdown()` during `/reload` ends the session and exits 0, as Pi… | PiG's own defect | All platforms | 0.5.0 |
@@ -17832,6 +17834,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** None recorded.
 - **Release note:** `pig --help` in a build that strips a built-in no longer shows the `pig --tools +codemode` example when `codemode` is stripped.
 
+### BF-9910d00
+
+**An extension that declared one provider name in several `registerProvider` calls while it loaded kept only…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An extension that declared one provider name in several `registerProvider` calls while it loaded kept only the last call on the host: `refreshModels` or `oauth` declared first and the other fields declared second lost the first.
+- **Root cause:** Pi pushes each registerProvider call of an extension load onto an array (loader.ts:218-219) and applies each in order through the registry, which merges the defined values over the earlier registration (runner.ts:463-480, model-runtime.ts:919-940). The host kept only the last declaration of a provider name (lastRegistrationWins), so an extension that declared refreshModels in one call and oauth in another lost the first. The host now keeps every declaration of the registration in order; only tools, commands, shortcuts, flags and renderers, which are Maps in Pi, keep the last of a name.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `9910d00910` (2026-11-09)
+- **Tests:** `coding/extension/host/subprocess/provider_refresh_entries_test.go::TestConfigRefreshEntryIsFreedWhenTheRequestSettles`, `test/extension-conformance/provider_oauth_refresh_test.go::TestProviderOAuthModifyModelsNonIterableNode`
+- **Release note:** An extension that declared one provider name in several `registerProvider` calls while it loaded kept only the last call on the host: `refreshModels` or `oauth` declared first and the other fields declared second lost the first. Pi pushes every call onto an array and applies each in order through the registry, which merges the defined values over the earlier registration (`loader.ts:221-231`, `runner.ts:471-487`, `agent-session-services.ts:158-169`, `model-runtime.ts:965-986`), so the host now queues every declaration of a name in order, which fixes it for Go, Rust, Python and Lisp extensions. Node extensions were never affected: the Node runtime merges the registrations of a name before it sends them. Tools, commands, shortcuts, flags and renderers still keep the last of a name, as the Maps of Pi's loader do.
+
 ### BF-992f3cb
 
 **A `before_provider_request` replacement that is not an object leaves Anthropic Messages as Pi's `{ ...value…**
@@ -19735,6 +19751,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `ab99da4063` (2026-10-29)
 - **Tests:** `chord/delta/retention_upstream_test.go::TestDeltaTrackerRetentionAcrossGCJobs`, `chord/delta/retention_upstream_test.go::TestTrackerReleasesADroppedOpenChangeWhenTheNextOpens`
+
+### BF-abc54d0
+
+**`pi.sendUserMessage(content, { expandPromptTemplates: true })` and the same option on a `withSession` context…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The host used to drop the option, so a message such as `/my-command` or `/skill:name` was sent to the model as plain text.
+- **Root cause:** go fix: maps.Copy, range over int, SplitSeq, Cut, WaitGroup.Go, new(expr) in the chord surfaces, nextnode app and a few tests; the now-unused ptr helper of surfaces_themes_test.go is gone. The normalization inventory follows the login picker label of its scenario (OpenAI Codex).
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a73ac9e471` (2026-11-08), `abc54d0438` (2026-11-09)
+- **Tests:** `chord/next/surfaces/intl_drift_test.go::TestTimesMatchNode`, `chord/next/surfaces/surfaces_themes_test.go::TestActiveThemeIsThePickedOneOfTheModeElseTheFirstOfTheModeElseTheFallback`, `chord/nextnode/app/app_changes_test.go::TestAppAppliesChangesOneAfterAnotherSoTheNewestBuildStaysDeployed`, `internal/codingagent/tools/grep_ripgrep_context_test.go::TestGrepPrintsOverlappingContextOnceAndKeepsTheLastMatchsTrailingContext`, `test/extension-conformance/send_user_message_expand_test.go::TestSendUserMessageExpandPromptTemplatesAcrossSDKs`
+- **Release note:** `pi.sendUserMessage(content, { expandPromptTemplates: true })` and the same option on a `withSession` context now reach the Session from Go, Rust, Python, Lisp and Node extensions (`Context.SendUserMessageWith`, `send_user_message_with`, `expand_prompt_templates=`, `:expand-prompt-templates`). The host used to drop the option, so a message such as `/my-command` or `/skill:name` was sent to the model as plain text. `ctx.ui.theme.sourceInfo` is now set on the Node runtime theme. <!-- fix: sdkhostgaps -->
 
 ### BF-abe0137
 
