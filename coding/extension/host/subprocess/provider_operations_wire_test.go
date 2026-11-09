@@ -219,27 +219,66 @@ func TestModifyModelsHostCloseIsTheConnectionsError(t *testing.T) {
 		_, err := providerModifyModels(me, "dyn")(providerOperationModels(), extension.OAuthCredentials{Access: "tok"})
 		done <- err
 	}()
+	awaitPendingRequest(t, conn)
+	_ = conn.Close("test")
+	requireConnectionClosed(t, "modifyModels", done)
+}
+
+// awaitPendingRequest returns once a request is in flight on the connection.
+func awaitPendingRequest(t *testing.T, conn *Conn) {
+	t.Helper()
 	deadline := time.Now().Add(10 * time.Second)
 	for {
 		conn.pendingMu.Lock()
 		requests := len(conn.pending)
 		conn.pendingMu.Unlock()
 		if requests > 0 {
-			break
+			return
 		}
 		if time.Now().After(deadline) {
-			t.Fatal("the modifyModels request never reached the connection")
+			t.Fatal("the request never reached the connection")
 		}
 		time.Sleep(5 * time.Millisecond)
 	}
-	_ = conn.Close("test")
+}
+
+// requireConnectionClosed waits for the operation's error and requires the connection's own, "connection closed", and not the lifetime's context.Canceled. Which error value carries the text depends on how far the request had got when Close ran (the remote error Close answers a pending request with, or the plain error of a request whose frame the writer abandoned), as it does for a request under no lifetime; TestConnectionEndedIsTheConnectionsRemoteError pins the type connectionEnded returns.
+func requireConnectionClosed(t *testing.T, operation string, done <-chan error) {
+	t.Helper()
 	select {
 	case err := <-done:
 		if err == nil || err.Error() != "connection closed" || errors.Is(err, context.Canceled) {
-			t.Fatalf("modifyModels after the host closed the connection = %v, want \"connection closed\"", err)
+			t.Fatalf("%s after the host closed the connection = %#v, want \"connection closed\"", operation, err)
 		}
 	case <-time.After(15 * time.Second):
-		t.Fatal("modifyModels did not return after the host closed the connection")
+		t.Fatalf("%s did not return after the host closed the connection", operation)
+	}
+}
+
+// connectionEnded turns the cancellation of an ended lifetime into what Close answers a request waiting on the connection, the remote error "connection closed" (errors.As matches it as before), or the failure that stopped the connection, and leaves every other error, and the cancellation of a lifetime still running, alone.
+func TestConnectionEndedIsTheConnectionsRemoteError(t *testing.T) {
+	conn := NewConn("dyn", nil)
+	other := errors.New("other")
+	if got := connectionEnded(conn, context.Canceled); got != context.Canceled {
+		t.Fatalf("a running lifetime's cancellation = %v, want it unchanged", got)
+	}
+	conn.endLifetime()
+	var remote *remoteError
+	if got := connectionEnded(conn, context.Canceled); !errors.As(got, &remote) || got.Error() != "connection closed" || errors.Is(got, context.Canceled) {
+		t.Fatalf("an ended lifetime's cancellation = %#v, want the remote error \"connection closed\"", got)
+	}
+	if got := connectionEnded(conn, other); got != other {
+		t.Fatalf("another error = %v, want it unchanged", got)
+	}
+	if got := connectionEnded(conn, nil); got != nil {
+		t.Fatalf("no error = %v, want nil", got)
+	}
+	failure := errors.New("transport failed")
+	conn.failureMu.Lock()
+	conn.failure = failure
+	conn.failureMu.Unlock()
+	if got := connectionEnded(conn, context.Canceled); got != failure {
+		t.Fatalf("an ended lifetime with a failure = %v, want the failure", got)
 	}
 }
 
@@ -277,31 +316,17 @@ func TestRefreshModelsSignalCancelsTheRequest(t *testing.T) {
 	}
 }
 
-// A refresh context built without a Signal has no caller to cancel it: it runs under the connection's lifetime and ends, with an error, when the extension's connection ends.
+// A refresh context built without a Signal has no caller to cancel it: it runs under the connection's lifetime, and when the host closes the connection the refresh's error is the connection's own, "connection closed", the same remote error a request waiting on the closed connection gets, not the lifetime's cancellation.
 func TestRefreshModelsWithoutSignalEndsWithTheConnection(t *testing.T) {
-	started := make(chan struct{})
-	release := make(chan struct{})
-	rig := newProviderOperationRig(t, sdk.ProviderRefreshModelsFunc(func(sdk.RefreshModelsContext) ([]map[string]any, error) {
-		close(started)
-		<-release
-		return nil, nil
-	}), nil)
-	t.Cleanup(func() { close(release) })
+	conn, me := providerOperationConn(t)
 	done := make(chan error, 1)
 	go func() {
-		_, err := rig.refresh(extension.RefreshModelsContext{Publish: func(ai.ModelsPublication) (bool, error) { return true, nil }})
+		_, err := (&Host{}).providerRefreshModels(me, "dyn")(extension.RefreshModelsContext{Publish: func(ai.ModelsPublication) (bool, error) { return true, nil }})
 		done <- err
 	}()
-	<-started
-	_ = (<-rig.conn).Close()
-	select {
-	case err := <-done:
-		if err == nil {
-			t.Fatal("a refresh whose extension connection closed returned no error")
-		}
-	case <-time.After(15 * time.Second):
-		t.Fatal("the refresh did not return after the extension's connection closed")
-	}
+	awaitPendingRequest(t, conn)
+	_ = conn.Close("test")
+	requireConnectionClosed(t, "a refresh without a Signal", done)
 }
 
 // Pi's oauth.modifyModels takes (models, credentials) and no AbortSignal (types.ts:2034) and runs inside the synchronous getAllModels (provider-composer.ts:566-575), so nothing cancels it but

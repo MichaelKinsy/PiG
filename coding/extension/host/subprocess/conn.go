@@ -360,7 +360,12 @@ func newConnWithOptions(name string, c net.Conn, options connOptions) *Conn {
 // Start launches the reader and writer goroutines. The provided context
 // controls their lifetime. Cancellation stops all three goroutines.
 func (c *Conn) Start(ctx context.Context) {
-	ctx, c.cancel = context.WithCancel(ctx)
+	ctx, stop := context.WithCancel(ctx)
+	// The connection's cancel ends the lifetime itself, before it stops the goroutines and before a Close or a failure answers the pending requests, so a request under the lifetime always finds it ended; only the parent's end reaches it through AfterFunc.
+	c.cancel = func() {
+		c.endLifetime()
+		stop()
+	}
 	context.AfterFunc(ctx, c.endLifetime)
 	var wg sync.WaitGroup
 	wg.Add(3)

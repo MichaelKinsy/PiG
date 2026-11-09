@@ -141,7 +141,7 @@ func providerRequest(ctx context.Context, conn *Conn, provider string, request *
 	return response.Response.Result, nil
 }
 
-// connectionEnded is the error of a request that ran under the connection's lifetime: when the lifetime ended because the connection did, the error is the connection's own (the failure that stopped it, or "connection closed" after a Close), as it is for a request waiting on a connection that ends, not the lifetime's cancellation.
+// connectionEnded is the error of a request that ran under the connection's lifetime: when the lifetime ended because the connection did, the error is the connection's own, as it is for a request waiting on a connection that ends, not the lifetime's cancellation: the failure that stopped it, or what Close answers a pending request ("connection closed", the same remote error value).
 func connectionEnded(conn *Conn, err error) error {
 	if err == nil || !errors.Is(err, context.Canceled) || conn.lifetime.Err() == nil {
 		return err
@@ -149,7 +149,7 @@ func connectionEnded(conn *Conn, err error) error {
 	if failure := conn.failureError(); failure != nil {
 		return failure
 	}
-	return errors.New("connection closed")
+	return (&ErrorInfo{Message: "connection closed"}).ToError()
 }
 
 // configRefreshKey names one running config-form refreshModels request: request ids are unique per connection.
