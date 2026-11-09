@@ -38,7 +38,8 @@ func TestKilledWriterLeavesAnIntactDatabase(t *testing.T) {
 			t.Fatal(err)
 		}
 		acknowledged := 0
-		for lines := bufio.NewScanner(output); lines.Scan(); {
+		lines := bufio.NewScanner(output)
+		for lines.Scan() {
 			text, ok := strings.CutPrefix(lines.Text(), "committed ")
 			if !ok {
 				continue
@@ -49,6 +50,15 @@ func TestKilledWriterLeavesAnIntactDatabase(t *testing.T) {
 			}
 		}
 		_ = command.Process.Kill()
+		// The child prints a number right after its commit returns, one write per line, so what reached the pipe
+		// before the kill is exactly the set of transactions it can have committed, plus at most the one whose number
+		// it had not printed yet. Read the pipe to its end for the last number.
+		printed := acknowledged
+		for lines.Scan() {
+			if text, ok := strings.CutPrefix(lines.Text(), "committed "); ok {
+				printed, _ = strconv.Atoi(text)
+			}
+		}
 		_ = command.Wait()
 		if acknowledged < killAfter {
 			t.Fatalf("round %d: the child committed %d transactions, want %d", round, acknowledged, killAfter)
@@ -67,10 +77,9 @@ func TestKilledWriterLeavesAnIntactDatabase(t *testing.T) {
 			t.Fatal(err)
 		}
 		rows := counted["rows"].(int64)
-		// The child keeps committing while the parent reads its acknowledgement and kills it, so any number of
-		// transactions past the acknowledged one may have committed whole: no upper bound is a property of the database.
-		if rows%killRowsPerTransaction != 0 || rows < int64(acknowledged*killRowsPerTransaction) || counted["distinct_rows"] != rows {
-			t.Fatalf("round %d: %d rows after %d acknowledged transactions of %d rows", round, rows, acknowledged,
+		if rows%killRowsPerTransaction != 0 || rows < int64(printed*killRowsPerTransaction) ||
+			rows > int64((printed+1)*killRowsPerTransaction) || counted["distinct_rows"] != rows {
+			t.Fatalf("round %d: %d rows after %d printed transactions of %d rows", round, rows, printed,
 				killRowsPerTransaction)
 		}
 		if err := database.Close(); err != nil {
