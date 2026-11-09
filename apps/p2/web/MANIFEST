@@ -1,4 +1,4 @@
-# Pi 9a3bd02d apps/p2, verbatim. sha256  path (relative to apps/p2)
+# Pi a44127d9 apps/p2, verbatim. sha256  path (relative to apps/p2)
 e2fd3323e4d00968757d5cc6d2e8fc3fc764bd899c76428953d8b932d088963e  src/api/v1/index.ts
 fdb6e2fc6a80b60a9ae355a0bcfb1922ebcbecdc6b0fcc8154f68f1606543467  src/runtime/access.ts
 f016015a958bf43a5dab143e39eae54ecbd305574d5a145e7b6b27ea8904e0d7  src/runtime/chord.ts
@@ -458,13 +458,13 @@ a710331da5ac7ec02feed50fc3c3a8e6681f013cdc9ecb027929b71466e6723a  src/runtime/co
 f9f7c27de108bf522090bb4d275126185622b60a49b884f3ff57a05e8dd9a97e  src/runtime/conversation-stats.ts
 ad9f25f7d9bded8115d68d051861d8ddb0a34d372aad69ce640d09e43795fe10  src/runtime/json.ts
 48a7ded9ce648e85faaee4b140e966b76253cee0ab6a787b6ca9da4d4e58aa72  src/runtime/web-core.ts
-3ca774f819afab428b86042e5383ffd313707e9b104c7e06ee42584df930f8d5  src/runtime/web.tsx
+20d98198d16a679dfbf34b45f2261de3d5a984d2973cdfc5c975e756b3efffc1  src/runtime/web.tsx
 c378f6c1f9b4594e88d885360dbe6ee1c14ff249b88d6ce8a8f47f01aab5db1d  src/web/AppLayout.tsx
 1b6a0b151a437d234a69e2923a6881781bdd92eb59bfeb6283777ce27267a633  src/web/ArtifactPicker.tsx
 c9ed0ac37fd7a0238bf6aadc28a1315b12770d4f022e32e72f4b2be885481f6c  src/web/Chat.tsx
 a01b862e430da0cf6d80a0242ce4008e1fee5d27c4a0a8ef9236a4b06e182288  src/web/Code.tsx
 87f175612713f2b7904f2a8a1c3640bbe321d9dfcdf99725b919af618ed51dba  src/web/CostPanel.tsx
-afc755816cce6b7434d5815ca373f6097eafaa19be7beb46c4bd6197e93e1234  src/web/Drawer.tsx
+25c019553f81d97474b95ec87562fb7543fe3cda56eed51548ab7c689d0b4442  src/web/Drawer.tsx
 8a4453414bc337635b1894c5073cdd347936495f6e0c8b36f65e44730dc91375  src/web/ElanorMarkdown.tsx
 0d269bfb13c9189d1407fb35dcfff42796cd9a762f5981de725e5da4fc2933a7  src/web/Markdown.tsx
 73aea956e6616c2b9fca273c508a820557060324dd864b8ed52dffba02dc6ef8  src/web/ModelPicker.tsx
@@ -500,6 +500,7 @@ e7b446ef277850efd122c15581f8790d44a8a1b7ef726356af16cbbce15b5ac5  src/web/elanor
 47a0cf397ff590636cfae417d9199ff31e5658f711ec138044f92e7cf8d8cebc  src/web/new-session.tsx
 d573c04594d32c9fdaa93080f40146d8cabc155f72f588390387caefd665a071  src/web/notice-state.ts
 4c1ed3e71507ac22feaafa80d433141097499616903312f17847a74a0ecae2fa  src/web/owner-notices.css
+664fee84c9535b8e8c1fa4761459caa4942e91e5deea26ad118a85a334d3ed1f  src/web/path-label.ts
 449581e49b9c85db5d0da4fd74d435b0e4829907e10a9f076ab74a8704205a82  src/web/query-cache.ts
 dc53d9636091b6e26b6eb362a9f3851bfc859289a025d8392fc941d1ea8b924a  src/web/reconnect.ts
 5fee9111b47629a91f9704aca1baa749da9bc7cb5f819f9246c50bdd5d3f36e0  src/web/row-estimate.ts
@@ -515,6 +516,7 @@ e9507a7a274af02f7e3ec54d80925d8adea00ce2d623084844a9ee5f01c65f5f  tsconfig.json
 d80d826ec773f4ad8c9031907a7651c274e5cdc9270540f3f31aeb7ab4203259  plugins/terminals/protocol.ts
 12a96cc0b00e8ee9eddcc9ac5dd8814f1dc92a429ff6fa6fb29ebb4c21f82694  plugins/terminals/wasm.d.ts
 bbb294f915ed448ae8c467a72e4db3763e9ced1f0ad891050037a380af325e16  test/p2/outbox.test.ts
+a6899f3bc1ee0cf28d4d202fee1a5e7e84875b74be8a667698b863d5e387a4a3  test/p2/path-label.test.ts
 b435ef3cb087cb2a87fef20acd7d690282ed125fa8b4bc0e74d0bbaee483a206  test/p2/session-start.test.ts
 9b9c207f6705c4d60bbf45b6778b02c1944f38aeec846c1b0f6f000f76988d6f  plugins/conversations/contract.ts
 52fafe150d341d0ecc1fd140a635c26f3ace44643c84651d616da6f98b6ff2cb  plugins/codemode/contract.ts

@@ -1,6 +1,6 @@
 {
-	"version": "5258c622142808e2284e95947320d48af1f18c70813543ff1e091789a6cd482e",
-	"script": "app-22ZKDGE6.js",
+	"version": "1eaf4cf709ae4c724b3ead4627e12c08e96f2c5c75f767de0e8ef19e9e050ac3",
+	"script": "app-TA4MUCD6.js",
 	"style": "app-YLKZY2CB.css",
 	"plugins": [
 		"agent",
@@ -61,16 +61,16 @@
 			"sha256": "29b1a5c95c8fa5920b2acc54501ac56800757cfee07cb9ab46c08e512ff75426"
 		},
 		{
-			"name": "app-22ZKDGE6.js",
+			"name": "app-TA4MUCD6.js",
 			"type": "text/javascript; charset=utf-8",
-			"size": 1320025,
-			"sha256": "a0cf36ee99b905a0bb3c292371fe10011359428683bfe7df38b6bb707f5e6a7c"
+			"size": 1320071,
+			"sha256": "4ff24e15acaa293d9dcf67fbac99bd8772f5d3526b04c8dc01c4cd7f922d87ae"
 		},
 		{
-			"name": "app-22ZKDGE6.js.map",
+			"name": "app-TA4MUCD6.js.map",
 			"type": "application/json",
-			"size": 6180860,
-			"sha256": "a5313479f98fe2b3a5a7ad8cb5972049838ef930c21077f23e9ef1fa5d82009d"
+			"size": 6181173,
+			"sha256": "5f67b9a352081a3d3e77dc2e2b55e6dee5dac1a03e752a844dfe2ce0c3c89149"
 		},
 		{
 			"name": "app-YLKZY2CB.css",
@@ -97,7 +97,7 @@
 			"light": "#ffffff",
 			"dark": "#101c1a"
 		},
-		"upstreamVersion": "2fb1178a05b733279a69b551b8798ae14bc681e3f8c67b44791e9517d6e0aefd",
+		"upstreamVersion": "0915c3d6dc550ea6dd2ded987280c70067fe6cd33ff972b088b5024eaa6e8d36",
 		"public": [
 			"icons/apple-touch-icon.png",
 			"icons/favicon.svg",
