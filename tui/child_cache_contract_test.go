@@ -366,7 +366,6 @@ func contractCalls(x Component, extras []contractCall) []contractInvocation {
 	rt := reflect.TypeOf(x)
 	var out []contractInvocation
 	for m := range rt.Methods() {
-		m := m
 		if contractSkipped(m.Name) || m.Type.IsVariadic() {
 			continue
 		}
