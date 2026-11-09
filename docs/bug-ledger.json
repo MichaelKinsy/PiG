@@ -831,6 +831,26 @@
       ]
     },
     {
+      "id": "BF-05c7426",
+      "title": "CI: the nightly `-race` run no longer fails on the nested modules that only build inside a Go workspace…",
+      "symptom": "CI: the nightly `-race` run no longer fails on the nested modules that only build inside a Go workspace (`apps/p2`, `apps/p2desktop`; `piglets/porter/extensions/pig-porter` builds and tests with `GOWORK=off` against its released dependencies and stays as it was): their entries in `automation/ci/race-packages.txt` carry `workspace`, and `test-race-nightly.sh` runs them without `GOWORK=off`.",
+      "rootCause": "test-race-nightly.sh ran every nested module with GOWORK=off. pig-porter (pi-main and the p2 line), apps/p2 and apps/p2desktop (p2 line) do not build alone (no required module provides package .../ai), so their nightly entries failed at setup. race-packages.txt gets a third column, workspace, for them; the script runs those modules without GOWORK=off (the repository go.work, or apps/p2desktop's own). race-coverage.sh accepts only an empty or workspace third column on a group entry and a nested module for workspace; test_race_coverage.py covers both.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "CI: the nightly `-race` run no longer fails on the nested modules that only build inside a Go workspace (`apps/p2`, `apps/p2desktop`; `piglets/porter/extensions/pig-porter` builds and tests with `GOWORK=off` against its released dependencies and stays as it was): their entries in `automation/ci/race-packages.txt` carry `workspace`, and `test-race-nightly.sh` runs them without `GOWORK=off`. `race-coverage.sh` accepts only an empty or `workspace` third column on a group entry.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "05c7426135",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-0630078",
       "title": "MCP tool calls no longer fail with \"Invalid MCP tools/call structured content\" when the server returns…",
       "symptom": "MCP tool calls no longer fail with \"Invalid MCP tools/call structured content\" when the server returns structured content that is not an object (an array, `null`, or a primitive, as MCP 2026-07-28 allows), as Pi 67996ab7 now does.",
@@ -6058,6 +6078,29 @@
         "coding/extension/builtin/toolsearch/toolsearch_carried_test.go::TestBm25RankerRanksAToolFirstWhenTheQueryContainsItsWholeName",
         "coding/extension/builtin/toolsearch/toolsearch_oracle_test.go::TestToolSearchMatchesPi",
         "coding/extension/builtin/toolsearch/toolsearch_reference_test.go::TestBm25ScoresMatchUpstream"
+      ]
+    },
+    {
+      "id": "BF-26787ff",
+      "title": "`pig --mode rpc --listen`: a connection that registered just after the server received SIGTERM was shut down…",
+      "symptom": "`pig --mode rpc --listen`: a connection that registered just after the server received SIGTERM was shut down while its session was still starting, and the shutdown read the extension runner while the start filled it, a data race.",
+      "rootCause": "A listen-mode connection that registers after the server's SIGTERM fan-out began is shut down from its own goroutine while its first host.bind runs. The dispose emits session_shutdown through the runner while BindCore fills it, which Runner.BindCore does not allow (race.208653, TestListenServesAfterAConnectionClosedBeforeItsSessionStarted). rpcShutdown gets a bound channel the mode closes after the first bind (or on any early return, before finish), and startDispose waits for it.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig --mode rpc --listen`: a connection that registered just after the server received SIGTERM was shut down while its session was still starting, and the shutdown read the extension runner while the start filled it, a data race. The shutdown now waits until the connection's first session start has bound the extensions (not for its `session_start` handlers).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "26787ff149",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_listen_test.go::TestListenServesAfterAConnectionClosedBeforeItsSessionStarted",
+        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownSignalWaitsForTheFirstBindBeforeDispose"
       ]
     },
     {

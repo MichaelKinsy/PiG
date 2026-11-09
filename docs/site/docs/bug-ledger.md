@@ -50,6 +50,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-053d96d](#bf-053d96d) | RPC mode: when an extension command calls `pi.sendUserMessage()` or `pi.sendMessage(..., { triggerTurn: true… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-056bbfb](#bf-056bbfb) | Key matching follows Pi for three terminal inputs | PiG's own defect | All platforms | 0.5.0 |
 | [BF-058e7a0](#bf-058e7a0) | The Go, Rust and Python SDKs export Pi's compaction helpers `calculateContextTokens`, `shouldCompact`… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-05c7426](#bf-05c7426) | CI: the nightly `-race` run no longer fails on the nested modules that only build inside a Go workspace… | PiG's own defect | All platforms | Unreleased |
 | [BF-0630078](#bf-0630078) | MCP tool calls no longer fail with "Invalid MCP tools/call structured content" when the server returns… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-0631c73](#bf-0631c73) | Go, Python and Rust extensions now draw an overlay component (`ctx.custom` with `overlay: true`) at the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0636520](#bf-0636520) | fix(testenv): the shared Cargo target is keyed by the absolute path of the SDK as well as its lock | PiG's own defect | All platforms | Unreleased |
@@ -229,6 +230,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-25c854d](#bf-25c854d) | Session directories (the agent directory, `sessions` and each project's directory) are created owner-only… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-261fecd](#bf-261fecd) | `tool_search` and codemode `searchTools()` (the coding agent's and durable's) find tools by words in any… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-264127b](#bf-264127b) | `tool_search` and codemode `searchTools()` no longer rank a tool below tools that only mention its name in… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
+| [BF-26787ff](#bf-26787ff) | `pig --mode rpc --listen`: a connection that registered just after the server received SIGTERM was shut down… | PiG's own defect | All platforms | Unreleased |
 | [BF-2699291](#bf-2699291) | The serializeConversation parity row records that Rust session entries still read an unpaired surrogate as… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-26a08b0](#bf-26a08b0) | `PI_STARTUP_BENCHMARK=1` disposes the session runtime after it stops interactive mode, so extensions receive… | PiG's own defect | All platforms | Unreleased |
 | [BF-26b6705](#bf-26b6705) | The RPC test harness no longer races on its recorded output error (found by a `go test -race ./coding/...`… | PiG's own defect | All platforms | 0.5.0 |
@@ -2367,6 +2369,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `058e7a0e4b` (2026-10-11)
 - **Tests:** `test/extension-conformance/compaction_usage_test.go::TestConformance_CompactionUsageHelpersAgreeAcrossSDKs`
 - **Release note:** The Go, Rust and Python SDKs export Pi's compaction helpers `calculateContextTokens`, `shouldCompact`, `getLastAssistantUsage`, `estimateTokens`, `findCutPoint`, `findTurnStartIndex` and `DEFAULT_COMPACTION_SETTINGS`; the Rust SDK also exports `UsageInfo`.
+
+### BF-05c7426
+
+**CI: the nightly `-race` run no longer fails on the nested modules that only build inside a Go workspace…**
+
+- **Source:** PiG's own defect
+- **Symptom:** CI: the nightly `-race` run no longer fails on the nested modules that only build inside a Go workspace (`apps/p2`, `apps/p2desktop`; `piglets/porter/extensions/pig-porter` builds and tests with `GOWORK=off` against its released dependencies and stays as it was): their entries in `automation/ci/race-packages.txt` carry `workspace`, and `test-race-nightly.sh` runs them without `GOWORK=off`.
+- **Root cause:** test-race-nightly.sh ran every nested module with GOWORK=off. pig-porter (pi-main and the p2 line), apps/p2 and apps/p2desktop (p2 line) do not build alone (no required module provides package .../ai), so their nightly entries failed at setup. race-packages.txt gets a third column, workspace, for them; the script runs those modules without GOWORK=off (the repository go.work, or apps/p2desktop's own). race-coverage.sh accepts only an empty or workspace third column on a group entry and a nested module for workspace; test_race_coverage.py covers both.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `05c7426135` (2026-11-08)
+- **Tests:** None recorded.
+- **Release note:** CI: the nightly `-race` run no longer fails on the nested modules that only build inside a Go workspace (`apps/p2`, `apps/p2desktop`; `piglets/porter/extensions/pig-porter` builds and tests with `GOWORK=off` against its released dependencies and stays as it was): their entries in `automation/ci/race-packages.txt` carry `workspace`, and `test-race-nightly.sh` runs them without `GOWORK=off`. `race-coverage.sh` accepts only an empty or `workspace` third column on a group entry.
 
 ### BF-0630078
 
@@ -4834,6 +4850,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `264127b95e` (2026-10-30, #11331)
 - **Tests:** `coding/extension/builtin/toolsearch/toolsearch_carried_test.go::TestBm25RankerRanksANameMatchAboveMentionsInDescriptions`, `coding/extension/builtin/toolsearch/toolsearch_carried_test.go::TestBm25RankerRanksAToolFirstWhenTheQueryContainsItsWholeName`, `coding/extension/builtin/toolsearch/toolsearch_oracle_test.go::TestToolSearchMatchesPi`, `coding/extension/builtin/toolsearch/toolsearch_reference_test.go::TestBm25ScoresMatchUpstream`
 - **Release note:** `tool_search` and codemode `searchTools()` no longer rank a tool below tools that only mention its name in their descriptions, for example `peekaboo app` ranking `mcp__peekaboo__app` 14th. A query word in a tool's name now scores more than any number of mentions in its description, a tool whose whole name is in the query gets a large bonus, and long server instructions no longer lower the scores of that server's tools. Carried forward from Pi cc44fa21 (earendil-works/pi#11331), past the 1.4.0+b3a29f11 pin.
+
+### BF-26787ff
+
+**`pig --mode rpc --listen`: a connection that registered just after the server received SIGTERM was shut down…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `pig --mode rpc --listen`: a connection that registered just after the server received SIGTERM was shut down while its session was still starting, and the shutdown read the extension runner while the start filled it, a data race.
+- **Root cause:** A listen-mode connection that registers after the server's SIGTERM fan-out began is shut down from its own goroutine while its first host.bind runs. The dispose emits session_shutdown through the runner while BindCore fills it, which Runner.BindCore does not allow (race.208653, TestListenServesAfterAConnectionClosedBeforeItsSessionStarted). rpcShutdown gets a bound channel the mode closes after the first bind (or on any early return, before finish), and startDispose waits for it.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `26787ff149` (2026-11-08)
+- **Tests:** `coding/cli/rpc_listen_test.go::TestListenServesAfterAConnectionClosedBeforeItsSessionStarted`, `coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownSignalWaitsForTheFirstBindBeforeDispose`
+- **Release note:** `pig --mode rpc --listen`: a connection that registered just after the server received SIGTERM was shut down while its session was still starting, and the shutdown read the extension runner while the start filled it, a data race. The shutdown now waits until the connection's first session start has bound the extensions (not for its `session_start` handlers).
 
 ### BF-2699291
 
