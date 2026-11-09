@@ -408,7 +408,7 @@ func (g *GraphExtensionRunner) bindBridges(actionIDs, contextIDs callbackIDs) {
 				if err := live(); err != nil {
 					return err
 				}
-				return actions.SendUserMessage(content, &extension.SendUserMessageOptions{DeliverAs: extension.DeliverAs(opts.DeliverAs)})
+				return actions.SendUserMessage(content, &extension.SendUserMessageOptions{DeliverAs: extension.DeliverAs(opts.DeliverAs), ExpandPromptTemplates: opts.ExpandPromptTemplates})
 			})
 		}
 		if actions.AppendEntry != nil {

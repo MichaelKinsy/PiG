@@ -2589,6 +2589,24 @@ fn main() {
             }));
             Some(set)
         }
+        "last_view_probe" => {
+            // A view renderer that reads the view form of ToolRenderContext::last_component: the kind of what its previous run returned, and the run's own n.
+            let mut set = pig_sdk::ToolRendererSet::default();
+            set.call_view = Some(Arc::new(|_ctx, args, render, _width| {
+                let kind = match &render.last_component {
+                    None => "none",
+                    Some(pig_sdk::ToolRenderComponent::View(_)) => "view",
+                    Some(_) => "lines",
+                };
+                let n = args.get("n").map(Value::to_string).unwrap_or_default();
+                Ok(kit::View::new(Container::new().child(Text::new(
+                    format!("lastview:{kind}:n={n}"),
+                    0,
+                    0,
+                ))))
+            }));
+            Some(set)
+        }
         "conformance_keyhints" => Some(pig_sdk::ToolRendererSet::with_call(
             |_ctx, args, render, _width| {
                 let id = args.get("q").and_then(Value::as_str).unwrap_or("");
@@ -2646,8 +2664,9 @@ fn main() {
         render.state.insert("calls".to_string(), json!(calls));
         let topic = args.get("topic").and_then(Value::as_str).unwrap_or("");
         Ok(vec![format!(
-            "toolrender:call:{topic}:partial={}:calls={calls}:width={width}",
-            render.is_partial
+            "toolrender:call:{topic}:partial={}:calls={calls}:width={width}:last={}",
+            render.is_partial,
+            last_render_line(render)
         )])
     });
     ext.render_tool_result("render_probe", |_ctx, result, options, render, width| {
@@ -2656,8 +2675,9 @@ fn main() {
         let calls = render.state.get("calls").cloned().unwrap_or(Value::Null);
         let duration = render.duration_ms.map_or("none".to_string(), |ms| ms.to_string());
         Ok(vec![format!(
-            "toolrender:result:{text}:{key}:expanded={}:calls={calls}:width={width}:duration={duration}",
-            options.expanded
+            "toolrender:result:{text}:{key}:expanded={}:calls={calls}:width={width}:duration={duration}:last={}",
+            options.expanded,
+            last_render_line(render)
         )])
     });
     ext.tool(
@@ -3664,6 +3684,14 @@ fn main() {
             Err(err) => CommandResult::Error(err.to_string()),
         }
     });
+    ext.command(
+        "send_user_message_expand",
+        "Send a user message with expandPromptTemplates set to the argument",
+        |ctx, args| match ctx.send_user_message_with("expand-user", "followUp", Some(args == "true")) {
+            Ok(_) => CommandResult::Ok,
+            Err(err) => CommandResult::Error(err.to_string()),
+        },
+    );
     ext.command(
         "settings_probe",
         "Report the effective settings",
@@ -8075,4 +8103,15 @@ fn register_tui_alt_reentry_probe(ext: &mut Extension) {
             Err(err) => CommandResult::Error(err.to_string()),
         },
     );
+}
+
+/// The first line the card's renderer of the same phase returned on its previous run, or "none" on the first run: the value
+/// `ToolRenderContext::last_component` carries (the render_probe rows of the conformance suite bind to it).
+fn last_render_line(render: &pig_sdk::ToolRenderContext) -> String {
+    match &render.last_component {
+        Some(pig_sdk::ToolRenderComponent::Lines(lines)) => {
+            lines.first().cloned().unwrap_or_else(|| "none".to_string())
+        }
+        _ => "none".to_string(),
+    }
 }

@@ -88,3 +88,27 @@ func TestRPCShutdownRepeatedSignalExitsWhileAnotherExitFlushes(t *testing.T) {
 		t.Fatalf("aborts = %v, exits = %v, want the repeated signal's abort [129] and no exit after it", aborts, exits)
 	}
 }
+
+// A connection that registers after a server's signal fan-out began is shut down from its own goroutine while its first bind runs, and the dispose emits session_shutdown through a runner that BindCore is filling (Runner.BindCore is not safe beside an in-flight dispatch). A shutdown a signal claimed therefore waits for the first bind before it detaches and disposes.
+func TestRPCShutdownSignalWaitsForTheFirstBindBeforeDispose(t *testing.T) {
+	bound := make(chan struct{})
+	detached := make(chan struct{})
+	disposed := make(chan struct{})
+	s := newRPCShutdown(func() { close(detached) }, func() { close(disposed) }, func() {}, func(int) {})
+	s.bound = bound
+	done := make(chan struct{})
+	go func() { s.signal(syscall.SIGTERM); close(done) }()
+	select {
+	case <-detached:
+		t.Fatal("the shutdown detached before the first bind ended")
+	case <-time.After(100 * time.Millisecond):
+	}
+	close(bound)
+	for _, step := range []chan struct{}{detached, disposed, done} {
+		select {
+		case <-step:
+		case <-time.After(testbudget.Wait(t)):
+			t.Fatal("the shutdown did not run after the first bind ended")
+		}
+	}
+}

@@ -365,7 +365,8 @@ func (rt *Runtime) NewSession(ctx context.Context, options *extension.NewSession
 }
 
 func (rt *Runtime) freshSessionManager(parent string) (*SessionManager, error) {
-	if !rt.Session().inner.Load().IsPersisted() {
+	in := rt.Session().inner.Load()
+	if !in.IsPersisted() {
 		manager, err := NewInMemorySessionManager(rt.CWD())
 		if err == nil && parent != "" {
 			_, err = manager.NewSession(&icodingagent.NewSessionOptions{ParentSession: parent})
@@ -376,7 +377,7 @@ func (rt *Runtime) freshSessionManager(parent string) (*SessionManager, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newSessionManagerForDir(rt.Services(), rt.Session().inner.Load().GetSessionDir()).Create(id, parent)
+	return newSessionManagerForDir(rt.Services(), in.GetSessionDir()).Create(id, parent)
 }
 
 // SwitchSessionOptions is the options object of AgentSessionRuntime.switchSession (agent-session-runtime.ts:196-201).
@@ -500,8 +501,8 @@ func (s *Session) ValidateFork(entryID, position string) error {
 	if _, _, err := s.forkTarget(entryID, position); err != nil {
 		return err
 	}
-	if s.inner.Load().IsPersisted() {
-		if _, err := os.Stat(s.inner.Load().Path()); errors.Is(err, os.ErrNotExist) {
+	if in := s.inner.Load(); in.IsPersisted() {
+		if _, err := os.Stat(in.Path()); errors.Is(err, os.ErrNotExist) {
 			return errors.New("This session has not been saved yet. Send a message before cloning or forking it.")
 		}
 	}

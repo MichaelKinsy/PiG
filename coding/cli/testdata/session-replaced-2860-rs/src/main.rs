@@ -216,6 +216,19 @@ fn main() {
             },
         ))
     });
+    // types.ts:463-473: the replacement context's sendUserMessage takes expandPromptTemplates; true expands the prompt template, false and no option send the text as typed.
+    ext.command("expand-it", "expand-it", |ctx, _| {
+        result(ctx.new_session_with(
+            json!({}),
+            |replaced: &ReplacedSessionContext| {
+                replaced.send_user_message_with("/echo Alice", "", Some(true))?;
+                replaced.send_user_message_with("/echo reply with exactly: Bob", "", Some(false))?;
+                replaced.send_user_message_with("/echo reply with exactly: Carol", "", None)?;
+                record(&format!("conversation:{}", conversation(replaced)));
+                Ok(())
+            },
+        ))
+    });
     ext.command("mark", "mark", |ctx, name| {
         let mut values = marks();
         values.insert(

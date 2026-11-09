@@ -248,7 +248,7 @@ func BindSessionExtensionActions(runner *inproc.Runner, bridge *subprocess.UIBri
 		})
 	}
 	bridge.SetHostAction("sendUserMessage", func(content any, opts subprocess.SendUserMessageOptions) error {
-		return actions.SendUserMessage(content, &extension.SendUserMessageOptions{DeliverAs: extension.DeliverAs(opts.DeliverAs)})
+		return actions.SendUserMessage(content, &extension.SendUserMessageOptions{DeliverAs: extension.DeliverAs(opts.DeliverAs), ExpandPromptTemplates: opts.ExpandPromptTemplates})
 	})
 	bridge.SetHostAction("refreshTools", func() error {
 		if sess := current(); sess != nil {

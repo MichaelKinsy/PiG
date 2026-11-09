@@ -174,10 +174,10 @@ wire = "subprocess.SendUserMessageOptions.deliverAs"
 [[row]]
 key = "pi.sendUserMessage(options.expandPromptTemplates)"
 node = "api.sendUserMessage"
-go = "-"
-rust = "-"
-python = "-"
-lisp = "-"
+go = "Context.SendUserMessageWith|SendUserMessageOptions.ExpandPromptTemplates"
+rust = "Context::send_user_message_with"
+python = "Context.send_user_message(expand_prompt_templates)"
+lisp = "pig:ctx-send-user-message(expand-prompt-templates)|pig:ctx-send-user-message-p(expand-prompt-templates)"
 wire = "subprocess.SendUserMessageOptions.expandPromptTemplates"
 
 [[row]]
@@ -389,16 +389,12 @@ wire = "subprocess.CommandInfo.sourceInfo"
 [[row]]
 key = "pi.registerProvider"
 node_partial = "config registration reaches the host; native callback providers remain process-local"
-go_partial = "registration declaration is applied at load; use ModelRegistry.RegisterProvider for live config registration"
-rust_partial = "registration declaration is applied at load; use ModelRegistry.register_provider for live config registration"
-python_partial = "registration declaration is applied at load; use ModelRegistry.register_provider for live config registration"
+rust_partial = "Extension::register_provider queues at load (the extension is moved into run, so a later call does not compile); after load a handler calls ModelRegistry::register_provider through Context::model_registry, which applies the config at once through the host"
 
 [[row]]
 key = "pi.unregisterProvider"
 node_partial = "config removal reaches the host; native providers remain process-local"
-go_partial = "registration declarations are removed at load; live config removal is exposed by ModelRegistry.UnregisterProvider"
-rust_partial = "registration declarations are removed at load; live config removal is exposed by ModelRegistry.unregister_provider"
-python_partial = "registration declarations are removed at load; live config removal is exposed by ModelRegistry.unregister_provider"
+rust_partial = "Extension::unregister_provider drops a queued registration at load; after load a handler calls ModelRegistry::unregister_provider through Context::model_registry, which removes the provider at once through the host"
 
 [[row]]
 key = "pi.getThinkingLevel"
@@ -450,11 +446,12 @@ wire = "extension.InputEventResultTransform.images"
 
 [[row]]
 key = "user_bash return.operations"
-node = "-"
-go = "-"
-rust = "-"
-python = "-"
-lisp = "-"
+node = "read:result.operations"
+go = "BashOperations"
+rust = "Context::bash_operations"
+python = "BashOperations"
+lisp = "pig:make-bash-operations"
+wire = "literal:operations"
 
 # ── ctx (ExtensionContext) ─────────────────────────────────────────────────
 
@@ -556,9 +553,6 @@ wire = "literal:awaitCompletion"
 [[row]]
 key = "ctx.modelRegistry.registerProvider"
 node_partial = "config registration reaches the host; native callback providers remain process-local"
-go_partial = "config overload only; native Provider callback objects are not implemented"
-rust_partial = "config overload only; native Provider callback objects are not implemented"
-python_partial = "config overload only; native Provider callback objects are not implemented"
 
 [[row]]
 key = "ctx.modelRegistry.getAvailable"
@@ -575,11 +569,12 @@ wire = "extension.NewSessionOptions.parentSession"
 
 [[row]]
 key = "ctx.newSession(options.setup)"
-node = "-"
-go = "-"
-rust = "-"
-python = "-"
-lisp = "-"
+node = "read:entry.callback"
+go = "SetupFunc"
+rust = "Context::new_session_setup"
+python = "SetupSessionManager"
+lisp = "pig:ctx-new-session(setup)"
+wire = "subprocess.SetupArgs.handle"
 
 [[row]]
 key = "ctx.newSession(options.withSession)"
@@ -773,10 +768,10 @@ wire = "subprocess.SendUserMessageOptions.deliverAs"
 [[row]]
 key = "withSession ctx.sendUserMessage(options.expandPromptTemplates)"
 node = "read:context.sendUserMessage"
-go = "-"
-rust = "-"
-python = "-"
-lisp = "-"
+go = "Context.SendUserMessageWith|SendUserMessageOptions.ExpandPromptTemplates"
+rust = "Context::send_user_message_with"
+python = "Context.send_user_message(expand_prompt_templates)"
+lisp = "pig:ctx-send-user-message(expand-prompt-templates)|pig:ctx-send-user-message-p(expand-prompt-templates)"
 wire = "subprocess.SendUserMessageOptions.expandPromptTemplates"
 
 # ── ctx.ui (ExtensionUIContext) ────────────────────────────────────────────
@@ -1018,11 +1013,8 @@ rust = "Theme.source_path"
 
 [[row]]
 key = "ctx.ui.theme.sourceInfo"
-node = "-"
-go = "-"
-rust = "-"
-python = "-"
-lisp = "-"
+go = "UITheme.SourceInfo"
+rust = "Theme.source_info"
 
 [[row]]
 key = "ctx.ui.theme.appearance"
@@ -1180,11 +1172,11 @@ lisp = "pig:tool-render-context-invalidate|pig:tool-render-context-invalidate-p"
 [[row]]
 key = "tool render context.lastComponent"
 node = "read:card.state"
-go = "-"
-rust = "-"
-python = "-"
-lisp = "-"
-node_partial = "the component this card's renderer last returned, kept inside the extension process"
+
+[[row]]
+key = "tool render context.durationMs"
+node = "read:payload.context"
+wire = "subprocess.RenderToolContext.durationMs"
 
 [[row]]
 key = "tool render context.state"
@@ -1314,11 +1306,12 @@ wire = "extension.ProviderConfig.api"
 
 [[row]]
 key = "provider.streamSimple"
-node = "-"
-go = "-"
-rust = "-"
-python = "-"
-lisp = "-"
+node = "read:config.streamSimple"
+go = "ProviderStreamSimpleFunc"
+rust = "ProviderOperations.stream_simple"
+python = "Extension.register_provider"
+lisp = "pig:register-provider|pig:register-provider-p"
+wire = "subprocess.ProviderDecl.stream_simple"
 
 [[row]]
 key = "provider.headers"

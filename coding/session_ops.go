@@ -69,7 +69,7 @@ func (s *Session) prepareNewSession(parentSession string) (*icodingagent.Session
 		return nil, fmt.Errorf("coding: new session id: %w", err)
 	}
 	var next *icodingagent.Session
-	if s.noSession {
+	if s.noSession.Load() {
 		next = icodingagent.NewSession(id, s.services.CWD(), parentSession)
 	} else {
 		next, err = newSessionManagerForDir(s.services, s.sessionDir).Create(id, parentSession)
@@ -114,15 +114,16 @@ func (s *Session) CloneInPlace() error {
 
 // Clone snapshots the current path-to-leaf as a new session JSONL on disk, dropping orphan branches and recording the source as parentSession. File-backed Sessions must already be saved. The original Session is unchanged; the caller owns closing the returned Session.
 func (s *Session) Clone() (*Session, error) {
-	leaf := s.inner.Load().GetLeafID()
+	in := s.inner.Load()
+	leaf := in.GetLeafID()
 	if leaf == nil {
 		return nil, fmt.Errorf("coding: clone: session is empty")
 	}
-	if err := s.inner.Load().CheckSavedForFork(); err != nil {
+	if err := in.CheckSavedForFork(); err != nil {
 		return nil, err
 	}
 	sm := newSessionManagerForDir(s.services, s.sessionDir)
-	cloned, err := sm.Clone(s.inner.Load(), *leaf)
+	cloned, err := sm.Clone(in, *leaf)
 	if err != nil {
 		return nil, fmt.Errorf("coding: clone: %w", err)
 	}
@@ -146,7 +147,7 @@ func (s *Session) Clone() (*Session, error) {
 		Runner:             s.currentRunner(),
 		runnerShared:       true,
 		SessionDir:         s.sessionDir,
-		NoSession:          s.noSession,
+		NoSession:          s.noSession.Load(),
 		EventBufferSize:    s.callerHooks.eventBufferSize,
 		Transport:          s.callerHooks.transport,
 		existing:           cloned,

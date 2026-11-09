@@ -50,6 +50,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-053d96d](#bf-053d96d) | RPC mode: when an extension command calls `pi.sendUserMessage()` or `pi.sendMessage(..., { triggerTurn: true… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-056bbfb](#bf-056bbfb) | Key matching follows Pi for three terminal inputs | PiG's own defect | All platforms | 0.5.0 |
 | [BF-058e7a0](#bf-058e7a0) | The Go, Rust and Python SDKs export Pi's compaction helpers `calculateContextTokens`, `shouldCompact`… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-05c7426](#bf-05c7426) | CI: the nightly `-race` run no longer fails on the nested modules that only build inside a Go workspace… | PiG's own defect | All platforms | Unreleased |
 | [BF-0630078](#bf-0630078) | MCP tool calls no longer fail with "Invalid MCP tools/call structured content" when the server returns… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-0631c73](#bf-0631c73) | Go, Python and Rust extensions now draw an overlay component (`ctx.custom` with `overlay: true`) at the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0636520](#bf-0636520) | fix(testenv): the shared Cargo target is keyed by the absolute path of the SDK as well as its lock | PiG's own defect | All platforms | Unreleased |
@@ -217,6 +218,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-2359a0a](#bf-2359a0a) | In macOS Terminal.app, which sends Option+Up as plain Up in its default profile, plain Up with an empty… | A Pi defect that PiG fixed first | macOS | 0.7.0 |
 | [BF-23841dc](#bf-23841dc) | The eval harness's `submit_documentation_audit` tool declares its `verdict` as Pi's documentation audit does… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-23ee6e1](#bf-23ee6e1) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
+| [BF-243927e](#bf-243927e) | Fix the lint reds the batch 6 group 1 merges carried: rustfmt for the Rust SDK and its fixture, box the large… | PiG's own defect | All platforms | Unreleased |
 | [BF-24872ab](#bf-24872ab) | Extensions receive each model (`ctx.model`, `model_select`, `ctx.modelRegistry` reads, scoped models… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2492cae](#bf-2492cae) | Messages queued during an overflow compaction now go through the input handlers and prompt template expansion… | PiG's own defect | All platforms | Unreleased |
 | [BF-2492cae-2](#bf-2492cae-2) | Flushing the messages queued during compaction no longer moves the output of `!` commands that ran during a… | PiG's own defect | All platforms | Unreleased |
@@ -230,6 +232,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-25c854d](#bf-25c854d) | Session directories (the agent directory, `sessions` and each project's directory) are created owner-only… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-261fecd](#bf-261fecd) | `tool_search` and codemode `searchTools()` (the coding agent's and durable's) find tools by words in any… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-264127b](#bf-264127b) | `tool_search` and codemode `searchTools()` no longer rank a tool below tools that only mention its name in… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
+| [BF-26787ff](#bf-26787ff) | `pig --mode rpc --listen`: a connection that registered just after the server received SIGTERM was shut down… | PiG's own defect | All platforms | Unreleased |
 | [BF-2699291](#bf-2699291) | The serializeConversation parity row records that Rust session entries still read an unpaired surrogate as… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-26a08b0](#bf-26a08b0) | `PI_STARTUP_BENCHMARK=1` disposes the session runtime after it stops interactive mode, so extensions receive… | PiG's own defect | All platforms | Unreleased |
 | [BF-26b6705](#bf-26b6705) | The RPC test harness no longer races on its recorded output error (found by a `go test -race ./coding/...`… | PiG's own defect | All platforms | 0.5.0 |
@@ -510,6 +513,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-4e47260](#bf-4e47260) | A lazy line joins a list item as written (indentation kept), four spaces after the marker make the first line… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4e5b684](#bf-4e5b684) | A list item whose first line is another list item is rendered as a nested list with no bullet of its own, and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4e8c517](#bf-4e8c517) | fix(runtimecell): keep the Python runner's _run callable without the built event | PiG's own defect | All platforms | Unreleased |
+| [BF-4ed1d72](#bf-4ed1d72) | A session swap (`/new`, `/resume`, `/fork`, `Session.ReplaceInner`) no longer races with `/new`, a fork or a… | PiG's own defect | All platforms | Unreleased |
 | [BF-4f079a7](#bf-4f079a7) | An MCP request over Streamable HTTP that is cancelled or times out while the server's authorization is being… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-4f3cc2e](#bf-4f3cc2e) | `Session.ID`, `Session.Path`, `Session.CWD` and `Session.Inner` no longer race with a session swap (`/new`… | PiG's own defect | All platforms | Unreleased |
 | [BF-4f6992d](#bf-4f6992d) | Durable: a tool's `PrepareArguments` result of a typed object (a struct, or a map of another element type)… | PiG's own defect | All platforms | 0.5.0 |
@@ -617,6 +621,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-5eb8bb9](#bf-5eb8bb9) | `tool_search` and codemode `searchTools()` rank a tool that matches more of the query's distinct terms, in… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-5ec5204](#bf-5ec5204) | fix(durable/core): join split surrogates through jv.AppendConcat, not byte slices | PiG's own defect | All platforms | Unreleased |
 | [BF-5ec5f5f](#bf-5ec5f5f) | The built-in bash, read and list tool cards now show an image block that has no MIME type as `[Image… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-5efaf92](#bf-5efaf92) | The embedded Node runtime and the packed Go, Rust, Python and Lisp SDK bundles were not regenerated when… | PiG's own defect | All platforms | Unreleased |
 | [BF-5f03fa4](#bf-5f03fa4) | An extension that a child agent session's resource loader loads now receives the session's events, as in Pi… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-5f03fa4-2](#bf-5f03fa4-2) | The contexts of those extensions read the child session: `ctx.model`, `ctx.scopedModels` (the session's… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-5f22b85](#bf-5f22b85) | fix(coding): shut down the extension host of a DefaultResourceLoader an extension constructed when its last… | PiG's own defect | All platforms | Unreleased |
@@ -1323,6 +1328,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ab5be97](#bf-ab5be97) | Long streamed answers render each frame faster: the Markdown view re-wraps and re-renders only the lines and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ab8e9e4](#bf-ab8e9e4) | Tool output and `!` command output no longer show the parameters of control sequences with a `<`, `=` or `>`… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-ab99da4](#bf-ab99da4) | fix(chord/delta): the tracker holds its one open change without a weak registration | PiG's own defect | All platforms | Unreleased |
+| [BF-abc54d0](#bf-abc54d0) | `pi.sendUserMessage(content, { expandPromptTemplates: true })` and the same option on a `withSession` context… | PiG's own defect | All platforms | Unreleased |
 | [BF-abe0137](#bf-abe0137) | fix(durable/core): deliver the extra hops of Pi without closures | PiG's own defect | All platforms | Unreleased |
 | [BF-ac0dc3b](#bf-ac0dc3b) | An empty list item ends its list: a following unindented line is no longer taken for its lazy continuation… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ac6fcea](#bf-ac6fcea) | A `session_start` handler that calls `ctx.shutdown()` during `/reload` ends the session and exits 0, as Pi… | PiG's own defect | All platforms | 0.5.0 |
@@ -2368,6 +2374,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `058e7a0e4b` (2026-10-11)
 - **Tests:** `test/extension-conformance/compaction_usage_test.go::TestConformance_CompactionUsageHelpersAgreeAcrossSDKs`
 - **Release note:** The Go, Rust and Python SDKs export Pi's compaction helpers `calculateContextTokens`, `shouldCompact`, `getLastAssistantUsage`, `estimateTokens`, `findCutPoint`, `findTurnStartIndex` and `DEFAULT_COMPACTION_SETTINGS`; the Rust SDK also exports `UsageInfo`.
+
+### BF-05c7426
+
+**CI: the nightly `-race` run no longer fails on the nested modules that only build inside a Go workspace…**
+
+- **Source:** PiG's own defect
+- **Symptom:** CI: the nightly `-race` run no longer fails on the nested modules that only build inside a Go workspace (`apps/p2`, `apps/p2desktop`; `piglets/porter/extensions/pig-porter` builds and tests with `GOWORK=off` against its released dependencies and stays as it was): their entries in `automation/ci/race-packages.txt` carry `workspace`, and `test-race-nightly.sh` runs them without `GOWORK=off`.
+- **Root cause:** test-race-nightly.sh ran every nested module with GOWORK=off. pig-porter (pi-main and the p2 line), apps/p2 and apps/p2desktop (p2 line) do not build alone (no required module provides package .../ai), so their nightly entries failed at setup. race-packages.txt gets a third column, workspace, for them; the script runs those modules without GOWORK=off (the repository go.work, or apps/p2desktop's own). race-coverage.sh accepts only an empty or workspace third column on a group entry and a nested module for workspace; test_race_coverage.py covers both.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `05c7426135` (2026-11-08)
+- **Tests:** None recorded.
+- **Release note:** CI: the nightly `-race` run no longer fails on the nested modules that only build inside a Go workspace (`apps/p2`, `apps/p2desktop`; `piglets/porter/extensions/pig-porter` builds and tests with `GOWORK=off` against its released dependencies and stays as it was): their entries in `automation/ci/race-packages.txt` carry `workspace`, and `test-race-nightly.sh` runs them without `GOWORK=off`. `race-coverage.sh` accepts only an empty or `workspace` third column on a group entry.
 
 ### BF-0630078
 
@@ -4666,6 +4686,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `23ee6e15be` (2026-10-31)
 - **Tests:** `chord/nextnode/workers/workers_process_test.go::TestAChannelRefusesARecordOverTheLimitAndStaysUsable`
 
+### BF-243927e
+
+**Fix the lint reds the batch 6 group 1 merges carried: rustfmt for the Rust SDK and its fixture, box the large…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fix the lint reds the batch 6 group 1 merges carried: rustfmt for the Rust SDK and its fixture, box the large ToolRenderComponent view, gofmt the conformance component test, drop the embedded selector in the bind test
+- **Root cause:** Not recorded.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `243927ed01` (2026-11-09)
+- **Tests:** `coding/cli/rpc_bind_bound_test.go::TestRPCBindCallsBoundAfterBindCoreAndBeforeSessionStartHandlers`
+
 ### BF-24872ab
 
 **Extensions receive each model (`ctx.model`, `model_select`, `ctx.modelRegistry` reads, scoped models…**
@@ -4849,6 +4882,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `264127b95e` (2026-10-30, #11331)
 - **Tests:** `coding/extension/builtin/toolsearch/toolsearch_carried_test.go::TestBm25RankerRanksANameMatchAboveMentionsInDescriptions`, `coding/extension/builtin/toolsearch/toolsearch_carried_test.go::TestBm25RankerRanksAToolFirstWhenTheQueryContainsItsWholeName`, `coding/extension/builtin/toolsearch/toolsearch_oracle_test.go::TestToolSearchMatchesPi`, `coding/extension/builtin/toolsearch/toolsearch_reference_test.go::TestBm25ScoresMatchUpstream`
 - **Release note:** `tool_search` and codemode `searchTools()` no longer rank a tool below tools that only mention its name in their descriptions, for example `peekaboo app` ranking `mcp__peekaboo__app` 14th. A query word in a tool's name now scores more than any number of mentions in its description, a tool whose whole name is in the query gets a large bonus, and long server instructions no longer lower the scores of that server's tools. Carried forward from Pi cc44fa21 (earendil-works/pi#11331), past the 1.4.0+b3a29f11 pin.
+
+### BF-26787ff
+
+**`pig --mode rpc --listen`: a connection that registered just after the server received SIGTERM was shut down…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `pig --mode rpc --listen`: a connection that registered just after the server received SIGTERM was shut down while its session was still starting, and the shutdown read the extension runner while the start filled it, a data race.
+- **Root cause:** A listen-mode connection that registers after the server's SIGTERM fan-out began is shut down from its own goroutine while its first host.bind runs. The dispose emits session_shutdown through the runner while BindCore fills it, which Runner.BindCore does not allow (race.208653, TestListenServesAfterAConnectionClosedBeforeItsSessionStarted). rpcShutdown gets a bound channel the mode closes after the first bind (or on any early return, before finish), and startDispose waits for it.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `26787ff149` (2026-11-08)
+- **Tests:** `coding/cli/rpc_listen_test.go::TestListenServesAfterAConnectionClosedBeforeItsSessionStarted`, `coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownSignalWaitsForTheFirstBindBeforeDispose`
+- **Release note:** `pig --mode rpc --listen`: a connection that registered just after the server received SIGTERM was shut down while its session was still starting, and the shutdown read the extension runner while the start filled it, a data race. The shutdown now waits until the connection's first session start has bound the extensions (not for its `session_start` handlers).
 
 ### BF-2699291
 
@@ -8715,6 +8762,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `4e8c517e40` (2026-10-21)
 - **Tests:** None recorded.
 
+### BF-4ed1d72
+
+**A session swap (`/new`, `/resume`, `/fork`, `Session.ReplaceInner`) no longer races with `/new`, a fork or a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A session swap (`/new`, `/resume`, `/fork`, `Session.ReplaceInner`) no longer races with `/new`, a fork or a clone that reads whether the session has a file, and a routed request stores a virtual model's router state on the session it read the state from, not on one a swap installed meanwhile.
+- **Root cause:** ReplaceInner stores noSession under the Session mutex while prepareNewSession, Clone and extensionFork read it without it: a data race. It is an atomic.Bool now.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `4ed1d7213d` (2026-11-09)
+- **Tests:** None recorded.
+- **Release note:** A session swap (`/new`, `/resume`, `/fork`, `Session.ReplaceInner`) no longer races with `/new`, a fork or a clone that reads whether the session has a file, and a routed request stores a virtual model's router state on the session it read the state from, not on one a swap installed meanwhile.
+
 ### BF-4f079a7
 
 **An MCP request over Streamable HTTP that is cancelled or times out while the server's authorization is being…**
@@ -10190,6 +10251,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `5ec5f5f282` (2026-10-09)
 - **Tests:** `internal/codingagent/render_utils_pi_test.go::TestRenderUtilsReplaceTabsAndTextOutputMatchPi`
 - **Release note:** The built-in bash, read and list tool cards now show an image block that has no MIME type as `[Image: [image/unknown]]`, as Pi's `getTextOutput` does. They previously showed `[Image: []]`.
+
+### BF-5efaf92
+
+**The embedded Node runtime and the packed Go, Rust, Python and Lisp SDK bundles were not regenerated when…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The embedded Node runtime and the packed Go, Rust, Python and Lisp SDK bundles were not regenerated when `sendUserMessage` gained `expandPromptTemplates` and the Node theme gained `sourceInfo`, so shipped Node extensions saw no `ctx.ui.theme.sourceInfo` and the packed Lisp SDK rejected `:expand-prompt-templates`.
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `5efaf92237` (2026-11-09)
+- **Tests:** `coding/cli/session_replaced_2860_sdk_test.go::TestReplacedSession2860AcrossSDKs`, `coding/session_extension_user_message_expand_test.go::TestGraphBridgeSendUserMessageForwardsExpandPromptTemplates`, `coding/session_extension_user_message_expand_test.go::TestSubprocessSendUserMessageExpandsPromptTemplatesInTheSession`, `test/extension-conformance/theme_test.go::TestThemeQueriesAcrossSDKs`
+- **Release note:** The embedded Node runtime and the packed Go, Rust, Python and Lisp SDK bundles were not regenerated when `sendUserMessage` gained `expandPromptTemplates` and the Node theme gained `sourceInfo`, so shipped Node extensions saw no `ctx.ui.theme.sourceInfo` and the packed Lisp SDK rejected `:expand-prompt-templates`. They are regenerated, and the theme row now compares a real `SourceInfo`.
 
 ### BF-5f03fa4
 
@@ -20032,6 +20107,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `ab99da4063` (2026-10-29)
 - **Tests:** `chord/delta/retention_upstream_test.go::TestDeltaTrackerRetentionAcrossGCJobs`, `chord/delta/retention_upstream_test.go::TestTrackerReleasesADroppedOpenChangeWhenTheNextOpens`
+
+### BF-abc54d0
+
+**`pi.sendUserMessage(content, { expandPromptTemplates: true })` and the same option on a `withSession` context…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The host used to drop the option, so a message such as `/my-command` or `/skill:name` was sent to the model as plain text.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `abc54d0438` (2026-11-09)
+- **Tests:** `test/extension-conformance/send_user_message_expand_test.go::TestSendUserMessageExpandPromptTemplatesAcrossSDKs`
+- **Release note:** `pi.sendUserMessage(content, { expandPromptTemplates: true })` and the same option on a `withSession` context now reach the Session from Go, Rust, Python, Lisp and Node extensions (`Context.SendUserMessageWith`, `send_user_message_with`, `expand_prompt_templates=`, `:expand-prompt-templates`). The host used to drop the option, so a message such as `/my-command` or `/skill:name` was sent to the model as plain text. `ctx.ui.theme.sourceInfo` is now set on the Node runtime theme.
 
 ### BF-abe0137
 

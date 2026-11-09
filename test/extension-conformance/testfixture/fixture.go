@@ -667,6 +667,18 @@ func Extension() *sdk.Extension {
 				return (&kitProbe{}).View(0), nil
 			}
 			return &renderers
+		case "last_view_probe":
+			// A view renderer that reads the view form of ToolRenderContext.LastComponent: the kind of what its previous run returned, and the run's own n.
+			return &sdk.ToolRenderers{CallView: func(_ sdk.Context, args map[string]any, render sdk.ToolRenderContext, _ int) (kit.View, error) {
+				kind := "none"
+				if last := render.LastComponent; last != nil {
+					kind = "lines"
+					if last.View != nil {
+						kind = "view"
+					}
+				}
+				return kit.View{Root: kit.NewText(fmt.Sprintf("lastview:%s:n=%v", kind, args["n"]), 0, 0)}, nil
+			}}
 		case "conformance_keyhints":
 			return &sdk.ToolRenderers{Call: func(_ sdk.Context, args map[string]any, render sdk.ToolRenderContext, _ int) ([]string, error) {
 				id, _ := args["q"].(string)
@@ -703,7 +715,7 @@ func Extension() *sdk.Extension {
 		Call: func(_ sdk.Context, args map[string]any, render sdk.ToolRenderContext, width int) ([]string, error) {
 			calls, _ := render.State["calls"].(int)
 			render.State["calls"] = calls + 1
-			return []string{fmt.Sprintf("toolrender:call:%v:partial=%t:calls=%d:width=%d", args["topic"], render.IsPartial, calls+1, width)}, nil
+			return []string{fmt.Sprintf("toolrender:call:%v:partial=%t:calls=%d:width=%d:last=%s", args["topic"], render.IsPartial, calls+1, width, lastRenderLine(render))}, nil
 		},
 		Result: func(_ sdk.Context, result sdk.ToolRenderResult, options sdk.ToolRenderResultOptions, render sdk.ToolRenderContext, width int) ([]string, error) {
 			details, _ := result.Details.(map[string]any)
@@ -711,7 +723,7 @@ func Extension() *sdk.Extension {
 			if render.DurationMs != nil {
 				duration = fmt.Sprint(*render.DurationMs)
 			}
-			return []string{fmt.Sprintf("toolrender:result:%v:%v:expanded=%t:calls=%v:width=%d:duration=%s", result.Content[0]["text"], details["k"], options.Expanded, render.State["calls"], width, duration)}, nil
+			return []string{fmt.Sprintf("toolrender:result:%v:%v:expanded=%t:calls=%v:width=%d:duration=%s:last=%s", result.Content[0]["text"], details["k"], options.Expanded, render.State["calls"], width, duration, lastRenderLine(render))}, nil
 		},
 	})
 
@@ -1157,6 +1169,11 @@ func Extension() *sdk.Extension {
 			}
 		}
 		return ctx.SendUserMessage(content, "followUp")
+	})
+
+	ext.Command("send_user_message_expand", "Send a user message with expandPromptTemplates set to the argument", func(ctx sdk.Context, args string) error {
+		expand := args == "true"
+		return ctx.SendUserMessageWith("expand-user", sdk.SendUserMessageOptions{DeliverAs: "followUp", ExpandPromptTemplates: &expand})
 	})
 
 	ext.Command("set_session_name", "Set the session name", func(ctx sdk.Context, args string) error {
@@ -3966,4 +3983,13 @@ func countClick(state map[string]any, event kit.Event) {
 	clicks, _ := state["clicks"].(int)
 	state["clicks"] = clicks + 1
 	state["last"] = fmt.Sprintf("%d,%d", event.Mouse.X, event.Mouse.Y)
+}
+
+// lastRenderLine is the first line the card's renderer of the same phase returned on its previous run, or "none" on the first run: the value
+// ToolRenderContext.LastComponent carries (the render_probe rows of the conformance suite bind to it).
+func lastRenderLine(render sdk.ToolRenderContext) string {
+	if render.LastComponent == nil || len(render.LastComponent.Lines) == 0 {
+		return "none"
+	}
+	return render.LastComponent.Lines[0]
 }

@@ -262,6 +262,8 @@ func linkerPath(pkg string) string {
 }
 
 // ExactDataSizes corrects the sizes of the data symbols of a Mach-O or PE binary with those of the same program built for linux on the same architecture. ELF symbol tables record each symbol's size; Mach-O and PE tables do not, and `go tool nm -size` then reports the distance to the next symbol in the table, which includes any symbols the linker leaves out of the table. A table such as bidi.bidiIndex (3,328 B) was reported as 13,760 B on darwin_arm64 and the embed.FS file list of export (408 B) as 3,328 B on windows_amd64, which put a package over the heavyweight line only because of where the linker had placed it. A data symbol's size does not depend on the operating system when the package compiles the same files on both, so for the packages sameFiles accepts the smaller of the two sizes is the real one. A package whose file set differs between the systems may declare a symbol of the same name with another size on each (a table in a !linux file), so its symbols keep the size nm reported: that never under-reports. Code and the linker's own tables (names that start with "go:") keep the reported size too, since they differ between the operating systems.
+//
+// Residual: a file shared by linux and the target can declare a table whose size depends on a per-OS constant (an array sized by a value a per-OS file defines). The file sets match, so the linux size is trusted and growth of that table on the target stays hidden from the per-package gate; only the stripped-size ceilings in ratchet.toml bound it, in total.
 func ExactDataSizes(symbols, linux []Symbol, sameFiles func(pkg string) bool) []Symbol {
 	exact := make(map[string]int64, len(linux))
 	for _, symbol := range linux {

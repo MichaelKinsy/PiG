@@ -4,7 +4,7 @@
 # named in automation/ci/race-packages.txt, either in a nightly -race group or as an exempt entry with its reason, so a
 # new concurrency owner cannot ship outside every -race run unnoticed (the class-5 audit found `coding`, `coding/cli`,
 # `coding/extension` and the extension SDK module outside all of them). A nested Go module is one entry (its directory),
-# run as its own module by test-race-nightly.sh. Packages that only share state behind a mutex may be listed too. The
+# run as its own module by test-race-nightly.sh (with GOWORK=off, or in the workspace when its entry says `workspace`). Packages that only share state behind a mutex may be listed too. The
 # gate also fails on an entry whose directory is gone, on a group the nightly workflow's matrix does not run, on a
 # duplicate entry, and on an exempt entry without a reason.
 set -euo pipefail
@@ -62,6 +62,12 @@ while IFS= read -r line; do
   read -r group path reason <<<"$line"
   if [[ -z "${path:-}" ]]; then echo "race-coverage: malformed line in $list: $line" >&2; fail=1; continue; fi
   if [[ "$group" == exempt && -z "${reason:-}" ]]; then echo "race-coverage: exempt entry $path has no reason" >&2; fail=1; fi
+  if [[ "$group" != exempt && -n "${reason:-}" && "$reason" != workspace ]]; then
+    echo "race-coverage: $path: the third column of a group entry is empty or \`workspace\`, not: $reason" >&2; fail=1
+  fi
+  if [[ "$group" != exempt && "${reason:-}" == workspace && ! -f "$path/go.mod" ]]; then
+    echo "race-coverage: $path is marked workspace but is not a nested Go module" >&2; fail=1
+  fi
   if [[ "$group" != exempt ]] && ! grep -Eq "group:.*[[:space:],[]${group}[],[:space:]]" "$workflow"; then
     echo "race-coverage: group $group of $path is not in the matrix of $workflow" >&2; fail=1
   fi

@@ -81,15 +81,17 @@
       :render-call (lambda (ctx args render width)
                      (declare (ignore ctx))
                      (let ((calls (incf (gethash "calls" (pig:tool-render-context-state render) 0))))
-                       (list (format nil "toolrender:call:~A:partial=~A:calls=~D:width=~D" (pig:jget args "topic")
-                                     (if (pig:tool-render-context-is-partial render) "true" "false") calls width))))
+                       (list (format nil "toolrender:call:~A:partial=~A:calls=~D:width=~D:last=~A" (pig:jget args "topic")
+                                     (if (pig:tool-render-context-is-partial render) "true" "false") calls width
+                                     (or (first (coerce (pig:tool-render-context-last-component render) 'list)) "none")))))
       :render-result (lambda (ctx result options render width)
                        (declare (ignore ctx))
-                       (list (format nil "toolrender:result:~A:~A:expanded=~A:calls=~A:width=~D:duration=~A"
+                       (list (format nil "toolrender:result:~A:~A:expanded=~A:calls=~A:width=~D:duration=~A:last=~A"
                                      (pig:jref result "content" 0 "text") (pig:jref result "details" "k")
                                      (if (eq (pig:jget options "expanded") t) "true" "false")
                                      (gethash "calls" (pig:tool-render-context-state render)) width
-                                     (or (pig:tool-render-context-duration-ms render) "none")))))
+                                     (or (pig:tool-render-context-duration-ms render) "none")
+                                     (or (first (coerce (pig:tool-render-context-last-component render) 'list)) "none")))))
     (pig:tool ext "big_out" "Return text of the size in the argument" (core-schema "properties" (pig:obj))
               (lambda (ctx params) (declare (ignore ctx))
                 (core-text-content (make-string (pig:jget params "n") :initial-element #\a :element-type 'base-char))))
@@ -310,6 +312,8 @@
                (lambda (ctx args) (declare (ignore args)) (pig:ctx-send-message ctx "notice" "default")))
   (pig:command ext "send_user_message" "Send a user message"
                (lambda (ctx args) (pig:ctx-send-user-message ctx (if (plusp (length args)) (pig:from-json args) "hello-user") :deliver-as "followUp")))
+  (pig:command ext "send_user_message_expand" "Send a user message with expandPromptTemplates set to the argument"
+               (lambda (ctx args) (pig:ctx-send-user-message ctx "expand-user" :deliver-as "followUp" :expand-prompt-templates (if (string= args "true") t :false))))
   (pig:command ext "status" "Set a status entry" (lambda (ctx args) (declare (ignore args)) (pig:ctx-set-status ctx "conformance" "ok")))
   (pig:command ext "status_burst" "Set one status repeatedly without awaiting"
                (lambda (ctx args) (declare (ignore args)) (dotimes (i 200) (pig:ctx-set-status ctx "burst" (princ-to-string i)))))

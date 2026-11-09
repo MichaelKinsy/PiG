@@ -175471,9 +175471,9 @@
         "call:coding/extension/factoryload/api.go#api.GetCommands"
       ],
       "evidence": [
+        "test:coding/cli/rpc_bind_bound_test.go#TestRPCBindCallsBoundAfterBindCoreAndBeforeSessionStartHandlers",
         "test:coding/cli/session_extension_actions_commands_test.go#TestSessionBindsGetCommandsToItsRunnerRuntime",
-        "test:coding/cli/session_extension_actions_listing_test.go#TestSessionExtensionActionsGetCommandsListsExtensionPromptAndSkillCommands",
-        "test:coding/cli/session_extension_actions_one_listing_test.go#TestModeGetCommandsIsTheSessionsCommandList"
+        "test:coding/cli/session_extension_actions_listing_test.go#TestSessionExtensionActionsGetCommandsListsExtensionPromptAndSkillCommands"
       ]
     },
     {
@@ -175493,9 +175493,9 @@
         "call:coding/extension/factoryload/api.go#api.GetCommands"
       ],
       "evidence": [
+        "test:coding/cli/rpc_bind_bound_test.go#TestRPCBindCallsBoundAfterBindCoreAndBeforeSessionStartHandlers",
         "test:coding/cli/session_extension_actions_commands_test.go#TestSessionBindsGetCommandsToItsRunnerRuntime",
-        "test:coding/cli/session_extension_actions_listing_test.go#TestSessionExtensionActionsGetCommandsListsExtensionPromptAndSkillCommands",
-        "test:coding/cli/session_extension_actions_one_listing_test.go#TestModeGetCommandsIsTheSessionsCommandList"
+        "test:coding/cli/session_extension_actions_listing_test.go#TestSessionExtensionActionsGetCommandsListsExtensionPromptAndSkillCommands"
       ]
     },
     {
@@ -181789,9 +181789,9 @@
         "call:coding/extension/factoryload/api.go#api.GetCommands"
       ],
       "evidence": [
+        "test:coding/cli/rpc_bind_bound_test.go#TestRPCBindCallsBoundAfterBindCoreAndBeforeSessionStartHandlers",
         "test:coding/cli/session_extension_actions_commands_test.go#TestSessionBindsGetCommandsToItsRunnerRuntime",
-        "test:coding/cli/session_extension_actions_listing_test.go#TestSessionExtensionActionsGetCommandsListsExtensionPromptAndSkillCommands",
-        "test:coding/cli/session_extension_actions_one_listing_test.go#TestModeGetCommandsIsTheSessionsCommandList"
+        "test:coding/cli/session_extension_actions_listing_test.go#TestSessionExtensionActionsGetCommandsListsExtensionPromptAndSkillCommands"
       ]
     },
     {
@@ -181811,9 +181811,9 @@
         "call:coding/extension/factoryload/api.go#api.GetCommands"
       ],
       "evidence": [
+        "test:coding/cli/rpc_bind_bound_test.go#TestRPCBindCallsBoundAfterBindCoreAndBeforeSessionStartHandlers",
         "test:coding/cli/session_extension_actions_commands_test.go#TestSessionBindsGetCommandsToItsRunnerRuntime",
-        "test:coding/cli/session_extension_actions_listing_test.go#TestSessionExtensionActionsGetCommandsListsExtensionPromptAndSkillCommands",
-        "test:coding/cli/session_extension_actions_one_listing_test.go#TestModeGetCommandsIsTheSessionsCommandList"
+        "test:coding/cli/session_extension_actions_listing_test.go#TestSessionExtensionActionsGetCommandsListsExtensionPromptAndSkillCommands"
       ]
     },
     {
@@ -223878,8 +223878,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitResolverDrawsCallAndResultViews",
-        "test:test/extension-conformance/keybinding_hints_test.go#TestKeybindingHintsAcrossSDKs",
-        "test:coding/extension/host/inproc/upstream_tool_renderers_test.go#TestUpstreamRunnerResolvesToolRenderersInExtensionLoadOrderEachAbleToDeferToTheNext"
+        "test:test/extension-conformance/component_kit_test.go#TestConformance_ToolRenderLastComponentIsTheViewTheRendererReturned",
+        "test:test/extension-conformance/keybinding_hints_test.go#TestKeybindingHintsAcrossSDKs"
       ]
     },
     {

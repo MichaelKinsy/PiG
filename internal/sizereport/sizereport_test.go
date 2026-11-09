@@ -140,15 +140,7 @@ func TestSymbolsKeepPerOSTableSize(t *testing.T) {
 		"tbl/tbl_other.go": "//go:build !linux\n\npackage tbl\n\nvar Table = [40960]byte{1}\n",
 		"same/same.go":     "package same\n\nvar Table = [3328]byte{1}\n",
 	}
-	for name, content := range files {
-		path := filepath.Join(root, name)
-		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
+	writeFiles(t, root, files)
 	build := Build{Root: root, Package: ".", GOOS: "darwin", GOARCH: "arm64"}
 	symbols, err := build.Symbols(t.Context(), t.TempDir())
 	if err != nil {
@@ -163,5 +155,57 @@ func TestSymbolsKeepPerOSTableSize(t *testing.T) {
 	}
 	if got := sizes["example.test/m/same.Table"]; got != 3328 {
 		t.Errorf("same-file table: size %d, want 3328", got)
+	}
+}
+
+func writeFiles(t *testing.T, root string, files map[string]string) {
+	t.Helper()
+	for name, content := range files {
+		path := filepath.Join(root, name)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// Residual N1, pinned as a known limitation: one shared file declares a table whose size depends on a per-OS constant (here 64 B on linux, 20,064 B on darwin). The file sets match, so the linux size replaces the target's and the per-package gate sees 64 B; only the stripped-size ceilings bound the growth, in total.
+//
+// The gate cannot catch it without false positives. The extra bytes of a Mach-O or PE symbol over its real size are the linker's gap to the next symbol, and in the release binary that gap is unbounded for symbols whose real size is the same on every OS: on darwin_arm64 `sync..dict.entry[...]` spans 57,632 B for 480 B (a 57,152 B gap), `chacha20.incRotMatrix` 22,080 B for 32 B, `bidi.bidiIndex` 13,760 B for 3,328 B, and on windows_amd64 `gc/scan.gcExpandersAVX512` 47,680 B for 544 B. A rule that refuses the correction when the span exceeds the linux size by more than some bound either misses a table that grows by less than the bound or reports those packages as heavyweight again. If a size source without gaps for the target is found (for example the compiler's own symbol sizes) and the gate catches this table, change the want here to the target's size.
+func TestSymbolsPinSharedFileTableOfPerOSSize(t *testing.T) {
+	if testing.Short() {
+		t.Skip("builds a module for two targets")
+	}
+	root := t.TempDir()
+	writeFiles(t, root, map[string]string{
+		"go.mod":           "module example.test/m\n\ngo 1.24\n",
+		"main.go":          "package main\n\nimport (\n\t\"os\"\n\n\t\"example.test/m/shared\"\n)\n\nfunc main() { println(shared.Table[len(os.Args)]) }\n",
+		"shared/shared.go": "package shared\n\nimport \"runtime\"\n\n// len(\"linux\") is 5 and len(\"darwin\") is 6.\nvar Table = [64 + (len(runtime.GOOS)-5)*20000]byte{1}\n",
+	})
+	build := Build{Root: root, Package: ".", GOOS: "darwin", GOARCH: "arm64"}
+	raw, err := build.nmSymbols(t.Context(), filepath.Join(t.TempDir(), "unstripped"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	corrected, err := build.Symbols(t.Context(), t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	const name = "example.test/m/shared.Table"
+	sizeOf := func(symbols []Symbol) (size int64) {
+		for _, symbol := range symbols {
+			if symbol.Name == name {
+				size = symbol.Size
+			}
+		}
+		return size
+	}
+	if got := sizeOf(raw); got < 20064 {
+		t.Fatalf("nm size of the darwin table is %d, want at least 20064: the module does not declare the table this test pins", got)
+	}
+	if got := sizeOf(corrected); got != 64 {
+		t.Errorf("corrected size of the table is %d, want 64 (the pinned limitation: the linux size of a same-file table is trusted); if the gate now reports its real size, change this want and the comment", got)
 	}
 }

@@ -831,6 +831,26 @@
       ]
     },
     {
+      "id": "BF-05c7426",
+      "title": "CI: the nightly `-race` run no longer fails on the nested modules that only build inside a Go workspace…",
+      "symptom": "CI: the nightly `-race` run no longer fails on the nested modules that only build inside a Go workspace (`apps/p2`, `apps/p2desktop`; `piglets/porter/extensions/pig-porter` builds and tests with `GOWORK=off` against its released dependencies and stays as it was): their entries in `automation/ci/race-packages.txt` carry `workspace`, and `test-race-nightly.sh` runs them without `GOWORK=off`.",
+      "rootCause": "test-race-nightly.sh ran every nested module with GOWORK=off. pig-porter (pi-main and the p2 line), apps/p2 and apps/p2desktop (p2 line) do not build alone (no required module provides package .../ai), so their nightly entries failed at setup. race-packages.txt gets a third column, workspace, for them; the script runs those modules without GOWORK=off (the repository go.work, or apps/p2desktop's own). race-coverage.sh accepts only an empty or workspace third column on a group entry and a nested module for workspace; test_race_coverage.py covers both.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "CI: the nightly `-race` run no longer fails on the nested modules that only build inside a Go workspace (`apps/p2`, `apps/p2desktop`; `piglets/porter/extensions/pig-porter` builds and tests with `GOWORK=off` against its released dependencies and stays as it was): their entries in `automation/ci/race-packages.txt` carry `workspace`, and `test-race-nightly.sh` runs them without `GOWORK=off`. `race-coverage.sh` accepts only an empty or `workspace` third column on a group entry.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "05c7426135",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-0630078",
       "title": "MCP tool calls no longer fail with \"Invalid MCP tools/call structured content\" when the server returns…",
       "symptom": "MCP tool calls no longer fail with \"Invalid MCP tools/call structured content\" when the server returns structured content that is not an object (an array, `null`, or a primitive, as MCP 2026-07-28 allows), as Pi 67996ab7 now does.",
@@ -5698,6 +5718,27 @@
       ]
     },
     {
+      "id": "BF-243927e",
+      "title": "Fix the lint reds the batch 6 group 1 merges carried: rustfmt for the Rust SDK and its fixture, box the large…",
+      "symptom": "Fix the lint reds the batch 6 group 1 merges carried: rustfmt for the Rust SDK and its fixture, box the large ToolRenderComponent view, gofmt the conformance component test, drop the embedded selector in the bind test",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "243927ed01",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_bind_bound_test.go::TestRPCBindCallsBoundAfterBindCoreAndBeforeSessionStartHandlers"
+      ]
+    },
+    {
       "id": "BF-24872ab",
       "title": "Extensions receive each model (`ctx.model`, `model_select`, `ctx.modelRegistry` reads, scoped models…",
       "symptom": "Extensions receive each model (`ctx.model`, `model_select`, `ctx.modelRegistry` reads, scoped models, virtual-model routes and provider-object calls) as Pi's model object, with its members in Pi's order, instead of sorted by member name with `null` for members the model does not set.",
@@ -6078,6 +6119,29 @@
         "coding/extension/builtin/toolsearch/toolsearch_carried_test.go::TestBm25RankerRanksAToolFirstWhenTheQueryContainsItsWholeName",
         "coding/extension/builtin/toolsearch/toolsearch_oracle_test.go::TestToolSearchMatchesPi",
         "coding/extension/builtin/toolsearch/toolsearch_reference_test.go::TestBm25ScoresMatchUpstream"
+      ]
+    },
+    {
+      "id": "BF-26787ff",
+      "title": "`pig --mode rpc --listen`: a connection that registered just after the server received SIGTERM was shut down…",
+      "symptom": "`pig --mode rpc --listen`: a connection that registered just after the server received SIGTERM was shut down while its session was still starting, and the shutdown read the extension runner while the start filled it, a data race.",
+      "rootCause": "A listen-mode connection that registers after the server's SIGTERM fan-out began is shut down from its own goroutine while its first host.bind runs. The dispose emits session_shutdown through the runner while BindCore fills it, which Runner.BindCore does not allow (race.208653, TestListenServesAfterAConnectionClosedBeforeItsSessionStarted). rpcShutdown gets a bound channel the mode closes after the first bind (or on any early return, before finish), and startDispose waits for it.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig --mode rpc --listen`: a connection that registered just after the server received SIGTERM was shut down while its session was still starting, and the shutdown read the extension runner while the start filled it, a data race. The shutdown now waits until the connection's first session start has bound the extensions (not for its `session_start` handlers).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "26787ff149",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_listen_test.go::TestListenServesAfterAConnectionClosedBeforeItsSessionStarted",
+        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownSignalWaitsForTheFirstBindBeforeDispose"
       ]
     },
     {
@@ -14005,6 +14069,26 @@
       "tests": []
     },
     {
+      "id": "BF-4ed1d72",
+      "title": "A session swap (`/new`, `/resume`, `/fork`, `Session.ReplaceInner`) no longer races with `/new`, a fork or a…",
+      "symptom": "A session swap (`/new`, `/resume`, `/fork`, `Session.ReplaceInner`) no longer races with `/new`, a fork or a clone that reads whether the session has a file, and a routed request stores a virtual model's router state on the session it read the state from, not on one a swap installed meanwhile.",
+      "rootCause": "ReplaceInner stores noSession under the Session mutex while prepareNewSession, Clone and extensionFork read it without it: a data race. It is an atomic.Bool now.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A session swap (`/new`, `/resume`, `/fork`, `Session.ReplaceInner`) no longer races with `/new`, a fork or a clone that reads whether the session has a file, and a routed request stores a virtual model's router state on the session it read the state from, not on one a swap installed meanwhile.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4ed1d7213d",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-4f079a7",
       "title": "An MCP request over Streamable HTTP that is cancelled or times out while the server's authorization is being…",
       "symptom": "An MCP request over Streamable HTTP that is cancelled or times out while the server's authorization is being refreshed is no longer sent again after the refresh; other requests waiting on the same refresh still complete.",
@@ -17241,6 +17325,31 @@
       ],
       "tests": [
         "internal/codingagent/render_utils_pi_test.go::TestRenderUtilsReplaceTabsAndTextOutputMatchPi"
+      ]
+    },
+    {
+      "id": "BF-5efaf92",
+      "title": "The embedded Node runtime and the packed Go, Rust, Python and Lisp SDK bundles were not regenerated when…",
+      "symptom": "The embedded Node runtime and the packed Go, Rust, Python and Lisp SDK bundles were not regenerated when `sendUserMessage` gained `expandPromptTemplates` and the Node theme gained `sourceInfo`, so shipped Node extensions saw no `ctx.ui.theme.sourceInfo` and the packed Lisp SDK rejected `:expand-prompt-templates`.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The embedded Node runtime and the packed Go, Rust, Python and Lisp SDK bundles were not regenerated when `sendUserMessage` gained `expandPromptTemplates` and the Node theme gained `sourceInfo`, so shipped Node extensions saw no `ctx.ui.theme.sourceInfo` and the packed Lisp SDK rejected `:expand-prompt-templates`. They are regenerated, and the theme row now compares a real `SourceInfo`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5efaf92237",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "coding/cli/session_replaced_2860_sdk_test.go::TestReplacedSession2860AcrossSDKs",
+        "coding/session_extension_user_message_expand_test.go::TestGraphBridgeSendUserMessageForwardsExpandPromptTemplates",
+        "coding/session_extension_user_message_expand_test.go::TestSubprocessSendUserMessageExpandsPromptTemplatesInTheSession",
+        "test/extension-conformance/theme_test.go::TestThemeQueriesAcrossSDKs"
       ]
     },
     {
@@ -36639,6 +36748,28 @@
       "tests": [
         "chord/delta/retention_upstream_test.go::TestDeltaTrackerRetentionAcrossGCJobs",
         "chord/delta/retention_upstream_test.go::TestTrackerReleasesADroppedOpenChangeWhenTheNextOpens"
+      ]
+    },
+    {
+      "id": "BF-abc54d0",
+      "title": "`pi.sendUserMessage(content, { expandPromptTemplates: true })` and the same option on a `withSession` context…",
+      "symptom": "The host used to drop the option, so a message such as `/my-command` or `/skill:name` was sent to the model as plain text.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pi.sendUserMessage(content, { expandPromptTemplates: true })` and the same option on a `withSession` context now reach the Session from Go, Rust, Python, Lisp and Node extensions (`Context.SendUserMessageWith`, `send_user_message_with`, `expand_prompt_templates=`, `:expand-prompt-templates`). The host used to drop the option, so a message such as `/my-command` or `/skill:name` was sent to the model as plain text. `ctx.ui.theme.sourceInfo` is now set on the Node runtime theme.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "abc54d0438",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/send_user_message_expand_test.go::TestSendUserMessageExpandPromptTemplatesAcrossSDKs"
       ]
     },
     {

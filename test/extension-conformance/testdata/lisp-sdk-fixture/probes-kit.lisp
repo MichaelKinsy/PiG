@@ -418,10 +418,19 @@ kit-widget-event=<type>:<value> (a change report is not one). It never closes it
                                (click-view "clickentry" (let ((d (pig:jget entry "data"))) (if (stringp d) d "")) options)))
     (pig:entry-view-event ext "conformance-click-entry" #'click-handler))
   (pig::tool-renderer ext (lambda (tool next)
-                            (if (equal tool "kit_resolved_tool")
-                                (pig::make-tool-renderers :call-view (lambda (ctx args render width) (declare (ignore ctx args render width)) (kp-probe-view))
-                                                          :result-view (lambda (ctx result options render width) (declare (ignore ctx result options render width)) (kp-probe-view)))
-                                (funcall next))))
+                            (cond ((equal tool "kit_resolved_tool")
+                                   (pig::make-tool-renderers :call-view (lambda (ctx args render width) (declare (ignore ctx args render width)) (kp-probe-view))
+                                                             :result-view (lambda (ctx result options render width) (declare (ignore ctx result options render width)) (kp-probe-view))))
+                                  ;; a view renderer that reads the view form of the context's last-component: the kind of what its previous run returned, and the run's own n
+                                  ((equal tool "last_view_probe")
+                                   (pig::make-tool-renderers
+                                    :call-view (lambda (ctx args render width)
+                                                 (declare (ignore ctx width))
+                                                 (let ((last (pig:tool-render-context-last-component render)))
+                                                   (pig:kit-view (pig:kit-container
+                                                                  (list (pig:kit-text (format nil "lastview:~A:n=~A" (cond ((null last) "none") ((pig::kit-view-p last) "view") (t "lines")) (pig:jget args "n"))
+                                                                                      0 0))))))))
+                                  (t (funcall next)))))
   ;; kit-images: step "a<k>" shows image 0 and step "b<n>" image n (1 <= n <= 64), each with its step as the text
   (pig:command ext "kit-images" "Exercise the component kit's image transport (D107)"
                (lambda (ctx args)

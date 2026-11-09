@@ -20,12 +20,13 @@ func (s *Session) AppendCustomEntry(customType string, data any) (string, error)
 // Filesystem errors retain the native writer's semantics: the entry may already be in memory, but no entry_appended event is emitted.
 // pig additive (D19): embedding hosts can persist the subprocess bridge's entry identity through the native Session writer.
 func (s *Session) AppendExtensionEntry(customType string, data any, direct *subprocess.DirectEntryAppend) (string, error) {
-	appended, err := icodingagent.AppendExtensionEntry(s.inner.Load(), customType, data, direct)
+	in := s.inner.Load()
+	appended, err := icodingagent.AppendExtensionEntry(in, customType, data, direct)
 	if err != nil {
 		return "", err
 	}
 	if direct == nil || direct.Event {
-		if entry, ok := s.inner.Load().GetEntry(appended.ID); ok {
+		if entry, ok := in.GetEntry(appended.ID); ok {
 			s.emitEvent(agent.EntryAppendedEvent{Entry: entry.Raw()})
 		}
 	}
