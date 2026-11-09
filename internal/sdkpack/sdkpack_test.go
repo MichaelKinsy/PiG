@@ -7,6 +7,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"io/fs"
+	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -71,6 +74,36 @@ func TestWalkRejectsMalformedBlobs(t *testing.T) {
 	} {
 		if err := Walk(blob, func(string, []byte) error { return nil }); err == nil {
 			t.Errorf("%s: walked", name)
+		}
+	}
+}
+
+// A root-module SDK directory carries its sources and one frame, sdk.zst, and nothing else packed: the gzip twins (.gz/) and the tar (sdk.tgz) that earlier bundle formats wrote are not read by any bundle, are not written by packsdk, and count against the module zip (automation/release/module-size-budget.txt). A merge from a branch that predates the single frame brought them back once (about 460 KB). The nested extensions/sdk module keeps its own .gz twins, which its published version embeds.
+func TestRootSDKDirectoriesHoldNoSupersededBundleFormat(t *testing.T) {
+	for _, dir := range []string{"sdk-lisp", "sdk-py", "sdk-rs"} {
+		root := filepath.Join("..", "..", "extensions", dir)
+		err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			name := entry.Name()
+			if entry.IsDir() {
+				if name == "target" || name == "__pycache__" || name == "node_modules" {
+					return filepath.SkipDir
+				}
+				if name == ".gz" {
+					t.Errorf("%s: superseded gzip twin directory; the bundle is sdk.zst alone", path)
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			if strings.HasSuffix(name, ".tgz") || strings.HasSuffix(name, ".tar.gz") {
+				t.Errorf("%s: superseded tar bundle; the bundle is sdk.zst alone", path)
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
 		}
 	}
 }
