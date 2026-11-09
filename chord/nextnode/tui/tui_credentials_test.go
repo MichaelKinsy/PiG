@@ -2,11 +2,14 @@ package tui
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
@@ -45,5 +48,127 @@ func TestPairingRefusesACodeThatIsNoPlainCodeShowingNothing(t *testing.T) {
 		if len(said) != 0 {
 			t.Fatalf("code %v: said %v, want nothing", code, said)
 		}
+	}
+}
+
+// pollingServer is a server pairing a device with the code ABCD whose poll answers `pending` after delay, noting when each poll
+// request arrived; a poll arriving with its request's context ended is noted by the server as dropped.
+type pollingServer struct {
+	base    *url.URL
+	mu      sync.Mutex
+	arrived []time.Time
+}
+
+func newPollingServer(t *testing.T, delay time.Duration, release <-chan struct{}) *pollingServer {
+	t.Helper()
+	p := &pollingServer{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("content-type", "application/json")
+		if r.URL.Path == "/_chord/pair" {
+			_, _ = w.Write([]byte(`{"code":"ABCD","poll":"p"}`))
+			return
+		}
+		p.mu.Lock()
+		p.arrived = append(p.arrived, time.Now())
+		p.mu.Unlock()
+		select {
+		case <-time.After(delay):
+		case <-release:
+		case <-r.Context().Done():
+			return
+		}
+		_, _ = w.Write([]byte(`{"status":"pending"}`))
+	}))
+	t.Cleanup(server.Close)
+	base, err := url.Parse(server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.base = base
+	return p
+}
+
+func (p *pollingServer) polls() []time.Time {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return append([]time.Time(nil), p.arrived...)
+}
+
+func waitUntil(t *testing.T, check func() bool) {
+	t.Helper()
+	for deadline := time.Now().Add(10 * time.Second); !check(); time.Sleep(5 * time.Millisecond) {
+		if time.Now().After(deadline) {
+			t.Fatal("not within 10 s")
+		}
+	}
+}
+
+func setPollInterval(t *testing.T, interval time.Duration) {
+	t.Helper()
+	was := pollInterval
+	pollInterval = interval
+	t.Cleanup(func() { pollInterval = was })
+}
+
+// Pi's `pair` is `for (;;) { await sleep(POLL_MS); throwIfAborted(); await post(poll); ... }`: the wait is the whole interval after
+// the poll before it was answered, so two polls start `POLL_MS` plus the first poll's own time apart (the interval is not counted from
+// the poll's start).
+func TestPairingWaitsTheWholeIntervalAfterEachPollWasAnswered(t *testing.T) {
+	setPollInterval(t, 200*time.Millisecond)
+	server := newPollingServer(t, 300*time.Millisecond, nil)
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer cancel(nil)
+	done := make(chan error, 1)
+	go func() {
+		_, err := TokenOf(ctx, TerminalCredentials{Kind: CredentialsPairing, Label: "t"}, server.base, func(string) {}, nil)
+		done <- err
+	}()
+	waitUntil(t, func() bool { return len(server.polls()) >= 3 })
+	stop := errors.New("test over")
+	cancel(stop)
+	if err := <-done; !errors.Is(err, stop) {
+		t.Fatalf("TokenOf = %v, want the cancellation's cause", err)
+	}
+	polls := server.polls()
+	for i := 1; i < 3; i++ {
+		if gap := polls[i].Sub(polls[i-1]); gap < 490*time.Millisecond {
+			t.Fatalf("poll %d started %v after the one before it was started, want at least 200ms (the interval) + 300ms (the poll's answer)", i+1, gap)
+		}
+	}
+}
+
+// Pi's wait is a bare setTimeout the signal does not cut short, then `signal.throwIfAborted()` before the next poll: an abort during
+// the wait sends no poll, and rejects with the signal's reason. Go's wait ends at the abort (Pi's ends at the end of the interval, at
+// most POLL_MS later: the timing of that settle is the whole difference, nothing observable follows from it: Pi's own launcher
+// never aborts its signal). An abort during a poll's request ends the request.
+func TestAnAbortedPairingSendsNoMorePollsAndEndsWithTheCause(t *testing.T) {
+	setPollInterval(t, 300*time.Millisecond)
+	hold := make(chan struct{})
+	defer close(hold)
+	server := newPollingServer(t, time.Hour, hold)
+	stop := errors.New("the caller left")
+	ctx, cancel := context.WithCancelCause(context.Background())
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+		cancel(stop)
+	}()
+	if _, err := TokenOf(ctx, TerminalCredentials{Kind: CredentialsPairing, Label: "t"}, server.base, func(string) {}, nil); !errors.Is(err, stop) {
+		t.Fatalf("an abort during the wait: %v, want its cause", err)
+	}
+	time.Sleep(450 * time.Millisecond)
+	if n := len(server.polls()); n != 0 {
+		t.Fatalf("%d polls after the abort, want none (Pi's throwIfAborted precedes the post)", n)
+	}
+	// An abort while a poll is in flight ends it.
+	setPollInterval(t, 10*time.Millisecond)
+	ctx, cancel = context.WithCancelCause(context.Background())
+	go func() {
+		for len(server.polls()) == 0 {
+			time.Sleep(5 * time.Millisecond)
+		}
+		cancel(stop)
+	}()
+	if _, err := TokenOf(ctx, TerminalCredentials{Kind: CredentialsPairing, Label: "t"}, server.base, func(string) {}, nil); err == nil || !errors.Is(err, context.Canceled) && !errors.Is(err, stop) {
+		t.Fatalf("an abort during a poll: %v, want the abort", err)
 	}
 }
