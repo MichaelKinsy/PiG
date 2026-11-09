@@ -30,9 +30,15 @@ func (f *fakeRemoteEditor) Bind(host extension.RemoteEditorHost) { f.host = host
 func (f *fakeRemoteEditor) Close()                               {}
 
 // runPostedTasks runs the owner-loop tasks the test posted, as the input loop
-// would.
+// would. The mode needs an owner task channel: an event queue posts its drain to
+// that channel from a goroutine of its own, and without a channel the goroutine
+// finds nobody to take the drain and discards the events queued, which races
+// with this call and loses the event whenever the goroutine runs first.
 func runPostedTasks(t *testing.T, m *InteractiveMode) {
 	t.Helper()
+	if m.uiTaskCh == nil {
+		t.Fatal("runPostedTasks on a mode without uiTaskCh: the queued editor events race with the goroutine that discards them; give the mode m.uiTaskCh = make(chan func(), 64)")
+	}
 	queued := func(q *remoteEventQueue) bool {
 		q.mu.Lock()
 		defer q.mu.Unlock()
