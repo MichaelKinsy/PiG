@@ -205,7 +205,7 @@ func jsonObjectHasMember(data, name string) bool {
 		key := data[i+1 : end-1]
 		if escaped {
 			var decoded string
-			if jsonwire.Unmarshal(data[i:end], &decoded) != nil {
+			if json.Unmarshal(jsonwire.Bytes(data[i:end]), &decoded) != nil {
 				return true // not reached for valid JSON; the caller's decode decides
 			}
 			key = decoded

@@ -3210,7 +3210,7 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 		h.fusedLog.export()
 		hostConn, extConn := newFusedConn()
 		serve := me.inProcServe
-		go func() {
+		go func() { //portlint:allow asyncorder serve is the fused extension's own process half: it runs the extension's factory and frame loop in this process (loader.ts:625-645 initializeExtension awaits factory(load.api)); the fused connection is its only link to the host and orders every frame
 			if err := serve(extConn); err != nil && extCtx.Err() == nil {
 				fmt.Fprintf(os.Stderr, "extension %s (fused): %v\n", me.config.Name, err)
 			}
@@ -3379,7 +3379,7 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 	// status is captured so the crash path can tell a real crash
 	// (non-zero/signal) from a clean, intentional exit(0).
 	stderrLog := me.stderrLog
-	go func() {
+	go func() { //portlint:allow asyncorder the reaper waits for the child (cmd.Wait) and closes exitedCh, which the crash path and Shutdown join through me.exited(); Pi has no counterpart (Node reaps its children itself)
 		me.waitErr = cmd.Wait()
 		stderrLog.closeWriter()
 		_ = processTree.Close()
@@ -4743,7 +4743,7 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 func (h *Host) goHandleIncoming(me *managedExt, conn *Conn) {
 	conn.incoming.Store(&incomingLoop{ended: make(chan struct{})})
 	//portlint:allow golifetime the loop ends with its connection, which the host closes before it stops the extension, and Shutdown waits for the loop through Conn.awaitIncomingEnded
-	go func() {
+	go func() { //portlint:allow asyncorder the loop is recorded on the connection before it runs (conn.incoming) and Shutdown joins it through Conn.awaitIncomingEnded
 		defer conn.endIncoming()
 		h.handleIncoming(me, conn)
 	}()

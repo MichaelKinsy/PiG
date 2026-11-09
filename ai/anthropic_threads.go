@@ -14,6 +14,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
 // Message threads (Pi a758f3ae4): the server keeps the conversation of a thread, so a request can continue from the previous reply and send only the new
@@ -203,48 +205,54 @@ func normalizeThreadMessage(message json.RawMessage) ([]byte, error) {
 	return normalizeThreadValue(message)
 }
 
-// normalizeThreadValue walks value through json.RawMessage containers, so no member is decoded into an interface.
+// normalizeThreadValue walks value through json.RawMessage containers, so no member is decoded into an interface, and writes every object's
+// members in the order they have (orderedjson), as JSON.stringify writes them in hashThreadPrefix.
 func normalizeThreadValue(value json.RawMessage) (json.RawMessage, error) {
 	switch firstJSONByte(value) {
 	case '{':
-		var members map[string]json.RawMessage
-		if err := json.Unmarshal(value, &members); err != nil {
+		object, err := orderedjson.Parse(value)
+		if err != nil {
 			return nil, err
 		}
-		delete(members, "cache_control")
-		for key, member := range members {
+		object.Delete("cache_control")
+		for _, key := range object.Keys() {
+			member, _ := object.Get(key)
 			if key == "content" && firstJSONByte(member) == '"' {
 				var text string
 				if err := json.Unmarshal(member, &text); err != nil {
 					return nil, err
 				}
-				block, err := json.Marshal([]map[string]string{{"type": "text", "text": text}})
+				quoted, err := json.Marshal(text)
 				if err != nil {
 					return nil, err
 				}
-				members[key] = block
+				object.Set(key, append(append([]byte(`[{"type":"text","text":`), quoted...), "}]"...))
 				continue
 			}
 			normalized, err := normalizeThreadValue(member)
 			if err != nil {
 				return nil, err
 			}
-			members[key] = normalized
+			object.Set(key, normalized)
 		}
-		return json.Marshal(members)
+		return object.MarshalJSON()
 	case '[':
 		var members []json.RawMessage
 		if err := json.Unmarshal(value, &members); err != nil {
 			return nil, err
 		}
+		out := []byte{'['}
 		for i, member := range members {
 			normalized, err := normalizeThreadValue(member)
 			if err != nil {
 				return nil, err
 			}
-			members[i] = normalized
+			if i > 0 {
+				out = append(out, ',')
+			}
+			out = append(out, normalized...)
 		}
-		return json.Marshal(members)
+		return append(out, ']'), nil
 	case '"':
 		var text string
 		if err := json.Unmarshal(value, &text); err != nil {

@@ -206,6 +206,7 @@ func (h *rpcHost) bind(ctx context.Context, session *coding.Session, event exten
 				return
 			}
 			// The drain notification can follow the response frame of a command the host has not delivered yet: Pi's loop was still alive until that response was written. Waiting here would block the host's frame loop, which the join's suspension reports may need, so the exit waits apart from it. The host takes the loop-drain checkpoint before it calls this handler, so the join awaits a command that waits on exec, a session change or another host call, and a Node command until its own process reports that nothing keeps its loop alive; it does not await a command that waits only on a dialog, which stdin can no longer answer. The goroutine belongs to the process, not to runRPC: it ends in h.drain, the process exit, so no owner joins it.
+			//portlint:allow asyncorder the exit waits apart from the host's frame loop for the join to go idle (<-join.idle() is the ordering point) and then drains, as Pi's loop stays alive until the last response was written (rpc-mode.ts:381-391 shutdown)
 			go func() {
 				<-join.idle()
 				h.drain()

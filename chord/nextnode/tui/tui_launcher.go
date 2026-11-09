@@ -283,13 +283,13 @@ func (l *Launcher) rows() int {
 // start downloads the base bundle and the plugins, starts the sandbox and takes the terminal.
 func (l *Launcher) start(ctx context.Context) error {
 	//portlint:allow golifetime the loop ends with the launcher: finish ends it (loopDone) and every post and sync gives up once it is closed
-	go l.loop()
+	go l.loop() //portlint:allow asyncorder the loop is Node's single event loop (launcher.ts:147-283: every listener and #handle run on it); each post queues to it in order, and finish joins it (loopDone)
 	if err := l.startSandbox(ctx); err != nil {
 		l.cancel()
 		return err
 	}
 	//portlint:allow golifetime ends when the terminal's input closes (a stopped launcher closes it) and its posts are dropped once the loop ended
-	go l.readInput()
+	go l.readInput() //portlint:allow asyncorder launcher.ts:147 #onInput is stdin's data listener, an event with no ordering against other work; each chunk is posted to the loop, which orders it
 	// On the loop: a finish (the sandbox exited meanwhile) reads both, and must not see them half set, nor miss them.
 	l.sync(func() {
 		if l.finished {
@@ -372,13 +372,13 @@ func (l *Launcher) onResize() {
 // finishAsync ends the client from the loop's own goroutine: finish waits for the loop, so it cannot run on it.
 func (l *Launcher) finishAsync(code int) {
 	//portlint:allow golifetime ends with finish, which closes loopDone and the sandbox; it runs once (the `finished` flag) and every post it makes is dropped once the loop ended
-	go l.finish(code)
+	go l.finish(code) //portlint:allow asyncorder launcher.ts:150-154, 244, 253, 279, 282 `void this.finish(...)` starts the finish unawaited, as here; finish queues its work to the loop, which orders it, and runs once (the finished flag)
 }
 
 // outdatedAsync restarts the sandbox for a newer base bundle off the loop (it downloads).
 func (l *Launcher) outdatedAsync() {
 	//portlint:allow golifetime ends with the launcher: its downloads take l.ctx, which finish cancels
-	go l.outdated()
+	go l.outdated() //portlint:allow asyncorder launcher.ts:275 `void this.#outdated()` starts it unawaited, as here; it reads the loop's state through sync and restarts through the loop
 }
 
 func (l *Launcher) finish(code int) {
@@ -502,7 +502,7 @@ func (l *Launcher) sandboxIs(sandbox *Sandbox) bool {
 // loop).
 func (l *Launcher) sandboxEndPost(generation int) {
 	//portlint:allow golifetime the post ends when the loop takes it or the loop ends (loopDone)
-	go l.post(func() { l.sandboxEnded(generation) })
+	go l.post(func() { l.sandboxEnded(generation) }) //portlint:allow asyncorder launcher.ts:244 the sandbox's exit callback `() => void this.finish(1)` is an event with no ordering against other work; the post is the ordering point: it queues to the loop, which checks the generation
 }
 
 // sandboxEnded is the sandbox's end (an exit, a crash, a malformed frame): the client ends with code 1.
@@ -583,7 +583,7 @@ func (l *Launcher) openSocket(id int) {
 	sandbox := l.sandbox
 	headers := http.Header{"Authorization": {"Bearer " + l.token}}
 	//portlint:allow golifetime the dial ends with its context, which close and finish cancel; what it dialed is handed to the loop, which closes it when the loop is gone
-	go func() {
+	go func() { //portlint:allow asyncorder launcher.ts:303-330 #openSocket: the WebSocket dials and reports through events; the dial's result is posted to the loop (dialed), which orders it against close
 		conn, _, err := webSocketDialer.DialContext(dialCtx, target.String(), headers) //nolint:bodyclose // gorilla/websocket hands back a handshake response whose body is already read and closed
 		if !l.post(func() { l.dialed(id, socket, sandbox, conn, err) }) && conn != nil {
 			_ = conn.Close()
@@ -606,9 +606,9 @@ func (l *Launcher) dialed(id int, socket *linkSocket, sandbox *Sandbox, conn *we
 	socket.open = true
 	sandbox.Post(LauncherMessage{Kind: "socket_opened", Socket: id})
 	//portlint:allow golifetime ends when the socket closes (close ends out and the connection), which the launcher's finish does for every socket
-	go socket.writeLoop()
+	go socket.writeLoop() //portlint:allow asyncorder launcher.ts:330 #send writes each frame to the socket as it arrives; writeLoop drains out in that order and ends when close ends out
 	//portlint:allow golifetime ends when the connection closes (close does, and the launcher's finish closes every socket)
-	go func() {
+	go func() { //portlint:allow asyncorder launcher.ts:317-329 the socket's message and close events: each message goes to the sandbox in read order, and the close is posted to the loop
 		for {
 			_, payload, err := conn.ReadMessage()
 			if err != nil {
@@ -705,7 +705,7 @@ func (l *Launcher) answer(id int, request BridgeRequest) {
 	}
 	l.requests++
 	//portlint:allow golifetime a request answers once (at most maxRequests run); its downloads take l.ctx, which finish cancels, and its prompt ends with the loop (Ask returns false on loopDone)
-	go func() {
+	go func() { //portlint:allow asyncorder launcher.ts:272 `void this.#answer(...)` starts the request unawaited, as here; its claim on the prompt is ordered on the loop (requests, confirming) and its end is posted back to it
 		reply, err := l.reply(id, request)
 		if err != nil {
 			sandbox.Post(LauncherMessage{Kind: "refused", ID: id, Message: err.Error()})
