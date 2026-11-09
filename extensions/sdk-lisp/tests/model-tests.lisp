@@ -37,8 +37,14 @@
     (check (null (pig:jget message "durationMs")))
     (check (eq message (pig:model-stream-result stream)))))
 
+(defun wire-events (stream)
+  "The events of STREAM as the host receives them."
+  (let ((events '()))
+    (pig::model-stream-forward stream (lambda (event) (push event events)) :wire t)
+    (nreverse events)))
+
 (deftest event-stream-queues-events-and-results-as-they-were-pushed
-  ;; The forwarding thread reads the queue after the author went on: Pi's consumer encodes an event before its provider's next await.
+  ;; The forwarding thread reads the queue after the author went on.
   (let* ((stream (pig:make-model-event-stream))
          (block (pig:obj "type" "text" "text" ""))
          (message (pig:obj "role" "assistant" "content" (vector block) "stopReason" "stop")))
@@ -50,9 +56,21 @@
       (setf (gethash "text" block) (concatenate 'string (gethash "text" block) "-AFTER"))
       (pig:model-stream-push stream (pig:obj "type" "done" "reason" "stop" "message" message))
       (setf (gethash "text" block) "changed after done")
-      (check-equal '("" "x" "xx" "xxx" "xxx-AFTER") (mapcar #'shown (pig:model-stream-events stream)))
+      (check-equal '("" "x" "xx" "xxx" "xxx-AFTER") (mapcar #'shown (wire-events stream)))
       (check (eq message (pig:model-stream-result stream)))
       (check-equal "xxx-AFTER" (pig:jref (pig::model-stream-wire-result stream) "content" 0 "text")))))
+
+(deftest iterating-an-event-stream-in-process-yields-the-pushed-objects
+  (let* ((stream (pig:make-model-event-stream))
+         (message (pig:obj "role" "assistant" "content" (vector)))
+         (start (pig:obj "type" "start" "partial" message))
+         (done (pig:obj "type" "done" "reason" "stop" "message" message)))
+    (pig:model-stream-push stream start)
+    (pig:model-stream-push stream done)
+    (let ((events (pig:model-stream-events stream)))
+      (check (eq start (first events)))
+      (check (eq done (second events)))
+      (check (eq (pig:jget done "message") (pig:model-stream-result stream))))))
 
 (deftest ending-an-event-stream-hands-the-host-the-result-as-it-is
   (let* ((stream (pig:make-model-event-stream))
@@ -66,7 +84,40 @@
 (deftest events-the-sdk-builds-are-queued-as-they-are
   (let ((stream (pig:make-model-event-stream)) (event (pig:obj "type" "start")))
     (pig::model-stream-enqueue stream event)
-    (check (eq event (pig:model-stream-next stream)))))
+    (check (eq event (pig:model-stream-next stream :wire t)))))
+
+(defun uncopyable-values ()
+  "Values a JSON snapshot cannot copy: a list that is not proper, and a table that contains itself."
+  (let ((cycle (pig:obj)))
+    (setf (gethash "self" cycle) cycle)
+    (list (cons "a" "b") cycle)))
+
+(deftest a-value-an-event-stream-cannot-copy-fails-the-forwarder-and-not-the-push
+  (dolist (value (uncopyable-values))
+    (let ((stream (pig:make-model-event-stream)) (message (pig:obj "role" "assistant")))
+      (pig:model-stream-push stream (pig:obj "type" "start" "partial" message))
+      (pig:model-stream-push stream (pig:obj "type" "text_delta" "delta" value))
+      (pig:model-stream-push stream (pig:obj "type" "done" "reason" "stop" "message" message))
+      (check (eq message (pig:model-stream-result stream)))
+      (check-equal 3 (length (pig:model-stream-events stream)))
+      (let ((stream (pig:make-model-event-stream)) (seen '()))
+        (pig:model-stream-push stream (pig:obj "type" "start"))
+        (pig:model-stream-push stream (pig:obj "type" "text_delta" "delta" value))
+        (check-error error (pig::model-stream-forward stream (lambda (event) (push (pig:jget event "type") seen)) :wire t))
+        (check-equal '("start") seen)))))
+
+(deftest a-producer-thread-survives-a-value-an-event-stream-cannot-copy
+  (dolist (value (uncopyable-values))
+    (let* ((stream (pig:make-model-event-stream))
+           (message (pig:obj "role" "assistant" "uncopyable" value))
+           (producer (sb-thread:make-thread
+                      (lambda ()
+                        (handler-case (progn (pig:model-stream-push stream (pig:obj "type" "done" "reason" "stop" "message" message))
+                                             :pushed)
+                          (error (e) (princ-to-string e)))))))
+      (check-equal :pushed (sb-thread:join-thread producer :timeout 5))
+      (check (eq message (pig:model-stream-result stream)))
+      (check-error error (pig::model-stream-wire-result stream)))))
 
 (deftest event-stream-delivers-events-in-order-and-ends-at-the-terminal-event
   (let ((stream (pig:make-model-event-stream)))

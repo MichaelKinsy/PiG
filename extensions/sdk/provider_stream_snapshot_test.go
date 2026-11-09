@@ -1,11 +1,14 @@
 package sdk
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net"
 	"strings"
 	"testing"
+
+	sdkjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
 )
 
 const snapshotBurst = 100
@@ -154,6 +157,53 @@ func TestProviderStreamEventThatCannotBeEncodedFailsTheRequest(t *testing.T) {
 	}
 }
 
+// The bytes a pushed event is queued as are what encoding the event would give, with the terminal event's message encoded once, and notifyResult writes an encoded result into the
+// notification as notify writes the value.
+func TestPushedEventWireEqualsEncodingTheEventAndNotifyResultEqualsNotify(t *testing.T) {
+	for _, event := range []map[string]any{
+		{"type": "done", "reason": "stop", "message": map[string]any{"role": "assistant", "content": []any{map[string]any{"text": "a<b>&\u2028"}}, "zz": 1.5}},
+		{"type": "error", "reason": "error", "error": map[string]any{"errorMessage": "x"}, "aaa": []any{1}},
+		{"type": "start", "partial": map[string]any{"content": []any{}}},
+		{"type": "done", "reason": "stop"},
+	} {
+		stream := newModelEventStream()
+		stream.enqueue(event, true)
+		item := stream.queue[0]
+		want, err := sdkjson.MarshalJS(event)
+		if err != nil || item.err != nil {
+			t.Fatal(err, item.err)
+		}
+		if !bytes.Equal(item.wire, want) {
+			t.Errorf("wire = %s, want %s", item.wire, want)
+		}
+		client, server := net.Pipe()
+		sender, host := newConn(client), newConn(server)
+		sender.start()
+		frames := make(chan []byte, 2)
+		go func() {
+			for range 2 {
+				frame, err := host.readFrame()
+				if err != nil {
+					return
+				}
+				frames <- frame
+			}
+		}()
+		if err := sender.notify("provider_stream_event", map[string]any{"request_id": "r\"1", "result": event}); err != nil {
+			t.Fatal(err)
+		}
+		if err := sender.notifyResult("provider_stream_event", "r\"1", item.payload()); err != nil {
+			t.Fatal(err)
+		}
+		first, second := <-frames, <-frames
+		if !bytes.Equal(first, second) {
+			t.Errorf("notifyResult wrote %s, notify wrote %s", second, first)
+		}
+		_ = client.Close()
+		_ = server.Close()
+	}
+}
+
 // BenchmarkProviderStreamPush is one provider response through the SDK: 100 text_delta events pushed (each after one more character was appended to the shared message) and a done
 // event, encoded and written to the host. It measures a push and the forwarding of its event together, wherever the SDK encodes the event.
 func BenchmarkProviderStreamPush(b *testing.B) {
@@ -170,6 +220,29 @@ func BenchmarkProviderStreamPush(b *testing.B) {
 				stream.Push(map[string]any{"type": "text_delta", "contentIndex": 0, "delta": "x", "partial": message})
 			}
 			stream.Push(map[string]any{"type": "done", "reason": "stop", "message": message})
+			return stream, nil
+		})
+	}
+}
+
+// BenchmarkProviderStreamPushDistinctPartials pushes 1000 text_delta events whose partial messages are separate maps of 1 to 1000 characters, and a done event, so that an SDK
+// that encodes an event at the push and one that encodes it later write the same bytes: the cost of the push path alone.
+func BenchmarkProviderStreamPushDistinctPartials(b *testing.B) {
+	b.ReportAllocs()
+	texts := make([]string, 1000)
+	for i := range texts {
+		texts[i] = strings.Repeat("x", i+1)
+	}
+	for range b.N {
+		runProviderStream(b, func(Context, map[string]any, map[string]any, map[string]any) (*ModelEventStream, error) {
+			stream := CreateAssistantMessageEventStream()
+			var last map[string]any
+			for _, text := range texts {
+				last, _ = snapshotMessage1()
+				last["content"].([]any)[0].(map[string]any)["text"] = text
+				stream.Push(map[string]any{"type": "text_delta", "contentIndex": 0, "delta": "x", "partial": last})
+			}
+			stream.Push(map[string]any{"type": "done", "reason": "stop", "message": last})
 			return stream, nil
 		})
 	}
