@@ -2,8 +2,10 @@ package entered
 
 import (
 	"bytes"
+	"os"
 	"runtime/debug"
 	"strconv"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -141,4 +143,99 @@ func TestAwaitUnlessIgnoresWaitsWhileBusy(t *testing.T) {
 		t.Fatal("AwaitUnless did not return once the goroutine's wait became its own")
 	}
 	close(release)
+}
+
+// className names a Class in a test failure.
+func className(class Class) string { return [...]string{"Busy", "Lock", "Waiting"}[class] }
+
+func TestClassifySeparatesTheRuntimesWaitsFromTheProgramsOwn(t *testing.T) {
+	const frames = "main.allocate()\n\t/x.go:1 +0x1"
+	const pollFrames = "internal/poll.runtime_Semacquire(0x1)\n\t/x.go:1 +0x1\ninternal/poll.(*fdMutex).rwlock(0x1)\n\t/y.go:2 +0x2"
+	for _, test := range []struct {
+		header, frames string
+		want           Class
+	}{
+		{"running]:", frames, Busy},
+		{"runnable]:", frames, Busy},
+		{"syscall, 2 minutes]:", frames, Busy},
+		{"copystack]:", frames, Busy},
+		{"preempted]:", frames, Busy},
+		{"semacquire]:", frames, Busy},
+		{"GC assist wait]:", frames, Busy},
+		{"GC assist marking]:", frames, Busy},
+		{"garbage collection]:", frames, Busy},
+		{"garbage collection scan]:", frames, Busy},
+		{"GC mark termination]:", frames, Busy},
+		{"stopping the world]:", frames, Busy},
+		{"flushing proc caches]:", frames, Busy},
+		{"wait for GC cycle]:", frames, Busy},
+		{"GC weak to strong wait]:", frames, Busy},
+		// The lock of a file descriptor another goroutine reads is not the runtime's to end.
+		{"semacquire]:", pollFrames, Lock},
+		{"sync.Mutex.Lock]:", frames, Lock},
+		{"sync.RWMutex.Lock, 3 minutes]:", frames, Lock},
+		{"sync.RWMutex.RLock]:", frames, Lock},
+		{"chan receive]:", frames, Waiting},
+		{"chan send]:", frames, Waiting},
+		{"select, locked to thread]:", frames, Waiting},
+		{"select (no cases)]:", frames, Waiting},
+		{"sleep]:", frames, Waiting},
+		{"IO wait]:", frames, Waiting},
+		{"sync.WaitGroup.Wait]:", frames, Waiting},
+		{"sync.Cond.Wait]:", frames, Waiting},
+		{"GC worker (idle)]:", frames, Waiting},
+		{"]:", frames, Waiting},
+	} {
+		if got := Classify([]byte(test.header), []byte(test.frames)); got != test.want {
+			t.Errorf("Classify(%q, %.20q...) = %s, want %s", test.header, test.frames, className(got), className(test.want))
+		}
+	}
+}
+
+// A goroutine that needs the lock of a file descriptor another goroutine is reading waits in "semacquire" too, but nothing the
+// runtime does ends that wait: it stays a lock (not parked, unless the caller may hold the lock) however Classify takes the
+// collection's own.
+func TestParkedKeepsAFileDescriptorLockAsALock(t *testing.T) {
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ids := make(chan uint64, 2)
+	var ended sync.WaitGroup
+	for range 2 {
+		ended.Go(func() {
+			ids <- goroutineid.Current()
+			_, _ = reader.Read(make([]byte, 1))
+		})
+	}
+	defer func() {
+		_ = writer.Close()
+		ended.Wait()
+		_ = reader.Close()
+	}()
+	first, second := <-ids, <-ids
+	deadline := time.Now().Add(5 * time.Second)
+	var stacks []byte
+	for {
+		// One reader waits for the pipe's data (parked in both modes); the other waits for the first one's read lock.
+		var dataWait, lockWait bool
+		for _, id := range []uint64{first, second} {
+			var parked, blocked bool
+			parked, _, stacks = Parked(id, stacks)
+			blocked, _, stacks = parkedOrBlocked(id, stacks, true)
+			switch {
+			case parked && blocked:
+				dataWait = true
+			case !parked && blocked:
+				lockWait = true
+			}
+		}
+		if dataWait && lockWait {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("no reader waits for the file descriptor's lock as a lock (a reader waits for the data: %v, a reader waits for the lock: %v)", dataWait, lockWait)
+		}
+		time.Sleep(time.Millisecond)
+	}
 }
