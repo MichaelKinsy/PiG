@@ -30,18 +30,22 @@ func (o *orderTerminal) written() string {
 }
 
 // Pi's `void this.finish(code)` runs its synchronous prefix in the caller's turn (launcher.ts:207-218: `#finished = true`, the terminal
-// given back, RESET_MODES written, the sockets closed), so a frame the sandbox sent after its `exit` is handled after it. The launcher
-// ran that prefix on a goroutine that posted it to the loop, behind the events already queued: the frame went out before RESET_MODES.
-func TestAFrameQueuedBehindTheSandboxsExitIsWrittenAfterTheTerminalWasGivenBack(t *testing.T) {
+// given back, RESET_MODES written, the sockets closed) and its first await calls Sandbox.terminate(), which sets #ended at once
+// (sandbox.ts:200-203). From then on the sandbox delivers nothing (:216, :229, `if (!this.#ended) this.#onMessage(message)`), so of the
+// messages queued around the sandbox's exit, the ones before it are written, then RESET_MODES, and the ones after it are never handled.
+// The launcher ran the prefix on a goroutine that posted it to the loop, behind the events already queued: a frame sent after the exit
+// went out before RESET_MODES, and a message queued after it was handled before the terminal was given back.
+func TestFramesAroundTheSandboxsExitFollowPisOrder(t *testing.T) {
 	terminal := &orderTerminal{}
 	base, err := url.Parse("http://127.0.0.1:1")
 	if err != nil {
 		t.Fatal(err)
 	}
 	l := newLauncher(context.Background(), base, "token", TerminalOptions{}, terminal)
-	// The sandbox sent its exit and then a frame: both are queued before the loop runs the first.
+	// The sandbox sent a frame, its exit, and another frame: all queued before the loop runs the first.
+	l.post(func() { l.message(0, SandboxMessage{Kind: "write", Data: "before"}) })
 	l.post(func() { l.message(0, SandboxMessage{Kind: "exit", Code: 0}) })
-	l.post(func() { l.message(0, SandboxMessage{Kind: "write", Data: "frame"}) })
+	l.post(func() { l.message(0, SandboxMessage{Kind: "write", Data: "after"}) })
 	go l.loop()
 	select {
 	case code := <-l.exited:
@@ -51,7 +55,7 @@ func TestAFrameQueuedBehindTheSandboxsExitIsWrittenAfterTheTerminalWasGivenBack(
 	case <-time.After(10 * time.Second):
 		t.Fatal("the launcher did not finish")
 	}
-	if got := terminal.written(); !strings.HasPrefix(got, resetModes) {
-		t.Fatalf("the terminal was written %q: RESET_MODES must come first", got)
+	if got, want := terminal.written(), "before"+resetModes; got != want {
+		t.Fatalf("the terminal was written %q, want the frame sent before the exit, then RESET_MODES, and nothing after: %q", got, want)
 	}
 }

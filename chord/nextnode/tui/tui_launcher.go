@@ -530,6 +530,9 @@ func (l *Launcher) sandboxEnded(generation int) {
 }
 
 // message is one message of the sandbox; one the launcher fails on ends the client, never the launcher's process.
+// Pi's Sandbox delivers nothing once the launcher's finish called terminate(), which sets #ended in the same synchronous turn (sandbox.ts:200-203,
+// 216, 229): a message the sandbox sent after the one that ended the client, in the same chunk or a later one, is never handled. finished,
+// set by beginFinish in the caller's turn, is that point here; a message queued before it ran first, as Pi handled it when it was read.
 func (l *Launcher) message(generation int, message SandboxMessage) {
 	if generation != l.generation || l.finished {
 		return
