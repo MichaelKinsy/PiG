@@ -12,6 +12,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"unsafe"
+	"weak"
 )
 
 // A built-in catalog row's Record is a three-byte reference (NUL, then the row index in two bytes, big endian), not the 600 bytes of JSON it stands for: the records of all 1,629 rows were 0.9 MB of the binary and compress to 55 KB. cmd/gen-models writes them to catalog_records/NN.gz, one gzip stream per catalogRecordChunk rows, one record per line. ResolveCatalogRecord returns the JSON and expands a chunk on its first use, so a start that reads no record expands none and a start that reads one expands 64.
@@ -24,12 +25,45 @@ var catalogRecordFiles embed.FS
 // catalogRecordChunk is the number of rows in one chunk; cmd/gen-models writes the chunks with the same constant.
 const catalogRecordChunk = 64
 
+// chunkLines are the records of one chunk, cut from the chunk's inflated buffer.
+type chunkLines struct{ lines []string }
+
+// recordChunk holds a chunk's expanded records weakly: once nothing reads them the collector reclaims the 38 KB buffer, so a start that
+// reads every record (an extension host sends the whole catalog at attach) does not keep the whole catalog's JSON, about 1 MB, on the heap
+// afterwards. A string a caller still holds keeps its buffer alive, and the chunk most recently read is held strongly (recentChunk), so reading
+// records in row order inflates each chunk once.
 type recordChunk struct {
-	once  sync.Once
-	lines []string
+	mu    sync.Mutex
+	lines weak.Pointer[chunkLines]
 }
 
-// expandedCatalogChunks counts the chunks expanded so far; CatalogChunksExpanded exposes it so tests can show that a start path reads no record.
+// recentChunk is the chunk ResolveCatalogRecord read last.
+var recentChunk atomic.Pointer[chunkLines]
+
+// expand returns the chunk's records, inflating the chunk when the collector has reclaimed them or they were never read.
+func (c *recordChunk) expand(index int) *chunkLines {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if expanded := c.lines.Value(); expanded != nil {
+		return expanded
+	}
+	name := fmt.Sprintf("catalog_records/%02d.gz", index)
+	frame, err := catalogRecordFiles.ReadFile(name)
+	if err != nil {
+		panic("ai: " + err.Error())
+	}
+	raw, err := inflateCatalogChunk(frame)
+	if err != nil {
+		panic("ai: " + name + ": " + err.Error())
+	}
+	// raw is never written again, so the lines may alias it: a copy of each 38 KB chunk would double what a start that reads every record allocates.
+	expanded := &chunkLines{lines: strings.Split(unsafe.String(unsafe.SliceData(raw), len(raw)), "\n")} //nolint:gosec // G103: raw is the chunk's own buffer, read-only from here on and kept alive by the strings cut from it.
+	c.lines = weak.Make(expanded)
+	expandedCatalogChunks.Add(1)
+	return expanded
+}
+
+// expandedCatalogChunks counts the chunk expansions so far (a chunk the collector reclaimed expands again); CatalogChunksExpanded exposes it so tests can show that a start path reads no record.
 var expandedCatalogChunks atomic.Int32
 
 // CatalogChunksExpanded is the number of built-in catalog record chunks expanded (decompressed) in this process so far.
@@ -54,22 +88,9 @@ func ResolveCatalogRecord(record string) string {
 		return record
 	}
 	row := int(record[1])<<8 | int(record[2])
-	chunk := &recordChunks[row/catalogRecordChunk]
-	chunk.once.Do(func() {
-		name := fmt.Sprintf("catalog_records/%02d.gz", row/catalogRecordChunk)
-		frame, err := catalogRecordFiles.ReadFile(name)
-		if err != nil {
-			panic("ai: " + err.Error())
-		}
-		raw, err := inflateCatalogChunk(frame)
-		if err != nil {
-			panic("ai: " + name + ": " + err.Error())
-		}
-		// raw is never written again, so the lines may alias it: a copy of each 38 KB chunk would double what a start that reads every record allocates.
-		chunk.lines = strings.Split(unsafe.String(unsafe.SliceData(raw), len(raw)), "\n") //nolint:gosec // G103: raw is the chunk's own buffer, read-only from here on and kept alive by the strings cut from it.
-		expandedCatalogChunks.Add(1)
-	})
-	base := chunk.lines[row%catalogRecordChunk]
+	expanded := recordChunks[row/catalogRecordChunk].expand(row / catalogRecordChunk)
+	recentChunk.Store(expanded)
+	base := expanded.lines[row%catalogRecordChunk]
 	if len(record) == 3 {
 		return base
 	}
