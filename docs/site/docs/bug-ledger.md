@@ -206,6 +206,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-2ab79ce-2](#bf-2ab79ce-2) | A provider registered with its own `streamSimple` runs that callback only for its models whose `api` is the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2ad6dd7](#bf-2ad6dd7) | fix(interactive): show extension package changelogs at startup | PiG's own defect | All platforms | Unreleased |
 | [BF-2ad7249](#bf-2ad7249) | fix(ledger): close the getJsonSchemaToolParameters and google convertTools rows | PiG's own defect | All platforms | Unreleased |
+| [BF-2b6e9a6](#bf-2b6e9a6) | Loading a packed Lisp cell no longer hangs when two of its extensions each make a host call, such as a… | PiG's own defect | All platforms | Unreleased |
 | [BF-2b8731a](#bf-2b8731a) | A `models.json` number that is not an integer and also below the minimum of an integer field (for example… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-2b97688](#bf-2b97688) | The `env` daemon reports a watch `change` whose path list would not fit in a frame (16 MiB less 64 KiB) as an… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-2bc49c1](#bf-2bc49c1) | Node extensions read live `ctx.isIdle()` state, so background callbacks detect when a run finishes or starts | PiG's own defect | All platforms | 0.7.0 |
@@ -1187,6 +1188,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-be6803c](#bf-be6803c) | The /tree "Summarize branch?" selector and "Custom summarization instructions" editor, the /import… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-beeb36a](#bf-beeb36a) | Running with no home directory now fails the way Pi's package manager does, instead of reading the project's… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-bf45320](#bf-bf45320) | Go embedding hosts can bind extension appends through `coding.Session.AppendExtensionEntry`, retaining… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-bf67aae](#bf-bf67aae) | Loading a packed Python cell no longer hangs when its second extension's factory makes a host call before the… | PiG's own defect | All platforms | Unreleased |
 | [BF-bf73e77](#bf-bf73e77) | fix(durable/core): join split surrogates through jv.AppendConcat, not byte slices | PiG's own defect | All platforms | Unreleased |
 | [BF-bf89558](#bf-bf89558) | A run whose model answer holds a value that is not strict JSON, a function or a non-finite number (`NaN`… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-bf9911e](#bf-bf9911e) | Append ops from the Chord delta tracker and `DiffRevisions` own their text, as under Pi, instead of holding a… | PiG's own defect | All platforms | 0.7.0 |
@@ -4200,6 +4202,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `2ad72495fe` (2026-10-10)
 - **Tests:** `ai/google_convert_tools_upstream_test.go::TestGoogleSharedConvertToolsUpstream`
+
+### BF-2b6e9a6
+
+**Loading a packed Lisp cell no longer hangs when two of its extensions each make a host call, such as a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Loading a packed Lisp cell no longer hangs when two of its extensions each make a host call, such as a `pi.events` subscription, while their factories run.
+- **Root cause:** helper-loading-call held *helper-lock* across the whole wait for the host's answer. The host accepts a packed cell's members in order and serves a connection only after the members before it registered, so the second member's call waited for the first member's register, and the first member's run needed the same lock to take its connection: when the second member's factory reached its first call before the first member's run took its connection, the two deadlocked and the cell's load never ended.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2b6e9a6e21` (2026-11-09)
+- **Tests:** None recorded.
+- **Release note:** Loading a packed Lisp cell no longer hangs when two of its extensions each make a host call, such as a `pi.events` subscription, while their factories run. The host serves a cell's connections in order, so the second extension's first call waits for the first extension's register; the first extension's run needed the lock that call held to take its connection, and when the second factory reached its call before the first run took its connection, neither could continue and the load never ended. A factory-time call now holds only the lock of its own connection.
 
 ### BF-2b8731a
 
@@ -17788,6 +17804,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `bf453203b6` (2026-10-23)
 - **Tests:** `coding/session_custom_entries_test.go::TestAppendExtensionEntryPreservesIdentityAndEventSemantics`, `coding/session_custom_entries_test.go::TestAppendExtensionEntryRejectsWithoutChangingTheLog`, `coding/session_custom_entries_test.go::TestAppendExtensionEntrySharesTheNativeAppendLock`, `coding/session_custom_entries_test.go::TestAppendExtensionEntryThroughNodeHost`
 - **Release note:** Go embedding hosts can bind extension appends through `coding.Session.AppendExtensionEntry`, retaining subprocess IDs and timestamps through the native Session writer and preserving `entry_appended` semantics. Previously, calling `AppendCustomEntry` allocated a new identity instead of retaining the subprocess ID and timestamp because the public Session API lacked a way to pass them through, leaving duplicate entries in the Node session mirror.
+
+### BF-bf67aae
+
+**Loading a packed Python cell no longer hangs when its second extension's factory makes a host call before the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The Python SDK had the same lock order as the Lisp SDK: a factory-time host call held the lock `run` takes while it waited for the host, so neither could continue.
+- **Root cause:** loading_call held _State.lock across the whole wait for the host's answer, and run_with_socket needs that lock to take its connection. The host serves a packed cell's members in order, so the second member's call waits for the first member's register: when the second member's factory reached its first call before the first member's run took its connection, the two deadlocked.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `bf67aaefc7` (2026-11-09)
+- **Tests:** None recorded.
+- **Release note:** Loading a packed Python cell no longer hangs when its second extension's factory makes a host call before the first extension's run has taken its connection. The Python SDK had the same lock order as the Lisp SDK: a factory-time host call held the lock `run` takes while it waited for the host, so neither could continue. A factory-time call now holds only the lock of its own connection.
 
 ### BF-bf73e77
 
