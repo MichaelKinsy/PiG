@@ -24,6 +24,7 @@ The Main Screen preserves scrollback. The Editor changes only the required visib
 | Wrapped input enters history early | Move Up within wrapped input | Keep Pi's cursor and history state |
 | Resize corrupts layout | Change width and height with ANSI, wide text, and images | Match Pi's final screen |
 | A hidden-row change cannot be repaired locally | Change content above the viewport | Use Pi's recovery render |
+| A parent container serves a cached child that Pi would have redrawn | Mutate each exported component type beneath a parent after a first render (`child_cache_contract_test.go`) | The parent shows the component's own render; a component that embeds a `Container` answers through `Container.IsDirty`, and one without children invalidates itself in every mutator |
 
 ## Evidence
 

@@ -129,6 +129,7 @@ func (f *FilterableList) SetCursor(idx int) {
 	if idx >= 0 && idx < len(f.filtered) {
 		f.cursor = idx
 		f.fixScroll()
+		f.Invalidate()
 	}
 }
 

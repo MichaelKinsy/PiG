@@ -444,6 +444,11 @@ func (b *AssistantMessageComponent) SetTerminalError(stopReason, errorMessage st
 	b.updateContent()
 }
 
+// IsDirty reports the block's own invalidation, which every mutator of the block calls (updateContent ends in Container.Invalidate), and not Container.IsDirty's scan of the
+// content beneath it: a parent container stops asking once it read the block clean (kidInvalidation lists the exact type), so a settled
+// transcript costs no scan per block. TestAParentContainerShowsWhatAnyExportedMutatorChanged holds each mutator to that.
+func (b *AssistantMessageComponent) IsDirty() bool { return b.invalidatable.IsDirty() }
+
 // Invalidate rebuilds the content so theme-baked colors follow the active theme (assistant-message.ts invalidate). It runs on the goroutine that owns the block, as Pi's runs on its event loop; a transform worker marks the block dirty through SetAsyncMarkdownTransforms instead.
 func (b *AssistantMessageComponent) Invalidate() {
 	b.Container.Invalidate()

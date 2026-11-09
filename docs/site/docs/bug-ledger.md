@@ -954,6 +954,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-7e1a05c](#bf-7e1a05c) | Resource resolution follows Pi's `DefaultPackageManager.resolve` in two cases: built-in extensions come after… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7e42a6a](#bf-7e42a6a) | CSS module mappings are what Node's `vm` gives, as Pi's (key order of integer-like names, no `__proto__` key… | PiG's own defect | All platforms | Unreleased |
 | [BF-7ea21f3](#bf-7ea21f3) | RPC output writes summed usage (a tool result's usage with nested model calls, a compaction summary's usage)… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-7eb7d29](#bf-7eb7d29) | The model picker (`/model`) now shows a catalog-refresh timeout or failure as soon as it happens | PiG's own defect | All platforms | Unreleased |
 | [BF-7f2c05b](#bf-7f2c05b) | A `ChordError` of code `invalid` from a failed args, result, state or input check carries TypeBox's whole… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-7f3a71c](#bf-7f3a71c) | fix(durable): the reference Harness wraps a plain Models once too | PiG's own defect | All platforms | Unreleased |
 | [BF-7f441d7](#bf-7f441d7) | MCP OAuth URLs are WHATWG URLs, as in Pi | PiG's own defect | All platforms | 0.5.0 |
@@ -14875,6 +14876,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `433d232815` (2026-10-09), `2309604d80` (2026-10-10), `7ea21f3e44` (2026-10-10), `c10cde302d` (2026-10-10), `eeac307095` (2026-10-10), `f29e906cb3` (2026-10-10)
 - **Tests:** `agent/assistant_member_order_oracle_test.go::TestAssistantLateMembersFollowPiCreationOrder`, `agent/convert_custom_upstream_test.go::TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm`, `agent/convert_custom_upstream_test.go::TestConvertToLLMToolFlowMatchesUpstreamTransformOrder`, `agent/convert_custom_upstream_test.go::TestCustomMessagesReachProvidersAsUpstreamContentBlocks`, `agent/transform_custom_user_boundary_test.go::TestAnthropicRequestAfterBranchSummaryHasNoOrphanToolResult`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomMessageWithoutWireOutputKeepsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses` and 10 more in docs/bug-ledger.json
 - **Release note:** RPC output writes summed usage (a tool result's usage with nested model calls, a compaction summary's usage) with `cacheWrite1h` and `reasoning` before `totalTokens`, as Pi's `combineUsage` creates them, instead of after `cost`.
+
+### BF-7eb7d29
+
+**The model picker (`/model`) now shows a catalog-refresh timeout or failure as soon as it happens**
+
+- **Source:** PiG's own defect
+- **Symptom:** The model picker (`/model`) now shows a catalog-refresh timeout or failure as soon as it happens.
+- **Root cause:** Pi's Container.render calls child.render(width) for every child on every frame, so a Pi component cannot be stale because of its parent. Pig's per-child cache and the D91 settled scan asked a child that embeds a Container only for its own flag, so a change beneath it that did not call its Invalidate was never drawn: ModelSelectorComponent.SetError and SetStatus (after a catalog-refresh timeout the screen kept "Refreshing model catalogs..."), SettingsList.UpdateValue and FilterableList.SetCursor.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `7eb7d29c3f` (2026-11-09)
+- **Tests:** `tui/child_cache_contract_test.go::TestAParentContainerShowsWhatAnyExportedMutatorChanged`, `tui/child_cache_contract_test.go::TestEveryExportedComponentTypeIsInTheCacheContract`, `tui/child_cache_contract_test.go::TestModelSelectorRefreshTimeoutShowsInTheNextFrame`, `tui/child_cache_contract_test.go::TestModelSelectorSetErrorReachesAParentContainersRender`, `tui/child_cache_contract_test.go::TestSettingsListUpdateValueReachesAParentContainersRender`
+- **Release note:** The model picker (`/model`) now shows a catalog-refresh timeout or failure as soon as it happens. It kept showing `Refreshing model catalogs...` until the next key press, because the screen reused the picker's last drawing; `SettingsList` value updates and `FilterableList` cursor moves had the same hole. A component that embeds a container now tells its parent about a change anywhere beneath it, so the per-child render cache can no longer show a child that Pi would redraw.
 
 ### BF-7f2c05b
 
