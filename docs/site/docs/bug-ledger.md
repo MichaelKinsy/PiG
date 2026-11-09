@@ -10570,13 +10570,13 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 - **Source:** PiG's own defect
 - **Symptom:** `console.*` output and thrown non-Error values in Code Mode scripts print `NaN`, `Infinity` and `-Infinity` as `text()` prints them, not as `null` (so `throw NaN` reports `NaN`).
-- **Root cause:** Not recorded.
+- **Root cause:** The cause was that the script prelude's `format()` sent every number through `JSON.stringify`, which writes `NaN` and `Infinity` as `null` because JSON has no such numbers; Pi 33cd7e507 prints a number with `String()` first.
 - **User impact:** An operation failed or was rejected
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `62339c4642` (2026-11-09)
-- **Tests:** `codemode/sandbox_test.go::TestEmbeddedSourcesMatchTheirRecordedHashes`
-- **Release note:** `console.*` output and thrown non-Error values in Code Mode scripts print `NaN`, `Infinity` and `-Infinity` as `text()` prints them, not as `null` (so `throw NaN` reports `NaN`). A number nested in an object or array still prints as `null`, as `JSON.stringify` and `text()` print it (Pi #11901).
+- **Fix commits:** `36579e4892` (2026-11-09), `62339c4642` (2026-11-09), `f352c2af4b` (2026-11-09)
+- **Tests:** `codemode/sandbox_test.go::TestEmbeddedSourcesMatchTheirRecordedHashes`, `codemode/sandbox_test.go::TestPrintsNonFiniteNumbersInConsoleOutputAndThrownValuesLikeText`, `codemode/script_oracle_test.go::TestScriptOutcomesMatchPi`
+- **Release note:** `console.*` output and thrown non-Error values in Code Mode scripts print `NaN`, `Infinity` and `-Infinity` as `text()` prints them, not as `null` (so `throw NaN` reports `NaN`). A number nested in an object or array still prints as `null`, as `JSON.stringify` and `text()` print it (Pi #11901). The cause was that the script prelude's `format()` sent every number through `JSON.stringify`, which writes `NaN` and `Infinity` as `null` because JSON has no such numbers; Pi 33cd7e507 prints a number with `String()` first.
 
 ### BF-6235532
 
