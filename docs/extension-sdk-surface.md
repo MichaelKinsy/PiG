@@ -25,11 +25,11 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Runtime | implemented | stand-in/partial | missing (all with a reviewed exception) |
 |---|---|---|---|
-| Node runtime | 493 | 26 | 10 |
-| Go | 497 | 23 | 9 |
-| Rust | 495 | 25 | 9 |
-| Python | 497 | 23 | 9 |
-| Lisp | 501 | 19 | 9 |
+| Node runtime | 499 | 26 | 4 |
+| Go | 503 | 23 | 3 |
+| Rust | 501 | 25 | 3 |
+| Python | 503 | 23 | 3 |
+| Lisp | 507 | 19 | 3 |
 
 35 PiG-only surfaces:
 
@@ -115,7 +115,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
 |---|---|---|---|---|---|---|
 | `pi.sendUserMessage(options.deliverAs)` | `ExtensionAPI.sendUserMessage(options.deliverAs)` | implemented `api.sendUserMessage` | implemented `Context.SendUserMessage` | implemented `Context::send_user_message` | implemented `Context.send_user_message(deliver_as)` | implemented `pig:ctx-send-user-message(deliver-as)` |
-| `pi.sendUserMessage(options.expandPromptTemplates)` | `ExtensionAPI.sendUserMessage(options.expandPromptTemplates)` | missing (`api.sendUserMessage`: the host drops `expandPromptTemplates` (subprocess.SendUserMessageOptions)) [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
+| `pi.sendUserMessage(options.expandPromptTemplates)` | `ExtensionAPI.sendUserMessage(options.expandPromptTemplates)` | implemented `api.sendUserMessage` | implemented `Context.SendUserMessageWith` | implemented `Context::send_user_message_with` | implemented `Context.send_user_message(expand_prompt_templates)` | implemented `pig:ctx-send-user-message(expand-prompt-templates)` |
 
 ## pi (ExtensionAPI)
 
@@ -866,7 +866,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
 |---|---|---|---|---|---|---|
-| `user_bash return.operations` | `UserBashEventResult.operations` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
+| `user_bash return.operations` | `UserBashEventResult.operations` | implemented `read:result.operations` | implemented `BashOperations` | implemented `Context::bash_operations` | implemented `BashOperations` | implemented `pig:make-bash-operations` |
 | `user_bash return.result` | `UserBashEventResult.result` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
@@ -1017,7 +1017,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
 |---|---|---|---|---|---|---|
 | `ctx.newSession(options.parentSession)` | `ExtensionCommandContext.newSession(options.parentSession)` | implemented `RuntimeContext.newSession` | implemented `Context.NewSession` | implemented `Context::new_session` | implemented `Context.new_session` | implemented `pig:ctx-new-session` |
-| `ctx.newSession(options.setup)` | `ExtensionCommandContext.newSession(options.setup)` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
+| `ctx.newSession(options.setup)` | `ExtensionCommandContext.newSession(options.setup)` | implemented `read:entry.callback` | implemented `SetupFunc` | implemented `Context::new_session_setup` | implemented `SetupSessionManager` | implemented `pig:ctx-new-session(setup)` |
 | `ctx.newSession(options.withSession)` | `ExtensionCommandContext.newSession(options.withSession)` | implemented `read:entry.callback` | implemented `WithSessionFunc` | implemented `Context::new_session_with` | implemented `ReplacedSessionContext` | implemented `pig:ctx-new-session(with-session)` |
 | `ctx.newSession → cancelled` | `ExtensionCommandContext.newSession → cancelled` | implemented `RuntimeContext.newSession` | implemented `CancelledResult.Cancelled` | implemented `Context::new_session` | implemented `Context.new_session` | implemented `pig:ctx-new-session` |
 
@@ -1098,7 +1098,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
 |---|---|---|---|---|---|---|
 | `withSession ctx.sendUserMessage(options.deliverAs)` | `ReplacedSessionContext.sendUserMessage(options.deliverAs)` | implemented `read:context.sendUserMessage` | implemented `Context.SendUserMessage` | implemented `Context::send_user_message` | implemented `Context.send_user_message(deliver_as)` | implemented `pig:ctx-send-user-message(deliver-as)` |
-| `withSession ctx.sendUserMessage(options.expandPromptTemplates)` | `ReplacedSessionContext.sendUserMessage(options.expandPromptTemplates)` | missing (`read:context.sendUserMessage`: the host drops `expandPromptTemplates` (subprocess.SendUserMessageOptions)) [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
+| `withSession ctx.sendUserMessage(options.expandPromptTemplates)` | `ReplacedSessionContext.sendUserMessage(options.expandPromptTemplates)` | implemented `read:context.sendUserMessage` | implemented `Context.SendUserMessageWith` | implemented `Context::send_user_message_with` | implemented `Context.send_user_message(expand_prompt_templates)` | implemented `pig:ctx-send-user-message(expand-prompt-templates)` |
 
 ## ctx.ui (ExtensionUIContext)
 
@@ -1221,7 +1221,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 |---|---|---|---|---|---|---|
 | `ctx.ui.theme.name` | `Theme.name` | implemented `ThemeShim.name` | implemented `UITheme.Name` | implemented `Theme.name` | implemented `Theme.name` | implemented `pig:theme-name` |
 | `ctx.ui.theme.sourcePath` | `Theme.sourcePath` | implemented `ThemeShim.sourcePath` | implemented `UITheme.SourcePath` | implemented `Theme.source_path` | implemented `Theme.source_path` | implemented `pig:theme-source-path` |
-| `ctx.ui.theme.sourceInfo` | `Theme.sourceInfo` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
+| `ctx.ui.theme.sourceInfo` | `Theme.sourceInfo` | implemented `ThemeShim.sourceInfo` | implemented `UITheme.SourceInfo` | implemented `Theme.source_info` | implemented `Theme.source_info` | implemented `pig:theme-source-info` |
 | `ctx.ui.theme.appearance` | `Theme.appearance` | implemented `ThemeShim.appearance` | implemented `UITheme.Appearance` | implemented `Theme::appearance` | implemented `Theme.appearance` | implemented `pig:theme-appearance` |
 | `ctx.ui.theme.colors` | `Theme.colors` | implemented `ThemeShim.colors` | implemented `UITheme.Colors` | implemented `Theme::colors` | implemented `Theme.colors` | implemented `pig:theme-colors` |
 | `ctx.ui.theme.style` | `Theme.style` | implemented `ThemeShim.style` | implemented `UITheme.Style` | implemented `Theme::style` | implemented `Theme.style` | implemented `pig:theme-style` |
@@ -1337,7 +1337,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `provider.baseUrl` | `ProviderConfig.baseUrl` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
 | `provider.apiKey` | `ProviderConfig.apiKey` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
 | `provider.api` | `ProviderConfig.api` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
-| `provider.streamSimple` | `ProviderConfig.streamSimple` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
+| `provider.streamSimple` | `ProviderConfig.streamSimple` | implemented `read:config.streamSimple` | implemented `ProviderStreamSimpleFunc` | implemented `ProviderOperations.stream_simple` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
 | `provider.images` | `ProviderConfig.images` | implemented `read:config.images` | implemented `ProviderImagesFunc` | implemented `ProviderOperations.images` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
 | `provider.classifiers` | `ProviderConfig.classifiers` | implemented `read:config.classifiers` | implemented `ProviderClassifyFunc` | implemented `ProviderOperations.classifiers` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
 | `provider.headers` | `ProviderConfig.headers` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
@@ -3107,12 +3107,6 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Surface | Runtimes | Reason |
 |---|---|---|
-| `pi.sendUserMessage(options.expandPromptTemplates)` | Node runtime, Go, Rust, Python, Lisp | The host SendUserMessageOptions carries deliverAs only; expandPromptTemplates would be dropped. Requires host prompt-expansion control. |
-| `ctx.newSession(options.setup)` | Node runtime, Go, Rust, Python, Lisp | The wire has no writable replacement SessionManager callback handle. Requires replacement callback ownership in the Pi runner bridge (0.3.0), not JSON serialization of a function. |
-| `withSession ctx.sendUserMessage(options.expandPromptTemplates)` | Node runtime, Go, Rust, Python, Lisp | The host SendUserMessageOptions carries deliverAs only; expandPromptTemplates would be dropped. Requires host prompt-expansion control. |
-| `ctx.ui.theme.sourceInfo` | Node runtime, Go, Rust, Python, Lisp | The theme snapshot carries sourcePath but no SourceInfo. Requires theme resource provenance publication. |
-| `user_bash return.operations` | Node runtime, Go, Rust, Python, Lisp | The wire has no host-invoked streaming BashOperations executor callback. Returning a completed result works; operations requires callback/stream ownership. |
-| `provider.streamSimple` | Node runtime, Go, Rust, Python, Lisp | The host cannot invoke an extension-served provider EventStream. Requires provider callback and streaming transport, not the existing host-served modelStream direction. |
 | `provider.refreshModels` | Node runtime, Go, Rust, Python, Lisp | The provider bridge has no host-to-extension refreshModels request or publication callback handles. |
 | `provider.oauth.usesCallbackServer` | Node runtime, Go, Rust, Python, Lisp | Deprecated and ignored by upstream 0.99.2 canonical auth flows (core/extensions/types.ts); runtimes do not forward this inert legacy metadata. |
 | `provider.oauth.modifyModels` | Node runtime, Go, Rust, Python, Lisp | The host OAuth bridge has no credential-dependent modify-models callback request. |

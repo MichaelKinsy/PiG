@@ -219248,8 +219248,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/host_surface_test.go#TestExtensionSourceInfoAcrossSDKs",
-        "test:coding/source/source_package_key_test.go#TestSourceInfoCarriesChangelogPathOnlyWhenSet",
-        "test:internal/codingagent/interactive_extension_changelog_test.go#TestExtensionChangelogUpdatesUpstream"
+        "test:test/extension-conformance/theme_test.go#TestThemeQueriesAcrossSDKs",
+        "test:coding/source/source_package_key_test.go#TestSourceInfoCarriesChangelogPathOnlyWhenSet"
       ]
     },
     {
