@@ -453,6 +453,51 @@
       (ignore-errors (sb-bsd-sockets:socket-close listener))
       (ignore-errors (delete-file path)))))
 
+;; A packed cell's members build one after another, and the host accepts their connections in that order, serving a connection only after the members before it
+;; have registered. The second member's factory-time call therefore waits for the first member's register, so the first member's run, which takes its own
+;; connection to register, must not wait for that call. A lock held across the wait deadlocks the two: the host never sees the first register, and the cell's
+;; load hangs.
+(deftest a-factory-call-waiting-for-the-host-does-not-hold-up-another-members-register
+  (let* ((tag (format nil "~D-~D" (sb-posix:getpid) (random 1000000)))
+         (path0 (format nil "/tmp/pig-lisp-test-member0-~A.sock" tag))
+         (path1 (format nil "/tmp/pig-lisp-test-member1-~A.sock" tag))
+         (listener0 (make-instance 'sb-bsd-sockets:local-socket :type :stream))
+         (listener1 (make-instance 'sb-bsd-sockets:local-socket :type :stream))
+         (conn0 nil) (conn1 nil) (call1 nil) (caller1 nil) (runner nil))
+    (loop for (path . listener) in (list (cons path0 listener0) (cons path1 listener1))
+          do (ignore-errors (delete-file path))
+             (sb-bsd-sockets:socket-bind listener path)
+             (sb-bsd-sockets:socket-listen listener 4))
+    (unwind-protect
+         (progn
+           ;; the first member's factory made its one host call and returned: its connection is dialled and waits for its run to take it
+           (sb-posix:setenv "PIG_EXT_SOCKET" path0 1)
+           (let ((caller0 (sb-thread:make-thread (lambda () (pig::helper-call "factory-time" (pig:obj))) :name "test-factory-0")))
+             (setf conn0 (pig::socket-conn (sb-bsd-sockets:socket-accept listener0)))
+             (sbr-answer-call conn0 (pig::read-frame conn0) (pig:obj))
+             (sb-thread:join-thread caller0 :default nil :timeout 10))
+           ;; the second member's factory calls the host, which has not accepted its connection yet: the call waits
+           (sb-posix:setenv "PIG_EXT_SOCKET" path1 1)
+           (setf caller1 (sb-thread:make-thread (lambda () (pig::helper-call "factory-time" (pig:obj))) :name "test-factory-1"))
+           (setf conn1 (pig::socket-conn (sb-bsd-sockets:socket-accept listener1))
+                 call1 (pig::read-frame conn1))
+           (check-equal "call" (pig:jget call1 "type"))
+           ;; the first member's run registers meanwhile; a bounded wait, so a run held up by the second member's call fails the test instead of hanging it
+           (setf runner (sb-thread:make-thread (lambda () (pig:run-extension (pig:make-extension "rt-member-0") path0)) :name "test-run-0"))
+           (let ((register (sb-thread:make-thread (lambda () (handler-case (pig:jget (pig::read-frame conn0) "type") (error () :eof))) :name "test-register-0")))
+             (check-equal "register" (sb-thread:join-thread register :default :none-within-10s :timeout 10)
+                          "the first member registered while the second member's call waited for the host")))
+      ;; answer the waiting call so a held-up run finishes, then end both threads
+      (when call1 (ignore-errors (sbr-answer-call conn1 call1 (pig:obj))))
+      (when caller1 (sb-thread:join-thread caller1 :default nil :timeout 10))
+      (when conn0 (ignore-errors (sbr-send-shutdown conn0)))
+      (when runner (sb-thread:join-thread runner :default nil :timeout 10))
+      (pig::helper-drop-conn path1)
+      (sb-posix:unsetenv "PIG_EXT_SOCKET")
+      (loop for (path . listener) in (list (cons path0 listener0) (cons path1 listener1))
+            do (ignore-errors (sb-bsd-sockets:socket-close listener))
+               (ignore-errors (delete-file path))))))
+
 (deftest events-on-validates-its-arguments
   (let ((bus (pig:extension-events (pig:make-extension "rt-bus-args"))))
     (check-error simple-error (pig:events-on bus 3 #'identity))
