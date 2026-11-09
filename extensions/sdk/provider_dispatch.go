@@ -29,6 +29,29 @@ type providerObjectParams struct {
 func providerCallbackValue[T any](ctx Context, key, method string, params any) (T, error) {
 	return hostValue[T](ctx, "provider.callback", map[string]any{"provider": key, "method": method, "params": params})
 }
+
+// refreshPublisher is RefreshModelsContext.Publish of the refresh request ctx belongs to: the publication's persistence and the token of its update reach the host as a publish callback of
+// the request on the provider key, and the host runs the update here by token (the "update" provider_sync request) while it applies the publication.
+func (e *Extension) refreshPublisher(ctx Context, key string) func(ModelsPublication) (bool, error) {
+	return func(publication ModelsPublication) (bool, error) {
+		params := map[string]any{"publication": map[string]json.RawMessage{}}
+		if publication.Persist != nil {
+			params["publication"] = map[string]json.RawMessage{"persist": publication.Persist}
+		}
+		if publication.Update != nil {
+			token := rand.Text()
+			params["token"] = token
+			e.providerMu.Lock()
+			if e.providerUpdates == nil {
+				e.providerUpdates = map[string]func() error{}
+			}
+			e.providerUpdates[token] = publication.Update
+			e.providerMu.Unlock()
+			defer func() { e.providerMu.Lock(); delete(e.providerUpdates, token); e.providerMu.Unlock() }()
+		}
+		return providerCallbackValue[bool](ctx, key, "publish", params)
+	}
+}
 func (e *Extension) dispatchProviderObjectCallback(req *requestMsg) (any, error) {
 	e.providerMu.Lock()
 	callback := e.providerObjectCallbacks[req.Tool]
@@ -144,24 +167,7 @@ func (e *Extension) dispatchProviderObject(ctx Context, req *requestMsg) (any, e
 		return provider.Auth.OAuth.ToAuth(args.Credential)
 	case "refreshModels":
 		return nil, provider.RefreshModels(RefreshModelsContext{Credential: args.Credential, Stored: args.Stored, AllowNetwork: args.AllowNetwork, Force: args.Force, BaseURL: args.BaseURL, Signal: ctx.ctx,
-			Publish: func(publication ModelsPublication) (bool, error) {
-				params := map[string]any{"publication": map[string]json.RawMessage{}}
-				if publication.Persist != nil {
-					params["publication"] = map[string]json.RawMessage{"persist": publication.Persist}
-				}
-				if publication.Update != nil {
-					token := rand.Text()
-					params["token"] = token
-					e.providerMu.Lock()
-					if e.providerUpdates == nil {
-						e.providerUpdates = map[string]func() error{}
-					}
-					e.providerUpdates[token] = publication.Update
-					e.providerMu.Unlock()
-					defer func() { e.providerMu.Lock(); delete(e.providerUpdates, token); e.providerMu.Unlock() }()
-				}
-				return providerCallbackValue[bool](ctx, req.Tool, "publish", params)
-			},
+			Publish: e.refreshPublisher(ctx, req.Tool),
 		})
 	case "generateImages", "classify":
 		var operation struct {

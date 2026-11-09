@@ -4,13 +4,14 @@
 
 use pig_sdk::tui;
 use pig_sdk::{
-    APIKeyAuth, AuthResult, Color, Extension, ModelRoute, Provider, ProviderAuth,
-    ProviderOperationFn, ProviderOperations, TextAttributes, Theme, ThemeAppearance, ThemeSlot,
-    ThemeStyle, ToolResult, VirtualModel, empty_schema,
+    APIKeyAuth, AuthResult, Color, Extension, ModelRoute, ModelsPublication, OAuthCredentials,
+    OAuthProvider, Provider, ProviderAuth, ProviderOperationFn, ProviderOperations,
+    RefreshModelsContext, TextAttributes, Theme, ThemeAppearance, ThemeSlot, ThemeStyle,
+    ToolResult, VirtualModel, empty_schema,
 };
 use serde_json::{Value, json};
 use std::sync::Arc;
-use std::sync::atomic::{AtomicI64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
 
 static CANCELLED: AtomicI64 = AtomicI64::new(0);
 
@@ -288,9 +289,85 @@ fn theme_style_from(options: &Value) -> ThemeStyle {
     }
 }
 
+/// The provider "dyn": its oauth.usesCallbackServer is set, its oauth.modifyModels projects the models by the stored credential and its refreshModels reads the context and publishes (types.ts:1930, 2026, 2034). The other SDKs' fixtures register the same provider. The SDK registers the OAuth capability and the operations separately.
+fn register_dynamic_provider(ext: &mut Extension) {
+    let cost = json!({"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0});
+    let model = |id: &str, name: &str| json!({"id": id, "name": name, "api": "dyn-api", "reasoning": false, "input": ["text"], "cost": cost, "contextWindow": 1000, "maxTokens": 100});
+    let refreshed = model("r1", "");
+    ext.register_provider_operations(
+        "dyn",
+        json!({"api": "dyn-api", "baseUrl": "https://dyn.test/v1", "apiKey": "dyn-key", "models": [model("a", "A")]}),
+        ProviderOperations::new().refresh_models(move |refresh: RefreshModelsContext| {
+            let credential = refresh.credential.as_ref().and_then(|credential| credential["access"].as_str()).map(str::to_owned);
+            if credential.as_deref() == Some("boom") {
+                return Err("refresh boom".to_string());
+            }
+            (refresh.publish)(ModelsPublication { persist: Some(json!({"models": [], "checkedAt": 99})), update: None })?;
+            let updated = Arc::new(AtomicBool::new(false));
+            let flag = updated.clone();
+            let accepted = (refresh.publish)(ModelsPublication {
+                persist: None,
+                update: Some(Arc::new(move || {
+                    flag.store(true, Ordering::SeqCst);
+                    Ok(())
+                })),
+            })?;
+            let none = || "none".to_string();
+            let name = format!(
+                "refresh|net={}|force={}|cred={}|stored={}|base={}|updated={}|accepted={}",
+                refresh.allow_network,
+                refresh.force.map_or_else(none, |force| force.to_string()),
+                credential.unwrap_or_else(none),
+                refresh.stored.as_ref().and_then(|stored| stored["checkedAt"].as_f64()).map_or_else(none, |checked| checked.to_string()),
+                refresh.base_url.clone().unwrap_or_else(none),
+                updated.load(Ordering::SeqCst),
+                accepted
+            );
+            let mut result = refreshed.clone();
+            result["name"] = json!(name);
+            Ok(Some(vec![result]))
+        }),
+    );
+    ext.register_oauth_provider(
+        "dyn",
+        json!({}),
+        OAuthProvider {
+            refresh_token: Some(Box::new(Ok)),
+            get_api_key: Some(Box::new(|credentials| credentials.access)),
+            // The models without the "drop" id, in reverse order, each named after the credential's access token.
+            modify_models: Some(Box::new(|models, credentials| {
+                if credentials.access == "boom" {
+                    return Err("modify boom".to_string());
+                }
+                Ok(models
+                    .into_iter()
+                    .rev()
+                    .filter(|model| model["id"] != "drop")
+                    .map(|mut model| {
+                        model["name"] = json!(format!(
+                            "{}+{}",
+                            model["name"].as_str().unwrap_or_default(),
+                            credentials.access
+                        ));
+                        model
+                    })
+                    .collect())
+            })),
+            uses_callback_server: true,
+            ..OAuthProvider::new("Dynamic OAuth", |_| {
+                Ok(OAuthCredentials {
+                    access: "login".to_string(),
+                    ..Default::default()
+                })
+            })
+        },
+    );
+}
+
 pub fn new_extension() -> Extension {
     let mut ext = Extension::new("model-types");
     let cost = json!({"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0});
+    register_dynamic_provider(&mut ext);
     ext.register_provider_operations(
         "ops",
         json!({

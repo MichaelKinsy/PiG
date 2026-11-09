@@ -61,9 +61,9 @@ mod provider;
 pub use provider::{
     APIKeyAuth, APIKeyAuthInput, AuthCheck, AuthContext, AuthInteraction, AuthResult, LoginOptions,
     ModelsPublication, OAuthAuth, Provider, ProviderAuth, ProviderFilterFn, ProviderModel,
-    ProviderOperationFn, ProviderOperationOptions, ProviderOperations, ProviderResult,
-    ProviderSignal, ProviderSignalSubscription, ProviderStreamFn, ProviderStreamOptions,
-    ProviderStreamSimpleFn, RefreshModelsContext,
+    ProviderOperationFn, ProviderOperationOptions, ProviderOperations, ProviderRefreshModelsFn,
+    ProviderResult, ProviderSignal, ProviderSignalSubscription, ProviderStreamFn,
+    ProviderStreamOptions, ProviderStreamSimpleFn, RefreshModelsContext,
 };
 mod constrained_sampling;
 pub use constrained_sampling::ToolConstrainedSampling;
@@ -317,8 +317,8 @@ pub use host_subscriptions::HostSubscription;
 pub use login::{LoginDefinition, SpriteDefinition};
 pub use oauth::{
     OAUTH_CANCELLED, OAuthAuthInfo, OAuthCredentialStatus, OAuthCredentialStore, OAuthCredentials,
-    OAuthDeviceCodeInfo, OAuthGetApiKeyFn, OAuthLoginCallbacks, OAuthLoginFn, OAuthPrompt,
-    OAuthProvider, OAuthRefreshFn, OAuthSelectOption, OAuthSelectPrompt,
+    OAuthDeviceCodeInfo, OAuthGetApiKeyFn, OAuthLoginCallbacks, OAuthLoginFn, OAuthModifyModelsFn,
+    OAuthPrompt, OAuthProvider, OAuthRefreshFn, OAuthSelectOption, OAuthSelectPrompt,
 };
 pub use protocol::{AutocompleteItem, ConstrainedSampling, Schema, empty_schema};
 pub use theme::{

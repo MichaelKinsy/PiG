@@ -93,7 +93,7 @@ type ExtensionOAuthConfig struct {
 	Login          func(context.Context, ai.OAuthLoginCallbacks) (ai.Credential, error)
 	RefreshToken   func(context.Context, ai.Credential) (ai.Credential, error)
 	GetAPIKey      func(ai.Credential) string
-	ModifyModels   func([]*ai.Model, ai.Credential) []*ai.Model
+	ModifyModels   func([]*ai.Model, ai.Credential) ([]*ai.Model, error)
 }
 
 // ProviderConfigInput is the core registration input of ModelRegistry.RegisterProvider (provider-composer.ts:91); Models nil preserves the base catalog and an empty slice replaces it.

@@ -140,6 +140,33 @@ export default function (pi) {
     if (params.mode === "gone") registry.unregisterProvider("late");
     return reply({ mode: params.mode ?? null });
   });
+  // The provider "dyn": its oauth.usesCallbackServer is set, its oauth.modifyModels projects the models by the stored credential and its refreshModels reads the context and publishes (types.ts:1930, 2026, 2034). The Go, Rust, Python and Lisp fixtures register the same provider.
+  pi.registerProvider("dyn", {
+    api: "dyn-api", baseUrl: "https://dyn.test/v1", apiKey: "dyn-key",
+    models: [{ id: "a", name: "A", reasoning: false, input: ["text"], cost: ZERO, contextWindow: 1000, maxTokens: 100 }],
+    oauth: {
+      name: "Dynamic OAuth", usesCallbackServer: true,
+      login: async () => ({ access: "login", refresh: "", expires: 0 }),
+      refreshToken: async (credentials) => credentials,
+      getApiKey: (credentials) => credentials.access,
+      modifyModels: (models, credentials) => {
+        if (credentials.access === "boom") throw new Error("modify boom");
+        if (credentials.access === "nonarray") return undefined;
+        return models.filter((model) => model.id !== "drop").reverse().map((model) => ({ ...model, name: `${model.name}+${credentials.access}` }));
+      },
+    },
+  });
+  // The same provider declared a second time while the factory runs: Pi queues both and the registry merges them, so refreshModels joins the first declaration's models and oauth.
+  pi.registerProvider("dyn", {
+    refreshModels: async (context) => {
+      if (context.credential?.access === "boom") throw new Error("refresh boom");
+      await context.publish({ persist: { models: [], checkedAt: 99 } });
+      let updated = false;
+      const accepted = await context.publish({ update: () => { updated = true; } });
+      const name = `refresh|net=${context.allowNetwork}|force=${context.force ?? "none"}|cred=${context.credential?.access ?? "none"}|stored=${context.stored?.checkedAt ?? "none"}|base=${context.baseUrl ?? "none"}|updated=${updated}|accepted=${accepted}`;
+      return [{ id: "r1", name, api: "dyn-api", reasoning: false, input: ["text"], cost: ZERO, contextWindow: 1000, maxTokens: 100 }];
+    },
+  });
   // tui_probe: what pi-tui's keybindings and capabilities answer once the host published its state (the Go, Rust and Python fixtures carry the same tool).
   tool("tui_probe", async (_id, params) => {
     const list = (keys) => (keys === undefined ? [] : Array.isArray(keys) ? [...keys] : [keys]);

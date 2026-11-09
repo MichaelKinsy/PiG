@@ -312,7 +312,8 @@
    #:oauth-credential-store-credential-status #:oauth-credential-store-store-credentials
    #:oauth-credential-store-delete-credentials #:oauth-provider #:make-oauth-provider #:oauth-provider-p #:oauth-provider-name
    #:oauth-provider-login #:oauth-provider-refresh-token #:oauth-provider-get-api-key #:oauth-provider-credential-store
-   #:oauth-provider-is-subscription #:virtual-model #:make-virtual-model #:virtual-model-p #:virtual-model-provider
+   #:oauth-provider-is-subscription #:oauth-provider-modify-models #:oauth-provider-uses-callback-server
+   #:virtual-model #:make-virtual-model #:virtual-model-p #:virtual-model-provider
    #:virtual-model-id #:virtual-model-name #:virtual-model-route #:virtual-model-thinking-levels #:virtual-model-context-window
    #:virtual-model-max-tokens #:virtual-model-input #:tool-renderers #:make-tool-renderers #:tool-renderers-p
    #:tool-renderers-render-call #:tool-renderers-render-result #:tool-renderers-render-shell #:tool-renderers-call-view

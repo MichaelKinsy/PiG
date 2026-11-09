@@ -217,7 +217,7 @@ pub fn new_extension() -> Extension {
  ext.tool("must-not-run","probe",empty_schema(),|_,_| { mark("PIG_TEST_AUTH_HANDLER","tool"); ToolResult::text("no") });
  ext.command("must-not-run","probe",|_,_| { mark("PIG_TEST_AUTH_HANDLER","command"); CommandResult::Ok });
  ext.on_event("session_start",|_,_| { mark("PIG_TEST_AUTH_HANDLER","session"); None });
- ext.register_oauth_provider(%q,json!({"name":%q}),OAuthProvider{name:%q.to_string(),is_subscription:false,login:Box::new(|_| { mark("PIG_TEST_AUTH_LOGIN","login"); if std::env::var("PIG_TEST_AUTH_EXIT_AFTER_LOGIN").as_deref()==Ok("1") { std::thread::spawn(|| { std::thread::sleep(std::time::Duration::from_millis(150)); std::process::exit(0); }); } Ok(OAuthCredentials{access:"owner-access".to_string(),..Default::default()}) }),refresh_token:None,get_api_key:None,credential_store:None});
+ ext.register_oauth_provider(%q,json!({"name":%q}),OAuthProvider{name:%q.to_string(),is_subscription:false,login:Box::new(|_| { mark("PIG_TEST_AUTH_LOGIN","login"); if std::env::var("PIG_TEST_AUTH_EXIT_AFTER_LOGIN").as_deref()==Ok("1") { std::thread::spawn(|| { std::thread::sleep(std::time::Duration::from_millis(150)); std::process::exit(0); }); } Ok(OAuthCredentials{access:"owner-access".to_string(),..Default::default()}) }),refresh_token:None,get_api_key:None,credential_store:None,modify_models:None,uses_callback_server:false});
  ext
 }
 `, owner, provider, provider, provider))

@@ -10,9 +10,14 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
-// models decodes the provider object's model records. A record without a provider id belongs to this provider, as the registration's own records do; the id
-// follows the record's own members, which keep the order the extension wrote them in (models.ts:440-471 returns the provider object's model objects as they are).
+// decodeModels decodes the provider object's model records.
 func (p *nativeProviderProxy) decodeModels(raw []json.RawMessage) ([]ai.AnyModel, error) {
+	return decodeProviderModels(p.declaration.ID, raw)
+}
+
+// decodeProviderModels decodes an extension's model records. A record without a provider id belongs to the provider providerID, as the registration's own records do; the id
+// follows the record's own members, which keep the order the extension wrote them in (models.ts:440-471 returns the provider object's model objects as they are).
+func decodeProviderModels(providerID string, raw []json.RawMessage) ([]ai.AnyModel, error) {
 	records := make([]json.RawMessage, len(raw))
 	for i, record := range raw {
 		var fields map[string]json.RawMessage
@@ -26,7 +31,7 @@ func (p *nativeProviderProxy) decodeModels(raw []json.RawMessage) ([]ai.AnyModel
 		if _, ok := fields["provider"]; ok {
 			continue
 		}
-		id, err := json.Marshal(p.declaration.ID)
+		id, err := json.Marshal(providerID)
 		if err != nil {
 			return nil, err
 		}
@@ -41,7 +46,7 @@ func (p *nativeProviderProxy) decodeModels(raw []json.RawMessage) ([]ai.AnyModel
 	if err != nil {
 		return nil, err
 	}
-	return ai.DecodeModelsCatalog(models, p.declaration.ID)
+	return ai.DecodeModelsCatalog(models, providerID)
 }
 
 func (p *nativeProviderProxy) getModels(ctx context.Context) ([]*ai.Model, error) {
@@ -107,7 +112,17 @@ func (p *nativeProviderProxy) refreshModels(refresh ai.RefreshModelsContext) err
 	if !slices.Contains(p.declaration.Methods, "refreshModels") {
 		return nil
 	}
-	_, err := p.objectCall(refresh.Signal, "refreshModels", refreshModelsParams(refresh), func(raw json.RawMessage) (json.RawMessage, error) {
+	_, err := p.objectCall(refresh.Signal, "refreshModels", refreshModelsParams(refresh), refreshPublication(refresh, func(token string) error {
+		_, err := p.objectCall(refresh.Signal, "update", map[string]any{"token": token}, nil)
+		return err
+	}))
+	return err
+}
+
+// refreshPublication answers the publish callback an extension issues while its refreshModels runs (RefreshModelsContext.publish): the publication's persistence
+// and the token of its update reach refresh.Publish, whose update runs runUpdate(token) in the extension, and the answer is whether the publication was accepted.
+func refreshPublication(refresh ai.RefreshModelsContext, runUpdate func(token string) error) nativeProviderCallback {
+	return func(raw json.RawMessage) (json.RawMessage, error) {
 		var callback struct {
 			Method string `json:"method"`
 			Params struct {
@@ -136,9 +151,7 @@ func (p *nativeProviderProxy) refreshModels(refresh ai.RefreshModelsContext) err
 		}
 		var updateErr error
 		if token := callback.Params.Token; token != "" {
-			publication.Update = func() {
-				_, updateErr = p.objectCall(refresh.Signal, "update", map[string]any{"token": token}, nil)
-			}
+			publication.Update = func() { updateErr = runUpdate(token) }
 		}
 		accepted, err := refresh.Publish(publication)
 		if err != nil {
@@ -148,8 +161,7 @@ func (p *nativeProviderProxy) refreshModels(refresh ai.RefreshModelsContext) err
 			return nil, updateErr
 		}
 		return json.Marshal(accepted)
-	})
-	return err
+	}
 }
 
 // refreshModelsParams is the refreshModels call's argument: the context minus its callbacks. baseUrl is absent when the registered provider has none, as the

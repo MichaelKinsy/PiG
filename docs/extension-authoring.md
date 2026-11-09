@@ -499,7 +499,7 @@ ext.RegisterProvider("example-provider", sdk.ProviderConfig{
 })
 ```
 
-Rust: `ext.register_oauth_provider("example-provider", json!({"name": "Example Provider"}), OAuthProvider { login: Box::new(|cb| ...), .. })`.
+Rust: `ext.register_oauth_provider("example-provider", json!({"name": "Example Provider"}), OAuthProvider { modify_models: Some(Box::new(|models, creds| Ok(models))), ..OAuthProvider::new("Example Provider", |cb| ...) })`; set the optional `refresh_token`, `get_api_key`, `credential_store`, `modify_models` and `uses_callback_server` fields on the value `OAuthProvider::new(name, login)` returns.
 
 Python: `ext.register_oauth_provider("example-provider", {"name": "Example Provider"}, OAuthProvider(login=..., ...))`.
 

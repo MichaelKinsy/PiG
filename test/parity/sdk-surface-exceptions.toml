@@ -6,21 +6,6 @@
 # Exact entries fail when implemented; prefixes fail when no missing cell remains.
 
 [[exception]]
-key = "provider.refreshModels"
-sdks = ["node", "go", "rust", "python", "lisp"]
-reason = "The provider bridge has no host-to-extension refreshModels request or publication callback handles."
-
-[[exception]]
-key = "provider.oauth.usesCallbackServer"
-sdks = ["node", "go", "rust", "python", "lisp"]
-reason = "Deprecated and ignored by upstream 0.99.2 canonical auth flows (core/extensions/types.ts); runtimes do not forward this inert legacy metadata."
-
-[[exception]]
-key = "provider.oauth.modifyModels"
-sdks = ["node", "go", "rust", "python", "lisp"]
-reason = "The host OAuth bridge has no credential-dependent modify-models callback request."
-
-[[exception]]
 key = "ctx.ui.setTheme → error"
 sdks = ["node"]
 reason = "Node returns synchronously before host theme validation, so it cannot report host errors. Requires synchronous validation/state acknowledgement rather than optimistic success."

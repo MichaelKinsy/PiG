@@ -132876,6 +132876,17 @@
       "shapeHash": "sha256:5374fbf1b40b624f90ad189a77c0ced611270e36b9ebc39c284a062eeb4e5012"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.configRefreshPublication",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.configRefreshPublication",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(conn *Conn, request string) (nativeProviderCallback, bool)"
+      },
+      "shapeHash": "sha256:f47b496e92a01605e9c1eedbaaee10c4c551e80a835f8899de0e72884c95d407"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.configuredSelectedPath",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "Host.configuredSelectedPath",
@@ -134260,6 +134271,17 @@
         "type": "func(conn *Conn, call *CallPayload) (*CallResultPayload, error)"
       },
       "shapeHash": "sha256:ab22fb77f27adc25104c55e6ca74f0eff8ba7a5c7893f306c2f44db05d86c772"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.providerRefreshModels",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.providerRefreshModels",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(me *managedExt, provider string) func(github.com/MichaelKinsy/PiG/coding/extension.RefreshModelsContext) ([]github.com/MichaelKinsy/PiG/coding/extension.ProviderModelConfig, error)"
+      },
+      "shapeHash": "sha256:fec5b48b57df795301c89074f2fde74ce21fb163685fed0b7c706a3f47b90759"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.providerStreamCallback",
@@ -136077,6 +136099,17 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#MethodOAuthModifyModels",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "MethodOAuthModifyModels",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#MethodOAuthRefresh",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "MethodOAuthRefresh",
@@ -137045,6 +137078,28 @@
       "shapeHash": "sha256:c79f1edbb060bb5c3878c95c9c36831cdc9e186bd9dca2f25b75a4142d62357f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#OAuthModifyModelsArgs",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "OAuthModifyModelsArgs",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "OAuthModifyModelsArgs"
+      },
+      "shapeHash": "sha256:89f9e0c593e57c9e64967d117c1bc1eeec84b3a76e9f94a8ee5f169b80d74aaa"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#OAuthModifyModelsResult",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "OAuthModifyModelsResult",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "OAuthModifyModelsResult"
+      },
+      "shapeHash": "sha256:62d3607ba6fa6cd3542f69aa0dba53c8f169737da3fabd89950826c2741b6a11"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#OAuthProgressWire",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "OAuthProgressWire",
@@ -137301,6 +137356,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ProviderOperationImages",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "ProviderOperationImages",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ProviderOperationRefreshModels",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "ProviderOperationRefreshModels",
       "kind": "constant",
       "exported": true,
       "shape": {
@@ -144041,6 +144107,17 @@
       "shapeHash": "sha256:d41d62c8551485e5a5c014b41a25b2251566f452813345ad93466da5792091bc"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#configRefreshKey",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "configRefreshKey",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "configRefreshKey"
+      },
+      "shapeHash": "sha256:b009677275cae8857571ffe1fa5f8d6a3d5126863e3410ce4e883468330631eb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#connBuiltinPeer",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "connBuiltinPeer",
@@ -144721,6 +144798,17 @@
         "type": "func(data encoding/json.RawMessage) (github.com/MichaelKinsy/PiG/ai.AssistantMessageEvent, error)"
       },
       "shapeHash": "sha256:e49ba34b264448b5990d4973e5447d97f968e105ba5f071daf892f6e42ab0f7d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#decodeProviderModels",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "decodeProviderModels",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(providerID string, raw []encoding/json.RawMessage) ([]github.com/MichaelKinsy/PiG/ai.AnyModel, error)"
+      },
+      "shapeHash": "sha256:6b6de3174d0e379119e35df965106a6a9bf45ebdd881a502b34ccb97ca0bc59b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#defaultHeartbeatInterval",
@@ -151147,6 +151235,17 @@
       "shapeHash": "sha256:f69c646b20d2ac313a51c5a5c461c76d95c1d6874042396fdf46b2d3b8f63a5e"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#oauthModifiesModels",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "oauthModifiesModels",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(config encoding/json.RawMessage) bool"
+      },
+      "shapeHash": "sha256:e06575754353e1d102009485b216b09a25652fc5683342c04c3a33df11dc9b20"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#oauthProxy",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "oauthProxy",
@@ -152621,6 +152720,17 @@
       "shapeHash": "sha256:23f6ea6ed849ebd15c074350eac5c4f49de5ec71edc15c39df23bac3bec5e7e6"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#providerModifyModels",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "providerModifyModels",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(me *managedExt, provider string) func([]github.com/MichaelKinsy/PiG/coding/extension.Model, github.com/MichaelKinsy/PiG/coding/extension.OAuthCredentials) ([]github.com/MichaelKinsy/PiG/coding/extension.Model, error)"
+      },
+      "shapeHash": "sha256:fedc096f070a78f481285b1b726a6da25904721ed98201067726fdf581466061"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#providerNameSet",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "providerNameSet",
@@ -152641,6 +152751,17 @@
         "type": "providerOwner"
       },
       "shapeHash": "sha256:22595fa4a248002421f2449f46c411746c75b6b49865ad4f6666861b9b12d265"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#providerRequest",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "providerRequest",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, conn *Conn, provider string, request *Envelope) (encoding/json.RawMessage, error)"
+      },
+      "shapeHash": "sha256:48b0e3b88ea5a995e8cc8a1ac19090172b9c0cdf0a5ed43be79c1651f38932b5"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#publishesStateBeforeResult",
@@ -152905,6 +153026,17 @@
         "type": "func(refresh github.com/MichaelKinsy/PiG/ai.RefreshModelsContext) map[string]any"
       },
       "shapeHash": "sha256:1de8f7cdc3905cb7862d16716a30579387de91035d85a6fa17e5bc6721075cc9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#refreshPublication",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "refreshPublication",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(refresh github.com/MichaelKinsy/PiG/ai.RefreshModelsContext, runUpdate func(token string) error) nativeProviderCallback"
+      },
+      "shapeHash": "sha256:dfdb8b042fa52d817179ab4e0ac9d64ea7a3d414fe95f54ae791d08d38d64dd6"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#registerDecodeHint",
@@ -196786,6 +196918,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#Extension.refreshPublisher",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "Extension.refreshPublisher",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx Context, key string) func(ModelsPublication) (bool, error)"
+      },
+      "shapeHash": "sha256:814cd19720593eb7c308ab1c6a126b3ea3c428dd7426167a151f6b9d652902c2"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#Extension.refreshSurfaces",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "Extension.refreshSurfaces",
@@ -203109,6 +203252,17 @@
         "type": "ProviderOperationOptions"
       },
       "shapeHash": "sha256:1a4c53e2fe712cfb8b8a0e21199cacf5463b307db83214ed4ae24355d734fe31"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#ProviderRefreshModelsFunc",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "ProviderRefreshModelsFunc",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "ProviderRefreshModelsFunc"
+      },
+      "shapeHash": "sha256:a255a2e0c5f39d664953f16491de6a45fe4746f3d92cac704d97859ccd4de3b1"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#ProviderStreamFunc",
@@ -217334,6 +217488,17 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#methodOAuthModifyModels",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "methodOAuthModifyModels",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#methodOAuthRefresh",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "methodOAuthRefresh",
@@ -217981,6 +218146,17 @@
         "type": "oauthInputResult"
       },
       "shapeHash": "sha256:cb9586d24c37be8321b58d68a55a1103af1bbf699634862259a88a7b69df1840"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#oauthModifyModelsResult",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "oauthModifyModelsResult",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "oauthModifyModelsResult"
+      },
+      "shapeHash": "sha256:b47d081907659f5473a7a80314b147e92bd6d36384fe990b9ce378084d11bee1"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#oauthOptionalStrings",

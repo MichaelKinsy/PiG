@@ -248,9 +248,9 @@ func TestRegistryCrossEntryOAuthLifecycleAndModelCallbacks(t *testing.T) {
 			return credential("refreshed-access"), nil
 		},
 		GetAPIKey: func(value extension.OAuthCredentials) string { return value.Access },
-		ModifyModels: func(_ []extension.Model, _ extension.OAuthCredentials) []extension.Model {
+		ModifyModels: func(_ []extension.Model, _ extension.OAuthCredentials) ([]extension.Model, error) {
 			projectionCalls.Add(1)
-			return []extension.Model{nativeCompatModel("oauth-model", id, "https://example.invalid/v1")}
+			return []extension.Model{nativeCompatModel("oauth-model", id, "https://example.invalid/v1")}, nil
 		},
 	}
 	if err := services.Registry().RegisterExtensionProvider(id, config); err != nil {

@@ -297,5 +297,6 @@ type ProviderOAuth struct {
 	// RefreshToken refreshes expired credentials; ctx is the refresh's AbortSignal (types.ts:1944 refreshToken(credentials, signal)).
 	RefreshToken func(ctx context.Context, creds OAuthCredentials) (OAuthCredentials, error) `json:"-"`
 	GetAPIKey    func(creds OAuthCredentials) string                                         `json:"-"`
-	ModifyModels func(models []Model, creds OAuthCredentials) []Model                        `json:"-"`
+	// ModifyModels is the synchronous credential-dependent projection of the provider's chat models (types.ts:2034). Pi's callback may throw and the exception reaches the caller of the model listing; here the returned error is the listing's error.
+	ModifyModels func(models []Model, creds OAuthCredentials) ([]Model, error) `json:"-"`
 }
