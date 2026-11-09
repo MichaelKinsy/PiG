@@ -48,6 +48,8 @@ func forgetHighlights(t *testing.T) {
 // continues from the last step. The lines that frame draws, collapsed and expanded, are those of a call that highlights the whole file
 // once, as Pi's does.
 func TestWarmedWriteCardDrawsTheLinesOfAWholeRun(t *testing.T) {
+	// forgetHighlights selects the light theme and then the previous one by name, which builds it in the color depth of the capabilities.
+	restoreStartupTheme(t)
 	content := streamedWriteTypeScript(120)
 
 	forgetHighlights(t)
