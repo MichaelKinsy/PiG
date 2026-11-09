@@ -3,6 +3,7 @@
 package mcp
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -62,7 +63,7 @@ func expectJSON(t *testing.T, got, want any) {
 	t.Helper()
 	a, _ := json.Marshal(got)
 	b, _ := json.Marshal(want)
-	if string(a) != string(b) {
+	if !bytes.Equal(a, b) {
 		t.Fatalf("got %s, want %s", a, b)
 	}
 }
@@ -295,9 +296,9 @@ func TestGenerationsOnlyTheRunningCurrentOneSetsAndCallsAnOlderViewsEndLeavesThe
 	pid := whoami(t, older, one, "files").Pid
 	// The session's worker restarts: generation 2 runs now.
 	newer := h.worker("s1", 2)
-	p2test.ExpectChord(t, older.setLocations(one), data.CodeForbidden)
+	_ = p2test.ExpectChord(t, older.setLocations(one), data.CodeForbidden)
 	_, err := older.callTool(one, "files", "echo", nil)
-	p2test.ExpectChord(t, err, data.CodeForbidden)
+	_ = p2test.ExpectChord(t, err, data.CodeForbidden)
 	noError(t, newer.setLocations(one))
 	expectEqual(t, instanceList(newer.until("servers", isUp("files")))[0].Value("id"), instance.Value("id"))
 	expectEqual(t, whoami(t, newer, one, "files").Pid, pid)
@@ -330,7 +331,7 @@ func TestGenerationsOnlyTheRunningCurrentOneSetsAndCallsAnOlderViewsEndLeavesThe
 	wg.Wait()
 	expectJSON(t, leaseCwds(h, "s9"), []string{cwdOf(one)})
 	_, err = h.manager.Call("setLocations", caller(3, one), p2test.Background)
-	p2test.ExpectChord(t, err, data.CodeForbidden)
+	_ = p2test.ExpectChord(t, err, data.CodeForbidden)
 	_, err = h.manager.Call("setLocations", caller(4), p2test.Background)
 	noError(t, err)
 }
@@ -357,7 +358,7 @@ func TestAWorkerAskingBeforeItsStartIsPublishedWaitsThenItSetsOrANewerGeneration
 	refused := make(chan error, 1)
 	go func() { refused <- late.setLocations(one) }()
 	h.running("s2", 2)
-	p2test.ExpectChord(t, <-refused, data.CodeForbidden)
+	_ = p2test.ExpectChord(t, <-refused, data.CodeForbidden)
 	// Releasing the reference ends a waiting call.
 	gone := h.worker("s3", 1, workerOptions{stale: true})
 	waiting := make(chan error, 1)
@@ -429,7 +430,7 @@ func TestAnotherIncarnationOfTheSameGenerationTakesTheLeaseTheFirstOnesCallsAreR
 	second := h.worker("s1", 2)
 	noError(t, second.setLocations(one))
 	_, err := first.callTool(one, "files", "echo", echoArgs("x"))
-	p2test.ExpectChord(t, err, data.CodeForbidden)
+	_ = p2test.ExpectChord(t, err, data.CodeForbidden)
 	expectEqual(t, text(t, second, one, "files", "echo", echoArgs("x")), "echo: x")
 }
 
@@ -746,7 +747,7 @@ func TestGuestsGetNoMCPServers(t *testing.T) {
 	defer ref.Release()
 	failure, err := p2test.FailureOf(ref)
 	noError(t, err)
-	p2test.ExpectChord(t, failure, data.CodeForbidden)
+	_ = p2test.ExpectChord(t, failure, data.CodeForbidden)
 }
 
 var _ = time.Second
