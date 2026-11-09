@@ -248237,8 +248237,8 @@
       ],
       "evidence": [
         "test:durable/harness/harness_generation_recovery_test.go#TestGenerationRecovery",
-        "test:durable/storage/sqlite/node/sqlite_facade_test.go#TestDurableReExportsTheChordDriver",
-        "test:durable/storage/sqlite/working_set_test.go#TestWorkingSetLoadsThroughADatabaseWithoutARowReader"
+        "test:durable/storage/sqlite/node/kill_test.go#TestKilledDurableWriterLeavesWholeCalls",
+        "test:durable/storage/sqlite/node/sqlite_facade_test.go#TestDurableReExportsTheChordDriver"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -248260,8 +248260,8 @@
       ],
       "evidence": [
         "test:durable/harness/harness_generation_recovery_test.go#TestGenerationRecovery",
-        "test:durable/storage/sqlite/node/sqlite_facade_test.go#TestDurableReExportsTheChordDriver",
-        "test:durable/storage/sqlite/working_set_test.go#TestWorkingSetLoadsThroughADatabaseWithoutARowReader"
+        "test:durable/storage/sqlite/node/kill_test.go#TestKilledDurableWriterLeavesWholeCalls",
+        "test:durable/storage/sqlite/node/sqlite_facade_test.go#TestDurableReExportsTheChordDriver"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -249399,7 +249399,7 @@
       "evidence": [
         "test:durable/storage/sqlite/document_text_test.go#TestSqliteDocumentTextKeepsKeyOrderAndLoneSurrogates",
         "test:durable/storage/backend_reads_test.go#TestBackendReadsAgreeWithMemory",
-        "test:durable/storage/sqlite/node/sqlite_facade_test.go#TestPortableSQLiteFacadeSettlement"
+        "test:durable/storage/sqlite/node/kill_test.go#TestKilledDurableWriterLeavesWholeCalls"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -249422,7 +249422,7 @@
       "evidence": [
         "test:durable/storage/sqlite/document_text_test.go#TestSqliteDocumentTextKeepsKeyOrderAndLoneSurrogates",
         "test:durable/storage/backend_reads_test.go#TestBackendReadsAgreeWithMemory",
-        "test:durable/storage/sqlite/node/sqlite_facade_test.go#TestPortableSQLiteFacadeSettlement"
+        "test:durable/storage/sqlite/node/kill_test.go#TestKilledDurableWriterLeavesWholeCalls"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -249829,7 +249829,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/storage/sqlite/statements.go#insertBound"
+        "call:durable/storage/sqlite/statements.go#insertRows"
       ],
       "evidence": [
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack"
