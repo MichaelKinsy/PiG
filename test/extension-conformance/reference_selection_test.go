@@ -18,7 +18,7 @@ import (
 // selects only its fused-go row, which is never the reference, and requires that row to run and pass after its test recorded the reference.
 func TestComparisonReferencesRecordWhateverRowsRunSelects(t *testing.T) {
 	if testing.Short() {
-		t.Skip("builds the Go and Rust SDK fixtures and runs four conformance tests")
+		t.Skip("builds the Go and Rust SDK fixtures and runs five conformance tests")
 	}
 	t.Parallel()
 
@@ -62,7 +62,7 @@ func TestComparisonReferencesRecordWhateverRowsRunSelects(t *testing.T) {
 	}
 	// A row that passes compared with something only if it recorded the reference first: it says so when it does.
 	if got := strings.Count(string(output), "reference row has not recorded"); got != len(tests) {
-		t.Errorf("%d rows recorded their test's reference, want %d: a row that did not compared with nothing", got, len(tests))
+		t.Errorf("%d rows recorded their test's reference, want %d: a row that did not record it compared with nothing", got, len(tests))
 	}
 	if t.Failed() {
 		t.Logf("child output:\n%s", output)
