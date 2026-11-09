@@ -6,7 +6,9 @@ Starts the archive's pig-acp from a working directory outside the archive,
 sends `initialize` and `session/new` over stdio, and requires a protocol
 version, a started session, and a clean exit once stdin closes. `session/new`
 makes pig-acp start the archive's own `pig --mode rpc` and ask it for its models,
-so the check proves the two bundled executables work together. A started session
+so the check proves the two bundled executables work together. It then repeats the session with a
+relative `--pig ./pig` and with no `--pig`, from an unrelated directory and a PATH without any pig, and
+requires pig-acp to find the pig beside itself. A started session
 is a session id, or, when pig has no credentials (CI), pig-acp's authentication
 error offering the terminal login. The caller names both executables.
 
@@ -34,9 +36,24 @@ def smoke(pig_acp: pathlib.Path, pig: pathlib.Path, version: str) -> None:
     reported = subprocess.run([str(pig_acp), "--version"], capture_output=True, text=True, timeout=TIMEOUT, check=True).stdout
     if not reported.startswith(f"pig-acp {version} "):
         raise SystemExit(f"pig-acp --version printed {reported!r}, want it to start with 'pig-acp {version} '")
+    session(pig_acp, ["--pig", str(pig)])
+    # A client that starts `./pig-acp` or `pig-acp` without an absolute --pig relies on the pig beside
+    # pig-acp: a relative --pig and the default must resolve there, not against the session's working
+    # directory or PATH.
+    if pig.parent != pig_acp.parent:
+        raise SystemExit(f"{pig} is not beside {pig_acp}")
+    session(pig_acp, ["--pig", f"./{pig.name}"], path_without_pig=pig.name)
+    session(pig_acp, [], path_without_pig=pig.name)
+
+
+def session(pig_acp: pathlib.Path, args: list[str], path_without_pig: str | None = None) -> None:
     with tempfile.TemporaryDirectory() as home, tempfile.TemporaryDirectory() as cwd:
         env = {**os.environ, "PIG_HOME": home, "PI_HOME": home, "PIG_CODING_AGENT_DIR": home, "PI_CODING_AGENT_DIR": home}
-        proc = subprocess.Popen([str(pig_acp), "--pig", str(pig)], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env, cwd=cwd)
+        if path_without_pig:
+            env["PATH"] = os.pathsep.join(d for d in os.environ.get("PATH", "").split(os.pathsep) if d and not (pathlib.Path(d) / path_without_pig).exists())
+            env.pop("PIG_ACP_PIG_COMMAND", None)
+            env.pop("PI_ACP_PI_COMMAND", None)
+        proc = subprocess.Popen([str(pig_acp), *args], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env, cwd=cwd)
         timer = threading.Timer(TIMEOUT, proc.kill)
         timer.start()
         try:

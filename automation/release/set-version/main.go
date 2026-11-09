@@ -164,7 +164,7 @@ func prepare(root string, opt options) (*plan, error) {
 	if len(re.FindAll(data, -1)) != 1 {
 		return nil, errors.New("expected one Standard release.version")
 	}
-	p.after[standard] = re.ReplaceAll(data, []byte("${1}"+opt.version+"-dev"))
+	p.after[standard] = re.ReplaceAll(data, []byte("${1}"+opt.version))
 	data, err = p.read("CHANGELOG.md")
 	if err != nil {
 		return nil, err
