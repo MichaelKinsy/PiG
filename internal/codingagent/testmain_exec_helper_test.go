@@ -109,6 +109,9 @@ func TestMain(m *testing.M) {
 		fmt.Println(strings.Join(os.Args[1:], " "))
 		os.Exit(0)
 	}
+	if os.Getenv(raceExitStampEnv) == "1" {
+		os.Exit(runRaceExitStamp())
+	}
 	if os.Getenv(externalEditorScenarioEnv) == "1" {
 		os.Exit(runExternalEditorScenario(os.Args[1:]))
 	}
