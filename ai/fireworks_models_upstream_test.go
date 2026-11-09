@@ -29,6 +29,19 @@ func fireworksCatalogPayload(t *testing.T, id string, opts StreamOptions) map[st
 	return captureCatalogPayload(t, provider, opts)
 }
 
+// createFireworksModelConfig is upstream createFireworksModel with
+// FIREWORKS_ANTHROPIC_COMPAT: a fixed kimi-k2p6 Messages fixture (reasoning,
+// text+image, 262000 context and max tokens) pointed at a dead local port.
+func createFireworksModelConfig() AnthropicConfig {
+	model := &Model{
+		Type: ModelTypeChat, ID: "accounts/fireworks/models/kimi-k2p6", DisplayName: "Kimi K2.6",
+		Input:        []ModelInputModality{"text", "image"},
+		Capabilities: ModelCapabilities{ContextWindow: 262000, MaxOutputTokens: 262000, InputCostPer1M: 0.95, OutputCostPer1M: 4, CacheReadCostPer1M: 0.16, CacheWriteCostPer1M: 0},
+		ProviderMeta: ProviderMetadata{ProviderID: "fireworks", API: APIAnthropicMessages, BaseURL: "http://127.0.0.1:0", Reasoning: true},
+	}
+	return AnthropicConfig{APIKey: "test-fireworks-key", Model: model.ID, ModelMetadata: model, ProviderID: "fireworks", BaseURL: "http://127.0.0.1:0", Compat: &AnthropicMessagesCompat{AllowEmptySignature: new(true), SendSessionAffinityHeaders: new(true), SupportsEagerToolInputStreaming: new(false), SupportsCacheControlOnTools: new(false), SupportsLongCacheRetention: new(false)}}
+}
+
 func TestFireworksModels(t *testing.T) {
 	// .upstream/v0.99.1/packages/ai/test/fireworks-models.test.ts:22
 	t.Run("registers non-GLM, non-Kimi-K3 models via Anthropic-compatible Messages API", func(t *testing.T) {
@@ -123,13 +136,14 @@ func TestFireworksModels(t *testing.T) {
 			assertCatalogJSON(t, GetSupportedThinkingLevels(mustGeneratedModel(t, "fireworks", tc.id).ToModel()), tc.want)
 		})
 	}
-	// .upstream/v0.99.1/packages/ai/test/fireworks-models.test.ts:162
-	t.Run("keeps toggle-only Messages models without a verified fallback on budget-based thinking", func(t *testing.T) {
-		m := mustGeneratedModel(t, "fireworks", "accounts/fireworks/models/nemotron-3-ultra-nvfp4")
-		if m.Compat.ForceAdaptiveThinking != nil {
+	// Ports packages/ai/test/fireworks-models.test.ts (c8d1a826a/647a197fc: "keeps non-adaptive Messages models on budget-based thinking")
+	t.Run("keeps non-adaptive Messages models on budget-based thinking", func(t *testing.T) {
+		// Use a fixed fixture: the live catalog no longer lists toggle-only Messages models.
+		cfg := createFireworksModelConfig()
+		if cfg.Compat.ForceAdaptiveThinking != nil {
 			t.Fatal("unexpected forceAdaptiveThinking")
 		}
-		p := fireworksCatalogPayload(t, m.ID, StreamOptions{Thinking: ThinkingLevelHigh})
+		p := captureCatalogPayload(t, NewAnthropicProvider(cfg), StreamOptions{IsReasoning: true, MaxTokens: 262000, Thinking: ThinkingLevelHigh})
 		assertCatalogJSON(t, p["thinking"], `{"type":"enabled","budget_tokens":16384,"display":"summarized"}`)
 		if _, ok := p["output_config"]; ok {
 			t.Fatalf("payload = %v", p)
@@ -145,7 +159,7 @@ func TestFireworksModels(t *testing.T) {
 	})
 	// .upstream/v0.99.1/packages/ai/test/fireworks-models.test.ts:189
 	t.Run("sets Fireworks-specific compat for session affinity and unsupported tool fields", func(t *testing.T) {
-		c := mustGeneratedModel(t, "fireworks", "accounts/fireworks/models/nemotron-3-ultra-nvfp4").Compat
+		c := mustGeneratedModel(t, "fireworks", "accounts/fireworks/models/deepseek-v4p1-flash").Compat
 		if c == nil || c.SendSessionAffinityHeaders == nil || !*c.SendSessionAffinityHeaders || c.SupportsEagerToolInputStreaming == nil || *c.SupportsEagerToolInputStreaming || c.SupportsCacheControlOnTools == nil || *c.SupportsCacheControlOnTools || c.SupportsLongCacheRetention == nil || *c.SupportsLongCacheRetention || c.AllowEmptySignature == nil || !*c.AllowEmptySignature {
 			t.Fatalf("compat = %+v", c)
 		}

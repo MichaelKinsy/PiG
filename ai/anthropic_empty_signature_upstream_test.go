@@ -66,7 +66,7 @@ func TestAnthropicUpstreamEmptyThinkingSignature(t *testing.T) {
 		}
 	})
 	// .upstream/v0.99.1/packages/ai/test/anthropic-empty-thinking-signature-compat.test.ts:108 (all four 0.99.1 rows)
-	for _, id := range []string{"accounts/fireworks/models/deepseek-v4p1-flash", "accounts/fireworks/models/qwen3p8-max", "accounts/fireworks/models/qwen3p8-2p4t-a95b", "accounts/fireworks/models/nemotron-3-ultra-nvfp4"} {
+	for _, id := range []string{"accounts/fireworks/models/deepseek-v4p1-flash", "accounts/fireworks/models/qwen3p8-max", "accounts/fireworks/models/qwen3p8-2p4t-a95b", "accounts/fireworks/models/ember-1"} {
 		t.Run("preserves unsigned thinking for Fireworks "+id, func(t *testing.T) {
 			model := upstreamCatalogModel(t, "fireworks", id)
 			if !modelAllowsEmptySignature(model) {
