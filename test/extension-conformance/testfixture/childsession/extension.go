@@ -103,5 +103,6 @@ func Extension() *sdk.Extension {
 	})
 	registerLifecycle(e)
 	registerEvents(e)
+	registerMembers(e)
 	return e
 }

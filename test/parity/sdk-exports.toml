@@ -33,10 +33,25 @@ max_gap_trains = 1
 high_use = 5
 identity_runtime = ["pi-coding-agent: KeybindingsManager", "pi-coding-agent: KeybindingsManager.getConflicts", "pi-coding-agent: KeybindingsManager.getDefinition", "pi-coding-agent: KeybindingsManager.getEffectiveConfig", "pi-coding-agent: KeybindingsManager.getKeys", "pi-coding-agent: KeybindingsManager.getResolvedBindings", "pi-coding-agent: KeybindingsManager.getUserBindings", "pi-coding-agent: KeybindingsManager.matches", "pi-coding-agent: KeybindingsManager.reload", "pi-coding-agent: KeybindingsManager.setUserBindings", "pi-coding-agent: defineTool", "pi-tui: StdinBuffer.[Symbol.captureRejectionSymbol]"]
 
+[lane.C2AgentLoop]
+owner = "C2Sessions lane follow-up (pi-agent-core Agent loop in the SDKs)"
+opened = "0.5.2"
+closing = "The pi-agent-core Agent class and its loop functions (agentLoop, runAgentLoop, runToolCall, streamProxy, setDefaultStreamFn) as an in-process loop in each SDK over the host's model streaming, with a conformance row per SDK that runs a turn through the hooks"
+
 [lane.C2Sessions]
 owner = "C2Sessions lane (createAgentSession family, E1/E6)"
 opened = "0.5.2"
 closing = "Conformance rows for createAgentSession, createAgentSessionRuntime and the pi-agent-core Agent loop in all four SDKs (branch feat/sdk-child-agent-sessions)"
+
+[lane.C2SessionsEmbedder]
+owner = "C2Sessions lane (createAgentSession family, E1/E6), designed out pending an owner divergence"
+opened = "0.5.2"
+closing = "AgentSession.agent returns pi-agent-core's Agent, the object whose beforeToolCall, afterToolCall, convertToLlm, transformContext, getApiKey and streamFunction hooks are in-process functions of the embedder that drive the model loop; and createReplacedSessionContext returns an object of closures over the replaced session. Neither value has a wire form (a function does not cross the extension socket, and the host owns the loop), so they are not ported to any SDK. Closing row: an owner-approved numbered divergence for these two members, after which the cells become divergence:D<n>"
+
+[lane.C2SessionsGraph]
+owner = "C2Sessions lane follow-up (session graph objects of a child session)"
+opened = "0.5.2"
+closing = "AgentSession.extensionRunner, settingsManager, resourceLoader and modelRuntime as session graph handles of the child's own objects (the way AgentSession.sessionManager is one, CallChildSessionSessionManager), for each SDK, with a conformance row that reads the child's value through the handle"
 
 [lane.SdkExportsLedger]
 owner = "SdkExportsLedger lane (Pi application internals no extension scan imports)"
@@ -59,87 +74,87 @@ opened = "0.5.2"
 closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (test/parity/sdk-vectors), keybinding and theme helpers with a conformance row per SDK"
 
 [export]
-"pi-coding-agent: AgentSession" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession" = { go = "native:AgentSession", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
 "pi-coding-agent: AgentSession.abort" = { go = "native:AgentSession.Abort", rust = "native:AgentSession::abort", python = "native:AgentSession.abort", lisp = "native:pig:agent-session-abort" }
-"pi-coding-agent: AgentSession.abortBash" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.abortBranchSummary" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.abortCompaction" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.abortRetry" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.agent" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.autoCompactionEnabled" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.autoRetryEnabled" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.bindExtensions" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.cacheWarmingStatus" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.clearQueue" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.compact" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.createReplacedSessionContext" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.cycleModel" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.cycleThinkingLevel" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.abortBash" = { go = "native:AgentSession.AbortBash", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.abortBranchSummary" = { go = "native:AgentSession.AbortBranchSummary", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.abortCompaction" = { go = "native:AgentSession.AbortCompaction", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.abortRetry" = { go = "native:AgentSession.AbortRetry", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.agent" = { go = "gap:C2SessionsEmbedder", rust = "gap:C2SessionsEmbedder", python = "gap:C2SessionsEmbedder", lisp = "gap:C2SessionsEmbedder" }
+"pi-coding-agent: AgentSession.autoCompactionEnabled" = { go = "native:AgentSession.AutoCompactionEnabled", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.autoRetryEnabled" = { go = "native:AgentSession.AutoRetryEnabled", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.bindExtensions" = { go = "native:AgentSession.BindExtensions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.cacheWarmingStatus" = { go = "native:AgentSession.CacheWarmingStatus", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.clearQueue" = { go = "native:AgentSession.ClearQueue", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.compact" = { go = "native:AgentSession.Compact", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.createReplacedSessionContext" = { go = "gap:C2SessionsEmbedder", rust = "gap:C2SessionsEmbedder", python = "gap:C2SessionsEmbedder", lisp = "gap:C2SessionsEmbedder" }
+"pi-coding-agent: AgentSession.cycleModel" = { go = "native:AgentSession.CycleModel", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.cycleThinkingLevel" = { go = "native:AgentSession.CycleThinkingLevel", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
 "pi-coding-agent: AgentSession.dispose" = { go = "native:AgentSession.Dispose", rust = "native:AgentSession::dispose", python = "native:AgentSession.dispose", lisp = "native:pig:agent-session-dispose" }
-"pi-coding-agent: AgentSession.executeBash" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.exportToHtml" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.exportToJsonl" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.extensionRunner" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.followUp" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.followUpMode" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.getActiveToolNames" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.getAllTools" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.getAvailableThinkingLevels" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.getCallableToolNames" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.getContextUsage" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.getFollowUpMessages" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.getLastAssistantText" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.getSessionStats" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.getSteeringMessages" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.getToolDefinition" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.getUserMessagesForForking" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.hasExtensionHandlers" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.hasPendingBashMessages" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.isBashRunning" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.isCompacting" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.isIdle" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.isRetrying" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.isStreaming" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.executeBash" = { go = "native:AgentSession.ExecuteBash", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.exportToHtml" = { go = "native:AgentSession.ExportToHTML", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.exportToJsonl" = { go = "native:AgentSession.ExportToJsonl", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.extensionRunner" = { go = "gap:C2SessionsGraph", rust = "gap:C2SessionsGraph", python = "gap:C2SessionsGraph", lisp = "gap:C2SessionsGraph" }
+"pi-coding-agent: AgentSession.followUp" = { go = "native:AgentSession.FollowUp", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.followUpMode" = { go = "native:AgentSession.FollowUpMode", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.getActiveToolNames" = { go = "native:AgentSession.GetActiveToolNames", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.getAllTools" = { go = "native:AgentSession.GetAllTools", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.getAvailableThinkingLevels" = { go = "native:AgentSession.GetAvailableThinkingLevels", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.getCallableToolNames" = { go = "native:AgentSession.GetCallableToolNames", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.getContextUsage" = { go = "native:AgentSession.GetContextUsage", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.getFollowUpMessages" = { go = "native:AgentSession.GetFollowUpMessages", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.getLastAssistantText" = { go = "native:AgentSession.GetLastAssistantText", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.getSessionStats" = { go = "native:AgentSession.GetSessionStats", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.getSteeringMessages" = { go = "native:AgentSession.GetSteeringMessages", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.getToolDefinition" = { go = "native:AgentSession.GetToolDefinition", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.getUserMessagesForForking" = { go = "native:AgentSession.GetUserMessagesForForking", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.hasExtensionHandlers" = { go = "native:AgentSession.HasExtensionHandlers", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.hasPendingBashMessages" = { go = "native:AgentSession.HasPendingBashMessages", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.isBashRunning" = { go = "native:AgentSession.IsBashRunning", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.isCompacting" = { go = "native:AgentSession.IsCompacting", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.isIdle" = { go = "native:AgentSession.IsIdle", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.isRetrying" = { go = "native:AgentSession.IsRetrying", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.isStreaming" = { go = "native:AgentSession.IsStreaming", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
 "pi-coding-agent: AgentSession.messages" = { go = "native:AgentSession.Messages", rust = "native:AgentSession::messages", python = "native:AgentSession.messages", lisp = "native:pig:agent-session-messages" }
-"pi-coding-agent: AgentSession.model" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.modelRuntime" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.navigateTree" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.pendingMessageCount" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.model" = { go = "native:AgentSession.Model", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.modelRuntime" = { go = "gap:C2SessionsGraph", rust = "gap:C2SessionsGraph", python = "gap:C2SessionsGraph", lisp = "gap:C2SessionsGraph" }
+"pi-coding-agent: AgentSession.navigateTree" = { go = "native:AgentSession.NavigateTree", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.pendingMessageCount" = { go = "native:AgentSession.PendingMessageCount", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
 "pi-coding-agent: AgentSession.prompt" = { go = "native:AgentSession.Prompt", rust = "native:AgentSession::prompt", python = "native:AgentSession.prompt", lisp = "native:pig:agent-session-prompt" }
-"pi-coding-agent: AgentSession.promptTemplates" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.recordBashResult" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.promptTemplates" = { go = "native:AgentSession.PromptTemplates", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.recordBashResult" = { go = "native:AgentSession.RecordBashResult", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
 "pi-coding-agent: AgentSession.refreshContext" = { go = "native:AgentSession.RefreshContext", rust = "native:AgentSession::refresh_context", python = "native:AgentSession.refresh_context", lisp = "native:pig:agent-session-refresh-context" }
-"pi-coding-agent: AgentSession.reload" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.resourceLoader" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.retryAttempt" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.routedModel" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.scopedModels" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.sendCustomMessage" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.sendUserMessage" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.sessionFile" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.sessionId" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.reload" = { go = "native:AgentSession.Reload", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.resourceLoader" = { go = "gap:C2SessionsGraph", rust = "gap:C2SessionsGraph", python = "gap:C2SessionsGraph", lisp = "gap:C2SessionsGraph" }
+"pi-coding-agent: AgentSession.retryAttempt" = { go = "native:AgentSession.RetryAttempt", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.routedModel" = { go = "native:AgentSession.RoutedModel", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.scopedModels" = { go = "native:AgentSession.ScopedModels", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.sendCustomMessage" = { go = "native:AgentSession.SendCustomMessage", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.sendUserMessage" = { go = "native:AgentSession.SendUserMessage", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.sessionFile" = { go = "native:AgentSession.SessionFile", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.sessionId" = { go = "native:AgentSession.SessionID", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
 "pi-coding-agent: AgentSession.sessionManager" = { go = "native:AgentSession.SessionManager", rust = "native:AgentSession::session_manager", python = "native:AgentSession.session_manager", lisp = "native:pig:agent-session-session-manager" }
-"pi-coding-agent: AgentSession.sessionName" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.setActiveToolsByName" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.setAutoCompactionEnabled" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.setAutoRetryEnabled" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.setCacheWarmingMode" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.setFollowUpMode" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.setModel" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.setScopedModels" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.setSessionName" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.setSteeringMode" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.setThinkingLevel" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.settingsManager" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.state" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.steer" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.steeringMode" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.sessionName" = { go = "native:AgentSession.SessionName", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.setActiveToolsByName" = { go = "native:AgentSession.SetActiveToolsByName", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.setAutoCompactionEnabled" = { go = "native:AgentSession.SetAutoCompactionEnabled", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.setAutoRetryEnabled" = { go = "native:AgentSession.SetAutoRetryEnabled", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.setCacheWarmingMode" = { go = "native:AgentSession.SetCacheWarmingMode", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.setFollowUpMode" = { go = "native:AgentSession.SetFollowUpMode", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.setModel" = { go = "native:AgentSession.SetModel", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.setScopedModels" = { go = "native:AgentSession.SetScopedModels", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.setSessionName" = { go = "native:AgentSession.SetSessionName", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.setSteeringMode" = { go = "native:AgentSession.SetSteeringMode", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.setThinkingLevel" = { go = "native:AgentSession.SetThinkingLevel", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.settingsManager" = { go = "gap:C2SessionsGraph", rust = "gap:C2SessionsGraph", python = "gap:C2SessionsGraph", lisp = "gap:C2SessionsGraph" }
+"pi-coding-agent: AgentSession.state" = { go = "native:AgentSession.State", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.steer" = { go = "native:AgentSession.Steer", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.steeringMode" = { go = "native:AgentSession.SteeringMode", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
 "pi-coding-agent: AgentSession.subscribe" = { go = "native:AgentSession.Subscribe", rust = "native:AgentSession::subscribe", python = "native:AgentSession.subscribe", lisp = "native:pig:agent-session-subscribe" }
-"pi-coding-agent: AgentSession.summarizeForBugReport" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.supportsThinking" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.systemPrompt" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.thinkingLevel" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-coding-agent: AgentSession.waitForIdle" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.summarizeForBugReport" = { go = "native:AgentSession.SummarizeForBugReport", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.supportsThinking" = { go = "native:AgentSession.SupportsThinking", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.systemPrompt" = { go = "native:AgentSession.SystemPrompt", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.thinkingLevel" = { go = "native:AgentSession.ThinkingLevel", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession.waitForIdle" = { go = "native:AgentSession.WaitForIdle", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
 "pi-coding-agent: AgentSessionRuntime" = { go = "native:AgentSessionRuntime", rust = "native:AgentSessionRuntime", python = "native:AgentSessionRuntime", lisp = "native:pig:agent-session-runtime" }
 "pi-coding-agent: AgentSessionRuntime.cwd" = { go = "native:AgentSessionRuntime.Cwd", rust = "native:AgentSessionRuntime::cwd", python = "native:AgentSessionRuntime.cwd", lisp = "native:pig:agent-session-runtime-cwd" }
 "pi-coding-agent: AgentSessionRuntime.diagnostics" = { go = "native:AgentSessionRuntime.Diagnostics", rust = "native:AgentSessionRuntime::diagnostics", python = "native:AgentSessionRuntime.diagnostics", lisp = "native:pig:agent-session-runtime-diagnostics" }
@@ -1627,48 +1642,48 @@ closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (tes
 "pi-ai/compat: validateToolCall" = { go = "gap:SdkPiAiHelpers", rust = "gap:SdkPiAiHelpers", python = "gap:SdkPiAiHelpers", lisp = "gap:SdkPiAiHelpers" }
 "pi-ai/compat: withClientIdentity" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
 "pi-ai/compat: withoutInitialSystemMessage" = { go = "native:WithoutInitialSystemMessage", rust = "native:without_initial_system_message", python = "native:without_initial_system_message", lisp = "native:pig:without-initial-system-message" }
-"pi-agent-core: Agent" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-agent-core: Agent.abort" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-agent-core: Agent.afterToolCall" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-agent-core: Agent.beforeToolCall" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-agent-core: Agent.clearAllQueues" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-agent-core: Agent.clearFollowUpQueue" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-agent-core: Agent.clearSteeringQueue" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-agent-core: Agent.continue" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-agent-core: Agent.convertToLlm" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-agent-core: Agent.finishTurn" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-agent-core: Agent.followUp" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-agent-core: Agent.followUpMode" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-agent-core: Agent.getApiKey" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-agent-core: Agent.hasQueuedMessages" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-agent-core: Agent" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
+"pi-agent-core: Agent.abort" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
+"pi-agent-core: Agent.afterToolCall" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
+"pi-agent-core: Agent.beforeToolCall" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
+"pi-agent-core: Agent.clearAllQueues" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
+"pi-agent-core: Agent.clearFollowUpQueue" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
+"pi-agent-core: Agent.clearSteeringQueue" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
+"pi-agent-core: Agent.continue" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
+"pi-agent-core: Agent.convertToLlm" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
+"pi-agent-core: Agent.finishTurn" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
+"pi-agent-core: Agent.followUp" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
+"pi-agent-core: Agent.followUpMode" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
+"pi-agent-core: Agent.getApiKey" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
+"pi-agent-core: Agent.hasQueuedMessages" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
 "pi-agent-core: Agent.identity" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
-"pi-agent-core: Agent.maxRetryDelayMs" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-agent-core: Agent.onPayload" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-agent-core: Agent.onProviderStreamEvent" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-agent-core: Agent.onResponse" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-agent-core: Agent.peekQueuedMessages" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-agent-core: Agent.prepareNextTurn" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-agent-core: Agent.prepareNextTurnWithContext" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-agent-core: Agent.prepareRequest" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-agent-core: Agent.prompt" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-agent-core: Agent.reset" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-agent-core: Agent.sessionId" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-agent-core: Agent.signal" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-agent-core: Agent.state" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-agent-core: Agent.steer" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-agent-core: Agent.steeringMode" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-agent-core: Agent.streamFunction" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-agent-core: Agent.subscribe" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-agent-core: Agent.thinkingBudgets" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-agent-core: Agent.toolExecution" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-agent-core: Agent.transformContext" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-agent-core: Agent.transport" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-agent-core: Agent.waitForIdle" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-agent-core: Agent.maxRetryDelayMs" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
+"pi-agent-core: Agent.onPayload" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
+"pi-agent-core: Agent.onProviderStreamEvent" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
+"pi-agent-core: Agent.onResponse" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
+"pi-agent-core: Agent.peekQueuedMessages" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
+"pi-agent-core: Agent.prepareNextTurn" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
+"pi-agent-core: Agent.prepareNextTurnWithContext" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
+"pi-agent-core: Agent.prepareRequest" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
+"pi-agent-core: Agent.prompt" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
+"pi-agent-core: Agent.reset" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
+"pi-agent-core: Agent.sessionId" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
+"pi-agent-core: Agent.signal" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
+"pi-agent-core: Agent.state" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
+"pi-agent-core: Agent.steer" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
+"pi-agent-core: Agent.steeringMode" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
+"pi-agent-core: Agent.streamFunction" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
+"pi-agent-core: Agent.subscribe" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
+"pi-agent-core: Agent.thinkingBudgets" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
+"pi-agent-core: Agent.toolExecution" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
+"pi-agent-core: Agent.transformContext" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
+"pi-agent-core: Agent.transport" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
+"pi-agent-core: Agent.waitForIdle" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
 "pi-agent-core: DEFAULT_AGENT_IDENTITY" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
-"pi-agent-core: agentLoop" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-agent-core: agentLoopContinue" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-agent-core: runAgentLoop" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-agent-core: runAgentLoopContinue" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-agent-core: runToolCall" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-agent-core: setDefaultStreamFn" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
-"pi-agent-core: streamProxy" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-agent-core: agentLoop" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
+"pi-agent-core: agentLoopContinue" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
+"pi-agent-core: runAgentLoop" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
+"pi-agent-core: runAgentLoopContinue" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
+"pi-agent-core: runToolCall" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
+"pi-agent-core: setDefaultStreamFn" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }
+"pi-agent-core: streamProxy" = { go = "gap:C2AgentLoop", rust = "gap:C2AgentLoop", python = "gap:C2AgentLoop", lisp = "gap:C2AgentLoop" }

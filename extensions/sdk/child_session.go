@@ -348,14 +348,6 @@ type AgentSession struct {
 	tools    map[string]ToolFunc
 	prepares map[string]ToolPrepareArgumentsFunc
 
-	// SessionID and SessionFile are `session.sessionId` and `session.sessionFile` (empty for an in-memory session).
-	SessionID   string
-	SessionFile string
-	// Model, ThinkingLevel, ActiveTools and SystemPrompt are what the session held when CreateAgentSession returned. Read the current values with [AgentSession.State].
-	Model         map[string]any
-	ThinkingLevel string
-	ActiveTools   []string
-	SystemPrompt  string
 	// ModelFallbackMessage is CreateAgentSessionResult.modelFallbackMessage.
 	ModelFallbackMessage string
 	// ExtensionErrors are the errors of CreateAgentSessionResult.extensionsResult.errors, as "path: error".
@@ -451,8 +443,6 @@ func (c Context) CreateAgentSession(options CreateAgentSessionOptions) (*AgentSe
 		e.children.remove(session.id)
 		return nil, err
 	}
-	session.SessionID, session.SessionFile, session.Model = info.SessionID, info.SessionFile, info.Model
-	session.ThinkingLevel, session.ActiveTools, session.SystemPrompt = info.ThinkingLevel, info.ActiveTools, info.SystemPrompt
 	session.ModelFallbackMessage, session.ExtensionErrors = info.ModelFallbackMessage, info.ExtensionErrors
 	return session, nil
 }

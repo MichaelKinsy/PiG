@@ -10,7 +10,7 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 
 | Module | Rows | type-only (identity by kind) | Node served | Go gaps | Rust gaps | Python gaps | Lisp gaps |
 |---|---|---|---|---|---|---|---|
-| `pi-coding-agent` | 928 | 310 | 918 | 325 | 325 | 325 | 325 |
+| `pi-coding-agent` | 928 | 310 | 918 | 257 | 325 | 325 | 325 |
 | `pi-tui` | 370 | 85 | 369 | 102 | 102 | 102 | 102 |
 | `pi-ai` | 105 | 197 | 105 | 73 | 73 | 73 | 73 |
 | `pi-ai/compat` | 165 | 204 | 165 | 130 | 130 | 130 | 130 |
@@ -20,7 +20,10 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 
 | Lane | Owner | Opened | Gap cells | Closing row |
 |---|---|---|---|---|
-| C2Sessions | C2Sessions lane (createAgentSession family, E1/E6) | 0.5.2 | 468 | Conformance rows for createAgentSession, createAgentSessionRuntime and the pi-agent-core Agent loop in all four SDKs (branch feat/sdk-child-agent-sessions) |
+| C2AgentLoop | C2Sessions lane follow-up (pi-agent-core Agent loop in the SDKs) | 0.5.2 | 172 | The pi-agent-core Agent class and its loop functions (agentLoop, runAgentLoop, runToolCall, streamProxy, setDefaultStreamFn) as an in-process loop in each SDK over the host's model streaming, with a conformance row per SDK that runs a turn through the hooks |
+| C2Sessions | C2Sessions lane (createAgentSession family, E1/E6) | 0.5.2 | 204 | Conformance rows for createAgentSession, createAgentSessionRuntime and the pi-agent-core Agent loop in all four SDKs (branch feat/sdk-child-agent-sessions) |
+| C2SessionsEmbedder | C2Sessions lane (createAgentSession family, E1/E6), designed out pending an owner divergence | 0.5.2 | 8 | AgentSession.agent returns pi-agent-core's Agent, the object whose beforeToolCall, afterToolCall, convertToLlm, transformContext, getApiKey and streamFunction hooks are in-process functions of the embedder that drive the model loop; and createReplacedSessionContext returns an object of closures over the replaced session. Neither value has a wire form (a function does not cross the extension socket, and the host owns the loop), so they are not ported to any SDK. Closing row: an owner-approved numbered divergence for these two members, after which the cells become divergence:D<n> |
+| C2SessionsGraph | C2Sessions lane follow-up (session graph objects of a child session) | 0.5.2 | 16 | AgentSession.extensionRunner, settingsManager, resourceLoader and modelRuntime as session graph handles of the child's own objects (the way AgentSession.sessionManager is one, CallChildSessionSessionManager), for each SDK, with a conformance row that reads the child's value through the handle |
 | SdkExportsLedger | SdkExportsLedger lane (Pi application internals no extension scan imports) | 0.5.2 | 1576 | Owner decision per export, listed with usage counts in handoffs/0.5.2/sdk-exports-internals.md: a numbered divergence in docs/parity/DIVERGENCES.md (cells become divergence:D<n>), or a real lane with a port and a conformance row |
 | SdkPiAiHelpers | SdkPiAiHelpers lane (pi-ai pure helpers, StringEnum, host getters, E17-E22) | 0.5.2 | 256 | Pure helpers with vector tests from Pi at the pin; host getters and the pi-ai compat calls with a conformance row per SDK |
 | SdkSessionGraph | SdkSessionGraph lane (SessionManager/SettingsManager/ModelRuntime/resource loader, E2-E5) | 0.5.2 | 252 | Host calls for session open/list/inMemory, scoped settings, standalone model runtime, resource loader and package manager, with a conformance row per SDK |
@@ -42,87 +45,87 @@ None.
 
 | Export | uses | Node | Go | Rust | Python | Lisp |
 |---|---|---|---|---|---|---|
-| `AgentSession` | 4 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession` | 4 | served | native:AgentSession | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.abort` | 0 | served | native:AgentSession.Abort | native:AgentSession::abort | native:AgentSession.abort | native:pig:agent-session-abort |
-| `AgentSession.abortBash` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.abortBranchSummary` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.abortCompaction` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.abortRetry` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.agent` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.autoCompactionEnabled` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.autoRetryEnabled` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.bindExtensions` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.cacheWarmingStatus` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.clearQueue` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.compact` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.createReplacedSessionContext` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.cycleModel` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.cycleThinkingLevel` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.abortBash` | 0 | served | native:AgentSession.AbortBash | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.abortBranchSummary` | 0 | served | native:AgentSession.AbortBranchSummary | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.abortCompaction` | 0 | served | native:AgentSession.AbortCompaction | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.abortRetry` | 0 | served | native:AgentSession.AbortRetry | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.agent` | 0 | served | gap:C2SessionsEmbedder | gap:C2SessionsEmbedder | gap:C2SessionsEmbedder | gap:C2SessionsEmbedder |
+| `AgentSession.autoCompactionEnabled` | 0 | served | native:AgentSession.AutoCompactionEnabled | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.autoRetryEnabled` | 0 | served | native:AgentSession.AutoRetryEnabled | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.bindExtensions` | 0 | served | native:AgentSession.BindExtensions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.cacheWarmingStatus` | 0 | served | native:AgentSession.CacheWarmingStatus | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.clearQueue` | 0 | served | native:AgentSession.ClearQueue | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.compact` | 0 | served | native:AgentSession.Compact | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.createReplacedSessionContext` | 0 | served | gap:C2SessionsEmbedder | gap:C2SessionsEmbedder | gap:C2SessionsEmbedder | gap:C2SessionsEmbedder |
+| `AgentSession.cycleModel` | 0 | served | native:AgentSession.CycleModel | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.cycleThinkingLevel` | 0 | served | native:AgentSession.CycleThinkingLevel | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.dispose` | 0 | served | native:AgentSession.Dispose | native:AgentSession::dispose | native:AgentSession.dispose | native:pig:agent-session-dispose |
-| `AgentSession.executeBash` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.exportToHtml` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.exportToJsonl` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.extensionRunner` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.followUp` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.followUpMode` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.getActiveToolNames` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.getAllTools` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.getAvailableThinkingLevels` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.getCallableToolNames` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.getContextUsage` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.getFollowUpMessages` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.getLastAssistantText` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.getSessionStats` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.getSteeringMessages` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.getToolDefinition` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.getUserMessagesForForking` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.hasExtensionHandlers` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.hasPendingBashMessages` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.isBashRunning` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.isCompacting` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.isIdle` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.isRetrying` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.isStreaming` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.executeBash` | 0 | served | native:AgentSession.ExecuteBash | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.exportToHtml` | 0 | served | native:AgentSession.ExportToHTML | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.exportToJsonl` | 0 | served | native:AgentSession.ExportToJsonl | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.extensionRunner` | 0 | served | gap:C2SessionsGraph | gap:C2SessionsGraph | gap:C2SessionsGraph | gap:C2SessionsGraph |
+| `AgentSession.followUp` | 0 | served | native:AgentSession.FollowUp | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.followUpMode` | 0 | served | native:AgentSession.FollowUpMode | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.getActiveToolNames` | 0 | served | native:AgentSession.GetActiveToolNames | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.getAllTools` | 0 | served | native:AgentSession.GetAllTools | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.getAvailableThinkingLevels` | 0 | served | native:AgentSession.GetAvailableThinkingLevels | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.getCallableToolNames` | 0 | served | native:AgentSession.GetCallableToolNames | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.getContextUsage` | 0 | served | native:AgentSession.GetContextUsage | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.getFollowUpMessages` | 0 | served | native:AgentSession.GetFollowUpMessages | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.getLastAssistantText` | 0 | served | native:AgentSession.GetLastAssistantText | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.getSessionStats` | 0 | served | native:AgentSession.GetSessionStats | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.getSteeringMessages` | 0 | served | native:AgentSession.GetSteeringMessages | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.getToolDefinition` | 0 | served | native:AgentSession.GetToolDefinition | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.getUserMessagesForForking` | 0 | served | native:AgentSession.GetUserMessagesForForking | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.hasExtensionHandlers` | 0 | served | native:AgentSession.HasExtensionHandlers | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.hasPendingBashMessages` | 0 | served | native:AgentSession.HasPendingBashMessages | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.isBashRunning` | 0 | served | native:AgentSession.IsBashRunning | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.isCompacting` | 0 | served | native:AgentSession.IsCompacting | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.isIdle` | 0 | served | native:AgentSession.IsIdle | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.isRetrying` | 0 | served | native:AgentSession.IsRetrying | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.isStreaming` | 0 | served | native:AgentSession.IsStreaming | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.messages` | 0 | served | native:AgentSession.Messages | native:AgentSession::messages | native:AgentSession.messages | native:pig:agent-session-messages |
-| `AgentSession.model` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.modelRuntime` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.navigateTree` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.pendingMessageCount` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.model` | 0 | served | native:AgentSession.Model | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.modelRuntime` | 0 | served | gap:C2SessionsGraph | gap:C2SessionsGraph | gap:C2SessionsGraph | gap:C2SessionsGraph |
+| `AgentSession.navigateTree` | 0 | served | native:AgentSession.NavigateTree | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.pendingMessageCount` | 0 | served | native:AgentSession.PendingMessageCount | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.prompt` | 0 | served | native:AgentSession.Prompt | native:AgentSession::prompt | native:AgentSession.prompt | native:pig:agent-session-prompt |
-| `AgentSession.promptTemplates` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.recordBashResult` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.promptTemplates` | 0 | served | native:AgentSession.PromptTemplates | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.recordBashResult` | 0 | served | native:AgentSession.RecordBashResult | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.refreshContext` | 0 | served | native:AgentSession.RefreshContext | native:AgentSession::refresh_context | native:AgentSession.refresh_context | native:pig:agent-session-refresh-context |
-| `AgentSession.reload` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.resourceLoader` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.retryAttempt` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.routedModel` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.scopedModels` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.sendCustomMessage` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.sendUserMessage` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.sessionFile` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.sessionId` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.reload` | 0 | served | native:AgentSession.Reload | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.resourceLoader` | 0 | served | gap:C2SessionsGraph | gap:C2SessionsGraph | gap:C2SessionsGraph | gap:C2SessionsGraph |
+| `AgentSession.retryAttempt` | 0 | served | native:AgentSession.RetryAttempt | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.routedModel` | 0 | served | native:AgentSession.RoutedModel | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.scopedModels` | 0 | served | native:AgentSession.ScopedModels | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.sendCustomMessage` | 0 | served | native:AgentSession.SendCustomMessage | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.sendUserMessage` | 0 | served | native:AgentSession.SendUserMessage | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.sessionFile` | 0 | served | native:AgentSession.SessionFile | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.sessionId` | 0 | served | native:AgentSession.SessionID | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.sessionManager` | 0 | served | native:AgentSession.SessionManager | native:AgentSession::session_manager | native:AgentSession.session_manager | native:pig:agent-session-session-manager |
-| `AgentSession.sessionName` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.setActiveToolsByName` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.setAutoCompactionEnabled` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.setAutoRetryEnabled` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.setCacheWarmingMode` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.setFollowUpMode` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.setModel` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.setScopedModels` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.setSessionName` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.setSteeringMode` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.setThinkingLevel` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.settingsManager` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.state` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.steer` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.steeringMode` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.sessionName` | 0 | served | native:AgentSession.SessionName | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.setActiveToolsByName` | 0 | served | native:AgentSession.SetActiveToolsByName | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.setAutoCompactionEnabled` | 0 | served | native:AgentSession.SetAutoCompactionEnabled | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.setAutoRetryEnabled` | 0 | served | native:AgentSession.SetAutoRetryEnabled | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.setCacheWarmingMode` | 0 | served | native:AgentSession.SetCacheWarmingMode | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.setFollowUpMode` | 0 | served | native:AgentSession.SetFollowUpMode | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.setModel` | 0 | served | native:AgentSession.SetModel | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.setScopedModels` | 0 | served | native:AgentSession.SetScopedModels | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.setSessionName` | 0 | served | native:AgentSession.SetSessionName | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.setSteeringMode` | 0 | served | native:AgentSession.SetSteeringMode | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.setThinkingLevel` | 0 | served | native:AgentSession.SetThinkingLevel | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.settingsManager` | 0 | served | gap:C2SessionsGraph | gap:C2SessionsGraph | gap:C2SessionsGraph | gap:C2SessionsGraph |
+| `AgentSession.state` | 0 | served | native:AgentSession.State | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.steer` | 0 | served | native:AgentSession.Steer | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.steeringMode` | 0 | served | native:AgentSession.SteeringMode | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSession.subscribe` | 0 | served | native:AgentSession.Subscribe | native:AgentSession::subscribe | native:AgentSession.subscribe | native:pig:agent-session-subscribe |
-| `AgentSession.summarizeForBugReport` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.supportsThinking` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.systemPrompt` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.thinkingLevel` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.waitForIdle` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.summarizeForBugReport` | 0 | served | native:AgentSession.SummarizeForBugReport | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.supportsThinking` | 0 | served | native:AgentSession.SupportsThinking | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.systemPrompt` | 0 | served | native:AgentSession.SystemPrompt | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.thinkingLevel` | 0 | served | native:AgentSession.ThinkingLevel | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.waitForIdle` | 0 | served | native:AgentSession.WaitForIdle | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
 | `AgentSessionRuntime` | 1 | served | native:AgentSessionRuntime | native:AgentSessionRuntime | native:AgentSessionRuntime | native:pig:agent-session-runtime |
 | `AgentSessionRuntime.cwd` | 0 | served | native:AgentSessionRuntime.Cwd | native:AgentSessionRuntime::cwd | native:AgentSessionRuntime.cwd | native:pig:agent-session-runtime-cwd |
 | `AgentSessionRuntime.diagnostics` | 0 | served | native:AgentSessionRuntime.Diagnostics | native:AgentSessionRuntime::diagnostics | native:AgentSessionRuntime.diagnostics | native:pig:agent-session-runtime-diagnostics |
@@ -1630,48 +1633,48 @@ None.
 
 | Export | uses | Node | Go | Rust | Python | Lisp |
 |---|---|---|---|---|---|---|
-| `Agent` | 4 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.abort` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.afterToolCall` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.beforeToolCall` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.clearAllQueues` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.clearFollowUpQueue` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.clearSteeringQueue` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.continue` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.convertToLlm` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.finishTurn` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.followUp` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.followUpMode` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.getApiKey` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.hasQueuedMessages` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `Agent` | 4 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.abort` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.afterToolCall` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.beforeToolCall` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.clearAllQueues` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.clearFollowUpQueue` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.clearSteeringQueue` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.continue` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.convertToLlm` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.finishTurn` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.followUp` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.followUpMode` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.getApiKey` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.hasQueuedMessages` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
 | `Agent.identity` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `Agent.maxRetryDelayMs` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.onPayload` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.onProviderStreamEvent` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.onResponse` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.peekQueuedMessages` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.prepareNextTurn` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.prepareNextTurnWithContext` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.prepareRequest` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.prompt` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.reset` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.sessionId` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.signal` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.state` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.steer` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.steeringMode` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.streamFunction` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.subscribe` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.thinkingBudgets` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.toolExecution` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.transformContext` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.transport` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.waitForIdle` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `Agent.maxRetryDelayMs` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.onPayload` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.onProviderStreamEvent` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.onResponse` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.peekQueuedMessages` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.prepareNextTurn` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.prepareNextTurnWithContext` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.prepareRequest` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.prompt` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.reset` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.sessionId` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.signal` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.state` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.steer` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.steeringMode` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.streamFunction` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.subscribe` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.thinkingBudgets` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.toolExecution` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.transformContext` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.transport` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.waitForIdle` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
 | `DEFAULT_AGENT_IDENTITY` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `agentLoop` | 2 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `agentLoopContinue` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `runAgentLoop` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `runAgentLoopContinue` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `runToolCall` | 2 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `setDefaultStreamFn` | 1 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `streamProxy` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `agentLoop` | 2 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `agentLoopContinue` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `runAgentLoop` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `runAgentLoopContinue` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `runToolCall` | 2 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `setDefaultStreamFn` | 1 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `streamProxy` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
