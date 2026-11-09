@@ -102,14 +102,11 @@ func pair(ctx context.Context, credentials TerminalCredentials, base *url.URL, s
 	}
 	say(fmt.Sprintf("Pairing code %s: approve it at %s (signed in as the owner).", code, serverURL(base, "/_chord/pair/"+code)))
 	for {
-		// Pi: `await sleep(POLL_MS); signal.throwIfAborted()`: the interval is waited after each poll was answered, and an abort
-		// ends the wait at once (Pi's bare timeout runs out first: it settles up to POLL_MS later with the same reason and no poll).
-		wait := time.NewTimer(pollInterval)
-		select {
-		case <-wait.C:
-		case <-ctx.Done():
-			wait.Stop()
-		}
+		// Pi: `await sleep(POLL_MS); signal.throwIfAborted()`: the interval is waited after each poll was answered, a bare timeout the
+		// signal does not cut short (credentials.ts:52-53), so an abort during it settles when the interval ends, with the signal's
+		// reason and no poll. The timer is the whole wait: no goroutine, at most one interval. A poll's request takes ctx (fetch takes
+		// the signal), so an abort during it ends it at once.
+		<-time.After(pollInterval)
 		if ctx.Err() != nil {
 			return "", context.Cause(ctx)
 		}
