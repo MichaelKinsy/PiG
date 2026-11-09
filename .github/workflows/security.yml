@@ -78,7 +78,7 @@ jobs:
         run: make compliance
       - name: Run Go static analysis
         run: |
-          go vet ./...
+          automation/ci/go-vet.sh
           # golangci-lint owns style and Pi-compatible naming checks. This pass
           # runs Staticcheck's correctness analyzers without conflicting rules.
           # Vendored upstream source under third_party keeps upstream's code

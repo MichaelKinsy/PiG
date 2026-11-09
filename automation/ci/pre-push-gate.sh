@@ -68,7 +68,7 @@ step "shellcheck $SHELLCHECK_CI_VERSION" shellcheck_ci
 step "gitleaks ($base..$head)" gitleaks_range
 step "ruff" ruff_sdk
 step "docs-drift" make -s docs-drift
-step "go vet" go vet ./...
+step "go vet" automation/ci/go-vet.sh
 step "staticcheck SA*" staticcheck_sa
 
 if [ "${#failed[@]}" -gt 0 ]; then

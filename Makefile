@@ -258,7 +258,7 @@ piglet-strip-ids-drift: ## Fail when the Piglet strip ID table or the schema str
 	@go run ./coding/piglet/internal/genstripids -check
 
 piglet-strip-build: ## Vet every package and build cmd/pig with every Piglet strip build tag (D92)
-	@tags=$$(go run ./coding/piglet/internal/genstripids -print-tags) && go vet -tags "$$tags" ./... && CGO_ENABLED=0 go build -tags "$$tags" -o /dev/null ./cmd/pig
+	@tags=$$(go run ./coding/piglet/internal/genstripids -print-tags) && ./automation/ci/go-vet.sh -tags "$$tags" && CGO_ENABLED=0 go build -tags "$$tags" -o /dev/null ./cmd/pig
 
 # The compressed SDK copies are pure Go to regenerate (go generate runs automation/gen/embed-bundle.go and pack-lisp-sdk.go): the .gz of each SDK source, the bundle_embed.go lists, the Lisp sdk.tgz and bundle_pack.go. Each generator keeps an existing copy that already holds the source's text, so only a stale copy is rewritten.
 sdk-bundles: ## Regenerate the compressed SDK copies and embed lists of extensions/sdk, sdk-lisp, sdk-py and sdk-rs from their sources (go generate)
@@ -272,10 +272,10 @@ sdk-bundles-drift: ## Fail when a compressed SDK copy differs from its source (r
 ##@ Test and lint
 
 vet: ## Run go vet on every package, natively and for every shipped Windows architecture and for Android (Termux)
-	go vet ./...
-	GOOS=windows GOARCH=amd64 go vet ./...
-	GOOS=windows GOARCH=arm64 go vet ./...
-	CGO_ENABLED=0 GOOS=android GOARCH=arm64 go vet ./...
+	./automation/ci/go-vet.sh
+	GOOS=windows GOARCH=amd64 ./automation/ci/go-vet.sh
+	GOOS=windows GOARCH=arm64 ./automation/ci/go-vet.sh
+	CGO_ENABLED=0 GOOS=android GOARCH=arm64 ./automation/ci/go-vet.sh
 
 LINT_BASE ?= main
 

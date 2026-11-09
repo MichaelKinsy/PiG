@@ -1,6 +1,6 @@
 // Package node adapts a native SQLite connection to the portable Chord SQLite facade. It is the Go counterpart of
-// Pi's node:sqlite driver and the only Chord SQLite package that links a SQLite driver (modernc.org/sqlite, pure Go,
-// CGO-free).
+// Pi's node:sqlite driver and the only Chord SQLite package that links a SQLite driver (modernc.org/sqlite's driver
+// layer, vendored in internal/third_party/sqlite, over its pure Go, CGO-free SQLite library).
 package node
 
 // Ports packages/chord/src/sqlite/node.ts
@@ -20,11 +20,10 @@ import (
 	"sync/atomic"
 	"unsafe"
 
+	chordsqlite "github.com/MichaelKinsy/PiG/chord/sqlite"
 	// The pure-Go SQLite driver. The connection is opened through its driver.Connector and driven directly: one
 	// dedicated connection needs none of database/sql's pooling, argument conversion or row scanning.
-	"modernc.org/sqlite"
-
-	chordsqlite "github.com/MichaelKinsy/PiG/chord/sqlite"
+	"github.com/MichaelKinsy/PiG/internal/third_party/sqlite"
 )
 
 // DatabaseSyncOptions configures one native SQLite connection.
@@ -73,15 +72,24 @@ func NewDatabaseSync(path string, options DatabaseSyncOptions) (*DatabaseSync, e
 	return database, nil
 }
 
-// dataSourceName keeps a plain path unchanged and uses a file: URI only when the path would otherwise be read as
-// driver query parameters or when read-only mode is requested.
+// threadingMode is the driver's DSN parameter that opens a connection in SQLite's multi-thread mode
+// (SQLITE_OPEN_NOMUTEX).
+const threadingMode = "_threading_mode=multi-thread"
+
+// dataSourceName keeps a plain path and uses a file: URI only when the path would otherwise be read as driver query
+// parameters or when read-only mode is requested. Every connection opens in multi-thread mode: a DatabaseSync is used
+// by one goroutine at a time (NodeSqliteDatabase's serial queue holds every operation, Close included; the driver's
+// context interrupt only sets an atomic flag and calls sqlite3_interrupt), so SQLite's per-connection mutex would only
+// cost time on every call into SQLite.
+// modernc DSN nomutex PR (owner to post); draft: ~/PiG-launch-newer/handoffs/next/modernc-dsn-nomutex-pr.md
 func dataSourceName(path string, readOnly bool) string {
 	if !readOnly && !strings.ContainsAny(path, "?#") {
-		return path
+		return path + "?" + threadingMode
 	}
 	location := url.URL{Scheme: "file", Opaque: (&url.URL{Path: filepath.ToSlash(path)}).EscapedPath()}
+	location.RawQuery = threadingMode
 	if readOnly {
-		location.RawQuery = "mode=ro"
+		location.RawQuery = "mode=ro&" + threadingMode
 	}
 	return location.String()
 }

@@ -539,6 +539,13 @@ precedence = "closest"
 SPDX-FileCopyrightText = "Copyright (C) 2014-2019 Matt Butcher and Matt Farina"
 SPDX-License-Identifier = "MIT"
 
+# PiG fork of the modernc.org/sqlite v1.62.0 driver layer (internal/third_party/sqlite/FORK.md).
+[[annotations]]
+path = "internal/third_party/sqlite/**"
+precedence = "closest"
+SPDX-FileCopyrightText = "Copyright (c) 2017 The Sqlite Authors"
+SPDX-License-Identifier = "BSD-3-Clause"
+
 
 # Test bitmaps of the image-rs repository (tests/images/bmp, v0.24.9), several of them files of Jason Summers' BMP Suite (public domain),
 # which the Photon BMP decoder corpus reads (internal/photonimage/testdata/bmp-real).

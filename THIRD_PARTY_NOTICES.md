@@ -782,6 +782,15 @@ Distributed files: `third_party/semver/`, a package of the root module. The dire
 - Copyright (C) 2014-2019 Matt Butcher and Matt Farina.
 - License: MIT, in `third_party/semver/LICENSE.txt` and `LICENSES/MIT.txt`.
 
+## modernc.org/sqlite v1.62.0 (SQLite driver layer, PiG fork)
+
+Source: <https://gitlab.com/cznic/sqlite/-/tree/v1.62.0>
+
+Distributed files: `internal/third_party/sqlite/`, a package of the root module. The directory is the non-test Go files of the v1.62.0 root package (the `database/sql/driver` layer; the transpiled SQLite library `modernc.org/sqlite/lib` stays the module dependency) with the changes listed in `internal/third_party/sqlite/FORK.md` (a `_threading_mode` DSN parameter, and no `database/sql` registration).
+
+- Copyright (c) 2017 The Sqlite Authors.
+- License: BSD-3-Clause, in `internal/third_party/sqlite/LICENSE` and `LICENSES/BSD-3-Clause.txt`.
+
 ## evanw/esbuild v0.28.2 (plugin builds)
 
 Source: <https://github.com/evanw/esbuild/tree/v0.28.2>
