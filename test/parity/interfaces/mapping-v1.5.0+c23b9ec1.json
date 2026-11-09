@@ -153424,7 +153424,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/child_sessions.go#childSession.Abort"
+        "call:coding/cli/child_session_ops.go#childSession.Op"
       ],
       "evidence": [
         "test:coding/bash_execution_llm_text_upstream_test.go#TestRecordedBashResultReachesModelContextUpstream",
@@ -191346,7 +191346,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/rpc_mode.go#serveRPCMode"
+        "call:coding/cli/child_session_ops.go#childSession.Op"
       ],
       "evidence": [
         "test:coding/session_model_extension_upstream_test.go#TestSessionModelExtensionCyclesUpstream",
@@ -191368,7 +191368,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/rpc_mode.go#serveRPCMode"
+        "call:coding/cli/child_session_ops.go#childSession.Op"
       ],
       "evidence": [
         "test:coding/session_model_extension_order_test.go#TestBeginModelCycleSplitsMutationFromNotification",
@@ -198883,7 +198883,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/cli_resource_loader.go#cliResourceLoader.ExtendResources"
+        "call:coding/cli/child_session_ops.go#childSession.Op"
       ],
       "evidence": [
         "test:coding/cli/extension_api_get_commands_upstream_test.go#TestExtensionAPIGetCommandsReadsTheBoundSession",
@@ -206227,7 +206227,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/child_sessions.go#childSession.State"
+        "call:coding/cli/child_session_ops.go#childSession.Op"
       ],
       "evidence": [
         "test:coding/branch_summary_ambient_auth_upstream_test.go#TestBranchSummaryAmbientAuthWithoutAPIKeyUpstream",
@@ -306418,7 +306418,7 @@
       "evidence": [
         "test:internal/codingagent/interactive_startup_input_upstream_test.go#TestUpstreamInteractiveStartupInput",
         "test:internal/codingagent/interactive_resume_message_roles_test.go#TestResumedSessionRendersCustomAndSummaryMessageRoles",
-        "test:tui/components_parity_test.go#TestSpacer_SetLines"
+        "test:tui/child_cache_contract_test.go#TestAParentContainerShowsWhatAnyExportedMutatorChanged"
       ]
     },
     {
@@ -306440,7 +306440,7 @@
       "evidence": [
         "test:internal/codingagent/interactive_startup_input_upstream_test.go#TestUpstreamInteractiveStartupInput",
         "test:internal/codingagent/interactive_resume_message_roles_test.go#TestResumedSessionRendersCustomAndSummaryMessageRoles",
-        "test:tui/components_parity_test.go#TestSpacer_SetLines"
+        "test:tui/child_cache_contract_test.go#TestAParentContainerShowsWhatAnyExportedMutatorChanged"
       ]
     },
     {

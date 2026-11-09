@@ -1007,6 +1007,7 @@ fn child_last_text(session: &pig_sdk::AgentSession) -> io::Result<String> {
 }
 
 /// Creates a session with options over manager and settings, binds extensions when bind is set, prompts it and reports what Pi's createAgentSession run reports.
+#[allow(deprecated)]
 fn observe_child(
     ctx: &Context,
     mut options: CreateAgentSessionOptions,
@@ -1062,6 +1063,7 @@ type ChildrenBuilt = (
 );
 
 /// Builds the objects and creates two sessions over them; the runtime, settings and loaders are dropped when it returns.
+#[allow(deprecated)]
 fn child_handles_build(
     ctx: &Context,
     args: &Value,
@@ -1158,6 +1160,7 @@ fn child_handles_script(ctx: &Context, args: &Value) -> io::Result<Value> {
 }
 
 /// createAgentSessionServices and createAgentSessionFromServices over the options of testdata/session-graph.mjs servicesScript; the report is Pi's own run's.
+#[allow(deprecated)]
 fn services_script(ctx: &Context, args: &Value) -> io::Result<Value> {
     let (cwd, agent_dir) = (text(&args["cwd"]), text(&args["agentDir"]));
     let rt = Arc::new(ModelRuntime::create(
