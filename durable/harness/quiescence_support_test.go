@@ -8,10 +8,11 @@ package harness
 // so one snapshot with only parked goroutines is stable until something outside the process (a timer, the test) acts. It
 // waits for that and never for a duration.
 //
-// A goroutine the Go runtime itself has stopped is not parked in a wait of the program's (runtimeWaits): a goroutine that
-// allocates while a collection starts waits on the world lock, and one that allocates while a collection marks waits for
-// assist credit. The runtime ends both without anything outside the process acting, but the dump shows them as waits, so a
-// barrier that took them for parked returned while a task goroutine was still on its way to its commit.
+// A goroutine the Go runtime itself has stopped is not parked in a wait of the program's (entered.Classify, the classifier
+// internal/entered shares): a goroutine that allocates while a collection starts waits on the world lock, and one that allocates
+// while a collection marks waits for assist credit. The runtime ends both without anything outside the process acting, but the
+// dump shows them as waits, so a barrier that took them for parked returned while a task goroutine was still on its way to its
+// commit.
 
 import (
 	"bytes"
@@ -20,29 +21,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/entered"
 	"github.com/MichaelKinsy/PiG/internal/goroutineid"
 )
 
 // quiescenceTimeout bounds the wait for quiescence: a goroutine that never parks fails the test instead of hanging it.
 const quiescenceTimeout = 30 * time.Second
 
-// runtimeWaits are the dump states of a goroutine the Go runtime has stopped for its own work (a collection's start, mark and
-// termination, a stop of the world) and ends itself. "semacquire" is one too, unless internal/poll holds the goroutine on a
-// file descriptor (activeGoroutine). Waits of the program (channels, select, sleep, sync primitives, IO wait) are not here.
-var runtimeWaits = map[string]bool{
-	"GC assist marking":       true,
-	"GC assist wait":          true,
-	"garbage collection":      true,
-	"garbage collection scan": true,
-	"GC mark termination":     true,
-	"stopping the world":      true,
-	"flushing proc caches":    true,
-	"wait for GC cycle":       true,
-	"GC weak to strong wait":  true,
-}
-
 // activeGoroutines counts the goroutines other than self that are running, runnable, in a system call or stopped by the
-// runtime (runtimeWaits); buffer is reused as the dump buffer.
+// runtime (entered.Busy); buffer is reused as the dump buffer.
 func activeGoroutines(self uint64, buffer []byte) (int, []byte) {
 	if cap(buffer) < 64<<10 {
 		buffer = make([]byte, 64<<10)
@@ -65,8 +52,8 @@ func activeGoroutines(self uint64, buffer []byte) (int, []byte) {
 	return active, buffer
 }
 
-// activeGoroutine reports whether the goroutine of block, one entry of a goroutine dump, is running, runnable, in a system call
-// or stopped by the runtime, and is not self.
+// activeGoroutine reports whether the goroutine of block, one entry of a goroutine dump, is Busy for entered.Classify (running,
+// runnable, in a system call or stopped by the runtime), and is not self.
 func activeGoroutine(self uint64, block []byte) bool {
 	header, frames, _ := bytes.Cut(block, []byte("\n"))
 	header, found := bytes.CutPrefix(header, []byte("goroutine "))
@@ -85,18 +72,7 @@ func activeGoroutine(self uint64, block []byte) bool {
 	if !found {
 		return false
 	}
-	if end := bytes.IndexAny(state, ",]"); end >= 0 {
-		state = state[:end]
-	}
-	switch string(state) {
-	case "running", "runnable", "syscall", "copystack", "preempted":
-		return true
-	case "semacquire":
-		// The collection's world lock, but also a goroutine that waits for a file descriptor another goroutine reads, which
-		// only that read's data ends: the frames of internal/poll tell them apart, as the runtime's own are not shown.
-		return !bytes.Contains(frames, []byte("internal/poll."))
-	}
-	return runtimeWaits[string(state)]
+	return entered.Classify(state, frames) == entered.Busy
 }
 
 // awaitQuiescent returns once every goroutine but the caller is parked in a wait.
