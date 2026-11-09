@@ -322,11 +322,6 @@ class AgentSession:
         """``session.cacheWarmingStatus`` (``{"state", ...}``): ``None`` when the session has no cache warmer."""
         return self._member("cacheWarmingStatus")
 
-    @property
-    def active_tools(self) -> list[str]:
-        """The names of the active tools, as :meth:`get_active_tool_names` returns them."""
-        return self.get_active_tool_names()
-
     def supports_thinking(self) -> bool:
         """``session.supportsThinking()``."""
         return bool(self._member("supportsThinking"))

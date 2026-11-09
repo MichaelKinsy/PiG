@@ -1,3 +1,6 @@
+import inspect
+import re
+
 import pytest
 
 from pig_sdk import HostCallError
@@ -33,7 +36,7 @@ def test_getters_are_live_host_reads():
     assert session.thinking_level == "high"
     assert session.is_idle is True
     assert session.session_name is None
-    assert session.active_tools == ["a"]
+    assert session.get_active_tool_names() == ["a"]
     assert session.system_prompt == "p"
     assert host.calls[0] == ("childSession.op", {"id": "c1", "op": "sessionId"})
     host.replies["sessionId"] = "s-2"
@@ -82,7 +85,7 @@ CALLS = [
     ("steeringMode", lambda s: s.steering_mode), ("followUpMode", lambda s: s.follow_up_mode),
     ("autoCompactionEnabled", lambda s: s.auto_compaction_enabled), ("autoRetryEnabled", lambda s: s.auto_retry_enabled),
     ("promptTemplates", lambda s: s.prompt_templates), ("cacheWarmingStatus", lambda s: s.cache_warming_status),
-    ("getActiveToolNames", lambda s: s.active_tools), ("supportsThinking", lambda s: s.supports_thinking()),
+    ("getActiveToolNames", lambda s: s.get_active_tool_names()), ("supportsThinking", lambda s: s.supports_thinking()),
     ("getAvailableThinkingLevels", lambda s: s.get_available_thinking_levels()), ("getLastAssistantText", lambda s: s.get_last_assistant_text()),
     ("getCallableToolNames", lambda s: s.get_callable_tool_names()), ("getSteeringMessages", lambda s: s.get_steering_messages()),
     ("getFollowUpMessages", lambda s: s.get_follow_up_messages()), ("getAllTools", lambda s: s.get_all_tools()),
@@ -115,4 +118,10 @@ def test_each_member_uses_the_lane_pi_declares(op, call):
 
 
 def test_every_member_is_covered_by_the_lane_table():
-    assert PI_ASYNC <= {op for op, _ in CALLS}
+    # Read the class source, not just the table: a member added to AgentSession without a row (and so without a lane check) fails here.
+    source = inspect.getsource(AgentSession)
+    sync_ops = set(re.findall(r'self\._member\(\s*"(\w+)"', source))
+    async_ops = set(re.findall(r'self\._member_async\(\s*"(\w+)"', source))
+    assert async_ops == PI_ASYNC, "AgentSession's awaited members differ from the ones Pi declares async"
+    assert sync_ops | async_ops == {op for op, _ in CALLS}, "a childSession.op member of AgentSession has no row in CALLS (or CALLS names a member the class lacks)"
+    assert not sync_ops & async_ops
