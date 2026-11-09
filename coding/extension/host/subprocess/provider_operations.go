@@ -156,9 +156,25 @@ func (h *Host) configRefreshPublication(conn *Conn, request string) (nativeProvi
 	return value.(nativeProviderCallback), true
 }
 
+// refreshModelsRequest is the Args of a refreshModels provider operation: {kind, context}, in that order.
+type refreshModelsRequest struct {
+	Kind    string            `json:"kind"`
+	Context refreshModelsWire `json:"context"`
+}
+
+// providerSyncUpdateArgs is the Args of the provider_sync request that runs a publication's update in the extension: {method: "update", params: {token}}.
+type providerSyncUpdateArgs struct {
+	Method string `json:"method"`
+	Params struct {
+		Token string `json:"token"`
+	} `json:"params"`
+}
+
 // providerRefreshModels is ProviderConfig.refreshModels of a provider config registered by an extension (types.ts:1930): the callback runs in the extension with the
 // refresh context minus its callbacks, its returned model definitions are the result, and its context.publish calls reach the refresh's Publish while the request is in flight
-// (provider.callback calls of the request), a publication's update running in the extension by token as a provider object's does.
+// (provider.callback calls of the request), a publication's update running in the extension by token as a provider object's does. The refresh's Signal is Pi's
+// RefreshModelsContext.signal, which the runtime always sets ("Always present", models.ts:97-98): aborting it cancels the request, and the extension sees its signal abort. A
+// context built without one runs under the connection's lifetime, as there is no caller to cancel it.
 func (h *Host) providerRefreshModels(me *managedExt, provider string) func(extension.RefreshModelsContext) ([]extension.ProviderModelConfig, error) {
 	return func(refresh extension.RefreshModelsContext) ([]extension.ProviderModelConfig, error) {
 		conn := me.connection()
@@ -167,16 +183,18 @@ func (h *Host) providerRefreshModels(me *managedExt, provider string) func(exten
 		}
 		signal := refresh.Signal
 		if signal == nil {
-			signal = context.Background()
+			signal = conn.lifetime
 		}
-		args, err := json.Marshal(map[string]any{"kind": ProviderOperationRefreshModels, "context": refreshModelsParams(refresh)})
+		args, err := json.Marshal(refreshModelsRequest{Kind: ProviderOperationRefreshModels, Context: refreshModelsParams(refresh)})
 		if err != nil {
 			return nil, err
 		}
 		id := "r" + strconv.FormatUint(conn.nextID.Add(1), 10)
 		key := configRefreshKey{conn: conn, request: id}
 		h.configRefreshes.Store(key, refreshPublication(refresh, func(token string) error {
-			update, err := json.Marshal(map[string]any{"method": "update", "params": map[string]string{"token": token}})
+			body := providerSyncUpdateArgs{Method: "update"}
+			body.Params.Token = token
+			update, err := json.Marshal(body)
 			if err != nil {
 				return err
 			}
@@ -210,7 +228,8 @@ func oauthModifiesModels(config json.RawMessage) bool {
 
 // providerModifyModels is oauth.modifyModels of a provider config registered by an extension (types.ts:2034): the callback runs in the extension with the chat models
 // and the stored OAuth credential, and the models it returns are the result. Pi's callback is synchronous and its exception reaches the caller of the model listing,
-// so a failed request is the error of the composer's model listing.
+// so a failed request is the error of the composer's model listing. The callback has no AbortSignal in Pi (types.ts:2034 takes (models, credentials); provider-composer.ts:566-575
+// calls it inside the synchronous getAllModels), so no caller can cancel it and the request runs under the context its connection owns: it ends with the extension's connection.
 func providerModifyModels(me *managedExt, provider string) func([]extension.Model, extension.OAuthCredentials) ([]extension.Model, error) {
 	return func(models []extension.Model, creds extension.OAuthCredentials) ([]extension.Model, error) {
 		conn := me.connection()
@@ -229,7 +248,7 @@ func providerModifyModels(me *managedExt, provider string) func([]extension.Mode
 		if err != nil {
 			return nil, err
 		}
-		raw, err := providerRequest(context.Background(), conn, provider, &Envelope{Type: MsgRequest, Request: &RequestPayload{Method: MethodOAuthModifyModels, Tool: provider, Args: args}})
+		raw, err := providerRequest(conn.lifetime, conn, provider, &Envelope{Type: MsgRequest, Request: &RequestPayload{Method: MethodOAuthModifyModels, Tool: provider, Args: args}})
 		if err != nil {
 			return nil, err
 		}
