@@ -99,7 +99,11 @@ func (ix *index) testsReaching(helper string) []string {
 }
 
 // testsFor lists the Test functions that reference any of the declaration keys, best evidence first.
-func (ix *index) testsFor(keys []string) []testEv {
+func (ix *index) testsFor(keys []string) []testEv { return ix.testsForUses(keys, false) }
+
+// testsForUses is testsFor; withoutDispatch drops the references that reach a declaration only through an interface method, which
+// say that a test can call an implementer, not that it runs the declaration.
+func (ix *index) testsForUses(keys []string, withoutDispatch bool) []testEv {
 	byTest := map[string]*testEv{}
 	note := func(testKey string, direct, called bool) {
 		ev := byTest[testKey]
@@ -119,7 +123,7 @@ func (ix *index) testsFor(keys []string) []testEv {
 			}
 			// A call through an interface method is attributed to every implementer (expandDispatch). It is evidence for an implementer
 			// only when the test's package can hold that type, and it ranks below a test that names the declaration itself.
-			if u.Dispatch && !ix.canHold(u.File, k) {
+			if u.Dispatch && (withoutDispatch || !ix.canHold(u.File, k)) {
 				continue
 			}
 			if isTestFunc(u.key()) {
@@ -210,7 +214,7 @@ func (d *detector) keepFileRunners(ds []*decision) {
 	}
 }
 
-// testsExecuting is the set of test refs that reference a function or method with a body declared in the non-test Go file, directly
+// testsExecuting is the set of test refs that reference (not through an interface method) a function or method with a body declared in the non-test Go file, directly
 // or through a test helper, memoized per file.
 func (ix *index) testsExecuting(dir, file string) map[string]bool {
 	if runs, ok := ix.executing[file]; ok {
@@ -231,7 +235,7 @@ func (ix *index) testsExecuting(dir, file string) map[string]bool {
 				}
 			}
 		}
-		for _, ev := range ix.testsFor(keys) {
+		for _, ev := range ix.testsForUses(keys, true) {
 			runs[ev.Ref] = true
 		}
 	}

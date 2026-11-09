@@ -9558,7 +9558,7 @@
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
         "test:ai/diagnostics_upstream_test.go#TestCreateAndAppendAssistantMessageDiagnosticMatchUpstream",
-        "test:ai/content_json_to_test.go#TestContentMarshalJSONWritesWhatJSONStringifyWrites"
+        "test:ai/content_append_stringify_test.go#TestContentAppendStringifyMatchesMarshalJSON"
       ]
     },
     {
@@ -104898,7 +104898,7 @@
       "evidence": [
         "test:chord/next/documents/transaction_test.go#TestPersistedDocumentsInATransactionAssignTheCreatedDocumentsIdsByTheirOrderInTheCommitRetireAndRecreateInOneCommit",
         "test:chord/next/host/host_attempt_test.go#TestAttemptTablesAFreshTableIsCreatedAtActivationAtItsVersionWithItsIndexesInOneCommit",
-        "test:chord/next/store/apply_batch_test.go#TestApplyBatch"
+        "test:chord/next/store/archive_test.go#TestArchivePartSchema"
       ]
     },
     {
@@ -106936,7 +106936,7 @@
       "evidence": [
         "test:agent/agent_class_pi_oracle_test.go#TestAgentClassMatchesPi",
         "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi",
-        "test:agent/agent_upstream_test.go#TestAgent_AssignedPrepareNextTurnRunsFromTheNextRun"
+        "test:chord/next/host/host_ctx_test.go#TestLinkedAbortSignalsAbortWithTheCallersSignalOrTheCallsTheCallersReasonFirst"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -106959,7 +106959,7 @@
       "evidence": [
         "test:chord/next/host/host_routines_test.go#TestOnTypesTheirHandlerByTheSourcesKindOpsAndRetiredForAJSONWatchableTheValueAloneForANativeOne",
         "test:chord/next/host/jobs_job_runs_test.go#TestPhaseSpansKeepARunsCtxAJobsUnderCtxTraceItsIdAndStateRecordedOrNot",
-        "test:chord/next/host/host_ctx_test.go#TestCallChainAMethodsCtxIsItsOwnChainNodeAboveItTheChainOfTheCallThatMadeItARootsHasNone"
+        "test:chord/next/host/host_attempt_test.go#TestAttemptTheDrainAHandlerStuckPastItNoLongerCountsAsACallNorHoldsItsCtxGetReferences"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -109173,7 +109173,7 @@
       "evidence": [
         "test:chord/next/host/host_example_19_test.go#TestExample19Jobs",
         "test:chord/next/host/host_example_28_test.go#TestExample28PersistedJobs",
-        "test:chord/next/host/host_example_34_test.go#TestExample34Versions"
+        "test:chord/next/host/jobs_definition_test.go#TestJobTypesAreOneConcreteShapeTheCompilerChecks"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -110847,7 +110847,7 @@
       "evidence": [
         "test:chord/next/host/host_attempt_test.go#TestActivationSpansATransientFailureAndItsRetryIsARootOfTheHostsAdapterLinkedToItsFirstTriggerARetrysLinksToTheAttemptBefore",
         "test:chord/next/host/host_attempt_test.go#TestAttemptAnAttemptNotLiveWithinReadyTimeoutIsAbandonedAndFailsTransientTheOpenersContextAbortedWhatOpenedClosed",
-        "test:chord/next/host/host_attempt_test.go#TestAttemptAnAttemptWaitingForItsPreviousInstancesTeardownIsBoundedByReadyTimeoutTooAbandonedTransientWithoutRunningItsFactoryRetriedAfterIt"
+        "test:chord/next/host/host_native_test.go#TestNativeACloseInTimeReportsNothingAndLeavesNoTimer"
       ]
     },
     {
@@ -127445,7 +127445,7 @@
       "evidence": [
         "test:chord/nextnode/http/file_test.go#TestFileResponseClosesItsHandleOnEveryPathOpensNoneWhenNothingIsWritten",
         "test:chord/nextnode/http/file_test.go#TestFileResponseTypesByExtensionTextImagesAudioVideoNeverHTMLOrSVGUnlessNamed",
-        "test:chord/nextnode/http/file_test.go#TestFileResponseWithARootRefusesAFileWhoseRealPathLiesOutsideIt403ServesOneInside"
+        "test:chord/nextnode/http/http_test.go#TestAnswersSendsSeveralSetCookieHeaders"
       ]
     },
     {
@@ -148797,7 +148797,7 @@
       "evidence": [
         "test:codemode/cloudflare/cloudflare_test.go#TestTheObjectExecutesTheRequestAndReportsThroughTheExchange",
         "test:codemode/deterministic_internal_test.go#TestDeterministicMessagesHaveUpstreamsJSONShape",
-        "test:ai/content_json_to_test.go#TestContentMarshalJSONWritesWhatJSONStringifyWrites"
+        "test:codemode/deterministic_test.go#TestAVMThatIsToldTheSameResultNumberTwiceCrashes"
       ]
     },
     {
@@ -165341,7 +165341,7 @@
       "evidence": [
         "test:coding/session_test.go#TestCheckCompactionOverflow",
         "test:internal/codingagent/session_manager_context_edit_struct_test.go#TestContextEditEntryDecodesAndEncodesThePiWireShape",
-        "test:internal/sessionentry/union_test.go#TestBuiltMembersWriteTheirFields"
+        "test:internal/codingagent/compaction/compaction_oracle_test.go#TestCompactionMatchesPi"
       ]
     },
     {
@@ -199042,7 +199042,7 @@
       "evidence": [
         "test:test/extension-conformance/provider_oauth_refresh_test.go#TestProviderRefreshModelsAcrossSDKs",
         "test:coding/custom_provider_stream_upstream_test.go#TestRegisteredProviderCallbackPanicIsRequestError",
-        "test:ai/content_json_to_test.go#TestContentMarshalJSONWritesWhatJSONStringifyWrites"
+        "test:coding/custom_provider_stream_upstream_test.go#TestRegisteredProviderCallbackServesOnlyItsAPI"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
