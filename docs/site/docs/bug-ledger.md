@@ -1304,6 +1304,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ab5be97](#bf-ab5be97) | Long streamed answers render each frame faster: the Markdown view re-wraps and re-renders only the lines and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ab8e9e4](#bf-ab8e9e4) | Tool output and `!` command output no longer show the parameters of control sequences with a `<`, `=` or `>`… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-ab99da4](#bf-ab99da4) | fix(chord/delta): the tracker holds its one open change without a weak registration | PiG's own defect | All platforms | Unreleased |
+| [BF-abc54d0](#bf-abc54d0) | `pi.sendUserMessage(content, { expandPromptTemplates: true })` and the same option on a `withSession` context… | PiG's own defect | All platforms | Unreleased |
 | [BF-abe0137](#bf-abe0137) | fix(durable/core): deliver the extra hops of Pi without closures | PiG's own defect | All platforms | Unreleased |
 | [BF-ac0dc3b](#bf-ac0dc3b) | An empty list item ends its list: a following unindented line is no longer taken for its lazy continuation… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ac6fcea](#bf-ac6fcea) | A `session_start` handler that calls `ctx.shutdown()` during `/reload` ends the session and exits 0, as Pi… | PiG's own defect | All platforms | 0.5.0 |
@@ -19735,6 +19736,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `ab99da4063` (2026-10-29)
 - **Tests:** `chord/delta/retention_upstream_test.go::TestDeltaTrackerRetentionAcrossGCJobs`, `chord/delta/retention_upstream_test.go::TestTrackerReleasesADroppedOpenChangeWhenTheNextOpens`
+
+### BF-abc54d0
+
+**`pi.sendUserMessage(content, { expandPromptTemplates: true })` and the same option on a `withSession` context…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The host used to drop the option, so a message such as `/my-command` or `/skill:name` was sent to the model as plain text.
+- **Root cause:** go fix: maps.Copy, range over int, SplitSeq, Cut, WaitGroup.Go, new(expr) in the chord surfaces, nextnode app and a few tests; the now-unused ptr helper of surfaces_themes_test.go is gone. The normalization inventory follows the login picker label of its scenario (OpenAI Codex).
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a73ac9e471` (2026-11-08), `abc54d0438` (2026-11-09)
+- **Tests:** `chord/next/surfaces/intl_drift_test.go::TestTimesMatchNode`, `chord/next/surfaces/surfaces_themes_test.go::TestActiveThemeIsThePickedOneOfTheModeElseTheFirstOfTheModeElseTheFallback`, `chord/nextnode/app/app_changes_test.go::TestAppAppliesChangesOneAfterAnotherSoTheNewestBuildStaysDeployed`, `internal/codingagent/tools/grep_ripgrep_context_test.go::TestGrepPrintsOverlappingContextOnceAndKeepsTheLastMatchsTrailingContext`, `test/extension-conformance/send_user_message_expand_test.go::TestSendUserMessageExpandPromptTemplatesAcrossSDKs`
+- **Release note:** `pi.sendUserMessage(content, { expandPromptTemplates: true })` and the same option on a `withSession` context now reach the Session from Go, Rust, Python, Lisp and Node extensions (`Context.SendUserMessageWith`, `send_user_message_with`, `expand_prompt_templates=`, `:expand-prompt-templates`). The host used to drop the option, so a message such as `/my-command` or `/skill:name` was sent to the model as plain text. `ctx.ui.theme.sourceInfo` is now set on the Node runtime theme. <!-- fix: sdkhostgaps -->
 
 ### BF-abe0137
 

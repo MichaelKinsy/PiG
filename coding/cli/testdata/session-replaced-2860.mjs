@@ -111,6 +111,21 @@ export default function replacedSession2860(pi) {
     },
   });
 
+  // types.ts:463-473: the replacement context's sendUserMessage takes expandPromptTemplates; true expands the prompt template, false and no option send the text as typed.
+  pi.registerCommand("expand-it", {
+    description: "expand-it",
+    handler: async (_args, ctx) => {
+      await ctx.newSession({
+        withSession: async (replacedCtx) => {
+          await replacedCtx.sendUserMessage("/echo Alice", { expandPromptTemplates: true });
+          await replacedCtx.sendUserMessage("/echo reply with exactly: Bob", { expandPromptTemplates: false });
+          await replacedCtx.sendUserMessage("/echo reply with exactly: Carol");
+          log(`conversation:${conversation(replacedCtx.sessionManager)}`);
+        },
+      });
+    },
+  });
+
   pi.registerCommand("mark", {
     description: "mark",
     handler: async (name, ctx) => {

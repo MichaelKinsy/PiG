@@ -192672,6 +192672,17 @@
       "shapeHash": "sha256:ddb8414188c9c9ab9ce070f28d95caf296a8c1ce11032e505caede3cc1d7afad"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#Context.SendUserMessageWith",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "Context.SendUserMessageWith",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(content any, options SendUserMessageOptions) error"
+      },
+      "shapeHash": "sha256:b5b3b4874509dab1b8b8406ebfa1fbba230317ac00f6792520cf0453b56edaac"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#Context.SessionManager",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "Context.SessionManager",
@@ -204572,6 +204583,17 @@
         "type": "func(content any, deliverAs string) error"
       },
       "shapeHash": "sha256:ddb8414188c9c9ab9ce070f28d95caf296a8c1ce11032e505caede3cc1d7afad"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#ReplacedSessionContext.SendUserMessageWith",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "ReplacedSessionContext.SendUserMessageWith",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(content any, options SendUserMessageOptions) error"
+      },
+      "shapeHash": "sha256:b5b3b4874509dab1b8b8406ebfa1fbba230317ac00f6792520cf0453b56edaac"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#ReplacedSessionContext.SessionManager",

@@ -36158,6 +36158,36 @@
       ]
     },
     {
+      "id": "BF-abc54d0",
+      "title": "`pi.sendUserMessage(content, { expandPromptTemplates: true })` and the same option on a `withSession` context…",
+      "symptom": "The host used to drop the option, so a message such as `/my-command` or `/skill:name` was sent to the model as plain text.",
+      "rootCause": "go fix: maps.Copy, range over int, SplitSeq, Cut, WaitGroup.Go, new(expr) in the chord surfaces, nextnode app and a few tests; the now-unused ptr helper of surfaces_themes_test.go is gone. The normalization inventory follows the login picker label of its scenario (OpenAI Codex).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pi.sendUserMessage(content, { expandPromptTemplates: true })` and the same option on a `withSession` context now reach the Session from Go, Rust, Python, Lisp and Node extensions (`Context.SendUserMessageWith`, `send_user_message_with`, `expand_prompt_templates=`, `:expand-prompt-templates`). The host used to drop the option, so a message such as `/my-command` or `/skill:name` was sent to the model as plain text. `ctx.ui.theme.sourceInfo` is now set on the Node runtime theme. \u003c!-- fix: sdkhostgaps --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a73ac9e471",
+          "date": "2026-11-08"
+        },
+        {
+          "hash": "abc54d0438",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "chord/next/surfaces/intl_drift_test.go::TestTimesMatchNode",
+        "chord/next/surfaces/surfaces_themes_test.go::TestActiveThemeIsThePickedOneOfTheModeElseTheFirstOfTheModeElseTheFallback",
+        "chord/nextnode/app/app_changes_test.go::TestAppAppliesChangesOneAfterAnotherSoTheNewestBuildStaysDeployed",
+        "internal/codingagent/tools/grep_ripgrep_context_test.go::TestGrepPrintsOverlappingContextOnceAndKeepsTheLastMatchsTrailingContext",
+        "test/extension-conformance/send_user_message_expand_test.go::TestSendUserMessageExpandPromptTemplatesAcrossSDKs"
+      ]
+    },
+    {
       "id": "BF-abe0137",
       "title": "fix(durable/core): deliver the extra hops of Pi without closures",
       "symptom": "fix(durable/core): deliver the extra hops of Pi without closures",
