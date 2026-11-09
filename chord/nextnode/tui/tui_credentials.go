@@ -101,13 +101,16 @@ func pair(ctx context.Context, credentials TerminalCredentials, base *url.URL, s
 		return "", errors.New("terminal: the server's pairing answer is malformed")
 	}
 	say(fmt.Sprintf("Pairing code %s: approve it at %s (signed in as the owner).", code, serverURL(base, "/_chord/pair/"+code)))
-	wait := time.NewTimer(pollInterval)
-	defer wait.Stop()
 	for {
+		// Pi: `await sleep(POLL_MS); signal.throwIfAborted()`: the interval is waited after each poll was answered, and an abort
+		// ends the wait at once (Pi's bare timeout runs out first: it settles up to POLL_MS later with the same reason and no poll).
+		wait := time.NewTimer(pollInterval)
 		select {
 		case <-wait.C:
-			wait.Reset(pollInterval)
 		case <-ctx.Done():
+			wait.Stop()
+		}
+		if ctx.Err() != nil {
 			return "", context.Cause(ctx)
 		}
 		polled, err := post(ctx, client, serverURL(base, "/_chord/pair/poll"), map[string]any{"poll": poll})
