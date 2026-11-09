@@ -246,6 +246,7 @@ func (b Build) compiledFiles(ctx context.Context) (map[string]string, error) {
 		return nil, fmt.Errorf("go list -deps %s for %s/%s: %w", b.Package, b.GOOS, b.GOARCH, err)
 	}
 	files := map[string]string{}
+	//portlint:allow pathseparators go list writes \n line ends only on every platform; Go-only build tooling, no Pi counterpart
 	for line := range strings.SplitSeq(string(out), "\n") {
 		if pkg, set, ok := strings.Cut(line, "\t"); ok {
 			files[linkerPath(pkg)] = set

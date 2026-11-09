@@ -3517,14 +3517,6 @@ class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder com
 
 [[hit]]
 file = "durable/codecs.go"
-func = "EntryRecord.MarshalJSON"
-pattern = "nested-marshal"
-detail = "json.Marshal"
-count = 1
-class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
-
-[[hit]]
-file = "durable/codecs.go"
 func = "TaskOutcome.MarshalJSON"
 pattern = "nested-marshal"
 detail = "json.Marshal"
@@ -3688,14 +3680,6 @@ file = "durable/json.go"
 func = "ToJsonValue"
 pattern = "decode-own-encode"
 detail = "strictjson.Marshal->durable.decodeJsonText"
-count = 1
-class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
-
-[[hit]]
-file = "durable/message_json.go"
-func = "DecodeUserContent"
-pattern = "decode-own-encode"
-detail = "json.Marshal->durable.decodeUserContent"
 count = 1
 class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
 
