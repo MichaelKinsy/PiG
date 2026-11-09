@@ -22,8 +22,8 @@ func TestPollableMovesInheritedPipesIntoThePoller(t *testing.T) {
 	}
 	// os.NewFile of a blocking descriptor is not in the poller: it has no deadlines.
 	read, write := os.NewFile(uintptr(fds[0]), "read"), os.NewFile(uintptr(fds[1]), "write")
-	defer read.Close()
-	defer write.Close()
+	defer func() { _ = read.Close() }()
+	defer func() { _ = write.Close() }()
 	if read.SetReadDeadline(time.Now()) == nil {
 		t.Fatal("a blocking inherited pipe is already in the poller; the test has nothing to prove")
 	}
@@ -32,7 +32,7 @@ func TestPollableMovesInheritedPipesIntoThePoller(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer unix.Close(holder)
+	defer func() { _ = unix.Close(holder) }()
 	moved, restore := pollable(read)
 	if flags, err := unix.FcntlInt(uintptr(holder), unix.F_GETFL, 0); err != nil || flags&unix.O_NONBLOCK == 0 {
 		t.Fatalf("the other holder does not see the description non-blocking: flags %#x, %v", flags, err)
@@ -43,7 +43,7 @@ func TestPollableMovesInheritedPipesIntoThePoller(t *testing.T) {
 	if _, err := moved.Read(make([]byte, 1)); !os.IsTimeout(err) {
 		t.Fatalf("read of an empty pipe: %v, want a timeout", err)
 	}
-	if _, err := write.Write([]byte("x")); err != nil {
+	if _, err := write.WriteString("x"); err != nil {
 		t.Fatal(err)
 	}
 	if err := moved.SetReadDeadline(time.Time{}); err != nil {
@@ -67,7 +67,7 @@ func TestPollableLeavesOtherFilesAlone(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	moved, restore := pollable(file)
 	defer restore()
 	if moved != file {
@@ -84,8 +84,8 @@ func TestWriteStderrWaitsOnAFullPipe(t *testing.T) {
 	}
 	// Blocking-mode files, as os.Stderr is, on a description that is then made non-blocking by the other holder.
 	read, write := os.NewFile(uintptr(fds[0]), "read"), os.NewFile(uintptr(fds[1]), "write")
-	defer read.Close()
-	defer write.Close()
+	defer func() { _ = read.Close() }()
+	defer func() { _ = write.Close() }()
 	if err := unix.SetNonblock(fds[1], true); err != nil {
 		t.Fatal(err)
 	}
