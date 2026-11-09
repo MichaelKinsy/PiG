@@ -2216,6 +2216,23 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/extensions-runtime/75-robust-notes-lisp.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Run: ext tool robust_words"
+          },
+          "reason": "Owned visible surface: The lisp robust-notes extension draws Pi's screen for its tool, flag, events, appendEntry and overlay",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/extensions-runtime/75-robust-notes-node.toml",
       "transforms": [
         {
