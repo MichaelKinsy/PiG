@@ -391,6 +391,7 @@ func TestRestoreQueuedMessagesKeepsCollapsedPasteContent(t *testing.T) {
 // pi main 51313540a "between the default and a replacement editor" (D251).
 func TestSetRemoteEditorKeepsCollapsedPasteContent(t *testing.T) {
 	mode, _ := newCustomEditorDispatchMode(t)
+	mode.uiTaskCh = make(chan func(), 64)
 	draft := pastedDraft("into replacement")
 	pasteInto(t, mode.editor, draft)
 	custom := &fakeRemoteEditor{}
@@ -412,6 +413,7 @@ func TestSetRemoteEditorKeepsCollapsedPasteContent(t *testing.T) {
 // default editor by setCustomEditorComponent(undefined) submits intact (D251). The replacement reports its text with the marker and the expanded paste.
 func TestSetRemoteEditorBackToTheDefaultKeepsCollapsedPasteContent(t *testing.T) {
 	mode, _ := newCustomEditorDispatchMode(t)
+	mode.uiTaskCh = make(chan func(), 64)
 	custom := &fakeRemoteEditor{}
 	mode.setRemoteEditor(custom)
 	draft := pastedDraft("back to default")
