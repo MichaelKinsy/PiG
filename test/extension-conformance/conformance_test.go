@@ -188,7 +188,7 @@ func lastDrawn(previous extension.Component) string {
 	}
 	return "none"
 }
-func (*conformanceWidthComponent) Invalidate()                 {}
+func (*conformanceWidthComponent) Invalidate() {}
 
 func (c *conformanceLinesComponent) Render(int) []string { return append([]string(nil), c.lines...) }
 func (*conformanceLinesComponent) Invalidate()           {}
