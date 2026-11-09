@@ -33,6 +33,7 @@ const (
 	formatVersion = 1
 	mainFile      = "main.jsonl"
 	reclaimSuffix = ".reclaim"
+	// upstream: packages/durable/src/storage/jsonl/storage.ts:READ_ONLY_OPEN_ATTEMPTS
 	// readOnlyOpenAttempts bounds the retries of a read-only open that raced a writer's commits; each retry means another
 	// commit landed meanwhile.
 	readOnlyOpenAttempts = 5
