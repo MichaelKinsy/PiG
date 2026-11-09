@@ -2612,7 +2612,8 @@ impl Extension {
                 let models = args["models"].as_array().cloned().unwrap_or_default();
                 match modify(models, decode_creds(&Some(args["credentials"].clone()))) {
                     Ok(models) => {
-                        let _ = conn.respond(id, Some(serde_json::json!({ "models": models })), None);
+                        let _ =
+                            conn.respond(id, Some(serde_json::json!({ "models": models })), None);
                     }
                     Err(e) => {
                         let _ = conn.respond(id, None, Some(err(e)));
@@ -4228,7 +4229,11 @@ mod tests {
                 ..OAuthProvider::new("Dyn", |_| Ok(OAuthCredentials::default()))
             },
         );
-        assert_eq!(ext.providers.len(), 2, "a name's declarations stay separate, the registry merges them");
+        assert_eq!(
+            ext.providers.len(),
+            2,
+            "a name's declarations stay separate, the registry merges them"
+        );
         assert!(ext.providers[0].refresh_models);
         assert_eq!(ext.providers[0].config["baseUrl"], "https://dyn.test");
         assert_eq!(ext.providers[1].config["oauth"]["has_modify_models"], true);
