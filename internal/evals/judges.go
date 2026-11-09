@@ -7,10 +7,13 @@ package evals
 
 import (
 	"encoding/json"
+	"encoding/json/jsontext"
 	"fmt"
 	"reflect"
 	"slices"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 )
 
 // JudgeScore is one judge's verdict.
@@ -208,21 +211,20 @@ func sortedKeys(record map[string]any) []string {
 // sortedKeysInInsertionOrder lists record's keys in the order they appear in text, which is how Object.keys orders
 // them for non-integer keys.
 func sortedKeysInInsertionOrder(text string, record map[string]any) []string {
-	decoder := json.NewDecoder(strings.NewReader(text))
+	decoder := jsontext.NewDecoder(strings.NewReader(text), jsonopts.Parse)
 	var keys []string
-	if token, err := decoder.Token(); err != nil || token != json.Delim('{') {
+	if token, err := decoder.ReadToken(); err != nil || token.Kind() != '{' {
 		return sortedKeys(record)
 	}
-	for decoder.More() {
-		token, err := decoder.Token()
+	for decoder.PeekKind() != '}' {
+		token, err := decoder.ReadToken()
 		if err != nil {
 			break
 		}
-		if key, ok := token.(string); ok && !slices.Contains(keys, key) {
+		if key := token.String(); token.Kind() == '"' && !slices.Contains(keys, key) { // a Token is void after the next call on the decoder
 			keys = append(keys, key)
 		}
-		var skipped json.RawMessage
-		if decoder.Decode(&skipped) != nil {
+		if decoder.SkipValue() != nil {
 			break
 		}
 	}

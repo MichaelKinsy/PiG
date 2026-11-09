@@ -644,7 +644,7 @@ func TestDurableCodeMode(t *testing.T) {
 		empty := map[string]any{"type": "object", "properties": map[string]any{}}
 		isError := true
 		addTool(t, f.setup.registry, harness.DefineTool(durable.ToolRegistration{
-			ToolSchema:             ai.ToolSchema{Name: "run", Description: "run", Parameters: empty},
+			Name: "run", Description: "run", Parameters: empty,
 			StructuredOutputSchema: exit,
 			// Like bash on a nonzero exit: an error result with its value.
 			Execute: func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
@@ -652,7 +652,7 @@ func TestDurableCodeMode(t *testing.T) {
 			},
 		}))
 		addTool(t, f.setup.registry, harness.DefineTool(durable.ToolRegistration{
-			ToolSchema:             ai.ToolSchema{Name: "denied", Description: "denied", Parameters: empty},
+			Name: "denied", Description: "denied", Parameters: empty,
 			StructuredOutputSchema: exit,
 			Execute: func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 				return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{ai.TextContent{Text: "permission denied"}}, IsError: &isError}, nil
@@ -682,7 +682,7 @@ func TestDurableCodeMode(t *testing.T) {
 		f := codemodeChat(t)
 		const png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
 		addTool(t, f.setup.registry, harness.DefineTool(durable.ToolRegistration{
-			ToolSchema: ai.ToolSchema{Name: "picture", Description: "picture", Parameters: map[string]any{"type": "object", "properties": map[string]any{"caption": map[string]any{"type": "boolean"}}, "required": []any{"caption"}}},
+			Name: "picture", Description: "picture", Parameters: map[string]any{"type": "object", "properties": map[string]any{"caption": map[string]any{"type": "boolean"}}, "required": []any{"caption"}},
 			Execute: func(_ context.Context, args any, _ durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 				var output []ai.ToolResultMessageContent
 				if caption, _ := args.(map[string]any)["caption"].(bool); caption {

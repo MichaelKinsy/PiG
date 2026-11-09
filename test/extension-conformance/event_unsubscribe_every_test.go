@@ -99,7 +99,7 @@ func everyEventEmit() map[string]func(context.Context, *harness) error {
 		"agent_start": genericEmit(extension.AgentStartEvent{Type: "agent_start"}),
 		"agent_end":   genericEmit(extension.AgentEndEvent{Type: "agent_end", Messages: []extension.AgentMessage{message}}),
 		"agent_before_settle": func(ctx context.Context, h *harness) error {
-			_, err := h.runner.EmitBoundary(ctx, &extension.AgentBeforeSettleEvent{Type: "agent_before_settle", BoundaryState: extension.BoundaryState{Outcome: extension.AgentActivityCompleted}},
+			_, err := h.runner.EmitBoundary(ctx, &extension.AgentBeforeSettleEvent{Type: "agent_before_settle", Outcome: extension.AgentActivityCompleted},
 				func(entries []extension.SessionBoundaryDraft) (extension.BoundaryContextPreview, error) {
 					return extension.BoundaryContextPreview{ContextEntries: make([]extension.ProjectedSessionEntry, len(entries))}, nil
 				})
@@ -125,13 +125,13 @@ func everyEventEmit() map[string]func(context.Context, *harness) error {
 		"thinking_level_select": genericEmit(extension.ThinkingLevelSelectEvent{Type: "thinking_level_select", Level: "high", PreviousLevel: "off"}),
 		"tool_call": func(ctx context.Context, h *harness) error {
 			return ignore(h.runner.EmitToolCall(ctx, extension.CustomToolCallEvent{
-				ToolCallEventBase: extension.ToolCallEventBase{Type: "tool_call", ToolCallID: "probe-call"}, ToolName: "probe", Input: map[string]any{},
+				Type: "tool_call", ToolCallID: "probe-call", ToolName: "probe", Input: map[string]any{},
 			}))
 		},
 		"tool_result": func(ctx context.Context, h *harness) error {
 			return ignore(h.runner.EmitToolResult(ctx, extension.CustomToolResultEvent{
-				ToolResultEventBase: extension.ToolResultEventBase{Type: "tool_result", ToolCallID: "probe-call", Input: map[string]any{}, Content: []any{}},
-				ToolName:            "probe",
+				Type: "tool_result", ToolCallID: "probe-call", Input: map[string]any{}, Content: []any{},
+				ToolName: "probe",
 			}))
 		},
 		"user_bash": func(ctx context.Context, h *harness) error {

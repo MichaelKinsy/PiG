@@ -18,6 +18,13 @@ type (
 	AggregateError            = chordnode.AggregateError
 	NodeSqliteDatabase        = chordnode.NodeSqliteDatabase
 	NodeSqliteDatabaseOptions = chordnode.NodeSqliteDatabaseOptions
+	NodeSqliteMode            = chordnode.NodeSqliteMode
+)
+
+// Pi's "read-write" and "read-only" modes.
+const (
+	NodeSqliteReadWrite = chordnode.NodeSqliteReadWrite
+	NodeSqliteReadOnly  = chordnode.NodeSqliteReadOnly
 )
 
 // NewDatabaseSync is Chord's NewDatabaseSync.
@@ -26,8 +33,8 @@ func NewDatabaseSync(path string, options DatabaseSyncOptions) (*DatabaseSync, e
 }
 
 // NewNodeSqliteDatabase is Chord's NewNodeSqliteDatabase.
-func NewNodeSqliteDatabase(database *DatabaseSync) *NodeSqliteDatabase {
-	return chordnode.NewNodeSqliteDatabase(database)
+func NewNodeSqliteDatabase(database *DatabaseSync, mode NodeSqliteMode) *NodeSqliteDatabase {
+	return chordnode.NewNodeSqliteDatabase(database, mode)
 }
 
 // OpenNodeSqliteDatabase is Chord's OpenNodeSqliteDatabase.

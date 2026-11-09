@@ -184,7 +184,7 @@ func (l *SelectList) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResult {
 			l.notifySelectionChange()
 			l.Invalidate()
 		}
-		return &TuiMouseDispatchResult{TuiMouseEventResult: TuiMouseEventResult{Handled: true, Render: new(changed)}}
+		return &TuiMouseDispatchResult{Handled: true, Render: new(changed)}
 	}
 	if event.Button != MouseButtonLeft || (event.Type != MousePress && event.Type != MouseClick) {
 		return nil
@@ -201,7 +201,7 @@ func (l *SelectList) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResult {
 			l.notifySelectionChange()
 			l.Invalidate()
 		}
-		return &TuiMouseDispatchResult{TuiMouseEventResult: TuiMouseEventResult{Handled: true, Focus: true}}
+		return &TuiMouseDispatchResult{Handled: true, Focus: true}
 	}
 	clicked := itemIndex
 	if l.mousePressedIndex >= 0 {
@@ -216,7 +216,7 @@ func (l *SelectList) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResult {
 	if item, ok := l.SelectedItem(); ok && l.OnSelect != nil {
 		l.OnSelect(item)
 	}
-	return &TuiMouseDispatchResult{TuiMouseEventResult: TuiMouseEventResult{Handled: true}}
+	return &TuiMouseDispatchResult{Handled: true}
 }
 
 // CapturesViewportInput reports that fullscreen viewport keys go to the list (select-list.ts capturesViewportInput).

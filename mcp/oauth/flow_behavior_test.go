@@ -89,11 +89,9 @@ func TestTokenRequestsAuthenticateTheClientWithTheMethodTheServerPolicySelects(t
 			}))
 			defer server.Close()
 			_, err := oauth.ExchangeAuthorizationCode(t.Context(), server.URL, oauth.ExchangeAuthorizationCodeOptions{
-				TokenRequestOptions: oauth.TokenRequestOptions{
-					Metadata:          &oauth.AuthorizationServerMetadata{TokenEndpoint: server.URL + "/token", TokenEndpointAuthMethodsSupported: tc.supported},
-					ClientInformation: tc.information,
-				},
-				Code: "c", CodeVerifier: "v", RedirectURL: "http://localhost/callback",
+				Metadata:          &oauth.AuthorizationServerMetadata{TokenEndpoint: server.URL + "/token", TokenEndpointAuthMethodsSupported: tc.supported},
+				ClientInformation: tc.information,
+				Code:              "c", CodeVerifier: "v", RedirectURL: "http://localhost/callback",
 			})
 			if err != nil {
 				t.Fatal(err)

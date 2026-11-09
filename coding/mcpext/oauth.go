@@ -461,9 +461,7 @@ func SignInMcpServer(ctx context.Context, options SignInOptions) error {
 	}
 	defer func() { _ = loopback.Callback.Close() }()
 	signIn := oauth.McpSignInOptions{
-		McpOAuthClientOptions: oauth.McpOAuthClientOptions{
-			ServerURL: options.ServerURL, Store: options.Store, Settings: settings, ClientName: appName, ClientMetadataDocuments: documents, Fetch: nodeFetch(),
-		},
+		ServerURL: options.ServerURL, Store: options.Store, Settings: settings, ClientName: appName, ClientMetadataDocuments: documents, Fetch: nodeFetch(),
 		RedirectURL: loopback.RedirectURL,
 		Challenge:   options.Challenge,
 	}

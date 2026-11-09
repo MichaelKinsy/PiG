@@ -29,7 +29,7 @@ func TestListToolsKeepsEachToolExecutionTaskSupport(t *testing.T) {
 			tool("none", nil),
 		}}, nil
 	})
-	client := mcp.NewClient(mcp.ClientOptions{Implementation: mcp.Implementation{Name: "c", Version: "1"}})
+	client := mcp.NewClient(mcp.ClientOptions{Name: "c", Version: "1"})
 	if _, err := client.Connect(t.Context(), clientTransport); err != nil {
 		t.Fatal(err)
 	}

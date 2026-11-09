@@ -14,16 +14,14 @@ func TestRunToolCallGivesHooksTheAssistantMessageAndContext(t *testing.T) {
 	var sawBefore, sawAfter bool
 	options := RunToolCallOptions{
 		Tools: []AgentTool{noopTool()}, AssistantMessage: assistant, Context: agentContext,
-		ToolCallHooks: ToolCallHooks{
-			BeforeToolCallHooks: []BeforeToolCallHook{func(ctx context.Context, _, _ string, _ json.RawMessage) ToolCallHookResult {
-				before, sawBefore = ToolCallHookContextFrom(ctx)
-				return ToolCallHookResult{}
-			}},
-			AfterToolCallHooks: []AfterToolCallHook{func(ctx context.Context, _, _ string, _ json.RawMessage, _ AgentToolResult) AfterToolCallResult {
-				after, sawAfter = ToolCallHookContextFrom(ctx)
-				return AfterToolCallResult{}
-			}},
-		},
+		BeforeToolCallHooks: []BeforeToolCallHook{func(ctx context.Context, _, _ string, _ json.RawMessage) ToolCallHookResult {
+			before, sawBefore = ToolCallHookContextFrom(ctx)
+			return ToolCallHookResult{}
+		}},
+		AfterToolCallHooks: []AfterToolCallHook{func(ctx context.Context, _, _ string, _ json.RawMessage, _ AgentToolResult) AfterToolCallResult {
+			after, sawAfter = ToolCallHookContextFrom(ctx)
+			return AfterToolCallResult{}
+		}},
 	}
 	if _, err := RunToolCall(t.Context(), toolCall("call-1", "noop", nil), options); err != nil {
 		t.Fatal(err)
@@ -42,10 +40,10 @@ func TestRunToolCallGivesHooksTheAssistantMessageAndContext(t *testing.T) {
 func TestRunToolCallKeepsTheInheritedHookContext(t *testing.T) {
 	outer := ToolCallHookContext{AssistantMessage: &AssistantMessage{Role: RoleAssistant}, Context: AgentContext{Messages: []AgentMessage{userAgentMessage("outer")}}}
 	var seen ToolCallHookContext
-	options := RunToolCallOptions{Tools: []AgentTool{noopTool()}, ToolCallHooks: ToolCallHooks{BeforeToolCallHooks: []BeforeToolCallHook{func(ctx context.Context, _, _ string, _ json.RawMessage) ToolCallHookResult {
+	options := RunToolCallOptions{Tools: []AgentTool{noopTool()}, BeforeToolCallHooks: []BeforeToolCallHook{func(ctx context.Context, _, _ string, _ json.RawMessage) ToolCallHookResult {
 		seen, _ = ToolCallHookContextFrom(ctx)
 		return ToolCallHookResult{}
-	}}}}
+	}}}
 	if _, err := RunToolCall(WithToolCallHookContext(t.Context(), outer), toolCall("call-1", "noop", nil), options); err != nil {
 		t.Fatal(err)
 	}

@@ -435,7 +435,7 @@ func createModelTools() []*durable.ToolRegistration {
 			return durable.ToolExecutionResult{}, err
 		}
 		classifier := resolved.(*ai.ClassifierModel)
-		result := c.Classify(ctx, classifier, checked, ai.ModelsClassifierOptions{ClassifierOptions: ai.ClassifierOptions{Telemetry: chordctx.Telemetry(ctx)}})
+		result := c.Classify(ctx, classifier, checked, ai.ModelsClassifierOptions{Telemetry: chordctx.Telemetry(ctx)})
 		encoded, err := json.Marshal(result)
 		if err != nil {
 			return durable.ToolExecutionResult{}, err
@@ -452,7 +452,7 @@ func createModelTools() []*durable.ToolRegistration {
 			return durable.ToolExecutionResult{}, err
 		}
 		painter := resolved.(*ai.ImageModel)
-		result := c.GenerateImages(ctx, painter, checked, ai.ModelsImagesOptions{ImagesOptions: ai.ImagesOptions{Telemetry: chordctx.Telemetry(ctx)}})
+		result := c.GenerateImages(ctx, painter, checked, ai.ModelsImagesOptions{Telemetry: chordctx.Telemetry(ctx)})
 		encoded, err := json.Marshal(result)
 		if err != nil {
 			return durable.ToolExecutionResult{}, err

@@ -227,8 +227,8 @@ type taskNotesState struct {
 }
 
 var taskNotesDoc = durable.DefineDoc(durable.DocDefinition[taskNotesState]{
-	CommonDocDefinition: durable.CommonDocDefinition[taskNotesState]{Kind: "test.task-notes", Version: 1, Initial: func() taskNotesState { return taskNotesState{} }, CheckpointWhen: func(taskNotesState, []durable.Op, durable.CheckpointInfo) bool { return false }},
-	DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeTask},
+	Kind: "test.task-notes", Version: 1, Initial: func() taskNotesState { return taskNotesState{} }, CheckpointWhen: func(taskNotesState, []durable.Op, durable.CheckpointInfo) bool { return false },
+	Scope: durable.ScopeTask,
 })
 
 var conversationOwnedTask = durable.TaskOptions{Ownership: durable.TaskOwnership{Kind: durable.TaskOwnedByConversation}}
@@ -2570,7 +2570,7 @@ func TestToolRoundsAsTheViewShowsThem(t *testing.T) {
 		resetNodes(t)
 		setup := chatSetup(t)
 		addTask(t, setup.Registry, nodeTask.Erased())
-		addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{ToolSchema: ai.ToolSchema{Name: "delegate", Description: "Starts work in a conversation it owns", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}}, Execute: func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
+		addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{Name: "delegate", Description: "Starts work in a conversation it owns", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}, Execute: func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			_, err := api.Commit(ctx, func(tx durable.Tx) (any, error) {
 				child, err := tx.CreateConversation(durable.CreateConversationOptions{Ownership: durable.ConversationOwnership{Kind: durable.ConversationOwnedByTask, TaskId: api.TaskId()}})
 				if err != nil {
@@ -2618,7 +2618,7 @@ func TestToolRoundsAsTheViewShowsThem(t *testing.T) {
 		setup := chatSetup(t)
 		addTask(t, setup.Registry, nodeTask.Erased())
 		scriptNode("held", nodeBehavior{abort: gatedAbort("abort.held")})
-		addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{ToolSchema: ai.ToolSchema{Name: "broken", Description: "Starts owned work, then returns a result that is not strict JSON", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}}, Execute: func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
+		addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{Name: "broken", Description: "Starts owned work, then returns a result that is not strict JSON", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}, Execute: func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			if _, err := api.Commit(ctx, func(tx durable.Tx) (any, error) {
 				return durable.CreateTask(tx, nodeTask, nodeInput{Name: "held"}, ownedBy(api.TaskId()))
 			}); err != nil {

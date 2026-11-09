@@ -50,11 +50,11 @@ type tokenKnownFields struct {
 
 type token struct {
 	tokenKnownFields
-	UnknownFields map[string]interface{} `json:"-"`
+	UnknownFields map[string]any `json:"-"`
 }
 
 func (t token) MarshalJSON() ([]byte, error) {
-	fields := map[string]interface{}{}
+	fields := map[string]any{}
 
 	setTokenFieldString(fields, "accessToken", t.AccessToken)
 	setTokenFieldRFC3339(fields, "expiresAt", t.ExpiresAt)
@@ -73,13 +73,13 @@ func (t token) MarshalJSON() ([]byte, error) {
 	return json.Marshal(fields)
 }
 
-func setTokenFieldString(fields map[string]interface{}, key, value string) {
+func setTokenFieldString(fields map[string]any, key, value string) {
 	if value == "" {
 		return
 	}
 	fields[key] = value
 }
-func setTokenFieldRFC3339(fields map[string]interface{}, key string, value *rfc3339) {
+func setTokenFieldRFC3339(fields map[string]any, key string, value *rfc3339) {
 	if value == nil {
 		return
 	}
@@ -87,12 +87,12 @@ func setTokenFieldRFC3339(fields map[string]interface{}, key string, value *rfc3
 }
 
 func (t *token) UnmarshalJSON(b []byte) error {
-	var fields map[string]interface{}
+	var fields map[string]any
 	if err := json.Unmarshal(b, &fields); err != nil {
 		return nil
 	}
 
-	t.UnknownFields = map[string]interface{}{}
+	t.UnknownFields = map[string]any{}
 
 	for k, v := range fields {
 		var err error
@@ -119,7 +119,7 @@ func (t *token) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func getTokenFieldString(v interface{}, value *string) error {
+func getTokenFieldString(v any, value *string) error {
 	var ok bool
 	*value, ok = v.(string)
 	if !ok {
@@ -128,7 +128,7 @@ func getTokenFieldString(v interface{}, value *string) error {
 	return nil
 }
 
-func getTokenFieldRFC3339(v interface{}, value **rfc3339) error {
+func getTokenFieldRFC3339(v any, value **rfc3339) error {
 	var stringValue string
 	if err := getTokenFieldString(v, &stringValue); err != nil {
 		return err

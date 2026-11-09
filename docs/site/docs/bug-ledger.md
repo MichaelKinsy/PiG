@@ -34,6 +34,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-0225bbf](#bf-0225bbf) | Pressing Escape twice with only whitespace in the editor now opens the tree or fork selector, as in Pi, which… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-022d99f](#bf-022d99f) | fix(tui): the login dialog's input renders at every prompt position | PiG's own defect | All platforms | Unreleased |
 | [BF-02887e3](#bf-02887e3) | fix(release): carry main's PigVersion 0.5.3 and the post-bump goldens and pins | PiG's own defect | All platforms | Unreleased |
+| [BF-030f512](#bf-030f512) | A nested `RawMessage` or `MarshalJSON` output, and an agent message or content block written by the SDK… | PiG's own defect | All platforms | Unreleased |
 | [BF-031b259](#bf-031b259) | fix(chord/nextnode/workers): a start releases the registrations of its context when it returns | PiG's own defect | All platforms | Unreleased |
 | [BF-03675ab](#bf-03675ab) | fix(chord/next/store): report the recovered panic, bytes.Equal, allow jsonparse in the chord boundary | PiG's own defect | All platforms | Unreleased |
 | [BF-0367abc](#bf-0367abc) | The agent docs bundle no longer contradicts the site | PiG's own defect | All platforms | 0.7.0 |
@@ -59,6 +60,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-07151d0](#bf-07151d0) | In print and JSON mode, Node extensions in separate processes now keep Pi's order when a later extension's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0790d5e](#bf-0790d5e) | `String.prototype.trim` vs `strings.TrimSpace`: four Pi `.trim()` sites used Go's `strings.TrimSpace`, which… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-07da4ea](#bf-07da4ea) | A configured package or `-e` source that cannot be installed no longer ends startup | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
+| [BF-07f4072](#bf-07f4072) | A Durable session on a Chord store no longer races the host's loop when a commit is published: the… | PiG's own defect | All platforms | Unreleased |
 | [BF-081e8c3](#bf-081e8c3) | Bug report files against live Pi: new `TestBugReportFilesMatchPi`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-082355f](#bf-082355f) | The session picker checks its keys in Pi's order when bindings overlap (delete before rename, list actions… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-082f350](#bf-082f350) | `markdown.codeBlockIndent`: Pi's getter is `markdown?.codeBlockIndent ?? " "`, so an authored `""` means no… | PiG's own defect | All platforms | 0.5.0 |
@@ -176,6 +178,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-1d5b272](#bf-1d5b272) | A text file passed as an `@file` argument that holds invalid UTF-8 now reaches the prompt as Pi sends it… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1dcaef7](#bf-1dcaef7) | Durable: a JSONL line that starts with a byte order mark now opens, as in Pi, instead of failing with… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1de9126](#bf-1de9126) | fix(schema/formats): keep lone surrogates, drop unused idna helpers, check the generators in | PiG's own defect | All platforms | Unreleased |
+| [BF-1e64d3f](#bf-1e64d3f) | A Durable core's warm turn waits exactly the microtask passes Pi's does | PiG's own defect | All platforms | Unreleased |
 | [BF-1ed43b3](#bf-1ed43b3) | fix(train): load pig_sdk.tui with the package, run the TS queue check with no runtime, pin three fixture… | PiG's own defect | All platforms | Unreleased |
 | [BF-1ee7dea](#bf-1ee7dea) | The Mistral request URL for a base URL with a non-special scheme or a host or port the WHATWG parser rejects… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1f2f940](#bf-1f2f940) | The Anthropic workload-identity token exchange now reads `expires_in` with JavaScript's `Number()`, as the… | PiG's own defect | All platforms | 0.7.0 |
@@ -249,6 +252,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-2a055a7](#bf-2a055a7) | An extension dialog (`select`, `confirm`, `input`, `editor`) opened while a focused `ctx.ui.custom` component… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2a0b22d](#bf-2a0b22d) | LaTeX math that holds a lone UTF-16 surrogate (`$x\ud83d$`, a script, fraction, root, accent, `\text{}`… | PiG's own defect | All platforms | Unreleased |
 | [BF-2a0fb96](#bf-2a0fb96) | `/cost` lists its tools in a stable order: `formatCostSummary` ranged over `snap.ToolTotals`, so the `Tools:`… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-2a83c43](#bf-2a83c43) | The ordered-object JSON readers keep two object names apart when `JSON.parse` does | PiG's own defect | All platforms | Unreleased |
 | [BF-2a919a4](#bf-2a919a4) | An indented continuation line of a list item loses up to four spaces, a lazy line after a quoted list item… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2ab79ce](#bf-2ab79ce) | An extension provider whose `streamSimple` hands its request to pi-ai's compat `streamSimple` (or `stream`)… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2ab79ce-2](#bf-2ab79ce-2) | A provider registered with its own `streamSimple` runs that callback only for its models whose `api` is the… | PiG's own defect | All platforms | 0.5.0 |
@@ -1262,6 +1266,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a1fa6d1](#bf-a1fa6d1) | NO_PROXY entries and ports are trimmed with JavaScript's whitespace rules, as in Pi: an entry or port that… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a222037](#bf-a222037) | A Go program that embeds PiG and also links a reflection consumer such as protobuf is no longer about 6 MB… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-a238095](#bf-a238095) | coding: fix session executor queue-prefix race and durable execMu waits | PiG's own defect | All platforms | Unreleased |
+| [BF-a28d69b](#bf-a28d69b) | Fix merge-gate reds: anthropic thread normalization decodes through RawMessage (no any decode), drop stale… | PiG's own defect | All platforms | Unreleased |
 | [BF-a2fad25](#bf-a2fad25) | The footer's context percentage includes the prompt as soon as it is sent, for the whole reply, as Pi shows… | PiG's own defect | All platforms | Unreleased |
 | [BF-a30388b](#bf-a30388b) | GPT-5.4 and GPT-5.5 no longer fail with `Missing namespace for function_call` after switching from another… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-a3859aa](#bf-a3859aa) | An OpenAI-compatible provider that streams a tool call without an id or a function name (OpenRouter and GLM… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
@@ -2131,6 +2136,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `02887e3ea4` (2026-10-23)
 - **Tests:** `bench/k8s/cmd/k8sbench/pireference_test.go::TestCommittedPinHasAgentPins`, `internal/codingagent/changelog_test.go::TestParseChangelog_RealFile`
 
+### BF-030f512
+
+**A nested `RawMessage` or `MarshalJSON` output, and an agent message or content block written by the SDK…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A nested `RawMessage` or `MarshalJSON` output, and an agent message or content block written by the SDK encoder, no longer lose a quote, newline, backslash or other two-character escape that stands before the letters `fffd` (`"say \"fffd\""` was written as `"say �"`): only the `\ufffd` escape itself is written as the replacement character.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `030f512fd6` (2026-11-08)
+- **Tests:** `extensions/sdk/json/append_js_normalized_test.go::TestAppendJSNormalized`, `extensions/sdk/json/append_js_normalized_test.go::TestMarshalStringifyKeepsEscapeBeforeFffd`
+- **Release note:** A nested `RawMessage` or `MarshalJSON` output, and an agent message or content block written by the SDK encoder, no longer lose a quote, newline, backslash or other two-character escape that stands before the letters `fffd` (`"say \"fffd\""` was written as `"say �"`): only the `\ufffd` escape itself is written as the replacement character.
+
 ### BF-031b259
 
 **fix(chord/nextnode/workers): a start releases the registrations of its context when it returns**
@@ -2473,6 +2492,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `07da4ea3a6` (2026-10-23)
 - **Tests:** `coding/resource_loader_extension_files_test.go::TestDefaultResourceLoaderPointsProjectPackagesAtRemoveLocal`, `coding/resource_loader_extension_files_test.go::TestDefaultResourceLoaderPointsTemporaryExtensionSourcesAtTheSource`, `coding/resource_loader_extension_files_test.go::TestDefaultResourceLoaderWarnsAndKeepsLoadingWhenAConfiguredPackageCannotBeInstalled`, `coding/resource_loader_extension_files_test.go::TestDefaultResourceLoaderWarnsOnceAboutAFailingInstallWhenProjectTrustIsResolved`, `internal/packagemanager/managed_root_cwd_test.go::TestEmptyAgentDirNeverWritesIntoTheProcessDirectory`, `internal/packagemanager/resolve_gaps_test.go::TestResolveExtensionSourcesReportsATemporarySourceThatFailsToInstall`, `internal/packagemanager/resolve_gaps_test.go::TestResolveReportsNoInstallFailureForASkippedSourceAndKeepsTheErrorDecision`, `internal/packagemanager/resolve_gaps_test.go::TestResolveSkipsAPackageSourceThatFailsToInstallAndReportsIt`
 - **Release note:** A configured package or `-e` source that cannot be installed no longer ends startup. It is skipped, as in offline mode, and reported as an extension warning that says how to remove it (`pig remove <source>`, with `--local` for a project package) or to check the source; `--help` and `--list-models` print it too.
+
+### BF-07f4072
+
+**A Durable session on a Chord store no longer races the host's loop when a commit is published: the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Durable session on a Chord store no longer races the host's loop when a commit is published: the publication of each commit now runs as a section of the host's loop instead of on the writer's goroutine, which touched the host's batch while the loop ran its own commits (a data race, seen under `-race` when a p2 server reloads a plugin while a worker streams).
+- **Root cause:** The commit's writer calls Publishing from a goroutine of its own while the host's loop runs its own commits on the batch, which has no locks: a DATA RACE under -race in p2's m1 reload case. The publication now runs through Batch.Section, as Pi's continuation after the commit's await runs on its one event loop. Its doc comment says what that costs a caller: blocking on a durable commit inside a host section deadlocks.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `07f40724ef` (2026-11-08)
+- **Tests:** None recorded.
+- **Release note:** A Durable session on a Chord store no longer races the host's loop when a commit is published: the publication of each commit now runs as a section of the host's loop instead of on the writer's goroutine, which touched the host's batch while the loop ran its own commits (a data race, seen under `-race` when a p2 server reloads a plugin while a worker streams). A caller that blocks on a durable commit from inside a host section now waits for itself; commit from a goroutine of its own.
 
 ### BF-081e8c3
 
@@ -4080,6 +4113,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `1de91268b6` (2026-10-31)
 - **Tests:** `schema/formats/conformance_test.go::TestConformance`, `schema/formats/formats_test.go::TestSplitSurrogatePairs`, `schema/formats/oracle_test.go::TestOracleCorpus`
 
+### BF-1e64d3f
+
+**A Durable core's warm turn waits exactly the microtask passes Pi's does**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Durable core's warm turn waits exactly the microtask passes Pi's does.
+- **Root cause:** The host's section effect resolved the agent again for the section's input (a Session read of pi.agent through the core) where generation.ts passes the agent it already resolved into PromptInput. Each of the nine model calls of a turn spent four passes more than Pi's `await section.render()`: a warm turn of eight lookups waited 6975 / 6956 passes against Pi's 6939 / 6920 (node profile), +36 per wait, and the F-ticks rows, which pin a cold submit and a short wait, did not show it. The host now keeps the agent its resolveAgent hook last answered for each conversation and a section renders with that.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1e64d3f44e` (2026-11-08)
+- **Tests:** `durable/core/host/cf/test/warm-ticks.test.ts`
+- **Release note:** A Durable core's warm turn waits exactly the microtask passes Pi's does. The Cloudflare host's section effect resolved the agent a second time for the section's input, four passes more than Pi's `await section.render()` on each model call (+36 per turn of eight lookups); it now renders with the agent the `resolveAgent` hook last answered, as generation.ts passes the agent it resolved. The contract rows `F-ticks-warm-node` and `F-ticks-warm-gate` and the host test `warm-ticks.test.ts` pin Pi's counts.
+
 ### BF-1ed43b3
 
 **fix(train): load pig_sdk.tui with the package, run the TS queue check with no runtime, pin three fixture…**
@@ -5094,6 +5141,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `2a0fb968de` (2026-10-11)
 - **Tests:** `internal/codingagent/slash_cost_order_test.go::TestFormatCostSummaryListsToolsInStableNameOrder`
 - **Release note:** `/cost` lists its tools in a stable order: `formatCostSummary` ranged over `snap.ToolTotals`, so the `Tools:` lines came out in a different order on every call (Go map iteration). They are now sorted by name. Regression `TestFormatCostSummaryListsToolsInStableNameOrder` (red before: fails on the first run with 24 tools). `/cost` has no Pi counterpart, so the name order is PiG's choice. Found by scanning production code for map ranges that feed output; the same pattern (a map range whose first failing entry names the error) remains in `coding/packagecontent` (`validateMCPDocument`, `validateComposeClosure`) and `coding/hookconfig.Parse`, which belong to other lanes.
+
+### BF-2a83c43
+
+**The ordered-object JSON readers keep two object names apart when `JSON.parse` does**
+
+- **Source:** PiG's own defect
+- **Symptom:** The ordered-object JSON readers keep two object names apart when `JSON.parse` does.
+- **Root cause:** "\ud800", "\ud801" and the raw bytes ED A0 80 are three distinct JSON.parse keys; Token.String() made them all U+FFFD and merged them (last wins). jsonopts.ReadName reads a name as the JavaScript key (a lone surrogate is its WTF-8 bytes, ill-formed bytes one U+FFFD per maximal subpart), and the dedup and map sites key on it: ai ordered_json/ordered_json_object/models_store/openai/types, orderedjson (which writes a lone-surrogate key back as its escape), login duplicate scan, configschema, theme keys, remote catalog, modelgen. The login v1 reference reads numbers as raw tokens (UseNumber) so the fuzz target no longer skips a number outside float64 range. The go-directive floor check uses…
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2a83c43014` (2026-11-08)
+- **Tests:** `ai/ordered_json_node_test.go::TestOrderedObjectReadersMatchNode`, `internal/jsonopts/name_test.go::TestReadNameMatchesNode`, `internal/jsonopts/name_test.go::TestValidName`, `internal/orderedjson/node_test.go::TestObjectMatchesNode`
+- **Release note:** The ordered-object JSON readers keep two object names apart when `JSON.parse` does. `"\ud800"`, `"\ud801"` and the raw bytes `ED A0 80` are three keys in JavaScript; the readers read each as U+FFFD and merged them into one entry (last value wins). A name with a lone surrogate or ill-formed UTF-8 is now keyed on the string JavaScript has (`jsonopts.ReadName`): an escaped lone surrogate is its WTF-8 bytes, and ill-formed raw bytes become one U+FFFD per maximal subpart, as Node decodes them. `internal/orderedjson` writes a lone-surrogate key back as its escape. The readers that hand the key to `encoding/json` still hold it as U+FFFD.
 
 ### BF-2a919a4
 
@@ -19169,6 +19230,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `a23809539a` (2026-10-13)
 - **Tests:** None recorded.
+
+### BF-a28d69b
+
+**Fix merge-gate reds: anthropic thread normalization decodes through RawMessage (no any decode), drop stale…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fix merge-gate reds: anthropic thread normalization decodes through RawMessage (no any decode), drop stale any-trap entry, env daemon tests: errcheck/AsType
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a28d69b201` (2026-11-08)
+- **Tests:** `env/daemon/pollable_unix_test.go::TestPollableLeavesOtherFilesAlone`, `env/daemon/pollable_unix_test.go::TestPollableMovesInheritedPipesIntoThePoller`, `env/daemon/pollable_unix_test.go::TestWriteStderrWaitsOnAFullPipe`, `env/daemon_stdio_mode_test.go::TestDaemonGivesBackBlockingStdioOnEveryExit`
 
 ### BF-a2fad25
 

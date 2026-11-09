@@ -1,0 +1,421 @@
+[
+ {
+  "upstream": "packages/durable/src/storage/store/storage.ts",
+  "package": "./durable/storage/store",
+  "tests": [
+   "TestStoreStorageConformance",
+   "TestStoreStorageDurability",
+   "TestStoreStorageEveryReadReturnsWhatWasCommittedAndNothingElse",
+   "TestStoreStorageFailures",
+   "TestStoreStorageOneTransactionPerCall",
+   "TestStoreStorageOtherUsersOfTheStore",
+   "TestStoreStorageRefusals"
+  ],
+  "upstream_reference": "packages/durable/src/storage/store/storage.ts:1-end (StoreStorage; the store-backed Storage reads and commits what Pi's conformance suite asserts)",
+  "mutation": "durable/storage/store/storage.go: replace \"receive(index, durable.SeqFromNumber(seq))\" with \"receive(index, durable.SeqFromNumber(seq+1))\"; compiling go test -overlay -run ^Test -count=1 fails TestStoreStorageConformance, TestStoreStorageDurability, TestStoreStorageEveryReadReturnsWhatWasCommittedAndNothingElse, TestStoreStorageFailures, TestStoreStorageOneTransactionPerCall, TestStoreStorageOtherUsersOfTheStore, TestStoreStorageRefusals."
+ },
+ {
+  "upstream": "packages/durable/src/storage/store/storage.ts",
+  "package": "./durable/storage/store",
+  "tests": [
+   "TestStoreStorageCommitsInsideTheHostsBatch"
+  ],
+  "upstream_reference": "packages/durable/src/storage/store/storage.ts:1-end (StoreStorage; the store-backed Storage reads and commits what Pi's conformance suite asserts)",
+  "mutation": "durable/storage/store/storage.go: replace \"if batch == nil {\\n\\t\\tpublish()\\n\\t\\treturn\\n\\t}\" with \"if batch == nil {\\n\\t\\treturn\\n\\t}\"; compiling go test -overlay -run ^Test -count=1 fails TestStoreStorageCommitsInsideTheHostsBatch."
+ },
+ {
+  "upstream": "packages/durable/src/storage/store/storage.ts",
+  "package": "./durable/storage/store",
+  "tests": [
+   "TestStoreStorageFailures",
+   "TestStoreStorageOneTransactionPerCall",
+   "TestStoreStorageRefusals"
+  ],
+  "upstream_reference": "packages/durable/src/storage/store/storage.ts:1-end (StoreStorage; the store-backed Storage reads and commits what Pi's conformance suite asserts)",
+  "mutation": "durable/storage/store/storage.go: replace \"defer storage.leave()\\n\\treturn storage.store.MintId()\" with \"defer storage.leave()\\n\\treturn 1, nil\"; compiling go test -overlay -run ^Test -count=1 fails TestStoreStorageFailures, TestStoreStorageOneTransactionPerCall, TestStoreStorageRefusals."
+ },
+ {
+  "upstream": "packages/durable/src/storage/store/storage.ts",
+  "package": "./durable/storage/store",
+  "tests": [
+   "TestStoreStorageClaimsAndClose",
+   "TestStoreStorageConformance",
+   "TestStoreStorageFailures",
+   "TestStoreStorageReads",
+   "TestStoreStorageRefusals"
+  ],
+  "upstream_reference": "packages/durable/src/storage/store/storage.ts:1-end (StoreStorage; the store-backed Storage reads and commits what Pi's conformance suite asserts)",
+  "mutation": "durable/storage/store/storage.go: replace \"return storage.conversation(executor, id, ctx)\\n\\t})\\n}\\n\\n// ScanConversations\" with \"return storage.conversation(executor, id+1, ctx)\\n\\t})\\n}\\n\\n// ScanConversations\"; compiling go test -overlay -run ^Test -count=1 fails TestStoreStorageClaimsAndClose, TestStoreStorageConformance, TestStoreStorageFailures, TestStoreStorageReads, TestStoreStorageRefusals."
+ },
+ {
+  "upstream": "packages/durable/src/storage/store/storage.ts",
+  "package": "./durable/storage/store",
+  "tests": [
+   "TestStoreStorageConformance",
+   "TestStoreStorageDurability",
+   "TestStoreStorageFailures",
+   "TestStoreStorageOneTransactionPerCall",
+   "TestStoreStorageOtherUsersOfTheStore",
+   "TestStoreStorageRefusals"
+  ],
+  "upstream_reference": "packages/durable/src/storage/store/storage.ts:1-end (StoreStorage; the store-backed Storage reads and commits what Pi's conformance suite asserts)",
+  "mutation": "durable/storage/store/storage.go: replace \"return storage.entry(executor, id, ctx)\\n\\t})\\n}\\n\\n// VisibleEntry\" with \"return storage.entry(executor, id+1, ctx)\\n\\t})\\n}\\n\\n// VisibleEntry\"; compiling go test -overlay -run ^Test -count=1 fails TestStoreStorageConformance, TestStoreStorageDurability, TestStoreStorageFailures, TestStoreStorageOneTransactionPerCall, TestStoreStorageOtherUsersOfTheStore, TestStoreStorageRefusals."
+ },
+ {
+  "upstream": "packages/durable/src/storage/store/storage.ts",
+  "package": "./durable/storage/store",
+  "tests": [
+   "TestStoreStorageConformance",
+   "TestStoreStorageHeadMarkers"
+  ],
+  "upstream_reference": "packages/durable/src/storage/store/storage.ts:1-end (StoreStorage; the store-backed Storage reads and commits what Pi's conformance suite asserts)",
+  "mutation": "durable/storage/store/storage.go: replace \"return storage.latestHeadMarker(executor, conversationID, atOrBeforeEntryID, ctx)\" with \"return storage.latestHeadMarker(executor, conversationID, nil, ctx)\"; compiling go test -overlay -run ^Test -count=1 fails TestStoreStorageConformance, TestStoreStorageHeadMarkers."
+ },
+ {
+  "upstream": "packages/durable/src/storage/store/storage.ts",
+  "package": "./durable/storage/store",
+  "tests": [
+   "TestStoreStorageConformance",
+   "TestStoreStorageReviewRegressions"
+  ],
+  "upstream_reference": "packages/durable/src/storage/store/storage.ts:1-end (StoreStorage; the store-backed Storage reads and commits what Pi's conformance suite asserts)",
+  "mutation": "durable/storage/store/storage.go: replace \"if start.Order == durable.ScanAscending {\\n\\t\\t\\treturn storage.entriesAscending\" with \"if start.Order != durable.ScanAscending {\\n\\t\\t\\treturn storage.entriesAscending\"; compiling go test -overlay -run ^Test -count=1 fails TestStoreStorageConformance, TestStoreStorageReviewRegressions."
+ },
+ {
+  "upstream": "packages/durable/src/storage/store/storage.ts",
+  "package": "./durable/storage/store",
+  "tests": [
+   "TestStoreStorageConformance",
+   "TestStoreStorageDurability",
+   "TestStoreStorageFailures",
+   "TestStoreStorageRefusals"
+  ],
+  "upstream_reference": "packages/durable/src/storage/store/storage.ts:1-end (StoreStorage; the store-backed Storage reads and commits what Pi's conformance suite asserts)",
+  "mutation": "durable/storage/store/storage.go: replace \"\\treturn read.Document, nil\\n}\" with \"\\treturn nil, nil\\n}\"; compiling go test -overlay -run ^Test -count=1 fails TestStoreStorageConformance, TestStoreStorageDurability, TestStoreStorageFailures, TestStoreStorageRefusals."
+ },
+ {
+  "upstream": "packages/durable/src/storage/store/storage.ts",
+  "package": "./durable/storage/store",
+  "tests": [
+   "TestStoreStorageClaimsAndClose"
+  ],
+  "upstream_reference": "packages/durable/src/storage/store/storage.ts:1-end (StoreStorage; the store-backed Storage reads and commits what Pi's conformance suite asserts)",
+  "mutation": "durable/storage/store/storage.go: replace \"storage.store.Claims.Release(storage.claimant)\" with \"_ = storage.claimant\"; compiling go test -overlay -run ^Test -count=1 fails TestStoreStorageClaimsAndClose."
+ },
+ {
+  "upstream": "packages/durable/src/storage/store/storage.ts",
+  "package": "./durable/storage/store",
+  "tests": [
+   "TestStoreStorageClaimsAndClose",
+   "TestStoreStorageFailures"
+  ],
+  "upstream_reference": "packages/durable/src/storage/store/storage.ts:1-end (StoreStorage; the store-backed Storage reads and commits what Pi's conformance suite asserts)",
+  "mutation": "durable/storage/store/storage.go: replace \"storage.mu.Lock()\\n\\tif storage.closing == nil {\\n\\t\\tstorage.closed = true\" with \"storage.mu.Lock()\\n\\tif storage.closing == nil {\\n\\t\\tstorage.closed = false\"; compiling go test -overlay -run ^Test -count=1 fails TestStoreStorageClaimsAndClose, TestStoreStorageFailures."
+ },
+ {
+  "upstream": "packages/durable/src/storage/store/storage.ts",
+  "package": "./durable/storage/store",
+  "tests": [
+   "TestStoreStorageConformance",
+   "TestStoreStorageEveryReadReturnsWhatWasCommittedAndNothingElse"
+  ],
+  "upstream_reference": "packages/durable/src/storage/store/storage.ts:1-end (StoreStorage; the store-backed Storage reads and commits what Pi's conformance suite asserts)",
+  "mutation": "durable/storage/store/storage.go: replace \"return byID[storedTask](storage, ctx, storage.queries.Tasks, int64(id))\" with \"return byID[storedTask](storage, ctx, storage.queries.Tasks, int64(id)+1)\"; compiling go test -overlay -run ^Test -count=1 fails TestStoreStorageConformance, TestStoreStorageEveryReadReturnsWhatWasCommittedAndNothingElse."
+ },
+ {
+  "upstream": "packages/durable/src/storage/store/storage.ts",
+  "package": "./durable/storage/store",
+  "tests": [
+   "TestStoreStorageConformance",
+   "TestStoreStorageEveryReadReturnsWhatWasCommittedAndNothingElse"
+  ],
+  "upstream_reference": "packages/durable/src/storage/store/storage.ts:1-end (StoreStorage; the store-backed Storage reads and commits what Pi's conformance suite asserts)",
+  "mutation": "durable/storage/store/storage.go: replace \"\\tif query.Status != nil {\\n\\t\\tconditions = append(conditions, Condition{Column: \\\"status\\\", Op: chordstore.WhereEq, Value: string(*query.Status)})\\n\\t}\\n\\tif query.AbortRequested != nil {\" with \"\\tif query.AbortRequested != nil {\"; compiling go test -overlay -run ^Test -count=1 fails TestStoreStorageConformance, TestStoreStorageEveryReadReturnsWhatWasCommittedAndNothingElse."
+ },
+ {
+  "upstream": "packages/durable/src/storage/store/storage.ts",
+  "package": "./durable/storage/store",
+  "tests": [
+   "TestStoreStorageConformance",
+   "TestStoreStorageEveryReadReturnsWhatWasCommittedAndNothingElse"
+  ],
+  "upstream_reference": "packages/durable/src/storage/store/storage.ts:1-end (StoreStorage; the store-backed Storage reads and commits what Pi's conformance suite asserts)",
+  "mutation": "durable/storage/store/storage.go: replace \"return byID[durable.SubmissionRecord](storage, ctx, storage.queries.Submissions, int64(id))\" with \"return byID[durable.SubmissionRecord](storage, ctx, storage.queries.Submissions, int64(id)+1)\"; compiling go test -overlay -run ^Test -count=1 fails TestStoreStorageConformance, TestStoreStorageEveryReadReturnsWhatWasCommittedAndNothingElse."
+ },
+ {
+  "upstream": "packages/durable/src/storage/store/storage.ts",
+  "package": "./durable/storage/store",
+  "tests": [
+   "TestStoreStorageConformance",
+   "TestStoreStorageEveryReadReturnsWhatWasCommittedAndNothingElse"
+  ],
+  "upstream_reference": "packages/durable/src/storage/store/storage.ts:1-end (StoreStorage; the store-backed Storage reads and commits what Pi's conformance suite asserts)",
+  "mutation": "durable/storage/store/storage.go: replace \"Value: string(*query.Status)})\\n\\t}\\n\\treturn scanTable(storage, ctx, storage.queries.Submissions\" with \"Value: string(durable.SubmissionQueued)})\\n\\t}\\n\\treturn scanTable(storage, ctx, storage.queries.Submissions\"; compiling go test -overlay -run ^Test -count=1 fails TestStoreStorageConformance, TestStoreStorageEveryReadReturnsWhatWasCommittedAndNothingElse."
+ },
+ {
+  "upstream": "packages/durable/src/storage/store/storage.ts",
+  "package": "./durable/storage/store",
+  "tests": [
+   "TestStoreStorageConformance",
+   "TestStoreStorageEveryReadReturnsWhatWasCommittedAndNothingElse"
+  ],
+  "upstream_reference": "packages/durable/src/storage/store/storage.ts:1-end (StoreStorage; the store-backed Storage reads and commits what Pi's conformance suite asserts)",
+  "mutation": "durable/storage/store/storage.go: replace \"Value: EncodeIndexed(requestID)},\" with \"Value: EncodeIndexed(requestID + \\\"x\\\")},\"; compiling go test -overlay -run ^Test -count=1 fails TestStoreStorageConformance, TestStoreStorageEveryReadReturnsWhatWasCommittedAndNothingElse."
+ },
+ {
+  "upstream": "packages/durable/src/storage/store/storage.ts",
+  "package": "./durable/storage/store",
+  "tests": [
+   "TestStoreStorageConformance",
+   "TestStoreStorageEveryReadReturnsWhatWasCommittedAndNothingElse"
+  ],
+  "upstream_reference": "packages/durable/src/storage/store/storage.ts:1-end (StoreStorage; the store-backed Storage reads and commits what Pi's conformance suite asserts)",
+  "mutation": "durable/storage/store/storage.go: replace \"return storage.visibleEntry(executor, conversationID, id, ctx)\" with \"return storage.visibleEntry(executor, conversationID, id+1, ctx)\"; compiling go test -overlay -run ^Test -count=1 fails TestStoreStorageConformance, TestStoreStorageEveryReadReturnsWhatWasCommittedAndNothingElse."
+ },
+ {
+  "upstream": "packages/durable/src/storage/store/storage.ts",
+  "package": "./durable/storage/store",
+  "tests": [
+   "TestStoreStorageConformance",
+   "TestStoreStorageEveryReadReturnsWhatWasCommittedAndNothingElse"
+  ],
+  "upstream_reference": "packages/durable/src/storage/store/storage.ts:1-end (StoreStorage; the store-backed Storage reads and commits what Pi's conformance suite asserts)",
+  "mutation": "durable/storage/store/storage.go: replace \"AddressOf(address.Kind, address.Scope, address.Key, storage.owner)\" with \"AddressOf(address.Kind+\\\"x\\\", address.Scope, address.Key, storage.owner)\"; compiling go test -overlay -run ^Test -count=1 fails TestStoreStorageConformance, TestStoreStorageEveryReadReturnsWhatWasCommittedAndNothingElse."
+ },
+ {
+  "upstream": "packages/durable/src/storage/store/storage.ts",
+  "package": "./durable/storage/store",
+  "tests": [
+   "TestStoreStorageConformance",
+   "TestStoreStorageEveryReadReturnsWhatWasCommittedAndNothingElse"
+  ],
+  "upstream_reference": "packages/durable/src/storage/store/storage.ts:1-end (StoreStorage; the store-backed Storage reads and commits what Pi's conformance suite asserts)",
+  "mutation": "durable/storage/store/storage.go: replace \"func(record durable.ConversationRecord) int64 { return int64(record.Id) })\" with \"func(record durable.ConversationRecord) int64 { return int64(record.Id) + 5 })\"; compiling go test -overlay -run ^Test -count=1 fails TestStoreStorageConformance, TestStoreStorageEveryReadReturnsWhatWasCommittedAndNothingElse."
+ },
+ {
+  "upstream": "packages/durable/src/storage/store/storage.ts",
+  "package": "./durable/storage/store",
+  "tests": [
+   "TestStoreStorageConformance",
+   "TestStoreStorageEveryReadReturnsWhatWasCommittedAndNothingElse"
+  ],
+  "upstream_reference": "packages/durable/src/storage/store/storage.ts:1-end (StoreStorage; the store-backed Storage reads and commits what Pi's conformance suite asserts)",
+  "mutation": "durable/storage/store/storage.go: replace \"\\t\\tscope.Kind = &kind\\n\" with \"\\t\\t_ = kind\\n\"; compiling go test -overlay -run ^Test -count=1 fails TestStoreStorageConformance, TestStoreStorageEveryReadReturnsWhatWasCommittedAndNothingElse."
+ },
+ {
+  "upstream": "packages/durable/src/storage/jsonl/storage.ts",
+  "package": "./durable/storage/jsonl",
+  "tests": [
+   "TestJsonlStorageBatches",
+   "TestJsonlStorageConformance",
+   "TestJsonlStorageReadApiMirrorsPisStorageContract",
+   "TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose",
+   "TestPicoJsonlStoragePublicationAndRecovery"
+  ],
+  "upstream_reference": "packages/durable/src/storage/jsonl/storage.ts commit (each stored batch's seq reaches receive)",
+  "mutation": "durable/storage/jsonl/storage.go: replace \"receive(index, seq)\\n\\t}\\n\\tjsonl.reclaimSidecars\" with \"receive(index, seq+1)\\n\\t}\\n\\tjsonl.reclaimSidecars\"; compiling go test -overlay -run ^Test -count=1 fails TestJsonlStorageBatches, TestJsonlStorageConformance, TestJsonlStorageReadApiMirrorsPisStorageContract, TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose, TestPicoJsonlStoragePublicationAndRecovery."
+ },
+ {
+  "upstream": "packages/durable/src/storage/memory.ts",
+  "package": "./durable/storage",
+  "tests": [
+   "TestMemoryStorageConformance",
+   "TestMemoryStorageDeliversTheReceiptsOfTheBatchesAppliedBeforeOneWhoseApplyThrowsThenRejects",
+   "TestMemoryStorageDocumentReadAtARevisionSeqIncludesIt",
+   "TestMemoryStorageMatchesPiOnSeededPrograms",
+   "TestMemoryStorageReadApiMirrorsPisStorageContract",
+   "TestMemoryStorageReadsCommittedRecordsAndFailsAfterClose",
+   "TestMemoryStorageVisibleEntryReturnsItsCommitSeqAndACopy",
+   "TestRegisterStorageConformanceRegistersEveryCaseAndRunsThemAgainstTheProvidedStorage",
+   "TestStorageInterfaceReadContractThroughTheInterface"
+  ],
+  "upstream_reference": "packages/durable/src/storage/memory.ts commit (each applied batch's seq reaches receive)",
+  "mutation": "durable/storage/memory.go: replace \"\\t\\t\\treceive(index, seq)\\n\\t\\t}\\n\\t}()\" with \"\\t\\t\\treceive(index, seq+1)\\n\\t\\t}\\n\\t}()\"; compiling go test -overlay -run ^Test -count=1 fails TestMemoryStorageConformance, TestMemoryStorageDeliversTheReceiptsOfTheBatchesAppliedBeforeOneWhoseApplyThrowsThenRejects, TestMemoryStorageDocumentReadAtARevisionSeqIncludesIt, TestMemoryStorageMatchesPiOnSeededPrograms, TestMemoryStorageReadApiMirrorsPisStorageContract, TestMemoryStorageReadsCommittedRecordsAndFailsAfterClose, TestMemoryStorageVisibleEntryReturnsItsCommitSeqAndACopy, TestRegisterStorageConformanceRegistersEveryCaseAndRunsThemAgainstTheProvidedStorage, TestStorageInterfaceReadContractThroughTheInterface."
+ },
+ {
+  "upstream": "packages/durable/src/storage/sqlite/storage.ts",
+  "package": "./durable/storage/sqlite",
+  "tests": [
+   "TestPicoSqliteStorage",
+   "TestSqliteStorageBatchCommitsAgainstMemoryReference",
+   "TestSqliteStorageConformance",
+   "TestSqliteStorageReadApiMirrorsPisStorageContract"
+  ],
+  "upstream_reference": "packages/durable/src/storage/sqlite/storage.ts commit (each stored batch's seq reaches receive)",
+  "mutation": "durable/storage/sqlite/storage.go: replace \"receive(index, seq)\\n\\t}\\n\\treturn durable.CommitResult{Stored: len(seqs)\" with \"receive(index, seq+1)\\n\\t}\\n\\treturn durable.CommitResult{Stored: len(seqs)\"; compiling go test -overlay -run ^Test -count=1 fails TestPicoSqliteStorage, TestSqliteStorageBatchCommitsAgainstMemoryReference, TestSqliteStorageConformance, TestSqliteStorageReadApiMirrorsPisStorageContract."
+ },
+ {
+  "upstream": "packages/durable/src/session/session.ts",
+  "package": "./durable",
+  "tests": [
+   "TestWatchHandleContract"
+  ],
+  "upstream_reference": "packages/durable/src/session/session.ts watchDoc: the watch of a document's committed value",
+  "mutation": "durable/session/session.go: replace \"\\treturn watch, nil\\n}\\n\\n// watchObserver\" with \"\\treturn nil, nil\\n}\\n\\n// watchObserver\"; compiling go test -overlay -run Watch|Doc|Observ -count=1 fails TestWatchHandleContract."
+ },
+ {
+  "upstream": "packages/durable/src/session/session.ts",
+  "package": "./durable/core/driver",
+  "tests": [
+   "TestReports"
+  ],
+  "upstream_reference": "packages/durable/src/session/session.ts observeCommits: observers follow commits in order",
+  "mutation": "durable/session/session.go: replace \"\\tsession.commitOrder = append(session.commitOrder, entry)\\n\" with \"\\t_ = entry\\n\"; compiling go test -overlay -run Observ|Commit|Report|NestedCalls|Uncertain -count=1 fails TestReports."
+ },
+ {
+  "upstream": "packages/durable/src/session/transaction.ts",
+  "package": "./durable/session",
+  "tests": [
+   "TestKnownLatestEntryIdFollowsTheSessionsOwnCommits"
+  ],
+  "upstream_reference": "packages/durable/src/session/transaction.ts latestEntryId",
+  "mutation": "durable/session/transaction.go: replace \"return tx.host.latestEntryId(tx.ctx, conversationId)\" with \"return nil, nil\"; compiling go test -overlay -run LatestEntryId|GroupCommitGates -count=1 fails TestKnownLatestEntryIdFollowsTheSessionsOwnCommits."
+ },
+ {
+  "upstream": "packages/durable/src/harness/scheduler.ts",
+  "package": "./durable/core/driver",
+  "tests": [
+   "TestCoreOwnedTasksListsTheLiveTasksATaskOwnsDirectlyInIdOrderAlsoAfterAReopen"
+  ],
+  "upstream_reference": "packages/durable/src/harness/scheduler.ts ownedTasks: the live tasks a task owns directly",
+  "mutation": "durable/core/driver/taskruntime.go: replace \"\\\"ownedTasks\\\", map[string]any{\\\"by\\\": r.task}\" with \"\\\"ownedTasks\\\", map[string]any{\\\"by\\\": r.task + 1}\"; compiling go test -overlay -run OwnedTasks|FiredTimer|TimerArmed|Reports|SleepingTasks|SleepUntil|TaskRejects -count=1 fails TestCoreOwnedTasksListsTheLiveTasksATaskOwnsDirectlyInIdOrderAlsoAfterAReopen."
+ },
+ {
+  "upstream": "packages/durable/src/harness/scheduler.ts",
+  "package": "./durable/core/driver",
+  "tests": [
+   "TestSleepingTasks"
+  ],
+  "upstream_reference": "packages/durable/src/harness/scheduler.ts sleepUntil: the task sleeps until the given time",
+  "mutation": "durable/core/driver/taskruntime.go: replace \"\\\"until\\\": until, \\\"checkpoint\\\": checkpoint}\" with \"\\\"until\\\": until + 1, \\\"checkpoint\\\": checkpoint}\"; compiling go test -overlay -run OwnedTasks|FiredTimer|TimerArmed|Reports|SleepingTasks|SleepUntil|TaskRejects -count=1 fails TestSleepingTasks."
+ },
+ {
+  "upstream": "packages/durable/src/harness/scheduler.ts",
+  "package": "./durable/core/driver",
+  "tests": [
+   "TestSleepingTasks"
+  ],
+  "upstream_reference": "packages/durable/src/harness/scheduler.ts setTimer: the callback runs once unless the invocation ended",
+  "mutation": "durable/core/driver/taskruntime.go: replace \"\\t\\tif !r.done.Load() {\\n\\t\\t\\tcallback()\" with \"\\t\\tif r.done.Load() {\\n\\t\\t\\tcallback()\"; compiling go test -overlay -run OwnedTasks|FiredTimer|TimerArmed|Reports|SleepingTasks|SleepUntil|TaskRejects -count=1 fails TestSleepingTasks."
+ },
+ {
+  "upstream": "packages/durable/src/harness/types.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestEntryReadsForHooksAndTasks"
+  ],
+  "upstream_reference": "packages/durable/src/harness/types.ts hookEntry: a hook reads an entry by id and decodes it with its token",
+  "mutation": "durable/harness/types.go: replace \"entry, err := api.Entry(ctx, id)\\n\\tif err != nil {\\n\\t\\treturn nil, err\\n\\t}\\n\\treturn token.As(entry)\" with \"entry, err := api.Entry(ctx, id+1)\\n\\tif err != nil {\\n\\t\\treturn nil, err\\n\\t}\\n\\treturn token.As(entry)\"; compiling go test -overlay -run EntryReads|AfterRun -count=1 fails TestEntryReadsForHooksAndTasks."
+ },
+ {
+  "upstream": "packages/durable/src/harness/define.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestAfterRun"
+  ],
+  "upstream_reference": "packages/durable/src/harness/define.ts runEndTask: the task and input an afterRun hook asks the run to end with",
+  "mutation": "durable/harness/define.go: replace \"return RunEndTask{Task: task.Erased(), Input: input}\" with \"return RunEndTask{Task: task.Erased()}\"; compiling go test -overlay -run AfterRun|Example32 -count=1 fails TestAfterRun."
+ },
+ {
+  "upstream": "packages/durable/src/harness/define.ts",
+  "package": "./durable/core/driver",
+  "tests": [
+   "TestCoreRunsTheTasksAnAfterRunHookAsksFor"
+  ],
+  "upstream_reference": "packages/durable/src/harness/define.ts runEndTask: the task and input an afterRun hook asks the run to end with",
+  "mutation": "durable/harness/define.go: replace \"return RunEndTask{Task: task.Erased(), Input: input}\" with \"return RunEndTask{Task: task.Erased()}\"; compiling go test -overlay -run AfterRun|Example32 -count=1 fails TestCoreRunsTheTasksAnAfterRunHookAsksFor."
+ },
+ {
+  "upstream": "packages/durable/src/harness/define.ts",
+  "package": "./durable/examples",
+  "tests": [
+   "TestExample32TestsAfterEdits"
+  ],
+  "upstream_reference": "packages/durable/src/harness/define.ts runEndTask: the task and input an afterRun hook asks the run to end with",
+  "mutation": "durable/harness/define.go: replace \"return RunEndTask{Task: task.Erased(), Input: input}\" with \"return RunEndTask{Task: task.Erased()}\"; compiling go test -overlay -run AfterRun|Example32 -count=1 fails TestExample32TestsAfterEdits."
+ },
+ {
+  "upstream": "packages/durable/src/harness/harness.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestAfterRun"
+  ],
+  "upstream_reference": "packages/durable/src/harness/harness.ts conversation.submitIn admits the draft to the conversation inside the caller's commit",
+  "mutation": "durable/harness/harness.go: replace \"return conversation.host.submissions.Admit(tx, conversation.id, submission)\" with \"return conversation.host.submissions.Admit(tx, conversation.id+1, submission)\"; compiling go test -overlay -run SubmitInside|WhenIdle|AfterRun -count=1 fails TestAfterRun."
+ },
+ {
+  "upstream": "packages/durable/src/harness/harness.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestAfterRun",
+   "TestSubmitInsideTheCallersCommit"
+  ],
+  "upstream_reference": "packages/durable/src/harness/harness.ts bound conversation submitIn admits the draft to its conversation inside the caller's commit",
+  "mutation": "durable/harness/harness.go: replace \"return bound.submissions.Admit(tx, bound.id, draft)\" with \"return bound.submissions.Admit(tx, bound.id+1, draft)\"; compiling go test -overlay -run SubmitInside|WhenIdle|AfterRun -count=1 fails TestAfterRun, TestSubmitInsideTheCallersCommit."
+ },
+ {
+  "upstream": "packages/durable/src/harness/transcript.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestAFreshConversationTranscriptHoldsNothingAndNeverCallsItsEntryLoader",
+   "TestConversationTranscriptLoads"
+  ],
+  "upstream_reference": "packages/durable/src/harness/transcript.ts: a new ConversationTranscript reaches no entry (newest is undefined) until its first merge",
+  "mutation": "durable/harness/transcript.go: replace \"\\t\\ttail:     math.Inf(-1),\\n\" with \"\\t\\ttail:     0,\\n\"; compiling go test -overlay -run Transcript -count=1 fails TestAFreshConversationTranscriptHoldsNothingAndNeverCallsItsEntryLoader, TestConversationTranscriptLoads."
+ },
+ {
+  "upstream": "packages/durable/src/harness/transcript.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestConversationTranscript"
+  ],
+  "upstream_reference": "packages/durable/src/harness/transcript.ts: a page size below 1 is refused",
+  "mutation": "durable/harness/transcript.go: replace \"\\tif pageSize < 1 {\\n\" with \"\\tif pageSize < 0 {\\n\"; compiling go test -overlay -run Transcript -count=1 fails TestConversationTranscript."
+ },
+ {
+  "upstream": "packages/durable/src/tasks.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestNestedCallsAndChildTasksOfACallerThatNeverResumesAreAbandonedOnRestart"
+  ],
+  "upstream_reference": "packages/durable/src/harness/types.ts:289 toolExecutionApi.createTask: the typed task is created with its options in one commit",
+  "mutation": "durable/tasks.go: replace \"return api.CreateTaskErased(ctx, task.Erased(), encoded, options)\" with \"return api.CreateTaskErased(ctx, task.Erased(), encoded, TaskOptions{})\"; compiling go test -overlay -run NestedCallsAndChildTasks -count=1 fails TestNestedCallsAndChildTasksOfACallerThatNeverResumesAreAbandonedOnRestart."
+ },
+ {
+  "upstream": "packages/durable/src/harness/generation.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestAfterRun"
+  ],
+  "upstream_reference": "packages/durable/src/harness/generation.ts finish: the tasks an afterRun hook asks for end the run",
+  "mutation": "durable/harness/generation.go: replace \"return prepareRunEndTasks(runtime, asked.Tasks, &prepared)\" with \"return nil\"; compiling go test -overlay -run AfterRun|Example32 -count=1 fails TestAfterRun."
+ },
+ {
+  "upstream": "packages/durable/src/harness/generation.ts",
+  "package": "./durable/examples",
+  "tests": [
+   "TestExample32TestsAfterEdits"
+  ],
+  "upstream_reference": "packages/durable/src/harness/generation.ts finish: the tasks an afterRun hook asks for end the run",
+  "mutation": "durable/harness/generation.go: replace \"return prepareRunEndTasks(runtime, asked.Tasks, &prepared)\" with \"return nil\"; compiling go test -overlay -run AfterRun|Example32 -count=1 fails TestExample32TestsAfterEdits."
+ },
+ {
+  "upstream": "packages/durable/src/harness/tool.ts",
+  "package": "./durable/core/driver",
+  "tests": [
+   "TestScalingCoreNestedCallFanout"
+  ],
+  "upstream_reference": "packages/durable/src/harness/tool.ts executeTool: a nested call runs the named tool",
+  "mutation": "durable/core/driver/tool.go: replace \"return a.nested.Execute(ctx, nestedCaller{a}, name, args, options...)\" with \"return a.nested.Execute(ctx, nestedCaller{a}, name+\\\"x\\\", args, options...)\"; compiling go test -overlay -run Nested -count=1 fails TestScalingCoreNestedCallFanout."
+ },
+ {
+  "upstream": "packages/durable/src/harness/registry-reader.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestRegistryReader",
+   "TestRegistryReaderOnAChordHost"
+  ],
+  "upstream_reference": "packages/durable/src/harness/registry-reader.ts: the reader serves the latest composition its observer recorded",
+  "mutation": "durable/harness/registry_reader.go: replace \"cache.snapshot, cache.seen = call.Value, true\" with \"cache.seen = true\"; compiling go test -overlay -run RegistryReader -count=1 fails TestRegistryReader, TestRegistryReaderOnAChordHost."
+ }
+]

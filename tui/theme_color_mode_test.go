@@ -90,7 +90,7 @@ func TestFixedComponentColorsFollowColorMode(t *testing.T) {
 		ThemeHexFg("#b5bd68"),
 		ThemeHexBg("#2d2838"),
 		thinkingBorderSGR("low"),
-		strings.Join(NewCompactionSummaryMessageComponent(CompactionSummaryMessage{Summary: "summary", TokensBefore: 10}, nil, 1).Render(40), "\n"),
+		strings.Join(NewCompactionSummaryMessageComponent(CompactionSummaryMessage{Summary: "summary", TokensBefore: 10}, nil, 1, nil, "", "").Render(40), "\n"),
 	}, "\n")
 	if strings.Contains(rendered, "38;2;") || strings.Contains(rendered, "48;2;") {
 		t.Fatalf("256-color render still contains 24-bit escapes: %q", rendered)

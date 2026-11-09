@@ -99,12 +99,20 @@ def _content_text(content: Any, separator: str) -> str:
 
 
 def _truncate_for_summary(text: str, max_chars: int) -> str:
-    """Pi's truncateForSummary: text.length counts UTF-16 units, and the cut keeps the first max_chars of them."""
+    """Pi's truncateForSummary: text.length counts UTF-16 units, and the cut keeps the first max_chars of them through sliceHead (core/tools/truncate.ts), one
+    unit fewer when the cut would split a surrogate pair. The count in the marker is text.length - max_chars either way."""
     units = text.encode("utf-16-le", "surrogatepass")
     length = len(units) // 2
     if length <= max_chars:
         return text
-    return units[: 2 * max_chars].decode("utf-16-le", "surrogatepass") + "\n\n[... " + str(length - max_chars) + " more characters truncated]"
+    end = max_chars
+    if end > 0 and 0xD800 <= _unit(units, end - 1) <= 0xDBFF and 0xDC00 <= _unit(units, end) <= 0xDFFF:
+        end -= 1
+    return units[: 2 * end].decode("utf-16-le", "surrogatepass") + "\n\n[... " + str(length - max_chars) + " more characters truncated]"
+
+
+def _unit(units: bytes, index: int) -> int:
+    return units[2 * index] | units[2 * index + 1] << 8
 
 
 def _is_array_index(key: str) -> bool:

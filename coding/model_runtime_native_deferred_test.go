@@ -75,7 +75,7 @@ func TestModelRuntimeDeferredOperationsOfAnExtensionRegisteredProvider(t *testin
 				return doneStream(request), nil
 			}
 		})
-		reply := runtime.FetchDeferred(t.Context(), model, handle, ai.DeferredFetchOptions{Wait: new(float64(25)), StreamOptions: ai.StreamOptions{Headers: ai.ProviderHeaders{"X-A": new("a")}}})
+		reply := runtime.FetchDeferred(t.Context(), model, handle, ai.DeferredFetchOptions{Wait: new(float64(25)), Headers: ai.ProviderHeaders{"X-A": new("a")}})
 		if reply.StopReason != ai.StopReasonStop || reply.Model != "model" {
 			t.Fatalf("reply = %+v", reply)
 		}

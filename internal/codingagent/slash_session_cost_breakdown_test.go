@@ -17,7 +17,7 @@ import (
 func sessionCostBreakdownOutput(t *testing.T, responseModel string, selected func() string) string {
 	t.Helper()
 	sess := NewSession("cost-session", "/tmp")
-	entry := MessageEntry{SessionEntryBase: SessionEntryBase{Type: "message", ID: "a1", Timestamp: "2025-01-01T00:00:00Z"}, Message: agent.AgentMessage{Assistant: &agent.AssistantMessage{
+	entry := MessageEntry{Type: "message", ID: "a1", Timestamp: "2025-01-01T00:00:00Z", Message: agent.AgentMessage{Assistant: &agent.AssistantMessage{
 		Role: "assistant", Provider: "openai", ModelID: "virtual", ResponseModel: responseModel,
 		Content: []ai.AssistantContentBlock{ai.TextContent{Text: "done"}},
 		Usage:   &ai.Usage{Input: 10, Output: 5, Cost: ai.UsageCost{Total: 0.5}},

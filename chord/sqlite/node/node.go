@@ -123,7 +123,7 @@ func (database *DatabaseSync) Prepare(sqlText string) (*StatementSync, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &StatementSync{database: database, statement: statement}, nil
+	return &StatementSync{database: database, sqlText: sqlText, statement: statement, tracksSmallIntegers: readsRows(sqlText)}, nil
 }
 
 // Close closes the connection; later operations fail.
@@ -139,31 +139,121 @@ func (database *DatabaseSync) Close() error {
 }
 
 // StatementSync is one prepared statement of a DatabaseSync.
+//
+// Since SQLite 3.54 a statement whose plan can depend on a bound integer (a "col = ?" term) is planned again when that
+// parameter changes between the integers 0 and 1 and any other value, though the plan is the same. Pi's fork-depth head
+// lookup binds the root conversation (id 1) at the end of each walk and a deeper one at the start of the next, so one
+// statement would re-plan on every step. A statement therefore keeps one compiled copy per pattern of 0/1 parameters
+// it is run with (smallIntegerMask): the first pattern uses statement, others compile lazily from sqlText. Copies are
+// never shared across patterns, so no execution changes a parameter across the 0/1 boundary.
+//
+// A StatementSync is used by one goroutine at a time: its executor runs every operation through the database's serial
+// queue (or an active transaction handle), and the statement cache lock covers only the lookup. statementMask,
+// statementUsed and variants take no lock of their own. A parameter at index 31 or later is not tracked (the 0/1
+// patterns are at most 31 bits), so a statement that flips such a parameter across 0/1 is planned again as before. Only
+// SELECT and WITH statements are tracked, with at most maxStatementVariants extra copies; the copies are closed with the
+// statement when the cache evicts it or the database closes.
 type StatementSync struct {
 	database  *DatabaseSync
+	sqlText   string
 	statement *sql.Stmt
+	// statementMask is the smallIntegerMask statement is bound with; statementUsed reports whether it was decided.
+	statementMask uint32
+	statementUsed bool
+	variants      map[uint32]*sql.Stmt
+	// tracksSmallIntegers is set for a statement that reads (SELECT or WITH), the kind the copies were
+	// measured on; an INSERT of integer columns would only pay for them.
+	tracksSmallIntegers bool
 }
 
-func (statement *StatementSync) open() error {
-	_, err := statement.database.connection()
-	return err
+// maxStatementVariants bounds the extra compiled copies of one statement; past it the statement runs as before.
+const maxStatementVariants = 4
+
+// readsRows reports whether sqlText starts with SELECT or WITH, after white space.
+func readsRows(sqlText string) bool {
+	text := strings.TrimLeft(sqlText, " \t\r\n")
+	for _, keyword := range []string{"SELECT", "WITH"} {
+		if len(text) > len(keyword) && strings.EqualFold(text[:len(keyword)], keyword) {
+			if next := text[len(keyword)]; next == ' ' || next == '\t' || next == '\r' || next == '\n' || next == '(' {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// smallIntegerMask has bit i set when params[i] (i < 31) is a bool or an integer equal to 0 or 1.
+func smallIntegerMask(params []any) (mask uint32) {
+	for index, param := range params {
+		if index >= 31 {
+			break
+		}
+		switch value := param.(type) {
+		case int64:
+			if uint64(value) <= 1 {
+				mask |= 1 << index
+			}
+		case int:
+			if uint(value) <= 1 {
+				mask |= 1 << index
+			}
+		case bool:
+			mask |= 1 << index
+		}
+	}
+	return mask
+}
+
+// open returns the compiled copy of the statement to run with params.
+func (statement *StatementSync) open(params []any) (*sql.Stmt, error) {
+	conn, err := statement.database.connection()
+	if err != nil {
+		return nil, err
+	}
+	if !statement.tracksSmallIntegers {
+		return statement.statement, nil
+	}
+	mask := smallIntegerMask(params)
+	if !statement.statementUsed {
+		statement.statementMask, statement.statementUsed = mask, true
+	}
+	if mask == statement.statementMask {
+		return statement.statement, nil
+	}
+	if variant := statement.variants[mask]; variant != nil {
+		return variant, nil
+	}
+	if len(statement.variants) >= maxStatementVariants {
+		return statement.statement, nil
+	}
+	variant, err := conn.PrepareContext(context.Background(), statement.sqlText) //portlint:allow ctxbackground the same synchronous prepare as DatabaseSync.Prepare: node:sqlite takes no signal
+	if err != nil {
+		return nil, err
+	}
+	if statement.variants == nil {
+		statement.variants = map[uint32]*sql.Stmt{}
+	}
+	statement.variants[mask] = variant
+	return variant, nil
 }
 
 // Run executes the statement with positional bindings.
 func (statement *StatementSync) Run(params ...any) error {
-	if err := statement.open(); err != nil {
+	prepared, err := statement.open(params)
+	if err != nil {
 		return err
 	}
-	_, err := statement.statement.ExecContext(context.Background(), params...)
+	_, err = prepared.ExecContext(context.Background(), params...)
 	return err
 }
 
 // RunCounted executes the statement and returns the rows it changed.
 func (statement *StatementSync) RunCounted(params ...any) (int64, error) {
-	if err := statement.open(); err != nil {
+	prepared, err := statement.open(params)
+	if err != nil {
 		return 0, err
 	}
-	result, err := statement.statement.ExecContext(context.Background(), params...) //portlint:allow ctxbackground node:sqlite StatementSync.run (node.ts:102) is synchronous and takes no signal; no caller context exists, as in Run
+	result, err := prepared.ExecContext(context.Background(), params...) //portlint:allow ctxbackground node:sqlite StatementSync.run (node.ts:102) is synchronous and takes no signal; no caller context exists, as in Run
 	if err != nil {
 		return 0, err
 	}
@@ -172,10 +262,11 @@ func (statement *StatementSync) RunCounted(params ...any) (int64, error) {
 
 // EachText passes the first column of every result row to fn as it is read; the bytes are valid until fn returns.
 func (statement *StatementSync) EachText(params []any, fn func(text []byte) error) (err error) {
-	if err := statement.open(); err != nil {
+	prepared, err := statement.open(params)
+	if err != nil {
 		return err
 	}
-	rows, err := statement.statement.QueryContext(context.Background(), params...)
+	rows, err := prepared.QueryContext(context.Background(), params...)
 	if err != nil {
 		return err
 	}
@@ -207,10 +298,11 @@ func (statement *StatementSync) All(params ...any) ([]map[string]any, error) {
 }
 
 func (statement *StatementSync) query(params []any, limit int) (result []map[string]any, err error) {
-	if err := statement.open(); err != nil {
+	prepared, err := statement.open(params)
+	if err != nil {
 		return nil, err
 	}
-	rows, err := statement.statement.QueryContext(context.Background(), params...)
+	rows, err := prepared.QueryContext(context.Background(), params...)
 	if err != nil {
 		return nil, err
 	}
@@ -238,7 +330,13 @@ func (statement *StatementSync) query(params []any, limit int) (result []map[str
 	return result, rows.Err()
 }
 
-func (statement *StatementSync) close() error { return statement.statement.Close() }
+func (statement *StatementSync) close() error {
+	err := statement.statement.Close()
+	for _, variant := range statement.variants {
+		err = errors.Join(err, variant.Close())
+	}
+	return err
+}
 
 // connection is the native connection surface NodeSqliteDatabase drives; *DatabaseSync is its one production implementation.
 type connection interface {
@@ -421,34 +519,34 @@ type NodeSqliteDatabase struct {
 	nodeSqliteExecutor
 	access *serialOperationQueue
 	closed bool
-	// mode is how the connection opened its file: a ReadOnly one's transactions are deferred (they read
-	// one snapshot; it cannot take the write lock) and its close checkpoints nothing.
+	// mode is how the connection opened its file. A NodeSqliteReadOnly connection's transactions are deferred (they read one
+	// snapshot; it cannot take the write lock) and its close checkpoints nothing.
 	mode NodeSqliteMode
 }
 
-// NodeSqliteMode is how a connection opens its file.
+// NodeSqliteMode is how a connection opens its file: Pi's NodeSqliteMode, "read-write" | "read-only".
 type NodeSqliteMode string
 
 const (
-	// ReadWrite is the default mode.
-	ReadWrite NodeSqliteMode = "read-write"
-	// ReadOnly opens an existing file for reads (another process may write it): no directory is made, nothing is
-	// configured or checkpointed, and transactions are deferred (`BEGIN`), reading one snapshot.
-	ReadOnly NodeSqliteMode = "read-only"
+	// NodeSqliteReadWrite is the default: the connection may write the file.
+	NodeSqliteReadWrite NodeSqliteMode = "read-write"
+	// NodeSqliteReadOnly opens an existing file for reads (another process may write it).
+	NodeSqliteReadOnly NodeSqliteMode = "read-only"
 )
 
-// NewNodeSqliteDatabase adapts database; the adapter owns it from now on. It is Pi's `new NodeSqliteDatabase(database: DatabaseSync)`.
-func NewNodeSqliteDatabase(database *DatabaseSync, mode ...NodeSqliteMode) *NodeSqliteDatabase {
+// NewNodeSqliteDatabase adapts database; the adapter owns it from now on. It is Pi's `new NodeSqliteDatabase(database: DatabaseSync,
+// mode: NodeSqliteMode = "read-write")`: an empty mode is Pi's default, NodeSqliteReadWrite.
+func NewNodeSqliteDatabase(database *DatabaseSync, mode NodeSqliteMode) *NodeSqliteDatabase {
 	adapter := newNodeSqliteDatabase(database)
-	if len(mode) > 0 {
-		adapter.mode = mode[0]
+	if mode != "" {
+		adapter.mode = mode
 	}
 	return adapter
 }
 
 // newNodeSqliteDatabase adapts any native connection, so a test can wrap one to observe or fail its calls.
 func newNodeSqliteDatabase(database connection) *NodeSqliteDatabase {
-	adapter := &NodeSqliteDatabase{access: newSerialOperationQueue()}
+	adapter := &NodeSqliteDatabase{access: newSerialOperationQueue(), mode: NodeSqliteReadWrite}
 	adapter.nodeSqliteExecutor = nodeSqliteExecutor{
 		database:     database,
 		statements:   newStatementCache(),
@@ -471,7 +569,7 @@ func (adapter *NodeSqliteDatabase) Transaction(
 	release := adapter.access.acquire()
 	defer release()
 	begin := "BEGIN IMMEDIATE"
-	if adapter.mode == ReadOnly {
+	if adapter.mode == NodeSqliteReadOnly {
 		begin = "BEGIN"
 	}
 	if err := adapter.database.Exec(begin); err != nil {
@@ -533,7 +631,7 @@ func (adapter *NodeSqliteDatabase) Close() error {
 	adapter.statements.order.Init()
 	adapter.statements.mu.Unlock()
 	var checkpointErr error
-	if adapter.mode != ReadOnly {
+	if adapter.mode == NodeSqliteReadWrite {
 		checkpointErr = adapter.database.Exec("PRAGMA wal_checkpoint(TRUNCATE)")
 	}
 	// Pi closes in a finally block, so a close failure replaces the checkpoint failure.
@@ -554,7 +652,9 @@ type NodeSqliteDatabaseOptions struct {
 	// BusyTimeoutMs is how long SQLite waits for a competing file lock. SQLite defaults to 0; this adapter defaults to
 	// 5,000 ms.
 	BusyTimeoutMs *int
-	// Mode is how the file opens; ReadWrite (the zero value) by default. ReadOnly is Pi's `mode: "read-only"`.
+	// Mode is NodeSqliteReadOnly to open an existing file for reads (another process may write it): no directory is made,
+	// nothing is configured or checkpointed, and transactions are deferred (`BEGIN`), reading one snapshot. Empty selects
+	// NodeSqliteReadWrite.
 	Mode NodeSqliteMode
 }
 
@@ -573,14 +673,12 @@ func OpenNodeSqliteDatabase(path string, options NodeSqliteDatabaseOptions) (*No
 	if options.BusyTimeoutMs != nil {
 		timeout = *options.BusyTimeoutMs
 	}
-	if options.Mode == ReadOnly {
+	if options.Mode == NodeSqliteReadOnly {
 		database, err := NewDatabaseSync(path, DatabaseSyncOptions{TimeoutMs: timeout, ReadOnly: true})
 		if err != nil {
 			return nil, err
 		}
-		adapter := NewNodeSqliteDatabase(database)
-		adapter.mode = ReadOnly
-		return adapter, nil
+		return NewNodeSqliteDatabase(database, NodeSqliteReadOnly), nil
 	}
 	if path != ":memory:" {
 		if err := os.MkdirAll(filepath.Dir(path), 0o777); err != nil {
@@ -591,7 +689,7 @@ func OpenNodeSqliteDatabase(path string, options NodeSqliteDatabaseOptions) (*No
 	if err != nil {
 		return nil, err
 	}
-	adapter := NewNodeSqliteDatabase(database)
+	adapter := NewNodeSqliteDatabase(database, NodeSqliteReadWrite)
 	for _, pragma := range []string{
 		"PRAGMA journal_mode = WAL",
 		"PRAGMA synchronous = NORMAL",

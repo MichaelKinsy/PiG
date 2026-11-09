@@ -109,7 +109,7 @@ func (c *invalidationCountingChild) Invalidate() { c.invalidations++ }
 
 // box.ts addChild, removeChild and clear call only invalidateCache, which drops the box's own cache; the children are invalidated only by Box.invalidate.
 func TestBoxStructureChangesDoNotInvalidateTheChildren(t *testing.T) {
-	kept, moved := &invalidationCountingChild{scriptedChild: scriptedChild{lines: []string{"k"}}}, &invalidationCountingChild{scriptedChild: scriptedChild{lines: []string{"m"}}}
+	kept, moved := &invalidationCountingChild{lines: []string{"k"}}, &invalidationCountingChild{lines: []string{"m"}}
 	box := NewPaddedBox(0, 0, nil)
 	box.AddChild(kept)
 	box.AddChild(moved)

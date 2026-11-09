@@ -62,7 +62,7 @@ type classifierWireOptions struct {
 }
 
 func (o classifierWireOptions) options() ai.ModelsClassifierOptions {
-	options := ai.ModelsClassifierOptions{ClassifierOptions: ai.ClassifierOptions{Headers: o.Headers, Env: o.Env, TimeoutMs: o.TimeoutMs, MaxRetries: o.MaxRetries, MaxRetryDelayMs: o.MaxRetryDelayMs, Temperature: o.Temperature}}
+	options := ai.ModelsClassifierOptions{Headers: o.Headers, Env: o.Env, TimeoutMs: o.TimeoutMs, MaxRetries: o.MaxRetries, MaxRetryDelayMs: o.MaxRetryDelayMs, Temperature: o.Temperature}
 	if o.APIKey != nil {
 		options.APIKey, options.APIKeySet = *o.APIKey, true
 	}
@@ -138,7 +138,7 @@ type imagesWireOptions struct {
 }
 
 func (o imagesWireOptions) options() ai.ModelsImagesOptions {
-	options := ai.ModelsImagesOptions{ImagesOptions: ai.ImagesOptions{Headers: o.Headers, Env: o.Env, Metadata: o.Metadata}}
+	options := ai.ModelsImagesOptions{Headers: o.Headers, Env: o.Env, Metadata: o.Metadata}
 	if o.TimeoutMs != nil {
 		options.TimeoutMs = *o.TimeoutMs
 	}

@@ -242,7 +242,7 @@ func nodeIncomingOf(r *nethttp.Request) (*nodeIncoming, *WireRefusal) {
 	if status != 0 {
 		return nil, &WireRefusal{Status: WireStatus(status)}
 	}
-	return &nodeIncoming{webIncoming: webIncoming{request: r, url: href}}, nil
+	return &nodeIncoming{request: r, url: href}, nil
 }
 
 // NodeRequestKind tells what a NodeRequest is.

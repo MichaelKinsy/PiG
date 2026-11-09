@@ -22,7 +22,7 @@ func TestStdioClientLeavesNoGoroutineBehindAfterClose(t *testing.T) {
 	baseline := testenv.BaselineGoroutines()
 	command, args, env := fixtureStdioOptions("stdio-server")
 	transport := mcp.NewStdioTransport(mcp.StdioTransportOptions{Command: command, Args: args, Env: env, OnStderr: func(string) {}})
-	client := mcp.NewClient(mcp.ClientOptions{Implementation: mcp.Implementation{Name: "goroutine-gate", Version: "1.0.0"}})
+	client := mcp.NewClient(mcp.ClientOptions{Name: "goroutine-gate", Version: "1.0.0"})
 	if _, err := client.Connect(t.Context(), transport); err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +92,7 @@ func TestInMemoryClientLeavesNoGoroutineBehindAfterAbortedAndTimedOutRequests(t 
 		<-release
 		return nil, errors.New("released")
 	})
-	client := mcp.NewClient(mcp.ClientOptions{Implementation: mcp.Implementation{Name: "goroutine-gate", Version: "1.0.0"}})
+	client := mcp.NewClient(mcp.ClientOptions{Name: "goroutine-gate", Version: "1.0.0"})
 	if _, err := client.Connect(t.Context(), clientTransport); err != nil {
 		t.Fatal(err)
 	}

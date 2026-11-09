@@ -20,13 +20,13 @@ func TestMarkdownTransformFirstPaintWaitsForWholeChain(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	m := &InteractiveMode{backgroundCtx: ctx, tuiInst: tui.NewWithOutput(io.Discard, 80, 24)}
-	m.newRunner = inproc.NewRunner([]extension.Extension{{MarkdownTransformer: func(text string, _ extension.MarkdownTransformContext) string {
+	m.newRunner = inproc.NewRunner([]extension.Extension{{MarkdownTransformer: extension.NewMarkdownTransformerRegistration(func(text string, _ extension.MarkdownTransformContext) string {
 		close(started)
 		<-release
 		return strings.ReplaceAll(text, "private", "redacted")
-	}}, {MarkdownTransformer: func(text string, _ extension.MarkdownTransformContext) string {
+	}, nil)}, {MarkdownTransformer: extension.NewMarkdownTransformerRegistration(func(text string, _ extension.MarkdownTransformContext) string {
 		return "FINAL " + text
-	}}}, "")
+	}, nil)}}, "")
 	block := m.newUserMessageBlock("private", messageMeta{})
 	chat := tui.NewContainer()
 	chat.Add(block)

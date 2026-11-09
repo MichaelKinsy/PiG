@@ -15,6 +15,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"maps"
@@ -26,6 +27,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/configvalue"
+	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 	"github.com/MichaelKinsy/PiG/internal/text"
 )
 
@@ -578,20 +580,18 @@ func providerOrderOf(data []byte) []string {
 	if json.Unmarshal([]byte(stripJSONComments(text.StripBom(string(data)))), &top) != nil {
 		return nil
 	}
-	decoder := json.NewDecoder(bytes.NewReader(top["providers"]))
-	if token, err := decoder.Token(); err != nil || token != json.Delim('{') {
+	decoder := jsontext.NewDecoder(bytes.NewReader(top["providers"]), jsonopts.Parse)
+	if token, err := decoder.ReadToken(); err != nil || token.Kind() != '{' {
 		return nil
 	}
 	var order []string
-	for decoder.More() {
-		token, err := decoder.Token()
+	for decoder.PeekKind() != '}' {
+		token, err := decoder.ReadToken()
 		if err != nil {
 			return order
 		}
-		key, _ := token.(string)
-		order = append(order, key)
-		var skip json.RawMessage
-		if decoder.Decode(&skip) != nil {
+		order = append(order, token.String()) // a Token is void after the next call on the decoder
+		if decoder.SkipValue() != nil {
 			return order
 		}
 	}

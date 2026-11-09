@@ -69,7 +69,7 @@ const U = {
 	"harness-tools-recovery": "loop", "harness-tools": "loop", "harness-view": "session", "jsonl-storage": "host", "memory-storage": "host",
 	"provider-session-cache-e2e": "loop", "session-checkpoints-migrations": "session", "session-definitions": "session", "session-documents": "session",
 	"session-forks": "store", "session-tables": "store", "session-watches": "session", "spec-usage": "store",
-	"sqlite-cloudflare": "host", "sqlite-facade": "host", "sqlite-migrations": "store", "sqlite-storage": "store", "storage-runtime-boundary": "store",
+	"sqlite-cloudflare": "host", "sqlite-facade": "host", "sqlite-migrations": "store", "sqlite-storage": "store", "sqlite-commit": "store", "storage-runtime-boundary": "store",
 	"system-order-cache-e2e": "loop", "tools-read-differential": "loop", "tools": "loop", "types": "store",
 	"codemode-imports": "loop", "harness-after-run": "loop", "harness-continue": "session", "harness-hook-reads": "loop", "harness-submit-in-commit": "session", "harness-tool-hooks": "loop",
 	"harness-turn-limit": "loop", "harness-registry-reader": "loop", "store-storage": "store",
@@ -104,7 +104,7 @@ emit(
 	"# status: ready (a runner exists and the reference capture is deterministic), pending (no candidate can run it yet, with the",
 	"# reason and the owner; `--strict` fails on it), skipped (nobody can run it here, with the reason).",
 	"",
-	"[pin]", `reference = ${q("earendil-works/pi")}`, `commit = ${q("f9a26365568127461c47a07a37dcb42c140a3ac5")}`, `release = ${q("1.0.4")}`,
+	"[pin]", `reference = ${q("earendil-works/pi")}`, `commit = ${q("c23b9ec1ef12a63573d739d4c294f81a377b7d57")}`, `release = ${q("1.0.4")}`,
 )
 for (const f of readdirSync(join(pi, "packages/durable/test/examples")).filter(f => /^\d\d-.*\.ts$/.test(f)).sort()) {
 	const name = f.replace(/\.ts$/, "")
@@ -124,7 +124,7 @@ for (const f of readdirSync(join(pi, "packages/durable/test/examples")).filter(f
 // host's SQL, so no candidate can run it without handing the reference's class back.
 const REFERENCE_STORAGE = "the upstream storage conformance suite this file registers runs against the core as row SC (CONTRACT 3.10); the rest tests this Storage class's own internals, which no candidate can run without handing the reference's own class back"
 const NOT_THE_CORE = {
-	"memory-storage": REFERENCE_STORAGE, "jsonl-storage": REFERENCE_STORAGE, "sqlite-facade": REFERENCE_STORAGE, "sqlite-storage": REFERENCE_STORAGE, "sqlite-migrations": REFERENCE_STORAGE,
+	"memory-storage": REFERENCE_STORAGE, "jsonl-storage": REFERENCE_STORAGE, "sqlite-facade": REFERENCE_STORAGE, "sqlite-storage": REFERENCE_STORAGE, "sqlite-commit": "tests SqliteStorage.commit() over its own batch path (statement counts and tables of the reference class), which the core replaces with its encoder and the host's SQL; Durable's Go twin is durable/storage/sqlite/sqlite_commit_test.go", "sqlite-migrations": REFERENCE_STORAGE,
 	"indexeddb-storage": REFERENCE_STORAGE,
 }
 // A row's real-time tests, with the measurement that shows the window binds the reference as well (gate.mjs reads real_time_tests).
@@ -219,6 +219,12 @@ for (const profile of ["gate", "node"]) {
 for (const profile of ["gate", "node"]) {
 	emit("[[scenario]]", `id = ${q(`F-ticks-output-${profile}`)}`, `family = "differential"`, `runner = "diff"`, `source = "durable/contract/scenarios/output-ticks.mjs"`, `seed = 0`, `profile = ${q(profile)}`, `owner = "dcore-host"`,
 		`about = ${q(`microtask passes from a tool's api.output() to its update event and from its return to its end event, on the ${profile} storage profile`)}`, `levels = ["store", "commit", "context", "output", "order"]`, `status = "ready"`)
+}
+// F-ticks-warm: the passes of a warm turn (scenarios/warm-ticks.mjs): five turns of eight sequential lookups, each turn's submit and its wait. The wait is the sum of
+// every await of Pi's turn, so an await the core spends too many or too few moves the count; F-ticks-node pins a cold submit and a short wait only.
+for (const profile of ["gate", "node"]) {
+	emit("[[scenario]]", `id = ${q(`F-ticks-warm-${profile}`)}`, `family = "differential"`, `runner = "diff"`, `source = "durable/contract/scenarios/warm-ticks.mjs"`, `seed = 0`, `profile = ${q(profile)}`, `owner = "dcore-host"`,
+		`about = ${q(`microtask passes of the submit and the wait of five warm turns of eight sequential lookups on the ${profile} storage profile`)}`, `levels = ["store", "commit", "context", "output", "order"]`, `status = "ready"`)
 }
 // F-fail: a Storage `commit` that throws fails the Session (Pi 42a SessionEnd; scenarios/storage-failure.mjs): the commit number k throws once,
 // and the call that hit it, every later call and wait, the event stream and the Harness end exactly as Pi's do, with the same store behind.

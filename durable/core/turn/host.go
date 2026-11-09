@@ -111,6 +111,11 @@ type Agent struct {
 	Instructions, Cwd string
 	// MaxTurns is the tool rounds one run takes at most (AgentState.maxTurns); 0: no limit (the stored value is an integer 1 or more).
 	MaxTurns int
+	// Compaction is the conversation's compaction settings (AgentState.compaction); nil without any.
+	Compaction *AgentCompaction
+	// CompactionStore is the value Compaction points to when the host that resolved the agent sets it: the settings live in the agent's
+	// own allocation, so a conversation's compaction settings cost the step no allocation of their own.
+	CompactionStore AgentCompaction
 	// HookHandlers are the hook handler tables of the selected extensions in extension order: hook name to handler index
 	// (agent.ts agentHooks).
 	HookHandlers []map[string]int
@@ -255,25 +260,46 @@ type ResultFault struct{ Text string }
 
 func (e *ResultFault) Error() string { return e.Text }
 
-// CompactionFor is compaction.ts compactionPolicy: the model's modelOverrides entry over the Harness-wide policy, field by
-// field.
-func (s Settings) CompactionFor(model ModelRef) history.Policy {
+// AgentCompaction is a conversation's CompactionSettings: its own fields and its modelOverrides, keyed by exact "provider/modelId".
+type AgentCompaction struct {
+	Own       history.PolicyOverride
+	Overrides map[string]history.PolicyOverride
+}
+
+// CompactionFor is compaction.ts compactionPolicy, field by field: the conversation's modelOverrides entry for the model, the
+// Harness's, the conversation's own fields, then the Harness-wide policy. The conversation's own enabled: false also beats the
+// Harness's model override.
+func (s Settings) CompactionFor(model ModelRef, conversation *AgentCompaction) history.Policy {
+	key := model.Provider + "/" + model.ModelID
+	var layers [3]history.PolicyOverride
+	if conversation != nil {
+		layers[0], layers[2] = conversation.Overrides[key], conversation.Own
+	}
+	layers[1] = s.CompactionOverrides[key]
 	policy := s.Compaction
-	override, ok := s.CompactionOverrides[model.Provider+"/"+model.ModelID]
-	if !ok {
-		return policy
+	number := func(pick func(history.PolicyOverride) *float64, harness float64) float64 {
+		for _, layer := range layers {
+			if v := pick(layer); v != nil {
+				return *v
+			}
+		}
+		return harness
 	}
-	if override.Enabled != nil {
-		policy.Enabled = *override.Enabled
-	}
-	if override.ReserveTokens != nil {
-		policy.ReserveTokens = *override.ReserveTokens
-	}
-	if override.KeepRecentTokens != nil {
-		policy.KeepRecentTokens = *override.KeepRecentTokens
-	}
-	if override.BackgroundTokens != nil {
-		policy.BackgroundTokens = *override.BackgroundTokens
+	policy.ReserveTokens = number(func(l history.PolicyOverride) *float64 { return l.ReserveTokens }, policy.ReserveTokens)
+	policy.KeepRecentTokens = number(func(l history.PolicyOverride) *float64 { return l.KeepRecentTokens }, policy.KeepRecentTokens)
+	policy.BackgroundTokens = number(func(l history.PolicyOverride) *float64 { return l.BackgroundTokens }, policy.BackgroundTokens)
+	switch {
+	case layers[0].Enabled != nil:
+		policy.Enabled = *layers[0].Enabled
+	case layers[2].Enabled != nil && !*layers[2].Enabled:
+		policy.Enabled = false
+	default:
+		for _, layer := range layers {
+			if layer.Enabled != nil {
+				policy.Enabled = *layer.Enabled
+				break
+			}
+		}
 	}
 	return policy
 }

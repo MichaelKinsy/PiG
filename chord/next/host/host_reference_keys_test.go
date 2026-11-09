@@ -1172,7 +1172,7 @@ type gatedInstance struct {
 }
 
 func newGatedInstance(source state.DeriveSource) *gatedInstance {
-	return &gatedInstance{fakeInstance: fakeInstance{source: source}, entered: make(chan struct{}), loaded: make(chan struct{})}
+	return &gatedInstance{source: source, entered: make(chan struct{}), loaded: make(chan struct{})}
 }
 
 // let loads the instance's pin.

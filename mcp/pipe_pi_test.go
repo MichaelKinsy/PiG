@@ -435,7 +435,7 @@ func TestPipeTransportWithARealProgramRunsInitializeToolsListAndToolsCall(t *tes
 	transport := mcp.NewPipeTransport(mcp.PipeTransportOptions{Open: func(handlers mcp.McpPipeHandlers) (mcp.McpPipe, error) {
 		return spawnPipe(command, args, env, handlers)
 	}})
-	client := mcp.NewClient(mcp.ClientOptions{Implementation: mcp.Implementation{Name: "pipe-test", Version: "1.0.0"}})
+	client := mcp.NewClient(mcp.ClientOptions{Name: "pipe-test", Version: "1.0.0"})
 	result, err := client.Connect(t.Context(), transport)
 	if err != nil {
 		t.Fatal(err)

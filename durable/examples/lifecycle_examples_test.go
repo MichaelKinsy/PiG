@@ -64,7 +64,7 @@ func TestExample20LateJoin(t *testing.T) {
 	var emitted sync.Mutex
 	registry := harness.CreateRegistry()
 	installed(t, registry, new(durable.Extension{Name: "count", Tools: []*durable.ToolRegistration{new(durable.ToolRegistration{
-		ToolSchema: ai.ToolSchema{Name: "count", Description: "Counts to ten", Parameters: emptyParameters},
+		Name: "count", Description: "Counts to ten", Parameters: emptyParameters,
 		Execute: func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			for n := 1; n <= 10; n++ {
 				if n == 6 {
@@ -189,14 +189,12 @@ func TestExample20LateJoin(t *testing.T) {
 func subagentExtension() *durable.Extension {
 	var subagent *durable.Extension
 	subagent = new(durable.Extension{Name: "subagent", Tools: []*durable.ToolRegistration{new(durable.ToolRegistration{
-		ToolSchema: ai.ToolSchema{
-			Name:        "subagent",
-			Description: "Delegate a self-contained task to a subagent and get its answer back.",
-			Parameters: map[string]any{
-				"type":       "object",
-				"properties": map[string]any{"task": map[string]any{"type": "string", "description": "What the subagent should do"}},
-				"required":   []any{"task"},
-			},
+		Name:        "subagent",
+		Description: "Delegate a self-contained task to a subagent and get its answer back.",
+		Parameters: map[string]any{
+			"type":       "object",
+			"properties": map[string]any{"task": map[string]any{"type": "string", "description": "What the subagent should do"}},
+			"required":   []any{"task"},
 		},
 		// Safe to rerun after a crash: a rerun finds the child it already created and the submission it already made.
 		Replay: durable.ReplaySafe,
@@ -427,8 +425,8 @@ type sandbox struct {
 func TestExample28SandboxPerConversation(t *testing.T) {
 	// `fork: "initial"`: a fork gets no sandbox until the app assigns one.
 	sandboxDoc := durable.DefineDoc(durable.DocDefinition[sandbox]{
-		CommonDocDefinition: durable.CommonDocDefinition[sandbox]{Kind: "app.sandbox", Version: 1, Initial: func() sandbox { return sandbox{} }, CheckpointWhen: func(sandbox, []durable.Op, durable.CheckpointInfo) bool { return false }},
-		DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkInitial},
+		Kind: "app.sandbox", Version: 1, Initial: func() sandbox { return sandbox{} }, CheckpointWhen: func(sandbox, []durable.Op, durable.CheckpointInfo) bool { return false },
+		Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkInitial,
 	})
 	note := func(text string) ai.FauxResponseStep {
 		return fauxToolTurn("write", map[string]any{"path": "note.txt", "content": text}, "")
@@ -495,7 +493,7 @@ func TestExample30ReloadAndRestart(t *testing.T) {
 	}
 	loadVersioned := func(version string) *durable.Extension {
 		return new(durable.Extension{Name: "versioned", Tools: []*durable.ToolRegistration{new(durable.ToolRegistration{
-			ToolSchema: ai.ToolSchema{Name: "version", Description: "Report the tool's code version", Parameters: emptyParameters},
+			Name: "version", Description: "Report the tool's code version", Parameters: emptyParameters,
 			Execute: func(ctx context.Context, _ any, _ durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 				held := currentGate()
 				started <- struct{}{}

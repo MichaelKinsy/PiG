@@ -128,7 +128,7 @@ func TestDeterministicMessagesHaveUpstreamsJSONShape(t *testing.T) {
 		t.Errorf("decoded idle = %+v (%v)", decoded, err)
 	}
 	// The hand-written encoder of the Worker module says the same.
-	if got := string(appendRemoteMessage(nil, RemoteMessage{WorkerToHostMessage: WorkerToHostMessage{Type: MessageIdle, Seq: 2, Issued: 5}})); got != `{"type":"idle","seq":2,"issued":5}` {
+	if got := string(appendRemoteMessage(nil, RemoteMessage{Type: MessageIdle, Seq: 2, Issued: 5})); got != `{"type":"idle","seq":2,"issued":5}` {
 		t.Errorf("appended idle = %s", got)
 	}
 }

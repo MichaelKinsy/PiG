@@ -172,8 +172,8 @@ func tool(name string, execute func(ctx context.Context, args toolArgs, api dura
 		panic(err)
 	}
 	return harness.DefineTool(durable.ToolRegistration{
-		ToolSchema: ai.ToolSchema{Name: name, Description: name, Parameters: parameters},
-		Replay:     replay,
+		Name: name, Description: name, Parameters: parameters,
+		Replay: replay,
 		Execute: func(ctx context.Context, args any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			decoded, err := durable.FromJsonValue[toolArgs](args)
 			if err != nil {

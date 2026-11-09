@@ -222,7 +222,7 @@ func TestARunAsTheConversationViewShowsIt(t *testing.T) {
 		setup := chatSetup(t)
 		gate := deferred()
 		addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{
-			ToolSchema: ai.ToolSchema{Name: "print", Description: "Prints", Parameters: map[string]any{"type": "object", "properties": map[string]any{"n": map[string]any{"type": "number"}}, "required": []any{"n"}}},
+			Name: "print", Description: "Prints", Parameters: map[string]any{"type": "object", "properties": map[string]any{"n": map[string]any{"type": "number"}}, "required": []any{"n"}},
 			Execute: func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 				api.Output("one\n")
 				time.Sleep(150 * time.Millisecond)
@@ -405,7 +405,7 @@ func TestARunAsTheConversationViewShowsIt(t *testing.T) {
 		setup := chatSetup(t)
 		gate := deferred()
 		addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{
-			ToolSchema:   ai.ToolSchema{Name: "tail", Description: "Prints lines", Parameters: emptyObjectSchema()},
+			Name: "tail", Description: "Prints lines", Parameters: emptyObjectSchema(),
 			OutputLimits: &durable.ToolOutputLimits{MaxLines: new(3), Retain: durable.RetainTail},
 			Execute: func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 				for line := range 6 {
@@ -511,7 +511,7 @@ func TestARunAsTheConversationViewShowsIt(t *testing.T) {
 		// upstream: packages/durable/test/harness-view-run.test.ts:331
 		setup := chatSetup(t)
 		addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{
-			ToolSchema: ai.ToolSchema{Name: "wait", Description: "Waits until aborted", Parameters: emptyObjectSchema()},
+			Name: "wait", Description: "Waits until aborted", Parameters: emptyObjectSchema(),
 			Execute: func(ctx context.Context, _ any, _ durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 				return durable.ToolExecutionResult{}, abortedBy(ctx)
 			},
@@ -560,7 +560,7 @@ func TestARunAsTheConversationViewShowsIt(t *testing.T) {
 		setup := chatSetup(t)
 		gate := deferred()
 		addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{
-			ToolSchema: ai.ToolSchema{Name: "hold", Description: "Waits", Parameters: emptyObjectSchema()},
+			Name: "hold", Description: "Waits", Parameters: emptyObjectSchema(),
 			Execute: func(ctx context.Context, _ any, _ durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 				return durable.ToolExecutionResult{}, gate.wait(ctx)
 			},

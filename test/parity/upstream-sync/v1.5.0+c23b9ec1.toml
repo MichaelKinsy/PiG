@@ -3960,415 +3960,415 @@ rationale = "Pi: only http(s) sign-in URLs are opened (tui LoginBrowserTarget)."
 [[files]]
 path = "packages/durable/src/codemode/codemode.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/codemode/call_test.go#TestACallLaunchesOnlyOnceItsIssuedCountIsCommitted"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/codemode/models.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/codemode/models_test.go#TestCodeModeModels"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/documents.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/documents_family_definition_test.go#TestDocFamilyDefinitionCarriesPisFamilyDiscriminator"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/entries.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/entries_behavior_test.go#TestDefineEntryGuardsByKindAndDecodesTypedData"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/env/index.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/env/env_test.go#TestToErrorMatchesJSONStringify"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/env/node-watch.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/env/node/watch_deliver_pi_test.go#TestWatcherDeliversOnlyWhileOpenAndSurvivesAThrowingCallback"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/env/node.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/env/node/node_env_semantics_test.go#TestNodeExecutionEnvFileOperationsCheckTheirSignalWherePiDoes"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/harness/agent.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/harness_compaction_test.go#TestPerConversationCompactionSettings", "test:durable/core/driver/compaction_failure_core_test.go#TestCoreAConversationThatTurnsCompactionOffIsNeverCompacted"]
+rationale = "Pi 922c3ff2b (per-conversation compaction settings): AgentState and AgentChange carry `compaction`; agent.ts compactionSettings stores the set fields and fails with a RangeError for a token count that is not an integer 0 or more, and `null` clears it. Ported in durable/harness/agent.go (compactionSettings, compactionFields; the error text names `compaction.<field>` for the conversation's own fields and for a model override alike, as agent.ts does) over the ordered CompactionOverrides of durable/compaction_overrides.go. TestPerConversationCompactionSettings drives the configure, drop-undefined, reject and clear cases (Pi's 1.5 input is -1 in Go: the *int API cannot express 1.5, noted in the test mapping), and the core test runs a conversation that turns compaction off over the core and the reference. The Chord import split in this file changes no statement."
 
 [[files]]
 path = "packages/durable/src/harness/compaction.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/harness_compaction_test.go#TestPerConversationCompactionSettings", "test:durable/core/turn/compaction_test.go#TestCompactionPolicyLayers", "test:durable/core/driver/compaction_failure_core_test.go#TestCoreAConversationThatTurnsCompactionOffIsNeverCompacted"]
+rationale = "Pi 922c3ff2b: compactionPolicy(settings, model, conversation) layers the conversation's modelOverrides entry, the harness's, the conversation's own fields, then the harness-wide policy, field by field; the conversation's `enabled: false` also beats the harness's model override. Ported in durable/harness_types.go (CompactionPolicy.PolicyFor) and the core's turn.Settings.CompactionFor (durable/core/turn/host.go); TestCompactionPolicyLayers checks the layers of the core's function and TestPerConversationCompactionSettings the reference's, field for field."
 
 [[files]]
 path = "packages/durable/src/harness/context.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/harness/context_lead_test.go#TestTaskRuntimeContextLeadsWithTheSystemMessage"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/harness/define.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/harness/agent_defaults_test.go#TestDefaultPoliciesMatchPiAndResolveByCopy"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/harness/generation.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/harness_compaction_test.go#TestPerConversationCompactionSettings", "test:durable/core/driver/compaction_failure_core_test.go#TestCoreAConversationThatTurnsCompactionOffIsNeverCompacted"]
+rationale = "Pi 922c3ff2b: the blocking threshold passes the conversation's compaction to compactionPolicy, and classify reads the agent (for its compaction) only for an overflow nothing was compacted for yet. Ported in durable/harness/generation.go and the core's turn generation_classify.go (r.agent only on that branch); the core test sends a conversation with compaction off an overflow and sees neither a threshold nor an overflow compaction, and the harness test 'skips overflow compaction when the conversation turns compaction off' does the same on the reference."
 
 [[files]]
 path = "packages/durable/src/harness/harness.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/harness/harness_lifecycle_test.go#TestHarnessOpen"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/harness/inbox.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/harness/harness_inbox_test.go#TestInbox"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/harness/json.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/harness/json_pi_test.go#TestAssignJsonWritesLeafByLeafLikePi"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/harness/live.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/harness/harness_lifecycle_test.go#TestHarnessOpen"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/harness/partial-changes.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/harness/partial_changes_upstream_test.go#TestPartialChangesCommitArgumentsEqualToTheFinalParseAtEveryPieceSizeAndCommitRhythm"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/harness/prompt.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/harness/prompt_pi_oracle_test.go#TestPromptPlanningMatchesPi"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/harness/provider.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/harness/harness_generation_test.go#TestGeneration"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/harness/registry-reader.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/harness/registry_reader_test.go#TestRegistryReader"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/harness/scheduler.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/core/session/sched_restart_test.go#TestARestartMarksAbandonedWorkAndARequestUpgradesIt"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/harness/submissions.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/harness/harness_submit_in_commit_test.go#TestWhenIdleReject"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/harness/task-graph.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/harness/harness_task_graph_test.go#TestTaskGraphView"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/harness/tool.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/harness/harness_tool_hooks_test.go#TestAfterToolOnResultsTheCallPhaseDecides"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/harness/transcript.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/harness/harness_view_run_test.go#TestARunAsTheConversationViewShowsIt"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/harness/types.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/harness_compaction_test.go#TestPerConversationCompactionSettings", "test:durable/harness/harness_generation_test.go#TestGeneration", "test:durable/harness_types_test.go#TestCompactionReasonValuesMatchPi"]
+rationale = "Pi 922c3ff2b adds `compaction` to AgentState, AgentChange and the conversation view and generalizes CompactionSettings to a conversation's; dbc61d647 adds websocketConnectTimeoutMs and thinkingBudgets to the conversation's stream options. Ported in durable/harness/types.go and durable/harness_types.go (ConversationStreamOptions: WebsocketConnectTimeoutMs, ThinkingBudgets); TestGeneration's 'forwards stream options and the thinking level' sends both to the provider and checks a later request without them."
 
 [[files]]
 path = "packages/durable/src/harness/usage.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/harness/usage_pi_oracle_test.go#TestUsageLedgerMatchesPiOnSeededPrograms"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/harness/util.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/harness/harness_lifecycle_test.go#TestHarnessOpen"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/harness/view.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/harness/view_pi_oracle_test.go#TestConversationViewsMatchPi"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/index.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/spec_usage_upstream_test.go#TestSpecUsageCompilesTheRootExamples"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/session/cached-storage.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/session/cached_storage_test.go#TestCachedStorageServesWrittenRecordWithoutReadAndFollowsLaterWrites"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/session/forks.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/session/session_forks_test.go#TestSessionConversationDocumentForks"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/session/keys.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/session/keys_test.go#TestKeyFormats"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/session/session.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/session/session_adoption_test.go#TestSessionAdoptionAfterStorageStoredACommit"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/session/transaction.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/harness_submit_in_commit_test.go#TestSubmitInsideTheCallersCommit", "test:durable/session/read_after_write_methods_upstream_test.go"]
+rationale = "Pi 9ca159208: Tx.submission(id) reads a committed submission record, and the doc of the committed record loses its 'Internal' marking; the rest of the diff is the Chord import split. Ported as durable/session Tx.Submission (durable/session/transaction.go), answered through the host's Storage when it overrides `submission` (durable/core/tx.go txOp, tx-submission-gate.test.ts); the harness test reads a submission with the entry its input was placed at and a missing ID."
 
 [[files]]
 path = "packages/durable/src/session/writer.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/session/session_group_commit_test.go#TestGroupCommitBatching"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/storage/indexeddb.ts"
 change = "modified"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Pi c23b9ec1 changes only this file's Chord import lines (e9c0ff4d8). The file is the browser IndexedDB storage, which Go has no counterpart for (the browser surface is designed out; durable/test/indexeddb-storage.test.ts is mapped the same way), and no statement changes."
 
 [[files]]
 path = "packages/durable/src/storage/jsonl/node.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/storage/jsonl/jsonl_storage_test.go#TestJsonlStorageConformance"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/storage/jsonl/storage.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/storage/jsonl/jsonl_storage_test.go#TestJsonlStorageConformance"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/storage/memory.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/storage/memory_pi_oracle_test.go#TestMemoryStorageMatchesPiOnSeededPrograms"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/storage/sqlite/commit.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/storage/sqlite/sqlite_commit_test.go#TestSqliteStorageBatchCommitsAgainstMemoryReference", "test:durable/storage/sqlite/sqlite_commit_test.go#TestSqliteStorageBatchCommitStatements", "test:durable/storage/sqlite/sqlite_commit_test.go#TestSqliteStorageBatchCommitRegressions", "test:durable/storage/sqlite/sqlite_storage_test.go#TestSqliteStorageBatches"]
+rationale = "Pi fabf916fc (SqliteStorage commits a group in a few statements): new file commit.ts holds the batch commit (the checks in one pass over the group's reads, one row write for each table in chunks of 8 KiB / 512 Ki, next_seq and next_id written once, one transaction for the call). Ported in durable/storage/sqlite/commit.go and storage.go (Commit normalizes the batches once at its top, so a pointer-form write is read as the value form is); the seeded runs compare against MemoryStorage with Pi's draw order, the statement-count cases pin the group's statements, and the regression cases carry the third-incarnation orders and the pointer-form writes."
 
 [[files]]
 path = "packages/durable/src/storage/sqlite/rows.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/storage/sqlite/sqlite_commit_test.go#TestSqliteStorageBatchCommitStatements", "test:durable/storage/sqlite/sqlite_commit_test.go#TestSqliteStorageBatchCommitsAgainstMemoryReference"]
+rationale = "Pi fabf916fc: new file rows.ts builds the row of each record for the batched insert. Ported in durable/storage/sqlite/rows.go; the statement-count and memory-reference tests compare the stored rows with the reference's."
 
 [[files]]
 path = "packages/durable/src/storage/sqlite/statements.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/storage/sqlite/sqlite_commit_test.go#TestSqliteStorageBatchCommitStatements"]
+rationale = "Pi fabf916fc: new file statements.ts holds the statement text of the batch commit (json_each reads in chunks, multi-row inserts) and utf16Length for the chunk sizes. Ported in durable/storage/sqlite/statements.go (utf16Length counts UTF-16 units of the decoded code points, annotated for port-lint); TestSqliteStorageBatchCommitStatements pins the statements a group runs."
 
 [[files]]
 path = "packages/durable/src/storage/sqlite/storage.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/storage/sqlite/sqlite_storage_test.go#TestSqliteStorageBatches", "test:durable/storage/sqlite/sqlite_commit_test.go#TestSqliteStorageBatchCommitsAgainstMemoryReference"]
+rationale = "Pi fabf916fc: SqliteStorage.commit delegates to the batch commit of commit.ts and the per-batch code leaves storage.ts (410 lines out). Ported in durable/storage/sqlite/storage.go (Commit); TestSqliteStorageBatches runs the copy and check read modes and the failure cases, and the pointer-form write case."
 
 [[files]]
 path = "packages/durable/src/storage/store/commit.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageOneTransactionPerCall"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/storage/store/documents.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/storage/store/store_storage_test.go#TestStoreStorageConformance"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/storage/store/queries.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/storage/store/store_storage_test.go#TestStoreStorageConformance"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/storage/store/storage.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/storage/store/store_storage_test.go#TestStoreStorageConformance"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/storage/store/tables.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/storage/store/store_storage_test.go#TestStoreStorageConformance"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/testing/commit-writes.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/durabletest/storage_conformance_cases_test.go#TestCreateStorageConformanceCasesMatchUpstream"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/testing/env-conformance.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/durabletest/env_conformance_cases_test.go#TestCreateEnvConformanceCasesMatchUpstream"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/testing/storage-benchmark.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/storage/storage_write_benchmark_test.go#TestStorageWriteBenchmarksSeedAndCommitPisRecords"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/testing/storage-conformance.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/durabletest/storage_conformance_cases_test.go#TestCreateStorageConformanceCasesMatchUpstream"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/tool-search/tool-search.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/toolsearch/toolsearch_test.go#TestFindsAToolByAParameterDescriptionBehindALocalReferenceAndNotByUnreferencedDefinitions"]
+rationale = "Pi 6d3e342b2 (#11850): schemaText follows local `$ref`s into the tool's parameter schema through codemode's resolveSchemaRef, reading each reached subschema once and leaving definitions no property references unread. Ported in durable/toolsearch/toolsearch.go; the test finds a tool by a description behind a local reference and not by an unreferenced definition."
 
 [[files]]
 path = "packages/durable/src/tools/bash.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/tools/bash_input_test.go#TestBashToolInputIsTheBashSchemaArguments"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/tools/file-mutation-queue.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/tools/file_mutation_queue_chain_pi_test.go#TestWithFileMutationQueueKeepsALaterCallersTailAndLeavesNoneBehind"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/tools/path-utils.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/tools/env_pi_test.go#TestRequireEnvMatchesPi"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/tools/read.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/tools/image_pi_test.go#TestDetectSupportedImageMimeTypeMatchesPi"]
+rationale = "Pi c23b9ec1 changes only this file's import lines (e9c0ff4d8, Chord v2 is the package's root): the names it takes from `@earendil-works/chord` now come from its `/context`, `/json`, `/delta` and `/watch` subpaths, and no statement changes, so the observable behavior is the one the Go port already has; the evidence is the Go test of this surface, green unchanged."
 
 [[files]]
 path = "packages/durable/src/types.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/harness_submit_in_commit_test.go#TestSubmitInsideTheCallersCommit"]
+rationale = "Pi 9ca159208 adds `Tx.submission(id)` to the Tx interface of types.ts. Ported as the Tx.Submission method of durable/types.go; TestSubmitInsideTheCallersCommit's 'reads a submission by ID in a commit' calls it."
 
 [[files]]
 path = "packages/env/src/connection.ts"

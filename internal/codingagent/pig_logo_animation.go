@@ -1084,7 +1084,7 @@ func (a *pigLogoAnimation) HandleMouse(event tui.TuiMouseEvent) *tui.TuiMouseDis
 		a.close()
 	}
 	render := false
-	return &tui.TuiMouseDispatchResult{TuiMouseEventResult: tui.TuiMouseEventResult{Handled: true, Render: &render}}
+	return &tui.TuiMouseDispatchResult{Handled: true, Render: &render}
 }
 
 func (a *pigLogoAnimation) Invalidate() {

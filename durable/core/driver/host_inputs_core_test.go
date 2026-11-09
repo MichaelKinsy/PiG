@@ -122,7 +122,7 @@ func TestCoreHostInputsAreReadAtEachUse(t *testing.T) {
 			var seen []durable.Models
 			registry := harness.CreateRegistry()
 			probe := &durable.ToolRegistration{
-				ToolSchema: ai.ToolSchema{Name: "probe", Description: "Records api.models before and after the host swaps it", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}},
+				Name: "probe", Description: "Records api.models before and after the host swaps it", Parameters: map[string]any{"type": "object", "properties": map[string]any{}},
 				Execute: func(_ context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 					seen = append(seen, api.Models())
 					current = second

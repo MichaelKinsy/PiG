@@ -1509,15 +1509,13 @@ func (w terminalCursorWriter) Write(data []byte) (int, error) {
 // the differential-render overflow crash log goes, the OS temp directory when empty.
 func NewTuiMainScreen(terminal Terminal, showHardwareCursor *bool, logDirectory string) *TuiMainScreen {
 	t := &TuiMainScreen{
-		tuiBase: tuiBase{
-			out:                terminalWriter{terminal},
-			direct:             terminalCursorWriter{terminal},
-			terminal:           terminal,
-			terminalBackground: &terminalBackgroundQueries{},
-			now:                time.Now,
-			afterFunc: func(d time.Duration, fn func()) stoppableTimer {
-				return time.AfterFunc(d, fn)
-			},
+		out:                terminalWriter{terminal},
+		direct:             terminalCursorWriter{terminal},
+		terminal:           terminal,
+		terminalBackground: &terminalBackgroundQueries{},
+		now:                time.Now,
+		afterFunc: func(d time.Duration, fn func()) stoppableTimer {
+			return time.AfterFunc(d, fn)
 		},
 		logDirectory: logDirectory,
 	}
@@ -1534,15 +1532,13 @@ func NewTuiMainScreen(terminal Terminal, showHardwareCursor *bool, logDirectory 
 // dimensions. Used only by tests; production code uses New().
 func NewWithOutput(out io.Writer, cols, rows int) *TuiMainScreen {
 	t := &TuiMainScreen{
-		tuiBase: tuiBase{
-			out:                stdoutWriter(out),
-			terminalBackground: &terminalBackgroundQueries{},
-			fixedSize:          true,
-			showHardwareCursor: os.Getenv("PI_HARDWARE_CURSOR") == "1",
-			now:                time.Now,
-			afterFunc: func(d time.Duration, fn func()) stoppableTimer {
-				return time.AfterFunc(d, fn)
-			},
+		out:                stdoutWriter(out),
+		terminalBackground: &terminalBackgroundQueries{},
+		fixedSize:          true,
+		showHardwareCursor: os.Getenv("PI_HARDWARE_CURSOR") == "1",
+		now:                time.Now,
+		afterFunc: func(d time.Duration, fn func()) stoppableTimer {
+			return time.AfterFunc(d, fn)
 		},
 	}
 	t.setSize(cols, rows)

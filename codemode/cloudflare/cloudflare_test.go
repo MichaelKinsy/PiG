@@ -80,9 +80,8 @@ func TestNewSandboxDurableObjectHasPisDefaults(t *testing.T) {
 // so a module the caller passes is replaced, never loaded.
 func TestCreateInlineSandboxRunsWithTheEntrysModule(t *testing.T) {
 	callers := 0
-	sandbox, err := cloudflare.CreateInlineSandbox(codemode.InlineSandboxOptions{InterruptBudget: 1000, SandboxOptions: codemode.SandboxOptions{
-		Wasm: func() ([]byte, error) { callers++; return nil, errors.New("the caller's module") },
-	}})
+	sandbox, err := cloudflare.CreateInlineSandbox(codemode.InlineSandboxOptions{InterruptBudget: 1000,
+		Wasm: func() ([]byte, error) { callers++; return nil, errors.New("the caller's module") }})
 	if err != nil {
 		t.Fatal(err)
 	}

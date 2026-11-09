@@ -22,12 +22,10 @@ func tokenRequestTo(t *testing.T, status int, body string, resource string) (url
 	}))
 	defer server.Close()
 	_, err := oauth.ExchangeAuthorizationCode(t.Context(), server.URL, oauth.ExchangeAuthorizationCodeOptions{
-		TokenRequestOptions: oauth.TokenRequestOptions{
-			Metadata:          &oauth.AuthorizationServerMetadata{TokenEndpoint: server.URL + "/token"},
-			ClientInformation: oauth.OAuthClientInformationMixed{ClientID: "id"},
-			Resource:          resource,
-		},
-		Code: "c", CodeVerifier: "v", RedirectURL: "http://localhost/callback",
+		Metadata:          &oauth.AuthorizationServerMetadata{TokenEndpoint: server.URL + "/token"},
+		ClientInformation: oauth.OAuthClientInformationMixed{ClientID: "id"},
+		Resource:          resource,
+		Code:              "c", CodeVerifier: "v", RedirectURL: "http://localhost/callback",
 	})
 	return form, err
 }

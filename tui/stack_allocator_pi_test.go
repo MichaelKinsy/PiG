@@ -114,7 +114,7 @@ func TestStacksRenderLikePiAtTheEdges(t *testing.T) {
 	hidden := &scriptedChild{lines: []string{"h"}}
 	shown := &scriptedChild{lines: []string{"s"}}
 	NewHStack([]StackEntry{
-		{Component: hidden, StackEntryOptions: StackEntryOptions{Basis: ptr(0)}},
+		{Component: hidden, Basis: ptr(0)},
 		{Component: shown},
 	}, StackOptions{}).Render(5)
 	if !slices.Equal(hidden.widths, []int{5}) {
@@ -127,7 +127,7 @@ func TestStacksRenderLikePiAtTheEdges(t *testing.T) {
 		t.Errorf("center alignment rows = %q, want the short child on the middle row", centered)
 	}
 	long := &scriptedChild{lines: []string{"a", "b", "c"}}
-	cut := NewVStack([]StackEntry{{Component: long, StackEntryOptions: StackEntryOptions{MaxSize: ptr(1)}}}, StackOptions{}).Render(3)
+	cut := NewVStack([]StackEntry{{Component: long, MaxSize: ptr(1)}}, StackOptions{}).Render(3)
 	if !slices.Equal(cut, []string{"a"}) {
 		t.Errorf("an entry with maximum height 1 rendered %q, want [a]", cut)
 	}

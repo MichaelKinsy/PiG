@@ -126,9 +126,8 @@ func (m *sourceMap) parse(sources []string, mappings string) error {
 				return err
 			}
 		}
-		m.mappings = append(m.mappings, sourceMapping{line: line, column: column, sourceMapEntry: sourceMapEntry{
-			originalSource: source, hasSource: hasSource, originalLine: sourceLine, originalColumn: sourceColumn,
-		}})
+		m.mappings = append(m.mappings, sourceMapping{line: line, column: column,
+			originalSource: source, hasSource: hasSource, originalLine: sourceLine, originalColumn: sourceColumn})
 	}
 }
 

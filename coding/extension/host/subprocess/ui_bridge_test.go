@@ -1115,12 +1115,10 @@ func (u *dialogOverOverlayUI) Select(ctx context.Context, title string, _ []stri
 // opens the dialog without waiting for the component, and the component stays open, its call pending, until it closes itself.
 func TestInteractiveDialogOpensOverFocusedOverlay(t *testing.T) {
 	ui := &dialogOverOverlayUI{
-		serialFocusedUI: serialFocusedUI{
-			UIContext: extension.NoopUIContext,
-			entered:   make(chan string, 2),
-			release:   make(chan struct{}, 1),
-		},
-		answer: make(chan struct{}, 1),
+		UIContext: extension.NoopUIContext,
+		entered:   make(chan string, 2),
+		release:   make(chan struct{}, 1),
+		answer:    make(chan struct{}, 1),
 	}
 	bridge := NewUIBridge(func() {})
 	bridge.SetUIContext(ui)

@@ -5,6 +5,7 @@ package ai
 import (
 	"bytes"
 	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"reflect"
@@ -12,6 +13,7 @@ import (
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/internal/jsjson"
+	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 )
 
 // modelsCatalogRecord is the data-only Model<Api> stored by provider publication; bound backend objects never enter the catalog file.
@@ -85,25 +87,26 @@ type catalogPair struct {
 
 // orderedCatalogPairs reads a JSON object's members in document order.
 func orderedCatalogPairs(data []byte) ([]catalogPair, error) {
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	token, err := decoder.Token()
+	decoder := jsontext.NewDecoder(bytes.NewReader(data), jsonopts.Parse)
+	token, err := decoder.ReadToken()
 	if err != nil {
 		return nil, err
 	}
-	if delim, ok := token.(json.Delim); !ok || delim != '{' {
+	if token.Kind() != '{' {
 		return nil, errors.New("not a JSON object")
 	}
 	var pairs []catalogPair
-	for decoder.More() {
-		keyToken, err := decoder.Token()
+	for decoder.PeekKind() != '}' {
+		keyToken, err := decoder.ReadToken()
 		if err != nil {
 			return nil, err
 		}
-		var value json.RawMessage
-		if err := decoder.Decode(&value); err != nil {
+		key := keyToken.String() // a Token and the bytes ReadValue returns are void after the next call on the decoder
+		value, err := decoder.ReadValue()
+		if err != nil {
 			return nil, err
 		}
-		pairs = append(pairs, catalogPair{key: keyToken.(string), value: bytes.Clone(value)})
+		pairs = append(pairs, catalogPair{key: key, value: bytes.Clone(value)})
 	}
 	return pairs, nil
 }

@@ -93,14 +93,15 @@ async function counts(name: string, crash: Crash, configure: (api: Api, setup: S
 
 /**
  * PiG's passes equal Pi's, in the open of the Harness and in the run to the task's end: the `pi` entries of each case's `passes <case>:` line are
- * measured here at Pi b556cfe5 by the reference itself and pinned beside the comparison, so a change of the pin shows as a changed number.
+ * measured here at Pi c23b9ec1 by the reference itself and pinned beside the comparison, so a change of the pin shows as a changed number
+ * (Harness.open spends 82 passes at c23b9ec1 and spent 68 at b556cfe5; the run ends moved with it: 204, 160, 166, 241 and 147 then).
  * Every awaited step the core's cut-off paths and Harness.open take is charged as Pi's code spends it (the commit job's start behind the
  * reserve pass, `#read`'s async return of runtime.outcomes and of a missed runtime.snapshot, the async return of afterHarnessResult,
  * convertPartial, appendAssistant and appendToolResult, cancelDeferred's, and the async returns of the scheduler's open), so the commits land
  * at the passes Pi's land at.
  */
 function assertPassesEqualPi(result: Record<string, { open: number; end: number }>, pi: number) {
-  assert.deepEqual(result.pi, { open: 68, end: pi }, "pinned reference numbers")
+  assert.deepEqual(result.pi, { open: 82, end: pi }, "pinned reference numbers")
   assert.deepEqual(result.core, result.pi, "the core spends the reference's passes")
 }
 
@@ -129,8 +130,8 @@ async function crashWhileStreaming(): Promise<Crash> {
 test("a generation whose request the host died during ends the run interrupted in Pi's passes", async () => {
   const crash = await crashWhileStreaming()
   const result = await counts("interrupted", crash, (_api, setup) => { setup.settings.retry = { enabled: false } })
-  // The core's run end and Harness.open spend Pi's passes (204 and 68).
-  assertPassesEqualPi(result, 204)
+  // The core's run end and Harness.open spend Pi's passes (207 and 82).
+  assertPassesEqualPi(result, 207)
 })
 
 // A generation cut off restartLimit times before its request (generation.ts endCutOff): the run ends restart_limit.
@@ -150,8 +151,8 @@ test("a generation cut off restartLimit times ends the run restart_limit in Pi's
     next.settings.restartLimit = 1
     install(api, next, "section:preamble", { sections: [api.section("preamble", async (_input: unknown, ctx: any) => aborted(ctx.abortSignal))] })
   })
-  // The core's run end and Harness.open spend Pi's passes (160 and 68).
-  assertPassesEqualPi(result, 160)
+  // The core's run end and Harness.open spend Pi's passes (177 and 82).
+  assertPassesEqualPi(result, 177)
 })
 
 // A crash during a deferred response's poll, with no retry left: the poll is cut off and the run ends interrupted (generation.ts poll).
@@ -172,8 +173,8 @@ test("a generation whose poll the host died during ends the run interrupted in P
   const taskId = (await live(opened.harness)).run.taskId
   opened.kill()
   const result = await counts("poll", { path: copyStore(path, path + ".crash"), taskId, setup: () => setupOf(piApi) }, (api, next) => { next.settings.retry = { enabled: false }; next.settings.stream = { deferred: true } })
-  // The core's run end and Harness.open spend Pi's passes (166 and 68).
-  assertPassesEqualPi(result, 166)
+  // The core's run end and Harness.open spend Pi's passes (183 and 82).
+  assertPassesEqualPi(result, 183)
 })
 
 // A tool call cut off restartLimit times is not run again (tool.ts endCutOff).
@@ -205,8 +206,8 @@ test("a tool call cut off restartLimit times ends with an error result in Pi's p
     opened.harness.resume()
   }
   const result = await counts("tool", { path: copyStore(path, path + ".crash"), taskId, setup: () => setupOf(piApi) }, (api, next) => { const made = make(api); Object.assign(next, { settings: made.settings, registry: made.registry, faux: made.faux, models: made.models }) })
-  // Pi b556cfe5 spends 241 passes to the cut-off tool's end (184 at e7a0df27, 173 at b3a29f11: afterTool now runs on every tool task result, 87eff524), measured by this test's own `passes tool:` line; the core spends the same, and Harness.open 68.
-  assertPassesEqualPi(result, 241)
+  // Pi c23b9ec1 spends 258 passes to the cut-off tool's end (241 at b556cfe5, 184 at e7a0df27, 173 at b3a29f11: afterTool now runs on every tool task result, 87eff524), measured by this test's own `passes tool:` line; the core spends the same, and Harness.open 82.
+  assertPassesEqualPi(result, 258)
 })
 
 // A compaction cut off restartLimit times fails into compactionFailure (compaction.ts).
@@ -226,8 +227,8 @@ test("a compaction cut off restartLimit times fails in Pi's passes", async () =>
   await reached.promise
   opened.kill()
   const result = await counts("compaction", { path: copyStore(path, path + ".crash"), taskId, setup: () => setupOf(piApi) }, (_api, next) => { next.settings.restartLimit = 1; next.settings.compaction = { enabled: false, keepRecentTokens: 10 } })
-  // The core's cut-off end and Harness.open spend Pi's passes (147 and 68).
-  assertPassesEqualPi(result, 147)
+  // The core's cut-off end and Harness.open spend Pi's passes (169 and 82).
+  assertPassesEqualPi(result, 169)
 })
 
 // Attaching a windowed view (view.ts attach: loadWindow, scanUpTo) on a conversation with entries and on one without.

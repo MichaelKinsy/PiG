@@ -145,8 +145,8 @@ func publishPackage(ctx context.Context, request packagePublishRequest, stdout, 
 		notes = append(notes, "Warning: package.json has no repository; catalogs link a Package to its source through it")
 	}
 	return npmpublish.Request{
-		Package: npmpublish.Package{Name: manifest.Name, Version: manifest.Version, Dir: root, InPlace: true},
-		Flags:   request.flags, Label: "Package", Notes: notes,
+		Name: manifest.Name, Version: manifest.Version, Dir: root, InPlace: true,
+		Flags: request.flags, Label: "Package", Notes: notes,
 		Next: []string{
 			"Install it with: pig install npm:" + manifest.Name,
 			"npm lists it under the keyword " + packageKeyword + "; catalogs that search that keyword show it after their next index build.",

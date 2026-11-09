@@ -134,7 +134,7 @@ func plainProtocol(w http.ResponseWriter, r *http.Request, requests *requestLog)
 }
 
 func newHTTPClient() *mcp.Client {
-	return mcp.NewClient(mcp.ClientOptions{Implementation: mcp.Implementation{Name: "http-test", Version: "1.0.0"}})
+	return mcp.NewClient(mcp.ClientOptions{Name: "http-test", Version: "1.0.0"})
 }
 
 func newHTTPTransport(t *testing.T, options mcp.StreamableHTTPTransportOptions) *mcp.StreamableHTTPTransport {

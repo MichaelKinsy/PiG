@@ -27,7 +27,7 @@ func TestTelemetryAttributeMetadataCardinalityJSON(t *testing.T) {
 		}
 	}
 	// The definition embeds the metadata, so its attribute JSON carries the cardinality beside type.
-	encoded, err := json.Marshal(TelemetryAttributeDefinition{TelemetryAttributeMetadata: TelemetryAttributeMetadata{Description: "d", Cardinality: TelemetryAttributeCardinalityLow}, Type: TelemetryAttributeTypeString})
+	encoded, err := json.Marshal(TelemetryAttributeDefinition{Description: "d", Cardinality: TelemetryAttributeCardinalityLow, Type: TelemetryAttributeTypeString})
 	if err != nil || string(encoded) != `{"description":"d","cardinality":"low","type":"string"}` {
 		t.Errorf("definition = %s, %v", encoded, err)
 	}

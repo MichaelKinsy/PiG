@@ -380,8 +380,8 @@ type streamingTool struct {
 func newStreamingTool(replay string) *streamingTool {
 	state := &streamingTool{stalled: deferred()}
 	state.registration = DefineTool(durable.ToolRegistration{
-		ToolSchema: ai.ToolSchema{Name: "work", Description: "work", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}},
-		Replay:     durable.ToolReplay(replay),
+		Name: "work", Description: "work", Parameters: map[string]any{"type": "object", "properties": map[string]any{}},
+		Replay: durable.ToolReplay(replay),
 		Execute: func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			state.mu.Lock()
 			state.runs++
@@ -467,8 +467,8 @@ func TestDeferredToolOutput(t *testing.T) {
 		var mu sync.Mutex
 		runs := 0
 		addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{
-			ToolSchema: ai.ToolSchema{Name: "work", Description: "work", Parameters: emptyObjectSchema()},
-			Replay:     durable.ToolReplay("safe"),
+			Name: "work", Description: "work", Parameters: emptyObjectSchema(),
+			Replay: durable.ToolReplay("safe"),
 			Execute: func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 				mu.Lock()
 				runs++

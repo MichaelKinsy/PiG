@@ -23,6 +23,6 @@ func init() {
 func buildSkillInvocation(b *viewBuilder, n *ViewNode, out *frontend.ViewNode) (tui.Component, error) {
 	out.Name, out.Text = n.Skill.Name, n.Skill.Content
 	return b.expandableMessage(n, out, widgetCtorKey(n, func(c *ViewNode) { c.Expanded, c.OutputPad = false, nil }), func(pad int) expandableComponent {
-		return tui.NewSkillInvocationMessageComponent(tui.ParsedSkillBlock{Name: n.Skill.Name, Content: n.Skill.Content}, nil, pad)
+		return tui.NewSkillInvocationMessageComponent(tui.ParsedSkillBlock{Name: n.Skill.Name, Content: n.Skill.Content}, nil, pad, nil, "", "")
 	}), nil
 }

@@ -180,7 +180,7 @@ func TestAggregatesCanonicalSeriesByIntervalAndWritesPartialIntervalsOnlyOnClose
 	now := mockDate(t, 20_001)
 	f := newFixture(t, SqliteTelemetryOptions{})
 	unit := "ms"
-	metric := f.telemetry.Histogram("duration", telemetry.HistogramOptions{InstrumentOptions: telemetry.InstrumentOptions{Unit: &unit}, Boundaries: []float64{1, 10}})
+	metric := f.telemetry.Histogram("duration", telemetry.HistogramOptions{Unit: &unit, Boundaries: []float64{1, 10}})
 	original := []string{"original"}
 	attributes := telemetry.SpanAttributes{telemetry.Attr("b", original), telemetry.Attr("a", true)}
 	metric.Record(2, attributes, nil)
@@ -228,8 +228,8 @@ func TestSeparatesKindNameUnitAndCallerAttributes(t *testing.T) {
 	f.telemetry.UpDownCounter("same", telemetry.InstrumentOptions{}).Add(3, nil)
 	f.telemetry.Counter("other", telemetry.InstrumentOptions{}).Add(4, nil)
 	f.telemetry.Counter("same", telemetry.InstrumentOptions{}).Add(5, telemetry.SpanAttributes{telemetry.Attr("method", "read")})
-	f.telemetry.Histogram("same", telemetry.HistogramOptions{InstrumentOptions: telemetry.InstrumentOptions{Description: &first}, Boundaries: []float64{1}}).Record(6, nil, nil)
-	f.telemetry.Histogram("same", telemetry.HistogramOptions{InstrumentOptions: telemetry.InstrumentOptions{Description: &second}, Boundaries: []float64{2}}).Record(7, nil, nil)
+	f.telemetry.Histogram("same", telemetry.HistogramOptions{Description: &first, Boundaries: []float64{1}}).Record(6, nil, nil)
+	f.telemetry.Histogram("same", telemetry.HistogramOptions{Description: &second, Boundaries: []float64{2}}).Record(7, nil, nil)
 	check(t, f.telemetry.Close())
 	rows := f.all("SELECT * FROM telemetry_metrics")
 	if len(rows) != 6 {

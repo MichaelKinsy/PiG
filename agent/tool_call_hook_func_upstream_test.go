@@ -106,21 +106,19 @@ func TestRunToolCallFuncHooksValidateRunAndReportFailures(t *testing.T) {
 	options := RunToolCallOptions{
 		Tools:            []AgentTool{newStructuredEchoTool(), failing},
 		AssistantMessage: assistant,
-		ToolCallHooks: ToolCallHooks{
-			BeforeToolCall: func(_ context.Context, hookContext BeforeToolCallContext) *ToolCallHookResult {
-				if hookContext.AssistantMessage != assistant {
-					t.Errorf("before %s: assistant message %p, want %p", hookContext.ToolCall.ID, hookContext.AssistantMessage, assistant)
-				}
-				hookCalls = append(hookCalls, "before "+hookContext.ToolCall.ID)
-				if argValue(hookContext.Args) == "blocked" {
-					return &ToolCallHookResult{Block: true, Reason: "nope"}
-				}
-				return nil
-			},
-			AfterToolCall: func(_ context.Context, hookContext AfterToolCallContext) *AfterToolCallResult {
-				hookCalls = append(hookCalls, "after "+hookContext.ToolCall.ID)
-				return nil
-			},
+		BeforeToolCall: func(_ context.Context, hookContext BeforeToolCallContext) *ToolCallHookResult {
+			if hookContext.AssistantMessage != assistant {
+				t.Errorf("before %s: assistant message %p, want %p", hookContext.ToolCall.ID, hookContext.AssistantMessage, assistant)
+			}
+			hookCalls = append(hookCalls, "before "+hookContext.ToolCall.ID)
+			if argValue(hookContext.Args) == "blocked" {
+				return &ToolCallHookResult{Block: true, Reason: "nope"}
+			}
+			return nil
+		},
+		AfterToolCall: func(_ context.Context, hookContext AfterToolCallContext) *AfterToolCallResult {
+			hookCalls = append(hookCalls, "after "+hookContext.ToolCall.ID)
+			return nil
 		},
 	}
 	call := func(id, name string, args ai.JsonObject) AgentToolCall {
@@ -166,9 +164,9 @@ func TestRunToolCallAfterToolCallFuncReplacesStructuredContent(t *testing.T) {
 	for _, afterResult := range results {
 		outcome, _ := RunToolCall(context.Background(), AgentToolCall{ID: "x", Name: "echo", Arguments: ai.JsonObject{"value": "original"}}, RunToolCallOptions{
 			Tools: []AgentTool{newStructuredEchoTool()},
-			ToolCallHooks: ToolCallHooks{AfterToolCall: func(context.Context, AfterToolCallContext) *AfterToolCallResult {
+			AfterToolCall: func(context.Context, AfterToolCallContext) *AfterToolCallResult {
 				return afterResult
-			}},
+			},
 		})
 		if outcome.Result.StructuredContent == nil {
 			seen = append(seen, "undefined")
@@ -192,9 +190,9 @@ func TestToolCallFuncRejectionsBecomeErrorResults(t *testing.T) {
 	tools := []AgentTool{newStructuredEchoTool(), failing}
 	before, err := RunToolCall(context.Background(), AgentToolCall{ID: "x", Name: "echo", Arguments: ai.JsonObject{"value": "v"}}, RunToolCallOptions{
 		Tools: tools,
-		ToolCallHooks: ToolCallHooks{BeforeToolCall: func(context.Context, BeforeToolCallContext) *ToolCallHookResult {
+		BeforeToolCall: func(context.Context, BeforeToolCallContext) *ToolCallHookResult {
 			panic(errors.New("policy unavailable"))
-		}},
+		},
 	})
 	if err != nil || !before.IsError || before.Result.Text() != "policy unavailable" {
 		t.Fatalf("rejected before = %+v, %v", before, err)
@@ -206,10 +204,10 @@ func TestToolCallFuncRejectionsBecomeErrorResults(t *testing.T) {
 	} {
 		after, err := RunToolCall(context.Background(), call, RunToolCallOptions{
 			Tools: tools,
-			ToolCallHooks: ToolCallHooks{AfterToolCall: func(_ context.Context, hookContext AfterToolCallContext) *AfterToolCallResult {
+			AfterToolCall: func(_ context.Context, hookContext AfterToolCallContext) *AfterToolCallResult {
 				observed = append(observed, hookContext.IsError)
 				panic("audit failed")
-			}},
+			},
 		})
 		if err != nil || !after.IsError || after.Result.Text() != "audit failed" {
 			t.Fatalf("%s: rejected after = %+v, %v", call.ID, after, err)

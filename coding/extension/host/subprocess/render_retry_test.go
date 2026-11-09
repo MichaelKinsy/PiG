@@ -304,7 +304,7 @@ func TestToolRendererResolutionAsksAgainAfterAnAbandonedRequest(t *testing.T) {
 		h.SetToolRenderersResolvedFunc(func(string) { redraws.Add(1) })
 		base := &extension.ToolRenderers{}
 		next := func() *extension.ToolRenderers { return base }
-		own := ResolvedToolRenderers{Use: "own", ToolRenderersDecl: ToolRenderersDecl{RendersCall: true}}
+		own := ResolvedToolRenderers{Use: "own", RendersCall: true}
 		if got := resolve("bash", next); got != base {
 			t.Fatalf("first resolution = %+v, want next() while the extension is asked", got)
 		}

@@ -64,7 +64,7 @@ func TestJobStartChecksTheArgsAgainstTheDefinitionBeforeAnythingIsRecorded(t *te
 // job.test.ts › start › compiles the args check once per definition (cost guard)
 func TestJobStartCompilesTheArgsCheckOncePerDefinition(t *testing.T) {
 	telemetry, counting, counts := meteredHost(t)
-	fixture := echoJob(t, JobImplementation{Run: echoRun()}, jobHostOptions{loadedOptions: loadedOptions{Telemetry: telemetry}})
+	fixture := echoJob(t, JobImplementation{Run: echoRun()}, jobHostOptions{Telemetry: telemetry})
 	before := counts()["chord.data.compilations"]
 	for _, text := range []string{"a", "b", "c"} {
 		runOutcome(t, jobStart(t, fixture.Job, textArgs(text), counting))

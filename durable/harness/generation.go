@@ -281,7 +281,7 @@ func generationPrepareHandler(ctx context.Context, task durable.RunningTask[Gene
 		for _, entry := range entries {
 			planned = append(planned, entry.Model...)
 		}
-		threshold = thresholdCompaction(view, planned, resolved.Capabilities.ContextWindow, settings.Compaction.PolicyFor(*ref))
+		threshold = thresholdCompaction(view, planned, resolved.Capabilities.ContextWindow, settings.Compaction.PolicyFor(*ref, agent.Compaction))
 	}
 	if threshold == "blocking" {
 		// Compact first and prepare again; the transcript is unchanged until the compaction appends.
@@ -463,7 +463,7 @@ func generationPollHandler(ctx context.Context, task durable.RunningTask[Generat
 		return failGenerationNoModel(ctx, runtime, &ref)
 	}
 	signal := runtime.Signal()
-	message := runtime.Models().FetchDeferred(signal, model, *checkpoint.Handle, ai.DeferredFetchOptions{StreamOptions: ai.StreamOptions{Signal: signal, Telemetry: chordctx.Telemetry(ctx)}})
+	message := runtime.Models().FetchDeferred(signal, model, *checkpoint.Handle, ai.DeferredFetchOptions{Signal: signal, Telemetry: chordctx.Telemetry(ctx)})
 	if message == nil {
 		return errors.New("deferred fetch returned no message")
 	}
@@ -1167,8 +1167,15 @@ func classify(ctx context.Context, runtime generationRuntime, request generation
 	// The retry and compaction policies govern the next attempt, so they are read now rather than pinned at
 	// preparation.
 	settings := runtime.Settings()
-	compaction := settings.Compaction.PolicyFor(ref)
 	overflow := message.StopReason == ai.StopReasonError && ai.IsContextOverflow(message, 0)
+	var compaction durable.CompactionPolicy
+	if overflow && compacted == nil {
+		agent, err := runtime.Agent(ctx)
+		if err != nil {
+			return err
+		}
+		compaction = settings.Compaction.PolicyFor(ref, agent.Compaction)
+	}
 	if overflow && compacted == nil && compaction.Enabled {
 		view, err := runtime.Context(ctx, conversationId, &durable.ContextOptions{At: &cutoff})
 		if err != nil {
@@ -1888,14 +1895,16 @@ func countTurn(live *delta.Object, taskId durable.TaskId, assistant durable.Entr
 // streamOptionsOf builds the pi-ai request options from the pinned stream options.
 func streamOptionsOf(stream durable.ConversationStreamOptions, signal context.Context, thinking ai.ModelThinkingLevel) ai.StreamOptions {
 	options := ai.StreamOptions{
-		Transport:       stream.Transport,
-		TimeoutMs:       stream.TimeoutMs,
-		MaxRetries:      stream.MaxRetries,
-		MaxRetryDelayMs: stream.MaxRetryDelayMs,
-		Metadata:        stream.Metadata,
-		CacheRetention:  stream.CacheRetention,
-		Deferred:        stream.Deferred,
-		Signal:          signal,
+		Transport:                 stream.Transport,
+		TimeoutMs:                 stream.TimeoutMs,
+		WebSocketConnectTimeoutMs: stream.WebsocketConnectTimeoutMs,
+		ThinkingBudgets:           stream.ThinkingBudgets,
+		MaxRetries:                stream.MaxRetries,
+		MaxRetryDelayMs:           stream.MaxRetryDelayMs,
+		Metadata:                  stream.Metadata,
+		CacheRetention:            stream.CacheRetention,
+		Deferred:                  stream.Deferred,
+		Signal:                    signal,
 	}
 	if stream.Headers != nil {
 		options.Headers = ai.ProviderHeaders{}

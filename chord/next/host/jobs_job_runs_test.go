@@ -386,7 +386,7 @@ func TestRunThatIgnoresItsSignalAtTheObjectsEndIsDrainedUpToCloseTimeoutItsLater
 			late <- setOutput(ctx, "too late", ChangeOptions{})
 			return exitResult(0), nil
 		}}
-	}, jobHostOptions{loadedOptions: loadedOptions{CloseTimeout: new(20 * time.Millisecond)}})
+	}, jobHostOptions{CloseTimeout: new(20 * time.Millisecond)})
 	jobStart(t, fixture.Job, commandArgs("a"), background)
 	started.Wait()
 	must(t, fixture.Host.Close(background))
@@ -842,7 +842,7 @@ func TestRunningDoesNoValidationWalkOrCompilationForAStateChange(t *testing.T) {
 			g.Wait()
 			return exitResult(0), nil
 		}}
-	}, jobHostOptions{loadedOptions: loadedOptions{Telemetry: telemetry, Context: counting}})
+	}, jobHostOptions{Telemetry: telemetry, Context: counting})
 	job := fixture.Job
 	jobStart(t, job, commandArgs("a"), counting)
 	ctx := <-ctxs
@@ -1117,7 +1117,7 @@ func TestPhaseSpansTraceTheIntentUnderTheStarterTheRunAndTheFinishUnderTheIntent
 				return appendLog(tx, log, string(outcome.Kind))
 			},
 		}
-	}, jobHostOptions{loadedOptions: loadedOptions{Telemetry: recorder}, Loop: loop})
+	}, jobHostOptions{Telemetry: recorder, Loop: loop})
 	var run Run
 	tracedUnder(t, recorder, "request", func(ctx context.Context) { run = jobStart(t, fixture.Job, textArgs("hi"), ctx) })
 	eventually(t, "the finish's backoff timer", func() bool { return loop.fake.TimerCount() == 1 })
@@ -1198,7 +1198,7 @@ func TestPhaseSpansMarkARunThatThrewFailedJobFailedAndAnAbortedOneOk(t *testing.
 		}
 		untilDone(ctx)
 		return nil, errors.New("stopped")
-	}}, jobHostOptions{loadedOptions: loadedOptions{Telemetry: recorder}})
+	}}, jobHostOptions{Telemetry: recorder})
 	tracedUnder(t, recorder, "request", func(ctx context.Context) {
 		threw := jobStart(t, fixture.Job, textArgs("throw"), ctx)
 		runOutcome(t, threw)

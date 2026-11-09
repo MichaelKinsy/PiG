@@ -99,7 +99,7 @@ func TestUpstreamRunnerBoundary(t *testing.T) {
 			return extension.BoundaryResult{Entries: new([]extension.SessionBoundaryDraft{})}, nil
 		})
 		r := inproc.NewRunner([]extension.Extension{first, second}, t.TempDir())
-		result, err := r.EmitBoundary(t.Context(), &extension.AgentBeforeSettleEvent{Type: "agent_before_settle", BoundaryState: extension.BoundaryState{Outcome: extension.AgentActivityCompleted}}, upstreamBoundaryPreview)
+		result, err := r.EmitBoundary(t.Context(), &extension.AgentBeforeSettleEvent{Type: "agent_before_settle", Outcome: extension.AgentActivityCompleted}, upstreamBoundaryPreview)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -126,7 +126,7 @@ func TestUpstreamRunnerBoundary(t *testing.T) {
 		r := inproc.NewRunner([]extension.Extension{first, second}, t.TempDir())
 		var reported []string
 		r.AddErrorListener(func(err *extension.ExtensionError) { reported = append(reported, err.Error) })
-		result, err := r.EmitBoundary(t.Context(), &extension.AgentBeforeSettleEvent{Type: "agent_before_settle", BoundaryState: extension.BoundaryState{Outcome: extension.AgentActivityCompleted}}, func(entries []extension.SessionBoundaryDraft) (extension.BoundaryContextPreview, error) {
+		result, err := r.EmitBoundary(t.Context(), &extension.AgentBeforeSettleEvent{Type: "agent_before_settle", Outcome: extension.AgentActivityCompleted}, func(entries []extension.SessionBoundaryDraft) (extension.BoundaryContextPreview, error) {
 			if slices.ContainsFunc(entries, func(entry extension.SessionBoundaryDraft) bool { return entry.Type == "context_edit" }) {
 				return extension.BoundaryContextPreview{}, errors.New("Entry missing not found")
 			}
@@ -149,7 +149,7 @@ func TestUpstreamRunnerBoundary(t *testing.T) {
 		r := inproc.NewRunner([]extension.Extension{ext}, t.TempDir())
 		var reported []string
 		r.AddErrorListener(func(err *extension.ExtensionError) { reported = append(reported, err.Error) })
-		result, err := r.EmitBoundary(t.Context(), &extension.AgentBeforeSettleEvent{Type: "agent_before_settle", BoundaryState: extension.BoundaryState{Outcome: extension.AgentActivityCompleted}}, func([]extension.SessionBoundaryDraft) (extension.BoundaryContextPreview, error) {
+		result, err := r.EmitBoundary(t.Context(), &extension.AgentBeforeSettleEvent{Type: "agent_before_settle", Outcome: extension.AgentActivityCompleted}, func([]extension.SessionBoundaryDraft) (extension.BoundaryContextPreview, error) {
 			return upstreamBoundaryPreview(nil)
 		})
 		if err != nil {
@@ -162,7 +162,7 @@ func TestUpstreamRunnerBoundary(t *testing.T) {
 }
 
 func upstreamToolResultEvent(id string) extension.CustomToolResultEvent {
-	return extension.CustomToolResultEvent{ToolName: "my_tool", ToolResultEventBase: extension.ToolResultEventBase{Type: "tool_result", ToolCallID: id, Input: map[string]any{}, Content: []any{map[string]any{"type": "text", "text": "base"}}, IsError: false}, Details: map[string]any{"initial": true}}
+	return extension.CustomToolResultEvent{ToolName: "my_tool", Type: "tool_result", ToolCallID: id, Input: map[string]any{}, Content: []any{map[string]any{"type": "text", "text": "base"}}, IsError: false, Details: map[string]any{"initial": true}}
 }
 
 // Pi: packages/coding-agent/src/core/extensions/types.ts:1448 (ToolResultEventResult.isError).

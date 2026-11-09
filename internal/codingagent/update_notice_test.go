@@ -277,7 +277,7 @@ func TestStartupVersionCheckShowsTheReleaseItReports(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		m := newRunOnMainProbe(t)
 		m.opts.BinaryUpdateChecker = func() *BinaryUpdate {
-			return &BinaryUpdate{LatestPiRelease: LatestPiRelease{Version: "7.8.9", Note: new("https://example.test/notes")}, CurrentVersion: "7.8.8"}
+			return &BinaryUpdate{Version: "7.8.9", Note: new("https://example.test/notes"), CurrentVersion: "7.8.8"}
 		}
 		m.startVersionCheck()
 		synctest.Wait()

@@ -47,8 +47,8 @@ Report installed, missing, and incompatible tools separately.
 | Task | Required tools |
 |---|---|
 | Run an existing binary | a compatible PiG binary and the runtime required by selected interpreted extensions |
-| Build PiG | Git and the Go version required by `go.mod` |
-| Author a Go extension | a PiG binary and Go |
+| Build PiG | Git and the Go release named by the `toolchain` line of `go.mod` (the root module's language floor is Go 1.27) |
+| Author a Go extension | a PiG binary and Go 1.26 or newer (the extension SDK module's language floor) |
 | Author a Rust extension | a PiG binary, Rust, and Cargo |
 | Author a Python extension | a PiG binary and Python |
 | Author a Node extension | a PiG binary and Node.js |

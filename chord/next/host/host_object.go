@@ -301,7 +301,7 @@ func newChordObject(
 	if key != "" {
 		o.text = entry.contract.Name + "(" + key + ")"
 	}
-	o.documents = documents.NewDocuments(&objectDocuments{objectClock: objectClock{object: o}})
+	o.documents = documents.NewDocuments(&objectDocuments{object: o})
 	return o
 }
 

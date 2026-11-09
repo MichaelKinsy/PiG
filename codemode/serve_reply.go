@@ -19,7 +19,7 @@ func decodeReply(data []byte) (*RemoteReply, bool) {
 	}
 	switch head.Type {
 	case MessageStop:
-		return &RemoteReply{HostToWorkerMessage: HostToWorkerMessage{Type: MessageStop}}, true
+		return &RemoteReply{Type: MessageStop}, true
 	case MessageResult:
 		var result HostToWorkerMessage
 		if json.Unmarshal(data, &result) != nil {

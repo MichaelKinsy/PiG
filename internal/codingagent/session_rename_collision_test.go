@@ -15,7 +15,7 @@ func TestRenameSessionChecksExistingEntryIDs(t *testing.T) {
 	path := filepath.Join(dir, "session.jsonl")
 	s := NewSession("fixture", dir)
 	s.SetPath(path)
-	seed := MessageEntry{SessionEntryBase: SessionEntryBase{Type: "message", ID: "01020304", Timestamp: "2026-01-01T00:00:00.000Z"}, Message: agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: agent.RoleAssistant, Content: []ai.AssistantContentBlock{ai.TextContent{Text: "seed"}}, StopReason: ai.StopReasonStop}}}
+	seed := MessageEntry{Type: "message", ID: "01020304", Timestamp: "2026-01-01T00:00:00.000Z", Message: agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: agent.RoleAssistant, Content: []ai.AssistantContentBlock{ai.TextContent{Text: "seed"}}, StopReason: ai.StopReasonStop}}}
 	if err := s.AppendEntry(seed); err != nil {
 		t.Fatal(err)
 	}
