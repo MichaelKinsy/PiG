@@ -10,10 +10,10 @@ package engine
 // app.model.cycle, app.tree.toggle, etc.
 
 import (
-	"cmp"
 	"os"
 	"runtime"
 	"slices"
+	"sort"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -403,8 +403,10 @@ func (m *TUIKeybindingsManager) rebuild() {
 		}
 	}
 
-	// A Go map keeps no insertion order, so conflicts are listed by key instead of upstream's order of first claim.
-	slices.SortFunc(m.conflicts, func(a, b TUIKeybindingConflict) int { return cmp.Compare(a.Key, b.Key) })
+	// A Go map keeps no insertion order, so conflicts are listed by key instead of upstream's order of first claim. sort.Slice, not slices.SortFunc: package slices compiles 12 KB of machine code for the element type, which is not worth it for a handful of conflicts.
+	if len(m.conflicts) > 1 {
+		sort.Slice(m.conflicts, func(i, j int) bool { return m.conflicts[i].Key < m.conflicts[j].Key })
+	}
 
 	// Resolve: user overrides if present, otherwise defaults.
 	for id, def := range m.definitions {
