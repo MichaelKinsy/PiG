@@ -81,7 +81,7 @@ def new_extension():
                 out["scopedModelsSet"] = f"{scoped[0]['model']['id']}:{scoped[0].get('thinkingLevel', '')}"
             out["cycleOnlyModel"] = session.cycle_model("forward") is None
             session.set_active_tools_by_name([])
-            out["activeToolsEmpty"] = session.active_tools
+            out["activeToolsEmpty"] = session.get_active_tool_names()
             session.set_active_tools_by_name(["sentinel_tool"])
             out["activeTools"] = session.get_active_tool_names()
             out["allTools"] = [tool["name"] for tool in session.get_all_tools()]
@@ -147,6 +147,17 @@ def new_extension():
             out["exportHtmlInMemory"] = refused(lambda: session.export_to_html(os.path.join(directory, "export.html")))
             session.reload()
             out["afterReload"] = session.session_id == session_id
+            # A file-backed session: its sessionFile is a real path (the in-memory one above is empty, so a reader that returned the fallback would still pass there).
+            persisted = ctx.create_agent_session(pig_sdk.CreateAgentSessionOptions(
+                cwd=directory, agent_dir=os.path.join(directory, "agent"), model={"provider": "sentinel", "id": "echo"}, tools=[],
+                settings={"compaction": {"enabled": False}},
+                resources=pig_sdk.ResourceOptions(no_extensions=True, no_skills=True, no_prompt_templates=True, no_themes=True, no_context_files=True),
+            ))
+            try:
+                persisted_file = persisted.session_file or ""
+                out["fileBackedSessionFile"] = persisted_file.startswith(directory) and persisted_file.endswith(".jsonl") and persisted.session_id in persisted_file
+            finally:
+                persisted.dispose()
             # An awaited member never holds a later call: execute_bash blocks in one thread and abort_bash, sent from this one, ends it.
             running = {}
             runner = threading.Thread(target=lambda: running.update(result=session.execute_bash("sleep 20")))
