@@ -590,7 +590,9 @@ func TestDropsTheRetryOfASetANewerOneReplacedAndAppliesTheNewerOne(t *testing.T)
 
 // A retry is scheduled in two steps, its timer and then its handle, so a newer set that lands between them has no handle to
 // cancel the retry with (Pi's single thread has no between: its `#retry = { cancel: after(…) }` is one step). The retry must
-// still go with the newer set: a newer one replaced it.
+// still go with the newer set: a newer one replaced it. The update that arms it here is a retry's own (the first retry's timer
+// fired): the watch's call for a set returns when its update ended, so only an update the watch did not start (a retry's, a
+// reconnect's) runs while the next set is delivered.
 func TestDropsTheRetryOfASetANewerOneReplacedWhileItsTimerWasBeingSet(t *testing.T) {
 	a1, a2, a3 := script("@test/a", "d1", "hello"), script("@test/a", "d2", "hello again"), script("@test/a", "d3", "hello at last")
 	manual := &timers{}
@@ -598,29 +600,33 @@ func TestDropsTheRetryOfASetANewerOneReplacedWhileItsTimerWasBeingSet(t *testing
 	var once sync.Once
 	release := func() { once.Do(func() { close(resume) }) }
 	defer release()
-	s := setup(t, []RegisteredScript{a1}, []RegisteredScript{a2, a3}, more{failing: 1, manual: manual, onTimer: func(ms int64) {
-		if ms == 1000 {
+	s := setup(t, []RegisteredScript{a1}, []RegisteredScript{a2, a3}, more{failing: 2, manual: manual, onTimer: func(ms int64) {
+		if ms == 2000 {
 			setting <- struct{}{}
 			<-resume
 		}
 	}})
 	g := text(t, s.client.Host, greeting)
 	s.publish(t, setOf("B1", a2))
-	// The retry's timer is listed and its After has not returned: the client holds no handle for it yet.
+	until(t, func() bool { return len(manual.withMs(1000)) == 1 })
+	// The first retry runs on the client's own update goroutine, not in the watch's call: it fails again and arms the second.
+	manual.withMs(1000)[0].fire()
+	// The second retry's timer is listed and its After has not returned: the client holds no handle for it yet.
 	select {
 	case <-setting:
 	case <-time.After(10 * time.Second):
-		t.Fatal("no retry timer in 10 s")
+		t.Fatal("no second retry timer in 10 s")
 	}
 	s.publish(t, setOf("B1", a3))
 	// The newer set has reached the client's watch while the retry's After has not returned.
 	until(t, func() bool { return s.client.NewestDigest("@test/a") == "d3" })
 	release()
 	until(t, func() bool { return valueOf(g) == "hello at last" })
-	if n := len(manual.withMs(1000)); n != 0 {
-		t.Fatalf("%d retries left", n)
+	// The first retry's timer fired and stays listed; the second was cancelled with the newer set.
+	if n := len(manual.withMs(2000)); n != 0 {
+		t.Fatalf("%d second retries left", n)
 	}
-	if f := s.fetchedNow(); !slices.Equal(f, []string{"/@test/a.d2.js", "/@test/a.d3.js"}) {
+	if f := s.fetchedNow(); !slices.Equal(f, []string{"/@test/a.d2.js", "/@test/a.d2.js", "/@test/a.d3.js"}) {
 		t.Fatalf("fetched = %v", f)
 	}
 	s.finish(t)
