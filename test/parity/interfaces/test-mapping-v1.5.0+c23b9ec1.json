@@ -4698,9 +4698,9 @@
     {
       "path": "packages/coding-agent/test/agent-session-branching.test.ts",
       "disposition": "ported",
-      "protects": "After a session replacement (/new, /fork, /clone, /resume), a ctx or pi captured by an extension before the replacement throws Pi's stale-context message on reuse.",
-      "pigTest": "TestPrintModeReplacedSessionHostCallsFailWithThePiStaleMessage and TestReplacedSession2860AcrossSDKs run the replacement through the real modes and SDKs and assert the stale message for every host call. A test that pins what a captured Go, Rust or Python ctx still reads from its own SDK state was considered.",
-      "whyNot": "D30 Part 1 keeps SDK-local getters (Cwd, Mode, HasUI, Model, theme, GetBranch, GetEntries) answering with the outgoing Session's values instead of failing. A test that pins that behaviour would lock a divergence the record says to remove, and a test that asserts Pi's behaviour fails until the SDKs apply the invalidate notification. The Node SDK, which runs Pi's own runner, passes Pi's case.",
+      "protects": "Forking a session at an entry selects the right prefix and text for the new session, keeps the native system prompt, writes no file for an unbranched fork, and the replacement is a different Session.",
+      "pigTest": "TestRuntimeOriginalBranching runs Pi's three cases through factory-owned Runtime replacement, with the observed branches [system] (single and memory fork) and [system,user,assistant] (middle fork) taken from the pinned Pi implementation probe test/parity/testdata/session-branching-oracle-pi.mjs; scenario 25-runtime-replacements.toml pairs PiG with Pi on three strict cases, and persistence and installation mutations fail it.",
+      "whyNot": "Pi's test expectation disagrees with Pi's own implementation at the pin (the probe observes different branches than the test asserts), so the test cannot be run as written against either; PiG's tests assert what the pinned implementation does, which is the behavior PiG must match.",
       "upstreamTestHash": "sha256:ef1ef21bbebdd5381badb81eefd3a331c66bd640404c8d3ad90c7745c18a7671",
       "evidence": [
         "coding/session_runtime_branching_upstream_test.go#TestRuntimeOriginalBranching",
@@ -6070,20 +6070,28 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:d6ff9aaedeeeea8a457810bc45a3b85e76c60ed376213d4e818097942aeae50d",
       "evidence": [
+        "coding/mcpext/cli_upstream_test.go",
+        "coding/mcpext/cli_carry_test.go",
+        "coding/mcpext/cli_test.go",
         "coding/mcpext/cli_test.go#TestMcpCommandSendsTheTokenOfTheProviderNamedByAuthProvider"
       ],
-      "rationale": "Pi 4d72d05b: `pi mcp list` sends the token of the provider named by `auth.provider` and, without its credentials, hints `/login <provider>` instead of `mcp login`. The Go test checks both the token the server receives and the hint text."
+      "rationale": "All 12 cases of `pi mcp` run through mcpext.RunMcpCommand with Pi's arguments, servers and expected output (cli_upstream_test.go cites each Pi line; the three cases of Pi be15fe3c and the auth.provider case of Pi 4d72d05bc are in cli_carry_test.go and cli_test.go). Checked case by case against the Pi source at c23b9ec1: every expected literal is present; the Pi `spawn ... ENOENT` text is produced by mcp/stdio_spawn_test.go's Node-style spawn error. Pi 4d72d05b: `pi mcp list` sends the token of the provider named by `auth.provider` and, without its credentials, hints `/login <provider>` instead of `mcp login`. The Go test checks both the token the server receives and the hint text."
     },
     {
       "path": "packages/coding-agent/test/mcp-extension.test.ts",
       "disposition": "ported",
       "upstreamTestHash": "sha256:1c19068515f76a7b089accf09c554eb3b117955e0d383b733c36188ea9352463",
       "evidence": [
+        "coding/mcpext/config_test.go",
+        "coding/mcpext/connection_test.go",
+        "coding/mcpext/servers_section_test.go",
+        "coding/mcpext/tools_test.go",
+        "coding/mcpext/extension_test.go",
         "mcp/naming_pi_test.go#TestCreateMcpToolNameJoinsServerAndToolAndReplacesCharactersOutsideTheAllowedSet",
         "mcp/naming_pi_test.go#TestCreateMcpToolNameShortensNamesOver64CharactersWithAHashOfServerAndTool",
         "mcp/output_limit_pi_test.go#TestLimitMcpContentCutsMultiByteTextOnlyAtCharacterBoundaries"
       ],
-      "rationale": "Pi 76c040a2 moves createMcpToolName into pi-mcp (the test imports it from there) and the multi-byte truncation case out of this file, since truncateMiddle is no longer coding-agent's. Both live in the Go mcp package tests with the same inputs; the rest of the file is unchanged."
+      "rationale": "All 28 cases run in coding/mcpext (config, connections, servers section, tools, resources) with Pi's inputs and expectations; each Go case cites its Pi title. Checked against the Pi source at c23b9ec1: every case title has a Go counterpart and every short expected literal is present. Pi 76c040a2 moves createMcpToolName into pi-mcp (the test imports it from there) and the multi-byte truncation case out of this file, since truncateMiddle is no longer coding-agent's. Both live in the Go mcp package tests with the same inputs; the rest of the file is unchanged."
     },
     {
       "path": "packages/coding-agent/test/mcp-manager-view.test.ts",
@@ -6101,9 +6109,12 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:4da6b73debf1bc4d48d4ebc38521123f6553263854987fc7a80f5a0a6626e7b3",
       "evidence": [
+        "coding/mcpext/oauth_refresh_test.go",
+        "coding/mcpext/oauth_cimd_test.go",
+        "mcp/oauth/sign_in_pi_test.go",
         "coding/mcpext/oauth_refresh_test.go#TestMCPOAuthSignInCancelsWhileAnotherProcessHoldsTheRefreshLock"
       ],
-      "rationale": "Pi 797e122c adds `cancels a sign-in that waits for another process's refresh`: the sign-in ends with a cancellation while another process holds the refresh lock, and the lock it later takes runs no refresh and is released. Ported with Pi's setup (a signed-in server, a held lock, a cancel after 200 ms); the rest of the file's cases are ported in the same file."
+      "rationale": "All 15 cases run in coding/mcpext (refresh once across processes, waiting for a running refresh, issuer check, scope, metadata URL, the client ID metadata document cases) and mcp/oauth/sign_in_pi_test.go (cancelling a sign-in that waits for another process's refresh), against the CompleteMcpSignIn and McpSignInKind API of fix/mcp-gaps. Pi 797e122c adds `cancels a sign-in that waits for another process's refresh`: the sign-in ends with a cancellation while another process holds the refresh lock, and the lock it later takes runs no refresh and is released. Ported with Pi's setup (a signed-in server, a held lock, a cancel after 200 ms); the rest of the file's cases are ported in the same file."
     },
     {
       "path": "packages/coding-agent/test/mcp-oauth-store.test.ts",
