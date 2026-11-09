@@ -307,9 +307,9 @@ func TestLeftoverSettingsLockWaitsLikePi(t *testing.T) {
   // host, so the lock gets its age only now, right before the load.
   const stamp = (Date.now() - Number(ageMs)) / 1000;
   fs.utimesSync(lockPath, stamp, stamp);
-  const start = process.hrtime.bigint();
+  const start = Date.now();
   const settings = SettingsManager.create(cwd, agentDir);
-  const ms = Number(process.hrtime.bigint() - start) / 1e6;
+  const ms = Date.now() - start;
   console.log(JSON.stringify({ attempts, ms, errors: settings.drainErrors().map((e) => e.error.message) }));
 })()`
 	// The retry schedule comes from Pi's shipped settings-manager.js, not from
@@ -369,7 +369,7 @@ func TestLeftoverSettingsLockWaitsLikePi(t *testing.T) {
 			}
 			var pi struct {
 				Attempts int      `json:"attempts"`
-				Ms       float64  `json:"ms"`
+				Ms       int64    `json:"ms"`
 				Errors   []string `json:"errors"`
 			}
 			if err := json.Unmarshal(out, &pi); err != nil {
@@ -378,7 +378,8 @@ func TestLeftoverSettingsLockWaitsLikePi(t *testing.T) {
 			if pi.Attempts != tc.wantAttempts {
 				t.Fatalf("Pi made %d lock attempts, want %d (Pi: %s)", pi.Attempts, tc.wantAttempts, out)
 			}
-			if got := time.Duration(pi.Ms * float64(time.Millisecond)); tc.wantWait != (got >= window) {
+			// Date.now, not hrtime: Pi's lock retry waits on it.
+			if got := time.Duration(pi.Ms) * time.Millisecond; tc.wantWait != (got >= window) {
 				t.Fatalf("Pi waited %v, want a wait of at least %v: %v (Pi: %s)", got, window, tc.wantWait, out)
 			}
 
