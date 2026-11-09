@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
@@ -22,6 +23,11 @@ func TestConformance_EventHandlersDoNotShareTheirPayload(t *testing.T) {
 
 	state := boundaryStateFixture()
 	state.Context.ContextEntries = []extension.ProjectedSessionEntry{{SourceEntry: map[string]any{"id": "original-marker", "type": "message"}, Messages: []extension.AgentMessage{}}}
+	// The text of the first message is in contextMessages, in the first context entry's messages and, converted, in llmMessages.
+	original := wireAgentMessage(map[string]any{"role": "user", "content": "orig-msg", "timestamp": float64(1700000000000)})
+	state.Context.ContextEntries[0].Messages = []extension.AgentMessage{original}
+	state.Context.ContextMessages = []extension.AgentMessage{original}
+	state.Context.LLMMessages = []ai.Message{ai.UserMessage{Content: ai.UserText("orig-llm"), Timestamp: 1700000000000}}
 	event := extension.TurnEndEvent{BoundaryState: state, Type: "turn_end", TurnIndex: 1,
 		Message: wireAgentMessage(map[string]any{"role": "user", "content": "hi", "timestamp": float64(1700000000000)}), ToolResults: []extension.ToolResultMessage{}}
 
@@ -56,6 +62,23 @@ func TestConformance_EventHandlersDoNotShareTheirPayload(t *testing.T) {
 				}
 				pollUntilConformance(t, "both handlers report", func() bool { return len(reports()) >= 2*emit })
 				time.Sleep(300 * time.Millisecond) // the late writer runs 100 ms after the first handler returned, before the next dispatch
+			}
+			messageReports := func() []string {
+				var out []string
+				for _, n := range *h.notify {
+					if rest, ok := strings.CutPrefix(n, "event_isolation_msgs:"); ok {
+						out = append(out, strings.TrimSuffix(rest, ":info"))
+					}
+				}
+				return out
+			}
+			for _, r := range messageReports() {
+				if !strings.HasSuffix(r, ":orig-msg|orig-llm|orig-msg") {
+					t.Errorf("a handler received messages %q, want orig-msg, orig-llm and orig-msg whatever another handler wrote into its own copy (reports: %v)", r, messageReports())
+				}
+			}
+			if n := len(messageReports()); n != 4 {
+				t.Errorf("message reports = %v, want A and B for each of two dispatches", messageReports())
 			}
 			got := reports()
 			for _, r := range got {

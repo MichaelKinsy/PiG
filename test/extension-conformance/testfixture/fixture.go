@@ -1577,18 +1577,49 @@ func Extension() *sdk.Extension {
 			container, _ := entry["sourceEntry"].(map[string]any)
 			return container
 		}
+		// messages are the first context message, the first llm message and the first message of the first context entry: the same text lives in three places of the payload, and a decode that shared one value between them or between handlers would show a sentinel written into one in another.
+		messages := func(data map[string]any) (message, llm, entry map[string]any) {
+			context, _ := data["context"].(map[string]any)
+			if list, _ := context["contextMessages"].([]any); len(list) > 0 {
+				message, _ = list[0].(map[string]any)
+			}
+			if list, _ := context["llmMessages"].([]any); len(list) > 0 {
+				llm, _ = list[0].(map[string]any)
+			}
+			if entries, _ := context["contextEntries"].([]any); len(entries) > 0 {
+				first, _ := entries[0].(map[string]any)
+				if list, _ := first["messages"].([]any); len(list) > 0 {
+					entry, _ = list[0].(map[string]any)
+				}
+			}
+			return message, llm, entry
+		}
 		ext.OnEvent(name, func(hctx sdk.Context, data map[string]any) (any, error) {
 			container := source(data)
 			hctx.Notify(fmt.Sprintf("event_isolation:A:%v:end", container["id"]), "info")
 			container["id"] = "SENTINEL-HANDLER-A"
+			message, llm, entry := messages(data)
+			hctx.Notify(fmt.Sprintf("event_isolation_msgs:A:%v|%v|%v", message["content"], llm["content"], entry["content"]), "info")
+			for _, object := range []map[string]any{message, llm, entry} {
+				if object != nil {
+					object["content"] = "SENTINEL-HANDLER-A"
+				}
+			}
 			go func() {
 				time.Sleep(100 * time.Millisecond)
 				container["id"] = "SENTINEL-LATE-WRITER"
+				for _, object := range []map[string]any{message, llm, entry} {
+					if object != nil {
+						object["content"] = "SENTINEL-LATE-WRITER"
+					}
+				}
 			}()
 			return nil, nil
 		})
 		ext.OnEvent(name, func(hctx sdk.Context, data map[string]any) (any, error) {
 			hctx.Notify(fmt.Sprintf("event_isolation:B:%v:end", source(data)["id"]), "info")
+			message, llm, entry := messages(data)
+			hctx.Notify(fmt.Sprintf("event_isolation_msgs:B:%v|%v|%v", message["content"], llm["content"], entry["content"]), "info")
 			return nil, nil
 		})
 		return nil

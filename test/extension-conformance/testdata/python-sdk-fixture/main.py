@@ -2556,14 +2556,41 @@ def new_extension() -> pig_sdk.Extension:
             entries = (data.get("context") or {}).get("contextEntries") or []
             return entries[0]["sourceEntry"] if entries else None
 
+        def messages(data):
+            # The first context message, the first llm message and the first message of the first context entry: one text in three places of the payload.
+            context = data.get("context") or {}
+            found = []
+            for lst in (context.get("contextMessages"), context.get("llmMessages")):
+                found.append(lst[0] if lst else None)
+            entries = context.get("contextEntries") or []
+            inner = (entries[0].get("messages") if entries else None) or []
+            found.append(inner[0] if inner else None)
+            return found
+
         def first(hctx, data):
             container = source(data)
             hctx.notify("event_isolation:A:%s:end" % container["id"], "info")
             container["id"] = "SENTINEL-HANDLER-A"
-            threading.Timer(0.1, lambda: container.__setitem__("id", "SENTINEL-LATE-WRITER")).start()
+            found = messages(data)
+            hctx.notify("event_isolation_msgs:A:%s" % "|".join(str(m["content"]) if m else "None" for m in found), "info")
+            for m in found:
+                if m is not None:
+                    m["content"] = "SENTINEL-HANDLER-A"
+
+            def late():
+                container["id"] = "SENTINEL-LATE-WRITER"
+                for m in found:
+                    if m is not None:
+                        m["content"] = "SENTINEL-LATE-WRITER"
+
+            threading.Timer(0.1, late).start()
+
+        def second(hctx, data):
+            hctx.notify("event_isolation:B:%s:end" % source(data)["id"], "info")
+            hctx.notify("event_isolation_msgs:B:%s" % "|".join(str(m["content"]) if m else "None" for m in messages(data)), "info")
 
         ext.on_event(name, first)
-        ext.on_event(name, lambda hctx, data: hctx.notify("event_isolation:B:%s:end" % source(data)["id"], "info"))
+        ext.on_event(name, second)
 
     ext.command("event_isolation_probe", "Subscribe two handlers that report the nested marker they received and then write sentinels into it", event_isolation_probe)
 
