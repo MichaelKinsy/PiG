@@ -3518,7 +3518,7 @@
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_UpdatesStateWithMutators",
         "test:agent/tool_call_hook_func_upstream_test.go#TestToolCallFuncsReceiveTheToolCallBlockAndTheAgentContext",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -3673,7 +3673,7 @@
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_UpdatesStateWithMutators",
         "test:agent/tool_call_hook_func_upstream_test.go#TestToolCallFuncsReceiveTheToolCallBlockAndTheAgentContext",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences"
       ]
     },
     {
@@ -145745,9 +145745,9 @@
         "call:coding/session_tools.go#Session.SetActiveToolsByName"
       ],
       "evidence": [
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
         "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool",
-        "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPDoesNotLetCodemodeCallItselfOrInactiveDirectTools"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
       ]
     },
     {
@@ -145767,9 +145767,9 @@
         "call:coding/session_tools.go#Session.SetActiveToolsByName"
       ],
       "evidence": [
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
         "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool",
-        "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPDoesNotLetCodemodeCallItselfOrInactiveDirectTools"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
       ]
     },
     {
@@ -164382,9 +164382,9 @@
         "call:coding/extension/factoryload/load.go#LoadExtensionFromFactory"
       ],
       "evidence": [
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
         "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels",
-        "test:coding/extension/diagnostics_upstream_test.go#TestRunnerShortcutConflictIsAWarningDiagnosticWithThePath"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels"
       ]
     },
     {
@@ -164471,8 +164471,8 @@
       ],
       "evidence": [
         "test:coding/cli/extension_set_upstream_test.go#TestOmitReplacedExtensionsWarnsAboutReplacedBuiltin",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
       ]
     },
     {
@@ -164858,8 +164858,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/runtime_shared_state_test.go#TestBindCoreRuntimeHandlersForwardArgumentsAndResults",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
       ]
     },
     {
@@ -164880,8 +164880,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/runtime_shared_state_test.go#TestBindCoreRuntimeHandlersForwardArgumentsAndResults",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
       ]
     },
     {
@@ -164902,8 +164902,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/event_send_user_message_test.go#TestAnEventHandlerCanSendAUserMessage",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
       ]
     },
     {
@@ -164924,8 +164924,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/event_send_user_message_test.go#TestAnEventHandlerCanSendAUserMessage",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
       ]
     },
     {
@@ -170083,7 +170083,7 @@
       "evidence": [
         "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward",
         "test:coding/extension/context_api_test.go#TestContext_StaleRunnerErrors",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences"
       ]
     },
     {
@@ -170105,7 +170105,7 @@
       "evidence": [
         "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward",
         "test:coding/extension/context_api_test.go#TestContext_StaleRunnerErrors",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences"
       ]
     },
     {
@@ -170127,7 +170127,7 @@
       "evidence": [
         "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward",
         "test:coding/extension/context_api_test.go#TestContext_StaleRunnerErrors",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences"
       ]
     },
     {
@@ -170149,7 +170149,7 @@
       "evidence": [
         "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward",
         "test:coding/extension/context_api_test.go#TestContext_StaleRunnerErrors",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences"
       ]
     },
     {
@@ -174172,8 +174172,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/runtime_shared_state_test.go#TestBindCoreRuntimeHandlersForwardArgumentsAndResults",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
       ]
     },
     {
@@ -174194,8 +174194,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/runtime_shared_state_test.go#TestBindCoreRuntimeHandlersForwardArgumentsAndResults",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
       ]
     },
     {
@@ -174216,8 +174216,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/event_send_user_message_test.go#TestAnEventHandlerCanSendAUserMessage",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
       ]
     },
     {
@@ -174238,8 +174238,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/event_send_user_message_test.go#TestAnEventHandlerCanSendAUserMessage",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
       ]
     },
     {
@@ -194316,8 +194316,8 @@
       ],
       "evidence": [
         "test:coding/cli/extension_set_upstream_test.go#TestOmitReplacedExtensionsWarnsAboutReplacedBuiltin",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
       ]
     },
     {
@@ -194337,9 +194337,9 @@
         "call:coding/extension/factoryload/api.go#api.RegisterTool"
       ],
       "evidence": [
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
         "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels",
-        "test:coding/extension/host/inproc/upstream_catalog_test.go#TestUpstreamRunnerCatalog"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels"
       ]
     },
     {
@@ -216248,8 +216248,8 @@
       ],
       "evidence": [
         "test:coding/cli/resource_extensions_upstream_test.go#TestUpstreamResourceLoaderExtensionConflicts",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "test:coding/extension/builtin/codemode/session_free_upstream_test.go#TestDeclaresModelsOnlyForAToolCreatedWithModelAccess"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
       ]
     },
     {
@@ -216359,9 +216359,9 @@
         "call:coding/extension/builtin/codemode/tool.go#Definition"
       ],
       "evidence": [
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
         "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPActivatesAnotherExtensionsCodemodeToolWhenItReachesOtherTools",
-        "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPDoesNotActivateAnotherExtensionsToolNamedCodemode"
+        "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPActivatesAnotherExtensionsCodemodeToolWhenItReachesOtherTools"
       ]
     },
     {
@@ -216381,9 +216381,9 @@
         "call:coding/extension/builtin/codemode/tool.go#Definition"
       ],
       "evidence": [
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
         "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels",
-        "test:coding/extension/host/inproc/upstream_catalog_test.go#TestUpstreamRunnerCatalog"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels"
       ]
     },
     {
@@ -216425,9 +216425,9 @@
         "call:coding/extension/host/subprocess/child_session.go#Host.childSessionTools"
       ],
       "evidence": [
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
         "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIRegistrationsAtLoadGo",
-        "test:test/extension-conformance/extension_api_rust_test.go#TestRustSDKToolDefinitionFields"
+        "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIRegistrationsAtLoadGo"
       ]
     },
     {
@@ -216447,9 +216447,9 @@
         "call:coding/extension/builtin/codemode/tool.go#Definition"
       ],
       "evidence": [
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
         "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPActivatesAnotherExtensionsCodemodeToolWhenItReachesOtherTools",
-        "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPDoesNotActivateAnotherExtensionsToolNamedCodemode"
+        "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPActivatesAnotherExtensionsCodemodeToolWhenItReachesOtherTools"
       ]
     },
     {
