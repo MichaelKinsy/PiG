@@ -124,7 +124,7 @@ Cache warming sends small extra requests that you pay for ([Settings](/docs/late
  Status: Inactive (cache warming disabled)
 ```
 
-The default shows `Mode: streaming`. The key is global-only.
+The default shows `Mode: idle`. The key is global-only.
 
 ## Trust a project
 

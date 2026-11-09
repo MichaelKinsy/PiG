@@ -12,7 +12,10 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"sync/atomic"
+	"time"
 
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/frontend"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
@@ -60,6 +63,15 @@ type OAuthSelectorComponent struct {
 	// showAuthTypeLabels mirrors upstream: label rows with their auth type
 	// only when the list mixes subscription and API-key entries.
 	showAuthTypeLabels bool
+
+	// animationStart and now time the brand animation of a selected preferred partner row; stopAnimation is nil
+	// without a TUI to animate in (oauth-selector.ts animationStart, stopAnimation).
+	animationStart time.Time
+	now            func() time.Time
+	stopAnimation  func()
+	// animating tells the animation goroutine whether the selected row has a brand style; Render sets it, as the
+	// goroutine must not read the cursor.
+	animating atomic.Bool
 }
 
 // authSelectorMaxVisible is upstream oauth-selector.ts updateList maxVisible.
@@ -96,7 +108,21 @@ func (s *OAuthSelectorComponent) SetFocused(focused bool) {
 
 // NewOAuthSelectorComponent constructs the picker. onSelect receives the chosen provider's id and auth type and onCancel runs on cancel (upstream onSelect/onCancel); nil callbacks are skipped.
 func NewOAuthSelectorComponent(mode string, providers []OAuthProvider, onSelect func(providerID, authType string), onCancel func(), initialSearch ...string) *OAuthSelectorComponent {
+	return newOAuthSelectorComponent(nil, mode, providers, onSelect, onCancel, initialSearch...)
+}
+
+// NewOAuthSelectorComponentAnimated is NewOAuthSelectorComponent with the `tui` argument of oauth-selector.ts's
+// constructor, given as the TUI's render request (callers whose renderer can be replaced pass the current one's): the
+// selected row of a preferred partner provider shows its animated brand style, and requestRender is called each
+// animation frame. initialSearch is the optional initialSearchInput ("" is none). Dispose stops the animation.
+func NewOAuthSelectorComponentAnimated(requestRender func(), mode string, providers []OAuthProvider, onSelect func(providerID, authType string), onCancel func(), initialSearch string) *OAuthSelectorComponent {
+	return newOAuthSelectorComponent(requestRender, mode, providers, onSelect, onCancel, initialSearch)
+}
+
+func newOAuthSelectorComponent(requestRender func(), mode string, providers []OAuthProvider, onSelect func(providerID, authType string), onCancel func(), initialSearch ...string) *OAuthSelectorComponent {
 	sel := &OAuthSelectorComponent{
+		animationStart: time.Now(),
+		now:            time.Now,
 		onSelect:  onSelect,
 		onCancel:  onCancel,
 		mode:      mode,
@@ -133,7 +159,39 @@ func NewOAuthSelectorComponent(mode string, providers []OAuthProvider, onSelect 
 	sel.Add(NewSpacer(1))
 	sel.Add(NewDynamicBorder())
 	sel.updateList()
+	if requestRender != nil {
+		sel.stopAnimation = StartBrandAnimation(requestRender, sel.animating.Load)
+	}
 	return sel
+}
+
+// Render rebuilds the list for each frame of an animated row: it is built from styled text (oauth-selector.ts render).
+func (s *OAuthSelectorComponent) Render(width int) []string {
+	if s.stopAnimation != nil {
+		animated := s.selectedBrandStyle() != nil
+		s.animating.Store(animated)
+		if animated {
+			s.updateList()
+		}
+	}
+	return s.Container.Render(width)
+}
+
+// Dispose stops the brand animation (oauth-selector.ts dispose). It may be called more than once.
+func (s *OAuthSelectorComponent) Dispose() {
+	if s.stopAnimation != nil {
+		s.stopAnimation()
+		s.stopAnimation = nil
+	}
+	s.animating.Store(false)
+}
+
+// selectedBrandStyle is the brand style of the selected provider, or nil (getSelectedBrandStyle).
+func (s *OAuthSelectorComponent) selectedBrandStyle() ProviderBrandStyle {
+	if s.cursor < 0 || s.cursor >= len(s.filtered) {
+		return nil
+	}
+	return GetProviderBrandStyle(s.filtered[s.cursor].ID)
 }
 
 // Done reports whether the user selected or cancelled.
@@ -208,13 +266,22 @@ func (s *OAuthSelectorComponent) updateList() {
 		if s.showAuthTypeLabels {
 			authTypeLabel = t.Fg("muted", " ["+FormatAuthSelectorProviderType(p.AuthType, subscriptionArg(p.Subscription)...)+"]")
 		}
+		// U+2726 is single-width in every terminal, unlike star emoji or ambiguous-width symbols such as U+2605.
+		partnerMarker := ""
+		if ai.IsPreferredProvider(p.ID) {
+			partnerMarker = t.Fg("muted", " ✦")
+		}
 		var line string
 		if i == s.cursor {
-			line = t.Fg("accent", "→ ") + t.Fg("accent", p.Name)
+			name := t.Fg("accent", p.Name)
+			if brandStyle := GetProviderBrandStyle(p.ID); s.stopAnimation != nil && brandStyle != nil {
+				name = brandStyle(p.Name, s.now().Sub(s.animationStart))
+			}
+			line = t.Fg("accent", "→ ") + name
 		} else {
 			line = "  " + t.Fg("text", p.Name)
 		}
-		s.listContainer.Add(NewTruncatedText(line+authTypeLabel+FormatAuthSelectorProviderStatus(p), 1, 0))
+		s.listContainer.Add(NewTruncatedText(line+partnerMarker+authTypeLabel+FormatAuthSelectorProviderStatus(p), 1, 0))
 	}
 	if startIndex > 0 || endIndex < len(s.filtered) {
 		s.listContainer.Add(NewTruncatedText(t.Fg("muted", fmt.Sprintf("  (%d/%d)", s.cursor+1, len(s.filtered))), 1, 0))

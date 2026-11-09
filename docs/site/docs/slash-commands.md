@@ -82,7 +82,7 @@ Each example shows what you type, what PiG prints and where the behaviour comes 
  Total: 120
 
  Cache Warming
- Mode: streaming
+ Mode: idle
  Status: Inactive (cache lifetime unavailable)
 ```
 

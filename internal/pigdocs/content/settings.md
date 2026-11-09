@@ -56,7 +56,7 @@ the value depends on what it detects.
 | `httpProxy` | string | unset | Global HTTP/HTTPS proxy URL. Sets only absent `HTTP_PROXY` and `HTTPS_PROXY` environment variables. Provider requests use CONNECT tunnels; `NO_PROXY` controls bypasses. |
 | `websocketConnectTimeoutMs` | number | provider default | WebSocket opening-handshake timeout in milliseconds. `0` or `"disabled"` turns it off. Explicit request options override the setting. |
 | `httpIdleTimeoutMs` | number | `300000` | Idle timeout for provider requests, in milliseconds. `0` or `"disabled"` turns it off. |
-| `cacheWarming` | string | `streaming` | `off`, `streaming`, or `idle`. Keeps the provider's prompt cache warm with periodic requests. Global setting only: PiG ignores it in a project file. See [cache warming](#cache-warming). |
+| `cacheWarming` | string | `idle` | `off`, `streaming`, or `idle`. Keeps the provider's prompt cache warm with periodic requests. Global setting only: PiG ignores it in a project file. See [cache warming](#cache-warming). |
 
 ### Cache warming
 
@@ -66,9 +66,9 @@ limit shortly before the prompt cache expires, so the next request reads the
 cache instead of writing it again at full price.
 
 - `off`: PiG never sends refreshes.
-- `streaming`: only while the agent is running. This is the default.
+- `streaming`: only while the agent is running.
 - `idle`: while the agent runs, and between runs for up to 30 minutes after
-  the last request.
+  the last request. This is the default.
 
 A refresh is sent only when the model declares a prompt cache lifetime and PiG
 expects it to save at least $0.05 in avoided cache-miss cost. Warming stops when

@@ -1163,7 +1163,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 		SelectAuthMethod:       m.showLoginAuthTypeSelector,
 		SelectAuthProvider: func(mode string, providers []tui.OAuthProvider, initialSearch string) (tui.OAuthProvider, bool) {
 			var chosen tui.OAuthProvider
-			sel := tui.NewOAuthSelectorComponent(mode, providers, func(providerID, authType string) {
+			sel := tui.NewOAuthSelectorComponentAnimated(m.requestRender, mode, providers, func(providerID, authType string) {
 				for _, provider := range providers {
 					if provider.ID == providerID && provider.AuthType == authType {
 						chosen = provider
@@ -1171,6 +1171,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 					}
 				}
 			}, nil, initialSearch)
+			defer sel.Dispose()
 			_, ok := m.runEditorSlotOAuthSelector(sel)
 			return chosen, ok
 		},

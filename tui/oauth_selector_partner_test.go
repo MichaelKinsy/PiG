@@ -7,20 +7,6 @@ import (
 	"time"
 )
 
-// brandTUI is the TUI an OAuthSelectorComponent reports to: only RequestRender is implemented, which is all it calls.
-type brandTUI struct {
-	TUI
-	requests atomic.Int64
-	onRender func()
-}
-
-func (b *brandTUI) RequestRender(...bool) {
-	b.requests.Add(1)
-	if b.onRender != nil {
-		b.onRender()
-	}
-}
-
 // Port of oauth-selector.test.ts "shows the brand style of a preferred partner only on its selected row".
 func TestOAuthSelectorShowsTheBrandStyleOnlyOnTheSelectedPartnerRow(t *testing.T) {
 	th := ActiveTheme()
@@ -28,7 +14,7 @@ func TestOAuthSelectorShowsTheBrandStyleOnlyOnTheSelectedPartnerRow(t *testing.T
 		{ID: "radius", Name: "Radius", AuthType: "oauth"},
 		{ID: "openrouter", Name: "OpenRouter", AuthType: "api_key"},
 	}
-	selector := NewOAuthSelectorComponentForTUI(&brandTUI{}, "login", providers, func(string, string) {}, func() {}, "")
+	selector := NewOAuthSelectorComponentAnimated(func() {}, "login", providers, func(string, string) {}, func() {}, "")
 	defer selector.Dispose()
 
 	output := strings.Join(selector.Render(120), "\n")
@@ -82,18 +68,19 @@ func TestOAuthSelectorMarksPreferredPartnersWithAStar(t *testing.T) {
 // partner row is selected, and dispose stops it (startBrandAnimation): no frame is requested once dispose has returned.
 func TestOAuthSelectorAnimatesAPartnerRowUntilDisposed(t *testing.T) {
 	var disposed atomic.Bool
-	ui := &brandTUI{onRender: func() {
+	var requests atomic.Int64
+	selector := NewOAuthSelectorComponentAnimated(func() {
+		requests.Add(1)
 		if disposed.Load() {
 			t.Error("a render was requested after Dispose returned")
 		}
-	}}
-	selector := NewOAuthSelectorComponentForTUI(ui, "login", []OAuthProvider{
+	}, "login", []OAuthProvider{
 		{ID: "radius", Name: "Radius", AuthType: "oauth"},
 		{ID: "anthropic", Name: "Anthropic", AuthType: "api_key"},
 	}, func(string, string) {}, func() {}, "")
 	selector.Render(120)
 	deadline := time.Now().Add(5 * time.Second)
-	for ui.requests.Load() == 0 {
+	for requests.Load() == 0 {
 		if time.Now().After(deadline) {
 			t.Fatal("no render was requested while the Radius row was selected")
 		}
