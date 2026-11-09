@@ -2,6 +2,11 @@ import { randomUUID } from "node:crypto";
 
 const streamMethods = new Set(["stream", "streamSimple", "fetchDeferred"]);
 
+// The RefreshModelsContext Pi's runtime hands refreshModels, member for member and in the order of its literal (packages/ai/src/models.ts:554-562): credential, stored, publish, allowNetwork, force, signal, baseUrl. The wire omits what Pi leaves undefined (no credential, no stored catalog, no force, no base URL); those members are undefined here and the keys stay, as they do in Pi's object.
+export function refreshModelsContext(wire, publish, signal) {
+  return { credential: wire.credential ?? undefined, stored: wire.stored ?? undefined, publish, allowNetwork: wire.allowNetwork, force: wire.force ?? undefined, signal, baseUrl: wire.baseUrl ?? undefined };
+}
+
 function providerFor(runtime, request) {
   const provider = runtime.nativeProviderCallbacks.get(request.tool);
   if (!provider) throw new Error("Provider object owner is no longer registered");
@@ -93,13 +98,13 @@ export async function dispatchProviderObject(runtime, id, request, ctx) {
     case "auth.oauth.refresh": return provider.auth.oauth.refresh(params.credential, signal);
     case "auth.oauth.toAuth": return provider.auth.oauth.toAuth(params.credential);
     case "refreshModels":
-      return provider.refreshModels({ ...params, signal, publish: async publication => {
+      return provider.refreshModels(refreshModelsContext(params, async publication => {
         const { update, ...value } = publication;
         const token = randomUUID();
         if (update) runtime.providerUpdates.set(token, update);
         try { return await invoke("publish", { publication: value, token: update ? token : undefined }); }
         finally { runtime.providerUpdates.delete(token); }
-      } });
+      }, signal));
     case "cancelDeferred": return provider.cancelDeferred(params.model, params.handle, { ...params.options, signal });
     // pi-ai Provider.generateImages and Provider.classify (types.ts:307-322): the model, the context and the resolved request options, with the request's signal.
     case "generateImages": return provider.generateImages(params.model, params.context, { ...params.options, signal });

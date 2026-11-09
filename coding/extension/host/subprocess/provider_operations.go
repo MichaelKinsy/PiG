@@ -141,6 +141,17 @@ func providerRequest(ctx context.Context, conn *Conn, provider string, request *
 	return response.Response.Result, nil
 }
 
+// connectionEnded is the error of a request that ran under the connection's lifetime: when the lifetime ended because the connection did, the error is the connection's own (the failure that stopped it, or "connection closed" after a Close), as it is for a request waiting on a connection that ends, not the lifetime's cancellation.
+func connectionEnded(conn *Conn, err error) error {
+	if err == nil || !errors.Is(err, context.Canceled) || conn.lifetime.Err() == nil {
+		return err
+	}
+	if failure := conn.failureError(); failure != nil {
+		return failure
+	}
+	return errors.New("connection closed")
+}
+
 // configRefreshKey names one running config-form refreshModels request: request ids are unique per connection.
 type configRefreshKey struct {
 	conn    *Conn
@@ -203,6 +214,9 @@ func (h *Host) providerRefreshModels(me *managedExt, provider string) func(exten
 		}))
 		defer h.configRefreshes.Delete(key)
 		raw, err := providerRequest(signal, conn, provider, &Envelope{Type: MsgRequest, ID: id, Request: &RequestPayload{Method: RequestProviderOperation, Tool: provider, Args: args}})
+		if refresh.Signal == nil {
+			err = connectionEnded(conn, err)
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -249,6 +263,7 @@ func providerModifyModels(me *managedExt, provider string) func([]extension.Mode
 			return nil, err
 		}
 		raw, err := providerRequest(conn.lifetime, conn, provider, &Envelope{Type: MsgRequest, Request: &RequestPayload{Method: MethodOAuthModifyModels, Tool: provider, Args: args}})
+		err = connectionEnded(conn, err)
 		if err != nil {
 			return nil, err
 		}

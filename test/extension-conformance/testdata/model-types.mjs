@@ -7,6 +7,8 @@ import {
 
 const ZERO = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
 const state = { cancelled: 0 };
+// The members of a refreshModels context a Node extension can see: their order, which are present as keys, and which are undefined.
+const contextShape = (context) => ({ keys: Object.keys(context), undefinedMembers: Object.keys(context).filter((key) => context[key] === undefined), allowNetwork: context.allowNetwork });
 
 async function imageImpl(model, request, options) {
   const prompt = request.input[0].text;
@@ -63,6 +65,7 @@ export default function (pi) {
     streamSimple: () => { throw new Error("unused"); },
     generateImages: imageImpl,
     classify: classifyImpl,
+    refreshModels: async (context) => { state.refreshObject = contextShape(context); },
   });
 
   const tool = (name, execute) => pi.registerTool({ name, label: name, description: name, parameters: { type: "object" }, execute });
@@ -159,6 +162,7 @@ export default function (pi) {
   // The same provider declared a second time while the factory runs: Pi queues both and the registry merges them, so refreshModels joins the first declaration's models and oauth.
   pi.registerProvider("dyn", {
     refreshModels: async (context) => {
+      state.refreshConfig = contextShape(context);
       if (context.credential?.access === "boom") throw new Error("refresh boom");
       await context.publish({ persist: { models: [], checkedAt: 99 } });
       let updated = false;
@@ -167,6 +171,8 @@ export default function (pi) {
       return [{ id: "r1", name, api: "dyn-api", reasoning: false, input: ["text"], cost: ZERO, contextWindow: 1000, maxTokens: 100 }];
     },
   });
+  // refresh_context_report: what the last refreshModels of the config form ("dyn") and of the provider object ("pixels") received as its context (Pi's object: models.ts:554-562).
+  tool("refresh_context_report", async () => reply({ config: state.refreshConfig ?? null, object: state.refreshObject ?? null }));
   // tui_probe: what pi-tui's keybindings and capabilities answer once the host published its state (the Go, Rust and Python fixtures carry the same tool).
   tool("tui_probe", async (_id, params) => {
     const list = (keys) => (keys === undefined ? [] : Array.isArray(keys) ? [...keys] : [keys]);

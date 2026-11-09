@@ -6,7 +6,7 @@ import { syncTerminalGeometry } from "./terminal-geometry.mjs";
 import { mountedOverlayHandle, overlayFocusTarget } from "./overlay-handle.mjs";
 import { disposeIndependentSessions } from "./independent-session-owner.mjs";
 import { dispatchNativeProvider, nativeDeclaration } from "./native-provider.mjs";
-import { dispatchProviderObjectSync, dispatchProviderObjectCallback, remoteProvider } from "./provider-object.mjs";
+import { dispatchProviderObjectSync, dispatchProviderObjectCallback, refreshModelsContext, remoteProvider } from "./provider-object.mjs";
 import { isWaiting, ProviderSocket, setProviderSocketsRef, shareDecodedFrames } from "./provider-socket.mjs";
 import { diagnose } from "./diagnostic.mjs";
 import { constants as bufferConstants } from "node:buffer";
@@ -4975,21 +4975,13 @@ export class Runtime {
   async runProviderRefreshModels(id, name, context, signal) {
     const refresh = this.providerRefreshModels.get(name);
     if (typeof refresh !== "function") throw new Error(`Provider ${name} has no refreshModels`);
-    const { credential, stored, force, ...rest } = context;
-    const input = {
-      ...rest,
-      ...(credential == null ? {} : { credential }),
-      ...(stored == null ? {} : { stored }),
-      ...(force == null ? {} : { force }),
-      signal,
-      publish: async publication => {
-        const { update, ...value } = publication;
-        const token = randomUUID();
-        if (update) this.providerUpdates.set(token, update);
-        try { return await this.call("provider.callback", { provider: name, method: "publish", params: { publication: value, token: update ? token : undefined } }, { parent: id }); }
-        finally { this.providerUpdates.delete(token); }
-      },
-    };
+    const input = refreshModelsContext(context, async publication => {
+      const { update, ...value } = publication;
+      const token = randomUUID();
+      if (update) this.providerUpdates.set(token, update);
+      try { return await this.call("provider.callback", { provider: name, method: "publish", params: { publication: value, token: update ? token : undefined } }, { parent: id }); }
+      finally { this.providerUpdates.delete(token); }
+    }, signal);
     return (await refresh.call(this.registeredProviderConfig(name), input)) ?? null;
   }
 

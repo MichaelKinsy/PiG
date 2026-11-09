@@ -292,9 +292,11 @@ type Conn struct {
 	failure   error
 
 	// cancel signals all goroutines to stop.
-	cancel   context.CancelFunc
-	lifetime context.Context
-	done     chan struct{} // closed when reader, writer, and heartbeat exit
+	cancel context.CancelFunc
+	// lifetime is the context of requests no caller owns (Pi's synchronous provider callbacks). It exists from NewConn, so a connection a host publishes before it starts has one, and ends with the connection: when Start's parent ends, on Close and on a failure. endLifetime ends it.
+	lifetime    context.Context
+	endLifetime context.CancelFunc
+	done        chan struct{} // closed when reader, writer, and heartbeat exit
 }
 
 // NewConn wraps a connected socket into a managed connection.
@@ -314,7 +316,11 @@ func newConnWithOptions(name string, c net.Conn, options connOptions) *Conn {
 		options.HeartbeatTimeout = defaultHeartbeatTimeout
 	}
 	parts, _ := c.(framePartsWriter)
+	//portlint:allow ctxbackground the connection owns its lifetime: it exists before Start ties it to the host's context, and ends with the connection
+	lifetime, endLifetime := context.WithCancel(context.Background())
 	return &Conn{
+		lifetime:           lifetime,
+		endLifetime:        endLifetime,
 		fileMutations:      fileMutationTurns{live: 1},
 		name:               name,
 		conn:               c,
@@ -355,7 +361,7 @@ func newConnWithOptions(name string, c net.Conn, options connOptions) *Conn {
 // controls their lifetime. Cancellation stops all three goroutines.
 func (c *Conn) Start(ctx context.Context) {
 	ctx, c.cancel = context.WithCancel(ctx)
-	c.lifetime = ctx
+	context.AfterFunc(ctx, c.endLifetime)
 	var wg sync.WaitGroup
 	wg.Add(3)
 	go func() {

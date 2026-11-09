@@ -166,12 +166,13 @@ func refreshPublication(refresh ai.RefreshModelsContext, runUpdate func(token st
 
 // refreshModelsWire is the refreshModels call's argument: the context minus its callbacks (publish, signal), with the members in the order Pi's runProviderRefreshPhase writes
 // them, which JSON.stringify keeps: credential, stored, allowNetwork, force, baseUrl (packages/ai/src/models.ts:554-562; Go sorts the members of a map, so the order is the
-// struct's). baseUrl is absent when the registered provider has none, as the optional RefreshModelsContext.baseUrl is undefined then.
+// struct's). A member Pi leaves undefined (no credential, no stored catalog, no force, no base URL) is absent, as JSON.stringify drops it; the runtime that rebuilds Pi's context
+// from it sets those members undefined.
 type refreshModelsWire struct {
-	Credential   *ai.Credential       `json:"credential"`
-	Stored       *ai.ModelsStoreEntry `json:"stored"`
+	Credential   *ai.Credential       `json:"credential,omitempty"`
+	Stored       *ai.ModelsStoreEntry `json:"stored,omitempty"`
 	AllowNetwork bool                 `json:"allowNetwork"`
-	Force        *bool                `json:"force"`
+	Force        *bool                `json:"force,omitempty"`
 	BaseURL      string               `json:"baseUrl,omitempty"`
 }
 

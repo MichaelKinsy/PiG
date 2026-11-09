@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net"
 	"regexp"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -132,15 +134,112 @@ func TestRefreshModelsRequestKeepsPisMemberOrder(t *testing.T) {
 	}
 }
 
-// A context with no credential, stored catalog or force sends them as null, baseUrl is absent when the provider has none, and the order of the rest is unchanged.
+// A context with no credential, stored catalog, force or base URL leaves those members out, as JSON.stringify drops what Pi has undefined (the Node runtime sets them undefined); a force of false is a value and stays.
 func TestRefreshModelsRequestWithoutOptionalMembers(t *testing.T) {
 	rig := newProviderOperationRig(t, sdk.ProviderRefreshModelsFunc(func(sdk.RefreshModelsContext) ([]map[string]any, error) { return nil, nil }), nil)
-	if _, err := rig.refresh(extension.RefreshModelsContext{Signal: t.Context(), Publish: func(ai.ModelsPublication) (bool, error) { return true, nil }}); err != nil {
-		t.Fatal(err)
+	notForced := false
+	for _, refreshContext := range []extension.RefreshModelsContext{{}, {Force: &notForced}} {
+		refreshContext.Signal = t.Context()
+		refreshContext.Publish = func(ai.ModelsPublication) (bool, error) { return true, nil }
+		if _, err := rig.refresh(refreshContext); err != nil {
+			t.Fatal(err)
+		}
 	}
-	const want = `{"kind":"refreshModels","context":{"credential":null,"stored":null,"allowNetwork":false,"force":null}}`
-	if operations := rig.args(RequestProviderOperation); len(operations) != 1 || operations[0] != want {
-		t.Fatalf("refreshModels request args = %q, want [%s]", operations, want)
+	want := []string{
+		`{"kind":"refreshModels","context":{"allowNetwork":false}}`,
+		`{"kind":"refreshModels","context":{"allowNetwork":false,"force":false}}`,
+	}
+	if operations := rig.args(RequestProviderOperation); !slices.Equal(operations, want) {
+		t.Fatalf("refreshModels request args = %q, want %q", operations, want)
+	}
+}
+
+// providerOperationConn is a started connection whose peer reads every frame and never answers, owned by a managedExt as a host holds it.
+func providerOperationConn(t *testing.T) (*Conn, *managedExt) {
+	t.Helper()
+	client, server := net.Pipe()
+	go func() { _, _ = io.Copy(io.Discard, server) }()
+	conn := NewConn("dyn", client)
+	ctx, cancel := context.WithCancel(t.Context())
+	conn.Start(ctx)
+	t.Cleanup(func() {
+		cancel()
+		_ = server.Close()
+		<-conn.Done()
+	})
+	return conn, withConn(&managedExt{config: ExtConfig{Name: "dyn"}}, conn)
+}
+
+func providerOperationModels() []extension.Model {
+	return []extension.Model{&ai.Model{ID: "a", DisplayName: "A", Input: []string{"text"}, ProviderMeta: ai.ProviderMetadata{ProviderID: "dyn", API: "dyn-api", BaseURL: "https://dyn.test/v1"}}}
+}
+
+// adoptConn publishes a connection to its extension before it starts it, and a crash restart's model listing can call oauth.modifyModels in between: the call has a context then, waits for the connection, and ends with an error when the connection ends. It never reads a lifetime that does not exist yet.
+func TestProviderRequestsOnAConnectionNotYetStarted(t *testing.T) {
+	client, server := net.Pipe()
+	go func() { _, _ = io.Copy(io.Discard, server) }()
+	conn := NewConn("dyn", client)
+	me := withConn(&managedExt{config: ExtConfig{Name: "dyn"}}, conn)
+	done := make(chan error, 2)
+	go func() {
+		_, err := providerModifyModels(me, "dyn")(providerOperationModels(), extension.OAuthCredentials{Access: "tok"})
+		done <- err
+	}()
+	go func() {
+		_, err := (&Host{}).providerRefreshModels(me, "dyn")(extension.RefreshModelsContext{Publish: func(ai.ModelsPublication) (bool, error) { return true, nil }})
+		done <- err
+	}()
+	select {
+	case err := <-done:
+		t.Fatalf("a request on a connection that has not started returned: %v", err)
+	case <-time.After(300 * time.Millisecond):
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	conn.Start(ctx)
+	cancel()
+	_ = server.Close()
+	for range 2 {
+		select {
+		case err := <-done:
+			if err == nil {
+				t.Fatal("a request whose connection ended returned no error")
+			}
+		case <-time.After(15 * time.Second):
+			t.Fatal("a request did not return after its connection ended")
+		}
+	}
+	<-conn.Done()
+}
+
+// When the host closes the connection of an extension (a reload, a disable, shutdown) while oauth.modifyModels runs, the model listing's error is the connection's, "connection closed", as it was when the request ran under no context, not the lifetime's cancellation.
+func TestModifyModelsHostCloseIsTheConnectionsError(t *testing.T) {
+	conn, me := providerOperationConn(t)
+	done := make(chan error, 1)
+	go func() {
+		_, err := providerModifyModels(me, "dyn")(providerOperationModels(), extension.OAuthCredentials{Access: "tok"})
+		done <- err
+	}()
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		conn.pendingMu.Lock()
+		requests := len(conn.pending)
+		conn.pendingMu.Unlock()
+		if requests > 0 {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("the modifyModels request never reached the connection")
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	_ = conn.Close("test")
+	select {
+	case err := <-done:
+		if err == nil || err.Error() != "connection closed" || errors.Is(err, context.Canceled) {
+			t.Fatalf("modifyModels after the host closed the connection = %v, want \"connection closed\"", err)
+		}
+	case <-time.After(15 * time.Second):
+		t.Fatal("modifyModels did not return after the host closed the connection")
 	}
 }
 
