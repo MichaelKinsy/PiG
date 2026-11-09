@@ -216,8 +216,8 @@ func TestSettingsManagerOriginalValues(t *testing.T) {
 		})
 	}
 	// .upstream/v0.99.1/packages/coding-agent/test/settings-manager.test.ts:414
-	t.Run("defaults to streaming and ignores project settings", func(t *testing.T) {
-		for _, tc := range []struct{ g, p, want string }{{`{}`, `{}`, "streaming"}, {`{}`, `{"cacheWarming":"idle"}`, "streaming"}, {`{"cacheWarming":"idle"}`, `{"cacheWarming":"idle"}`, "idle"}, {`{"cacheWarming":"bogus"}`, `{"cacheWarming":"idle"}`, "streaming"}} {
+	t.Run("defaults to idle and ignores project settings", func(t *testing.T) {
+		for _, tc := range []struct{ g, p, want string }{{`{}`, `{}`, "idle"}, {`{}`, `{"cacheWarming":"streaming"}`, "idle"}, {`{"cacheWarming":"streaming"}`, `{"cacheWarming":"streaming"}`, "streaming"}, {`{"cacheWarming":"bogus"}`, `{"cacheWarming":"streaming"}`, "idle"}} {
 			settingsEqual(t, string(writeSettingsLayers(t, tc.g, tc.p).GetCacheWarmingMode()), tc.want)
 		}
 	})

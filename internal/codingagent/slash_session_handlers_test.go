@@ -1315,7 +1315,7 @@ func TestShareHandlerUploadsJSONLArtifact(t *testing.T) {
 }
 
 // The cache-warming row sits between http-idle-timeout and hide-thinking, as
-// in settings-selector.ts, defaults to Pi's "streaming", and writes the global
+// in settings-selector.ts, defaults to Pi's "idle", and writes the global
 // cacheWarming key.
 func TestSettingsItems_CacheWarmingRow(t *testing.T) {
 	rows, ids := settingsRowsFor(t, NewSettingsManager(t.TempDir(), t.TempDir()))
@@ -1330,10 +1330,10 @@ func TestSettingsItems_CacheWarmingRow(t *testing.T) {
 	if want := []string{"off", "streaming", "idle"}; !slices.Equal(row.Values, want) {
 		t.Fatalf("values = %v, want %v", row.Values, want)
 	}
-	if row.CurrentValue != "streaming" {
-		t.Fatalf("default = %q, want streaming", row.CurrentValue)
+	if row.CurrentValue != "idle" {
+		t.Fatalf("default = %q, want idle", row.CurrentValue)
 	}
-	// Cycling streaming -> idle -> off reaches the callback, and the saved value is the global cacheWarming key.
+	// Cycling idle -> off -> streaming reaches the callback, and the saved value is the global cacheWarming key.
 	sm := NewSettingsManager(t.TempDir(), t.TempDir())
 	var modes []CacheWarmingMode
 	sc := &SlashContext{SettingsManager: sm, Append: func(string) {}, ShowStatus: func(string) {}}
@@ -1348,11 +1348,11 @@ func TestSettingsItems_CacheWarmingRow(t *testing.T) {
 	if err := settingsHandler(sc); err != nil {
 		t.Fatal(err)
 	}
-	if want := []CacheWarmingMode{"idle", "off"}; !slices.Equal(modes, want) {
+	if want := []CacheWarmingMode{"off", "streaming"}; !slices.Equal(modes, want) {
 		t.Fatalf("saved modes = %v, want %v", modes, want)
 	}
-	if sm.GetGlobalSettings().CacheWarming != "off" {
-		t.Fatalf("CacheWarming = %q, want off", sm.GetGlobalSettings().CacheWarming)
+	if sm.GetGlobalSettings().CacheWarming != "streaming" {
+		t.Fatalf("CacheWarming = %q, want streaming", sm.GetGlobalSettings().CacheWarming)
 	}
 }
 
