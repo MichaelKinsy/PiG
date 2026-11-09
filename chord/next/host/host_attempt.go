@@ -983,9 +983,6 @@ func (a *attempt) call(method string, args any, ctx context.Context, parent tele
 	// The caller's wait ends at once when the call's context is aborted: awaitWithContext(running, callContext).
 	stopWait := context.AfterFunc(callContext, func() { result.settle(nil, context.Cause(callContext)) })
 	loop := host.loop()
-	if span != nil {
-		result.then(loop, func(_ any, err error) { span.EndWith(err, "method_failed", callContext) })
-	}
 	// The handler's synchronous part runs inside this section, as Pi's does: the section is lent to it (Loop.Lend) until it
 	// returns or parks (Park of its ctx, at the first wait for something that is not a section of the host).
 	signal := parking.New()
@@ -1005,6 +1002,12 @@ func (a *attempt) call(method string, args any, ctx context.Context, parent tele
 		loop.Run(func() {
 			stopWait()
 			settle(err)
+			// The span ends with the handler's own promise (`span.endWhen(running.promise, ...)`), not with the caller's wait: a
+			// caller that left at an abort leaves the span open until the handler returns, and a handler that returns ok after
+			// the abort ends it ok.
+			if span != nil {
+				span.EndWith(err, "method_failed", callContext)
+			}
 			// An abort that came before the handler returned wins, as Pi's `awaitWithContext` rejects at the abort: the
 			// listener of `AfterFunc` runs on a goroutine of its own and may not have settled the result yet.
 			// The child context follows its sources on a goroutine of its own, so the sources are read at once: an abort of the
