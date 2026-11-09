@@ -122,6 +122,11 @@ source-hygiene-full: check-scratch-paths
 fixture-guard: ## Refuse captured provider data in test fixtures and any private term from PIG_PRIVATE_TERMS_FILE
 	@go run ./automation/ci/fixtureguard
 
+# module-pins refuses an in-tree Go module that replaces the PiG or SDK module with local source and requires either at a version other than the root's SDK requirement (a stale pin fails every strict and packed Go conformance cell with "updates to go.mod needed").
+.PHONY: module-pins
+module-pins: ## Fail when an in-tree Go module pins the PiG or SDK module at a version other than the root's SDK requirement
+	@go run ./automation/ci/modulepins
+
 # check-scratch-paths rejects a tracked file outside delivery/ that leaks an
 # internal scratch-cache path or this operator's absolute machine path into
 # the public tree (see RELEASE-DRYRUN.md blocker 4).
