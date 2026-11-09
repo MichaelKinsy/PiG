@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
-	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 	"github.com/MichaelKinsy/PiG/internal/sortx"
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -77,9 +76,12 @@ func authSubscriptionArg(subscription *bool) []bool {
 	return []bool{*subscription}
 }
 
+// sortAuthProviders orders providers as Pi's `.sort(compareProviders)` does: preferred partners first, then the rest
+// alphabetically by name. The sort is stable, so a provider's account option stays above its API key option.
 func sortAuthProviders(providers []tui.OAuthProvider) {
-	collator := localecompare.NewCollator()
-	sortx.Stable(providers, func(a, b tui.OAuthProvider) int { return collator.CompareString(a.Name, b.Name) })
+	sortx.Stable(providers, func(a, b tui.OAuthProvider) int {
+		return ai.CompareProviders(ai.ProviderRef{ID: a.ID, Name: a.Name}, ai.ProviderRef{ID: b.ID, Name: b.Name})
+	})
 }
 
 func (m *InteractiveMode) getLoginProviderOptions(includeStatus ...bool) []tui.OAuthProvider {

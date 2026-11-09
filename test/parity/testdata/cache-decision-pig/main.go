@@ -45,7 +45,7 @@ func main() {
 	model.PromptCache = ai.ModelPromptCache{"short": 300, "long": 3600}
 	ttl := []any{}
 	for _, retention := range []ai.CacheRetention{"", ai.CacheRetentionLong, ai.CacheRetentionNone} {
-		value, ok := icodingagent.GetPromptCacheTtlMs(model, ai.StreamOptions{CacheRetention: retention})
+		value, ok := ai.GetPromptCacheTtlMs(model, ai.StreamOptions{CacheRetention: retention})
 		if ok {
 			ttl = append(ttl, value)
 		} else {

@@ -15,7 +15,7 @@
 # against Pi 0.87.1 with the parity runner, 2026-09-23):
 #
 #   Cache Warming
-#   Mode: streaming
+#   Mode: idle
 #   Status: Inactive (cache lifetime unavailable)
 #
 # Upstream evidence (pi v0.75.4, 2026-05-26):
@@ -74,6 +74,6 @@ both_not_contain = ["unknown command", "panic:", "goroutine "]
 # Both must show non-zero message counts ("Total: 5" is the Messages total:
 # system, user, two assistants, and the tool result) and the same
 # cache-warming status for a model without a prompt cache lifetime.
-both_contain = ["User: 1", "Total: 5", "Cache Warming", "Mode: streaming", "Status: Inactive (cache lifetime unavailable)"]
+both_contain = ["User: 1", "Total: 5", "Cache Warming", "Mode: idle", "Status: Inactive (cache lifetime unavailable)"]
 output_equal = true
 runs = 3
