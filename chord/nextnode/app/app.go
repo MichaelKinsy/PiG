@@ -220,6 +220,10 @@ type AppOptions struct {
 	// and loads with a one-line plugin. A plugin directory is TypeScript the Node plugin host evaluates and cannot import a Go
 	// facet. Each is named; its name must not be one of the kit's (`chord.…`).
 	Facets []host.HostFacet
+	// GoPackages are host packages the server's plugins import as Go functions and JSON values (plugins.GoPackage): a plugin
+	// that lists the specifier in its `chord.external` `require`s or imports it and calls the Go function. They are offered to the
+	// server host's plugins only, and a specifier must not also be a key of an API module or a kind's Packages.
+	GoPackages []plugins.GoPackage
 	// Telemetry is the app's telemetry store; nil: none.
 	Telemetry AppTelemetry
 	// PrincipalAttributes is who a span was for (`createHost`'s `principalAttributes`): the server's hook, also stamped on the spans
@@ -632,7 +636,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 		return err
 	}
 	node, _, err := a.Plugins.Component.Load(plugins.PluginsLoad{
-		Kind: "server", Modules: modules, Address: &server, Principal: options.Principal.Server, Peer: options.Principal.Server,
+		Kind: "server", Modules: modules, GoPackages: options.GoPackages, Address: &server, Principal: options.Principal.Server, Peer: options.Principal.Server,
 		CloseTimeout: options.Timeouts.close(), ReadyTimeout: options.Timeouts.ready(), ReloadDrainTimeout: options.Timeouts.reloadDrain(), Telemetry: options.Telemetry,
 		PrincipalAttributes: options.PrincipalAttributes,
 		Store:               &plugins.StoreOptions{Path: pluginsStore},
