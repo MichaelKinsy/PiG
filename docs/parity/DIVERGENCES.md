@@ -3746,28 +3746,6 @@ Evidence: `TestCtrlOExpandsUserBashOutputInThePendingArea`, `TestQueuedMessageUp
 
 Parity allowance: none needed; Pi 1.5.0 has no test of this behavior.
 
-## D312 The model selectors keep the row the user browsed to when a catalog refresh lands
-
-What: PiG ports Pi main df0d88aac (`fix(coding-agent): keep model selector selection when the catalog refresh lands`, #11810, closing #9109), which is not in Pi 1.5.0. Opening the model selector or the llama model search starts a background refresh. When the refresh finished, Pi 1.5.0 moved the selection back to the current model, or to the top row when a search query was typed, discarding any browsing done meanwhile. The selectors now pass the selected model into the filter so the refresh keeps it selected by provider and ID; when it is gone the earlier fallback applies, and the list is rebuilt once.
-
-Why: browsing the list during the refresh lost the user's place.
-
-Pi bug: 1.5.0 discards the user's selection when the catalog refresh lands (#9109).
-
-Scope: the model selector (`tui/model_select.go` `applyFilterPreferring`) and the llama model search (`internal/codingagent/llama/ui.go`).
-
-Owner decision: owner sign-off pending (draft; Pi main follow of 2026-11-07).
-
-SCRUTINIZED:approved
-
-Remove when: the pinned Pi release contains df0d88aac. Then the call-site markers and this record go.
-
-Call-site markers: `tui/model_select.go` (`applyFilterPreferring`), `internal/codingagent/llama/ui.go` (search results).
-
-Evidence: the ported `model-selector.test.ts` and `llama-ui.test.ts` cases of Pi df0d88aac.
-
-Parity allowance: none needed; Pi 1.5.0 has no test of this behavior.
-
 ## D430 Go callers start a call and await it apart (Reference.Start, PendingCall) and run a handler's blocking remainder from outside the host package (AwaitingCtx, Resume)
 
 What: Pi's `ref.method(args)` starts the call at once and returns a Promise. A caller may start several calls before awaiting any (Files v2's pipelined `append`s, which the call window allows) and the host accepts them in the order they were started. A blocking Go `Reference.Call` cannot express that, so `Reference.Start(method, args, ctx)` is the synchronous half (the call is admitted and its handler's synchronous part has run when it returns) and `PendingCall.Wait(ctx)` the awaiting half. `host.AwaitingCtx(ctx, work)` is `Awaiting` for a caller outside the package, which cannot name the host's loop: the blocking remainder of an `onLive` or `on` handler (the awaits of Pi's async function). `host.Resume(ctx, work)` is the other way for a Go caller to resume in the loop after a wait: it runs `work` as one synchronous section on the goroutine of a handler that suspended (a transaction, a blocking call), inline when the handler still runs in its admitting section, as the awaits of Pi's handler resume inside the loop.
@@ -4026,6 +4004,28 @@ Evidence: `TestConnectionErrorKeepsCauseThroughSDKsMatchesPi` (`ai/connection_ca
 
 Parity allowance: the reset-on-accept case accepts the three operations because the pinned pi-ai reaches any of them by timing and PiG reaches the read by construction.
 
+## D521 A bigint in validated tool arguments is the string `<digits>n`, where Pi holds a JavaScript bigint
+
+What: a tool schema with `Type.BigInt` (`{"type":"bigint"}`) coerces a JSON argument to a bigint in Pi's `validateToolArguments` (`packages/ai/src/utils/validation.ts`), and Pi's own `validation-probes.test.ts` writes that value as `${value}n` because `JSON.stringify` throws on a bigint (Pi af79b0c3d). PiG hands the validated arguments to a tool as JSON text, so a coerced bigint is written as the JSON string `"<digits>n"` (`ai.appendStringify`), and the four probe rows that hold a bigint or an `undefined` (bigint x3, undefined) record that representation. A tool that reads the argument as a number or as a string without the suffix sees the suffixed string, where Pi's tool receives a bigint.
+
+Why: Go has no JavaScript bigint inside a JSON document and a tool argument reaches the tool, the transcript and the extension protocols as JSON. A bigint cannot be written as a JSON number without losing the type or the digits it carries (`JSON.stringify` has no form for it), and a reader of the text cannot tell a bigint from a number. The string keeps every digit and marks the type the way Pi's probes do. `undefined` is not a divergence: it is no member of an object and `null` in an array, as `JSON.stringify` writes it.
+
+Pi bug: none; Pi's tool receives a bigint in process. The probes' `${value}n` is Pi's own notation for it.
+
+Scope: `appendStringify` (`ai/validate.go`) and so `ValidateToolArguments`: only a schema that names the `bigint` type, which no stock tool and no model catalog schema uses; an MCP or extension tool with `type: "bigint"` is the only way to reach it.
+
+Owner decision: owner approved option D (keep the string representation, record it as a numbered divergence) 2026-11-08 (owner list #22, "proceed with recommendations").
+
+SCRUTINIZED:approved
+
+Remove when: the tool-argument path carries a typed bigint (for example a JSON extension with a numeric tag) that every reader of the arguments understands.
+
+Call-site markers: `ai/validate.go` (`appendStringify`, the `*big.Int` case).
+
+Evidence: `TestValidationProbesMatchPi` and `TestValidateToolArgumentsMatchesPiOnPiProbes` (`ai/validate_probes_upstream_test.go`, `ai/validate_pi_oracle_test.go`): the bigint rows of `ai/testdata/validation-probes.json` run against Pi's recorded outcome and against Pi's own `validateToolArguments`, whose oracle (`ai/testdata/validate_tool_args.mjs`) writes a bigint as `${value}n`.
+
+Parity allowance: the four bigint and undefined rows of `validation-probes.test.ts` are compared by Pi's outcome notation, which PiG's representation matches; a tool that needs the bigint type gets the suffixed string.
+
 ## D540 The plugins watcher's directory identity has no birth time on a system whose stat Go does not expose it for
 
 What: Pi renews the base watches under an entry on the way to base code only when the entry's identity, its inode and birth time (`identityOf`, `watcher.ts`), differs from the one it had when watched. PiG does the same with `statx` (ino, btime) on Linux and Android, `lstat` (ino, birthtimespec) on macOS, FreeBSD and NetBSD, `lstat` (ino, `X__st_birthtim`) on OpenBSD, and the file index and creation time on Windows. On any other Unix (DragonFly, Solaris and illumos, AIX) Go's `syscall.Stat_t` has no birth time, so the identity is the inode alone: a directory removed and made again that is given the same inode number is not seen as replaced there.
@@ -4048,13 +4048,44 @@ Evidence: `TestIdentityOfADirectoryIsItsInodeAndBirthTimeAndNoneForNoEntry` stat
 
 Parity allowance: none needed; no Pi test depends on an inode reused with no birth time.
 
+## D541 A message object is one per Node process and one per ExtensionRunner call; Pi's extensions and callers all share one realm
+
+What: In Pi every extension and every caller runs in one JavaScript realm, so the message of `message_start`, `message_end`, `turn_end` and `agent_end`, the session entry's `message` and anything passed on `pi.events` are one object. PiG shares that object between every handler and every extension packed in one Node process, between the events of the Session's own run and the session entry, between the handlers of one `ExtensionRunner` emit (Go, Rust, Python and Node callers alike), and across Node processes for a message passed on `pi.events` (the receiver that holds the message resolves it to its own object). What it cannot share:
+
+| Case | Pi | PiG |
+|---|---|---|
+| A Go, Python or Rust caller of `ExtensionRunner.emitMessageEnd` (or `emit`, `emitBoundary`) passes a message it built or read from `getEntries()`, and compares it with the `event.message` a Node handler holds, or a later emit's | `===` when it is the same object | false: the caller passes a value (a Go map, a Python dict, a Rust `Value`), and `getEntries` returns a fresh decode on each call, so there is no object a number could name |
+| A Node handler of `ExtensionRunner.emitMessageEnd` edits `event.message` in place | the caller's object holds the edit | the edit is made to the message decoded for the call; the caller sees it only in a replacement the result carries |
+| Node extensions in two processes (isolated cells, a member quarantined after a fault, different runtimes): one edits its message in place after the other holds it | both hold the one object, so the edit is on it | each process holds its own object for the message, with its own edits; a later payload that carries the host's value does not undo an edit of the process's own, and a `message_end` handler's edit goes back to the host and reaches the other process as a new value |
+| A handler of `message_start`, `turn_end` or `agent_end` edits the message in place | the saved entry holds the edit | the edit stays in the extension process's object and is not saved: only a `message_end` handler's edit goes back to the host (its reply carries the whole message) |
+| An extension passes a message on `pi.events` to a Node extension in another process that has not yet received that message's `message_end` | `===` its own message later | a proxy to the sender's object, as for any object on the bus (D83); the receiver's own object, once it receives the message, is another |
+| A Node extension whose only message handlers are `turn_end` or `agent_end` compares `agent_end.messages[i]` with `entry.message` | `===` | false: the host numbers a message when a Node handler receives `message_start` or `message_end`, and persists it before any later handler asks |
+
+Why: A JavaScript object cannot cross a process boundary, and a value passed by a Go, Python or Rust caller has no identity. The host numbers each message (`RequestPayload.message_seqs`, from one process-wide counter, so two Sessions or runners never share a number in a Node process), and a Node process resolves a number to the object it holds: that carries identity wherever the host holds a message object (a Session's run, a graph emit's decoded event) and wherever a Node process holds the number (`pi.events`). The rows above are what has no such object or no such process. Matching packed to isolated would remove behavior Pi has.
+
+Pi bug: none.
+
+Scope: `ExtensionRunner` of the Go, Rust and Python SDKs (`sessionGraph.new` kind `ExtensionRunner`) over Node extensions, for the first two rows; Node extensions in different processes and edits made outside `message_end`, for the next three; Node extensions that handle neither `message_start` nor `message_end`, for the last. Not: Node extensions packed in one process; the Session's own run seen by one extension; a Node caller (it uses Pi's own in-process ExtensionRunner, D73); other SDKs' payloads, which are unchanged.
+
+Owner decision: 2026-11-08, owner list item #8 (isolated message identity) approved as written, in the narrowed form; proposed by PaseoIdentity and narrowed after the review in `reviews/paseo-identity-f4.md` (the per-emit numbering and `pi.events` resolution the first draft listed here are ported).
+
+SCRUTINIZED:approved 2026-11-08
+
+Remove when: Node extensions share one process or realm (the isolated placement goes), the Go, Python and Rust SDKs pass messages by reference to an object the host holds (a handle API), or a `message_end` handler's in-place edit goes back to the host of a graph emit and a message edited outside `message_end` is sent back and saved. Then the call-site markers and this record go.
+
+Call-site markers: `coding/extension/host/subprocess/runtime-node/runtime.mjs` (`messageNumber`), `coding/extension/host/subprocess/host.go` (`makeEventHandler`: the `MessageSeqs` block), `coding/session_graph_extension_runner_emit.go` (`withEmitMessageSequences` and the `emitMessageEnd` case of `callEmit`).
+
+Evidence: `TestNodeRuntimeKeepsAnEditMadeOutsideMessageEnd` and `TestNodeRuntimeEntryBindWithReorderedMembersKeepsAnEdit` (`coding/extension/host/subprocess/runtime_node_event_message_identity_test.go`; an edit outside `message_end` stays in the object and is not saved), `TestXrefMessageCrossesByNumberToTheReceiversOwnObject` (same file; a receiver that does not hold a number gets a proxy), `TestPiEventsMessageIsTheReceiversOwnObject` (`coding/extension/host/subprocess/xref_message_identity_test.go`; packed and isolated), the `a_identity` entry of the `extension_runner` row (`test/extension-conformance/extension_runner_test.go`; two handlers of one emit hold one object, isolated and packed, in every SDK), `TestNodeExtensionFindsTheEntryOfItsMessagesAfterAnInPlaceEdit` (`coding/session_message_identity_node_test.go`).
+
+Parity allowance: none; each row above is a divergence of Pi's one realm, and the rows PiG matches are pinned by the tests above.
+
 ## D601 The browser page's and the terminal sandbox's client runtimes, and the React bindings, are Pi's TypeScript shipped unchanged, not a Go port
 
 What: Pi's `@earendil-works/chord/web` (`startPage`, `pageEnvironment`, `followLanguage`, `followThemes`, `PageOptions`), `@earendil-works/chord/react` (`HostProvider`, `useHold`, `useHost`, `useMessages`, `usePageState`, `useRefState`, `useRegistry`, `useWatch`, `watchStore`, `ExternalStore`) and the sandbox side of `@earendil-works/chord/tui` (`Bridge`, `SandboxChannel`, `BridgeTerminal`, `TerminalRuntime`, `TerminalRuntimeOptions`, `startTerminalRuntime`) have no Go declaration. PiG embeds Pi's own source files for them in the server (`chord/nextnode/surfaces/client`: `pi/chord/src/{web,react,tui}`, React 19.3.0 beside them, the terminal sandbox's bootstrap) and serves them to the browser and to the Node sandbox the Go launcher starts.
 
 Why: these modules run in the user's browser (DOM, `window`, React) or in a JavaScript context the launcher starts (the app's terminal code and the plugins' registered scripts are evaluated there). A Go process cannot be that runtime, so there is nothing to port; the faithful form is the file itself. Behavior equals Pi's because the code is Pi's.
 
-Why: A JavaScript object cannot cross a process boundary, and a value passed by a Go, Python or Rust caller has no identity. The host numbers each message (`RequestPayload.message_seqs`, from one process-wide counter, so two Sessions or runners never share a number in a Node process), and a Node process resolves a number to the object it holds: that carries identity wherever the host holds a message object (a Session's run, a graph emit's decoded event) and wherever a Node process holds the number (`pi.events`). The rows above are what has no such object or no such process. Matching packed to isolated would remove behavior Pi has.
+Pi bug: Not a Pi bug.
 
 Scope: `chord/nextnode/surfaces/client` (vendored tree, `manifest.json`, `automation/gen/vendor-chord-surfaces-client.sh`), the interface rows of `pkg:chord/web`, `pkg:chord/react` and the sandbox half of `pkg:chord/tui` (designed out in `test/parity/interface-closure/autobind/reviewed-decisions.json`).
 
@@ -4081,6 +4112,8 @@ Pi bug: none.
 Scope: `chord/next/host` (`Host.Delegate`, `Host.Serves`, `destination`, the closure rule's placement by the staged table), `chord/nextnode/plugins` (`node/destination.mjs`, `node/resolve.mjs`, `RuntimeLoad.ParentServes`), `chord/nextnode/app` (`start`). Nothing changes for a host without a delegate, or a NodeHost without `ParentServes`.
 
 Owner decision: owner approved 2026-11-08 (17:29Z).
+
+SCRUTINIZED:approved
 
 Remove when: never for the two hosts; the principal difference goes when a child's link can name whom a hold acts for.
 

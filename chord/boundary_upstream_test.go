@@ -32,7 +32,8 @@ var chordHelpers = []string{
 	"internal/jsparity",
 	"internal/jsstring",
 	"internal/lazyregexp",
-	"internal/linkerexec", // starts Node for the plugins worker and checks its version (chord/nextnode/plugins)
+	"internal/tlsdistrust", // the TLS hardening the terminal launcher's websocket dialer applies (repo-wide, set on pi-main)
+	"internal/linkerexec",  // starts Node for the plugins worker and checks its version (chord/nextnode/plugins)
 	"internal/nodepath",
 	"internal/nodeurl",
 	"internal/sortx",            // sorts short slices with one shared copy of the sort algorithm: a stdlib-only leaf, read by internal/jsstring, schema/internal/ecmaregex and chord/delta

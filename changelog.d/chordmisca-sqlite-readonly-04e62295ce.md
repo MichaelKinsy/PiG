@@ -4,8 +4,4 @@
 
 ### Fixed
 
-<<<<<<<< HEAD:changelog.d/chordmisca-sqlite-readonly-04e62295ce8.md
 - Chord sync: the batch decoder scanned the whole unfinished line for a newline on every 64 KiB chunk (quadratic: 128 MiB took 9.4 s); it scans only the new bytes now. <!-- fix: 04e62295ce8 -->
-========
-- Chord sync: the batch decoder scanned the whole unfinished line for a newline on every 64 KiB chunk (quadratic: 128 MiB took 9.4 s); it scans only the new bytes now. <!-- fix: 04e62295ce -->
->>>>>>>> origin/follow/pi-main:changelog.d/chordmisca-sqlite-readonly-04e62295ce.md

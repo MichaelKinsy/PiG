@@ -118246,7 +118246,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_20_test.go#TestExample20Tables",
-        "test:chord/next/host/host_staging_test.go#TestStagingAFactoryThatUsesTheHandlesItDeclaresIsInertNotAFailure"
+        "test:chord/next/host/host_staging_test.go#TestStagingAFactoryThatUsesTheHandlesItDeclaresIsInertNotAFailure",
+        "test:chord/next/host/host_attempt_assertlive_test.go#TestAttemptTableReadsFromAHandlerGoroutineDoNotRaceWithTheObjectsEnd"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -118268,7 +118269,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_20_test.go#TestExample20Tables",
-        "test:chord/next/host/host_staging_test.go#TestStagingAFactoryThatUsesTheHandlesItDeclaresIsInertNotAFailure"
+        "test:chord/next/host/host_staging_test.go#TestStagingAFactoryThatUsesTheHandlesItDeclaresIsInertNotAFailure",
+        "test:chord/next/host/host_attempt_assertlive_test.go#TestAttemptTableReadsFromAHandlerGoroutineDoNotRaceWithTheObjectsEnd"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
