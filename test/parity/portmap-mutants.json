@@ -6249,7 +6249,7 @@
   {
    "file": "coding/cli/auth_logout.go",
    "old": "\tif len(args) == 0 || strings.HasPrefix(args[0], \"-\") || len(args) > 1 {\n",
-   "new": "\tif len(args) != 0 || strings.HasPrefix(args[0], \"-\") || len(args) > 1 {\n"
+   "new": "\tif len(args) == 0 || strings.HasPrefix(args[0], \"-\") || len(args) > 2 {\n"
   }
  ],
  "packages/chord/src/node/app/uploads.ts": [
@@ -6313,13 +6313,6 @@
    "file": "chord/next/surfaces/surfaces_preference.go",
    "old": "\t\tPersist: true,\n",
    "new": "\t\tPersist: false,\n"
-  }
- ],
- "packages/durable/src/storage/sqlite/rows.ts": [
-  {
-   "file": "durable/storage/sqlite/commit.go",
-   "old": "\t\tif err := pending.addDocument(id, actions.actions[id], seq, state.documents[int64(id)]); err != nil {\n",
-   "new": "\t\tif err := pending.addDocument(id, actions.actions[id], seq, state.documents[int64(id)]); err == nil {\n"
   }
  ],
  "packages/coding-agent/src/utils/terminal-question.ts": [

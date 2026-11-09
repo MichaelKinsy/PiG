@@ -4,11 +4,11 @@ Generated from `1135` PORT_MAP entries and `875` parity scenarios.
 
 ## Status
 
-- **Porting:** 986 / 1021 intended-portable entries ✅ (96.6%).
-- **Behavior verification:** 813 / 986 ported entries (82.5%); 0 weak-only, 173 untested.
+- **Porting:** 990 / 1021 intended-portable entries ✅ (97.0%).
+- **Behavior verification:** 813 / 990 ported entries (82.1%); 0 weak-only, 177 untested.
 - **Upstream test porting:** 974 ported / 0 partial / 0 pending (7 other dispositions; [file mapping](interfaces/test-mapping-v1.5.0+c23b9ec1.json)). Of the partial/pending files, 0 deferred to 0.3.x by the [release policy](interfaces/test-porting-policy-v1.5.0+c23b9ec1.json) (`deferred-0.3.x`).
 
-Raw PORT_MAP rows: 1135. Breakdown: 114 n/a (designed out) · 33 🟡 partial · 2 ⬜ not started. See docs/parity/DIVERGENCES.md for the documented exceptions.
+Raw PORT_MAP rows: 1135. Breakdown: 114 n/a (designed out) · 29 🟡 partial · 2 ⬜ not started. See docs/parity/DIVERGENCES.md for the documented exceptions.
 
 ## Packages
 
@@ -16,10 +16,10 @@ Raw PORT_MAP rows: 1135. Breakdown: 114 n/a (designed out) · 33 🟡 partial ·
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | `agent` | 6 | 1 | 5 | 5 | 0 | 0 | 100.0% | 100.0% |
 | `ai` | 270 | 22 | 248 | 246 | 0 | 2 | 99.2% | 97.6% |
-| `chord` | 323 | 39 | 284 | 269 | 15 | 0 | 94.7% | 59.9% |
+| `chord` | 323 | 39 | 284 | 273 | 11 | 0 | 96.1% | 59.0% |
 | `codemode` | 17 | 4 | 13 | 13 | 0 | 0 | 100.0% | 100.0% |
-| `coding-agent` | 263 | 27 | 236 | 231 | 5 | 0 | 97.9% | 98.3% |
-| `durable` | 100 | 10 | 90 | 79 | 11 | 0 | 87.8% | 94.9% |
+| `coding-agent` | 263 | 27 | 236 | 232 | 4 | 0 | 98.3% | 97.8% |
+| `durable` | 100 | 10 | 90 | 78 | 12 | 0 | 86.7% | 96.2% |
 | `env` | 25 | 3 | 22 | 20 | 2 | 0 | 90.9% | 95.0% |
 | `evals` | 6 | 0 | 6 | 6 | 0 | 0 | 100.0% | 100.0% |
 | `mcp` | 28 | 3 | 25 | 25 | 0 | 0 | 100.0% | 60.0% |
@@ -27,9 +27,9 @@ Raw PORT_MAP rows: 1135. Breakdown: 114 n/a (designed out) · 33 🟡 partial ·
 | `telemetry` | 8 | 1 | 7 | 7 | 0 | 0 | 100.0% | 100.0% |
 | `tui` | 46 | 1 | 45 | 45 | 0 | 0 | 100.0% | 100.0% |
 
-- **Four core packages (agent, ai, coding-agent, tui):** 527 / 534 intended-portable files ✅ (98.7%) from 585 rows; 517 behavioral (98.1%), 0 weak-only, 10 untested.
-- **Shipped surface (agent, ai, codemode, coding-agent, mcp, schema, telemetry, tui; coding-agent without ):** 612 / 619 intended-portable files ✅ (98.9%) from 681 rows; 552 behavioral (90.2%), 0 weak-only, 60 untested.
-- **Whole monorepo (12 packages):** 986 / 1021 intended-portable files ✅ (96.6%) from 1135 rows; 813 behavioral (82.5%), 0 weak-only, 173 untested.
+- **Four core packages (agent, ai, coding-agent, tui):** 528 / 534 intended-portable files ✅ (98.9%) from 585 rows; 517 behavioral (97.9%), 0 weak-only, 11 untested.
+- **Shipped surface (agent, ai, codemode, coding-agent, mcp, schema, telemetry, tui; coding-agent without ):** 613 / 619 intended-portable files ✅ (99.0%) from 681 rows; 552 behavioral (90.0%), 0 weak-only, 61 untested.
+- **Whole monorepo (12 packages):** 990 / 1021 intended-portable files ✅ (97.0%) from 1135 rows; 813 behavioral (82.1%), 0 weak-only, 177 untested.
 - **Interface closure:** 15003 of 15012 semantic interface IDs closed (519 designed-out, 9 pending, 14484 ported). A file-level ✅ does not close an interface ID.
 
 Behavioral evidence includes paired scenarios and reviewed mutation-proven Go unit tests. Unit tests are listed separately; last run refers only to paired scenarios, not unit execution or exhaustive parity.
@@ -510,7 +510,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/coding-agent/src/cli/auth-check.ts` | ✅ | 0 | 5 (unit:./coding/cli:TestAuthCheckDoesNotCreateAuthFileOrParentDirectory, unit:./coding/cli:TestAuthCheckReadsCredentialsWithoutRefreshingOAuthWhenRequested, unit:./coding/cli:TestAuthCheckReportsConfiguredProviderAsReady, unit:./coding/cli:TestAuthCheckReportsMalformedAuthStateAsInvalid, unit:./coding/cli:TestAuthCheckReportsUnknownProviderAsNotReady) | not run | ./coding/cli:TestAuthCheckDoesNotCreateAuthFileOrParentDirectory, ./coding/cli:TestAuthCheckReadsCredentialsWithoutRefreshingOAuthWhenRequested, ./coding/cli:TestAuthCheckReportsConfiguredProviderAsReady, ./coding/cli:TestAuthCheckReportsMalformedAuthStateAsInvalid, ./coding/cli:TestAuthCheckReportsUnknownProviderAsNotReady |
 | `packages/coding-agent/src/cli/auth-command.ts` | ✅ | 0 | 3 (unit:./coding/cli:TestAuthCommandExitCodesAndErrors, unit:./coding/cli:TestAuthCommandPrintsSecretsOnlyInTheRequestedForm, unit:./coding/cli:TestParseAuthCommandLargeMinimumExpiry) | not run | ./coding/cli:TestAuthCommandExitCodesAndErrors, ./coding/cli:TestAuthCommandPrintsSecretsOnlyInTheRequestedForm, ./coding/cli:TestParseAuthCommandLargeMinimumExpiry |
 | `packages/coding-agent/src/cli/auth-login.ts` | ✅ | **0 (untested)** | **0** | not run |  |
-| `packages/coding-agent/src/cli/auth-logout.ts` | 🟡 | 0 | 0 | not run |  |
+| `packages/coding-agent/src/cli/auth-logout.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/coding-agent/src/cli/auth-terminal.ts` | 🟡 | 0 | 0 | not run |  |
 | `packages/coding-agent/src/core/provider-matching.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/coding-agent/src/core/radius-mcp.ts` | 🟡 | 0 | 0 | not run |  |
@@ -975,8 +975,8 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/chord/src/telemetry-sqlite/schema.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/telemetry.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/tui/bridge.ts` | ✅ | **0 (untested)** | **0** | not run |  |
-| `packages/chord/src/tui/channel.ts` | 🟡 | 0 | 0 | not run |  |
-| `packages/chord/src/tui/frames.ts` | 🟡 | 0 | 0 | not run |  |
+| `packages/chord/src/tui/channel.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/tui/frames.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/tui/index.ts` | n/a | 0 | 0 | not run |  |
 | `packages/chord/src/tui/runtime.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/tui/scope.ts` | ✅ | **0 (untested)** | **0** | not run |  |
@@ -986,8 +986,8 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/chord/src/web/index.ts` | n/a | 0 | 0 | not run |  |
 | `packages/chord/src/web/language.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/web/page.ts` | ✅ | **0 (untested)** | **0** | not run |  |
-| `packages/chord/src/web/scripts.ts` | 🟡 | 0 | 0 | not run |  |
-| `packages/chord/src/web/styles.ts` | 🟡 | 0 | 0 | not run |  |
+| `packages/chord/src/web/scripts.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/web/styles.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/web/themes.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/durable/src/documents.ts` | ✅ | 0 | 3 (unit:./durable/session:TestSessionHistoricalDocumentSnapshots, unit:./durable:TestDocumentConversionsKeepRevisionsAndStayStrict, unit:./durable:TestResolveAddressRejectsAnUnsafeOwnerId) | not run | ./durable/session:TestSessionHistoricalDocumentSnapshots, ./durable:TestDocumentConversionsKeepRevisionsAndStayStrict, ./durable:TestResolveAddressRejectsAnUnsafeOwnerId |
 | `packages/durable/src/entries.ts` | ✅ | 0 | 5 (unit:./durable/harness:TestGenerationRecovery, unit:./durable/harness:TestManualCompaction, unit:./durable/session:TestDocumentDefinitions, unit:./durable:TestDefineEntryGuardsByKindAndDecodesTypedData, unit:./durable:TestTaskEntryNarrowsToTheTokenKind) | not run | ./durable/harness:TestGenerationRecovery, ./durable/harness:TestManualCompaction, ./durable/session:TestDocumentDefinitions, ./durable:TestDefineEntryGuardsByKindAndDecodesTypedData, ./durable:TestTaskEntryNarrowsToTheTokenKind |
@@ -1047,7 +1047,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/durable/src/storage/sqlite/node.ts` | ✅ | 0 | 4 (unit:./durable/storage/sqlite/node:TestNewNodeSqliteDatabaseAdaptsADatabaseSync, unit:./durable/storage/sqlite/node:TestPortableSQLiteFacadeSettlement, unit:./durable/storage/sqlite/node:TestPortableSQLiteFacadeSettlement, unit:./durable/storage/sqlite:TestDurableSQLiteMigrations) | not run | ./durable/storage/sqlite/node:TestNewNodeSqliteDatabaseAdaptsADatabaseSync, ./durable/storage/sqlite/node:TestPortableSQLiteFacadeSettlement, ./durable/storage/sqlite/node:TestPortableSQLiteFacadeSettlement, ./durable/storage/sqlite:TestDurableSQLiteMigrations |
 | `packages/durable/src/storage/sqlite/storage.ts` | ✅ | 0 | 11 (unit:./durable/storage/sqlite/node:TestPortableSQLiteFacadeSettlement, unit:./durable/storage/sqlite:TestPicoSqliteStorage, unit:./durable/storage/sqlite:TestSqliteStorageBatchCommitsAgainstMemoryReference, unit:./durable/storage/sqlite:TestSqliteStorageConformance, unit:./durable/storage/sqlite:TestSqliteStorageConformance, unit:./durable/storage/sqlite:TestSqliteStorageConformance, unit:./durable/storage/sqlite:TestSqliteStorageLookupsAndScansReadCommittedRecords, unit:./durable/storage/sqlite:TestSqliteStorageReadApiMirrorsPisStorageContract, unit:./durable/storage/sqlite:TestSqliteStorageReadApiMirrorsPisStorageContract, unit:./durable/storage/sqlite:TestSqliteStorageReadApiMirrorsPisStorageContract, unit:./durable/storage:TestStorageBenchmarkExpectations) | not run | ./durable/storage/sqlite/node:TestPortableSQLiteFacadeSettlement, ./durable/storage/sqlite:TestPicoSqliteStorage, ./durable/storage/sqlite:TestSqliteStorageBatchCommitsAgainstMemoryReference, ./durable/storage/sqlite:TestSqliteStorageConformance, ./durable/storage/sqlite:TestSqliteStorageConformance, ./durable/storage/sqlite:TestSqliteStorageConformance, ./durable/storage/sqlite:TestSqliteStorageLookupsAndScansReadCommittedRecords, ./durable/storage/sqlite:TestSqliteStorageReadApiMirrorsPisStorageContract, ./durable/storage/sqlite:TestSqliteStorageReadApiMirrorsPisStorageContract, ./durable/storage/sqlite:TestSqliteStorageReadApiMirrorsPisStorageContract, ./durable/storage:TestStorageBenchmarkExpectations |
 | `packages/durable/src/storage/sqlite/commit.ts` | ✅ | **0 (untested)** | **0** | not run |  |
-| `packages/durable/src/storage/sqlite/rows.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/durable/src/storage/sqlite/rows.ts` | 🟡 | 0 | 0 | not run |  |
 | `packages/durable/src/storage/sqlite/statements.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/durable/src/storage/sqlite/cloudflare.ts` | ✅ | 0 | 4 (unit:./durable/storage/sqlite/cloudflare:TestDurableObjectSqliteAdapter, unit:./durable/storage/sqlite/cloudflare:TestDurableObjectSqliteAdapter, unit:./durable/storage/sqlite/cloudflare:TestDurableObjectStorageConformance, unit:./durable/storage/sqlite/cloudflare:TestDurableObjectStorageConformance) | not run | ./durable/storage/sqlite/cloudflare:TestDurableObjectSqliteAdapter, ./durable/storage/sqlite/cloudflare:TestDurableObjectSqliteAdapter, ./durable/storage/sqlite/cloudflare:TestDurableObjectStorageConformance, ./durable/storage/sqlite/cloudflare:TestDurableObjectStorageConformance |
 | `packages/durable/src/storage/store/commit.ts` | 🟡 | 0 | 0 | not run |  |

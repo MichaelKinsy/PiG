@@ -128775,9 +128775,9 @@
       "id": "pkg:chord/output#utf8ByteLength",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:828b9c1ca6a5333d0e718ca981af71d80d725ea0afea04c46a828c4098a1157c",
-      "rationale": "Derived by the interface gap detector: utf8ByteLength is Go durable/truncate.go#Utf8ByteLength (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: utf8ByteLength is Go chord/output/output.go#Utf8ByteLength (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "durable/truncate.go#Utf8ByteLength"
+        "chord/output/output.go#Utf8ByteLength"
       ],
       "layers": {
         "behavior": "complete",
@@ -128785,20 +128785,19 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/truncate.go#Utf8ByteLength"
+        "call:chord/output/output.go#Utf8ByteLength"
       ],
       "evidence": [
-        "test:durable/truncate_pi_oracle_test.go#TestTruncateMatchesPi",
-        "test:durable/truncate_upstream_test.go#TestTruncateUtilitiesUpstream"
+        "test:chord/output/proof_chord_test.go#TestUtf8ByteLengthCountsBytesNotCharacters"
       ]
     },
     {
       "id": "pkg:chord/output#utf8ByteLength::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:3313ce588c1093ae1e9907ccbcebdbef71cc788229784ec28fd8cbacb2619855",
-      "rationale": "Derived by the interface gap detector: utf8ByteLength::call:0 is Go durable/truncate.go#Utf8ByteLength (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: utf8ByteLength::call:0 is Go chord/output/output.go#Utf8ByteLength (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "durable/truncate.go#Utf8ByteLength"
+        "chord/output/output.go#Utf8ByteLength"
       ],
       "layers": {
         "behavior": "complete",
@@ -128806,11 +128805,10 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/truncate.go#Utf8ByteLength"
+        "call:chord/output/output.go#Utf8ByteLength"
       ],
       "evidence": [
-        "test:durable/truncate_pi_oracle_test.go#TestTruncateMatchesPi",
-        "test:durable/truncate_upstream_test.go#TestTruncateUtilitiesUpstream"
+        "test:chord/output/proof_chord_test.go#TestUtf8ByteLengthCountsBytesNotCharacters"
       ]
     },
     {

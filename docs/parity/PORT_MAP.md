@@ -557,7 +557,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/cli/auth-check.ts` | `coding/cli/auth_check.go (the main.ts runAuthCommand dispatch is mapped under main.ts)` | ✅ |
 | `packages/coding-agent/src/cli/auth-command.ts` | `coding/cli/auth_command.go (resolveCliModel for --model is mapped under core/model-resolver.ts)` | ✅ |
 | `packages/coding-agent/src/cli/auth-login.ts` | `coding/cli/auth_login.go (RunAuthLogin; every auth-login.test.ts case in coding/cli/auth_login_test.go; the main.ts runAuthLoginCommand dispatch is coding/cli/auth_run.go)` | ✅ |
-| `packages/coding-agent/src/cli/auth-logout.ts` | `coding/cli/auth_logout.go (RunAuthLogout; every auth-logout.test.ts case in coding/cli/auth_logout_test.go; the main.ts runAuthLogoutCommand dispatch is coding/cli/auth_run.go)` Missing: no test executes the main.ts runAuthLogoutCommand dispatch in coding/cli/auth_run.go (the provider argument, its error text and exit codes); auth_logout_test.go calls RunAuthLogout directly, so portmapcheck sees no statement of auth_run.go executed by the auth-logout tests | 🟡 |
+| `packages/coding-agent/src/cli/auth-logout.ts` | `coding/cli/auth_logout.go (RunAuthLogout; every auth-logout.test.ts case in coding/cli/auth_logout_test.go)` | ✅ |
 | `packages/coding-agent/src/cli/auth-terminal.ts` | `coding/cli/auth_terminal.go (LoginTerminal, CreateProcessLoginTerminal; auth-terminal.test.ts cases in coding/cli/auth_terminal_test.go)` Missing: no existing test fails any one-line mutation of coding/cli/auth_terminal.go (searched across its operators, literals and conditions); the four TestAuthTerminal... cases only reach the line-question path (stdin closing before an answer, cleanup after an answer, an answer delivered just before EOF, prompt cancellation), never readSecret: hidden entry in raw mode with no echo, backspace, escape sequences ignored, Ctrl-C calling onInterrupt, Enter ending the entry, context cancellation while entering a secret, the terminal restored and the newline written, nor Interactive, Write, Error or OpenURL | 🟡 |
 | `packages/coding-agent/src/core/provider-matching.ts` | `internal/codingagent/provider_matching.go (FindMatchingProviders; provider_matching_test.go)` | ✅ |
 | `packages/coding-agent/src/core/radius-mcp.ts` | `internal/codingagent/radius_mcp.go (PlanRadiusMcpServer; radius_mcp_stripped.go for a build without built-in MCP)` Missing: internal/codingagent/radius_mcp_stripped.go (the build without built-in MCP) is compiled under no test configuration, so no test executes it; PlanRadiusMcpServer and its Apply are covered by radius_login_mcp_offer_upstream_test.go | 🟡 |
@@ -804,7 +804,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/store/table-writes.ts` | `chord/next/store/table_writes.go` | ✅ |
 | `packages/chord/src/store/table-changes.ts` | `chord/next/store/table_changes.go` | ✅ |
 | `packages/chord/src/store/table-handle.ts` | `chord/next/store/table_handle.go` | ✅ |
-| `packages/chord/src/store/engine.ts` | `chord/next/store/engine.go`, `durable/types.go` | ✅ |
+| `packages/chord/src/store/engine.ts` | `chord/next/store/engine.go` | ✅ |
 | `packages/chord/src/store/outbox.ts` | `chord/next/store/outbox.go` | ✅ |
 | `packages/chord/src/store/store.ts` | `chord/next/store/store.go (group commit S18 as enlist/runGroup; Pi's d7704516e int() key typing is TypeScript typing: designed out)` | ✅ |
 | `packages/chord/src/store/applier.ts` | `chord/next/store/applier.go` | ✅ |
@@ -962,8 +962,8 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/host/readiness.ts` | `chord/next/host/host_readiness.go` | ✅ |
 | `packages/chord/src/host/reload-cycle.ts` | `chord/next/host/host_reload_cycle.go` | ✅ |
 | `packages/chord/src/host/unbound-clock.ts` | `chord/next/host/host_unbound_clock.go` | ✅ |
-| `packages/chord/src/node/app/app.ts` | `chord/nextnode/app/app.go`, `chord/nextnode/plugins/model/model_built.go` | ✅ |
-| `packages/chord/src/node/app/archive.ts` | `chord/nextnode/app/archive.go`, `chord/next/store/archive.go` | ✅ |
+| `packages/chord/src/node/app/app.ts` | `chord/nextnode/app/app.go` | ✅ |
+| `packages/chord/src/node/app/archive.ts` | `chord/nextnode/app/archive.go` | ✅ |
 | `packages/chord/src/node/app/blobs.ts` | `chord/nextnode/app/blobs.go` | ✅ |
 | `packages/chord/src/node/app/data.ts` | `chord/nextnode/app/data.go, host_data.mjs` | ✅ |
 | `packages/chord/src/node/app/ephemeral-sessions.ts` | `chord/nextnode/app/ephemeral_sessions.go` | ✅ |
@@ -1042,8 +1042,8 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/telemetry-sqlite/schema.ts` | `chord/telemetrysqlite/schema.go` | ✅ |
 | `packages/chord/src/telemetry.ts` | `chord/next/telemetry/schema.go, telemetry.go`, `chord/nextnode/surfaces/client/pi/chord/src/telemetry.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/tui/bridge.ts` | `chord/nextnode/tui/tui_bridge.go (launcher side)`, `chord/nextnode/surfaces/client/pi/chord/src/tui/bridge.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
-| `packages/chord/src/tui/channel.ts` | `chord/nextnode/surfaces/client/pi/chord/src/tui/channel.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) Missing: shipped verbatim; byte pin in chord/nextnode/surfaces/client_manifest_test.go; portmapcheck has no proof class for verbatim rows (Main decides the class) | 🟡 |
-| `packages/chord/src/tui/frames.ts` | `chord/nextnode/surfaces/client/pi/chord/src/tui/frames.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) Missing: shipped verbatim; byte pin in chord/nextnode/surfaces/client_manifest_test.go; portmapcheck has no proof class for verbatim rows (Main decides the class) | 🟡 |
+| `packages/chord/src/tui/channel.ts` | `chord/nextnode/surfaces/client/pi/chord/src/tui/channel.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
+| `packages/chord/src/tui/frames.ts` | `chord/nextnode/surfaces/client/pi/chord/src/tui/frames.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/tui/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
 | `packages/chord/src/tui/runtime.ts` | `chord/nextnode/surfaces/client/pi/chord/src/tui/runtime.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go), `chord/nextnode/tui/tui_actions.go` | ✅ |
 | `packages/chord/src/tui/scope.ts` | `chord/next/tui/tui_scope.go` | ✅ |
@@ -1053,8 +1053,8 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/web/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
 | `packages/chord/src/web/language.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/language.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/web/page.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/page.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
-| `packages/chord/src/web/scripts.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/scripts.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) Missing: shipped verbatim; byte pin in chord/nextnode/surfaces/client_manifest_test.go; portmapcheck has no proof class for verbatim rows (Main decides the class) | 🟡 |
-| `packages/chord/src/web/styles.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/styles.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) Missing: shipped verbatim; byte pin in chord/nextnode/surfaces/client_manifest_test.go; portmapcheck has no proof class for verbatim rows (Main decides the class) | 🟡 |
+| `packages/chord/src/web/scripts.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/scripts.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
+| `packages/chord/src/web/styles.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/styles.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/web/themes.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/themes.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 
 ## `packages/protocol/src/`
@@ -1134,7 +1134,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/storage/sqlite/node.ts` | `durable/storage/sqlite/node/node.go` (re-exports chord/sqlite/node; OpenNodeSqliteStorage) | ✅ |
 | `packages/durable/src/storage/sqlite/storage.ts` | `durable/storage/sqlite/storage.go` | ✅ |
 | `packages/durable/src/storage/sqlite/commit.ts` | `durable/storage/sqlite/commit.go` | ✅ |
-| `packages/durable/src/storage/sqlite/rows.ts` | `durable/storage/sqlite/commit.go` (documentRow; the cell encoders are in storage.go and statements.go) | ✅ |
+| `packages/durable/src/storage/sqlite/rows.ts` | `durable/storage/sqlite/commit.go` (documentRow; the cell encoders are in storage.go and statements.go) Missing: the stored row columns (family, key, scope, retired, isCurrentOnly) built by documentRow and the cell encoders are unasserted: no test fails an inverted isCurrentOnly or a retired column shifted by one (a mutant of commit.ts logic does not prove rows.ts) | 🟡 |
 | `packages/durable/src/storage/sqlite/statements.ts` | `durable/storage/sqlite/statements.go` (internal SQL, no D: reads and deletions take their keys through json_each as Pi's do, but every insert binds its cells in multi-row VALUES where Pi sends the rows of little text as one JSON array through json_each; the stored rows (up to 8 KiB of text; larger rows were bound already and are unchanged, a lone surrogate in one stays raw where Pi stores U+FFFD, as at the base) are the same bytes in the same storage classes, errors included, which insert_values_differential_test.go proves against Pi's statement over random batches) | ✅ |
 | `packages/durable/src/storage/sqlite/cloudflare.ts` | `durable/storage/sqlite/cloudflare/cloudflare.go` (re-exports chord/sqlite/cloudflare; OpenDurableObjectSqliteStorage) | ✅ |
 | `packages/durable/src/storage/store/commit.ts` | `durable/storage/store/commit.go` | 🟡 |

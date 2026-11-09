@@ -1,7 +1,5 @@
 package surfaces
 
-// pi: packages/chord/src/node/surfaces/current.ts
-
 import (
 	"context"
 	"strings"
