@@ -81,7 +81,7 @@ func MintOwnerToken(ctx context.Context, client *http.Client, server *url.URL, d
 	if err != nil {
 		return "", fmt.Errorf("Cannot mint an owner link: %w", err)
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	if response.StatusCode < 200 || response.StatusCode > 299 {
 		return "", fmt.Errorf("Cannot mint an owner link (%d)", response.StatusCode)
 	}

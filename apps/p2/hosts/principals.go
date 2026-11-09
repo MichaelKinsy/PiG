@@ -78,7 +78,7 @@ var frameDestinations = map[string]bool{"iframe": true, "frame": true, "embed": 
 
 // ForeignBrowserRequest reports whether a browser sent this request for another site (Fetch Metadata): a cross-site or
 // same-site (another local port) page, link, form, fetch or WebSocket, or a frame or embed another site holds. Such a
-// request never gets the loopback owner: a page anywhere could otherwise frame the owner UI (clickjacking) or drive it.
+// request never keeps its owner credential: a page anywhere could otherwise frame the owner UI (clickjacking) or drive it.
 // Requests without the headers (the TUI, scripts, older browsers) are unaffected; the page's CSP `frame-ancestors` still
 // refuses framing there.
 func ForeignBrowserRequest(request *http.Request) bool {

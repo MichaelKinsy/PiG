@@ -46,7 +46,10 @@ func openByteChannel(t *testing.T, port int, token string, headers map[string]st
 	for name, value := range headers {
 		requestHeaders.Set(name, value)
 	}
-	conn, _, err := websocket.DefaultDialer.Dial("ws://127.0.0.1:"+itoa(port)+"/terminal?"+url.Values{"token": {token}}.Encode(), requestHeaders)
+	conn, response, err := websocket.DefaultDialer.Dial("ws://127.0.0.1:"+itoa(port)+"/terminal?"+url.Values{"token": {token}}.Encode(), requestHeaders)
+	if response != nil {
+		_ = response.Body.Close()
+	}
 	if err != nil {
 		t.Fatal(err)
 	}

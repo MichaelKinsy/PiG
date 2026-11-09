@@ -76,7 +76,7 @@ func TestAWorkerKeepsTheMainConversationsCacheWarmAfterItsRunAndCountsTheRefresh
 		if err != nil {
 			return nil
 		}
-		defer file.Close()
+		defer func() { _ = file.Close() }()
 		var lines []string
 		scanner := bufio.NewScanner(file)
 		scanner.Buffer(nil, 1<<26)

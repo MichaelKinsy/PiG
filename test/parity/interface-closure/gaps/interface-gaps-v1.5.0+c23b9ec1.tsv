@@ -673,8 +673,8 @@ pkg:durable/.#AgentChange	durable	type-mismatch	durable/harness/agent.go#AgentCh
 pkg:durable/.#AgentState	durable	type-mismatch	durable/harness/agent.go#AgentState
 pkg:durable/.#ConversationStreamOptions	durable	type-mismatch	durable/harness_types.go#ConversationStreamOptions
 pkg:durable/.#Tx	durable	child-gap	durable/types.go#Tx
-pkg:durable/.#Tx::property:submission	durable	member-missing	durable/types.go#Tx
-pkg:durable/.#Tx::property:submission::call:0	durable	member-missing	durable/types.go#Tx
+pkg:durable/.#Tx::property:submission	durable	not-exercised	durable/types.go#Tx.Submission
+pkg:durable/.#Tx::property:submission::call:0	durable	not-exercised	durable/types.go#Tx.Submission
 pkg:durable/storage/indexeddb#IndexedDbStorage	durable	no-go-symbol	
 pkg:durable/storage/indexeddb#IndexedDbStorage::property:commit	durable	child-gap	
 pkg:durable/storage/indexeddb#IndexedDbStorage::property:commit::call:0	durable	child-gap	

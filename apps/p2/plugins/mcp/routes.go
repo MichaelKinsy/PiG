@@ -13,7 +13,7 @@ import (
 
 // Ports apps/p2/plugins/mcp/routes.ts: the browser routes of MCP sign-ins (owners only). `GET /mcp/sign-in/<server>` begins a
 // sign-in and redirects to the authorization server: the browser returns to a loopback callback on the p2 host when it runs
-// there, else to `GET /mcp/callback` on the origin it reaches p2 through (Radius, a public host). The device owner's browser
+// there, else to `GET /mcp/callback` on the origin it reaches p2 through (Radius, a public host). A local owner's browser
 // runs on the p2 host; for any other owner a probe page finds out first (`LoopbackProbe`).
 
 // signInRoutes contributes the sign-in routes.
@@ -33,7 +33,7 @@ func manager(ctx host.Ctx) (*host.Reference, error) {
 }
 
 // signInRoute begins the sign-in to the server the path names. `?via=loopback|callback` is the probe page's answer; without
-// it, the device owner signs in through loopback and any other owner gets the probe page.
+// it, a local owner signs in through loopback and any other owner gets the probe page.
 func signInRoute(response http.ResponseWriter, request *http.Request, access p2runtime.RequestAccess, ctx host.Ctx) error {
 	owner, isOwner := access.Principal.(p2runtime.OwnerPrincipal)
 	if !isOwner {

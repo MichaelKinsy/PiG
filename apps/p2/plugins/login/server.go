@@ -211,7 +211,7 @@ var Server = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error
 		}
 		config := self.Get(modelscontract.ModelConfig, delta.NewJsonObject(0))
 		service := self.Get(contract.LoginService, delta.NewJsonObject(0))
-		// This owner's logins: one device's (its cookie), the Radius owner's, or the device owner's (every local tab).
+		// This owner's logins: one device's (its cookie), the Radius owner's, or the local owner's (every local session).
 		owner := p2runtime.Key(who)
 		remote := who.(p2runtime.OwnerPrincipal).Access != p2runtime.AccessLocal
 		// Prompts and notices (an auth URL, a device code) only for the owner that started the login.
