@@ -29,6 +29,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-01a63b9](#bf-01a63b9) | The `/tree` search line now shows a cursor while the selector is focused (Pi #9157, D248) | PiG's own defect | All platforms | Unreleased |
 | [BF-01f1936](#bf-01f1936) | Print and JSON mode: on SIGTERM or SIGHUP the interrupted run now settles before `session_shutdown` handlers… | PiG's own defect | All platforms | Unreleased |
 | [BF-02114ff](#bf-02114ff) | fix(tui): filterable list drops the label when no cell remains (Pi select-list) | PiG's own defect | All platforms | Unreleased |
+| [BF-0223bea](#bf-0223bea) | `make changelog-fold` stops, changing nothing, while `## [Unreleased]` still holds entries, and names… | PiG's own defect | All platforms | Unreleased |
 | [BF-0225926](#bf-0225926) | fix: symlink callers, changelog fragment name, behavior contract hash at the new pin, interface extractor… | PiG's own defect | All platforms | Unreleased |
 | [BF-0225a43](#bf-0225a43) | A device-attributes reply delivered in slow reads no longer reaches the editor as input: an `ESC[?` prefix… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-0225bbf](#bf-0225bbf) | Pressing Escape twice with only whitespace in the editor now opens the tree or fork selector, as in Pi, which… | PiG's own defect | All platforms | 0.5.0 |
@@ -415,6 +416,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-41b25ac](#bf-41b25ac) | fix(chord): surfaces followers stop before their pick watch binds and call out with no lock held… | PiG's own defect | All platforms | Unreleased |
 | [BF-41b305d](#bf-41b305d) | Codemode rejects a `// @options:` line that is not the first line of the script with an error before the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-42116f8](#bf-42116f8) | Durable: the system baseline written after a compaction now leads the model context when the kept history… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-4219d7a](#bf-4219d7a) | `docs/project/PROVENANCE.md` named Pi v0.99.1 as the upstream pin | PiG's own defect | All platforms | Unreleased |
 | [BF-4259631](#bf-4259631) | An extension's direct call into a pi-ai API module (`openAICompletionsApi()` and the other bridged APIs)… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4273a6a](#bf-4273a6a) | fix(durable/core): the run's abort resumes on its invocation's own resumer | PiG's own defect | All platforms | Unreleased |
 | [BF-42c059a](#bf-42c059a) | fix(tui): bash block strips ANSI with Pi's utils/ansi.ts rule | PiG's own defect | All platforms | Unreleased |
@@ -1609,6 +1611,9 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-d94e83f](#bf-d94e83f) | Subagents of `pi-open-agents` (and any extension that finds the Pi CLI from the package root of… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-d983343](#bf-d983343) | A custom message draft proposed at a turn boundary keeps the member order of its `content` blocks | PiG's own defect | All platforms | Unreleased |
 | [BF-d983b74](#bf-d983b74) | Anthropic requests whose strict `prefer` tools exceed a strict tool limit ("The compiled grammar is too… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-d986ba3](#bf-d986ba3) | Release workflow: a run from a private repository now fails in its first step, with the reason, instead of… | PiG's own defect | All platforms | Unreleased |
+| [BF-d986ba3-2](#bf-d986ba3-2) | Release workflow: the draft GitHub Release takes its body from… | PiG's own defect | All platforms | Unreleased |
+| [BF-d986ba3-3](#bf-d986ba3-3) | Release workflow: the packaged smoke steps compare the `pig:` line of `pig version` with the release version… | PiG's own defect | All platforms | Unreleased |
 | [BF-d9886fe](#bf-d9886fe) | fix(hljs): no magic-literal hits for the resume and dispatch bounds | PiG's own defect | All platforms | Unreleased |
 | [BF-d991498](#bf-d991498) | Display math (`$$...$$`, `\[...\]`) wider than the Markdown content width renders as its raw LaTeX source… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-d9a9c51](#bf-d9a9c51) | `pig status --json` now gives a skill without a `description` and a theme that fails the theme schema… | PiG's own defect | All platforms | 0.7.0 |
@@ -2079,6 +2084,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `02114fff5b` (2026-10-11)
 - **Tests:** `internal/codingagent/settings_selector_oracle_test.go::TestSettingsSelectorMatchesPi`, `tui/select_filterable_test.go::TestFilterableListShowsNoLabelWhenNoCellRemains`
+
+### BF-0223bea
+
+**`make changelog-fold` stops, changing nothing, while `## [Unreleased]` still holds entries, and names…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `make changelog-fold` stops, changing nothing, while `## [Unreleased]` still holds entries, and names `set-version --move-unreleased`.
+- **Root cause:** Finding R4 of the 0.8.0 release dry run: set-version leaves the [Unreleased] entries (the klauspost/compress GO-2026-6865 Security entry) under Unreleased, and changelog-fold moves only fragments, so the [0.8.0] section had no Security section while the notes draft listed it.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0223bea7e7` (2026-11-09)
+- **Tests:** None recorded.
+- **Release note:** `make changelog-fold` stops, changing nothing, while `## [Unreleased]` still holds entries, and names `set-version --move-unreleased`. The fold moves fragments only, so an entry left under Unreleased (the 0.8.0 `klauspost/compress` Security entry) was missing from the release section.
 
 ### BF-0225926
 
@@ -7408,6 +7427,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `42116f895b` (2026-10-14)
 - **Tests:** `durable/harness/context_pi_oracle_test.go::TestContextDerivationMatchesPi`, `durable/harness/harness_compaction_test.go::TestManualCompaction`, `durable/harness/harness_compaction_test.go::TestOverflowCompaction`, `durable/harness/harness_context_test.go::TestConversationContext`
 - **Release note:** Durable: the system baseline written after a compaction now leads the model context when the kept history includes an assistant message, as does a first baseline written after earlier answers, instead of following the new input; Anthropic and OpenAI Codex requests no longer lose the initial prompt and tool set. Other system messages after an assistant message stay in place. Carried from Pi 5713c950 (earendil-works/pi#10904)
+
+### BF-4219d7a
+
+**`docs/project/PROVENANCE.md` named Pi v0.99.1 as the upstream pin**
+
+- **Source:** PiG's own defect
+- **Symptom:** `docs/project/PROVENANCE.md` named Pi v0.99.1 as the upstream pin.
+- **Root cause:** The pin tool already derives every committed copy of the pin and make pin-check fails on drift, so the file joins its RULES: pin.py provenance rewrites the two lines (release tag or commit form) and make pin-sync fixes the text. It cannot go stale again without make pin-check failing.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `4219d7aa50` (2026-11-09)
+- **Tests:** None recorded.
+- **Release note:** `docs/project/PROVENANCE.md` named Pi v0.99.1 as the upstream pin. It now states the pin from `.upstream/pin` (`1.5.0+c23b9ec1`, with the full commit), and `make pin-sync` and `make pin-check` keep it current.
 
 ### BF-4259631
 
@@ -23993,6 +24026,48 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `d983b74821` (2026-10-09)
 - **Tests:** None recorded.
 - **Release note:** Anthropic requests whose strict `prefer` tools exceed a strict tool limit ("The compiled grammar is too large", "Too many strict tools", too many union parameters) no longer fail every turn: PiG retries once with the `prefer` tools non-strict, keeps `require` tools strict, and records an `anthropic_strict_tools_fallback` diagnostic, as Pi 1.2.0 does (pi-mono #10409).
+
+### BF-d986ba3
+
+**Release workflow: a run from a private repository now fails in its first step, with the reason, instead of…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Release workflow: a run from a private repository now fails in its first step, with the reason, instead of building every archive and stopping at the publish job.
+- **Root cause:** Findings R3, R9 and R11 of the 0.8.0 release dry run.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d986ba346f` (2026-11-09)
+- **Tests:** None recorded.
+- **Release note:** Release workflow: a run from a private repository now fails in its first step, with the reason, instead of building every archive and stopping at the publish job. Attestation is skipped for private repositories and `assemble-evidence.py` requires a Sigstore bundle for every archive.
+
+### BF-d986ba3-2
+
+**Release workflow: the draft GitHub Release takes its body from…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Release workflow: the draft GitHub Release takes its body from `docs/release/<version>-release-notes-draft.md` when that file exists, and from GitHub's generated notes only when it does not.
+- **Root cause:** Findings R3, R9 and R11 of the 0.8.0 release dry run.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d986ba346f` (2026-11-09)
+- **Tests:** None recorded.
+- **Release note:** Release workflow: the draft GitHub Release takes its body from `docs/release/<version>-release-notes-draft.md` when that file exists, and from GitHub's generated notes only when it does not.
+
+### BF-d986ba3-3
+
+**Release workflow: the packaged smoke steps compare the `pig:` line of `pig version` with the release version…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Release workflow: the packaged smoke steps compare the `pig:` line of `pig version` with the release version, for the `pig` archives and for the `pig` inside each `pig-acp` archive.
+- **Root cause:** Findings R3, R9 and R11 of the 0.8.0 release dry run.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d986ba346f` (2026-11-09)
+- **Tests:** None recorded.
+- **Release note:** Release workflow: the packaged smoke steps compare the `pig:` line of `pig version` with the release version, for the `pig` archives and for the `pig` inside each `pig-acp` archive. They checked only exit codes before.
 
 ### BF-d9886fe
 
