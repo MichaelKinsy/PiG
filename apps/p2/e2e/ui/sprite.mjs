@@ -28,6 +28,11 @@ const views = [
 ];
 for (const view of views) {
 	const context = await browser.newContext({ viewport: view.viewport });
+	const pair = process.env.P2_UI_COOKIE;
+	if (pair) {
+		const [name, ...value] = pair.split("=");
+		await context.addCookies([{ name, value: value.join("="), url: base, httpOnly: true, sameSite: "Lax" }]);
+	}
 	await context.addInitScript((value) => localStorage.setItem("pi-theme", value), view.theme);
 	view.page = await context.newPage();
 	await view.page.goto(`${base}/`);

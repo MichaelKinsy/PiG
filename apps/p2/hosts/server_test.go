@@ -10,6 +10,8 @@ import (
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/devices"
 )
 
 func TestMain(m *testing.M) { p2test.Main(m) }
@@ -27,7 +29,7 @@ var pingFacet = host.DefineFacet(func(_ host.FacetHost, self host.FacetSelf) err
 })
 
 func TestServerBootsAndServesChord(t *testing.T) {
-	fixture := p2test.StartFixture(t, hosts.ServerOptions{Plugins: []string{}, Facets: []host.HostFacet{{Name: "probe", Facet: pingFacet}}})
+	fixture := p2test.StartFixture(t, hosts.ServerOptions{Plugins: []string{"devices"}, Facets: []host.HostFacet{{Name: "probe", Facet: pingFacet}}})
 	port := fixture.Server.Port
 
 	health, err := p2test.HTTP(port, "/health", p2test.HTTPOptions{})
@@ -39,15 +41,23 @@ func TestServerBootsAndServesChord(t *testing.T) {
 	if err != nil || foreign.Status != 403 {
 		t.Fatalf("foreign host: %+v %v", foreign, err)
 	}
-	// A plugin's route answers as the loopback owner.
-	ping, err := p2test.HTTP(port, "/ping", p2test.HTTPOptions{})
+	// A plugin's route answers as the local owner with its session, and as nobody on loopback without a credential.
+	ping, err := fixture.HTTP("/ping", p2test.HTTPOptions{})
 	if err != nil || ping.Status != 200 || !strings.Contains(ping.Body, `"as":"owner"`) {
 		t.Fatalf("/ping: %+v %v", ping, err)
 	}
-	// A request no route answers: the owner gets "Not found" (no web UI yet).
-	missing, err := p2test.HTTP(port, "/nothing", p2test.HTTPOptions{})
+	anonymous, err := p2test.HTTP(port, "/ping", p2test.HTTPOptions{})
+	if err != nil || anonymous.Status != 200 || !strings.Contains(anonymous.Body, `"as":"nobody"`) {
+		t.Fatalf("/ping without a credential: %+v %v", anonymous, err)
+	}
+	// A request no route answers: the owner gets "Not found" (no web UI yet), nobody the sign-in page.
+	missing, err := fixture.HTTP("/nothing", p2test.HTTPOptions{})
 	if err != nil || missing.Status != 404 {
 		t.Fatalf("/nothing: %+v %v", missing, err)
+	}
+
+	if signIn, err := p2test.HTTP(port, "/nothing", p2test.HTTPOptions{}); err != nil || signIn.Status != 401 {
+		t.Fatalf("/nothing without a credential: %+v %v", signIn, err)
 	}
 
 	// /chord: a browser-like client holds Access and is the owner.
@@ -87,12 +97,13 @@ func TestServerBootsAndServesChord(t *testing.T) {
 }
 
 func TestChordRefusesAForeignOrigin(t *testing.T) {
-	fixture := p2test.StartFixture(t, hosts.ServerOptions{Plugins: []string{}})
-	if conn, err := p2test.Dial(fixture.Server.Port, map[string]string{"Origin": "http://evil.example"}); err == nil {
+	fixture := p2test.StartFixture(t, hosts.ServerOptions{Plugins: []string{"devices"}})
+	owner := fixture.Owner()
+	if conn, err := p2test.Dial(fixture.Server.Port, owner.OwnerHeaders(map[string]string{"Origin": "http://evil.example"})); err == nil {
 		_ = conn.Close()
 		t.Fatal("a WebSocket from another origin was accepted")
 	}
-	if conn, err := p2test.Dial(fixture.Server.Port, map[string]string{"Host": "evil.example"}); err == nil {
+	if conn, err := p2test.Dial(fixture.Server.Port, owner.OwnerHeaders(map[string]string{"Host": "evil.example"})); err == nil {
 		_ = conn.Close()
 		t.Fatal("a WebSocket to another Host was accepted")
 	}

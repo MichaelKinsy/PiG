@@ -117,7 +117,7 @@ func TestWorkspaceFakeProvider(t *testing.T) {
 		if len(method) > 0 {
 			options.Method = method[0]
 		}
-		result, err := p2test.HTTP(fixture.Server.Port, path, options)
+		result, err := fixture.HTTP(path, options)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -129,7 +129,7 @@ func TestWorkspaceFakeProvider(t *testing.T) {
 		if len(id) > 0 {
 			identity = id[0]
 		}
-		result, err := p2test.HTTP(fixture.Server.Port, "/workspace-upload?"+urlValues("session", identity, "conversation", "1", "path", path, "name", name),
+		result, err := fixture.HTTP("/workspace-upload?"+urlValues("session", identity, "conversation", "1", "path", path, "name", name),
 			p2test.HTTPOptions{Method: http.MethodPost, Headers: headers, Body: bytes.NewReader(body)})
 		if err != nil {
 			t.Fatal(err)

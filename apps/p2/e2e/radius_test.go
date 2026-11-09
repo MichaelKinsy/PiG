@@ -35,6 +35,7 @@ import (
 	"github.com/MichaelKinsy/PiG/apps/p2/plugins/radius/radiustest"
 	sessionscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/sessions/contract"
 	sharingcontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/sharing/contract"
+	terminalscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/terminals/contract"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
@@ -312,9 +313,34 @@ func TestRadiusPluginAdmitsItsAuthenticatedRemoteOwnerIncludingProviderLoginWith
 	if got := f.get("/probe", f.marked(map[string]string{radiuscontract.RelaySecretHeader: "forged"})).Status; got != 403 {
 		t.Fatalf("forged secret = %d", got)
 	}
-	if got := f.get("/probe", nil).Status; got != 200 {
-		t.Fatalf("local = %d", got)
+	// Radius needs no local credential, and loopback alone is nobody.
+	if got := f.get("/probe", nil).Status; got != 403 {
+		t.Fatalf("local without a credential = %d", got)
 	}
+	// A plugin's own WebSocket upgrade (a terminal's byte channel) admits the relayed owner too.
+	p2test.UseTerminalDaemon(t)
+	t.Cleanup(func() { shutdownTerminalHost(t, f.dir) })
+	sessions, err := p2test.HoldIn(browser, sessionscontract.Sessions, delta.NewJsonObject(0), "owner")
+	if err != nil {
+		t.Fatal(err)
+	}
+	created, err := sessions.Call("create", delta.JsonObjectOf("cwd", f.dir), p2test.Background)
+	if err != nil {
+		t.Fatal(err)
+	}
+	view, err := p2test.HoldIn(browser, terminalscontract.Terminals, delta.JsonObjectOf("session", object(created).Value("id"), "view", randomView()), "owner")
+	if err != nil {
+		t.Fatal(err)
+	}
+	granted, err := view.Call("channel", delta.NewJsonObject(0), p2test.Background)
+	if err != nil {
+		t.Fatal(err)
+	}
+	token := object(granted).Value("token").(string)
+	if got := refusedUpgrade(t, f.fixture.Server.Port, "?"+url.Values{"token": {token}}.Encode(), nil); got != http.StatusForbidden {
+		t.Fatalf("a terminal channel without Radius or a local credential: %d", got)
+	}
+	openByteChannel(t, f.fixture.Server.Port, token, marked)
 }
 
 // Ports "Radius-relayed artifact previews may sit below the Radius shell's frame" (Pi main 82d6f34f).

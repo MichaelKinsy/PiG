@@ -375,7 +375,7 @@ func TestSearchAcrossRestartsServesTheIndexWithoutStartingWorkers(t *testing.T) 
 	f.sessions.Release()
 	chat.Release()
 	restarted := restart(t, f.fixture)
-	conn, err := p2test.Dial(restarted.Port, nil)
+	conn, err := p2test.Dial(restarted.Port, p2test.SignInLocalOwner(t, restarted.Port, restarted.DataDir).OwnerHeaders(nil))
 	if err != nil {
 		t.Fatal(err)
 	}

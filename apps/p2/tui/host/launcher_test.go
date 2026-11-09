@@ -140,7 +140,7 @@ func startLauncher(t *testing.T, options launcherOptions) *launcher {
 	t.Helper()
 	fixture := options.fixture
 	if fixture == nil {
-		fixture = p2test.StartFixture(t, hosts.ServerOptions{Plugins: []string{}})
+		fixture = p2test.StartFixture(t, hosts.ServerOptions{Plugins: []string{"devices"}})
 	}
 	address := options.address
 	if address == nil {
@@ -162,8 +162,14 @@ func startLauncher(t *testing.T, options launcherOptions) *launcher {
 	if role == "" {
 		role = "owner"
 	}
+	// The local owner's session, as the launcher's sign-in on loopback would give it (a server without the devices plugin has
+	// none).
+	var credentials host.Credentials
+	if owner, ok := fixture.LocalOwner(); ok && options.address == nil {
+		credentials = host.Credentials{Cookie: owner.Cookie}
+	}
 	actionOptions := host.LauncherActionOptions{
-		URL: address, Role: role,
+		URL: address, Role: role, Credentials: credentials,
 		Clipboard: func(text string, _ func(string)) error {
 			l.mu.Lock()
 			l.copies = append(l.copies, text)
@@ -184,7 +190,7 @@ func startLauncher(t *testing.T, options launcherOptions) *launcher {
 		actions = options.actions(actions)
 	}
 	clientOptions := host.ClientOptions{
-		Terminal: l.terminal, Facets: options.facets, Actions: actions, Mouse: options.mouse, Role: role, URL: address,
+		Terminal: l.terminal, Facets: options.facets, Actions: actions, Mouse: options.mouse, Role: role, URL: address, Credentials: credentials,
 		ColorQuery: 10 * time.Millisecond, Poll: time.Minute,
 	}
 	if options.preferences != nil {

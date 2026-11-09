@@ -945,7 +945,7 @@ func LauncherActions(options LauncherActionOptions) map[string]LauncherAction {
 			if options.Role != "owner" || !isBool {
 				return nil
 			}
-			// Loopback is the device owner by address; it has no cookie to end.
+			// A loopback launcher signs in again with the data directory's owner key: one sign-out ends nothing.
 			if !all && (loopback || options.Credentials.Cookie == "") {
 				return nil
 			}

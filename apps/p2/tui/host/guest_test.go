@@ -95,7 +95,7 @@ func TestRemoteGuestMixedPromptRedeemsAShareLinkRestartReusesTheCookieEndedShare
 	})}
 	var prompts []string
 	answers := []string{host.OriginOf(target) + "/join/" + token, "  ", "Ada\x1b[31m Lovelace"}
-	prompt := func(kind string) (string, error) {
+	prompt := func(kind, _ string) (string, error) {
 		prompts = append(prompts, kind)
 		answer := answers[0]
 		answers = answers[1:]
@@ -128,7 +128,7 @@ func TestRemoteGuestMixedPromptRedeemsAShareLinkRestartReusesTheCookieEndedShare
 	if err != nil {
 		t.Fatal(err)
 	}
-	restarted, err := host.Authenticate(context.Background(), host.AuthOptions{URL: target, HTTP: client}, &reread, func(string) (string, error) {
+	restarted, err := host.Authenticate(context.Background(), host.AuthOptions{URL: target, HTTP: client}, &reread, func(string, string) (string, error) {
 		t.Fatal("Unexpected prompt")
 		return "", nil
 	})
@@ -137,7 +137,7 @@ func TestRemoteGuestMixedPromptRedeemsAShareLinkRestartReusesTheCookieEndedShare
 	}
 	// Rejoining with the same link keeps the identity: the stored cookie goes along and is kept.
 	reread, _ = host.ReadConfig(directory)
-	again, err := host.Authenticate(context.Background(), host.AuthOptions{URL: target, JoinLink: host.OriginOf(target) + "/join/" + token, HTTP: client}, &reread, func(string) (string, error) { return "Ada", nil })
+	again, err := host.Authenticate(context.Background(), host.AuthOptions{URL: target, JoinLink: host.OriginOf(target) + "/join/" + token, HTTP: client}, &reread, func(string, string) (string, error) { return "Ada", nil })
 	if err != nil || again.Cookie != "p2_guest_443=guest.secret" || requests[len(requests)-1].cookie != "p2_guest_443=guest.secret" {
 		t.Fatalf("again: %+v %v", again, err)
 	}
@@ -146,7 +146,7 @@ func TestRemoteGuestMixedPromptRedeemsAShareLinkRestartReusesTheCookieEndedShare
 	admitted = false
 	mu.Unlock()
 	reread, _ = host.ReadConfig(directory)
-	_, err = host.Authenticate(context.Background(), host.AuthOptions{URL: target, HTTP: client}, &reread, func(kind string) (string, error) {
+	_, err = host.Authenticate(context.Background(), host.AuthOptions{URL: target, HTTP: client}, &reread, func(kind, _ string) (string, error) {
 		if kind == "link" {
 			return host.OriginOf(target) + "/join/" + strings.Repeat("b", 43), nil
 		}
@@ -206,15 +206,15 @@ func TestARefusedReconnectTheStoredCookieKindDecidesTheNoticeWhichCookieIsForgot
 	}
 }
 
-func TestLoopbackStaysTheDeviceOwnerAStoredGuestCookieNeverDowngradesIt(t *testing.T) {
+func TestLoopbackStaysTheLocalOwnerAStoredGuestCookieNeverDowngradesIt(t *testing.T) {
 	l := startLauncher(t, launcherOptions{})
 	origin := host.OriginOf(l.url)
 	config := host.Config{Connections: map[string]host.Connection{origin: {Guest: &host.Guest{Cookie: "p2_guest_1=x.y", Session: "s"}}}}
-	admission, err := host.Authenticate(context.Background(), host.AuthOptions{URL: l.url}, &config, func(string) (string, error) {
+	admission, err := host.Authenticate(context.Background(), host.AuthOptions{URL: l.url, DataDir: l.fixture.DataDir}, &config, func(string, string) (string, error) {
 		t.Fatal("Unexpected prompt")
 		return "", nil
 	})
-	if err != nil || admission != (host.Admission{Role: "owner"}) {
+	if err != nil || admission.Role != "owner" || !admission.Local || admission.Cookie == "" {
 		t.Fatalf("admission = %+v %v", admission, err)
 	}
 }

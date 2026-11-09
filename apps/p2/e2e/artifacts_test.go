@@ -130,7 +130,7 @@ func TestArtifactsFakeProvider(t *testing.T) {
 		if len(method) > 0 {
 			options.Method = method[0]
 		}
-		result, err := p2test.HTTP(fixture.Server.Port, path, options)
+		result, err := fixture.HTTP(path, options)
 		if err != nil {
 			t.Fatal(err)
 		}

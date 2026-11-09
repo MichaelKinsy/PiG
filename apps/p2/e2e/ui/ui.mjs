@@ -33,6 +33,11 @@ const tree = (root) => {
 
 const browser = await chromium.launch({ args: ["--no-sandbox"] });
 const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+// A p2 server asks loopback for a sign-in: the local owner's session cookie (`name=value`) comes from the test; Pi's server at the pin needs none.
+if (process.env.P2_UI_COOKIE) {
+	const [name, ...value] = process.env.P2_UI_COOKIE.split("=");
+	await context.addCookies([{ name, value: value.join("="), url: base, httpOnly: true, sameSite: "Lax" }]);
+}
 const page = await context.newPage();
 const problems = [];
 page.on("pageerror", (error) => problems.push(`pageerror: ${error.message}`));
@@ -67,7 +72,7 @@ await page.waitForLoadState("networkidle");
 await page.waitForFunction(() => document.querySelector(".cwd-pick") && document.querySelector(".model-control")?.textContent !== "Choose model", null, { timeout: 60000 });
 firstLoad = { requests, bytes };
 expect((await page.evaluate("window.cspViolations")).length === 0, `CSP violations: ${await page.evaluate("window.cspViolations")}`);
-// The loopback owner: the page's cookie is set by the server, no sign-in page.
+// The local owner: signed in with its session cookie (a p2 server renews it on this page load); no sign-in page.
 const cookies = await context.cookies(base);
 expect(cookies.length > 0, "the loopback owner cookie was not set");
 const title = process.env.P2_UI_TITLE ?? "Pi";

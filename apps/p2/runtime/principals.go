@@ -23,7 +23,9 @@ type Principal interface{ principalKind() string }
 type OwnerAccess string
 
 const (
-	// AccessLocal is a browser on this machine (loopback), with or without the loopback owner cookie.
+	// AccessLocal is a local owner session on loopback: a client that proved to run as the server's user, or a browser that
+	// redeemed an owner link on loopback. Its local-only powers (minting owner links, loopback provider sign-ins) rest on
+	// that proof.
 	AccessLocal OwnerAccess = "local"
 	// AccessRelay is an owner through Radius, authenticated by the relay.
 	AccessRelay OwnerAccess = "relay"
@@ -88,7 +90,8 @@ var Host Principal = HostPrincipal{}
 var Server Principal = ServerPrincipal{}
 
 // Revocation is what revokes principals (`host.revoke`, the same on every host): one associated device's owner, every
-// remote owner (relay and devices: "sign out all devices"), or one guest (all revisions of its grant). It is the
+// remote owner (relay and devices), every local owner session ("sign out all devices" revokes both), or one guest (all
+// revisions of its grant). It is the
 // plain JSON object Chord compares by canonical JSON.
 type Revocation = *delta.JsonObject
 
@@ -97,6 +100,9 @@ func RevokeDevice(device string) Revocation { return delta.JsonObjectOf("device"
 
 // RevokeRemoteOwners is the revocation of every remote owner.
 func RevokeRemoteOwners() Revocation { return delta.JsonObjectOf("owners", "remote") }
+
+// RevokeLocalOwners is the revocation of every local owner session.
+func RevokeLocalOwners() Revocation { return delta.JsonObjectOf("owners", "local") }
 
 // RevokeGuest is the revocation of one guest, all its revisions.
 func RevokeGuest(guest string) Revocation { return delta.JsonObjectOf("guest", guest) }
@@ -111,7 +117,7 @@ func RevokedBy(principal Principal) []Revocation {
 		case AccessRelay:
 			return []Revocation{RevokeRemoteOwners()}
 		}
-		return []Revocation{}
+		return []Revocation{RevokeLocalOwners()}
 	case GuestPrincipal:
 		return []Revocation{RevokeGuest(p.ID)}
 	}

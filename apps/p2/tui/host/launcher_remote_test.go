@@ -236,7 +236,7 @@ func TestAGuestJoinsByLinkWithANameSeesItsSessionAsAGuestAndTheLauncherEndsOnRev
 	target := mustURL("https://tui.test")
 	config := host.Config{Connections: map[string]host.Connection{}}
 	admission, err := host.Authenticate(context.Background(), host.AuthOptions{URL: target, JoinLink: host.OriginOf(target) + joinPath, HTTP: tunnelHTTP(fixture.Server.Port)}, &config,
-		func(string) (string, error) { return "TUI guest", nil })
+		func(string, string) (string, error) { return "TUI guest", nil })
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -253,7 +253,7 @@ func TestCodeModeFakeProvider(t *testing.T) {
 			t.Fatal(err)
 		}
 		defer restarted.Close(p2test.Background)
-		conn, err := p2test.Dial(restarted.Port, nil)
+		conn, err := p2test.Dial(restarted.Port, p2test.SignInLocalOwner(t, restarted.Port, restarted.DataDir).OwnerHeaders(nil))
 		if err != nil {
 			t.Fatal(err)
 		}

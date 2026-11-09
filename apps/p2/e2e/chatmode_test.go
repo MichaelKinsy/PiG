@@ -36,7 +36,7 @@ import (
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/search"
 )
 
-var chatModePlugins = []string{"chat", "chat-mode", "conversations", "drafts", "envs", "files", "models", "search", "sessions", "sharing", "status", "subagents"}
+var chatModePlugins = []string{"chat", "chat-mode", "conversations", "devices", "drafts", "envs", "files", "models", "search", "sessions", "sharing", "status", "subagents"}
 
 func TestChatModeServerSharingFakeProvider(t *testing.T) {
 	p2test.NoLeakedGoroutines(t)
@@ -109,7 +109,7 @@ func TestChatModeServerSharingFakeProvider(t *testing.T) {
 		for key, value := range headers {
 			all[key] = value
 		}
-		response, err := p2test.HTTP(fixture.Server.Port, "/upload?"+url.Values{"session": {session}, "name": {name}}.Encode(), p2test.HTTPOptions{
+		response, err := fixture.HTTP("/upload?"+url.Values{"session": {session}, "name": {name}}.Encode(), p2test.HTTPOptions{
 			Method: http.MethodPost, Headers: all, Body: strings.NewReader(string(body)),
 		})
 		if err != nil || response.Status != 200 {

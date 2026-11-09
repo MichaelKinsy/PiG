@@ -15,7 +15,7 @@ import (
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/web-shell"
 )
 
-// Pi's own web client (the vendored bundle, unchanged) in headless Chromium against our server: `/` loads as the loopback
+// Pi's own web client (the vendored bundle, unchanged) in headless Chromium against our server: `/` loads as the local
 // owner and a faux-provider chat round trip completes (ui/ui.mjs). Needs Node with playwright-core and Chromium
 // (P2_UI_NODE_PATH names the node_modules holding playwright-core; PLAYWRIGHT_BROWSERS_PATH the browsers): skipped without.
 func TestWebClientRoundTrip(t *testing.T) {
@@ -37,7 +37,7 @@ func TestWebClientRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 	command := exec.Command("node", "ui/ui.mjs", "http://127.0.0.1:"+strconv.Itoa(fixture.Server.Port), strconv.Itoa(os.Getpid()))
-	command.Env = append(os.Environ(), "P2_UI_TITLE="+bundle.Brand.Name)
+	command.Env = append(os.Environ(), "P2_UI_TITLE="+bundle.Brand.Name, "P2_UI_COOKIE="+fixture.Owner().Cookie)
 	output, err := command.CombinedOutput()
 	t.Logf("%s", output)
 	if err != nil {
@@ -54,7 +54,9 @@ func TestWebClientRunsUnderItsCSPAndCannotBeFramed(t *testing.T) {
 	}
 	enabled := true
 	fixture := p2test.StartFixture(t, hosts.ServerOptions{Web: &enabled})
-	output, err := exec.Command("node", "ui/frame.mjs", "http://127.0.0.1:"+strconv.Itoa(fixture.Server.Port)).CombinedOutput()
+	command := exec.Command("node", "ui/frame.mjs", "http://127.0.0.1:"+strconv.Itoa(fixture.Server.Port))
+	command.Env = append(os.Environ(), "P2_UI_COOKIE="+fixture.Owner().Cookie)
+	output, err := command.CombinedOutput()
 	t.Logf("%s", output)
 	if err != nil {
 		t.Fatal(err)

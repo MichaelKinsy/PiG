@@ -17,6 +17,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/apps/p2/hosts"
 	"github.com/MichaelKinsy/PiG/apps/p2/p2test"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/devices"
 	"github.com/MichaelKinsy/PiG/apps/p2/plugins/login"
 	"github.com/MichaelKinsy/PiG/apps/p2/plugins/login/contract"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/models"
@@ -169,7 +170,7 @@ func start(t *testing.T) (*p2test.Fixture, *identity, *[]string) {
 	var mu sync.Mutex
 	deviceIDs := &[]string{}
 	fixture := p2test.StartFixture(t, hosts.ServerOptions{
-		Plugins:   []string{"login", "models"},
+		Plugins:   []string{"login", "models", "devices"},
 		Resources: p2runtime.ServerResourceOptions{CreateModels: fixtureModels(id, deviceIDs, &mu)},
 	})
 	return fixture, id, deviceIDs
@@ -583,7 +584,7 @@ func TestOwnersLoginChooseTheirMethodAndGuestsCannotReachAnyAction(t *testing.T)
 				var mu sync.Mutex
 				var selected, pasted []string
 				fixture := p2test.StartFixture(t, hosts.ServerOptions{
-					Plugins:   []string{"login", "models"},
+					Plugins:   []string{"login", "models", "devices"},
 					Resources: p2runtime.ServerResourceOptions{CreateModels: remoteModels(method, &selected, &pasted, &mu)},
 				})
 				ref := hold(t, fixture.As(accesses[access]))

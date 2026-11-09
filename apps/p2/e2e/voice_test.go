@@ -360,7 +360,7 @@ func TestVoiceRoutesAndModeFakeProvider(t *testing.T) {
 		// What a browser claims about itself is never passed on.
 		spoofed := map[string]string{"X-Room": "p2-other-room", "X-Participant-Id": "mallory", "X-Participant-Role": "owner"}
 		joinRoom := func(as map[string]string) *voiceRoom { return voiceJoin(t, port, path, merged(as, spoofed)) }
-		ownerRoom := joinRoom(nil)
+		ownerRoom := joinRoom(fixture.Owner().OwnerHeaders(nil))
 		guestRoom := joinRoom(full)
 		room := "p2-" + session + "-1"
 		upgrades := speech.Upgrades()
@@ -497,11 +497,15 @@ func TestVoiceRoutesAndModeFakeProvider(t *testing.T) {
 		if got := voiceStatus(t, port, "/voice/room?session=other-session&conversation=1", full); got != 403 {
 			t.Errorf("another session's: %d", got)
 		}
-		if got := voiceStatus(t, port, "/voice/room?conversation=1", nil); got != 400 {
+		local := fixture.Owner().OwnerHeaders(nil)
+		if got := voiceStatus(t, port, "/voice/room?conversation=1", local); got != 400 {
 			t.Errorf("no session: %d", got)
 		}
-		if got := voiceStatus(t, port, "/voice/room?session="+session+"&conversation=0", nil); got != 400 {
+		if got := voiceStatus(t, port, "/voice/room?session="+session+"&conversation=0", local); got != 400 {
 			t.Errorf("conversation 0: %d", got)
+		}
+		if got := voiceStatus(t, port, path, nil); got != 403 {
+			t.Errorf("loopback alone is nobody: %d", got)
 		}
 
 		// The engines for both (pushed live); a sample for the owner only; logs for both, the guest's marked as such.
@@ -518,7 +522,7 @@ func TestVoiceRoutesAndModeFakeProvider(t *testing.T) {
 		voiceMust(t, err)
 		p2test.ExpectChord(t, p2runtime.WhenLive(p2test.Background, bobService), data.CodeForbidden)
 		bobService.Release()
-		origin := map[string]string{"Origin": "http://127.0.0.1:" + strconv.Itoa(port), "Content-Type": "application/json"}
+		origin := fixture.Owner().OwnerHeaders(map[string]string{"Origin": "http://127.0.0.1:" + strconv.Itoa(port), "Content-Type": "application/json"})
 		sample := voiceHTTP(t, port, "/voice/sample", origin, `{"engine":"supertonic","voice":"supertonic-F1","speed":1.1,"language":"de"}`)
 		if sample.Status != 200 || sample.Headers.Get("Content-Type") != "audio/wav" {
 			t.Errorf("sample = %d %s", sample.Status, sample.Headers.Get("Content-Type"))
@@ -548,7 +552,7 @@ func TestVoiceRoutesAndModeFakeProvider(t *testing.T) {
 	})
 
 	t.Run("writes the browser's diagnostics to the server log, for the owner only", func(t *testing.T) {
-		origin := map[string]string{"Origin": "http://127.0.0.1:" + strconv.Itoa(port), "Content-Type": "application/json"}
+		origin := fixture.Owner().OwnerHeaders(map[string]string{"Origin": "http://127.0.0.1:" + strconv.Itoa(port), "Content-Type": "application/json"})
 		restore := voiceStdout(t)
 		batch := map[string]any{
 			"client": "abc123",

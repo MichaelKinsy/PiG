@@ -21,7 +21,12 @@ func webFixture(t *testing.T) *p2test.Fixture {
 	t.Helper()
 	enabled := true
 	// share.test stands for a remote address (a tunnel, a proxy): requests from it are signed out without a cookie.
-	return p2test.StartFixture(t, hosts.ServerOptions{Plugins: []string{}, Web: &enabled, AllowedHosts: []string{"share.test"}})
+	return p2test.StartFixture(t, hosts.ServerOptions{Plugins: []string{"devices"}, Web: &enabled, AllowedHosts: []string{"share.test"}})
+}
+
+// ownerOf is a function adding the local owner's cookie to request headers (its browser's).
+func ownerOf(f *p2test.Fixture) func(map[string]string) map[string]string {
+	return f.Owner().OwnerHeaders
 }
 
 func get(t *testing.T, port int, path string, headers map[string]string) p2test.HTTPResult {
@@ -33,9 +38,9 @@ func get(t *testing.T, port int, path string, headers map[string]string) p2test.
 	return result
 }
 
-func currentManifest(t *testing.T, port int) web.Manifest {
+func currentManifest(t *testing.T, port int, headers map[string]string) web.Manifest {
 	t.Helper()
-	response := get(t, port, web.ManifestPath, nil)
+	response := get(t, port, web.ManifestPath, headers)
 	if response.Status != 200 {
 		t.Fatalf("/__p2_web: %d %s", response.Status, response.Body)
 	}
@@ -47,13 +52,14 @@ func currentManifest(t *testing.T, port int) web.Manifest {
 }
 
 func TestServesTheAppPageNamingTheCurrentBundleWhoseFilesNeverChange(t *testing.T) {
-	port := webFixture(t).Server.Port
-	bundle := currentManifest(t, port)
-	if got := get(t, port, "/__p2_web", nil).Headers.Get("Cache-Control"); got != "no-store" {
+	fixture := webFixture(t)
+	port, owner := fixture.Server.Port, ownerOf(fixture)
+	bundle := currentManifest(t, port, owner(nil))
+	if got := get(t, port, "/__p2_web", owner(nil)).Headers.Get("Cache-Control"); got != "no-store" {
 		t.Fatalf("manifest Cache-Control %q", got)
 	}
 	for _, path := range []string{"/", "/s/0b9f3a52-6a39-4d43-9d55-1a0f4ea4f1a2", "/s/0b9f3a52-6a39-4d43-9d55-1a0f4ea4f1a2/c/3"} {
-		page := get(t, port, path, nil)
+		page := get(t, port, path, owner(nil))
 		if page.Status != 200 {
 			t.Fatalf("%s: %d", path, page.Status)
 		}
@@ -70,7 +76,7 @@ func TestServesTheAppPageNamingTheCurrentBundleWhoseFilesNeverChange(t *testing.
 			t.Fatalf("%s Content-Type %q", path, got)
 		}
 	}
-	script := get(t, port, bundle.Script, nil)
+	script := get(t, port, bundle.Script, owner(nil))
 	if script.Status != 200 || !strings.HasPrefix(script.Headers.Get("Content-Type"), "text/javascript") {
 		t.Fatalf("script: %d %q", script.Status, script.Headers.Get("Content-Type"))
 	}
@@ -82,13 +88,13 @@ func TestServesTheAppPageNamingTheCurrentBundleWhoseFilesNeverChange(t *testing.
 	}
 	// An unknown name under the bundle path is not a page, and a session path that is not an id is not one either.
 	for _, path := range []string{web.BundlePath + "nothing.js", "/s/NOT-HEX", "/s/abc/c/0", "/s/abc/c/01"} {
-		if status := get(t, port, path, nil).Status; status != 404 {
+		if status := get(t, port, path, owner(nil)).Status; status != 404 {
 			t.Fatalf("%s: %d", path, status)
 		}
 	}
 	// Anything but GET and HEAD is not served.
 	for _, method := range []string{http.MethodPost, http.MethodPut, http.MethodDelete} {
-		response, err := p2test.HTTP(port, "/", p2test.HTTPOptions{Method: method, Headers: map[string]string{"Origin": "http://127.0.0.1:" + itoa(port)}})
+		response, err := p2test.HTTP(port, "/", p2test.HTTPOptions{Method: method, Headers: owner(map[string]string{"Origin": "http://127.0.0.1:" + itoa(port)})})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -96,15 +102,16 @@ func TestServesTheAppPageNamingTheCurrentBundleWhoseFilesNeverChange(t *testing.
 			t.Fatalf("%s /: %d", method, response.Status)
 		}
 	}
-	head, err := p2test.HTTP(port, bundle.Script, p2test.HTTPOptions{Method: http.MethodHead})
+	head, err := p2test.HTTP(port, bundle.Script, p2test.HTTPOptions{Method: http.MethodHead, Headers: owner(nil)})
 	if err != nil || head.Status != 200 || head.Body != "" || head.Headers.Get("Content-Length") != script.Headers.Get("Content-Length") {
 		t.Fatalf("HEAD script: %+v %v", head, err)
 	}
 }
 
-func TestPageCarriesACSPRefusingEveryFramerAndLoopbackOwnerOnlyToItsOwnOriginsRequests(t *testing.T) {
-	port := webFixture(t).Server.Port
-	page := get(t, port, "/", nil)
+func TestPageCarriesACSPRefusingEveryFramerAndTheLocalOwnerOnlyToItsOwnOriginsRequests(t *testing.T) {
+	fixture := webFixture(t)
+	port, owner := fixture.Server.Port, ownerOf(fixture)
+	page := get(t, port, "/", owner(nil))
 	if page.Status != 200 {
 		t.Fatalf("/: %d", page.Status)
 	}
@@ -125,15 +132,15 @@ func TestPageCarriesACSPRefusingEveryFramerAndLoopbackOwnerOnlyToItsOwnOriginsRe
 			t.Fatalf("inline script without the nonce: %s", script)
 		}
 	}
-	// Another site's page, link, frame or fetch, or another local port (same-site), is not the device owner.
+	// Another site's page, link, frame or fetch, or another local port (same-site), is not the owner, cookie or not.
 	for _, headers := range []map[string]string{
 		{"Sec-Fetch-Site": "cross-site", "Sec-Fetch-Dest": "document"},
 		{"Sec-Fetch-Site": "cross-site", "Sec-Fetch-Dest": "iframe"},
 		{"Sec-Fetch-Site": "same-site", "Sec-Fetch-Dest": "iframe"},
 		{"Sec-Fetch-Site": "same-site", "Sec-Fetch-Dest": "empty"},
 	} {
-		for _, path := range []string{"/", currentManifest(t, port).Script, "/__p2_web", "/__p2_tui", "/__p2_dev"} {
-			response := get(t, port, path, headers)
+		for _, path := range []string{"/", currentManifest(t, port, owner(nil)).Script, "/__p2_web", "/__p2_tui", "/__p2_dev"} {
+			response := get(t, port, path, owner(headers))
 			if response.Status != 401 && response.Status != 403 {
 				t.Fatalf("%s %v: %d", path, headers, response.Status)
 			}
@@ -144,16 +151,20 @@ func TestPageCarriesACSPRefusingEveryFramerAndLoopbackOwnerOnlyToItsOwnOriginsRe
 	}
 	// File routes check the same principal: no owner download or workspace read for another site.
 	for _, path := range []string{"/download?session=x&id=y", "/workspace-file?session=x&conversation=1&path=a"} {
-		if get(t, port, path, map[string]string{"Sec-Fetch-Site": "cross-site"}).Status == 200 {
+		if get(t, port, path, owner(map[string]string{"Sec-Fetch-Site": "cross-site"})).Status == 200 {
 			t.Fatalf("%s answered another site", path)
 		}
 	}
 	// The owner's own requests: typed or bookmarked (none), its pages and modules (same-origin).
-	if got := get(t, port, "/", map[string]string{"Sec-Fetch-Site": "none", "Sec-Fetch-Dest": "document"}).Status; got != 200 {
+	if got := get(t, port, "/", owner(map[string]string{"Sec-Fetch-Site": "none", "Sec-Fetch-Dest": "document"})).Status; got != 200 {
 		t.Fatalf("typed page: %d", got)
 	}
-	if got := get(t, port, currentManifest(t, port).Script, map[string]string{"Sec-Fetch-Site": "same-origin", "Sec-Fetch-Dest": "script"}).Status; got != 200 {
+	if got := get(t, port, currentManifest(t, port, owner(nil)).Script, owner(map[string]string{"Sec-Fetch-Site": "same-origin", "Sec-Fetch-Dest": "script"})).Status; got != 200 {
 		t.Fatalf("same-origin module: %d", got)
+	}
+	// Without the cookie, loopback is nobody.
+	if got := get(t, port, "/", map[string]string{"Sec-Fetch-Site": "none", "Sec-Fetch-Dest": "document"}).Status; got != 401 {
+		t.Fatalf("typed page without the cookie: %d", got)
 	}
 }
 
@@ -225,7 +236,8 @@ func TestServesTheInstallableAppsFilesWithoutSigningInNotToAnotherSiteAndNothing
 }
 
 func TestRefusesAnotherSitesWebSocketEvenWithAMatchingOrigin(t *testing.T) {
-	port := webFixture(t).Server.Port
+	fixture := webFixture(t)
+	port, owner := fixture.Server.Port, ownerOf(fixture)
 	origin := "http://127.0.0.1:" + itoa(port)
 	opens := func(headers map[string]string) bool {
 		conn, err := p2test.Dial(port, headers)
@@ -234,26 +246,30 @@ func TestRefusesAnotherSitesWebSocketEvenWithAMatchingOrigin(t *testing.T) {
 		}
 		return err == nil
 	}
-	if opens(map[string]string{"Origin": origin, "Sec-Fetch-Site": "cross-site"}) {
+	if opens(owner(map[string]string{"Origin": origin, "Sec-Fetch-Site": "cross-site"})) {
 		t.Fatal("cross-site socket opened")
 	}
-	if opens(map[string]string{"Origin": origin, "Sec-Fetch-Site": "same-site"}) {
+	if opens(owner(map[string]string{"Origin": origin, "Sec-Fetch-Site": "same-site"})) {
 		t.Fatal("same-site socket opened")
 	}
-	if !opens(map[string]string{"Origin": origin, "Sec-Fetch-Site": "same-origin"}) {
+	if !opens(owner(map[string]string{"Origin": origin, "Sec-Fetch-Site": "same-origin"})) {
 		t.Fatal("same-origin socket refused")
+	}
+	if opens(map[string]string{"Origin": origin, "Sec-Fetch-Site": "same-origin"}) {
+		t.Fatal("a socket without a credential opened")
 	}
 }
 
 func TestRefusesOtherHostsAndOrigins(t *testing.T) {
-	port := webFixture(t).Server.Port
-	if got := get(t, port, "/", map[string]string{"Host": "evil.example"}).Status; got != 403 {
+	fixture := webFixture(t)
+	port, owner := fixture.Server.Port, ownerOf(fixture)
+	if got := get(t, port, "/", owner(map[string]string{"Host": "evil.example"})).Status; got != 403 {
 		t.Fatalf("forged Host: %d", got)
 	}
-	if got := get(t, port, "/", map[string]string{"X-Forwarded-For": "1.2.3.4"}).Status; got != 403 {
+	if got := get(t, port, "/", owner(map[string]string{"X-Forwarded-For": "1.2.3.4"})).Status; got != 403 {
 		t.Fatalf("forwarded: %d", got)
 	}
-	if conn, err := p2test.Dial(port, map[string]string{"Origin": "http://evil.example"}); err == nil {
+	if conn, err := p2test.Dial(port, owner(map[string]string{"Origin": "http://evil.example"})); err == nil {
 		_ = conn.Close()
 		t.Fatal("a WebSocket from another origin was accepted")
 	}
@@ -284,9 +300,10 @@ func TestServesHealthWithoutSigningInAndTheAppManifest(t *testing.T) {
 // Without web the owner's request no route answers is "Not found" (`web: false`); the public files too.
 func TestWithoutWebNothingIsServed(t *testing.T) {
 	disabled := false
-	port := p2test.StartFixture(t, hosts.ServerOptions{Plugins: []string{}, Web: &disabled}).Server.Port
+	fixture := p2test.StartFixture(t, hosts.ServerOptions{Plugins: []string{"devices"}, Web: &disabled})
+	port, owner := fixture.Server.Port, ownerOf(fixture)
 	for _, path := range []string{"/", "/__p2_web", "/manifest.webmanifest", "/sw.js"} {
-		if got := get(t, port, path, nil).Status; got != 404 {
+		if got := get(t, port, path, owner(nil)).Status; got != 404 {
 			t.Fatalf("%s: %d", path, got)
 		}
 	}
@@ -295,9 +312,13 @@ func TestWithoutWebNothingIsServed(t *testing.T) {
 // /__p2_dev of a server without dev mode (P2_DEV unset; D473 designs the supervisor out): the owner reads `null`, a POST needs
 // its own origin, the command is validated and answers "Dev mode is not enabled", and anything else is refused.
 func TestDevEndpointAnswersAsAServerWithoutDevMode(t *testing.T) {
-	port := webFixture(t).Server.Port
-	own := map[string]string{"Origin": "http://127.0.0.1:" + itoa(port)}
-	status := get(t, port, "/__p2_dev", nil)
+	fixture := webFixture(t)
+	port, owner := fixture.Server.Port, ownerOf(fixture)
+	own := owner(map[string]string{"Origin": "http://127.0.0.1:" + itoa(port)})
+	if got := get(t, port, "/__p2_dev", nil).Status; got != 403 {
+		t.Fatalf("GET /__p2_dev without a credential: %d", got)
+	}
+	status := get(t, port, "/__p2_dev", owner(nil))
 	if status.Status != 200 || status.Body != "null" || status.Headers.Get("Content-Type") != "application/json" {
 		t.Fatalf("GET /__p2_dev: %d %q %q", status.Status, status.Body, status.Headers.Get("Content-Type"))
 	}
@@ -309,7 +330,7 @@ func TestDevEndpointAnswersAsAServerWithoutDevMode(t *testing.T) {
 		return response
 	}
 	// Button API requires same-origin POST.
-	if got := post(nil, `{"action":"reload"}`).Status; got != 403 {
+	if got := post(owner(nil), `{"action":"reload"}`).Status; got != 403 {
 		t.Fatalf("POST without Origin: %d", got)
 	}
 	for _, body := range []string{`{"action":"reload"}`, `{"action":"reload","plugins":["chat","chat"]}`, `{"action":"restart"}`, `{"action":"restart","n":1e400}`, ` {"action":"reload"} `} {
@@ -348,8 +369,9 @@ func TestPageAndPublicFilesFollowTheBundlesBrand(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	port := webFixture(t).Server.Port
-	page := get(t, port, "/", nil).Body
+	fixture := webFixture(t)
+	port, owner := fixture.Server.Port, ownerOf(fixture)
+	page := get(t, port, "/", owner(nil)).Body
 	for _, want := range []string{
 		"<title>" + bundle.Brand.Name + "</title>",
 		`content="` + bundle.Brand.Name + `" />`,

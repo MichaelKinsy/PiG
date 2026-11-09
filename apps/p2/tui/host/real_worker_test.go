@@ -29,7 +29,7 @@ const (
 	keyCtrlX = "\x18"
 )
 
-var realPlugins = []string{"chat", "chat-mode", "conversations", "drafts", "envs", "files", "models", "sessions", "sharing", "status", "subagents"}
+var realPlugins = []string{"devices", "chat", "chat-mode", "conversations", "drafts", "envs", "files", "models", "sessions", "sharing", "status", "subagents"}
 
 // startReal is a launcher with the real surfaces on a real server that has one session (Pi's `startFixture` + `sessions.create`).
 func startReal(t *testing.T, options launcherOptions, server ...func(*hosts.ServerOptions)) *launcher {
