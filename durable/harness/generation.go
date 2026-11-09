@@ -962,24 +962,34 @@ func streamResponse(ctx context.Context, runtime generationRuntime, model *ai.Mo
 	return *result, nil
 }
 
-// observeResponse creates the response's stream and calls observe with every partial that shows content (generation.ts:740-746).
+// observeResponse creates the response's stream and calls observe with every partial that shows content (generation.ts:740-746). Pi calls
+// streamSimple and `for await`s it in one synchronous prefix, before any response I/O can complete, so each event's partial, which the
+// provider mutates in place, is observed as it stood when the event was pushed. A goroutine that attached after the stream was returned
+// could run after the provider had published the whole response and observe a start event holding the finished message. The creation and
+// the iteration run in one stream continuation, as the Agent does (agent/agent_loop.go requestStream).
 func observeResponse(signal context.Context, models durable.Models, model *ai.Model, request ai.Context, options ai.StreamOptions, observe func(ai.AssistantMessageEvent, *ai.AssistantMessage)) (*ai.AssistantMessageEventStream, error) {
-	stream := models.StreamSimple(signal, model, request, options)
-	streamattachhook.Attach(signal, stream)
-	for event := range stream.Events(signal) {
-		switch event.(type) {
-		case ai.DoneEvent, *ai.DoneEvent, ai.ErrorEvent, *ai.ErrorEvent:
-			continue
+	streamCtx := ai.WithStreamContinuations(signal)
+	var stream *ai.AssistantMessageEventStream
+	err := ai.RunStreamContinuation(streamCtx, func(observation *ai.StreamObservation) error {
+		stream = models.StreamSimple(streamCtx, model, request, options)
+		eventsCtx := observation.Context(signal)
+		streamattachhook.Attach(eventsCtx, stream)
+		for event := range stream.Events(eventsCtx) {
+			switch event.(type) {
+			case ai.DoneEvent, *ai.DoneEvent, ai.ErrorEvent, *ai.ErrorEvent:
+				continue
+			}
+			// A partial without content, such as pi-ai's opening start event, shows nothing; a deferred response never
+			// gets past it, so it never leaves a partial.
+			partial := partialOf(event)
+			if partial == nil || len(partial.Content) == 0 {
+				continue
+			}
+			observe(event, partial)
 		}
-		// A partial without content, such as pi-ai's opening start event, shows nothing; a deferred response never
-		// gets past it, so it never leaves a partial.
-		partial := partialOf(event)
-		if partial == nil || len(partial.Content) == 0 {
-			continue
-		}
-		observe(event, partial)
-	}
-	return stream, nil
+		return nil
+	})
+	return stream, err
 }
 
 func partialOf(event ai.AssistantMessageEvent) *ai.AssistantMessage {
