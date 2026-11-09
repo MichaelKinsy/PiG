@@ -37,8 +37,6 @@ func TestNameCommandUsesPaddedThemeText(t *testing.T) {
 // Drive the production slash callback and component composition, not just a Markdown table renderer.
 func TestHotkeysCommandRendersUpstreamTables(t *testing.T) {
 	restoreTUIKeybindings(t)
-	previous := tui.GetTUIKeybindings()
-	t.Cleanup(func() { tui.SetKeybindings(previous) })
 	m := modelPickerTestMode(t)
 	m.keybindings = DefaultKeybindingsManager()
 	m.keybindings.SetUserBindings(map[string][]KeyID{"app.model.select": {"ctrl+r"}, "tui.input.submit": {"ctrl+enter"}})
