@@ -258,7 +258,7 @@ func New(opts Options) *Host {
 		r.SetReader(h.readSync)
 	}
 	//portlint:allow golifetime run ends when the mailbox closes and then closes h.done, which Close waits on
-	go h.run()
+	go h.run() //portlint:allow asyncorder h.run is the owner goroutine of the Go host (session.ts's line, #tail, is its model): the mailbox it drains is the ordering point, every step runs on it in post order, and Close joins it through h.done
 	return h
 }
 

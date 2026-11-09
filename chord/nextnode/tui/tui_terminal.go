@@ -30,7 +30,7 @@ type Terminal interface {
 
 // ProcessTerminal is the process's own terminal: stdin and stdout, raw mode when stdin is a TTY, resizes by SIGWINCH.
 type ProcessTerminal struct {
-	state *term.State
+	state *rawState
 }
 
 var _ Terminal = (*ProcessTerminal)(nil)
@@ -56,7 +56,7 @@ func (*ProcessTerminal) IsTTY() bool { return term.IsTerminal(int(os.Stdin.Fd())
 // SetRaw sets or clears stdin's raw mode.
 func (t *ProcessTerminal) SetRaw(raw bool) error {
 	if raw {
-		state, err := term.MakeRaw(int(os.Stdin.Fd()))
+		state, err := makeRaw(int(os.Stdin.Fd()))
 		if err == nil {
 			t.state = state
 		}
@@ -67,7 +67,7 @@ func (t *ProcessTerminal) SetRaw(raw bool) error {
 	}
 	state := t.state
 	t.state = nil
-	return term.Restore(int(os.Stdin.Fd()), state)
+	return restoreRaw(int(os.Stdin.Fd()), state)
 }
 
 // OnResize calls handler for each resize signal.

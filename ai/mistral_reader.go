@@ -258,7 +258,7 @@ func parseMistralEvent(raw string) (event json.RawMessage, done bool, err error)
 		return nil, false, fmt.Errorf("invalid Mistral streaming event JSON: %s", text)
 	}
 	var record map[string]json.RawMessage
-	if jsonwire.Unmarshal(text, &record) != nil || !strings.HasPrefix(string(record["choices"]), "[") {
+	if json.Unmarshal(jsonwire.Bytes(text), &record) != nil || !strings.HasPrefix(string(record["choices"]), "[") {
 		return nil, false, errors.New("Invalid Mistral streaming event")
 	}
 	return json.RawMessage(text), false, nil

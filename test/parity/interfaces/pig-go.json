@@ -235220,6 +235220,17 @@
       "shapeHash": "sha256:43983ff94e6601de804eabb64ed134c23c1e47f364abe01a0e36d3a0a2369411"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine#fuzzyRank",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine",
+      "name": "fuzzyRank",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "fuzzyRank"
+      },
+      "shapeHash": "sha256:70a4c689e74da3701b99ac7e61c881909e42479b3e60bf08d6a820b0268e11ba"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine#globalTUIKeybindings",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine",
       "name": "globalTUIKeybindings",
@@ -371453,6 +371464,17 @@
         "type": "[25]int16"
       },
       "shapeHash": "sha256:43983ff94e6601de804eabb64ed134c23c1e47f364abe01a0e36d3a0a2369411"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#fuzzyRank",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "fuzzyRank",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "fuzzyRank"
+      },
+      "shapeHash": "sha256:70a4c689e74da3701b99ac7e61c881909e42479b3e60bf08d6a820b0268e11ba"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#getActiveFormatter",

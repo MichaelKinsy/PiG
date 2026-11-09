@@ -52,12 +52,16 @@ func sessionGraphPackedSDKs() map[string]sessionGraphLoader {
 	return map[string]sessionGraphLoader{
 		"go-packed": pack("go", func(t testing.TB, root string) (subprocess.ExtConfig, subprocess.ExtConfig) {
 			dir := t.TempDir()
+			goDirective, err := rootGoDirective(root)
+			if err != nil {
+				t.Fatal(err)
+			}
 			cfg := func(name, body string) subprocess.ExtConfig {
 				source := filepath.Join(dir, name)
 				write(t, map[string]string{
 					filepath.Join(source, "extension.go"): body,
-					filepath.Join(source, "go.mod"): fmt.Sprintf("module example.com/%s\n\ngo 1.26.0\nrequire (\n github.com/MichaelKinsy/PiG v%s\n github.com/MichaelKinsy/PiG/extensions/sdk v%s\n)\nreplace github.com/MichaelKinsy/PiG => %s\nreplace github.com/MichaelKinsy/PiG/extensions/sdk => %s\n",
-						name, pigversion.PigVersion, pigversion.PigVersion, filepath.ToSlash(root), filepath.ToSlash(filepath.Join(root, "extensions", "sdk"))),
+					filepath.Join(source, "go.mod"): fmt.Sprintf("module example.com/%s\n\ngo %s\nrequire (\n github.com/MichaelKinsy/PiG v%s\n github.com/MichaelKinsy/PiG/extensions/sdk v%s\n)\nreplace github.com/MichaelKinsy/PiG => %s\nreplace github.com/MichaelKinsy/PiG/extensions/sdk => %s\n",
+						name, goDirective, pigversion.PigVersion, pigversion.PigVersion, filepath.ToSlash(root), filepath.ToSlash(filepath.Join(root, "extensions", "sdk"))),
 				})
 				return subprocess.ExtConfig{Name: name, Source: source, SDKName: "github.com/MichaelKinsy/PiG/extensions/sdk", ModulePath: "example.com/" + name, Package: "example.com/" + name, Factory: "Extension"}
 			}

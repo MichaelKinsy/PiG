@@ -115,6 +115,7 @@ type Client struct {
 // the client's lifetime is BACKGROUND_CONTEXT (context.Background): it bounds the scripts object's hold and watch, the
 // script fetches and the stylesheets' loads, and Stop ends it.
 func StartClient(options ClientOptions) (*Client, error) {
+	//portlint:allow ctxbackground client.ts:99 `const context = BACKGROUND_CONTEXT`: startClient takes no signal, the client's lifetime is its own and Stop ends it
 	ctx, cancel := context.WithCancel(context.Background())
 	var made host.Host
 	var madeMu sync.Mutex
@@ -396,7 +397,7 @@ func (u *updates) enqueue(set *ScriptSet) <-chan struct{} {
 	u.working = true
 	u.mu.Unlock()
 	//portlint:allow golifetime work drains the queue and returns when none is left (the `working` flag admits one drainer); there is no longer-lived owner to join
-	go u.work()
+	go u.work() //portlint:allow asyncorder client.ts:276-281 #queue chains each update onto #applying, one at a time in arrival order; work drains the queue in that order and the working flag admits one drainer
 	return done
 }
 

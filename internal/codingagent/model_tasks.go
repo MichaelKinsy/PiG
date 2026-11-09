@@ -213,6 +213,7 @@ func (r *ModelRegistry) CloseModelTasks() {
 	r.nativeMu.Unlock()
 	if models != nil {
 		// Models.Close cancels refreshes and then joins every collection operation. Only the cancellation is part of this contract, so the join runs off the caller.
+		//portlint:allow asyncorder Models.Close cancels first and then joins every collection operation; only the cancellation is part of this contract (model-runtime.ts has no close that joins), so the join is not ordered against the caller
 		go models.Close()
 	}
 }

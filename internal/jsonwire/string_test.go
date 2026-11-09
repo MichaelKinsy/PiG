@@ -13,7 +13,7 @@ func TestValidAndUnmarshalMatchTheByteForms(t *testing.T) {
 			t.Errorf("Valid(%q)=%v, json.Valid=%v", text, got, want)
 		}
 		var viaString, viaBytes any
-		errString, errBytes := Unmarshal(text, &viaString), json.Unmarshal([]byte(text), &viaBytes)
+		errString, errBytes := json.Unmarshal(Bytes(text), &viaString), json.Unmarshal([]byte(text), &viaBytes)
 		if (errString == nil) != (errBytes == nil) || (errString != nil && errString.Error() != errBytes.Error()) {
 			t.Errorf("Unmarshal(%q) error %v, json.Unmarshal error %v", text, errString, errBytes)
 		}
@@ -36,7 +36,7 @@ func TestUnmarshalKeepsNoReferenceToTheString(t *testing.T) {
 		S string          `json:"s"`
 		R json.RawMessage `json:"r"`
 	}
-	if err := Unmarshal(input, &out); err != nil {
+	if err := json.Unmarshal(Bytes(input), &out); err != nil {
 		t.Fatal(err)
 	}
 	if out.S != "abcdef" || string(out.R) != `{"k":1}` {

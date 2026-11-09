@@ -464,7 +464,7 @@ SPDX-License-Identifier = "MIT AND Unicode-3.0 AND LicenseRef-ICU-CJK AND Licens
 
 # The QuickJS WebAssembly module and the codemode prelude are Pi's, embedded byte for byte.
 [[annotations]]
-path = ["codemode/assets/quickjs.wasm", "codemode/assets/quickjs.wasm.gz"]
+path = ["codemode/assets/quickjs.wasm", "codemode/assets/quickjs.wasm.zst"]
 precedence = "closest"
 SPDX-FileCopyrightText = [
   "Copyright (c) 2026 Vercel, Inc.",
@@ -527,6 +527,13 @@ SPDX-FileCopyrightText = [
   "Copyright (c) 2025 Mario Zechner",
 ]
 SPDX-License-Identifier = "MIT"
+
+# PiG fork of the modernc.org/sqlite v1.62.0 driver layer (third_party/sqlite/FORK.md).
+[[annotations]]
+path = "third_party/sqlite/**"
+precedence = "closest"
+SPDX-FileCopyrightText = "Copyright (c) 2017 The Sqlite Authors"
+SPDX-License-Identifier = "BSD-3-Clause"
 
 # PiG fork of santhosh-tekuri/jsonschema v6.0.2 (third_party/jsonschema/FORK.md).
 [[annotations]]

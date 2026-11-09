@@ -18,8 +18,8 @@ const killChildEnv = "PIG_SQLITE_KILL_CHILD"
 const killRowsPerTransaction = 20
 
 // TestKilledWriterLeavesAnIntactDatabase kills a process that commits transactions in a loop and checks what a reader
-// finds. A transaction that committed (the child had printed its number) is there whole, the transaction that was
-// running is there whole or not at all, and the file passes integrity_check. This is the crash behaviour of WAL with
+// finds. A transaction that committed (the child had printed its number) is there whole, the transactions that were
+// running or committed after the last number the parent read are there whole or not at all, and the file passes integrity_check. This is the crash behaviour of WAL with
 // synchronous = NORMAL against a process kill; a power cut can lose the last transactions and is not tested.
 func TestKilledWriterLeavesAnIntactDatabase(t *testing.T) {
 	if path := os.Getenv(killChildEnv); path != "" {
@@ -38,7 +38,8 @@ func TestKilledWriterLeavesAnIntactDatabase(t *testing.T) {
 			t.Fatal(err)
 		}
 		acknowledged := 0
-		for lines := bufio.NewScanner(output); lines.Scan(); {
+		lines := bufio.NewScanner(output)
+		for lines.Scan() {
 			text, ok := strings.CutPrefix(lines.Text(), "committed ")
 			if !ok {
 				continue
@@ -49,6 +50,15 @@ func TestKilledWriterLeavesAnIntactDatabase(t *testing.T) {
 			}
 		}
 		_ = command.Process.Kill()
+		// The child prints a number right after its commit returns, one write per line, so what reached the pipe
+		// before the kill is exactly the set of transactions it can have committed, plus at most the one whose number
+		// it had not printed yet. Read the pipe to its end for the last number.
+		printed := acknowledged
+		for lines.Scan() {
+			if text, ok := strings.CutPrefix(lines.Text(), "committed "); ok {
+				printed, _ = strconv.Atoi(text)
+			}
+		}
 		_ = command.Wait()
 		if acknowledged < killAfter {
 			t.Fatalf("round %d: the child committed %d transactions, want %d", round, acknowledged, killAfter)
@@ -67,9 +77,9 @@ func TestKilledWriterLeavesAnIntactDatabase(t *testing.T) {
 			t.Fatal(err)
 		}
 		rows := counted["rows"].(int64)
-		if rows%killRowsPerTransaction != 0 || rows < int64(acknowledged*killRowsPerTransaction) ||
-			rows > int64((acknowledged+1)*killRowsPerTransaction) || counted["distinct_rows"] != rows {
-			t.Fatalf("round %d: %d rows after %d acknowledged transactions of %d rows", round, rows, acknowledged,
+		if rows%killRowsPerTransaction != 0 || rows < int64(printed*killRowsPerTransaction) ||
+			rows > int64((printed+1)*killRowsPerTransaction) || counted["distinct_rows"] != rows {
+			t.Fatalf("round %d: %d rows after %d printed transactions of %d rows", round, rows, printed,
 				killRowsPerTransaction)
 		}
 		if err := database.Close(); err != nil {
