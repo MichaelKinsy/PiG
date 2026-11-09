@@ -1475,3 +1475,28 @@ func TestPersistedDocumentsInATransactionAHostClosingWhileAnAdmittedCommitIsInTh
 // stays usable" needs the host's `serve` of a method handler, `closeTimeout` and its `drain_timeout` report
 // (`errors.map(kind)`), and the host's release of a handler's stuck call at the object's end. The documents'
 // half of it (an admitted commit holds the line past the seal and adopts) is the previous test.
+
+// Only the revoked overlay is the transaction's error: any other panic of the callback is the caller's own and goes on, an
+// error value or a runtime error among them, and the line is free after it.
+func TestATransactionReturnsOnlyTheRevokedOverlayPanicOfItsCallbackAnyOtherPanicGoesOn(t *testing.T) {
+	s := newSealable(t)
+	var nilMap map[string]int
+	for name, throw := range map[string]func(){
+		"an error":        func() { panic(errors.New("a bug")) },
+		"a runtime error": func() { nilMap["k"] = 1 },
+		"a string":        func() { panic("boom") },
+	} {
+		func() {
+			defer func() {
+				if recover() == nil {
+					t.Errorf("%s: the panic did not go on", name)
+				}
+			}()
+			_, err := s.attempts[0].Tx(func(Tx) (any, error) { throw(); return nil, nil }, background)
+			t.Errorf("%s: Tx returned %v", name, err)
+		}()
+		if _, err := s.attempts[0].Tx(func(Tx) (any, error) { return nil, nil }, background); err != nil {
+			t.Fatalf("%s: the line is not free after the panic: %v", name, err)
+		}
+	}
+}
