@@ -127,3 +127,28 @@ func TestMarshalEventWireInKeepsOnlyForAContextDispatch(t *testing.T) {
 		}
 	}
 }
+
+// BenchmarkContextEventEncoding is the encoding of one context event of a conversation of 150 messages (50 tool turns of 10 KB results), as a subscriber's request pays it: every message encoded each time, and with the encodings of the request before kept (the messages are the same objects, so only the join is paid; a new turn adds the encoding of its three messages).
+func BenchmarkContextEventEncoding(b *testing.B) {
+	messages := keptContextMessages(50)
+	b.Run("whole", func(b *testing.B) {
+		b.ReportAllocs()
+		for b.Loop() {
+			if _, err := marshalContextWire("context", messages); err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+	b.Run("kept", func(b *testing.B) {
+		var encodings boundarywire.Encodings
+		if _, err := marshalKeptContextWire(&encodings, "context", messages); err != nil {
+			b.Fatal(err)
+		}
+		b.ReportAllocs()
+		for b.Loop() {
+			if _, err := marshalKeptContextWire(&encodings, "context", messages); err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+}

@@ -92,3 +92,21 @@ func TestAppendCompactSkipsUnicodeEscapes(t *testing.T) {
 		checkCompactSkip(t, []byte(src))
 	}
 }
+
+// BenchmarkAppendCompactSource is the compaction of a Marshaler's output that holds source code with the escapes an encoder writes for it.
+func BenchmarkAppendCompactSource(b *testing.B) {
+	text := strings.Repeat("func (s *Session) run(ctx context.Context) error {\\n\\tif a \\u003c b \\u0026\\u0026 c \\u003e d {\\n\\t\\treturn fmt.Errorf(\\\"quoted %q\\\", s.name)\\n\\t}\\n}\\n", 900)
+	src := []byte(`{"role":"toolResult","content":[{"type":"text","text":"` + text + `"}],"isError":false}`)
+	for name, compact := range map[string]func(dst, src []byte, escape bool) ([]byte, error){"skipping": appendCompact, "byte by byte": appendCompactByByte} {
+		b.Run(name, func(b *testing.B) {
+			b.ReportAllocs()
+			b.SetBytes(int64(len(src)))
+			dst := make([]byte, 0, len(src))
+			for b.Loop() {
+				if _, err := compact(dst[:0], src, true); err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
