@@ -52498,6 +52498,29 @@
       ]
     },
     {
+      "id": "BF-eee71ab",
+      "title": "p2's artifact previews could not be framed below the Radius shell: the preview's content security policy now…",
+      "symptom": "p2's artifact previews could not be framed below the Radius shell: the preview's content security policy now allows the Radius shell frame as an ancestor, as Pi's does (Pi 82d6f34f).",
+      "rootCause": "Ports apps/p2/plugins/artifacts/server.ts and its artifacts and radius tests: frame-ancestors is the last CSP directive, naming the relay shell origin when the request is relayed.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "p2's artifact previews could not be framed below the Radius shell: the preview's content security policy now allows the Radius shell frame as an ancestor, as Pi's does (Pi 82d6f34f).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "eee71aba6a",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "apps/p2/e2e/artifacts_test.go::TestArtifactsFakeProvider",
+        "apps/p2/e2e/radius_test.go::TestRadiusRelayedArtifactPreviewsMaySitBelowTheRadiusShellsFrame"
+      ]
+    },
+    {
       "id": "BF-eeee29b",
       "title": "`chord/nextnode/workers`: a worker that ended (was stopped or killed) while its Node plugin host was still…",
       "symptom": "`chord/nextnode/workers`: a worker that ended (was stopped or killed) while its Node plugin host was still starting no longer leaves a `chord-plugins-*` socket directory in the temp directory; the server removes what the worker's process left once it has ended.",

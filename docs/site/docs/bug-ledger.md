@@ -1868,6 +1868,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ee5fdb1](#bf-ee5fdb1) | `pig status` no longer reports a shared extension name as an unhealthy duplicate | PiG's own defect | All platforms | 0.7.0 |
 | [BF-ee96daf](#bf-ee96daf) | Unsubscribing an extension's event-bus subscription is now constant time, as deleting from Pi's `Set` of… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-eeac307](#bf-eeac307) | Anthropic and Bedrock assistant messages write `providerThinkingLevel` after `model`, and write… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-eee71ab](#bf-eee71ab) | p2's artifact previews could not be framed below the Radius shell: the preview's content security policy now… | PiG's own defect | All platforms | Unreleased |
 | [BF-eeee29b](#bf-eeee29b) | `chord/nextnode/workers`: a worker that ended (was stopped or killed) while its Node plugin host was still… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-ef0f95a](#bf-ef0f95a) | OpenCode Zen and OpenCode Go use the `opencode.ai/inference` endpoints, which fixes OpenCode Go Gemini models… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ef60850](#bf-ef60850) | fix(chord): tui follow stop type | PiG's own defect | All platforms | Unreleased |
@@ -27574,6 +27575,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `2309604d80` (2026-10-10), `c10cde302d` (2026-10-10), `eeac307095` (2026-10-10), `f29e906cb3` (2026-10-10)
 - **Tests:** `agent/assistant_member_order_oracle_test.go::TestAssistantLateMembersFollowPiCreationOrder`, `ai/constrained_sampling_oracle_test.go::TestConstrainedSamplingMatchesPi`, `ai/openai_request_key_order_oracle_test.go::TestOpenAICompletionsRequestKeysFollowPiAssignmentOrder`, `ai/openai_responses_request_key_order_oracle_test.go::TestOpenAIResponsesRequestKeysFollowPiAssignmentOrder`, `coding/cli/rpc_assistant_member_order_test.go::TestRPCAssistantMessageMembersMatchTheSessionLineOrder`, `coding/cli/rpc_model_type_binary_test.go::TestRPCModelObjectsCarryTheRegistryModelType`, `coding/codemode_session_upstream_test.go::TestUpstreamCodemodeModels`, `coding/session_boundaries_drafts_upstream_test.go::TestUpstreamSessionBoundariesDrafts`
 - **Release note:** Anthropic and Bedrock assistant messages write `providerThinkingLevel` after `model`, and write `cacheWrite1h` and `reasoning` after `cost` in `usage`, as Pi does.
+
+### BF-eee71ab
+
+**p2's artifact previews could not be framed below the Radius shell: the preview's content security policy now…**
+
+- **Source:** PiG's own defect
+- **Symptom:** p2's artifact previews could not be framed below the Radius shell: the preview's content security policy now allows the Radius shell frame as an ancestor, as Pi's does (Pi 82d6f34f).
+- **Root cause:** Ports apps/p2/plugins/artifacts/server.ts and its artifacts and radius tests: frame-ancestors is the last CSP directive, naming the relay shell origin when the request is relayed.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `eee71aba6a` (2026-11-08)
+- **Tests:** `apps/p2/e2e/artifacts_test.go::TestArtifactsFakeProvider`, `apps/p2/e2e/radius_test.go::TestRadiusRelayedArtifactPreviewsMaySitBelowTheRadiusShellsFrame`
+- **Release note:** p2's artifact previews could not be framed below the Radius shell: the preview's content security policy now allows the Radius shell frame as an ancestor, as Pi's does (Pi 82d6f34f).
 
 ### BF-eeee29b
 
