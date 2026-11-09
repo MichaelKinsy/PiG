@@ -470,6 +470,7 @@ src/web/ModelPicker.tsx
 src/web/OwnerNotices.tsx
 src/web/PiLogo.tsx
 src/web/SessionStats.tsx
+src/web/Time.tsx
 src/web/Viewer.tsx
 src/web/activity/ActivityRow.tsx
 src/web/activity/ActivitySheet.tsx
