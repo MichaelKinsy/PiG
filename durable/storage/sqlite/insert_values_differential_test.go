@@ -27,10 +27,6 @@ func jsonInsertText(table string, columns []string, conflict string) string {
 		" FROM json_each(?) AS item WHERE true " + conflict
 }
 
-// largeRowCharacters is Pi's bound: rows whose string cells hold more characters than this go bound, the others
-// through the JSON array.
-const largeRowCharacters = 8 * 1024
-
 // insertRowsOfPi inserts rows as Pi's insertRows does: the rows of little text from JSON arrays, the large ones bound.
 func insertRowsOfPi(executor SqliteExecutor, insertText, table string, columns []string, conflict string, rows [][]cell) error {
 	var small []string
@@ -39,7 +35,7 @@ func insertRowsOfPi(executor SqliteExecutor, insertText, table string, columns [
 		text := 0
 		for _, item := range row {
 			if value, ok := item.(string); ok {
-				text += utf16Length(value)
+				text += utf16Length(jsView(value))
 			}
 		}
 		if text > largeRowCharacters {
@@ -332,7 +328,7 @@ func TestValuesInsertsStoreTheRowsOfPiJsonEachInserts(t *testing.T) {
 					characters := 0
 					for _, value := range rows[row] {
 						if text, ok := value.(string); ok {
-							characters += utf16Length(text)
+							characters += utf16Length(jsView(text))
 						}
 					}
 					large = large || characters > largeRowCharacters

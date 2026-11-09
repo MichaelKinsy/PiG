@@ -150,4 +150,4 @@ func TestInsertRowsStoreTheBytesOfPiAtTheLargeRowBound(t *testing.T) {
 }
 
 // jsView is the JavaScript string Pi holds for text, with lone surrogates kept.
-func jsView(text string) string { return wellFormed(text) }
+func jsView(text string) string { return wellFormed(text, false) }
