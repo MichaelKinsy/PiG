@@ -29652,6 +29652,26 @@
       ]
     },
     {
+      "id": "BF-8caf448",
+      "title": "p2's MCP plugin no longer crashes the process when its manager ends while it is saving its memento: the write…",
+      "symptom": "p2's MCP plugin no longer crashes the process when its manager ends while it is saving its memento: the write that lost its transaction to the end now fails the handler (reported) instead of panicking with `Cannot use a settled overlay`.",
+      "rootCause": "p2's plugins/mcp keepMemento writes the memento from a handler's blocking work (host.AwaitingCtx, an owned task): memento.Change(ctx, fn) with fn drafting the document and setting servers/instances. When the manager's object ends (Documents.Seal/Fence) while fn is between tx.Draft and draft.Set, Transaction.Cut aborts the drafts and the Set panics with delta.ErrRevoked (\"Cannot use a settled overlay\"), on a goroutine nothing recovers: the process crashes. Seen once in 16 loaded plain `go test` runs of apps/p2 and reproduced under CPU starvation (plain `go test -count=30 ./apps/p2/plugins/mcp` on 2 CPUs shared with 8 busy loops panicked within 19 s: delta.(*Object).Set \u003c-…",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "p2's MCP plugin no longer crashes the process when its manager ends while it is saving its memento: the write that lost its transaction to the end now fails the handler (reported) instead of panicking with `Cannot use a settled overlay`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8caf4482ab",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-8cfd25f",
       "title": "A Rust extension that registers a flag after load (`Context::register_flag` from a handler) now reads its…",
       "symptom": "A Rust extension that registers a flag after load (`Context::register_flag` from a handler) now reads its default through `Context::get_flag` before any value is set, as the Go, Node, Python and Lisp SDKs do and as Pi's `registerFlag` does.",

@@ -1079,6 +1079,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8c7bacf-2](#bf-8c7bacf-2) | `delta.ApplyImmutable` sets a numeric path segment on an object as that key, as Pi does | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8c7bacf-3](#bf-8c7bacf-3) | `PathError` and `UnsafePathError` messages print paths as `JSON.stringify` does: `<`, `>`, `&`, U+2028 and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8c829e2](#bf-8c829e2) | Closing a Durable Harness while a tool waited on a nested call could leave an abort mark on that nested call… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-8caf448](#bf-8caf448) | p2's MCP plugin no longer crashes the process when its manager ends while it is saving its memento: the write… | PiG's own defect | All platforms | Unreleased |
 | [BF-8cfd25f](#bf-8cfd25f) | A Rust extension that registers a flag after load (`Context::register_flag` from a handler) now reads its… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-8d008eb](#bf-8d008eb) | fix(interactive): paint the requested first frame before the color wait returns | PiG's own defect | All platforms | Unreleased |
 | [BF-8d23cfc](#bf-8d23cfc) | Saving a setting keeps the key order of the existing `settings.json`, at the top level and inside a patched… | PiG's own defect | All platforms | 0.5.0 |
@@ -16641,6 +16642,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `8c829e2c62` (2026-10-27)
 - **Tests:** `durable/core/driver/session_test.go::TestCloseSealsTheCoreBeforeTheEventsItsCloseListenersFree`, `durable/core/driver/tool_nested_restart_core_test.go::TestCoreAbandonedNestedCallsAfterARestartSettleInterruptedOrAbandoned`
 - **Release note:** Closing a Durable Harness while a tool waited on a nested call could leave an abort mark on that nested call in the store, so the next Harness reported it `aborted` instead of `interrupted` (it had started) or `abandoned` (it had not). The native core driver ran the close listeners, which cancel the waits in flight, before it told the core it was closing. The tool that the cancel freed could report its end first, and the core then aborted the nested calls of a caller the close had interrupted. The core is now told first. It failed once in a CI run under load (the nested-call restart test).
+
+### BF-8caf448
+
+**p2's MCP plugin no longer crashes the process when its manager ends while it is saving its memento: the write…**
+
+- **Source:** PiG's own defect
+- **Symptom:** p2's MCP plugin no longer crashes the process when its manager ends while it is saving its memento: the write that lost its transaction to the end now fails the handler (reported) instead of panicking with `Cannot use a settled overlay`.
+- **Root cause:** p2's plugins/mcp keepMemento writes the memento from a handler's blocking work (host.AwaitingCtx, an owned task): memento.Change(ctx, fn) with fn drafting the document and setting servers/instances. When the manager's object ends (Documents.Seal/Fence) while fn is between tx.Draft and draft.Set, Transaction.Cut aborts the drafts and the Set panics with delta.ErrRevoked ("Cannot use a settled overlay"), on a goroutine nothing recovers: the process crashes. Seen once in 16 loaded plain `go test` runs of apps/p2 and reproduced under CPU starvation (plain `go test -count=30 ./apps/p2/plugins/mcp` on 2 CPUs shared with 8 busy loops panicked within 19 s: delta.(*Object).Set <-…
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8caf4482ab` (2026-11-08)
+- **Tests:** None recorded.
+- **Release note:** p2's MCP plugin no longer crashes the process when its manager ends while it is saving its memento: the write that lost its transaction to the end now fails the handler (reported) instead of panicking with `Cannot use a settled overlay`.
 
 ### BF-8cfd25f
 
