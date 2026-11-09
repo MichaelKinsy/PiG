@@ -1,0 +1,7 @@
+### Added
+
+- Go extensions can now use the `AgentSession` members of Pi that a child session from `ctx.CreateAgentSession` lacked: the reads (`IsIdle`, `IsStreaming`, `IsCompacting`, `SessionID`, `SessionFile`, `SessionName`, `Model`, `ThinkingLevel`, `SystemPrompt`, `SteeringMode`, `GetAllTools`, `GetContextUsage`, `GetSessionStats`, `GetLastAssistantText` and the rest), the changes (`SetModel`, `CycleModel`, `SetThinkingLevel`, `SetScopedModels`, `SetActiveToolsByName`, `SetSteeringMode`, `SetAutoCompactionEnabled`, `SetSessionName`, `ClearQueue` and the aborts) and the awaited members (`WaitForIdle`, `Reload`, `Compact`, `NavigateTree`, `ExecuteBash`, `SendUserMessage`, `SendCustomMessage`, `SummarizeForBugReport`, `ExportToJsonl`, `ExportToHTML`). Each one runs on the host's session over two new calls, `childSession.op` and `childSession.opAsync`, so a value is what the session holds at the call. Rust, Python and Lisp still lack them. `pi-agent-core`'s `Agent`, `AgentSession.agent` and the session graph handles of a child (`extensionRunner`, `settingsManager`, `resourceLoader`, `modelRuntime`) stay open and are listed in `test/parity/sdk-exports.toml`.
+
+### Upgrading
+
+- Go: the `SessionID`, `SessionFile`, `Model`, `ThinkingLevel`, `SystemPrompt` and `ActiveTools` fields of `*sdk.AgentSession`, which held the values at creation, are now methods that read the session's current values and return `(value, error)`: write `session.SessionID()` where you wrote `session.SessionID`, and `session.GetActiveToolNames()` for `ActiveTools`.
