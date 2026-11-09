@@ -64,7 +64,7 @@
         ((equal tool "grep")
          (pig:make-grep-tool-options
           :operations (cond ((custom) (pig:make-grep-operations :is-directory (lambda (path) (note (format nil "isDirectory:~A" path)) (error "no such path for the probe"))))
-                            ((equal (bp-case case "ops") "grepdir") (pig:make-grep-operations :is-directory (lambda (path) (note (format nil "isDirectory:~A" path)) t))))))
+                            ((equal (bp-case case "ops") "grepdir") (pig:make-grep-operations :is-directory (lambda (path) (note (format nil "isDirectory:~A" path)) t) :read-file (lambda (path) (note (format nil "readFile:~A" path)) ""))))))
         ((and (equal tool "find") (equal (bp-case case "ops") "globlimit"))
          ;; Pi main 676af1d77 (#11747): the tool asks glob for one result past its limit.
          (pig:make-find-tool-options

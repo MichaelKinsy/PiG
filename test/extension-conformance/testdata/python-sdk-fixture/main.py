@@ -964,7 +964,10 @@ def new_extension() -> pig_sdk.Extension:
                 def listed_directory(path):
                     log.append("isDirectory:" + path)
                     return True
-                ops = pig_sdk.GrepOperations(is_directory=listed_directory)
+                def ignored_read_file(path):
+                    log.append("readFile:" + path)
+                    return ""
+                ops = pig_sdk.GrepOperations(is_directory=listed_directory, read_file=ignored_read_file)
             return pig_sdk.GrepToolOptions(operations=ops)
         if tool == "find":
             ops = None

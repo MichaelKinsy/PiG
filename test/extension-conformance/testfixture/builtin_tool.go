@@ -167,7 +167,11 @@ func builtinProbeSpec(c builtinProbeCase, log *builtinCallLog) (definition func(
 			}}
 		}
 		if c.Ops == "grepdir" {
-			options.Operations = &sdk.GrepOperations{IsDirectory: func(path string) (bool, error) { log.add("isDirectory:%s", path); return true, nil }}
+			// The deprecated ReadFile member builds and is ignored: it is not announced and never called.
+			options.Operations = &sdk.GrepOperations{
+				IsDirectory: func(path string) (bool, error) { log.add("isDirectory:%s", path); return true, nil },
+				ReadFile:    func(path string) (string, error) { log.add("readFile:%s", path); return "", nil },
+			}
 		}
 		return func() (sdk.BuiltinToolDefinition, error) { return sdk.CreateGrepToolDefinition(cwd, options) },
 			func() (sdk.BuiltinTool, error) { return sdk.CreateGrepTool(cwd, options) }

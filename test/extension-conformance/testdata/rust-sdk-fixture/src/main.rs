@@ -6984,6 +6984,7 @@ fn builtin_options(case: &Value, log: &CallLog) -> ProbeOptions {
     if case["ops"].as_str() == Some("grepdir") {
         options.grep.operations = Some(pig_sdk::GrepOperations {
             is_directory: path_op(log, "isDirectory", |_| Ok(true)),
+            read_file: Some(path_op(log, "readFile", |_| Ok(String::new()))),
         });
         return options;
     }
@@ -7041,6 +7042,7 @@ fn builtin_options(case: &Value, log: &CallLog) -> ProbeOptions {
         is_directory: path_op(log, "isDirectory", |_| {
             Err("no such path for the probe".to_string())
         }),
+        read_file: None,
     });
     let glob_log = log.clone();
     options.find.operations = Some(pig_sdk::FindOperations {

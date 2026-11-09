@@ -112,11 +112,12 @@ pub struct EditToolOptions {
     pub operations: Option<EditOperations>,
 }
 
-/// Pi's `GrepOperations`. `is_directory` fails when the path does not exist. Pi main (8da141c2a) takes grep's context lines from ripgrep and no longer has a
-/// `readFile` member, so there is none here.
+/// Pi's `GrepOperations`. `is_directory` fails when the path does not exist. `read_file` is Pi's deprecated `readFile`: accepted and ignored. Grep takes its
+/// context lines from ripgrep, so the host never calls it and it is not sent to the host.
 #[derive(Clone)]
 pub struct GrepOperations {
     pub is_directory: PathOperation<bool>,
+    pub read_file: Option<PathOperation<String>>,
 }
 
 /// Pi's `GrepToolOptions`.
@@ -1324,6 +1325,7 @@ mod tests {
             Some(GrepToolOptions {
                 operations: Some(GrepOperations {
                     is_directory: Arc::new(|_| Ok(true)),
+                    read_file: Some(Arc::new(|_| panic!("read_file is never called"))),
                 }),
             }),
         );
