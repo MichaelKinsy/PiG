@@ -278,6 +278,8 @@ pub fn new_extension() -> Extension {
                 "prompt": live_prompt == prompt,
                 "tools": session.get_active_tool_names()?,
             });
+            session.set_model(&json!({"provider": "sentinel-think", "id": "echo-think"}), ModelMutationOptions::default())?;
+            session.set_thinking_level("high", ModelMutationOptions::default())?;
             session.set_active_tools_by_name(&[] as &[&str])?;
             let changed = session.current_system_prompt()?;
             Ok(json!({
@@ -293,6 +295,10 @@ pub fn new_extension() -> Extension {
                     "snapshotTools": session.active_tools.clone(),
                     "livePromptDropsTool": changed != prompt && !changed.contains("sentinel-snippet"),
                     "snapshotPrompt": session.system_prompt == prompt,
+                    "liveModel": session.current_model()?.map_or(Value::Null, |model| model["id"].clone()),
+                    "liveThinking": session.current_thinking_level()?,
+                    "snapshotModel": session.model["id"].clone(),
+                    "snapshotThinking": session.thinking_level.clone(),
                 },
             }))
         })();
@@ -319,7 +325,7 @@ func TestChildAgentSessionMembersRust(t *testing.T) {
 func TestChildAgentSessionSnapshotRust(t *testing.T) {
 	for _, isolation := range []string{"strict", "shared-ok"} {
 		t.Run(isolation, func(t *testing.T) {
-			checkChildSnapshot(t, loadChildMembersRust(t, isolation))
+			checkChildSnapshot(t, loadChildMembersRustWith(t, isolation, nil, true))
 		})
 	}
 }
@@ -348,7 +354,7 @@ func TestChildAgentSessionMembersRustAbortNotHeld(t *testing.T) {
 			member := held.member
 			t.Run(isolation+"/"+held.name, func(t *testing.T) {
 				probe := newHeldProbe(member, held.delay)
-				ext := loadChildMembersRustWith(t, isolation, probe.wrap)
+				ext := loadChildMembersRustWith(t, isolation, probe.wrap, false)
 				probe.start(3 * time.Second)
 				if _, err := ext.Tools["child_order_probe"].Definition.Execute(t.Context(), "call", json.RawMessage(`{"first":"`+member+`"}`), nil); err != nil {
 					t.Fatal(err)
@@ -361,12 +367,18 @@ func TestChildAgentSessionMembersRustAbortNotHeld(t *testing.T) {
 
 func loadChildMembersRust(t *testing.T, isolation string) extension.Extension {
 	t.Helper()
-	return loadChildMembersRustWith(t, isolation, nil)
+	return loadChildMembersRustWith(t, isolation, nil, false)
 }
 
-func loadChildMembersRustWith(t *testing.T, isolation string, wrap func(subprocess.ChildSession) subprocess.ChildSession) extension.Extension {
+// thinking adds the second sentinel model of the child_snapshot rows (newChildSnapshotHost).
+func loadChildMembersRustWith(t *testing.T, isolation string, wrap func(subprocess.ChildSession) subprocess.ChildSession, thinking bool) extension.Extension {
 	t.Helper()
-	host, _ := newChildSessionHostWith(t, true, wrap)
+	var host *subprocess.Host
+	if thinking {
+		host = newChildSnapshotHost(t, wrap)
+	} else {
+		host, _ = newChildSessionHostWith(t, true, wrap)
+	}
 	root := findModuleRoot(t)
 	cfg := packedFlagFactory(t, root, "rust", "child-session", false)
 	cfg.Isolation = isolation

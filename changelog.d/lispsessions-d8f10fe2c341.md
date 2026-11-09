@@ -4,4 +4,4 @@
 
 ### Deprecated
 
-- Lisp: `agent-session-session-id`, `-session-file`, `-model`, `-thinking-level`, `-active-tools` and `-system-prompt` still return what the session held when `ctx-create-agent-session` returned, but they are deprecated. Use `agent-session-current-session-id`, `-current-session-file`, `-current-model`, `-current-thinking-level`, `agent-session-get-active-tool-names` and `agent-session-current-system-prompt`, which ask the host for the current value.
+- Lisp: `agent-session-session-id`, `-session-file`, `-model`, `-thinking-level`, `-active-tools` and `-system-prompt` still return what the session held when `ctx-create-agent-session` returned, but they are deprecated. Use `agent-session-current-session-id`, `-current-session-file`, `-current-model`, `-current-thinking-level`, `agent-session-get-active-tool-names` and `agent-session-current-system-prompt`, which ask the host for the current value. The live reads cannot reuse the old names, because a Lisp function has one definition per symbol, so `agent-session-session-id` and the others keep returning the creation snapshot.

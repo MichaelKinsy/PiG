@@ -4,4 +4,4 @@
 
 ### Deprecated
 
-- Rust: the `session_id`, `session_file`, `model`, `thinking_level`, `active_tools` and `system_prompt` fields of `AgentSession` still hold what the session had when it was created, but are marked `#[deprecated]`. Use the methods that read the current value, returning `io::Result`: `current_session_id()`, `current_session_file()`, `current_model()`, `current_thinking_level()`, `get_active_tool_names()` and `current_system_prompt()`.
+- Rust: the `session_id`, `session_file`, `model`, `thinking_level`, `active_tools` and `system_prompt` fields of `AgentSession` still hold what the session had when it was created, but are marked `#[deprecated]`. Use the methods that read the current value, returning `io::Result` (named `current_*`, not `session_id()` and the like, to match the Go, Python and Lisp names): `current_session_id()`, `current_session_file()`, `current_model()`, `current_thinking_level()`, `get_active_tool_names()` and `current_system_prompt()`.

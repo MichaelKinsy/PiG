@@ -207,6 +207,8 @@ def new_extension():
                 "liveStart": {"model": (session.current_model or {}).get("id"), "thinking": session.current_thinking_level,
                               "prompt": session.current_system_prompt == snap_prompt, "tools": session.get_active_tool_names()},
             }
+            session.set_model({"provider": "sentinel-think", "id": "echo-think"})
+            session.set_thinking_level("high")
             session.set_active_tools_by_name([])
             changed = session.current_system_prompt
             with warnings.catch_warnings():
@@ -215,6 +217,8 @@ def new_extension():
                     "liveTools": session.get_active_tool_names(), "snapshotTools": session.active_tools,
                     "livePromptDropsTool": changed != snap_prompt and "sentinel-snippet" not in changed,
                     "snapshotPrompt": session.system_prompt == snap_prompt,
+                    "liveModel": (session.current_model or {}).get("id"), "liveThinking": session.current_thinking_level,
+                    "snapshotModel": (session.model or {}).get("id"), "snapshotThinking": session.thinking_level,
                 }
             return json.dumps(out)
         finally:
@@ -255,7 +259,7 @@ func TestChildAgentSessionMembersPython(t *testing.T) {
 func TestChildAgentSessionSnapshotPython(t *testing.T) {
 	for _, isolation := range []string{"strict", "shared-ok"} {
 		t.Run(isolation, func(t *testing.T) {
-			host, _ := newChildSessionHost(t)
+			host := newChildSnapshotHost(t, nil)
 			root := findModuleRoot(t)
 			cfg := packedFlagFactory(t, root, "python", "child-session", false)
 			cfg.Isolation = isolation

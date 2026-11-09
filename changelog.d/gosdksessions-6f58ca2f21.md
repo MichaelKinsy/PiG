@@ -4,4 +4,4 @@
 
 ### Deprecated
 
-- Go: the `SessionID`, `SessionFile`, `Model`, `ThinkingLevel`, `ActiveTools` and `SystemPrompt` fields of `*sdk.AgentSession` still hold what the session had when `ctx.CreateAgentSession` returned, but they are deprecated. Use the methods that read the session's current value: `CurrentSessionID()`, `CurrentSessionFile()`, `CurrentModel()`, `CurrentThinkingLevel()`, `GetActiveToolNames()` and `CurrentSystemPrompt()`, each returning `(value, error)`.
+- Go: the `SessionID`, `SessionFile`, `Model`, `ThinkingLevel`, `ActiveTools` and `SystemPrompt` fields of `*sdk.AgentSession` still hold what the session had when `ctx.CreateAgentSession` returned, but they are deprecated. Use the methods that read the session's current value: `CurrentSessionID()`, `CurrentSessionFile()`, `CurrentModel()`, `CurrentThinkingLevel()`, `GetActiveToolNames()` and `CurrentSystemPrompt()`, each returning `(value, error)`. The live reads cannot reuse the field names, because a Go field and method cannot share a name, so `SessionID()`, `Model()` and the others do not exist on `*sdk.AgentSession`.

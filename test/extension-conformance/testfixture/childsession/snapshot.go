@@ -1,6 +1,7 @@
 package childsession
 
 import (
+	"context"
 	"encoding/json"
 	"path/filepath"
 	"strings"
@@ -61,12 +62,17 @@ func registerSnapshot(e *sdk.Extension) {
 				"tools": ok(session.GetActiveToolNames()),
 			}
 			// The session changes; the snapshot does not follow it, the methods do.
+			ok(nil, session.SetModel(context.Background(), map[string]any{"provider": "sentinel-think", "id": "echo-think"}))
+			ok(nil, session.SetThinkingLevel("high"))
 			ok(nil, session.SetActiveToolsByName([]string{}))
 			livePrompt := ok(session.CurrentSystemPrompt()).(string)
+			after := readSnapshot(session)
 			out["afterChange"] = map[string]any{
-				"liveTools": ok(session.GetActiveToolNames()), "snapshotTools": readSnapshot(session).tools,
+				"liveTools": ok(session.GetActiveToolNames()), "snapshotTools": after.tools,
+				"liveModel": ok(session.CurrentModel()).(map[string]any)["id"], "liveThinking": ok(session.CurrentThinkingLevel()),
+				"snapshotModel": after.model["id"], "snapshotThinking": after.thinking,
 				"livePromptDropsTool": livePrompt != snapshot.prompt && !strings.Contains(livePrompt, "sentinel-snippet"),
-				"snapshotPrompt":      readSnapshot(session).prompt == snapshot.prompt,
+				"snapshotPrompt":      after.prompt == snapshot.prompt,
 			}
 			if failure != nil {
 				return nil, failure

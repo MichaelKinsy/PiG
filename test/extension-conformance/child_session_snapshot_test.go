@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/test/extension-conformance/testfixture/childsession"
@@ -20,13 +21,14 @@ var childSnapshotWant = map[string]any{
 	"liveStart": map[string]any{"model": "echo", "thinking": "off", "prompt": true, "tools": []any{"sentinel_tool"}},
 	"afterChange": map[string]any{
 		"liveTools": []any{}, "snapshotTools": []any{"sentinel_tool"}, "livePromptDropsTool": true, "snapshotPrompt": true,
+		"liveModel": "echo-think", "liveThinking": "high", "snapshotModel": "echo", "snapshotThinking": "off",
 	},
 }
 
 func TestChildAgentSessionSnapshotGoPlacements(t *testing.T) {
 	for _, isolation := range []string{"strict", "shared-ok"} {
 		t.Run(isolation, func(t *testing.T) {
-			host, _ := newChildSessionHost(t)
+			host := newChildSnapshotHost(t, nil)
 			root := findModuleRoot(t)
 			cfg := subprocess.ExtConfig{
 				Name: childsession.Name, Source: filepath.Join(root, "test/extension-conformance/testdata/child-session-go"), Enabled: true, Isolation: isolation,
@@ -47,12 +49,26 @@ func TestChildAgentSessionSnapshotGoPlacements(t *testing.T) {
 }
 
 func TestChildAgentSessionSnapshotGoFused(t *testing.T) {
-	host, _ := newChildSessionHost(t)
+	host := newChildSnapshotHost(t, nil)
 	ext, err := host.LoadInProcess(t.Context(), subprocess.ExtConfig{Name: childsession.Name, Path: "/ext/child-session.go", Enabled: true}, childsession.Extension().RunWithConn)
 	if err != nil {
 		t.Fatal(err)
 	}
 	checkChildSnapshot(t, *ext)
+}
+
+// newChildSnapshotHost is the host of the child_snapshot rows: newChildSessionHostWith plus a second sentinel model that supports thinking, which the scenario switches the session to. It is registered here, not on every child session host, because a second available model changes what cycleModel returns in the child_members rows.
+func newChildSnapshotHost(t *testing.T, wrap func(subprocess.ChildSession) subprocess.ChildSession) *subprocess.Host {
+	t.Helper()
+	host, services := newChildSessionHostWith(t, true, wrap)
+	if err := services.Registry().RegisterExtensionProvider("sentinel-think", extension.ProviderConfig{
+		API: ai.APIOpenAICompletions, BaseURL: "https://sentinel-think.invalid", APIKey: "sentinel-key",
+		Models:       []extension.ProviderModelConfig{{ID: "echo-think", Name: "Echo Think", Reasoning: true}},
+		StreamSimple: childSentinelStream,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	return host
 }
 
 func checkChildSnapshot(t *testing.T, ext extension.Extension) {
@@ -78,7 +94,7 @@ func checkChildSnapshot(t *testing.T, ext extension.Extension) {
 func TestChildAgentSessionSnapshotLisp(t *testing.T) {
 	for _, isolation := range []string{"strict", "shared-ok"} {
 		t.Run(isolation, func(t *testing.T) {
-			host, _ := newChildSessionHost(t)
+			host := newChildSnapshotHost(t, nil)
 			root := findModuleRoot(t)
 			cfg := lispFixtureConfig(t, "child-session-lisp", childsession.Name)
 			cfg.Isolation = isolation
