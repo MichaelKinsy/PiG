@@ -37,7 +37,7 @@ import { inspect } from "node:util";
 // exits, one file after another, which on Windows took seconds for a cold cache (a new tree, new plugins) and outlasted the
 // Go side's stop grace when the link closed: the process was killed after it had ended its channel and run its exit handlers.
 // So the cache is written once the process is up and after each load and reload (`flushCompileCache`), where no grace runs,
-// and the exit has nothing left to write.
+// and the exit has left to write only what was compiled after them (a dynamic import in a plugin's call).
 enableCompileCache(fileURLToPath(new URL("./v8/", import.meta.url)));
 
 const tree = new URL("./pi/chord/src/", import.meta.url);
