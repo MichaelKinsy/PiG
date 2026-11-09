@@ -315,15 +315,6 @@ pub struct AgentSession {
     context: crate::context::Context,
     conn: Arc<Connection>,
     shared: Arc<SessionShared>,
-    /// `session.sessionId`.
-    pub session_id: String,
-    /// `session.sessionFile`; `None` for an in-memory session.
-    pub session_file: Option<String>,
-    /// What the session held when it was created. Read the current values with [`AgentSession::state`].
-    pub model: Value,
-    pub thinking_level: String,
-    pub active_tools: Vec<String>,
-    pub system_prompt: String,
     /// `CreateAgentSessionResult.modelFallbackMessage`.
     pub model_fallback_message: Option<String>,
     /// The errors of `CreateAgentSessionResult.extensionsResult.errors`, as `"path: error"`.
@@ -445,28 +436,10 @@ pub(crate) fn create(
             return Err(error);
         }
     };
-    let text = |key: &str| info[key].as_str().unwrap_or("").to_string();
     Ok(AgentSession {
         context: context.clone(),
         conn: conn.clone(),
         shared,
-        session_id: text("sessionId"),
-        session_file: info["sessionFile"]
-            .as_str()
-            .filter(|file| !file.is_empty())
-            .map(str::to_string),
-        model: info["model"].clone(),
-        thinking_level: text("thinkingLevel"),
-        active_tools: info["activeTools"]
-            .as_array()
-            .map(|tools| {
-                tools
-                    .iter()
-                    .filter_map(|t| t.as_str().map(str::to_string))
-                    .collect()
-            })
-            .unwrap_or_default(),
-        system_prompt: text("systemPrompt"),
         model_fallback_message: info["modelFallbackMessage"]
             .as_str()
             .filter(|m| !m.is_empty())
@@ -485,7 +458,7 @@ pub(crate) fn create(
 
 impl AgentSession {
     /// A host call that belongs to the session, not to the request that happens to use it: the session outlives the command that created it.
-    fn call(&self, method: &str, mut args: Value) -> io::Result<Option<Value>> {
+    pub(crate) fn call(&self, method: &str, mut args: Value) -> io::Result<Option<Value>> {
         args["id"] = json!(self.shared.id);
         call(&self.conn, method, args)
     }
