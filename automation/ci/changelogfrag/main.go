@@ -193,11 +193,11 @@ func render(fragments []fragment) string {
 // unreleasedEntries is the text under "## [Unreleased]" in changelog, empty when the section is empty or absent.
 func unreleasedEntries(changelog string) string {
 	const heading = "## [Unreleased]\n"
-	start := strings.Index(changelog, heading)
-	if start < 0 {
+	_, after, ok := strings.Cut(changelog, heading)
+	if !ok {
 		return ""
 	}
-	body := changelog[start+len(heading):]
+	body := after
 	if next := strings.Index(body, "\n## ["); next >= 0 {
 		body = body[:next]
 	}

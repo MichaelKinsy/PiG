@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -177,12 +178,7 @@ func TestReleaseCandidateDraftBodyIsTheNotesDraftWhenPresent(t *testing.T) {
 			}
 			args := strings.Split(strings.TrimSpace(string(raw)), "\n")
 			has := func(arg string) bool {
-				for _, a := range args {
-					if a == arg {
-						return true
-					}
-				}
-				return false
+				return slices.Contains(args, arg)
 			}
 			if !has("--draft") || !has("v0.8.0") || !has("release/pig-0.8.0-linux-amd64.tar.gz") {
 				t.Fatalf("gh args = %q, want a draft release v0.8.0 with the archive", args)
