@@ -95,6 +95,7 @@ allow = [
 	"golang.org/x/mod/modfile",
 	"golang.org/x/net/idna",
 	"golang.org/x/oauth2/google/externalaccount",
+	"golang.org/x/sys/unix",
 	"golang.org/x/sys/windows",
 	"golang.org/x/text/unicode/norm",
 ]

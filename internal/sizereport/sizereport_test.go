@@ -3,6 +3,8 @@
 package sizereport
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -97,7 +99,7 @@ func TestExactDataSizes(t *testing.T) {
 		{Size: 10, Kind: 'r', Name: "go:func.*"},
 		{Size: 200, Kind: 'D', Name: "pkg.grew"},
 	}
-	got := ExactDataSizes(pe, elf)
+	got := ExactDataSizes(pe, elf, func(string) bool { return true })
 	want := []int64{3328, 408, 900, 5000, 64, 100}
 	for i, symbol := range got {
 		if symbol.Size != want[i] {
@@ -106,5 +108,60 @@ func TestExactDataSizes(t *testing.T) {
 	}
 	if pe[0].Size != 13760 {
 		t.Error("ExactDataSizes changed its input")
+	}
+}
+
+// A package that compiles different files on linux and on the target may declare a symbol of the same name with a different size on each, so the linux size must not replace the target's: the symbol of an untrusted package keeps nm's size.
+func TestExactDataSizesKeepsPackagesWithOtherFiles(t *testing.T) {
+	pe := []Symbol{
+		{Size: 40960, Kind: 'D', Name: "pkg/perOS.table"},
+		{Size: 13760, Kind: 'D', Name: "pkg/same.table"},
+	}
+	elf := []Symbol{
+		{Size: 64, Kind: 'D', Name: "pkg/perOS.table"},
+		{Size: 3328, Kind: 'D', Name: "pkg/same.table"},
+	}
+	got := ExactDataSizes(pe, elf, func(pkg string) bool { return pkg == "pkg/same" })
+	if got[0].Size != 40960 || got[1].Size != 3328 {
+		t.Errorf("sizes %d, %d; want 40960 (other files, kept) and 3328 (same files, exact)", got[0].Size, got[1].Size)
+	}
+}
+
+// The same table name with 64 B in a linux file and 40 KB in a !linux file (a per-OS data table) must show its 40 KB on darwin: the linux build's size of the name is not the table's size there.
+func TestSymbolsKeepPerOSTableSize(t *testing.T) {
+	if testing.Short() {
+		t.Skip("builds a module for two targets")
+	}
+	root := t.TempDir()
+	files := map[string]string{
+		"go.mod":           "module example.test/m\n\ngo 1.24\n",
+		"main.go":          "package main\n\nimport (\n\t\"os\"\n\n\t\"example.test/m/same\"\n\t\"example.test/m/tbl\"\n)\n\nfunc main() { println(tbl.Table[len(os.Args)], same.Table[len(os.Args)]) }\n",
+		"tbl/tbl_linux.go": "package tbl\n\nvar Table = [64]byte{1}\n",
+		"tbl/tbl_other.go": "//go:build !linux\n\npackage tbl\n\nvar Table = [40960]byte{1}\n",
+		"same/same.go":     "package same\n\nvar Table = [3328]byte{1}\n",
+	}
+	for name, content := range files {
+		path := filepath.Join(root, name)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	build := Build{Root: root, Package: ".", GOOS: "darwin", GOARCH: "arm64"}
+	symbols, err := build.Symbols(t.Context(), t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	sizes := map[string]int64{}
+	for _, symbol := range symbols {
+		sizes[symbol.Name] = symbol.Size
+	}
+	if got := sizes["example.test/m/tbl.Table"]; got < 40960 {
+		t.Errorf("per-OS table: size %d, want at least 40960 (the linux build's 64 B hid it)", got)
+	}
+	if got := sizes["example.test/m/same.Table"]; got != 3328 {
+		t.Errorf("same-file table: size %d, want 3328", got)
 	}
 }
