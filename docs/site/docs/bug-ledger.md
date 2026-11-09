@@ -837,6 +837,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6ce13c4](#bf-6ce13c4) | fix(photonimage): decode PNM as Photon does | PiG's own defect | All platforms | Unreleased |
 | [BF-6ce1db1](#bf-6ce1db1) | In print and JSON mode, SIGTERM and SIGHUP always leave their line in `exit.log` | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6d0ec02](#bf-6d0ec02) | Durable (Pi eb2fce43): a wait that closes a cycle through waits and held owners now fails the task's commit… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-6d3043e](#bf-6d3043e) | The startup prompts (the project-trust and extension selectors, the extension text input and first-time… | PiG's own defect | All platforms | Unreleased |
 | [BF-6d3cfc8](#bf-6d3cfc8) | A user_bash `operations` object from an extension is no longer released while a command is running through it | PiG's own defect | All platforms | 0.5.2 |
 | [BF-6d9b403](#bf-6d9b403) | The /config selector keeps the first-seen order of groups that tie on origin, scope and source (auto… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6debb12](#bf-6debb12) | fix(train): gate repairs after merging train 3 and the ordering stack | PiG's own defect | All platforms | Unreleased |
@@ -13251,6 +13252,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `34f7594aa5` (2026-10-11), `6d0ec024f2` (2026-10-12)
 - **Tests:** `durable/core/driver/remote_error_names_test.go::TestRemoteErrorMapsToATypedErrorOnlyByItsClassName`, `durable/errors_session_failed_test.go::TestStorageRequestErrorAndSessionFailedMatchErrorsTS`, `durable/harness/harness_structured_test.go::TestWaiting`, `durable/harness/scheduler_retention_test.go::TestSchedulerRetention`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestAwaitedExtensionPhaseWithoutShutdownReturnsItsResult`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestNewSessionEndedByShutdownIsNotAFatalRuntimeError`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestShutdownDuringAwaitedExtensionPhaseDoesNotWaitForAHandlerThatIgnoresCancellation`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestShutdownDuringAwaitedExtensionPhaseEndsThePhase` and 3 more in docs/bug-ledger.json
 - **Release note:** Durable (Pi eb2fce43): a wait that closes a cycle through waits and held owners now fails the task's commit with `Task <id> cannot wait on <member>: <cycle> is a wait cycle`, which names the cycle. Before, every task on such a cycle waited forever. The only cycles caught before were a task waiting on itself or on a task in its owner chain. A background task may now wait on the owner of its conversation, because that wait is no cycle, and a task may wait on an ended owner.
+
+### BF-6d3043e
+
+**The startup prompts (the project-trust and extension selectors, the extension text input and first-time…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The startup prompts (the project-trust and extension selectors, the extension text input and first-time setup) now load the `keybindings.json` of the agent directory, as Pi's startup UI does.
+- **Root cause:** Pi's createStartupTui calls setKeybindings(KeybindingsManager.create()) for each startup prompt (cli/startup-ui.ts:91). configureStartupTheme only set the theme, so the selector, input and first-time-setup prompts took whatever keybindings the process held: a tui.select.confirm remapped earlier left a prompt Enter could not confirm, and runStartupComponentWith waited for a key that never came. The user's keybindings.json was ignored by those prompts too.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6d3043e50b` (2026-11-09)
+- **Tests:** `internal/codingagent/startup_ui_theme_test.go::TestStartupPromptAppliesColorsThatArriveAfterTheTimeout`, `internal/codingagent/startup_ui_theme_test.go::TestStartupPromptAppliesTerminalColorsAndKeepsRepliesOutOfInput`, `internal/codingagent/startup_ui_theme_test.go::TestStartupPromptWithFixedThemeQueriesAndKeepsTheTheme`, `internal/codingagent/theme_selection_presence_test.go::TestStartupPromptExplicitEmptyThemeFallsBackToSystem`, `internal/codingagent/theme_selection_presence_test.go::TestStartupPromptMalformedThemeUsesSystemTheme`
+- **Release note:** The startup prompts (the project-trust and extension selectors, the extension text input and first-time setup) now load the `keybindings.json` of the agent directory, as Pi's startup UI does. They took whatever keybindings the process held before, so a remapped `tui.select.confirm` or `tui.select.cancel` was ignored by them.
 
 ### BF-6d3cfc8
 
