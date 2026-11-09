@@ -17,8 +17,9 @@ import (
 // Ports the "base code" tests of packages/chord/test/node/app/app.test.ts that start a server with no `base` given (Pi's `runStart`).
 // Pi compares the static import graph of its start script; the server's own code in Go is its executable (D603). Test 1 ("compares
 // the server's own code ... with no `base` given", marked and cleared at the revert) and test 3 ("starts when the scan of its entry
-// fails ...: reported, not compared") are ported with a helper program the test builds; test 2 (a lazy optional import that is
-// missing) has no Go form for the executable; its intention is tested on the plugins' import graph (the last test of this file).
+// fails ...: reported, not compared") are ported with a helper program the test builds. Test 2 ("starts with an entry whose inactive
+// optional import is missing: the import is left out, the rest compared") has the Go form of a path of the server's own code that is
+// not there: a `Base` path the app was told of and the build did not leave (an optional API module), beside the executable.
 
 // serverProgram builds a program printing label into bin; Go builds are reproducible, so one label is one set of bytes.
 type serverProgram struct {
@@ -250,4 +251,34 @@ func TestAppStartsWhenAnOptionalPluginsFacetImportsAFileThatIsNotThereItsBuildFa
 		return
 	}
 	t.Fatalf("no built server facet of @test/optional in %d scripts", len(scripts))
+}
+
+// Pi's `starts with an entry whose inactive optional import is missing: the import is left out, the rest compared` (it imports
+// helper.ts, and two optional files that are not installed behind a condition that is off; edits helper.ts and expects "started v1 0",
+// then "marked"): the server's own code is its executable plus the files of its Base option; one of them that is not there is left
+// out, nothing is reported (errors 0), and the rest (the executable) is compared.
+func TestAppStartsWithAnOptionalBasePathMissingTheMissingOneLeftOutTheRestCompared(t *testing.T) {
+	program := newServerProgram(t)
+	v1 := program.build("v1")
+	began := time.Now()
+	missing := filepath.Join(t.TempDir(), "optional-feature-not-installed.mjs")
+	s := startTestApp(t, nil, func(o *AppOptions) {
+		o.executable = func() (string, error) { return program.bin, nil }
+		o.processStart = func() time.Time { return began }
+		o.Base = []string{missing}
+	})
+	<-s.app.BaseWatched()
+	if reported := s.errors.kinds(); len(reported) != 0 {
+		t.Fatalf("reported %v at the start, want none (started with 0 errors)", reported)
+	}
+	if s.app.Plugins.Component.Marks().Base {
+		t.Fatal("base is marked at start by a path that is not there")
+	}
+	if v2 := program.build("v2"); bytes.Equal(v1, v2) {
+		t.Fatal("v2 has v1's bytes")
+	}
+	untilMarks(t, s.app, "base marked by an edit of the executable beside the missing path", func(m plugins.PluginsState) bool { return m.Base })
+	if reported := s.errors.kinds(); len(reported) != 0 {
+		t.Fatalf("reported %v, want none", reported)
+	}
 }

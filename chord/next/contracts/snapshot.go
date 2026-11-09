@@ -1,6 +1,7 @@
 package contracts
 
 import (
+	"maps"
 	"math"
 	"reflect"
 	"slices"
@@ -14,8 +15,10 @@ import (
 // Ports packages/chord/src/next/contracts/snapshot.ts (schema snapshots: one schema-aware walk checks an app schema
 // against Chord's vocabulary and produces a Chord-owned copy and its normal form, the fingerprint input).
 //
-// Designed out: the refusal of symbol keys, accessors and non-enumerable keys (a Go schema is JSON data: it has none of
-// them, and its `Optional` flag is no key), and withBytesCheck (deleted upstream: a bytes leaf is plain data).
+// Go form of the refusal of symbol keys and accessors: a Go value has neither, so the values a schema cannot carry that
+// Go does have are refused the same way, naming the path (uncarriable): a map keyed by anything but strings, a func (a
+// value computed on read), a chan and an unsafe pointer. Designed out: non-enumerable keys (a Go schema is JSON data;
+// its `Optional` flag is no key) and withBytesCheck (deleted upstream: a bytes leaf is plain data).
 
 // Snapshot is a Chord-owned copy of an app schema, its normal form, and whether it has a `bytes()` leaf (values
 // crossing a link then carry raw byte segments); immutable by convention. Contract data holds snapshots by pointer.
@@ -140,6 +143,9 @@ func sortedEntries(entries []Entry[any]) []Entry[any] {
 }
 
 func walk(source any, path string, objects objectsPolicy, ancestors map[uintptr]struct{}) (copied, error) {
+	if err := uncarriable(source, path); err != nil {
+		return copied{}, err
+	}
 	if flag, ok := source.(bool); ok {
 		return copied{schema: flag, normal: flag}, nil
 	}
@@ -194,6 +200,9 @@ func lookup(entries []Entry[any], name string) (any, bool) {
 }
 
 func walkKeyword(group keywordGroup, value any, path string, objects objectsPolicy, ancestors map[uintptr]struct{}) (copied, error) {
+	if err := uncarriable(value, path); err != nil {
+		return copied{}, err
+	}
 	switch group {
 	case groupSchema:
 		return walk(value, path, objects, ancestors)
@@ -290,6 +299,9 @@ func walkList(value any, path string, objects objectsPolicy, ancestors map[uintp
 
 // data is a JSON value as a copy with sorted keys; the same copy serves as snapshot and normal form.
 func data(value any, path string) (copied, error) {
+	if err := uncarriableDeep(value, path); err != nil {
+		return copied{}, err
+	}
 	if !chordjson.IsValue(value) {
 		return copied{}, fail("%s: expected JSON data (finite numbers, plain objects and arrays)", path)
 	}
@@ -298,6 +310,53 @@ func data(value any, path string) (copied, error) {
 		return copied{}, fail("%s: expected JSON data (finite numbers, plain objects and arrays)", path)
 	}
 	return copied{schema: datum, normal: datum}, nil
+}
+
+// uncarriable is the refusal of a value a snapshot cannot copy as data and Pi refuses as a symbol key or an accessor: a
+// map whose keys are no strings, a func, a chan, an unsafe pointer. Nil when value is none of them.
+func uncarriable(value any, path string) error {
+	rv := reflect.ValueOf(value)
+	switch rv.Kind() {
+	case reflect.Func:
+		return fail("%s: functions are not supported", path)
+	case reflect.Chan:
+		return fail("%s: channels are not supported", path)
+	case reflect.UnsafePointer:
+		return fail("%s: unsafe pointers are not supported", path)
+	case reflect.Map:
+		if rv.Type().Key().Kind() != reflect.String {
+			return fail("%s: non-string keys are not supported", path)
+		}
+	}
+	return nil
+}
+
+// uncarriableDeep is uncarriable for value and everything inside it, the path naming where it sits.
+func uncarriableDeep(value any, path string) error {
+	if err := uncarriable(value, path); err != nil {
+		return err
+	}
+	switch typed := value.(type) {
+	case []any:
+		for i, item := range typed {
+			if err := uncarriableDeep(item, path+"["+itoa(i)+"]"); err != nil {
+				return err
+			}
+		}
+	case map[string]any:
+		for _, key := range sortStrings(slices.Collect(maps.Keys(typed))) {
+			if err := uncarriableDeep(typed[key], path+"."+key); err != nil {
+				return err
+			}
+		}
+	case *delta.JsonObject:
+		for key, item := range typed.All() {
+			if err := uncarriableDeep(item, path+"."+key); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // sortedCopy is a detached copy of strict JSON with every object's keys sorted (UTF-16 order).

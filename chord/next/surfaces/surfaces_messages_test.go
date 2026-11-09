@@ -330,7 +330,7 @@ func TestAMessageWithNoArgumentsHasEmptyParamsAndRenders(t *testing.T) {
 }
 
 // Intention of language.test.ts "the render scope › is current only while a render runs, and a nested render restores the
-// outer" (Pi's inLanguage/currentLanguage, which Go has no form of: D450): a render in one language that renders another
+// outer" (Pi's inLanguage/currentLanguage, Go's InLanguage/CurrentLanguage: TestTheRenderScopeIsCurrentOnly... runs Pi's inputs): a render in one language that renders another
 // message in a second language leaves the first render in its own language afterwards, whether the nested render
 // returns, fails or panics, and nothing of either outlives them. Go's scope is the explicit `lang` argument, so the guard
 // is that nesting `other.In(fr)` inside a message function never changes what the outer function's own `lang` formats.

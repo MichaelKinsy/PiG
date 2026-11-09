@@ -14,8 +14,7 @@ import (
 // Ports packages/chord/test/contracts/snapshot.test.ts.
 //
 // Designed out (no Go input): the refusal of a non-enumerable key ("non-enumerable key (a TypeBox refinement)": Go has no
-// non-enumerable property, a Schema holds its keys as data and its `Optional` flag is no key); symbol keys and
-// accessor properties; a `maximum: undefined` datum (Go has no undefined; the NaN case covers a non-JSON datum).
+// non-enumerable property, a Schema holds its keys as data and its `Optional` flag is no key); a `maximum: undefined` datum (Go has no undefined; the NaN case covers a non-JSON datum).
 
 func TestSnapshotVocabulary(t *testing.T) {
 	t.Run("accepts primitives, arrays, tuples, objects, records, unions, intersections, $defs/$ref, constraints", func(t *testing.T) {
