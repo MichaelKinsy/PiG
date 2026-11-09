@@ -108,6 +108,8 @@ func parseWork(t *testing.T, root string) map[string]bool {
 }
 
 // TestLocalModuleRequirementsHaveChecksums checks the committed dependency records, not hashes of the developing SDK. Release preparation hashes are tested by set-version and modulehash; published bytes must never be rehashed from a newer working tree.
+//
+// A module that has a go.sum and requires another PiG module must record that module's checksums, because a build outside the workspace (GOWORK=off) downloads the requirement and Go refuses a download that has no go.sum entry. A requirement that a `replace` directive points at a local directory is not downloaded, and `go mod tidy` removes its sums, so it needs none.
 func TestLocalModuleRequirementsHaveChecksums(t *testing.T) {
 	root := repoRoot(t)
 	paths, err := modulehash.TrackedFiles(root)
@@ -132,21 +134,75 @@ func TestLocalModuleRequirementsHaveChecksums(t *testing.T) {
 		if sumErr != nil && !os.IsNotExist(sumErr) {
 			t.Fatal(sumErr)
 		}
-		for _, req := range file.Require {
-			dir, local := modules[req.Mod.Path]
-			if !local {
-				continue
-			}
-			if dir == "." || sumErr != nil {
-				continue
-			}
-			for _, suffix := range []string{"", "/go.mod"} {
-				prefix := req.Mod.Path + " " + req.Mod.Version + suffix + " h1:"
-				if !strings.Contains("\n"+string(sum), "\n"+prefix) {
-					t.Errorf("%s missing checksum for %s%s", sumPath, req.Mod, suffix)
-				}
+		if sumErr != nil {
+			continue
+		}
+		for _, missing := range missingChecksums(file, sum, modules) {
+			t.Errorf("%s missing checksum for %s", sumPath, missing)
+		}
+	}
+}
+
+// missingChecksums returns the go.sum entries (a module version, and the same with "/go.mod") that file requires of a local PiG module and sum lacks. The root module is skipped, and so is a requirement that file replaces with a local directory.
+func missingChecksums(file *modfile.File, sum []byte, local map[string]string) []string {
+	var missing []string
+	for _, req := range file.Require {
+		dir, ok := local[req.Mod.Path]
+		if !ok || dir == "." || replacedByDirectory(file, req.Mod) {
+			continue
+		}
+		for _, suffix := range []string{"", "/go.mod"} {
+			prefix := req.Mod.Path + " " + req.Mod.Version + suffix + " h1:"
+			if !strings.Contains("\n"+string(sum), "\n"+prefix) {
+				missing = append(missing, req.Mod.String()+suffix)
 			}
 		}
+	}
+	return missing
+}
+
+// replacedByDirectory reports whether file has a replace directive that sends mod to a local directory, for every version or for mod's version.
+func replacedByDirectory(file *modfile.File, mod module.Version) bool {
+	for _, r := range file.Replace {
+		if r.Old.Path == mod.Path && (r.Old.Version == "" || r.Old.Version == mod.Version) && modfile.IsDirectoryPath(r.New.Path) {
+			return true
+		}
+	}
+	return false
+}
+
+// The sum check keeps its force: a module without a replace needs the sums, and only a replace to a local directory excuses them.
+func TestMissingChecksumsNeedsSumsUnlessReplacedByDirectory(t *testing.T) {
+	const sdk = rootModule + "/extensions/sdk"
+	local := map[string]string{rootModule: ".", sdk: "extensions/sdk"}
+	parse := func(goMod string) *modfile.File {
+		file, err := modfile.Parse("go.mod", []byte(goMod), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return file
+	}
+	const header = "module example.com/m\n\ngo 1.26.0\n\nrequire " + sdk + " v0.7.0\n"
+	const sums = sdk + " v0.7.0 h1:a=\n" + sdk + " v0.7.0/go.mod h1:b=\n"
+	for _, tc := range []struct {
+		name, goMod, sum string
+		want             int
+	}{
+		{"no replace, sums present", header, sums, 0},
+		{"no replace, no sums", header, "", 2},
+		{"no replace, go.mod sum only", header, sdk + " v0.7.0/go.mod h1:b=\n", 1},
+		{"no replace, other version summed", header, sdk + " v0.6.0 h1:a=\n" + sdk + " v0.6.0/go.mod h1:b=\n", 2},
+		{"directory replace, no sums", header + "replace " + sdk + " => ../sdk\n", "", 0},
+		{"directory replace for the version, no sums", header + "replace " + sdk + " v0.7.0 => ../sdk\n", "", 0},
+		{"directory replace for another version, no sums", header + "replace " + sdk + " v0.6.0 => ../sdk\n", "", 2},
+		{"replace by a module, no sums", header + "replace " + sdk + " => example.com/fork v1.0.0\n", "", 2},
+		{"the root module needs none", "module example.com/m\n\ngo 1.26.0\n\nrequire " + rootModule + " v0.7.0\n", "", 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := missingChecksums(parse(tc.goMod), []byte(tc.sum), local); len(got) != tc.want {
+				t.Fatalf("missing checksums = %v, want %d", got, tc.want)
+			}
+		})
 	}
 }
 
