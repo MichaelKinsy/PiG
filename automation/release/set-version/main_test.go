@@ -52,7 +52,7 @@ func fixture(t *testing.T) string {
 	}
 	for path, text := range map[string]string{
 		"internal/coding/pigversion/pigversion.go": "package pigversion\n\nconst PigVersion = \"0.2.1\"\nconst UpstreamVersion = \"0.87.1\"\n",
-		"piglets/standard/pig-standard.yaml":       "name: standard\nrelease:\n  version: 0.2.1-dev\n",
+		"piglets/standard/pig-standard.yaml":       "name: standard\nrelease:\n  version: 0.2.1\n",
 		"CHANGELOG.md":                             "# Changelog\n\n## [Unreleased]\n\n### Fixed\n\n- Pending fix.\n\n## [0.2.1] - 2026-09-26\n\n- Candidate fix.\n\n## [0.2.0] - 2026-09-25\n\n- Published fix.\n",
 		"go.mod":                                   "module " + fixtureModule + "\n\ngo 1.26.0\n\nrequire (\n " + fixtureModule + "/sdk v0.2.1\n " + fixtureModule + "/app v0.2.1\n example.com/external v0.2.1\n)\n",
 		"go.sum":                                   fixtureModule + "/sdk v0.2.1 h1:stale\n" + fixtureModule + "/sdk v0.2.1/go.mod h1:stale\nexample.com/external v0.2.1 h1:external\n",
@@ -192,7 +192,7 @@ func TestSetVersionBumpDryRunHashesAndIdempotence(t *testing.T) {
 	if !strings.Contains(changelog, "- Pending fix.\n\n## [0.3.0] - 2026-09-27\n\n## [0.2.1]") {
 		t.Fatalf("default bump moved Unreleased entries or removed prior release:\n%s", changelog)
 	}
-	if got := get(t, root, "piglets/standard/pig-standard.yaml"); !strings.Contains(got, "version: 0.3.0-dev") {
+	if got := get(t, root, "piglets/standard/pig-standard.yaml"); !strings.Contains(got, "version: 0.3.0\n") {
 		t.Fatal(got)
 	}
 	after := snapshot(t, root)
