@@ -28,6 +28,7 @@ var chordHelpers = []string{
 	"internal/goroutineid",
 	"internal/jsclock", // Date.now() and performance.now() with a replaceable source, read by the telemetry recorders
 	"internal/jsnumber",
+	"internal/jsonopts",  // the one encoding/json/v2 option set that reads JSON as JSON.parse does, read by the telemetry store (chord/telemetrysqlite); stdlib-only
 	"internal/jsonparse", // JSON.parse's SyntaxError text, read by the store's outbox (chord/next/store)
 	"internal/jsparity",
 	"internal/jsstring",
