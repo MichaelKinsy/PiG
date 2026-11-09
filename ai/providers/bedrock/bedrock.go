@@ -208,7 +208,9 @@ func (p *BedrockProvider) Stream(ctx context.Context, transcript ai.TranscriptCo
 		checkBedrockRequest(ctx, input)
 		return input, hasPreferredStrictTools, nil
 	}
-	input, hasPreferredStrictTools, err := buildInput(false)
+	// upstream: bedrock-converse-stream.ts:stream (let disablePreferredStrictTools = hasExceededStrictToolLimits(options.sessionId))
+	disablePreferredStrictTools := ai.HasExceededStrictToolLimits(opts.SessionID)
+	input, hasPreferredStrictTools, err := buildInput(disablePreferredStrictTools)
 	if err != nil {
 		return nil, err
 	}
@@ -269,7 +271,6 @@ func (p *BedrockProvider) streamResponse(ctx, requestContext context.Context, co
 		})
 		return tap, resp, err
 	}
-	disablePreferredStrictTools := false
 	var (
 		tap  *bedrockBodyTap
 		resp *bedrockruntime.ConverseStreamOutput
@@ -288,6 +289,7 @@ func (p *BedrockProvider) streamResponse(ctx, requestContext context.Context, co
 		}
 		tap.close()
 		disablePreferredStrictTools = true
+		ai.MarkStrictToolLimitsExceeded(opts.SessionID)
 		ai.AppendAssistantMessageDiagnostic(builder.Partial(), ai.AssistantMessageDiagnostic{
 			Type:      "bedrock_strict_tools_fallback",
 			Timestamp: time.Now().UnixMilli(), //portlint:allow clock Pi stamps the fallback diagnostic with Date.now() (bedrock-converse-stream.ts:321)

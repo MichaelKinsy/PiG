@@ -1218,7 +1218,7 @@ func (p *anthropicProvider) prepareStream(ctx context.Context, transcript Transc
 		lease.release()
 		return nil, AbortReason(ctx)
 	}
-	params, err := p.buildParams(model, transcript, client.isOAuthToken, modelHeaders, optionsHeaders, opts, requestEnv, false)
+	params, err := p.buildParams(model, transcript, client.isOAuthToken, modelHeaders, optionsHeaders, opts, requestEnv, hasExceededStrictToolLimits(opts.SessionID))
 	if err != nil {
 		lease.release()
 		return nil, fmt.Errorf("anthropic: build params: %w", err)
@@ -1288,6 +1288,7 @@ func (p *anthropicProvider) streamResponse(ctx, requestContext context.Context, 
 				Error:     &DiagnosticErrorInfo{Message: strictLimitMessage},
 				Details:   map[string]any{"reason": "strict_tool_limits_exceeded"},
 			})
+			markStrictToolLimitsExceeded(opts.SessionID)
 			retry, err = request.withoutStrict()
 		case resp.StatusCode == http.StatusBadRequest && isThinkingSignatureError(b):
 			request.params.request.Messages, err = request.params.convertMessages(stripThinkingSignatures(request.params.conversation), request.client.isOAuthToken)
