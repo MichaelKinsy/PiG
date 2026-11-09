@@ -481,10 +481,8 @@ type opToolInfo struct {
 
 func opToolInfoOf(info extension.ToolInfo) opToolInfo {
 	return opToolInfo{
-		ToolInfo: subprocess.ToolInfo{
-			Name: info.Name, Description: info.Description, Parameters: info.Parameters, PromptGuidelines: info.PromptGuidelines,
-			Exposure: info.Exposure, Namespace: info.Namespace, Annotations: info.Annotations, SourceInfo: info.SourceInfo,
-		},
+		Name: info.Name, Description: info.Description, Parameters: info.Parameters, PromptGuidelines: info.PromptGuidelines,
+		Exposure: info.Exposure, Namespace: info.Namespace, Annotations: info.Annotations, SourceInfo: info.SourceInfo,
 		Source: info.Source,
 	}
 }
