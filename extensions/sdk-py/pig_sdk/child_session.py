@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Callable
 
 from ._diagnostic import diagnose
+from .child_session_members import _SessionMembers
 
 if TYPE_CHECKING:
     from . import Extension, ToolDefinition
@@ -166,7 +167,7 @@ class _ChildSessions:
             session._enqueue(seq, args.get("event") if stream is None else session._apply_update(stream, args.get("event")))
 
 
-class AgentSession:
+class AgentSession(_SessionMembers):
     """A child agent session: Pi's AgentSession as an extension holds it. Create it with :meth:`Context.create_agent_session`."""
 
     def __init__(self, extension: "Extension", session_id: str) -> None:
@@ -183,14 +184,6 @@ class AgentSession:
         self._stopped = False
         self._running = False
         self._disposed = False
-        #: ``session.sessionId`` and ``session.sessionFile`` (``None`` for an in-memory session).
-        self.session_id = ""
-        self.session_file: str | None = None
-        #: What the session held when it was created. Read the current values with :meth:`state`.
-        self.model: dict[str, Any] | None = None
-        self.thinking_level = ""
-        self.active_tools: list[str] = []
-        self.system_prompt = ""
         #: ``CreateAgentSessionResult.modelFallbackMessage``, or ``None``.
         self.model_fallback_message: str | None = None
         #: The errors of ``CreateAgentSessionResult.extensionsResult.errors``, as ``"path: error"``.
@@ -399,12 +392,6 @@ def create_agent_session(extension: "Extension", call: Callable[[str, Any], dict
     except BaseException:
         extension._children.remove(session._id)
         raise
-    session.session_id = str(info.get("sessionId") or "")
-    session.session_file = info.get("sessionFile") or None
-    session.model = info.get("model")
-    session.thinking_level = str(info.get("thinkingLevel") or "")
-    session.active_tools = list(info.get("activeTools") or [])
-    session.system_prompt = str(info.get("systemPrompt") or "")
     session.model_fallback_message = info.get("modelFallbackMessage") or None
     session.extension_errors = list(info.get("extensionErrors") or [])
     return session
