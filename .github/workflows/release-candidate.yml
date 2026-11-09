@@ -455,17 +455,17 @@ jobs:
           name="pig-acp-${VERSION}-${GOOS}-${GOARCH}"
           (cd candidate && sha256sum -c SHA256SUMS)
           acp_version=$(python -c 'import json; print(json.load(open("automation/release/pig-acp.lock"))["version"])')
-          mkdir -p extracted
+          mkdir -p "extracted/$name"
           if [ "$FORMAT" = zip ]; then
             ARCHIVE_PATH="$(cygpath -w "candidate/$name.zip")"
-            DESTINATION_PATH="$(cygpath -w extracted)"
+            DESTINATION_PATH="$(cygpath -w "extracted/$name")"
             export ARCHIVE_PATH DESTINATION_PATH
             # shellcheck disable=SC2016 # PowerShell, not bash, expands $env: variables.
             powershell.exe -NoProfile -NonInteractive -Command \
               'Expand-Archive -LiteralPath $env:ARCHIVE_PATH -DestinationPath $env:DESTINATION_PATH -Force'
             suffix=.exe
           else
-            tar -xzf "candidate/$name.tar.gz" -C extracted
+            tar -xzf "candidate/$name.tar.gz" -C "extracted/$name"
             suffix=
           fi
           python automation/release/pig-acp-smoke.py --version "$acp_version" \

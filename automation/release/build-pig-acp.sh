@@ -7,7 +7,9 @@
 # VERSION (PiG's version, no v prefix), GOOS, GOARCH and FORMAT (tar|zip) come
 # from the environment, as in release-candidate.yml.
 #
-# The archive carries pig-acp and the pig executable side by side. The pig
+# The archive is flat: pig-acp, pig and the notices sit at its root, with no version in any path, so the
+# ACP registry's fixed `cmd` (./pig-acp) stays valid across releases. The archive carries pig-acp and the
+# pig executable side by side. The pig
 # executable is extracted from PIG_ARCHIVE, the release candidate's own
 # pig-<version>-<goos>-<goarch> archive, so the pig bytes are the pig bytes that
 # archive's tests and attestation cover; this script never rebuilds pig. pig-acp
@@ -69,10 +71,10 @@ cp "$work/src/port/oracle/pi-acp/LICENSE" "$stage/PIG-ACP/pi-acp-LICENSE"
 chmod 0755 "$stage/$pig_bin" "$stage/$acp_bin"
 
 if [ "$FORMAT" = zip ]; then
-  (cd "$work" && zip -qr "$out_abs/$name.zip" "$name")
+  (cd "$stage" && zip -qr "$out_abs/$name.zip" .)
   artifact="$out/$name.zip"
 else
-  tar -C "$work" -czf "$out_abs/$name.tar.gz" "$name"
+  (cd "$stage" && tar -czf "$out_abs/$name.tar.gz" *)
   artifact="$out/$name.tar.gz"
 fi
 printf 'artifact=%s\n' "$artifact"
