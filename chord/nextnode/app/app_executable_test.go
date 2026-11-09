@@ -256,13 +256,14 @@ func TestAppStartsWhenAnOptionalPluginsFacetImportsAFileThatIsNotThereItsBuildFa
 // Pi's `starts with an entry whose inactive optional import is missing: the import is left out, the rest compared` (it imports
 // helper.ts, and two optional files that are not installed behind a condition that is off; edits helper.ts and expects "started v1 0",
 // then "marked"): the server's own code is its executable plus the files of its Base option; one of them that is not there is left
-// out, nothing is reported (errors 0), and the rest (the executable) is compared.
+// out, nothing is reported (errors 0), and the rest (the executable) is compared. Mutant (portmap-mutants.json, watcher.ts row): recordOwn
+// recording an unreadable file as "unreadable" instead of leaving it out marks base when the file appears, and this test fails.
 func TestAppStartsWithAnOptionalBasePathMissingTheMissingOneLeftOutTheRestCompared(t *testing.T) {
 	program := newServerProgram(t)
 	v1 := program.build("v1")
 	began := time.Now()
 	missing := filepath.Join(t.TempDir(), "optional-feature-not-installed.mjs")
-	s := startTestApp(t, nil, func(o *AppOptions) {
+	s := startTestApp(t, map[string]map[string]string{"echo": {"server.ts": echoServer}}, func(o *AppOptions) {
 		o.executable = func() (string, error) { return program.bin, nil }
 		o.processStart = func() time.Time { return began }
 		o.Base = []string{missing}
@@ -273,6 +274,16 @@ func TestAppStartsWithAnOptionalBasePathMissingTheMissingOneLeftOutTheRestCompar
 	}
 	if s.app.Plugins.Component.Marks().Base {
 		t.Fatal("base is marked at start by a path that is not there")
+	}
+	// The path was left out of what is compared, not recorded as unreadable: when the file appears, nothing differs from a record. The
+	// barrier is a plugin edit: the watcher handles events in order, so once it shows the plugin dirty it has seen the new file too.
+	if err := os.WriteFile(missing, []byte("export {};\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	editEcho(t, s.root, "barrier")
+	untilMarks(t, s.app, "the barrier edit", func(m plugins.PluginsState) bool { return len(m.Dirty) == 1 })
+	if s.app.Plugins.Component.Marks().Base {
+		t.Fatal("base is marked by the appearance of a path that was left out")
 	}
 	if v2 := program.build("v2"); bytes.Equal(v1, v2) {
 		t.Fatal("v2 has v1's bytes")

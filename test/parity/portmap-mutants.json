@@ -1179,6 +1179,11 @@
    "file": "chord/nextnode/plugins/plugins_watcher.go",
    "old": "latest <= snapshot.Plugins[name]",
    "new": "latest < snapshot.Plugins[name]"
+  },
+  {
+   "file": "chord/nextnode/plugins/plugins_watcher.go",
+   "old": "\t\tif hash != \"\" {\n\t\t\trecord[files[i]] = hash",
+   "new": "\t\tif hash == \"\" {\n\t\t\thash = \"unreadable\"\n\t\t}\n\t\tif hash != \"\" {\n\t\t\trecord[files[i]] = hash"
   }
  ],
  "packages/chord/src/next-node/workers/control.ts": [
