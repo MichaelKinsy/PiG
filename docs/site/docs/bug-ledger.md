@@ -5210,7 +5210,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Source:** PiG's own defect
 - **Symptom:** The faux provider (`ai.NewFauxProvider`) no longer ends a streamed chunk inside a multibyte character.
 - **Root cause:** splitByTokenSize cut a response at byte offsets where faux.ts slices a JavaScript string, so a chunk of non-ASCII text could end inside a UTF-8 character. The partial arguments of a tool call that such a chunk extended were not valid text, which the stream's snapshots cannot share: each of those chunks copied and checked all the arguments again, and a tool call of 180 KB of mixed-width text allocated 3.2 GB (12.7 s, 74 s under -race).
-- **User impact:** Behavior differed from Pi
+- **User impact:** Extra allocation or slower run
 - **Platform:** All platforms
 - **Fixed in:** 0.7.0
 - **Fix commits:** `38e6506b0e` (2026-10-30), `6b64bc1bee` (2026-10-30), `b119c53026` (2026-10-30)
@@ -6486,7 +6486,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Source:** PiG's own defect
 - **Symptom:** A streamed answer's partial commits cost the new text, not the length of the message so far, as in Pi (`harness-view-run.test.ts` "commits a growing text and tool call at a cost that follows the new text").
 - **Root cause:** Not recorded.
-- **User impact:** Behavior differed from Pi
+- **User impact:** Extra allocation or slower run
 - **Platform:** All platforms
 - **Fixed in:** 0.7.0
 - **Fix commits:** `4916f14005` (2026-11-03)
@@ -8707,7 +8707,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Source:** PiG's own defect
 - **Symptom:** A streamed child-session text costs wire bytes linear in its length: `message_update` events travel as a keyframe followed by operations (`set` and `append`) and the SDK hands the listener the full event.
 - **Root cause:** Not recorded.
-- **User impact:** Behavior differed from Pi
+- **User impact:** Extra allocation or slower run
 - **Platform:** All platforms
 - **Fixed in:** 0.5.2
 - **Fix commits:** `648ff3e2b0` (2026-10-22, #288)
@@ -10326,7 +10326,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Source:** PiG's own defect
 - **Symptom:** Durable with telemetry off (no telemetry or the no-op span) no longer builds span attributes, events or metric attribute bags, and `ai.Models.Stream` without a parent span captures nothing for the telemetry observer, so both allocate as before the telemetry integration; Durable's reflective restore also caches each struct type's field list.
 - **Root cause:** With the no-op parent (or no telemetry) the phase and submit spans, entry and submission events, tool attributes, checkpoint and replay events, report events and metric attribute bags are not built; recording output is unchanged. The reflect field list of a struct type is cached for Durable's ordered restore. Adds BenchmarkDurableGeneration.
-- **User impact:** Wrong output or ordering
+- **User impact:** Extra allocation or slower run
 - **Platform:** All platforms
 - **Fixed in:** 0.5.2
 - **Fix commits:** `692bdf76eb` (2026-10-20)
@@ -14876,7 +14876,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Source:** PiG's own defect
 - **Symptom:** An image the model receives is now JPEG-encoded with a port of Photon's encoder (image 0.24.9: the IJG integer DCT, the standard Huffman tables, the libjpeg quality scaling) instead of Go's `image/jpeg`, so for an image that decodes to the pixels Photon decodes (PNG, GIF, BMP) the bytes and sizes are Pi's, and with them every decision that depends on a size: which quality of the ladder fits the byte limit, how far the 3/4 shrink goes, and which of the PNG and the JPEG candidate of a resize is smaller (Pi #11577).
 - **Root cause:** Not recorded.
-- **User impact:** Wrong output or ordering
+- **User impact:** Extra allocation or slower run
 - **Platform:** All platforms
 - **Fixed in:** 0.7.0
 - **Fix commits:** `95de1de195` (2026-10-29)
@@ -15056,7 +15056,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Source:** PiG's own defect
 - **Symptom:** Large nested-call fan-outs in the Durable core no longer re-send the whole document per call: the core sends the operations since the revision the host holds, and arrays that are only appended to are tracked as a tail.
 - **Root cause:** - session: Writer (admission, batched Storage calls, refusal, rejection after receipts, SessionFailed), Loop with host-supplied durations, decision regions with the keys each decision read (scheduler.ts #region, membershipKeys, #loadChain, pins), tails/taskdocs (CachedStorage shape: conversation tails 4096, ended tasks 256, submissions 256), the scheduler kick as one microtask after the publication, waitForTask registered in the job body, maintain jobs exempt from admission. - hopcost: tick model re-derived at (multi-batch Commit, ReceiveTail, record cache, JobTicks); ticks.json regenerated. - core and host ABI: joined commits (flags byte), macrotask effect, receive/ publish/touch ops…
-- **User impact:** Wrong output or ordering
+- **User impact:** Extra allocation or slower run
 - **Platform:** All platforms
 - **Fixed in:** 0.7.0
 - **Fix commits:** `9883d4b247` (2026-11-02)
@@ -15400,7 +15400,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Source:** PiG's own defect
 - **Symptom:** `--session <id>` and `--fork <id>` with an exact session ID now read only the session headers of the project's session directory, as Pi does, and list sessions only to match an ID prefix or to search other projects.
 - **Root cause:** resolveSessionArgument listed and fully decoded every session before matching an exact ID. It now tries the header-only FindByID first, as Pi's main.ts resolveSessionPath does, and lists sessions only for prefix matches and the cross-project search.
-- **User impact:** Behavior differed from Pi
+- **User impact:** Extra allocation or slower run
 - **Platform:** All platforms
 - **Fixed in:** 0.7.0
 - **Fix commits:** `9df8c5c8f5` (2026-10-30)
@@ -16563,7 +16563,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Source:** A fix Pi shipped that PiG ported
 - **Symptom:** Every commit re-walked every conversation read in the last `contextRetentionMs`.
 - **Root cause:** After a commit that changed a task, the scheduler re-checked every conversation with a kept context range by walking its subtree, scanned them again for the next expiry, and wake() scanned every live task. A commit now settles only the conversations above the tasks that became live or ended, kept ranges expire from an index ordered by idleSince (re-sorted when the clock goes back; zero retention drops every idle one), and wake() reads the sleeping tasks and scans live ones only while nothing runs. The Harness (durable/harness) and the core (durable/core/session) both change; the core's wake() already did.
-- **User impact:** Wrong output or ordering
+- **User impact:** Extra allocation or slower run
 - **Platform:** All platforms
 - **Fixed in:** 0.7.0
 - **Fix commits:** `ad6d659c09` (2026-10-30)
@@ -17751,7 +17751,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Source:** PiG's own defect
 - **Symptom:** Previously, calling `AppendCustomEntry` allocated a new identity instead of retaining the subprocess ID and timestamp because the public Session API lacked a way to pass them through, leaving duplicate entries in the Node session mirror.
 - **Root cause:** Previously, calling `AppendCustomEntry` allocated a new identity instead of retaining the subprocess ID and timestamp because the public Session API lacked a way to pass them through, leaving duplicate entries in the Node session mirror.
-- **User impact:** Wrong output or ordering
+- **User impact:** Extra allocation or slower run
 - **Platform:** All platforms
 - **Fixed in:** 0.7.0
 - **Fix commits:** `bf453203b6` (2026-10-23)
