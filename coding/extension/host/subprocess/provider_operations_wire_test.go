@@ -38,8 +38,10 @@ func newProviderOperationRig(t *testing.T, refreshModels sdk.ProviderRefreshMode
 	ext.RegisterProvider("dyn", sdk.ProviderConfig{"api": "dyn-api", "baseUrl": "https://dyn.test/v1", "apiKey": "k",
 		"models": []any{map[string]any{"id": "a", "name": "A", "reasoning": false, "input": []string{"text"}, "cost": map[string]any{"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0}, "contextWindow": 1000, "maxTokens": 100}},
 		"oauth": &sdk.OAuthProvider{
-			Name:         "Dynamic OAuth",
-			Login:        func(*sdk.OAuthLoginCallbacks) (sdk.OAuthCredentials, error) { return sdk.OAuthCredentials{Access: "login"}, nil },
+			Name: "Dynamic OAuth",
+			Login: func(*sdk.OAuthLoginCallbacks) (sdk.OAuthCredentials, error) {
+				return sdk.OAuthCredentials{Access: "login"}, nil
+			},
 			RefreshToken: func(creds sdk.OAuthCredentials) (sdk.OAuthCredentials, error) { return creds, nil },
 			GetAPIKey:    func(creds sdk.OAuthCredentials) string { return creds.Access },
 			ModifyModels: modify,
