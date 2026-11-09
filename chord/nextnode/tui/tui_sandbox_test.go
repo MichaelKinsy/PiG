@@ -171,3 +171,35 @@ func TestTheSandboxFlagsAndEnvironmentAreTheOperatingSystemLayerPi(t *testing.T)
 		t.Fatalf("environment = %q, want empty", got)
 	}
 }
+
+// Pi's sandbox `#read` takes `messages = reader.push(chunk)` whole: a malformed frame throws, the sandbox fails and not one message of
+// that chunk reaches `onMessage`, the valid frames before the bad one included.
+func TestASandboxChunkWithAMalformedFrameDeliversNoMessageAndEndsTheSandbox(t *testing.T) {
+	sleep, err := exec.LookPath("sleep")
+	if err != nil {
+		t.Skip("no sleep command")
+	}
+	cmd := exec.Command(sleep, "30")
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	var mu sync.Mutex
+	var messages []SandboxMessage
+	var reasons []string
+	sandbox := &Sandbox{cmd: cmd, directory: t.TempDir(), reader: NewFrameReader(),
+		onMessage: func(m SandboxMessage) { mu.Lock(); messages = append(messages, m); mu.Unlock() },
+		onEnd:     func(reason string) { mu.Lock(); reasons = append(reasons, reason); mu.Unlock() },
+	}
+	sandbox.ready = sync.NewCond(&sandbox.mu)
+	valid := sandboxFrame(t, map[string]any{"kind": "write"}, []byte("one"))
+	sandbox.chunk(append(append(append([]byte(nil), valid...), valid...), 0, 0, 0, 0))
+	_ = cmd.Wait()
+	mu.Lock()
+	defer mu.Unlock()
+	if len(messages) != 0 {
+		t.Fatalf("%d messages reached onMessage, want none of a chunk with a malformed frame", len(messages))
+	}
+	if len(reasons) != 1 || !strings.Contains(reasons[0], "malformed") {
+		t.Fatalf("end reasons = %q, want one, the malformed frame", reasons)
+	}
+}

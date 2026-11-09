@@ -21,8 +21,10 @@ import (
 //
 // Forced Go differences (D551): the callbacks that are promises in Pi (`fetchScript`, `serverBase`, `canRetry`,
 // `styles.prepare`) take the client's context and block; the loop's, a watch's and an update's events run on goroutines of
-// their own, one update at a time, in order. A watch's listener queues the update and returns: the reload it makes waits on
-// the host's own publications, which wait for the listener's return. `Host.Connect` fails with an error where Pi's throws; it
+// their own, one update at a time, in order. A watch's listener queues the update and waits for it, as Pi's `await this.#queue(...)`
+// does (the watch delivers the next set after the call returned); the reload the update makes waits on the host's own publications,
+// which would wait for the listener's return, so the listener says it has entered (chord.DeliveryEntered, D224) before it waits.
+// `Host.Connect` fails with an error where Pi's throws; it
 // is reported as `connect_failed` and the link closed (the loop tries again).
 
 // ClientErrorKind tags a ClientError.
@@ -296,6 +298,8 @@ type updates struct {
 
 type queued struct {
 	set *ScriptSet
+	// done is closed once the update was applied or skipped (a set that is not the newest, a stopped client).
+	done chan struct{}
 }
 
 func newUpdates(h host.Host, loaded *LoadedFacets, left map[string]bool, options ClientOptions, ctx context.Context, abort context.CancelFunc) *updates {
@@ -339,7 +343,10 @@ func (u *updates) follow() error {
 			if retry != nil {
 				retry()
 			}
-			u.enqueue(&set)
+			// Pi: `await this.#queue(set, ctx)`: the watch's call returns when the update ended.
+			applied := u.enqueue(&set)
+			chord.DeliveryEntered()
+			<-applied
 			return nil
 		})
 	})
@@ -376,18 +383,21 @@ func (u *updates) stop() {
 	}
 }
 
-// enqueue applies set after the updates before it, unless a newer set replaced it meanwhile.
-func (u *updates) enqueue(set *ScriptSet) {
+// enqueue applies set after the updates before it, unless a newer set replaced it meanwhile; the channel it returns is closed when
+// the update ended (Pi's `#queue` promise).
+func (u *updates) enqueue(set *ScriptSet) <-chan struct{} {
+	done := make(chan struct{})
 	u.mu.Lock()
-	u.queue = append(u.queue, queued{set})
+	u.queue = append(u.queue, queued{set, done})
 	if u.working {
 		u.mu.Unlock()
-		return
+		return done
 	}
 	u.working = true
 	u.mu.Unlock()
 	//portlint:allow golifetime work drains the queue and returns when none is left (the `working` flag admits one drainer); there is no longer-lived owner to join
 	go u.work()
+	return done
 }
 
 // work applies the queued updates one after another until none is left.
@@ -403,12 +413,10 @@ func (u *updates) work() {
 		u.queue = u.queue[1:]
 		current := u.latest == next.set
 		u.mu.Unlock()
-		if !current || u.ctx.Err() != nil {
-			continue
-		}
-		if !u.apply(*next.set) {
+		if current && u.ctx.Err() == nil && !u.apply(*next.set) {
 			u.retryLater(next.set)
 		}
+		close(next.done)
 	}
 }
 

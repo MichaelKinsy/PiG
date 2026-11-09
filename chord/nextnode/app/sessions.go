@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"regexp"
 	"strings"
 	"sync"
@@ -127,6 +128,23 @@ const (
 // instead of sleeping.
 var sessionWrites sync.WaitGroup
 
+// abortedWith is a context that ends as ctx does, except for the end of a finished request (chordhttp.ErrRequestFinished), which Pi's
+// request context never has: the write it covers outlives the request. release frees it.
+func abortedWith(ctx context.Context) (context.Context, func()) {
+	write, cancel := context.WithCancelCause(context.WithoutCancel(ctx))
+	ended := func() {
+		if cause := context.Cause(ctx); !errors.Is(cause, chordhttp.ErrRequestFinished) {
+			cancel(cause)
+		}
+	}
+	if ctx.Err() != nil {
+		ended()
+		return write, func() { cancel(nil) }
+	}
+	stop := context.AfterFunc(ctx, ended)
+	return write, func() { stop(); cancel(nil) }
+}
+
 // SessionLimits are the sessions' limits: how many ephemeral sessions live at once (1,000 by default; past it the oldest ends).
 type SessionLimits struct{ MaxEphemeral int }
 
@@ -166,10 +184,13 @@ func sessionsFacet(cookieSecret string, ephemeral *EphemeralSessions) host.Facet
 		return h.Serve(Sessions, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
 			document := self.State(sessionsDocument).(*documents.Singleton)
 			change := func(ctx context.Context, fn func(sessions *delta.Object)) {
-				// Not awaited by authentication: the request goes on; a write that fails is made again by a later request.
-				detached := context.WithoutCancel(ctx)
+				// Not awaited by authentication: the request goes on; a write that fails is made again by a later request. As Pi's
+				// `document.change(fn, context)` the write is tied to the request's context: a disconnect or the server's close ends
+				// it (and the touch is dropped, left to the next request). A finished request is no abort in Pi, so it ends nothing.
+				write, release := abortedWith(ctx)
 				sessionWrites.Go(func() {
-					_, _ = document.Change(detached, func(draft *delta.Object) (any, error) {
+					defer release()
+					_, _ = document.Change(write, func(draft *delta.Object) (any, error) {
 						fn(draft.Object("sessions"))
 						return nil, nil
 					})

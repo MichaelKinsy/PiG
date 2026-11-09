@@ -11933,6 +11933,26 @@
       ]
     },
     {
+      "id": "BF-4477a81",
+      "title": "A chord app's `Close` kept going after a step failed and joined the errors; it now stops at the first failing…",
+      "symptom": "A chord app's `Close` kept going after a step failed and joined the errors; it now stops at the first failing step and returns that error, as Pi's close chain does (the steps after it, the data directory's lock release included, do not run).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A chord app's `Close` kept going after a step failed and joined the errors; it now stops at the first failing step and returns that error, as Pi's close chain does (the steps after it, the data directory's lock release included, do not run).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4477a81c13",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-448b245",
       "title": "The working status (OSC 7501) no longer disappears in Rex and iTerm2 during runs in regular TUI mode",
       "symptom": "The working status (OSC 7501) no longer disappears in Rex and iTerm2 during runs in regular TUI mode.",
@@ -32993,6 +33013,26 @@
       ]
     },
     {
+      "id": "BF-9e72f22",
+      "title": "A terminal client's device pairing ended its wait between polls at a cancel; it now settles when the poll…",
+      "symptom": "A terminal client's device pairing ended its wait between polls at a cancel; it now settles when the poll interval ends (at most 2 s later) with the cancellation's cause and no further poll, as Pi's bare timeout does.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A terminal client's device pairing ended its wait between polls at a cancel; it now settles when the poll interval ends (at most 2 s later) with the cancellation's cause and no further poll, as Pi's bare timeout does.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "9e72f22abd",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-9eda512",
       "title": "The Go Durable SDK's scheduler no longer resolves the Harness settings for the context a run itself reads…",
       "symptom": "The Go Durable SDK's scheduler no longer resolves the Harness settings for the context a run itself reads: `contextRetentionMs` is read only when the conversation is idle, as Pi's `runtime.context` does, which removes four settings resolutions from every round of one generation with a tool call.",
@@ -45614,6 +45654,26 @@
       ]
     },
     {
+      "id": "BF-db8955f",
+      "title": "A terminal sandbox chunk holding valid frames before a malformed one delivered the valid messages before…",
+      "symptom": "A terminal sandbox chunk holding valid frames before a malformed one delivered the valid messages before failing; it now delivers none of that chunk's messages, as Pi does.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A terminal sandbox chunk holding valid frames before a malformed one delivered the valid messages before failing; it now delivers none of that chunk's messages, as Pi does.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "db8955f3f6",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-db9a315",
       "title": "Codemode peak memory is now measured and guarded through the normal tool path in a fresh process with 40…",
       "symptom": "Codemode peak memory is now measured and guarded through the normal tool path in a fresh process with 40 extension tools exposed.",
@@ -50192,6 +50252,28 @@
       ]
     },
     {
+      "id": "BF-ec409c7",
+      "title": "A chord client's watch callback returned at once and let a newer script set be delivered while an update ran…",
+      "symptom": "A chord client's watch callback returned at once and let a newer script set be delivered while an update ran, which left a stale retry armed and doubled the next retry pause; the callback now waits for its update, as Pi awaits it, so the newer set is delivered after the update ended.",
+      "rootCause": "The scripts object's watch callback awaits #queue(set, ctx), so the watch delivers the next set after the update ended: a set shown meanwhile is not the newest, its delivery cancels the retry the running update armed and resets the pause. The rewritten retry-race test arms its second retry from a retry's own update, the one update the watch does not start.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A chord client's watch callback returned at once and let a newer script set be delivered while an update ran, which left a stale retry armed and doubled the next retry pause; the callback now waits for its update, as Pi awaits it, so the newer set is delivered after the update ended.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ec409c76ea",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "chord/next/surfaces/surfaces_client_test.go::TestDropsTheRetryOfASetANewerOneReplacedWhileItsTimerWasBeingSet"
+      ]
+    },
+    {
       "id": "BF-ecc7b76",
       "title": "fix(tui): an async markdown completion no longer rebuilds the assistant block off the owner loop",
       "symptom": "fix(tui): an async markdown completion no longer rebuilds the assistant block off the owner loop",
@@ -50206,6 +50288,26 @@
         {
           "hash": "ecc7b7683c",
           "date": "2026-10-29"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-ecf6db9",
+      "title": "A chord session's `lastUsed` touch was written even when its request had been cancelled; it is now cancelled…",
+      "symptom": "A chord session's `lastUsed` touch was written even when its request had been cancelled; it is now cancelled with the request (a disconnect or the server's close), as Pi's write on the request context, and a request that finished normally still lands it.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A chord session's `lastUsed` touch was written even when its request had been cancelled; it is now cancelled with the request (a disconnect or the server's close), as Pi's write on the request context, and a request that finished normally still lands it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ecf6db94d8",
+          "date": "2026-11-08"
         }
       ],
       "tests": []
@@ -51078,6 +51180,26 @@
         {
           "hash": "f0eace4daf",
           "date": "2026-11-06"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-f105c62",
+      "title": "A terminal client's device pairing counted the poll interval from the start of the previous poll, so a slow…",
+      "symptom": "A terminal client's device pairing counted the poll interval from the start of the previous poll, so a slow poll was followed at once by the next; it now waits the whole interval after each poll was answered, as Pi does.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A terminal client's device pairing counted the poll interval from the start of the previous poll, so a slow poll was followed at once by the next; it now waits the whole interval after each poll was answered, as Pi does.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f105c622cd",
+          "date": "2026-11-08"
         }
       ],
       "tests": []

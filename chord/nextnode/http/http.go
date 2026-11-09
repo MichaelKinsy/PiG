@@ -133,6 +133,12 @@ func (s *registrySet) authenticatorsNow() []AuthenticatorEntry {
 	return authenticators
 }
 
+// ErrRequestFinished is the cause the component ends a request's context with once the request is over (its consumer finished and its
+// scope ended). Pi's request `AbortController` is aborted by a disconnect or by `close` only and is never aborted for a finished
+// request: work an authenticator or a handler left running on the context (a session's `lastUsed` write) goes on after the
+// request, so it stays on when the cause is this one.
+var ErrRequestFinished = errors.New("http: the request finished")
+
 // running is a request or an upgrade from its arrival to its end: what `close` waits for, then seals.
 type running struct {
 	cancel context.CancelCauseFunc
@@ -368,7 +374,7 @@ func (c *HttpComponent) Serve(request Incoming, connection Connection) Served {
 		c.mu.Lock()
 		delete(c.running, current)
 		c.mu.Unlock()
-		cancel(errors.New("http: the request finished"))
+		cancel(ErrRequestFinished)
 	}()
 	return Served{Answer: answer, Finished: finish}
 }
