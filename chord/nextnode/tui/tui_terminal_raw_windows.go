@@ -7,13 +7,15 @@ import "golang.org/x/sys/windows"
 // rawState is the console mode saved before raw mode.
 type rawState uint32
 
-// makeRaw clears echo, line input and processed input and output on the console input fd (the settings of x/term.MakeRaw on Windows).
+// makeRaw clears echo, line input and processed input on the console input fd and turns on virtual terminal input: the settings of
+// x/term v0.47.0 MakeRaw on Windows, which does not touch ENABLE_PROCESSED_OUTPUT.
 func makeRaw(fd int) (*rawState, error) {
 	var mode uint32
 	if err := windows.GetConsoleMode(windows.Handle(fd), &mode); err != nil {
 		return nil, err
 	}
-	raw := mode &^ (windows.ENABLE_ECHO_INPUT | windows.ENABLE_PROCESSED_INPUT | windows.ENABLE_LINE_INPUT | windows.ENABLE_PROCESSED_OUTPUT)
+	raw := mode &^ (windows.ENABLE_ECHO_INPUT | windows.ENABLE_PROCESSED_INPUT | windows.ENABLE_LINE_INPUT)
+	raw |= windows.ENABLE_VIRTUAL_TERMINAL_INPUT
 	if err := windows.SetConsoleMode(windows.Handle(fd), raw); err != nil {
 		return nil, err
 	}
