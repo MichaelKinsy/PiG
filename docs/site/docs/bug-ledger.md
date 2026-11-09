@@ -1478,7 +1478,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ed99f42](#bf-ed99f42) | The built-in `read` tool no longer resolves to `""` for an image in Code Mode scripts, so `image(await… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-edb73db](#bf-edb73db) | fix(codingagent): one owner-overflow forwarder at a time; the drain test waits for it, not for the flag's… | PiG's own defect | All platforms | Unreleased |
 | [BF-edd287c](#bf-edd287c) | Migrating a version 1 session file that holds a line parsing to a number, string, array or `true` no longer… | PiG's own defect | All platforms | 0.5.0 |
-| [BF-edd520d](#bf-edd520d) | `pig piglet build` on Windows no longer fails a healthy Binary with "basic artifact verification timed out… | PiG's own defect | Windows | Unreleased |
+| [BF-edd520d](#bf-edd520d) | `pig piglet build` times the artifact's `--version` check from the moment its process exists, not from the… | PiG's own defect | Windows | Unreleased |
 | [BF-ededef9](#bf-ededef9) | `pig update` now warns when an npm package update leaves the installed version unchanged: shortly after a… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-edf1862](#bf-edf1862) | Tool rows and streamed answers no longer highlight the same code again on every redraw | PiG's own defect | All platforms | 0.7.0 |
 | [BF-ee5fdb1](#bf-ee5fdb1) | `pig status` no longer reports a shared extension name as an unhealthy duplicate | PiG's own defect | All platforms | 0.7.0 |
@@ -21815,17 +21815,17 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 ### BF-edd520d
 
-**`pig piglet build` on Windows no longer fails a healthy Binary with "basic artifact verification timed out…**
+**`pig piglet build` times the artifact's `--version` check from the moment its process exists, not from the…**
 
 - **Source:** PiG's own defect
-- **Symptom:** `pig piglet build` on Windows no longer fails a healthy Binary with "basic artifact verification timed out after 1m0s": the 60 s budget of the `--version` run was spent while Windows scanned the freshly signed executable before starting it, and now counts only from the moment the process exists.
+- **Symptom:** `pig piglet build` times the artifact's `--version` check from the moment its process exists, not from the moment the operating system was asked to start it, so a slow first start of the freshly signed executable is no longer charged to the 60 s budget.
 - **Root cause:** smokeArtifact ran the artifact under a 60 s context created before the start, so a first start that blocked in the OS (Windows scans a freshly written, here freshly signed, executable before it runs it) spent the budget before the artifact ran, and a healthy binary failed with "basic artifact verification timed out after 1m0s" (Windows native-4 of run 42620406642, TestKeepModePigletBuildsASignedBinary: the step ran 65 s after the 30 s compile and link).
 - **User impact:** Crash, hang or runaway process
 - **Platform:** Windows
 - **Fixed in:** Unreleased
 - **Fix commits:** `edd520d314` (2026-11-09)
 - **Tests:** `coding/pigletbuild/keep_mode_test.go::TestKeepModePigletBuildsASignedBinary`
-- **Release note:** `pig piglet build` on Windows no longer fails a healthy Binary with "basic artifact verification timed out after 1m0s": the 60 s budget of the `--version` run was spent while Windows scanned the freshly signed executable before starting it, and now counts only from the moment the process exists. A hung artifact still fails after 60 s, naming how long the start took and what the process printed, and a canceled build reports its cancellation.
+- **Release note:** `pig piglet build` times the artifact's `--version` check from the moment its process exists, not from the moment the operating system was asked to start it, so a slow first start of the freshly signed executable is no longer charged to the 60 s budget. On Windows a healthy Binary failed with "basic artifact verification timed out after 1m0s"; the leading hypothesis is that Windows scans the new executable while starting it, which has not been measured. A hung artifact still fails after 60 s, and the error now shows how long the start took and what the process printed; a canceled build reports its cancellation. A start the operating system never returns from is not bounded.
 
 ### BF-ededef9
 

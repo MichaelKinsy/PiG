@@ -42556,15 +42556,15 @@
     },
     {
       "id": "BF-edd520d",
-      "title": "`pig piglet build` on Windows no longer fails a healthy Binary with \"basic artifact verification timed out…",
-      "symptom": "`pig piglet build` on Windows no longer fails a healthy Binary with \"basic artifact verification timed out after 1m0s\": the 60 s budget of the `--version` run was spent while Windows scanned the freshly signed executable before starting it, and now counts only from the moment the process exists.",
+      "title": "`pig piglet build` times the artifact's `--version` check from the moment its process exists, not from the…",
+      "symptom": "`pig piglet build` times the artifact's `--version` check from the moment its process exists, not from the moment the operating system was asked to start it, so a slow first start of the freshly signed executable is no longer charged to the 60 s budget.",
       "rootCause": "smokeArtifact ran the artifact under a 60 s context created before the start, so a first start that blocked in the OS (Windows scans a freshly written, here freshly signed, executable before it runs it) spent the budget before the artifact ran, and a healthy binary failed with \"basic artifact verification timed out after 1m0s\" (Windows native-4 of run 42620406642, TestKeepModePigletBuildsASignedBinary: the step ran 65 s after the 30 s compile and link).",
       "rootCauseSource": "commit",
       "userImpact": "Crash, hang or runaway process",
       "platform": "Windows",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "`pig piglet build` on Windows no longer fails a healthy Binary with \"basic artifact verification timed out after 1m0s\": the 60 s budget of the `--version` run was spent while Windows scanned the freshly signed executable before starting it, and now counts only from the moment the process exists. A hung artifact still fails after 60 s, naming how long the start took and what the process printed, and a canceled build reports its cancellation.",
+      "releaseNote": "`pig piglet build` times the artifact's `--version` check from the moment its process exists, not from the moment the operating system was asked to start it, so a slow first start of the freshly signed executable is no longer charged to the 60 s budget. On Windows a healthy Binary failed with \"basic artifact verification timed out after 1m0s\"; the leading hypothesis is that Windows scans the new executable while starting it, which has not been measured. A hung artifact still fails after 60 s, and the error now shows how long the start took and what the process printed; a canceled build reports its cancellation. A start the operating system never returns from is not bounded.",
       "origin": "release note",
       "commits": [
         {
