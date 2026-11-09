@@ -75,6 +75,8 @@ type index struct {
 	encodedPairs map[string]bool
 	// reverse maps a test-file function to the test-file functions that call it, built on first use.
 	reverse map[string][]string
+	// executing maps a non-test Go file to the tests that reference a function with a body in it, built on first use per file.
+	executing map[string]map[string]bool
 	// deps maps a package directory to the module package directories any of its variants imports, directly or transitively.
 	deps map[string]map[string]bool
 }

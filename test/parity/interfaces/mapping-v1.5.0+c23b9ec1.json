@@ -7725,7 +7725,7 @@
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
         "test:ai/thinking_level_upstream_test.go#TestOmittedReasoningResolvesLikeOff",
-        "test:ai/thinking_level_upstream_test.go#TestThinkingLevelExcludesOffAndModelThinkingLevelIncludesIt"
+        "test:ai/anthropic_options_upstream_test.go#TestAnthropicUpstreamForceAdaptiveThinking"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -9140,7 +9140,7 @@
       "evidence": [
         "test:agent/proxy_partial_arguments_upstream_test.go#TestStreamProxyShowsGrowingPartialArgumentsWithoutKeepingTheRawTextOnTheBlockInLinearTime",
         "test:ai/faux_provider_upstream_test.go#TestFauxProviderUpstream",
-        "test:ai/openai_responses_partial_json_cleanup_upstream_test.go#TestOpenAIResponsesRemovesPartialJSONFromPersistedToolCallBlocksAtOutputItemDone"
+        "test:ai/anthropic_thinking_boundary_test.go#TestThinkingSignatureMessageRoundTrip"
       ]
     },
     {
@@ -9558,7 +9558,7 @@
       "evidence": [
         "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
         "test:ai/diagnostics_upstream_test.go#TestCreateAndAppendAssistantMessageDiagnosticMatchUpstream",
-        "test:ai/providers/bedrock/bedrock_strict_tool_fallback_upstream_test.go#TestBedrockPreferredStrictToolFallbackUpstream"
+        "test:ai/content_json_to_test.go#TestContentMarshalJSONWritesWhatJSONStringifyWrites"
       ]
     },
     {
@@ -10473,7 +10473,7 @@
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
         "test:ai/thinking_level_upstream_test.go#TestOmittedReasoningResolvesLikeOff",
-        "test:ai/thinking_level_upstream_test.go#TestThinkingLevelExcludesOffAndModelThinkingLevelIncludesIt"
+        "test:ai/anthropic_options_upstream_test.go#TestAnthropicUpstreamForceAdaptiveThinking"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -11402,7 +11402,7 @@
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
         "test:ai/thinking_level_upstream_test.go#TestOmittedReasoningResolvesLikeOff",
-        "test:ai/thinking_level_upstream_test.go#TestThinkingLevelExcludesOffAndModelThinkingLevelIncludesIt"
+        "test:ai/anthropic_options_upstream_test.go#TestAnthropicUpstreamForceAdaptiveThinking"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -16568,7 +16568,7 @@
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
         "test:ai/thinking_level_upstream_test.go#TestOmittedReasoningResolvesLikeOff",
-        "test:ai/thinking_level_upstream_test.go#TestThinkingLevelExcludesOffAndModelThinkingLevelIncludesIt"
+        "test:ai/anthropic_options_upstream_test.go#TestAnthropicUpstreamForceAdaptiveThinking"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -17123,7 +17123,7 @@
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
         "test:ai/thinking_level_upstream_test.go#TestOmittedReasoningResolvesLikeOff",
-        "test:ai/thinking_level_upstream_test.go#TestThinkingLevelExcludesOffAndModelThinkingLevelIncludesIt"
+        "test:ai/anthropic_options_upstream_test.go#TestAnthropicUpstreamForceAdaptiveThinking"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -19397,7 +19397,7 @@
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
         "test:ai/thinking_level_upstream_test.go#TestOmittedReasoningResolvesLikeOff",
-        "test:ai/thinking_level_upstream_test.go#TestThinkingLevelExcludesOffAndModelThinkingLevelIncludesIt"
+        "test:ai/anthropic_options_upstream_test.go#TestAnthropicUpstreamForceAdaptiveThinking"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -21845,7 +21845,7 @@
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
         "test:ai/thinking_level_upstream_test.go#TestOmittedReasoningResolvesLikeOff",
-        "test:ai/thinking_level_upstream_test.go#TestThinkingLevelExcludesOffAndModelThinkingLevelIncludesIt"
+        "test:ai/anthropic_options_upstream_test.go#TestAnthropicUpstreamForceAdaptiveThinking"
       ]
     },
     {
@@ -26865,7 +26865,7 @@
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
         "test:ai/thinking_level_upstream_test.go#TestOmittedReasoningResolvesLikeOff",
-        "test:ai/thinking_level_upstream_test.go#TestThinkingLevelExcludesOffAndModelThinkingLevelIncludesIt"
+        "test:ai/anthropic_options_upstream_test.go#TestAnthropicUpstreamForceAdaptiveThinking"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -28670,7 +28670,7 @@
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsProviderStreamEventObserversThroughAgentOptions",
         "test:ai/thinking_level_upstream_test.go#TestOmittedReasoningResolvesLikeOff",
-        "test:ai/thinking_level_upstream_test.go#TestThinkingLevelExcludesOffAndModelThinkingLevelIncludesIt"
+        "test:ai/anthropic_options_upstream_test.go#TestAnthropicUpstreamForceAdaptiveThinking"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -29857,7 +29857,7 @@
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
         "test:ai/cloudflare_stream_upstream_test.go#TestResolveCloudflareModelMatchesPiOnNonBMPBaseURLs",
-        "test:internal/codingagent/cache_warmer_oracle_test.go#TestCachePromptTTLAndReplayableMatchPi"
+        "test:ai/provider_env_test.go#TestGetProviderEnvValue"
       ]
     },
     {
@@ -106959,7 +106959,7 @@
       "evidence": [
         "test:chord/next/host/host_routines_test.go#TestOnTypesTheirHandlerByTheSourcesKindOpsAndRetiredForAJSONWatchableTheValueAloneForANativeOne",
         "test:chord/next/host/jobs_job_runs_test.go#TestPhaseSpansKeepARunsCtxAJobsUnderCtxTraceItsIdAndStateRecordedOrNot",
-        "test:chord/next/host/host_attempt_test.go#TestAttemptTheDrainAHandlerStuckPastItNoLongerCountsAsACallNorHoldsItsCtxGetReferences"
+        "test:chord/next/host/host_ctx_test.go#TestCallChainAMethodsCtxIsItsOwnChainNodeAboveItTheChainOfTheCallThatMadeItARootsHasNone"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -111194,7 +111194,7 @@
       "evidence": [
         "test:chord/next/store/evidence_storeB_adapter_test.go#TestOwnerTablePreparedTexts",
         "test:chord/next/store/evidence_storeB_adapter_test.go#TestOwnerTablePutStampsTheStepsSeqAndReadsDecode",
-        "test:chord/next/store/query_test.go#TestCursors"
+        "test:chord/next/store/sql_test.go#TestSqlStatements"
       ]
     },
     {
@@ -112528,7 +112528,7 @@
       "evidence": [
         "test:chord/next/host/host_activity_test.go#TestHostActivityCountsAHoldPlacedHereFromItsArrivalBoundOrNot",
         "test:chord/next/host/host_adapted_test.go#TestAdaptedMembersLifetimeDropsAnOlderVersionsAdaptedMembersWhenItsLastConsumerLeavesWhileTheObjectLivesOn",
-        "test:chord/next/host/host_adapted_test.go#TestAnOlderConsumerOfAProvidersAcceptedVersionIsRefusedABindingWhoseMemberTheProviderRefusesItWaitsContractMismatch"
+        "test:chord/next/host/host_ref_state_test.go#TestRefStateAWatchTakenAfterReleaseHasEnded"
       ]
     },
     {
@@ -129986,7 +129986,7 @@
       "evidence": [
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientRunsTheAppsTerminalCodeWithThePluginsConfirmsItsActionsAppliesAnEditInPlaceExits",
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
-        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesBuildsTheDirtyPluginsAndRollsThemOutToTheServer"
+        "test:chord/nextnode/plugins/plugins_endtoend_test.go#TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThenWorkerAndKeepsABrokenEditOldOnBoth"
       ]
     },
     {
@@ -137048,7 +137048,7 @@
       "evidence": [
         "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageBatchCapsAPagesSpansPerMinuteDroppingAndCountingPastTheBudget",
         "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageBatchDropsSpansPosingAsAnotherSendersOrTheServers",
-        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageBatchNeverKeepsAPrincipalThePageClaims"
+        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageSenderGivesARefusedBatchUp"
       ]
     },
     {
@@ -141790,7 +141790,7 @@
       "evidence": [
         "test:codemode/cloudflare/cloudflare_test.go#TestTheObjectExecutesTheRequestAndReportsThroughTheExchange",
         "test:codemode/cloudflare/golden_test.go#TestTheObjectsExecuteSendsThePiFrames",
-        "test:codemode/deterministic_internal_test.go#TestDeterministicMessagesHaveUpstreamsJSONShape"
+        "test:codemode/remote_protocol_test.go#TestVMMessagesRoundTripThroughTheWire"
       ]
     },
     {
@@ -148797,7 +148797,7 @@
       "evidence": [
         "test:codemode/cloudflare/cloudflare_test.go#TestTheObjectExecutesTheRequestAndReportsThroughTheExchange",
         "test:codemode/deterministic_internal_test.go#TestDeterministicMessagesHaveUpstreamsJSONShape",
-        "test:codemode/deterministic_test.go#TestAVMThatIsToldTheSameResultNumberTwiceCrashes"
+        "test:ai/content_json_to_test.go#TestContentMarshalJSONWritesWhatJSONStringifyWrites"
       ]
     },
     {
@@ -162092,7 +162092,7 @@
       "evidence": [
         "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeOptionsAndStore",
         "test:coding/mcp_session_tool_flags_upstream_test.go#TestAgentSessionMCPDoesNotDeclareUnnamedMCPToolsRestoredFromTheTranscript",
-        "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPActivatesToolSearchForDeferredMCPToolsAndKeepsLoadedToolsDeclaredOnTheBranch"
+        "test:internal/codingagent/session_append_message_test.go#TestAppendMessageTakesLLMAndBashExecutionMessages"
       ]
     },
     {
@@ -186223,7 +186223,7 @@
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
         "test:ai/anthropic_messages_payload_oracle_test.go#TestAnthropicMessagesPayloadMatchesPi",
-        "test:ai/anthropic_options_upstream_test.go#TestAnthropicSimpleCallerPreservesCustomModel"
+        "test:ai/anthropic_options_upstream_test.go#TestAnthropicUpstreamForceAdaptiveThinking"
       ]
     },
     {
@@ -197650,7 +197650,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/tool_dispatch_test.go#TestEmitToolResult_PowerShellVariantChainsContentAndDetails",
         "test:coding/extension/host/inproc/tool_dispatch_test.go#TestEmitToolResult_TypedDetailsChain",
-        "test:coding/extension/host/inproc/tool_dispatch_test.go#TestEmitToolResult_TypedVariantKeptWhenLossless"
+        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs"
       ]
     },
     {
@@ -199042,7 +199042,7 @@
       "evidence": [
         "test:test/extension-conformance/provider_oauth_refresh_test.go#TestProviderRefreshModelsAcrossSDKs",
         "test:coding/custom_provider_stream_upstream_test.go#TestRegisteredProviderCallbackPanicIsRequestError",
-        "test:coding/custom_provider_stream_upstream_test.go#TestRegisteredProviderCallbackServesOnlyItsAPI"
+        "test:ai/content_json_to_test.go#TestContentMarshalJSONWritesWhatJSONStringifyWrites"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -205794,7 +205794,7 @@
       "evidence": [
         "test:internal/codingagent/session_activity_upstream_test.go#TestSessionActivityOrderingDoesNotChangeContinueMtimeSelection",
         "test:internal/codingagent/session_activity_upstream_test.go#TestSessionActivityTimestampFallbacks",
-        "test:internal/codingagent/session_activity_upstream_test.go#TestSessionInfoUsesLastUserAssistantMessageTimestampInsteadOfFileMtime"
+        "test:coding/session_name_trim_test.go#TestSessionSetNameUsesJavaScriptTrim"
       ]
     },
     {
@@ -206232,7 +206232,7 @@
       "evidence": [
         "test:coding/branch_summary_ambient_auth_upstream_test.go#TestBranchSummaryAmbientAuthWithoutAPIKeyUpstream",
         "test:coding/cli/session_id_readonly_upstream_test.go#TestUpstreamSessionIDReadonly",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeOptionsAndStore"
+        "test:coding/sdk_session_manager_upstream_test.go#TestUpstreamSDKSessionManagerDefaultPersistedPath"
       ]
     },
     {
@@ -211676,7 +211676,7 @@
       "evidence": [
         "test:coding/cli/config_builtin_upstream_test.go#TestUpstreamConfigCyclesProjectBuiltinExtensionOverridesInLocalMode",
         "test:coding/cli/config_builtin_upstream_test.go#TestUpstreamConfigTogglesBuiltinExtensionsInGlobalMode",
-        "test:coding/cli/git_update_upstream_test.go#TestGitUpdatesUpstream"
+        "test:coding/compaction_model_selection_upstream_test.go#TestCompactionCapturesModelBeforeAuthUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -219074,7 +219074,7 @@
       "evidence": [
         "test:coding/cli/extension_api_get_commands_upstream_test.go#TestExtensionAPIGetCommandsReadsTheBoundSession",
         "test:coding/cli/llama_test.go#TestRPCCatalogListsBuiltInLlamaCommandInLoadOrder",
-        "test:coding/cli/main_options_test.go#TestPrintModeExtensionCommandsIncludeTheSessionsTemplatesAndSkills"
+        "test:internal/codingagent/prompt_skill_sources_test.go#TestPromptCommandSourceInfoPrefersRecordedProvenance"
       ]
     },
     {
@@ -219227,7 +219227,7 @@
       "evidence": [
         "test:coding/cli/extension_set_upstream_test.go#TestExtensionPackageWarningsIgnoreALocalFileSource",
         "test:coding/session_resources_discover_upstream_test.go#TestBindExtensionsExtendsTheResourceLoaderFromResourcesDiscover",
-        "test:internal/codingagent/loaded_resources_oracle_test.go#TestLoadedResourcesFormattingMatchesPi"
+        "test:internal/codingagent/interactive_extension_changelog_test.go#TestExtensionChangelogUpdatesUpstream"
       ]
     },
     {
@@ -223879,7 +223879,7 @@
       "evidence": [
         "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitResolverDrawsCallAndResultViews",
         "test:test/extension-conformance/component_kit_test.go#TestConformance_ToolRenderLastComponentIsTheViewTheRendererReturned",
-        "test:test/extension-conformance/keybinding_hints_test.go#TestKeybindingHintsAcrossSDKs"
+        "test:internal/codingagent/mcp_tool_renderers_10285_test.go#TestNewToolCardIsBuiltWithTheRegisteredDefinition"
       ]
     },
     {
@@ -236058,7 +236058,7 @@
       "evidence": [
         "test:durable/examples/spec_usage_upstream_test.go#TestSpecUsageHostSequenceRuns",
         "test:durable/examples/spec_usage_upstream_test.go#TestSpecUsageRevokedLiveDraftPanics",
-        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestACompactionCutOffByACrashRerunsFromItsCheckpoint"
+        "test:durable/examples/pocket_dropin_test.go#TestPocketToolHooksAreIntrospectableAndCallableFromATool"
       ]
     },
     {
