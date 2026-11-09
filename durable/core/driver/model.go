@@ -245,8 +245,8 @@ func (m *Models) modelContext(ctx context.Context, call *sqlhost.Call) error {
 	startedAt, started := m.now(), m.mono()
 	// The decoded messages are shared with the next request of the conversation and nothing modifies them, so the provider
 	// layer need not copy the whole history for each call.
-	// generation.ts calls streamSimple and iterates it in one synchronous prefix, before any response I/O can complete, so each event's
-	// partial, which the provider mutates in place, is sent as it stood when the event was pushed. A goroutine that attached after the
+	// generation.ts calls streamSimple and iterates it in one synchronous prefix, before any response I/O can complete, so the start
+	// event carries the pending, empty partial the provider built. A goroutine that attached after the
 	// stream was returned could run after the provider had published the whole response and send a start event holding the finished
 	// message. The creation and the iteration run in one stream continuation, as the Agent does (agent/agent_loop.go requestStream).
 	streamCtx := ai.WithStreamContinuations(ctx)

@@ -4402,7 +4402,7 @@ func (b *UIBridge) handleModelStream(ctx context.Context, owner *Conn, actions *
 		delete(b.modelStreams, key)
 		b.modelStreamMu.Unlock()
 	}()
-	// The extension's `streamSimple(...)` and `for await` run in one synchronous prefix in Pi, before any response I/O can complete, so each event's partial, which the provider mutates in place, is forwarded as it stood when the event was pushed. A goroutine that attached after the stream was created could run after the provider had published the whole response and forward a start event holding the finished message. The creation and the iteration run in one stream continuation, as the Agent does (agent/agent_loop.go requestStream).
+	// The extension's `streamSimple(...)` and `for await` run in one synchronous prefix in Pi, before any response I/O can complete, so the start event carries the pending, empty partial the provider built. A goroutine that attached after the stream was created could run after the provider had published the whole response and forward a start event holding the finished message. The creation and the iteration run in one stream continuation, as the Agent does (agent/agent_loop.go requestStream).
 	streamCtx := ai.WithStreamContinuations(providerCtx)
 	var stream *ai.AssistantMessageEventStream
 	if err := ai.RunStreamContinuation(streamCtx, func(observation *ai.StreamObservation) error {

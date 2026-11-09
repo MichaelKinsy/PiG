@@ -963,8 +963,8 @@ func streamResponse(ctx context.Context, runtime generationRuntime, model *ai.Mo
 }
 
 // observeResponse creates the response's stream and calls observe with every partial that shows content (generation.ts:740-746). Pi calls
-// streamSimple and `for await`s it in one synchronous prefix, before any response I/O can complete, so each event's partial, which the
-// provider mutates in place, is observed as it stood when the event was pushed. A goroutine that attached after the stream was returned
+// streamSimple and `for await`s it in one synchronous prefix, before any response I/O can complete, so the start event's partial is the
+// pending, empty one the provider built. A goroutine that attached after the stream was returned
 // could run after the provider had published the whole response and observe a start event holding the finished message. The creation and
 // the iteration run in one stream continuation, as the Agent does (agent/agent_loop.go requestStream).
 func observeResponse(signal context.Context, models durable.Models, model *ai.Model, request ai.Context, options ai.StreamOptions, observe func(ai.AssistantMessageEvent, *ai.AssistantMessage)) (*ai.AssistantMessageEventStream, error) {
