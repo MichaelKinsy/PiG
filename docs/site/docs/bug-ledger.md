@@ -431,6 +431,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-43d2597-2](#bf-43d2597-2) | `/compact <instructions>` applies the instructions to the summary of the start of a turn that compaction… | A fix Pi shipped that PiG ported | All platforms | 0.5.2 |
 | [BF-43d2597-3](#bf-43d2597-3) | A resumed session and `/tree` navigation activate the extension tools the branch never added or removed, such… | A fix Pi shipped that PiG ported | All platforms | 0.5.2 |
 | [BF-43d2597-4](#bf-43d2597-4) | Switching to a session whose system message holds a `toolsAdded` or `toolsRemoved` member the loadout restore… | A fix Pi shipped that PiG ported | All platforms | 0.5.2 |
+| [BF-4477a81](#bf-4477a81) | A chord app's `Close` kept going after a step failed and joined the errors; it now stops at the first failing… | PiG's own defect | All platforms | Unreleased |
 | [BF-448b245](#bf-448b245) | The working status (OSC 7501) no longer disappears in Rex and iTerm2 during runs in regular TUI mode | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-448d2a9](#bf-448d2a9) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-448ff71](#bf-448ff71) | A panic in an extension error listener is now named on stderr instead of vanishing, and extension SDK… | PiG's own defect | All platforms | 0.5.0 |
@@ -1611,6 +1612,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-db12780](#bf-db12780) | fix(agent): end the tool flow at custom user messages and hold system messages mid-flow | PiG's own defect | All platforms | Unreleased |
 | [BF-db5d71f](#bf-db5d71f) | fix(chord/nextnode/workers): a lock holder reads its waiters' connections and forgets one that closed | PiG's own defect | All platforms | Unreleased |
 | [BF-db7007d](#bf-db7007d) | A Radius gateway model's `samplingParamsByThinkingLevel` now reaches the `pi-messages` model and the composed… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-db8955f](#bf-db8955f) | A terminal sandbox chunk holding valid frames before a malformed one delivered the valid messages before… | PiG's own defect | All platforms | Unreleased |
 | [BF-db9a315](#bf-db9a315) | Codemode peak memory is now measured and guarded through the normal tool path in a fresh process with 40… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-dbce96c](#bf-dbce96c) | On macOS, reading or writing a named pipe (FIFO) through the read, edit, write and grep tools, the node and… | PiG's own defect | macOS | 0.7.0 |
 | [BF-dbe1ad3](#bf-dbe1ad3) | `pig setup` now flags a go on PATH older than Go 1.26, the extension SDK minimum, naming the version found… | PiG's own defect | All platforms | 0.5.0 |
@@ -1752,7 +1754,9 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ebfeed0](#bf-ebfeed0) | `getSystemPromptOptions().hiddenTools` lists hidden tools in the order the `prepareLoadout` hooks hid them… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ec1e0b6](#bf-ec1e0b6) | A Go extension's footer branch callback (`FooterData.OnBranchChange`) that made a host call, including the… | PiG's own defect | All platforms | Unreleased |
 | [BF-ec2080a](#bf-ec2080a) | A subprocess extension's `ctx.ui.custom` component now learns when another component shown over it takes… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-ec409c7](#bf-ec409c7) | A chord client's watch callback returned at once and let a newer script set be delivered while an update ran… | PiG's own defect | All platforms | Unreleased |
 | [BF-ecc7b76](#bf-ecc7b76) | fix(tui): an async markdown completion no longer rebuilds the assistant block off the owner loop | PiG's own defect | All platforms | Unreleased |
+| [BF-ecf6db9](#bf-ecf6db9) | A chord session's `lastUsed` touch was written even when its request had been cancelled; it is now cancelled… | PiG's own defect | All platforms | Unreleased |
 | [BF-ed01bf6](#bf-ed01bf6) | Resuming a very long session no longer reads and decodes every entry of the branch to restore the tool loadout | PiG's own defect | All platforms | 0.7.0 |
 | [BF-ed05099](#bf-ed05099) | An extension's `ui.setHiddenThinkingLabel` now changes the label shown for hidden thinking in the chat… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ed05099-2](#bf-ed05099-2) | Tab at the start of a line no longer forces file completion while the text before the cursor is a… | PiG's own defect | All platforms | 0.5.0 |
@@ -1785,6 +1789,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-f0a9d01](#bf-f0a9d01) | An interactive session ended by SIGINT now always exits 130 and leaves its `exit.log` line | PiG's own defect | All platforms | 0.7.0 |
 | [BF-f0eace4](#bf-f0eace4) | LaTeX math renders two surrogate halves that end up side by side in one argument (`\vec{\ud83d{}\ude00}`… | PiG's own defect | All platforms | Unreleased |
 | [BF-f0eace4-2](#bf-f0eace4-2) | LaTeX math reads an unbraced astral argument (`\vec😀`, `\frac😀x`, `\sqrt😀`, `\not😀`, `x^😀` in… | PiG's own defect | All platforms | Unreleased |
+| [BF-f105c62](#bf-f105c62) | A terminal client's device pairing counted the poll interval from the start of the previous poll, so a slow… | PiG's own defect | All platforms | Unreleased |
 | [BF-f12896b](#bf-f12896b) | Interactive startup writes the terminal color query before its first frame, as Pi does: starting the renderer… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f19efb1](#bf-f19efb1) | A `session_compact` handler's passive custom message reaches the overflow retry (D138, Pi #9051) | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-f1a59f9](#bf-f1a59f9) | An OpenAI Responses event's `output_index` matches an output item as a key of Pi's `Map` does: a string… | PiG's own defect | All platforms | 0.5.0 |
@@ -7609,6 +7614,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `43d259770e` (2026-10-21)
 - **Tests:** `agent/tool_replay_error_test.go::TestToolReplayErrorMatchesPi`, `coding/cli/rpc_replacement_order_test.go::TestRPCSwitchSessionFailsWithTheSystemReplayTypeError`, `coding/runtime_switch_wrong_typed_system_test.go::TestSwitchSessionRejectsAWrongTypedSystemReplayLikePi`, `coding/session_resume_default_tools_port_test.go::TestResumeRestoresTheRecordedLoadoutPort`, `internal/codingagent/compaction/context_edit_test.go::TestCompactAppliesCustomInstructionsToTheTurnPrefixSummaryOfASplitTurn`, `test/extension-conformance/resume_tools_test.go::TestResumeActivatesExtensionToolsTheBranchNeverMentionedAcrossSDKs`, `tui/autocomplete_upstream_test.go::TestUpstreamAutocompleteFD`, `tui/file_autocomplete_test.go::TestBuildFdPathQuery`
 - **Release note:** Switching to a session whose system message holds a `toolsAdded` or `toolsRemoved` member the loadout restore cannot read fails with the TypeError of Pi's tool-list replay; a system message with an unreadable `content` no longer fails the switch (Pi bd3c9b82).
+
+### BF-4477a81
+
+**A chord app's `Close` kept going after a step failed and joined the errors; it now stops at the first failing…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A chord app's `Close` kept going after a step failed and joined the errors; it now stops at the first failing step and returns that error, as Pi's close chain does (the steps after it, the data directory's lock release included, do not run).
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `4477a81c13` (2026-11-08)
+- **Tests:** None recorded.
+- **Release note:** A chord app's `Close` kept going after a step failed and joined the errors; it now stops at the first failing step and returns that error, as Pi's close chain does (the steps after it, the data directory's lock release included, do not run).
 
 ### BF-448b245
 
@@ -24003,6 +24022,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `agent/thinking_level_test.go::TestAgentLoop_RequestsReasoningOnlyForLevelsOtherThanOff`, `ai/constrained_sampling_upstream_test.go::TestConstrainedSamplingConversionUpstream`, `ai/openai_responses_foreign_toolcall_test.go::TestResponsesConvertMessages_ForeignCopilotToolCallIDHashedToFcShape`, `ai/openai_responses_foreign_toolcall_test.go::TestResponsesToolCallID_UnattributedItemIsHashed`, `ai/openai_responses_shared_oracle_test.go::TestConvertResponsesMessagesMatchesPi`, `ai/openai_responses_test.go::TestNormalizeResponsesToolCallIDProviderSets`, `ai/openai_responses_tool_result_output_test.go::TestResponsesConvertMessages_EmptyToolResultUsesPlaceholder`, `ai/radius_sampling_by_level_test.go::TestGetRadiusModelsFromConfigCarriesSamplingParamsByThinkingLevel` and 5 more in docs/bug-ledger.json
 - **Release note:** A Radius gateway model's `samplingParamsByThinkingLevel` now reaches the `pi-messages` model and the composed catalog entry (Pi's `getRadiusModelsFromConfig` spreads each gateway model); it was dropped before.
 
+### BF-db8955f
+
+**A terminal sandbox chunk holding valid frames before a malformed one delivered the valid messages before…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A terminal sandbox chunk holding valid frames before a malformed one delivered the valid messages before failing; it now delivers none of that chunk's messages, as Pi does.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `db8955f3f6` (2026-11-08)
+- **Tests:** None recorded.
+- **Release note:** A terminal sandbox chunk holding valid frames before a malformed one delivered the valid messages before failing; it now delivers none of that chunk's messages, as Pi does.
+
 ### BF-db9a315
 
 **Codemode peak memory is now measured and guarded through the normal tool path in a fresh process with 40…**
@@ -25951,6 +25984,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `coding/extension/host/subprocess/host_calls_test.go::TestReadLoopWidgetPushOrdersAgainstQueuedSlotCalls`, `coding/extension/host/subprocess/ui_bridge_test.go::TestFocusedCustomComponentsStack`, `coding/extension/host/subprocess/ui_bridge_test.go::TestInteractiveDialogOpensOverFocusedOverlay`, `coding/extension/host/subprocess/ui_prompt_test.go::TestUIBridgePromptScopeDialogOverCustomAndNoUI`, `coding/extension/host/subprocess/view_terminal_parity_test.go::TestViewsLeaveTheTerminalBytesUnchanged`, `coding/extension/host/subprocess/widget_key_namespace_test.go::TestTwoExtensionsSettingOneWidgetKeyShareIt`, `extensions/sdk-py/tests/test_system_prompt_render.py`, `extensions/sdk/system_prompt_render_test.go::TestBeforeAgentStartSystemPromptRenderErrorIsTheReadersError` and 15 more in docs/bug-ledger.json
 - **Release note:** A subprocess extension's `ctx.ui.custom` component now learns when another component shown over it takes focus and when focus comes back, as Pi's `setFocus` tells it: the overlay handle's `isFocused()` follows, the component's `focused` flag is cleared and set again (Node, Go `SetFocused`, Python `focused`) and the component renders again. This holds for Node, Go, Rust and Python extensions. Before, the component kept reporting focus until its next key arrived.
 
+### BF-ec409c7
+
+**A chord client's watch callback returned at once and let a newer script set be delivered while an update ran…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A chord client's watch callback returned at once and let a newer script set be delivered while an update ran, which left a stale retry armed and doubled the next retry pause; the callback now waits for its update, as Pi awaits it, so the newer set is delivered after the update ended.
+- **Root cause:** The scripts object's watch callback awaits #queue(set, ctx), so the watch delivers the next set after the update ended: a set shown meanwhile is not the newest, its delivery cancels the retry the running update armed and resets the pause. The rewritten retry-race test arms its second retry from a retry's own update, the one update the watch does not start.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `ec409c76ea` (2026-11-08)
+- **Tests:** `chord/next/surfaces/surfaces_client_test.go::TestDropsTheRetryOfASetANewerOneReplacedWhileItsTimerWasBeingSet`
+- **Release note:** A chord client's watch callback returned at once and let a newer script set be delivered while an update ran, which left a stale retry armed and doubled the next retry pause; the callback now waits for its update, as Pi awaits it, so the newer set is delivered after the update ended.
+
 ### BF-ecc7b76
 
 **fix(tui): an async markdown completion no longer rebuilds the assistant block off the owner loop**
@@ -25963,6 +26010,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `ecc7b7683c` (2026-10-29)
 - **Tests:** None recorded.
+
+### BF-ecf6db9
+
+**A chord session's `lastUsed` touch was written even when its request had been cancelled; it is now cancelled…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A chord session's `lastUsed` touch was written even when its request had been cancelled; it is now cancelled with the request (a disconnect or the server's close), as Pi's write on the request context, and a request that finished normally still lands it.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `ecf6db94d8` (2026-11-08)
+- **Tests:** None recorded.
+- **Release note:** A chord session's `lastUsed` touch was written even when its request had been cancelled; it is now cancelled with the request (a disconnect or the server's close), as Pi's write on the request context, and a request that finished normally still lands it.
 
 ### BF-ed01bf6
 
@@ -26406,6 +26467,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `f0eace4daf` (2026-11-06)
 - **Tests:** None recorded.
 - **Release note:** LaTeX math reads an unbraced astral argument (`\vec😀`, `\frac😀x`, `\sqrt😀`, `\not😀`, `x^😀` in display mode) as Pi does, one UTF-16 unit: the high half is the argument and the low half is the next character.
+
+### BF-f105c62
+
+**A terminal client's device pairing counted the poll interval from the start of the previous poll, so a slow…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A terminal client's device pairing counted the poll interval from the start of the previous poll, so a slow poll was followed at once by the next; it now waits the whole interval after each poll was answered, as Pi does.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f105c622cd` (2026-11-08)
+- **Tests:** None recorded.
+- **Release note:** A terminal client's device pairing counted the poll interval from the start of the previous poll, so a slow poll was followed at once by the next; it now waits the whole interval after each poll was answered, as Pi does.
 
 ### BF-f12896b
 
