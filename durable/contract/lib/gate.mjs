@@ -151,9 +151,25 @@ export async function vitestRun(impl, ctx, include, label = "sc", isSc = label =
 	if (timedOut) return files
 	if (!existsSync(outFile)) throw new Error(`vitest did not write a report: ${err.slice(0, 500)}`)
 	const report = JSON.parse(readFileSync(outFile, "utf8"))
-	for (const f of report.testResults) files.set(f.name.split("/test/").pop(), { status: f.status, message: f.message, tests: new Map(f.assertionResults.map(a => [a.fullName, a.status])), failures: new Map(f.assertionResults.filter(a => a.failureMessages?.length).map(a => [a.fullName, `after ${Math.round(a.duration ?? 0)} ms: ${a.failureMessages.join("\n")}`])) })
+	for (const f of report.testResults) files.set(f.name.split("/test/").pop(), { status: f.status, message: f.message, tests: new Map(f.assertionResults.map(a => [a.fullName, a.status])), durations: new Map(f.assertionResults.map(a => [a.fullName, a.duration ?? 0])), failures: new Map(f.assertionResults.filter(a => a.failureMessages?.length).map(a => [a.fullName, `after ${Math.round(a.duration ?? 0)} ms: ${a.failureMessages.join("\n")}`])) })
 	return files
 }
+/**
+ * The recorded cost bound of a U row (corpus `cost_test`, `cost_max_ratio`). A row the gate runs alone (`exclusive`) is not held to its
+ * budget by the load of its neighbours, so a candidate that became several times slower would still pass the upstream test's own limit
+ * until it crossed it. The bound is on the candidate's duration of the named test over the reference's, in the same gate run, one run after
+ * the other on the same host. Undefined when the row records none.
+ */
+export function costOf(row, r, c) {
+	if (!row.cost_test) return undefined
+	const name = [...r.tests.keys()].find(n => n.startsWith(row.cost_test))
+	const ref = name === undefined ? undefined : r.durations?.get(name), cand = name === undefined ? undefined : c.durations?.get(name)
+	if (!(ref > 0) || !(cand >= 0)) return { over: { problem: `the cost bound's test ${row.cost_test} has no duration in the reports (reference ${ref}, candidate ${cand})` } }
+	const ratio = cand / ref
+	const text = `${name}: ${Math.round(cand)} ms against the reference's ${Math.round(ref)} ms (${ratio.toFixed(2)}x of at most ${row.cost_max_ratio}x)`
+	return ratio > row.cost_max_ratio ? { text, over: { problem: `the candidate is slower than the recorded bound: ${text}`, ratio, bound: row.cost_max_ratio } } : { text }
+}
+
 /**
  * U rows: one file per row (a hung file must not take the other rows with it), the reference's run of the file started together
  * with the implementation's. Several of the reference's tests have a 5 s budget that host load alone can exceed (reopening a
@@ -213,9 +229,13 @@ export async function runVitestRow(row, impl, ctx) {
 	// The first failure's message and stack go into the row, so a failure that does not reproduce still leaves its cause.
 	const detail = bad.slice(0, 2).map(b => c.failures.get(b.slice(0, b.lastIndexOf(": ")))?.slice(0, 1500)).filter(Boolean)
 	if (bad.length) return failed({ problem: `${bad.length} test(s) the reference passes did not pass`, first: bad.slice(0, 5), ...(detail.length ? { detail } : {}) })
+	// The recorded cost bound (corpus cost_test, cost_max_ratio): an exclusive row's two runs take turns on an idle host, so the candidate's time
+	// for the test is compared with the reference's.
+	const cost = impl.control ? undefined : costOf(row, r, c)
+	if (cost?.over) return failed(cost.over)
 	const count = [...r.tests.values()].filter(s => s === "passed").length
 	const refFailed = [...r.tests].filter(([, st]) => st === "failed").map(([name]) => name)
-	const stated = measured ? `; ${measured}` : ""
+	const stated = (measured ? `; ${measured}` : "") + (cost ? `; ${cost.text}` : "")
 	const alongside = refFailed.length ? `; the reference failed ${refFailed.length} alongside: ${refFailed.slice(0, 5).join("; ")}` : ""
 	if (retried.length) return passed(`${count} tests${alongside}${stated}; retried once (real-time window shared with the reference): ${retried.join("; ")}`)
 	// A file whose every test the reference skips (a missing key) proves nothing about the candidate.
