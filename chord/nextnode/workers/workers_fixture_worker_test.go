@@ -143,6 +143,9 @@ type workerBehaviour struct {
 	// GoReload: no plugin runtime is loaded; the Go core facet is loaded on the host and the worker's Reload hook answers each
 	// reload (appending `reload <script keys>` to Log).
 	GoReload bool
+	// ProgramOnClose is a file the last closer writes after looking for the program the worker runs from (`present`, or the error):
+	// Pi's `lazyOnClose` (a closer's first import of a lazy chunk of the worker base at close).
+	ProgramOnClose string
 }
 
 func (b workerBehaviour) json() *delta.JsonObject {
@@ -192,6 +195,9 @@ func (b workerBehaviour) json() *delta.JsonObject {
 	if b.CloserPanics {
 		object.Set("closerPanics", true)
 	}
+	if b.ProgramOnClose != "" {
+		object.Set("programOnClose", b.ProgramOnClose)
+	}
 	if b.GoReload {
 		object.Set("goReload", true)
 	}
@@ -214,6 +220,7 @@ func behaviourOf(value delta.JsonValue) workerBehaviour {
 	}
 	b.CloserPanics, _ = object.Value("closerPanics").(bool)
 	b.GoReload, _ = object.Value("goReload").(bool)
+	b.ProgramOnClose, _ = object.Value("programOnClose").(string)
 	if ms, ok := object.Value("loadMs").(float64); ok {
 		b.LoadMs = int(ms)
 	}
@@ -380,6 +387,18 @@ func runWorkerFixture() {
 			return nil, err
 		}
 		worker = created
+		// Registered first, so it runs last: after the other closers, the program the worker runs from is still there (Pi's closer that
+		// imports a lazy chunk of the base at close, `lazyOnClose`: the base's files stay until every worker exited).
+		start.OnClose(func(context.Context) error {
+			if behaviour.ProgramOnClose == "" {
+				return nil
+			}
+			report := "present"
+			if _, err := os.Stat(os.Args[0]); err != nil {
+				report = err.Error()
+			}
+			return os.WriteFile(behaviour.ProgramOnClose, []byte(report), 0o600)
+		})
 		start.OnClose(func(context.Context) error {
 			if behaviour.Log != "" {
 				appendLog(behaviour.Log, "host\n")
