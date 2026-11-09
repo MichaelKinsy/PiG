@@ -59,7 +59,6 @@ func runPostedTasks(t *testing.T, m *InteractiveMode) {
 // editor's callbacks run the default editor's handlers on the owner loop.
 func TestRemoteEditorReceivesKeysAndRunsHostHandlers(t *testing.T) {
 	m, _ := newCustomEditorDispatchMode(t)
-	m.uiTaskCh = make(chan func(), 64)
 	m.editor.Focused = true
 	m.editor.SetText("carried")
 	shortcuts := 0

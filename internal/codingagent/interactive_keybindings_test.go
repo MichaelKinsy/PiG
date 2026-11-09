@@ -23,6 +23,7 @@ func newCustomEditorDispatchMode(t *testing.T) (*InteractiveMode, context.Contex
 		abortCtx:      abortCtx,
 		abortFn:       abort,
 		chatContainer: tui.NewContainer(),
+		uiTaskCh:      make(chan func(), 64),
 	}
 	return m, abortCtx
 }

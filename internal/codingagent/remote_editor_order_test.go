@@ -30,7 +30,6 @@ func TestTerminalInputPassReleasesNativeKeyBeforeModalHandler(t *testing.T) {
 // Pi custom-editor.ts:137-141 and interactive-mode.ts:4116-4123,4458-4461 complete clear before the next input. A host echo of the local clear would erase that next input.
 func TestRemoteEditorLocalClearDoesNotReplayOverNextKey(t *testing.T) {
 	m, _ := newCustomEditorDispatchMode(t)
-	m.uiTaskCh = make(chan func(), 64)
 	fake := &fakeRemoteEditor{}
 	m.setRemoteEditor(fake)
 	fake.calls = nil
@@ -75,7 +74,6 @@ func TestRemoteEditorLocalClearDoesNotReplayOverNextKey(t *testing.T) {
 
 func TestRemoteEditorDisconnectReleasesInput(t *testing.T) {
 	m, _ := newCustomEditorDispatchMode(t)
-	m.uiTaskCh = make(chan func(), 64)
 	fake := &fakeRemoteEditor{}
 	m.setRemoteEditor(fake)
 	ticket := newInputTicket()
