@@ -46,17 +46,17 @@ func seedCompactionCatalogHistory(t *testing.T, session *Session, totalTokens in
 	model := session.Model()
 	recent := ""
 	for _, label := range []string{"old", "recent"} {
-		id, err := session.inner.AppendMessage(agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: label + strings.Repeat("x", 400-len(label))}}, Timestamp: time.Now().Add(-2 * time.Second).UnixMilli()}})
+		id, err := session.inner.Load().AppendMessage(agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: label + strings.Repeat("x", 400-len(label))}}, Timestamp: time.Now().Add(-2 * time.Second).UnixMilli()}})
 		if err != nil {
 			t.Fatal(err)
 		}
 		recent = id
-		_, err = session.inner.AppendMessage(agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: "assistant", Content: []ai.AssistantContentBlock{ai.TextContent{Text: label + strings.Repeat("y", 400-len(label))}}, API: "faux", Provider: model.Provider.ID(), ModelID: model.ID, Usage: &ai.Usage{Input: totalTokens, TotalTokens: totalTokens}, StopReason: ai.StopReasonStop, Timestamp: time.Now().Add(-time.Second).UnixMilli()}})
+		_, err = session.inner.Load().AppendMessage(agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: "assistant", Content: []ai.AssistantContentBlock{ai.TextContent{Text: label + strings.Repeat("y", 400-len(label))}}, API: "faux", Provider: model.Provider.ID(), ModelID: model.ID, Usage: &ai.Usage{Input: totalTokens, TotalTokens: totalTokens}, StopReason: ai.StopReasonStop, Timestamp: time.Now().Add(-time.Second).UnixMilli()}})
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
-	session.agent.SetMessages(session.inner.BuildContext(nil))
+	session.agent.SetMessages(session.inner.Load().BuildContext(nil))
 	return recent
 }
 

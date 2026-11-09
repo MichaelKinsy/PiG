@@ -32,7 +32,7 @@ func newBoundaryHarness(t *testing.T, opts harnessOptions, responses ...scripted
 	runner := h.session.currentRunner()
 	runner.BindCore(extension.ExtensionActions{SendMessage: h.session.SendMessage, SendUserMessage: func(content any, options *extension.SendUserMessageOptions) error {
 		return h.session.SendExtensionUserMessage(content, options)
-	}}, extension.ContextActions{IsIdle: h.session.IsIdle, HasPendingMessages: h.session.HasPendingMessages, Abort: h.session.RequestAbort, SessionManager: h.session.inner}, nil)
+	}}, extension.ContextActions{IsIdle: h.session.IsIdle, HasPendingMessages: h.session.HasPendingMessages, Abort: h.session.RequestAbort, SessionManager: h.session.inner.Load()}, nil)
 	return h
 }
 

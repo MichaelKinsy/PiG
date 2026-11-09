@@ -216,7 +216,7 @@ func TestSummarizationUsesAgentStreamOverride(t *testing.T) {
 				return nil, errors.New("custom summary failure")
 			})
 			if operation == "branch" {
-				_, err = h.session.NavigateTree(t.Context(), h.session.inner.GetEntries()[0].Base().ID, NavigateTreeOptions{Summarize: true})
+				_, err = h.session.NavigateTree(t.Context(), h.session.inner.Load().GetEntries()[0].Base().ID, NavigateTreeOptions{Summarize: true})
 			} else {
 				_, err = h.session.Compact(t.Context(), "")
 			}

@@ -66,7 +66,7 @@ func TestCompactDoesNotPersistLengthLimitedSummary(t *testing.T) {
 			{User: &agent.UserMessage{Role: agent.RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: fmt.Sprintf("q%d", i)}}}},
 			{Assistant: &agent.AssistantMessage{Role: agent.RoleAssistant, Content: []ai.AssistantContentBlock{ai.TextContent{Text: fmt.Sprintf("a%d", i)}}}},
 		} {
-			if _, err := sess.inner.AppendMessage(message); err != nil {
+			if _, err := sess.inner.Load().AppendMessage(message); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -76,7 +76,7 @@ func TestCompactDoesNotPersistLengthLimitedSummary(t *testing.T) {
 	if _, err := sess.Compact(t.Context(), ""); err == nil || !strings.Contains(err.Error(), "generation hit the token cap") {
 		t.Fatalf("CompactResult error = %v, want token-cap failure", err)
 	}
-	for _, entry := range sess.inner.GetEntries() {
+	for _, entry := range sess.inner.Load().GetEntries() {
 		if entry.Base().Type == "compaction" {
 			t.Fatalf("length-limited summary persisted as entry %q", entry.Base().ID)
 		}
@@ -120,7 +120,7 @@ func TestSessionSummarizationPreservesModelCost(t *testing.T) {
 			{User: &agent.UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: fmt.Sprintf("q%d", i)}}}},
 			{Assistant: &agent.AssistantMessage{Role: "assistant", Content: []ai.AssistantContentBlock{ai.TextContent{Text: fmt.Sprintf("a%d", i)}}}},
 		} {
-			if _, err := sess.inner.AppendMessage(message); err != nil {
+			if _, err := sess.inner.Load().AppendMessage(message); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -178,12 +178,12 @@ func TestSessionSummarizationRoutingAndThinkingLevel(t *testing.T) {
 			{User: &agent.UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: fmt.Sprintf("q%d", i)}}}},
 			{Assistant: &agent.AssistantMessage{Role: "assistant", Content: []ai.AssistantContentBlock{ai.TextContent{Text: fmt.Sprintf("a%d", i)}}}},
 		} {
-			if _, err := sess.inner.AppendMessage(message); err != nil {
+			if _, err := sess.inner.Load().AppendMessage(message); err != nil {
 				t.Fatal(err)
 			}
 		}
 	}
-	sess.agent.SetMessages(sess.inner.BuildContext(nil))
+	sess.agent.SetMessages(sess.inner.Load().BuildContext(nil))
 	if err := sess.SetThinkingLevel(ai.ThinkingMedium); err != nil {
 		t.Fatal(err)
 	}

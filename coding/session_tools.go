@@ -188,7 +188,7 @@ func (s *Session) SetSystemPromptSections(sections ai.OrderedSections) {
 // restoreToolsFromTranscript activates the tools the current branch's transcript declares, with the +name/-name modifiers applied (upstream _restoreToolsFromTranscript). The whole branch is replayed, so a tool removed before a compaction stays inactive. Extension and SDK tools the branch never added or removed were registered after it recorded its loadout; they activate like newly registered tools unless they are registered with `defaultActive: false`, and built-in tools follow `defaultTools` instead. Declared tools the Session does not have yet, such as tools of MCP servers that are still connecting, stay pending until they register, if the allowlist and denylist admit them. A branch without a system message keeps the current tools. It returns the TypeError Pi's replay throws for a system message holding a tool list it cannot read, before it changes anything.
 func (s *Session) restoreToolsFromTranscript(modifiers ...string) error {
 	// The transcript is read before the loadout locks, so they are not held while the whole branch is read.
-	systems, err := replayedTranscript(s.inner)
+	systems, err := replayedTranscript(s.inner.Load())
 	if err != nil {
 		return err
 	}
