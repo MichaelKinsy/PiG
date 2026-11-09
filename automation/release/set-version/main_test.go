@@ -288,6 +288,18 @@ func TestSetVersionMalformedChangelogDoesNotPartiallyWrite(t *testing.T) {
 	assertSnapshot(t, root, before)
 }
 
+// Re-encoding CHANGELOG.md.zst needs the pinned zstd command. Without it the command returns an error that names PIG_ZSTD and the provisioner and writes nothing; it does not panic.
+func TestSetVersionWithoutThePinnedZstdIsAnActionableError(t *testing.T) {
+	root := fixture(t)
+	t.Setenv("PIG_ZSTD", filepath.Join(t.TempDir(), "no-such-zstd"))
+	before := snapshot(t, root)
+	err := run(root, options{version: "0.3.0", date: "2026-09-27"}, io.Discard, func(string, io.Writer) error { t.Fatal("checks ran without the pinned zstd"); return nil })
+	if err == nil || !strings.Contains(err.Error(), "PIG_ZSTD") || !strings.Contains(err.Error(), "install-zstd.sh") {
+		t.Fatalf("want an error that names PIG_ZSTD and install-zstd.sh, got %v", err)
+	}
+	assertSnapshot(t, root, before)
+}
+
 // The Python and TypeScript SDK packages publish at the release version. The Rust crate, its locks and any pig-sdk requirement stay put: the builder
 // resolves an un-pathed requirement through a crates-io patch, which Cargo applies only within semver, so advancing the crate would break every
 // scaffolded extension's `pig-sdk = "0.1.0"`.
