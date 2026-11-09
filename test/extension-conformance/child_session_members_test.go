@@ -31,6 +31,7 @@ var childMembersWant = map[string]any{
 	"toolDefinition": "uppercases x", "toolDefinitionMissing": true,
 	"callableTools": []any{"sentinel_tool"}, "steeringMessages": 0.0, "followUpMessages": 0.0, "routedModel": true, "pendingBash": false,
 	"supportsThinking": false, "cycledThinking": "", "cacheWarming": "inactive", "exportHtmlInMemory": "Cannot export in-memory session to HTML", "afterReload": true,
+	"fileBackedSessionFile": true,
 }
 
 func TestChildAgentSessionMembersGoPlacements(t *testing.T) {

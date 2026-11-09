@@ -154,6 +154,21 @@ pub fn new_extension() -> Extension {
             out.insert("exportHtmlInMemory".into(), json!(session.export_to_html(Some(&html), None).err().map(|error| error.to_string()).unwrap_or_default()));
             session.reload()?;
             out.insert("afterReload".into(), json!(session.session_id()? == id));
+            // A file-backed session: its sessionFile is a real path (the in-memory one above is empty, so a reader that returned the fallback would still pass there).
+            let persisted = ctx.create_agent_session(CreateAgentSessionOptions {
+                cwd: Some(dir.clone()),
+                agent_dir: Some(std::path::Path::new(&dir).join("agent").to_string_lossy().into_owned()),
+                model: Some(echo.clone()),
+                tools: Some(vec![]),
+                settings: Some(json!({"compaction": {"enabled": false}})),
+                resources: Some(ResourceOptions { no_extensions: true, no_skills: true, no_prompt_templates: true, no_themes: true, no_context_files: true, ..Default::default() }),
+                ..Default::default()
+            })?;
+            let persisted_file = persisted.session_file();
+            let persisted_id = persisted.session_id();
+            persisted.dispose();
+            let (persisted_file, persisted_id) = (persisted_file?.unwrap_or_default(), persisted_id?);
+            out.insert("fileBackedSessionFile".into(), json!(persisted_file.starts_with(&dir) && persisted_file.ends_with(".jsonl") && persisted_file.contains(&persisted_id)));
             session.abort_bash()?;
             session.abort_branch_summary()?;
             session.abort_compaction()?;
