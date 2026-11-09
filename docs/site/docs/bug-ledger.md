@@ -122,6 +122,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-10189c4](#bf-10189c4) | The `/tree` Summarize option sends the session's thinking level with the branch summary request when the… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-10818f5](#bf-10818f5) | Go extensions that receive large event payloads (`before_provider_request`, `agent_end`, `turn_end`) now… | PiG's own defect | All platforms | Unreleased |
 | [BF-108cb7d](#bf-108cb7d) | An extension that exits while it loads, sits idle or shuts down no longer leaves the host waiting on its… | PiG's own defect | Windows | 0.7.0 |
+| [BF-109a971](#bf-109a971) | p2's terminal client no longer drops a newer view of a conversation that arrived while a load of earlier or… | PiG's own defect | All platforms | Unreleased |
 | [BF-1105ee5](#bf-1105ee5) | fix(prompts): keep apostrophes in prompt template arguments | PiG's own defect | All platforms | Unreleased |
 | [BF-11110c4](#bf-11110c4) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-116b36c](#bf-116b36c) | fix(extensions): answer the start-window report of a tool call that holds no window, where the report is read | PiG's own defect | All platforms | Unreleased |
@@ -1833,6 +1834,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ea90fb3](#bf-ea90fb3) | A running `!cmd` block keeps only the last 2000 lines or 50 KB it shows instead of every byte the command… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ea921ca](#bf-ea921ca) | Chord's workers on macOS and the BSDs: a worker killed by a signal (the grace's or the start timer's SIGKILL)… | A fix Pi shipped that PiG ported | macOS | Unreleased |
 | [BF-ea9fc8b](#bf-ea9fc8b) | fix(chord/nextnode): no context.Background in the browser driver and the terminal launcher (the test's and… | PiG's own defect | All platforms | Unreleased |
+| [BF-eaa0202](#bf-eaa0202) | p2's terminal client no longer keeps showing an answer as it looked when it was last drawn while it was still… | PiG's own defect | All platforms | Unreleased |
 | [BF-eaa4ed7](#bf-eaa4ed7) | F1-F12 are recognized when the terminal reports them with the Kitty keyboard protocol: `CSI P`/`Q`/`S` and… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-ead285d](#bf-ead285d) | Two `compact` commands of one RPC input batch no longer cancel each other; they run one after another (D147) | PiG's own defect | All platforms | 0.5.0 |
 | [BF-eb34085](#bf-eb34085) | The find tool trims each fd result line like JavaScript trim(): a name ending in U+FEFF loses it and a name… | PiG's own defect | All platforms | 0.5.0 |
@@ -3442,6 +3444,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `108cb7d911` (2026-11-04)
 - **Tests:** `coding/extension/host/subprocess/peer_exit_test.go::TestExtensionExitDoesNotDropWhatTheProcessWrote`, `coding/extension/host/subprocess/peer_exit_test.go::TestExtensionExitEndsARequestInFlight`, `coding/extension/host/subprocess/peer_exit_test.go::TestExtensionExitEndsAnIdleOrLoadingRead`, `coding/extension/host/subprocess/peer_exit_test.go::TestIsolatedExtensionExitIsReportedWhenTheSocketCloseIsNotSeen`
 - **Release note:** An extension that exits while it loads, sits idle or shuts down no longer leaves the host waiting on its socket: on Windows a socket close can miss a pending read, and the host now ends the read when the extension's process exits, reporting the same transport error as a closed socket.
+
+### BF-109a971
+
+**p2's terminal client no longer drops a newer view of a conversation that arrived while a load of earlier or…**
+
+- **Source:** PiG's own defect
+- **Symptom:** p2's terminal client no longer drops a newer view of a conversation that arrived while a load of earlier or missing entries was ending: the older view the load returned replaced it until the next change.
+- **Root cause:** LoadEarlier and FillGap set the view their load returned over the store value. The goroutine that follows the view merges on its own, so a merge between the end of the load and the store lock was undone. Pi store is one event loop where nothing merges between a load end and its resumption. The store now brings the transcript up to its latest merged view after a load. (A found-by-reading race with a deterministic test; it is not the cause of the Kitty test hang, see the next commits.)
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `109a97189f` (2026-11-09)
+- **Tests:** None recorded.
+- **Release note:** p2's terminal client no longer drops a newer view of a conversation that arrived while a load of earlier or missing entries was ending: the older view the load returned replaced it until the next change.
 
 ### BF-1105ee5
 
@@ -27091,6 +27107,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `ea9fc8ba79` (2026-11-07)
 - **Tests:** None recorded.
+
+### BF-eaa0202
+
+**p2's terminal client no longer keeps showing an answer as it looked when it was last drawn while it was still…**
+
+- **Source:** PiG's own defect
+- **Symptom:** p2's terminal client no longer keeps showing an answer as it looked when it was last drawn while it was still arriving.
+- **Root cause:** UpdateContent rebuilds the nested content container, which the parent container does not see: its child cache and settled window kept the lines of the message from the last frame that drew it, because the message own dirty flag was never set. A frame drawn while the answer was still streaming (empty, then thinking only) was shown forever: apps/p2/tui/host TestKittyKeyboard... at 1 CPU with 24 busy loops showed "a" and "Thinking..." with the worker idle and the answer committed; a direct render of the transcript view lacked it, a resize (new width) showed it. UpdateContent now invalidates the component.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `eaa0202b4c` (2026-11-09)
+- **Tests:** None recorded.
+- **Release note:** p2's terminal client no longer keeps showing an answer as it looked when it was last drawn while it was still arriving. On a loaded machine a frame drawn between the model's steps left the reply as an empty or "Thinking..." block until something else (a resize) redrew it, although the server and the browser had the finished answer.
 
 ### BF-eaa4ed7
 

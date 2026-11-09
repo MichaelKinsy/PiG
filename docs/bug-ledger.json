@@ -2784,6 +2784,26 @@
       ]
     },
     {
+      "id": "BF-109a971",
+      "title": "p2's terminal client no longer drops a newer view of a conversation that arrived while a load of earlier or…",
+      "symptom": "p2's terminal client no longer drops a newer view of a conversation that arrived while a load of earlier or missing entries was ending: the older view the load returned replaced it until the next change.",
+      "rootCause": "LoadEarlier and FillGap set the view their load returned over the store value. The goroutine that follows the view merges on its own, so a merge between the end of the load and the store lock was undone. Pi store is one event loop where nothing merges between a load end and its resumption. The store now brings the transcript up to its latest merged view after a load. (A found-by-reading race with a deterministic test; it is not the cause of the Kitty test hang, see the next commits.)",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "p2's terminal client no longer drops a newer view of a conversation that arrived while a load of earlier or missing entries was ending: the older view the load returned replaced it until the next change.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "109a97189f",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-1105ee5",
       "title": "fix(prompts): keep apostrophes in prompt template arguments",
       "symptom": "fix(prompts): keep apostrophes in prompt template arguments",
@@ -51382,6 +51402,26 @@
         {
           "hash": "ea9fc8ba79",
           "date": "2026-11-07"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-eaa0202",
+      "title": "p2's terminal client no longer keeps showing an answer as it looked when it was last drawn while it was still…",
+      "symptom": "p2's terminal client no longer keeps showing an answer as it looked when it was last drawn while it was still arriving.",
+      "rootCause": "UpdateContent rebuilds the nested content container, which the parent container does not see: its child cache and settled window kept the lines of the message from the last frame that drew it, because the message own dirty flag was never set. A frame drawn while the answer was still streaming (empty, then thinking only) was shown forever: apps/p2/tui/host TestKittyKeyboard... at 1 CPU with 24 busy loops showed \"a\" and \"Thinking...\" with the worker idle and the answer committed; a direct render of the transcript view lacked it, a resize (new width) showed it. UpdateContent now invalidates the component.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "p2's terminal client no longer keeps showing an answer as it looked when it was last drawn while it was still arriving. On a loaded machine a frame drawn between the model's steps left the reply as an empty or \"Thinking...\" block until something else (a resize) redrew it, although the server and the browser had the finished answer.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "eaa0202b4c",
+          "date": "2026-11-09"
         }
       ],
       "tests": []
