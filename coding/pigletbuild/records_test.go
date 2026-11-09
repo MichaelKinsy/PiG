@@ -85,7 +85,7 @@ func TestBuildBinaryRecordsContainsNoPigletContents(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	records, err := buildBinaryRecords(lock, p, artifactPath)
+	records, err := buildBinaryRecords(t.Context(), lock, p, artifactPath)
 	if err != nil {
 		t.Fatal(err)
 	}

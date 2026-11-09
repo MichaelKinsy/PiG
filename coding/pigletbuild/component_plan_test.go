@@ -183,7 +183,7 @@ func TestAC7NativeBuildProducesLinkedBinaryRecord(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	records, err := buildBinaryRecords(lock, parsed, artifactPath)
+	records, err := buildBinaryRecords(t.Context(), lock, parsed, artifactPath)
 	if err != nil {
 		t.Fatal(err)
 	}

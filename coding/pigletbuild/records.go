@@ -1,6 +1,7 @@
 package pigletbuild
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -147,7 +148,7 @@ func buildNativeWithRecords(ctx context.Context, resolveSource func(context.Cont
 		}
 	}
 	buildprogress.Phase(ctx, "Checksumming and verifying binary", artifactPath)
-	records, err := buildBinaryRecords(lock, p, artifactPath)
+	records, err := buildBinaryRecords(ctx, lock, p, artifactPath)
 	if err != nil {
 		return "", "", err
 	}
@@ -181,12 +182,12 @@ func signingManifest(lock buildLock, embedded []signature.EmbeddedFile) signatur
 	}
 }
 
-func buildBinaryRecords(lock buildLock, p *piglet.Piglet, artifactPath string) (binaryBuildRecords, error) {
+func buildBinaryRecords(ctx context.Context, lock buildLock, p *piglet.Piglet, artifactPath string) (binaryBuildRecords, error) {
 	artifactDigest, size, err := hashFile(artifactPath)
 	if err != nil {
 		return binaryBuildRecords{}, fmt.Errorf("hash artifact: %w", err)
 	}
-	if err := smokeArtifact(artifactPath); err != nil {
+	if err := smokeArtifact(ctx, artifactPath); err != nil {
 		return binaryBuildRecords{}, err
 	}
 	// The managed copy is stored and later started under this name, so a
@@ -647,18 +648,27 @@ func sha256Sum(data []byte) []byte {
 // machine takes well over ten seconds; a hung artifact still fails.
 var smokeArtifactTimeout = 60 * time.Second // pig additive (D18): Piglet binary builds are PiG's own; Pi has no artifact check.
 
-func smokeArtifact(path string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), smokeArtifactTimeout)
+// smokeStart starts the artifact's process. Tests replace it to model a first start that blocks.
+var smokeStart = (*exec.Cmd).Start
+
+func smokeArtifact(ctx context.Context, path string) error {
+	ctx, cancel := context.WithTimeout(ctx, smokeArtifactTimeout)
 	defer cancel()
-	output, err := linkerexec.CommandContext(ctx, path, "--version").CombinedOutput()
+	cmd := linkerexec.CommandContext(ctx, path, "--version")
+	var output bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &output, &output
+	err := smokeStart(cmd)
+	if err == nil {
+		err = cmd.Wait()
+	}
 	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 		// A killed process reports only its exit status (1 on Windows), so name the deadline instead.
 		return fmt.Errorf("basic artifact verification timed out after %s running %s --version", smokeArtifactTimeout, path)
 	}
 	if err != nil {
-		return fmt.Errorf("basic artifact verification failed: %w: %s", err, strings.TrimSpace(string(output)))
+		return fmt.Errorf("basic artifact verification failed: %w: %s", err, strings.TrimSpace(output.String()))
 	}
-	if strings.TrimSpace(string(output)) == "" {
+	if strings.TrimSpace(output.String()) == "" {
 		return fmt.Errorf("basic artifact verification failed: --version returned empty output")
 	}
 	return nil

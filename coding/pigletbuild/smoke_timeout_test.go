@@ -39,7 +39,7 @@ func TestSmokeArtifactReportsItsDeadline(t *testing.T) {
 	previous := smokeArtifactTimeout
 	smokeArtifactTimeout = 200 * time.Millisecond
 	t.Cleanup(func() { smokeArtifactTimeout = previous })
-	err := smokeArtifact(path)
+	err := smokeArtifact(t.Context(), path)
 	if err == nil || !strings.Contains(err.Error(), "timed out after 200ms running "+path+" --version") {
 		t.Fatalf("smokeArtifact error = %v, want the deadline named", err)
 	}
