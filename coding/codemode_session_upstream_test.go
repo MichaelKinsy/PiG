@@ -1070,9 +1070,9 @@ func TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes(t *t
 	}
 }
 
-// Ports .upstream/current/packages/coding-agent/test/suite/agent-session-codemode.test.ts "summarizes output fields behind local schema
-// references" (Pi 6d3e342b2, #11803): the description a session gives the model follows local `$ref`s through the root, a field, a const
-// and the variants of a union.
+// Ports .upstream/v1.5.0+c23b9ec1/packages/coding-agent/test/suite/agent-session-codemode.test.ts "summarizes output fields behind local
+// schema references" (Pi 6d3e342b2, #11803): the session-level tool description, not only describeOutput, follows local `$ref`s through
+// the root, a field, a const and the variants of a union.
 func TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences(t *testing.T) {
 	outputTool := func(name, outputSchema string) extension.RegisteredTool {
 		return extension.RegisteredTool{Definition: extension.ToolDefinition{
@@ -1084,13 +1084,8 @@ func TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaRefe
 			},
 		}}
 	}
-	report := outputTool("report", `{"$ref":"#/$defs/Report","$defs":{`+
-		`"Report":{"type":"object","properties":{"kind":{"$ref":"#/$defs/Kind"},"summary":{"$ref":"#/$defs/Summary"}},"required":["kind","summary"]},`+
-		`"Kind":{"const":"ledger"},`+
-		`"Summary":{"type":"object","properties":{"total":{"type":"number"}},"required":["total"]}}}`)
-	result := outputTool("result", `{"anyOf":[{"$ref":"#/$defs/Ok"},{"$ref":"#/$defs/Failed"}],"$defs":{`+
-		`"Ok":{"type":"object","properties":{"value":{"type":"string"}},"required":["value"]},`+
-		`"Failed":{"type":"object","properties":{"error":{"type":"string"}},"required":["error"]}}}`)
+	report := outputTool("report", `{"$ref":"#/$defs/Report","$defs":{"Report":{"type":"object","properties":{"kind":{"$ref":"#/$defs/Kind"},"summary":{"$ref":"#/$defs/Summary"}},"required":["kind","summary"]},"Kind":{"const":"ledger"},"Summary":{"type":"object","properties":{"total":{"type":"number"}},"required":["total"]}}}`)
+	result := outputTool("result", `{"anyOf":[{"$ref":"#/$defs/Ok"},{"$ref":"#/$defs/Failed"}],"$defs":{"Ok":{"type":"object","properties":{"value":{"type":"string"}},"required":["value"]},"Failed":{"type":"object","properties":{"error":{"type":"string"}},"required":["error"]}}}`)
 	h := newCodemodeHarness(t, codemodeHarnessOptions{goExtensions: []extension.Extension{{
 		Name: "outputs", Path: "<inline:outputs>", ResolvedPath: "<inline:outputs>",
 		Tools:     map[string]extension.RegisteredTool{"report": report, "result": result},
