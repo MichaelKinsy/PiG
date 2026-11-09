@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -423,8 +424,8 @@ func TestMetadataQueriesOrderEqualCreationTimesByIDInPagesAndSummariesIncludingA
 	}
 	newest := func(files []*delta.JsonObject) string {
 		var parts []string
-		for index := len(files) - 1; index >= 0; index-- {
-			parts = append(parts, jsonOf(t, files[index]))
+		for _, file := range slices.Backward(files) {
+			parts = append(parts, jsonOf(t, file))
 		}
 		return "[" + strings.Join(parts, ",") + "]"
 	}
