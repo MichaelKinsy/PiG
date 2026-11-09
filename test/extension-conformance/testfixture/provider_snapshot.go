@@ -25,13 +25,13 @@ func registerProviderSnapshot(ext *sdk.Extension) {
 			stream := sdk.CreateAssistantMessageEventStream()
 			go func() {
 				stream.Push(map[string]any{"type": "start", "partial": message})
-				text := ""
+				var text strings.Builder
 				for range ProviderSnapshotBurst {
-					text += "x"
-					block["text"] = text
+					text.WriteString("x")
+					block["text"] = text.String()
 					stream.Push(map[string]any{"type": "text_delta", "contentIndex": 0, "delta": "x", "partial": message})
 				}
-				block["text"] = text + ProviderSnapshotTail
+				block["text"] = text.String() + ProviderSnapshotTail
 				stream.Push(map[string]any{"type": "done", "reason": "stop", "message": message})
 			}()
 			return stream, nil
