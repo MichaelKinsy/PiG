@@ -38,6 +38,13 @@ func TestExample32Startup(t *testing.T) {
 	var workersMu sync.Mutex
 	workerLoaded := make(chan struct{})
 	var workerLoadedOnce sync.Once
+	// W6: the worker connects first, then loads. Pi's load of the worker takes more microtask turns than the check that
+	// Bootstrap is `loading` after the server's load, which a goroutine loading at once does not (a delayed test goroutine finds
+	// Bootstrap bound already): the worker loads when the check is done.
+	workerLoadGate := make(chan struct{})
+	var releaseOnce sync.Once
+	releaseWorker := func() { releaseOnce.Do(func() { close(workerLoadGate) }) }
+	defer releaseWorker()
 	startWorker := func(id string) started {
 		up, down := link.MemoryLinkPair()
 		address := Session.Address(jsonObject("id", id))
@@ -52,6 +59,7 @@ func TestExample32Startup(t *testing.T) {
 			}, ServeOptions{})
 		})
 		go func() {
+			<-workerLoadGate
 			_, _ = worker.Load([]HostFacet{{Name: "@example/agents", Facet: agents}}, background)
 			workerLoadedOnce.Do(func() { close(workerLoaded) })
 		}()
@@ -90,6 +98,7 @@ func TestExample32Startup(t *testing.T) {
 	if got := exStateNow(t, exHold(t, server, bootstrap, jsonObject())); got != "loading" {
 		t.Fatalf("server loaded; Bootstrap is %s, want loading", got)
 	}
+	releaseWorker()
 	// 2. The worker's hold for Catalog bound on the published server; Agent went live, then Bootstrap.
 	reference := exGet(t, server, bootstrap, jsonObject())
 	exEqual(t, "Bootstrap sees models through the worker", exValue(t, reference, "agents"), float64(3))
