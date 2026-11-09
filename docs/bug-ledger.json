@@ -390,6 +390,30 @@
       ]
     },
     {
+      "id": "BF-0309820",
+      "title": "Aborting a compaction while extensions were being told it finished no longer keeps the extensions after the…",
+      "symptom": "Aborting a compaction while extensions were being told it finished no longer keeps the extensions after the first from hearing about it.",
+      "rootCause": "Pi awaits runner.emit({ type: \"session_compact\" }) after the compaction entry is saved, and emit() takes no signal: an abort raised while the handlers run neither skips an extension nor fails the compaction. PiG passed the abortable compaction context to the dispatch, so AbortCompaction during the first handler cancelled that handler's request and every later subprocess extension's, which never received the event. Dispatch now detaches from the cancellation, as emitSessionCompactFailed already does.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Aborting a compaction while extensions were being told it finished no longer keeps the extensions after the first from hearing about it. `session_compact` now reaches every extension, in order, as in Pi, whichever of them calls `abortCompaction()` or has the compaction aborted while its handler runs; the saved compaction still completes.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "030982080e",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "coding/session_compact_abort_dispatch_test.go::TestSessionCompactReachesEveryExtensionWhenAbortedDuringDispatch",
+        "test/extension-conformance/session_compact_abort_test.go::TestNodeSessionCompactReachesTheNextExtensionWhenAbortedDuringDispatch",
+        "test/extension-conformance/session_compact_abort_test.go::TestSessionCompactIsDeliveredToEverySDKWhenAbortedDuringDispatch"
+      ]
+    },
+    {
       "id": "BF-030f512",
       "title": "A nested `RawMessage` or `MarshalJSON` output, and an agent message or content block written by the SDK…",
       "symptom": "A nested `RawMessage` or `MarshalJSON` output, and an agent message or content block written by the SDK encoder, no longer lose a quote, newline, backslash or other two-character escape that stands before the letters `fffd` (`\"say \\\"fffd\\\"\"` was written as `\"say �\"`): only the `\\ufffd` escape itself is written as the replacement character.",

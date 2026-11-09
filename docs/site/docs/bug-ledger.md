@@ -35,6 +35,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-0225bbf](#bf-0225bbf) | Pressing Escape twice with only whitespace in the editor now opens the tree or fork selector, as in Pi, which… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-022d99f](#bf-022d99f) | fix(tui): the login dialog's input renders at every prompt position | PiG's own defect | All platforms | Unreleased |
 | [BF-02887e3](#bf-02887e3) | fix(release): carry main's PigVersion 0.5.3 and the post-bump goldens and pins | PiG's own defect | All platforms | Unreleased |
+| [BF-0309820](#bf-0309820) | Aborting a compaction while extensions were being told it finished no longer keeps the extensions after the… | PiG's own defect | All platforms | Unreleased |
 | [BF-030f512](#bf-030f512) | A nested `RawMessage` or `MarshalJSON` output, and an agent message or content block written by the SDK… | PiG's own defect | All platforms | Unreleased |
 | [BF-031b259](#bf-031b259) | fix(chord/nextnode/workers): a start releases the registrations of its context when it returns | PiG's own defect | All platforms | Unreleased |
 | [BF-03675ab](#bf-03675ab) | fix(chord/next/store): report the recovered panic, bytes.Equal, allow jsonparse in the chord boundary | PiG's own defect | All platforms | Unreleased |
@@ -2183,6 +2184,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `02887e3ea4` (2026-10-23)
 - **Tests:** `bench/k8s/cmd/k8sbench/pireference_test.go::TestCommittedPinHasAgentPins`, `internal/codingagent/changelog_test.go::TestParseChangelog_RealFile`
+
+### BF-0309820
+
+**Aborting a compaction while extensions were being told it finished no longer keeps the extensions after the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Aborting a compaction while extensions were being told it finished no longer keeps the extensions after the first from hearing about it.
+- **Root cause:** Pi awaits runner.emit({ type: "session_compact" }) after the compaction entry is saved, and emit() takes no signal: an abort raised while the handlers run neither skips an extension nor fails the compaction. PiG passed the abortable compaction context to the dispatch, so AbortCompaction during the first handler cancelled that handler's request and every later subprocess extension's, which never received the event. Dispatch now detaches from the cancellation, as emitSessionCompactFailed already does.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `030982080e` (2026-11-09)
+- **Tests:** `coding/session_compact_abort_dispatch_test.go::TestSessionCompactReachesEveryExtensionWhenAbortedDuringDispatch`, `test/extension-conformance/session_compact_abort_test.go::TestNodeSessionCompactReachesTheNextExtensionWhenAbortedDuringDispatch`, `test/extension-conformance/session_compact_abort_test.go::TestSessionCompactIsDeliveredToEverySDKWhenAbortedDuringDispatch`
+- **Release note:** Aborting a compaction while extensions were being told it finished no longer keeps the extensions after the first from hearing about it. `session_compact` now reaches every extension, in order, as in Pi, whichever of them calls `abortCompaction()` or has the compaction aborted while its handler runs; the saved compaction still completes.
 
 ### BF-030f512
 
