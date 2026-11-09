@@ -643,6 +643,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-61fc01d-2](#bf-61fc01d-2) | MCP tool descriptions, resource MIME types, a pasted sign-in redirect URL and the resource tools' `server`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-620abb0](#bf-620abb0) | Hidden thinking with an empty label (`ctx.ui.setHiddenThinkingLabel("")`) renders no rows: thinking before a… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-62222ca](#bf-62222ca) | fix(chord/plugins): a base record arriving after the close watches nothing (Pi recordBase) | PiG's own defect | All platforms | Unreleased |
+| [BF-62339c4](#bf-62339c4) | `console.*` output and thrown non-Error values in Code Mode scripts print `NaN`, `Infinity` and `-Infinity`… | PiG's own defect | All platforms | Unreleased |
 | [BF-6235532](#bf-6235532) | Filterable selector lists (theme, images, tree-filter-like pickers) check up/down before confirm/cancel like… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6258d27](#bf-6258d27) | fix(rpc): a replacement aborts the compactions of its batch at its teardown only | PiG's own defect | All platforms | Unreleased |
 | [BF-625a32e](#bf-625a32e) | Display text that PiG cuts at a length (the `/tree` listing, the Piglet system-prompt preview, an extension… | PiG's own defect | All platforms | 0.5.0 |
@@ -10562,6 +10563,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `62222ca3da` (2026-11-08)
 - **Tests:** `chord/nextnode/plugins/plugins_watcher_base_test.go::TestARecordedBaseAfterTheCloseWatchesNothing`
+
+### BF-62339c4
+
+**`console.*` output and thrown non-Error values in Code Mode scripts print `NaN`, `Infinity` and `-Infinity`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `console.*` output and thrown non-Error values in Code Mode scripts print `NaN`, `Infinity` and `-Infinity` as `text()` prints them, not as `null` (so `throw NaN` reports `NaN`).
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `62339c4642` (2026-11-09)
+- **Tests:** `codemode/sandbox_test.go::TestEmbeddedSourcesMatchTheirRecordedHashes`
+- **Release note:** `console.*` output and thrown non-Error values in Code Mode scripts print `NaN`, `Infinity` and `-Infinity` as `text()` prints them, not as `null` (so `throw NaN` reports `NaN`). A number nested in an object or array still prints as `null`, as `JSON.stringify` and `text()` print it (Pi #11901).
 
 ### BF-6235532
 
