@@ -1032,7 +1032,7 @@ func (h *chordHost) Registry(ctx context.Context, r registries.Registry[any, any
 	h.enter(func() {
 		ready = usable()
 		looked = true
-		if overdue && !ready {
+		if overdue {
 			expireNow()
 		}
 	})
