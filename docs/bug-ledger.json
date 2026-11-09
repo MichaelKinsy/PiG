@@ -5698,6 +5698,27 @@
       ]
     },
     {
+      "id": "BF-243927e",
+      "title": "Fix the lint reds the batch 6 group 1 merges carried: rustfmt for the Rust SDK and its fixture, box the large…",
+      "symptom": "Fix the lint reds the batch 6 group 1 merges carried: rustfmt for the Rust SDK and its fixture, box the large ToolRenderComponent view, gofmt the conformance component test, drop the embedded selector in the bind test",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "243927ed01",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_bind_bound_test.go::TestRPCBindCallsBoundAfterBindCoreAndBeforeSessionStartHandlers"
+      ]
+    },
+    {
       "id": "BF-24872ab",
       "title": "Extensions receive each model (`ctx.model`, `model_select`, `ctx.modelRegistry` reads, scoped models…",
       "symptom": "Extensions receive each model (`ctx.model`, `model_select`, `ctx.modelRegistry` reads, scoped models, virtual-model routes and provider-object calls) as Pi's model object, with its members in Pi's order, instead of sorted by member name with `null` for members the model does not set.",
@@ -14023,6 +14044,26 @@
         {
           "hash": "4e8c517e40",
           "date": "2026-10-21"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-4ed1d72",
+      "title": "A session swap (`/new`, `/resume`, `/fork`, `Session.ReplaceInner`) no longer races with `/new`, a fork or a…",
+      "symptom": "A session swap (`/new`, `/resume`, `/fork`, `Session.ReplaceInner`) no longer races with `/new`, a fork or a clone that reads whether the session has a file, and a routed request stores a virtual model's router state on the session it read the state from, not on one a swap installed meanwhile.",
+      "rootCause": "ReplaceInner stores noSession under the Session mutex while prepareNewSession, Clone and extensionFork read it without it: a data race. It is an atomic.Bool now.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A session swap (`/new`, `/resume`, `/fork`, `Session.ReplaceInner`) no longer races with `/new`, a fork or a clone that reads whether the session has a file, and a routed request stores a virtual model's router state on the session it read the state from, not on one a swap installed meanwhile.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4ed1d7213d",
+          "date": "2026-11-09"
         }
       ],
       "tests": []
