@@ -19,6 +19,7 @@ import (
 	// The plugins this executable ships (every directory of plugins/ with a plugin.go: plugins_test.go checks the list).
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/agent"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/artifacts"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/cache-warming"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/chat"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/chat-mode"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/codemode"

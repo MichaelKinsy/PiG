@@ -12,7 +12,7 @@ import (
 )
 
 // Ports apps/p2/src/runtime/settings.ts: `settings.json` of the data directory: Pi Mobile's settings plus p2's additions
-// (`enabledModels`, `detail`, `ownerName`, `codemode`).
+// (`enabledModels`, `detail`, `ownerName`, `codemode`, `cacheWarming`).
 
 // Settings is a validated settings.json value (Pi's `MobileSettings`): a JSON object in the file's key order, so a save
 // writes what was read.
@@ -69,6 +69,9 @@ var SettingsSchema = schema.Obj(schema.Properties{
 	// Offer the durable `codemode` tool (scripts that call the other tools), with the codemode plugin loaded. Default on
 	// in p2 (Pi Mobile: off); `false` uninstalls it live from every worker.
 	schema.Opt("codemode", schema.Bool()),
+	// pi's `cacheWarming`, kept by the cache-warming plugin: "idle" (default) keeps a conversation's prompt cache entry warm
+	// while its run streams and for up to 30 minutes after it settled, "streaming" only while it streams, "off" never.
+	schema.Opt("cacheWarming", stringEnum([]string{"off", "streaming", "idle"})),
 	// How much of a turn the web chat shows, from 1 (only the answer) to 4 (thinking in full and each tool call as a row).
 	schema.Opt("detail", schema.Int(schema.Minimum(1), schema.Maximum(4))),
 	// The owner's name on the entries the owner writes from now on (default "Owner"). No control characters, `<` or `>`.
