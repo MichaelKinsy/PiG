@@ -16,7 +16,7 @@ import (
 // against Chord's vocabulary and produces a Chord-owned copy and its normal form, the fingerprint input).
 //
 // Go form of the refusal of symbol keys and accessors: a Go value has neither, so the values a schema cannot carry that
-// Go does have are refused the same way, naming the path (uncarriable): a map keyed by anything but strings, a func (a
+// Go does have are refused the same way, naming the path (uncarriable): a map with a key that is no string, a func (a
 // value computed on read), a chan and an unsafe pointer. Designed out: non-enumerable keys (a Go schema is JSON data;
 // its `Optional` flag is no key) and withBytesCheck (deleted upstream: a bytes leaf is plain data).
 
@@ -324,7 +324,15 @@ func uncarriable(value any, path string) error {
 	case reflect.UnsafePointer:
 		return fail("%s: unsafe pointers are not supported", path)
 	case reflect.Map:
-		if rv.Type().Key().Kind() != reflect.String {
+		switch rv.Type().Key().Kind() {
+		case reflect.String:
+		case reflect.Interface:
+			for _, key := range rv.MapKeys() {
+				if key.Elem().Kind() != reflect.String {
+					return fail("%s: non-string keys are not supported", path)
+				}
+			}
+		default:
 			return fail("%s: non-string keys are not supported", path)
 		}
 	}

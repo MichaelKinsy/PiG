@@ -86,6 +86,11 @@ func TestSnapshotVocabulary(t *testing.T) {
 	t.Run("refuses keys that are no strings and computed values, naming the path", func(t *testing.T) {
 		_, err := contracts.SnapshotSchema(map[any]any{"type": "string", 1: 1}, "s")
 		wantError(t, err, "s: non-string keys are not supported")
+		_, err = contracts.SnapshotSchema(map[int]any{1: 1}, "s")
+		wantError(t, err, "s: non-string keys are not supported")
+		// A map of any whose keys are all strings has no key that is no string: it is no schema, not a refused key.
+		_, err = contracts.SnapshotSchema(map[any]any{"type": "string"}, "s")
+		wantError(t, err, "s: expected a schema")
 		accessor := delta.JsonObjectOf("type", "object")
 		accessor.Set("properties", func() any { return map[string]any{} })
 		_, err = contracts.SnapshotSchema(accessor, "s")
@@ -94,7 +99,8 @@ func TestSnapshotVocabulary(t *testing.T) {
 		wantError(t, err, "s.default: channels are not supported")
 		_, err = contracts.SnapshotSchema(delta.JsonObjectOf("type", "string", "enum", []any{"a", delta.JsonObjectOf("deep", func() {})}), "s")
 		wantError(t, err, "s.enum[1].deep: functions are not supported")
-		_, err = contracts.SnapshotSchema(delta.JsonObjectOf("type", "string", "default", unsafe.Pointer(new(int))), "s")
+		var nowhere unsafe.Pointer
+		_, err = contracts.SnapshotSchema(delta.JsonObjectOf("type", "string", "default", nowhere), "s")
 		wantError(t, err, "s.default: unsafe pointers are not supported")
 	})
 

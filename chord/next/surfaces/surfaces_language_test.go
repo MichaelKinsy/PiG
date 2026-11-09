@@ -2,6 +2,7 @@ package surfaces
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"testing"
 )
@@ -140,5 +141,22 @@ func TestMessagesInAScopeRenderInTheCurrentLanguage(t *testing.T) {
 	})
 	if got != "Hallo" {
 		t.Fatalf("in de = %q, want Hallo", got)
+	}
+}
+
+// InLanguage's context is derived from the one it is given: a value and a cancellation of the parent reach the render, which is
+// what lets a render honour the caller's deadline and carry its trace.
+func TestInLanguageHandsTheRenderTheParentsValuesAndCancellation(t *testing.T) {
+	type key struct{}
+	parent, cancel := context.WithCancel(context.WithValue(context.Background(), key{}, "carried"))
+	de := newLanguage(t, "de")
+	saw := InLanguage(parent, de, func(ctx context.Context) [3]any {
+		before := ctx.Err()
+		cancel()
+		return [3]any{ctx.Value(key{}), before, ctx.Err()}
+	})
+	after, _ := saw[2].(error)
+	if saw[0] != "carried" || saw[1] != nil || !errors.Is(after, context.Canceled) {
+		t.Fatalf("the render saw value %v, error before cancel %v, error after %v; want carried, nil, context canceled", saw[0], saw[1], saw[2])
 	}
 }
