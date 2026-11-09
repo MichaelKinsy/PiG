@@ -380,10 +380,11 @@ func (m *Markdown) Render(width int) []string { return m.render(width, false) }
 //perf:hot
 func (m *Markdown) renderBorrowedChild(width int) []string { return m.render(width, true) }
 
-// ownCachedLines makes the cached rows an array of their own when the last render left them in the reusable one.
+// ownCachedLines is the cached rows as an array of the caller's own when the last render left them in the reusable one. A cache
+// hit only reads the component, so the copy is not kept: public renders of one component from several goroutines stay reads.
 func (m *Markdown) ownCachedLines() []string {
 	if m.cachedBuffered {
-		m.cachedLines, m.cachedBuffered = slices.Clone(m.cachedLines), false
+		return slices.Clone(m.cachedLines)
 	}
 	return m.cachedLines
 }
