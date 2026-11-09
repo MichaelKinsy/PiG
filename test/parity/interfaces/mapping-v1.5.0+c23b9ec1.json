@@ -35145,9 +35145,9 @@
         "call:ai/identity.go#FormatUserAgent"
       ],
       "evidence": [
+        "test:ai/content_json_to_test.go#TestContentMarshalJSONWritesWhatJSONStringifyWrites",
         "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON",
-        "test:ai/request_marshal_to_test.go#TestRequestTypesEncodeAsTheirMarshalJSON",
-        "test:agent/message_append_stringify_test.go#TestAgentMessageAppendStringifyMatchesMarshalJSON"
+        "test:ai/request_marshal_to_test.go#TestRequestTypesEncodeAsTheirMarshalJSON"
       ]
     },
     {
@@ -81472,9 +81472,9 @@
         "call:ai/identity.go#FormatUserAgent"
       ],
       "evidence": [
+        "test:ai/content_json_to_test.go#TestContentMarshalJSONWritesWhatJSONStringifyWrites",
         "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON",
-        "test:ai/request_marshal_to_test.go#TestRequestTypesEncodeAsTheirMarshalJSON",
-        "test:agent/message_append_stringify_test.go#TestAgentMessageAppendStringifyMatchesMarshalJSON"
+        "test:ai/request_marshal_to_test.go#TestRequestTypesEncodeAsTheirMarshalJSON"
       ]
     },
     {
@@ -99857,9 +99857,9 @@
         "call:ai/identity.go#FormatUserAgent"
       ],
       "evidence": [
+        "test:ai/content_json_to_test.go#TestContentMarshalJSONWritesWhatJSONStringifyWrites",
         "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON",
-        "test:ai/request_marshal_to_test.go#TestRequestTypesEncodeAsTheirMarshalJSON",
-        "test:agent/message_append_stringify_test.go#TestAgentMessageAppendStringifyMatchesMarshalJSON"
+        "test:ai/request_marshal_to_test.go#TestRequestTypesEncodeAsTheirMarshalJSON"
       ]
     },
     {
@@ -150656,7 +150656,7 @@
       "evidence": [
         "test:coding/extension/widget_placement_test.go#TestPowerShellToolInputIsTheBashInputShape",
         "test:coding/extension/tool_input_json_test.go#TestToolInputsAreTypedAndKeepUndeclaredMembers",
-        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON"
+        "test:ai/content_json_to_test.go#TestContentMarshalJSONWritesWhatJSONStringifyWrites"
       ]
     },
     {
@@ -154060,7 +154060,7 @@
       "evidence": [
         "test:coding/extension/builtin/codemode/store_oracle_test.go#TestStoreEntryDataKeepsUnpairedSurrogateKeys",
         "test:coding/extension/builtin/codemode/details_store_test.go#TestStoreEntryDataAndFullOutputPathDetails",
-        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON"
+        "test:ai/content_json_to_test.go#TestContentMarshalJSONWritesWhatJSONStringifyWrites"
       ]
     },
     {
@@ -163448,8 +163448,8 @@
       ],
       "evidence": [
         "test:coding/extension/tool_input_json_test.go#TestToolInputsAreTypedAndKeepUndeclaredMembers",
-        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON",
-        "test:ai/request_marshal_to_test.go#TestRequestTypesEncodeAsTheirMarshalJSON"
+        "test:ai/content_json_to_test.go#TestContentMarshalJSONWritesWhatJSONStringifyWrites",
+        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON"
       ]
     },
     {
@@ -177939,8 +177939,8 @@
       ],
       "evidence": [
         "test:coding/extension/tool_input_json_test.go#TestToolInputsAreTypedAndKeepUndeclaredMembers",
-        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON",
-        "test:ai/request_marshal_to_test.go#TestRequestTypesEncodeAsTheirMarshalJSON"
+        "test:ai/content_json_to_test.go#TestContentMarshalJSONWritesWhatJSONStringifyWrites",
+        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON"
       ]
     },
     {
@@ -179829,8 +179829,8 @@
       ],
       "evidence": [
         "test:coding/extension/tool_input_json_test.go#TestToolInputsAreTypedAndKeepUndeclaredMembers",
-        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON",
-        "test:ai/request_marshal_to_test.go#TestRequestTypesEncodeAsTheirMarshalJSON"
+        "test:ai/content_json_to_test.go#TestContentMarshalJSONWritesWhatJSONStringifyWrites",
+        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON"
       ]
     },
     {
@@ -183842,7 +183842,7 @@
       "evidence": [
         "test:coding/extension/tool_input_json_test.go#TestToolInputOmitsAbsentOptionalMembers",
         "test:coding/extension/tool_input_json_test.go#TestToolInputsAreTypedAndKeepUndeclaredMembers",
-        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON"
+        "test:ai/content_json_to_test.go#TestContentMarshalJSONWritesWhatJSONStringifyWrites"
       ]
     },
     {
@@ -191910,7 +191910,7 @@
       "evidence": [
         "test:coding/extension/widget_placement_test.go#TestPowerShellToolInputIsTheBashInputShape",
         "test:coding/extension/tool_input_json_test.go#TestToolInputsAreTypedAndKeepUndeclaredMembers",
-        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON"
+        "test:ai/content_json_to_test.go#TestContentMarshalJSONWritesWhatJSONStringifyWrites"
       ]
     },
     {
@@ -194211,8 +194211,8 @@
       ],
       "evidence": [
         "test:coding/extension/tool_input_json_test.go#TestToolInputsAreTypedAndKeepUndeclaredMembers",
-        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON",
-        "test:ai/request_marshal_to_test.go#TestRequestTypesEncodeAsTheirMarshalJSON"
+        "test:ai/content_json_to_test.go#TestContentMarshalJSONWritesWhatJSONStringifyWrites",
+        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON"
       ]
     },
     {
@@ -222350,8 +222350,8 @@
       ],
       "evidence": [
         "test:coding/extension/tool_input_json_test.go#TestToolInputsAreTypedAndKeepUndeclaredMembers",
-        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON",
-        "test:ai/request_marshal_to_test.go#TestRequestTypesEncodeAsTheirMarshalJSON"
+        "test:ai/content_json_to_test.go#TestContentMarshalJSONWritesWhatJSONStringifyWrites",
+        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON"
       ]
     },
     {
@@ -259827,8 +259827,8 @@
       ],
       "evidence": [
         "test:mcp/client_options_test.go#TestClientInitializeCarriesTheConfiguredClientOptions",
-        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON",
-        "test:ai/request_marshal_to_test.go#TestRequestTypesEncodeAsTheirMarshalJSON"
+        "test:ai/content_json_to_test.go#TestContentMarshalJSONWritesWhatJSONStringifyWrites",
+        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON"
       ]
     },
     {
@@ -268397,7 +268397,7 @@
       "evidence": [
         "test:mcp/deepjson_test.go#TestParseWireMessageKeepsAToolSchemaNested12000LevelsDeep",
         "test:mcp/wire_types_test.go#TestListToolsResultKeepsEveryToolMember",
-        "test:ai/openai_tool_function_marshal_test.go#TestOpenAIToolFunctionEncodesAsItsMarshalJSON"
+        "test:ai/content_json_to_test.go#TestContentMarshalJSONWritesWhatJSONStringifyWrites"
       ]
     },
     {
@@ -275479,7 +275479,7 @@
       "id": "pkg:mcp/oauth#TokenRequestOptions::property:signal",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:8a3599829b340aade9210d2ba01342ddd4b904b85132d7d569005701d05ab3be",
-      "rationale": "Derived by the interface gap detector: TokenRequestOptions::property:signal is Go mcp/oauth/flow.go#TokenRequestOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: TokenRequestOptions::property:signal is Go mcp/oauth/flow.go#TokenRequestOptions (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "mcp/oauth/flow.go#TokenRequestOptions"
       ],
@@ -275492,9 +275492,7 @@
         "call:mcp/oauth/flow.go#runFlow"
       ],
       "evidence": [
-        "test:mcp/oauth/flow_behavior_test.go#TestTokenRequestsAuthenticateTheClientWithTheMethodTheServerPolicySelects",
-        "test:mcp/oauth/oauth_test.go#TestRefreshAuthorizationKeepsTheOldRefreshTokenWhenTheServerDoesNotRotateIt",
-        "test:mcp/oauth/oauth_test.go#TestTokenRequestsRefuseNonLoopbackHTTPEndpoints"
+        "reach:mcp/oauth/flow.go#runFlow"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
