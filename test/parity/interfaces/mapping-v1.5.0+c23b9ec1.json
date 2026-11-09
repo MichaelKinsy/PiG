@@ -236755,7 +236755,7 @@
       "evidence": [
         "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
         "test:durable/storage/jsonl/closed_before_poison_test.go#TestJsonlClosedErrorWinsOverThePoison",
-        "test:durable/storage/jsonl/jsonl_storage_test.go#TestJsonlStorageBatches"
+        "test:durable/storage/jsonl/jsonl_storage_read_only_test.go#TestJsonlStorageReadOnlyOpen"
       ]
     },
     {
@@ -254638,7 +254638,7 @@
       "evidence": [
         "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
         "test:durable/storage/jsonl/node/open_node_storage_upstream_test.go#TestOpenNodeJsonlStorageResolvesAgainstTheOpenTimeWorkingDirectoryAndPersists",
-        "test:durable/storage/jsonl/jsonl_storage_reads_test.go#TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose"
+        "test:durable/storage/jsonl/jsonl_storage_read_only_test.go#TestJsonlStorageReadOnlyOpen"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -254661,7 +254661,7 @@
       "evidence": [
         "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
         "test:durable/storage/jsonl/node/open_node_storage_upstream_test.go#TestOpenNodeJsonlStorageResolvesAgainstTheOpenTimeWorkingDirectoryAndPersists",
-        "test:durable/storage/jsonl/jsonl_storage_reads_test.go#TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose"
+        "test:durable/storage/jsonl/jsonl_storage_read_only_test.go#TestJsonlStorageReadOnlyOpen"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -255555,7 +255555,7 @@
       "evidence": [
         "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
         "test:durable/storage/jsonl/node/open_node_storage_upstream_test.go#TestOpenNodeJsonlStorageResolvesAgainstTheOpenTimeWorkingDirectoryAndPersists",
-        "test:durable/storage/jsonl/jsonl_storage_reads_test.go#TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose"
+        "test:durable/storage/jsonl/jsonl_storage_read_only_test.go#TestJsonlStorageReadOnlyOpen"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -255578,7 +255578,7 @@
       "evidence": [
         "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
         "test:durable/storage/jsonl/node/open_node_storage_upstream_test.go#TestOpenNodeJsonlStorageResolvesAgainstTheOpenTimeWorkingDirectoryAndPersists",
-        "test:durable/storage/jsonl/jsonl_storage_reads_test.go#TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose"
+        "test:durable/storage/jsonl/jsonl_storage_read_only_test.go#TestJsonlStorageReadOnlyOpen"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
