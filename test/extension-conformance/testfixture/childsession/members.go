@@ -88,7 +88,7 @@ func registerMembers(e *sdk.Extension) {
 			if len(scoped) == 1 {
 				set("scopedModelsSet", fmt.Sprintf("%v:%s", scoped[0].Model["id"], scoped[0].ThinkingLevel), nil)
 			}
-			cycled, err := session.CycleModel("forward")
+			cycled, err := session.CycleModel(context.Background(), "forward")
 			set("cycleOnlyModel", cycled == nil, err)
 			ok(nil, session.SetActiveToolsByName([]string{}))
 			set("activeToolsEmpty", ok(session.GetActiveToolNames()), nil)
