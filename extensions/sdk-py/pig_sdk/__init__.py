@@ -1629,7 +1629,7 @@ class ModelEventStream:
     def push(self, event: dict[str, Any]) -> None:
         """Publish an event in source order. The host receives the event as it was when push returned: it is copied here, so the author may go on changing the message it shows,
         and the forwarder thread never reads a dict the author is changing. In-process iteration yields the event itself. That is stronger than Pi, whose consumer reads the shared
-        message at its own turn: after a synchronous burst of pushes or between microtask awaits it can see later changes (D613). A value that cannot be copied fails the request
+        message at its own turn: after a synchronous burst of pushes or between microtask awaits it can see later changes (D615). A value that cannot be copied fails the request
         that forwards the stream, and does not raise here."""
         self._enqueue(event, True)
 
@@ -1646,7 +1646,7 @@ class ModelEventStream:
                 self._time_message(final)
             wire, error = event, None
             if by_author:
-                # pig divergence (D613): the host receives the event as it was at the push, where Pi's consumer reads the shared message at its own turn.
+                # pig divergence (D615): the host receives the event as it was at the push, where Pi's consumer reads the shared message at its own turn.
                 try:
                     wire = _json_snapshot(event)
                 except Exception as exc:  # noqa: BLE001 - the request that forwards the stream fails with it

@@ -1507,7 +1507,7 @@ func (s *ModelEventStream) enqueue(event map[string]any, pushedByAuthor bool) {
 	}
 	var finalWire json.RawMessage
 	if pushedByAuthor {
-		// pig divergence (D613): the host receives the event as it was at the push, where Pi's consumer reads the shared message at its own turn.
+		// pig divergence (D615): the host receives the event as it was at the push, where Pi's consumer reads the shared message at its own turn.
 		item.wire, finalWire, item.err = snapshotEvent(event, finalKey, final)
 	}
 	s.queue = append(s.queue, item)

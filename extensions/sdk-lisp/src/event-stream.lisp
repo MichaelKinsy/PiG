@@ -74,7 +74,7 @@ may go on changing; a value that cannot be copied fails the request that forward
              (key (if (equal type "done") "message" "error"))
              (final (and ends (jget event key))))
         (when ends (ms-time-message stream final))
-        ;; pig divergence (D613): the host receives the event as it was at the push, where Pi's consumer reads the shared message at its own turn.
+        ;; pig divergence (D615): the host receives the event as it was at the push, where Pi's consumer reads the shared message at its own turn.
         (multiple-value-bind (wire failure) (if snapshot (ms-snapshot event) (values event nil))
           (let ((cell (list (make-ms-item event wire failure))))
             (if (model-event-stream-head stream)
@@ -92,7 +92,7 @@ may go on changing; a value that cannot be copied fails the request that forward
 (defun model-stream-push (stream event)
   "Append EVENT; a done or error event ends the stream, and anything pushed after the end is dropped. The host receives the event as it was when this returned: a copy is queued, so
 the author may go on changing the message it shows, and the forwarding thread never reads a table the author is changing. MODEL-STREAM-NEXT and -EVENTS return EVENT itself. That is
-stronger than Pi, whose consumer reads the shared message at its own turn: after a synchronous burst of pushes or between microtask awaits it can see later changes (D613)."
+stronger than Pi, whose consumer reads the shared message at its own turn: after a synchronous burst of pushes or between microtask awaits it can see later changes (D615)."
   (model-stream-enqueue stream event :snapshot t))
 
 (defun model-stream-end (stream &optional result)
