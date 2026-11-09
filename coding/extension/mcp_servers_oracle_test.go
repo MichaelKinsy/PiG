@@ -161,7 +161,9 @@ func TestMcpHelpersMatchPi(t *testing.T) {
 		{}, {"read"}, {"*"}, {"mcp__*"}, {"a*b"}, {"a.b", "c+d"}, {"[x]*", "(y)?"}, {"^*$"}, {"*\\*"}, {"a*", "*z"}, {"é*"}, {"a**b"},
 	}
 	names := []string{"", "read", "mcp__s__t", "ab", "a.b", "axb", "a\nb", "a\u2028b", "c+d", "ccd", "[x]1", "x1", "(y)?", "y", "^a$", "\\", "éa", "list_mcp_resources", "read_mcp_resource", "list_mcp_resource_templates", "mcp_", "mcp__"}
-	uris := []string{"", "http://localhost:8080/cb", "http://127.0.0.1/cb", "http://[::1]/cb", "https://localhost/cb", "http://localhost/cb?x", "http://localhost/cb#", "http://localhost/cb#x", "http://LOCALHOST/cb", "http://0x7f.1/", "http://127.1/", "nope", "http://localhost:99999/", "http://user@localhost/"}
+	uris := []string{"", "http://localhost:8080/cb", "http://127.0.0.1/cb", "http://[::1]/cb", "https://localhost/cb", "http://localhost/cb?x", "http://localhost/cb#", "http://localhost/cb#x", "http://LOCALHOST/cb", "http://0x7f.1/", "http://127.1/", "nope", "http://localhost:99999/", "http://user@localhost/",
+		// Other 127/8 and IPv6 hosts, the dot-terminated name, scheme spellings and the port bounds.
+		"http://127.0.0.2/cb", "http://[::1]:3000/cb", "http://[::2]/cb", "http://[0:0:0:0:0:0:0:1]/cb", "http://[::ffff:127.0.0.1]/cb", "http://localhost./cb", "http://localhost:0/cb", "http://localhost:80/cb", "http://127.0.0.1:65535/cb", "http://localhost:65536/cb", "HTTP://localhost/cb", "ftp://localhost/cb", "//localhost/cb", "http:localhost", "http://localhost/cb?"}
 	servers := []string{"a", "a-b", "a-b-c", "-", "a_b"}
 	var want struct {
 		Matches    [][]bool `json:"matches"`
