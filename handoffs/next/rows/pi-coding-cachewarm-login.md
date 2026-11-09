@@ -1,0 +1,20 @@
+# Ledger rows: fix/pi-coding-cachewarm-login (Pi 7bcc15c92, 683a7a868)
+
+Upstream file -> disposition | Go target | covering tests | evidence
+
+## 7bcc15c92 default cacheWarming to idle
+- packages/coding-agent/src/core/settings-defaults.ts -> ported | internal/codingagent/settings.go (defaultCacheWarmingMode), internal/codingagent/configschema/settings.go (cacheWarming default) | settings_cache_warming_test.go, settings_manager_first_half_test.go, settings_manager_upstream_test.go, cache_warming_mode_union_test.go | red: default read "streaming"
+- packages/coding-agent/schemas/settings.schema.json -> regenerated (make generate) | schemas/settings.schema.json | schema drift check |
+- packages/coding-agent/docs/settings.md -> ported as PiG prose | docs/site/docs/settings.md, internal/pigdocs/content/settings.md (+ settings-examples.md, slash-commands.md `Mode: idle`) | docs-drift |
+- packages/coding-agent/test/settings-manager.test.ts "cacheWarming" -> ported, same inputs with streaming/idle swapped as upstream | the three settings tests above |
+- packages/coding-agent/CHANGELOG.md -> changelog.d/cwl-5b3661d297.md
+- Parity scenarios test/parity/scenarios/slash-commands/{05,08}-*.toml: `Mode: streaming` -> `Mode: idle` (the /session Cache Warming block shows the default).
+- No change to core/cache-warmer.ts port (internal/codingagent/cache_warmer.go): the 30-minute idle horizon already exists.
+
+## 683a7a868 partner providers first in /login and /logout
+- packages/coding-agent/src/core/preferred-providers.ts -> ported | ai/preferred_providers.go (PreferredProviderIDs, IsPreferredProvider, CompareProviders, ProviderRef; core/radius.ts lives in ai, so does this) | ai/preferred_providers_test.go (test/preferred-providers.test.ts)
+- packages/coding-agent/src/modes/interactive/components/provider-brand.ts -> ported | tui/provider_brand.go (GetProviderBrandStyle, RadiusShimmer, openRouterGlow, StartBrandAnimation) | tui/oauth_selector_partner_test.go
+- packages/coding-agent/src/modes/interactive/components/oauth-selector.ts -> ported | tui/oauth_selector.go (partner marker, animated selected row, Render/Dispose; the constructor's `tui` argument is NewOAuthSelectorComponentAnimated(requestRender func(), ...) because the renderer is replaceable) | tui/oauth_selector_partner_test.go (test/oauth-selector.test.ts: brand style only on selected row, accent without a TUI, star marks)
+- packages/coding-agent/src/modes/interactive/components/radius-login-selector.ts -> ported (shimmer and timer moved to provider-brand) | internal/codingagent/radius_login_selector.go | login_radius_menu_test.go, radius_login_oracle_test.go (unchanged)
+- packages/coding-agent/src/modes/interactive/interactive-mode.ts (getLoginProviderCompletionOptions, getLoginProviderOptions, getLogoutProviderOptions, selector construction with this.ui and dispose) -> ported | internal/codingagent/interactive_login.go (sortAuthProviders -> ai.CompareProviders), interactive_commands.go (SelectAuthProvider) | internal/codingagent/preferred_providers_order_test.go (login, logout, /login completions)
+- packages/coding-agent/CHANGELOG.md -> changelog.d/cwl-5b3661d297.md
