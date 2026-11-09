@@ -33,7 +33,7 @@ func brandAnimationGoroutines() int {
 	buf := make([]byte, 1<<20)
 	buf = buf[:runtime.Stack(buf, true)]
 	count := 0
-	for _, block := range strings.Split(string(buf), "\n\n") {
+	for block := range strings.SplitSeq(string(buf), "\n\n") {
 		if strings.Contains(block, "tui.StartBrandAnimation.func1") {
 			count++
 		}
