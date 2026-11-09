@@ -1,12 +1,68 @@
 package entered
 
 import (
+	"bytes"
+	"runtime/debug"
+	"strconv"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/goroutineid"
 )
+
+// spinSink keeps what the spinning goroutines allocate reachable, so the allocations are not removed.
+var spinSink atomic.Pointer[[]byte]
+
+// A goroutine that allocates without pause never waits for anything of the program's, but while a collection starts it waits on the
+// world lock ("semacquire") and while one marks it waits for assist credit ("GC assist wait"). The runtime ends both on its own, so
+// neither is a wait the goroutine has entered: Await would return for a goroutine that has yet to reach the wait it is awaited for.
+// Parked took "GC assist wait" for parked, and, for the callers that may hold a lock (AwaitBlocked), "semacquire" too.
+func TestParkedNeverReportsAGoroutineThatAllocatesWithoutPause(t *testing.T) {
+	defer debug.SetGCPercent(debug.SetGCPercent(1))
+	stop := make(chan struct{})
+	ids := make(chan uint64, 1)
+	var spinners atomic.Int32
+	for range 4 {
+		spinners.Add(1)
+		go func() {
+			defer spinners.Add(-1)
+			select {
+			case ids <- goroutineid.Current():
+			default:
+			}
+			for {
+				select {
+				case <-stop:
+					return
+				default:
+				}
+				chunk := make([]byte, 4096)
+				spinSink.Store(&chunk)
+			}
+		}()
+	}
+	id := <-ids
+	defer func() {
+		close(stop)
+		for spinners.Load() != 0 {
+			time.Sleep(time.Millisecond)
+		}
+	}()
+	var stacks []byte
+	for sample := range 2_000 {
+		for _, locks := range []bool{false, true} {
+			var parked, found bool
+			if parked, found, stacks = parkedOrBlocked(id, stacks, locks); !found {
+				t.Fatalf("sample %d: the goroutine that allocates is not in the dump", sample)
+			} else if parked {
+				start := bytes.Index(stacks, []byte("goroutine "+strconv.FormatUint(id, 10)+" ["))
+				header, _, _ := bytes.Cut(stacks[max(start, 0):], []byte("\n"))
+				t.Fatalf("sample %d (locks %v): reported parked while it allocates without pause: %s", sample, locks, header)
+			}
+		}
+	}
+}
 
 func TestGoWaitsUntilTheGoroutineParksOrReturns(t *testing.T) {
 	release := make(chan struct{})
