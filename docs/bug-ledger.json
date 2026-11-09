@@ -26926,6 +26926,28 @@
       ]
     },
     {
+      "id": "BF-8303e4c",
+      "title": "fix(entered): Classify takes the tracer and heap dump stops, the exact fd lock frames and the whole header…",
+      "symptom": "fix(entered): Classify takes the tracer and heap dump stops, the exact fd lock frames and the whole header state",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "8303e4c989",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "durable/harness/quiescence_test.go::TestAwaitQuiescentReturnsWithGoroutinesParkedInTheProgramsWaits",
+        "internal/entered/entered_test.go::TestParkedKeepsAFileDescriptorLockAsALock"
+      ]
+    },
+    {
       "id": "BF-83d5488",
       "title": "`pig install \u003cdir\u003e` of a local directory with no package manifest and no `extensions/`, `skills/`, `prompts/`…",
       "symptom": "Previously Pig recorded the Package and loaded nothing from it.",
@@ -36770,6 +36792,30 @@
         "internal/codingagent/fullscreen_search_test.go::TestFullscreenTuiOptionsSearchStylesFollowChalkLevel",
         "test/parity/scenarios/interactive-rendering/62-chalk-level-zero-modifiers.toml",
         "tui/chalk_modifiers_test.go::TestChalkModifiersOffDrawNoMarkdownStyles"
+      ]
+    },
+    {
+      "id": "BF-ad24cdf",
+      "title": "fix(entered): a wait the Go runtime ends is not a wait the goroutine has entered",
+      "symptom": "fix(entered): a wait the Go runtime ends is not a wait the goroutine has entered",
+      "rootCause": "entered.Parked read the state of the goroutine it is asked about from a goroutine dump and took every state but \"running\", \"runnable\", \"syscall\", \"copystack\" and \"preempted\" for a wait, except the sync.Mutex, sync.RWMutex and semaphore waits, which are locks (parked only for AwaitBlocked, whose caller may hold the lock). A goroutine that allocates while a collection starts waits on the world lock, which the dump shows as \"semacquire\", and one that allocates while a collection marks waits for assist credit, \"GC assist wait\". The runtime ends both on its own, so the goroutine is still on its way to the wait the program gave it; Parked took \"GC assist wait\" for parked, and \"semacquire\" for…",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "ad24cdf7f0",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "durable/harness/harness_idle_scopes_test.go::TestIncrementalIdleStateEqualsAFullRecomputeAfterEveryStepOfRandomNestedWork",
+        "internal/entered/entered_test.go::TestClassifySeparatesTheRuntimesWaitsFromTheProgramsOwn",
+        "internal/entered/entered_test.go::TestParkedKeepsAFileDescriptorLockAsALock",
+        "internal/entered/entered_test.go::TestParkedNeverReportsAGoroutineThatAllocatesWithoutPause"
       ]
     },
     {

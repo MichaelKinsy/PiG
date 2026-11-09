@@ -137602,9 +137602,9 @@
         "call:chord/nextnode/tui/tui_launcher.go#Launcher.handle"
       ],
       "evidence": [
+        "test:chord/nextnode/tui/tui_launcher_finish_order_test.go#TestFramesAroundTheSandboxsExitFollowPisOrder",
         "test:chord/nextnode/tui/tui_launcher_hazards_test.go#TestALinkSocketClosedAfterItsDialFinishedButBeforeTheLoopTookItIsClosedAndNeverOpened",
-        "test:chord/nextnode/tui/tui_launcher_hazards_test.go#TestALinkSocketClosedDuringItsDialStaysClosedAndASendOnItIsDropped",
-        "test:chord/nextnode/tui/tui_launcher_hazards_test.go#TestASandboxEndingOnAPostTheLoopMakesWithTheQueueFullDoesNotBlockTheLoop"
+        "test:chord/nextnode/tui/tui_launcher_hazards_test.go#TestALinkSocketClosedDuringItsDialStaysClosedAndASendOnItIsDropped"
       ]
     },
     {
@@ -138298,9 +138298,9 @@
         "call:chord/nextnode/tui/tui_launcher.go#Launcher.reply"
       ],
       "evidence": [
+        "test:chord/nextnode/tui/tui_launcher_finish_order_test.go#TestFramesAroundTheSandboxsExitFollowPisOrder",
         "test:chord/nextnode/tui/tui_launcher_hazards_test.go#TestATerminalIsNotLeftRawWhenTheSandboxEndsWhileTheLauncherStarts",
-        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientAnswersEightRequestsAtOnceRefusesMoreAndIgnoresSIGUSR1OpusE10E8",
-        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientDrawsItsPromptInItsOwnColoursAndIgnoresKeysTypedBeforeItAppearedOpusE4"
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientAnswersEightRequestsAtOnceRefusesMoreAndIgnoresSIGUSR1OpusE10E8"
       ]
     },
     {
