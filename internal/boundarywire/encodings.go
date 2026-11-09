@@ -3,6 +3,7 @@
 package boundarywire
 
 import (
+	"context"
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/agent"
@@ -127,4 +128,20 @@ func (p *Pass) KeepRecord(record []byte, encoding []byte) {
 		e.records = make(map[recordKey]keptRecord)
 	}
 	e.records[recordKey{&record[0], len(record)}] = keptRecord{encoding, e.pass}
+}
+
+type contextEncodingsKey struct{}
+
+// WithContextEncodings returns ctx carrying encodings, in which the context or context_with_system dispatch under it keeps the encodings of the conversation's messages from one request of the session to the next. A message has only its Message encoding there (no LLM encoding). One Encodings serves one list: the two events carry different lists, and a pass forgets what it did not use.
+func WithContextEncodings(ctx context.Context, encodings *Encodings) context.Context {
+	return context.WithValue(ctx, contextEncodingsKey{}, encodings)
+}
+
+// ContextEncodingsFromContext returns the Encodings WithContextEncodings set, or nil.
+func ContextEncodingsFromContext(ctx context.Context) *Encodings {
+	if ctx == nil {
+		return nil
+	}
+	encodings, _ := ctx.Value(contextEncodingsKey{}).(*Encodings)
+	return encodings
 }

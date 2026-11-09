@@ -4534,7 +4534,7 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 		}
 		if len(args) > 0 && !streamed && !encoded {
 			var err error
-			argsJSON, err = marshalEventWire(boundaryEventWire(wireEventPayload(args[0]), boundaryWire))
+			argsJSON, err = marshalEventWireIn(parent, boundaryEventWire(wireEventPayload(args[0]), boundaryWire))
 			if err != nil {
 				return nil, fmt.Errorf("marshal event args: %w", err)
 			}
