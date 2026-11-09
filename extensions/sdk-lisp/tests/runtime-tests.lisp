@@ -498,6 +498,49 @@
             do (ignore-errors (sb-bsd-sockets:socket-close listener))
                (ignore-errors (delete-file path))))))
 
+;; Every call on a socket path takes that path's lock, and two threads on one path must never hold two different locks for it. helper-take-conn holds the lock
+;; while it takes the connection; thread B comes to the same path and waits for that lock; the take ends, B takes the lock, and a third caller then comes to the
+;; path. It must find the lock B holds: a lock the take dropped from the table while B waited for it gives the third caller a new one, and the two run at once.
+(deftest a-path-lock-is-not-dropped-while-a-thread-waits-for-it
+  (let* ((path (format nil "/nonexistent/pig-path-lock-~D-~D.sock" (sb-posix:getpid) (random 1000000)))
+         (in-undial (sb-thread:make-semaphore)) (go (sb-thread:make-semaphore))
+         (b-came (sb-thread:make-semaphore)) (b-holds (sb-thread:make-semaphore)) (release (sb-thread:make-semaphore))
+         (b-lock nil) (taker nil) (b nil))
+    (sb-thread:with-recursive-lock (pig::*helper-lock*) (push (cons path :test-conn) pig::*helper-dialled*))
+    (sb-int:encapsulate 'pig::helper-undial 'test-pause
+                        (lambda (function &rest args)
+                          ;; the take is inside its path's lock here, and holds nothing else
+                          (sb-thread:signal-semaphore in-undial)
+                          (sb-thread:wait-on-semaphore go :timeout 10)
+                          (apply function args)))
+    (unwind-protect
+         (progn
+           (setf taker (sb-thread:make-thread (lambda () (pig::helper-take-conn path)) :name "test-taker"))
+           (check (sb-thread:wait-on-semaphore in-undial :timeout 10) "the take reached its connection table")
+           (setf b (sb-thread:make-thread
+                    (lambda ()
+                      (let ((lock (pig::helper-path-lock path)))
+                        (setf b-lock lock)
+                        (sb-thread:signal-semaphore b-came)
+                        (sb-thread:with-recursive-lock (lock)
+                          (sb-thread:signal-semaphore b-holds)
+                          (sb-thread:wait-on-semaphore release :timeout 10))))
+                    :name "test-b"))
+           (check (sb-thread:wait-on-semaphore b-came :timeout 10) "B came to the path's lock")
+           (sb-thread:signal-semaphore go)
+           (check (eq :test-conn (sb-thread:join-thread taker :default :none-within-10s :timeout 10)) "the take returned the dialled connection")
+           (check (sb-thread:wait-on-semaphore b-holds :timeout 10) "B took the path's lock after the take ended")
+           (check (eq b-lock (pig::helper-path-lock path)) "a caller after B finds the lock B holds"))
+      (sb-int:unencapsulate 'pig::helper-undial 'test-pause)
+      (sb-thread:signal-semaphore go)
+      (sb-thread:signal-semaphore release)
+      (when taker (sb-thread:join-thread taker :default nil :timeout 10))
+      (when b (sb-thread:join-thread b :default nil :timeout 10))
+      (sb-thread:with-recursive-lock (pig::*helper-lock*)
+        (setf pig::*helper-dialled* (remove path pig::*helper-dialled* :key #'car :test #'string=)
+              pig::*helper-taken* (remove path pig::*helper-taken* :key #'cdr :test #'equal)
+              pig::*helper-path-locks* (remove path pig::*helper-path-locks* :key #'car :test #'string=))))))
+
 (deftest events-on-validates-its-arguments
   (let ((bus (pig:extension-events (pig:make-extension "rt-bus-args"))))
     (check-error simple-error (pig:events-on bus 3 #'identity))
