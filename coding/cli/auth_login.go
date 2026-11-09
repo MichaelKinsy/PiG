@@ -16,6 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 	"github.com/MichaelKinsy/PiG/internal/weburl"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -72,7 +73,7 @@ func RunAuthLogin(ctx context.Context, args []string, options AuthLoginOptions) 
 				loginProviders = append(loginProviders, candidate.ID)
 			}
 		}
-		slices.SortFunc(loginProviders, func(a, b string) int { return slices.Compare(jsstring.ToUTF16(a), jsstring.ToUTF16(b)) })
+		sortx.Func(loginProviders, func(a, b string) int { return slices.Compare(jsstring.ToUTF16(a), jsstring.ToUTF16(b)) })
 		terminal.Error(`Unknown provider "` + widthx.ReplaceControlCharacters(request.providerRef) + `".`)
 		terminal.Error("Providers: " + strings.Join(loginProviders, ", "))
 		return 1
