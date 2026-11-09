@@ -255,6 +255,22 @@
    #:agent-session-session-manager #:agent-session-subscribe #:agent-session-dispose
    #:agent-session-session-id #:agent-session-session-file #:agent-session-model #:agent-session-thinking-level
    #:agent-session-active-tools #:agent-session-system-prompt #:agent-session-model-fallback-message #:agent-session-extension-errors
+    #:agent-session-streaming-p #:agent-session-idle-p #:agent-session-compacting-p #:agent-session-retrying-p #:agent-session-bash-running-p
+    #:agent-session-has-pending-bash-messages-p #:agent-session-retry-attempt #:agent-session-pending-message-count #:agent-session-session-name
+    #:agent-session-routed-model #:agent-session-scoped-models #:agent-session-steering-mode #:agent-session-follow-up-mode
+    #:agent-session-auto-compaction-enabled-p #:agent-session-auto-retry-enabled-p #:agent-session-supports-thinking-p
+    #:agent-session-get-available-thinking-levels #:agent-session-get-last-assistant-text #:agent-session-get-active-tool-names
+    #:agent-session-get-callable-tool-names #:agent-session-get-steering-messages #:agent-session-get-follow-up-messages #:agent-session-get-all-tools
+    #:agent-session-get-tool-definition #:agent-session-get-context-usage #:agent-session-get-session-stats
+    #:agent-session-get-user-messages-for-forking #:agent-session-prompt-templates #:agent-session-cache-warming-status
+    #:agent-session-has-extension-handlers-p #:agent-session-cycle-model #:agent-session-set-thinking-level #:agent-session-cycle-thinking-level
+    #:agent-session-set-scoped-models #:agent-session-set-active-tools-by-name #:agent-session-set-steering-mode #:agent-session-set-follow-up-mode
+    #:agent-session-set-auto-compaction-enabled #:agent-session-set-auto-retry-enabled #:agent-session-set-cache-warming-mode
+    #:agent-session-set-session-name #:agent-session-clear-queue #:agent-session-abort-bash #:agent-session-abort-branch-summary
+    #:agent-session-abort-compaction #:agent-session-abort-retry #:agent-session-record-bash-result #:agent-session-export-to-jsonl
+    #:agent-session-set-model #:agent-session-wait-for-idle #:agent-session-reload #:agent-session-compact #:agent-session-navigate-tree
+    #:agent-session-execute-bash #:agent-session-export-to-html #:agent-session-summarize-for-bug-report #:agent-session-send-custom-message
+    #:agent-session-send-user-message
    #:agent-session-services #:make-agent-session-services #:agent-session-services-cwd #:agent-session-services-agent-dir
    #:agent-session-services-model-runtime #:agent-session-services-settings-manager #:agent-session-services-resource-loader
    #:agent-session-services-diagnostics #:create-agent-session-services #:create-agent-session-from-services
