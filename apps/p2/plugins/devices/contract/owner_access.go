@@ -301,6 +301,19 @@ func (a *OwnerAccess) Claim(token string) bool {
 	return a.redeemLocked(&a.invites, jsTrim(token))
 }
 
+// Pending reports whether the invitation token is outstanding and unexpired, without using it up.
+func (a *OwnerAccess) Pending(token string) bool {
+	id := hashOf(jsTrim(token))
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	for _, each := range a.invites {
+		if each.id == id {
+			return each.expires > a.now()
+		}
+	}
+	return false
+}
+
 // IssueChallenge is a one-time local sign-in challenge (one minute); a restart or key rotation forgets it.
 func (a *OwnerAccess) IssueChallenge() string {
 	a.mu.Lock()
@@ -427,7 +440,8 @@ func (a *OwnerAccess) Logout(session OwnerSession) error {
 			kept = append(kept, each)
 		}
 	}
-	a.revoked = append(kept, revocation{id: session.ID, expires: session.Expires})
+	kept = append(kept, revocation{id: session.ID, expires: session.Expires})
+	a.revoked = kept
 	err := a.writeRevoked()
 	a.mu.Unlock()
 	return err

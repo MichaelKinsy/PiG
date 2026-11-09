@@ -91,6 +91,30 @@ func (r *running) stop(t *testing.T) {
 	}
 }
 
+// claimed plays the web view's part: it redeems the owner link the window was given, as the sign-in page does, and waits for
+// the app to notice (later navigations then load their route directly).
+func (r *running) claimed(t *testing.T) {
+	t.Helper()
+	win := r.window(t)
+	_, token, ok := strings.Cut(win.CurrentURL(), "/owner#")
+	if !ok {
+		t.Fatalf("the window was not given an owner link: %q", win.CurrentURL())
+	}
+	claim, err := p2test.HTTP(r.port, "/owner/claim", p2test.HTTPOptions{
+		Method: http.MethodPost, Headers: map[string]string{"Origin": r.app.Origin(), "Content-Type": "application/json"},
+		Body: strings.NewReader(`{"token":"` + token + `"}`),
+	})
+	if err != nil || claim.Status != 200 {
+		t.Fatalf("claim: %+v %v", claim, err)
+	}
+	if err := p2test.Poll(func() (bool, error) {
+		r.shell.Handlers.OpenURL("pig://open")
+		return win.CurrentURL() == r.app.Origin()+"/", nil
+	}, 10*time.Second, "the app to notice the claim"); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func (r *running) window(t *testing.T) *fakeshell.Window {
 	t.Helper()
 	windows, _, _, _ := r.shell.Snapshot()
@@ -158,6 +182,7 @@ func outboundIP() string {
 func TestChatRoundTripAndNotification(t *testing.T) {
 	r := start(t, nil)
 	win := r.window(t)
+	r.claimed(t)
 	conn, err := p2test.Dial(r.port, p2test.SignInLocalOwner(t, r.port, r.data).OwnerHeaders(nil))
 	if err != nil {
 		t.Fatal(err)
@@ -263,6 +288,7 @@ func TestFocusedWindowGetsNoNotification(t *testing.T) {
 func TestDeepLinks(t *testing.T) {
 	r := start(t, nil)
 	win := r.window(t)
+	r.claimed(t)
 	origin := r.app.Origin()
 	id := "0b1c2d3e-4f50-4162-8394-a5b6c7d8e9f0"
 	for link, want := range map[string]string{
@@ -300,8 +326,8 @@ func TestMacWindowReopensOnActivate(t *testing.T) {
 	first.Close()
 	r.shell.Handlers.Activate()
 	second := r.window(t)
-	// The web view signed in with the first window's link: later pages load directly.
-	if second == first || second.CurrentURL() != r.app.Origin()+"/" {
+	// Nothing claims the first window's link in the fake shell, so the reopened window gets a link of its own.
+	if second == first || !strings.HasPrefix(second.CurrentURL(), r.app.Origin()+"/owner#") {
 		t.Fatalf("activate did not open a window on the server: %v", second.CurrentURL())
 	}
 	r.stop(t)

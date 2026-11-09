@@ -22,10 +22,12 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/apps/p2/hosts"
+	devicescontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/devices/contract"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/apps/p2desktop/internal/leakcheck"
 	"github.com/MichaelKinsy/PiG/apps/p2desktop/internal/surfacehost"
 	"github.com/MichaelKinsy/PiG/apps/p2desktop/shell"
+	"github.com/MichaelKinsy/PiG/chord/next/host"
 )
 
 var configureFetch sync.Once
@@ -229,9 +231,47 @@ func (a *App) entryURL(route string) string {
 		return origin + route
 	}
 	a.mu.Lock()
+	watching := !a.closed
+	if watching {
+		a.starting.Add(1)
+	}
+	a.mu.Unlock()
+	if watching {
+		go func() {
+			defer a.starting.Done()
+			a.watchClaim(server, token)
+		}()
+	}
+	return origin + "/owner#" + token
+}
+
+// watchClaim marks the web view signed in once its owner link was redeemed (the invitation is no longer outstanding
+// within its ten minutes); a first load that failed leaves it unmarked, so the next navigation mints a new link.
+func (a *App) watchClaim(server *hosts.P2Server, token string) {
+	source, err := server.Host.Registry(a.ctx, devicescontract.DeviceAccesses, host.GetOptions{})
+	if err != nil {
+		return
+	}
+	parts, _ := source.Value().(*devicescontract.DeviceAccessParts)
+	if parts == nil {
+		return
+	}
+	deadline := time.NewTimer(9 * time.Minute)
+	defer deadline.Stop()
+	tick := time.NewTicker(100 * time.Millisecond)
+	defer tick.Stop()
+	for parts.Access().Pending(token) {
+		select {
+		case <-tick.C:
+		case <-deadline.C:
+			return
+		case <-a.ctx.Done():
+			return
+		}
+	}
+	a.mu.Lock()
 	a.webSignedIn = true
 	a.mu.Unlock()
-	return origin + "/owner#" + token
 }
 
 // loopback is the origin of the server on port.

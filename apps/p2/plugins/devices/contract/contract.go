@@ -37,7 +37,7 @@ func DeviceAccessesOf(self host.Self) func() (*DeviceAccessParts, error) {
 	return p2runtime.NativeOf[DeviceAccessParts](self.Registry(DeviceAccesses), "The owner access")
 }
 
-// Devices: all owners may open it; only the localhost device owner may mint an association token.
+// Devices: all owners may open it; only a local owner session may mint an association token.
 var Devices = must(contracts.Remote("p2.devices", contracts.RemoteDeclaration{
 	Version:     1,
 	Params:      contracts.Params{},

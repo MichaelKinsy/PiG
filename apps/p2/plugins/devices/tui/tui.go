@@ -1,5 +1,5 @@
-// Package tui is `/devices` in the TUI (p2-tui-port.md P11g), after the web's Devices sheet (owner): a one-time sign-in token for another device (only the
-// localhost device owner may mint one), and signing out this device or all devices. Signing out is the launcher's: the TUI's sign-in cookie lives there, never
+// Package tui is `/devices` in the TUI (p2-tui-port.md P11g), after the web's Devices sheet (owner): a one-time sign-in token for another device (only a local
+// owner session may mint one), and signing out this device or all devices. Signing out is the launcher's: the TUI's sign-in cookie lives there, never
 // in this worker, so it is a C launcher action (`signOut`, section 3.2) whose consent UI shows the scope ("all devices, this one included").
 //
 // Ports apps/p2/plugins/devices/tui.ts.
@@ -33,7 +33,7 @@ func showToken(ctx runtime.TuiContext, token string) {
 }
 
 // signOut: the launcher's consent UI (section 3.3) is the confirmation: it states the scope before anything is signed out. On success the server revokes this
-// connection; the launcher then forgets its cookie and asks for an owner link. The device owner on loopback has no cookie, so "this device" is refused there
+// connection; the launcher then forgets its cookie and asks for an owner link. On loopback the launcher signs in again with the data directory's owner key, so "this device" is refused there
 // (`denied`, like declining).
 func signOut(ctx runtime.TuiContext, all bool) {
 	go func() {

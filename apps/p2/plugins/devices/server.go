@@ -7,6 +7,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/MichaelKinsy/PiG/apps/p2/hosts"
 	"github.com/MichaelKinsy/PiG/apps/p2/plugins/devices/contract"
@@ -174,8 +175,10 @@ func serveDeviceAccess(facet host.FacetHost) error {
 			// Only a local owner's own request: no browser fetch of another origin, not even of this site.
 			p2runtime.Entry("GET /owner-token", p2runtime.RouteHandler(func(response http.ResponseWriter, request *http.Request, access2 p2runtime.RequestAccess, _ host.Ctx) error {
 				owner, isOwner := access2.Principal.(p2runtime.OwnerPrincipal)
-				site := request.Header.Values("Sec-Fetch-Site")
-				if !isOwner || owner.Access != p2runtime.AccessLocal || access2.Origin.Remote || (len(site) > 0 && site[0] != "same-origin") {
+				// Node joins repeated header lines with ", ".
+				values := request.Header.Values("Sec-Fetch-Site")
+				site := strings.Join(values, ", ")
+				if !isOwner || owner.Access != p2runtime.AccessLocal || access2.Origin.Remote || (len(values) > 0 && site != "same-origin") {
 					return forbid(response, request, "Forbidden")
 				}
 				return p2runtime.SendJSON(response, http.StatusOK, map[string]any{"token": access().IssueToken()}, nil)

@@ -105,7 +105,7 @@ func LocalOwnerSignIn(ctx context.Context, client *http.Client, target *url.URL,
 	if err != nil {
 		return LocalSignIn{}, err
 	}
-	defer challenged.Body.Close()
+	defer func() { _ = challenged.Body.Close() }()
 	var value struct {
 		Challenge any `json:"challenge"`
 	}
@@ -121,7 +121,7 @@ func LocalOwnerSignIn(ctx context.Context, client *http.Client, target *url.URL,
 	if err != nil {
 		return LocalSignIn{}, err
 	}
-	defer claimed.Body.Close()
+	defer func() { _ = claimed.Body.Close() }()
 	_, _ = io.Copy(io.Discard, claimed.Body)
 	if claimed.StatusCode == http.StatusForbidden {
 		return LocalSignIn{Kind: LocalUnavailable, Message: "The p2 server at " + origin + " does not use the data directory " + dataDir + ": set P2_DATA_DIR to its data directory, or sign in with an owner link"}, nil
