@@ -163,6 +163,8 @@ type more struct {
 	styles  ClientStyles
 	// onTimer is called with the pause of each timer the manual environment lists, before its After returns.
 	onTimer func(ms int64)
+	// fetching is called with each script entry the client fetches, before the fetch answers.
+	fetching func(entry ScriptEntry)
 }
 
 // setup is a server serving WebScripts with initial, and a client started against it with available to fetch; failing fetches
@@ -235,6 +237,9 @@ func setup(t *testing.T, initial []RegisteredScript, available []RegisteredScrip
 			s.mu.Lock()
 			s.fetched = append(s.fetched, entry.URL)
 			s.mu.Unlock()
+			if opt.fetching != nil {
+				opt.fetching(entry)
+			}
 			if failing.Add(-1) >= 0 {
 				return RegisteredScript{}, fmt.Errorf("%s: network error", entry.URL)
 			}
@@ -639,6 +644,44 @@ func TestAsksTheServersBaseBeforeReconnectingAnotherOneCallsOutdatedAndStops(t *
 	time.Sleep(400 * time.Millisecond)
 	if n := s.socketCount(); n != 1 {
 		t.Fatalf("sockets = %d, want 1", n)
+	}
+	s.finish(t)
+}
+
+// Pi's watch callback is `async (call, ctx) => { ...; await this.#queue(set, ctx); }` and the watch delivers one call at a time: a set
+// the scripts object shows while an update runs is not delivered (not `#latest`, no retry cancelled, no pause reset) until that update
+// ended. So a retry armed by the update that ran meanwhile is cancelled by the next delivery, and the next set's own failure waits
+// the first pause again, not a doubled one.
+func TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain(t *testing.T) {
+	a1, a2, a3 := script("@test/a", "d1", "hello"), script("@test/a", "d2", "hello again"), script("@test/a", "d3", "hello at last")
+	manual := &timers{}
+	blocked, resume := make(chan struct{}), make(chan struct{})
+	var once, closing sync.Once
+	release := func() { closing.Do(func() { close(resume) }) }
+	defer release()
+	s := setup(t, []RegisteredScript{a1}, []RegisteredScript{a2, a3}, more{failing: 2, manual: manual, fetching: func(entry ScriptEntry) {
+		if entry.Digest == "d2" {
+			once.Do(func() { close(blocked); <-resume })
+		}
+	}})
+	s.publish(t, setOf("B1", a2))
+	select {
+	case <-blocked:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the first update's fetch did not start in 10 s")
+	}
+	s.publish(t, setOf("B1", a3))
+	// The first update is still running: the newer set waits for the watch's one call to return.
+	for deadline := time.Now().Add(300 * time.Millisecond); time.Now().Before(deadline); time.Sleep(5 * time.Millisecond) {
+		if digest := s.client.NewestDigest("@test/a"); digest != "d2" {
+			t.Fatalf("the newest set is %q while the update of d2 runs, want d2 (the watch's call has not returned)", digest)
+		}
+	}
+	release()
+	until(t, func() bool { return slices.Contains(s.fetchedNow(), "/@test/a.d3.js") && len(s.errorKinds()) == 2 })
+	until(t, func() bool { return len(manual.withMs(1000, 2000)) == 1 })
+	if ms := manual.withMs(1000, 2000)[0].ms; ms != 1000 {
+		t.Fatalf("the newer set's retry waits %d ms, want 1000 (its delivery reset the pause)", ms)
 	}
 	s.finish(t)
 }
