@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
-// Ports packages/chord/src/next/link/text.ts. The text codec (2b): one JSON tuple per message, Delta style (a short kind
+// Ports packages/chord/src/link/text.ts. The text codec (2b): one JSON tuple per message, Delta style (a short kind
 // tag, positional fields, no field names), and DescribeMessage, which prints any message in that form. A part's JSON
 // text is spliced into the tuple as it is; decoding parses the tuple and writes each part back as text (one parse per
 // part per hop: a debugging codec). Byte segments of a payload marked as carrying bytes follow the tuple after a

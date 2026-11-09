@@ -19,7 +19,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/src/next-node/plugins/plugins.ts. The plugins component (slice 7c §4, §5; decision "Slice 7c's
+// Ports packages/chord/src/node/plugins/plugins.ts. The plugins component (slice 7c §4, §5; decision "Slice 7c's
 // points"; slice 10 D11, D12; slice 12 §1, §5): discovery, builds checked against the app's API, installs and the watcher,
 // and per kind the complete current set of scripts (built on first use, updated by every rollout that ships the kind),
 // which its plugin runtime loads and reloads hosts with: unchanged plugins as the same facets, removed ones left out, a

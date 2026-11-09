@@ -7,7 +7,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 )
 
-// pi: packages/chord/src/next/contracts/history.ts
+// pi: packages/chord/src/contracts/history.ts
 // Ports packages/chord/test/contracts/history.test.ts. Upstream's history is a type-level structure
 // (Increment, CurrentStep, OlderVersions, StepAt, ChangesAfter, tested with expectTypeOf only); Go does not type it,
 // so the cases are runtime tests (ChangesAfter: TestChangesAfter in derived_runtime_test.go). At

@@ -9,6 +9,7 @@ import (
 	"testing"
 )
 
+// pi: packages/chord/src/node/tui/pipe.ts
 // Tests of the launcher's end of the sandbox's pipes (slice 11 §4; fix round 2): length-prefixed frames cut from the sandbox's
 // output however it chunks them, each message checked, and anything malformed or oversized refused, so the sandbox ends and the
 // launcher goes on (Opus E3). Ports packages/chord/test/node/tui/pipe.test.ts.

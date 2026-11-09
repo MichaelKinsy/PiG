@@ -1004,9 +1004,9 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/node/tui/sandbox.ts` | `chord/nextnode/tui/tui_sandbox.go` | ✅ |
 | `packages/chord/src/node/workers/base.ts` | `(designed out, D600 draft: a Go worker is the program's own executable; no esbuild worker base; rows/chord-reload-workers.md)` | n/a |
 | `packages/chord/src/node/workers/child.ts` | `(designed out, D600 draft: a Go worker is the program's own executable; no esbuild worker base; rows/chord-reload-workers.md)` | n/a |
-| `packages/chord/src/react/hooks.ts` | `chord/nextnode/surfaces/client/pi/chord/src/react/hooks.ts` (vendored byte-for-byte, D601; client_manifest_test.go) | ✅ |
+| `packages/chord/src/react/hooks.ts` | `chord/nextnode/surfaces/client/pi/chord/src/react/hooks.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/react/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
-| `packages/chord/src/react/stores.ts` | `chord/nextnode/surfaces/client/pi/chord/src/react/stores.ts` (vendored byte-for-byte, D601; client_manifest_test.go) | ✅ |
+| `packages/chord/src/react/stores.ts` | `chord/nextnode/surfaces/client/pi/chord/src/react/stores.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/store/live-query.ts` | `chord/next/store/live_query.go (D431)` | ✅ |
 | `packages/chord/src/surfaces/active-language.ts` | `chord/next/surfaces/surfaces_active_language.go` | ✅ |
 | `packages/chord/src/surfaces/active-theme.ts` | `chord/next/surfaces/surfaces_active_theme.go` | ✅ |
@@ -1015,14 +1015,14 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/surfaces/format.ts` | `chord/next/surfaces/surfaces_format.go` | ✅ |
 | `packages/chord/src/surfaces/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
 | `packages/chord/src/surfaces/language.ts` | `chord/next/surfaces/surfaces_language.go` | ✅ |
-| `packages/chord/src/surfaces/loaded.ts` | `chord/next/surfaces/surfaces_loaded.go`, `chord/nextnode/surfaces/client/pi/chord/src/surfaces/loaded.ts` (vendored byte-for-byte, D601; client_manifest_test.go) | ✅ |
+| `packages/chord/src/surfaces/loaded.ts` | `chord/next/surfaces/surfaces_loaded.go`, `chord/nextnode/surfaces/client/pi/chord/src/surfaces/loaded.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/surfaces/locale-choice.ts` | `chord/next/surfaces/surfaces_locale_choice.go` | ✅ |
 | `packages/chord/src/surfaces/messages.ts` | `chord/next/surfaces/surfaces_messages.go` | ✅ |
 | `packages/chord/src/surfaces/page-state.ts` | `chord/next/surfaces/surfaces_page_state.go` | ✅ |
 | `packages/chord/src/surfaces/preference.ts` | `chord/next/surfaces/surfaces_preference.go` | ✅ |
 | `packages/chord/src/surfaces/registered.ts` | `chord/next/surfaces/surfaces_registered.go` | ✅ |
-| `packages/chord/src/surfaces/scripts.ts` | `chord/next/surfaces/surfaces_scripts.go`, `chord/nextnode/surfaces/client/pi/chord/src/surfaces/scripts.ts` (vendored byte-for-byte, D601; client_manifest_test.go) | ✅ |
-| `packages/chord/src/surfaces/theme-choice.ts` | `chord/next/surfaces/surfaces_theme_choice.go`, `chord/nextnode/surfaces/client/pi/chord/src/surfaces/theme-choice.ts` (vendored byte-for-byte, D601; client_manifest_test.go) | ✅ |
+| `packages/chord/src/surfaces/scripts.ts` | `chord/next/surfaces/surfaces_scripts.go`, `chord/nextnode/surfaces/client/pi/chord/src/surfaces/scripts.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
+| `packages/chord/src/surfaces/theme-choice.ts` | `chord/next/surfaces/surfaces_theme_choice.go`, `chord/nextnode/surfaces/client/pi/chord/src/surfaces/theme-choice.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/surfaces/themes.ts` | `chord/next/surfaces/surfaces_themes.go` | ✅ |
 | `packages/chord/src/surfaces/translations.ts` | `chord/next/surfaces/surfaces_translations.go` | ✅ |
 | `packages/chord/src/sync/batch.ts` | `chord/sync/batch.go` | ✅ |
@@ -1033,29 +1033,29 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/sync/lines.ts` | `chord/sync/lines.go` | ✅ |
 | `packages/chord/src/sync/remote.ts` | `chord/sync/remote.go` | ✅ |
 | `packages/chord/src/sync/state.ts` | `chord/sync/state.go` | ✅ |
-| `packages/chord/src/telemetry-ingest/batch.ts` | `chord/next/telemetryingest/batch.go, decode.go, encode.go`, `chord/nextnode/surfaces/client/pi/chord/src/telemetry-ingest/batch.ts` (vendored byte-for-byte, D601; client_manifest_test.go) | ✅ |
+| `packages/chord/src/telemetry-ingest/batch.ts` | `chord/next/telemetryingest/batch.go, decode.go, encode.go`, `chord/nextnode/surfaces/client/pi/chord/src/telemetry-ingest/batch.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/telemetry-ingest/facet.ts` | `chord/next/telemetryingest/facet.go` | ✅ |
 | `packages/chord/src/telemetry-ingest/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
-| `packages/chord/src/telemetry-ingest/recorder.ts` | `chord/next/telemetryingest/recorder.go`, `chord/nextnode/surfaces/client/pi/chord/src/telemetry-ingest/recorder.ts` (vendored byte-for-byte, D601; client_manifest_test.go) | ✅ |
+| `packages/chord/src/telemetry-ingest/recorder.ts` | `chord/next/telemetryingest/recorder.go`, `chord/nextnode/surfaces/client/pi/chord/src/telemetry-ingest/recorder.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/telemetry-ingest/sender.ts` | `chord/next/telemetryingest/sender.go` | ✅ |
 | `packages/chord/src/telemetry-sqlite/node.ts` | `chord/telemetrysqlite/node.go` | ✅ |
 | `packages/chord/src/telemetry-sqlite/schema.ts` | `chord/telemetrysqlite/schema.go` | ✅ |
-| `packages/chord/src/telemetry.ts` | `chord/next/telemetry/schema.go, telemetry.go`, `chord/nextnode/surfaces/client/pi/chord/src/telemetry.ts` (vendored byte-for-byte, D601; client_manifest_test.go) | ✅ |
-| `packages/chord/src/tui/bridge.ts` | `chord/nextnode/tui/tui_bridge.go (launcher side)`, `chord/nextnode/surfaces/client/pi/chord/src/tui/bridge.ts` (vendored byte-for-byte, D601; client_manifest_test.go) | ✅ |
-| `packages/chord/src/tui/channel.ts` | `chord/nextnode/surfaces/client/pi/chord/src/tui/channel.ts` (vendored byte-for-byte, D601; client_manifest_test.go) | ✅ |
-| `packages/chord/src/tui/frames.ts` | `chord/nextnode/surfaces/client/pi/chord/src/tui/frames.ts` (vendored byte-for-byte, D601; client_manifest_test.go) | ✅ |
+| `packages/chord/src/telemetry.ts` | `chord/next/telemetry/schema.go, telemetry.go`, `chord/nextnode/surfaces/client/pi/chord/src/telemetry.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
+| `packages/chord/src/tui/bridge.ts` | `chord/nextnode/tui/tui_bridge.go (launcher side)`, `chord/nextnode/surfaces/client/pi/chord/src/tui/bridge.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
+| `packages/chord/src/tui/channel.ts` | `chord/nextnode/surfaces/client/pi/chord/src/tui/channel.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
+| `packages/chord/src/tui/frames.ts` | `chord/nextnode/surfaces/client/pi/chord/src/tui/frames.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/tui/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
-| `packages/chord/src/tui/runtime.ts` | `chord/nextnode/surfaces/client/pi/chord/src/tui/runtime.ts` (vendored byte-for-byte, D601; client_manifest_test.go) | ✅ |
+| `packages/chord/src/tui/runtime.ts` | `chord/nextnode/surfaces/client/pi/chord/src/tui/runtime.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/tui/scope.ts` | `chord/next/tui/tui_scope.go` | ✅ |
-| `packages/chord/src/tui/terminal.ts` | `chord/nextnode/tui/tui_terminal.go`, `chord/nextnode/surfaces/client/pi/chord/src/tui/terminal.ts` (vendored byte-for-byte, D601; client_manifest_test.go) | ✅ |
-| `packages/chord/src/tui/theme.ts` | `chord/nextnode/surfaces/client/pi/chord/src/tui/theme.ts` (vendored byte-for-byte, D601; client_manifest_test.go) | ✅ |
-| `packages/chord/src/web/environment.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/environment.ts` (vendored byte-for-byte, D601; client_manifest_test.go) | ✅ |
+| `packages/chord/src/tui/terminal.ts` | `chord/nextnode/tui/tui_terminal.go`, `chord/nextnode/surfaces/client/pi/chord/src/tui/terminal.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
+| `packages/chord/src/tui/theme.ts` | `chord/nextnode/surfaces/client/pi/chord/src/tui/theme.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
+| `packages/chord/src/web/environment.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/environment.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/web/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
-| `packages/chord/src/web/language.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/language.ts` (vendored byte-for-byte, D601; client_manifest_test.go) | ✅ |
-| `packages/chord/src/web/page.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/page.ts` (vendored byte-for-byte, D601; client_manifest_test.go) | ✅ |
-| `packages/chord/src/web/scripts.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/scripts.ts` (vendored byte-for-byte, D601; client_manifest_test.go) | ✅ |
-| `packages/chord/src/web/styles.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/styles.ts` (vendored byte-for-byte, D601; client_manifest_test.go) | ✅ |
-| `packages/chord/src/web/themes.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/themes.ts` (vendored byte-for-byte, D601; client_manifest_test.go) | ✅ |
+| `packages/chord/src/web/language.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/language.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
+| `packages/chord/src/web/page.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/page.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
+| `packages/chord/src/web/scripts.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/scripts.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
+| `packages/chord/src/web/styles.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/styles.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
+| `packages/chord/src/web/themes.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/themes.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 
 ## `packages/protocol/src/`
 

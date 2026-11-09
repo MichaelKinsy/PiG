@@ -19,7 +19,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
-// Ports packages/chord/src/next-node/plugins/watcher.ts. The watcher and its marks (slice 7c §5, slice 12 §4): a watch on
+// Ports packages/chord/src/node/plugins/watcher.ts. The watcher and its marks (slice 7c §5, slice 12 §4): a watch on
 // every directory of the plugin roots and the app's base code, `node_modules` and `.git` never watched (a directory
 // appearing later gets its watch), marks what changed and never applies it. A changed file dirties every plugin whose
 // facets used it (a copied contract every user), whose directory contains it or which is a single-file plugin of it; a

@@ -1,4 +1,4 @@
-// Package plugins ports packages/chord/src/next-node/plugins: the plugins component of Chord v2 (slice 7c, design §21
+// Package plugins ports packages/chord/src/node/plugins: the plugins component of Chord v2 (slice 7c, design §21
 // "Loading plugins and the reload loop"), the plugin directories found, each facet built, evaluated, loaded and reloaded
 // per plugin, watched and rolled out.
 //

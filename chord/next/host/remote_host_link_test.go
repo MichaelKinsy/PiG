@@ -16,7 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/nextnode"
 )
 
-// pi: packages/chord/src/next/remote/host-link.ts
+// pi: packages/chord/src/remote/host-link.ts
 
 // Ports packages/chord/test/remote/host-link.test.ts.
 //

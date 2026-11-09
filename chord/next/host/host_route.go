@@ -13,7 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/src/next/host/route.ts. Routes (§3): how a host reaches hosts of one kind. `authorize` admits each
+// Ports packages/chord/src/host/route.ts. Routes (§3): how a host reaches hosts of one kind. `authorize` admits each
 // hold routed over the route; `resolve` makes the link of one address, at most once at a time. No timer (slice 10 R2): an
 // address resolves for a new hold, on `RouteHandle.retry`, or once after its link dropped while held; a rejected `resolve`
 // (or a link closed before its handshake) fails its holders `failed { waiting }` until then, and a suspended address

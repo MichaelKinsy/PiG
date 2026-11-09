@@ -8,7 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// Ports packages/chord/src/next/remote/replica.ts. Replicas (§7, §22): a state member of a remote reference on the
+// Ports packages/chord/src/remote/replica.ts. Replicas (§7, §22): a state member of a remote reference on the
 // consumer, built from the snapshot and then changed by the provider's ops, decoded with the member's own Delta decoder
 // and applied without validation or copy (`ApplyImmutable` shares structure); replaced by the snapshot of each re-hold.
 

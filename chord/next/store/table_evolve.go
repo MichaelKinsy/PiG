@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// Ports packages/chord/src/next/store/table-evolve.ts
+// Ports packages/chord/src/store/table-evolve.ts
 //
 // `EvolveTable(previous, (t) => t…)` (slice 6a §9; decision "Second spec review: the majority"): the next version of
 // a table from the edits of one migration. At runtime one editor records the edits, checks each as it is made, and

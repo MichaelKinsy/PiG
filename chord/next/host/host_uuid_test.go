@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// pi: packages/chord/src/next/host/uuid.ts
+// pi: packages/chord/src/host/uuid.ts
 // Pi has no test file for uuid.ts; these are the checks of the properties its comment states: UUIDv7 text, ids ordered
 // within one millisecond and across a clock that goes backwards.
 

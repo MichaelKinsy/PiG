@@ -131,7 +131,7 @@ func constant(value delta.JsonValue) chord.Watchable[delta.JsonValue] {
 	return Expose(state.NewConstant(value))
 }
 
-// pi: packages/chord/src/next/host/host.ts
+// pi: packages/chord/src/host/host.ts
 // --- host.test.ts ---------------------------------------------------------------------------------------------------
 
 var (

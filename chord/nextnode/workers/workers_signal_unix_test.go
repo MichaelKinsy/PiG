@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// pi: packages/chord/src/next-node/workers/main.ts
+// pi: packages/chord/src/node/workers/main.ts
 // Ports the SIGTERM half of main.test.ts "shuts down on SIGTERM and on the parent's disconnect".
 func TestTheWorkersSideShutsDownOnSIGTERM(t *testing.T) {
 	term := started(t, workerBehaviour{})

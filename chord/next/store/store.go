@@ -16,7 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/src/next/store/store.ts
+// Ports packages/chord/src/store/store.ts
 //
 // The store (slice 6a §2, §3, slice 6b §1): opened over a backend, one commit queue that serializes only the commit
 // step (the seal fence's admission check, `BEGIN`, the writes in their order, the outbox commit, `lastSeq` and the

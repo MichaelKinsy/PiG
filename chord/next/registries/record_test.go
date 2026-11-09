@@ -12,9 +12,9 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// pi: packages/chord/src/next/registries/record.ts
-// pi: packages/chord/src/next/registries/contribution.ts
-// pi: packages/chord/src/next/registries/internal.ts
+// pi: packages/chord/src/registries/record.ts
+// pi: packages/chord/src/registries/contribution.ts
+// pi: packages/chord/src/registries/internal.ts
 // Ports the registry-layer behavior of packages/chord/test/registries/record.test.ts that does not need a host:
 // the same inputs and expected results, driven on a RegistryRecord with the contributions a facet or a host-lifetime
 // object would make (`self.contribute`, `self.writable`, `self.derive`).

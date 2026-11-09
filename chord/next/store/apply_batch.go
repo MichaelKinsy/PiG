@@ -9,7 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Ports packages/chord/src/next/store/apply-batch.ts
+// Ports packages/chord/src/store/apply-batch.ts
 //
 // Batch apply (slice 6b §1.6, S5, S17): a replica takes commits `from..to` as an outbox gave them, in one backend
 // transaction through the store's commit queue, each write applied with its commit's seq by the applier (a trust

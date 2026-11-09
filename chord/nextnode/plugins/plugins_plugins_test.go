@@ -1,6 +1,6 @@
 package plugins
 
-// pi: packages/chord/src/next-node/plugins/plugins.ts
+// pi: packages/chord/src/node/plugins/plugins.ts
 
 import (
 	"context"

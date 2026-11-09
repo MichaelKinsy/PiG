@@ -2,7 +2,7 @@ package host
 
 import "slices"
 
-// Ports packages/chord/src/next/remote/calls.ts. The call window (§3, decision log "Flow control: an ack-clocked
+// Ports packages/chord/src/remote/calls.ts. The call window (§3, decision log "Flow control: an ack-clocked
 // window"): at most the peer's N calls in flight on a link from this host; further calls wait in one FIFO queue, sent in
 // order as replies free slots.
 

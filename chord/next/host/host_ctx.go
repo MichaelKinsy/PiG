@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/src/next/host/ctx.ts. The `ctx` a method handler gets (§8): its call's context, who called, the
+// Ports packages/chord/src/host/ctx.ts. The `ctx` a method handler gets (§8): its call's context, who called, the
 // calling host's incarnation, and call-scoped references; and the abort signal of a call's context, linked to long-lived
 // sources until it settles.
 //

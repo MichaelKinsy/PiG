@@ -9,7 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// Ports packages/chord/src/next/jobs/running.ts
+// Ports packages/chord/src/jobs/running.ts
 //
 // A job's `running` (§15): a JSON watchable of its unsettled runs, one entry per run in start order, tagged by phase.
 // It is a source of its own (keyed state documents publish nothing): the job tells it each change in the commit step,

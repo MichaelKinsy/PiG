@@ -1,6 +1,6 @@
 package plugins
 
-// pi: packages/chord/src/next-node/plugins/watcher.ts
+// pi: packages/chord/src/node/plugins/watcher.ts
 
 import (
 	"context"

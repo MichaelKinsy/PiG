@@ -15,7 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 )
 
-// pi: packages/chord/src/next/link/channel.ts
+// pi: packages/chord/src/link/channel.ts
 // Ports packages/chord/test/link/channel.test.ts at the channel's own level: the handshake, checks, the
 // heartbeat, trusted links, and in-order handling while a message waits for an asynchronous inflate. The cases that
 // run a host over the channel (the queued messages before the peer's hello, the heartbeat references going loading, one timer

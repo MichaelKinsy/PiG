@@ -19,7 +19,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// pi: packages/chord/src/next/host/retry-on.ts
+// pi: packages/chord/src/host/retry-on.ts
 // Ports packages/chord/test/host/retry-on.test.ts. The cases that run a host (the retries of a failed object, the wake
 // remembered while it activates, wakes while live or parked, the collection of the object's wakes, the contributions
 // leaving) are the TestRetryOn... tests at the end, on a real host as upstream's; the own tests of retrySource and

@@ -7,7 +7,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 )
 
-// Ports packages/chord/src/next/contracts/schema.ts (Chord's short constructors over pi-schema's builders: plain JSON
+// Ports packages/chord/src/contracts/schema.ts (Chord's short constructors over pi-schema's builders: plain JSON
 // Schema, and method and keyed member declarations). The helpers keep the shapes contracts were fingerprinted with:
 // literals carry their `type`, OneOf is a union of literals, Map a pattern-property record; Obj follows pi-schema's
 // builder order (type, properties, required, additionalProperties).

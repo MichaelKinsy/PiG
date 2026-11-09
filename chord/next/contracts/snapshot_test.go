@@ -10,7 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/schema"
 )
 
-// pi: packages/chord/src/next/contracts/snapshot.ts
+// pi: packages/chord/src/contracts/snapshot.ts
 // Ports packages/chord/test/contracts/snapshot.test.ts.
 //
 // Designed out (no Go input): the refusal of a non-enumerable key ("non-enumerable key (a TypeBox refinement)": Go has no

@@ -24,7 +24,7 @@ import (
 // has no listener list; the `context.AfterFunc` registration is stopped when the export ends, and what the counts
 // proved there (the queue given back at once, nothing left held) is asserted by the commits that follow.
 //
-// pi: packages/chord/src/next/store/export.ts
+// pi: packages/chord/src/store/export.ts
 
 // exportFlushed waits until every goroutine that can make progress did (Pi's `flushed()`: pending promise callbacks).
 func exportFlushed() { time.Sleep(50 * time.Millisecond) }

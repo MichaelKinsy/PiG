@@ -43,7 +43,7 @@ func checkTemplates(root string) ([]string, error) {
 		if err != nil {
 			return err
 		}
-		defer file.Close()
+		defer func() { _ = file.Close() }()
 		var lines []string
 		scanner := bufio.NewScanner(file)
 		scanner.Buffer(make([]byte, 0, 1<<16), 1<<24)

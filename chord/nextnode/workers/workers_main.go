@@ -25,7 +25,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/src/next-node/workers/main.ts. The worker's side (slice 10 §3): `WorkerMain` reads the start
+// Ports packages/chord/src/node/workers/main.ts. The worker's side (slice 10 §3): `WorkerMain` reads the start
 // message, takes the address's lock, makes the link to the server (`started` goes out when the app's host listens on it),
 // runs the app's function with a plugin runtime over the shipped scripts, reports `ready` and each idle flip, applies
 // reloads, and on `shutdown`, the parent's disconnect, `SIGTERM` or `SIGINT` aborts its context, runs the app's closers in

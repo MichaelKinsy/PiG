@@ -23,7 +23,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
-// Ports packages/chord/src/next-node/plugins/install.ts. Installing (slice 7c §5, decision "Slice 7c's points" (3); slice 12
+// Ports packages/chord/src/node/plugins/install.ts. Installing (slice 7c §5, decision "Slice 7c's points" (3); slice 12
 // §5, decision "`chord.plugins` is a package's manifest of plugins"): a plugin's npm dependencies as coding-agent installs a
 // package's (`npm install` in the plugin's real directory without dev dependencies, host peers or lifecycle scripts; the
 // command overridable), and new plugins from git (a shallow clone of a ref) or npm (a packed tarball extracted), each staged

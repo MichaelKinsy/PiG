@@ -8,7 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// TestChordErrorMarshalIsTheStringifiedToJSON pins ChordError's JSON to Pi's JSON.stringify of toJSON (packages/chord/src/next/data/errors.ts:57): code, reason, message and details in that order, `<`, `>`, `&` and U+2028/U+2029 written literally, and a negative zero in details as 0.
+// TestChordErrorMarshalIsTheStringifiedToJSON pins ChordError's JSON to Pi's JSON.stringify of toJSON (packages/chord/src/data/errors.ts:57): code, reason, message and details in that order, `<`, `>`, `&` and U+2028/U+2029 written literally, and a negative zero in details as 0.
 func TestChordErrorMarshalIsTheStringifiedToJSON(t *testing.T) {
 	cases := []struct {
 		name string

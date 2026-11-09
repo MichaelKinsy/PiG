@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 )
 
-// pi: packages/chord/src/next/link/channel.ts
+// pi: packages/chord/src/link/channel.ts
 
 // Ports the cases of packages/chord/test/link/channel.test.ts that run a host over the channel (link/channel_test.go
 // has the channel's own equivalents): "the handshake" (a consumer's messages queue until the peer's hello), "a codec

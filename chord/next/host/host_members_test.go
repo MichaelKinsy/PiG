@@ -14,7 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// pi: packages/chord/src/next/host/members.ts
+// pi: packages/chord/src/host/members.ts
 // Ports packages/chord/test/host/members.test.ts: its two cases (TestHostGet...) serve a contract through a whole
 // host and assert the message the host builds from the object's label and the cause. The other tests are own tests of the
 // member check and of the resolution behind derives and contributions, driven directly; each names the upstream case

@@ -18,7 +18,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
-// pi: packages/chord/src/next-node/workers/main.ts
+// pi: packages/chord/src/node/workers/main.ts
 // Ports packages/chord/test/node/workers/main.test.ts: the worker's side: the start message, the lock, `started` on
 // `connect`, `ready`; shutdown during startup, the parent's disconnect and SIGTERM each run the closers and exit; `fatal`
 // redacted.
@@ -159,7 +159,7 @@ func TestTheWorkersSideShutsDownDuringItsStartupAbortsItRunsTheClosersRegistered
 
 // A shutdown that finds a reload in flight in the NodeHost, whose event loop is blocked and answers nothing, closes the worker's
 // link to the server before the NodeHost ends and fails the reload (Pi's `#shutdown` runs the closers in reverse order, and the
-// host closer, registered last, closes the link: packages/chord/src/next-node/workers/main.ts, ipc.ts's close frame precedes the
+// host closer, registered last, closes the link: packages/chord/src/node/workers/main.ts, ipc.ts's close frame precedes the
 // `reloaded` reply). The NodeHost's close runs after the app's closers, those it registered before and after the load, so the
 // server reads the reload's failure after its link closed, where it settles the reload from `ended`
 // (TestTheRolloutStepListsAWorkerStoppedCleanlyDuringItAsStoppedAndOneThatCrashedWithItsError). The NodeHost stays blocked until

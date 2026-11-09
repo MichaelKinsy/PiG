@@ -9,7 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 )
 
-// pi: packages/chord/src/next/remote/calls.ts
+// pi: packages/chord/src/remote/calls.ts
 
 // Ports packages/chord/test/remote/calls.test.ts.
 

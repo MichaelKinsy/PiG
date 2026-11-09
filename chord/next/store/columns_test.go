@@ -16,7 +16,7 @@ import (
 // column declarations; a row is `Row`. TestEvidenceStoreAColumnsOptionalRowType (evidence_storeA_test.go) asserts the
 // declarations that replace them.
 //
-// pi: packages/chord/src/next/store/columns.ts
+// pi: packages/chord/src/store/columns.ts
 
 func describeFails(t *testing.T, columns []ColumnProp, want string) {
 	t.Helper()

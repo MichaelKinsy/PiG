@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// pi: packages/chord/src/next-node/workers/child.ts
+// pi: packages/chord/src/node/workers/child.ts
 // Ports packages/chord/test/node/workers/child.test.ts ("the child entry's imports › loads no esbuild"): a forked worker does not
 // pay for the server's build tool. Pi checks it on the Node bundle of the child entry; a Go worker is a program that calls
 // WorkerMain, so the check is on what that program links: the packages the worker side imports (`go list -deps`).

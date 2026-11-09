@@ -19,10 +19,10 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// pi: packages/chord/src/next/registries/value.ts
-// pi: packages/chord/src/next/registries/contribution.ts
-// pi: packages/chord/src/next/registries/record.ts
-// pi: packages/chord/src/next/registries/internal.ts
+// pi: packages/chord/src/registries/value.ts
+// pi: packages/chord/src/registries/contribution.ts
+// pi: packages/chord/src/registries/record.ts
+// pi: packages/chord/src/registries/internal.ts
 
 // Ports the host-run cases of packages/chord/test/registries/value.test.ts: the readers of a registry (`self.registry`,
 // `host.registry`) on a loaded host with plugins, which the record-level cases in registries/value_test.go cannot run:

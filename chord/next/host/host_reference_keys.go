@@ -11,7 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// Ports packages/chord/src/next/host/reference-keys.ts
+// Ports packages/chord/src/host/reference-keys.ts
 //
 // The keys a reference holds (slice 6a §12; decision "References are the only indirection" (4)): its key watches and
 // its factory's pins (`at(key)`) of its object's keyed members, one source per member and key shared by them, pinned on

@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/src/next/documents/definition.ts
+// Ports packages/chord/src/documents/definition.ts
 //
 // Document definitions: `defineState(name, ...)`, its fingerprint, the one check of a definition's `initial()` (R8),
 // the checked `migrate` of an older value and, for a persisted document, its checkpoint rule (slice 6a §10).

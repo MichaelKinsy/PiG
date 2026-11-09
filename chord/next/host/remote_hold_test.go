@@ -24,7 +24,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// pi: packages/chord/src/next/remote/hold.ts
+// pi: packages/chord/src/remote/hold.ts
 
 // Ports packages/chord/test/remote/hold.test.ts.
 //

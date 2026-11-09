@@ -16,7 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/src/next/remote/remote-object.ts. An object held over a link (§7): what one remote reference is
+// Ports packages/chord/src/remote/remote-object.ts. An object held over a link (§7): what one remote reference is
 // bound to on the consumer, across the links of its path (the parent, or a route address). Its state, the replicas of its
 // last bound variant (kept while its link is down), its hold on the path's current link and calls through it.
 //

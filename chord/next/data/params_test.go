@@ -13,7 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest/contractstest"
 )
 
-// pi: packages/chord/src/next/data/params.ts
+// pi: packages/chord/src/data/params.ts
 // Ports packages/chord/test/data/params.test.ts.
 //
 // Designed out: the expectTypeOf assertion of "returns the caller's own object ..." (CheckedParams.Params is the

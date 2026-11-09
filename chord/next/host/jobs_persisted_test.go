@@ -38,9 +38,9 @@ import (
 // test's end. `RETENTION_MS` and `vi.spyOn(Residency.prototype, "touch")` are `documents.RetentionMs` on the host's
 // virtual loop and a check of what the run states are (the spy has no Go form).
 //
-// pi: packages/chord/src/next/jobs/persisted.ts
-// pi: packages/chord/src/next/jobs/run-states.ts
-// pi: packages/chord/src/next/jobs/stored.ts
+// pi: packages/chord/src/jobs/persisted.ts
+// pi: packages/chord/src/jobs/run-states.ts
+// pi: packages/chord/src/jobs/stored.ts
 
 var jobImportProgress = mustDefineState(documents.DefineState("import.progress", documents.StateOptions{
 	Schema:  contracts.Obj(contracts.Prop("done", contracts.Int())),

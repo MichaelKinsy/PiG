@@ -23,7 +23,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// pi: packages/chord/src/next/remote/remote-object.ts
+// pi: packages/chord/src/remote/remote-object.ts
 
 // Ports packages/chord/test/remote/remote-object.test.ts.
 //

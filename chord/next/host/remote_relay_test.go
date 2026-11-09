@@ -19,7 +19,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/nextnode"
 )
 
-// pi: packages/chord/src/next/remote/relay.ts
+// pi: packages/chord/src/remote/relay.ts
 
 // Ports packages/chord/test/remote/relay.test.ts: relayed holds, with a server routing to raw workers and a raw tab.
 

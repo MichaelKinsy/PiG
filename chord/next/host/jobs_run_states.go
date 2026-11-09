@@ -11,7 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Ports packages/chord/src/next/jobs/run-states.ts
+// Ports packages/chord/src/jobs/run-states.ts
 //
 // A job's run state documents (§15, slice 6b §4.1, §4.3): one per run by its id, Chord's own slot apart from the
 // object's `self.state` slots. In memory, or persisted in the object's store (namespace `chord.job-states`), always in

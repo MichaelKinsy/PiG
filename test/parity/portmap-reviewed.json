@@ -7,7 +7,7 @@
    "pkg:codemode/portable#InlineCodemodeSandboxOptions::property:wasm": "codemode/inline.go#InlineSandboxOptions"
   }
  },
- "packages/chord/src/next/link/part.ts": {
+ "packages/chord/src/link/part.ts": {
   "reason": "Compression is declared in part.ts and part.go aliases it (link.Compression = nextnode.Compression) so the link package speaks the interface; its Deflate/Inflate methods live on the nextnode implementation, and part.go is the code that calls them (OriginPart deflates, OpenPart and InflateAsync inflate).",
   "members": {
    "pkg:chord/next#Compression::property:deflate": "chord/next/link/part.go#Compression",

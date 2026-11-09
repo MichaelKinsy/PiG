@@ -27,7 +27,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
-// Ports packages/chord/src/next-node/workers/workers.ts. The workers component (slice 10 §3, §4; decision "Slice 10's
+// Ports packages/chord/src/node/workers/workers.ts. The workers component (slice 10 §3, §4; decision "Slice 10's
 // points"): a worker process per address of one host kind, started on demand by the route it owns, stopped when idle,
 // never restarted by itself (R2): a crash, a `fatal` or a failed start leaves the address failed until `Retry` or a
 // rollout. A running worker's lost link is a stop its holders start a new worker after, once a minute (decision "A lost

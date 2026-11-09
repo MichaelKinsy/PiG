@@ -7,7 +7,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/src/next/remote/path.ts. Paths (§3 recovery): where this host's upstream holds go, the parent
+// Ports packages/chord/src/remote/path.ts. Paths (§3 recovery): where this host's upstream holds go, the parent
 // link or a route address's link, across links. Each new link of a path holds every holder of the path again; when it
 // drops, every holder is told.
 

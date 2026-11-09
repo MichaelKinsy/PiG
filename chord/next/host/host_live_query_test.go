@@ -15,6 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/sqlite"
 )
 
+// pi: packages/chord/src/store/live-query.ts
 // Ports packages/chord/test/store/live-query.test.ts (Pi main 2439933cf, 8889e623d): live queries over an object's own
 // tables (decision "Live queries over an object's own tables"): `self.query(table, q, limit)` runs before its object goes
 // live, again in the commit step of every commit of the object that writes its table, and publishes the diff in that
