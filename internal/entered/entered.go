@@ -178,22 +178,30 @@ const (
 )
 
 // Classify returns the Class of a goroutine from its entry of a goroutine dump: header is the text of the first line after the
-// "[" that opens the state (the state, then a suffix such as ", 2 minutes" or ", locked to thread", then "]:"), and frames are the
-// lines that follow, up to the blank line before the next entry. "semacquire" is the world lock of a collection (Busy) and also
-// the wait of a goroutine that needs the lock of a file descriptor another goroutine is reading, which only that read ends (Lock):
-// the internal/poll frames, which the dump lists where it hides the runtime's own, tell the two apart.
+// "[" that opens the state (the state, then a suffix such as " (scan)", ", 2 minutes" or ", locked to thread", then "]:"), and
+// frames are the lines that follow, up to the blank line before the next entry. "semacquire" is the world lock of a collection
+// (Busy) and also the wait of a goroutine that needs the lock of a file descriptor another goroutine is using, which only that
+// use ends (Lock): the frames of internal/poll's two waits (fdMutex.rwlock, and the semaphore FD.Close waits on), which the dump
+// lists where it hides the runtime's own, tell the two apart. Any other frame of internal/poll is code that allocates, and waits
+// for the collection.
 func Classify(header, frames []byte) Class {
 	state := header
 	if end := bytes.IndexAny(state, ",]"); end != -1 {
 		state = state[:end]
 	}
+	// Go prints "(scan)" while a collection scans the goroutine's stack and "(leaked)" for a goroutine the runtime found leaked,
+	// inside the brackets and after the state.
+	if end := bytes.Index(state, []byte(" (")); end != -1 {
+		state = state[:end]
+	}
 	switch string(state) {
 	case "running", "runnable", "syscall", "copystack", "preempted",
 		"GC assist marking", "GC assist wait", "garbage collection", "garbage collection scan", "GC mark termination",
-		"stopping the world", "flushing proc caches", "wait for GC cycle", "GC weak to strong wait":
+		"stopping the world", "flushing proc caches", "wait for GC cycle", "GC weak to strong wait",
+		"trace goroutine status", "trace proc status", "page trace flush", "dumping heap":
 		return Busy
 	case "semacquire":
-		if bytes.Contains(frames, []byte("internal/poll.")) {
+		if bytes.Contains(frames, []byte("internal/poll.(*fdMutex)")) || bytes.Contains(frames, []byte("internal/poll.runtime_Semacquire")) {
 			return Lock
 		}
 		return Busy
