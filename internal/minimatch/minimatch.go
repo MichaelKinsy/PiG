@@ -17,6 +17,8 @@ import (
 type Options struct {
 	// NoCase makes the match case-insensitive.
 	NoCase bool
+	// NoExt turns extglobs off: `+(a|b)` is literal text.
+	NoExt bool
 	// Dot lets wildcards match a leading dot.
 	Dot bool
 	// NoNegate makes a leading `!` literal instead of a negation.
@@ -148,7 +150,9 @@ func (m *Minimatch) make() {
 		}
 	}
 	// with noext, `@(...)` would be literal
-	m.mergeRows()
+	if !m.options.NoExt {
+		m.mergeRows()
+	}
 }
 
 // at is parts[i], or "" past the end, where JavaScript has undefined; no portion is both "" and absent in a place this is asked.
@@ -321,8 +325,8 @@ func classEnd(pattern []rune, start int) int {
 }
 
 // literal is the string a path portion pattern matches if it has no magic, and whether that is so. It can report magic for a pattern that is in fact literal (eg, `[]`), but never the reverse, so a string result is always safe to compare directly.
-func literal(pattern string) (string, bool) {
-	if pattern == "+()" || pattern == "@()" {
+func literal(pattern string, noext bool) (string, bool) {
+	if !noext && pattern == "+()" || pattern == "@()" {
 		return pattern, true
 	}
 	p := []rune(pattern)
@@ -357,7 +361,7 @@ func literal(pattern string) (string, bool) {
 			}
 			lit = append(lit, body...)
 			i = closing
-		case indexRune("+@!", c) >= 0 && i+1 < len(p) && p[i+1] == '(' && indexRuneFrom(p, ')', i+2) >= 0:
+		case !noext && indexRune("+@!", c) >= 0 && i+1 < len(p) && p[i+1] == '(' && indexRuneFrom(p, ')', i+2) >= 0:
 			return "", false
 		default:
 			lit = append(lit, c)
@@ -418,14 +422,14 @@ func (m *Minimatch) parse(pattern string) portion {
 	if pattern == "" {
 		return portion{}
 	}
-	lit, isLit := literal(pattern)
+	lit, isLit := literal(pattern, m.options.NoExt)
 	// in nocase mode, a literal with cased chars still needs a matcher.
 	if isLit && (!m.nocase || jsstring.ToUpper(pattern) == jsstring.ToLower(pattern)) {
 		return portion{s: lit}
 	}
 	mt := m.matchers[pattern]
 	if mt == nil {
-		mt = newMatcher(pattern, m.nocase, m.options.Dot)
+		mt = newMatcher(pattern, m.nocase, m.options.Dot, m.options.NoExt)
 		m.matchers[pattern] = mt
 	}
 	return portion{m: mt}

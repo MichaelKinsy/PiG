@@ -13,6 +13,7 @@ func TestFindPathGlobRegression(t *testing.T) {
 		"some/parent/child/file.ext":     "",
 		"some/parent/child/test.spec.ts": "",
 		"src/foo/bar/example.spec.ts":    "",
+		"src/direct.spec.ts":             "",
 	})
 	for _, tc := range []struct {
 		name    string
@@ -20,13 +21,15 @@ func TestFindPathGlobRegression(t *testing.T) {
 		want    []string
 	}{
 		// .upstream/v0.87.1/packages/coding-agent/test/suite/regressions/3302-find-path-glob.test.ts:50
-		{"basename pattern still matches (regression-safe)", "*.spec.ts", []string{"some/parent/child/test.spec.ts", "src/foo/bar/example.spec.ts"}},
+		{"basename pattern still matches (regression-safe)", "*.spec.ts", []string{"some/parent/child/test.spec.ts", "src/direct.spec.ts", "src/foo/bar/example.spec.ts"}},
 		// .upstream/v0.87.1/packages/coding-agent/test/suite/regressions/3302-find-path-glob.test.ts:55
 		{"directory-prefixed pattern with ** tail matches subtree", "some/parent/child/**", []string{"some/parent/child/file.ext", "some/parent/child/test.spec.ts"}},
 		// .upstream/v0.87.1/packages/coding-agent/test/suite/regressions/3302-find-path-glob.test.ts:62
 		{"leading ** wildcard with path segments matches", "**/parent/child/*", []string{"some/parent/child/file.ext", "some/parent/child/test.spec.ts"}},
 		// .upstream/v0.87.1/packages/coding-agent/test/suite/regressions/3302-find-path-glob.test.ts:68
-		{"src/**/*.spec.ts matches nested spec file", "src/**/*.spec.ts", []string{"src/foo/bar/example.spec.ts"}},
+		{"src/**/*.spec.ts matches direct and nested spec files", "src/**/*.spec.ts", []string{"src/direct.spec.ts", "src/foo/bar/example.spec.ts"}},
+		// Pi v1.5.1 463b8f89 (#11972) 3302-find-path-glob.test.ts: "src/*.spec.ts does not cross directories"
+		{"src/*.spec.ts does not cross directories", "src/*.spec.ts", []string{"src/direct.spec.ts"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			assertFindRegressionPaths(t, root, tc.pattern, tc.want)
