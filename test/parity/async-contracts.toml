@@ -1815,10 +1815,10 @@ rationale = "showPrompt and showManualInput return a Promise settled only by the
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/model-selector.ts"
-disposition = "deferred"
-contracts = []
-evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`tui/model_select.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands."
+disposition = "translated"
+contracts = ["cancellable", "detached-owned", "ui-handoff"]
+evidence = ["test:tui/model_selector_owner_test.go#TestModelSelectorRefreshIsJoinedByItsTaskOwner", "test:tui/model_selector_owner_test.go#TestModelSelectorDisposeBeforeTheOwnerStartsTheTask", "test:tui/model_selector_owner_test.go#TestModelSelectorWithAShutDownOwnerShowsNoRefreshStatus", "test:tui/model_selector_owner_test.go#TestModelSelectorWaitJoinsItsOwnRefresh", "test:internal/codingagent/model_selector_refresh_owned_test.go#TestModelSelectorRefreshDoesNotOutliveShutdown", "test:tui/model_selector_runtime_test.go#TestModelSelectorConstructorReloadsTheSnapshotAfterTheRefreshAndIgnoresALateResultAfterDispose", "test:internal/codingagent/model_catalog_refresh_test.go#TestModelPickerRefreshRendersSnapshotAndCancels"]
+rationale = "The constructor renders the snapshot and then starts `void this.refreshModels()` (:162): the caller never waits. refreshModels arms a 15 s timer that aborts the selector's AbortController, awaits refreshModelCatalogs(modelRuntime, signal), and returns without touching the picker once the selector is closed; a settled refresh sets the refreshed status or the failed-catalog message and reloads the snapshot, a rejection shows the timeout or `Could not refresh model catalogs: <message>`. dispose() (:228) sets closed, clears the timer and aborts the signal; nothing joins the runtime's refresh, because process.exit ends the process. Go tui/model_selector_runtime.go runs the refresh as one owned task of the runtime's ModelSelectorTaskOwner: the interactive mode admits it into its background tasks (internal/codingagent/interactive_models.go StartModelSelectorTask), cancels it when the mode shuts down or the selector's caller ends, and Run's teardown joins it, including the runtime call the task raced with the signal, so no goroutine of an opened selector outlives the session. Dispose cancels it from the constructor's return, before the owner has started it. The outcome reaches the picker through PostToOwner under the same closed and timeout rules; a runtime without an owner leaves the join to ModelSelectorComponent.Wait. The abandoned runtime operation is owned by the registry (model-catalog-refresh.ts)."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts"
@@ -1850,10 +1850,10 @@ rationale = "Async uses in interactive-mode.ts (read at the pin; the file is 710
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/model-catalog-refresh.ts"
-disposition = "deferred"
-contracts = []
-evidence = []
-rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+disposition = "translated"
+contracts = ["cancellable", "concurrent-joined", "detached-owned"]
+evidence = ["test:internal/codingagent/model_catalog_refresh_upstream_test.go#TestModelCatalogRefreshUpstream", "test:internal/codingagent/model_catalog_refresh_test.go#TestModelCatalogRefreshCoordinator", "test:internal/codingagent/model_selector_refresh_owned_test.go#TestAbandonedModelCatalogRefreshIsJoinedByRegistryClose", "test:internal/codingagent/model_selector_refresh_owned_test.go#TestModelCatalogRefreshAfterRegistryCloseIsAborted"]
+rationale = "refreshModelCatalogs shares one `modelRuntime.refresh({ signal })` per runtime (a WeakMap of active refreshes) among concurrent callers; each caller races it with its own signal (raceWithAbortSignal) and rejects on abort, and the last waiter to leave aborts the operation's controller and drops the entry so a later call starts a new refresh. The runtime's refresh is not awaited by anyone after that: it settles on its own and is never joined. Go internal/codingagent/model_catalog_refresh.go keeps the sharing and the per-caller cancellation, and runs the operation as a task of the registry's model tasks (StartModelTask): CloseModelTasks, which Services.Close calls, cancels an abandoned operation and joins it, so the store and credential work it started ends before Close returns; a registry that has been closed admits none and the call returns an aborted result. A panic in the operation reaches the uncaught handler (RecoverUncaught)."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/session-share.ts"
