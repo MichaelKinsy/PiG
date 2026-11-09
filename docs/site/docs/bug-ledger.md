@@ -2090,14 +2090,14 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 **`make changelog-fold` stops, changing nothing, while `## [Unreleased]` still holds entries, and names…**
 
 - **Source:** PiG's own defect
-- **Symptom:** `make changelog-fold` stops, changing nothing, while `## [Unreleased]` still holds entries, and names `set-version --move-unreleased`.
+- **Symptom:** `make changelog-fold` stops, changing nothing, while `## [Unreleased]` still holds entries, and names `set-version --move-unreleased`; `make changelog-fold VERSION=Unreleased` is refused with its own message.
 - **Root cause:** Finding R4 of the 0.8.0 release dry run: set-version leaves the [Unreleased] entries (the klauspost/compress GO-2026-6865 Security entry) under Unreleased, and changelog-fold moves only fragments, so the [0.8.0] section had no Security section while the notes draft listed it.
-- **User impact:** Behavior differed from Pi
+- **User impact:** An operation failed or was rejected
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `0223bea7e7` (2026-11-09)
 - **Tests:** None recorded.
-- **Release note:** `make changelog-fold` stops, changing nothing, while `## [Unreleased]` still holds entries, and names `set-version --move-unreleased`. The fold moves fragments only, so an entry left under Unreleased (the 0.8.0 `klauspost/compress` Security entry) was missing from the release section.
+- **Release note:** `make changelog-fold` stops, changing nothing, while `## [Unreleased]` still holds entries, and names `set-version --move-unreleased`; `make changelog-fold VERSION=Unreleased` is refused with its own message. The fold moves fragments only, so an entry left under Unreleased (the 0.8.0 `klauspost/compress` Security entry) was missing from the release section.
 
 ### BF-0225926
 
@@ -24053,7 +24053,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `d986ba346f` (2026-11-09)
 - **Tests:** None recorded.
-- **Release note:** Release workflow: the draft GitHub Release takes its body from `docs/release/<version>-release-notes-draft.md` when that file exists, and from GitHub's generated notes only when it does not.
+- **Release note:** Release workflow: the draft GitHub Release takes its body from `docs/release/<version>-release-notes-draft.md` when that file exists, and from GitHub's generated notes only when it does not. The publish job stops, before it creates anything, while that draft still has the generator's "Draft. Not published." banner.
 
 ### BF-d986ba3-3
 

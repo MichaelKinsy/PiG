@@ -111,8 +111,15 @@ func TestReleaseCandidateRefusesAPrivateRepositoryBeforeBuilding(t *testing.T) {
 			t.Errorf("guard message lacks %q:\n%s", want, out)
 		}
 	}
-	if out, err := runWorkflowStep(t, guard, dir, map[string]string{"REPOSITORY_PRIVATE": "false"}, ""); err != nil {
-		t.Fatalf("guard refused a public repository: %v\n%s", err, out)
+	// A repository object without a private value renders an empty string (or no variable at all): that is not "private".
+	for name, env := range map[string]map[string]string{
+		"false":   {"REPOSITORY_PRIVATE": "false"},
+		"empty":   {"REPOSITORY_PRIVATE": ""},
+		"missing": {},
+	} {
+		if out, err := runWorkflowStep(t, guard, dir, env, ""); err != nil {
+			t.Fatalf("guard refused a repository whose private value is %s: %v\n%s", name, err, out)
+		}
 	}
 	// binary needs source, acp and the smoke jobs need binary, publish needs all of them.
 	data, err := os.ReadFile(filepath.Join(repoRoot(t), ".github", "workflows", "release-candidate.yml"))
@@ -193,6 +200,51 @@ func TestReleaseCandidateDraftBodyIsTheNotesDraftWhenPresent(t *testing.T) {
 				t.Errorf("--notes-file = %q, want %q (args %q)", notes, tc.wantNotes, args)
 			}
 		})
+	}
+}
+
+// The generator writes a banner near the top of the notes draft; published as the Release body it would say
+// "Draft. Not published." on a published release. The publish step refuses a draft that still has it instead of
+// stripping it: the owner's edit is the review.
+func TestReleaseCandidateRefusesANotesDraftThatStillHasTheBanner(t *testing.T) {
+	step := releaseWorkflowStep(t, "publish", "Create the draft GitHub Release")
+	source, err := os.ReadFile(filepath.Join(repoRoot(t), "automation", "ci", "bugledger", "notes.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const banner = "> **Draft. Not published.**"
+	if !strings.Contains(string(source), banner) {
+		t.Fatalf("automation/ci/bugledger/notes.go no longer writes %q; update the publish step's banner check and this test together", banner)
+	}
+	dir := t.TempDir()
+	bin := filepath.Join(dir, "bin")
+	argsFile := filepath.Join(dir, "gh-args")
+	writeExecutable(t, filepath.Join(bin, "gh"), "#!/bin/sh\nprintf '%s\\n' \"$@\" > \""+argsFile+"\"\n")
+	if err := os.MkdirAll(filepath.Join(dir, "release"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "release", "pig-0.8.0-linux-amd64.tar.gz"), []byte("archive"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "docs", "release"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	draft := filepath.Join(dir, "docs", "release", "0.8.0-release-notes-draft.md")
+	if err := os.WriteFile(draft, []byte("# PiG 0.8.0 release notes (draft)\n\n"+banner+" `make release-notes-draft` generated this file.\n\n## Summary\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	env := map[string]string{"GH_TOKEN": "x", "VERSION": "0.8.0", "GITHUB_REPOSITORY": "o/r", "GITHUB_SHA": strings.Repeat("a", 40)}
+	out, err := runWorkflowStep(t, step, dir, env, bin)
+	if err == nil {
+		t.Fatalf("publish step accepted a notes draft that still has the banner:\n%s", out)
+	}
+	for _, want := range []string{"docs/release/0.8.0-release-notes-draft.md", "Draft. Not published.", "Edit the draft"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("refusal lacks %q:\n%s", want, out)
+		}
+	}
+	if _, err := os.Stat(argsFile); err == nil {
+		t.Error("gh release create ran although the draft still has the banner")
 	}
 }
 

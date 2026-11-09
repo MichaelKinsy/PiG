@@ -208,8 +208,12 @@ func unreleasedEntries(changelog string) string {
 // sections; a release heading "Upgrading from <previous>" is the Upgrading section. A section the release lacks is added
 // after the sections that precede it in that order; other headings keep their place. A fragment without sections cannot
 // be placed and stops the fold. So does an entry under "## [Unreleased]": the fold moves fragments only, and an entry
-// left there is missing from the release (`make set-version ... SET_VERSION_ARGS=--move-unreleased` moves it).
+// left there is missing from the release (`make set-version ... SET_VERSION_ARGS=--move-unreleased` moves it). Unreleased is
+// not a fold target: its fragments are assembled by `make changelog-unreleased` and are never written to CHANGELOG.md.
 func fold(changelog string, fragments []fragment, version string) (string, error) {
+	if version == "Unreleased" {
+		return "", errors.New("\"Unreleased\" is not a release: changelog-fold appends fragments to a release heading (make set-version VERSION=x.y.z creates it); make changelog-unreleased prints the fragments' assembly")
+	}
 	var unsorted []string
 	for _, f := range fragments {
 		if f.unsorted != "" {

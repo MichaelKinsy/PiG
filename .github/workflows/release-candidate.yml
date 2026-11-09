@@ -513,7 +513,7 @@ jobs:
           REPOSITORY_PRIVATE: ${{ github.event.repository.private }}
         run: |
           set -euo pipefail
-          if [ "$REPOSITORY_PRIVATE" = true ]; then
+          if [ "${REPOSITORY_PRIVATE:-}" = true ]; then
             echo "This repository is private. Release evidence needs a Sigstore bundle for every archive (assemble-evidence.py rejects an archive without one), and build-provenance attestation is skipped for private repositories, so the publish job would stop after every build. Run the release from a public repository." >&2
             exit 1
           fi
@@ -755,6 +755,11 @@ jobs:
           # notes are the fallback.
           notes_draft="docs/release/${VERSION}-release-notes-draft.md"
           if [ -f "$notes_draft" ]; then
+            # The generator's banner is a note to the owner, not release text.
+            if grep -qF '**Draft. Not published.**' "$notes_draft"; then
+              echo "$notes_draft still has the generator's \"Draft. Not published.\" banner. Edit the draft (review it and remove the banner) and commit it before publishing; the banner would become the body of the published release." >&2
+              exit 1
+            fi
             echo "Release body: $notes_draft"
             notes=(--notes-file "$notes_draft")
           else

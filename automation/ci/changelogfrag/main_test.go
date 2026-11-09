@@ -254,6 +254,24 @@ func TestFoldRefusesWhileUnreleasedHoldsEntries(t *testing.T) {
 	assertFile(t, filepath.Join(dir, "a-0123abc.md"), fragmentText)
 }
 
+// Fragments are assembled under Unreleased by `make changelog-unreleased` and never written there, so -fold=Unreleased is
+// refused with its own message, not the one that tells the user to run set-version for a version called Unreleased.
+func TestFoldRefusesUnreleasedAsTheTarget(t *testing.T) {
+	marked := []fragment{{name: "a-0123abc.md", items: map[string][]string{"Fixed": {"Fix A. <!-- fix: 0123abcdef -->"}}}}
+	for name, changelog := range map[string]string{
+		"empty Unreleased":   "## [Unreleased]\n\n## [1.0.0] - 2026-10-15\n\n### Fixed\n\n- Fix X.\n",
+		"Unreleased entries": "## [Unreleased]\n\n### Security\n\n- Update a dependency.\n\n## [1.0.0] - 2026-10-15\n\n### Fixed\n\n- Fix X.\n",
+	} {
+		_, err := fold(changelog, marked, "Unreleased")
+		if err == nil || !strings.Contains(err.Error(), "not a release") || !strings.Contains(err.Error(), "make changelog-unreleased") {
+			t.Errorf("%s: fold into Unreleased: err = %v, want the not-a-release message", name, err)
+		}
+		if err != nil && strings.Contains(err.Error(), "VERSION=Unreleased") {
+			t.Errorf("%s: the message tells the user to run set-version for Unreleased: %v", name, err)
+		}
+	}
+}
+
 func assertFile(t *testing.T, path, want string) {
 	t.Helper()
 	got, err := os.ReadFile(path)
