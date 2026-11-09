@@ -10,10 +10,10 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 
 | Module | Rows | type-only (identity by kind) | Node served | Go gaps | Rust gaps | Python gaps | Lisp gaps |
 |---|---|---|---|---|---|---|---|
-| `pi-coding-agent` | 928 | 310 | 918 | 325 | 325 | 325 | 325 |
+| `pi-coding-agent` | 929 | 310 | 919 | 325 | 325 | 325 | 325 |
 | `pi-tui` | 370 | 85 | 369 | 102 | 102 | 102 | 102 |
-| `pi-ai` | 105 | 197 | 105 | 73 | 73 | 73 | 73 |
-| `pi-ai/compat` | 165 | 204 | 165 | 130 | 130 | 130 | 130 |
+| `pi-ai` | 114 | 200 | 114 | 73 | 73 | 73 | 73 |
+| `pi-ai/compat` | 174 | 207 | 174 | 130 | 130 | 130 | 130 |
 | `pi-agent-core` | 45 | 35 | 45 | 45 | 45 | 45 | 45 |
 
 ## Lanes that own gaps
@@ -503,6 +503,7 @@ None.
 | `OAuthSelectorComponent.capturesViewportInput` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `OAuthSelectorComponent.children` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `OAuthSelectorComponent.clear` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `OAuthSelectorComponent.dispose` | 0 | served | unclassified | unclassified | unclassified | unclassified |
 | `OAuthSelectorComponent.focused` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `OAuthSelectorComponent.handleInput` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `OAuthSelectorComponent.handleMouse` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
@@ -1356,6 +1357,10 @@ None.
 | `AssistantMessageEventStream.end` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `AssistantMessageEventStream.push` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `AssistantMessageEventStream.result` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `CACHE_WARMING_IDLE_CONTINUATION_PROBABILITY` | 0 | served | unclassified | unclassified | unclassified | unclassified |
+| `CACHE_WARMING_MAX_AGE_MS` | 0 | served | unclassified | unclassified | unclassified | unclassified |
+| `CACHE_WARMING_MAX_IDLE_AGE_MS` | 0 | served | unclassified | unclassified | unclassified | unclassified |
+| `CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS` | 0 | served | unclassified | unclassified | unclassified | unclassified |
 | `DEFAULT_MAX_AGENT_RETRY_DELAY_MS` | 0 | served | native:DefaultMaxAgentRetryDelayMs | native:DEFAULT_MAX_AGENT_RETRY_DELAY_MS | native:DEFAULT_MAX_AGENT_RETRY_DELAY_MS | native:pig:+default-max-agent-retry-delay-ms+ |
 | `EventStream` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `EventStream.[Symbol.asyncIterator]` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
@@ -1404,6 +1409,7 @@ None.
 | `declarationsEqual` | 2 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `defaultProviderAuthContext` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
 | `envApiKeyAuth` | 4 | served | native:EnvAPIKeyAuth | native:env_api_key_auth | native:env_api_key_auth | native:pig:env-api-key-auth |
+| `evaluateCacheWarming` | 0 | served | unclassified | unclassified | unclassified | unclassified |
 | `extractDiagnosticError` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `fauxAssistantMessage` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `fauxProvider` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
@@ -1413,6 +1419,8 @@ None.
 | `formatThrownValue` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `formatUserAgent` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `getAttributionHeaders` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `getCacheWarmingDelayMs` | 0 | served | unclassified | unclassified | unclassified | unclassified |
+| `getCacheWarmingRequestOptions` | 0 | served | unclassified | unclassified | unclassified | unclassified |
 | `getClientVersion` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `getCurrentSystemMessage` | 6 | served | native:GetCurrentSystemMessage | native:get_current_system_message | native:get_current_system_message | native:pig:get-current-system-message |
 | `getCurrentSystemPrompt` | 5 | served | native:GetCurrentSystemPrompt | native:get_current_system_prompt | native:get_current_system_prompt | native:pig:get-current-system-prompt |
@@ -1423,12 +1431,14 @@ None.
 | `getModelType` | 1 | served | native:GetModelType | native:get_model_type | native:get_model_type | native:pig:get-model-type |
 | `getOpenCodeSessionHeaders` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `getOverflowPatterns` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `getPromptCacheTtlMs` | 0 | served | unclassified | unclassified | unclassified | unclassified |
 | `getSupportedThinkingLevels` | 10 | served | native:GetSupportedThinkingLevels | native:get_supported_thinking_levels | native:get_supported_thinking_levels | native:pig:get-supported-thinking-levels |
 | `getSystemMessageText` | 2 | served | native:GetSystemMessageText | native:get_system_message_text | native:get_system_message_text | native:pig:get-system-message-text |
 | `getToolStateChanges` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `hasApi` | 1 | served | native:HasApi | native:has_api | native:has_api | native:pig:has-api-p |
 | `hasNonAdditiveToolChanges` | 0 | served | native:HasNonAdditiveToolChanges | native:has_non_additive_tool_changes | native:has_non_additive_tool_changes | native:pig:has-non-additive-tool-changes-p |
 | `hasToolRedefinitions` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `isCacheWarmingReplayable` | 0 | served | unclassified | unclassified | unclassified | unclassified |
 | `isContextOverflow` | 3 | served | native:IsContextOverflow | native:is_context_overflow | native:is_context_overflow | native:pig:context-overflow-p |
 | `isModelType` | 2 | served | native:IsModelType | native:is_model_type | native:is_model_type | native:pig:model-type-p |
 | `isRecoverableLength` | 0 | served | native:IsRecoverableLength | native:is_recoverable_length | native:is_recoverable_length | native:pig:recoverable-length-p |
@@ -1474,6 +1484,10 @@ None.
 | `AssistantMessageEventStream.end` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `AssistantMessageEventStream.push` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `AssistantMessageEventStream.result` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `CACHE_WARMING_IDLE_CONTINUATION_PROBABILITY` | 0 | served | unclassified | unclassified | unclassified | unclassified |
+| `CACHE_WARMING_MAX_AGE_MS` | 0 | served | unclassified | unclassified | unclassified | unclassified |
+| `CACHE_WARMING_MAX_IDLE_AGE_MS` | 0 | served | unclassified | unclassified | unclassified | unclassified |
+| `CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS` | 0 | served | unclassified | unclassified | unclassified | unclassified |
 | `DEFAULT_MAX_AGENT_RETRY_DELAY_MS` | 0 | served | native:DefaultMaxAgentRetryDelayMs | native:DEFAULT_MAX_AGENT_RETRY_DELAY_MS | native:DEFAULT_MAX_AGENT_RETRY_DELAY_MS | native:pig:+default-max-agent-retry-delay-ms+ |
 | `EventStream` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `EventStream.[Symbol.asyncIterator]` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
@@ -1527,6 +1541,7 @@ None.
 | `declarationsEqual` | 2 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `defaultProviderAuthContext` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
 | `envApiKeyAuth` | 4 | served | native:EnvAPIKeyAuth | native:env_api_key_auth | native:env_api_key_auth | native:pig:env-api-key-auth |
+| `evaluateCacheWarming` | 0 | served | unclassified | unclassified | unclassified | unclassified |
 | `extractDiagnosticError` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `fauxAssistantMessage` | 2 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `fauxProvider` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
@@ -1541,6 +1556,8 @@ None.
 | `getApiProvider` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `getApiProviders` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `getAttributionHeaders` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `getCacheWarmingDelayMs` | 0 | served | unclassified | unclassified | unclassified | unclassified |
+| `getCacheWarmingRequestOptions` | 0 | served | unclassified | unclassified | unclassified | unclassified |
 | `getClientVersion` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `getCurrentSystemMessage` | 6 | served | native:GetCurrentSystemMessage | native:get_current_system_message | native:get_current_system_message | native:pig:get-current-system-message |
 | `getCurrentSystemPrompt` | 5 | served | native:GetCurrentSystemPrompt | native:get_current_system_prompt | native:get_current_system_prompt | native:pig:get-current-system-prompt |
@@ -1558,6 +1575,7 @@ None.
 | `getModels` | 2 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `getOpenCodeSessionHeaders` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `getOverflowPatterns` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `getPromptCacheTtlMs` | 0 | served | unclassified | unclassified | unclassified | unclassified |
 | `getProviders` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `getSupportedThinkingLevels` | 12 | served | native:GetSupportedThinkingLevels | native:get_supported_thinking_levels | native:get_supported_thinking_levels | native:pig:get-supported-thinking-levels |
 | `getSystemMessageText` | 2 | served | native:GetSystemMessageText | native:get_system_message_text | native:get_system_message_text | native:pig:get-system-message-text |
@@ -1567,6 +1585,7 @@ None.
 | `hasApi` | 1 | served | native:HasApi | native:has_api | native:has_api | native:pig:has-api-p |
 | `hasNonAdditiveToolChanges` | 0 | served | native:HasNonAdditiveToolChanges | native:has_non_additive_tool_changes | native:has_non_additive_tool_changes | native:pig:has-non-additive-tool-changes-p |
 | `hasToolRedefinitions` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `isCacheWarmingReplayable` | 0 | served | unclassified | unclassified | unclassified | unclassified |
 | `isContextOverflow` | 4 | served | native:IsContextOverflow | native:is_context_overflow | native:is_context_overflow | native:pig:context-overflow-p |
 | `isModelType` | 2 | served | native:IsModelType | native:is_model_type | native:is_model_type | native:pig:model-type-p |
 | `isRecoverableLength` | 1 | served | native:IsRecoverableLength | native:is_recoverable_length | native:is_recoverable_length | native:pig:recoverable-length-p |
