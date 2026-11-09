@@ -4,6 +4,7 @@ package ai
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"encoding/json/jsontext"
 	"errors"
@@ -11,6 +12,7 @@ import (
 	"reflect"
 	"slices"
 	"sync"
+	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/internal/jsjson"
 	"github.com/MichaelKinsy/PiG/internal/jsonopts"
@@ -151,7 +153,7 @@ func marshalCatalogModel(model AnyModel) (json.RawMessage, error) {
 		if recordJSON, err = marshalStoreJSON(record); err != nil {
 			return nil, err
 		}
-		if bytes.Equal(recordJSON, baseline) {
+		if sha256.Sum256(recordJSON) == baseline {
 			return json.RawMessage(ResolveCatalogRecord(typed.catalogRecord)), nil
 		}
 	}
@@ -229,33 +231,43 @@ func modelCatalogShape(model AnyModel, decoded *catalogShape) (*catalogShape, er
 	return entry.(*Model).catalog, nil
 }
 
-// catalogRecordBaseline is the typed record encoding of the model decoded from record, a catalog record: what the model
-// encodes as while every member is at its decoded value. A built-in record's baseline is kept, one small encoding per
-// record, so the cache is bounded by the catalog.
-func catalogRecordBaseline(record string) ([]byte, error) {
-	if cached, found := catalogRecordBaselines.Load(record); found {
-		return cached.([]byte), nil
+// catalogRecordBaseline is the SHA-256 of the typed record encoding of the model decoded from record, a catalog record: what the model
+// encodes as while every member is at its decoded value. A model is unchanged exactly when the digest of its own typed record encoding
+// equals it, so the encoding itself is not kept. A built-in record's digest is kept in catalogRecordBaselines.
+func catalogRecordBaseline(record string) ([sha256.Size]byte, error) {
+	var slot *catalogBaseline
+	if isCatalogRecordRef(record) {
+		slot = &catalogRecordBaselines[int(record[1])<<8|int(record[2])] //portlint:allow utf16units a catalog reference is NUL and a row index in two bytes (isCatalogRecordRef); it never leaves Go
+		if slot.ready.Load() {
+			return slot.sum, nil
+		}
 	}
 	content := ResolveCatalogRecord(record)
 	entry, known, err := decodeCatalogTyped([]byte(content))
 	if err != nil {
-		return nil, err
+		return [sha256.Size]byte{}, err
 	}
 	if !known {
-		return nil, fmt.Errorf("decode stored model: unknown model type in %q", content)
+		return [sha256.Size]byte{}, fmt.Errorf("decode stored model: unknown model type in %q", content)
 	}
 	typedRecord, _, err := anyModelRecord(entry)
 	if err != nil {
-		return nil, err
+		return [sha256.Size]byte{}, err
 	}
 	baseline, err := marshalStoreJSON(typedRecord)
 	if err != nil {
-		return nil, err
+		return [sha256.Size]byte{}, err
 	}
-	if isCatalogRecordRef(record) {
-		catalogRecordBaselines.Store(record, baseline)
+	sum := sha256.Sum256(baseline)
+	if slot != nil {
+		catalogBaselineMu.Lock()
+		if !slot.ready.Load() {
+			slot.sum = sum
+			slot.ready.Store(true)
+		}
+		catalogBaselineMu.Unlock()
 	}
-	return baseline, nil
+	return sum, nil
 }
 
 // CatalogRecordOf is the catalog record model was made from, its built-in catalog entry or the models store record it was
@@ -335,11 +347,20 @@ func ExtensionModelRecord(definition json.RawMessage, api API, providerID, baseU
 	return compact.String()
 }
 
-// catalogRecordBaselines holds the baseline ([]byte, see catalogRecordBaseline) of each built-in catalog record
-// (GeneratedModel.Record) that has been encoded, keyed by the record. A baseline is read-only once computed. Only records
-// compiled into the binary are cached, so the cache is bounded by the catalog: a models store record (a Radius gateway's
-// catalog, CatalogRecordOf) changes with each refresh and is decoded each time.
-var catalogRecordBaselines sync.Map
+// catalogBaseline is the digest of one built-in record's baseline (catalogRecordBaseline). sum is written once, under catalogBaselineMu,
+// before ready is set, and is read-only after.
+type catalogBaseline struct {
+	sum   [sha256.Size]byte
+	ready atomic.Bool
+}
+
+// catalogRecordBaselines holds the baseline digest of each built-in catalog record (GeneratedModel.Record) that has been encoded, by row. It is a fixed
+// array in the binary's data, 32 bytes a row, not a map of encodings on the heap: only records compiled into the binary are cached, so it is bounded
+// by the catalog, and a models store record (a Radius gateway's catalog, CatalogRecordOf) changes with each refresh and is decoded each time.
+var (
+	catalogRecordBaselines [len(generatedRows)]catalogBaseline
+	catalogBaselineMu      sync.Mutex
+)
 
 // CatalogModelJSON is the JSON object of a model that came from a catalog record, the built-in catalog or a models
 // store, as Pi serializes that model object: the record's members in the record's order, with the record's own bytes for

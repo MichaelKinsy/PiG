@@ -1,3 +1,3 @@
 ### Fixed
 
-- A process that reads every built-in model record, as an extension host does when it attaches, no longer keeps the whole catalog's expanded JSON (about 1 MB) on the heap afterwards: the expanded record chunks are now reclaimable once nothing reads them. <!-- fix: a966fc9a7c -->
+- Encoding every built-in model, as an extension host does when it attaches, no longer leaves 1.2 MB of per-model comparison encodings on the heap: a built-in model's baseline is kept as a 32-byte SHA-256 digest in a fixed array, so the heap retained after the encoding is 1.07 MB, not 2.27 MB, and the encoding allocates 0.2 MB less. Record lookups cost what they did (`ResolveCatalogRecord` 3.1 ns, a pass over all 1,629 rows 5.6 µs); hashing makes `CatalogModelJSON` over all models about 1 µs per model slower (12.7 ms against 11.0 ms, a pass over all 1,629 models). <!-- fix: a966fc9a7c -->
