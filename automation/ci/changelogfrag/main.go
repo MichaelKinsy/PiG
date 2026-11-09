@@ -190,10 +190,25 @@ func render(fragments []fragment) string {
 	return b.String()
 }
 
+// unreleasedEntries is the text under "## [Unreleased]" in changelog, empty when the section is empty or absent.
+func unreleasedEntries(changelog string) string {
+	const heading = "## [Unreleased]\n"
+	start := strings.Index(changelog, heading)
+	if start < 0 {
+		return ""
+	}
+	body := changelog[start+len(heading):]
+	if next := strings.Index(body, "\n## ["); next >= 0 {
+		body = body[:next]
+	}
+	return strings.TrimSpace(body)
+}
+
 // fold appends the bullets of fragments to the sections of the "## [<version>]" release in changelog, in the order of
 // sections; a release heading "Upgrading from <previous>" is the Upgrading section. A section the release lacks is added
 // after the sections that precede it in that order; other headings keep their place. A fragment without sections cannot
-// be placed and stops the fold.
+// be placed and stops the fold. So does an entry under "## [Unreleased]": the fold moves fragments only, and an entry
+// left there is missing from the release (`make set-version ... SET_VERSION_ARGS=--move-unreleased` moves it).
 func fold(changelog string, fragments []fragment, version string) (string, error) {
 	var unsorted []string
 	for _, f := range fragments {
@@ -215,6 +230,9 @@ func fold(changelog string, fragments []fragment, version string) (string, error
 	heading := regexp.MustCompile(`(?m)^## \[` + regexp.QuoteMeta(version) + `\]( - .*)?\n`).FindStringIndex(changelog)
 	if heading == nil {
 		return "", fmt.Errorf("CHANGELOG.md has no \"## [%s]\" heading", version)
+	}
+	if entries := unreleasedEntries(changelog); entries != "" {
+		return "", fmt.Errorf("CHANGELOG.md still has entries under \"## [Unreleased]\"; the release would not carry them. Run make set-version VERSION=%s SET_VERSION_ARGS=--move-unreleased (add --release-modules on a release branch) first:\n%s", version, entries)
 	}
 	start := heading[1]
 	end := len(changelog)
