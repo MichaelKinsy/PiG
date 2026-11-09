@@ -5,6 +5,7 @@ package runner
 import (
 	"encoding/json"
 	"encoding/json/jsontext"
+	"errors"
 	"fmt"
 	"io"
 	"math/big"
@@ -421,7 +422,7 @@ func parseJSONRecords(output string) ([]any, error) {
 		if err != nil {
 			return nil, fmt.Errorf("JSONL record %d: %w", i+1, err)
 		}
-		if _, err := decoder.ReadToken(); err != io.EOF {
+		if _, err := decoder.ReadToken(); !errors.Is(err, io.EOF) {
 			return nil, fmt.Errorf("JSONL record %d has trailing data", i+1)
 		}
 		if _, ok := value.(map[string]any); !ok {
