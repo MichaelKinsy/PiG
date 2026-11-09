@@ -38,7 +38,7 @@ func projectCount(value delta.JsonValue) int {
 
 func TestProjectsOwnerOnlyFollowsProjectsJSONAndNamesTheDevice(t *testing.T) {
 	p2test.NoLeakedGoroutines(t)
-	fixture := p2test.StartFixture(t, hosts.ServerOptions{Plugins: []string{"projects"}})
+	fixture := p2test.StartFixture(t, hosts.ServerOptions{Plugins: []string{"devices", "projects"}})
 	owner := fixture.Browser()
 	projects, err := p2test.HoldIn(owner, projectscontract.Projects, delta.NewJsonObject(0), "owner")
 	if err != nil {

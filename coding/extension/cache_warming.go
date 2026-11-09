@@ -1,13 +1,15 @@
 package extension
 
+import "github.com/MichaelKinsy/PiG/ai"
+
 // Ports packages/coding-agent/src/core/cache-warmer.ts
 
-// CacheWarmingAction selects whether the scheduled prompt-cache refresh runs.
-type CacheWarmingAction string
+// CacheWarmingAction selects whether the scheduled prompt-cache refresh runs. It is pi-ai's (cache-warmer.ts re-exports it from there).
+type CacheWarmingAction = ai.CacheWarmingAction
 
 const (
-	CacheWarmingActionWarm CacheWarmingAction = "warm"
-	CacheWarmingActionStop CacheWarmingAction = "stop"
+	CacheWarmingActionWarm = ai.CacheWarmingActionWarm
+	CacheWarmingActionStop = ai.CacheWarmingActionStop
 )
 
 // CacheWarmingDecisionEvent carries the economics and default action before a cache refresh.

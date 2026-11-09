@@ -83,7 +83,7 @@ func TestSendFileFakeProvider(t *testing.T) {
 		if _, err := fixture.Server.Reload([]string{"send-file"}, context.Background()); err != nil {
 			t.Fatal(err)
 		}
-		response, err := p2test.HTTP(fixture.Server.Port, "/download?session="+session+"&id="+info.Value("id").(string), p2test.HTTPOptions{})
+		response, err := fixture.HTTP("/download?session="+session+"&id="+info.Value("id").(string), p2test.HTTPOptions{})
 		if err != nil {
 			t.Fatal(err)
 		}

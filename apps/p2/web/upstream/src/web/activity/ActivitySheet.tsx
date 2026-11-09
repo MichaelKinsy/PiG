@@ -1,33 +1,21 @@
-// The sheet a run of tool calls opens: p2's own sheet (runtime Sheet) as a route layer, so Back closes it like every
-// other sheet. Its first page lists the run's calls, one row each; a call's row opens its detail (Detail.tsx) one
-// layer up, and a script's call one more; Back (the browser's, Android's or the header's) leads down again. The
-// transcript renders it (`ActivityLayer`), so it follows the run live while the wheel's row is scrolled away.
-import { type ReactNode, useContext, useEffect, useRef, useState } from "react";
-import { closeLayers, getNavigation, type Layer, Sheet, useSheet } from "../../runtime/web.tsx";
+// A transcript block's activity in the side panel (SidePanel.tsx: docked on the right, p2's sheet on phones). Steps
+// expand in place; choosing another block in the transcript replaces the panel's selection. Opening and closing it
+// participate in Back.
+import type { ImageContent } from "@earendil-works/pi-ai";
+import { type ReactNode, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { getNavigation, useRoute, useScrollMemory } from "../../runtime/web.tsx";
 import { ToolActivityContext, WorkingDirectory } from "../chat-context.ts";
-import {
-	ArtifactIcon,
-	BotIcon,
-	ChevronIcon,
-	CodeIcon,
-	CommentIcon,
-	FileIcon,
-	PencilIcon,
-	RefreshIcon,
-	SearchIcon,
-	SparkIcon,
-	TerminalIcon,
-	ToolIcon,
-} from "../icons.tsx";
-import { DetailProse, GroupDetail, StepDetail } from "./Detail.tsx";
+import type { Route } from "../navigation.ts";
+import { SidePanel, showInSidePanel, useSidePanelShown } from "../SidePanel.tsx";
+import { clockTime, Time } from "../Time.tsx";
+import { DetailProse, imageUrl, StepDetail } from "./Detail.tsx";
+import { ChevronIcon, CommentIcon, SparkIcon } from "./icons.tsx";
+import { KindIcon } from "./Label.tsx";
 import {
 	argumentOf,
 	type ChatItem,
 	describe,
 	elapsed,
-	groupCalls,
-	type Kind,
-	type Label,
 	plainText,
 	sentence,
 	stepState,
@@ -36,57 +24,29 @@ import {
 import "./activity.css";
 
 type Activity = Extract<ChatItem, { type: "activity" }>;
-/** Where the sheet is: the run (its row's key), a call of it, one entry of a script's calls. */
-type Place = { row: string; step?: string; group?: number };
+type Place = NonNullable<Route["activity"]>;
 
-const SHEET = "activity";
-const layer = (place: Place): Layer => ({ kind: "sheet", name: SHEET, locator: JSON.stringify(place) });
-
-/**
- * Opens a run's calls: its list, and with `step` that call's detail over it (the reader rolled the wheel to it), so
- * Back leads to the list first; `alone`: only the call's detail (a call's own row at detail 4), Back closing it. Both
- * steps are computed from the route now: queued pushes see it unchanged.
- */
-export function openActivity(row: string, step?: string, alone = false): void {
-	const nav = getNavigation();
-	if (step && alone) {
-		void nav.push({ ...nav.route, layers: [...nav.route.layers, layer({ row, step })] });
-		return;
-	}
-	const list = { ...nav.route, layers: [...nav.route.layers, layer({ row })] };
-	void nav.push(list);
-	if (step) void nav.push({ ...list, layers: [...list.layers, layer({ row, step })] });
-}
-
-/** One page up within the sheet: a call's detail, a script's call. */
-const open = (place: Place) => {
-	const nav = getNavigation();
-	void nav.push({ ...nav.route, layers: [...nav.route.layers, layer(place)] });
-};
-
-/** The page under the top one: what the header's Back does, as the browser's Back would. */
-const back = () => void getNavigation().close((route) => ({ ...route, layers: route.layers.slice(0, -1) }));
-
-/** A layer's place: its locator is this module's JSON, read back from the browser's history state. */
-function placeOf(locator: string | undefined): Place | undefined {
-	try {
-		const value: unknown = JSON.parse(locator ?? "");
-		if (!value || typeof value !== "object" || !("row" in value) || typeof value.row !== "string") return;
-		const { row, step, group } = value as Record<string, unknown>;
-		return {
-			row: row as string,
-			...(typeof step === "string" ? { step } : {}),
-			...(typeof group === "number" ? { group } : {}),
-		};
-	} catch {
-		return;
-	}
+/** Opens a block in the panel, optionally expanding the step selected on its wheel. */
+export function openActivity(row: string, step?: string): void {
+	showInSidePanel({ activity: { row, ...(step ? { step } : {}) } });
 }
 
 /**
- * How long a run has taken: counting while the agent works (from when it was first shown, until its first response says
- * when the work began), the total once it is done; undefined while neither is known.
+ * A tap on a block's wheel or step: opens it in the panel, or closes the panel when it still shows this block with the
+ * same step, so a second tap on the same thing undoes the first.
  */
+export function toggleActivity(row: string, step?: string): void {
+	const { route } = getNavigation();
+	if (!route.workspace && route.activity?.row === row && route.activity.step === step) closeActivity();
+	else openActivity(row, step);
+}
+
+/** Closes only the activity panel, returning to the screen beneath it. */
+function closeActivity(): void {
+	void getNavigation().close((route) => ({ ...route, activity: undefined }));
+}
+
+/** A live duration, or the total once the run is done; unknown without either endpoint. */
 export function useElapsed(startedAt: number | undefined, endedAt: number | undefined, working: boolean) {
 	const [mounted] = useState(() => Date.now());
 	const [now, setNow] = useState(() => Date.now());
@@ -100,155 +60,222 @@ export function useElapsed(startedAt: number | undefined, endedAt: number | unde
 	return start === undefined || end === undefined ? undefined : elapsed(end - start);
 }
 
-/** The sheet of one of this transcript's runs, while the top layer is one. */
+/** Keeps the selected block live even when its virtualized transcript row is offscreen. */
 export function ActivityLayer({ rows }: { rows: readonly { item: ChatItem }[] }) {
-	const top = useSheet(SHEET);
-	const place = top && placeOf(top.locator);
-	// By its row's key, else (the rows were made again, keyed differently: another detail level, new code after a
-	// reload) by the call it shows.
+	const route = useRoute();
+	const place = route.activity;
+	const shown = useSidePanelShown();
+	const [expanded, setExpanded] = useState<ReadonlyMap<string, ReadonlySet<string>>>(new Map());
 	const item =
 		place &&
 		(rows.find((row) => row.item.type === "activity" && row.item.key === place.row)?.item ??
 			(place.step
-				? rows.find((row) => row.item.type === "activity" && row.item.steps.some((step) => step.id === place.step))
-						?.item
+				? rows.find(
+						(row) =>
+							row.item.type === "activity" &&
+							(row.item.steps.some((step) => step.id === place.step) ||
+								row.item.entries?.some((entry) => entry.kind !== "call" && entry.id === place.step)),
+					)?.item
 				: undefined));
-	return item?.type === "activity" && place ? <ActivitySheet activity={item} place={place} /> : null;
-}
-
-/** A label as a page's title: "Ran a script · 3 calls". */
-const heading = (label: Label) =>
-	[[label.verb, label.object].filter(Boolean).join(" "), label.extra].filter(Boolean).join(" · ");
-
-function ActivitySheet({ activity, place }: { activity: Activity; place: Place }) {
-	const tools = useContext(ToolActivityContext);
-	const { steps } = activity;
-	const entries = activity.entries ?? steps.map((each): WheelEntry => ({ kind: "call", step: each }));
-	const step = place.step === undefined ? undefined : steps.find((each) => each.id === place.step);
-	// Thinking or a text on the wheel (detail 1 and 2): its page is its words.
-	const words = entries.find((entry) => entry.kind !== "call" && entry.id === place.step);
-	const group =
-		step && place.group !== undefined
-			? groupCalls(step.tool.calls ?? [], tools, step.tool.name)[place.group]
-			: undefined;
-	const time = useElapsed(activity.startedAt, activity.endedAt, activity.working);
-	const count = `${entries.length} ${entries.length === 1 ? "step" : "steps"}`;
-	const title = group
-		? heading(group.label)
-		: step
-			? heading(describe(step, tools).label)
-			: words && words.kind !== "call"
-				? WORDS[words.kind]
-				: [count, time].filter(Boolean).join(" · ");
+	if (!place || item?.type !== "activity" || !shown) return null;
 	return (
-		<Sheet
-			title={title}
-			onClose={closeLayers}
-			{...(step || words ? { onBack: back } : {})}
-			className="activity-sheet"
-			testId="activity-sheet"
-		>
-			{group ? (
-				<div className="activity-detail">
-					<GroupDetail group={group} />
-				</div>
-			) : step ? (
-				<div className="activity-detail">
-					<StepDetail step={step} onGroup={(index) => open({ row: activity.key, step: step.id, group: index })} />
-				</div>
-			) : words && words.kind !== "call" ? (
-				<div className="activity-detail">
-					<DetailProse text={words.text} />
-				</div>
-			) : (
-				<StepList entries={entries} onStep={(id) => open({ row: activity.key, step: id })} />
-			)}
-		</Sheet>
+		<ActivityPanel
+			key={item.key}
+			activity={item}
+			place={place}
+			expanded={expanded.get(item.key)}
+			onExpanded={(steps) => setExpanded((before) => new Map(before).set(item.key, steps))}
+		/>
 	);
 }
 
-const ICONS: Record<Kind, () => ReactNode> = {
-	command: () => <TerminalIcon />,
-	search: () => <SearchIcon />,
-	handoff: () => <RefreshIcon />,
-	read: () => <FileIcon />,
-	edit: () => <PencilIcon />,
-	script: () => <CodeIcon />,
-	agent: () => <BotIcon />,
-	artifact: () => <ArtifactIcon />,
-	file: () => <FileIcon />,
-	port: () => <ToolIcon />,
-	message: () => <CommentIcon />,
-	tool: () => <ToolIcon />,
-};
+function ActivityPanel({
+	activity,
+	place,
+	expanded,
+	onExpanded,
+}: {
+	activity: Activity;
+	place: Place;
+	expanded: ReadonlySet<string> | undefined;
+	onExpanded: (steps: ReadonlySet<string>) => void;
+}) {
+	const entries = activity.entries ?? activity.steps.map((step): WheelEntry => ({ kind: "call", step }));
+	const running = entries.findLast((entry) => entry.kind === "call" && entry.step.status === "running");
+	const initial = place.step ?? (running?.kind === "call" ? running.step.id : undefined);
+	const open = expanded ?? new Set(initial ? [initial] : []);
+	const body = useRef<HTMLDivElement>(null);
+	const following = useRef(!place.step);
+	const mounted = useRef(false);
+	const revealed = useRef<string>(undefined);
+	const time = useElapsed(activity.startedAt, activity.endedAt, activity.working);
+	const count = `${entries.length} ${entries.length === 1 ? "step" : "steps"}`;
+	useScrollMemory(body);
+	useLayoutEffect(() => {
+		const element = body.current;
+		if (!element) return;
+		const reveal = !mounted.current ? initial : place.step !== revealed.current ? place.step : undefined;
+		if (!mounted.current && element.scrollTop > 0) following.current = false;
+		if (following.current) element.scrollTop = element.scrollHeight;
+		if (reveal) {
+			const row = Array.from(element.querySelectorAll<HTMLElement>("[data-step-id]")).find(
+				(each) => each.dataset.stepId === reveal,
+			);
+			// Keep the expanded call's header reachable even when its output is taller than the panel.
+			row?.querySelector("button")?.scrollIntoView({ block: "nearest" });
+			following.current = element.scrollHeight - element.clientHeight - element.scrollTop < 24;
+		}
+		revealed.current = place.step;
+		mounted.current = true;
+	});
+	// A different face selected on the same block's wheel reveals that step without closing other details.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: selecting a face, not each manual expansion.
+	useEffect(() => {
+		if (place.step && !open.has(place.step)) onExpanded(new Set(open).add(place.step));
+	}, [place.step]);
+	const meta = [count, time].filter(Boolean).join(" · ");
+	return (
+		<SidePanel
+			title="Activity"
+			sheetTitle={meta}
+			meta={meta}
+			onClose={closeActivity}
+			className="activity-panel"
+			testId="activity-sheet"
+		>
+			<div
+				className="activity-panel-body"
+				ref={body}
+				onScroll={() => {
+					const element = body.current;
+					if (element) following.current = element.scrollHeight - element.clientHeight - element.scrollTop < 24;
+				}}
+			>
+				<StepList
+					entries={entries}
+					expanded={open}
+					onStep={(id) => {
+						following.current = false;
+						const next = new Set(open);
+						if (next.has(id)) next.delete(id);
+						else next.add(id);
+						onExpanded(next);
+					}}
+				/>
+				{!entries.length && <p className="empty-note">Working…</p>}
+			</div>
+		</SidePanel>
+	);
+}
 
-/** What thinking and a text on a wheel are called in its list and on their page. */
 const WORDS = { thought: "Thought", text: "Note" } as const;
 
+/** Thumbnails a collapsed row shows at most: the newest, the rest counted. */
+const THUMBNAILS = { phone: 2, wide: 4 } as const;
+
 /**
- * The run's steps, one row each: a call's icon, the tool and its main argument, how it went, a way into its detail;
- * thinking and texts on the wheel (detail 1 and 2) with their first sentence. `follow`: opened on the newest steps
- * (in the sheet; not as a turn's rows in the transcript at detail 4).
+ * A step's images as small thumbnails in its row (what a read loaded, a script's `image()`), so the reader sees them
+ * without expanding it: the last four, two below 700px, "+N" for the earlier ones. Decoration only: the row's name
+ * stays its words. Both counts are rendered and CSS shows the one for the width (activity.css), so the transcript's
+ * rows at detail 4 follow the same breakpoint as the panel.
+ */
+function StepThumbnails({ images }: { images: readonly ImageContent[] }) {
+	if (!images.length) return null;
+	return (
+		<span className="step-thumbs" data-testid="step-thumbs" aria-hidden="true">
+			{(["phone", "wide"] as const).map((width) =>
+				images.length > THUMBNAILS[width] ? (
+					<span key={width} className="step-thumbs-more" data-width={width}>
+						+{images.length - THUMBNAILS[width]}
+					</span>
+				) : null,
+			)}
+			{images.slice(-THUMBNAILS.wide).map((image, index) => (
+				// biome-ignore lint/suspicious/noArrayIndexKey: a result's images never move.
+				<img key={index} className="step-thumb" src={imageUrl(image)} alt="" decoding="async" />
+			))}
+		</span>
+	);
+}
+
+/**
+ * A block's steps, each with its images as thumbnails and, under its state, when it started: only where the clock
+ * shows another minute than the step before it, so a run within a minute names its time once. In the panel their
+ * details expand beneath their headers.
  */
 export function StepList({
 	entries,
 	onStep,
-	follow = true,
+	expanded,
 }: {
 	entries: readonly WheelEntry[];
 	onStep: (id: string) => void;
-	follow?: boolean;
+	expanded?: ReadonlySet<string>;
 }) {
 	const tools = useContext(ToolActivityContext);
 	const cwd = useContext(WorkingDirectory)?.replace(/\/+$/, "");
-	const list = useRef<HTMLUListElement>(null);
-	// Opened on the newest calls: the reader usually looks for what happened last. Not when the page's remembered
-	// scroll position (Back from a call) already placed it.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: only when the list opens.
-	useEffect(() => {
-		const body = list.current?.parentElement;
-		if (follow && body && body.scrollTop === 0) body.scrollTop = body.scrollHeight;
-	}, []);
+	let shownTime: string | undefined;
 	return (
-		<ul className="step-list" data-testid="timeline" ref={list}>
+		<ul className="step-list" data-testid="timeline">
 			{entries.map((entry) => {
-				if (entry.kind !== "call")
-					return (
-						<li key={entry.id} data-testid="step" data-state="done" data-kind={entry.kind}>
-							<button type="button" className="step-row" onClick={() => onStep(entry.id)}>
-								<span className="step-icon">
-									{entry.kind === "thought" ? <SparkIcon size={16} /> : <CommentIcon />}
-								</span>
-								<span className="step-words">
-									<span className="step-name">{WORDS[entry.kind]}</span>
-									<span className="step-argument">{plainText(sentence(entry.text))}</span>
-								</span>
-								<span className="step-state" data-state="done">
-									{entry.live ? "● thinking" : ""}
-								</span>
-								<span className="step-chevron" aria-hidden="true">
-									<ChevronIcon size={16} />
-								</span>
-							</button>
-						</li>
-					);
-				const { step } = entry;
-				const argument = argumentOf(step.tool, tools, cwd);
+				const step = entry.kind === "call" ? entry.step : undefined;
+				const at = step?.tool.at;
+				const label = at === undefined ? undefined : clockTime(at);
+				const time = label === shownTime ? undefined : at;
+				if (label) shownTime = label;
+				const id = entry.kind === "call" ? entry.step.id : entry.id;
+				const open = expanded?.has(id) ?? false;
+				const argument = step
+					? argumentOf(step.tool, tools, cwd)
+					: plainText(sentence(entry.kind !== "call" ? entry.text : ""));
+				const icon: ReactNode = step ? (
+					<KindIcon kind={describe(step, tools).label.kind} />
+				) : entry.kind === "thought" ? (
+					<SparkIcon size={16} />
+				) : (
+					<CommentIcon />
+				);
 				return (
-					<li key={step.id} data-testid="step" data-state={step.status}>
-						<button type="button" className="step-row" onClick={() => onStep(step.id)}>
-							<span className="step-icon">{ICONS[describe(step, tools).label.kind]()}</span>
+					<li
+						key={id}
+						data-testid="step"
+						data-step-id={id}
+						data-state={step?.status ?? "done"}
+						data-kind={entry.kind === "call" ? undefined : entry.kind}
+					>
+						<button
+							type="button"
+							className="step-row"
+							onClick={() => onStep(id)}
+							aria-expanded={expanded ? open : undefined}
+						>
+							<span className="step-icon">{icon}</span>
 							<span className="step-words">
-								<span className="step-name">{step.tool.name}</span>
+								<span className="step-name">
+									{step ? step.tool.name : WORDS[entry.kind === "thought" ? "thought" : "text"]}
+								</span>
 								{argument && <span className="step-argument">{argument}</span>}
 							</span>
-							<span className="step-state" data-state={step.status}>
-								{stepState(step, tools)}
+							{step && <StepThumbnails images={step.tool.images} />}
+							<span className="step-end">
+								<span className="step-state" data-state={step?.status ?? "done"}>
+									{step ? stepState(step, tools) : entry.kind !== "call" && entry.live ? "● thinking" : ""}
+								</span>
+								{time !== undefined && <Time at={time} className="step-time" />}
 							</span>
 							<span className="step-chevron" aria-hidden="true">
 								<ChevronIcon size={16} />
 							</span>
 						</button>
+						{open && (
+							<div className="activity-detail">
+								{step ? (
+									<StepDetail step={step} />
+								) : entry.kind !== "call" ? (
+									<DetailProse text={entry.text} />
+								) : null}
+							</div>
+						)}
 					</li>
 				);
 			})}

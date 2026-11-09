@@ -20,9 +20,9 @@ type Upload struct {
 }
 
 // UploadFile sends the file at path to the session's uploads (`POST /upload` of the server at origin, as the web's + does:
-// the session's files answer the server alone, so no surface can reach them). The request is the loopback owner's: same
-// origin, no cookie.
-func UploadFile(ctx context.Context, origin, session, path string) (Upload, error) {
+// the session's files answer the server alone, so no surface can reach them). The request is the local owner's: same
+// origin, with its session cookie (loopback alone is nobody).
+func UploadFile(ctx context.Context, origin, cookie, session, path string) (Upload, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return Upload{}, err
@@ -42,6 +42,7 @@ func UploadFile(ctx context.Context, origin, session, path string) (Upload, erro
 	}
 	request.ContentLength = info.Size()
 	request.Header.Set("Origin", origin)
+	request.Header.Set("Cookie", cookie)
 	request.Header.Set("Content-Type", "application/octet-stream")
 	response, err := http.DefaultClient.Do(request)
 	if err != nil {

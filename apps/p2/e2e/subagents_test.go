@@ -347,7 +347,7 @@ func TestSubagentsFakeProvider(t *testing.T) {
 			t.Fatal(err)
 		}
 		defer restarted.Close(p2test.Background)
-		conn, err := p2test.Dial(restarted.Port, nil)
+		conn, err := p2test.Dial(restarted.Port, p2test.SignInLocalOwner(t, restarted.Port, restarted.DataDir).OwnerHeaders(nil))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -490,7 +490,7 @@ func TestASubagentSpawnedWithItsOwnCwdRunsItsToolsThereAndItsWorkspaceViewAndUpl
 		t.Errorf("the main workspace = %v", got)
 	}
 	// An upload in the subagent's view lands in its directory.
-	upload, err := p2test.HTTP(f.Fixture.Server.Port, "/workspace-upload?"+urlValues("session", f.Session, "conversation", strconv.Itoa(int(conversation)), "path", "", "name", "up.txt"),
+	upload, err := f.Fixture.HTTP("/workspace-upload?"+urlValues("session", f.Session, "conversation", strconv.Itoa(int(conversation)), "path", "", "name", "up.txt"),
 		p2test.HTTPOptions{Method: http.MethodPost, Headers: map[string]string{"Origin": "http://127.0.0.1:" + strconv.Itoa(f.Fixture.Server.Port)}, Body: strings.NewReader("uploaded")})
 	if err != nil {
 		t.Fatal(err)
@@ -598,7 +598,7 @@ func TestSubagentWithAStaleCwdWorksInTheSessionsCwdAgain(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer restarted.Close(p2test.Background)
-	conn, err := p2test.Dial(restarted.Port, nil)
+	conn, err := p2test.Dial(restarted.Port, p2test.SignInLocalOwner(t, restarted.Port, restarted.DataDir).OwnerHeaders(nil))
 	if err != nil {
 		t.Fatal(err)
 	}

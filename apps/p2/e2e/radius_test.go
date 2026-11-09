@@ -14,6 +14,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -26,6 +27,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/apps/p2/hosts"
 	"github.com/MichaelKinsy/PiG/apps/p2/p2test"
+	chatcontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/chat/contract"
 	devicescontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/devices/contract"
 	logincontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/login/contract"
 	portscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/ports/contract"
@@ -33,6 +35,7 @@ import (
 	"github.com/MichaelKinsy/PiG/apps/p2/plugins/radius/radiustest"
 	sessionscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/sessions/contract"
 	sharingcontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/sharing/contract"
+	terminalscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/terminals/contract"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
@@ -310,8 +313,73 @@ func TestRadiusPluginAdmitsItsAuthenticatedRemoteOwnerIncludingProviderLoginWith
 	if got := f.get("/probe", f.marked(map[string]string{radiuscontract.RelaySecretHeader: "forged"})).Status; got != 403 {
 		t.Fatalf("forged secret = %d", got)
 	}
-	if got := f.get("/probe", nil).Status; got != 200 {
-		t.Fatalf("local = %d", got)
+	// Radius needs no local credential, and loopback alone is nobody.
+	if got := f.get("/probe", nil).Status; got != 403 {
+		t.Fatalf("local without a credential = %d", got)
+	}
+	// A plugin's own WebSocket upgrade (a terminal's byte channel) admits the relayed owner too.
+	p2test.UseTerminalDaemon(t)
+	t.Cleanup(func() { shutdownTerminalHost(t, f.dir) })
+	sessions, err := p2test.HoldIn(browser, sessionscontract.Sessions, delta.NewJsonObject(0), "owner")
+	if err != nil {
+		t.Fatal(err)
+	}
+	created, err := sessions.Call("create", delta.JsonObjectOf("cwd", f.dir), p2test.Background)
+	if err != nil {
+		t.Fatal(err)
+	}
+	view, err := p2test.HoldIn(browser, terminalscontract.Terminals, delta.JsonObjectOf("session", object(created).Value("id"), "view", randomView()), "owner")
+	if err != nil {
+		t.Fatal(err)
+	}
+	granted, err := view.Call("channel", delta.NewJsonObject(0), p2test.Background)
+	if err != nil {
+		t.Fatal(err)
+	}
+	token := object(granted).Value("token").(string)
+	if got := refusedUpgrade(t, f.fixture.Server.Port, "?"+url.Values{"token": {token}}.Encode(), nil); got != http.StatusForbidden {
+		t.Fatalf("a terminal channel without Radius or a local credential: %d", got)
+	}
+	openByteChannel(t, f.fixture.Server.Port, token, marked)
+}
+
+// Ports "Radius-relayed artifact previews may sit below the Radius shell's frame" (Pi main 82d6f34f).
+func TestRadiusRelayedArtifactPreviewsMaySitBelowTheRadiusShellsFrame(t *testing.T) {
+	p2test.NoLeakedGoroutines(t)
+	f := radiusFixture(t, nil, radiustest.Options{})
+	owner := f.fixture.Browser()
+	sessions, err := p2test.HoldIn(owner, sessionscontract.Sessions, delta.NewJsonObject(0), "owner")
+	if err != nil {
+		t.Fatal(err)
+	}
+	created, err := sessions.Call("create", delta.JsonObjectOf("cwd", f.fixture.Workspace), p2test.Background)
+	if err != nil {
+		t.Fatal(err)
+	}
+	session := object(created).Value("id").(string)
+	chat, err := p2test.HoldIn(owner, chatcontract.Chat, delta.JsonObjectOf("session", session, "conversation", float64(1)), "participant")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := chat.Call("send", delta.JsonObjectOf("text", "artifact", "requestId", "artifact"), p2test.Background); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p2test.Until(chat.Member("view"), func(view delta.JsonValue) bool {
+		return view != nil && len(toolResults(view, "artifact")) == 1 && !running(view)
+	}, 0); err != nil {
+		t.Fatal(err)
+	}
+	chat.Release()
+	// The relayed app is framed by the shell, and `frame-ancestors` checks every ancestor: `'self'` alone showed Chrome's
+	// blocked-frame page instead of every inline preview.
+	query := url.Values{"session": {session}, "name": {"demo"}, "version": {"1"}}.Encode()
+	response := f.radius.Response(f.open("/artifact?"+query, radiusOpen{}))
+	if response["status"] != float64(200) {
+		t.Fatalf("response = %v", response)
+	}
+	csp, _ := radiustest.Header(response, "content-security-policy")
+	if !strings.HasSuffix(csp, "; frame-ancestors 'self' https://radius.earendil.com") {
+		t.Fatalf("content-security-policy = %q", csp)
 	}
 }
 

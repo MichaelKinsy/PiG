@@ -35,6 +35,7 @@ func TestWebClientMarkFollowsTheSpriteSelection(t *testing.T) {
 		shots = t.TempDir()
 	}
 	command := exec.Command("node", "ui/sprite.mjs", "http://127.0.0.1:"+strconv.Itoa(fixture.Server.Port), shots)
+	command.Env = append(os.Environ(), "P2_UI_COOKIE="+fixture.Owner().Cookie)
 	stdin, err := command.StdinPipe()
 	if err != nil {
 		t.Fatal(err)

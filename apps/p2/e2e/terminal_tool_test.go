@@ -128,7 +128,7 @@ func TestTheAgentsTerminalToolOnTheSessionsSharedTerminals(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	bytes := openByteChannel(t, fixture.Server.Port, object(granted).Value("token").(string))
+	bytes := openByteChannel(t, fixture.Server.Port, object(granted).Value("token").(string), fixture.Owner().OwnerHeaders(nil))
 	if _, err := view.Call("list", delta.NewJsonObject(0), p2test.Background); err != nil {
 		t.Fatal(err)
 	}

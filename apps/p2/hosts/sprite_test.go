@@ -47,10 +47,12 @@ func (f *fakeSprite) set(key string, svg string) {
 	}
 }
 
-func spriteFixture(t *testing.T, source hosts.SpriteSource) int {
+// spriteFixture is a server with the sprite source, and a function adding the local owner's cookie to request headers.
+func spriteFixture(t *testing.T, source hosts.SpriteSource) (int, func(map[string]string) map[string]string) {
 	t.Helper()
 	enabled := true
-	return p2test.StartFixture(t, hosts.ServerOptions{Plugins: []string{}, Web: &enabled, Sprite: source}).Server.Port
+	fixture := p2test.StartFixture(t, hosts.ServerOptions{Plugins: []string{"devices"}, Web: &enabled, Sprite: source})
+	return fixture.Server.Port, ownerOf(fixture)
 }
 
 const svgOne = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 14"><rect x="0" y="0" width="1" height="1" fill="#ff0000"/></svg>`
@@ -60,37 +62,37 @@ const svgTwo = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 14"><rec
 func TestSelectedSpriteIsServedAsSVG(t *testing.T) {
 	source := &fakeSprite{}
 	source.set("pink-1111", svgOne)
-	port := spriteFixture(t, source)
+	port, owner := spriteFixture(t, source)
 
-	asset := get(t, port, hosts.SpriteAssetPath+"?v=pink-1111", nil)
+	asset := get(t, port, hosts.SpriteAssetPath+"?v=pink-1111", owner(nil))
 	if asset.Status != 200 || asset.Body != svgOne || asset.Headers.Get("Content-Type") != "image/svg+xml" {
 		t.Fatalf("asset: %d %q %q", asset.Status, asset.Headers.Get("Content-Type"), asset.Body)
 	}
 	if got := asset.Headers.Get("ETag"); got != `"pink-1111"` {
 		t.Fatalf("ETag %q", got)
 	}
-	if again := get(t, port, hosts.SpriteAssetPath, map[string]string{"If-None-Match": `"pink-1111"`}); again.Status != 304 || again.Body != "" {
+	if again := get(t, port, hosts.SpriteAssetPath, owner(map[string]string{"If-None-Match": `"pink-1111"`})); again.Status != 304 || again.Body != "" {
 		t.Fatalf("revalidation: %d %q", again.Status, again.Body)
 	}
-	page := get(t, port, "/", nil).Body
+	page := get(t, port, "/", owner(nil)).Body
 	for _, want := range []string{`data-brand-sprite="{&#34;key&#34;:&#34;pink-1111&#34;,&#34;name&#34;:&#34;Name pink-1111&#34;}"`, `<link rel="icon" href="` + hosts.SpriteAssetPath + `?v=pink-1111" type="image/svg+xml" />`} {
 		if !strings.Contains(page, want) {
 			t.Errorf("page lacks %s", want)
 		}
 	}
 	// Like the icons: signed out on an allowed host, yes; another site's page, no.
-	if got := get(t, port, hosts.SpriteAssetPath, map[string]string{"Sec-Fetch-Site": "cross-site", "Sec-Fetch-Dest": "image"}).Status; got == 200 {
+	if got := get(t, port, hosts.SpriteAssetPath, owner(map[string]string{"Sec-Fetch-Site": "cross-site", "Sec-Fetch-Dest": "image"})).Status; got == 200 {
 		t.Fatal("another site loaded the sprite")
 	}
 }
 
 // With no selection there is no asset: the page keeps the brand's default pig and favicon, and still says it follows the hook.
 func TestNoSelectionFallsBackToTheDefaultPig(t *testing.T) {
-	port := spriteFixture(t, &fakeSprite{})
-	if got := get(t, port, hosts.SpriteAssetPath, nil).Status; got != 404 {
+	port, owner := spriteFixture(t, &fakeSprite{})
+	if got := get(t, port, hosts.SpriteAssetPath, owner(nil)).Status; got != 404 {
 		t.Fatalf("asset without a selection: %d", got)
 	}
-	page := get(t, port, "/", nil).Body
+	page := get(t, port, "/", owner(nil)).Body
 	if !strings.Contains(page, `data-brand-sprite=""`) || !strings.Contains(page, `<link rel="icon" href="/icons/favicon.svg" type="image/svg+xml" />`) {
 		t.Fatalf("page:\n%s", page)
 	}
@@ -98,13 +100,13 @@ func TestNoSelectionFallsBackToTheDefaultPig(t *testing.T) {
 
 // Stock: without a source (the default) the server has neither route, the attribute nor the sprite favicon.
 func TestWithoutASpriteSourceTheHookIsInert(t *testing.T) {
-	port := spriteFixture(t, nil)
+	port, owner := spriteFixture(t, nil)
 	for _, path := range []string{hosts.SpriteAssetPath, hosts.SpriteEventsPath} {
-		if got := get(t, port, path, nil).Status; got != 404 {
+		if got := get(t, port, path, owner(nil)).Status; got != 404 {
 			t.Fatalf("%s: %d", path, got)
 		}
 	}
-	page := get(t, port, "/", nil).Body
+	page := get(t, port, "/", owner(nil)).Body
 	if strings.Contains(page, "brand-sprite") || strings.Contains(page, "__p2_brand") {
 		t.Fatalf("page mentions the hook:\n%s", page)
 	}
@@ -114,12 +116,13 @@ func TestWithoutASpriteSourceTheHookIsInert(t *testing.T) {
 func TestSpriteEventsPushChanges(t *testing.T) {
 	source := &fakeSprite{}
 	source.set("pink-1111", svgOne)
-	port := spriteFixture(t, source)
+	port, owner := spriteFixture(t, source)
 
 	request, err := http.NewRequest(http.MethodGet, "http://127.0.0.1:"+strconv.Itoa(port)+hosts.SpriteEventsPath, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
+	request.Header.Set("Cookie", owner(nil)["Cookie"])
 	response, err := http.DefaultClient.Do(request)
 	if err != nil {
 		t.Fatal(err)
@@ -155,7 +158,7 @@ func TestSpriteEventsPushChanges(t *testing.T) {
 		t.Fatalf("after a change: %q", got)
 	}
 	// The asset follows: the old URL's key is gone, the new one serves the new sprite.
-	if body := get(t, port, hosts.SpriteAssetPath, nil).Body; body != svgTwo {
+	if body := get(t, port, hosts.SpriteAssetPath, owner(nil)).Body; body != svgTwo {
 		t.Fatalf("asset after the change: %q", body)
 	}
 	source.set("", "")
@@ -163,7 +166,7 @@ func TestSpriteEventsPushChanges(t *testing.T) {
 		t.Fatalf("after clearing: %q", got)
 	}
 	// Signed out (another site): no stream.
-	if got := get(t, port, hosts.SpriteEventsPath, map[string]string{"Sec-Fetch-Site": "cross-site", "Sec-Fetch-Dest": "empty"}).Status; got == 200 {
+	if got := get(t, port, hosts.SpriteEventsPath, owner(map[string]string{"Sec-Fetch-Site": "cross-site", "Sec-Fetch-Dest": "empty"})).Status; got == 200 {
 		t.Fatal("another site read the stream")
 	}
 }

@@ -295,7 +295,7 @@ func (a *App) pickFiles() {
 	if chat == nil || host == nil {
 		return
 	}
-	session, origin := chat.Session(), host.Origin()
+	session, origin, cookie := chat.Session(), host.Origin(), host.Cookie()
 	go func() {
 		paths, err := mygo.Dialog.Open(mygo.OpenDialogOptions{Title: "Attach files", Multiple: true})
 		if err != nil || len(paths) == 0 {
@@ -307,7 +307,7 @@ func (a *App) pickFiles() {
 			a.uploadErr = ""
 			a.mu.Unlock()
 			a.Invalidate()
-			uploaded, err := screens.UploadFile(host.Context(), origin, session, path)
+			uploaded, err := screens.UploadFile(host.Context(), origin, cookie, session, path)
 			a.mu.Lock()
 			a.uploading--
 			switch {

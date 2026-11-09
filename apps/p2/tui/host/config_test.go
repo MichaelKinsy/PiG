@@ -110,33 +110,24 @@ func TestTUIAuthOptionsPrivateConfigAndOwnerClaimCookieRoundTrip(t *testing.T) {
 	}
 }
 
-func TestTUILoopbackAutomaticallySignsInAsTheDeviceOwnerWithoutALinkPrompt(t *testing.T) {
+func TestTUILoopbackSignsInAsTheLocalOwnerWithTheDataDirectorysOwnerKeyWithoutALinkPrompt(t *testing.T) {
 	fixture := p2test.StartFixture(t, hosts.ServerOptions{Plugins: []string{"devices", "proxy-marker"}})
 	target, err := url.Parse("http://127.0.0.1:" + itoa(fixture.Server.Port))
 	if err != nil {
 		t.Fatal(err)
 	}
-	devices, err := p2test.HoldIn(fixture.Browser(), devicescontract.Devices, delta.NewJsonObject(0), "owner")
-	if err != nil {
-		t.Fatal(err)
-	}
-	minted, err := devices.Call("token", delta.NewJsonObject(0), p2test.Background)
-	if err != nil {
-		t.Fatal(err)
-	}
-	associated, err := host.ClaimOwner(nil, context.Background(), target, minted.(*delta.JsonObject).Value("token").(string), host.Credentials{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	config := host.Config{Connections: map[string]host.Connection{host.OriginOf(target): {Credentials: associated}}}
-	admission, err := host.Authenticate(context.Background(), host.AuthOptions{URL: target}, &config, func(string) (string, error) {
+	config := host.Config{Connections: map[string]host.Connection{}}
+	admission, err := host.Authenticate(context.Background(), host.AuthOptions{URL: target, DataDir: fixture.DataDir}, &config, func(string, string) (string, error) {
 		return "", errors.New("Unexpected owner link prompt")
 	})
-	if err != nil || admission != (host.Admission{Role: "owner"}) {
-		t.Fatalf("loopback uses the device path, not a cached remote cookie: %+v, %v", admission, err)
+	if err != nil || admission.Role != "owner" || !admission.Local || !strings.HasPrefix(admission.Cookie, "p2_owner_"+itoa(fixture.Server.Port)+"=local.") {
+		t.Fatalf("admission = %+v, %v", admission, err)
+	}
+	if len(config.Connections) != 0 {
+		t.Fatalf("a local sign-in is never saved: %+v", config)
 	}
 	headers := host.ConnectionHeaders(target, admission.Credentials)
-	client, _ := fixture.Client(map[string]string{"Origin": headers.Get("Origin")})
+	client, _ := fixture.Client(map[string]string{"Origin": headers.Get("Origin"), "Cookie": headers.Get("Cookie")})
 	owned, err := p2test.HoldIn(client, devicescontract.Devices, delta.NewJsonObject(0), "owner")
 	if err != nil {
 		t.Fatal(err)
@@ -144,9 +135,51 @@ func TestTUILoopbackAutomaticallySignsInAsTheDeviceOwnerWithoutALinkPrompt(t *te
 	if _, err := p2test.Until(owned.Member("canMint"), func(value delta.JsonValue) bool { return value == true }, 0); err != nil {
 		t.Fatal(err)
 	}
+	// A valid saved owner cookie (an owner link redeemed on loopback, say) comes first.
+	minted, err := owned.Call("token", delta.NewJsonObject(0), p2test.Background)
+	if err != nil {
+		t.Fatal(err)
+	}
+	associated, err := host.ClaimOwner(nil, context.Background(), target, minted.(*delta.JsonObject).Value("token").(string), host.Credentials{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	saved := host.Config{Connections: map[string]host.Connection{host.OriginOf(target): {Credentials: associated}}}
+	again, err := host.Authenticate(context.Background(), host.AuthOptions{URL: target, DataDir: fixture.DataDir}, &saved, func(string, string) (string, error) {
+		return "", errors.New("Unexpected owner link prompt")
+	})
+	if err != nil || again != (host.Admission{Credentials: associated, Role: "owner"}) {
+		t.Fatalf("saved = %+v, %v", again, err)
+	}
 }
 
-func TestAProxyMarkerRefusesTheTUIAutomaticPathAndFallsBackToALinkPrompt(t *testing.T) {
+func TestTUILoopbackWithoutTheServersOwnerKeyAsksForAnOwnerLinkSayingWhy(t *testing.T) {
+	fixture := p2test.StartFixture(t, hosts.ServerOptions{Plugins: []string{"devices"}})
+	target, _ := url.Parse("http://127.0.0.1:" + itoa(fixture.Server.Port))
+	other := t.TempDir()
+	var reasons []string
+	refuse := func(_, reason string) (string, error) {
+		reasons = append(reasons, reason)
+		return "", errors.New("Link prompt required")
+	}
+	// Another user (no readable key), then another server's data directory.
+	if _, err := host.Authenticate(context.Background(), host.AuthOptions{URL: target, DataDir: other}, &host.Config{Connections: map[string]host.Connection{}}, refuse); err == nil || !strings.Contains(err.Error(), "Link prompt required") {
+		t.Fatalf("no key: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(other, "owner-key"), []byte(strings.Repeat("a", 64)), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := host.Authenticate(context.Background(), host.AuthOptions{URL: target, DataDir: other}, &host.Config{Connections: map[string]host.Connection{}}, refuse); err == nil || !strings.Contains(err.Error(), "Link prompt required") {
+		t.Fatalf("another key: %v", err)
+	}
+	if len(reasons) != 2 ||
+		!strings.Contains(reasons[0], "Cannot read ") || !strings.Contains(reasons[0], "owner-key: local sign-in needs the user running the p2 server") ||
+		!strings.Contains(reasons[1], "does not use the data directory ") || !strings.Contains(reasons[1], ": set P2_DATA_DIR") {
+		t.Fatalf("reasons = %q", reasons)
+	}
+}
+
+func TestAProxyMarkerRefusesTheTUILocalSignInAndFallsBackToALinkPrompt(t *testing.T) {
 	fixture := p2test.StartFixture(t, hosts.ServerOptions{Plugins: []string{"devices", "proxy-marker"}})
 	target, _ := url.Parse("http://127.0.0.1:" + itoa(fixture.Server.Port))
 	marked := &http.Client{Transport: roundTrip(func(request *http.Request) (*http.Response, error) {
@@ -155,7 +188,7 @@ func TestAProxyMarkerRefusesTheTUIAutomaticPathAndFallsBackToALinkPrompt(t *test
 		return http.DefaultTransport.RoundTrip(request)
 	})}
 	prompted := false
-	_, err := host.Authenticate(context.Background(), host.AuthOptions{URL: target, HTTP: marked}, &host.Config{Connections: map[string]host.Connection{}}, func(string) (string, error) {
+	_, err := host.Authenticate(context.Background(), host.AuthOptions{URL: target, HTTP: marked, DataDir: fixture.DataDir}, &host.Config{Connections: map[string]host.Connection{}}, func(string, string) (string, error) {
 		prompted = true
 		return "", errors.New("Link prompt required")
 	})
@@ -188,7 +221,7 @@ func TestRemoteTUIPromptsForAnOwnerLinkSavesOnlyItsCookieAndReusesValidSavedCred
 		return reply(200, "{}", "Set-Cookie", "owner=fixture; HttpOnly; Secure; SameSite=Lax; Path=/"), nil
 	})}
 	config := host.Config{Connections: map[string]host.Connection{}}
-	admission, err := host.Authenticate(context.Background(), host.AuthOptions{URL: target, HTTP: remote}, &config, func(string) (string, error) {
+	admission, err := host.Authenticate(context.Background(), host.AuthOptions{URL: target, HTTP: remote}, &config, func(string, string) (string, error) {
 		return target.Scheme + "://" + target.Host + "/owner#" + token, nil
 	})
 	if err != nil || admission.Cookie != "owner=fixture" {
@@ -208,7 +241,7 @@ func TestRemoteTUIPromptsForAnOwnerLinkSavesOnlyItsCookieAndReusesValidSavedCred
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := host.Authenticate(context.Background(), host.AuthOptions{URL: target, HTTP: remote}, &saved, func(string) (string, error) {
+	if _, err := host.Authenticate(context.Background(), host.AuthOptions{URL: target, HTTP: remote}, &saved, func(string, string) (string, error) {
 		return "", errors.New("Unexpected repeat prompt")
 	}); err != nil {
 		t.Fatal(err)

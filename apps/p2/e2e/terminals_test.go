@@ -40,9 +40,13 @@ type byteChannel struct {
 	output []byte
 }
 
-func openByteChannel(t *testing.T, port int, token string) *byteChannel {
+func openByteChannel(t *testing.T, port int, token string, headers map[string]string) *byteChannel {
 	t.Helper()
-	conn, _, err := websocket.DefaultDialer.Dial("ws://127.0.0.1:"+itoa(port)+"/terminal?"+url.Values{"token": {token}}.Encode(), nil)
+	requestHeaders := http.Header{}
+	for name, value := range headers {
+		requestHeaders.Set(name, value)
+	}
+	conn, _, err := websocket.DefaultDialer.Dial("ws://127.0.0.1:"+itoa(port)+"/terminal?"+url.Values{"token": {token}}.Encode(), requestHeaders)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -183,7 +187,8 @@ func TestTerminalByteChannelsNeedAnOwnerAndALiveOneUseChord2Grant(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := refusedUpgrade(t, fixture.Server.Port, "", nil); got != http.StatusForbidden {
+	owner := fixture.Owner().OwnerHeaders(nil)
+	if got := refusedUpgrade(t, fixture.Server.Port, "", owner); got != http.StatusForbidden {
 		t.Fatalf("no token: %d", got)
 	}
 	granted, err := view.Call("channel", delta.NewJsonObject(0), p2test.Background)
@@ -192,10 +197,13 @@ func TestTerminalByteChannelsNeedAnOwnerAndALiveOneUseChord2Grant(t *testing.T) 
 	}
 	token := object(granted).Value("token").(string)
 	query := "?" + url.Values{"token": {token}}.Encode()
-	if got := refusedUpgrade(t, fixture.Server.Port, query, map[string]string{"Origin": "https://untrusted.invalid"}); got != http.StatusForbidden {
+	if got := refusedUpgrade(t, fixture.Server.Port, query, nil); got != http.StatusForbidden {
+		t.Fatalf("a valid token without a credential: %d", got)
+	}
+	if got := refusedUpgrade(t, fixture.Server.Port, query, fixture.Owner().OwnerHeaders(map[string]string{"Origin": "https://untrusted.invalid"})); got != http.StatusForbidden {
 		t.Fatalf("untrusted origin: %d", got)
 	}
-	bytes := openByteChannel(t, fixture.Server.Port, token)
+	bytes := openByteChannel(t, fixture.Server.Port, token, owner)
 	if _, err := view.Call("list", delta.NewJsonObject(0), p2test.Background); err != nil {
 		t.Fatal(err)
 	}
@@ -208,7 +216,7 @@ func TestTerminalByteChannelsNeedAnOwnerAndALiveOneUseChord2Grant(t *testing.T) 
 	if len(list.Terminals) != 0 {
 		t.Fatalf("list = %+v", list.Terminals)
 	}
-	if got := refusedUpgrade(t, fixture.Server.Port, query, nil); got != http.StatusForbidden {
+	if got := refusedUpgrade(t, fixture.Server.Port, query, owner); got != http.StatusForbidden {
 		t.Fatalf("a used token: %d", got)
 	}
 	// Control JSON cannot be smuggled onto the dedicated byte channel.
@@ -248,7 +256,7 @@ func TestTerminalsSurviveCompatibleReloadAndServerRestartControlsStaySessionScop
 		return server
 	}
 	connect := func(server *hosts.P2Server) host.Host {
-		conn, err := p2test.Dial(server.Port, nil)
+		conn, err := p2test.Dial(server.Port, p2test.SignInLocalOwner(t, server.Port, server.DataDir).OwnerHeaders(nil))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -285,7 +293,7 @@ func TestTerminalsSurviveCompatibleReloadAndServerRestartControlsStaySessionScop
 		if err != nil {
 			t.Fatal(err)
 		}
-		return openByteChannel(t, server.Port, object(granted).Value("token").(string))
+		return openByteChannel(t, server.Port, object(granted).Value("token").(string), p2test.SignInLocalOwner(t, server.Port, server.DataDir).OwnerHeaders(nil))
 	}
 	call := func(view *host.Reference, method string, args *delta.JsonObject) {
 		t.Helper()

@@ -87,11 +87,14 @@ func RunTUI(args []string) int {
 		if radius != nil {
 			admission = host.Admission{Role: "owner"}
 		} else {
-			admission, err = host.Authenticate(ctx, host.AuthOptions{URL: options.URL, OwnerLink: options.OwnerLink, JoinLink: options.JoinLink}, &config, func(kind string) (string, error) {
+			admission, err = host.Authenticate(ctx, host.AuthOptions{URL: options.URL, OwnerLink: options.OwnerLink, JoinLink: options.JoinLink}, &config, func(kind, reason string) (string, error) {
 				if kind == "name" {
 					return ask("Your name (shown to the owner and other guests; not verified): ")
 				}
-				return ask("Owner link (npm run owner-link on the host) or share link: ")
+				if reason != "" {
+					reason += ".\n"
+				}
+				return ask(reason + "Owner link (npm run owner-link on the host) or share link: ")
 			})
 			if err != nil {
 				return tuiFailure(err)
@@ -164,6 +167,10 @@ func RunTUI(args []string) int {
 		}
 		// Launcher-drawn, on the restored terminal: the same words as the web page, then a way back in.
 		fmt.Fprintln(os.Stderr, host.EndedNotice(admission.Role))
+		// A local sign-in ended (all devices signed out): the data directory's owner key signs in again.
+		if admission.Local {
+			continue
+		}
 		next, err := host.ResumeAfterEnded(admission.Role, options.URL, &config, ask)
 		if saveErr := host.SaveConfig(config, host.ConfigDirectory()); saveErr != nil && err == nil {
 			err = saveErr

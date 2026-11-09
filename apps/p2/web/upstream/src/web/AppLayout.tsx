@@ -61,6 +61,7 @@ export function AppLayout() {
 				<OwnerNotices />
 				<Slot name="main" fallback={<div className="hero">No chat plugin</div>} />
 			</main>
+			<div id="side-dock" className="side-dock" />
 			<Slot name="workspace-panel" />
 		</div>
 	);

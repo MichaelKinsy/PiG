@@ -48,7 +48,7 @@ func TestRevokedBy(t *testing.T) {
 		principal Principal
 		want      []string
 	}{
-		{OwnerPrincipal{Access: AccessLocal}, []string{}},
+		{OwnerPrincipal{Access: AccessLocal}, []string{`{"owners":"local"}`}},
 		{OwnerPrincipal{Access: AccessRelay}, []string{`{"owners":"remote"}`}},
 		{OwnerPrincipal{Access: AccessDevice, Device: "d1"}, []string{`{"device":"d1"}`, `{"owners":"remote"}`}},
 		{guest(nil), []string{`{"guest":"g1"}`}},

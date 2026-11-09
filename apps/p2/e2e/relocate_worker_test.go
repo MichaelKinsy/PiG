@@ -199,7 +199,8 @@ func envValue(env *string) any {
 	return *env
 }
 
-func newWorkerHost(t *testing.T, start p2runtime.Location, machines map[string]*remoteMachine) *workerHost {
+// newWorkerHost also loads the facets in extra, after the plugins.
+func newWorkerHost(t *testing.T, start p2runtime.Location, machines map[string]*remoteMachine, extra ...chordhost.HostFacet) *workerHost {
 	t.Helper()
 	p2test.NoLeakedGoroutines(t)
 	w := &workerHost{t: t, root: tempRoot(t), opened: &names{}, closed: &names{}}
@@ -278,6 +279,7 @@ func newWorkerHost(t *testing.T, start p2runtime.Location, machines map[string]*
 			facets = append(facets, chordhost.HostFacet{Name: plugin.Name, Facet: *plugin.Worker})
 		}
 	}
+	facets = append(facets, extra...)
 	report, err := worker.Load(facets, p2test.Background)
 	if err != nil {
 		t.Fatal(err)

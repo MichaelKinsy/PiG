@@ -1,4 +1,4 @@
-// A call's detail in the sheet: its tool's own (`ToolActivity.Detail`, contributed by the plugin that owns the tool),
+// A call's inline detail: its tool's own (`ToolActivity.Detail`, contributed by the plugin that owns the tool),
 // or the generic one: the input as JSON, then the output. The parts tools build theirs from are here too: sections,
 // a command and its output as a terminal, a file with a way into the workspace, images, prose, a call's own calls.
 import { Button } from "@earendil-works/elanor-react";
@@ -60,6 +60,22 @@ export function OutputBlock({ output, failed }: { output: string; failed?: boole
 	);
 }
 
+/** Data URLs by image: a result's images keep their identity while unchanged (transcript.ts). */
+const imageUrls = new WeakMap<ImageContent, string>();
+
+/**
+ * An image's data URL, made once per image: a screenshot's base64 is large, and a new string on every render would be
+ * compared and set again by React.
+ */
+export function imageUrl(image: ImageContent): string {
+	let url = imageUrls.get(image);
+	if (url === undefined) {
+		url = `data:${image.mimeType};base64,${image.data}`;
+		imageUrls.set(image, url);
+	}
+	return url;
+}
+
 /** Images a tool returned (a screenshot it read), each at the sheet's width. */
 export const DetailImages = ({ images }: { images: readonly ImageContent[] }) => (
 	<div className="detail-images">
@@ -68,7 +84,7 @@ export const DetailImages = ({ images }: { images: readonly ImageContent[] }) =>
 				// biome-ignore lint/suspicious/noArrayIndexKey: a result's images never move.
 				key={index}
 				className="detail-image"
-				src={`data:${image.mimeType};base64,${image.data}`}
+				src={imageUrl(image)}
 				alt=""
 			/>
 		))}
@@ -122,12 +138,13 @@ export function FilePath({ path, line, range }: { path: string; line?: number; r
 const NEWEST_CALLS = 8;
 
 /**
- * A call's own calls (a script's), as a timeline: repeated identical calls are one entry; each opens its detail. The
+ * A call's own calls (a script's), as a timeline: repeated identical calls are one entry; each expands its detail. The
  * newest eight show, the rest behind "Show all".
  */
-export function NestedCalls({ step, onGroup }: { step: Step; onGroup: (index: number) => void }) {
+export function NestedCalls({ step }: { step: Step }) {
 	const tools = useContext(ToolActivityContext);
 	const [all, setAll] = useState(false);
+	const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
 	const calls = step.tool.calls ?? [];
 	if (!calls.length) return null;
 	const groups = groupCalls(calls, tools, step.tool.name);
@@ -148,7 +165,7 @@ export function NestedCalls({ step, onGroup }: { step: Step; onGroup: (index: nu
 				</button>
 			)}
 			<Timeline.Root data-testid="calls">
-				{groups.slice(from).map((group, index) => (
+				{groups.slice(from).map((group) => (
 					<Timeline.Item
 						key={group.key}
 						data-testid="call"
@@ -158,8 +175,22 @@ export function NestedCalls({ step, onGroup }: { step: Step; onGroup: (index: nu
 						title={<LabelText label={group.label} />}
 						description={group.description}
 						code={group.calls.length === 1 && (group.mono || group.status === "error")}
-						onClick={() => onGroup(from + index)}
-					/>
+						expanded={expanded.has(group.key)}
+						onClick={() =>
+							setExpanded((before) => {
+								const next = new Set(before);
+								if (next.has(group.key)) next.delete(group.key);
+								else next.add(group.key);
+								return next;
+							})
+						}
+					>
+						{expanded.has(group.key) && (
+							<div className="activity-detail nested-detail">
+								<GroupDetail group={group} />
+							</div>
+						)}
+					</Timeline.Item>
 				))}
 			</Timeline.Root>
 		</>
@@ -192,9 +223,9 @@ export const Interrupted = ({ step }: { step: Step }) =>
 	step.tool.status === "interrupted" ? <DetailNote>Interrupted by a restart, not run again.</DetailNote> : null;
 
 /** A call's detail: its tool's, or the generic one. */
-export function StepDetail({ step, onGroup }: { step: Step; onGroup: (index: number) => void }) {
+export function StepDetail({ step }: { step: Step }) {
 	const Detail = useContext(ToolActivityContext).get(step.tool.name)?.Detail;
-	return Detail ? <Detail step={step} onGroup={onGroup} /> : <GenericDetail step={step} />;
+	return Detail ? <Detail step={step} /> : <GenericDetail step={step} />;
 }
 
 /**

@@ -38,6 +38,8 @@ type Options struct {
 	// Origin is the server's loopback origin ("http://127.0.0.1:<port>"): uploads go to its `POST /upload` route, the only way
 	// a file enters a session (the session's files answer the server alone).
 	Origin string
+	// Cookie is the local owner's session cookie (`name=value`) at Origin: uploads send it, as loopback alone is nobody.
+	Cookie string
 	// Preferred are the device's languages, most preferred first.
 	Preferred []string
 	// Changed is called after any change of the host's own state (theme, language, connection), from any goroutine: the
@@ -51,6 +53,9 @@ type Options struct {
 
 // Origin is the server's loopback origin (empty when not given).
 func (h *Host) Origin() string { return h.opts.Origin }
+
+// Cookie is the local owner's session cookie at Origin (empty when not given).
+func (h *Host) Cookie() string { return h.opts.Cookie }
 
 // Host is the open client.
 type Host struct {

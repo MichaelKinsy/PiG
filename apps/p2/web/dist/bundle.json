@@ -1,7 +1,7 @@
 {
-	"version": "22518a776e2edfcbbd7cdf97bcf836f00b97868891204e5c89cc666cb4485768",
-	"script": "app-WTCFKZW4.js",
-	"style": "app-S7ASXKO7.css",
+	"version": "cd04c2dc746ad448ab93b73536e283bc540daf6384b43ee57c64beac9465ba44",
+	"script": "app-FP73N6PU.js",
+	"style": "app-BNZFOQLQ.css",
 	"plugins": [
 		"agent",
 		"artifacts",
@@ -61,28 +61,28 @@
 			"sha256": "29b1a5c95c8fa5920b2acc54501ac56800757cfee07cb9ab46c08e512ff75426"
 		},
 		{
-			"name": "app-S7ASXKO7.css",
+			"name": "app-BNZFOQLQ.css",
 			"type": "text/css; charset=utf-8",
-			"size": 347177,
-			"sha256": "4eba356ee61f712224e188b03cfd65fd1114e1232da8f9fd35eb13f634805f3a"
+			"size": 349884,
+			"sha256": "127f2a86b9380cb185d918d86fc0c0df3c8f40913ff117c60bdfb44c9046c605"
 		},
 		{
-			"name": "app-S7ASXKO7.css.map",
+			"name": "app-BNZFOQLQ.css.map",
 			"type": "application/json",
-			"size": 626375,
-			"sha256": "93b07b627bf8ea1990df340d9c28edd835489d82e8d5d335b66b95c5e7fbe3a0"
+			"size": 632704,
+			"sha256": "01133aec1bf433419bf784bdaaaa3a95181a49d203cf6d29263d2533dbde2ced"
 		},
 		{
-			"name": "app-WTCFKZW4.js",
+			"name": "app-FP73N6PU.js",
 			"type": "text/javascript; charset=utf-8",
-			"size": 1318702,
-			"sha256": "3c2c35bf32f43876f9e1ab42c067198f05148098993be2bab9a9a1c8150d25a5"
+			"size": 1322311,
+			"sha256": "35e91bffb613318ca641a8ad90fe8b90032f1ad84843cb7ff59a443e4e561b41"
 		},
 		{
-			"name": "app-WTCFKZW4.js.map",
+			"name": "app-FP73N6PU.js.map",
 			"type": "application/json",
-			"size": 6177036,
-			"sha256": "2007ae13c9dee9e086432cc0614e78db579e9d7803025ab38a40ac9c01b25e51"
+			"size": 6193813,
+			"sha256": "283b5feeb08e10969bffd65749702cb1fcd1e9c0faf87f7a01a534842134384d"
 		},
 		{
 			"name": "ghostty-vt-BNEKZYKQ.wasm",
@@ -97,7 +97,7 @@
 			"light": "#ffffff",
 			"dark": "#101c1a"
 		},
-		"upstreamVersion": "c3b1a91077128bb4b0a5df5d888f99ca2073e6e47c4fb6baf9b626824f466984",
+		"upstreamVersion": "edb3dd56b3d76b9e824e7c3542e738dfab8932c056314cee32ff6f2ba4eaffd2",
 		"public": [
 			"icons/apple-touch-icon.png",
 			"icons/favicon.svg",

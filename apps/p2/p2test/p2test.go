@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
@@ -180,11 +181,43 @@ func ClientHost(conn *websocket.Conn, facets ...host.HostFacet) (host.Host, erro
 	return client, nil
 }
 
+// LocalOwner is a local owner session at a p2 server: its port, and the cookie pair the owner's browser or TUI sends there.
+type LocalOwner struct {
+	Port   int
+	Cookie string
+}
+
+// SignInLocalOwner signs in to the server at port as its local owner, as the TUI on its host does (with the owner key of
+// dataDir).
+func SignInLocalOwner(t testing.TB, port int, dataDir string) LocalOwner {
+	t.Helper()
+	target := &url.URL{Scheme: "http", Host: "127.0.0.1:" + strconv.Itoa(port)}
+	signIn, err := p2runtime.LocalOwnerSignIn(t.Context(), nil, target, dataDir)
+	if err != nil {
+		t.Fatalf("local sign-in: %v", err)
+	}
+	if signIn.Kind == p2runtime.LocalUnavailable {
+		t.Fatalf("local sign-in: %s", signIn.Message)
+	}
+	return LocalOwner{Port: port, Cookie: signIn.Cookie}
+}
+
+// OwnerHeaders are the headers of a request as the owner (a Cookie, added to extra's other headers).
+func (o LocalOwner) OwnerHeaders(extra map[string]string) map[string]string {
+	headers := map[string]string{"Cookie": o.Cookie}
+	for name, value := range extra {
+		headers[name] = value
+	}
+	return headers
+}
+
 // Fixture is a running server on a temporary data directory, with its clients.
 type Fixture struct {
 	Server    *hosts.P2Server
 	DataDir   string
 	Workspace string
+	// owner is the local owner's session (the devices plugin signs it in); nil without that plugin.
+	owner *LocalOwner
 
 	t        testing.TB
 	root     string
@@ -257,6 +290,10 @@ func StartFixture(t testing.TB, options hosts.ServerOptions) *Fixture {
 		t.Fatal(err)
 	}
 	fixture := &Fixture{Server: server, DataDir: options.DataDir, Workspace: workspace, t: t, root: root}
+	if slices.Contains(server.Plugins, "devices") {
+		owner := SignInLocalOwner(t, server.Port, options.DataDir)
+		fixture.owner = &owner
+	}
 	fixture.trackSessions()
 	t.Cleanup(fixture.Close)
 	// Cleanups run last-in first-out: the failure report is made before the workers go.
@@ -264,13 +301,44 @@ func StartFixture(t testing.TB, options hosts.ServerOptions) *Fixture {
 	return fixture
 }
 
-// Browser is a browser-like client host over a real WebSocket (as the web UI connects), with facets loaded (web facets).
+// Owner is the local owner's session (needs the devices plugin, which signs it in).
+func (f *Fixture) Owner() LocalOwner {
+	f.t.Helper()
+	owner, ok := f.LocalOwner()
+	if !ok {
+		f.t.Fatal("A fixture without the devices plugin has no local owner")
+	}
+	return owner
+}
+
+// LocalOwner is the local owner's session, false for a fixture without the devices plugin.
+func (f *Fixture) LocalOwner() (LocalOwner, bool) {
+	if f.owner == nil {
+		return LocalOwner{}, false
+	}
+	return *f.owner, true
+}
+
+// Browser is a browser-like client host of the local owner over a real WebSocket (as the web UI connects), with facets
+// loaded (web facets).
 func (f *Fixture) Browser(facets ...host.HostFacet) host.Host {
-	client, _ := f.Client(nil, facets...)
+	client, _ := f.Client(f.Owner().OwnerHeaders(nil), facets...)
 	return client
 }
 
-// Client is a client host whose WebSocket sends headers (a tunnel Host, a guest cookie), and that socket.
+// HTTP is an HTTP request to the server as the local owner: its cookie, unless options.Headers names another.
+func (f *Fixture) HTTP(path string, options HTTPOptions) (HTTPResult, error) {
+	f.t.Helper()
+	owner := f.Owner()
+	headers := owner.OwnerHeaders(nil)
+	for name, value := range options.Headers {
+		headers[name] = value
+	}
+	options.Headers = headers
+	return HTTP(owner.Port, path, options)
+}
+
+// Client is a client host whose WebSocket sends headers (a tunnel Host, a guest cookie, the owner's cookie), and that socket.
 func (f *Fixture) Client(headers map[string]string, facets ...host.HostFacet) (host.Host, *websocket.Conn) {
 	f.t.Helper()
 	conn, err := Dial(f.Server.Port, headers)
