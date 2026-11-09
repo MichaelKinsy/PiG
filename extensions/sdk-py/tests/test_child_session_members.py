@@ -53,7 +53,7 @@ def test_changes_send_pis_member_arguments():
     session.follow_up("later")
     assert host.calls[0] == ("childSession.op", {"id": "c1", "op": "setSteeringMode", "args": {"mode": "all"}})
     assert host.calls[1] == ("childSession.opAsync", {"id": "c1", "op": "setModel", "args": {"model": {"provider": "p", "id": "m"}, "persist": True}})
-    assert host.calls[2] == ("childSession.op", {"id": "c1", "op": "cycleModel", "args": {"direction": "backward", "persist": False}})
+    assert host.calls[2] == ("childSession.opAsync", {"id": "c1", "op": "cycleModel", "args": {"direction": "backward", "persist": False}})
     assert host.calls[4] == ("childSession.opAsync", {"id": "c1", "op": "compact", "args": {}})
     assert host.calls[5] == ("childSession.opAsync", {"id": "c1", "op": "navigateTree", "args": {"targetId": "e1", "summarize": True}})
     assert host.calls[6] == ("childSession.opAsync", {"id": "c1", "op": "executeBash", "args": {"command": "echo hi", "excludeFromContext": True}})
