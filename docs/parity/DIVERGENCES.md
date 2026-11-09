@@ -3028,7 +3028,7 @@ Evidence: `TestStreamableHTTPAppliesMaxMessageBytesToJSONResponses` (red on 67d7
 
 Parity allowance: none needed; Pi 1.5.0 has no test of either behavior, and Pi main's tests are ported.
 
-## D613 The Go, Python and Lisp SDKs show the host each provider stream event as it was when the provider pushed it, which is stronger than Pi's consumer guarantees
+## D615 The Go, Python and Lisp SDKs show the host each provider stream event as it was when the provider pushed it, which is stronger than Pi's consumer guarantees
 
 What: an extension provider that builds its stream with `CreateAssistantMessageEventStream` (Go `sdk.CreateAssistantMessageEventStream`, Python `create_assistant_message_event_stream`, Lisp `create-assistant-message-event-stream`) and pushes an event that shows a message it goes on changing (the shared `partial`) is forwarded to the host with the message as it was when `Push` returned. The result the host receives is the message as it was when the provider ended the stream (the `done`/`error` event's message, or the value passed to `End`). The Go SDK encodes the event on the provider's goroutine at `Push`; the Python and Lisp SDKs queue a deep copy. In-process iteration (`Events`, `events()`, `model-stream-next`) still yields the pushed object itself, and `Result` returns the provider's own message. A value that cannot be copied or encoded (a cycle, a lock, a dotted list) fails the request that forwards the stream; it does not raise in `Push`. The Rust SDK takes the event by value, so it already shows the host the event as pushed.
 

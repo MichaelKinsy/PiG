@@ -14,7 +14,7 @@ import (
 // TestProviderStreamEventsShowThePartialAsPushed: a provider appends to its one partial message and pushes it, with nothing between the two that lets the SDK's forwarder run,
 // 100 times and then once more after the last push. The host receives the i-th text_delta with i "x" in its partial, the start with none, and the done with all of them plus the
 // tail: the message as it was at each push, which is Pi's wire form when real I/O separates the pushes (as it does between the network reads of Pi's providers) and stronger than
-// Pi's after a synchronous burst (D613). An SDK that reads the author's message when its forwarder thread gets to the event, rather than when the author pushes it, shows later
+// Pi's after a synchronous burst (D615). An SDK that reads the author's message when its forwarder thread gets to the event, rather than when the author pushes it, shows later
 // text and races the author's writes (go test -race reports it for the Go SDK).
 func TestProviderStreamEventsShowThePartialAsPushed(t *testing.T) {
 	t.Parallel()
