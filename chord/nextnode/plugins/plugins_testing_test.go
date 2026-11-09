@@ -3,6 +3,7 @@ package plugins
 // pi: packages/chord/src/node/plugins/testing.ts
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"os/exec"
@@ -10,6 +11,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -338,9 +340,11 @@ func TestTestPluginServesARegistryContributedAtAHighVersionWithoutAnAdapterPerOl
 	if err != nil {
 		t.Fatal(err)
 	}
-	command := exec.Command(node, "--input-type=module", "-e", `import { olderAs } from "./testing.mjs";
-const accepts = olderAs({ version: 2000000 });
-const answers = [1, 1999999, 2000000, 2000001].map((version) => typeof accepts[version]);
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	command := exec.CommandContext(ctx, node, "--input-type=module", "-e", `import { olderAs } from "./testing.mjs";
+const accepts = olderAs({ version: 9007199254740991 });
+const answers = [1, 1999999, 9007199254740990, 9007199254740991].map((version) => typeof accepts[version]);
 for (let version = 1; version < 1000000; version += 997) void accepts[version];
 const adapter = accepts[1999999];
 console.log(JSON.stringify({ held: Reflect.ownKeys(accepts).length, answers, adapted: [adapter.contribution("c"), adapter.value("v")] }));`)
@@ -349,7 +353,7 @@ console.log(JSON.stringify({ held: Reflect.ownKeys(accepts).length, answers, ada
 	if err != nil {
 		t.Fatalf("%v: %s", err, out)
 	}
-	if got, want := strings.TrimSpace(string(out)), `{"held":0,"answers":["object","object","undefined","undefined"],"adapted":["c","v"]}`; got != want {
+	if got, want := strings.TrimSpace(string(out)), `{"held":0,"answers":["object","object","object","undefined"],"adapted":["c","v"]}`; got != want {
 		t.Fatalf("olderAs(2000000) = %s, want %s (an adapter looked up and answered as it is, none held for a version below)", got, want)
 	}
 }
