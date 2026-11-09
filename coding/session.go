@@ -1372,8 +1372,8 @@ func (s *Session) beginModelChangeState(ctx context.Context, m *ai.Model, source
 		s.agent.SetModel(m)
 	}
 	s.modelChangeMu.Unlock()
-	if s.inner.Load() != nil {
-		if _, err := s.inner.Load().AppendModelChange(providerID(m), m.ID); err != nil {
+	if in := s.inner.Load(); in != nil {
+		if _, err := in.AppendModelChange(providerID(m), m.ID); err != nil {
 			return nil, fmt.Errorf("coding: SetModel: persist audit: %w", err)
 		}
 	}

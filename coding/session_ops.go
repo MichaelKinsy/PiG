@@ -287,7 +287,8 @@ func (s *Session) DispatchSlash(line string) ([]string, error) {
 		},
 		SkillNames: func() []string { return nil },
 		SessionInfo: func() (string, string, int) {
-			return s.inner.Load().ID(), s.inner.Load().CWD(), len(s.agent.Messages())
+			in := s.inner.Load()
+			return in.ID(), in.CWD(), len(s.agent.Messages())
 		},
 		LastAssistant: func() string { return s.lastAssistantText() },
 		CopyClipboard: func(_ string) error { return fmt.Errorf("clipboard not available in headless mode") },
