@@ -3242,6 +3242,8 @@ export class Runtime {
     if (env.request?.stream) (this.eventReplicas ??= new EventReplicas()).apply(env.request);
     this.conn.requestState(env.id, "started");
     const controller = new AbortController();
+    // A session_before_compact or session_before_tree handler dispatched after the event's signal aborted starts with event.signal aborted (runner.ts emit awaits it so): the signal is that of the request, as a cancel frame queued ahead of the request would leave it.
+    if (env.request?.signal_aborted) controller.abort("context canceled");
     this.activeRequests.set(env.id, controller);
     // Pi's context getters are enumerable own properties. Forward reads to the live context instead of snapshotting values or hiding them on a prototype; extensions can spread a context and retain ui/session/model access.
     const requestCtx = Object.create(Object.getPrototypeOf(this.ctx));

@@ -2081,6 +2081,10 @@ impl Extension {
                         event_replicas.apply(&mut req);
                         conn.request_state(&id, "started", None)?;
                         let cancel = RequestCancel::new();
+                        if req.signal_aborted {
+                            // session_before_compact / session_before_tree dispatched after the event's signal aborted: the request starts cancelled, as a cancel frame queued ahead of it would (runner.ts emit awaits the handler with event.signal aborted), so is_cancelled() is true on the handler's first line.
+                            cancel.cancel("context canceled".to_string());
+                        }
                         active_requests
                             .lock()
                             .unwrap()

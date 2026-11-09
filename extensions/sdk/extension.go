@@ -1329,6 +1329,10 @@ func (e *Extension) loop() error {
 				e.applyEventStream(env.Request)
 			}
 			ctx, scope := e.armRequestScope(env.ID)
+			if env.Request != nil && env.Request.SignalAborted {
+				// The request is cancelled before its handler starts, as a cancel frame queued ahead of it would: the handler's first line sees the abort (runner.ts emit awaits a handler dispatched after the signal aborted).
+				scope.cancel(cancelReason(context.Canceled.Error()))
+			}
 			if env.Request != nil && env.Request.Method == "tool_call" {
 				ctx.start = e.toolBatches.reserve(env.Request.Batch)
 			}

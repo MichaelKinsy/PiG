@@ -138,7 +138,8 @@ func (s *Session) emitSessionBeforeTree(ctx context.Context, preparation TreePre
 		return nil, err
 	}
 	preparation.EntriesToSummarize = sessionEntryValues(entries)
-	result, err := runner.Emit(ctx, extension.SessionBeforeTreeEvent{
+	// runner.ts emit awaits every handler with event.signal aborted and keeps their results, and navigateTree checks no abort after the emit (agent-session.ts): a late cancel or summary is honoured.
+	result, err := runner.Emit(context.WithoutCancel(ctx), extension.SessionBeforeTreeEvent{
 		Type:        icodingagent.EventSessionBeforeTree,
 		Preparation: preparation,
 		Signal:      ctx,

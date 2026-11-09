@@ -204,6 +204,8 @@ type requestMsg struct {
 	ChildSession string `json:"child_session,omitempty"`
 	// ToolCallIndex, on tool_call, is the call's position in its assistant message's batch (Context.ToolCallIndex).
 	ToolCallIndex *int `json:"tool_call_index,omitempty"`
+	// SignalAborted, on session_before_compact and session_before_tree, reports that the event's AbortSignal had already aborted when the host dispatched the handler: the request starts cancelled, so Context.Done is closed in the handler's first line, as event.signal.aborted is true in Pi.
+	SignalAborted bool `json:"signal_aborted,omitempty"`
 
 	// streamData and streamErr are the payload a stream request produced, or why it could not be produced (applyEventStream).
 	streamData map[string]any

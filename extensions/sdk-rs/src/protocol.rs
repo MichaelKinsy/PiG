@@ -34,6 +34,10 @@ mod request_lifetime_tests;
 /// MaxFrameSize constants.
 pub const MAX_FRAME_SIZE: u32 = 128 * 1024 * 1024;
 
+fn is_false(value: &bool) -> bool {
+    !*value
+}
+
 fn is_zero(value: &u32) -> bool {
     *value == 0
 }
@@ -361,6 +365,8 @@ pub struct RequestMsg {
     pub stream_error: Option<String>,
     /// On `tool_call`: the call's position among the tool calls of the assistant message that issued it (the host's `tool_call_index`).
     pub tool_call_index: Option<u32>,
+    /// On `session_before_compact` and `session_before_tree`: the event's AbortSignal had already aborted when the host dispatched the handler (the host's `signal_aborted`).
+    pub signal_aborted: bool,
     /// On `tool_call`: the JSON text of `args` as the host wrote it.
     pub args_raw: Option<String>,
     /// Why the arguments were not decoded: they nest deeper than `MAX_NESTING_DEPTH`, which is Pi's `RangeError` (`Maximum call stack size exceeded`) and not a reason to end the connection. The request is answered with this error.
@@ -411,6 +417,8 @@ struct RawRequestMsg {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     batch: Option<String>,
     tool_call_index: Option<u32>,
+    #[serde(default, skip_serializing_if = "is_false")]
+    signal_aborted: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     args: Option<Box<serde_json::value::RawValue>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -524,6 +532,7 @@ impl TryFrom<RawRequestMsg> for RequestMsg {
             stream,
             stream_error: None,
             tool_call_index: raw.tool_call_index,
+            signal_aborted: raw.signal_aborted,
             args_raw,
             args_error,
             deep_args,
@@ -549,6 +558,7 @@ impl From<RequestMsg> for RawRequestMsg {
             tool_call_id: req.tool_call_id,
             batch: req.batch,
             tool_call_index: req.tool_call_index,
+            signal_aborted: req.signal_aborted,
             args,
             child_session: req.child_session,
             stream: req.stream.map(|stream| RawEventStream {

@@ -856,11 +856,24 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 	if c.onDispatch != nil {
 		c.onDispatch()
 	}
+	signal := requestSignal(ctx)
+	signalAborted := false
+	if signal != nil && env.Request != nil {
+		signalAborted = signal.Err() != nil
+		env.Request.SignalAborted = signalAborted
+	}
 	if err := c.sendOrdered(ctx, env, order); err != nil {
 		return nil, err
 	}
 	if issued := requestIssued(ctx); issued != nil {
 		issued()
+	}
+	if signal != nil && !signalAborted {
+		// The cancel follows the request frame, also when the signal ended after the flag was read: AfterFunc runs at once for a signal that already ended. The reply is still awaited, as Pi awaits the handler.
+		stop := context.AfterFunc(signal, func() {
+			_ = c.Send(&Envelope{Type: MsgCancel, ID: env.ID, Cancel: &CancelPayload{RequestID: env.ID, Reason: signal.Err().Error()}})
+		})
+		defer stop()
 	}
 	// Admission ends only after the handler reaches an observable suspension
 	// boundary or finishes, not when its request reaches the socket.
@@ -2376,6 +2389,18 @@ func withRequestIssued(ctx context.Context, fn func()) context.Context {
 func requestIssued(ctx context.Context) func() {
 	fn, _ := ctx.Value(requestIssuedKey{}).(func())
 	return fn
+}
+
+type requestSignalKey struct{}
+
+// withRequestSignal gives request the AbortSignal its handler receives as event.signal (session_before_compact, session_before_tree), for a request whose own context must not end with it: Pi awaits every handler of the event, with the signal aborted, and keeps its result (runner.ts emit). Request records whether the signal had ended before the frame was written (RequestPayload.SignalAborted), and when it ends while the handler runs it cancels the handler's request and keeps waiting for the reply.
+func withRequestSignal(ctx, signal context.Context) context.Context {
+	return context.WithValue(ctx, requestSignalKey{}, signal)
+}
+
+func requestSignal(ctx context.Context) context.Context {
+	signal, _ := ctx.Value(requestSignalKey{}).(context.Context)
+	return signal
 }
 
 type requestWindowKey struct{}

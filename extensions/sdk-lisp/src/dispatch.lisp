@@ -369,9 +369,13 @@
 
 (defun start-request (ext env)
   (let* ((id (jget env "id" "")) (req (or (jget env "request") (obj)))
-         (request (make-request id (make-abort-signal))))
+         (request (make-request id (make-abort-signal)))
+         ;; session_before_compact / session_before_tree dispatched after the event's signal aborted: the request starts cancelled, as a cancel frame queued ahead of it would (runner.ts emit awaits the handler with event.signal aborted)
+         (aborted (eq (jget req "signal_aborted") t)))
     (sb-thread:with-mutex ((extension-state-lock ext))
+      (when aborted (setf (request-reason request) "context canceled" (request-state request) :cancelled))
       (setf (gethash id (extension-active ext)) request))
+    (when aborted (signal-abort (request-signal request) "context canceled"))
     (let ((ctx (make-ctx ext request env)))
       (let ((batch (jget req "batch")))
         ;; only the calls of one parallel batch take part in the dialog and continuation orders
