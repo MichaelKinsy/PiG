@@ -1,0 +1,10 @@
+# PortTui rows: Pi a77207d9c (fix(tui): keep short paste markers intact when renumbering after backspace, Pi #11947 / issue #11923)
+Branch `fix/pi-tui-paste-renumber` from b6fix 8b72390d2. Pi diff: `packages/tui/src/components/editor.ts` (rename callback `${suffixGroup}` -> `${suffixGroup ?? ""}`) and one test in `packages/tui/test/editor.test.ts` (new line 4038 at pin 77959d667).
+
+| Upstream file | Disposition | Go target | Covering tests | Evidence |
+|---|---|---|---|---|
+| packages/tui/src/components/editor.ts (backspace paste-registry renumber, line 1427 at 77959d667) | ported (already equivalent, no production change) | `tui/editor.go` `removePasteFromRegistry`: `pasteMarkerRegex.FindStringSubmatch` returns "" for a group that did not participate, so a short marker `[paste #2]` renumbers to `[paste #1]` | `tui/editor_sticky_paste_upstream_test.go#TestUpstreamEditorPasteMarkerAtomicBehavior/renumbers_short_paste_markers_without_a_size_suffix` | Test passes on the unmodified b6fix code. Sensitivity: making `removePasteFromRegistry` leave markers with an empty suffix group unrenumbered makes the subtest fail. |
+| packages/tui/test/editor.test.ts `renumbers short paste markers without a size suffix` (4038) | ported, same inputs (two 12-line bracketed pastes alpha/beta, Ctrl+U, type `[paste #1][paste #2]`, Left, Backspace; text `[paste #1]`; Enter submits pasteB) | `tui/editor_sticky_paste_upstream_test.go` | same | same |
+
+Units: the marker text is ASCII, so offsets are identical in UTF-16 units, code points and cells; the test types the marker one character at a time like Pi's `for (const ch of ...)`.
+Behavior contract: `tui/editor/handle-input/bracketed-paste` already lists `TestUpstreamEditorPasteMarkerAtomicBehavior` as evidence (behavior-contracts.toml), so the new subtest is covered by the existing row; no contract row change. No parity scenario exercises backspace renumbering (scenarios 20/21 cover segments and navigation only); nothing to tighten. No user-visible change in PiG (the bug does not exist here): no changelog fragment.
