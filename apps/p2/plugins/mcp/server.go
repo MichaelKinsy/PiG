@@ -396,7 +396,7 @@ func managerFactory(connector EnvConnector) func(*delta.JsonObject, host.Self) (
 		}
 		// A change of any input reconciles the placement as it is now, not the placement of the value the watch delivers: the host
 		// delivers on goroutines of its own, so a delivery can run after a later method's reconcile, and the older placement would
-		// close the instances only the newer one needs, to start them again with the next delivery (Pi's delivery is a microtask
+		// close the instances only the newer one needs, to start them again with the next delivery (Pi reconciles the delivered value, server.ts:210, but its delivery is a microtask
 		// that runs before that method resumes). Every reconcile reads the current inputs, so they agree in whatever order they run.
 		self.On(inputs, func(_ chord.WatchCall[delta.JsonValue], ctx host.Ctx) *host.Handled {
 			if err := reconcileIn(ctx); err != nil {
