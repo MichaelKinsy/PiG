@@ -200,30 +200,30 @@ rationale = ""
 [[files]]
 path = "packages/durable/src/harness/scheduler.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/scheduler_notifications_test.go#TestFinalizePassKeepsAHolderCheckPublishedWhilePlanning", "test:durable/harness/scheduler_notifications_test.go#TestReservationPassKeepsAWaiterMadeACandidateWhilePlanning"]
+rationale = "e50dc7af9 keeps scheduler notifications that arrive while a pass plans: Pi's bug is a yield between a decision region's result and applying it, so a publication observer queues a waiter or holder the pass then erases. In Go a pass decides and applies under one hold of TaskScheduler.mu (regionLocked returns with mu held; reserve and finalizeLocked apply before any unlock) and every observer that adds to runnable or finalizeChecks takes mu, so the Go scheduler is structurally immune and no Go source changed. The two ported #11892 cases (harness-tasks.test.ts) pass at the unmodified base and are mutation-checked by PortDurable (see handoffs/next/rows/PortDurable.md)."
 
 [[files]]
 path = "packages/durable/src/storage/jsonl/index.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/storage/jsonl/jsonl_storage_read_only_test.go#TestJsonlStorageReadOnlyOpen"]
+rationale = "f5f4a71af only adds the JsonlStorageReadOnlyError re-export to the barrel; the Go package surface exports JsonlStorageReadOnlyError from durable/storage/jsonl, covered by the read-only open test."
 
 [[files]]
 path = "packages/durable/src/storage/jsonl/node.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/storage/jsonl/jsonl_storage_read_only_test.go#TestJsonlStorageReadOnlyOpen", "test:durable/harness/harness_read_only_test.go#TestReadOnlyHarness"]
+rationale = "f5f4a71af makes the Node storage pass readOnly through and read file info with lstat. OpenNodeJsonlStorage in durable/storage/jsonl/node/node.go passes ReadOnly through and NodeFileSystem.FileInfo mirrors NodeExecutionEnv.fileInfo; TestReadOnlyHarness opens a JSONL session with work running elsewhere without writing."
 
 [[files]]
 path = "packages/durable/src/storage/jsonl/storage.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/storage/jsonl/jsonl_storage_read_only_test.go#TestJsonlStorageReadOnlyOpen"]
+rationale = "f5f4a71af (#11939) adds JsonlStorage readOnly open for viewers: recover retries up to five times when a writer committed main.jsonl meanwhile, sidecars are read without writing, commit rejects with JsonlStorageReadOnlyError. durable/storage/jsonl/storage.go carries JsonlStorageOptions.ReadOnly, JsonlStorageReadOnlyError, the Open retry loop, the read-only skips in recover/readLines and mainChanged; TestJsonlStorageReadOnlyOpen has Pi's four cases of 'JsonlStorage read-only open'."
 
 [[files]]
 path = "packages/tui/src/components/editor.ts"
