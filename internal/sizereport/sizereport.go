@@ -188,25 +188,61 @@ func (b Build) Binary(ctx context.Context, out string, strip bool, ldflags ...st
 	return nil
 }
 
-// Symbols builds the package without stripping it and returns the symbols of its symbol table.
+// Symbols builds the package without stripping it and returns the symbols of its symbol table, with the sizes of the data symbols made exact (see ExactDataSizes) for a target whose symbol table does not record sizes.
 func (b Build) Symbols(ctx context.Context, workDir string) ([]Symbol, error) {
-	unstripped := filepath.Join(workDir, "unstripped")
-	if err := b.Binary(ctx, unstripped, false); err != nil {
+	symbols, err := b.nmSymbols(ctx, filepath.Join(workDir, "unstripped"))
+	if err != nil || b.GOOS == "linux" {
+		return symbols, err
+	}
+	reference := b
+	reference.GOOS = "linux"
+	exact, err := reference.nmSymbols(ctx, filepath.Join(workDir, "reference"))
+	if err != nil {
 		return nil, err
 	}
-	nm := b.command(ctx, "go", "tool", "nm", "-size", unstripped)
-	out, err := nm.StdoutPipe()
+	return ExactDataSizes(symbols, exact), nil
+}
+
+// nmSymbols builds the package unstripped into out and reads its symbol table.
+func (b Build) nmSymbols(ctx context.Context, out string) ([]Symbol, error) {
+	if err := b.Binary(ctx, out, false); err != nil {
+		return nil, err
+	}
+	nm := b.command(ctx, "go", "tool", "nm", "-size", out)
+	stdout, err := nm.StdoutPipe()
 	if err != nil {
 		return nil, err
 	}
 	if err = nm.Start(); err != nil {
 		return nil, err
 	}
-	symbols, err := ParseNM(out)
+	symbols, err := ParseNM(stdout)
 	if waitErr := nm.Wait(); err == nil {
 		err = waitErr
 	}
 	return symbols, err
+}
+
+// ExactDataSizes corrects the sizes of the data symbols of a Mach-O or PE binary with those of the same program built for linux on the same architecture. ELF symbol tables record each symbol's size; Mach-O and PE tables do not, and `go tool nm -size` then reports the distance to the next symbol in the table, which includes any symbols the linker leaves out of the table. A table such as bidi.bidiIndex (3,328 B) was reported as 13,760 B on darwin_arm64 and the embed.FS file list of export (408 B) as 3,328 B on windows_amd64, which put a package over the heavyweight line only because of where the linker had placed it. A data symbol's size does not depend on the operating system, so the smaller of the two sizes is the real one; code and the linker's own tables (names that start with "go:") keep the reported size, since they differ between the operating systems.
+func ExactDataSizes(symbols, linux []Symbol) []Symbol {
+	exact := make(map[string]int64, len(linux))
+	for _, symbol := range linux {
+		if isData(symbol) {
+			exact[symbol.Name] = symbol.Size
+		}
+	}
+	corrected := slices.Clone(symbols)
+	for i, symbol := range corrected {
+		if size, ok := exact[symbol.Name]; ok && isData(symbol) && size < symbol.Size {
+			corrected[i].Size = size
+		}
+	}
+	return corrected
+}
+
+// isData reports whether symbol is an initialized data symbol of a program's own packages: nm's types D and R and their local forms.
+func isData(symbol Symbol) bool {
+	return strings.ContainsRune("DdRr", rune(symbol.Kind)) && !strings.HasPrefix(symbol.Name, "go:")
 }
 
 // StrippedSize builds the package with -s -w and returns the size of the binary, the number the size gate measures.

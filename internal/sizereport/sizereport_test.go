@@ -79,3 +79,32 @@ func TestChain(t *testing.T) {
 		t.Errorf("chain to a package only its initializer keeps: %v (via init %v)", chain, viaInit)
 	}
 }
+
+// Mach-O and PE tables record no sizes, so nm reports the distance to the next symbol, gaps included; the linux sizes of the same data symbols are the real ones.
+func TestExactDataSizes(t *testing.T) {
+	pe := []Symbol{
+		{Size: 13760, Kind: 'D', Name: "golang.org/x/text/unicode/bidi.bidiIndex"},
+		{Size: 3328, Kind: 'R', Name: "github.com/MichaelKinsy/PiG/internal/codingagent/export.templateFS.files"},
+		{Size: 900, Kind: 'T', Name: "pkg.F"},
+		{Size: 5000, Kind: 'r', Name: "go:func.*"},
+		{Size: 64, Kind: 'D', Name: "pkg.onlyOnWindows"},
+		{Size: 100, Kind: 'D', Name: "pkg.grew"},
+	}
+	elf := []Symbol{
+		{Size: 3328, Kind: 'D', Name: "golang.org/x/text/unicode/bidi.bidiIndex"},
+		{Size: 408, Kind: 'r', Name: "github.com/MichaelKinsy/PiG/internal/codingagent/export.templateFS.files"},
+		{Size: 100, Kind: 'T', Name: "pkg.F"},
+		{Size: 10, Kind: 'r', Name: "go:func.*"},
+		{Size: 200, Kind: 'D', Name: "pkg.grew"},
+	}
+	got := ExactDataSizes(pe, elf)
+	want := []int64{3328, 408, 900, 5000, 64, 100}
+	for i, symbol := range got {
+		if symbol.Size != want[i] {
+			t.Errorf("%s: size %d, want %d", symbol.Name, symbol.Size, want[i])
+		}
+	}
+	if pe[0].Size != 13760 {
+		t.Error("ExactDataSizes changed its input")
+	}
+}
