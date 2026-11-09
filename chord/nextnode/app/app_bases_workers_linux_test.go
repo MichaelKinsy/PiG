@@ -96,14 +96,17 @@ func TestAppAnswersBeforeAWorkerKindsBaseIsBuiltAWorkerStartWaitsForItsBase(t *t
 	if !stillOpen(s.app.BasesBuilt()) {
 		t.Fatal("the bases are built while the worker kind's entry is held")
 	}
-	release(writer, program)
-	deadline := time.Now().Add(60 * time.Second)
-	for held.State().Value().Kind != host.RefStateLive {
-		if time.Now().After(deadline) {
-			t.Fatalf("state = %s, want live", held.State().Value().Kind)
-		}
-		time.Sleep(10 * time.Millisecond)
+	// The entry becomes the program itself (a file of the same bytes at the entry's path) before the build's read ends: the build
+	// holds the pipe it opened, and the watch of the entry compared once the base is built reads this file, not a pipe nobody writes.
+	replacement := pipe + ".program"
+	if err := os.WriteFile(replacement, program, 0o700); err != nil {
+		t.Fatal(err)
 	}
+	if err := os.Rename(replacement, pipe); err != nil {
+		t.Fatal(err)
+	}
+	release(writer, program)
+	eventually(t, "the held address live", func() bool { return held.State().Value().Kind == host.RefStateLive })
 	if got := starts.all(); !reflect.DeepEqual(got, []string{"project|p1"}) {
 		t.Fatalf("starts = %v, want the one after the build", got)
 	}
