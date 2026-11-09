@@ -35,7 +35,7 @@ func (e *Extension) dispatchProviderStream(ctx Context, id string, request *requ
 		return
 	}
 	if err := stream.forward(ctx.ctx, func(event any) error {
-		return e.conn.notify("provider_stream_event", map[string]any{"request_id": id, "result": event})
+		return e.conn.notifyResult("provider_stream_event", id, event)
 	}); err != nil {
 		_ = e.conn.respond(id, nil, err)
 		return

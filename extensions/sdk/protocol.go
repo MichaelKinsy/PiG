@@ -769,6 +769,26 @@ func (c *conn) notify(method string, args any) error {
 	})
 }
 
+// notifyResult sends method with the arguments {"request_id": requestID, "result": result}. A result that is already encoded (json.RawMessage, such as the wire of an event an
+// author pushed) is written into the arguments as it is, without being encoded or checked again.
+func (c *conn) notifyResult(method, requestID string, result any) error {
+	raw, ok := result.(json.RawMessage)
+	if !ok {
+		return c.notify(method, map[string]any{"request_id": requestID, "result": result})
+	}
+	id, err := json.MarshalJS(requestID)
+	if err != nil {
+		return err
+	}
+	args := make([]byte, 0, len(`{"request_id":,"result":}`)+len(id)+len(raw))
+	args = append(args, `{"request_id":`...)
+	args = append(args, id...)
+	args = append(args, `,"result":`...)
+	args = append(args, raw...)
+	args = append(args, '}')
+	return c.send(envelope{Type: msgNotify, Notify: &notifyMsg{Method: method, Args: args}})
+}
+
 // respond sends a response to a host request.
 func (c *conn) respond(id string, result any, respErr error) error {
 	// The response is encoded before the write lock is taken: a result of hundreds of MiB takes seconds to encode, and the same lock carries the
