@@ -15385,6 +15385,17 @@
       "shapeHash": "sha256:79b67989fa7bc49af003600d08e01f76c4d4980f1df12137fd23206a37790d0f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#HasExceededStrictToolLimits",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "HasExceededStrictToolLimits",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(sessionID string) bool"
+      },
+      "shapeHash": "sha256:bcefcc80926138c101b0c7d1c383cc0bfb91af28d565f2f166b549f4387e8a4c"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#HasNonAdditiveToolChanges",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "HasNonAdditiveToolChanges",
@@ -17110,6 +17121,17 @@
         "type": "func(parameters map[string]any, isUnsupportedKeyword UnsupportedStrictSchemaKeywordCheck) (map[string]any, error)"
       },
       "shapeHash": "sha256:be3f3a786002b8da64ad831270a4cffe31af1f1d6958c1ea292a7c2a2335edd5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#MarkStrictToolLimitsExceeded",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "MarkStrictToolLimitsExceeded",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(sessionID string)"
+      },
+      "shapeHash": "sha256:237daebd73a7c2064ac996110994265f25fd7f4fd6c57e39f2d38e60bba1137d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#MarshalInRecordedOrder",
@@ -43215,6 +43237,17 @@
       "shapeHash": "sha256:cc8af50fac93509f4fc89944414bb19a64cbb55da48170702ac240d301460578"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#hasExceededStrictToolLimits",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "hasExceededStrictToolLimits",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(sessionID string) bool"
+      },
+      "shapeHash": "sha256:bcefcc80926138c101b0c7d1c383cc0bfb91af28d565f2f166b549f4387e8a4c"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#hasExplicitAPIKey",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "hasExplicitAPIKey",
@@ -47714,6 +47747,17 @@
       "shapeHash": "sha256:6fb651a1b7ee415b08c31993351f2eaa2184d189fde53b3039b3283fcf481539"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#markStrictToolLimitsExceeded",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "markStrictToolLimitsExceeded",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(sessionID string)"
+      },
+      "shapeHash": "sha256:237daebd73a7c2064ac996110994265f25fd7f4fd6c57e39f2d38e60bba1137d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#marshalAssistantEvent",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "marshalAssistantEvent",
@@ -48036,6 +48080,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/ai#maxSafeInteger",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "maxSafeInteger",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#maxSessionsOverStrictToolLimits",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "maxSessionsOverStrictToolLimits",
       "kind": "constant",
       "exported": false,
       "shape": {
@@ -62254,6 +62309,17 @@
         "type": "[]string"
       },
       "shapeHash": "sha256:a1c330895d4124c2ac5e7956eaa7a61082b08546669578b38030562429ad3b1e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#strictToolLimitSessions",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "strictToolLimitSessions",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "struct{mu sync.Mutex; set map[string]*container/list.Element; order *container/list.List}"
+      },
+      "shapeHash": "sha256:ca11f5d343bdea08028c7c588b588da716f3041ec9d5c575a280cc1a84521add"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#stringIdentity",
