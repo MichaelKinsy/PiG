@@ -22,6 +22,7 @@ var committedFrames = []string{
 	"extensions/sdk-rs/sdk.zst",
 	"internal/gosdkbundle/sdk.zst",
 	"internal/pigdocs/pages.zst",
+	"tui/internal/hljs/grammars_all.json.zst",
 }
 
 func TestRoundTrip(t *testing.T) {
