@@ -79,6 +79,7 @@ func TestKittyEncodedKeysFollowAppBindings(t *testing.T) {
 // alt+q, cycle-backward to alt+p, and paste-image to alt+v, and native
 // Windows leaves suspend unbound (core/keybindings.ts KEYBINDINGS).
 func TestKittyEncodedAppKeysFollowEachPlatformColumn(t *testing.T) {
+	restoreTUIKeybindings(t)
 	for _, platform := range tui.KeybindingPlatforms {
 		km := keybindingsManagerFor(platform)
 		windows := platform.UsesWindowsKeybindings()
