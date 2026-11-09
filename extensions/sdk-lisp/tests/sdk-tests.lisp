@@ -19,7 +19,7 @@ Returns the host and the register envelope."
     (sb-bsd-sockets:socket-bind listener path)
     (sb-bsd-sockets:socket-listen listener 4)
     (let* ((thread (sb-thread:make-thread (lambda () (pig::serve ext (pig::connect-unix path))) :name "test-extension"))
-           (conn (pig::socket-conn (sb-bsd-sockets:socket-accept listener)))
+           (conn (accept-host-conn listener))
            (host (make-host :listener listener :conn conn :thread thread :ext ext :path path))
            (register (pig::read-frame conn)))
       (pig::send-frame conn (pig:obj "type" "ready"
@@ -45,7 +45,8 @@ Returns the host and the register envelope."
 (defun hread (host) (pig::read-frame (host-conn host)))
 (defun hread-type (host type)
   "The next frame of TYPE, skipping request_state frames."
-  (loop (let ((frame (hread host)))
+  (loop (let ((frame (handler-case (hread host)
+                       (sb-sys:io-timeout () (error "no ~A frame arrived within ~D s: the extension is waiting for the host and the host for the extension" type *host-read-timeout*)))))
           (when (eq frame :eof) (error "end of file waiting for ~A" type))
           (when (equal (pig:jget frame "type") type) (return frame)))))
 
