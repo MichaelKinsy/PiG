@@ -82,7 +82,8 @@ func newKeyRig(t *testing.T, bindings map[string]string) *keyRig {
 	t.Setenv("EDITOR", fakeEditor(t, "capture")+" "+filepath.Join(t.TempDir(), "capture.json"))
 	agentDir := t.TempDir()
 	sm := NewSettingsManager(t.TempDir(), agentDir)
-	m := newSwitchTuiProbeWithOptions(t, InteractiveModeOptions{CWD: t.TempDir(), Model: model, AgentDir: agentDir, Settings: Settings{TuiMode: "regular"}, SettingsManager: sm, SessionHandle: handle})
+	// The model selector starts a catalog refresh that outlives the key press and is not joined. A registry of its own without an agent directory keeps that refresh in memory: the default one is backed by agentDir, and the refresh creates auth.json and models-store.json there while the cleanup removes the directory.
+	m := newSwitchTuiProbeWithOptions(t, InteractiveModeOptions{CWD: t.TempDir(), Model: model, AgentDir: agentDir, Settings: Settings{TuiMode: "regular"}, SettingsManager: sm, SessionHandle: handle, ModelRegistry: NewModelRegistry("")})
 	t.Cleanup(m.teardownCurrentTui)
 	ctx, cancel := context.WithCancel(context.Background())
 	m.runCtx = ctx
