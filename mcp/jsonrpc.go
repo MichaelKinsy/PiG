@@ -247,7 +247,7 @@ func (m JSONRPCMessage) MarshalJSON() ([]byte, error) {
 func ParseJSONRPCMessage(data []byte) (JSONRPCMessage, error) {
 	invalid := func() error { return NewMcpError(JSONRPCInvalidRequest, "Invalid JSON-RPC message", nil) }
 	var fields map[string]json.RawMessage
-	if err := deepFallback(json.Unmarshal(data, &fields), data, &fields); err != nil || fields == nil {
+	if err := deepFallback(json.Unmarshal(data, &fields), data, &fields, func(b []byte) error { return json.Unmarshal(b, &fields) }); err != nil || fields == nil {
 		return JSONRPCMessage{}, invalid()
 	}
 	var m JSONRPCMessage
@@ -280,7 +280,7 @@ func ParseJSONRPCMessage(data []byte) (JSONRPCMessage, error) {
 		m.hasError = true
 		var e JSONRPCErrorObject
 		var obj map[string]json.RawMessage
-		if deepFallback(json.Unmarshal(raw, &obj), raw, &obj) == nil && obj != nil {
+		if deepFallback(json.Unmarshal(raw, &obj), raw, &obj, func(b []byte) error { return json.Unmarshal(b, &obj) }) == nil && obj != nil {
 			var message string
 			code, isNumber := jsonNumber(obj["code"])
 			if isNumber && isJSONString(obj["message"]) && json.Unmarshal(obj["message"], &message) == nil {

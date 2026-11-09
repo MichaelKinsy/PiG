@@ -24,30 +24,25 @@ type deepRestorer interface {
 var rawMessageType = reflect.TypeFor[json.RawMessage]()
 
 // deepFallback takes the result of json.Unmarshal(data, v) and, when that failed, reads the text again past encoding/json's nesting limit. Callers
-// write `deepFallback(json.Unmarshal(data, v), data, v)`, so the decode runs in the caller's frame; the wrapper is small enough to inline, and the
-// fallback is out of line.
-func deepFallback(err error, data []byte, v any) error {
+// write `deepFallback(json.Unmarshal(data, &x), data, &x, func(b []byte) error { return json.Unmarshal(b, &x) })`, so both decodes run in the
+// caller's frame, where the destination's type is known: decode decodes the shallow text into the same destination as the first call, and v (the
+// same pointer) is only what restoreValue walks. The wrapper is small enough to inline and the closure does not escape; the fallback is out of line.
+func deepFallback(err error, data []byte, v any, decode func([]byte) error) error {
 	if err == nil {
 		return nil
 	}
-	return unmarshalDeep(data, v, err)
+	return unmarshalDeep(data, v, err, decode)
 }
-
-// decodeShallow is json.Unmarshal for the destination of deepFallback. That destination is a typed pointer every caller took the address of
-// (`&fields`, `&result`), so the decode builds the caller's own type and no tree of interface values; the `any` is only how a pointer of any
-// type reaches this package-wide helper. It is a variable so that any-trap, which reads the static type of a json call's argument, sees the
-// callers' typed destinations and not this pass-through.
-var decodeShallow = json.Unmarshal
 
 // unmarshalDeep is the fallback of deepFallback, kept out of line.
 //
 //go:noinline
-func unmarshalDeep(data []byte, v any, err error) error {
+func unmarshalDeep(data []byte, v any, err error, decode func([]byte) error) error {
 	shallow, spans, key, ok := elideDeep(data)
 	if !ok || len(spans) == 0 {
 		return err
 	}
-	if decodeShallow(shallow, v) != nil {
+	if decode(shallow) != nil {
 		return err
 	}
 	prefix := []byte(`{"` + key + `":`)

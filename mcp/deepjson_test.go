@@ -102,7 +102,7 @@ func FuzzDeepFallbackMatchesEncodingJSON(f *testing.F) {
 			data = []byte(`{"w":` + strings.Repeat(`[`, 10010) + string(data) + strings.Repeat(`]`, 10010) + `}`)
 		}
 		var got, want map[string]json.RawMessage
-		gotErr := deepFallback(json.Unmarshal(data, &got), data, &got)
+		gotErr := deepFallback(json.Unmarshal(data, &got), data, &got, func(b []byte) error { return json.Unmarshal(b, &got) })
 		wantErr := json.Unmarshal(data, &want)
 		if wantErr == nil {
 			if gotErr != nil || len(got) != len(want) {
