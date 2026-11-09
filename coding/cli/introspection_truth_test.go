@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -397,10 +396,18 @@ func TestDiagnoseNamesTheActivePiglet(t *testing.T) {
 	}
 }
 
+// runtime.Caller reports the trimpath name, not the source directory.
+var packageDirectory = func() string {
+	directory, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+	return directory
+}()
+
 func writeThemeFixture(t *testing.T, path string, mutate func(colors map[string]any)) {
 	t.Helper()
-	_, thisFile, _, _ := runtime.Caller(0)
-	data, err := os.ReadFile(filepath.Join(filepath.Dir(thisFile), "..", "..", "tui", "theme_dark.json"))
+	data, err := os.ReadFile(filepath.Join(packageDirectory, "..", "..", "tui", "theme_dark.json"))
 	if err != nil {
 		t.Fatal(err)
 	}

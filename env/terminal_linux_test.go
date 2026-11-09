@@ -131,11 +131,12 @@ func TestTerminalEnvironmentIsTheDaemonsOwnWhenTheRequestChangesNothing(t *testi
 // at 15 bytes, so a long name of two-byte characters loses half a character and has no name.
 func TestTerminalForegroundOfANameCutInsideACharacterHasNoName(t *testing.T) {
 	program := filepath.Join(t.TempDir(), strings.Repeat("é", 9))
-	source, err := os.ReadFile("/bin/sleep")
+	sleep, err := exec.LookPath("sleep")
 	if err != nil {
 		t.Fatal(err)
 	}
-	writeProgram(t, program, string(source))
+	// A renamed copy of a multicall sleep (NixOS) would dispatch on its new name.
+	writeProgram(t, program, "#!/bin/sh\n'"+sleep+"' \"$@\"\n")
 	eachDaemon(t, func(t *testing.T) {
 		connection, cwd := terminalConnection(t)
 		output := newCollector()
