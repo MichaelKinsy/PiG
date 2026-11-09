@@ -104,7 +104,7 @@ func TestOpenAILongContextPricing(t *testing.T) {
 func TestClaudeMidConvoSupport(t *testing.T) {
 	for id, want := range map[string]bool{
 		"claude-opus-5": true, "anthropic/claude-opus-5.5": true, "~anthropic/CLAUDE-SONNET-5-5-20260723": true, "claude-haiku-5.5": true,
-		"claude-fable-5-1": true, "claude-mythos-5.1-20260101": true, "claude-fable-5": false, "claude-opus-4-8": false, "claude-sonnet-5": false, "claude-opus-5.4": false,
+		"claude-fable-5-1": true, "claude-fable-5-2": true, "claude-fable-5.2": true, "claude-mythos-5.2-20260101": true, "claude-fable-5-3": false, "claude-mythos-5.1-20260101": true, "claude-fable-5": false, "claude-opus-4-8": false, "claude-sonnet-5": false, "claude-opus-5.4": false,
 	} {
 		if got := SupportsClaudeMidConvoEffort(id); got != want {
 			t.Errorf("SupportsClaudeMidConvoEffort(%q) = %v, want %v", id, got, want)
@@ -112,7 +112,7 @@ func TestClaudeMidConvoSupport(t *testing.T) {
 	}
 	// The system-message rule matches the id as given: no prefix stripping and no lowercasing.
 	for id, want := range map[string]bool{
-		"claude-opus-4.8": true, "claude-opus-5": true, "claude-fable-5": true, "claude-haiku-5-5-20260723": true, "claude-mythos-5-1": true,
+		"claude-opus-4.8": true, "claude-opus-5": true, "claude-fable-5": true, "claude-haiku-5-5-20260723": true, "claude-mythos-5-1": true, "claude-fable-5-2": true, "claude-mythos-5.2": true, "claude-fable-5-3": false,
 		"anthropic/claude-opus-5": false, "Claude-Opus-5": false, "claude-opus-4-7": false, "claude-sonnet-5": false,
 	} {
 		if got := SupportsClaudeMidConvoSystemMessages(id); got != want {

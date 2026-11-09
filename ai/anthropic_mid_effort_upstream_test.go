@@ -298,5 +298,34 @@ func TestAnthropicUpstreamMidConversationEffort(t *testing.T) {
 		if opus.ProviderMeta.Compat != nil && !reflect.DeepEqual(opus.ProviderMeta.Compat.AllowedFallbackModels, []AnthropicAllowedFallbackModel(nil)) {
 			t.Fatal("unexpected Opus fallbacks")
 		}
+		// pi-mono 0d1793c2 adds claude-fable-5-2 to this list.
+		for _, id := range []string{"claude-opus-5-5", "claude-sonnet-5-5", "claude-fable-5-1", "claude-fable-5-2"} {
+			if off, ok := upstreamCatalogModel(t, "anthropic", id).ThinkingLevelMap[ThinkingOff]; !ok || off != nil {
+				t.Fatalf("%s off is not null", id)
+			}
+		}
+	})
+	// pi-mono 0d1793c2 packages/ai/test/anthropic-mid-conversation-effort.test.ts "gates Fable 5.2 like Fable 5.1 and keeps only fallbacks that accept per-message effort".
+	t.Run("gates Fable 5.2 like Fable 5.1 and keeps only fallbacks that accept per-message effort", func(t *testing.T) {
+		direct := upstreamCatalogModel(t, "anthropic", "claude-fable-5-2")
+		compat := direct.ProviderMeta.Compat
+		if compat == nil || compat.SupportsMidConvoEffort == nil || !*compat.SupportsMidConvoEffort || compat.SupportsMidConvoSystemMessages == nil || !*compat.SupportsMidConvoSystemMessages {
+			t.Fatalf("compat = %+v", compat)
+		}
+		if xhigh, maxLevel := direct.ThinkingLevelMap[ThinkingXHigh], direct.ThinkingLevelMap[ThinkingMax]; xhigh == nil || *xhigh != "xhigh" || maxLevel == nil || *maxLevel != "max" {
+			t.Fatalf("thinkingLevelMap = %v", direct.ThinkingLevelMap)
+		}
+		// Opus 4.8 cannot take per-message effort, so it is dropped from Fable 5.2's fallbacks.
+		var fallbacks []string
+		for _, fallback := range compat.AllowedFallbackModels {
+			fallbacks = append(fallbacks, fallback.Model)
+		}
+		if !reflect.DeepEqual(fallbacks, []string{"claude-opus-5"}) {
+			t.Fatalf("fallbacks = %v", fallbacks)
+		}
+		router := upstreamCatalogModel(t, "openrouter", "anthropic/claude-fable-5.2")
+		if router.ProviderMeta.Compat == nil || router.ProviderMeta.Compat.SupportsMidConvoEffort == nil || !*router.ProviderMeta.Compat.SupportsMidConvoEffort {
+			t.Fatalf("router compat = %+v", router.ProviderMeta.Compat)
+		}
 	})
 }

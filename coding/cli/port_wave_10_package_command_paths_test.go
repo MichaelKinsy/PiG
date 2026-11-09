@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -241,6 +242,62 @@ func TestPortWave10PackageCommandPaths(t *testing.T) {
 		assert.Equal(t, 0, code)
 		require.NotNil(t, creationContext)
 		assert.ErrorIs(t, creationContext.Err(), context.Canceled)
+	})
+
+	// pi-mono 6382d870 packages/coding-agent/test/package-command-paths.test.ts "warns about a stale provider login during update --models and keeps the refresh successful".
+	t.Run("warns about a stale provider login during update --models and keeps the refresh successful", func(t *testing.T) {
+		newPackageCommandPathsFixture(t)
+		original := createPackageModelRuntime
+		t.Cleanup(func() { createPackageModelRuntime = original })
+		createPackageModelRuntime = func(context.Context, coding.CreateModelRuntimeOptions) (packageModelRuntime, error) {
+			return packageRefreshSpy{refresh: func(context.Context, ai.ModelsRefreshOptions) ai.ModelsRefreshResult {
+				return ai.ModelsRefreshResult{
+					Errors:     map[string]error{"radius": ai.NewModelsError(ai.ModelsErrorOAuth, "OAuth refresh failed for radius", errors.New("invalid_grant"))},
+					ErrorOrder: []string{"radius"},
+				}
+			}}, nil
+		}
+
+		stdout, stderr, code := capturePackageCommand(t, "update", "--models")
+
+		// console.warn writes to stderr, so the warning is the whole of it: upstream's error spy sees no call.
+		assert.Contains(t, stderr, "skipped model catalog for radius: OAuth refresh failed for radius: invalid_grant")
+		// D2 changes only the application name in the upstream login hint.
+		assert.Contains(t, stderr, "pig auth login radius")
+		assert.Contains(t, stdout, "Model catalogs refreshed")
+		assert.NotContains(t, stderr, "Could not refresh")
+		assert.Equal(t, 0, code)
+	})
+
+	// pi-mono 6382d870 packages/coding-agent/test/package-command-paths.test.ts "fails update --models when a catalog refresh fails for a reason other than a stale login".
+	t.Run("fails update --models when a catalog refresh fails for a reason other than a stale login", func(t *testing.T) {
+		newPackageCommandPathsFixture(t)
+		original := createPackageModelRuntime
+		t.Cleanup(func() { createPackageModelRuntime = original })
+		createPackageModelRuntime = func(context.Context, coding.CreateModelRuntimeOptions) (packageModelRuntime, error) {
+			return packageRefreshSpy{refresh: func(context.Context, ai.ModelsRefreshOptions) ai.ModelsRefreshResult {
+				return ai.ModelsRefreshResult{
+					Errors: map[string]error{
+						"radius":     ai.NewModelsError(ai.ModelsErrorOAuth, "OAuth refresh failed for radius", nil),
+						"openrouter": errors.New("OpenRouter model list request failed: 500"),
+					},
+					ErrorOrder: []string{"radius", "openrouter"},
+				}
+			}}, nil
+		}
+
+		_, stderr, code := capturePackageCommand(t, "update", "--models")
+
+		// Upstream's console.error spy sees only the failure; the warning for radius shares stderr here, so the failure is the line that names it.
+		var failure string
+		for line := range strings.SplitSeq(stderr, "\n") {
+			if strings.Contains(line, "Could not refresh model catalogs") {
+				failure = line
+			}
+		}
+		assert.Contains(t, failure, "Could not refresh model catalogs: openrouter: OpenRouter model list request failed: 500")
+		assert.NotContains(t, failure, "radius")
+		assert.Equal(t, 1, code)
 	})
 
 	// upstream: packages/coding-agent/test/package-command-paths.test.ts:484
