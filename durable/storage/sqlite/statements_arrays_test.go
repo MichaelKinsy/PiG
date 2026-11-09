@@ -43,21 +43,6 @@ func jsonText(value any) string {
 	panic("not a cell")
 }
 
-// utf16Length is a string's JavaScript length.
-func utf16Length(text string) int {
-	units := 0
-	for rest := text; rest != ""; {
-		r, size := jsstring.DecodeCodePoint(rest)
-		units++
-		if r >= 0x10000 {
-			units++
-		}
-		//portlint:allow utf16units advances by the byte size of the code point just decoded; the count is UTF-16 units
-		rest = rest[size:]
-	}
-	return units
-}
-
 // jsonArrays is the JSON values parts, in order, as JSON arrays of at most maxArrayCharacters each (a longer value alone).
 func jsonArrays(parts []string) []string {
 	var arrays []string

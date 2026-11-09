@@ -212,6 +212,21 @@ func (statement *insertStatement) text(shape int) string {
 	return built
 }
 
+// utf16Length is a string's JavaScript length.
+func utf16Length(text string) int {
+	units := 0
+	for rest := text; rest != ""; {
+		r, size := jsstring.DecodeCodePoint(rest)
+		units++
+		if r >= 0x10000 {
+			units++
+		}
+		//portlint:allow utf16units advances by the byte size of the code point just decoded; the count is UTF-16 units
+		rest = rest[size:]
+	}
+	return units
+}
+
 // insertRows inserts rows (one cell per column, in order) with statement, bound column by column in statements of 1, 2,
 // 4, ... rows up to maxParameters cells, the largest first: few statements, and at most a handful of SQL texts per table
 // for prepared statements.
