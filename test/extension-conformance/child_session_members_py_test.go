@@ -131,6 +131,10 @@ def new_extension():
             out["callableTools"] = session.get_callable_tool_names()
             out["steeringMessages"] = len(session.get_steering_messages())
             out["followUpMessages"] = len(session.get_follow_up_messages())
+            assert isinstance(session, pig_sdk.AgentSession)
+            session.follow_up("queued-late")
+            assert session.get_follow_up_messages() == ["queued-late"] and session.pending_message_count == 1
+            assert session.clear_queue()["followUp"] == ["queued-late"]
             out["routedModel"] = session.routed_model is None
             out["pendingBash"] = session.has_pending_bash_messages
             out["supportsThinking"] = session.supports_thinking()
