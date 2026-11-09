@@ -15,6 +15,7 @@ import (
 // and it waited for a key that never came.
 func TestStartupPromptsDoNotInheritKeybindingsInstalledBefore(t *testing.T) {
 	restoreTUIKeybindings(t)
+	restoreStartupTheme(t)
 	NewKeybindingsManagerFromBindings(map[string][]KeyID{tui.KBSelectConfirm: {"ctrl+t"}}, "")
 	opts := StartupUIOptions{AgentDir: t.TempDir()}
 
@@ -35,6 +36,7 @@ func TestStartupPromptsDoNotInheritKeybindingsInstalledBefore(t *testing.T) {
 // startup-ui.ts:91 loads keybindings.json of the agent directory: a user's remap of tui.select.confirm applies to the startup prompts.
 func TestStartupPromptsApplyTheKeybindingsOfTheAgentDirectory(t *testing.T) {
 	restoreTUIKeybindings(t)
+	restoreStartupTheme(t)
 	agentDir := t.TempDir()
 	if err := os.WriteFile(KeybindingsFile(agentDir), []byte(`{"tui.select.confirm": "ctrl+y"}`), 0o600); err != nil {
 		t.Fatal(err)
