@@ -986,6 +986,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-848836a](#bf-848836a) | fix(frontmatter): header starts one UTF-16 unit after the fence | PiG's own defect | All platforms | Unreleased |
 | [BF-84b2fca](#bf-84b2fca) | Code that fails to highlight takes the code-block color, as in Pi: `highlightCode` returns it in the… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-852652e](#bf-852652e) | PiG no longer names documentation that does not exist | PiG's own defect | All platforms | 0.5.0 |
+| [BF-852c46b](#bf-852c46b) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-852f029](#bf-852f029) | Durable document, conversation-view and task-graph states report failing state listeners to the Session's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-854c355](#bf-854c355) | fix(durable/core): the facade Session reads persistWithinMs and documentRetentionMs live, not once through a… | PiG's own defect | All platforms | Unreleased |
 | [BF-85618d9](#bf-85618d9) | fix(rpc): a failed switch_session answers before the replacement ahead of it; prompt compaction checks… | PiG's own defect | All platforms | Unreleased |
@@ -1245,7 +1246,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D461](#bf-d461) | `Files` and `FilesFolder` are not reachable from TypeScript plugins | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D462](#bf-d462) | The server and each worker have two stores, not one | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D464](#bf-d464) | FormatNumber and FormatTime take closed option types and return errors (P1-3) | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-D465](#bf-d465) | FormatTime takes a time.Time, not `Date \| number \| string` | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D465](#bf-d465) | FormatTime takes a time.Time, not `Date`, `number` or `string` | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D466](#bf-d466) | No per-language formatter cache | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D501](#bf-d501) | `npm pack --json` printing an object (npm 12) is read like the list npm 10 and 11 print | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D520](#bf-d520) | A connection reset as soon as it is accepted reports the response read, where Pi usually reports the connect | A Pi defect that PiG fixed first | All platforms | Unreleased |
@@ -15307,6 +15308,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `coding/cli/piglet_verify_cache_startup_test.go::TestSignedPigletBinaryRunsWhenItsVerifyCacheCannotBeWritten`, `coding/cli/readonly_config_root_binary_test.go::TestReadOnlyConfigRootStartsQuietlyAndNamesOnlyDocsThatExist`, `coding/cli/strip_app_features_test.go::TestStripExportHTMLBuildOmitsExportPackage`, `internal/codingagent/auth_guidance_test.go::TestNoTextNamesADocsBundleStartupCouldNotWrite`
 - **Release note:** PiG no longer names documentation that does not exist. When the config root (`PIG_HOME`) cannot be written and holds no documentation bundle of the running build, the system prompt has no docs section, and login help and the codemode description name no docs page. Before, they named `<config root>/docs` files that were never written. `pig docs show` still prints the embedded pages.
 
+### BF-852c46b
+
+**Fix in shipped code**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fix in shipped code
+- **Root cause:** The async-contract ledger rows (parity: async-contract rows, and earlier) made 49 more upstream files microtask-ordering, so asyncorder now reads their Go ports. The other findings are fixed at the source:
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `852c46b3c1` (2026-11-09)
+- **Tests:** `ai/anthropic_thread_normalize_test.go::TestNormalizeThreadMessageKeepsMemberOrder`
+
 ### BF-852f029
 
 **Durable document, conversation-view and task-graph states report failing state listeners to the Session's…**
@@ -18944,7 +18958,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 ### BF-D465
 
-**FormatTime takes a time.Time, not `Date | number | string`**
+**FormatTime takes a time.Time, not `Date`, `number` or `string`**
 
 - **Source:** A Pi defect that PiG fixed first (divergence D465)
 - **Symptom:** Not a Pi bug.
@@ -28634,7 +28648,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D461 | `Files` and `FilesFolder` are not reachable from TypeScript plugins | [BF-D461](#bf-d461) |
 | D462 | The server and each worker have two stores, not one | [BF-D462](#bf-d462) |
 | D464 | FormatNumber and FormatTime take closed option types and return errors (P1-3) | [BF-D464](#bf-d464) |
-| D465 | FormatTime takes a time.Time, not `Date \| number \| string` | [BF-D465](#bf-d465) |
+| D465 | FormatTime takes a time.Time, not `Date`, `number` or `string` | [BF-D465](#bf-d465) |
 | D466 | No per-language formatter cache | [BF-D466](#bf-d466) |
 | D501 | `npm pack --json` printing an object (npm 12) is read like the list npm 10 and 11 print | [BF-D501](#bf-d501) |
 | D502 | `TestPlugin` tests a plugin on the production topology: its host is the Node subprocess and the stubs are Go… | deliberate difference |

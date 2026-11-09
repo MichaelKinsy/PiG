@@ -27121,6 +27121,27 @@
       ]
     },
     {
+      "id": "BF-852c46b",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "The async-contract ledger rows (parity: async-contract rows, and earlier) made 49 more upstream files microtask-ordering, so asyncorder now reads their Go ports. The other findings are fixed at the source:",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "852c46b3c1",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "ai/anthropic_thread_normalize_test.go::TestNormalizeThreadMessageKeepsMemberOrder"
+      ]
+    },
+    {
       "id": "BF-852f029",
       "title": "Durable document, conversation-view and task-graph states report failing state listeners to the Session's…",
       "symptom": "Durable document, conversation-view and task-graph states report failing state listeners to the Session's report, as Pi does, instead of dropping them.",
@@ -34312,7 +34333,7 @@
     },
     {
       "id": "BF-D465",
-      "title": "FormatTime takes a time.Time, not `Date | number | string`",
+      "title": "FormatTime takes a time.Time, not `Date`, `number` or `string`",
       "symptom": "Not a Pi bug.",
       "rootCause": "",
       "rootCauseSource": "divergence record",
@@ -56068,7 +56089,7 @@
     },
     {
       "id": "D465",
-      "title": "FormatTime takes a time.Time, not `Date | number | string`",
+      "title": "FormatTime takes a time.Time, not `Date`, `number` or `string`",
       "entry": "BF-D465"
     },
     {
