@@ -2,13 +2,14 @@
 // shared set after awaiting its decision region, erasing waiters and holders a publication had queued meanwhile, so tasks
 // stayed waiting or completing.
 //
-// Go mapping: Pi interposes on `session.touch` to queue the held publication as a microtask that runs between a pass's
+// Go mapping: Pi interposes on `session.touch` to queue a held publication as a microtask that runs between a pass's
 // decision and the continuation that applies it. A Go pass decides and applies under one hold of the scheduler's mutex
-// (scheduler_region.go), and a publication's observer takes that mutex, so the two orders Pi's test provokes are the two
-// orders the goroutines below race for: the publication observed before the pass, or after it. Either must leave the
-// notification for a pass to act on. The hold is the Storage's own publication scope (durable.PublishingStorage), the Go
-// mapping of Pi's `storage.publishing = ...`; the release is a goroutine started at the moment the commit that opens the
-// window is published.
+// (scheduler_region.go) and a publication's observer takes that mutex, so the window does not exist: the observer runs
+// before the pass (the decision sees what it queued) or after it (the sets keep it). The Writer publishes parts strictly in
+// order and waits for each publication (writer.go publish), so Pi's `storage.publishing` hold cannot reorder one commit's
+// publication behind the next one's either. What remains to provoke is a pass planning while the next part is published,
+// which the children below do by ending together, many times; the tests pin the outcome and the order, and fail when a pass
+// releases the mutex between its decision and its application (the mutation the report records).
 
 package harness
 
@@ -22,79 +23,15 @@ import (
 	"github.com/MichaelKinsy/PiG/durable"
 )
 
-// publishingStorage is controlledStorage with a publication scope a test replaces (Pi's `storage.publishing`).
-type publishingStorage struct {
-	*controlledStorage
-	mu    sync.Mutex
-	scope func(ctx context.Context, publish func())
-}
-
-func newPublishingStorage() *publishingStorage {
-	return &publishingStorage{controlledStorage: newControlledStorage()}
-}
-
-func (s *publishingStorage) setScope(scope func(ctx context.Context, publish func())) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.scope = scope
-}
-
-func (s *publishingStorage) Publishing(ctx context.Context, publish func()) {
-	s.mu.Lock()
-	scope := s.scope
-	s.mu.Unlock()
-	if scope == nil {
-		publish()
-		return
-	}
-	scope(ctx, publish)
-}
-
-// taskEnded reports whether any write of the commit is a terminal record of a task of kind (or of id, when kind is empty).
-func taskEnded(writes []durable.StorageWrite, kind string, id durable.TaskId) bool {
+// taskEnded reports whether any write of the commit is a terminal record of a task of kind.
+func taskEnded(writes []durable.StorageWrite, kind string) bool {
 	for _, write := range writes {
 		task, ok := write.(durable.TaskWrite)
-		if ok && task.Value.State.Status == durable.TaskTerminal && (kind == "" || task.Value.Kind == kind) && (id == 0 || task.Value.Id == id) {
+		if ok && task.Value.State.Status == durable.TaskTerminal && task.Value.Kind == kind {
 			return true
 		}
 	}
 	return false
-}
-
-// deferPublication holds the publication of the commit that ends a task of holdKind until the commit that ends a task of
-// afterKind is published, then publishes it from a goroutine of its own: the held publication lands while the scheduler
-// passes the first one asked for are planning, the order Pi's test provokes by releasing it from the pass's touch. When
-// afterKind ended already, it publishes from its own goroutine at once.
-func deferPublication(store *publishingStorage, holdKind, afterKind string) {
-	var mu sync.Mutex
-	var pending func()
-	afterDone := false
-	store.setScope(func(_ context.Context, publish func()) {
-		writes := store.commitAt(store.commitCount() - 1)
-		// A commit that ends both is published as it is: nothing is left to release it.
-		if taskEnded(writes, holdKind, 0) && !taskEnded(writes, afterKind, 0) {
-			mu.Lock()
-			if afterDone {
-				mu.Unlock()
-				go publish()
-				return
-			}
-			pending = publish
-			mu.Unlock()
-			return
-		}
-		publish()
-		if taskEnded(writes, afterKind, 0) {
-			mu.Lock()
-			afterDone = true
-			release := pending
-			pending = nil
-			mu.Unlock()
-			if release != nil {
-				go release()
-			}
-		}
-	})
 }
 
 // holdsChildTask creates child below itself, then ends while the child is live: its outcome is held as `completing` until
@@ -136,16 +73,16 @@ func taskStatusOf(t *testing.T, harness Harness, id durable.TaskId) durable.Task
 	return record.State.Status
 }
 
-// A publication held back while a finalize pass plans other holders lands while the pass applies its decision: the check it
-// asks for must stay for the next pass.
+// A finalize pass plans while the publication of another holder's last child is observed: the check that publication asks
+// for must stay for the next pass, or the holder stays completing.
 func TestFinalizePassKeepsAHolderCheckPublishedWhilePlanning(t *testing.T) {
 	for run := range 25 {
-		heldGate, otherGate := deferred(), deferred()
-		heldChild := tkGated("test.held-child", heldGate)
-		otherChild := tkGated("test.other-child", otherGate)
+		gate := deferred()
+		heldChild := tkGated("test.held-child", gate)
+		otherChild := tkGated("test.other-child", gate)
 		held := holdsChildTask("test.held", heldChild)
 		other := holdsChildTask("test.other", otherChild)
-		store := newPublishingStorage()
+		store := newControlledStorage()
 		opened := tkOpenRoot(t, []durable.AnyTask{heldChild.Erased(), otherChild.Erased(), held.Erased(), other.Erased()}, tkOptions{storage: store})
 		otherId := tkStart(t, opened.root, other.Erased())
 		heldId := tkStart(t, opened.root, held.Erased())
@@ -154,19 +91,9 @@ func TestFinalizePassKeepsAHolderCheckPublishedWhilePlanning(t *testing.T) {
 			return taskStatusOf(t, opened.harness, otherId) == durable.TaskCompleting && taskStatusOf(t, opened.harness, heldId) == durable.TaskCompleting
 		})
 		flush()
-		// Both children end. The held child's publication is held until the other child's is published, which asks for a
-		// finalize pass over its holder alone; the held child's terminal record is published as that pass plans.
-		deferPublication(store, "test.held-child", "test.other-child")
-		heldGate.resolve()
-		eventually(t, func() bool {
-			for index := range store.commitCount() {
-				if taskEnded(store.commitAt(index), "test.held-child", 0) {
-					return true
-				}
-			}
-			return false
-		})
-		otherGate.resolve()
+		// Both children end together: the publication of one asks for a finalize pass over its holder while the other's is
+		// published, and the held child's holder must end whichever order the pass and the publication take.
+		gate.resolve()
 		eventually(t, func() bool { return taskStatusOf(t, opened.harness, heldId) == durable.TaskTerminal })
 		if status := taskStatusOf(t, opened.harness, otherId); status != durable.TaskTerminal {
 			t.Fatalf("run %d: other = %s, want terminal", run, status)
@@ -176,10 +103,10 @@ func TestFinalizePassKeepsAHolderCheckPublishedWhilePlanning(t *testing.T) {
 			child, holder := -1, -1
 			for index := range store.commitCount() {
 				writes := store.commitAt(index)
-				if child < 0 && taskEnded(writes, pair[0], 0) {
+				if child < 0 && taskEnded(writes, pair[0]) {
 					child = index
 				}
-				if holder < 0 && taskEnded(writes, pair[1], 0) {
+				if holder < 0 && taskEnded(writes, pair[1]) {
 					holder = index
 				}
 			}
@@ -191,8 +118,8 @@ func TestFinalizePassKeepsAHolderCheckPublishedWhilePlanning(t *testing.T) {
 	}
 }
 
-// A publication held back while a reservation pass plans lands while the pass applies its decision to drop the waiter: the
-// waiter's candidacy, queued by the publication that ended the last task it waited on, must stay for the next pass.
+// A reservation pass plans while the publication that ended the last task a waiter waits on is observed: the waiter's
+// candidacy must stay for the next pass, or the waiter stays waiting.
 func TestReservationPassKeepsAWaiterMadeACandidateWhilePlanning(t *testing.T) {
 	for range 25 {
 		gate := deferred()
@@ -224,7 +151,7 @@ func TestReservationPassKeepsAWaiterMadeACandidateWhilePlanning(t *testing.T) {
 				})
 			},
 		})
-		store := newPublishingStorage()
+		store := newControlledStorage()
 		opened := tkOpenRoot(t, []durable.AnyTask{parent.Erased(), child.Erased(), waiter.Erased()}, tkOptions{storage: store})
 		parentId := tkStart(t, opened.root, parent.Erased())
 		opened.harness.Resume()
@@ -233,43 +160,8 @@ func TestReservationPassKeepsAWaiterMadeACandidateWhilePlanning(t *testing.T) {
 		eventually(t, func() bool { return taskStatusOf(t, opened.harness, waiterId) == durable.TaskWaiting })
 		flush()
 		// The waiter waits on the parent and its child. The child's publication makes the waiter a candidate and asks for the
-		// reconcile pass that finalizes the parent. The parent's terminal record is held until the child's publication is
-		// done, and published as the reservation pass plans.
-		deferPublication(store, "test.held-parent", "test.held-child")
-		gate.resolve()
-		eventually(t, func() bool { return taskStatusOf(t, opened.harness, waiterId) == durable.TaskWaiting })
-		flush()
-		// The waiter waits on the parent and its child. The child's publication makes the waiter a candidate and asks for the
-		// reconcile pass that finalizes the parent. The parent's terminal record is held until the child's publication is
-		// done, and published as the reservation pass plans.
-		var mu sync.Mutex
-		var pending func()
-		released := make(chan struct{})
-		var releasedOnce sync.Once
-		store.setScope(func(_ context.Context, publish func()) {
-			writes := store.commitAt(store.commitCount() - 1)
-			mu.Lock()
-			holdIt := pending == nil && taskEnded(writes, "test.held-parent", 0)
-			if holdIt {
-				pending = publish
-			}
-			mu.Unlock()
-			if holdIt {
-				return
-			}
-			publish()
-			if taskEnded(writes, "test.held-child", 0) {
-				mu.Lock()
-				release := pending
-				mu.Unlock()
-				if release != nil {
-					go func() {
-						release()
-						releasedOnce.Do(func() { close(released) })
-					}()
-				}
-			}
-		})
+		// reconcile pass that finalizes the parent; the parent's terminal record is published as the reservation pass for the
+		// waiter plans, and the pass must not drop the waiter the publication made a candidate.
 		gate.resolve()
 		eventually(t, func() bool { return taskStatusOf(t, opened.harness, waiterId) == durable.TaskTerminal })
 		mustClose(t, opened.harness)
