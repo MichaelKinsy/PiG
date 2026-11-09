@@ -50,7 +50,7 @@
                  (let ((created (pig:obj "model" (pig:obj "provider" (pig:jget (pig:agent-session-model session) "provider")
                                                           "id" (pig:jget (pig:agent-session-model session) "id"))
                                          "thinkingLevel" (pig:agent-session-thinking-level session)
-                                         "activeTools" (pig:agent-session-active-tools session)
+                                         "activeTools" (pig:agent-session-get-active-tool-names session)
                                          "fallback" (pig:agent-session-model-fallback-message session)
                                          "extensionErrors" (length (pig:agent-session-extension-errors session))
                                          "appendix" (jb (search "Handle appendix" (pig:agent-session-system-prompt session)))

@@ -19,7 +19,7 @@
 (defun child-registry-of (ext) (extension-extra ext :child-sessions #'child-make-registry))
 
 (defstruct (agent-session (:constructor child-make-session (extension id ctx)))
-  "A child agent session. The readers hold what the session had when it was created; agent-session-state reads the current values."
+  "A child agent session. Every reader (agent-session-session-id, agent-session-model, ...) asks the host for the session's current value."
   extension id ctx
   (tools (make-hash-table :test 'equal))
   (lock (sb-thread:make-mutex :name "pig child session"))
@@ -27,7 +27,6 @@
   (listeners '()) (pending '()) (delivered 0)
   (replica nil)                         ; (seq . payload) of the message_update the host last sent; the reader thread owns it
   (stopped nil) (running nil) (disposed nil) (thread nil)
-  (session-id "") (session-file nil) (model nil) (thinking-level "") (active-tools #()) (system-prompt "")
   (model-fallback-message nil) (extension-errors #()))
 
 (defun child-lookup (ext id)
@@ -114,16 +113,9 @@ SCOPED-MODELS is a list of {model, thinkingLevel}; SESSION-START-EVENT is make-s
                                         (sb-thread:with-mutex ((child-registry-lock registry))
                                           (remhash (agent-session-id session) (child-registry-by-id registry))))))
                   (or (ctx-call-host ctx "childSession.create" args) (obj)))))
-      (flet ((text (key) (let ((v (jget info key))) (if (stringp v) v "")))
-             (present (key) (let ((v (jget info key))) (and (stringp v) (plusp (length v)) v)))
+      (flet ((present (key) (let ((v (jget info key))) (and (stringp v) (plusp (length v)) v)))
              (vec (key) (let ((v (jget info key))) (if (and (vectorp v) (not (stringp v))) v #()))))
-        (setf (agent-session-session-id session) (text "sessionId")
-              (agent-session-session-file session) (present "sessionFile")
-              (agent-session-model session) (let ((m (jget info "model"))) (and (hash-table-p m) m))
-              (agent-session-thinking-level session) (text "thinkingLevel")
-              (agent-session-active-tools session) (vec "activeTools")
-              (agent-session-system-prompt session) (text "systemPrompt")
-              (agent-session-model-fallback-message session) (present "modelFallbackMessage")
+        (setf (agent-session-model-fallback-message session) (present "modelFallbackMessage")
               (agent-session-extension-errors session) (vec "extensionErrors"))))
     session))
 
@@ -291,3 +283,191 @@ function unsubscribes it, the session is disposed or the connection ends."
       (let ((thread (agent-session-thread session)))
         (when (and thread (not (eq thread sb-thread:*current-thread*)))
           (sb-thread:join-thread thread :default nil :timeout 2))))))
+
+;;; ---------------------------------------------------------------- members of Pi's AgentSession
+;;;
+;;; Each member is the host's own AgentSession member (childSession.op): the value is read from, or the change made on, the session the host
+;;; owns, so a call returns what the session holds now. Pi's undefined is NIL, a bool is T or NIL, a list is a vector, an object a hash-table.
+;;; A member Pi declares `async` (agent-session-wait-for-idle, -reload, -compact, -navigate-tree, -execute-bash, -export-to-html,
+;;; -summarize-for-bug-report, -set-model, -cycle-model, -send-custom-message, -send-user-message) blocks until its Promise settles and signals host-call-error
+;;; on rejection; it starts in call order and a later call from another thread (an abort) never waits for it. Given :CTX, a cancelled ctx runs Pi's
+;;; abort for agent-session-compact, -navigate-tree and -execute-bash (abortCompaction, abortBranchSummary, abortBash); the other awaited members have
+;;; no abort in Pi. Scope: a tool definition carries data, not its execute function or hooks; bash output chunks reach subscribers, not a callback.
+
+(defun child-args (&rest members)
+  "An argument object of the non-NIL members (alternating key and value)."
+  (let ((args (obj)))
+    (loop for (key value) on members by #'cddr do (when value (setf (gethash key args) value)))
+    args))
+
+(defun child-op (session op &optional args)
+  (let ((payload (obj "op" op)))
+    (when args (setf (gethash "args" payload) args))
+    (child-call-args session "childSession.op" payload)))
+
+(defun child-op-async (session op args &key abort ctx)
+  (when (and ctx (ctx-cancelled-p ctx)) (error 'host-call-cancelled :message (format nil "~A: context cancelled" op)))
+  (let ((payload (obj "op" op)) (done nil) (watcher nil))
+    (when args (setf (gethash "args" payload) args))
+    (when (and abort ctx)
+      (setf watcher (sb-thread:make-thread
+                     (lambda ()
+                       (loop until (or done (ctx-cancelled-p ctx)) do (sleep 0.005))
+                       (when (and (not done) (ctx-cancelled-p ctx))
+                         (handler-case (child-op session abort)
+                           (error (e) (unless (agent-session-disposed session)
+                                        (diagnose "pig: ~A of child session ~A failed: ~A~%" abort (agent-session-id session) e))))))
+                     :name "pig-child-session-abort")))
+    (unwind-protect (child-call-args session "childSession.opAsync" payload)
+      (setf done t)
+      (when watcher (sb-thread:join-thread watcher :default nil)))))
+
+(defun child-bool (value) (eq value t))
+(defun child-number (value) (if (integerp value) value 0))
+(defun child-string (value) (if (stringp value) value ""))
+(defun child-maybe-string (value) (and (stringp value) value))
+(defun child-object (value) (and (hash-table-p value) value))
+(defun child-vector (value) (if (and (vectorp value) (not (stringp value))) value #()))
+(defun child-void (value) (declare (ignore value)) nil)
+(defun child-flag (value) (if value t :false))
+
+(defmacro def-child-member (name (&rest params) doc (op &optional args) convert &key async abort)
+  "Define NAME, a function of a SESSION and PARAMS that runs the member OP on the session with the argument object ARGS and returns CONVERT of its value."
+  (let ((call (if async
+                  `(child-op-async session ,op ,args ,@(and abort `(:abort ,abort :ctx ctx)))
+                  `(child-op session ,op ,args))))
+    `(defun ,name (session ,@params) ,doc (,convert ,call))))
+
+;;; state reads
+
+(def-child-member agent-session-streaming-p () "`session.isStreaming`." ("isStreaming") child-bool)
+(def-child-member agent-session-idle-p () "`session.isIdle`: neither streaming nor compacting." ("isIdle") child-bool)
+(def-child-member agent-session-compacting-p () "`session.isCompacting`." ("isCompacting") child-bool)
+(def-child-member agent-session-retrying-p () "`session.isRetrying`." ("isRetrying") child-bool)
+(def-child-member agent-session-bash-running-p () "`session.isBashRunning`." ("isBashRunning") child-bool)
+(def-child-member agent-session-has-pending-bash-messages-p ()
+  "`session.hasPendingBashMessages`: bash results wait to be flushed after the agent turn." ("hasPendingBashMessages") child-bool)
+(def-child-member agent-session-retry-attempt () "`session.retryAttempt`." ("retryAttempt") child-number)
+(def-child-member agent-session-pending-message-count () "`session.pendingMessageCount`: the queued steering and follow-up messages."
+  ("pendingMessageCount") child-number)
+(def-child-member agent-session-session-id () "`session.sessionId`." ("sessionId") child-string)
+(def-child-member agent-session-session-file () "`session.sessionFile`; NIL for an in-memory session." ("sessionFile") child-maybe-string)
+(def-child-member agent-session-session-name () "`session.sessionName`; NIL when the session has no name." ("sessionName") child-maybe-string)
+(def-child-member agent-session-system-prompt () "`session.systemPrompt`." ("systemPrompt") child-string)
+(def-child-member agent-session-thinking-level () "`session.thinkingLevel`." ("thinkingLevel") child-string)
+(def-child-member agent-session-model () "`session.model`: the session's model object, NIL without one." ("model") child-object)
+(def-child-member agent-session-routed-model ()
+  "`session.routedModel`: under a virtual selection, {model, thinkingLevel} of the latest successful response, NIL otherwise."
+  ("routedModel") child-object)
+(def-child-member agent-session-scoped-models ()
+  "`session.scopedModels`: the {model, thinkingLevel} the session cycles through, empty for all available models." ("scopedModels") child-vector)
+(def-child-member agent-session-steering-mode () "`session.steeringMode`: \"all\" or \"one-at-a-time\"." ("steeringMode") child-string)
+(def-child-member agent-session-follow-up-mode () "`session.followUpMode`: \"all\" or \"one-at-a-time\"." ("followUpMode") child-string)
+(def-child-member agent-session-auto-compaction-enabled-p () "`session.autoCompactionEnabled`." ("autoCompactionEnabled") child-bool)
+(def-child-member agent-session-auto-retry-enabled-p () "`session.autoRetryEnabled`." ("autoRetryEnabled") child-bool)
+(def-child-member agent-session-supports-thinking-p () "`session.supportsThinking()`." ("supportsThinking") child-bool)
+(def-child-member agent-session-get-available-thinking-levels () "`session.getAvailableThinkingLevels()`."
+  ("getAvailableThinkingLevels") child-vector)
+(def-child-member agent-session-get-last-assistant-text () "`session.getLastAssistantText()`; NIL when the session has none."
+  ("getLastAssistantText") child-maybe-string)
+(def-child-member agent-session-get-active-tool-names () "`session.getActiveToolNames()`." ("getActiveToolNames") child-vector)
+(def-child-member agent-session-get-callable-tool-names () "`session.getCallableToolNames()`." ("getCallableToolNames") child-vector)
+(def-child-member agent-session-get-steering-messages () "`session.getSteeringMessages()`: the steering messages not yet delivered."
+  ("getSteeringMessages") child-vector)
+(def-child-member agent-session-get-follow-up-messages () "`session.getFollowUpMessages()`: the follow-up messages not yet delivered."
+  ("getFollowUpMessages") child-vector)
+(def-child-member agent-session-get-all-tools () "`session.getAllTools()`: each tool's data, not its hooks." ("getAllTools") child-vector)
+(def-child-member agent-session-get-tool-definition (name)
+  "`session.getToolDefinition(name)`: the definition's data, NIL when no tool has the name; its execute function and hooks are not carried."
+  ("getToolDefinition" (obj "name" name)) child-object)
+(def-child-member agent-session-get-context-usage () "`session.getContextUsage()`: {tokens, contextWindow, percent}, NIL without a usable context window."
+  ("getContextUsage") child-object)
+(def-child-member agent-session-get-session-stats () "`session.getSessionStats()`." ("getSessionStats") child-object)
+(def-child-member agent-session-get-user-messages-for-forking () "`session.getUserMessagesForForking()`: {entryId, text} each."
+  ("getUserMessagesForForking") child-vector)
+(def-child-member agent-session-prompt-templates () "`session.promptTemplates`." ("promptTemplates") child-vector)
+(def-child-member agent-session-cache-warming-status () "`session.cacheWarmingStatus`: NIL when the session has no cache warmer."
+  ("cacheWarmingStatus") child-object)
+(def-child-member agent-session-has-extension-handlers-p (event-type)
+  "`session.hasExtensionHandlers(eventType)`: an extension the session loaded handles the event."
+  ("hasExtensionHandlers" (obj "eventType" event-type)) child-bool)
+
+;;; changes
+
+(def-child-member agent-session-cycle-model (&key direction persist)
+  "`session.cycleModel(direction, options)`: DIRECTION is \"forward\" (the default) or \"backward\". The {model, thinkingLevel, isScoped} chosen, NIL when there is no model to cycle to."
+  ("cycleModel" (child-args "direction" direction "persist" (and persist t))) child-object :async t)
+(def-child-member agent-session-set-thinking-level (level &key persist)
+  "`session.setThinkingLevel(level, options)`; the level is clamped to the model."
+  ("setThinkingLevel" (child-args "level" level "persist" (and persist t))) child-void)
+(def-child-member agent-session-cycle-thinking-level (&key persist)
+  "`session.cycleThinkingLevel(options)`: the new level, NIL when the model does not support thinking."
+  ("cycleThinkingLevel" (child-args "persist" (and persist t))) child-maybe-string)
+(def-child-member agent-session-set-scoped-models (models)
+  "`session.setScopedModels(models)`: MODELS is a list of {model, thinkingLevel}."
+  ("setScopedModels" (obj "models" (coerce models 'simple-vector))) child-void)
+(def-child-member agent-session-set-active-tools-by-name (names) "`session.setActiveToolsByName(names)`."
+  ("setActiveToolsByName" (obj "names" (coerce names 'simple-vector))) child-void)
+(def-child-member agent-session-set-steering-mode (mode) "`session.setSteeringMode(mode)`: \"all\" or \"one-at-a-time\"."
+  ("setSteeringMode" (obj "mode" mode)) child-void)
+(def-child-member agent-session-set-follow-up-mode (mode) "`session.setFollowUpMode(mode)`: \"all\" or \"one-at-a-time\"."
+  ("setFollowUpMode" (obj "mode" mode)) child-void)
+(def-child-member agent-session-set-auto-compaction-enabled (enabled) "`session.setAutoCompactionEnabled(enabled)`."
+  ("setAutoCompactionEnabled" (obj "enabled" (child-flag enabled))) child-void)
+(def-child-member agent-session-set-auto-retry-enabled (enabled) "`session.setAutoRetryEnabled(enabled)`."
+  ("setAutoRetryEnabled" (obj "enabled" (child-flag enabled))) child-void)
+(def-child-member agent-session-set-cache-warming-mode (mode) "`session.setCacheWarmingMode(mode)`: \"off\", \"streaming\" or \"idle\"."
+  ("setCacheWarmingMode" (obj "mode" mode)) child-void)
+(def-child-member agent-session-set-session-name (name) "`session.setSessionName(name)`." ("setSessionName" (obj "name" name)) child-void)
+(def-child-member agent-session-clear-queue ()
+  "`session.clearQueue()`: remove the queued messages and return {steering, followUp}, each a vector of strings."
+  ("clearQueue") child-object)
+(def-child-member agent-session-abort-bash () "`session.abortBash()`." ("abortBash") child-void)
+(def-child-member agent-session-abort-branch-summary () "`session.abortBranchSummary()`." ("abortBranchSummary") child-void)
+(def-child-member agent-session-abort-compaction () "`session.abortCompaction()`." ("abortCompaction") child-void)
+(def-child-member agent-session-abort-retry () "`session.abortRetry()`." ("abortRetry") child-void)
+(def-child-member agent-session-record-bash-result (command result &key exclude-from-context)
+  "`session.recordBashResult(command, result, options)`: RESULT is a BashResult object."
+  ("recordBashResult" (child-args "command" command "result" result "excludeFromContext" (and exclude-from-context (child-flag (eq exclude-from-context t)))))
+  child-void)
+(def-child-member agent-session-export-to-jsonl (output-path) "`session.exportToJsonl(outputPath)`: write the session as JSONL and return its path."
+  ("exportToJsonl" (obj "outputPath" output-path)) child-string)
+
+;;; awaited members
+
+(def-child-member agent-session-set-model (model &key persist)
+  "`session.setModel(model, options)`: MODEL is a model object whose provider and id name a model of the host's registry. Rejected for a model whose provider has no credentials."
+  ("setModel" (child-args "model" model "persist" (and persist t)) ) child-void :async t)
+(def-child-member agent-session-wait-for-idle () "`session.waitForIdle()`: return when the session is neither streaming nor compacting."
+  ("waitForIdle") child-void :async t)
+(def-child-member agent-session-reload ()
+  "`session.reload()`: settings, extensions and resources are loaded again. Pi rejects it while the session runs or compacts."
+  ("reload") child-void :async t)
+(def-child-member agent-session-compact (&key custom-instructions ctx)
+  "`session.compact(customInstructions)`: manual compaction; a session with nothing to compact signals host-call-error. Returns {summary, firstKeptEntryId, tokensBefore, ...}. A cancelled CTX runs abortCompaction."
+  ("compact" (child-args "customInstructions" custom-instructions)) child-object :async t :abort "abortCompaction")
+(def-child-member agent-session-navigate-tree (target-id &key summarize custom-instructions replace-instructions label ctx)
+  "`session.navigateTree(targetId, options)`: {cancelled, aborted?, editorText?, summaryEntry?}. A cancelled CTX runs abortBranchSummary."
+  ("navigateTree" (child-args "targetId" target-id "summarize" (and summarize t) "customInstructions" custom-instructions
+                              "replaceInstructions" (and replace-instructions t) "label" label))
+  child-object :async t :abort "abortBranchSummary")
+(def-child-member agent-session-execute-bash (command &key exclude-from-context ctx)
+  "`session.executeBash(command, onChunk, options)`: the command runs outside the agent loop and the result {output, exitCode?, cancelled, truncated, fullOutputPath?} is recorded for the next turn. A cancelled CTX runs abortBash."
+  ("executeBash" (child-args "command" command "excludeFromContext" (and exclude-from-context (child-flag (eq exclude-from-context t)))))
+  child-object :async t :abort "abortBash")
+(def-child-member agent-session-export-to-html (&key output-path theme-name)
+  "`session.exportToHtml(outputPath, options)`: write the session as an HTML file and return its path; no OUTPUT-PATH is Pi's default location."
+  ("exportToHtml" (child-args "outputPath" output-path "themeName" theme-name)) child-string :async t)
+(def-child-member agent-session-summarize-for-bug-report (&key hint) "`session.summarizeForBugReport({hint})`."
+  ("summarizeForBugReport" (child-args "hint" hint)) child-string :async t)
+(def-child-member agent-session-send-custom-message (custom-type content &key display details trigger-turn deliver-as)
+  "`session.sendCustomMessage(message, options)`: the message is {customType, content, display, details?}; DISPLAY is T to show it."
+  ("sendCustomMessage" (obj "message" (child-args "customType" custom-type "content" content "display" (child-flag display) "details" details)
+                            "options" (child-args "triggerTurn" (and trigger-turn t) "deliverAs" deliver-as)))
+  child-void :async t)
+(def-child-member agent-session-send-user-message (content &key deliver-as expand-prompt-templates)
+  "`session.sendUserMessage(content, options)`: CONTENT is a string or a vector of text and image content blocks; DELIVER-AS is \"steer\" or \"followUp\"."
+  ("sendUserMessage" (obj "content" content
+                          "options" (child-args "deliverAs" deliver-as
+                                                "expandPromptTemplates" (and expand-prompt-templates (child-flag (eq expand-prompt-templates t))))))
+  child-void :async t)

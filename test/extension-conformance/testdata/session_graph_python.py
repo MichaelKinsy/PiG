@@ -882,7 +882,7 @@ def child_handles_script(ctx, args):
         if bind:
             session.bind_extensions()
         created = {
-            "model": {"provider": session.model["provider"], "id": session.model["id"]}, "thinkingLevel": session.thinking_level, "activeTools": session.active_tools,
+            "model": {"provider": session.model["provider"], "id": session.model["id"]}, "thinkingLevel": session.thinking_level, "activeTools": session.get_active_tool_names(),
             "fallback": session.model_fallback_message, "extensionErrors": len(session.extension_errors), "appendix": "Handle appendix" in session.system_prompt,
             "sessionId": session.session_id == manager.get_session_id(), "sessionFile": session.session_file == manager.get_session_file(), "persisted": session.session_file is not None,
         }
