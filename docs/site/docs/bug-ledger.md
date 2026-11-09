@@ -878,6 +878,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-91e912a](#bf-91e912a) | Two PiG versions that share a config root (two installed versions, or PiG beside a Piglet Binary) no longer… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-91f9946](#bf-91f9946) | OpenRouter image generation reads the chat completions body as Pi does, checked against the pinned Pi in a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-9208423](#bf-9208423) | fix(imageprocessing): an image with no pixels is not encoded as PNG | PiG's own defect | All platforms | Unreleased |
+| [BF-924fe28](#bf-924fe28) | A provider written with the Go, Python or Lisp extension SDK now reaches the host with each stream event… | PiG's own defect | All platforms | Unreleased |
 | [BF-928e15c](#bf-928e15c) | A listener that fails while agent_start is dispatched now ends the run as in Pi (failure messages, no… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-928e15c-10](#bf-928e15c-10) | Constrained-sampling errors quote tool and property names as Pi does (raw text between double quotes, not… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-928e15c-11](#bf-928e15c-11) | GitHub Copilot model-catalog fetches now report a failed response as Pi does (`<status> <reason>: <untrimmed… | PiG's own defect | All platforms | 0.5.0 |
@@ -13477,6 +13478,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `9208423356` (2026-10-29)
 - **Tests:** None recorded.
+
+### BF-924fe28
+
+**A provider written with the Go, Python or Lisp extension SDK now reaches the host with each stream event…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A provider written with the Go, Python or Lisp extension SDK now reaches the host with each stream event showing the partial message as it was when the provider pushed the event, and with the stream's result as it was when the provider ended it.
+- **Root cause:** The Go, Python and Lisp SDKs queued the event the author pushed and a forwarding goroutine or thread encoded it later, while the author's code could still append to the shared partial message: the host then received later text (every text_delta showing the finished message under load) and, in Go, the forwarder's read of the author's map raced the author's writes. Push and End now take the event, and the result, at the call: the Go SDK encodes the event on the author's goroutine and the forwarder writes those bytes, the Python and Lisp SDKs queue a copy. The result the author reads is still its own message. Events the SDK builds or decodes itself are queued as they are. The Rust SDK takes…
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `924fe2818c` (2026-11-09)
+- **Tests:** None recorded.
+- **Release note:** A provider written with the Go, Python or Lisp extension SDK now reaches the host with each stream event showing the partial message as it was when the provider pushed the event, and with the stream's result as it was when the provider ended it. The SDK queued the event the provider pushed and a goroutine or thread encoded it later, so a provider that appended to its shared partial message right after a `Push` could have the host receive the later text (under load every `text_delta` showed the finished message), and in the Go SDK the encoder's read of the provider's map was a data race with the provider's writes. `Push` and `End` now take the event, and the result, at the call (the Go SDK encodes the event on the provider's goroutine; the Python and Lisp SDKs queue a copy), as Pi's consumer encodes an event before the provider's next `await`; the message the provider reads back from `result()` is still its own. A provider that pushed one event and changed the message in the same synchronous run in Node still shows the host the message as that run left it. The Rust SDK takes the event by value and is unchanged.
 
 ### BF-928e15c
 
