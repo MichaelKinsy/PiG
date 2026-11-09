@@ -134,6 +134,7 @@ func TestExtensionEditorHandleInputTransitions(t *testing.T) {
 // text, leaves the dialog open after completion and asks the ui for a forced repaint (`tui.requestRender(true)`).
 // mutation-checked: dropping the command argument, the repaint or the done guard fails.
 func TestExtensionEditorExternalAction(t *testing.T) {
+	restoreTUIKeybindings(t)
 	c := newExtensionEditorProbe(t, "Edit", "first\nsecond", map[string][]string{"app.editor.external": {"ctrl+x"}}, nil)
 	var complete func(string)
 	var gotCommand string
@@ -165,6 +166,7 @@ func TestExtensionEditorExternalAction(t *testing.T) {
 // extension-editor.ts:134-138: after the external edit the forced repaint shows the edited text. Pi re-renders every component on requestRender(true);
 // PiG's parent containers reuse a child's cached lines until the child is invalidated, so the dialog must invalidate itself when the edit lands.
 func TestExtensionEditorExternalEditRepaintsThroughAParentContainer(t *testing.T) {
+	restoreTUIKeybindings(t)
 	c := newExtensionEditorProbe(t, "Edit", "initial text", map[string][]string{"app.editor.external": {"ctrl+x"}}, nil)
 	var complete func(string)
 	c.SetExternalEditor(func(_, _ string, apply func(string), _ func(string)) { complete = apply })

@@ -179308,8 +179308,8 @@
       ],
       "evidence": [
         "test:tui/extension_input_oracle_test.go#TestExtensionInputMatchesPi",
-        "test:tui/extension_dialog_bindings_test.go#TestExtensionDialogCountdownMatchesPi",
-        "test:tui/extension_dialog_bindings_test.go#TestExtensionDialogsMatchPiBindingsAndPalette"
+        "test:internal/codingagent/startup_keybindings_test.go#TestStartupPromptsApplyTheKeybindingsOfTheAgentDirectory",
+        "test:internal/codingagent/startup_keybindings_test.go#TestStartupPromptsDoNotInheritKeybindingsInstalledBefore"
       ],
       "behaviorContracts": [
         "coding-agent/extension-input/remapped-confirm"
@@ -179333,8 +179333,8 @@
       ],
       "evidence": [
         "test:tui/extension_input_oracle_test.go#TestExtensionInputMatchesPi",
-        "test:tui/extension_dialog_bindings_test.go#TestExtensionDialogCountdownMatchesPi",
-        "test:tui/extension_dialog_bindings_test.go#TestExtensionDialogsMatchPiBindingsAndPalette"
+        "test:internal/codingagent/startup_keybindings_test.go#TestStartupPromptsApplyTheKeybindingsOfTheAgentDirectory",
+        "test:internal/codingagent/startup_keybindings_test.go#TestStartupPromptsDoNotInheritKeybindingsInstalledBefore"
       ],
       "behaviorContracts": [
         "coding-agent/extension-input/remapped-confirm"

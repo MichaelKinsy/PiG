@@ -280397,15 +280397,15 @@
       "shapeHash": "sha256:92df3ca4c486a936b0cc48e55385986cb76a99f287781557c707067338492fff"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#configureStartupTheme",
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#configureStartupTui",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "configureStartupTheme",
+      "name": "configureStartupTui",
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(settings Settings, paths []string)"
+        "type": "func(opts StartupUIOptions) *KeybindingsManager"
       },
-      "shapeHash": "sha256:06c63c5d0c3396680f078c197e6ded06c57cd5720aecd358c4d2e941843c9f31"
+      "shapeHash": "sha256:a00f585dbee4a36885a13b70e8dbc37790099f206f07acf437ca6ca960dbdc02"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#configuredNpmProbeError",

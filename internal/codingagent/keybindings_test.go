@@ -164,9 +164,7 @@ func TestKeybindingsManagerSaveEncodesJSON(t *testing.T) {
 // them at dispatch time.
 // Pi: packages/tui/src/keybindings.ts:270 (KeybindingsManager.matches).
 func TestKeybindingsManagerSyncsTuiOverridesToGlobal(t *testing.T) {
-	// Snapshot global TUI manager so the test doesn't leak.
-	prev := tui.GetTUIKeybindings()
-	defer tui.SetTUIKeybindings(prev)
+	restoreTUIKeybindings(t)
 	tui.SetTUIKeybindings(tui.NewTUIKeybindingsManager(nil))
 
 	dir := t.TempDir()
@@ -209,6 +207,7 @@ func TestKeybindingsManagerSyncsTuiOverridesToGlobal(t *testing.T) {
 }
 
 func TestKeybindingsManagerSetsAppKeyTextResolver(t *testing.T) {
+	restoreTUIKeybindings(t)
 	prevResolver := tui.AppKeyText("app.tree.foldOrUp", "fallback")
 	_ = prevResolver
 
