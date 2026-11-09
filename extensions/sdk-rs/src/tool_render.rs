@@ -35,8 +35,20 @@ pub struct ToolRenderContext {
     pub output_pad: u32,
     /// Recorded execution time of a final result in milliseconds. Absent while the result is partial and for results stored without one. upstream: ToolRenderContext.durationMs
     pub duration_ms: Option<i64>,
+    /// What the renderer of this phase (call or result) of this card returned on its previous run, as upstream's
+    /// `ToolRenderContext.lastComponent` is the component the renderer returned before. A renderer that returns lines or a
+    /// [`View`] returns no component object, so the lines or the view stand in for it. `None` on the card's first run of
+    /// the phase and after a run that returned an error (upstream forgets the component a throwing renderer left).
+    pub last_component: Option<ToolRenderComponent>,
     pub state: Map<String, Value>,
     invalidate: Arc<dyn Fn() + Send + Sync>,
+}
+
+/// What a tool renderer returned: the lines of a line renderer or the view of a view renderer.
+#[derive(Debug, Clone, PartialEq)]
+pub enum ToolRenderComponent {
+    Lines(Vec<String>),
+    View(View),
 }
 
 impl ToolRenderContext {
@@ -216,8 +228,16 @@ pub(crate) struct LateToolRendererResolvers {
     pub(crate) resolvers: Mutex<Vec<Arc<ToolRendererResolverFn>>>,
 }
 
+/// One tool card's renderer state and the last output of each phase's renderer.
+#[derive(Default)]
+struct CardState {
+    state: Map<String, Value>,
+    call: Option<ToolRenderComponent>,
+    result: Option<ToolRenderComponent>,
+}
+
 /// Each tool card's renderer state, by card.
-type CardStates = HashMap<String, Arc<Mutex<Map<String, Value>>>>;
+type CardStates = HashMap<String, Arc<Mutex<CardState>>>;
 
 #[derive(Default)]
 pub(crate) struct ToolRenderers {
@@ -275,6 +295,22 @@ struct RenderToolWire {
     width: u32,
 }
 
+impl CardState {
+    /// Keeps the card's state and the phase's output for the next run: no component after an error.
+    fn finish(&mut self, result_phase: bool, state: Map<String, Value>, rendered: &Result<Rendered, String>) {
+        self.state = state;
+        let last = rendered.as_ref().ok().map(|rendered| match rendered {
+            Rendered::Lines(lines) => ToolRenderComponent::Lines(lines.clone()),
+            Rendered::View(view) => ToolRenderComponent::View((**view).clone()),
+        });
+        if result_phase {
+            self.result = last;
+        } else {
+            self.call = last;
+        }
+    }
+}
+
 impl ToolRenderers {
     /// Answers a render_tool request with the renderer's lines or view. A
     /// view form wins over the line form of the same phase. Renders of one
@@ -298,7 +334,8 @@ impl ToolRenderers {
             .entry(request.card.clone())
             .or_default()
             .clone();
-        let mut state = card.lock().unwrap();
+        let mut card_state = card.lock().unwrap();
+        let result_phase = request.phase == "result";
         let notify_conn = conn.clone();
         let notify_card = request.card.clone();
         let mut render = ToolRenderContext {
@@ -313,7 +350,12 @@ impl ToolRenderers {
             is_error: request.context.is_error,
             output_pad: request.context.output_pad,
             duration_ms: request.context.duration_ms,
-            state: std::mem::take(&mut *state),
+            last_component: if result_phase {
+                card_state.result.take()
+            } else {
+                card_state.call.take()
+            },
+            state: std::mem::take(&mut card_state.state),
             invalidate: Arc::new(move || {
                 let _ = notify_conn.notify(
                     "tool_render_invalidate",
@@ -359,7 +401,7 @@ impl ToolRenderers {
                 },
                 (None, _) => Err(format!("unknown tool renderers {}", request.renderers)),
             };
-            *state = render.state;
+            card_state.finish(result_phase, render.state, &rendered);
             return rendered;
         }
         let registered = conn.registered_tools.lock().unwrap().get(tool).cloned();
@@ -408,7 +450,7 @@ impl ToolRenderers {
                 (None, None) => Err(format!("tool {tool} has no call renderer")),
             }
         };
-        *state = render.state;
+        card_state.finish(result_phase, render.state, &rendered);
         rendered
     }
 

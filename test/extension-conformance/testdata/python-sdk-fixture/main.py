@@ -1837,12 +1837,12 @@ def new_extension() -> pig_sdk.Extension:
 
     def render_probe_call(_ctx, args, render, width):
         render.state["calls"] = render.state.get("calls", 0) + 1
-        return ["toolrender:call:%s:partial=%s:calls=%d:width=%d" % (args.get("topic"), str(render.is_partial).lower(), render.state["calls"], width)]
+        return ["toolrender:call:%s:partial=%s:calls=%d:width=%d:last=%s" % (args.get("topic"), str(render.is_partial).lower(), render.state["calls"], width, (render.last_component or ["none"])[0])]
 
     def render_probe_result(_ctx, result, options, render, width):
         return [
-            "toolrender:result:%s:%s:expanded=%s:calls=%s:width=%d:duration=%s"
-            % (result["content"][0]["text"], result["details"]["k"], str(bool(options.get("expanded"))).lower(), render.state.get("calls"), width, "none" if render.duration_ms is None else render.duration_ms)
+            "toolrender:result:%s:%s:expanded=%s:calls=%s:width=%d:duration=%s:last=%s"
+            % (result["content"][0]["text"], result["details"]["k"], str(bool(options.get("expanded"))).lower(), render.state.get("calls"), width, "none" if render.duration_ms is None else render.duration_ms, (render.last_component or ["none"])[0])
         ]
 
     ext.tool_renderers("render_probe", render_call=render_probe_call, render_result=render_probe_result, render_shell="self")

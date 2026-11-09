@@ -289,11 +289,14 @@ export default function (pi) {
     renderCall(args, _theme, context) {
       context.state.calls = (context.state.calls ?? 0) + 1;
       const calls = context.state.calls;
-      return { render: (width) => [`toolrender:call:${args.topic}:partial=${context.isPartial}:calls=${calls}:width=${width}`], invalidate() {} };
+      // lastComponent is the component this card's call renderer returned before; its line is what it drew last
+      const last = context.lastComponent?.line ?? "none";
+      return { line: undefined, render(width) { this.line = `toolrender:call:${args.topic}:partial=${context.isPartial}:calls=${calls}:width=${width}:last=${last}`; return [this.line]; }, invalidate() {} };
     },
     renderResult(result, options, _theme, context) {
       const calls = context.state.calls;
-      return { render: (width) => [`toolrender:result:${result.content[0].text}:${result.details.k}:expanded=${Boolean(options.expanded)}:calls=${calls}:width=${width}:duration=${context.durationMs ?? "none"}`], invalidate() {} };
+      const last = context.lastComponent?.line ?? "none";
+      return { line: undefined, render(width) { this.line = `toolrender:result:${result.content[0].text}:${result.details.k}:expanded=${Boolean(options.expanded)}:calls=${calls}:width=${width}:duration=${context.durationMs ?? "none"}:last=${last}`; return [this.line]; }, invalidate() {} };
     },
   });
   pi.registerTool({

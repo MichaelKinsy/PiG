@@ -172,9 +172,22 @@ type conformanceLinesComponent struct {
 // conformanceWidthComponent renders one line naming the width it is drawn at.
 type conformanceWidthComponent struct {
 	line func(width int) string
+	// drawn is the line Render returned last: what a later run of the card's renderer reads as lastComponent.
+	drawn string
 }
 
-func (c *conformanceWidthComponent) Render(width int) []string { return []string{c.line(width)} }
+func (c *conformanceWidthComponent) Render(width int) []string {
+	c.drawn = c.line(width)
+	return []string{c.drawn}
+}
+
+// lastDrawn is the line the component the card's renderer returned before drew, or "none" on the card's first run: Pi's ToolRenderContext.lastComponent.
+func lastDrawn(previous extension.Component) string {
+	if component, ok := previous.(*conformanceWidthComponent); ok && component.drawn != "" {
+		return component.drawn
+	}
+	return "none"
+}
 func (*conformanceWidthComponent) Invalidate()                 {}
 
 func (c *conformanceLinesComponent) Render(int) []string { return append([]string(nil), c.lines...) }
@@ -998,7 +1011,7 @@ func captureRecording(t *testing.T, h *harness) recording {
 	var toolRenderer []string
 	waitFor(t, func() bool {
 		lines := renderCall.Render(72)
-		return len(lines) == 1 && lines[0] == "toolrender:call:alpha:partial=false:calls=1:width=72"
+		return len(lines) == 1 && lines[0] == "toolrender:call:alpha:partial=false:calls=1:width=72:last=none"
 	})
 	toolRenderer = append(toolRenderer, renderCall.Render(72)...)
 	renderResult, ok := renderProbe.RenderResult(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "out"}}, Details: map[string]any{"k": "v"}}, extension.ToolRenderResultOptions{Expanded: true}, nil, renderContext).(interface{ Render(int) []string })
@@ -1007,9 +1020,34 @@ func captureRecording(t *testing.T, h *harness) recording {
 	}
 	waitFor(t, func() bool {
 		lines := renderResult.Render(72)
-		return len(lines) == 1 && lines[0] == "toolrender:result:out:v:expanded=true:calls=1:width=72:duration=4200"
+		return len(lines) == 1 && lines[0] == "toolrender:result:out:v:expanded=true:calls=1:width=72:duration=4200:last=none"
 	})
 	toolRenderer = append(toolRenderer, renderResult.Render(72)...)
+
+	// ToolRenderContext.lastComponent: a second run of each phase on the same card receives what that phase's renderer returned on the first
+	// (tool-execution.ts hands the card's callRendererComponent and resultRendererComponent back). Each last= is a line no SDK's fallback (an
+	// absent component reads "none") produces, and the call and result slots are separate: a swapped slot reads the other phase's line.
+	renderContext.LastComponent = renderResult.(extension.Component)
+	renderResultAgain, ok := renderProbe.RenderResult(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "out"}}, Details: map[string]any{"k": "v"}}, extension.ToolRenderResultOptions{Expanded: true}, nil, renderContext).(interface{ Render(int) []string })
+	if !ok {
+		t.Fatal("second renderResult did not return a component")
+	}
+	waitFor(t, func() bool {
+		lines := renderResultAgain.Render(72)
+		return len(lines) == 1 && lines[0] == "toolrender:result:out:v:expanded=true:calls=1:width=72:duration=4200:last=toolrender:result:out:v:expanded=true:calls=1:width=72:duration=4200:last=none"
+	})
+	toolRenderer = append(toolRenderer, renderResultAgain.Render(72)...)
+	renderContext.LastComponent = renderCall.(extension.Component)
+	renderCallAgain, ok := renderProbe.RenderCall(json.RawMessage(`{"topic":"alpha"}`), nil, renderContext).(interface{ Render(int) []string })
+	if !ok {
+		t.Fatal("second renderCall did not return a component")
+	}
+	waitFor(t, func() bool {
+		lines := renderCallAgain.Render(72)
+		return len(lines) == 1 && lines[0] == "toolrender:call:alpha:partial=false:calls=2:width=72:last=toolrender:call:alpha:partial=false:calls=1:width=72:last=none"
+	})
+	toolRenderer = append(toolRenderer, renderCallAgain.Render(72)...)
+	renderContext.LastComponent = nil
 
 	argumentCompletions := commandArgumentCompletions(t, h.runner, "complete_probe", " a", "zz")
 
@@ -1311,20 +1349,22 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 						state["calls"] = calls + 1
 						var input map[string]any
 						_ = json.Unmarshal(args, &input)
+						last := lastDrawn(render.LastComponent)
 						return &conformanceWidthComponent{line: func(width int) string {
-							return fmt.Sprintf("toolrender:call:%v:partial=%t:calls=%d:width=%d", input["topic"], render.IsPartial, calls+1, width)
+							return fmt.Sprintf("toolrender:call:%v:partial=%t:calls=%d:width=%d:last=%s", input["topic"], render.IsPartial, calls+1, width, last)
 						}}
 					},
 					RenderResult: func(result extension.AgentToolResult, options extension.ToolRenderResultOptions, _ extension.Theme, render extension.ToolRenderContext) extension.Component {
 						value := result
 						details, _ := value.Details.(map[string]any)
 						calls := render.State.(map[string]any)["calls"]
+						last := lastDrawn(render.LastComponent)
 						return &conformanceWidthComponent{line: func(width int) string {
 							duration := "none"
 							if render.DurationMs != nil {
 								duration = fmt.Sprint(*render.DurationMs)
 							}
-							return fmt.Sprintf("toolrender:result:%v:%v:expanded=%t:calls=%v:width=%d:duration=%s", value.Text(), details["k"], options.Expanded, calls, width, duration)
+							return fmt.Sprintf("toolrender:result:%v:%v:expanded=%t:calls=%v:width=%d:duration=%s:last=%s", value.Text(), details["k"], options.Expanded, calls, width, duration, last)
 						}}
 					},
 				},
