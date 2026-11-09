@@ -33,9 +33,10 @@ func TestToolEventVariantsMatchAcrossSDKs(t *testing.T) {
 	}
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
+			// The harness is built first: its first use of an SDK fixture compiles it, and that build is no part of the 30 s the events get.
+			h := test.make(t)
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
-			h := test.make(t)
 			t.Cleanup(func() {
 				if h.cleanup != nil {
 					h.cleanup()
