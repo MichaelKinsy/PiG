@@ -9,7 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 )
 
-// upstream: agent-session.ts:2810-2819 (manual) and 3140-3149 (auto) await runner.emit({ type: "session_compact" }) after the entry is saved, and runner.ts emit() takes no signal: an abort raised while the handlers run neither skips an extension nor fails the compaction.
+// upstream (agent-session.ts, Pi 1.5.0): lines 2943-2951 (manual) and 3269-3277 (auto) await runner.emit({ type: "session_compact" }) after the entry is saved, and runner.ts:1096-1126 emit() takes no signal: an abort raised while the handlers run neither skips an extension nor fails the compaction.
 // The second extension's dispatch context must stay live, or a subprocess extension's request fails with the compaction's cancellation and is never delivered.
 func TestSessionCompactReachesEveryExtensionWhenAbortedDuringDispatch(t *testing.T) {
 	for _, tc := range []struct {

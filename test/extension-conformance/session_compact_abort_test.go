@@ -17,7 +17,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
-// Pi awaits runner.emit({ type: "session_compact" }) after the compaction entry is saved (agent-session.ts:2810-2819, 3140-3149), and emit() takes no signal and has no abort check (runner.ts:1089-1117): every extension receives the event, in order, even when abortCompaction() is called while an earlier handler runs, and the compaction still completes.
+// Pi awaits runner.emit({ type: "session_compact" }) after the compaction entry is saved (agent-session.ts:2943-2951 manual, 3269-3277 auto, Pi 1.5.0), and emit() takes no signal and has no abort check (runner.ts:1096-1126): every extension receives the event, in order, even when abortCompaction() is called while an earlier handler runs, and the compaction still completes.
 // The Node rows use a first extension that blocks inside its handler until the test aborts the compaction; strict runs each extension in its own process, shared-ok packs them into one cell.
 func TestNodeSessionCompactReachesTheNextExtensionWhenAbortedDuringDispatch(t *testing.T) {
 	eachNodeAPIIsolation(t, func(t *testing.T, isolation string) {
