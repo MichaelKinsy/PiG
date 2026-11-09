@@ -7,7 +7,7 @@ import (
 )
 
 // Port of settings-manager.test.ts "cacheWarming".
-func TestCacheWarmingModeDefaultsToStreamingAndIgnoresProjectSettings(t *testing.T) {
+func TestCacheWarmingModeDefaultsToIdleAndIgnoresProjectSettings(t *testing.T) {
 	projectDir, agentDir := t.TempDir(), t.TempDir()
 	if err := os.MkdirAll(filepath.Join(projectDir, CONFIG_DIR_NAME), 0o755); err != nil {
 		t.Fatal(err)
@@ -19,20 +19,20 @@ func TestCacheWarmingModeDefaultsToStreamingAndIgnoresProjectSettings(t *testing
 		}
 	}
 	mode := func() CacheWarmingMode { return NewSettingsManager(projectDir, agentDir).GetCacheWarmingMode() }
-	if got := mode(); got != "streaming" {
-		t.Fatalf("default mode = %q, want streaming", got)
-	}
-	write(filepath.Join(projectDir, CONFIG_DIR_NAME, "settings.json"), `{"cacheWarming":"idle"}`)
-	if got := mode(); got != "streaming" {
-		t.Fatalf("project setting leaked: mode = %q, want streaming", got)
-	}
-	write(filepath.Join(agentDir, "settings.json"), `{"cacheWarming":"idle"}`)
 	if got := mode(); got != "idle" {
-		t.Fatalf("global mode = %q, want idle", got)
+		t.Fatalf("default mode = %q, want idle", got)
+	}
+	write(filepath.Join(projectDir, CONFIG_DIR_NAME, "settings.json"), `{"cacheWarming":"streaming"}`)
+	if got := mode(); got != "idle" {
+		t.Fatalf("project setting leaked: mode = %q, want idle", got)
+	}
+	write(filepath.Join(agentDir, "settings.json"), `{"cacheWarming":"streaming"}`)
+	if got := mode(); got != "streaming" {
+		t.Fatalf("global mode = %q, want streaming", got)
 	}
 	write(filepath.Join(agentDir, "settings.json"), `{"cacheWarming":"bogus"}`)
-	if got := mode(); got != "streaming" {
-		t.Fatalf("invalid mode = %q, want streaming", got)
+	if got := mode(); got != "idle" {
+		t.Fatalf("invalid mode = %q, want idle", got)
 	}
 }
 

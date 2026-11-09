@@ -355,21 +355,21 @@ func TestUpstreamSettingsManager(t *testing.T) {
 	})
 
 	t.Run("cacheWarming", func(t *testing.T) {
-		t.Run("defaults to streaming and ignores project settings", func(t *testing.T) {
+		t.Run("defaults to idle and ignores project settings", func(t *testing.T) {
 			f := newUpstreamSettingsFixture(t)
-			if got := f.create().GetCacheWarmingMode(); got != "streaming" {
+			if got := f.create().GetCacheWarmingMode(); got != "idle" {
 				t.Fatalf("default = %q", got)
 			}
-			f.write(f.project(), map[string]any{"cacheWarming": "idle"})
-			if got := f.create().GetCacheWarmingMode(); got != "streaming" {
+			f.write(f.project(), map[string]any{"cacheWarming": "streaming"})
+			if got := f.create().GetCacheWarmingMode(); got != "idle" {
 				t.Fatalf("project = %q", got)
 			}
-			f.write(f.global(), map[string]any{"cacheWarming": "idle"})
-			if got := f.create().GetCacheWarmingMode(); got != "idle" {
+			f.write(f.global(), map[string]any{"cacheWarming": "streaming"})
+			if got := f.create().GetCacheWarmingMode(); got != "streaming" {
 				t.Fatalf("global = %q", got)
 			}
 			f.write(f.global(), map[string]any{"cacheWarming": "bogus"})
-			if got := f.create().GetCacheWarmingMode(); got != "streaming" {
+			if got := f.create().GetCacheWarmingMode(); got != "idle" {
 				t.Fatalf("bogus = %q", got)
 			}
 		})

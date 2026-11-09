@@ -6,7 +6,7 @@ import (
 )
 
 // settings-manager.ts CacheWarmingMode = "off" | "streaming" | "idle" (CACHE_WARMING_MODES): every member of the union is a mode the settings accept and the warmer
-// acts on. "off" stops a warm in either phase, "streaming" stops it once the run has settled, "idle" keeps it going; a value outside the union reads as "streaming".
+// acts on. "off" stops a warm in either phase, "streaming" stops it once the run has settled, "idle" keeps it going; a value outside the union reads as "idle".
 // mutation-checked: dropping "idle" from CacheWarmingModes, or making modeStopReason ignore "streaming", fails it.
 func TestCacheWarmingModeUnionAllKindsAreHandled(t *testing.T) {
 	if want := []CacheWarmingMode{"off", "streaming", "idle"}; !slices.Equal(CacheWarmingModes, want) {
@@ -33,7 +33,7 @@ func TestCacheWarmingModeUnionAllKindsAreHandled(t *testing.T) {
 		}
 	}
 	unknown := NewInMemorySettingsManager(Settings{CacheWarming: "sometimes"})
-	if got := unknown.GetCacheWarmingMode(); got != "streaming" {
-		t.Errorf("a mode outside the union reads as %q, want streaming", got)
+	if got := unknown.GetCacheWarmingMode(); got != "idle" {
+		t.Errorf("a mode outside the union reads as %q, want idle", got)
 	}
 }
