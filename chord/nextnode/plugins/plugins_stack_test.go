@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// Ports packages/chord/test/next-node/plugins/stack.test.ts: `mapStack` names plugin files and lines through each evaluated
+// Ports packages/chord/test/node/plugins/stack.test.ts: `mapStack` names plugin files and lines through each evaluated
 // script's source map; nothing global; a script's map goes with its facet. The plugins are built by the real BuildFacet and
 // evaluated by Pi's evaluateFacet and mapped by Pi's mapStack in the Node subprocess, read through the probe (the ops of
 // plugins_evaluate_test.go's prelude; the GC cases run in a subprocess started with --expose-gc). The import-time throw and
@@ -68,7 +68,7 @@ func stackFailing(t *testing.T) PluginScript {
 		"worker.ts": "import { helper } from \"./helper.ts\";\nexport default { setup: () => {}, fail: () => helper() };",
 		"helper.ts": "// A helper.\nexport function helper(): never {\n\tthrow new Error(\"helper failed at \" + Date.now());\n}",
 	}, nil)
-	return evaluateBuilt(t, root, "@test/notes", "worker", []string{"@earendil-works/chord/next"})
+	return evaluateBuilt(t, root, "@test/notes", "worker", []string{"@earendil-works/chord"})
 }
 
 // stackSingle writes a plugin dir (name "@test/<dir>") whose worker.ts is text and builds it with no host packages.

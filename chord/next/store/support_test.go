@@ -14,7 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/sqlite/node"
 )
 
-// Ports packages/chord/test/next/support.ts (the store's helpers: memoryStore, faultyDatabase, faultyStore,
+// Ports packages/chord/test/support.ts (the store's helpers: memoryStore, faultyDatabase, faultyStore,
 // holdingWrite, startQueued, tableOwner, tableIn, rejection, exported, metered).
 //
 // Shared test helpers of package store. Every test file of the package uses these and none redefines them.
@@ -426,7 +426,7 @@ func tableIn(t testing.TB, store *ChordStore, definition *TableDefinition, owner
 		handleOwner = owner[0]
 	}
 	table := "app.store:" + definition.Name
-	fence := CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64) error { return nil }}
+	fence := CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64, int) error { return nil }}
 	err := PrepareTables([]DeclaredTable{{Definition: definition, Table: table}}, store, fence, "app.store", background)
 	if err != nil {
 		t.Fatalf("PrepareTables: %v", err)

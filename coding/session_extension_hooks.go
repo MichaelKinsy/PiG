@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"maps"
 	"reflect"
 	"time"
 
@@ -73,9 +72,9 @@ func (s *Session) toolCallHook(ctx context.Context, toolCallID, parentToolCallID
 	}
 	beforeValues, _ := json.Marshal(input)
 	event := extension.CustomToolCallEvent{
-		ToolCallEventBase: extension.ToolCallEventBase{Type: icodingagent.EventToolCall, ToolCallID: toolCallID, ParentToolCallID: parentToolCallID, WireInput: wireInput},
-		ToolName:          toolName,
-		Input:             input,
+		Type: icodingagent.EventToolCall, ToolCallID: toolCallID, ParentToolCallID: parentToolCallID, WireInput: wireInput,
+		ToolName: toolName,
+		Input:    input,
 	}
 	result, err := runner.EmitToolCall(ctx, event)
 	if err != nil {
@@ -129,19 +128,17 @@ func (s *Session) toolResultHook(ctx context.Context, toolCallID, parentToolCall
 		details = json.RawMessage("null")
 	}
 	hookResult, err := runner.EmitToolResult(ctx, extension.CustomToolResultEvent{
-		ToolResultEventBase: extension.ToolResultEventBase{
-			Type:              icodingagent.EventToolResult,
-			ToolCallID:        toolCallID,
-			ParentToolCallID:  parentToolCallID,
-			Input:             input,
-			WireInput:         args,
-			Content:           icodingagent.ToolResultEventContent(result),
-			StructuredContent: result.StructuredContent,
-			IsError:           result.IsError,
-			Usage:             toolResultEventUsage(result.Usage),
-		},
-		ToolName: toolName,
-		Details:  details,
+		Type:              icodingagent.EventToolResult,
+		ToolCallID:        toolCallID,
+		ParentToolCallID:  parentToolCallID,
+		Input:             input,
+		WireInput:         args,
+		Content:           icodingagent.ToolResultEventContent(result),
+		StructuredContent: result.StructuredContent,
+		IsError:           result.IsError,
+		Usage:             toolResultEventUsage(result.Usage),
+		ToolName:          toolName,
+		Details:           details,
 	})
 	if err != nil || hookResult == nil {
 		return agent.AfterToolCallResult{}
@@ -331,17 +328,18 @@ func (s *Session) extensionEventHook(ev agent.AgentEvent) {
 	}
 	end, ok := ev.(agent.MessageEndEvent)
 	if !ok {
-		icodingagent.DispatchAgentLoopEvent(runner, ev, &s.extCurrentMessage)
+		icodingagent.DispatchAgentLoopEvent(runner, ev, &s.extCurrentMessage, &s.messageSeqs)
 		return
 	}
 	if !runner.HasHandlers(icodingagent.EventMessageEnd) {
 		return
 	}
-	replacement, err := runner.EmitMessageEnd(icodingagent.AgentEventContext(ev), extension.MessageEndEvent{Type: "message_end", Message: end.Message})
+	ctx := extension.WithMessageSequences(icodingagent.AgentEventContext(ev), func() []uint64 { return []uint64{s.messageSeqs.Sequence(end.Message)} })
+	replacement, err := runner.EmitMessageEnd(ctx, extension.MessageEndEvent{Type: "message_end", Message: end.Message})
 	if err != nil || replacement == nil {
 		return
 	}
-	replaceMessageInPlace(end.Message, normalizeReplacementContent(*replacement))
+	agent.ReplaceMessageInPlace(end.Message, normalizeReplacementContent(*replacement))
 }
 
 // normalizeReplacementContent gives a user, assistant, toolResult or custom
@@ -356,31 +354,6 @@ func normalizeReplacementContent(message agent.AgentMessage) agent.AgentMessage 
 		return message.WithEmptyContent()
 	}
 	return message
-}
-
-// replaceMessageInPlace overwrites target with replacement through the
-// pointers the agent's transcript, the event and persistence share
-// (agent-session.ts _replaceMessageInPlace). A replacement of another shape is
-// ignored.
-func replaceMessageInPlace(target, replacement agent.AgentMessage) {
-	switch {
-	case target.System != nil && replacement.System != nil:
-		*target.System = *replacement.System
-	case target.User != nil && replacement.User != nil:
-		*target.User = *replacement.User
-	case target.Assistant != nil && replacement.Assistant != nil:
-		*target.Assistant = *replacement.Assistant
-	case target.ToolResult != nil && replacement.ToolResult != nil:
-		*target.ToolResult = *replacement.ToolResult
-	case target.Custom != nil && replacement.Custom != nil:
-		// A handler may return the event's own message: snapshot it first,
-		// as upstream returns early when target === replacement.
-		fields := maps.Clone(replacement.Custom)
-		clear(target.Custom)
-		maps.Copy(target.Custom, fields)
-		// The members follow the replacement's order, in every copy of the message.
-		target.AdoptMemberOrder(replacement)
-	}
 }
 
 // QueueAgentStartMessages holds the messages a before_agent_start dispatch
@@ -471,7 +444,7 @@ func (s *Session) bindExtensionCommandActions(runner *inproc.Runner) {
 		runner.BindTools(extension.ContextActions{
 			GetAllTools: s.GetAllTools, GetActiveTools: s.ActiveToolNames,
 			SetActiveTools: s.SetActiveToolsByName, RefreshTools: s.RefreshTools, GetSystemPrompt: s.systemPrompt,
-			GetModel: func() extension.Model { return s.Model() }, SessionManager: s.inner,
+			GetModel: func() extension.Model { return s.Model() }, SessionManager: s.inner.Load(),
 			ModelRegistry: s.ModelRegistry(), IsIdle: s.IsIdle, HasPendingMessages: s.HasPendingMessages, GetSignal: s.Signal,
 			SendUserMessage: s.SendExtensionUserMessage,
 			ToolActions:     s.ToolActions(),
@@ -495,7 +468,7 @@ func (s *Session) ReloadExtensions(extensions []extension.Extension, runtime ...
 	if len(runtime) > 0 {
 		extensionRuntime = runtime[0]
 	}
-	runner := NewExtensionRunner(extensions, extensionRuntime, s.services.CWD(), s.inner, s.services.Registry())
+	runner := NewExtensionRunner(extensions, extensionRuntime, s.services.CWD(), s.inner.Load(), s.services.Registry())
 	s.bindExtensionCore(runner)
 	s.ReplaceRunner(runner)
 	if previous != nil {

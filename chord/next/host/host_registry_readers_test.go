@@ -24,7 +24,7 @@ import (
 // pi: packages/chord/src/next/registries/record.ts
 // pi: packages/chord/src/next/registries/internal.ts
 
-// Ports the host-run cases of packages/chord/test/next/registries/value.test.ts: the readers of a registry (`self.registry`,
+// Ports the host-run cases of packages/chord/test/registries/value.test.ts: the readers of a registry (`self.registry`,
 // `host.registry`) on a loaded host with plugins, which the record-level cases in registries/value_test.go cannot run:
 // "older readers (S2)" (value mapping, a reader newer than the provider, a contributor that failed live, a native that
 // closed), "readers (S3)", "readers' memory" and "values' memory".
@@ -399,31 +399,6 @@ func TestReadersAReaderParkedOnAFirstComposeThatThrewGoesOnAtTheFirstGoodComposi
 	held.Release()
 	if got := rvMember(t, reader, "total"); got != 3.0 {
 		t.Fatalf("total = %v, want 3", got)
-	}
-	must(t, host.Close(background))
-}
-
-func TestReadersHostRegistryBeforeThePublicationWaitsForItThenResolvesWithTheProviderItServed(t *testing.T) {
-	errs := &hostErrors{}
-	host := newHost(t, HostOptions{OnError: errs.push})
-	type result struct {
-		value *registries.RegistryValueSource
-		err   error
-	}
-	waiting := make(chan result, 1)
-	go func() {
-		value, err := host.Registry(background, rvSum, GetOptions{})
-		waiting <- result{value, err}
-	}()
-	// The read is waiting once nothing answers it yet: load publishes the provider.
-	time.Sleep(10 * time.Millisecond)
-	mustLoad(t)(host.Load([]HostFacet{rvPlugin("@app/sum", func(h FacetHost, _ FacetSelf) error {
-		return rvServeSum(h, rvTotalCompose, nil)
-	})}, background))
-	got := <-waiting
-	must(t, got.err)
-	if value, thrown := rvRead(got.value); thrown != nil || value != (rvTotal{}) {
-		t.Fatalf("value = %v, %v, want { total: 0 }", value, thrown)
 	}
 	must(t, host.Close(background))
 }

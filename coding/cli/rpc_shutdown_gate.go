@@ -5,10 +5,9 @@ import "sync"
 
 // rpcShutdownGate is rpc-mode.ts shutdownRequested, inputReady, activeCommands and checkShutdownRequested().
 //
-// Async contract (Pi main 1708b4788, D231): ctx.shutdown() sets the request and schedules the check with setImmediate, so the requesting handler finishes first; nobody waits for the check and it cannot fail. The check re-reads its conditions when it runs: a request is pending, input is attached, no command is being handled and the session is idle. Each of those ending runs it again: a command's completion (for a prompt, when it settles), agent_settled and the input's attach. A shutdown that already started is left alone. Cancellation is the mode's: a started shutdown, a stopped mode or a closed executor drops the check.
+// Async contract (Pi 1708b4788): ctx.shutdown() sets the request and schedules the check with setImmediate, so the requesting handler finishes first; nobody waits for the check and it cannot fail. The check re-reads its conditions when it runs: a request is pending, input is attached, no command is being handled and the session is idle. Each of those ending runs it again: a command's completion (for a prompt, when it settles), agent_settled and the input's attach. A shutdown that already started is left alone. Cancellation is the mode's: a started shutdown, a stopped mode or a closed executor drops the check.
 //
 // The check runs as a macrotask of the stdin executor (rpcResponseTurn), which is Pi's check phase: after the microtasks of the stdin iteration that is running. Every caller hands the scheduling to an owned task and returns at once, so that an extension's synchronous host call (a Go, Python, Rust or Lisp ctx.shutdown()) is answered before the check can run on its goroutine and wait for the session_shutdown handlers: Pi's setImmediate is a deferral nobody waits for.
-// pig divergence (D231): follows Pi main 1708b4788 ahead of the v1.5.0 pin; Pi 1.5.0 only checks the request after a stdin command and at agent_settled.
 type rpcShutdownGate struct {
 	mu         sync.Mutex
 	requested  bool

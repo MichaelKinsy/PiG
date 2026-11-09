@@ -16,7 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsonparse"
 )
 
-// Ports packages/chord/test/next/store/outbox.test.ts: tests of the outbox (slice 6a §2; decisions "The outbox is
+// Ports packages/chord/test/store/outbox.test.ts: tests of the outbox (slice 6a §2; decisions "The outbox is
 // optional, internal and versioned", small items 3-4): on, off and kept across opens, its commits in their recorded
 // form, `trim` and its floor, and the format check.
 

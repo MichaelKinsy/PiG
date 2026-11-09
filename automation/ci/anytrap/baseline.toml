@@ -5,13 +5,6 @@
 
 
 [[hit]]
-file = "agent/message_json.go"
-func = "AgentMessage.decode"
-call = "sdkjson.Unmarshal"
-dest = "*map[string]any"
-count = 1
-
-[[hit]]
 file = "ai/anthropic.go"
 func = "decodeAnthropicEvent"
 call = "json.Unmarshal"
@@ -1284,14 +1277,6 @@ file = "internal/orderedjson/value.go"
 func = "unmarshalFieldsThreePass"
 call = "sdkjson.Unmarshal"
 dest = "any"
-count = 1
-
-# dev/bench tooling or one-time schema compile
-[[hit]]
-file = "internal/typebox/value.go"
-func = "compile"
-call = "json.Unmarshal"
-dest = "*any"
 count = 1
 
 # dev/bench tooling or one-time schema compile

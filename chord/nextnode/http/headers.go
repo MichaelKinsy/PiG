@@ -5,13 +5,14 @@ import (
 	"encoding/base64"
 	"fmt"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"unicode/utf8"
 	"weak"
 )
 
-// Ports packages/chord/src/next-node/http/headers.ts. The default headers (decision "The HTTP component's security
+// Ports packages/chord/src/node/http/headers.ts. The default headers (decision "The HTTP component's security
 // baseline" (4), "A CSP nonce per response"): on every response, the component's own included: no caching, no sniffing, no
 // referrer, no framing but by the contributed framers, and a CSP with the response's own script nonce. A response's own
 // headers replace same-named ones (a route widens its own CSP); they are validated as they are set, so a CR or LF never
@@ -192,7 +193,7 @@ func (d *DefaultHeaders) Of(admitted *Admitted, router *Router, nonce string) (*
 	headers.mustSet("X-Content-Type-Options", "nosniff")
 	headers.mustSet("Referrer-Policy", "no-referrer")
 	// `X-Frame-Options` names no origin: with framers, only `frame-ancestors` speaks.
-	framed := router != nil && router.Framers.Size() > 0
+	framed := router != nil && len(router.Framers) > 0
 	if !framed && (admitted == nil || admitted.Framer == "") {
 		headers.mustSet("X-Frame-Options", "DENY")
 	}
@@ -201,6 +202,18 @@ func (d *DefaultHeaders) Of(admitted *Admitted, router *Router, nonce string) (*
 		return nil, err
 	}
 	return headers, nil
+}
+
+// scriptSources is where scripts may come from: the contributed script paths of the request's origin, else the whole origin.
+func scriptSources(admitted *Admitted, router *Router) []string {
+	if router == nil || admitted == nil || len(router.Scripts) == 0 {
+		return []string{"'self'"}
+	}
+	sources := make([]string, len(router.Scripts))
+	for i, path := range router.Scripts {
+		sources[i] = admitted.Origin + path
+	}
+	return sources
 }
 
 // policy is the CSP's text around the nonce for admitted under router.
@@ -237,7 +250,7 @@ const nonceMark = "\x00nonce\x00"
 func csp(admitted *Admitted, router *Router) [2]string {
 	var framers []string
 	if router != nil {
-		framers = router.Framers.Values()
+		framers = slices.Clone(router.Framers)
 	}
 	if admitted != nil && admitted.Framer != "" {
 		framers = append(framers, admitted.Framer)
@@ -256,7 +269,7 @@ func csp(admitted *Admitted, router *Router) [2]string {
 	}
 	directives := []*directive{
 		{"default-src", []string{"'none'"}},
-		{"script-src", []string{"'self'", nonceMark}},
+		{"script-src", append(scriptSources(admitted, router), nonceMark)},
 		{"connect-src", connect},
 		{"base-uri", []string{"'none'"}},
 		{"form-action", []string{"'self'"}},

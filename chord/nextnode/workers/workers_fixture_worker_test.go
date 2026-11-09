@@ -23,7 +23,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
 )
 
-// Ports packages/chord/test/next-node/fixtures/workers/{control,worker}.ts: the fixture contracts (the session kind the
+// Ports packages/chord/test/node/fixtures/workers/{control,worker}.ts: the fixture contracts (the session kind the
 // workers serve, the fixture worker's `Control`, the plugin's `Notes`), the worker's start data (how it behaves), and the
 // fixture worker itself: `WorkerMain`, the shipped plugins, a JavaScript core facet serving `Control` (crash, busy, local calls)
 // and a Go core facet serving `Busy` (the app's keep-alive counts) and `Echo`. Its start data picks a behaviour for the tests:
@@ -140,6 +140,9 @@ type workerBehaviour struct {
 	LocalCalls int
 	// CloserPanics: a closer fails, and the app's OnError panics on that failure once (Pi's `onError` that throws).
 	CloserPanics bool
+	// GoReload: no plugin runtime is loaded; the Go core facet is loaded on the host and the worker's Reload hook answers each
+	// reload (appending `reload <script keys>` to Log).
+	GoReload bool
 }
 
 func (b workerBehaviour) json() *delta.JsonObject {
@@ -189,6 +192,9 @@ func (b workerBehaviour) json() *delta.JsonObject {
 	if b.CloserPanics {
 		object.Set("closerPanics", true)
 	}
+	if b.GoReload {
+		object.Set("goReload", true)
+	}
 	return object
 }
 
@@ -207,6 +213,7 @@ func behaviourOf(value delta.JsonValue) workerBehaviour {
 		b.NoConnect = true
 	}
 	b.CloserPanics, _ = object.Value("closerPanics").(bool)
+	b.GoReload, _ = object.Value("goReload").(bool)
 	if ms, ok := object.Value("loadMs").(float64); ok {
 		b.LoadMs = int(ms)
 	}
@@ -336,10 +343,17 @@ func holdNodeStart(ctx context.Context, name string, args ...string) *exec.Cmd {
 	return exec.CommandContext(ctx, "/bin/sh", append([]string{"-c", wait, "sh", *gate, name}, args...)...)
 }
 
+// goReloadLog is the file the GoReload behaviour's Reload hook appends to.
+var goReloadLog atomic.Pointer[string]
+
 // onErrorThrew is whether the fixture's OnError threw already.
 var onErrorThrew atomic.Bool
 
 func runWorkerFixture() {
+	if os.Getenv(fixtureReportExecutable) != "" {
+		executable, _ := os.Executable()
+		_, _ = fmt.Fprintf(os.Stdout, "executable %s\n", executable)
+	}
 	port := &countingPort{processPort: openProcessChannel()}
 	var worker host.Host
 	serve(port, func(start WorkerStart, ctx context.Context) (*WorkerResult, error) {
@@ -398,12 +412,23 @@ func runWorkerFixture() {
 		if behaviour.Hang {
 			return nil, sleep(ctx, 1_000_000_000*time.Millisecond)
 		}
-		if _, err := start.Plugins.Load(worker, WorkerLoad{
-			Kind: "worker", Core: []plugins.CoreFacet{fixtureCoreModule()}, HostKind: fixtureSession,
-			GoCore:    []host.HostFacet{{Name: fixtureGoCoreName, Facet: fixtureGoCore()}},
+		if behaviour.GoReload {
+			goReloadLog.Store(&behaviour.Log)
+			if _, err := worker.Load([]host.HostFacet{{Name: fixtureGoCoreName, Facet: fixtureGoCore()}}, ctx); err != nil {
+				return nil, err
+			}
+			busy, err := worker.Get(ctx, fixtureBusy, delta.NewJsonObject(0), host.GetOptions{})
+			if err != nil {
+				return nil, err
+			}
+			return &WorkerResult{Busy: host.Expose(busy.Member("counts"))}, nil
+		}
+		if _, err := start.Plugins.Load(ctx, worker, WorkerLoad{
+			Kind: "worker", NodeCore: []plugins.CoreFacet{fixtureCoreModule()}, HostKind: fixtureSession,
+			Core:      []host.HostFacet{{Name: fixtureGoCoreName, Facet: fixtureGoCore()}},
 			Bridged:   []plugins.BridgedFacet{{Name: fixtureGoCoreName, Contracts: []*contracts.Contract{fixtureBusy, fixtureEcho}}},
 			Principal: delta.JsonObjectOf("kind", "worker"), Peer: delta.JsonObjectOf("kind", "server"),
-		}, ctx); err != nil {
+		}); err != nil {
 			return nil, err
 		}
 		if behaviour.LateCloseMs != 0 {
@@ -470,9 +495,19 @@ func runWorkerFixture() {
 		if err != nil {
 			return nil, err
 		}
-		return &WorkerResult{Busy: busy.Member("counts")}, nil
+		return &WorkerResult{Busy: host.Expose(busy.Member("counts"))}, nil
 	}, WorkerMainOptions{
 		Node: plugins.NodeOptions{OnOutput: fixtureOutput(port), Command: holdNodeStart},
+		Reload: func(scripts []plugins.PluginScript, _ context.Context) (host.ReloadReport, error) {
+			keys := make([]string, len(scripts))
+			for index, script := range scripts {
+				keys[index] = scriptKey(script)
+			}
+			if log := goReloadLog.Load(); log != nil {
+				appendLog(*log, "reload "+strings.Join(keys, ",")+"\n")
+			}
+			return host.ReloadReport{Plugins: host.PluginChanges{Changed: []string{scripts[0].Plugin.Name}}}, nil
+		},
 		Redact: func(err any) CrossedError {
 			message := fmt.Sprint(err)
 			if typed, ok := err.(error); ok {

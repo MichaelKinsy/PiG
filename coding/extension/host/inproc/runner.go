@@ -1173,15 +1173,24 @@ func (r *Runner) MessageRenderer(customType string) extension.MessageRenderer {
 }
 
 // GetMarkdownTransformers returns the Markdown transformers extensions
-// registered, in extension load order.
+// registered, in extension load order. Each one leaves the Markdown of the
+// surfaces its registration does not list unchanged (default: user, assistant
+// and thinking).
 //
 // upstream: runner.ts getMarkdownTransformers
 func (r *Runner) GetMarkdownTransformers() []extension.MarkdownTransformer {
 	var transformers []extension.MarkdownTransformer
 	for _, ext := range r.extensions {
-		if ext.MarkdownTransformer != nil {
-			transformers = append(transformers, ext.MarkdownTransformer)
+		if ext.MarkdownTransformer == nil {
+			continue
 		}
+		transformer, messageTypes := ext.MarkdownTransformer.Transformer, ext.MarkdownTransformer.MessageTypes
+		transformers = append(transformers, func(markdown string, context extension.MarkdownTransformContext) string {
+			if _, ok := messageTypes[context.MessageType]; !ok {
+				return markdown
+			}
+			return transformer(markdown, context)
+		})
 	}
 	return transformers
 }
@@ -2197,7 +2206,12 @@ func (r *Runner) EmitMessageEnd(ctx context.Context, event extension.MessageEndE
 		for _, handler := range snapshot.handlers {
 			currentEvent := event
 			currentEvent.Message = current
-			handlerResult, err := callHandler(handler, currentEvent, dispatchCtx)
+			handlerCtx := dispatchCtx
+			if modified {
+				// A handler after a replacement holds the replacement, which is no object Pi shares with any other payload (runner.ts emitMessageEnd).
+				handlerCtx = extension.WithMessageSequences(dispatchCtx, nil)
+			}
+			handlerResult, err := callHandler(handler, currentEvent, handlerCtx)
 			if err != nil {
 				r.recordHandlerError(ctx, ext.Path, "message_end", err)
 				continue

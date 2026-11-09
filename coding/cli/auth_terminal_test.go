@@ -26,7 +26,7 @@ func setupAuthTerminal(t *testing.T, input io.Reader) (processLoginTerminal, con
 func TestAuthTerminalCancelsTheLoginWhenStdinClosesBeforeAnAnswer(t *testing.T) {
 	input, writer := io.Pipe()
 	terminal, ctx, interrupts := setupAuthTerminal(t, input)
-	go writer.Close()
+	go func() { _ = writer.Close() }()
 	if _, err := terminal.Question(ctx, "Enter domain: "); !errors.Is(err, terminalquestion.ErrInterrupted) {
 		t.Fatalf("err = %v", err)
 	}
@@ -37,7 +37,7 @@ func TestAuthTerminalCancelsTheLoginWhenStdinClosesBeforeAnAnswer(t *testing.T) 
 
 func TestAuthTerminalNormalCleanupDoesNotCancelTheLoginAfterAnAnswer(t *testing.T) {
 	input, writer := io.Pipe()
-	defer writer.Close()
+	defer func() { _ = writer.Close() }()
 	terminal, ctx, interrupts := setupAuthTerminal(t, input)
 	go func() { _, _ = writer.Write([]byte("example.com\n")) }()
 	got, err := terminal.Question(ctx, "Enter domain: ")
@@ -51,7 +51,7 @@ func TestAuthTerminalKeepsAnAnswerDeliveredImmediatelyBeforeEOF(t *testing.T) {
 	terminal, ctx, interrupts := setupAuthTerminal(t, input)
 	go func() {
 		_, _ = writer.Write([]byte("example.com\n"))
-		writer.Close()
+		_ = writer.Close()
 	}()
 	got, err := terminal.Question(ctx, "Enter domain: ")
 	if err != nil || got != "example.com" || *interrupts != 0 {
@@ -61,7 +61,7 @@ func TestAuthTerminalKeepsAnAnswerDeliveredImmediatelyBeforeEOF(t *testing.T) {
 
 func TestAuthTerminalPromptCancellationDoesNotCancelTheWholeLogin(t *testing.T) {
 	input, writer := io.Pipe()
-	defer writer.Close()
+	defer func() { _ = writer.Close() }()
 	terminal, ctx, interrupts := setupAuthTerminal(t, input)
 	prompt, cancelPrompt := context.WithCancel(ctx)
 	go cancelPrompt()

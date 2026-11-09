@@ -21,10 +21,11 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // pi: packages/chord/src/next/host/attempt.ts
-// Ports packages/chord/test/next/host/attempt.test.ts: attempts (§6, §13, §14, §15): the failure kinds of an activation, the
+// Ports packages/chord/test/host/attempt.test.ts: attempts (§6, §13, §14, §15): the failure kinds of an activation, the
 // ending of an attempt (the seal fence, the drain), declarations, calls, remote variants, tables and eager migrations,
 // and attempts parked on their dependencies. Every case runs a real host; the cases Pi runs under `fakeTimers()` run on
 // the scopeLoop of host_scope_support_test.go (the clock moves only through advanceHost). A handler or an opener that Pi
@@ -1005,7 +1006,7 @@ func storeImplementation() contracts.Implementation {
 	return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{"n": constant(1.0)}}}
 }
 
-// Ports packages/chord/test/next/host/attempt.test.ts:645 ("a fresh table is created at activation at its version, with
+// Ports packages/chord/test/host/attempt.test.ts:645 ("a fresh table is created at activation at its version, with
 // its indexes, in one commit"): the factory declares the table with `self.table(Edits)` (attempt.test.ts:650, StoreSelf.Table).
 func TestAttemptTablesAFreshTableIsCreatedAtActivationAtItsVersionWithItsIndexesInOneCommit(t *testing.T) {
 	chordStore := memoryStore(t, true)
@@ -1162,7 +1163,7 @@ func leftPad(i int) string {
 // evolved is version 2 adding `note`, whose rows runs each per row first.
 func evolved(t testing.TB, each func(id string) error) *store.TableDefinition {
 	t.Helper()
-	definition, err := store.EvolveTable(editsV1(t), func(e *store.TableEditor) *store.TableEditor {
+	definition, err := store.EvolveTable(editsV1(t), func(e *store.TableEditor) store.TableTailEditor {
 		return e.Add("note", store.Opt(store.Str())).Rows(func(row store.Row) (any, error) {
 			if err := each(row["id"].(string)); err != nil {
 				return nil, err
@@ -1336,7 +1337,7 @@ var (
 	}))
 )
 
-func TestAttemptParkedAttemptsRunNoTimerWhileParkedButParkedLongsNoDependencyDeadlineNoBackoffTheFactoryRunOnce(t *testing.T) {
+func TestAttemptParkedAttemptsRunNoTimerWhileParkedButTheReportsNoDependencyDeadlineNoBackoffTheFactoryRunOnce(t *testing.T) {
 	loop := newScopeLoop()
 	var factories atomic.Int32
 	host, errs := loaded(t, func(h FacetHost, _ FacetSelf) error {
@@ -1355,13 +1356,18 @@ func TestAttemptParkedAttemptsRunNoTimerWhileParkedButParkedLongsNoDependencyDea
 		waiting.Cause.Error.Message != "waiting for app.missing: app.missing is not served here" {
 		t.Fatalf("state = %+v (cause %+v), want failed waiting for app.missing", waiting, waiting.Cause)
 	}
-	// `parked_long`'s one timer fired (once, after readyTimeout); nothing else runs.
+	// The unbound reference's report fired after 5 s, `parked_long`'s after readyTimeout, each once; nothing else runs.
 	if got := loop.TimerCount(); got != 0 {
 		t.Fatalf("timers = %d, want 0", got)
 	}
-	wantErrors := []HostError{{Kind: ErrParkedLong, Object: "app.view", WaitingFor: "app.missing", State: "failed", Since: 0}}
-	if got := factories.Load(); got != 1 || !reflect.DeepEqual(errs.All(), wantErrors) {
-		t.Fatalf("factories %d, errors %v, want 1 and %v", got, errs.All(), wantErrors)
+	got := errs.All()
+	if len(got) != 2 {
+		t.Fatalf("errors = %v, want unbound_long then parked_long", got)
+	}
+	sameUnboundLong(t, got[0], "app.missing", 0, data.CodeUnavailable, "app.missing is not served here", "")
+	wantParked := HostError{Kind: ErrParkedLong, Object: "app.view", WaitingFor: "app.missing", State: "failed", Since: 0}
+	if factories.Load() != 1 || !reflect.DeepEqual(got[1], wantParked) {
+		t.Fatalf("factories %d, second error %v, want 1 and %v", factories.Load(), got[1], wantParked)
 	}
 	view.Release()
 }
@@ -1457,4 +1463,210 @@ func TestAttemptParkedAttemptsGoOnPastTheDependencyCheckADependencyLeavingLiveDu
 		t.Fatalf("failures = %v, want none", got)
 	}
 	view.Release()
+}
+
+// --- activation spans (slice 9) -----------------------------------------------------------------------------------------
+
+var attemptDep = mustContract(contracts.Local("app.dep", contracts.LocalDeclaration{
+	Version: 1,
+	Params:  contracts.Params{contracts.Prop("id", contracts.Int())},
+	Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())},
+}))
+
+// serveDepAndPage serves attemptDep (its open waiting on opened) and hostPage, whose `id` derives from the dep's `n`.
+func serveDepAndPage(h FacetHost, opened <-chan struct{}) error {
+	if err := h.Serve(attemptDep, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		self.Open(func(ctx context.Context) (any, error) {
+			select {
+			case <-opened:
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
+			return nil, nil
+		}, func(any, NativeCloseReason, context.Context) error { return nil })
+		return impl("n", constant(1.0)), nil
+	}, ServeOptions{}); err != nil {
+		return err
+	}
+	return h.Serve(hostPage, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		dep := self.Get(attemptDep, jsonObject("id", params.Value("id")))
+		return impl("id", self.Derive([]any{dep.Member("n")}, func(values []any) (delta.JsonValue, error) { return values[0], nil })), nil
+	}, ServeOptions{})
+}
+
+// pageActivations are the chord.activate spans of app.page, in start order.
+func pageActivations(recorder *telemetry.InMemoryTelemetryContext) []telemetry.RecordedTelemetrySpan {
+	var found []telemetry.RecordedTelemetrySpan
+	for _, span := range spansNamed(recorder, "chord.activate") {
+		if typ, _ := span.Attributes.Get("type"); typ == "app.page" {
+			found = append(found, span)
+		}
+	}
+	return found
+}
+
+// attempt.test.ts › activation spans (slice 9) › a transient failure and its retry › is a root of the host's adapter, linked
+// to its first trigger; a retry's links to the attempt before
+func TestActivationSpansATransientFailureAndItsRetryIsARootOfTheHostsAdapterLinkedToItsFirstTriggerARetrysLinksToTheAttemptBefore(t *testing.T) {
+	recorder := telemetry.NewInMemoryTelemetryContext()
+	loop := newScopeLoop()
+	var fail atomic.Bool
+	fail.Store(true)
+	host, errs := loaded(t, func(h FacetHost, _ FacetSelf) error {
+		return h.Serve(hostPage, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			self.Open(func(context.Context) (any, error) {
+				if fail.Load() {
+					return nil, errors.New("flaky")
+				}
+				return nil, nil
+			}, func(any, NativeCloseReason, context.Context) error { return nil })
+			return impl("id", constant(params.Value("id"))), nil
+		}, ServeOptions{})
+	}, loadedOptions{Loop: loop, Telemetry: recorder})
+	tracedUnder(t, recorder, "getter", func(ctx context.Context) {
+		got := make(chan error, 1)
+		go func() {
+			_, err := host.Get(ctx, hostPage, jsonObject("id", 1.0), GetOptions{})
+			got <- err
+		}()
+		until(t, "the first activation's failure", func() bool { return errs.Len() == 1 })
+		fail.Store(false)
+		advanceHost(loop, host, 1_000)
+		must(t, receive(t, got))
+	})
+	getter := spanWhere(t, recorder, "getter", nil)
+	activations := pageActivations(recorder)
+	if len(activations) != 2 {
+		t.Fatalf("chord.activate spans = %d, want 2", len(activations))
+	}
+	first, second := activations[0], activations[1]
+	if first.ParentID != nil || !linksTo(first, getter) {
+		t.Errorf("first activation parent %v links %v, want a root linked to the getter", first.ParentID, linksOf(first))
+	}
+	attributesWant(t, first, map[string]any{"type": "app.page", "object": "app.page(1)", "attempt": float64(1), "outcome": "failed"})
+	if first.Status.Status != telemetry.SpanStatusCodeError || first.Status.Error == nil || first.Status.Error.Name != "activation_failed" {
+		t.Errorf("first activation status = %+v %+v, want error activation_failed", first.Status, first.Status.Error)
+	}
+	if len(first.Events) != 1 || first.Events[0].Name != "chord.retry" {
+		t.Fatalf("first activation events = %v, want one chord.retry", first.Events)
+	}
+	if backoff, _ := first.Events[0].Attributes.Get("backoff"); backoff != float64(1_000) {
+		t.Errorf("backoff = %v, want 1000", backoff)
+	}
+	if !linksTo(second, first) {
+		t.Errorf("retry links %v, want the first attempt", linksOf(second))
+	}
+	attributesWant(t, second, map[string]any{"attempt": float64(2), "outcome": "live"})
+	// The getter waited for the shared activation: it links to it.
+	if !linksTo(getter, first) {
+		t.Errorf("getter links %v, want the first activation", linksOf(getter))
+	}
+	closeHosts(t, host)
+}
+
+// › ends `parked` with the cause, records the park's duration, and resumes in a new span linked to it
+func TestActivationSpansEndParkedWithTheCauseRecordTheParksDurationAndResumeInANewSpanLinkedToIt(t *testing.T) {
+	recorder := telemetry.NewInMemoryTelemetryContext()
+	opened := make(chan struct{})
+	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error { return serveDepAndPage(h, opened) }, loadedOptions{Telemetry: recorder})
+	got := make(chan error, 1)
+	go func() {
+		_, err := host.Get(background, hostPage, jsonObject("id", 1.0), GetOptions{})
+		got <- err
+	}()
+	until(t, "the page's activation to park", func() bool {
+		pages := pageActivations(recorder)
+		return len(pages) == 1 && pages[0].Settled
+	})
+	close(opened)
+	must(t, receive(t, got))
+	pages := pageActivations(recorder)
+	if len(pages) != 2 {
+		t.Fatalf("page activations = %d, want 2", len(pages))
+	}
+	for index, want := range []string{"parked", "live"} {
+		attributesWant(t, pages[index], map[string]any{"attempt": float64(1), "outcome": want})
+	}
+	if events := pages[0].Events; len(events) != 1 || events[0].Name != "chord.park" {
+		t.Fatalf("parked events = %v, want one chord.park", events)
+	} else if cause, _ := events[0].Attributes.Get("cause"); cause != "loading" {
+		t.Errorf("park cause = %v, want loading", cause)
+	}
+	if !linksTo(pages[1], pages[0]) {
+		t.Errorf("resumed links %v, want the parked span", linksOf(pages[1]))
+	}
+	durations := 0
+	for _, measurement := range recorder.GetMetrics() {
+		if measurement.Name == "chord.park.duration" {
+			durations++
+		}
+	}
+	if durations != 1 {
+		t.Errorf("chord.park.duration measurements = %d, want 1", durations)
+	}
+	closeHosts(t, host)
+}
+
+// › records how a parked attempt ended in a short span linked to the parked one (review L4)
+func TestActivationSpansRecordHowAParkedAttemptEndedInAShortSpanLinkedToTheParkedOne(t *testing.T) {
+	recorder := telemetry.NewInMemoryTelemetryContext()
+	never := make(chan struct{})
+	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error { return serveDepAndPage(h, never) }, loadedOptions{Telemetry: recorder})
+	page, err := host.Hold(background, hostPage, jsonObject("id", 1.0), GetOptions{})
+	must(t, err)
+	until(t, "the page's activation to park", func() bool {
+		pages := pageActivations(recorder)
+		return len(pages) == 1 && pages[0].Settled
+	})
+	page.Release()
+	until(t, "the parked attempt's end", func() bool { return len(pageActivations(recorder)) == 2 && pageActivations(recorder)[1].Settled })
+	pages := pageActivations(recorder)
+	for index, want := range []string{"parked", "ended"} {
+		if outcome, _ := pages[index].Attributes.Get("outcome"); outcome != want || !pages[index].Settled {
+			t.Errorf("span %d = %v settled %v, want %s settled", index, outcome, pages[index].Settled, want)
+		}
+	}
+	if !linksTo(pages[1], pages[0]) {
+		t.Errorf("ended links %v, want the parked span", linksOf(pages[1]))
+	}
+	closeHosts(t, host)
+}
+
+// pageActivationSpan is the activation span of the live attempt of app.page(1) (nil when it has none) and whether the object
+// was found.
+func pageActivationSpan(host Host) (span telemetry.TelemetrySpan, found bool) {
+	host.(*chordHost).enter(func() {
+		for _, object := range host.(*chordHost).objectList() {
+			if object.label() == "app.page(1)" {
+				found = true
+				span = object.phase.attempt.activationSpan()
+			}
+		}
+	})
+	return span, found
+}
+
+// attempt.test.ts › activation spans (slice 9) › starts nothing without an adapter that records. A host recording to an
+// adapter is the control: the same read finds the span there.
+func TestActivationSpansStartNothingWithoutAnAdapterThatRecords(t *testing.T) {
+	recorder := telemetry.NewInMemoryTelemetryContext()
+	for _, options := range []loadedOptions{{}, {Telemetry: recorder}} {
+		host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error { return servePage(h, nil) }, options)
+		page := mustGet(t, host, hostPage, jsonObject("id", 1.0))
+		if got, err := page.Member("id").Value(); err != nil || got != 1.0 {
+			t.Fatalf("id = %v, %v, want 1", got, err)
+		}
+		span, found := pageActivationSpan(host)
+		if !found {
+			t.Fatal("no object of app.page(1)")
+		}
+		if recording := options.Telemetry != nil; (span != nil) != recording {
+			t.Errorf("activation span = %v with recording %v, want a span exactly when it records", span, recording)
+		}
+		page.Release()
+		closeHosts(t, host)
+	}
+	if got := len(spansNamed(recorder, "chord.activate")); got == 0 {
+		t.Errorf("the recording host started no chord.activate span")
+	}
 }

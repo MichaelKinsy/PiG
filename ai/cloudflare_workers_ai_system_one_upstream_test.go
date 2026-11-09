@@ -34,7 +34,7 @@ func cloudflareClassifierSetup(t *testing.T) (*Models, *ClassifierModel) {
 }
 
 func cloudflareClassifierOptions(fetch clsFetch) ModelsClassifierOptions {
-	return ModelsClassifierOptions{ClassifierOptions: ClassifierOptions{APIKey: "cf-key", APIKeySet: true, Env: ProviderEnv{"CLOUDFLARE_ACCOUNT_ID": "account-id"}, Fetch: clsClient(fetch)}}
+	return ModelsClassifierOptions{APIKey: "cf-key", APIKeySet: true, Env: ProviderEnv{"CLOUDFLARE_ACCOUNT_ID": "account-id"}, Fetch: clsClient(fetch)}
 }
 
 // Ports packages/ai/test/cloudflare-workers-ai-system-one.test.ts.

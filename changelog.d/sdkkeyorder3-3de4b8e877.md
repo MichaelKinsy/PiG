@@ -1,0 +1,3 @@
+### Fixed
+
+- A Go extension that reorders, filters, sorts, copies or edits the objects of an event in place (the content blocks of a message, a provider request's `tools`, a list of messages or entries, a string of a message) and hands them back no longer re-sorts their keys, so tool-call arguments, tool schemas and message members reach the session and the provider in the order the host sent them. The Go SDK records the member order of every object while it decodes the event and knows each object by its own map, so no object is ever given another's order and a reply reads nothing of the event's text. `Context.ObjectKeys` lists integer-like keys first and ascending, as `Object.keys` does. <!-- fix: 3de4b8e877c8fc4d3b7bedafa5e8ae8cbad7161f -->

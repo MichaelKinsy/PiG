@@ -172,7 +172,7 @@ func jobsLoaded(t testing.TB, setup func(host FacetHost) error, options jobHostO
 	t.Helper()
 	errs := &hostErrors{}
 	hostOptions := HostOptions{
-		Telemetry: options.Telemetry, CloseTimeout: options.CloseTimeout, ReadyTimeout: options.ReadyTimeout,
+		Telemetry: telemetryOf(options.Telemetry), CloseTimeout: options.CloseTimeout, ReadyTimeout: options.ReadyTimeout,
 		Store: options.Store, OnError: errs.push,
 	}
 	if options.Loop != nil {

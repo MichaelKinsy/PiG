@@ -9,7 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/sqlite/node"
 )
 
-// Ports packages/chord/test/next/store/catalog.test.ts: the catalog (slice 6a §8): the store's records of its tables,
+// Ports packages/chord/test/store/catalog.test.ts: the catalog (slice 6a §8): the store's records of its tables,
 // read once at open, changed after COMMIT returned.
 //
 // pi: packages/chord/src/next/store/catalog.ts
@@ -84,7 +84,7 @@ func TestCatalog(t *testing.T) {
 		table := StageTable(&TableDefinitionWrite{
 			Table: catalogTable, Version: edits.Version, State: StateReady, Columns: edits.Record, Key: edits.Key, Fingerprint: edits.Fingerprint,
 		})
-		fence := CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64) error { return nil }}
+		fence := CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64, int) error { return nil }}
 		_, err := store.Commit([]StagedWrite{table, failing}, fence, background)
 		if err == nil || !strings.Contains(err.Error(), "no such table") {
 			t.Fatalf("Commit error = %v, want no such table", err)

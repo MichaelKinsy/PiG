@@ -52,9 +52,9 @@ Regenerate these files with the repository commands. Do not edit generated recor
 
 ## Mermaid renderer
 
-`internal/mermaid/` contains a Go port of `grok-mermaid` 0.2.2 and width data derived from `unicode-width` 0.2.0.
+`internal/mermaid/` contains a Go port of `lovely-mermaid` 0.3.3 (the package `grok-mermaid` was renamed to) and width data derived from `unicode-width` 0.2.0.
 
-- `grok-mermaid` revision: `3430584a71350d72b5a0310e91bcd55578a9f981`
+- `lovely-mermaid` revision: `a28f683ef3d9eda3497e5818f4f18dfdc3a87ed9`
 - `unicode-width` revision: `79eab0d9fc2060783b43046f9611648dcd35172f`
 
 See [`THIRD_PARTY_NOTICES.md`](../../THIRD_PARTY_NOTICES.md) for copyrights and license choices.

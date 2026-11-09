@@ -9,3 +9,9 @@ TEXT ·goidAt(SB), NOSPLIT, $0-16
 	MOVD (R0), R0
 	MOVD R0, ret+8(FP)
 	RET
+
+// func gptr() uintptr
+TEXT ·gptr(SB), NOSPLIT, $0-8
+	MOVD g, R0
+	MOVD R0, ret+0(FP)
+	RET

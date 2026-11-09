@@ -278,7 +278,7 @@ func (m *RemoteMessage) UnmarshalJSON(data []byte) error {
 		if err := json.Unmarshal(head.Error, &failure); err != nil {
 			return fmt.Errorf("failure message: %w", err)
 		}
-		*m = RemoteMessage{WorkerToHostMessage: WorkerToHostMessage{Type: MessageFailure}, Failure: &failure}
+		*m = RemoteMessage{Type: MessageFailure, Failure: &failure}
 		return nil
 	}
 	*m = RemoteMessage{}

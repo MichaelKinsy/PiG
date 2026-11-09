@@ -95,7 +95,7 @@ func (t *FindTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 	if p.Limit != nil {
 		effectiveLimit = *p.Limit
 	}
-	// pig divergence (D253): Pi main 676af1d77 reads a limit below 1 as 1 (fd treats --max-results 0 as unlimited)
+	// Pi main 676af1d77 (#11747) reads a limit below 1 as 1 (fd treats --max-results 0 as unlimited)
 	// and floors a fractional one.
 	effectiveLimit = math.Max(1, math.Floor(effectiveLimit))
 
@@ -118,7 +118,7 @@ func (t *FindTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 	if !insideGitRepo(searchPath) {
 		args = append(args, "--no-require-git")
 	}
-	// pig divergence (D253): one result past the limit tells "exactly N matches" from "more than N".
+	// One result past the limit tells "exactly N matches" from "more than N".
 	args = append(args, "--max-results", jsNumber(effectiveLimit+1))
 	// fd --glob matches the basename unless --full-path is set; in
 	// --full-path mode it matches the absolute candidate path, so a
@@ -212,7 +212,7 @@ func (t *FindTool) findWithOperations(ctx context.Context, pattern, searchPath s
 		return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "No files found matching pattern"}}}
 	}
 	limitReached := false
-	// pig divergence (D253): a custom glob receives limit+1; the extra result only reports that the limit was reached.
+	// A custom glob receives limit+1; the extra result only reports that the limit was reached.
 	if float64(len(results)) > limit {
 		//portlint:allow numbers len(results) > limit and limit is the whole number the caller floored, so int holds it exactly and slice(0, limit) takes the first limit results
 		results = results[:int(limit)]

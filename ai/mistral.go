@@ -665,50 +665,20 @@ func toMistralWirePayload(payload any) (json.RawMessage, error) {
 // mistralWireRequest is a mistralRequest after toMistralWirePayload: the members buildChatPayload creates in place, then each renamed member in the order
 // toMistralWirePayload remaps it (mistral-conversations.ts:374-389).
 type mistralWireRequest struct {
-	Model           string               `json:"model"`
-	Stream          bool                 `json:"stream"`
-	Messages        []mistralWireMessage `json:"messages"`
-	Tools           []mistralTool        `json:"tools,omitempty"` //portlint:allow emptydrop Pi sets tools only when currentTools is non-empty (mistral-conversations.ts:540); req.Tools likewise (mistral.go:355)
-	Temperature     *float64             `json:"temperature,omitempty"`
-	MaxTokens       *int                 `json:"max_tokens,omitempty"`
-	ToolChoice      any                  `json:"tool_choice,omitempty"`
-	ReasoningEffort string               `json:"reasoning_effort,omitempty"`
-	PromptMode      string               `json:"prompt_mode,omitempty"`
-	PromptCacheKey  string               `json:"prompt_cache_key,omitempty"`
-}
-
-// mistralWireMessage is a mistralMessage after toMistralWireMessage, which appends tool_calls and tool_call_id after the members it keeps.
-type mistralWireMessage struct {
-	Role       string `json:"role"`
-	Prefix     *bool  `json:"prefix,omitempty"`
-	Name       string `json:"name,omitempty"`
-	Content    any    `json:"content,omitempty"`
-	ToolCalls  any    `json:"tool_calls,omitempty"`
-	ToolCallID string `json:"tool_call_id,omitempty"`
-}
-
-// mistralWireChunk is a mistralContentChunk after toMistralWireContentChunk; a chunk has one of text, thinking and image_url.
-type mistralWireChunk struct {
-	Type     string  `json:"type"`
-	Text     *string `json:"text,omitempty"`
-	Thinking any     `json:"thinking,omitempty"`
-	ImageURL string  `json:"image_url,omitempty"`
+	Model           string              `json:"model"`
+	Stream          bool                `json:"stream"`
+	Messages        mistralWireMessages `json:"messages"`
+	Tools           []mistralTool       `json:"tools,omitempty"` //portlint:allow emptydrop Pi sets tools only when currentTools is non-empty (mistral-conversations.ts:540); req.Tools likewise (mistral.go:355)
+	Temperature     *float64            `json:"temperature,omitempty"`
+	MaxTokens       *int                `json:"max_tokens,omitempty"`
+	ToolChoice      any                 `json:"tool_choice,omitempty"`
+	ReasoningEffort string              `json:"reasoning_effort,omitempty"`
+	PromptMode      string              `json:"prompt_mode,omitempty"`
+	PromptCacheKey  string              `json:"prompt_cache_key,omitempty"`
 }
 
 func (r mistralRequest) wire() mistralWireRequest {
-	messages := make([]mistralWireMessage, len(r.Messages))
-	for i, message := range r.Messages {
-		content := message.Content
-		if chunks, ok := content.([]mistralContentChunk); ok {
-			wire := make([]mistralWireChunk, len(chunks))
-			for j, chunk := range chunks {
-				wire[j] = mistralWireChunk{Type: chunk.Type, Text: chunk.Text, Thinking: chunk.Thinking, ImageURL: chunk.ImageURL}
-			}
-			content = wire
-		}
-		messages[i] = mistralWireMessage{Role: message.Role, Prefix: message.Prefix, Name: message.Name, Content: content, ToolCalls: message.ToolCalls, ToolCallID: message.ToolCallID}
-	}
-	return mistralWireRequest{Model: r.Model, Stream: r.Stream, Messages: messages, Tools: r.Tools, Temperature: r.Temperature, MaxTokens: r.MaxTokens,
+	return mistralWireRequest{Model: r.Model, Stream: r.Stream, Messages: mistralWireMessages(r.Messages), Tools: r.Tools, Temperature: r.Temperature, MaxTokens: r.MaxTokens,
 		ToolChoice: r.ToolChoice, ReasoningEffort: r.ReasoningEffort, PromptMode: r.PromptMode, PromptCacheKey: r.PromptCacheKey}
 }
 

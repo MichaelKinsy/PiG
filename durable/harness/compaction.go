@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"encoding/json/jsontext"
 	"fmt"
 	"math"
 	"slices"
@@ -15,6 +16,7 @@ import (
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
@@ -618,21 +620,22 @@ func callArguments(call ai.ToolCall) string {
 	if err != nil {
 		return ""
 	}
-	decoder := json.NewDecoder(bytes.NewReader(encoded))
-	if token, err := decoder.Token(); err != nil || token != json.Delim('{') {
+	decoder := jsontext.NewDecoder(bytes.NewReader(encoded), jsonopts.Parse)
+	if token, err := decoder.ReadToken(); err != nil || token.Kind() != '{' {
 		return ""
 	}
 	var pairs []string
-	for decoder.More() {
-		key, err := decoder.Token()
+	for decoder.PeekKind() != '}' {
+		keyToken, err := decoder.ReadToken()
 		if err != nil {
 			return strings.Join(pairs, ", ")
 		}
-		var value json.RawMessage
-		if err := decoder.Decode(&value); err != nil {
+		key := keyToken.String() // a Token and the bytes ReadValue returns are void after the next call on the decoder
+		value, err := decoder.ReadValue()
+		if err != nil {
 			return strings.Join(pairs, ", ")
 		}
-		pairs = append(pairs, fmt.Sprint(key)+"="+jsStringEscapes(value))
+		pairs = append(pairs, key+"="+jsStringEscapes(value))
 	}
 	return strings.Join(pairs, ", ")
 }

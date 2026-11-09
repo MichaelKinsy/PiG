@@ -27,7 +27,6 @@ fs.writeFileSync(file, JSON.stringify(pkg, null, 2));
 ' "$work/node_modules/@earendil-works/pi-coding-agent/package.json"
 # Pig reads PIG_PACKAGE_DIR (config.ts getPackageDir), so Pi's PI_PACKAGE_DIR line is renamed and keeps its description column.
 # Pi lists its own app name as the third self-update target ('update [source|self|pi]'); pig accepts 'pig' there.
-# Pig's --tools has no +name/-name form yet (K1 in coding/cli/help_oracle_test.go), so those Pi lines are not printed.
 # pig divergence (D64): /share prints the PiG gateway's URL, so PI_SHARE_VIEWER_URL is unused.
 # The patched app name selects PIG_CODING_AGENT_DIR, not PI_CODING_AGENT_DIR.
 # Never load the invoking agent's state or let terminal color enter the artifact.
@@ -42,13 +41,6 @@ grep -v 'PI_SHARE_VIEWER_URL' "$work/help.raw" \
   | sed -e 's/^  PI_PACKAGE_DIR /  PIG_PACKAGE_DIR/' \
     -e 's/^  PI_SELF_UPDATE_COMMAND \(.*\)Command pi update runs to update pi itself/  PI_SELF_UPDATE_COMMAND \1Command pig update runs to update pig itself/' \
     -e 's/^  pig update \[source|self|pi\]   Update pi, extensions, or model catalogs$/  pig update [source|self|pig]   Update pig, extensions, or model catalogs/' \
-  | awk '
-      /^ +Only \+name\/-name entries add to or remove from the defaults$/ { next }
-      /^  # Add codemode to the default tools$/ { skip = 1; next }
-      skip && /^  pig --tools \+codemode$/ { next }
-      skip && /^$/ { skip = 0; next }
-      { skip = 0; print }
-    ' \
   >"$output"
 chmod 644 "$output"
 mv "$output" "$root/coding/cli/help_upstream.txt"

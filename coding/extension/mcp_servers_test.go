@@ -4,10 +4,12 @@ package extension
 
 import (
 	"encoding/json"
-	"github.com/MichaelKinsy/PiG/mcp"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/mcpshared"
 )
 
 // Not upstream tests: guards for packages/coding-agent/src/core/mcp-servers.ts.
@@ -241,6 +243,26 @@ func TestValidateMcpServerConfigParsesTheURLAsTheWHATWGParserDoes(t *testing.T) 
 // `oauth.callbackUrl` check of the validation: whether a redirect URI can be served by the loopback callback server.
 func isLoopbackRedirectURI(uri string) bool {
 	quoted, _ := json.Marshal(uri)
-	result := mcp.ValidateMcpServerConfig("s", json.RawMessage(`{"url":"https://x.example","oauth":{"callbackUrl":`+string(quoted)+`}}`), mcp.McpServerConfigOptions{})
+	result := mcpshared.ValidateMcpServerConfig("s", json.RawMessage(`{"url":"https://x.example","oauth":{"callbackUrl":`+string(quoted)+`}}`), mcpshared.McpServerConfigOptions{})
 	return !strings.Contains(result.Error, "oauth.callbackUrl must be an http URI")
+}
+
+// Pi's `headers` and `env` are objects whose keys keep their insertion order (packages/mcp/src/config.ts McpHttpServerConfig.headers,
+// McpStdioServerConfig.env); McpServerConfig keeps the order through validation, and `type` is the entry's own.
+func TestValidateMcpServerConfigKeepsTheOrderOfHeadersAndEnvAndTheType(t *testing.T) {
+	http, message := ValidateMcpServerConfig("h", json.RawMessage(`{"type":"streamable-http","url":"https://a.example/","headers":{"b":"1","a":"2","c":"3"}}`))
+	if message != "" || http.Type != "streamable-http" || !slices.Equal(http.Headers.Keys(), []string{"b", "a", "c"}) {
+		t.Fatalf("http = %+v, %q", http, message)
+	}
+	var entries []string
+	for key, value := range http.Headers.All() {
+		entries = append(entries, key+"="+value)
+	}
+	if !slices.Equal(entries, []string{"b=1", "a=2", "c=3"}) {
+		t.Fatalf("entries = %q", entries)
+	}
+	stdio, message := ValidateMcpServerConfig("s", json.RawMessage(`{"type":"stdio","command":"x","env":{"Z":"1","A":"2"}}`))
+	if message != "" || stdio.Type != "stdio" || !slices.Equal(stdio.Env.Keys(), []string{"Z", "A"}) {
+		t.Fatalf("stdio = %+v, %q", stdio, message)
+	}
 }

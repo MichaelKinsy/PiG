@@ -341,9 +341,9 @@ func TestRunPiCodingAgentServesCustomToolsThroughTheBridge(t *testing.T) {
 	var receivedID string
 	options.Tools = []string{"read", "submit_audit"}
 	options.CustomTools = []CustomTool{{
-		Tool: bridge.Tool{Name: "submit_audit", Description: "Submit the audit.", PromptSnippet: "Submit the audit verdict", Parameters: chordjson.ObjectOf(
+		Name: "submit_audit", Description: "Submit the audit.", PromptSnippet: "Submit the audit verdict", Parameters: chordjson.ObjectOf(
 			"type", "object", "properties", chordjson.ObjectOf("verdict", chordjson.ObjectOf("type", "string")), "required", []string{"verdict"},
-		)},
+		),
 		Execute: func(_ context.Context, toolCallID string, params map[string]any) (CustomToolResult, error) {
 			received, receivedID = params, toolCallID
 			return CustomToolResult{Content: "Audit submitted.", Details: params, Terminate: true}, nil

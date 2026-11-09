@@ -97,12 +97,17 @@ func snapshotEnvDirs(t *testing.T, sourcePath string, envVars []string, preserve
 		// Create ephemeral copy.
 		// PIG_HOME holds pig's documentation bundle, whose path the system
 		// prompt carries; see "Documentation paths in the system prompt".
-		root, digits := os.TempDir(), snapshotIDDigits
+		//
+		// Every snapshot sits under promptPathRoot, not os.TempDir(), so a path that a TUI row embeds (the config selector's
+		// "User (<agent dir>) · inherited global") has the same length for both binaries whatever TMPDIR is. Pi's row reaches
+		// exactly 90 columns at a TMPDIR of 18 characters and its reset escape then lands on the next captured line; pig's row,
+		// under the fixed root, never did.
+		if err := checkPromptPathRoot(); err != nil {
+			t.Fatal(err)
+		}
+		root, digits := promptPathRoot, snapshotIDDigits
 		if k == "PIG_HOME" {
-			if err := checkPromptPathRoot(); err != nil {
-				t.Fatal(err)
-			}
-			root, digits = promptPathRoot, pigHomeIDDigits
+			digits = pigHomeIDDigits
 		}
 		tmp, err := mkdirFixedDigits(root, fmt.Sprintf("parity-snap-%s-", k), digits)
 		if err != nil {

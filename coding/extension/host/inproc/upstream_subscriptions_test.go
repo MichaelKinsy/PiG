@@ -176,7 +176,7 @@ func dispatchSubscriptionEvent(ctx context.Context, r *inproc.Runner, kind strin
 	case "resources_discover":
 		_, err = r.EmitResourcesDiscover(ctx, "cwd", "startup")
 	case "agent_before_settle":
-		_, err = r.EmitBoundary(ctx, &extension.AgentBeforeSettleEvent{Type: kind, BoundaryState: extension.BoundaryState{Outcome: extension.AgentActivityCompleted}}, func([]extension.SessionBoundaryDraft) (extension.BoundaryContextPreview, error) {
+		_, err = r.EmitBoundary(ctx, &extension.AgentBeforeSettleEvent{Type: kind, Outcome: extension.AgentActivityCompleted}, func([]extension.SessionBoundaryDraft) (extension.BoundaryContextPreview, error) {
 			return extension.BoundaryContextPreview{}, nil
 		})
 	case "project_trust":

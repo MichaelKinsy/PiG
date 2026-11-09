@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"go/parser"
 	"go/token"
+	"go/version"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -497,7 +498,7 @@ func installedPigSourceRoots() []string {
 
 func renderGoMod(extensions []GoExtension, sdkRoot string) string {
 	var b strings.Builder
-	b.WriteString("module pig.generated/packed-cell\n\ngo 1.26.0\n\n")
+	fmt.Fprintf(&b, "module pig.generated/packed-cell\n\ngo %s\n\n", goDirectiveFor(extensions))
 	fmt.Fprintf(&b, "require github.com/MichaelKinsy/PiG/extensions/sdk %s // indirect\n", sdkVersionFor(extensions))
 	legacySDK := requiresLegacyGoSDK(extensions)
 	if legacySDK {
@@ -585,6 +586,35 @@ func goModuleRoots(extensions []GoExtension) []string {
 	}
 	slices.Sort(roots)
 	return slices.Compact(roots)
+}
+
+// packedCellGoFloor is the language floor of the generated module: the extension SDK's.
+const packedCellGoFloor = "1.26.0"
+
+// goDirectiveFor returns the go directive of the generated module: the SDK floor, or the highest directive an extension module or
+// workspace module declares. The go command rejects a main module that declares less than a module it requires ("updates to go.mod
+// needed"), and a module that requires the root PiG module, as the Porter extension does, declares the root's floor.
+func goDirectiveFor(extensions []GoExtension) string {
+	floor := packedCellGoFloor
+	for _, root := range goModuleRoots(extensions) {
+		data, err := os.ReadFile(filepath.Join(root, "go.mod"))
+		if err != nil {
+			continue
+		}
+		file, err := modfile.ParseLax(filepath.Join(root, "go.mod"), data, nil)
+		if err != nil || file.Go == nil {
+			continue
+		}
+		declared := file.Go.Version
+		if lang := "go" + declared; strings.Contains(declared, ".") && version.Lang(lang) == lang { // a language version ("go1.27"), not a release, a candidate or a beta
+			//perf:ok one append per extension module at registration, a handful of modules, cold path
+			declared += ".0" // "1.27" and "1.27.0" name the same language version; the generated module spells it the second way
+		}
+		if version.Compare("go"+declared, "go"+floor) > 0 {
+			floor = declared
+		}
+	}
+	return floor
 }
 
 func sdkVersionFor(extensions []GoExtension) string {
@@ -718,7 +748,13 @@ func modulePathAt(root string) (string, error) {
 func renderGoRunner(extensions []GoExtension) string {
 	var b strings.Builder
 	b.WriteString("package main\n\nimport (\n")
-	b.WriteString("\t\"bufio\"\n\t\"errors\"\n\t\"fmt\"\n\t\"net\"\n\t\"os\"\n\t\"slices\"\n\t\"strings\"\n\t\"sync\"\n\n")
+	b.WriteString("\t\"bufio\"\n\t\"errors\"\n\t\"fmt\"\n\t\"net\"\n\t\"os\"\n\t\"runtime/debug\"\n\t\"slices\"\n\t\"strings\"\n\t\"sync\"\n\n")
+	// The SDK's ReportLoadFailure closes the connection a failed factory's host helpers dialled. An extension that imports the legacy SDK path runs the legacy copy, whose helper state is its own.
+	legacySDK := requiresLegacyGoSDK(extensions)
+	fmt.Fprintf(&b, "\tsdk %q\n", extsource.GoSDKModulePath)
+	if legacySDK {
+		fmt.Fprintf(&b, "\tlegacysdk %q\n", extsource.LegacyGoSDKModulePath)
+	}
 	for _, ext := range extensions {
 		pkgName := extPackageName(ext.Name)
 		fmt.Fprintf(&b, "\t%s %q\n", pkgName, ext.Package)
@@ -727,10 +763,15 @@ func renderGoRunner(extensions []GoExtension) string {
 	b.WriteString("func main() {\n")
 	b.WriteString("\ttype item struct { name string; env string; run func(string, func()) error }\n")
 	b.WriteString(goRunnerFactoryScope)
+	b.WriteString("\treportFailure := func(sock string) {\n\t\t_ = sdk.ReportLoadFailure(sock)\n")
+	if legacySDK {
+		b.WriteString("\t\t_ = legacysdk.ReportLoadFailure(sock)\n")
+	}
+	b.WriteString("\t}\n")
 	b.WriteString("\titems := []item{\n")
 	for _, ext := range extensions {
 		pkgName := extPackageName(ext.Name)
-		fmt.Fprintf(&b, "\t\t{name: %q, env: %q, run: func(sock string, built func()) error { extension := build(sock, func() runnable { return %s.%s() }); built(); return extension.RunWithSocket(sock) }},\n", ext.Name, SocketEnvName(ext.Name), pkgName, ext.Factory)
+		fmt.Fprintf(&b, "\t\t{name: %q, env: %q, run: func(sock string, built func()) error { extension := build(sock, func() runnable { if member := %s.%s(); member != nil { return member }; return nil }); built(); if extension == nil { return errNoExtension }; return extension.RunWithSocket(sock) }},\n", ext.Name, SocketEnvName(ext.Name), pkgName, ext.Factory)
 	}
 	b.WriteString("\t}\n")
 	b.WriteString(goRunnerBody)
@@ -742,6 +783,7 @@ func renderGoRunner(extensions []GoExtension) string {
 // helper the factory calls before Run (the SDK's ParseFrontmatter, ParseDate) dials that socket. The members' factories run one at a time, as Pi loads
 // extensions one at a time.
 const goRunnerFactoryScope = `	type runnable interface{ RunWithSocket(string) error }
+	errNoExtension := errors.New("factory returned nil")
 	var factoryMu sync.Mutex
 	build := func(sock string, factory func() runnable) runnable {
 		factoryMu.Lock()
@@ -764,6 +806,16 @@ const goRunnerBody = `	var mu sync.Mutex
 	cond := sync.NewCond(&mu)
 	live, parked, inputClosed := 0, false, false
 	var failures []error
+	// A panic in a member's factory or serve loop is that member's failure, reported as an error return is: a factory that throws fails its own load in Pi and in an isolated process, and must not end the process that serves the other members. The stack goes to the log indented, so the failure line stays the last unindented line the host reads as the cause.
+	runMember := func(it item, sock string, built func()) (err error) {
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				fmt.Fprintf(os.Stderr, "panic stack of %s:\n\t%s\n", it.name, strings.ReplaceAll(strings.TrimSpace(string(debug.Stack())), "\n", "\n\t"))
+				err = fmt.Errorf("panic: %v", recovered)
+			}
+		}()
+		return it.run(sock, built)
+	}
 	start := func(it item, sock string) <-chan struct{} {
 		mu.Lock()
 		live++
@@ -773,10 +825,10 @@ const goRunnerBody = `	var mu sync.Mutex
 		built := func() { once.Do(func() { close(ready) }) }
 		go func() {
 			defer built()
-			err := it.run(sock, built)
+			err := runMember(it, sock, built)
 			if err != nil && !errors.Is(err, net.ErrClosed) {
-				fmt.Fprintf(os.Stderr, "%s: %v\n", it.name, err)
-				if c, dialErr := net.Dial("unix", sock); dialErr == nil { _ = c.Close() }
+				fmt.Fprintf(os.Stderr, "extension \"%s\" load failed: %v\n", it.name, err)
+				reportFailure(sock)
 				mu.Lock()
 				failures = append(failures, fmt.Errorf("%s: %w", it.name, err))
 				mu.Unlock()

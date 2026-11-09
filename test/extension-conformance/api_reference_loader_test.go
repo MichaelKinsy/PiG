@@ -107,8 +107,12 @@ func (l *loaderAPI) RegisterMessageRenderer(customType string, renderer extensio
 	l.ext.MessageRenderers[customType] = renderer
 }
 
-func (l *loaderAPI) RegisterMarkdownTransformer(transformer extension.MarkdownTransformer) { // loader.ts:340
-	l.ext.MarkdownTransformer = transformer
+func (l *loaderAPI) RegisterMarkdownTransformer(transformer extension.MarkdownTransformer, options ...extension.MarkdownTransformerOptions) { // loader.ts:340
+	var messageTypes []extension.MarkdownMessageType // nil: the default types
+	if len(options) > 0 {
+		messageTypes = options[0].MessageTypes
+	}
+	l.ext.MarkdownTransformer = extension.NewMarkdownTransformerRegistration(transformer, messageTypes)
 }
 
 // TestConformanceAPIRegisterFlagMessageRendererAndMarkdownTransformer: a flag, a message renderer and a Markdown transformer an extension
@@ -157,7 +161,8 @@ func TestConformanceAPIRegisterFlagMessageRendererAndMarkdownTransformer(t *test
 		t.Error("a message renderer answered for a custom type nobody registered")
 	}
 	transformers := runner.GetMarkdownTransformers()
-	if len(transformers) != 2 || transformers[0]("x", extension.MarkdownTransformContext{}) != "2x" || transformers[1]("x", extension.MarkdownTransformContext{}) != "3x" {
+	user := extension.MarkdownTransformContext{MessageType: extension.MarkdownMessageUser} // a transformer without options runs on the transcript types
+	if len(transformers) != 2 || transformers[0]("x", user) != "2x" || transformers[1]("x", user) != "3x" {
 		t.Fatalf("markdown transformers %d, want [2x 3x]: the last of each extension in load order", len(transformers))
 	}
 }

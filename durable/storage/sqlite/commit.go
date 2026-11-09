@@ -526,13 +526,13 @@ func (pending *pendingWrites) clear(id int64) {
 
 // commitStatements are the SQL texts of a commit call's writes, built once per schema.
 type commitStatements struct {
-	recordIds       insertStatement
-	conversations   insertStatement
-	entries         insertStatement
-	tasks           insertStatement
-	submissions     insertStatement
-	documents       insertStatement
-	revisions       insertStatement
+	recordIds       *insertStatement
+	conversations   *insertStatement
+	entries         *insertStatement
+	tasks           *insertStatement
+	submissions     *insertStatement
+	documents       *insertStatement
+	revisions       *insertStatement
 	deleteRevisions string
 }
 
@@ -562,12 +562,12 @@ func (pending *pendingWrites) flush(executor SqliteExecutor, statements *commitS
 		statement *insertStatement
 		rows      [][]cell
 	}{
-		{&statements.recordIds, pending.recordIds.all()},
-		{&statements.conversations, pending.conversations},
-		{&statements.entries, pending.entries},
-		{&statements.tasks, pending.tasks.all()},
-		{&statements.submissions, pending.submissions.all()},
-		{&statements.documents, pending.documents.all()},
+		{statements.recordIds, pending.recordIds.all()},
+		{statements.conversations, pending.conversations},
+		{statements.entries, pending.entries},
+		{statements.tasks, pending.tasks.all()},
+		{statements.submissions, pending.submissions.all()},
+		{statements.documents, pending.documents.all()},
 	}
 	for _, step := range steps {
 		if err := insertRows(executor, step.statement, step.rows); err != nil {
@@ -577,7 +577,7 @@ func (pending *pendingWrites) flush(executor SqliteExecutor, statements *commitS
 	if err := runForEach(executor, statements.deleteRevisions, pending.cleared); err != nil {
 		return err
 	}
-	if err := insertRows(executor, &statements.revisions, pending.revisions.all()); err != nil {
+	if err := insertRows(executor, statements.revisions, pending.revisions.all()); err != nil {
 		return err
 	}
 	pending.recordIds.clear()

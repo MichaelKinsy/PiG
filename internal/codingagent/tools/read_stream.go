@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"iter"
 	"math"
 	"strings"
 	"sync"
@@ -23,6 +24,39 @@ var readChunkPool = sync.Pool{New: func() any {
 	buf := make([]byte, readStreamChunk)
 	return &buf
 }}
+
+// ReadStream is Pi's AsyncIterable<Uint8Array> of ReadOperations.createReadStream: the chunks of a file in order. All yields them until the
+// end of the file; a read that fails ends the iteration and its error is [ReadStream.Err] (Pi's for-await throws it). The read tool pulls the
+// stream through Read, as one byte source, and releases it with Close.
+type ReadStream struct {
+	io.ReadCloser
+	err error
+}
+
+// NewReadStream is the stream that reads the chunks of source.
+func NewReadStream(source io.ReadCloser) *ReadStream { return &ReadStream{ReadCloser: source} }
+
+// All yields the chunks of the stream, each valid until the next. It ends at the end of the file or at the first read error, which Err reports.
+func (s *ReadStream) All() iter.Seq[[]byte] {
+	return func(yield func([]byte) bool) {
+		buf := make([]byte, readStreamChunk)
+		for {
+			n, err := s.Read(buf)
+			if n > 0 && !yield(buf[:n]) {
+				return
+			}
+			if err != nil {
+				if !errors.Is(err, io.EOF) {
+					s.err = err
+				}
+				return
+			}
+		}
+	}
+}
+
+// Err is the error that ended the last iteration of [ReadStream.All], nil after a complete one.
+func (s *ReadStream) Err() error { return s.err }
 
 // maxStreamedLine bounds the offset and limit a streamed read takes: larger values keep the whole-file path.
 const maxStreamedLine = math.MaxInt32

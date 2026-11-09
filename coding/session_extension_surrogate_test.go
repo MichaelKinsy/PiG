@@ -56,7 +56,7 @@ func TestExtensionCompactionPreservesLoneSurrogates(t *testing.T) {
 		t.Fatalf("summary units=%x, want %x", jsstring.ToUTF16(result.Summary), jsstring.ToUTF16("s"+lone))
 	}
 	var line string
-	for _, entry := range s.inner.GetEntries() {
+	for _, entry := range s.inner.Load().GetEntries() {
 		if entry.Base().Type == "compaction" {
 			line = string(entry.Raw())
 		}
@@ -74,11 +74,11 @@ func TestBoundaryContextEditPreservesLoneSurrogates(t *testing.T) {
 	}
 	_ = sess.Events()
 	defer func() { _ = sess.Close() }()
-	target, err := sess.inner.AppendCustomMessageEntry("note", "x"+jsstring.FromUTF16([]uint16{0xdfff}), true, nil)
+	target, err := sess.inner.Load().AppendCustomMessageEntry("note", "x"+jsstring.FromUTF16([]uint16{0xdfff}), true, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	appended, err := applyBoundaryDrafts(sess.inner, []extension.SessionBoundaryDraft{{Type: "context_edit", TargetID: target, Replacement: json.RawMessage(`{"content":"r\ud800"}`)}})
+	appended, err := applyBoundaryDrafts(sess.inner.Load(), []extension.SessionBoundaryDraft{{Type: "context_edit", TargetID: target, Replacement: json.RawMessage(`{"content":"r\ud800"}`)}})
 	if err != nil {
 		t.Fatal(err)
 	}

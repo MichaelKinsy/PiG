@@ -22,9 +22,10 @@ func TestToolCallInputMutationAcrossSDKs(t *testing.T) {
 	rewritten := map[string]any{"command": "git status --short", "added": true, "nested": map[string]any{"depth": 2.0}, "timeout": 5.0}
 	for _, test := range allHarnessCases() {
 		t.Run(test.name, func(t *testing.T) {
+			h := test.make(t)
+			// The deadline starts after make: a harness may first build its fixture, which can outlast it, and an emit under an expired context delivers nothing yet reports no error.
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
-			h := test.make(t)
 			t.Cleanup(func() {
 				if h.cleanup != nil {
 					h.cleanup()
@@ -38,9 +39,9 @@ func TestToolCallInputMutationAcrossSDKs(t *testing.T) {
 				input := newInput(command)
 				wire := json.RawMessage(`{"timeout":5,"drop":"dropped","command":` + mustJSON(t, command) + `}`)
 				event := extension.CustomToolCallEvent{
-					ToolCallEventBase: extension.ToolCallEventBase{Type: "tool_call", ToolCallID: tool + "-" + command, WireInput: &wire},
-					ToolName:          tool,
-					Input:             input,
+					Type: "tool_call", ToolCallID: tool + "-" + command, WireInput: &wire,
+					ToolName: tool,
+					Input:    input,
 				}
 				result, err := h.runner.EmitToolCall(ctx, event)
 				if err != nil {

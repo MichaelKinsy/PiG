@@ -1,4 +1,4 @@
-go 1.26.0
+go 1.27.0
 
 // Equal to .go-version and the go.mod toolchain line.
 toolchain go1.27.3
@@ -9,5 +9,6 @@ godebug winsymlink=0
 use (
 	.
 	./extensions/sdk
+	./piglets/pig-bolt
 	./piglets/porter/extensions/pig-porter
 )

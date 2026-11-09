@@ -1,6 +1,6 @@
 package documents
 
-// Ports packages/chord/test/next/documents/persistence.test.ts
+// Ports packages/chord/test/documents/persistence.test.ts
 // pi: packages/chord/src/next/documents/persistence.ts
 //
 // Persisted documents' store side (slice 6a §8, §10): loads with the version and fingerprint checks and `migrate`,
@@ -72,7 +72,7 @@ func (f *persistFixture) change(key string, before *JsonObject, after func(draft
 	if err != nil {
 		f.t.Fatal(err)
 	}
-	fence := store.CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64) error { return nil }}
+	fence := store.CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64, int) error { return nil }}
 	if _, err := f.store.Commit(writes, fence, background); err != nil {
 		f.t.Fatal(err)
 	}
@@ -333,7 +333,7 @@ func TestStagedWritesStageARetirementBeforeARecreationAndNumberCreationsByTheirO
 		t.Errorf("staged = %+v %+v %+v", first, again, gone)
 	}
 	var ids []int64
-	fence := store.CommitFence{Admit: func() bool { return true }, Adopt: func(_ int64, created []int64) error { ids = created; return nil }}
+	fence := store.CommitFence{Admit: func() bool { return true }, Adopt: func(_ int64, created []int64, _ int) error { ids = created; return nil }}
 	if _, err := f.store.Commit(writes, fence, background); err != nil {
 		t.Fatal(err)
 	}

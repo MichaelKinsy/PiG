@@ -105,7 +105,7 @@ func TestKittyEncodedAppKeysFollowEachPlatformColumn(t *testing.T) {
 			{"kitty alt+p", "\x1b[112;3u", pick(actionInsert, actionCycleModelBackward)},
 			{"kitty Cyrillic shift+ctrl+p", "\x1b[1079:1047:112;6u", pick(actionCycleModelBackward, actionInsert)},
 			{"kitty Cyrillic alt+p", "\x1b[1079::112;3u", pick(actionInsert, actionCycleModelBackward)},
-			{"kitty ctrl+v", "\x1b[118;5u", actionPasteImage}, // pig divergence (D241): ctrl+v also pastes with Windows keybindings (Pi 37b38e9f6)
+			{"kitty ctrl+v", "\x1b[118;5u", actionPasteImage},
 			{"kitty alt+v", "\x1b[118;3u", pick(actionInsert, actionPasteImage)},
 			{"kitty ctrl+z", "\x1b[122;5u", suspend},
 			{"kitty ctrl+c", "\x1b[99;5u", actionClearEditor},

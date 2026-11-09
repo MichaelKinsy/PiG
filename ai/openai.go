@@ -9,6 +9,7 @@ import (
 	"cmp"
 	"context"
 	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"io"
@@ -21,7 +22,8 @@ import (
 	"unicode/utf16"
 
 	"github.com/MichaelKinsy/PiG/internal/jsjson"
-
+	"github.com/MichaelKinsy/PiG/internal/jsonopts"
+	"github.com/MichaelKinsy/PiG/internal/jsonwire"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
@@ -993,31 +995,28 @@ func decodeOpenAIReasoningDetail(raw json.RawMessage) (*openAIReasoningDetail, b
 		return nil, false
 	}
 
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	if token, err := decoder.Token(); err != nil || token != json.Delim('{') {
+	decoder := jsontext.NewDecoder(bytes.NewReader(raw), jsonopts.Parse)
+	if token, err := decoder.ReadToken(); err != nil || token.Kind() != '{' {
 		return nil, false
 	}
 	detail := &openAIReasoningDetail{typ: typ}
 	positions := map[string]int{}
-	for decoder.More() {
-		nameToken, err := decoder.Token()
+	for decoder.PeekKind() != '}' {
+		name, err := jsonopts.ReadName(decoder) // the JavaScript key: "\ud800" and "\ud801" stay two keys, as in JSON.parse
 		if err != nil {
 			return nil, false
 		}
-		name, ok := nameToken.(string)
-		if !ok {
+		valueBytes, err := decoder.ReadValue()
+		if err != nil {
 			return nil, false
 		}
-		var value json.RawMessage
-		if err := decoder.Decode(&value); err != nil {
-			return nil, false
-		}
+		value := json.RawMessage(bytes.Clone(valueBytes))
 		if position, exists := positions[name]; exists {
 			detail.fields[position].value = value
 			continue
 		}
 		positions[name] = len(detail.fields)
-		detail.fields = append(detail.fields, openAIReasoningDetailField{name: name, value: value})
+		detail.fields = append(detail.fields, openAIReasoningDetailField{name: jsonopts.ValidName(name), value: value})
 	}
 	return detail, true
 }
@@ -1148,7 +1147,7 @@ func parseOpenAIReasoningDetails(signature string) []json.RawMessage {
 }
 
 func parseLegacyOpenAIReasoningDetail(signature string) json.RawMessage {
-	if signature == "" || !json.Valid([]byte(signature)) {
+	if signature == "" || !jsonwire.Valid(signature) {
 		return nil
 	}
 	detail, ok := decodeOpenAIReasoningDetail(json.RawMessage(signature))

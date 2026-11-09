@@ -113,6 +113,9 @@ type Agent struct {
 	MaxTurns int
 	// Compaction is the conversation's compaction settings (AgentState.compaction); nil without any.
 	Compaction *AgentCompaction
+	// CompactionStore is the value Compaction points to when the host that resolved the agent sets it: the settings live in the agent's
+	// own allocation, so a conversation's compaction settings cost the step no allocation of their own.
+	CompactionStore AgentCompaction
 	// HookHandlers are the hook handler tables of the selected extensions in extension order: hook name to handler index
 	// (agent.ts agentHooks).
 	HookHandlers []map[string]int

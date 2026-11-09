@@ -56,14 +56,14 @@ func TestConformance_EventPayloadsReachEverySDKUnchanged(t *testing.T) {
 		}, `{"type":"user_bash","command":"probe-payload","excludeFromContext":true,"cwd":"/work"}`},
 		{"tool_call", func(ctx context.Context, h *harness) error {
 			_, err := h.runner.EmitToolCall(ctx, extension.CustomToolCallEvent{
-				ToolCallEventBase: extension.ToolCallEventBase{Type: "tool_call", ToolCallID: "c1", ParentToolCallID: "p1"}, ToolName: "probe", Input: map[string]any{"a": float64(1)},
+				Type: "tool_call", ToolCallID: "c1", ParentToolCallID: "p1", ToolName: "probe", Input: map[string]any{"a": float64(1)},
 			})
 			return err
 		}, `{"type":"tool_call","toolCallId":"c1","parentToolCallId":"p1","toolName":"probe","input":{"a":1}}`},
 		{"tool_result", func(ctx context.Context, h *harness) error {
 			_, err := h.runner.EmitToolResult(ctx, extension.CustomToolResultEvent{
-				ToolResultEventBase: extension.ToolResultEventBase{Type: "tool_result", ToolCallID: "c1", ParentToolCallID: "p1", Input: map[string]any{"a": float64(1)}, Content: []any{map[string]any{"type": "text", "text": "ok"}}, IsError: true},
-				ToolName:            "probe",
+				Type: "tool_result", ToolCallID: "c1", ParentToolCallID: "p1", Input: map[string]any{"a": float64(1)}, Content: []any{map[string]any{"type": "text", "text": "ok"}}, IsError: true,
+				ToolName: "probe",
 			})
 			return err
 		}, `{"type":"tool_result","toolCallId":"c1","parentToolCallId":"p1","input":{"a":1},"content":[{"type":"text","text":"ok"}],"isError":true,"toolName":"probe"}`},
@@ -80,6 +80,19 @@ func TestConformance_EventPayloadsReachEverySDKUnchanged(t *testing.T) {
 			_, err := h.runner.EmitMessageEnd(ctx, extension.MessageEndEvent{Type: "message_end", Message: wireAgentMessage(map[string]any{"role": "user", "content": "hello", "timestamp": float64(1700000000000)})})
 			return err
 		}, `{"type":"message_end","message":{"role":"user","content":"hello","timestamp":1700000000000}}`},
+		// The host numbers the messages of message_start, message_end, turn_end and agent_end (extension.WithMessageSequences) so a Node runtime can share Pi's objects between the events and the session log; the number rides on the request, never in the payload, so no SDK receives a different event, and a Node runtime that is sent them accepts the request (the host sends them to a Node runtime only).
+		{"message_start", func(ctx context.Context, h *harness) error {
+			_, err := h.runner.Emit(extension.WithMessageSequences(ctx, func() []uint64 { return []uint64{7} }), extension.MessageStartEvent{Type: "message_start", Message: wireAgentMessage(map[string]any{"role": "user", "content": "hello", "timestamp": float64(1700000000000)})})
+			return err
+		}, `{"type":"message_start","message":{"role":"user","content":"hello","timestamp":1700000000000}}`},
+		{"message_end", func(ctx context.Context, h *harness) error {
+			_, err := h.runner.EmitMessageEnd(extension.WithMessageSequences(ctx, func() []uint64 { return []uint64{7} }), extension.MessageEndEvent{Type: "message_end", Message: wireAgentMessage(map[string]any{"role": "user", "content": "hello", "timestamp": float64(1700000000000)})})
+			return err
+		}, `{"type":"message_end","message":{"role":"user","content":"hello","timestamp":1700000000000}}`},
+		{"agent_end", func(ctx context.Context, h *harness) error {
+			_, err := h.runner.Emit(extension.WithMessageSequences(ctx, func() []uint64 { return []uint64{7, 0} }), extension.AgentEndEvent{Type: "agent_end", Messages: []extension.AgentMessage{wireAgentMessage(map[string]any{"role": "user", "content": "hello", "timestamp": float64(1700000000000)}), wireAgentMessage(map[string]any{"role": "user", "content": "again", "timestamp": float64(1700000000001)})}})
+			return err
+		}, `{"type":"agent_end","messages":[{"role":"user","content":"hello","timestamp":1700000000000},{"role":"user","content":"again","timestamp":1700000000001}]}`},
 		// Session lifecycle events (types.ts SessionInfoChangedEvent :750, SessionCompactFailedEvent :795, SessionShutdownEvent :810). An empty name is `undefined` in Pi, so the member is omitted.
 		{"session_info_changed", genericEmit(extension.SessionInfoChangedEvent{Type: "session_info_changed", Name: "My session"}), `{"type":"session_info_changed","name":"My session"}`},
 		{"session_shutdown", genericEmit(extension.SessionShutdownEvent{Type: "session_shutdown", Reason: "resume", TargetSessionFile: "/next.jsonl"}), `{"type":"session_shutdown","reason":"resume","targetSessionFile":"/next.jsonl"}`},

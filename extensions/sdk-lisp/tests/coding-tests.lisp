@@ -261,9 +261,11 @@ C
                  (pig:serialize-conversation messages)))
   (check-error pig:js-type-error (pig:serialize-conversation (json-of "[{\"role\":\"user\",\"content\":5}]")))
   (check-error pig:js-type-error (pig:serialize-conversation (json-of "[null]")))
-  ;; Pi's output on unpaired surrogates (Node): JSON.stringify writes them as lowercase \uXXXX escapes, and the truncation slice keeps the high half of a cut pair
+  ;; Pi's output on unpaired surrogates (Node): JSON.stringify writes them as lowercase \uXXXX escapes, and the truncation (sliceHead) drops the high half of a cut pair but keeps an unpaired one
   (loop for (message want)
           in (list (list (concatenate 'string "{\"role\":\"toolResult\",\"content\":\"" (make-string 1999 :initial-element #\a) "\\ud83d\\ude00\"}")
+                         (concatenate 'string "\"[Tool result]: " (make-string 1999 :initial-element #\a) "\\n\\n[... 1 more characters truncated]\""))
+                   (list (concatenate 'string "{\"role\":\"toolResult\",\"content\":\"" (make-string 1999 :initial-element #\a) "\\ud83dx\"}")
                          (concatenate 'string "\"[Tool result]: " (make-string 1999 :initial-element #\a) "\\ud83d\\n\\n[... 1 more characters truncated]\""))
                    (list "{\"role\":\"assistant\",\"content\":[{\"type\":\"toolCall\",\"name\":\"t\",\"arguments\":{\"s\":\"\\udc00\",\"k\\ud83d\":1}}]}"
                          "\"[Assistant tool calls]: t(s=\\\"\\\\udc00\\\", k\\ud83d=1)\"")

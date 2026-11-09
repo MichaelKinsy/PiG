@@ -91,10 +91,7 @@ func TestSyncCreatesMissingConfigRoot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	digest, err := contentDigest()
-	if err != nil {
-		t.Fatal(err)
-	}
+	digest := contentDigest
 	if !bytes.Equal(bytes.TrimSpace(marker), []byte(digest)) {
 		t.Fatalf("marker = %q, want %q", marker, digest)
 	}
@@ -167,10 +164,7 @@ func TestEnsureSyncedDoesNotWaitForStagingLock(t *testing.T) {
 	if _, err := os.Stat(live); err != nil {
 		t.Errorf("staging tree of the lock holder was removed: %v", err)
 	}
-	digest, err := contentDigest()
-	if err != nil {
-		t.Fatal(err)
-	}
+	digest := contentDigest
 	marker, err := os.ReadFile(filepath.Join(DocsDir(root), markerFile))
 	if err != nil || strings.TrimSpace(string(marker)) != digest {
 		t.Fatalf("docs were not synced while the lock was held: marker %q, err %v", marker, err)

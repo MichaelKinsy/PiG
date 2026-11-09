@@ -11,7 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 )
 
-// Ports packages/chord/test/next/link/message.test.ts: round trips of every kind through both codecs, the byte layout
+// Ports packages/chord/test/link/message.test.ts: round trips of every kind through both codecs, the byte layout
 // of the binary codec, the tuples of the text codec, and the envelope check.
 
 const fingerprint = "0123456789abcdef"
@@ -44,6 +44,7 @@ func everyKind() []link.Message {
 	origin := hold(0, link.Text("{}"))
 	origin.Type = "t"
 	origin.Origin = some(2)
+	oldOrigin := &link.CallMessage{Origin: some(2), Call: 10, Hold: 3, Method: 0, Old: true}
 	return []link.Message{
 		&link.HelloMessage{Protocol: 1, Incarnation: incarnation, Calls: 256},
 		first,
@@ -52,6 +53,9 @@ func everyKind() []link.Message {
 		&link.ReleaseMessage{Hold: 0},
 		&link.CallMessage{Call: 3, Hold: 0, Method: 1, Args: link.Text(`{"text":"x"}`)},
 		&link.CallMessage{Call: 4, Hold: 0, Method: 0},
+		// A call that is old work (a restart's), alone and under an origin (Pi's also carries a trace: T6, no Trace here; no args, the text decoder's own branch).
+		&link.CallMessage{Call: 9, Hold: 0, Method: 1, Args: link.Text(`{"text":"x"}`), Old: true},
+		oldOrigin,
 		&link.AbortMessage{Call: 3},
 		&link.BoundMessage{Holds: []link.BoundEntry{{Hold: 0, Variant: 1, Members: []link.BoundMember{{Member: 0, Value: link.Text(`[1,"a"]`)}}, Failed: []link.FailedMember{{Member: 1, Error: released}}}}},
 		&link.BoundMessage{Holds: []link.BoundEntry{
@@ -173,7 +177,7 @@ func TestMessages(t *testing.T) {
 		t.Run("refuse an empty message, an unknown kind and trailing bytes", func(t *testing.T) {
 			release := encode(t, codec, &link.ReleaseMessage{Hold: 1})
 			trailing := append(append([]byte{}, release...), 0)
-			unknown := []byte{99}
+			unknown := []byte{63}
 			if codec == link.TextCodec {
 				trailing = append(append([]byte{}, release...), 0x20, 0x31)
 				unknown = []byte(`["?"]`)
@@ -346,6 +350,24 @@ func TestTheBinaryCodec(t *testing.T) {
 		state := append(append([]byte{6}, bytes.Repeat([]byte{0x80}, 150)...), 0)
 		_, err := binary.Decode(state)
 		requireErrorContains(t, err, "a varint does not fit")
+	})
+
+	t.Run("flags a call that is old work of a reload in the kind byte (0x20); another kind with that flag is unknown", func(t *testing.T) {
+		call := enc(&link.CallMessage{Old: true})
+		if call[0] != 3|0x20 {
+			t.Fatalf("call kind byte = %#x", call[0])
+		}
+		decoded, err := binary.Decode(call)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got, ok := decoded.(*link.CallMessage); !ok || !reflect.DeepEqual(got, &link.CallMessage{Old: true}) {
+			t.Fatalf("decoded = %#v", decoded)
+		}
+		release := append([]byte{}, enc(&link.ReleaseMessage{Hold: 1})...)
+		release[0] |= 0x20
+		_, err = binary.Decode(release)
+		requireErrorContains(t, err, "unknown kind")
 	})
 
 	t.Run("refuses unknown hold flags", func(t *testing.T) {

@@ -25,13 +25,13 @@ func builtinCatalogEncodeCost(t *testing.T) (allocated, retained uint64) {
 	for i, model := range models {
 		data, ok, err := CatalogModelJSON(model)
 		if err != nil || !ok {
-			t.Fatalf("%s: ok %t, %v", GeneratedModels[i].Record[:40], ok, err)
+			t.Fatalf("%s: ok %t, %v", ResolveCatalogRecord(GeneratedModels[i].Record)[:40], ok, err)
 		}
 		encoded[i] = data
 	}
 	runtime.ReadMemStats(&after)
 	for i := range encoded {
-		if !bytes.Equal(encoded[i], []byte(GeneratedModels[i].Record)) {
+		if !bytes.Equal(encoded[i], []byte(ResolveCatalogRecord(GeneratedModels[i].Record))) {
 			t.Fatalf("model %d: encoding is not its catalog record", i)
 		}
 	}

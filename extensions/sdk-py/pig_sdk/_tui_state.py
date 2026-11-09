@@ -29,7 +29,7 @@ def apply_host_state(state: dict[str, Any]) -> None:
     if isinstance(palette, dict):
         set_host_theme(palette)
     with _lock:
-        if isinstance(table, dict) and isinstance(table.get("definitions"), dict) and table != _keybindings:
+        if isinstance(table, dict) and isinstance(table.get("definitions"), dict) and not json_equal(table, _keybindings):
             _keybindings = table
             _keybindings_dirty = True
         if isinstance(caps, dict):
@@ -65,13 +65,36 @@ _installed_palette: dict[str, Any] | None = None
 _theme_cache: tuple[dict[str, Any] | None, Any] | None = None
 
 
+def json_equal(left: Any, right: Any) -> bool:
+    """``left == right`` for decoded JSON, compared with a stack of its own: ``==`` on dicts and lists nests in C and raises RecursionError past the interpreter's limit (about 990 levels on 3.11, 3000 on 3.12 on Windows, 10000 elsewhere), and a palette or a keybinding table is host data."""
+    stack = [(left, right)]
+    while stack:
+        a, b = stack.pop()
+        if isinstance(a, dict) and isinstance(b, dict):
+            if len(a) != len(b):
+                return False
+            for key, member in a.items():
+                if key not in b:
+                    return False
+                stack.append((member, b[key]))
+        elif isinstance(a, list) and isinstance(b, list):
+            if len(a) != len(b):
+                return False
+            stack.extend(zip(a, b))
+        elif isinstance(a, (dict, list)) or isinstance(b, (dict, list)):
+            return False
+        elif a != b:
+            return False
+    return True
+
+
 def set_host_theme(palette: Any) -> None:
     """Record the palette the host published. A palette that differs from the last one the host published ends what ``init_theme`` installed; the same
     palette, which every state snapshot repeats, leaves it. A value that is not a dict is the empty palette (the Node runtime's ``ThemeShim.setPalette``)."""
     global _host_palette, _installed_palette
     palette = palette if isinstance(palette, dict) else {}
     with _lock:
-        if _host_palette is None or _host_palette != palette:
+        if _host_palette is None or not json_equal(_host_palette, palette):
             if _host_palette is not None:
                 _installed_palette = None
             _host_palette = palette

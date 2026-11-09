@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -16,9 +17,10 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/documents"
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/test/next/jobs/job.test.ts (runs, finishes, `running`, keep-alive, the object's end, GC); the
+// Ports packages/chord/test/jobs/job.test.ts (runs, finishes, `running`, keep-alive, the object's end, GC); the
 // start cases are in jobs_job_test.go. The Go forms are described there.
 
 func exitResult(code int) *delta.JsonObject { return jsonObject("exit", float64(code)) }
@@ -384,7 +386,7 @@ func TestRunThatIgnoresItsSignalAtTheObjectsEndIsDrainedUpToCloseTimeoutItsLater
 			late <- setOutput(ctx, "too late", ChangeOptions{})
 			return exitResult(0), nil
 		}}
-	}, jobHostOptions{loadedOptions: loadedOptions{CloseTimeout: new(20 * time.Millisecond)}})
+	}, jobHostOptions{CloseTimeout: new(20 * time.Millisecond)})
 	jobStart(t, fixture.Job, commandArgs("a"), background)
 	started.Wait()
 	must(t, fixture.Host.Close(background))
@@ -610,6 +612,8 @@ func TestFinishThrowingBlocksTheRunAfterFiveFailuresInARowOutcomeStateAndKeyKept
 	if len(drops) != 1 || drops[0].Object != "app.store" || drops[0].Job != "app.shell" || drops[0].ID != run.ID() {
 		t.Fatalf("drops = %+v", drops)
 	}
+	// The other run is still backing off its finish: ending the host ends it, so nothing is left sleeping on the virtual loop.
+	must(t, fixture.Host.Close(background))
 }
 
 // job.test.ts › finish › backing off › leaves no timer behind when its object ends during the backoff
@@ -838,7 +842,7 @@ func TestRunningDoesNoValidationWalkOrCompilationForAStateChange(t *testing.T) {
 			g.Wait()
 			return exitResult(0), nil
 		}}
-	}, jobHostOptions{loadedOptions: loadedOptions{Telemetry: telemetry, Context: counting}})
+	}, jobHostOptions{Telemetry: telemetry, Context: counting})
 	job := fixture.Job
 	jobStart(t, job, commandArgs("a"), counting)
 	ctx := <-ctxs
@@ -1090,4 +1094,135 @@ func panicMessage(work func()) (message string) {
 	}()
 	work()
 	return ""
+}
+
+// job.test.ts › phase spans (slice 9) › traces the intent under the starter, the run and the finish under the intent; a
+// failed finish try is a retry
+func TestPhaseSpansTraceTheIntentUnderTheStarterTheRunAndTheFinishUnderTheIntentAFailedFinishTryIsARetry(t *testing.T) {
+	recorder := telemetry.NewInMemoryTelemetryContext()
+	loop := newVirtualLoop()
+	var mu sync.Mutex
+	fails := 1
+	fixture := declaredJob(t, jobEcho, func(_ Self, log *singletonDoc) JobImplementation {
+		return JobImplementation{
+			Run: echoRun(),
+			Finish: func(outcome Outcome, tx documents.Tx) error {
+				mu.Lock()
+				failing := fails > 0
+				fails--
+				mu.Unlock()
+				if failing {
+					return errors.New("not yet")
+				}
+				return appendLog(tx, log, string(outcome.Kind))
+			},
+		}
+	}, jobHostOptions{Telemetry: recorder, Loop: loop})
+	var run Run
+	tracedUnder(t, recorder, "request", func(ctx context.Context) { run = jobStart(t, fixture.Job, textArgs("hi"), ctx) })
+	eventually(t, "the finish's backoff timer", func() bool { return loop.fake.TimerCount() == 1 })
+	loop.fake.Advance(1_000)
+	runOutcome(t, run)
+	request := spanWhere(t, recorder, "request", nil)
+	jobs := spansNamed(recorder, "chord.job")
+	if len(jobs) != 3 {
+		t.Fatalf("chord.job spans = %d, want 3 (intent, run, finish)", len(jobs))
+	}
+	intent, ran, finish := jobs[0], jobs[1], jobs[2]
+	if !childOf(intent, request) || !childOf(ran, intent) || !childOf(finish, intent) {
+		t.Errorf("parents = %v %v %v, want the request, the intent, the intent", intent.ParentID, ran.ParentID, finish.ParentID)
+	}
+	for phase, span := range map[string]telemetry.RecordedTelemetrySpan{"run": ran, "finish": finish} {
+		spanAttributesAre(t, span, telemetry.SpanAttributes{
+			telemetry.Attr("chord.host", "client"), telemetry.Attr("job", "app.echo"), telemetry.Attr("phase", phase),
+			telemetry.Attr("object", "app.store"), telemetry.Attr("job.id", run.ID()), telemetry.Attr("outcome", "ok"),
+		})
+	}
+	if len(finish.Events) != 2 || finish.Events[0].Name != "chord.retry" || finish.Events[1].Name != "chord.commit" {
+		t.Fatalf("finish events = %v, want [chord.retry chord.commit]", finish.Events)
+	}
+	if backoff, _ := finish.Events[0].Attributes.Get("backoff"); backoff != float64(1_000) {
+		t.Errorf("backoff = %v, want 1000", backoff)
+	}
+	for name, want := range map[string]float64{"documents": 1, "ops": 1} {
+		if got, _ := finish.Events[1].Attributes.Get(name); got != want {
+			t.Errorf("commit %s = %v, want %v", name, got, want)
+		}
+	}
+}
+
+// job.test.ts › phase spans (slice 9) › keeps a run's ctx a job's under `ctx.trace`: its id and state, recorded or not
+// (review L5)
+func TestPhaseSpansKeepARunsCtxAJobsUnderCtxTraceItsIdAndStateRecordedOrNot(t *testing.T) {
+	for _, recorded := range []bool{true, false} {
+		type seenRun struct {
+			jobID  string
+			output string
+			traced bool
+		}
+		var seen []seenRun
+		var options jobHostOptions
+		if recorded {
+			options.Telemetry = telemetry.NewInMemoryTelemetryContext()
+		}
+		fixture := declaredJob(t, jobShell, func(Self, *singletonDoc) JobImplementation {
+			return JobImplementation{Run: func(_ any, ctx JobCtx) (any, error) {
+				return ctx.Trace("app.step", nil, func(inner Ctx) (any, error) {
+					job := inner.(JobCtx)
+					if err := setOutput(job, "half", ChangeOptions{}); err != nil {
+						return nil, err
+					}
+					value, err := job.State().Value()
+					if err != nil {
+						return nil, err
+					}
+					seen = append(seen, seenRun{job.JobID(), value.Value("output").(string), inner != Ctx(ctx)})
+					return exitResult(0), nil
+				})
+			}}
+		}, options)
+		run := jobStart(t, fixture.Job, commandArgs("ls"), background)
+		runOutcome(t, run)
+		if want := []seenRun{{run.ID(), "half", recorded}}; !reflect.DeepEqual(seen, want) {
+			t.Errorf("recorded=%v: seen = %v, want %v", recorded, seen, want)
+		}
+	}
+}
+
+// job.test.ts › phase spans (slice 9) › marks a run that threw failed (`job_failed`), and an aborted one ok
+func TestPhaseSpansMarkARunThatThrewFailedJobFailedAndAnAbortedOneOk(t *testing.T) {
+	recorder := telemetry.NewInMemoryTelemetryContext()
+	fixture := echoJob(t, JobImplementation{Run: func(args any, ctx JobCtx) (any, error) {
+		if textOf(args) == "throw" {
+			return nil, errors.New("boom")
+		}
+		untilDone(ctx)
+		return nil, errors.New("stopped")
+	}}, jobHostOptions{Telemetry: recorder})
+	tracedUnder(t, recorder, "request", func(ctx context.Context) {
+		threw := jobStart(t, fixture.Job, textArgs("throw"), ctx)
+		runOutcome(t, threw)
+		aborted := jobStart(t, fixture.Job, textArgs("wait"), ctx)
+		eventually(t, "the run to be running", func() bool { return len(jobRunning(t, fixture.Job)) == 1 })
+		if _, err := fixture.Job.Abort(aborted.ID(), background); err != nil {
+			t.Error(err)
+		}
+		runOutcome(t, aborted)
+	})
+	var runs []telemetry.RecordedTelemetrySpan
+	for _, span := range spansNamed(recorder, "chord.job") {
+		if phase, _ := span.Attributes.Get("phase"); phase == "run" {
+			runs = append(runs, span)
+		}
+	}
+	if len(runs) != 2 {
+		t.Fatalf("run spans = %d, want 2", len(runs))
+	}
+	if outcome, _ := runs[0].Attributes.Get("outcome"); outcome != "error" || runs[0].Status.Status != telemetry.SpanStatusCodeError ||
+		runs[0].Status.Error == nil || runs[0].Status.Error.Name != "job_failed" || runs[0].Status.Error.Message != "boom" {
+		t.Errorf("threw run = %v %+v %+v, want error job_failed: boom", outcome, runs[0].Status, runs[0].Status.Error)
+	}
+	if outcome, _ := runs[1].Attributes.Get("outcome"); outcome != "aborted" || runs[1].Status.Status != telemetry.SpanStatusCodeOK {
+		t.Errorf("aborted run = %v %+v, want aborted ok", outcome, runs[1].Status)
+	}
 }

@@ -19,7 +19,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/sqlite/node"
 )
 
-// Ports packages/chord/test/next/store/import.test.ts: tests of `ImportStore` (slice 6a §13, rules 12, 24, 25): round
+// Ports packages/chord/test/store/import.test.ts: tests of `ImportStore` (slice 6a §13, rules 12, 24, 25): round
 // trips (old row versions, a migrating table, uncheckpointed deltas), the store it returns, every refusal of the
 // archive's order and content, the rollback, and an input that stalls cancelled by `ctx`.
 
@@ -248,7 +248,7 @@ func TestImportJSONCellsHoldingNull(t *testing.T) {
 		if _, err := source.Commit(staged, openFence, ctx); err != nil {
 			t.Fatalf("commit: %v", err)
 		}
-		v2, err := EvolveTable(v1, func(t *TableEditor) *TableEditor {
+		v2, err := EvolveTable(v1, func(t *TableEditor) TableTailEditor {
 			return t.Json("data", Json(contracts.Obj(contracts.Prop("was", contracts.Nul())), JsonColumnOptions{
 				Version: 2,
 				Migrate: func(value delta.JsonValue, _ int) (any, error) {

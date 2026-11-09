@@ -616,19 +616,34 @@ type NodeSqliteDatabase struct {
 	nodeSqliteExecutor
 	access *serialOperationQueue
 	closed bool
-	// readOnly is a connection opened with NodeSqliteDatabaseOptions.ReadOnly: its transactions are deferred (they read
-	// one snapshot; it cannot take the write lock) and its close checkpoints nothing.
-	readOnly bool
+	// mode is how the connection opened its file. A NodeSqliteReadOnly connection's transactions are deferred (they read one
+	// snapshot; it cannot take the write lock) and its close checkpoints nothing.
+	mode NodeSqliteMode
 }
 
-// NewNodeSqliteDatabase adapts database; the adapter owns it from now on. It is Pi's `new NodeSqliteDatabase(database: DatabaseSync)`.
-func NewNodeSqliteDatabase(database *DatabaseSync) *NodeSqliteDatabase {
-	return newNodeSqliteDatabase(database)
+// NodeSqliteMode is how a connection opens its file: Pi's NodeSqliteMode, "read-write" | "read-only".
+type NodeSqliteMode string
+
+const (
+	// NodeSqliteReadWrite is the default: the connection may write the file.
+	NodeSqliteReadWrite NodeSqliteMode = "read-write"
+	// NodeSqliteReadOnly opens an existing file for reads (another process may write it).
+	NodeSqliteReadOnly NodeSqliteMode = "read-only"
+)
+
+// NewNodeSqliteDatabase adapts database; the adapter owns it from now on. It is Pi's `new NodeSqliteDatabase(database: DatabaseSync,
+// mode: NodeSqliteMode = "read-write")`: an empty mode is Pi's default, NodeSqliteReadWrite.
+func NewNodeSqliteDatabase(database *DatabaseSync, mode NodeSqliteMode) *NodeSqliteDatabase {
+	adapter := newNodeSqliteDatabase(database)
+	if mode != "" {
+		adapter.mode = mode
+	}
+	return adapter
 }
 
 // newNodeSqliteDatabase adapts any native connection, so a test can wrap one to observe or fail its calls.
 func newNodeSqliteDatabase(database connection) *NodeSqliteDatabase {
-	adapter := &NodeSqliteDatabase{access: newSerialOperationQueue()}
+	adapter := &NodeSqliteDatabase{access: newSerialOperationQueue(), mode: NodeSqliteReadWrite}
 	adapter.nodeSqliteExecutor = nodeSqliteExecutor{
 		database:     database,
 		statements:   newStatementCache(),
@@ -654,7 +669,7 @@ func (adapter *NodeSqliteDatabase) Transaction(
 	adapter.access.acquire()
 	defer adapter.access.release()
 	begin := "BEGIN IMMEDIATE"
-	if adapter.readOnly {
+	if adapter.mode == NodeSqliteReadOnly {
 		begin = "BEGIN"
 	}
 	if err := adapter.database.Exec(begin); err != nil {
@@ -716,7 +731,7 @@ func (adapter *NodeSqliteDatabase) Close() error {
 	adapter.statements.order.Init()
 	adapter.statements.mu.Unlock()
 	var checkpointErr error
-	if !adapter.readOnly {
+	if adapter.mode == NodeSqliteReadWrite {
 		checkpointErr = adapter.database.Exec("PRAGMA wal_checkpoint(TRUNCATE)")
 	}
 	// Pi closes in a finally block, so a close failure replaces the checkpoint failure.
@@ -737,9 +752,10 @@ type NodeSqliteDatabaseOptions struct {
 	// BusyTimeoutMs is how long SQLite waits for a competing file lock. SQLite defaults to 0; this adapter defaults to
 	// 5,000 ms.
 	BusyTimeoutMs *int
-	// ReadOnly opens an existing file for reads (another process may write it): no directory is made, nothing is
-	// configured or checkpointed, and transactions are deferred (`BEGIN`), reading one snapshot. Pi's `mode: "read-only"`.
-	ReadOnly bool
+	// Mode is NodeSqliteReadOnly to open an existing file for reads (another process may write it): no directory is made,
+	// nothing is configured or checkpointed, and transactions are deferred (`BEGIN`), reading one snapshot. Empty selects
+	// NodeSqliteReadWrite.
+	Mode NodeSqliteMode
 }
 
 const (
@@ -757,14 +773,12 @@ func OpenNodeSqliteDatabase(path string, options NodeSqliteDatabaseOptions) (*No
 	if options.BusyTimeoutMs != nil {
 		timeout = *options.BusyTimeoutMs
 	}
-	if options.ReadOnly {
+	if options.Mode == NodeSqliteReadOnly {
 		database, err := NewDatabaseSync(path, DatabaseSyncOptions{TimeoutMs: timeout, ReadOnly: true})
 		if err != nil {
 			return nil, err
 		}
-		adapter := NewNodeSqliteDatabase(database)
-		adapter.readOnly = true
-		return adapter, nil
+		return NewNodeSqliteDatabase(database, NodeSqliteReadOnly), nil
 	}
 	if path != ":memory:" {
 		if err := os.MkdirAll(filepath.Dir(path), 0o777); err != nil {
@@ -775,7 +789,7 @@ func OpenNodeSqliteDatabase(path string, options NodeSqliteDatabaseOptions) (*No
 	if err != nil {
 		return nil, err
 	}
-	adapter := NewNodeSqliteDatabase(database)
+	adapter := NewNodeSqliteDatabase(database, NodeSqliteReadWrite)
 	for _, pragma := range []string{
 		"PRAGMA journal_mode = WAL",
 		"PRAGMA synchronous = NORMAL",

@@ -42,13 +42,19 @@ var versionLiteralAllowlist = []allowedVersionLiteral{
 	{".github/workflows/ci.yml", "12.2.1", "source of truth for npm: the NPM_VERSION env; make compliance checks every copy against it"},
 	{".github/workflows/ci.yml", "1.97.1", "source of truth for Rust: the RUST_VERSION env; make compliance checks every copy against it"},
 
+	// Versions that are not copies of a pin.
+	{".github/workflows/bolt-bench.yml", "1.0.0", "the PiG release whose published Pi-Bolt result directory (2026-10-23-pig-1.0.0) the harness commands are copied from"},
+	{".github/workflows/bolt-bench.yml", "1.1.4", "default of the bolt_tag input: the released Pi-Bolt this workflow compares against, not a pin of this tree"},
+	{".github/workflows/bolt-bench.yml", "0.7.0", "default of the pig_tag input: the released PiG this workflow compares against, not a pin of this tree"},
+	{".github/workflows/ci.yml", "26.5.1", "the oldest Node whose sandbox the terminal surface tests need; a requirement of that test, not a Node pin"},
+	{"automation/make/ci.mk", "26.5.1", "the oldest Node whose sandbox the terminal surface tests need; a requirement of that test, not a Node pin"},
+
 	// Checked copies. make compliance compares each with its source and fails on drift.
 	{"automation/images/ci-go/Dockerfile", "1.27.3", "ARG GO_IMAGE: a digest-pinned image tag; make compliance checks it against .go-version"},
 	{"automation/images/ci-go/metadata.env", "1.27.3", "IMAGE_TAG; make compliance checks it against .go-version"},
 	{"automation/images/ci-parity/Dockerfile", "1.27.3", "ARG GO_VERSION; make compliance checks it against .go-version"},
 	{"automation/images/ci-parity/metadata.env", "1.27.3", "IMAGE_TAG; make compliance checks it against .go-version"},
 	{"automation/images/ci-parity/Dockerfile", "1.5.0", "ARG PI_VERSION; make pin-sync writes it from .upstream/pin and make compliance checks it"},
-	{"automation/images/ci-parity/metadata.env", "1.5.0", "IMAGE_TAG; make pin-sync writes it from .upstream/pin and make compliance checks it"},
 	{"automation/images/ci-parity/Dockerfile", "12.2.1", "the image's npm check; make compliance checks it against NPM_VERSION"},
 
 	{"automation/ci/install-shellcheck.sh", "0.11.0", "the pinned ShellCheck release, kept beside the sha256 of its tarballs; pre-push-gate.sh reads it with --print-version"},
@@ -62,10 +68,12 @@ var versionLiteralAllowlist = []allowedVersionLiteral{
 	{"automation/ci/seed-ci-image-bases.sh", "0.32.2", "local tag of the digest-pinned buildkit image; the digest on the line above is the pin"},
 	{"automation/ci/seed-ci-image-bases.sh", "1.45.1", "local tag of the digest-pinned syft image; the digest on the line above is the pin"},
 	{"automation/ci/seed-ci-image-bases.sh", "0.20.6", "go-containerregistry release; the sha256 on the next line is the pin"},
+	{"automation/ci/mirror-ci-tools.sh", "0.11.0", "the pinned ShellCheck release the mirror pushes, beside the sha256 of each tarball; the script fails when a digest is no longer pinned by install-shellcheck.sh"},
+	{"automation/ci/mirror-ci-tools.sh", "0.20.6", "go-containerregistry release the mirror pushes; the sha256 on the same line is the pin, which the script requires seed-ci-image-bases.sh to still carry"},
 	{"automation/gen/vendor-typebox.sh", "1.3.27", "the typebox release the script vendors; its integrity hash is the next line"},
 	{"automation/gen/vendor-typebox.sh", "0.25.10", "the esbuild release the script bundles with"},
 	{".github/workflows/npm-publish.yml", "11.5.1", "the npm release that added trusted publishing, a registry feature floor and not a pin"},
-	{"Makefile", "0.7.4", "the version of Pi-Bolt, a different product from Pi"},
+	{"Makefile", "1.1.2", "the version of Pi-Bolt, a different product from Pi"},
 
 	// Versions of PiG's own releases and benchmark labels.
 	{".github/workflows/startup-performance.yml", "0.2.0", "the PiG release the startup benchmark measures against; the job name and the checked-out tag name the same release"},

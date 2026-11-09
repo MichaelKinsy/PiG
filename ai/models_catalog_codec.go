@@ -5,6 +5,7 @@ package ai
 import (
 	"bytes"
 	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"reflect"
@@ -12,6 +13,7 @@ import (
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/internal/jsjson"
+	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 )
 
 // modelsCatalogRecord is the data-only Model<Api> stored by provider publication; bound backend objects never enter the catalog file.
@@ -85,25 +87,26 @@ type catalogPair struct {
 
 // orderedCatalogPairs reads a JSON object's members in document order.
 func orderedCatalogPairs(data []byte) ([]catalogPair, error) {
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	token, err := decoder.Token()
+	decoder := jsontext.NewDecoder(bytes.NewReader(data), jsonopts.Parse)
+	token, err := decoder.ReadToken()
 	if err != nil {
 		return nil, err
 	}
-	if delim, ok := token.(json.Delim); !ok || delim != '{' {
+	if token.Kind() != '{' {
 		return nil, errors.New("not a JSON object")
 	}
 	var pairs []catalogPair
-	for decoder.More() {
-		keyToken, err := decoder.Token()
+	for decoder.PeekKind() != '}' {
+		keyToken, err := decoder.ReadToken()
 		if err != nil {
 			return nil, err
 		}
-		var value json.RawMessage
-		if err := decoder.Decode(&value); err != nil {
+		key := keyToken.String() // a Token and the bytes ReadValue returns are void after the next call on the decoder
+		value, err := decoder.ReadValue()
+		if err != nil {
 			return nil, err
 		}
-		pairs = append(pairs, catalogPair{key: keyToken.(string), value: bytes.Clone(value)})
+		pairs = append(pairs, catalogPair{key: key, value: bytes.Clone(value)})
 	}
 	return pairs, nil
 }
@@ -149,7 +152,7 @@ func marshalCatalogModel(model AnyModel) (json.RawMessage, error) {
 			return nil, err
 		}
 		if bytes.Equal(recordJSON, baseline) {
-			return json.RawMessage(typed.catalogRecord), nil
+			return json.RawMessage(ResolveCatalogRecord(typed.catalogRecord)), nil
 		}
 	}
 	built, err := modelCatalogShape(model, *shape)
@@ -206,7 +209,7 @@ func marshalCatalogModel(model AnyModel) (json.RawMessage, error) {
 		merged = append(merged, pair)
 	}
 	if typed, ok := model.(*Model); ok && unchanged && typed.catalogRecord != "" {
-		return json.RawMessage(typed.catalogRecord), nil
+		return json.RawMessage(ResolveCatalogRecord(typed.catalogRecord)), nil
 	}
 	return encodeCatalogPairs(merged)
 }
@@ -219,7 +222,7 @@ func modelCatalogShape(model AnyModel, decoded *catalogShape) (*catalogShape, er
 	if decoded != nil || !ok || typed.catalogRecord == "" {
 		return decoded, nil
 	}
-	entry, _, err := decodeCatalogModel([]byte(typed.catalogRecord))
+	entry, _, err := decodeCatalogModel([]byte(ResolveCatalogRecord(typed.catalogRecord)))
 	if err != nil {
 		return nil, err
 	}
@@ -233,12 +236,13 @@ func catalogRecordBaseline(record string) ([]byte, error) {
 	if cached, found := catalogRecordBaselines.Load(record); found {
 		return cached.([]byte), nil
 	}
-	entry, known, err := decodeCatalogTyped([]byte(record))
+	content := ResolveCatalogRecord(record)
+	entry, known, err := decodeCatalogTyped([]byte(content))
 	if err != nil {
 		return nil, err
 	}
 	if !known {
-		return nil, fmt.Errorf("decode stored model: unknown model type in %q", record)
+		return nil, fmt.Errorf("decode stored model: unknown model type in %q", content)
 	}
 	typedRecord, _, err := anyModelRecord(entry)
 	if err != nil {
@@ -248,7 +252,7 @@ func catalogRecordBaseline(record string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if _, builtin := builtinCatalogRecords()[record]; builtin {
+	if isCatalogRecordRef(record) {
 		catalogRecordBaselines.Store(record, baseline)
 	}
 	return baseline, nil
@@ -256,8 +260,17 @@ func catalogRecordBaseline(record string) ([]byte, error) {
 
 // CatalogRecordOf is the catalog record model was made from, its built-in catalog entry or the models store record it was
 // decoded from, as a JSON object in the record's member order, or "" for a model of neither. A model built from it again
-// (GeneratedModel.Record) encodes with CatalogModelJSON in that order.
+// (GeneratedModel.Record) encodes with CatalogModelJSON in that order. A built-in entry's record expands its chunk of the
+// compressed catalog (ResolveCatalogRecord); CatalogRecordRefOf does not.
 func CatalogRecordOf(model *Model) string {
+	return ResolveCatalogRecord(CatalogRecordRefOf(model))
+}
+
+// CatalogRecordRefOf is CatalogRecordOf without the expansion: a built-in entry's record stays the reference it is stored as,
+// which stands for the same record. Two models made from the same record have equal references, so a caller that compares
+// records, tests them for "" or hands one to GeneratedModel.Record needs no JSON; one that reads the content calls
+// ResolveCatalogRecord.
+func CatalogRecordRefOf(model *Model) string {
 	switch {
 	case model == nil:
 		return ""
@@ -327,17 +340,6 @@ func ExtensionModelRecord(definition json.RawMessage, api API, providerID, baseU
 // compiled into the binary are cached, so the cache is bounded by the catalog: a models store record (a Radius gateway's
 // catalog, CatalogRecordOf) changes with each refresh and is decoded each time.
 var catalogRecordBaselines sync.Map
-
-// builtinCatalogRecords is the set of GeneratedModel.Record values.
-var builtinCatalogRecords = sync.OnceValue(func() map[string]struct{} {
-	records := make(map[string]struct{}, len(GeneratedModels))
-	for i := range GeneratedModels {
-		if record := GeneratedModels[i].Record; record != "" {
-			records[record] = struct{}{}
-		}
-	}
-	return records
-})
 
 // CatalogModelJSON is the JSON object of a model that came from a catalog record, the built-in catalog or a models
 // store, as Pi serializes that model object: the record's members in the record's order, with the record's own bytes for

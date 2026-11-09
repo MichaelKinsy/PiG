@@ -308,7 +308,7 @@ func TestWithClientIdentityMergesRequestIdentityOverTheWrapperIdentity(t *testin
 	wrapped := WithClientIdentity(capture, ClientIdentity{Attribution: &acmeAttribution, UserAgent: new(UserAgentShort)})
 	wrapped.StreamSimple(t.Context(), nil, Context{})
 	wrapped.CompleteSimple(t.Context(), nil, Context{}, StreamOptions{Identity: &ClientIdentity{AttributionNull: true}, SessionID: "kept"})
-	wrapped.FetchDeferred(t.Context(), nil, DeferredHandle{}, DeferredFetchOptions{StreamOptions: StreamOptions{Identity: &ClientIdentity{Version: new("2")}}})
+	wrapped.FetchDeferred(t.Context(), nil, DeferredHandle{}, DeferredFetchOptions{Identity: &ClientIdentity{Version: new("2")}})
 	if err := wrapped.CancelDeferred(t.Context(), nil, DeferredHandle{}); err != nil {
 		t.Fatal(err)
 	}
@@ -352,7 +352,7 @@ func TestWithClientIdentityKeepsTheOptionalSurfacesItsModelsHave(t *testing.T) {
 		t.Fatal("the wrapped catalog is gone")
 	}
 	view.Classify(t.Context(), nil, ClassifierContext{})
-	view.GenerateImages(t.Context(), nil, ImagesContext{}, ModelsImagesOptions{ImagesOptions: ImagesOptions{Identity: &ClientIdentity{Version: new("3")}}})
+	view.GenerateImages(t.Context(), nil, ImagesContext{}, ModelsImagesOptions{Identity: &ClientIdentity{Version: new("3")}})
 	if got, want := catalog.classifier[0].Identity, (&ClientIdentity{Attribution: &acmeAttribution}); !reflect.DeepEqual(got, want) {
 		t.Errorf("classifier identity = %#v, want %#v", got, want)
 	}

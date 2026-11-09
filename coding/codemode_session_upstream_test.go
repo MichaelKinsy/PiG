@@ -1069,3 +1069,43 @@ func TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes(t *t
 		}
 	}
 }
+
+// Ports .upstream/v1.5.0+c23b9ec1/packages/coding-agent/test/suite/agent-session-codemode.test.ts "summarizes output fields behind local
+// schema references" (Pi 6d3e342b2, #11803): the session-level tool description, not only describeOutput, follows local `$ref`s through
+// the root, a field, a const and the variants of a union.
+func TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences(t *testing.T) {
+	outputTool := func(name, outputSchema string) extension.RegisteredTool {
+		return extension.RegisteredTool{Definition: extension.ToolDefinition{
+			Name: name, Label: name, Description: name + " tool",
+			Parameters:   json.RawMessage(`{"type":"object","properties":{}}`),
+			OutputSchema: json.RawMessage(outputSchema),
+			Execute: func(context.Context, string, json.RawMessage, extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
+				return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{}, Details: map[string]any{}}, nil
+			},
+		}}
+	}
+	report := outputTool("report", `{"$ref":"#/$defs/Report","$defs":{"Report":{"type":"object","properties":{"kind":{"$ref":"#/$defs/Kind"},"summary":{"$ref":"#/$defs/Summary"}},"required":["kind","summary"]},"Kind":{"const":"ledger"},"Summary":{"type":"object","properties":{"total":{"type":"number"}},"required":["total"]}}}`)
+	result := outputTool("result", `{"anyOf":[{"$ref":"#/$defs/Ok"},{"$ref":"#/$defs/Failed"}],"$defs":{"Ok":{"type":"object","properties":{"value":{"type":"string"}},"required":["value"]},"Failed":{"type":"object","properties":{"error":{"type":"string"}},"required":["error"]}}}`)
+	h := newCodemodeHarness(t, codemodeHarnessOptions{goExtensions: []extension.Extension{{
+		Name: "outputs", Path: "<inline:outputs>", ResolvedPath: "<inline:outputs>",
+		Tools:     map[string]extension.RegisteredTool{"report": report, "result": result},
+		ToolOrder: []string{"report", "result"},
+	}}, activeTools: []string{"codemode"}})
+	h.session.SetActiveToolsByName([]string{"report", "result", "codemode"})
+	description := func(name string) string {
+		for _, tool := range h.session.Tools() {
+			if tool.Name() == name {
+				return tool.Schema().Description
+			}
+		}
+		return ""
+	}
+	for name, want := range map[string]string{
+		"report": "report tool\n\nCodemode: `tools.report(args)` resolves to `{ kind: \"ledger\", summary: { total } }`.",
+		"result": "result tool\n\nCodemode: `tools.result(args)` resolves to `{ value } | { error }`.",
+	} {
+		if got := description(name); got != want {
+			t.Errorf("description(%s) = %q, want %q", name, got, want)
+		}
+	}
+}

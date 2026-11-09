@@ -15,6 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
@@ -37,7 +38,7 @@ import (
 // request that was running; a reference's watches end with it.
 
 // bridgePackage is the host package the proxy scripts import (node/bridge.mjs's `GO_PACKAGE`).
-const bridgePackage = "@earendil-works/chord/next/go"
+const bridgePackage = "@earendil-works/chord/go"
 
 // BridgedFacet is a Go core facet whose local types plugins on a Node host may use: the Node host loads a proxy facet named
 // Name that serves Contracts, and its objects forward to Host's own (RuntimeLoad.Bridged).
@@ -105,7 +106,7 @@ func bridgedScripts(kind string, facets []BridgedFacet) ([]scriptWire, error) {
 		plugin := pluginWire{Name: facet.Name, Dir: "/", Facets: map[string]string{kind: "/" + kind + ".go"}, Dependencies: []string{}, External: []string{}}
 		if facet.Failed != nil {
 			scripts = append(scripts, scriptWire{Plugin: plugin, Built: builtWire{
-				Kind: BuiltFacetFailed, Plugin: facet.Name, Facet: kind, Errors: []string{facet.Failed.Error()},
+				Kind: model.BuiltFacetFailed, Plugin: facet.Name, Facet: kind, Errors: []string{facet.Failed.Error()},
 			}})
 			continue
 		}
@@ -124,7 +125,7 @@ func bridgedScripts(kind string, facets []BridgedFacet) ([]scriptWire, error) {
 		source := `(function (require, module, exports) { module.exports = { default: require(` + quoteJS(bridgePackage) + `).proxyFacet(` + string(encoded) + `) }; })`
 		sum := sha256.Sum256([]byte(source))
 		scripts = append(scripts, scriptWire{Plugin: plugin, Built: builtWire{
-			Kind: BuiltFacetScript, Plugin: facet.Name, Facet: kind, Source: source, Digest: hex.EncodeToString(sum[:]),
+			Kind: model.BuiltFacetScript, Plugin: facet.Name, Facet: kind, Source: source, Digest: hex.EncodeToString(sum[:]),
 		}})
 	}
 	return scripts, nil

@@ -22,9 +22,10 @@ func TestToolResultGuardsMatchAcrossSDKs(t *testing.T) {
 	want := []string{"tool-result-guards=bash:info", "tool-result-guards=read:info", "tool-result-guards=ls:info", "tool-result-guards=:info"}
 	for _, test := range allHarnessCases() {
 		t.Run(test.name, func(t *testing.T) {
+			h := test.make(t)
+			// The deadline starts after make: a harness may first build its fixture, which can outlast it, and an emit under an expired context delivers nothing yet reports no error.
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
-			h := test.make(t)
 			t.Cleanup(func() {
 				if h.cleanup != nil {
 					h.cleanup()
@@ -36,8 +37,8 @@ func TestToolResultGuardsMatchAcrossSDKs(t *testing.T) {
 			h.ui.ClearRecorded()
 			for _, tool := range tools {
 				event := extension.CustomToolResultEvent{
-					ToolResultEventBase: extension.ToolResultEventBase{Type: "tool_result", ToolCallID: tool + "-guard", Input: map[string]any{}, Content: []any{map[string]any{"type": "text", "text": "output"}}},
-					ToolName:            tool,
+					Type: "tool_result", ToolCallID: tool + "-guard", Input: map[string]any{}, Content: []any{map[string]any{"type": "text", "text": "output"}},
+					ToolName: tool,
 				}
 				if _, err := h.runner.EmitToolResult(ctx, event); err != nil {
 					t.Fatalf("%s tool_result: %v", tool, err)

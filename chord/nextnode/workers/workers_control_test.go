@@ -12,7 +12,7 @@ import (
 )
 
 // pi: packages/chord/src/next-node/workers/control.ts
-// Ports packages/chord/test/next-node/workers/control.test.ts: the control channel's crossings: errors cross as
+// Ports packages/chord/test/node/workers/control.test.ts: the control channel's crossings: errors cross as
 // `{ message, code?, reason? }` and back, and a control message is told from anything else on the channel.
 
 func TestErrorsCrossAsMessageCodeAndReasonNeverAStackOrCauseComeBackAsChordErrorsWhenTheyHadACode(t *testing.T) {
@@ -59,7 +59,7 @@ func TestErrorsCrossAReportsFailuresAndParkedCausesAndBack(t *testing.T) {
 		Plugins: host.PluginChanges{Added: []string{"@a/x"}, Changed: []string{}, Removed: []string{}},
 		Failed:  []host.PluginFailure{{Plugin: "@a/y", Error: errors.New("broken")}},
 		Objects: []host.ReloadedObject{
-			{Object: "a.one", Kind: host.ReloadSwapped},
+			{Object: "a.one", Kind: host.ReloadRestarted},
 			{
 				Object: "a.two", Kind: host.ReloadParked,
 				Cause: data.FailureCause{Kind: data.FailureWaiting, Error: data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "w"}, nil)},

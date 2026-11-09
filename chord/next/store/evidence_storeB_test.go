@@ -5,7 +5,7 @@ import (
 )
 
 // pi: packages/chord/src/next/store/table-migration.ts
-// Ports packages/chord/test/next/store/table-migration.test.ts describe("the chunk yield"): a migration over many
+// Ports packages/chord/test/store/table-migration.test.ts describe("the chunk yield"): a migration over many
 // chunks yields between chunks, so that a competing task runs between them ("yields between chunks without Node's
 // setImmediate" on 3 * MIGRATION_CHUNK rows; "yields between chunks without a timer ... while timers due run in
 // between (a latency guard)" on 10 * MIGRATION_CHUNK rows with a `setTimeout(..., 0)` due during the migration). Pi
@@ -43,7 +43,7 @@ func storeBMigrateTo2(t *testing.T, count int) storeBMigrationRun {
 			task()
 		}
 	}
-	fence := CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64) error { return nil }}
+	fence := CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64, int) error { return nil }}
 	must(t, prepareTables([]DeclaredTable{{Definition: versions.v2, Table: migrationTable}}, store, fence, "app.store", background, yield))
 	record := store.Table(migrationTable)
 	qEqual(t, []any{record.Version, record.State}, []any{2, StateReady})

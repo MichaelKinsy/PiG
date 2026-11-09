@@ -56,7 +56,7 @@ func sessionStore(t testing.TB) store.Store { return opened(t, backendAt(t, ""),
 // chordOf is the concrete store.
 func chordOf(s store.Store) *store.ChordStore { return s.(*store.ChordStore) }
 
-var openFence = store.CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64) error { return nil }}
+var openFence = store.CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64, int) error { return nil }}
 
 // counts is the table every copy writes: a counter per id.
 var counts = func() *store.TableDefinition {
@@ -184,7 +184,7 @@ func (osFiles) ReadTextFile(_ context.Context, path string) (string, error) {
 func (osFiles) ReadBinaryFile(_ context.Context, path string) ([]byte, error) {
 	return os.ReadFile(path)
 }
-func (osFiles) OpenBinaryReader(_ context.Context, path string) (SyncFileReader, error) {
+func (osFiles) OpenBinaryReader(_ context.Context, path string, _ *OpenBinaryReaderOptions) (SyncFileReader, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err

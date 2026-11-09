@@ -132,7 +132,7 @@ func FuzzTypedDetailsValidateAsTheyMarshal(f *testing.F) {
 		for _, value := range []any{
 			&typedReadDetails{Path: by, Truncation: &typedTruncation{Content: content, TruncatedBy: by, TotalLines: lines, Truncated: truncated}},
 			&typedEditDetails{Diff: content, Patch: by, FirstChangedLine: lines},
-			&typedEmbedded{typedEditDetails: typedEditDetails{Diff: content}, Lines: []string{by, content}},
+			&typedEmbedded{Diff: content, Lines: []string{by, content}},
 		} {
 			got, want := validateJsonValue(value), validateJsonValueByMarshal(value)
 			if !sameError(got, want) || got != nil {

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 )
 
@@ -94,10 +95,7 @@ func TestSyncWritesAllDocsWithMarker(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marker missing: %v", err)
 	}
-	digest, err := contentDigest()
-	if err != nil {
-		t.Fatal(err)
-	}
+	digest := contentDigest
 	if got := string(bytes.TrimSpace(marker)); got != digest {
 		t.Fatalf("marker = %q, want %q", got, digest)
 	}
@@ -130,10 +128,7 @@ func TestEnsureSyncedReplacesOlderProfileDocs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	digest, err := contentDigest()
-	if err != nil {
-		t.Fatal(err)
-	}
+	digest := contentDigest
 	if string(bytes.TrimSpace(version)) != digest {
 		t.Fatalf("marker = %q, want %q", version, digest)
 	}
@@ -202,21 +197,57 @@ func TestRunCommand_RejectsForeignArgs(t *testing.T) {
 	}
 }
 
-// The digest streams the embedded files through a fixed buffer. It must stay the digest of "name\x00size\x00contents"
-// over every doc in List order, because staged marker files written by earlier builds carry it.
+// regenerate is the command that rewrites pages.zst and pages_gen.go after content/*.md changes.
+const regenerate = "go generate ./internal/pigdocs (or make docs-bundle)"
+
+// The digest is generated from content/*.md and must stay the digest of "name\x00size\x00contents" over every doc in List order, because
+// staged marker files written by earlier builds carry it.
 func TestContentDigestMatchesTheWholeFileAlgorithm(t *testing.T) {
 	hash := sha256.New()
 	for _, name := range List() {
-		data, err := content.ReadFile("content/" + name)
+		data, err := os.ReadFile(filepath.Join("content", name))
 		if err != nil {
 			t.Fatal(err)
 		}
 		_, _ = fmt.Fprintf(hash, "%s\x00%d\x00", name, len(data))
 		_, _ = hash.Write(data)
 	}
-	want := hex.EncodeToString(hash.Sum(nil))
-	got, err := contentDigest()
-	if err != nil || got != want {
-		t.Fatalf("contentDigest() = %q, %v; want %q", got, err, want)
+	if want := hex.EncodeToString(hash.Sum(nil)); contentDigest != want {
+		t.Fatalf("contentDigest = %q; content/*.md hash to %q; run %s", contentDigest, want, regenerate)
+	}
+}
+
+// The embedded pages are the content/*.md files: the same names, and every page's bytes, as Read and a decode of the whole frame return them.
+func TestPackMatchesContent(t *testing.T) {
+	files, err := filepath.Glob("content/*.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var want []string
+	for _, file := range files {
+		want = append(want, filepath.Base(file))
+	}
+	if got := List(); !slices.Equal(got, want) {
+		t.Fatalf("List() = %v; content/*.md are %v; run %s", got, want, regenerate)
+	}
+	raw, err := pages()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for index, name := range want {
+		data, err := os.ReadFile(filepath.Join("content", name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(data) != pageSizes[index] || len(raw) < len(data) || !bytes.Equal(raw[:len(data)], data) {
+			t.Fatalf("pages.zst holds a different %s than content/%s; run %s", name, name, regenerate)
+		}
+		raw = raw[len(data):]
+		if got, err := Read(name); err != nil || !bytes.Equal(got, data) {
+			t.Fatalf("Read(%q) differs from content/%s (err %v); run %s", name, name, err, regenerate)
+		}
+	}
+	if len(raw) != 0 {
+		t.Fatalf("pages.zst holds %d bytes beyond content/*.md; run %s", len(raw), regenerate)
 	}
 }

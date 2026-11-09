@@ -461,7 +461,8 @@ func agentOf(o *jv.Object) *turn.Agent {
 	a.Instructions, a.Cwd = strOf(o, "instructions"), strOf(o, "cwd")
 	a.MaxTurns = int(numOf(o, "maxTurns"))
 	if compaction := objOf(o, "compaction"); compaction != nil {
-		a.Compaction = &turn.AgentCompaction{Own: policyOverrideOf(compaction), Overrides: modelOverridesOf(compaction)}
+		a.CompactionStore = turn.AgentCompaction{Own: policyOverrideOf(compaction), Overrides: modelOverridesOf(compaction)}
+		a.Compaction = &a.CompactionStore
 	}
 	return a
 }

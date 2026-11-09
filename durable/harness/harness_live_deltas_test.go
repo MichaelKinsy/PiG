@@ -76,7 +76,7 @@ func toolCallStep(calls ...ai.FauxContentBlock) ai.FauxResponseStep {
 
 func noopTool(name string) *durable.ToolRegistration {
 	return DefineTool(durable.ToolRegistration{
-		ToolSchema: ai.ToolSchema{Name: name, Description: name, Parameters: map[string]any{"type": "object", "properties": map[string]any{}}},
+		Name: name, Description: name, Parameters: map[string]any{"type": "object", "properties": map[string]any{}},
 		Execute: func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}}, nil
 		},
@@ -97,7 +97,7 @@ func drive(t *testing.T, limits *durable.ToolOutputLimits) *driver {
 	setup := chatSetup(t)
 	actions := make(chan func(api durable.ToolExecutionApi) bool, 16)
 	addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{
-		ToolSchema:   ai.ToolSchema{Name: "drive", Description: "Driven by the test", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}},
+		Name: "drive", Description: "Driven by the test", Parameters: map[string]any{"type": "object", "properties": map[string]any{}},
 		OutputLimits: limits,
 		Execute: func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			for {
@@ -320,7 +320,7 @@ func TestLiveDeltas(t *testing.T) {
 		setup := chatSetup(t)
 		for _, name := range []string{"first", "second"} {
 			addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{
-				ToolSchema: ai.ToolSchema{Name: name, Description: name, Parameters: map[string]any{"type": "object", "properties": map[string]any{}}},
+				Name: name, Description: name, Parameters: map[string]any{"type": "object", "properties": map[string]any{}},
 				Execute: func(_ context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 					api.Output(name + " output\n")
 					time.Sleep(150 * time.Millisecond)
@@ -387,7 +387,7 @@ func TestLiveDeltas(t *testing.T) {
 	t.Run("starts calls the request did not offer as flagged tasks and marks a faulted tool's slot done without an entry", func(t *testing.T) {
 		setup := chatSetup(t)
 		addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{
-			ToolSchema: ai.ToolSchema{Name: "bad", Description: "bad", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}},
+			Name: "bad", Description: "bad", Parameters: map[string]any{"type": "object", "properties": map[string]any{}},
 			// Not strict JSON: the result commit fails and the scheduler faults the task.
 			Execute: func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 				return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}, Details: map[string]any{"fn": func() int { return 1 }}, HasDetails: true}, nil

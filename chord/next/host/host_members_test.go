@@ -15,7 +15,7 @@ import (
 )
 
 // pi: packages/chord/src/next/host/members.ts
-// Ports packages/chord/test/next/host/members.test.ts: its two cases (TestHostGet...) serve a contract through a whole
+// Ports packages/chord/test/host/members.test.ts: its two cases (TestHostGet...) serve a contract through a whole
 // host and assert the message the host builds from the object's label and the cause. The other tests are own tests of the
 // member check and of the resolution behind derives and contributions, driven directly; each names the upstream case
 // whose behavior it mirrors.
@@ -270,7 +270,7 @@ func TestCheckImplementationChecksARemoteContractsVariant(t *testing.T) {
 // cycle of registries is refused `invalid/cycle`.
 func TestContributionOfFollowsWatchablesAndNativesLeavesOtherValuesPlainAndFollowsAnotherRegistrysValue(t *testing.T) {
 	h := newMemberHarness(t)
-	record := registries.NewRegistryRecord("app.menu", h.batch, func(registries.RegistryError) {})
+	record := registries.NewRegistryRecord("app.menu", h.batch, func(registries.RegistryError) {}, nil)
 	contributor := registries.Contributor{Plugin: "@test/app"}
 	constant := state.NewConstant(float64(1))
 	native := state.NewWritableSource[any](1, membersOwner{}, h.batch)

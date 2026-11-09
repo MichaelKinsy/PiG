@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"maps"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"slices"
@@ -14,7 +15,7 @@ import (
 	"time"
 )
 
-// Ports packages/chord/test/next-node/plugins/support.ts (FIXTURES, KINDS, tempRoot, writeFiles, writePlugin). The host
+// Ports packages/chord/test/node/plugins/support.ts (FIXTURES, KINDS, tempRoot, writeFiles, writePlugin, gitRepository). The host
 // packages (`HOST_PACKAGES`, `kindsOf`) and `writePackage` serve the esbuild and `vm` tests, which this package replaces
 // by the Builder and Evaluator seams (plugins_build.go, plugins_evaluate.go).
 
@@ -195,4 +196,46 @@ func settleDirectoryStamps(directories []string) {
 			_ = file.Close()
 		}
 	}
+}
+
+// gitRepo is a local bare git repository and the work tree it was made from.
+type gitRepo struct {
+	url, commit, work, bare string
+}
+
+// gitRepository is a local bare git repository `<name>.git` in a temporary directory with files committed (one commit),
+// tagged tag: its `file://` URL and the commit. A call with previous adds another commit on top of that repository. No
+// network.
+func gitRepository(t *testing.T, name string, files map[string]string, tag string, previous *gitRepo) gitRepo {
+	t.Helper()
+	git := func(cwd string, args ...string) string {
+		t.Helper()
+		command := exec.Command("git", append([]string{"-c", "user.email=test@example.com", "-c", "user.name=test"}, args...)...)
+		command.Dir = cwd
+		out, err := command.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	var work string
+	if previous != nil {
+		work = previous.work
+	} else {
+		work = tempRoot(t)
+		git(work, "init", "--quiet")
+	}
+	writeFiles(t, work, files)
+	git(work, "add", "--all")
+	git(work, "commit", "--quiet", "--message", tag)
+	git(work, "tag", tag)
+	var bare string
+	if previous != nil {
+		bare = previous.bare
+		git(work, "push", "--quiet", "--tags", bare, "HEAD:refs/heads/master")
+	} else {
+		bare = filepath.Join(tempRoot(t), name+".git")
+		git(work, "clone", "--quiet", "--bare", work, bare)
+	}
+	return gitRepo{url: "file://" + bare, commit: git(work, "rev-parse", "HEAD"), work: work, bare: bare}
 }

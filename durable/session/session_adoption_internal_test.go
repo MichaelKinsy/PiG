@@ -53,12 +53,10 @@ func (sabotaged *sabotagedStorage) record(step string) {
 
 func TestSessionFailsWithItsOwnAdoptionErrorWhichNeverReachesStorage(t *testing.T) {
 	counter := durable.DefineDoc(durable.DocDefinition[durable.JsonObject]{
-		CommonDocDefinition: durable.CommonDocDefinition[durable.JsonObject]{
-			Kind: "adoption.counter", Version: 1,
-			CheckpointWhen: func(durable.JsonObject, []durable.Op, durable.CheckpointInfo) bool { return false },
-			Initial:        func() durable.JsonObject { return delta.JsonObjectOf("count", 0.0) },
-		},
-		DocumentSemantics: durable.DocumentSemantics{Scope: durable.ScopeSession},
+		Kind: "adoption.counter", Version: 1,
+		CheckpointWhen: func(durable.JsonObject, []durable.Op, durable.CheckpointInfo) bool { return false },
+		Initial:        func() durable.JsonObject { return delta.JsonObjectOf("count", 0.0) },
+		Scope:          durable.ScopeSession,
 	})
 	sabotaged := &sabotagedStorage{MemoryStorage: storage.NewMemoryStorage()}
 	kernel := NewSessionImpl(sabotaged, Hooks{}, nil, nil)

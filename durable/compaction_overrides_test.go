@@ -20,7 +20,11 @@ func TestCompactionOverridesSetReplacesInPlace(t *testing.T) {
 	if order[0] != "a/one" || order[1] != "b/two" {
 		t.Fatalf("order = %v, want [a/one b/two]", order)
 	}
-	if got := set.Get("a/one").ReserveTokens; got == nil || *got != 2 {
-		t.Fatalf("a/one reserveTokens = %v, want 2", got)
+	// compaction.ts:269 modelOverrides is read per model key: an entry reads back as set, a model without one is absent.
+	if got, ok := set.Get("a/one"); !ok || got.ReserveTokens == nil || *got.ReserveTokens != 2 {
+		t.Fatalf("a/one = %+v, %v; want reserveTokens 2", got, ok)
+	}
+	if got, ok := set.Get("c/absent"); ok || got != (CompactionPolicyOverride{}) {
+		t.Fatalf("c/absent = %+v, %v; want the zero override and false", got, ok)
 	}
 }

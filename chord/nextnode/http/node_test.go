@@ -1,8 +1,9 @@
 package http
 
-// pi: packages/chord/src/next-node/http/node.ts
+// pi: packages/chord/src/node/http/node.ts
 
 import (
+	"context"
 	"io"
 	"net"
 	nethttp "net/http"
@@ -12,15 +13,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 )
 
 // Tests of Chord's own listener (the listener's native): request targets (origin-form only; a malformed or double-slash path
 // never crashes or reroutes), raw `Host` headers, the request's scope lasting until its response is flushed (and `close`
-// waiting for it), and a client's disconnect aborting the scope. Ports packages/chord/test/next-node/http/node.test.ts.
+// waiting for it), and a client's disconnect aborting the scope. Ports packages/chord/test/node/http/node.test.ts.
 //
-// Not ported: "makes a Web Request only when something reads the headers or the body" counts `new Request` calls
-// (designed out: Go's *net/http.Request exists when the server hands it over, there is no lazily made Web object).
+// "makes a Web Request only when something reads the headers or the body" counts `new Request` calls, which Go has no form of
+// (the *net/http.Request exists when the server hands it over); TestWebRequestsAreServedFromTheListenerWhetherTheRouteReadsTheHeadersTheBodyOrNeither
+// ports what the case observes: three public routes, no authenticator naming a principal, and their three answers.
 //
 // Forced difference (node.go): net/http refuses two `Host` headers itself, 400, where Node's parser keeps them and the
 // component answers 403; the component's 403 for them is covered through Fetch (TestFetchRefusesTwoHostHeaders).
@@ -112,8 +115,8 @@ func TestMountingConvertsWithTheListenersChecksNeverPanickingBadTargetsUserinfoT
 	server := serving(t, []plugin{echoPlugin}, servedOptions{noListen: true})
 	own := httptest.NewServer(nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
 		converted := NodeRequestOf(r)
-		if converted.Refused != nil {
-			w.WriteHeader(converted.Refused.Status)
+		if converted.Kind == NodeRequestRefused {
+			w.WriteHeader(int(converted.Status))
 			return
 		}
 		response := server.http.Fetch(converted.Request, converted.Connection)
@@ -233,12 +236,89 @@ func TestNodeRequestRefusesWhatTheListenerRefuses(t *testing.T) {
 		{"TRACK", request("TRACK", "/who", "127.0.0.1:1"), 501},
 	} {
 		converted := NodeRequestOf(each.request)
-		if converted.Refused == nil || converted.Refused.Status != each.status {
+		if converted.Kind != NodeRequestRefused || int(converted.Status) != each.status {
 			t.Fatalf("%s: %+v, want refused %d", each.name, converted, each.status)
 		}
 	}
 	converted := NodeRequestOf(request("GET", "/a/../who?x=1", "127.0.0.1:8788"))
-	if converted.Refused != nil || converted.Request.URL.Path != "/who" || converted.Request.URL.RawQuery != "x=1" || converted.Request.Header.Get("Host") != "127.0.0.1:8788" {
+	if converted.Kind != NodeRequestRequest || converted.Request.URL.Path != "/who" || converted.Request.URL.RawQuery != "x=1" || converted.Request.Header.Get("Host") != "127.0.0.1:8788" {
 		t.Fatalf("converted = %+v", converted)
+	}
+}
+
+func TestWebRequestsAreServedFromTheListenerWhetherTheRouteReadsTheHeadersTheBodyOrNeither(t *testing.T) {
+	server := serving(t, []plugin{{"@app/r", contributing(HttpContribution{Routes: []HttpRouteEntry{
+		publicRoute("GET /plain", func(request HttpRequest, _ host.Ctx) (HttpResponse, error) {
+			return jsonOf(request.Path()), nil
+		}),
+		publicRoute("GET /headers", func(request HttpRequest, _ host.Ctx) (HttpResponse, error) {
+			return jsonOf(request.Headers().Get("x-thing")), nil
+		}),
+		publicRoute("POST /body", func(request HttpRequest, _ host.Ctx) (HttpResponse, error) {
+			value, err := request.JSON()
+			if err != nil {
+				return HttpResponse{}, err
+			}
+			return jsonOf(value), nil
+		}),
+	}})}}, servedOptions{
+		authenticate: func(context.Context, HttpRequest) (data.Principal, error) { return nil, nil },
+	})
+	hostLine := "Host: 127.0.0.1:" + strconv.Itoa(server.port) + "\r\nConnection: close"
+	_, plain := rawExchange(t, server.port, "GET /plain HTTP/1.1\r\n"+hostLine+"\r\n\r\n")
+	_, read := rawExchange(t, server.port, "GET /headers HTTP/1.1\r\n"+hostLine+"\r\nX-Thing: t\r\n\r\n")
+	_, posted := rawExchange(t, server.port, "POST /body HTTP/1.1\r\n"+hostLine+"\r\nContent-Length: 3\r\n\r\n\"a\"")
+	if plain != `"/plain"` || read != `"t"` || posted != `"a"` {
+		t.Fatalf("answers = %q, %q, %q, want \"/plain\", \"t\", \"a\"", plain, read, posted)
+	}
+	server.close()
+}
+
+// Pi's NodeIncoming.cancelled (node.ts:119-140, node.test.ts:84): a request an app mounts on its own server aborts when the client
+// goes, and not before. NodeRequestOf takes the one request: its context ends with the client, which is Pi's `res`-finished check
+// without a second argument.
+func TestMountedRequestContextEndsWhenTheClientGoesAndNotBefore(t *testing.T) {
+	alive := make(chan bool, 1)
+	ended := make(chan bool, 1)
+	own := httptest.NewServer(nethttp.HandlerFunc(func(_ nethttp.ResponseWriter, r *nethttp.Request) {
+		converted := NodeRequestOf(r)
+		if converted.Kind != NodeRequestRequest {
+			t.Errorf("converted = %+v", converted)
+			alive <- false
+			ended <- false
+			return
+		}
+		ctx := converted.Request.Context()
+		alive <- ctx.Err() == nil
+		select {
+		case <-ctx.Done():
+			ended <- true
+		case <-time.After(within):
+			ended <- false
+		}
+	}))
+	defer own.Close()
+	clientCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	request, err := nethttp.NewRequestWithContext(clientCtx, "GET", own.URL+"/who", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	go func() {
+		if response, err := nethttp.DefaultClient.Do(request); err == nil {
+			_ = response.Body.Close()
+		}
+	}()
+	if !<-alive {
+		t.Fatal("the request's context was done before the client went")
+	}
+	select {
+	case <-ended:
+		t.Fatal("the request's context ended while the client was still there")
+	case <-time.After(100 * time.Millisecond):
+	}
+	cancel()
+	if !<-ended {
+		t.Fatal("the request's context did not end when the client went")
 	}
 }

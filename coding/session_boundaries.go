@@ -134,6 +134,15 @@ func (s *Session) dispatchTurnEndBoundary(ctx context.Context, event agent.TurnE
 	// Upstream emitBoundary takes no abort signal, so an aborted run's turns
 	// still reach turn_end handlers.
 	dispatchCtx, wire := boundarywire.WithSessionCache(context.WithoutCancel(ctx), &s.boundaryEncodings)
+	// The turn's message and tool results are the messages message_end carried: an extension process hands its handler the objects it held for them.
+	dispatchCtx = extension.WithMessageSequences(dispatchCtx, func() []uint64 {
+		sequences := make([]uint64, 1+len(event.ToolResults))
+		sequences[0] = s.messageSeqs.Known(event.Message)
+		for i := range event.ToolResults {
+			sequences[1+i] = s.messageSeqs.Known(agent.AgentMessage{ToolResult: &event.ToolResults[i]})
+		}
+		return sequences
+	})
 	result, err := runner.EmitBoundary(dispatchCtx, base, func(drafts []extension.SessionBoundaryDraft) (extension.BoundaryContextPreview, error) {
 		return s.recordedBoundaryContext(wire, drafts, icodingagent.EventTurnEnd)
 	})
@@ -171,7 +180,7 @@ func (s *Session) runBeforeSettleBoundary(ctx context.Context) (bool, error) {
 	s.runState.isBeforeSettle = true
 	s.runState.mu.Unlock()
 	defer func() { s.runState.mu.Lock(); s.runState.isBeforeSettle = false; s.runState.mu.Unlock() }()
-	base := &extension.AgentBeforeSettleEvent{Type: icodingagent.EventAgentBeforeSettle, BoundaryState: extension.BoundaryState{Outcome: s.lastActivityOutcome}}
+	base := &extension.AgentBeforeSettleEvent{Type: icodingagent.EventAgentBeforeSettle, Outcome: s.lastActivityOutcome}
 	dispatchCtx, wire := boundarywire.WithSessionCache(ctx, &s.boundaryEncodings)
 	result, err := runner.EmitBoundary(dispatchCtx, base, func(drafts []extension.SessionBoundaryDraft) (extension.BoundaryContextPreview, error) {
 		return s.recordedBoundaryContext(wire, drafts, icodingagent.EventAgentBeforeSettle)
@@ -208,7 +217,7 @@ func (s *Session) reportInvalidBoundaryContinuation(event string) {
 }
 
 func (s *Session) commitBoundaryDrafts(drafts []extension.SessionBoundaryDraft) error {
-	appended, err := applyBoundaryDrafts(s.inner, drafts)
+	appended, err := applyBoundaryDrafts(s.inner.Load(), drafts)
 	if err != nil {
 		return err
 	}
@@ -221,11 +230,11 @@ func (s *Session) commitBoundaryDrafts(drafts []extension.SessionBoundaryDraft) 
 
 func (s *Session) createBoundaryPreviewManager(drafts []extension.SessionBoundaryDraft) (*icodingagent.Session, error) {
 	var branch []icodingagent.SessionEntry
-	if leaf := s.inner.GetLeafID(); leaf != nil {
+	if leaf := s.inner.Load().GetLeafID(); leaf != nil {
 		// The preview walks parent links, so it takes the whole branch.
-		branch = s.inner.GetBranch(*leaf)
+		branch = s.inner.Load().GetBranch(*leaf)
 	}
-	preview := icodingagent.NewBranchSession(s.inner.GetHeader(), branch)
+	preview := icodingagent.NewBranchSession(s.inner.Load().GetHeader(), branch)
 	if _, err := applyBoundaryDrafts(preview, drafts); err != nil {
 		return nil, err
 	}
@@ -235,7 +244,7 @@ func (s *Session) createBoundaryPreviewManager(drafts []extension.SessionBoundar
 // boundaryProjection is the projection of a preview manager holding the session's branch and then drafts (agent-session.ts _buildBoundaryContext). With no drafts the preview holds exactly the branch, whose entries keep their ids and parent links, so its projection is the session's own and the copy is skipped. That projection's messages are the session's own objects, as Pi's are: the caller reads them and never modifies them.
 func (s *Session) boundaryProjection(drafts []extension.SessionBoundaryDraft) (icodingagent.SessionProjection, error) {
 	if len(drafts) == 0 {
-		return s.inner.BuildSessionProjectionView(), nil
+		return s.inner.Load().BuildSessionProjectionView(), nil
 	}
 	preview, err := s.createBoundaryPreviewManager(drafts)
 	if err != nil {
@@ -287,7 +296,7 @@ func applyBoundaryDrafts(manager *icodingagent.Session, drafts []extension.Sessi
 
 // recordedBoundaryContext is projectBoundaryContext for a boundary dispatch: it records the preview and the inputs of its projected part in the dispatch's wire cache, so subprocess handlers share one encoding while those inputs stay the same. While they stay the same and no handler that reads Go values has held the latest preview, the next preview reuses its projected part instead of projecting the session again: a projection of the same session state is equal to it.
 func (s *Session) recordedBoundaryContext(wire *boundarywire.Cache, drafts []extension.SessionBoundaryDraft, boundary string) (extension.BoundaryContextPreview, error) {
-	inner := s.inner
+	inner := s.inner.Load()
 	revision := inner.Revision()
 	key := boundarywire.Key{Session: inner, Revision: revision}
 	if len(drafts) == 0 {
@@ -304,7 +313,7 @@ func (s *Session) recordedBoundaryContext(wire *boundarywire.Cache, drafts []ext
 	if err != nil {
 		return preview, err
 	}
-	cacheable := len(drafts) == 0 && inner == s.inner && revision == inner.Revision()
+	cacheable := len(drafts) == 0 && inner == s.inner.Load() && revision == inner.Revision()
 	wire.Built(preview, key, cacheable, sources)
 	if shared {
 		wire.Shared()

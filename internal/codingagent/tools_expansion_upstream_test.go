@@ -79,7 +79,7 @@ func BenchmarkToolsExpansionMountedTranscript(b *testing.B) {
 		b.Run(fmt.Sprint(count), func(b *testing.B) {
 			m, terminal := newTickRenderProbe(b, "regular")
 			for range count {
-				m.chatContainer.Add(tui.NewSkillInvocationMessageComponent(tui.ParsedSkillBlock{Name: "inspect", Content: "skill body"}, nil, 1))
+				m.chatContainer.Add(tui.NewSkillInvocationMessageComponent(tui.ParsedSkillBlock{Name: "inspect", Content: "skill body"}, nil, 1, nil, "", ""))
 			}
 			m.tuiInst.Render()
 			terminal.take()

@@ -20,8 +20,8 @@ func TestNativeTreeSelectRowsCarryTheLabelTimeOnlyWhenToggledOn(t *testing.T) {
 	treeHelpTestKeybindings(t, nil)
 	stamp := time.Date(2020, 3, 5, 14, 7, 0, 0, time.Local).UTC().Format(time.RFC3339Nano)
 	root := &nselTreeNode{kids: []TreeNode{
-		&nselStampedNode{nselTreeNode: nselTreeNode{id: "a", label: "alpha", branch: "keep"}, stamp: stamp},
-		&nselStampedNode{nselTreeNode: nselTreeNode{id: "b", label: "beta"}},
+		&nselStampedNode{id: "a", label: "alpha", branch: "keep", stamp: stamp},
+		&nselStampedNode{id: "b", label: "beta"},
 	}}
 	ts := NewTreeSelectorComponent("", root)
 	label := func(id string) string {

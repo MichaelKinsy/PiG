@@ -11,7 +11,7 @@ import (
 )
 
 // pi: packages/chord/src/next/store/table-writes.ts
-// Ports packages/chord/test/next/store/table-writes.test.ts: table writes (slice 6a §6, §9): schema writes, row writes
+// Ports packages/chord/test/store/table-writes.test.ts: table writes (slice 6a §6, §9): schema writes, row writes
 // as the outbox records them, and alter writes.
 
 const writesTable = "app.store:edits"
@@ -38,7 +38,7 @@ func writesEdits(t *testing.T) *TableDefinition {
 }
 
 // openFence is the fence of a commit that is admitted and adopted by nobody.
-var openFence = CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64) error { return nil }}
+var openFence = CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64, int) error { return nil }}
 
 // writesJSON is writes as the JSON a replica reads (what the outbox stores).
 func writesJSON(t *testing.T, writes []StoreWrite) any {

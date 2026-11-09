@@ -1,6 +1,6 @@
 package http
 
-// pi: packages/chord/src/next-node/http/authenticate.ts
+// pi: packages/chord/src/node/http/authenticate.ts
 
 import (
 	"context"
@@ -37,19 +37,19 @@ func TestAuthenticatorsAreAskedInContributorOrderTheFirstPrincipalWinsAThrowingO
 	owner, guest := principalOwner(), principalGuest("g")
 	broken := errors.New("broken")
 	table := authenticatorTable(map[string]Authenticator{
-		"@app/a": func(HttpRequest, context.Context) (data.Principal, error) {
+		"@app/a": func(context.Context, HttpRequest) (data.Principal, error) {
 			asked = append(asked, "a")
 			return nil, nil
 		},
-		"@app/b": func(HttpRequest, context.Context) (data.Principal, error) {
+		"@app/b": func(context.Context, HttpRequest) (data.Principal, error) {
 			asked = append(asked, "b")
 			return nil, broken
 		},
-		"@app/c": func(HttpRequest, context.Context) (data.Principal, error) {
+		"@app/c": func(context.Context, HttpRequest) (data.Principal, error) {
 			asked = append(asked, "c")
 			return owner, nil
 		},
-		"@app/d": func(HttpRequest, context.Context) (data.Principal, error) {
+		"@app/d": func(context.Context, HttpRequest) (data.Principal, error) {
 			asked = append(asked, "d")
 			return guest, nil
 		},
@@ -77,7 +77,7 @@ func TestAuthenticatorsAreAskedInContributorOrderTheFirstPrincipalWinsAThrowingO
 func TestAuthenticatorsStartNoAuthenticatorOnceTheContextIsAborted(t *testing.T) {
 	calls := 0
 	table := authenticatorTable(map[string]Authenticator{
-		"@app/a": func(HttpRequest, context.Context) (data.Principal, error) {
+		"@app/a": func(context.Context, HttpRequest) (data.Principal, error) {
 			calls++
 			return nil, nil
 		},

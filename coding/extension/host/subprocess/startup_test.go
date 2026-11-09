@@ -209,9 +209,9 @@ export default function(pi) {
 		}
 		runner := inproc.NewRunner(loaded, root)
 		result, err := runner.EmitToolCall(t.Context(), extension.CustomToolCallEvent{
-			ToolCallEventBase: extension.ToolCallEventBase{Type: "tool_call", ToolCallID: label},
-			ToolName:          "fixture",
-			Input:             map[string]any{},
+			Type: "tool_call", ToolCallID: label,
+			ToolName: "fixture",
+			Input:    map[string]any{},
 		})
 		if err != nil {
 			t.Fatalf("%s tool_call: %v", label, err)
@@ -298,9 +298,9 @@ export default function(pi) {
 				t.Helper()
 				runner := inproc.NewRunner(exts, root)
 				if _, err := runner.EmitToolCall(t.Context(), extension.CustomToolCallEvent{
-					ToolCallEventBase: extension.ToolCallEventBase{Type: "tool_call", ToolCallID: id},
-					ToolName:          "fixture",
-					Input:             map[string]any{},
+					Type: "tool_call", ToolCallID: id,
+					ToolName: "fixture",
+					Input:    map[string]any{},
 				}); err != nil {
 					t.Fatal(err)
 				}

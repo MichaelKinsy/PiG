@@ -13,7 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 )
 
-// Ports packages/chord/test/next/link/ipc.test.ts. The Go form of a listener removal is the function the
+// Ports packages/chord/test/link/ipc.test.ts. The Go form of a listener removal is the function the
 // registration returns (a Go func has no identity to remove by). The forked-child test runs a goroutine child over a
 // socket pair: Node's IPC channel and V8 "advanced" serialization have no Go counterpart, a `net.Pipe` carrying
 // length-prefixed frames plays the channel and keeps the race of an exit against sends.

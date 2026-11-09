@@ -6,7 +6,7 @@ import "testing"
 func TestSshConnectedRemoteReadsTheDetectedSystem(t *testing.T) {
 	t.Parallel()
 	state := &sshState{}
-	connected := sshConnected(SshConnectOptions{SshTarget: SshTarget{Host: "h", HostKeyAlias: "a", KnownHostsFile: "/tmp/known"}}, state)
+	connected := sshConnected(SshConnectOptions{Host: "h", HostKeyAlias: "a", KnownHostsFile: "/tmp/known"}, state)
 	if connected.Connection == nil {
 		t.Fatal("SshConnection returned no connection")
 	}

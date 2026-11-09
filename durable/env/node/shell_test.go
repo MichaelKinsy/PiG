@@ -373,10 +373,8 @@ func TestShellReturnsAnAbortedResultForPreAbortedAndAbortedCommands(t *testing.T
 	}
 }
 
-// "ignores asynchronous taskkill spawn errors during abort" is not ported here:
-// Node reports a failed taskkill spawn as an asynchronous "error" event that
-// must be consumed. Go's Start returns that failure synchronously and every
-// caller of killProcessTree discards it.
+// "ignores asynchronous taskkill spawn errors during abort" is in shell_kill_failure_test.go: Go's Start returns a failed
+// taskkill spawn synchronously, so the test fails the killProcessTree seam instead of faking the platform.
 
 // packages/durable/src/env/index.ts:240-248: ShellSpillOptions.afterBytes and afterLines start the spill, and the result carries spillPath.
 func TestShellDoesNotCreateASpillBeforeOutputCrossesItsThresholds(t *testing.T) {

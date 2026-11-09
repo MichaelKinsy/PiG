@@ -10,7 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// Ports packages/chord/test/next/state/watchable.test.ts, the describe "constant". The blocks "watches" and "subscribers"
+// Ports packages/chord/test/state/watchable.test.ts, the describe "constant". The blocks "watches" and "subscribers"
 // run on a ChordHost with a defineState counter (c.num.watch, resolveWatchable); watchable_own_test.go runs them on a
 // Source, and the host variants wait for the host, contracts and documents packages.
 

@@ -1,6 +1,6 @@
 package host
 
-// pi: packages/chord/test/next/examples/06-natives.ts
+// pi: packages/chord/test/examples/06-natives.ts
 
 import (
 	"context"
@@ -19,6 +19,10 @@ import (
 )
 
 // --- 06-natives.ts -------------------------------------------------------------------------------------------------
+
+// hungClose is what a close that never settles (Pi's promise that nothing resolves) waits on: TestMain closes it after the
+// tests, so the goroutine of that close is not one the leak check reports.
+var hungClose = make(chan struct{})
 
 func TestExample06Natives(t *testing.T) {
 	clock := exLocal("example.clock", contracts.Params{exProp("zone", exStr())},
@@ -91,7 +95,8 @@ func TestExample06Natives(t *testing.T) {
 			})
 			closeTimeout := 50 * time.Millisecond
 			self.Open(func(context.Context) (any, error) { return "worker", nil }, func(any, NativeCloseReason, context.Context) error {
-				select {} // never settles
+				<-hungClose // never settles
+				return nil
 			}, NativeOptions{CloseTimeout: &closeTimeout})
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{"n": exConstant(float64(1))}, nil), nil
 		}, ServeOptions{})

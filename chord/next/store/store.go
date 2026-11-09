@@ -130,8 +130,8 @@ type CommitFence struct {
 	// Admit is called at the step's entry: false rejects the commit `released` and writes nothing.
 	Admit func() bool
 	// Adopt is called after `COMMIT`: it adopts the commit, ids being its created documents' ids in the order of
-	// their writes. An error stops the store (an unknown outcome).
-	Adopt func(seq int64, ids []int64) error
+	// their writes, rows the table rows its writes changed. An error stops the store (an unknown outcome).
+	Adopt func(seq int64, ids []int64, rows int) error
 }
 
 // Attachment is what the open host gives the store: its `storage_failed` listener and its batch, in which adapters
@@ -753,7 +753,7 @@ type stepDone struct {
 // runGroup is a group's turn, run by its first commit's caller (the group takes no more commits from here): its commits
 // admitted together at its entry, one as its own step, several written in one backend transaction (grouped). It settles
 // every commit of the group and then lets the queue go on, whatever happened. A panic out of an Admit rejects that one
-// commit with the panic's value (admit). A panic out of another callback of the turn (Adopt, the metrics adapter) is an
+// commit with the panic's value (admit). A panic out of another callback of the turn (Adopt) is an
 // unknown outcome: the store stops, the commits not settled yet fail `storage_failed`, and the panic goes on in the caller
 // that ran the turn. A panic out of the host's failed listener rejects the commits not settled with its value (Pi's `catch`
 // of the turn).
@@ -912,9 +912,10 @@ func (store *ChordStore) writeGroup(admitted []*queuedCommit, executor sqlite.Sq
 }
 
 // adoptGroup is, after a group's `COMMIT`, commit by commit as after a lone step: memory follows it, it counts through its
-// own context (the metadata statement ran on the last one's step), it is adopted. Anything that fails here (an adoption)
-// is an unknown outcome: memory takes the whole group (it is durable), the store stops, and that commit and the ones
-// after it fail `storage_failed`, unadopted; a panic does the same, and goes on.
+// own context (the metadata statement ran on the last one's step), it is adopted. Anything that fails here (an adoption, a
+// metrics adapter that panics: countCommit) is an unknown outcome: memory takes the whole group (it is durable), the store
+// stops, and that commit and the ones after it fail `storage_failed`, unadopted; a panic out of an adoption does the same, and
+// goes on.
 func (store *ChordStore) adoptGroup(admitted []*queuedCommit, done groupWritten) {
 	index := 0
 	defer func() {
@@ -932,11 +933,16 @@ func (store *ChordStore) adoptGroup(admitted []*queuedCommit, done groupWritten)
 			store.catalog = withTables(store.catalog, step.Tables)
 		}
 		store.mu.Unlock()
-		if metrics := chordctx.Telemetry(queued.ctx).Metrics(); metrics != nil {
-			metrics.Counter("chord.store.commits", telemetry.InstrumentOptions{}).Add(1, nil)
-			metrics.Counter("chord.store.statements", telemetry.InstrumentOptions{}).Add(float64(step.Statements), nil)
+		if err := countCommit(queued.ctx, 1, step.Statements); err != nil {
+			store.takeWhole(done.written)
+			failed := store.failTurn(err)
+			for _, rest := range admitted[index:] {
+				rest.settle(0, failed)
+			}
+			index = len(admitted)
+			return
 		}
-		if err := queued.fence.Adopt(step.Seq, step.Created); err != nil {
+		if err := queued.fence.Adopt(step.Seq, step.Created, step.Rows); err != nil {
 			store.takeWhole(done.written)
 			failed := store.failTurn(err)
 			for _, rest := range admitted[index:] {
@@ -947,6 +953,24 @@ func (store *ChordStore) adoptGroup(admitted []*queuedCommit, done groupWritten)
 		}
 		queued.settle(step.Seq, nil)
 	}
+}
+
+// countCommit adds a durable commit to the context's metrics. A metrics adapter that panics (Go's form of Pi's adapter that
+// throws, whose `add` the store does not guard) is an unknown outcome after COMMIT, like a failing adoption: the caller stops the
+// store and its commit fails `storage_failed`; the panic does not go on.
+func countCommit(ctx context.Context, commits int64, statements int) (err error) {
+	metrics := chordctx.Telemetry(ctx).Metrics()
+	if metrics == nil {
+		return nil
+	}
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			err = fmt.Errorf("store: the metrics adapter panicked: %v", recovered)
+		}
+	}()
+	metrics.Counter("chord.store.commits", telemetry.InstrumentOptions{}).Add(float64(commits), nil)
+	metrics.Counter("chord.store.statements", telemetry.InstrumentOptions{}).Add(float64(statements), nil)
+	return nil
 }
 
 // takeWhole is memory standing at the last commit of a transaction that is durable.
@@ -974,7 +998,7 @@ func (store *ChordStore) admittedStep(writes []StagedWrite, fence CommitFence, c
 	lastSeq := store.LastSeq()
 	if len(writes) == 0 {
 		// An empty commit takes no seq; a failing Adopt stops the store as for any commit.
-		if err := fence.Adopt(lastSeq, []int64{}); err != nil {
+		if err := fence.Adopt(lastSeq, []int64{}, 0); err != nil {
 			return 0, store.failTurn(err)
 		}
 		return lastSeq, nil
@@ -1014,11 +1038,10 @@ func (store *ChordStore) admittedStep(writes []StagedWrite, fence CommitFence, c
 		store.catalog = withTables(store.catalog, done.step.Tables)
 	}
 	store.mu.Unlock()
-	if metrics := chordctx.Telemetry(ctx).Metrics(); metrics != nil {
-		metrics.Counter("chord.store.commits", telemetry.InstrumentOptions{}).Add(1, nil)
-		metrics.Counter("chord.store.statements", telemetry.InstrumentOptions{}).Add(float64(done.step.Statements), nil)
+	if err := countCommit(ctx, 1, done.step.Statements); err != nil {
+		return 0, store.failTurn(err)
 	}
-	if err := fence.Adopt(seq, done.step.Created); err != nil {
+	if err := fence.Adopt(seq, done.step.Created, done.step.Rows); err != nil {
 		return 0, store.failTurn(err)
 	}
 	return seq, nil
@@ -1090,9 +1113,8 @@ func (store *ChordStore) series(commits []SeriesCommit, receive func(index int, 
 		}
 		store.mu.Unlock()
 	}
-	if metrics := chordctx.Telemetry(ctx).Metrics(); metrics != nil {
-		metrics.Counter("chord.store.commits", telemetry.InstrumentOptions{}).Add(float64(done.written), nil)
-		metrics.Counter("chord.store.statements", telemetry.InstrumentOptions{}).Add(float64(done.statements), nil)
+	if err := countCommit(ctx, done.written, done.statements); err != nil {
+		return SeriesResult{}, store.fail(err)
 	}
 	for index, stored := range done.stored {
 		if err := receive(index, stored.seq, stored.created); err != nil {

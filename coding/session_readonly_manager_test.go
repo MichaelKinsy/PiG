@@ -9,7 +9,7 @@ import (
 // session's own log through the read-only Pick, so every getter answers from the live Session and a later append is visible to a context made before it.
 func TestExtensionContextSessionManagerReadsTheSessionsOwnLog(t *testing.T) {
 	h := newRecoveryHarness(t, harnessOptions{})
-	log := h.session.inner
+	log := h.session.inner.Load()
 	ctx := h.session.currentRunner().CreateCommandContext()
 	manager, err := ctx.SessionManager()
 	if err != nil || manager == nil {

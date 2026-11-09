@@ -17,7 +17,7 @@ import (
 )
 
 // pi: packages/chord/src/next/host/root.ts
-// Ports packages/chord/test/next/host/root.test.ts: `host.root` on a host (createHost, loaded), its scopes sealed when fn
+// Ports packages/chord/test/host/root.test.ts: `host.root` on a host (createHost, loaded), its scopes sealed when fn
 // settles, when its context aborts and at the host's close.
 
 // rootInfo is root.test.ts `Info`: a param `id`, members `id` and `wait`.
@@ -189,29 +189,27 @@ func TestHostRootAnAbortedContextRejectsBeforeFnRunsASynchronousThrowIsARejectio
 	}
 }
 
-// Mirrors "host.root › a `ctx.get` before `load` resolved parks until it did".
-func TestHostRootACtxGetBeforeLoadResolvedParksUntilItDid(t *testing.T) {
+// Mirrors "host.root › a `ctx.get` before `load` throws not_ready (decision (a)); after it, it gets".
+func TestHostRootACtxGetBeforeLoadThrowsNotReadyDecisionAAfterItItGets(t *testing.T) {
 	host := newHost(t, HostOptions{OnError: func(HostError) {}})
 	defer closeHosts(t, host)
-	type result struct {
-		id  any
-		err error
+	get := func(ctx Ctx) (*Reference, error) {
+		return ctx.Get(rootInfo, jsonObject("id", float64(3)), GetOptions{})
 	}
-	got := make(chan result, 1)
-	go func() {
-		value, err := host.Root(func(ctx Ctx) (any, error) {
-			info, err := ctx.Get(rootInfo, jsonObject("id", float64(3)), GetOptions{})
-			if err != nil {
-				return nil, err
-			}
-			return info.Member("id").Value()
-		}, background, RootOptions{})
-		got <- result{value, err}
-	}()
-	awaitUnbound(t, host)
+	_, err := host.Root(func(ctx Ctx) (any, error) { return get(ctx) }, background, RootOptions{})
+	if _, ok := data.IsChordErrorCode(err, data.CodeNotReady); !ok {
+		t.Fatalf("root before load = %v, want not_ready", err)
+	}
 	mustLoad(t)(host.Load([]HostFacet{{Name: "@app/info", Facet: DefineFacet(serveRootInfo)}}, background))
-	if outcome := <-got; outcome.err != nil || outcome.id != float64(3) {
-		t.Fatalf("root = %v, %v; want 3", outcome.id, outcome.err)
+	id, err := host.Root(func(ctx Ctx) (any, error) {
+		info, err := get(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return info.Member("id").Value()
+	}, background, RootOptions{})
+	if err != nil || id != float64(3) {
+		t.Fatalf("root = %v, %v; want 3", id, err)
 	}
 }
 

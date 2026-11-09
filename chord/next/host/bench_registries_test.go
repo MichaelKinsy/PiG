@@ -14,7 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/test/next/bench/registries.ts: slice 8's registries and writables: a `writable.set` delivered to
+// Ports packages/chord/test/bench/registries.ts: slice 8's registries and writables: a `writable.set` delivered to
 // one watch, a set of the same value (one comparison), and one contribution of N (10, 100) changed while the registry is
 // watched (one table build and one compose per set, over N entries). Pi reports the median µs per operation over bursts,
 // heap allocated per operation and the registry's compose count per set (the cost guard: one); the Go form is
@@ -48,7 +48,7 @@ func (r *benchRegistry) composes() float64 {
 	return total
 }
 
-func benchRegistryOf(b *testing.B, contributors int) *benchRegistry {
+func benchRegistryOf(b testing.TB, contributors int) *benchRegistry {
 	b.Helper()
 	recorder := telemetry.NewInMemoryTelemetryContext()
 	result := &benchRegistry{telemetry: recorder}
@@ -97,6 +97,13 @@ func benchRegistryOf(b *testing.B, contributors int) *benchRegistry {
 	return result
 }
 
+// setInSection sets a writable inside a section of the host's loop, as an object's code does (a registry compose the set
+// causes then reads inside the section).
+func setInSection(h Host, writable state.Writable[any], value any) (err error) {
+	h.(*chordHost).enter(func() { err = writable.Set(value) })
+	return err
+}
+
 func BenchmarkRegistries(b *testing.B) {
 	b.Run("writable.set, one watch", func(b *testing.B) {
 		one := benchRegistryOf(b, 1)
@@ -106,7 +113,7 @@ func BenchmarkRegistries(b *testing.B) {
 		watch.Start(func(context.Context, chord.NativeWatchCall[any]) error { return nil })
 		b.ReportAllocs()
 		for i := 0; b.Loop(); i++ {
-			if err := writable.Set(float64(i + 1)); err != nil {
+			if err := setInSection(one.host, writable, float64(i+1)); err != nil {
 				b.Fatal(err)
 			}
 		}
@@ -122,11 +129,15 @@ func BenchmarkRegistries(b *testing.B) {
 		_, _ = one.watch.Stop()
 		must(b, writable.Set(-1.0))
 		b.ReportAllocs()
-		for b.Loop() {
-			if err := writable.Set(-1.0); err != nil {
-				b.Fatal(err)
+		// Inside one section, as an object's code sets: the cost of a same-value set there, not a section entry.
+		one.host.(*chordHost).enter(func() {
+			for b.Loop() {
+				if err := writable.Set(-1.0); err != nil {
+					b.Error(err)
+					return
+				}
 			}
-		}
+		})
 		b.StopTimer()
 		must(b, one.host.Close(background))
 	})
@@ -143,7 +154,7 @@ func BenchmarkRegistries(b *testing.B) {
 			b.ReportAllocs()
 			sets := 0
 			for i := 0; b.Loop(); i++ {
-				if err := target.Set(float64(i + 1)); err != nil {
+				if err := setInSection(registry.host, target, float64(i+1)); err != nil {
 					b.Fatal(err)
 				}
 				sets++

@@ -17,7 +17,7 @@ import (
 // Matches packages/coding-agent/test/utilities.ts:135 assistantMsg, including usage.
 func appendUpstreamTreeAssistant(t *testing.T, sess *Session, text string) string {
 	t.Helper()
-	id, err := sess.inner.AppendMessage(agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: "assistant", Content: []ai.AssistantContentBlock{ai.TextContent{Text: text}}, API: "anthropic-messages", Provider: "anthropic", ModelID: "test", Usage: &ai.Usage{Input: 1, Output: 1, TotalTokens: 2}, StopReason: ai.StopReasonStop, Timestamp: time.Now().UnixMilli()}})
+	id, err := sess.inner.Load().AppendMessage(agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: "assistant", Content: []ai.AssistantContentBlock{ai.TextContent{Text: text}}, API: "anthropic-messages", Provider: "anthropic", ModelID: "test", Usage: &ai.Usage{Input: 1, Output: 1, TotalTokens: 2}, StopReason: ai.StopReasonStop, Timestamp: time.Now().UnixMilli()}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,7 +68,7 @@ func TestNavigateTreeRejectsNavigationBeforeActiveLeafCanChange(t *testing.T) {
 	if err := <-compactDone; err != nil {
 		t.Fatal(err)
 	}
-	entries := sess.inner.GetEntries()
+	entries := sess.inner.Load().GetEntries()
 	last := entries[len(entries)-1]
 	if last.Base().Type != "compaction" || last.Base().ParentID == nil || *last.Base().ParentID != original {
 		t.Fatalf("compaction = %+v", last.Base())

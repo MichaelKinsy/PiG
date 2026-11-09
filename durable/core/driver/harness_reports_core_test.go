@@ -226,7 +226,7 @@ func TestReports(t *testing.T) {
 				o.SetTimer = func(func(), float64, bool) func() { panic(errors.New("no timers")) }
 			})
 			echo := harness.DefineTool(durable.ToolRegistration{
-				ToolSchema: ai.ToolSchema{Name: "echo", Description: "echo", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}},
+				Name: "echo", Description: "echo", Parameters: map[string]any{"type": "object", "properties": map[string]any{}},
 				Execute: func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 					return durable.ToolExecutionResult{}, nil
 				},

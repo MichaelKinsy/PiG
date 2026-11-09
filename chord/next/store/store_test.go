@@ -17,7 +17,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/sqlite/node"
 )
 
-// Ports packages/chord/test/next/store/store.test.ts
+// Ports packages/chord/test/store/store.test.ts
 //
 // The store (slice 6a §2, §3, slice 6b §1): opening, the commit step, refusals and unknown outcomes (D4), the id
 // allocator (D3), one host per store (rule 7), close.
@@ -42,7 +42,7 @@ func recording() (*[]adoption, CommitFence) {
 	adopted := &[]adoption{}
 	return adopted, CommitFence{
 		Admit: func() bool { return true },
-		Adopt: func(seq int64, ids []int64) error {
+		Adopt: func(seq int64, ids []int64, _ int) error {
 			*adopted = append(*adopted, adoption{seq, ids})
 			return nil
 		},
@@ -113,7 +113,7 @@ func TestStore(t *testing.T) {
 	t.Run("opening", func(t *testing.T) {
 		t.Run("creates a new store at seq 0 without an outbox, and reopens a file at its last seq and ids", func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "store.sqlite")
-			// Ports packages/chord/test/next/store/store.test.ts:64 (the it() through :77). LastSeq, Outbox and Close go
+			// Ports packages/chord/test/store/store.test.ts:64 (the it() through :77). LastSeq, Outbox and Close go
 			// through the Store OpenStore returned, as store.test.ts:68 (lastSeq, outbox), :70 (close) and :72 (lastSeq of
 			// the reopened store) read them; Commit is ChordStore's.
 			store := openStoreValueAt(t, path)
@@ -159,7 +159,7 @@ func TestStore(t *testing.T) {
 			fence := func(name string) CommitFence {
 				return CommitFence{
 					Admit: func() bool { return true },
-					Adopt: func(seq int64, ids []int64) error {
+					Adopt: func(seq int64, ids []int64, _ int) error {
 						joined := make([]string, len(ids))
 						for index, each := range ids {
 							joined[index] = fmt.Sprint(each)
@@ -201,7 +201,7 @@ func TestStore(t *testing.T) {
 
 		t.Run("rejects a commit its fence refuses at the entry released, writing nothing; an empty commit takes no seq", func(t *testing.T) {
 			store := memoryStore(t)
-			refusing := CommitFence{Admit: func() bool { return false }, Adopt: func(int64, []int64) error { return nil }}
+			refusing := CommitFence{Admit: func() bool { return false }, Adopt: func(int64, []int64, int) error { return nil }}
 			_, err := store.Commit([]StagedWrite{CreateDocument(storeAddress, storeBase, "{}", nil)}, refusing, background)
 			_ = rejected(t, err, data.CodeReleased, "")
 			adopted, fence := recording()
@@ -323,7 +323,7 @@ func TestStore(t *testing.T) {
 		t.Run("an adopt that throws stops the store, an empty commit's too; a conditional update on another revision is refused", func(t *testing.T) {
 			store := memoryStore(t)
 			id := storeCreated(t, store)
-			throwing := CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64) error { return errors.New("adopt threw") }}
+			throwing := CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64, int) error { return errors.New("adopt threw") }}
 			_, err := store.Commit([]StagedWrite{RetireDocument(id, 1)}, throwing, background)
 			_ = rejected(t, err, data.CodeUnavailable, data.ReasonStorageFailed)
 			empty := memoryStore(t)
@@ -803,7 +803,7 @@ func TestStore(t *testing.T) {
 					events = append(events, "admit")
 					return true
 				},
-				Adopt: func(seq int64, _ []int64) error {
+				Adopt: func(seq int64, _ []int64, _ int) error {
 					events = append(events, fmt.Sprintf("adopt %d", seq))
 					return nil
 				},

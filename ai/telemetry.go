@@ -18,6 +18,7 @@ package ai
 import (
 	"reflect"
 	"runtime"
+	"strings"
 	"sync"
 	"weak"
 
@@ -28,40 +29,34 @@ import (
 
 var (
 	aiProvider = telemetry.TelemetryStartAttributeDefinition{
-		TelemetryAttributeDefinition: telemetry.TelemetryAttributeDefinition{
-			TelemetryAttributeMetadata: telemetry.TelemetryAttributeMetadata{Description: "Provider identifier."},
-			Type:                       telemetry.TelemetryAttributeTypeString,
-		},
-		Required: true,
+		Description: "Provider identifier.",
+		Type:        telemetry.TelemetryAttributeTypeString,
+		Required:    true,
 	}
 	aiModel = telemetry.TelemetryStartAttributeDefinition{
-		TelemetryAttributeDefinition: telemetry.TelemetryAttributeDefinition{
-			TelemetryAttributeMetadata: telemetry.TelemetryAttributeMetadata{Description: "Requested model identifier."},
-			Type:                       telemetry.TelemetryAttributeTypeString,
-		},
-		Required: true,
+		Description: "Requested model identifier.",
+		Type:        telemetry.TelemetryAttributeTypeString,
+		Required:    true,
 	}
 	aiStop = telemetry.TelemetryAttributeDefinition{
-		TelemetryAttributeMetadata: telemetry.TelemetryAttributeMetadata{Description: "Normalized stop reason."},
-		Type:                       telemetry.TelemetryAttributeTypeString,
-		Values:                     []string{"pending", "stop", "length", "toolUse", "error", "aborted", "deferred"},
+		Description: "Normalized stop reason.",
+		Type:        telemetry.TelemetryAttributeTypeString,
+		Values:      []string{"pending", "stop", "length", "toolUse", "error", "aborted", "deferred"},
 	}
 )
 
 func aiAttribute(valueType telemetry.TelemetryAttributeType, description string, required bool) telemetry.TelemetryStartAttributeDefinition {
 	return telemetry.TelemetryStartAttributeDefinition{
-		TelemetryAttributeDefinition: telemetry.TelemetryAttributeDefinition{
-			TelemetryAttributeMetadata: telemetry.TelemetryAttributeMetadata{Description: description},
-			Type:                       valueType,
-		},
-		Required: required,
+		Description: description,
+		Type:        valueType,
+		Required:    required,
 	}
 }
 
 func aiEndAttribute(description string) telemetry.TelemetryAttributeDefinition {
 	return telemetry.TelemetryAttributeDefinition{
-		TelemetryAttributeMetadata: telemetry.TelemetryAttributeMetadata{Description: description},
-		Type:                       telemetry.TelemetryAttributeTypeNumber,
+		Description: description,
+		Type:        telemetry.TelemetryAttributeTypeNumber,
 	}
 }
 
@@ -69,8 +64,8 @@ func aiRequestSpan(description string) telemetry.TelemetrySpanDefinition {
 	blockType := aiAttribute(telemetry.TelemetryAttributeTypeString, "Block kind.", true)
 	blockType.Values = []string{"text", "thinking", "tool_call"}
 	responseID := telemetry.TelemetryAttributeDefinition{
-		TelemetryAttributeMetadata: telemetry.TelemetryAttributeMetadata{Description: "Provider response identifier.", Cardinality: telemetry.TelemetryAttributeCardinalityHigh},
-		Type:                       telemetry.TelemetryAttributeTypeString,
+		Description: "Provider response identifier.", Cardinality: telemetry.TelemetryAttributeCardinalityHigh,
+		Type: telemetry.TelemetryAttributeTypeString,
 	}
 	return telemetry.TelemetrySpanDefinition{
 		Description: description,
@@ -334,7 +329,7 @@ func (o *modelRequestObservation) onResult(message *AssistantMessage) {
 		}
 		o.span.SetAttributes(attributes)
 		if message.StopReason == StopReasonError {
-			o.span.SetStatus(telemetry.SpanStatus{Status: telemetry.SpanStatusCodeError, Error: &telemetry.SpanStatusError{Name: "provider_error", Message: jsstring.Slice(message.ErrorMessage, 0, 500)}})
+			o.span.SetStatus(telemetry.SpanStatus{Status: telemetry.SpanStatusCodeError, Error: &telemetry.SpanStatusError{Name: "provider_error", Message: strings.Clone(jsstring.Slice(message.ErrorMessage, 0, 500))}})
 		}
 		o.instr.requestDuration.Record(jsclock.PerformanceNow()-o.started, o.metricAttributes("stop", string(message.StopReason)), o.span)
 		if !o.poll || (message.StopReason != StopReasonPending && message.StopReason != StopReasonDeferred) {

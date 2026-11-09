@@ -144,7 +144,7 @@ type startOptions struct {
 func startRun(t *testing.T, sandbox *codemode.Sandbox, code string, mutate ...func(*startOptions)) *recorded {
 	t.Helper()
 	timeout := 20_000.0
-	options := startOptions{RunOptions: codemode.RunOptions{StartedAt: startedAt, Seed: 1, Tools: []codemode.DeclaredTool{{Name: "echo"}, {Name: "wait"}}, TimeoutMs: &timeout}}
+	options := startOptions{StartedAt: startedAt, Seed: 1, Tools: []codemode.DeclaredTool{{Name: "echo"}, {Name: "wait"}}, TimeoutMs: &timeout}
 	for _, m := range mutate {
 		m(&options)
 	}
@@ -719,7 +719,7 @@ func TestAVMThatIsToldTheSameResultNumberTwiceCrashes(t *testing.T) {
 			last := messages[len(messages)-1]
 			switch last.Type {
 			case codemode.MessageCall:
-				reply(&codemode.RemoteReply{HostToWorkerMessage: codemode.HostToWorkerMessage{Type: codemode.MessageResult, ID: last.ID, Ok: true, Payload: &payload, Seq: &seq, Now: &zero}}, nil)
+				reply(&codemode.RemoteReply{Type: codemode.MessageResult, ID: last.ID, Ok: true, Payload: &payload, Seq: &seq, Now: &zero}, nil)
 			case codemode.MessageCrash:
 				mu.Lock()
 				crash = last.Message

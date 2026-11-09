@@ -50,6 +50,8 @@ A custom model needs an `api` on the model or on its provider, unless it replace
 
 A `models` entry adds or replaces a model with the same ID on that provider. Use `modelOverrides` to change the metadata of an existing built-in or extension-provided model without replacing the provider's model list. Unknown override IDs are ignored.
 
+[Models Configuration](models-configuration.md) lists every field of `models.json`.
+
 ### Describe model input and caching
 
 Use `inputLimits.images.resize` to control how PiG encodes new image attachments, `read` results, and tool-result images before it stores them in the conversation history:

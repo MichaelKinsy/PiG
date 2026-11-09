@@ -274,10 +274,10 @@ func TestLinuxAggregateRejectsUnsuccessfulShards(t *testing.T) {
 	}
 }
 
-// fakeTests are the top-level tests the fixture's fake go test -list prints for every package; it also prints a benchmark, which -run does not select.
+// fakeTests are the top-level tests the fixture's fake go test -list prints for every package; it also prints a benchmark, which -run does not select. Twenty conformance shards need enough names for the hash to place a test in every one: 64 does.
 var fakeTests = func() []string {
 	var names []string
-	for i := range 24 {
+	for i := range 64 {
 		names = append(names, fmt.Sprintf("TestFixture%02d", i))
 	}
 	return append(names, "ExampleFixture", "FuzzFixture")
@@ -899,10 +899,15 @@ func TestOSParallelJobsKeepTheCheapFirstOrderOnMain(t *testing.T) {
 		if strings.Contains(job.If, "always()") {
 			t.Errorf("%s: if %q uses always(), which keeps a superseded run's job running; use !cancelled()", name, job.If)
 		}
+		// The Bookkeeping job publishes shards-blocked (automation/ci/bookkeeping_shards.py): a known-gaps-drift failure alone does not stop the shards, so its jobs wait on that output and not on the job's result.
+		passed := "needs." + need + ".result == 'success'"
+		if need == "bookkeeping" {
+			passed = "needs.bookkeeping.outputs.shards-blocked == 'false'"
+		}
 		for _, want := range []string{
 			"!cancelled()",
 			"needs.changes.result == 'success'",
-			"needs." + need + ".result == 'success'",
+			passed,
 			"needs.changes.outputs.os-parallel == 'true'",
 		} {
 			if !strings.Contains(job.If, want) {

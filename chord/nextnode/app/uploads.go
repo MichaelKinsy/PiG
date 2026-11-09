@@ -101,6 +101,7 @@ func (uploads *Uploads[T]) Begin(data T) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	//portlint:allow clock the package has no clock seam (its one func() time.Time field, App.processStart, is the program start for an edit check); uploads.ts reads `touched: Date.now()` (uploads.ts:72)
 	uploads.uploads[id] = &upload[T]{data: data, file: file, touched: time.Now()}
 	uploads.order = append(uploads.order, id)
 	return id, nil
@@ -145,6 +146,7 @@ func (uploads *Uploads[T]) accept(id string, offset int64, bytes []byte, room fu
 		return nil, err
 	}
 	each.size += int64(len(bytes))
+	//portlint:allow clock the package has no clock seam (its one func() time.Time field, App.processStart, is the program start for an edit check); uploads.ts reads `upload.touched = Date.now()` (uploads.ts:102)
 	each.touched = time.Now()
 	each.writes.Add(1)
 	return &AcceptedWrite{run: func() error {
@@ -238,6 +240,7 @@ func (uploads *Uploads[T]) Cancel(id string) error {
 
 // Expire drops the uploads unwritten for idle, once their writes landed.
 func (uploads *Uploads[T]) Expire(idle time.Duration) error {
+	//portlint:allow clock the package has no clock seam (its one func() time.Time field, App.processStart, is the program start for an edit check); uploads.ts reads `const now = Date.now()` (uploads.ts:147)
 	now := time.Now()
 	for _, id := range uploads.ids() {
 		uploads.mu.Lock()

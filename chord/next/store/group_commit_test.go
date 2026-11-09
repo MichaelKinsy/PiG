@@ -27,9 +27,9 @@ import (
 // throw: an Adopt returns an error, and the Go form of what a callback throws is a panic, which stops the store and goes
 // on in the caller that ran the turn (Pi rejects that commit's promise instead). What a turn throws past its own handling
 // (the host's listener) and what an admission throws are ported as Pi has them: the commits reject with the thrown value,
-// the queue goes on. Two cases have no exact Go form and are drafted as designed out in the test mapping, for owner review:
-// the two "metrics adapter throws" ones, whose closest forms are the panicking metrics adapter cases below. Pi's int() key typing
-// (d7704516e) is TypeScript typing: designed out.
+// the queue goes on. A metrics adapter that throws after COMMIT is a panic in Go (an instrument returns nothing): the store
+// recovers it as it does a failing adoption, so the commit rejects `storage_failed` as in Pi (countCommit). Pi's int() key typing
+// (d7704516e) is TypeScript typing, ported as a run-time check in table_test.go.
 
 // groupOutcome is what a commit settled with.
 type groupOutcome = chordctx.Settled[int64]
@@ -95,7 +95,7 @@ func traced(events *[]string, name string, admit bool) CommitFence {
 			*events = append(*events, "admit "+name)
 			return admit
 		},
-		Adopt: func(seq int64, ids []int64) error {
+		Adopt: func(seq int64, ids []int64, _ int) error {
 			*events = append(*events, fmt.Sprintf("adopt %s %d %s", name, seq, idsText(ids)))
 			return nil
 		},
@@ -331,7 +331,7 @@ func TestGroupCommit(t *testing.T) {
 		var late *pendingCommit
 		issuing := CommitFence{
 			Admit: func() bool { return true },
-			Adopt: func(seq int64, _ []int64) error {
+			Adopt: func(seq int64, _ []int64, _ int) error {
 				events = append(events, fmt.Sprintf("adopt b %d", seq))
 				late = ctl.store.enlist([]StagedWrite{created("late")}, traced(&events, "late", true), background)
 				return nil
@@ -397,7 +397,7 @@ func TestGroupCommit(t *testing.T) {
 			noError(t, ctl.store.Attach(Attachment{Failed: func(err error) { told = append(told, err) }, Batch: newBatch()}))
 			gate := ctl.arm()
 			// Armed after the held step's COMMIT, before the group's turn: the group's statement fails.
-			arming := CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64) error {
+			arming := CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64, int) error {
 				ctl.fail(c.at)
 				return nil
 			}}
@@ -428,7 +428,7 @@ func TestGroupCommit(t *testing.T) {
 		_, fence := recording()
 		running := startCommit(ctl.store, fence, created("a"))
 		<-gate.Entered()
-		throwing := CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64) error { return errors.New("adopt threw") }}
+		throwing := CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64, int) error { return errors.New("adopt threw") }}
 		first := startCommit(ctl.store, fence, created("b"))
 		second := startCommit(ctl.store, throwing, created("c"))
 		third := startCommit(ctl.store, fence, created("d"))
@@ -574,7 +574,7 @@ func TestGroupCommit(t *testing.T) {
 		ctl := controlledStore(t)
 		thrown := errors.New("listener threw")
 		noError(t, ctl.store.Attach(Attachment{Failed: func(error) { panic(thrown) }, Batch: newBatch()}))
-		throwing := CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64) error { return errors.New("adopt threw") }}
+		throwing := CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64, int) error { return errors.New("adopt threw") }}
 		gate := ctl.arm()
 		_, fence := recording()
 		running := startCommit(ctl.store, fence, created("a"))
@@ -606,7 +606,7 @@ func TestGroupCommit(t *testing.T) {
 	t.Run("a value that is no error rides in a ThrownError", func(t *testing.T) {
 		ctl := controlledStore(t)
 		noError(t, ctl.store.Attach(Attachment{Failed: func(error) { panic("plain value") }, Batch: newBatch()}))
-		failing := CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64) error { return errors.New("adopt failed") }}
+		failing := CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64, int) error { return errors.New("adopt failed") }}
 		_, err := ctl.store.Commit([]StagedWrite{created("a")}, failing, background)
 		var thrown *ThrownError
 		if !errors.As(err, &thrown) || thrown.Value != "plain value" {
@@ -617,7 +617,7 @@ func TestGroupCommit(t *testing.T) {
 	t.Run("advances memory commit by commit while a group adopts, as lone steps do", func(t *testing.T) {
 		ctl := controlledStore(t)
 		var seen [][3]int64
-		fence := CommitFence{Admit: func() bool { return true }, Adopt: func(seq int64, _ []int64) error {
+		fence := CommitFence{Admit: func() bool { return true }, Adopt: func(seq int64, _ []int64, _ int) error {
 			seen = append(seen, [3]int64{seq, ctl.store.LastSeq(), ctl.store.NextID()})
 			return nil
 		}}
@@ -638,7 +638,7 @@ func TestGroupCommit(t *testing.T) {
 
 	t.Run("a panic out of a lone commit's adoption stops the store too: it is durable, memory stands at it", func(t *testing.T) {
 		store := memoryStore(t)
-		panicking := CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64) error { panic("adopt panicked") }}
+		panicking := CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64, int) error { panic("adopt panicked") }}
 		pending := store.enlist([]StagedWrite{created("a")}, panicking, background)
 		panicked := make(chan any, 1)
 		go func() {
@@ -657,25 +657,17 @@ func TestGroupCommit(t *testing.T) {
 
 	t.Run("stops the store when a metrics adapter panics after a group's COMMIT: memory takes the whole group, no seq repeats", func(t *testing.T) {
 		ctl := controlledStore(t)
-		thrown := errors.New("metrics threw")
 		gate := ctl.arm()
 		_, fence := recording()
 		running := startCommit(ctl.store, fence, created("a"))
 		<-gate.Entered()
-		leader := ctl.store.enlist([]StagedWrite{created("b")}, fence, panickingMetrics(thrown))
-		panicked := make(chan any, 1)
-		go func() {
-			defer func() { panicked <- recover() }()
-			_, _ = leader.Wait()
-		}()
+		leader := startWait(ctl.store.enlist([]StagedWrite{created("b")}, fence, panickingMetrics(errors.New("metrics threw"))))
 		follower := startCommit(ctl.store, fence, created("c"))
 		gate.Release()
 		if seqOf(t, running) != 1 {
 			t.Fatal("the running commit did not take seq 1")
 		}
-		if got := <-panicked; !panickedWith(got, thrown) {
-			t.Fatalf("the leader's caller recovered %v, want the metrics adapter's panic", got)
-		}
+		_ = rejected(t, failureOf(t, leader), data.CodeUnavailable, data.ReasonStorageFailed)
 		_ = rejected(t, failureOf(t, follower), data.CodeUnavailable, data.ReasonStorageFailed)
 		if ctl.store.LastSeq() != 3 {
 			t.Fatalf("lastSeq = %d, want 3", ctl.store.LastSeq())
@@ -686,28 +678,20 @@ func TestGroupCommit(t *testing.T) {
 
 	t.Run("stops the store when a metrics adapter panics after a lone commit's COMMIT too", func(t *testing.T) {
 		store := memoryStore(t)
-		thrown := errors.New("metrics threw")
 		adopted, fence := recording()
-		pending := store.enlist([]StagedWrite{created("a")}, fence, panickingMetrics(thrown))
-		panicked := make(chan any, 1)
-		go func() {
-			defer func() { panicked <- recover() }()
-			_, _ = pending.Wait()
-		}()
-		if got := <-panicked; !panickedWith(got, thrown) {
-			t.Fatalf("recovered %v, want the metrics adapter's panic", got)
-		}
+		_, err := store.Commit([]StagedWrite{created("a")}, fence, panickingMetrics(errors.New("metrics threw")))
+		_ = rejected(t, err, data.CodeUnavailable, data.ReasonStorageFailed)
 		if len(*adopted) != 0 || store.LastSeq() != 1 {
 			t.Fatalf("adopted %v, lastSeq %d, want none adopted and lastSeq 1", *adopted, store.LastSeq())
 		}
-		_, err := Read(store, func(sqlite.SqliteExecutor) (int, error) { return 1, nil }, background)
+		_, err = Read(store, func(sqlite.SqliteExecutor) (int, error) { return 1, nil }, background)
 		_ = rejected(t, err, data.CodeUnavailable, data.ReasonStorageFailed)
 	})
 
 	t.Run("rejects a grouped commit whose admission throws with that error; the others commit, the queue goes on", func(t *testing.T) {
 		ctl := controlledStore(t)
 		thrown := errors.New("admit threw")
-		throwing := CommitFence{Admit: func() bool { panic(thrown) }, Adopt: func(int64, []int64) error { return nil }}
+		throwing := CommitFence{Admit: func() bool { panic(thrown) }, Adopt: func(int64, []int64, int) error { return nil }}
 		gate := ctl.arm()
 		_, fence := recording()
 		running := startCommit(ctl.store, fence, created("a"))
@@ -734,7 +718,7 @@ func TestGroupCommit(t *testing.T) {
 	t.Run("a lone commit whose admission throws rejects with that error and the queue goes on", func(t *testing.T) {
 		store := memoryStore(t)
 		thrown := errors.New("admit threw")
-		throwing := CommitFence{Admit: func() bool { panic(thrown) }, Adopt: func(int64, []int64) error { return nil }}
+		throwing := CommitFence{Admit: func() bool { panic(thrown) }, Adopt: func(int64, []int64, int) error { return nil }}
 		if _, err := store.Commit([]StagedWrite{created("x")}, throwing, background); !errors.Is(err, thrown) {
 			t.Fatalf("err = %v, want the admission's error itself", err)
 		}
@@ -743,10 +727,4 @@ func TestGroupCommit(t *testing.T) {
 			t.Fatalf("the next commit = %d, %v, want 1", seq, err)
 		}
 	})
-}
-
-// panickedWith reports whether a recovered value is want.
-func panickedWith(recovered any, want error) bool {
-	err, ok := recovered.(error)
-	return ok && errors.Is(err, want)
 }

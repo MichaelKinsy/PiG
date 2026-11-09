@@ -61,7 +61,7 @@ func TestModelsGenerateImagesAuthThroughOpenRouter(t *testing.T) {
 	models := CreateModels(CreateModelsOptions{AuthContext: typedAuthContext(nil)})
 	models.SetProvider(provider)
 	model := &ImageModel{ID: "fixture-image", Name: "Fixture image", API: APIImagesOpenRouter, Provider: ProviderImagesOpenRouter, BaseURL: "http://[invalid", Headers: map[string]string{"X-Model": "model", "X-Removed": "remove-me"}, Input: []string{"text"}, Output: []string{"image"}}
-	result := models.GenerateImages(t.Context(), model, ImagesContext{Input: []ContentBlock{TextContent{Text: "a red circle"}}}, ModelsImagesOptions{ImagesOptions: ImagesOptions{APIKey: "request-key", Headers: ProviderHeaders{"X-Shared": new("request"), "X-Removed": nil}, Env: map[string]string{"REQUEST_ONLY": "request", "SHARED": "request"}}})
+	result := models.GenerateImages(t.Context(), model, ImagesContext{Input: []ContentBlock{TextContent{Text: "a red circle"}}}, ModelsImagesOptions{APIKey: "request-key", Headers: ProviderHeaders{"X-Shared": new("request"), "X-Removed": nil}, Env: map[string]string{"REQUEST_ONLY": "request", "SHARED": "request"}})
 	if result.StopReason != ImagesStopReasonStop || result.ResponseID != "image-response" || !reflect.DeepEqual(result.Output, []ContentBlock{ImageContent{Data: "aGk=", MimeType: "image/png"}}) {
 		t.Fatalf("result=%+v", result)
 	}
@@ -100,7 +100,7 @@ func BenchmarkModelsGenerateImagesAuthDispatch(b *testing.B) {
 	models.SetProvider(provider)
 	model := imageModelOf(b, models, "p1", "model-a")
 	request := ImagesContext{Input: []ContentBlock{TextContent{Text: "a red circle"}}}
-	options := ModelsImagesOptions{ImagesOptions: ImagesOptions{Headers: ProviderHeaders{"X-Request": new("request")}, Env: map[string]string{"REQUEST": "request"}}}
+	options := ModelsImagesOptions{Headers: ProviderHeaders{"X-Request": new("request")}, Env: map[string]string{"REQUEST": "request"}}
 	b.ReportAllocs()
 	for b.Loop() {
 		result := models.GenerateImages(b.Context(), model, request, options)

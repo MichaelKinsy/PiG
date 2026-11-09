@@ -9,7 +9,7 @@ import (
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 )
 
-// Ports packages/chord/test/next/host/sleep.test.ts: `sleep` resolving, rejecting with the abort reason, chaining delays
+// Ports packages/chord/test/host/sleep.test.ts: `sleep` resolving, rejecting with the abort reason, chaining delays
 // above the timer limit and leaving no timer behind; `untilAborted`. The fake timers are fakeLoop; a Promise is a goroutine
 // the test starts and a channel it reads, since `sleep` blocks.
 

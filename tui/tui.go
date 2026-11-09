@@ -69,11 +69,18 @@ type invalidatable struct {
 	// invalidation it has not drawn yet.
 	sink   atomic.Pointer[surfaceSink]
 	queued atomic.Pointer[surfaceSink]
+	// pig additive (D91): owner is the Container whose render reads this component's invalidations instead of asking IsDirty of it
+	// on every frame (Container.settled), queuedOwner that owner holds an invalidation it has not taken yet, and slot the
+	// component's index among owner's children, which owner's lock guards.
+	owner       atomic.Pointer[Container]
+	queuedOwner atomic.Bool
+	slot        int
 }
 
 func (i *invalidatable) Invalidate() {
 	i.dirty.Store(true)
 	i.notifySurface()
+	i.notifyOwner()
 }
 func (i *invalidatable) IsDirty() bool     { return i.dirty.Load() }
 func (i *invalidatable) NeedsRedraw() bool { return i.dirty.Swap(false) }
@@ -83,6 +90,14 @@ func (i *invalidatable) NeedsRedraw() bool { return i.dirty.Swap(false) }
 func (i *invalidatable) notifySurface() {
 	if s := i.sink.Load(); s != nil {
 		s.mark(i)
+	}
+}
+
+// notifyOwner reports the invalidation to the Container that reads it, once until the container takes it. The dirty flag is
+// stored first, so a container that takes the report and then reads the flag sees the change or a report after it.
+func (i *invalidatable) notifyOwner() {
+	if owner := i.owner.Load(); owner != nil && !i.queuedOwner.Swap(true) {
+		owner.kidInvalidated(i)
 	}
 }
 
@@ -148,6 +163,17 @@ type Container struct {
 	// last keepTail, so the surface walks only the children between.
 	childrenChanged    bool
 	keepHead, keepTail int
+
+	// pig additive (D91): the render finds the first child whose lines changed without asking every child of a long transcript
+	// whether it is dirty. children[:settled] were clean when the last scan ended and are not asked again: a child of a type that
+	// reports its own changes (kidInvalidation) is read from kidPending, and polled holds the indexes below settled of the children
+	// that are asked on every frame. A change of the children lowers settled to its first changed index. c.mu guards settled and
+	// polled, kidMu kidPending, which Invalidate calls from any goroutine append to.
+	settled    int
+	polled     []int
+	kidMu      sync.Mutex
+	kidPending []*invalidatable
+	kidSpare   []*invalidatable
 }
 
 type cachedChild struct {
@@ -184,11 +210,13 @@ func (c *Container) invalidateStructureLocked() {
 	c.structureGen++
 	c.dirty.Store(true)
 	c.notifySurface()
+	c.notifyOwner()
 }
 
 // markChildrenLocked records a change of the children that kept the first
 // head and the last tail. c.mu must be held.
 func (c *Container) markChildrenLocked(head, tail int) {
+	c.settled = min(c.settled, head)
 	if !c.childrenChanged {
 		c.childrenChanged, c.keepHead, c.keepTail = true, head, tail
 		return
@@ -256,6 +284,7 @@ func (c *Container) removeLocked(comp Component) {
 			c.children = append(c.children[:i], c.children[i+1:]...)
 			c.markChildrenLocked(i, len(c.children)-i)
 			delete(c.childCache, comp)
+			c.releaseKidLocked(comp)
 			c.invalidateStructureLocked()
 			return
 		}
@@ -272,6 +301,7 @@ func (c *Container) Replace(oldComp, newComp Component) bool {
 			c.children[i] = newComp
 			c.markChildrenLocked(i, len(c.children)-1-i)
 			delete(c.childCache, oldComp)
+			c.releaseKidLocked(oldComp)
 			c.invalidateStructureLocked()
 			return true
 		}
@@ -288,6 +318,11 @@ func (c *Container) Clear() {
 
 // clearLocked is Clear with c.mu held. renderHeld says a render of this container is running on the calling goroutine, which still writes the cache.
 func (c *Container) clearLocked(renderHeld bool) {
+	for _, ch := range c.children {
+		if inv := kidInvalidation(ch); inv != nil {
+			inv.owner.CompareAndSwap(c, nil)
+		}
+	}
 	c.children = nil
 	c.markChildrenLocked(0, 0)
 	if renderHeld {
@@ -317,6 +352,9 @@ func (c *Container) SetChildren(children ...Component) {
 		}
 	}
 	c.children = append([]Component(nil), children...)
+	for _, ch := range old[head : len(old)-tail] {
+		c.releaseKidLocked(ch)
+	}
 	c.markChildrenLocked(head, tail)
 	c.invalidateStructureLocked()
 	c.mu.Unlock()
@@ -427,6 +465,14 @@ func (c *Container) renderCopy(width int) []string {
 	return slices.Clone(c.renderBorrowedLocked(width, true))
 }
 
+// renderInto is renderCopy into dst's array: the lines are copied under the lock into dst[:0], which grows when it is
+// too small, so a caller that renders every frame reuses one array instead of allocating a copy each time.
+func (c *Container) renderInto(width int, dst []string) []string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return append(dst[:0], c.renderBorrowedLocked(width, true)...)
+}
+
 // renderBorrowed returns immutable lines owned by the container. Callers must
 // not edit the slice, and must not read it after the second render after this
 // one: a borrowed render at the same width writes into the array the render
@@ -533,35 +579,16 @@ func (c *Container) renderBorrowedLocked(width int, recycle bool) []string {
 	// nested container with new lines, or a child that renders every frame
 	// or reports itself dirty. Every line before it is kept.
 	window := c.windowValid && !wholeFrames.Load()
-	first, kept, nestedKept := 0, 0, 0
-	var nestedLines []string
-	var nestedVersion uint64
+	first, kept := 0, 0
+	var nested nestedRender
 	if window {
-		for first < len(c.children) {
-			ch := c.children[first]
-			if first >= len(c.builtKids) || !c.builtSame[first] || c.builtKids[first] != ch {
-				break
-			}
-			if nested, ok := ch.(*Container); ok {
-				var lines []string
-				var version uint64
-				lines, version, nestedKept = nested.renderBorrowedSince(width, c.builtVers[first])
-				if version != c.builtVers[first] {
-					nestedLines, nestedVersion = lines, version
-					break
-				}
-			} else if dc, ok := ch.(dirtyComponent); !ok || !childCacheable(ch) || dc.IsDirty() {
-				break
-			}
-			first++
-		}
+		first = c.scanSettledLocked(width, &nested)
 		if first == len(c.children) && first == len(c.builtKids) && c.renderedValid {
 			return c.renderedLines
 		}
-		if nestedLines == nil {
-			nestedKept = 0
+		if nested.lines != nil {
+			kept = nested.kept
 		}
-		kept = nestedKept
 		if first > 0 {
 			kept += c.builtEnds[first-1]
 		}
@@ -581,10 +608,10 @@ func (c *Container) renderBorrowedLocked(width int, recycle bool) []string {
 		ch := c.children[i]
 		var childLines []string
 		var version uint64
-		if i == first && nestedLines != nil {
-			childLines, version = nestedLines, nestedVersion
+		if i == first && nested.lines != nil {
+			childLines, version = nested.lines, nested.version
 			c.childCache[ch] = cachedChild{width: width, lines: childLines, version: version}
-			childLines = childLines[nestedKept:]
+			childLines = childLines[nested.kept:]
 		} else {
 			childLines, version = c.renderChildLocked(ch, width)
 		}
@@ -636,6 +663,7 @@ func (c *Container) windowBufferLocked(kept int, recycle bool) []string {
 func (c *Container) dropWindowLocked() {
 	c.windowValid = false
 	c.spareLines, c.spareAgree = nil, 0
+	c.settled, c.polled = 0, c.polled[:0]
 }
 
 // renderChildLocked returns a child's rendered lines, reusing the cached
@@ -659,7 +687,15 @@ func (c *Container) renderChildLocked(ch Component, width int) ([]string, uint64
 	}
 	// Consume the dirty flag before rendering so an unchanged child hits the cache next frame. A child that another goroutine invalidates while it renders keeps the flag that Invalidate sets, so its next frame renders again; consuming after Render would erase that flag and cache lines that predate the change.
 	dc.NeedsRedraw()
-	lines := ch.Render(width)
+	var lines []string
+	switch concrete := ch.(type) {
+	case *Markdown:
+		lines = concrete.renderBorrowedChild(width)
+	case *AssistantMessageComponent:
+		lines = concrete.renderBorrowedChild(width)
+	default:
+		lines = ch.Render(width)
+	}
 	c.childCache[ch] = cachedChild{width: width, lines: lines}
 	return lines, 0
 }
@@ -1451,12 +1487,12 @@ func (w utf8Writer) Write(data []byte) (int, error) {
 	return len(data), nil
 }
 
-// WriteString is Write without the copy io.WriteString makes for a writer that is not an io.StringWriter.
+// WriteString is Write without the copy io.WriteString makes for a writer that is not an io.StringWriter (writeString reuses one).
 func (w utf8Writer) WriteString(data string) (int, error) {
 	if utf8.ValidString(data) {
-		return io.WriteString(w.out, data)
+		return writeString(w.out, data)
 	}
-	if _, err := io.WriteString(w.out, jsstring.StreamText(data)); err != nil {
+	if _, err := writeString(w.out, jsstring.StreamText(data)); err != nil {
 		return 0, err
 	}
 	return len(data), nil
@@ -1489,15 +1525,13 @@ func (w terminalCursorWriter) Write(data []byte) (int, error) {
 // the differential-render overflow crash log goes, the OS temp directory when empty.
 func NewTuiMainScreen(terminal Terminal, showHardwareCursor *bool, logDirectory string) *TuiMainScreen {
 	t := &TuiMainScreen{
-		tuiBase: tuiBase{
-			out:                terminalWriter{terminal},
-			direct:             terminalCursorWriter{terminal},
-			terminal:           terminal,
-			terminalBackground: &terminalBackgroundQueries{},
-			now:                time.Now,
-			afterFunc: func(d time.Duration, fn func()) stoppableTimer {
-				return time.AfterFunc(d, fn)
-			},
+		out:                terminalWriter{terminal},
+		direct:             terminalCursorWriter{terminal},
+		terminal:           terminal,
+		terminalBackground: &terminalBackgroundQueries{},
+		now:                time.Now,
+		afterFunc: func(d time.Duration, fn func()) stoppableTimer {
+			return time.AfterFunc(d, fn)
 		},
 		logDirectory: logDirectory,
 	}
@@ -1514,15 +1548,13 @@ func NewTuiMainScreen(terminal Terminal, showHardwareCursor *bool, logDirectory 
 // dimensions. Used only by tests; production code uses New().
 func NewWithOutput(out io.Writer, cols, rows int) *TuiMainScreen {
 	t := &TuiMainScreen{
-		tuiBase: tuiBase{
-			out:                stdoutWriter(out),
-			terminalBackground: &terminalBackgroundQueries{},
-			fixedSize:          true,
-			showHardwareCursor: os.Getenv("PI_HARDWARE_CURSOR") == "1",
-			now:                time.Now,
-			afterFunc: func(d time.Duration, fn func()) stoppableTimer {
-				return time.AfterFunc(d, fn)
-			},
+		out:                stdoutWriter(out),
+		terminalBackground: &terminalBackgroundQueries{},
+		fixedSize:          true,
+		showHardwareCursor: os.Getenv("PI_HARDWARE_CURSOR") == "1",
+		now:                time.Now,
+		afterFunc: func(d time.Duration, fn func()) stoppableTimer {
+			return time.AfterFunc(d, fn)
 		},
 	}
 	t.setSize(cols, rows)

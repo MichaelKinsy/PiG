@@ -15,7 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
-// A single signal during a stdin-end shutdown is ignored (D234). When a failing stdout then ends the mode before the shutdown does, the process exits with the signal's status, 143, and exit.log still names the signal (D102).
+// A single signal during a stdin-end shutdown is ignored. When a failing stdout then ends the mode before the shutdown does, the process exits with the signal's status, 143, and exit.log still names the signal (D102).
 func TestRPCIgnoredSignalThenStdoutFailureLeavesAnExitLogLine(t *testing.T) {
 	// Every write to /dev/full fails with ENOSPC; a closed pipe would end the process with SIGPIPE instead.
 	full, err := os.OpenFile("/dev/full", os.O_WRONLY, 0)

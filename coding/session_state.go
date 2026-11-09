@@ -85,5 +85,5 @@ func (s *Session) ExportToHTML(outputPath string, options ...ExportToHTMLOptions
 // ExportToJsonl writes the current branch (the session header, then every entry on the branch path) to outputPath and
 // returns the path written; an empty path becomes a timestamped file in the working directory (agent-session.ts exportToJsonl).
 func (s *Session) ExportToJsonl(outputPath string) (string, error) {
-	return icodingagent.ExportSessionToJsonl(s.inner, outputPath, nil)
+	return icodingagent.ExportSessionToJsonl(s.inner.Load(), outputPath, nil)
 }

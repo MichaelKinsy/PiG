@@ -4,6 +4,7 @@ package plugins
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"os/exec"
@@ -15,11 +16,14 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/build"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
-// Ports packages/chord/test/next-node/plugins/runtime.test.ts. Tests of the plugin runtime (slice 10 §3, D11): loading and
+// Ports packages/chord/test/node/plugins/runtime.test.ts. Tests of the plugin runtime (slice 10 §3, D11): loading and
 // reloading hosts with complete sets of shipped scripts (unchanged digests kept as the same facet, removed = loaded minus
-// shipped, failed builds and evaluations kept old), and that importing it loads no esbuild. The runtime runs, as Pi's own
+// shipped, failed builds and evaluations kept old), a required root's failed plugin rejecting `load`, and that importing it
+// loads no esbuild. The runtime runs, as Pi's own
 // code, in a Node subprocess: the scripts are built by BuildFacet from real TypeScript plugins, and a plugin's label, a
 // local type of that process, is read through the probe (plugins_probe_test.go), which calls `ctx.get` in the subprocess.
 
@@ -32,7 +36,7 @@ const pcLabelOps = `label: async ({ dir }, { ctx }) => {
 `
 
 // pcHostPackages are the host packages every fixture build keeps external.
-var pcHostPackages = []string{"@earendil-works/chord/next"}
+var pcHostPackages = []string{"@earendil-works/chord"}
 
 // pcJSON is value as JavaScript's JSON.stringify writes it.
 func pcJSON(t *testing.T, value any) string {
@@ -49,7 +53,7 @@ func pcJSON(t *testing.T, value any) string {
 func pcItemPlugin(t *testing.T, root, dir, label string) {
 	t.Helper()
 	pcPluginSource(t, root, dir, strings.Join([]string{
-		`import { constant, defineFacet, local, str } from "@earendil-works/chord/next";`,
+		`import { constant, defineFacet, local, str } from "@earendil-works/chord";`,
 		fmt.Sprintf(`const Item = local("test.%s", { version: 1, params: {}, members: { label: str() } });`, dir),
 		fmt.Sprintf(`export default defineFacet((host) => host.serve(Item, () => ({ label: constant(%s) })));`, pcJSON(t, label)),
 	}, "\n"))
@@ -65,14 +69,20 @@ func pcPluginSource(t *testing.T, root, dir, source string) {
 // `shipped`).
 func pcShipped(t *testing.T, root string) []PluginScript {
 	t.Helper()
-	discovery, err := DiscoverPlugins([]string{root}, DiscoveryOptions{Kinds: []string{"worker"}}, background)
+	return pcShippedRoots(t, []model.PluginRoot{{Path: root}})
+}
+
+// pcShippedRoots is pcShipped over roots (some of them required).
+func pcShippedRoots(t *testing.T, roots []model.PluginRoot) []PluginScript {
+	t.Helper()
+	discovery, err := model.DiscoverPlugins(roots, model.DiscoveryOptions{Kinds: []string{"worker"}}, background)
 	if err != nil {
 		t.Fatal(err)
 	}
-	options := BuildOptions{HostPackages: pcHostPackages, Platform: PlatformNode, Plugins: discovery.Plugins}
+	options := model.BuildOptions{HostPackages: pcHostPackages, Platform: model.PlatformNode, Plugins: discovery.Plugins}
 	scripts := make([]PluginScript, len(discovery.Plugins))
 	for i, plugin := range discovery.Plugins {
-		built, err := BuildFacet(plugin, "worker", options, background)
+		built, err := build.BuildFacet(plugin, "worker", options, background)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -93,6 +103,17 @@ type pcRuntimeHost struct {
 // the probe as its one core facet.
 func pcRuntimeLoad(t *testing.T, scripts []PluginScript, ops string) pcRuntimeHost {
 	t.Helper()
+	h, err := pcRuntimeLoadErr(t, scripts, ops)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return h
+}
+
+// pcRuntimeLoadErr is pcRuntimeLoad that returns the load's error with the host that is loaded all the same: a
+// *PluginError of a required root comes once the host's load settled, and the host is the caller's.
+func pcRuntimeLoadErr(t *testing.T, scripts []PluginScript, ops string) (pcRuntimeHost, error) {
+	t.Helper()
 	cache := t.TempDir()
 	runtime := NewPluginRuntime(NodeOptions{CacheDir: cache})
 	address := workerKind.Address(nil)
@@ -100,12 +121,12 @@ func pcRuntimeLoad(t *testing.T, scripts []PluginScript, ops string) pcRuntimeHo
 		Kind: "worker", Core: []CoreFacet{probeCore(t, cache, pcLabelOps+ops)}, Scripts: scripts,
 		Address: &address, Principal: workerPrincipal, Peer: serverPrincipal,
 	}, background)
-	if err != nil {
+	if node == nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = node.Close(background) })
 	parent := serverFor(t, workerRoute(node))
-	return pcRuntimeHost{runtime: runtime, node: node, report: report, probe: probeOn(t, parent)}
+	return pcRuntimeHost{runtime: runtime, node: node, report: report, probe: probeOn(t, parent)}, err
 }
 
 // label is the label `test.<dir>` shows on the Node host.
@@ -196,6 +217,51 @@ func TestRuntimeKeepsTheLoadedFacetOfAPluginWhoseNewBuildOrEvaluationFailedAnAdd
 	}
 }
 
+// runtime.test.ts › required roots at load (slice 12 §1) › rejects with a PluginError naming a required plugin that failed,
+// after the host's load settled.
+func TestRuntimeRequiredRootsAtLoadRejectsWithAPluginErrorNamingARequiredPluginThatFailedAfterTheHostsLoadSettled(t *testing.T) {
+	app := tempRoot(t)
+	user := tempRoot(t)
+	pcItemPlugin(t, app, "core", "core")
+	pcPluginSource(t, app, "broken", "export const = ;")
+	pcPluginSource(t, user, "flaky", `throw new Error("at import");`)
+	scripts := pcShippedRoots(t, []model.PluginRoot{{Path: app, Required: true}, {Path: user}})
+	h, err := pcRuntimeLoadErr(t, scripts, "")
+	failure, ok := errors.AsType[*PluginError](err)
+	if !ok {
+		t.Fatalf("load error = %T %v, want a *PluginError", err, err)
+	}
+	if !regexpMatch(`^required plugin failed at load: "@test/broken": plugin "@test/broken": its worker facet failed to build`, failure.Error()) {
+		t.Fatalf("message = %q", failure.Error())
+	}
+	if got := pcFailedNames(failure.Required); !slices.Equal(got, []string{"@test/broken"}) {
+		t.Fatalf("required = %v", got)
+	}
+	if got := pcFailedNames(failure.Failed); !slices.Equal(got, []string{"@test/broken", "@test/flaky"}) {
+		t.Fatalf("failed = %v", got)
+	}
+	if len(failure.Problems) != 0 {
+		t.Fatalf("problems = %+v", failure.Problems)
+	}
+	if got := pcFailedNames(h.report.Failed); !slices.Equal(got, []string{"@test/broken", "@test/flaky"}) {
+		t.Fatalf("report failed = %v", got)
+	}
+	// The load settled: the required root's other plugin is loaded.
+	if got := h.label("core"); got != "core" {
+		t.Fatalf("label core = %q, want core", got)
+	}
+}
+
+// runtime.test.ts › required roots at load (slice 12 §1) › only reports a failed plugin of a root that is not required.
+func TestRuntimeRequiredRootsAtLoadOnlyReportsAFailedPluginOfARootThatIsNotRequired(t *testing.T) {
+	user := tempRoot(t)
+	pcPluginSource(t, user, "flaky", `throw new Error("at import");`)
+	h := pcRuntimeLoad(t, pcShipped(t, user), "")
+	if got := pcFailedNames(h.report.Failed); !slices.Equal(got, []string{"@test/flaky"}) {
+		t.Fatalf("failed = %v", got)
+	}
+}
+
 // fileURL is the file: URL of the absolute path (Node's `pathToFileURL(path).href`), the form `import()` takes on every platform.
 func fileURL(path string) string {
 	slashed := filepath.ToSlash(path)
@@ -212,7 +278,7 @@ func TestRuntimeLoadsNoEsbuildAWorkerThatOnlyEvaluatesNeverImportsIt(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	runtime := filepath.Join(tree, "pi", "chord", "src", "next-node", "plugins", "runtime.ts")
+	runtime := filepath.Join(tree, "pi", "chord", "src", "node", "plugins", "runtime.ts")
 	script := strings.Join([]string{
 		`import { registerHooks } from "node:module";`,
 		"registerHooks({ resolve(specifier, context, next) {",
@@ -269,7 +335,7 @@ func (h *hostErrors) next(t *testing.T, kind string) NodeHostError {
 // hostErrorPlugin serves the types whose failures the host reports (each with a param, so its object lives while it is
 // held): `test.leaky` (two natives whose closes fail and hang), `test.boom` (a routine that throws, and a derive that throws
 // once `bump` changed its document) and `test.parks` (an object that waits for a type nobody serves).
-const hostErrorPlugin = `import { constant, defineFacet, defineState, int, local, method, obj, str } from "@earendil-works/chord/next";
+const hostErrorPlugin = `import { constant, defineFacet, defineState, int, local, method, obj, str } from "@earendil-works/chord";
 const Leaky = local("test.leaky", { version: 1, params: { id: str() }, members: { n: int() } });
 const Boom = local("test.boom", { version: 1, params: { id: str() }, members: { n: int(), bump: method() } });
 const Parks = local("test.parks", { version: 1, params: { id: str() }, members: { n: int() } });

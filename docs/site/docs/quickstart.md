@@ -24,7 +24,7 @@ You need these tools only to build PiG from source. Build the `pig` executable w
 The complete verification suite also uses:
 
 - Git;
-- Node.js 24.22.1 and npm 12.2.1;
+- Node.js 24.22.2 and npm 12.2.1;
 - Python 3.12, and CPython 3.11 for `make test-sdk-py-311`, which `make check` runs (`PIG_SDK_PY_311` names the interpreter; the default is `python3.11`);
 - Rust 1.97.1;
 - tmux on Unix.
@@ -69,7 +69,7 @@ with `npm uninstall -g @pi-in-go/pig`.
 
 ## Install with Go
 
-Go 1.26 or newer installs the command without cloning the repository. Go downloads PiG's source and its dependencies and compiles them on your computer, which can take several minutes the first time:
+Go 1.27 or newer installs the command without cloning the repository (an older Go, 1.21 or newer, downloads the toolchain `go.mod` names unless `GOTOOLCHAIN=local`). Go downloads PiG's source and its dependencies and compiles them on your computer, which can take several minutes the first time:
 
 ```bash
 go install github.com/MichaelKinsy/PiG/cmd/pig@latest

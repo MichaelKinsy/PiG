@@ -1,6 +1,6 @@
 package http
 
-// pi: packages/chord/src/next-node/http/admission.ts
+// pi: packages/chord/src/node/http/admission.ts
 
 import (
 	"errors"
@@ -16,7 +16,7 @@ import (
 
 var admissionLoopback = Connection{LocalAddress: "127.0.0.1", LocalPort: 8788, RemoteAddress: "127.0.0.1"}
 
-var admissionAllowed = NewStringSet("notes.example.com")
+var admissionAllowed = []string{"notes.example.com"}
 
 type admissionHeader struct{ name, value string }
 

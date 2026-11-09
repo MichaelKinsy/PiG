@@ -125,7 +125,17 @@ export async function agentSessionRuntimeScript({ cwd, agentDir, root, runtimePr
     sourceKept: existsSync(importPath), missing: await error(() => runtime.importFromJsonl(join(importDir, "missing.jsonl"))),
   };
 
+  // dispose settles a run in flight before it emits session_shutdown (Pi's dispose awaits session.abort()): the model never ends this run, so only the abort can end it and the log shows its agent_end before the shutdown.
+  const observeFile = join(cwd, "observe-run");
+  writeFileSync(observeFile, "");
+  const running = runtime.session.prompt("hang-forever");
+  for (let waited = 0; !readFileSync(logFile, "utf8").includes("agent_start"); waited += 10) {
+    if (waited > 30000) throw new Error("the run never started");
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
   await runtime.dispose();
+  await running;
+  rmSync(observeFile);
   r.counts = { rebinds, invalidations, factoryCalls: calls.length, reasons: calls.map((call) => call.reason + (call.previous ? "+previous" : "")) };
   r.events = readFileSync(logFile, "utf8").trimEnd().split("\n");
   return r;

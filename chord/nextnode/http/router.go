@@ -14,7 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
 )
 
-// Ports packages/chord/src/next-node/http/router.ts. The router (slice 10 §2, D1, D2, D8): the registry `Http` that plugins
+// Ports packages/chord/src/node/http/router.ts. The router (slice 10 §2, D1, D2, D8): the registry `Http` that plugins
 // contribute routes, wraps, sockets, allowed hosts, framers, relays and CSP sources to, and its `compose`, which builds the
 // router every request reads: patterns matched segment by segment (exact before `:name` before a trailing `*`), each
 // route's wraps resolved in phase and contributor order, conflicts reported with the first by plugin name winning.
@@ -86,12 +86,22 @@ type HttpSocket struct {
 	Handle func(socket *WebSocketHandle, request HttpRequest, ctx host.Ctx) error
 }
 
-// HttpSocketEntry is a plugin socket by pattern (no method).
+// HttpSocketOptions is a plugin socket with its options: Public accepts it without a principal (else 401 before the handler
+// runs).
+type HttpSocketOptions struct {
+	Handler *HttpSocket
+	Public  bool
+}
+
+// HttpSocketEntry is one plugin socket of a contribution by its pattern (no method).
 type HttpSocketEntry struct {
 	Pattern string
-	Handler *HttpSocket
-	// Public accepts the socket without a principal (else 401 before the handler runs).
-	Public bool
+	Socket  HttpSocketOptions
+}
+
+// SocketFunc is a socket of a contribution without options.
+func SocketFunc(pattern string, handler *HttpSocket) HttpSocketEntry {
+	return HttpSocketEntry{Pattern: pattern, Socket: HttpSocketOptions{Handler: handler}}
 }
 
 // HttpRelay is a relay (p2's Radius): a forwarder on loopback that sends forwarded headers. Verify recognizes its requests
@@ -131,6 +141,10 @@ type HttpContribution struct {
 	Relays []*HttpRelay
 	// Csp is extra CSP sources by directive.
 	Csp []CspEntry
+	// Scripts are the paths scripts load from (`/_chord/web/`): with any, `script-src` is these paths of the request's origin
+	// and the response's nonce instead of the whole origin, so no other same-origin response (an upload served as JavaScript)
+	// runs as a script.
+	Scripts []string
 }
 
 // Lookup is what a route or socket lookup found.
@@ -150,13 +164,15 @@ type Router struct {
 	routes  map[string]*node[routeEntry]
 	sockets *node[socketEntry]
 	// Hosts are the hosts contributions allow (lowercased).
-	Hosts *StringSet
+	Hosts []string
 	// Framers are the origins allowed to frame pages.
-	Framers *StringSet
+	Framers []string
 	// Relays are the relays, in contributor order.
 	Relays []*HttpRelay
 	// Csp is the extra CSP sources by directive.
 	Csp []CspEntry
+	// Scripts are the paths scripts load from; none: the whole origin.
+	Scripts []string
 	// SocketHandlers are the socket handlers it serves: a socket handed out by one no longer here is closed.
 	SocketHandlers map[*HttpSocket]struct{}
 	// order is the number of its composition, counted over every composition in the process: a router composed later has a
@@ -215,18 +231,19 @@ func ComposeRouter(table registries.RegistryTable[HttpContribution], ctx registr
 	sockets := newNode[socketEntry]()
 	var entries []*routeEntry
 	router := &Router{
-		routes: routes, sockets: sockets, Hosts: NewStringSet(), Framers: NewStringSet(),
+		routes: routes, sockets: sockets,
 		SocketHandlers: map[*HttpSocket]struct{}{}, order: compositions.Add(1),
 	}
 	for _, each := range table {
 		plugin, value := each.Plugin, each.Value
 		for _, host := range value.Hosts {
-			router.Hosts.Add(asciiLower(host))
+			router.Hosts = addUnique(router.Hosts, asciiLower(host))
 		}
 		for _, framer := range value.Framers {
-			router.Framers.Add(framer)
+			router.Framers = addUnique(router.Framers, framer)
 		}
 		router.Relays = append(router.Relays, value.Relays...)
+		router.Scripts = append(router.Scripts, value.Scripts...)
 		for _, extra := range value.Csp {
 			router.Csp = addCsp(router.Csp, extra)
 		}
@@ -266,9 +283,9 @@ func ComposeRouter(table registries.RegistryTable[HttpContribution], ctx registr
 				report(registries.RegistryConflict{Message: fmt.Sprintf("socket \"%s\" is no pattern", socket.Pattern), Plugins: []string{plugin}})
 				continue
 			}
-			entry := &socketEntry{pattern: socket.Pattern, plugin: plugin, handler: socket.Handler, public: socket.Public, segments: segments, maxPayload: maxPayload}
+			entry := &socketEntry{pattern: socket.Pattern, plugin: plugin, handler: socket.Socket.Handler, public: socket.Socket.Public, segments: segments, maxPayload: maxPayload}
 			if taken := insert(sockets, segments, entry); taken == nil {
-				router.SocketHandlers[socket.Handler] = struct{}{}
+				router.SocketHandlers[socket.Socket.Handler] = struct{}{}
 			} else {
 				report(registries.RegistryConflict{Message: fmt.Sprintf("socket \"%s\" is contributed twice", socket.Pattern), Plugins: []string{taken.plugin, plugin}})
 			}

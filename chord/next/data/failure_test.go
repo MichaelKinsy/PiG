@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Ports packages/chord/test/next/data/failure.test.ts.
+// Ports packages/chord/test/data/failure.test.ts.
 
 func TestFailureCauses(t *testing.T) {
 	t.Run("a value thrown by an open is transient unless marked broken", func(t *testing.T) {
@@ -139,4 +139,24 @@ func TestWaitingCause(t *testing.T) {
 			t.Error("causes of different reasons are the same")
 		}
 	})
+}
+
+// TestWaitingCauseKeepsAVersionRefusal is the version rule of waitingFor (packages/chord/src/host/readiness.ts reads it): a
+// dependent parked on a blocker that was refused for its version, here (contract_mismatch) or along a chain of waiting
+// causes (unavailable/version), waits `unavailable/version`: it heals with another host's reload. Any other cause keeps no
+// reason.
+func TestWaitingCauseKeepsAVersionRefusal(t *testing.T) {
+	mismatch := data.NewChordError(data.ChordErrorInit{Code: data.CodeContractMismatch, Reason: data.ReasonUpdating, Message: "app.p: version 2 not served"}, nil)
+	first := data.WaitingFor("app.d", mismatch).Error
+	if first.Code != data.CodeUnavailable || first.Reason != data.ReasonVersion {
+		t.Fatalf("a parked dependent of a refused version waits %s/%s, want unavailable/version", first.Code, first.Reason)
+	}
+	along := data.WaitingFor("app.e", first).Error
+	if along.Code != data.CodeUnavailable || along.Reason != data.ReasonVersion {
+		t.Fatalf("along the chain it waits %s/%s, want unavailable/version", along.Code, along.Reason)
+	}
+	other := data.WaitingFor("app.d", data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "app.p is not served here"}, nil)).Error
+	if other.Reason != "" {
+		t.Fatalf("a wait on a plain unavailable has reason %q, want none", other.Reason)
+	}
 }

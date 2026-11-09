@@ -28,7 +28,7 @@ func steadyToolFixtureWithProperties(toolCount, history, propertyCount int) ([]A
 			Parameters:       map[string]any{"type": "object", "properties": properties, "required": []any{"field0"}},
 			PromptGuidelines: []string{"Use this tool when needed."},
 		}
-		tools[i] = &samplingTool{fakeTool: fakeTool{name: schema.Name}, schema: schema}
+		tools[i] = &samplingTool{name: schema.Name, schema: schema}
 	}
 	committed := declareToolChanges(tools, nil, nil)
 	for i := range history {

@@ -15,7 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 )
 
-// Ports packages/chord/src/next-node/http/file.ts. File responses (slice 10 §2; decision "Slice 10 fix round, three small
+// Ports packages/chord/src/node/http/file.ts. File responses (slice 10 §2; decision "Slice 10 fix round, three small
 // points" (1)): a file as a `bytes` response. `FileResponse` stats the file at once (with a Root, its real path must lie
 // inside it); the file is opened by the first `read` and closed when the request's scope seals (its Done), so a response
 // nobody writes (`HEAD`, a 416, a disconnect, a wrap that replaced it) opens nothing and leaks nothing.

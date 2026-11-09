@@ -24,6 +24,28 @@ type decisionStats struct {
 	Applied, Restored, Stale, Imported, Reset int
 }
 
+// intentionKeys are the intention-check fields (AGENTS.md, Upstream test parity) a designed-out or divergence row about a test helper must carry.
+var intentionKeys = []string{"protects", "pigTest", "whyNot"}
+
+// isTestHelperID reports whether an interface ID names a testing package (`pkg:<path>/testing#...`): a row that designs out a test surface, not a product one.
+func isTestHelperID(id string) bool {
+	pkg, _, _ := strings.Cut(strings.TrimPrefix(id, "pkg:"), "#")
+	return pkg == "testing" || strings.HasSuffix(pkg, "/testing")
+}
+
+// missingIntention returns the first intention key a test-helper row lacks or leaves blank, or "".
+func missingIntention(id string, row orderedRow) string {
+	if !isTestHelperID(id) {
+		return ""
+	}
+	for _, key := range intentionKeys {
+		if strings.TrimSpace(row.get(key)) == "" {
+			return key
+		}
+	}
+	return ""
+}
+
 func isReviewedDisposition(disposition string) bool {
 	return disposition == "designed-out" || disposition == "divergence"
 }
@@ -133,6 +155,9 @@ func readReviewedDecisions(path string) (reviewedDecisions, error) {
 	for id, row := range reviewed {
 		if !isReviewedDisposition(row.get("disposition")) || row.get("upstreamShapeHash") == "" {
 			return nil, fmt.Errorf("%s: %s must be a designed-out or divergence row with an upstreamShapeHash", path, id)
+		}
+		if key := missingIntention(id, row); key != "" {
+			return nil, fmt.Errorf("%s: %s designs out a test helper and needs a non-empty %s (property protected, PiG-shaped test considered, why impossible or worthless)", path, id, key)
 		}
 	}
 	return reviewed, nil

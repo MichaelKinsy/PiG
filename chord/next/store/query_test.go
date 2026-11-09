@@ -8,7 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/sqlite"
 )
 
-// Ports packages/chord/test/next/store/query.test.ts: queries (slice 6a §7): `where`, `orderBy` and limits over a
+// Ports packages/chord/test/store/query.test.ts: queries (slice 6a §7): `where`, `orderBy` and limits over a
 // table, and cursors paging through them.
 //
 // Go forms: `NewQuery` is Pi's `query`; Where and OrderBy keep their first error in the query (`Err`), where Pi
@@ -30,7 +30,7 @@ func TestQueries(t *testing.T) {
 
 	t.Run("are immutable; several wheres are and-ed", func(t *testing.T) {
 		base := NewQuery(T)
-		one := base.Where(func(e ColumnRefs) Condition { return Eq(e["id"], "a") })
+		one := (*Query).Where(base, func(e ColumnRefs) Condition { return Eq(e["id"], "a") })
 		two := one.Where(func(e ColumnRefs) Condition { return Gt(e["at"], 1) })
 		must(t, base.Err())
 		must(t, one.Err())

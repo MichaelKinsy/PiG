@@ -2624,7 +2624,7 @@ snippet = "args, err := json.Marshal(map[string]any{\"kind\": kind, \"api\": api
 check = "mapkeyorder"
 file = "coding/extension/host/subprocess/render_proxy.go"
 func = "renderProxyComponent.request"
-snippet = "args, err := json.Marshal(map[string]any{"
+snippet = "args, err := json.Marshal(fields)"
 
 [[hit]]
 check = "mapkeyorder"
@@ -5241,12 +5241,6 @@ snippet = "ctx, cancel := signal.NotifyContext(context.Background(), os.Interrup
 [[hit]]
 check = "ctxbackground"
 file = "coding/cli/auth_run.go"
-func = "runParsedAuthCommand"
-snippet = "ctx, cancel := context.WithTimeout(context.Background(), credentialPrintTimeout)"
-
-[[hit]]
-check = "ctxbackground"
-file = "coding/cli/auth_run.go"
 func = "runAuthCheck"
 snippet = "ctx := context.Background()"
 
@@ -5369,7 +5363,7 @@ snippet = "rawStdout.Wait(context.Background())"
 check = "ctxbackground"
 file = "coding/cli/rpc_mode.go"
 func = "serveRPCMode"
-snippet = "func() { rawStdout.Wait(context.Background()) },"
+snippet = "rawStdout.Wait(context.Background())"
 
 [[hit]]
 check = "ctxbackground"
@@ -6161,7 +6155,7 @@ snippet = "_, _ = runner.Emit(context.Background(), extension.AgentStartEvent{"
 check = "ctxbackground"
 file = "internal/codingagent/event_bridge.go"
 func = "emitAgentEnd"
-snippet = "_, _ = runner.Emit(context.Background(), extension.AgentEndEvent{"
+snippet = "_, _ = runner.Emit(withEventSequences(context.Background(), sequence, sequences), extension.AgentEndEvent{"
 
 [[hit]]
 check = "ctxbackground"
@@ -6179,7 +6173,7 @@ snippet = "_, _ = runner.Emit(context.Background(), extension.TurnStartEvent{"
 check = "ctxbackground"
 file = "internal/codingagent/event_bridge.go"
 func = "emitTurnEnd"
-snippet = "_, _ = runner.Emit(context.Background(), extension.TurnEndEvent{"
+snippet = "_, _ = runner.Emit(withEventSequences(context.Background(), sequence, sequences), extension.TurnEndEvent{"
 
 [[hit]]
 check = "ctxbackground"

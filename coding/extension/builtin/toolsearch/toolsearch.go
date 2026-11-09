@@ -16,10 +16,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/MichaelKinsy/PiG/codemode"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/jsmath"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/schemaref"
 	"github.com/MichaelKinsy/PiG/internal/searchtext"
 )
 
@@ -61,7 +61,7 @@ func schemaText(schema, root any, parts *[]string, seen map[uintptr]bool) {
 		return
 	}
 	if ref, ok := object["$ref"].(string); ok {
-		if target, ok := codemode.ResolveSchemaRef(ref, root); ok {
+		if target, ok := schemaref.Resolve(ref, root); ok {
 			if targetObject, isObject := target.(map[string]any); isObject && !seen[reflect.ValueOf(targetObject).Pointer()] {
 				seen[reflect.ValueOf(targetObject).Pointer()] = true
 				schemaText(target, root, parts, seen)
@@ -270,7 +270,7 @@ func (r *Bm25Ranker) Rank(query string, documents []Document, limit int) []Match
 		if len(document.localNameTerms) > 0 && !slices.ContainsFunc(document.localNameTerms, func(term string) bool { return !slices.Contains(queryTerms, term) }) {
 			score += fullNameBonus
 		}
-		ranked = append(ranked, rankedMatch{Match: Match{Name: document.name, Score: score}, exact: isExactNameQuery(exactQuery, document.name), covered: covered})
+		ranked = append(ranked, rankedMatch{Name: document.name, Score: score, exact: isExactNameQuery(exactQuery, document.name), covered: covered})
 	}
 	sort.SliceStable(ranked, func(a, b int) bool {
 		if ranked[a].exact != ranked[b].exact {

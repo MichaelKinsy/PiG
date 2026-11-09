@@ -5,14 +5,18 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/chord"
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
@@ -21,6 +25,9 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/telemetryingest"
 	chordhttp "github.com/MichaelKinsy/PiG/chord/nextnode/http"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/build"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
+	nodesurfaces "github.com/MichaelKinsy/PiG/chord/nextnode/surfaces"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/workers"
 	"github.com/MichaelKinsy/PiG/chord/sqlite/node"
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
@@ -35,17 +42,22 @@ import (
 // (the start-data object, sessions, the owner link, pairing, files), and gives the app the controls it needs: the owner link,
 // `ApplyChanges`, export and import per address.
 //
-// Forced Go differences (D460, D461, D462). The plugins run in a Node subprocess (docs/plan/chord-plugins-node-evaluator.md): the kit's
-// facets are Go core facets on the server's Go host, the server's plugins' host is the NodeHost the server host accepts the link of,
+// Forced Go differences (D460, D461, D462, D603). The plugins run in a Node subprocess (docs/plan/chord-plugins-node-evaluator.md): the kit's
+// facets are Go core facets on the server's Go host, the server's plugins' host is the NodeHost the server host delegates to (D605: the remote types placed on the server that no Go facet serves go over its link),
 // and the local types plugins use (AppInfo, Sessions) reach the Go facets through plugins.BridgedFacet (D460). `Files` and
 // `FilesFolder` are not bridged: `Files` has a keyed member (`summary`) and the bridge refuses keyed members, so a TS plugin cannot
 // get a host's files; Go code gets them directly (D461). The server's host and the plugins' NodeHost are two hosts with a store each
-// (D462). `startServer`'s generic principal parameter is designed out. `principal.worker` is a function that may be nil only without
+// (D462). The server's own code is its executable, recorded after the listen (`BaseWatched`) where Pi compares the static import graph
+// of its start script; one changed since the process started is marked as a base change until a restart (`editedSinceStart`); one under the Go build cache (`go run`, `go test`) is never compared, as Pi skips an entry under `node_modules`;
+// one that cannot be read is reported as `server_scan` and the server runs on. A start script's lazy optional imports have no Go form
+// (D603).
+// `startServer`'s generic principal parameter is designed out. `principal.worker` is a function that may be nil only without
 // worker kinds.
 //
-// Not ported yet (pending, no divergence): the web and terminal surfaces (`web`, `tui`: T11, nextnode/surfaces and nextnode/tui; until
-// they land AppOptions has no such field); `plugins.install` (Pi's `installPlugin`: T9, the plugins component has none, so App.Plugins
-// has no Install); the `principalAttributes` hook (T6 host spans: the Go host has none); `reloadDrainTimeout` (not a Go host option).
+// Not ported yet (pending, no divergence): the `principalAttributes` hook (T6 host spans: the Go host has none).
+
+// A Go worker is the program's own executable, so Pi's esbuild bundle of the worker's Node entry (base.ts, child.ts) has no Go
+// form: the worker base is a copy of the executable made by `Workers.Build` into `cache/workers/<kind>/`.
 
 // Server is the server's host kind: the kit's server host is Server().
 var Server = mustHostKind("server")
@@ -58,6 +70,16 @@ func mustHostKind(name string, props ...contracts.Property) *contracts.HostKind 
 	return kind
 }
 
+// AppPlugins are the plugins of a running app, for its "apply changes" control and its installs.
+type AppPlugins struct {
+	// State is the marks (`dirty`, `install`, `set`, `base`): what the app's button shows.
+	State chord.Watchable[delta.JsonValue]
+	// Install installs plugins from git or npm into the user's root (slice 12's `installPlugin`) and returns their names.
+	Install func(ctx context.Context, source plugins.PluginSource) ([]string, error)
+	// Component is the plugins component itself.
+	Component *plugins.Plugins
+}
+
 // AppAPI is the app's API (slice 12): its package name, the versions it provides (newest first) and this process's modules of them by
 // specifier (`@acme/app/v3`, `@acme/app/v3/server`).
 type AppAPI struct {
@@ -66,12 +88,18 @@ type AppAPI struct {
 	Modules  plugins.HostPackages
 }
 
-// AppKind is a facet kind of the app: its name, where its builds run, and the packages besides the API its plugins share (`react`).
+// AppKind is a facet kind of the app: where its builds run, and the packages besides the API its plugins share (`react`).
 // Its API modules are named by convention: `<api>/<version>` and `<api>/<version>/<kind>` for every version.
 type AppKind struct {
-	Name     string
-	Platform plugins.Platform
+	Platform model.Platform
 	Packages plugins.HostPackages
+}
+
+// AppKindEntry is one entry of upstream's `kinds` record: the kind's name, the record's key, and its AppKind. A record keeps its keys
+// in insertion order and a Go map does not, so the kinds are a slice of entries in the order the app gave them.
+type AppKindEntry struct {
+	Name string
+	Kind AppKind
 }
 
 // AppWorkerKind is a worker kind: a host kind of the app and how its workers start (the workers component's options).
@@ -101,13 +129,19 @@ const (
 	AppErrorWorkers    AppErrorKind = "workers"
 	AppErrorPlugins    AppErrorKind = "plugins"
 	AppErrorServerScan AppErrorKind = "server_scan"
+	// AppErrorBaseBuild is a base that did not build after the start (AppError.Base is `web`, `tui` or the worker kind's name): the
+	// server runs on, the page answers 503, the kind's workers fail their start.
+	AppErrorBaseBuild AppErrorKind = "base_build"
 )
 
 // AppError is what the kit reports: from its host (host.HostError), its HTTP component (chordhttp.HttpError), its workers
-// (workers.WorkersError) or its plugins (plugins.PluginsError), or a failed scan of the server's own code.
+// (workers.WorkersError) or its plugins (plugins.PluginsError), a base that did not build after the start (`base_build`: Base names
+// it; the server runs on), or a failed scan of the server's own code (`server_scan`: the server runs on, that code is not compared).
 type AppError struct {
 	Kind  AppErrorKind
 	Error any
+	// Base is the base that did not build, for `base_build`.
+	Base string
 }
 
 // AppPrincipals are the server's principal, each worker's (stamped on its link; only with worker kinds) and the owner's: whom the owner
@@ -132,14 +166,18 @@ type AppLimits struct {
 	ImportEntries      int
 }
 
-// AppTimeouts are the hosts' timeouts (`HostOptions.closeTimeout`, `HostOptions.readyTimeout`): zero is the host's default.
+// AppTimeouts are the hosts' timeouts (`HostOptions.closeTimeout`, `HostOptions.readyTimeout`, `HostOptions.reloadDrainTimeout`):
+// zero is the host's default.
 type AppTimeouts struct {
-	Close time.Duration
-	Ready time.Duration
+	CloseTimeout time.Duration
+	ReadyTimeout time.Duration
+	// ReloadDrainTimeout bounds how long a reload's restart keeps an object's old attempt open for old work.
+	ReloadDrainTimeout time.Duration
 }
 
-func (t AppTimeouts) close() *time.Duration { return optionalDuration(t.Close) }
-func (t AppTimeouts) ready() *time.Duration { return optionalDuration(t.Ready) }
+func (t AppTimeouts) close() *time.Duration       { return optionalDuration(t.CloseTimeout) }
+func (t AppTimeouts) ready() *time.Duration       { return optionalDuration(t.ReadyTimeout) }
+func (t AppTimeouts) reloadDrain() *time.Duration { return optionalDuration(t.ReloadDrainTimeout) }
 
 func optionalDuration(d time.Duration) *time.Duration {
 	if d == 0 {
@@ -168,7 +206,7 @@ type AppOptions struct {
 	Listen *chordhttp.ListenAddress
 	API    AppAPI
 	// Kinds are the app's facet kinds, in order: `server` and each worker kind's facet kind among them.
-	Kinds     []AppKind
+	Kinds     []AppKindEntry
 	Principal AppPrincipals
 	// Workers are the worker kinds; none: a server with clients only. They need Principal.Worker.
 	Workers []AppWorkerKind
@@ -177,15 +215,33 @@ type AppOptions struct {
 	Limits AppLimits
 	// Install is how installs run npm.
 	Install plugins.InstallOptions
+	// Facets are facets the server host loads beside the kit's own (D456): the Go form of what Pi's app does with a facet that has
+	// settings (`ephemeralLoginFacet()`, `inviteFacet()`, `defineUsers(...)`), which it re-exports through its API's server module
+	// and loads with a one-line plugin. A plugin directory is TypeScript the Node plugin host evaluates and cannot import a Go
+	// facet. Each is named; its name must not be one of the kit's (`chord.…`).
+	Facets []host.HostFacet
 	// Telemetry is the app's telemetry store; nil: none.
 	Telemetry AppTelemetry
+	// PrincipalAttributes is who a span was for (`createHost`'s `principalAttributes`): the server's hook, also stamped on the spans
+	// pages send (the principal of their link). Nil: none.
+	PrincipalAttributes func(principal data.Principal) telemetry.SpanAttributes
+	// Web is the web surface (slice 11): the app's web entry, its page template, the paths serving the page; the `web` facet kind.
+	// Nil: no web surface.
+	Web *AppWeb
+	// Tui is the terminal surface (slice 11): the app's terminal entry; the `tui` facet kind. Nil: no terminal clients.
+	Tui *AppTui
 	// Base is the app's base code beside what the kit knows (files or directories: its API modules, its start script), hashed at start.
 	Base []string
-	// Timeouts are the `closeTimeout` and `readyTimeout` of every host (the server's and each worker's).
+	// Timeouts are the `closeTimeout`, `readyTimeout` and `reloadDrainTimeout` of every host (the server's and each worker's).
 	Timeouts AppTimeouts
 	// Node is how the Node subprocesses that host the plugins are started.
 	Node    plugins.NodeOptions
 	OnError func(AppError)
+
+	// executable is the server's own code: os.Executable unless a test names another.
+	executable func() (string, error)
+	// processStart is when the process started, for the executable's edit since then: the program's start unless a test names another.
+	processStart func() time.Time
 }
 
 // KitStart is what StartWorker reads from its start data besides the app's: the kit's part.
@@ -212,11 +268,14 @@ func (k KitStart) json() *delta.JsonObject {
 		files.Set("maxTotal", float64(k.Files.MaxTotal))
 	}
 	timeouts := delta.NewJsonObject(0)
-	if k.Timeouts.Close != 0 {
-		timeouts.Set("closeTimeout", float64(k.Timeouts.Close/time.Millisecond)) //portlint:allow numbers Go-to-Go start data: whole milliseconds the kit wrote itself
+	if k.Timeouts.CloseTimeout != 0 {
+		timeouts.Set("closeTimeout", float64(k.Timeouts.CloseTimeout/time.Millisecond)) //portlint:allow numbers Go-to-Go start data: whole milliseconds the kit wrote itself
 	}
-	if k.Timeouts.Ready != 0 {
-		timeouts.Set("readyTimeout", float64(k.Timeouts.Ready/time.Millisecond)) //portlint:allow numbers Go-to-Go start data: whole milliseconds the kit wrote itself
+	if k.Timeouts.ReadyTimeout != 0 {
+		timeouts.Set("readyTimeout", float64(k.Timeouts.ReadyTimeout/time.Millisecond)) //portlint:allow numbers Go-to-Go start data: whole milliseconds the kit wrote itself
+	}
+	if k.Timeouts.ReloadDrainTimeout != 0 {
+		timeouts.Set("reloadDrainTimeout", float64(k.Timeouts.ReloadDrainTimeout/time.Millisecond)) //portlint:allow numbers Go-to-Go start data: whole milliseconds the kit wrote itself
 	}
 	object := delta.JsonObjectOf("dir", k.Dir, "facet", k.Facet, "principal", k.Principal, "server", k.Server, "files", files, "telemetry", k.Telemetry)
 	if k.Uploads != 0 {
@@ -251,10 +310,13 @@ func decodeKitStart(value delta.JsonValue) (KitStart, error) {
 	}
 	if timeouts, ok := object.Value("timeouts").(*delta.JsonObject); ok {
 		if n, ok := timeouts.Value("closeTimeout").(float64); ok {
-			kit.Timeouts.Close = time.Duration(n) * time.Millisecond //portlint:allow numbers Go-to-Go start data: whole milliseconds KitStart.json wrote
+			kit.Timeouts.CloseTimeout = time.Duration(n) * time.Millisecond //portlint:allow numbers Go-to-Go start data: whole milliseconds KitStart.json wrote
 		}
 		if n, ok := timeouts.Value("readyTimeout").(float64); ok {
-			kit.Timeouts.Ready = time.Duration(n) * time.Millisecond //portlint:allow numbers Go-to-Go start data: whole milliseconds KitStart.json wrote
+			kit.Timeouts.ReadyTimeout = time.Duration(n) * time.Millisecond //portlint:allow numbers Go-to-Go start data: whole milliseconds KitStart.json wrote
+		}
+		if n, ok := timeouts.Value("reloadDrainTimeout").(float64); ok {
+			kit.Timeouts.ReloadDrainTimeout = time.Duration(n) * time.Millisecond //portlint:allow numbers Go-to-Go start data: whole milliseconds KitStart.json wrote
 		}
 	}
 	if kit.Dir == "" || kit.Facet == "" {
@@ -277,12 +339,16 @@ type App struct {
 	HTTP *chordhttp.HttpComponent
 	// Workers are the workers components, by host kind name.
 	Workers map[string]*workers.Workers
-	// Plugins is the plugins component, for the app's "apply changes" control: its marks and its rollouts.
-	Plugins *plugins.Plugins
+	// Plugins is the plugins of the running app, for its "apply changes" control and its installs.
+	Plugins AppPlugins
 	// Node is the server's plugins' host (the NodeHost the server host accepted the link of).
 	Node *plugins.NodeHost
 	// DataDir is the data directory.
 	DataDir string
+	// Web is the web surface, when the app has one: its base bundle's hash once built (BasesBuilt).
+	Web *AppSurface
+	// Tui is the terminal surface, when the app has one: its base bundle's hash once built.
+	Tui *AppSurface
 	// OwnerTokenFile is the owner token file's path (a device session of the owner, mode 0600).
 	OwnerTokenFile string
 
@@ -290,10 +356,23 @@ type App struct {
 	lock    *workers.ProcessLockHandle
 	options AppOptions
 	link    string
+	// surfaces are the client surfaces, filled before the server's load.
+	surfaces []surface
+
+	// build and rollout are the plugins component's Build and Rollout, the two steps ApplyChanges runs (Pi's tests replace the
+	// component's `build` and `rollout` to hold one: a test here replaces these two, before it applies anything).
+	build   func(names []string, ctx context.Context) (*plugins.Built, error)
+	rollout func(steps []plugins.RolloutStep, built *plugins.Built, ctx context.Context) (plugins.RolloutResult, error)
 
 	applyMu sync.Mutex
 	close   sync.Once
 	closed  error
+	// closing is set when the close starts: what runs after the start (the bases' builds, the scan) stops reporting there.
+	closing atomic.Bool
+	// basesBuilt and baseWatched are BasesBuilt's and BaseWatched's channels, closed by the build after the listen (startBases).
+	basesBuilt, baseWatched chan struct{}
+	// ended is closed when the close starts.
+	ended chan struct{}
 }
 
 // OwnerLink is the owner link of this start (single use, 10 minutes): `http://127.0.0.1:<port>/_chord/owner#<token>`.
@@ -308,6 +387,11 @@ func StartServer(options AppOptions, ctx context.Context) (*App, error) {
 	if len(options.Workers) > 0 && options.Principal.Worker == nil {
 		return nil, errors.New("startServer: worker kinds need principal.worker")
 	}
+	for _, kind := range options.Workers {
+		if kind.Authorize == nil || kind.Start == nil {
+			return nil, fmt.Errorf("startServer: worker kind %q needs Authorize and Start", workerKindName(kind))
+		}
+	}
 	dataDir := options.DataDir
 	if dataDir == "" {
 		dataDir = DefaultDataDir(options.Name)
@@ -320,7 +404,7 @@ func StartServer(options AppOptions, ctx context.Context) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	app := &App{Workers: map[string]*workers.Workers{}, DataDir: opened.layout.DataDir, OwnerTokenFile: opened.layout.OwnerToken, store: opened.store, lock: opened.lock, options: options}
+	app := &App{basesBuilt: make(chan struct{}), baseWatched: make(chan struct{}), ended: make(chan struct{}), Workers: map[string]*workers.Workers{}, DataDir: opened.layout.DataDir, OwnerTokenFile: opened.layout.OwnerToken, store: opened.store, lock: opened.lock, options: options}
 	if err := app.start(opened, ctx); err != nil {
 		return nil, errors.Join(err, app.Close(ctx))
 	}
@@ -333,14 +417,59 @@ func (a *App) report(kind AppErrorKind, err any) {
 	}
 }
 
+// serverExecutable is the path of the server's own executable, to compare like a base file (Pi's `nodeBaseInputs(process.argv[1])`, workers.NodeBaseInputs):
+// not one under the Go build cache (the analog of an entry under `node_modules`: a test runner, `go run`), and one that cannot be
+// read is reported as `server_scan` and left out.
+func (a *App) serverExecutable() (model.BaseInputs, bool) {
+	lookup := a.options.executable
+	if lookup == nil {
+		lookup = os.Executable
+	}
+	exe, err := lookup()
+	if err == nil {
+		exe, err = filepath.Abs(exe)
+	}
+	// A program of the Go build cache is not compared (and not read): its bytes are no one's code.
+	if err == nil && inGoBuildCache(exe) {
+		if _, statErr := os.Stat(exe); statErr == nil {
+			return nil, false
+		}
+	}
+	var inputs model.BaseInputs
+	if err == nil {
+		// Readable now; the record is handed on, the watcher does not hash it again.
+		inputs, err = workers.NodeBaseInputs(exe, nil)
+	}
+	if err != nil {
+		a.reportLate(AppErrorServerScan, fmt.Errorf("the server's executable cannot be read: %w", err), "")
+		return nil, false
+	}
+	if inGoBuildCache(exe) {
+		return nil, false
+	}
+	return inputs, true
+}
+
+// inGoBuildCache is whether path lies under a work directory `go run` and `go test` build their programs in: `go-build` and the
+// digits the go command appends to it.
+func inGoBuildCache(path string) bool {
+	for element := range strings.SplitSeq(filepath.ToSlash(path), "/") {
+		if digits, ok := strings.CutPrefix(element, "go-build"); ok && strings.Trim(digits, "0123456789") == "" {
+			return true
+		}
+	}
+	return false
+}
+
 func (a *App) start(opened openedServer, ctx context.Context) error {
 	options := a.options
 	limits := options.Limits
 	sessions := CreateSessions(opened.cookieSecret, SessionLimits{MaxEphemeral: limits.EphemeralSessions})
 	hostOptions := host.HostOptions{
 		Address: nil, Principal: options.Principal.Server, Store: opened.store,
-		CloseTimeout: options.Timeouts.close(), ReadyTimeout: options.Timeouts.ready(),
-		OnError: func(err host.HostError) { a.report(AppErrorHost, err) },
+		CloseTimeout: options.Timeouts.close(), ReadyTimeout: options.Timeouts.ready(), ReloadDrainTimeout: options.Timeouts.reloadDrain(),
+		OnError:             func(err host.HostError) { a.report(AppErrorHost, err) },
+		PrincipalAttributes: options.PrincipalAttributes,
 	}
 	server := Server.Address(nil)
 	hostOptions.Address = &server
@@ -356,13 +485,19 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	if listen == nil {
 		listen = &chordhttp.ListenAddress{Host: "127.0.0.1", Port: 0}
 	}
-	a.HTTP = chordhttp.CreateHttp(h, chordhttp.HttpOptions{
+	httpOptions := chordhttp.HttpOptions{
 		Listen: listen,
-		Links: &chordhttp.LinksOptions{Path: "/chord", Opened: func(request chordhttp.HttpRequest, _ data.Principal) (func(), error) {
+		Links: &chordhttp.LinksOptions{Path: "/chord", OptionsFunc: a.linksAfterTheBases, Opened: func(request chordhttp.HttpRequest, _ data.Principal) (func(), error) {
 			return sessions.Opened(request), nil
 		}},
 		OnError: func(err chordhttp.HttpError) { a.report(AppErrorHTTP, err) },
-	}, ctx)
+	}
+	// The HTTP component records with the server host's adapter, as Pi's `createHttp` gets the app's `telemetry`: each request is a
+	// `chord.http` span. A nil store stays a nil adapter (a nil AppTelemetry is not a nil interface of the option's type).
+	if options.Telemetry != nil {
+		httpOptions.Telemetry = options.Telemetry
+	}
+	a.HTTP = chordhttp.CreateHttp(h, httpOptions, ctx)
 	root := options.Root
 	if root == "" {
 		root = "plugins"
@@ -371,9 +506,9 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	kinds := make([]plugins.KindDefinition, len(options.Kinds))
+	kinds := make([]plugins.KindEntry, len(options.Kinds))
 	for i, kind := range options.Kinds {
-		kinds[i] = plugins.KindDefinition{Name: kind.Name, Platform: kind.Platform, HostPackages: hostPackagesOf(options.API, kind)}
+		kinds[i] = plugins.KindEntry{Name: kind.Name, Definition: plugins.KindDefinition{Platform: kind.Kind.Platform, HostPackages: hostPackagesOf(options.API, kind)}}
 	}
 	base := make([]string, len(options.Base))
 	for i, path := range options.Base {
@@ -381,11 +516,21 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 			return err
 		}
 	}
-	a.Plugins = plugins.CreatePlugins(plugins.PluginsOptions{
-		Roots: []string{root, opened.layout.Plugins}, Kinds: kinds, Install: options.Install, Base: base,
-		OnError: func(err plugins.PluginsError) { a.report(AppErrorPlugins, err) }, Node: options.Node,
+	// The web surface serves a browser build's assets under its prefix (Pi's `publicPath: ${WEB_PREFIX}assets/`).
+	assetsPath := nodesurfaces.WebPrefix + "assets/"
+	component := plugins.CreatePlugins(plugins.PluginsOptions{
+		Build: build.BuildFacet, Roots: []model.PluginRoot{{Path: root, Required: true}, {Path: opened.layout.Plugins}}, Kinds: kinds, Install: options.Install, Base: base,
+		Api:        &model.AppApi{Name: options.API.Name, Versions: options.API.Versions},
+		PublicPath: &assetsPath,
+		OnError:    func(err plugins.PluginsError) { a.report(AppErrorPlugins, err) }, Node: options.Node,
 	}, ctx)
-	workerHosts := &workerHosts{keys: map[string]string{}}
+	a.Plugins = AppPlugins{
+		State:     component.State(),
+		Install:   a.installPlugin,
+		Component: component,
+	}
+	a.build, a.rollout = component.Build, component.Rollout
+	workerHosts := &workerHosts{keys: map[string]string{}, principals: map[string]string{}}
 	link := &OwnerLink{}
 	owner := options.Principal.Owner
 	themeChoice, err := surfaces.ThemeChoiceFacet()
@@ -400,12 +545,14 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	if len(options.API.Versions) > 0 {
 		version = options.API.Versions[0]
 	}
+	// pig divergence (D460): the kit's facets are Go core facets on the server's Go host, beside the plugins' Node host; Pi loads them into the one host that loads the plugins.
 	core := []host.HostFacet{
 		{Name: "chord.http", Facet: a.HTTP.Facet()},
 		{Name: "chord.app.info", Facet: AppInfoFacet(AppInfoValues{DataDir: opened.layout.DataDir, Name: options.Name, Version: version, Owner: owner})},
 		{Name: "chord.app.sessions", Facet: sessions.Facet},
 		{Name: "chord.app.owner", Facet: OwnerFacet(link, owner)},
 		{Name: "chord.app.pairing", Facet: PairingFacet(NewPairings(PairingLimits{MaxPending: limits.PendingPairings, PerAddress: limits.PairingsPerAddress}), owner)},
+		// pig divergence (D461): Files is a Go facet the plugins' NodeHost cannot get (the bridge refuses its keyed member); Pi's plugins `self.get(Files, {})`.
 		{Name: "chord.app.files", Facet: FilesFacet(filepath.Join(opened.layout.Server, "files"), options.Files, limits.Uploads)},
 		{Name: "chord.themes", Facet: surfaces.ThemesFacet()},
 		{Name: "chord.themes.choice", Facet: themeChoice},
@@ -418,15 +565,48 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 			WorkerHost: func(principal data.Principal) (string, bool) {
 				return workerHosts.get(data.PrincipalKey(principal, chordctx.Background(), nil))
 			},
-			PrincipalAttributes: func(data.Principal) telemetry.SpanAttributes { return nil },
+			PrincipalAttributes: func(principal data.Principal) telemetry.SpanAttributes {
+				return a.Host.PrincipalAttributes(principal, chordctx.Background())
+			},
 		})})
 	}
+	core = append(core, options.Facets...)
 	for _, kind := range options.Workers {
-		created, err := a.workersOf(kind, opened.layout.DataDir, workerHosts, ctx)
+		created, err := a.workersOf(kind, opened.layout, workerHosts, ctx)
 		if err != nil {
 			return err
 		}
 		a.Workers[kind.Kind.Kind] = created
+	}
+	// The server's plugins run in a Node subprocess behind this host (D462): the remote types placed on the server that the Go facets
+	// do not serve are the NodeHost's, so the server host delegates them to its link (D605), and serves the union as Pi's one host does.
+	// The link is attached by the first hold that goes over it, as a worker's is; the NodeHost loads after this host.
+	nodeReady := make(chan struct{})
+	var nodeHost atomic.Pointer[plugins.NodeHost]
+	if _, err := h.Delegate(Server, host.RouteOptions{
+		Authorize: func(data.Principal, contracts.Address) (bool, error) { return true, nil },
+		Resolve: func(_ contracts.Address, resolving context.Context) (host.ResolvedLink, error) {
+			// The host resolves in a section it lends to this function: waiting for the NodeHost parks first (as a worker's route does).
+			parking.Park(resolving)
+			select {
+			case <-nodeReady:
+			case <-resolving.Done():
+				return host.ResolvedLink{}, context.Cause(resolving)
+			}
+			return host.ResolvedLink{Link: nodeHost.Load().Link(), Principal: options.Principal.Server, Trusted: true}, nil
+		},
+	}, ctx); err != nil {
+		return err
+	}
+	for _, each := range surfacesOf(h, options, a.Plugins.Component) {
+		a.surfaces = append(a.surfaces, each)
+		core = append(core, each.facets...)
+		switch each.name {
+		case "web":
+			a.Web = &AppSurface{built: each.built}
+		case "tui":
+			a.Tui = &AppSurface{built: each.built}
+		}
 	}
 	report, err := h.Load(core, ctx)
 	if err != nil {
@@ -435,7 +615,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	if err := failedPlugins(report); err != nil {
 		return err
 	}
-	var serverKind *AppKind
+	var serverKind *AppKindEntry
 	for i := range options.Kinds {
 		if options.Kinds[i].Name == "server" {
 			serverKind = &options.Kinds[i]
@@ -444,32 +624,33 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	modules := plugins.HostPackages{}
 	maps.Copy(modules, options.API.Modules)
 	if serverKind != nil {
-		maps.Copy(modules, serverKind.Packages)
+		maps.Copy(modules, serverKind.Kind.Packages)
 	}
 	// The server host's own store is the kit's; the plugins' is another file (two chord stores cannot share one).
 	pluginsStore := filepath.Join(opened.layout.Server, "plugins.sqlite")
 	if err := PrivateStore(pluginsStore); err != nil {
 		return err
 	}
-	node, nodeReport, err := a.Plugins.Load(plugins.PluginsLoad{
-		Kind: "server", Modules: modules, Principal: options.Principal.Server, Peer: options.Principal.Server,
-		CloseTimeout: options.Timeouts.close(), ReadyTimeout: options.Timeouts.ready(), Telemetry: options.Telemetry,
-		Store: &plugins.StoreOptions{Path: pluginsStore},
+	node, _, err := a.Plugins.Component.Load(plugins.PluginsLoad{
+		Kind: "server", Modules: modules, Address: &server, Principal: options.Principal.Server, Peer: options.Principal.Server,
+		CloseTimeout: options.Timeouts.close(), ReadyTimeout: options.Timeouts.ready(), ReloadDrainTimeout: options.Timeouts.reloadDrain(), Telemetry: options.Telemetry,
+		PrincipalAttributes: options.PrincipalAttributes,
+		Store:               &plugins.StoreOptions{Path: pluginsStore},
+		// The delegation the other way: what the Go server host serves (the choices, the telemetry ingest, the app's Go facets) is
+		// bound there when a plugin holds it, as Pi's one server host binds it (D605).
+		ParentServes: h.Serves,
 		Bridged: []plugins.BridgedFacet{
 			{Name: "chord.app.info", Host: h, Contracts: []*contracts.Contract{AppInfo}},
 			{Name: "chord.app.sessions", Host: h, Contracts: []*contracts.Contract{Sessions}},
 		},
 	}, ctx)
+	// A required root's plugin failing returns the loaded host with the *PluginError: the app owns it and closes it.
+	a.Node = node
 	if err != nil {
 		return err
 	}
-	a.Node = node
-	if err := failedPlugins(nodeReport); err != nil {
-		return err
-	}
-	if err := h.Accept(node.Link(), host.LinkOptions{Principal: options.Principal.Server, Trusted: true}, ctx); err != nil {
-		return err
-	}
+	nodeHost.Store(node)
+	close(nodeReady)
 	if _, err := OwnerTokenFile(opened.layout.OwnerToken, owner, h, ctx); err != nil {
 		return err
 	}
@@ -478,6 +659,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 		return err
 	}
 	a.link = "http://" + linkHost(listening.Host, listening.Port) + OwnerPath + "#" + link.Renew()
+	a.startBases(a.baseBuilds())
 	return nil
 }
 
@@ -490,16 +672,45 @@ func failedPlugins(report host.LoadReport) error {
 	return fmt.Errorf("plugin %q failed to load: %w", first.Plugin, first.Error)
 }
 
-// workerHosts is the address key of each worker by its principal's key: the principal its link stamps on its telemetry batches.
+// workerKindName is the name of a worker kind for a message (its host kind may be missing in a bad option).
+func workerKindName(kind AppWorkerKind) string {
+	if kind.Kind == nil {
+		return ""
+	}
+	return kind.Kind.Kind
+}
+
+// workerHosts is the address key of each worker by its principal's key: the principal its link stamps on its telemetry batches. An
+// entry ends with its address (forget): Pi's map keeps them for the process's life, which grows with every address ever started.
 type workerHosts struct {
-	mu   sync.Mutex
-	keys map[string]string
+	mu sync.Mutex
+	// keys is the address key by principal key; principals is the principal key each address key made, to find it again.
+	keys       map[string]string
+	principals map[string]string
 }
 
 func (w *workerHosts) set(principalKey, address string) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
+	if previous, ok := w.principals[address]; ok && previous != principalKey && w.keys[previous] == address {
+		delete(w.keys, previous)
+	}
 	w.keys[principalKey] = address
+	w.principals[address] = principalKey
+}
+
+// forget drops the entry the address made, unless another address took its principal key since.
+func (w *workerHosts) forget(address string) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	principalKey, ok := w.principals[address]
+	if !ok {
+		return
+	}
+	delete(w.principals, address)
+	if w.keys[principalKey] == address {
+		delete(w.keys, principalKey)
+	}
 }
 
 func (w *workerHosts) get(principalKey string) (string, bool) {
@@ -566,6 +777,7 @@ func openServer(path string, ctx context.Context) (opened openedServer, err erro
 	if err != nil {
 		return openedServer{}, err
 	}
+	// pig divergence (D462): the server's Go host has a store of its own (store.sqlite); the plugins' NodeHost has another (plugins.sqlite); Pi's one host has one.
 	chordStore, err := store.OpenStore(store.SqliteBackend(database), ctx, store.StoreOptions{})
 	if err != nil {
 		return openedServer{}, err
@@ -574,19 +786,21 @@ func openServer(path string, ctx context.Context) (opened openedServer, err erro
 }
 
 // hostPackagesOf is the host packages of kind: the API's shared and per-kind module of every version, and its packages.
-func hostPackagesOf(api AppAPI, kind AppKind) []string {
+func hostPackagesOf(api AppAPI, kind AppKindEntry) []string {
 	var packages []string
 	for _, version := range api.Versions {
 		packages = append(packages, api.Name+"/"+version, api.Name+"/"+version+"/"+kind.Name)
 	}
-	for name := range kind.Packages {
+	for name := range kind.Kind.Packages {
 		packages = append(packages, name)
 	}
 	return packages
 }
 
-// workersOf is the workers component of one worker kind: started with the kit's part of the start data beside the app's.
-func (a *App) workersOf(kind AppWorkerKind, dataDir string, hosts *workerHosts, ctx context.Context) (*workers.Workers, error) {
+// workersOf is the workers component of one worker kind (its base copied after the listen, into the kind's directory under
+// `cache/workers/`): started with the kit's part of the start data beside the app's.
+func (a *App) workersOf(kind AppWorkerKind, layout AppLayout, hosts *workerHosts, ctx context.Context) (*workers.Workers, error) {
+	dataDir := layout.DataDir
 	options := a.options
 	facet := kind.Facet
 	if facet == "" {
@@ -597,6 +811,8 @@ func (a *App) workersOf(kind AppWorkerKind, dataDir string, hosts *workerHosts, 
 	idle := kind.IdleMs
 	return workers.CreateWorkers(a.Host, kind.Kind, workers.WorkersOptions{
 		Kind: facet, Entry: kind.Entry, ExecArgv: kind.ExecArgv, Env: kind.Env,
+		// Each kind's base copy, in its own directory of the data directory's cache, made again at every start.
+		BaseDir: filepath.Join(layout.WorkerBases, kind.Kind.Kind),
 		// The server reaches its workers' kit objects (`HostData`) whatever the app admits.
 		Authorize: func(principal data.Principal, address contracts.Address) (bool, error) {
 			return data.SamePrincipal(principal, server, chordctx.Background()) || kind.Authorize(principal, address), nil
@@ -618,9 +834,10 @@ func (a *App) workersOf(kind AppWorkerKind, dataDir string, hosts *workerHosts, 
 		Lock: func(address contracts.Address) (string, error) {
 			return workerLock(options.Name, dataDir, address), nil
 		},
-		IdleMs:  idle,
-		Plugins: a.Plugins,
-		OnError: func(err workers.WorkersError) { a.report(AppErrorWorkers, err) },
+		IdleMs:    idle,
+		Plugins:   a.Plugins.Component,
+		OnError:   func(err workers.WorkersError) { a.report(AppErrorWorkers, err) },
+		Forgotten: func(address contracts.Address) { hosts.forget(address.Key) },
 	}, ctx)
 }
 
@@ -643,16 +860,22 @@ func linkHost(listened string, port int) string {
 	return name + ":" + strconv.Itoa(port)
 }
 
-// ApplyChanges builds the dirty plugins and rolls them out: the server, every worker kind (the web and terminal surfaces will follow, T11);
+// installPlugin is AppPlugins.Install: it installs plugins from git or npm into the user's root and returns their names (it binds
+// the user's root where Plugins.InstallPlugin takes any root); applying changes loads them.
+func (a *App) installPlugin(ctx context.Context, source plugins.PluginSource) ([]string, error) {
+	return a.Plugins.Component.InstallPlugin(source, filepath.Join(a.DataDir, "plugins"), ctx)
+}
+
+// ApplyChanges builds the dirty plugins and rolls them out: the server, every worker kind, then the web and terminal surfaces;
 // never by itself. Calls run one after another (a later one builds after the earlier one rolled out).
 func (a *App) ApplyChanges(ctx context.Context) (plugins.RolloutResult, error) {
 	a.applyMu.Lock()
 	defer a.applyMu.Unlock()
-	built, err := a.Plugins.Build(a.Plugins.Marks().Dirty, ctx)
+	built, err := a.build(a.Plugins.Component.Marks().Dirty, ctx)
 	if err != nil {
 		return plugins.RolloutResult{}, err
 	}
-	server, err := a.Plugins.Step("server", a.Node)
+	server, err := a.Plugins.Component.Step("server", a.Node)
 	if err != nil {
 		return plugins.RolloutResult{}, err
 	}
@@ -660,7 +883,10 @@ func (a *App) ApplyChanges(ctx context.Context) (plugins.RolloutResult, error) {
 	for _, kind := range a.options.Workers {
 		steps = append(steps, a.Workers[kind.Kind.Kind].Step(kind.Kind.Kind))
 	}
-	return a.Plugins.Rollout(steps, built, ctx)
+	for _, each := range a.surfaces {
+		steps = append(steps, each.step(each.name))
+	}
+	return a.rollout(steps, built, ctx)
 }
 
 func (a *App) workersFor(address contracts.Address) (*workers.Workers, error) {
@@ -680,18 +906,14 @@ func (a *App) manifest(address contracts.Address) ArchiveManifest {
 }
 
 // running is whether the worker at address runs.
-func running(found *workers.Workers, address contracts.Address) (bool, error) {
-	value, err := found.State().Value()
-	if err != nil {
-		return false, err
-	}
-	object, _ := value.(*delta.JsonObject)
+func running(found *workers.Workers, address contracts.Address) bool {
+	object, _ := found.State().Value().(*delta.JsonObject)
 	entry, _ := object.Value(address.Key).(*delta.JsonObject)
 	if entry == nil {
-		return false, nil
+		return false
 	}
 	status, _ := entry.Value("status").(string)
-	return status == string(workers.WorkerRunning), nil
+	return status == string(workers.WorkerRunning)
 }
 
 // ExportData writes the data the worker at address created (its store and finished files) as an archive at path, stopping nothing: a
@@ -709,11 +931,7 @@ func (a *App) ExportData(address contracts.Address, path string, ctx context.Con
 	}
 	// Running: the worker packs its own store. Else the lock, unless a worker starts first: then ask it.
 	for attempt := 1; ; attempt++ {
-		isRunning, err := running(found, address)
-		if err != nil {
-			return err
-		}
-		if isRunning {
+		if running(found, address) {
 			return a.exportRunning(address, manifest, target, ctx)
 		}
 		lock, err := a.workerLock(address, ctx)
@@ -793,29 +1011,46 @@ func (a *App) workerLock(address contracts.Address, ctx context.Context) (*worke
 	return lock, nil
 }
 
-// Close closes the HTTP component, the workers, the host, the store, the plugins' watcher and the data directory's lock: in that
-// order (HTTP first: it drains requests the host's close would seal).
+// Close closes the HTTP component, the workers (in the options' order), the host, the store, the plugins' watcher and the data
+// directory's lock: in that order (HTTP first: it drains requests the host's close would seal). As Pi's `#close`, the first step that
+// fails ends the close there (the later steps do not run) and is what Close returns, to every caller: the first caller runs the
+// steps, the later ones wait for it.
 func (a *App) Close(ctx context.Context) error {
-	a.close.Do(func() {
-		var errs []error
-		if a.HTTP != nil {
-			a.HTTP.Close(ctx)
-		}
-		for _, each := range a.Workers {
-			errs = append(errs, each.Close(ctx))
-		}
-		if a.Node != nil {
-			errs = append(errs, a.Node.Close(ctx))
-		}
-		if a.Host != nil {
-			errs = append(errs, a.Host.Close(ctx))
-		}
-		errs = append(errs, a.store.Close(ctx))
-		if a.Plugins != nil {
-			a.Plugins.Close()
-		}
-		errs = append(errs, a.lock.Release())
-		a.closed = errors.Join(errs...)
-	})
+	if !a.closing.Swap(true) {
+		close(a.ended)
+	}
+	a.close.Do(func() { a.closed = a.closeSteps(ctx) })
 	return a.closed
+}
+
+// closeSteps is Pi's `#close`: each step awaited, the first failure returned.
+func (a *App) closeSteps(ctx context.Context) error {
+	if a.HTTP != nil {
+		a.HTTP.Close(ctx)
+	}
+	for _, kind := range a.options.Workers {
+		if each := a.Workers[kind.Kind.Kind]; each != nil {
+			if err := each.Close(ctx); err != nil {
+				return err
+			}
+		}
+	}
+	// The plugins' Node host is the Go form of Pi's one host (D462): it closes with the server's.
+	if a.Node != nil {
+		if err := a.Node.Close(ctx); err != nil {
+			return err
+		}
+	}
+	if a.Host != nil {
+		if err := a.Host.Close(ctx); err != nil {
+			return err
+		}
+	}
+	if err := a.store.Close(ctx); err != nil {
+		return err
+	}
+	if a.Plugins.Component != nil {
+		a.Plugins.Component.Close()
+	}
+	return a.lock.Release()
 }

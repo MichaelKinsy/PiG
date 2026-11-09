@@ -10,6 +10,11 @@ import (
 
 func markedRuleSources(t *testing.T, each func(src string)) {
 	t.Helper()
+	// Under the race detector the corpus is sampled (race_on_test.go): every source of up to three characters and 20,000 random ones, not four and 200,000. The plain run takes all of it.
+	depth, random := 4, 200000
+	if raceEnabled {
+		depth, random = 3, 20000
+	}
 	alphabet := []string{" ", "-", "+", "*", "_", "=", "1", "0", "9", ".", ")", "|", ":", "`", "~", "#", ">", "<", "!", "[", "]", "$", "\\", "a", "\n", "\r", "\u00a0", "\u2028", "é", "🙂"}
 	var all func(prefix string, n int)
 	all = func(prefix string, n int) {
@@ -21,9 +26,9 @@ func markedRuleSources(t *testing.T, each func(src string)) {
 			all(prefix+s, n-1)
 		}
 	}
-	all("", 4)
+	all("", depth)
 	rng := rand.New(rand.NewPCG(11, 13))
-	for range 200000 {
+	for range random {
 		var b strings.Builder
 		b.WriteString(strings.Repeat(" ", rng.IntN(6)))
 		b.WriteString(strings.Repeat(alphabet[rng.IntN(len(alphabet))], rng.IntN(5)))
@@ -76,7 +81,7 @@ func TestMarkedBlockRulesEqualTheirPatterns(t *testing.T) {
 		// Tokenizer.list: the item rule of each kind of bullet.
 		for bull, rule := range itemRules {
 			match := rule.exec(runes)
-			bulletLength, length, ok := markedListItem(runes, bull)
+			bulletLength, length, ok := markedListItem(runes, []rune(bull))
 			if ok != (match != nil) || ok && (bulletLength != match.GroupByNumber(1).Length || length != match.Length) {
 				t.Fatalf("item %q of %q: %d, %d, %v; the pattern gives %v", bull, src, bulletLength, length, ok, match != nil)
 			}

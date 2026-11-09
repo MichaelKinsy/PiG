@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
@@ -84,6 +85,37 @@ func decodeEvent[T extension.ExtensionEvent](raw json.RawMessage) (extension.Ext
 	return event, nil
 }
 
+// withEmitMessageSequences numbers the messages of the event a graph emit decoded, so a Node process hands every handler of the emit the one object Pi's handlers share (runner.ts emit and emitMessageEnd pass one event.message to each, and extensions of one process share it): message_start and message_end have their message, turn_end its message and then its tool results, agent_end its messages. The numbers come from the process-wide counter, so they never meet another Session's or runner's in a Node process; the numbering lives as long as the emit.
+//
+// pig divergence (D541): the caller's own object is not named: a Go, Python or Rust caller passes a value, so a number cannot tell a message it built before from an equal one.
+func withEmitMessageSequences(ctx context.Context, event any) context.Context {
+	var messages []agent.AgentMessage
+	switch e := event.(type) {
+	case extension.MessageStartEvent:
+		messages = []agent.AgentMessage{e.Message}
+	case extension.MessageEndEvent:
+		messages = []agent.AgentMessage{e.Message}
+	case extension.TurnEndEvent:
+		messages = make([]agent.AgentMessage, 1+len(e.ToolResults))
+		messages[0] = e.Message
+		for i := range e.ToolResults {
+			messages[1+i] = agent.AgentMessage{ToolResult: &e.ToolResults[i]}
+		}
+	case extension.AgentEndEvent:
+		messages = e.Messages
+	default:
+		return ctx
+	}
+	var numbering messageSequences
+	return extension.WithMessageSequences(ctx, func() []uint64 {
+		sequences := make([]uint64, len(messages))
+		for i, message := range messages {
+			sequences[i] = numbering.Sequence(message)
+		}
+		return sequences
+	})
+}
+
 // callEmit runs the emit method named by method, and reports an unknown method as such.
 func (g *GraphExtensionRunner) callEmit(ctx context.Context, method string, args icodingagent.GraphArgs) (any, error) {
 	runner := g.runner
@@ -97,7 +129,7 @@ func (g *GraphExtensionRunner) callEmit(ctx context.Context, method string, args
 		if err != nil {
 			return nil, err
 		}
-		return runner.Emit(ctx, event)
+		return runner.Emit(withEmitMessageSequences(ctx, event), event)
 	case "emitToolCall":
 		var event extension.CustomToolCallEvent
 		err := args.Unmarshal(0, func(raw json.RawMessage) error { return json.Unmarshal(raw, &event) })
@@ -187,7 +219,8 @@ func (g *GraphExtensionRunner) callEmit(ctx context.Context, method string, args
 		if err != nil {
 			return nil, err
 		}
-		result, err := runner.EmitMessageEnd(ctx, event)
+		// pig divergence (D541): a Node handler's in-place edit of event.message is made to the message decoded here, and the caller sees it only in a replacement the result carries: its own object is a value this call cannot edit.
+		result, err := runner.EmitMessageEnd(withEmitMessageSequences(ctx, event), event)
 		if err != nil || result == nil {
 			return nil, err
 		}
@@ -262,7 +295,7 @@ func (g *GraphExtensionRunner) emitBoundary(ctx context.Context, args icodingage
 	if err != nil {
 		return nil, err
 	}
-	result, err := g.runner.EmitBoundary(ctx, base, func(entries []extension.SessionBoundaryDraft) (extension.BoundaryContextPreview, error) {
+	result, err := g.runner.EmitBoundary(withEmitMessageSequences(ctx, base), base, func(entries []extension.SessionBoundaryDraft) (extension.BoundaryContextPreview, error) {
 		answer, err := g.callback(ctx, buildID, nonNilSlice(entries))
 		if err != nil {
 			return extension.BoundaryContextPreview{}, err

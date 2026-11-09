@@ -22,13 +22,12 @@ func TestRunnerToolContextRunsNestedCallsForTheCallingTool(t *testing.T) {
 	var gotCtx context.Context
 	outcome := extension.AgentToolCallOutcome{ToolCall: ai.ToolCall{ID: "call-1/1", Name: "echo"}, Result: agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "ok"}}}}
 	runner := inproc.NewRunner(nil, t.TempDir())
-	runner.BindCore(extension.ExtensionActions{}, extension.ContextActions{ToolActions: extension.ToolActions{
+	runner.BindCore(extension.ExtensionActions{}, extension.ContextActions{
 		GetCallableTools: func() []extension.AgentTool { return callable },
 		ExecuteTool: func(ctx context.Context, callerID, name string, args json.RawMessage, _ extension.ExecuteToolOptions) (extension.AgentToolCallOutcome, error) {
 			gotCaller, gotName, gotArgs, gotCtx = callerID, name, args, ctx
 			return outcome, nil
-		},
-	}}, nil)
+		}}, nil)
 
 	parent, cancel := context.WithCancel(t.Context())
 	defer cancel()
@@ -112,12 +111,11 @@ func TestRunnerToolContextWithoutExecuteToolActionReturnsErrorOutcome(t *testing
 // Upstream runner.ts:955-964 and 967: `tools` and `executeTool` call `runner.assertActive()`, so a stale runner rejects both.
 func TestRunnerToolContextRejectsCallsOnAStaleRunner(t *testing.T) {
 	runner := inproc.NewRunner(nil, t.TempDir())
-	runner.BindCore(extension.ExtensionActions{}, extension.ContextActions{ToolActions: extension.ToolActions{
+	runner.BindCore(extension.ExtensionActions{}, extension.ContextActions{
 		ExecuteTool: func(context.Context, string, string, json.RawMessage, extension.ExecuteToolOptions) (extension.AgentToolCallOutcome, error) {
 			t.Error("a stale runner ran a nested call")
 			return extension.AgentToolCallOutcome{}, nil
-		},
-	}}, nil)
+		}}, nil)
 	tc := runner.CreateToolContext(t.Context(), "call-1")
 	if tc == nil {
 		t.Fatal("CreateToolContext attached no ToolContext")
@@ -139,10 +137,10 @@ func TestRunnerToolContextAppendsEntriesThroughTheBoundAction(t *testing.T) {
 	}
 	var calls []call
 	runner := inproc.NewRunner(nil, t.TempDir())
-	runner.BindCore(extension.ExtensionActions{}, extension.ContextActions{ToolActions: extension.ToolActions{AppendEntry: func(customType string, data any) error {
+	runner.BindCore(extension.ExtensionActions{}, extension.ContextActions{AppendEntry: func(customType string, data any) error {
 		calls = append(calls, call{customType, data})
 		return nil
-	}}}, nil)
+	}}, nil)
 	tc := runner.CreateToolContext(t.Context(), "call-1")
 	if tc == nil {
 		t.Fatal("CreateToolContext attached no ToolContext")
@@ -212,7 +210,7 @@ func TestRunnerBindCoreKeepsTheSessionBindingAModeOmits(t *testing.T) {
 	var appended []string
 	runner := inproc.NewRunner(nil, t.TempDir())
 	var executed []string
-	runner.BindCore(extension.ExtensionActions{}, extension.ContextActions{SessionManager: namedManager{id: "session-log"}, ToolActions: extension.ToolActions{
+	runner.BindCore(extension.ExtensionActions{}, extension.ContextActions{SessionManager: namedManager{id: "session-log"},
 		ExecuteTool: func(_ context.Context, callerID, name string, _ json.RawMessage, _ extension.ExecuteToolOptions) (extension.AgentToolCallOutcome, error) {
 			executed = append(executed, name)
 			return extension.AgentToolCallOutcome{ToolCall: ai.ToolCall{ID: callerID + "/1", Name: name}}, nil
@@ -220,8 +218,7 @@ func TestRunnerBindCoreKeepsTheSessionBindingAModeOmits(t *testing.T) {
 		AppendEntry: func(customType string, _ any) error {
 			appended = append(appended, customType)
 			return nil
-		},
-	}}, nil)
+		}}, nil)
 	runner.BindCore(extension.ExtensionActions{}, extension.ContextActions{}, nil)
 	tc := runner.CreateToolContext(t.Context(), "call-1")
 	if manager, err := tc.SessionManager(); err != nil || manager != (namedManager{id: "session-log"}) {
@@ -234,10 +231,10 @@ func TestRunnerBindCoreKeepsTheSessionBindingAModeOmits(t *testing.T) {
 		t.Fatalf("ExecuteTool after a mode binding = %+v, %v; Session action calls %v", outcome, err, executed)
 	}
 
-	runner.BindCore(extension.ExtensionActions{}, extension.ContextActions{SessionManager: namedManager{id: "next-log"}, ToolActions: extension.ToolActions{AppendEntry: func(customType string, _ any) error {
+	runner.BindCore(extension.ExtensionActions{}, extension.ContextActions{SessionManager: namedManager{id: "next-log"}, AppendEntry: func(customType string, _ any) error {
 		appended = append(appended, "next:"+customType)
 		return nil
-	}}}, nil)
+	}}, nil)
 	tc = runner.CreateToolContext(t.Context(), "call-2")
 	if manager, _ := tc.SessionManager(); manager != (namedManager{id: "next-log"}) {
 		t.Fatalf("ctx.sessionManager after a Session binding = %v, want next-log", manager)

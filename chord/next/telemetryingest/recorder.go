@@ -24,8 +24,8 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Batch is what a recorder hands its owner at once: settled spans and metric aggregates.
-type Batch struct {
+// TelemetryBatch is what a recorder hands its owner at once: settled spans and metric aggregates.
+type TelemetryBatch struct {
 	Spans   []telemetry.StoredSpan
 	Metrics []telemetry.StoredMetric
 }
@@ -462,7 +462,7 @@ func (recorder *Recorder) merge(stored telemetry.StoredMetric) {
 
 // Take takes the queued spans (at most limit, the oldest; a negative limit takes all) and the metric intervals that are
 // over (every one with partial); the spans keep counting against the capacity until Release.
-func (recorder *Recorder) Take(partial bool, limit int) Batch {
+func (recorder *Recorder) Take(partial bool, limit int) TelemetryBatch {
 	recorder.mu.Lock()
 	defer recorder.mu.Unlock()
 	spans := recorder.spans
@@ -487,7 +487,7 @@ func (recorder *Recorder) Take(partial bool, limit int) Batch {
 	}
 	recorder.order = remaining
 	recorder.inFlightMeasurements = len(metrics)
-	return Batch{Spans: spans, Metrics: metrics}
+	return TelemetryBatch{Spans: spans, Metrics: metrics}
 }
 
 // Release says the batch taken last was written or given up: its capacity is free again.
@@ -523,7 +523,7 @@ func (recorder *Recorder) Pending(partial bool) bool {
 
 // Ingest queues spans and metric rows another process recorded, within the capacity; it returns how many spans it queued
 // (the rest dropped and counted).
-func (recorder *Recorder) Ingest(batch Batch) int {
+func (recorder *Recorder) Ingest(batch TelemetryBatch) int {
 	recorder.mu.Lock()
 	if recorder.stopped {
 		recorder.mu.Unlock()

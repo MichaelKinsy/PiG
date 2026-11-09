@@ -25,7 +25,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 )
 
-// Ports packages/chord/test/next/bench/relay.ts: light benchmarks of links and relays (slice 4a): commit-to-frame and
+// Ports packages/chord/test/bench/relay.ts: light benchmarks of links and relays (slice 4a): commit-to-frame and
 // wire bytes through a relay (tab <-> server <-> worker) over memory links, an IPC link to a worker and a loopback
 // WebSocket to the tab; hold-to-live through a relay including the `resolve` of a worker; a tab throttled to 64 KiB/s
 // with stalls of 1, 10 and 60 s receiving a streamed reply into a 500 KB view, directly and through a relay (the worker

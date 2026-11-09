@@ -149,7 +149,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/ai/src/providers/model-schema.ts` | `internal/codingagent/configschema/model.go (schema trees); TestRenderedSchemasAreByteEqualToThePinnedPiPackage`, `ai/types.go` | ✅ |
 | `packages/ai/src/providers/schema-builders.ts` | `internal/codingagent/configschema/pischema.go (OpenObject, StringLiteral, StringRecord; OneOf)` | ✅ |
 | `packages/ai/src/api/anthropic-messages.ts` | `ai/direct_simple.go + ai/anthropic.go + ai/anthropic_stream.go + ai/anthropic_client.go + ai/anthropic_federation.go + ai/provider_request_options.go (createClient auth/header branches including the ai.FormatUserAgent(nil) default User-Agent (D65), betas, OAuth Claude Code identity, tool-name conversion, strict JSON-schema tools across current, initial, and deferred declarations, toolChoice, metadata.user_id, complete stop-reason and incomplete-stream errors, thinking_tokens usage, usage retention on error, explicit-zero temperature compatibility, managed mid-conversation effort with historical/current effort markers, adaptive drop-block binding, beta selection, and providerThinkingLevel, and native mid-conversation tool changes with tool_addition/tool_removal blocks, deferred placeholder/later tools, beta selection, and safe fallback to the current tool list; the executor-turn body pipeline with its Node 24.19/26.7 tick-order differential in ai/anthropic_microtask_trace_test.go and ai/anthropic_stream_test.go over coding/testdata/rpc33-observation/providers/anthropic-messages; upstream 0.99.2 workload identity federation in ai/anthropic_federation.go (getAnthropicFederation, token exchange, expiry refresh, the per-config federation client cache; ai/anthropic_federation_upstream_test.go, ai/anthropic_federation_sdk_upstream_test.go, ai/anthropic_token_cache_test.go) and the strict-tool keyword fallback (ai/anthropic.go anthropicStrictUnsupportedKeyword; ai/anthropic_strict_tool_schema_upstream_test.go, ai/anthropic_strict_keywords_test.go); tests in ai/anthropic_oauth_test.go, ai/anthropic_test.go, ai/anthropic_contract_0861_test.go, ai/anthropic_effort_strict_test.go, ai/constrained_sampling_test.go, ai/transcript_tool_changes_test.go, and agent/native_tool_changes_test.go); server-side fallback (allowedFallbackModels fallbacks param, server-side-fallback-2026-07-01 beta, fallback content block and cost) in ai/anthropic_fallback_request_upstream_test.go`, `ai/types.go`, `ai/compat.go` | ✅ |
-| `packages/ai/src/api/constrained-sampling.ts` | `ai/constrained_sampling.go + ai/provider_kit.go (the exported getJsonSchemaToolParameters, prefersJsonSchemaStrictSampling and resolveJsonSchemaStrictSampling entry points over constrained_sampling.go; imported schema-key order, kept by the object-order helper beside it;grammar + canonical JSON-schema strict constrained sampling; wired into Anthropic, OpenAI Completions, OpenAI Responses, Mistral, Bedrock, and Google request paths; unit and provider-wire tests in ai/constrained_sampling_test.go, ai/anthropic_test.go, ai/openai_test.go, ai/openai_responses_constrained_test.go, ai/mistral_test.go, ai/providers/bedrock/bedrock_test.go, and ai/google_test.go)` | ✅ |
+| `packages/ai/src/api/constrained-sampling.ts` | `ai/constrained_sampling.go (the exported getJsonSchemaToolParameters, prefersJsonSchemaStrictSampling, resolveJsonSchemaStrictSampling and isStrictToolLimitErrorMessage entry points of provider_kit, which only export the functions here to the Bedrock package; imported schema-key order, kept by the object-order helper beside it;grammar + canonical JSON-schema strict constrained sampling; wired into Anthropic, OpenAI Completions, OpenAI Responses, Mistral, Bedrock, and Google request paths; unit and provider-wire tests in ai/constrained_sampling_test.go, ai/anthropic_test.go, ai/openai_test.go, ai/openai_responses_constrained_test.go, ai/mistral_test.go, ai/providers/bedrock/bedrock_test.go, and ai/google_test.go)` | ✅ |
 | `packages/ai/src/api/azure-openai-config.ts` | `ai/azure_config.go (ResolveAzureBaseURL, ResolveAzureConfig, ResolveAzureDeploymentName)`, `ai/types.go` | ✅ |
 | `packages/ai/src/api/azure-openai-responses.ts` | `ai/direct_simple.go + ai/azure_openai_responses.go (logical model versus deployment identity and reasoning replay)`, `ai/types.go`, `ai/compat.go` | ✅ |
 | `packages/ai/src/api/bedrock-converse-stream.ts` | `ai/providers/bedrock/bedrock.go + ai/direct_simple.go (simple API dispatch preserves the selected model and delegates optional/keyless authentication to Bedrock)`, `ai/types.go`, `ai/compat.go` | ✅ |
@@ -547,7 +547,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/modes/interactive/components/earendil-announcement.ts` | `internal/codingagent/earendil_announcement.go (shown by the interactive easter-egg code)` | ✅ |
 | `packages/coding-agent/src/core/pi-manifest.ts` | `coding/packagecontent/pi_manifest.go ReadPiManifest (BOM strip, object-only package and "pi", per-field string arrays), read by the Node extension builder's piPackageEntrypoints; coding/packagecontent/packagecontent.go readPackageManifest applies the same parse for package discovery; PiManifest.ChangelogPath` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/markdown-transform.ts` | `coding/extension/markdowntransform/markdowntransform.go, internal/codingagent/interactive_chat.go, tui/markdown_async.go (chain order and context, a throwing transformer keeping the current Markdown, stale-generation publication, and a body that outlives an extension disconnect publishing nothing are covered and mutation-checked; D56: a body the renderer inactivity boundary abandoned disables its transformer in later chains while it runs)` | ✅ |
-| `packages/coding-agent/src/modes/interactive/components/mermaid.ts` | `internal/codingagent/mermaid_transform.go + internal/codingagent/mermaid_fence_parser.go + internal/codingagent/mermaid_definition_parser.go + internal/codingagent/mermaid_html_parser.go + internal/codingagent/mermaid_heading_parser.go (natural-layout raw fallback and display-only partial warnings: mermaid_fallback_upstream_test.go; exact transform corpus: mermaid_transform_test.go)` | ✅ |
+| `packages/coding-agent/src/modes/interactive/components/mermaid.ts` | `internal/codingagent/mermaid_transform.go + internal/codingagent/mermaid_fence_parser.go + internal/codingagent/mermaid_definition_parser.go + internal/codingagent/mermaid_html_parser.go + internal/codingagent/mermaid_heading_parser.go + internal/mermaid/** (the lovely-mermaid 0.3.3 renderer; sourceBox is not ported because mermaid.ts never calls it) (natural-layout raw fallback and display-only partial warnings: mermaid_fallback_upstream_test.go; exact transform corpus: mermaid_transform_test.go; renderer: internal/mermaid/render_test.go)` | ✅ |
 | `packages/coding-agent/src/modes/json-event.ts` | `coding/cli/rpc_events.go + coding/cli/rpc_object.go (ordered JSON/RPC conversion; field-only live projections exclude partials before serialization and read toolcall_start identity)`, `coding/rpcclient/types.go` | ✅ |
 | `packages/coding-agent/src/utils/abort.ts` | `(AbortSignal/Promise racing: raceWithAbortSignal/operationSignal; pig uses context.Context cancellation + select (D3): runtime mechanics, designed out)` | n/a |
 | `packages/coding-agent/src/utils/management-http.ts` | `internal/managementhttp/managementhttp.go FetchWithRetry (management-http.test.ts cases in managementhttp_test.go), used by the tools manager's getLatestVersion and downloadFile; its other upstream callers are remote-catalog-provider.ts, whose Go port routes through the same FetchWithRetry (see its row), and version-check.ts, which is not ported (see its row)` | ✅ |
@@ -696,7 +696,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/mcp/src/transports/stdio.ts` | `mcp/stdio.go; mcp/stdio_unix.go; mcp/stdio_windows.go` | ✅ |
 | `packages/mcp/src/transports/streamable-http.ts` | `mcp/streamable_http.go; mcp/sse.go` (Send(ctx) carries McpTransportSendOptions.signal as its context) | ✅ |
 | `packages/mcp/src/transports/transport.ts` | `mcp/transport.go` (Send(ctx) carries McpTransportSendOptions.signal as its context) | ✅ |
-| `packages/mcp/src/config.ts` | `internal/mcpshared/config.go (re-exported by mcp/config.go: coding/extension validates entries in a pig_strip_mcp build, which links neither mcp nor mcp/oauth)` | ✅ |
+| `packages/mcp/src/config.ts` | `internal/mcpshared/config.go (re-exported by mcp/config.go: coding/extension validates entries in a pig_strip_mcp build, which links neither mcp nor mcp/oauth); coding/extension/mcp_servers.go (McpServerConfig and McpOAuthConfig: the field types of McpStdioServerConfig, McpHttpServerConfig and McpOAuthConfig, which Pi's coding-agent extends with its own fields)` | ✅ |
 | `packages/mcp/src/input-schema.ts` | `mcp/input_schema.go` | ✅ |
 | `packages/mcp/src/naming.ts` | `internal/mcpshared/naming.go (re-exported by mcp/naming.go, for the same reason)` | ✅ |
 | `packages/mcp/src/oauth/auth-provider.ts` | `mcp/oauth/auth_provider.go` | ✅ |
@@ -713,7 +713,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 |---|---|---|
 | `packages/codemode/src/cloudflare-modules.d.ts` | `(typing artefact: declares Wrangler's CompiledWasm import for the TypeScript entry; Go has no module import rule)` | n/a |
 | `packages/codemode/src/cloudflare.ts` | `codemode/cloudflare/cloudflare.go (QuickJSWasm, CreateInlineSandbox, SandboxDurableObject); durable/core/host/cf/src/codemode/ (the Worker module and the Durable Object class)` | ✅ |
-| `packages/codemode/src/declarations.ts` | `codemode/declarations.go (SchemaToType, RenderToolSignature, RenderToolSample, RenderDeclarations; a $ref with malformed percent-encoding returns the URIError as an error); TestSchemaToTypeMatchesPi, TestToolSignatureAndSampleMatchPi and TestRenderDeclarationsMatchesPi compare Pi's declarations.js on a deterministic corpus and seeded-random schemas (codemode/testdata/upstream-oracle.mjs), and every declarations.test.ts case is ported (test-mapping-v1.0.4.json)` | ✅ |
+| `packages/codemode/src/declarations.ts` | `codemode/declarations.go (SchemaToType, RenderToolSignature, RenderToolSample, RenderDeclarations; resolveSchemaRef: the segment walk is internal/schemaref, which tool search shares so a pig_strip_codemode build links neither codemode nor wazero for it; a $ref with malformed percent-encoding renders as `unknown`); TestSchemaToTypeMatchesPi, TestToolSignatureAndSampleMatchPi and TestRenderDeclarationsMatchesPi compare Pi's declarations.js on a deterministic corpus and seeded-random schemas (codemode/testdata/upstream-oracle.mjs), and every declarations.test.ts case is ported (test-mapping-v1.0.4.json)` | ✅ |
 | `packages/codemode/src/identifier.ts` | `codemode/identifier.go` | ✅ |
 | `packages/codemode/src/index.ts` | `(Go has no barrel exports: the exports are the codemode package)` | n/a |
 | `packages/codemode/src/portable.ts` | `(Go has no barrel exports: the exports are the codemode package)` | n/a |
@@ -934,20 +934,20 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/node/http/http.ts` | `chord/nextnode/http/http.go` | ✅ |
 | `packages/chord/src/node/http/incoming.ts` | `chord/nextnode/http/incoming.go` | ✅ |
 | `packages/chord/src/node/http/index.ts` | `(barrel: Go imports the package; exported names are those of Pi's index.ts, the rest is unexported)` | n/a |
-| `packages/chord/src/node/http/node.ts` | `chord/nextnode/http/node.go, chord/nextnode/http/url.go` | ✅ |
+| `packages/chord/src/node/http/node.ts` | `chord/nextnode/http/node.go, chord/nextnode/http/url.go` | 🟡 |
 | `packages/chord/src/node/http/request.ts` | `chord/nextnode/http/request.go` | ✅ |
 | `packages/chord/src/node/http/response.ts` | `chord/nextnode/http/response.go, chord/nextnode/http/statuscodes.go` | ✅ |
 | `packages/chord/src/node/http/router.ts` | `chord/nextnode/http/router.go` | ✅ |
 | `packages/chord/src/node/http/upgrades.ts` | `chord/nextnode/http/upgrades.go, chord/nextnode/http/websocket.go` | ✅ |
-| `packages/chord/src/node/plugins/build.ts` | `chord/nextnode/plugins/plugins_build.go, chord/nextnode/plugins/plugins_sourcemap.go` | ✅ |
-| `packages/chord/src/node/plugins/discover.ts` | `chord/nextnode/plugins/plugins_discover.go` | ✅ |
-| `packages/chord/src/node/plugins/evaluate.ts` | `chord/nextnode/plugins/plugins_runtime.go; Pi's file runs verbatim in the Node subprocess: chord/nextnode/plugins/node/pi/chord/src/next-node/plugins/evaluate.ts, node/host.mjs` | ✅ |
+| `packages/chord/src/node/plugins/build.ts` | `chord/nextnode/plugins/build/build_facet.go (scoped CSS modules through ScopeCSSModule, url() assets of stylesheets in a browser build), chord/nextnode/plugins/build/build_sourcemap.go` | ✅ |
+| `packages/chord/src/node/plugins/discover.ts` | `chord/nextnode/plugins/model/model_discover.go` | ✅ |
+| `packages/chord/src/node/plugins/evaluate.ts` | `chord/nextnode/plugins/plugins_runtime.go; chord/nextnode/plugins/plugins_pluginfile.go (pluginFile outside a facet script); Pi's file runs verbatim in the Node subprocess: chord/nextnode/plugins/node/pi/chord/src/node/plugins/evaluate.ts, node/host.mjs` | ✅ |
 | `packages/chord/src/node/plugins/index.ts` | `(barrel: Go imports the package)` | n/a |
 | `packages/chord/src/node/plugins/install.ts` | `chord/nextnode/plugins/plugins_install.go` | ✅ |
-| `packages/chord/src/node/plugins/plugins.ts` | `chord/nextnode/plugins/plugins_plugins.go` | ✅ |
-| `packages/chord/src/node/plugins/runtime.ts` | `chord/nextnode/plugins/plugins_runtime.go, chord/nextnode/plugins/plugins_node.go; Pi's file runs verbatim in the Node subprocess: chord/nextnode/plugins/node/pi/chord/src/next-node/plugins/runtime.ts` | ✅ |
-| `packages/chord/src/node/plugins/stack.ts` | `Pi's file runs verbatim in the Node subprocess: chord/nextnode/plugins/node/pi/chord/src/next-node/plugins/stack.ts; Go sees *NodeError.Stack (chord/nextnode/plugins/plugins_node.go)` | ✅ |
-| `packages/chord/src/node/plugins/watcher.ts` | `chord/nextnode/plugins/plugins_watcher.go` | ✅ |
+| `packages/chord/src/node/plugins/plugins.ts` | `chord/nextnode/plugins/plugins_plugins.go (Plugins.WatchBase)` | ✅ |
+| `packages/chord/src/node/plugins/runtime.ts` | `chord/nextnode/plugins/plugins_runtime.go, chord/nextnode/plugins/plugins_node.go; Pi's file runs verbatim in the Node subprocess: chord/nextnode/plugins/node/pi/chord/src/node/plugins/runtime.ts` | ✅ |
+| `packages/chord/src/node/plugins/stack.ts` | `Pi's file runs verbatim in the Node subprocess: chord/nextnode/plugins/node/pi/chord/src/node/plugins/stack.ts; Go sees *NodeError.Stack (chord/nextnode/plugins/plugins_node.go)` | ✅ |
+| `packages/chord/src/node/plugins/watcher.ts` | `chord/nextnode/plugins/plugins_watcher.go (base marks: recordBase/recordOwn, locations and ancestors watched alone, comparisons by at most 8 goroutines; an entry on the way to base code is renewed on a Create, Remove or Rename event only when its identity (inode and birth time: plugins_watcher_identity*.go, as Pi's `identityOf`) is not the one it had when watched; a watch fsnotify dropped with a move is put back without a comparison; the start reads entry types from ReadDir and hashes on at most 8 goroutines; D540 records the inode-only identity of other Unixes)` | ✅ |
 | `packages/chord/src/host/adapted.ts` | `chord/next/host/host_adapted.go` | ✅ |
 | `packages/chord/src/host/reference-keys.ts` | `chord/next/host/host_reference_keys.go` | ✅ |
 | `packages/chord/src/host/reference-source.ts` | `chord/next/host/host_reference_source.go` | ✅ |
@@ -958,73 +958,73 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/node/workers/main.ts` | `chord/nextnode/workers/workers_main.go` | ✅ |
 | `packages/chord/src/node/workers/process.ts` | `chord/nextnode/workers/workers_process.go, workers_process_unix.go, workers_channel.go, workers_channel_unix.go` (the Windows variants workers_process_windows and workers_channel_windows are built only on Windows and are run by the native Windows CI job) | ✅ |
 | `packages/chord/src/node/workers/workers.ts` | `chord/nextnode/workers/workers_workers.go, workers_outcome.go` | ✅ |
-| `packages/chord/src/host/old-work.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/host/readiness.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/host/reload-cycle.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/host/unbound-clock.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/node/app/app.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/node/app/archive.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/host/old-work.ts` | `chord/next/host/host_old_work.go` | ✅ |
+| `packages/chord/src/host/readiness.ts` | `chord/next/host/host_readiness.go` | ✅ |
+| `packages/chord/src/host/reload-cycle.ts` | `chord/next/host/host_reload_cycle.go` | ✅ |
+| `packages/chord/src/host/unbound-clock.ts` | `chord/next/host/host_unbound_clock.go` | ✅ |
+| `packages/chord/src/node/app/app.ts` | `chord/nextnode/app/app.go` | ✅ |
+| `packages/chord/src/node/app/archive.ts` | `chord/nextnode/app/archive.go` | ✅ |
 | `packages/chord/src/node/app/blobs.ts` | `chord/nextnode/app/blobs.go` | ✅ |
-| `packages/chord/src/node/app/data.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/node/app/ephemeral-sessions.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/node/app/ephemeral.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/app/data.ts` | `chord/nextnode/app/data.go, host_data.mjs` | ✅ |
+| `packages/chord/src/node/app/ephemeral-sessions.ts` | `chord/nextnode/app/ephemeral_sessions.go` | ✅ |
+| `packages/chord/src/node/app/ephemeral.ts` | `chord/nextnode/app/ephemeral.go` | ✅ |
 | `packages/chord/src/node/app/files-copy.ts` | `chord/nextnode/app/files_copy.go` | ✅ |
 | `packages/chord/src/node/app/files-entry.ts` | `(barrel: Go imports the package; the files-entry exports are FilesFacet, Files, FilesFolder, CopyFiles, PrivateDirectory, PrivateStore and the types)` | n/a |
 | `packages/chord/src/node/app/files-index.ts` | `chord/nextnode/app/files_index.go` | ✅ |
 | `packages/chord/src/node/app/files.ts` | `chord/nextnode/app/files.go (handlers suspend before their first wait and `turn` is a mutex, D430)` | ✅ |
 | `packages/chord/src/node/app/folder-views.ts` | `chord/nextnode/app/folder_views.go` | ✅ |
-| `packages/chord/src/node/app/index.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/node/app/info.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/node/app/invite.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/app/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
+| `packages/chord/src/node/app/info.ts` | `chord/nextnode/app/info.go` | ✅ |
+| `packages/chord/src/node/app/invite.ts` | `chord/nextnode/app/invite.go` | ✅ |
 | `packages/chord/src/node/app/layout.ts` | `chord/nextnode/app/layout.go` | ✅ |
-| `packages/chord/src/node/app/owner.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/node/app/pairing.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/app/owner.ts` | `chord/nextnode/app/owner.go` | ✅ |
+| `packages/chord/src/node/app/pairing.ts` | `chord/nextnode/app/pairing.go` | ✅ |
 | `packages/chord/src/node/app/secrets.ts` | `chord/nextnode/app/secrets.go` | ✅ |
-| `packages/chord/src/node/app/sessions.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/node/app/tar.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/app/sessions.ts` | `chord/nextnode/app/sessions.go` | ✅ |
+| `packages/chord/src/node/app/tar.ts` | `chord/nextnode/app/tar.go` | ✅ |
 | `packages/chord/src/node/app/uploads.ts` | `chord/nextnode/app/uploads.go (Accept is the synchronous half of Pi's append, D430)` | ✅ |
-| `packages/chord/src/node/app/users.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/node/app/worker.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/node/plugins/base-inputs.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/node/plugins/css-modules.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/node/plugins/testing.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/node/surfaces/bundle.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/node/surfaces/current.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/node/surfaces/index.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/node/surfaces/published.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/node/surfaces/served.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/node/surfaces/tui.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/node/surfaces/web.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/node/tui/actions.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/node/tui/credentials.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/node/tui/filter.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/node/tui/index.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/node/tui/launcher.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/node/tui/pipe.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/node/tui/sandbox.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/node/workers/base.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/node/workers/child.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/react/hooks.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/react/index.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/react/stores.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/node/app/users.ts` | `chord/nextnode/app/users.go` | ✅ |
+| `packages/chord/src/node/app/worker.ts` | `chord/nextnode/app/worker.go` | ✅ |
+| `packages/chord/src/node/plugins/base-inputs.ts` | `chord/nextnode/plugins/model/model_baseinputs.go (BaseInputs, ContentHash, HashFile), chord/nextnode/plugins/build/build_recorder.go (Recorder: the one read of a file, kept under a lock for esbuild's goroutines)` | ✅ |
+| `packages/chord/src/node/plugins/css-modules.ts` | `chord/nextnode/plugins/build/build_cssmodules.go (ScopeCSSModule), chord/nextnode/plugins/plugins_cssmodules_node.go (the mapping module runs in a Node subprocess, as Pi runs it in a vm context: the same Script, spread and JSON.stringify)` | ✅ |
+| `packages/chord/src/node/plugins/testing.ts` | `chord/nextnode/plugins/plugins_testing.go` | ✅ |
+| `packages/chord/src/node/surfaces/bundle.ts` | `chord/nextnode/surfaces/surfaces_bundle.go` | ✅ |
+| `packages/chord/src/node/surfaces/current.ts` | `chord/nextnode/surfaces/surfaces_current.go` | ✅ |
+| `packages/chord/src/node/surfaces/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
+| `packages/chord/src/node/surfaces/published.ts` | `chord/nextnode/surfaces/surfaces_published.go` | ✅ |
+| `packages/chord/src/node/surfaces/served.ts` | `chord/nextnode/surfaces/surfaces_served.go` | ✅ |
+| `packages/chord/src/node/surfaces/tui.ts` | `chord/nextnode/surfaces/surfaces_tui.go` | ✅ |
+| `packages/chord/src/node/surfaces/web.ts` | `chord/nextnode/surfaces/surfaces_web.go` | ✅ |
+| `packages/chord/src/node/tui/actions.ts` | `chord/nextnode/tui/tui_actions.go` | ✅ |
+| `packages/chord/src/node/tui/credentials.ts` | `chord/nextnode/tui/tui_credentials.go` | ✅ |
+| `packages/chord/src/node/tui/filter.ts` | `chord/nextnode/tui/tui_filter.go` | ✅ |
+| `packages/chord/src/node/tui/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
+| `packages/chord/src/node/tui/launcher.ts` | `chord/nextnode/tui/tui_launcher.go` | ✅ |
+| `packages/chord/src/node/tui/pipe.ts` | `chord/nextnode/tui/tui_pipe.go` | ✅ |
+| `packages/chord/src/node/tui/sandbox.ts` | `chord/nextnode/tui/tui_sandbox.go` | ✅ |
+| `packages/chord/src/node/workers/base.ts` | `(designed out, D600 draft: a Go worker is the program's own executable; no esbuild worker base; rows/chord-reload-workers.md)` | n/a |
+| `packages/chord/src/node/workers/child.ts` | `(designed out, D600 draft: a Go worker is the program's own executable; no esbuild worker base; rows/chord-reload-workers.md)` | n/a |
+| `packages/chord/src/react/hooks.ts` | `chord/nextnode/surfaces/client/pi/chord/src/react/hooks.ts` (vendored byte-for-byte, D601; client_manifest_test.go) | ✅ |
+| `packages/chord/src/react/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
+| `packages/chord/src/react/stores.ts` | `chord/nextnode/surfaces/client/pi/chord/src/react/stores.ts` (vendored byte-for-byte, D601; client_manifest_test.go) | ✅ |
 | `packages/chord/src/store/live-query.ts` | `chord/next/store/live_query.go (D431)` | ✅ |
-| `packages/chord/src/surfaces/active-language.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/surfaces/active-theme.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/surfaces/client.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/surfaces/connection.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/surfaces/format.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/surfaces/index.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/surfaces/language.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/surfaces/loaded.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/surfaces/locale-choice.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/surfaces/messages.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/surfaces/page-state.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/surfaces/preference.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/surfaces/registered.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/surfaces/scripts.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/surfaces/theme-choice.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/surfaces/themes.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/surfaces/translations.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/surfaces/active-language.ts` | `chord/next/surfaces/surfaces_active_language.go` | ✅ |
+| `packages/chord/src/surfaces/active-theme.ts` | `chord/next/surfaces/surfaces_active_theme.go` | ✅ |
+| `packages/chord/src/surfaces/client.ts` | `chord/next/surfaces/surfaces_client.go` | ✅ |
+| `packages/chord/src/surfaces/connection.ts` | `chord/next/surfaces/surfaces_connection.go` | ✅ |
+| `packages/chord/src/surfaces/format.ts` | `chord/next/surfaces/surfaces_format.go` | ✅ |
+| `packages/chord/src/surfaces/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
+| `packages/chord/src/surfaces/language.ts` | `chord/next/surfaces/surfaces_language.go` | ✅ |
+| `packages/chord/src/surfaces/loaded.ts` | `chord/next/surfaces/surfaces_loaded.go`, `chord/nextnode/surfaces/client/pi/chord/src/surfaces/loaded.ts` (vendored byte-for-byte, D601; client_manifest_test.go) | ✅ |
+| `packages/chord/src/surfaces/locale-choice.ts` | `chord/next/surfaces/surfaces_locale_choice.go` | ✅ |
+| `packages/chord/src/surfaces/messages.ts` | `chord/next/surfaces/surfaces_messages.go` | ✅ |
+| `packages/chord/src/surfaces/page-state.ts` | `chord/next/surfaces/surfaces_page_state.go` | ✅ |
+| `packages/chord/src/surfaces/preference.ts` | `chord/next/surfaces/surfaces_preference.go` | ✅ |
+| `packages/chord/src/surfaces/registered.ts` | `chord/next/surfaces/surfaces_registered.go` | ✅ |
+| `packages/chord/src/surfaces/scripts.ts` | `chord/next/surfaces/surfaces_scripts.go`, `chord/nextnode/surfaces/client/pi/chord/src/surfaces/scripts.ts` (vendored byte-for-byte, D601; client_manifest_test.go) | ✅ |
+| `packages/chord/src/surfaces/theme-choice.ts` | `chord/next/surfaces/surfaces_theme_choice.go`, `chord/nextnode/surfaces/client/pi/chord/src/surfaces/theme-choice.ts` (vendored byte-for-byte, D601; client_manifest_test.go) | ✅ |
+| `packages/chord/src/surfaces/themes.ts` | `chord/next/surfaces/surfaces_themes.go` | ✅ |
+| `packages/chord/src/surfaces/translations.ts` | `chord/next/surfaces/surfaces_translations.go` | ✅ |
 | `packages/chord/src/sync/batch.ts` | `chord/sync/batch.go` | ✅ |
 | `packages/chord/src/sync/client.ts` | `chord/sync/client.go, chord/sync/scheduler.go` | ✅ |
 | `packages/chord/src/sync/files.ts` | `chord/sync/files.go (errors, not FileResult; not-found is fs.ErrNotExist)` | ✅ |
@@ -1033,29 +1033,29 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/sync/lines.ts` | `chord/sync/lines.go` | ✅ |
 | `packages/chord/src/sync/remote.ts` | `chord/sync/remote.go` | ✅ |
 | `packages/chord/src/sync/state.ts` | `chord/sync/state.go` | ✅ |
-| `packages/chord/src/telemetry-ingest/batch.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/telemetry-ingest/facet.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/telemetry-ingest/index.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/telemetry-ingest/recorder.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/telemetry-ingest/sender.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/telemetry-sqlite/node.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/telemetry-sqlite/schema.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/telemetry.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/tui/bridge.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/tui/channel.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/tui/frames.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/tui/index.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/tui/runtime.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/tui/scope.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/tui/terminal.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/tui/theme.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/web/environment.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/web/index.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/web/language.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/web/page.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/web/scripts.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/web/styles.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/chord/src/web/themes.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/chord/src/telemetry-ingest/batch.ts` | `chord/next/telemetryingest/batch.go, decode.go, encode.go`, `chord/nextnode/surfaces/client/pi/chord/src/telemetry-ingest/batch.ts` (vendored byte-for-byte, D601; client_manifest_test.go) | ✅ |
+| `packages/chord/src/telemetry-ingest/facet.ts` | `chord/next/telemetryingest/facet.go` | ✅ |
+| `packages/chord/src/telemetry-ingest/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
+| `packages/chord/src/telemetry-ingest/recorder.ts` | `chord/next/telemetryingest/recorder.go`, `chord/nextnode/surfaces/client/pi/chord/src/telemetry-ingest/recorder.ts` (vendored byte-for-byte, D601; client_manifest_test.go) | ✅ |
+| `packages/chord/src/telemetry-ingest/sender.ts` | `chord/next/telemetryingest/sender.go` | ✅ |
+| `packages/chord/src/telemetry-sqlite/node.ts` | `chord/telemetrysqlite/node.go` | ✅ |
+| `packages/chord/src/telemetry-sqlite/schema.ts` | `chord/telemetrysqlite/schema.go` | ✅ |
+| `packages/chord/src/telemetry.ts` | `chord/next/telemetry/schema.go, telemetry.go`, `chord/nextnode/surfaces/client/pi/chord/src/telemetry.ts` (vendored byte-for-byte, D601; client_manifest_test.go) | ✅ |
+| `packages/chord/src/tui/bridge.ts` | `chord/nextnode/tui/tui_bridge.go (launcher side)`, `chord/nextnode/surfaces/client/pi/chord/src/tui/bridge.ts` (vendored byte-for-byte, D601; client_manifest_test.go) | ✅ |
+| `packages/chord/src/tui/channel.ts` | `chord/nextnode/surfaces/client/pi/chord/src/tui/channel.ts` (vendored byte-for-byte, D601; client_manifest_test.go) | ✅ |
+| `packages/chord/src/tui/frames.ts` | `chord/nextnode/surfaces/client/pi/chord/src/tui/frames.ts` (vendored byte-for-byte, D601; client_manifest_test.go) | ✅ |
+| `packages/chord/src/tui/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
+| `packages/chord/src/tui/runtime.ts` | `chord/nextnode/surfaces/client/pi/chord/src/tui/runtime.ts` (vendored byte-for-byte, D601; client_manifest_test.go) | ✅ |
+| `packages/chord/src/tui/scope.ts` | `chord/next/tui/tui_scope.go` | ✅ |
+| `packages/chord/src/tui/terminal.ts` | `chord/nextnode/tui/tui_terminal.go`, `chord/nextnode/surfaces/client/pi/chord/src/tui/terminal.ts` (vendored byte-for-byte, D601; client_manifest_test.go) | ✅ |
+| `packages/chord/src/tui/theme.ts` | `chord/nextnode/surfaces/client/pi/chord/src/tui/theme.ts` (vendored byte-for-byte, D601; client_manifest_test.go) | ✅ |
+| `packages/chord/src/web/environment.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/environment.ts` (vendored byte-for-byte, D601; client_manifest_test.go) | ✅ |
+| `packages/chord/src/web/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
+| `packages/chord/src/web/language.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/language.ts` (vendored byte-for-byte, D601; client_manifest_test.go) | ✅ |
+| `packages/chord/src/web/page.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/page.ts` (vendored byte-for-byte, D601; client_manifest_test.go) | ✅ |
+| `packages/chord/src/web/scripts.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/scripts.ts` (vendored byte-for-byte, D601; client_manifest_test.go) | ✅ |
+| `packages/chord/src/web/styles.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/styles.ts` (vendored byte-for-byte, D601; client_manifest_test.go) | ✅ |
+| `packages/chord/src/web/themes.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/themes.ts` (vendored byte-for-byte, D601; client_manifest_test.go) | ✅ |
 
 ## `packages/protocol/src/`
 
@@ -1135,7 +1135,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/storage/sqlite/storage.ts` | `durable/storage/sqlite/storage.go` | ✅ |
 | `packages/durable/src/storage/sqlite/commit.ts` | `durable/storage/sqlite/commit.go` | ✅ |
 | `packages/durable/src/storage/sqlite/rows.ts` | `durable/storage/sqlite/commit.go` (documentRow; the cell encoders are in storage.go and statements.go) | ✅ |
-| `packages/durable/src/storage/sqlite/statements.ts` | `durable/storage/sqlite/statements.go` | ✅ |
+| `packages/durable/src/storage/sqlite/statements.ts` | `durable/storage/sqlite/statements.go` (internal SQL, no D: reads and deletions take their keys through json_each as Pi's do, but every insert binds its cells in multi-row VALUES where Pi sends the rows of little text as one JSON array through json_each; the stored rows (up to 8 KiB of text; larger rows were bound already and are unchanged, a lone surrogate in one stays raw where Pi stores U+FFFD, as at the base) are the same bytes in the same storage classes, errors included, which insert_values_differential_test.go proves against Pi's statement over random batches) | ✅ |
 | `packages/durable/src/storage/sqlite/cloudflare.ts` | `durable/storage/sqlite/cloudflare/cloudflare.go` (re-exports chord/sqlite/cloudflare; OpenDurableObjectSqliteStorage) | ✅ |
 | `packages/durable/src/storage/store/commit.ts` | `durable/storage/store/commit.go` | 🟡 |
 | `packages/durable/src/storage/store/documents.ts` | `durable/storage/store/documents.go` | 🟡 |

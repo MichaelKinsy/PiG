@@ -43,7 +43,7 @@ func extensionFromRegistrations(f *extensiontest.Fake) extension.Extension {
 		ext.EntryRenderers[call.CustomType] = call.Renderer
 	}
 	if n := len(f.RegisterMarkdownTransformers); n > 0 {
-		ext.MarkdownTransformer = f.RegisterMarkdownTransformers[n-1]
+		ext.MarkdownTransformer = extension.NewMarkdownTransformerRegistration(f.RegisterMarkdownTransformers[n-1], f.RegisterMarkdownTransformerOptions[n-1].MessageTypes)
 	}
 	return ext
 }
@@ -130,7 +130,7 @@ func TestConformanceAPIRegisterRenderersAndTransformer(t *testing.T) {
 		t.Fatalf("entry renderer not the registered one: %q", rendered)
 	}
 	transformers := runner.GetMarkdownTransformers()
-	if len(transformers) != 1 || transformers[0]("x", extension.MarkdownTransformContext{}) != "<x>" {
+	if len(transformers) != 1 || transformers[0]("x", extension.MarkdownTransformContext{MessageType: extension.MarkdownMessageUser}) != "<x>" {
 		t.Fatalf("markdown transformers %d, want the registered one", len(transformers))
 	}
 	base := &extension.ToolRenderers{RenderShell: "base"}

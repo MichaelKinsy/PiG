@@ -297,9 +297,13 @@ func (a *api) RegisterToolRenderer(resolver extension.ToolRendererResolver) {
 	a.ext.ToolRenderers = append(a.ext.ToolRenderers, resolver)
 }
 
-func (a *api) RegisterMarkdownTransformer(transformer extension.MarkdownTransformer) {
+func (a *api) RegisterMarkdownTransformer(transformer extension.MarkdownTransformer, options ...extension.MarkdownTransformerOptions) {
 	a.assertActive()
-	a.ext.MarkdownTransformer = transformer
+	var messageTypes []extension.MarkdownMessageType
+	if len(options) > 0 {
+		messageTypes = options[0].MessageTypes
+	}
+	a.ext.MarkdownTransformer = extension.NewMarkdownTransformerRegistration(transformer, messageTypes)
 }
 
 // OwnThinkingRuns declares or withdraws this extension's ownership of thinking runs; it takes effect at once, also after loading.

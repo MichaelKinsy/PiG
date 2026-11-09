@@ -15,7 +15,7 @@ import (
 )
 
 // pi: packages/chord/src/next/data/args.ts
-// Ports packages/chord/test/next/data/args.test.ts.
+// Ports packages/chord/test/data/args.test.ts.
 //
 // Designed out (type level, no Go runtime form): the expectTypeOf assertions of "returns current-version arguments as
 // passed" (CheckedArgs<C, M> and ArgsOf are Value in Go) and, for "types a call replacement's arguments as

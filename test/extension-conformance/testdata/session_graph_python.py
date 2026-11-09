@@ -1474,6 +1474,7 @@ def extension_runner_script(ctx, args):
     started = runner.emit_before_agent_start({"messageType": "user", "prompt": "do it"}, {"cwd": cwd, "customPrompt": "base"})
     forced = started["systemPromptOptions"].get("forceSystemPrompt") or ""
     emits["beforeAgentStart"] = {"messages": started["messages"], "forced": {"startsWithBase": forced.startswith("base"), "endsWithA": forced.endswith("[A]")}, "customPrompt": started["systemPromptOptions"].get("customPrompt")}
+    runner.emit({"type": "message_start", "message": {"role": "user", "content": "hi", "timestamp": 1}})
     put("messageEnd", runner.emit_message_end({"type": "message_end", "message": {"role": "user", "content": "hi", "timestamp": 1}}))
     emits["providerRequest"] = runner.emit_before_provider_request({"model": "m"})
     emits["providerHeaders"] = runner.emit_before_provider_headers({"x-del": "d", "x-keep": "k"})
@@ -1733,7 +1734,20 @@ def agent_session_runtime_script(ctx, args):
         "missing": error_text(lambda: runtime.import_from_jsonl(os.path.join(import_dir, "missing.jsonl"))),
     }
 
+    # dispose settles a run in flight before it emits session_shutdown; the model never ends this run, so only the abort can end it.
+    observe_file = os.path.join(cwd, "observe-run")
+    open(observe_file, "w", newline="").close()
+    hung = runtime.session
+    running = threading.Thread(target=lambda: hung.prompt("hang-forever"))
+    running.start()
+    deadline = time.monotonic() + 30
+    while "agent_start" not in open(log_file).read():
+        if time.monotonic() > deadline:
+            raise RuntimeError("the run never started")
+        time.sleep(0.01)
     runtime.dispose()
+    running.join()
+    os.remove(observe_file)
     r["counts"] = {"rebinds": counts["rebinds"], "invalidations": counts["invalidations"], "factoryCalls": len(calls), "reasons": [("null" if call["reason"] is None else call["reason"]) + ("+previous" if call["previous"] else "") for call in calls]}
     with open(log_file) as handle:
         r["events"] = handle.read().rstrip("\n").split("\n")

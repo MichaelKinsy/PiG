@@ -23,7 +23,7 @@ import (
 
 func TestAppLaysOutTheDataDirectoryServesAppInfoAndTheServersPluginsAndClosesEverything(t *testing.T) {
 	s := startTestApp(t, map[string]map[string]string{"echo": {"server.ts": echoServer}}, nil)
-	if got := dirEntries(t, s.dataDir); !slices.Equal(got, []string{"logs", "owner-token", "plugins", "server", "workers"}) {
+	if got := dirEntries(t, s.dataDir); !slices.Equal(got, []string{"cache", "logs", "owner-token", "plugins", "server", "workers"}) {
 		t.Fatalf("data directory = %v", got)
 	}
 	server := dirEntries(t, filepath.Join(s.dataDir, "server"))
@@ -93,7 +93,7 @@ func TestAppRefusesASecondServerOnTheSameDataDirectoryWhileTheFirstRuns(t *testi
 func TestAppRefusesASecondServerOnTheSameDataDirectoryThroughASymbolicLink(t *testing.T) {
 	first := startTestApp(t, nil, nil)
 	link := filepath.Join(t.TempDir(), "link")
-	testenv.Symlink(t, first.dataDir, link)
+	testenv.RequireDirectoryLink(t, first.dataDir, link)
 	_, err := StartServer(optionsFor(t, link, first.root), background)
 	if err == nil || !strings.Contains(err.Error(), "another server runs on") {
 		t.Fatalf("second start: %v", err)
@@ -119,8 +119,8 @@ func TestAppMakesTheDataDirectoryPrivateAtEveryStartAlsoWhenItExistedLooser(t *t
 		}
 		return info.Mode().Perm()
 	}
-	paths := []string{".", "server", "workers", "plugins", "logs", "server/store.sqlite", "server/cookie-secret", "owner-token"}
-	want := []os.FileMode{0o700, 0o700, 0o700, 0o700, 0o700, 0o600, 0o600, 0o600}
+	paths := []string{".", "server", "workers", "plugins", "logs", "cache", "cache/workers", "server/store.sqlite", "server/cookie-secret", "owner-token"}
+	want := []os.FileMode{0o700, 0o700, 0o700, 0o700, 0o700, 0o700, 0o700, 0o600, 0o600, 0o600}
 	for i, path := range paths {
 		if got := mode(path); got != want[i] {
 			t.Fatalf("%s mode = %o, want %o", path, got, want[i])
@@ -162,7 +162,7 @@ func TestAppRefusesADataDirectoryTheKitMustNotTightenHomeRootAnotherUsersAlsoThr
 		t.Fatalf("root: %v", err)
 	}
 	link := filepath.Join(t.TempDir(), "home-link")
-	testenv.Symlink(t, home, link)
+	testenv.RequireDirectoryLink(t, home, link)
 	if err := start(link); err == nil || !strings.Contains(err.Error(), "is the home directory") {
 		t.Fatalf("link to home: %v", err)
 	}
@@ -190,6 +190,10 @@ func TestAppNamesTheAddressListenedOnInTheOwnerLink(t *testing.T) {
 }
 
 func TestAppFailsWhenAPluginOfTheAppsRootFailsWithEverythingClosed(t *testing.T) {
+	// Registered first, so it runs after the starts: nothing of the app, its HTTP component, its workers or its plugins is left.
+	t.Cleanup(func() {
+		noGoroutinesOf(t, "chord/nextnode/app.", "chord/nextnode/http.", "chord/nextnode/workers.", "chord/nextnode/plugins.")
+	})
 	options, _ := testOptions(t, nil)
 	writePlugin(t, options.Root, "broken", "@test/broken", map[string]string{"server.ts": "export default {"})
 	_, err := StartServer(options, background)
@@ -218,11 +222,79 @@ func TestAppRefusesAnOwnerThatIsNotStrictJSONOrIsTheServersPrincipalBeforeItOpen
 	}
 }
 
-func TestAppRefusesWorkerKindsWithoutAWorkerPrincipal(t *testing.T) {
+func TestAppStartsWithoutWorkerKindsAndWithoutAWorkerPrincipalWorkerKindsNeedIt(t *testing.T) {
+	s := startTestApp(t, nil, func(o *AppOptions) { o.Principal.Worker = nil })
+	if len(s.app.Workers) != 0 {
+		t.Fatalf("workers = %d, want 0", len(s.app.Workers))
+	}
+	if err := s.app.Close(background); err != nil {
+		t.Fatal(err)
+	}
 	options, _ := testOptions(t, nil)
 	options.Principal.Worker = nil
 	options.Workers = []AppWorkerKind{testWorker(t, project, "")}
 	if _, err := StartServer(options, background); err == nil || !strings.Contains(err.Error(), "worker kinds need principal.worker") {
 		t.Fatalf("start: %v", err)
+	}
+}
+
+// A worker kind's Authorize and Start are required, as Pi's types require them: a nil one is a start error (before anything opens),
+// not a panic when the first worker starts.
+func TestAppRefusesAWorkerKindWithoutAuthorizeOrStartBeforeItOpensAnything(t *testing.T) {
+	for _, missing := range []struct {
+		name string
+		edit func(*AppWorkerKind)
+	}{
+		{"Authorize", func(kind *AppWorkerKind) { kind.Authorize = nil }},
+		{"Start", func(kind *AppWorkerKind) { kind.Start = nil }},
+	} {
+		t.Run(missing.name, func(t *testing.T) {
+			options, _ := testOptions(t, nil)
+			kind := testWorker(t, project, "")
+			missing.edit(&kind)
+			options.Workers = []AppWorkerKind{kind}
+			_, err := StartServer(options, background)
+			if err == nil || err.Error() != `startServer: worker kind "project" needs Authorize and Start` {
+				t.Fatalf("start: %v", err)
+			}
+			if _, err := os.Stat(options.DataDir); err == nil {
+				t.Fatal("a refused worker kind opened the data directory")
+			}
+		})
+	}
+}
+
+// workerHosts is the address of each worker by its principal's key: an address's entry ends with it (a long-running server starts
+// addresses without end), and one address never ends another's entry when they share a principal key.
+func TestWorkerHostsForgetsAnAddressesEntryButNotOneAnotherAddressTookOver(t *testing.T) {
+	hosts := &workerHosts{keys: map[string]string{}, principals: map[string]string{}}
+	hosts.set("pk-a", "project|a")
+	hosts.set("pk-b", "project|b")
+	hosts.forget("project|a")
+	if _, ok := hosts.get("pk-a"); ok {
+		t.Fatal("an ended address's entry stays")
+	}
+	if got, ok := hosts.get("pk-b"); !ok || got != "project|b" {
+		t.Fatalf("the other address's entry = %q, %v", got, ok)
+	}
+	// Two addresses with one principal key: the later start owns it, and the earlier one ending takes nothing of it.
+	hosts.set("pk-shared", "project|c")
+	hosts.set("pk-shared", "project|d")
+	hosts.forget("project|c")
+	if got, ok := hosts.get("pk-shared"); !ok || got != "project|d" {
+		t.Fatalf("shared entry after the first address ended = %q, %v", got, ok)
+	}
+	// An address restarted under another principal key leaves nothing of its first.
+	hosts.set("pk-old", "project|e")
+	hosts.set("pk-new", "project|e")
+	if _, ok := hosts.get("pk-old"); ok {
+		t.Fatal("a restarted address keeps its old principal key's entry")
+	}
+	hosts.forget("project|e")
+	hosts.forget("project|d")
+	hosts.forget("project|b")
+	hosts.forget("project|never-started")
+	if len(hosts.keys) != 0 || len(hosts.principals) != 0 {
+		t.Fatalf("entries left: %v %v", hosts.keys, hosts.principals)
 	}
 }

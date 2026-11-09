@@ -8,7 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 )
 
-// Ports the fake-socket half of packages/chord/test/next/link/websocket.test.ts. The loopback `ws` server cases
+// Ports the fake-socket half of packages/chord/test/link/websocket.test.ts. The loopback `ws` server cases
 // ("carry a live reference both ways", "close the connection on a frame above maxPayload (1009)") need createHost and
 // the notes types: pending on the host port. "survive closing a socket that still connects" is ported on the fake socket:
 // the link keeps its `error` and `close` listeners until the socket's own close.

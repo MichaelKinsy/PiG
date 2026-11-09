@@ -10,13 +10,13 @@ func TestCustomMessageLabelFollowsAThemeChange(t *testing.T) {
 	original := ActiveTheme().Name
 	t.Cleanup(func() { SetThemeByName(original) })
 	SetTheme("dark")
-	message := NewCustomMessageComponent(&CustomMessage{CustomType: "note", Content: "body"}, nil, nil, 1)
+	message := NewCustomMessageComponent(&CustomMessage{CustomType: "note", Content: "body"}, nil, nil, 1, nil, "", "")
 	_ = message.Render(40)
 
 	SetTheme("light")
 	message.Invalidate()
 	got := message.Render(40)
-	want := NewCustomMessageComponent(&CustomMessage{CustomType: "note", Content: "body"}, nil, nil, 1).Render(40)
+	want := NewCustomMessageComponent(&CustomMessage{CustomType: "note", Content: "body"}, nil, nil, 1, nil, "", "").Render(40)
 	if !slices.Equal(got, want) {
 		t.Fatalf("after a theme change\n got %q\nwant %q", got, want)
 	}

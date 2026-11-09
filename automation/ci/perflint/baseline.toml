@@ -724,6 +724,30 @@ count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
 [[hit]]
+file = "chord/delta/handles.go"
+func = "integerKeysFirst"
+pattern = "sort-instance"
+detail = "slices.SortFunc"
+count = 1
+class = "hot-kept:string or pointer element: the shape is already linked by the SDK copies, so package slices adds no code"
+
+[[hit]]
+file = "chord/delta/tracker.go"
+func = "collectEmissions"
+pattern = "sort-instance"
+detail = "slices.SortFunc"
+count = 1
+class = "hot-kept:array deltas of up to 100000 elements"
+
+[[hit]]
+file = "codemode/declarations.go"
+func = "objectType"
+pattern = "sort-instance"
+detail = "slices.SortFunc"
+count = 1
+class = "hot-kept:string or pointer element: the shape is already linked by the SDK copies, so package slices adds no code"
+
+[[hit]]
 file = "codemode/remote_protocol.go"
 func = "RemoteMessage.MarshalJSON"
 pattern = "nested-marshal"
@@ -1021,6 +1045,14 @@ class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shr
 
 [[hit]]
 file = "coding/cli/extension_validate_command.go"
+func = "isolatedPlacementPlan"
+pattern = "sort-instance"
+detail = "slices.SortFunc"
+count = 1
+class = "hot-kept:string or pointer element: the shape is already linked by the SDK copies, so package slices adds no code"
+
+[[hit]]
+file = "coding/cli/extension_validate_command.go"
 func = "linkDiagnostics"
 pattern = "loop-format"
 detail = "fmt.Sprintf"
@@ -1092,6 +1124,14 @@ count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
 [[hit]]
+file = "coding/cli/model.go"
+func = "modelListLines"
+pattern = "sort-instance"
+detail = "slices.SortFunc"
+count = 1
+class = "hot-kept:model catalog of hundreds of entries that a listing waits for"
+
+[[hit]]
 file = "coding/cli/package_command_trust.go"
 func = "createPackageCommandSettings"
 pattern = "loop-format"
@@ -1122,6 +1162,14 @@ pattern = "loop-format"
 detail = "fmt.Sprintf"
 count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/cli/piglet_skills.go"
+func = "orderPigletSkills"
+pattern = "sort-instance"
+detail = "slices.SortStableFunc"
+count = 1
+class = "hot-kept:string or pointer element: the shape is already linked by the SDK copies, so package slices adds no code"
 
 [[hit]]
 file = "coding/cli/project_trust.go"
@@ -1308,6 +1356,14 @@ count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
 [[hit]]
+file = "coding/extension/builtin/codemode/description.go"
+func = "CreateDescription"
+pattern = "sort-instance"
+detail = "slices.SortStableFunc"
+count = 1
+class = "hot-kept:string or pointer element: the shape is already linked by the SDK copies, so package slices adds no code"
+
+[[hit]]
 file = "coding/extension/builtin/codemode/execute.go"
 func = "StoreEntryData.MarshalJSON"
 pattern = "nested-marshal"
@@ -1410,6 +1466,14 @@ pattern = "loop-format"
 detail = "fmt.Sprintf"
 count = 3
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/inproc/runner.go"
+func = "Runner.Shortcuts"
+pattern = "sort-instance"
+detail = "slices.SortStableFunc"
+count = 1
+class = "hot-kept:string or pointer element: the shape is already linked by the SDK copies, so package slices adds no code"
 
 [[hit]]
 file = "coding/extension/host/inproc/runner.go"
@@ -1693,6 +1757,14 @@ class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shr
 
 [[hit]]
 file = "coding/extension/host/runtimecell/toolchain_version_cache.go"
+func = "pruneToolchainVersions"
+pattern = "sort-instance"
+detail = "slices.SortFunc"
+count = 1
+class = "hot-kept:string or pointer element: the shape is already linked by the SDK copies, so package slices adds no code"
+
+[[hit]]
+file = "coding/extension/host/runtimecell/toolchain_version_cache.go"
 func = "rustupSelectorRevisions"
 pattern = "env-stat"
 detail = "os.Getenv"
@@ -1876,6 +1948,14 @@ count = 2
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
 [[hit]]
+file = "coding/extension/host/subprocess/host_helpers.go"
+func = "javaScriptKeyOrder"
+pattern = "sort-instance"
+detail = "slices.SortFunc"
+count = 1
+class = "hot-kept:string or pointer element: the shape is already linked by the SDK copies, so package slices adds no code"
+
+[[hit]]
 file = "coding/extension/host/subprocess/load_error_cause.go"
 func = "readStderrTail"
 pattern = "env-stat"
@@ -1898,6 +1978,14 @@ pattern = "loop-format"
 detail = "fmt.Sprintf"
 count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "coding/extension/host/subprocess/node_recovery.go"
+func = "Host.recoverNodeProcess"
+pattern = "sort-instance"
+detail = "slices.SortFunc"
+count = 1
+class = "hot-kept:string or pointer element: the shape is already linked by the SDK copies, so package slices adds no code"
 
 [[hit]]
 file = "coding/extension/host/subprocess/packed_go.go"
@@ -2090,14 +2178,6 @@ pattern = "compile-in-func"
 detail = "regexp.MustCompile"
 count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
-
-[[hit]]
-file = "coding/extension/pigsdk/pigsdk.go"
-func = "sdkBundle.computeHash"
-pattern = "pool-uncapped"
-detail = "sync.Pool.Put"
-count = 1
-class = "cold: once per SDK bundle hash"
 
 [[hit]]
 file = "coding/extension/pigsdk/pigsdk.go"
@@ -2348,6 +2428,14 @@ count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
 [[hit]]
+file = "coding/mcpext/manager.go"
+func = "Extension.serversMenu"
+pattern = "sort-instance"
+detail = "slices.SortStableFunc"
+count = 1
+class = "hot-kept:string or pointer element: the shape is already linked by the SDK copies, so package slices adds no code"
+
+[[hit]]
 file = "coding/mcpext/runtime.go"
 func = "Connection.open"
 pattern = "timer-per-call"
@@ -2394,6 +2482,14 @@ pattern = "json-roundtrip"
 detail = "marshal+unmarshal"
 count = 1
 class = "cold: scalar compat takes the direct copy; the round trip only serves compat holding maps or slices, copied once per model registration or lookup"
+
+[[hit]]
+file = "coding/packagecontent/glob.go"
+func = "expandPackageGlob"
+pattern = "sort-instance"
+detail = "slices.SortFunc"
+count = 1
+class = "hot-kept:string or pointer element: the shape is already linked by the SDK copies, so package slices adds no code"
 
 [[hit]]
 file = "coding/packagecontent/glob.go"
@@ -2973,6 +3069,14 @@ class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shr
 
 [[hit]]
 file = "coding/piglet/tree_cli.go"
+func = "BuildTree"
+pattern = "sort-instance"
+detail = "slices.SortFunc"
+count = 2
+class = "hot-kept:string or pointer element: the shape is already linked by the SDK copies, so package slices adds no code"
+
+[[hit]]
+file = "coding/piglet/tree_cli.go"
 func = "cmdTree"
 pattern = "env-stat"
 detail = "os.Getenv"
@@ -3460,6 +3564,14 @@ count = 1
 class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
 
 [[hit]]
+file = "durable/core/jv/value.go"
+func = "Object.orderedKeys"
+pattern = "sort-instance"
+detail = "slices.SortFunc"
+count = 1
+class = "hot-kept:string or pointer element: the shape is already linked by the SDK copies, so package slices adds no code"
+
+[[hit]]
 file = "durable/durabletest/durabletest.go"
 func = "Normalize"
 pattern = "json-roundtrip"
@@ -3629,11 +3741,27 @@ class = "hot-owned:lw-proc-output (LW roadmap S7: one activity signal per read)"
 
 [[hit]]
 file = "internal/chord/chordjson/chordjson.go"
+func = "SortOwnKeys"
+pattern = "sort-instance"
+detail = "slices.SortFunc"
+count = 1
+class = "hot-kept:string or pointer element: the shape is already linked by the SDK copies, so package slices adds no code"
+
+[[hit]]
+file = "internal/chord/chordjson/chordjson.go"
 func = "Stored"
 pattern = "decode-own-encode"
 detail = "json.Marshal->chordjson.Decode"
 count = 1
 class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
+
+[[hit]]
+file = "internal/chord/chordjson/object.go"
+func = "Object.All"
+pattern = "sort-instance"
+detail = "slices.SortFunc"
+count = 1
+class = "hot-kept:same []int shape as the session load sorts, already linked"
 
 [[hit]]
 file = "internal/codingagent/auth_filter.go"
@@ -3682,6 +3810,14 @@ pattern = "json-roundtrip"
 detail = "marshal+unmarshal"
 count = 1
 class = "cold: startup, config, registration, login, export or command code that runs once per user action"
+
+[[hit]]
+file = "internal/codingagent/configschema/validate.go"
+func = "jsKeyOrder"
+pattern = "sort-instance"
+detail = "slices.SortStableFunc"
+count = 1
+class = "hot-kept:string or pointer element: the shape is already linked by the SDK copies, so package slices adds no code"
 
 [[hit]]
 file = "internal/codingagent/context_files.go"
@@ -3748,6 +3884,14 @@ count = 1
 class = "cold: startup, config, registration, login, export or command code that runs once per user action"
 
 [[hit]]
+file = "internal/codingagent/extension_catalog_encoding.go"
+func = "extensionCatalogEncoding.state"
+pattern = "sort-instance"
+detail = "slices.SortStableFunc"
+count = 1
+class = "hot-kept:string or pointer element: the shape is already linked by the SDK copies, so package slices adds no code"
+
+[[hit]]
 file = "internal/codingagent/extension_conflicts.go"
 func = "detectExtensionConflicts"
 pattern = "loop-format"
@@ -3772,12 +3916,28 @@ count = 2
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
 [[hit]]
+file = "internal/codingagent/extension_model_registry.go"
+func = "ModelRegistry.orderExtensionModels"
+pattern = "sort-instance"
+detail = "slices.SortStableFunc"
+count = 1
+class = "hot-kept:string or pointer element: the shape is already linked by the SDK copies, so package slices adds no code"
+
+[[hit]]
 file = "internal/codingagent/extension_package_warnings.go"
 func = "ExtensionPackageWarnings"
 pattern = "loop-format"
 detail = "fmt.Sprintf"
 count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/extension_session_read.go"
+func = "sessionReadLog.tree"
+pattern = "sort-instance"
+detail = "slices.SortStableFunc"
+count = 1
+class = "hot-kept:string or pointer element: the shape is already linked by the SDK copies, so package slices adds no code"
 
 [[hit]]
 file = "internal/codingagent/env_lookup_other.go"
@@ -3980,6 +4140,14 @@ count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
 [[hit]]
+file = "internal/codingagent/interactive_login.go"
+func = "InteractiveMode.loginArgCompletions"
+pattern = "sort-instance"
+detail = "slices.SortFunc"
+count = 1
+class = "hot-kept:string or pointer element: the shape is already linked by the SDK copies, so package slices adds no code"
+
+[[hit]]
 file = "internal/codingagent/interactive_turn.go"
 func = "userBashResultOverride"
 pattern = "json-roundtrip"
@@ -4036,12 +4204,36 @@ count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
 [[hit]]
+file = "internal/codingagent/loaded_resources.go"
+func = "InteractiveMode.showLoadedResources"
+pattern = "sort-instance"
+detail = "slices.SortStableFunc"
+count = 1
+class = "hot-kept:string or pointer element: the shape is already linked by the SDK copies, so package slices adds no code"
+
+[[hit]]
+file = "internal/codingagent/loaded_resources.go"
+func = "formatScopeGroups"
+pattern = "sort-instance"
+detail = "slices.SortStableFunc"
+count = 1
+class = "hot-kept:string or pointer element: the shape is already linked by the SDK copies, so package slices adds no code"
+
+[[hit]]
 file = "internal/codingagent/migrations.go"
 func = "checkDeprecatedExtensionDirs"
 pattern = "env-stat"
 detail = "os.Stat"
 count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/migrations.go"
+func = "marshalMigratedKeybindings"
+pattern = "sort-instance"
+detail = "slices.SortFunc"
+count = 1
+class = "hot-kept:string or pointer element: the shape is already linked by the SDK copies, so package slices adds no code"
 
 [[hit]]
 file = "internal/codingagent/migrations.go"
@@ -4098,6 +4290,30 @@ pattern = "env-stat"
 detail = "os.Getenv"
 count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/model_registry.go"
+func = "sortModelEntries"
+pattern = "sort-instance"
+detail = "slices.SortFunc"
+count = 1
+class = "hot-kept:model catalog of hundreds of entries that a listing waits for"
+
+[[hit]]
+file = "internal/codingagent/model_resolver.go"
+func = "ResolveCliModel"
+pattern = "sort-instance"
+detail = "slices.SortStableFunc"
+count = 1
+class = "hot-kept:string or pointer element: the shape is already linked by the SDK copies, so package slices adds no code"
+
+[[hit]]
+file = "internal/codingagent/model_scope.go"
+func = "ResolveModelScopeFromModels"
+pattern = "sort-instance"
+detail = "slices.SortStableFunc"
+count = 1
+class = "hot-kept:string or pointer element: the shape is already linked by the SDK copies, so package slices adds no code"
 
 [[hit]]
 file = "internal/codingagent/model_scope_line.go"
@@ -4218,6 +4434,14 @@ pattern = "env-stat"
 detail = "os.LookupEnv"
 count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/radius_models.go"
+func = "ModelRegistry.RadiusOAuthFlows"
+pattern = "sort-instance"
+detail = "slices.SortFunc"
+count = 1
+class = "hot-kept:string or pointer element: the shape is already linked by the SDK copies, so package slices adds no code"
 
 [[hit]]
 file = "internal/codingagent/radius_models.go"
@@ -4500,12 +4724,44 @@ count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
 [[hit]]
+file = "internal/codingagent/session_lazy.go"
+func = "readRecordsAt"
+pattern = "sort-instance"
+detail = "slices.SortFunc"
+count = 1
+class = "hot-kept:session load orders thousands of records by file offset"
+
+[[hit]]
 file = "internal/codingagent/session_listing.go"
 func = "listSessionsAcrossRootWithOptions"
 pattern = "env-stat"
 detail = "os.Stat"
 count = 2
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/session_listing.go"
+func = "listSessionsAcrossRootWithOptions"
+pattern = "sort-instance"
+detail = "slices.SortStableFunc"
+count = 1
+class = "hot-kept:session listing of up to thousands of files that /resume waits for"
+
+[[hit]]
+file = "internal/codingagent/session_listing.go"
+func = "listSessionsInDirWithOptions"
+pattern = "sort-instance"
+detail = "slices.SortStableFunc"
+count = 1
+class = "hot-kept:session listing of up to thousands of files that /resume waits for"
+
+[[hit]]
+file = "internal/codingagent/session_listing.go"
+func = "summarizeSessionFilesWithOptions"
+pattern = "sort-instance"
+detail = "slices.SortStableFunc"
+count = 1
+class = "hot-kept:session listing of up to thousands of files that /resume waits for"
 
 [[hit]]
 file = "internal/codingagent/session_manager.go"
@@ -4548,6 +4804,22 @@ count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
 [[hit]]
+file = "internal/codingagent/session_selector.go"
+func = "buildSessionTree"
+pattern = "sort-instance"
+detail = "slices.SortStableFunc"
+count = 1
+class = "hot-kept:session selector of up to thousands of sessions, sorted on each keystroke"
+
+[[hit]]
+file = "internal/codingagent/session_selector.go"
+func = "filterAndSortSessionsWith"
+pattern = "sort-instance"
+detail = "slices.SortStableFunc"
+count = 1
+class = "hot-kept:session selector of up to thousands of sessions, sorted on each keystroke"
+
+[[hit]]
 file = "internal/codingagent/session_selector_delete.go"
 func = "sessionPathExists"
 pattern = "env-stat"
@@ -4586,6 +4858,22 @@ pattern = "env-stat"
 detail = "os.Stat"
 count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/session_store.go"
+func = "Session.readSlotsLocked"
+pattern = "sort-instance"
+detail = "slices.SortFunc"
+count = 1
+class = "hot-kept:session load orders thousands of records by file offset"
+
+[[hit]]
+file = "internal/codingagent/session_tree_index.go"
+func = "Session.lazyTree"
+pattern = "sort-instance"
+detail = "slices.SortStableFunc"
+count = 1
+class = "hot-kept:string or pointer element: the shape is already linked by the SDK copies, so package slices adds no code"
 
 [[hit]]
 file = "internal/codingagent/settings.go"
@@ -4716,6 +5004,14 @@ count = 2
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
 [[hit]]
+file = "internal/codingagent/settings_selector.go"
+func = "newModelThinkingSubmenu"
+pattern = "sort-instance"
+detail = "slices.SortStableFunc"
+count = 1
+class = "hot-kept:string or pointer element: the shape is already linked by the SDK copies, so package slices adds no code"
+
+[[hit]]
 file = "internal/codingagent/skills.go"
 func = "DeduplicateSkillsWithDiagnostics"
 pattern = "loop-format"
@@ -4770,6 +5066,14 @@ pattern = "env-stat"
 detail = "os.Getenv"
 count = 2
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/status_line.go"
+func = "footerExtensionStatuses"
+pattern = "sort-instance"
+detail = "slices.SortStableFunc"
+count = 1
+class = "hot-kept:string or pointer element: the shape is already linked by the SDK copies, so package slices adds no code"
 
 [[hit]]
 file = "internal/codingagent/thinking_selector.go"
@@ -4858,6 +5162,14 @@ pattern = "env-stat"
 detail = "os.Stat"
 count = 2
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/codingagent/tools/ls.go"
+func = "sortEntriesLikeLocaleCompare"
+pattern = "sort-instance"
+detail = "slices.SortStableFunc"
+count = 2
+class = "hot-kept:the ls tool sorts the entries of a directory, thousands in a large one"
 
 [[hit]]
 file = "internal/codingagent/tools/output_accumulator.go"
@@ -4972,6 +5284,14 @@ count = 1
 class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
 
 [[hit]]
+file = "internal/compactiontypes/types.go"
+func = "SortedPaths"
+pattern = "sort-instance"
+detail = "slices.SortFunc"
+count = 1
+class = "hot-kept:string or pointer element: the shape is already linked by the SDK copies, so package slices adds no code"
+
+[[hit]]
 file = "internal/ecmascript/string.go"
 func = "String.MarshalJSON"
 pattern = "nested-marshal"
@@ -4986,6 +5306,22 @@ pattern = "compile-in-func"
 detail = "regexp.Compile"
 count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "internal/jsonstringify/fast.go"
+func = "scanner.repeatedKey"
+pattern = "sort-instance"
+detail = "slices.SortFunc"
+count = 1
+class = "hot-kept:canonical JSON of a request body: objects of many members on every request"
+
+[[hit]]
+file = "internal/jsonstringify/json.go"
+func = "object"
+pattern = "sort-instance"
+detail = "slices.SortStableFunc"
+count = 1
+class = "hot-kept:canonical JSON of a request body: objects of many members on every request"
 
 [[hit]]
 file = "internal/lazyregexp/lazyregexp.go"
@@ -5028,6 +5364,14 @@ count = 1
 class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
 
 [[hit]]
+file = "internal/orderedjson/source_order.go"
+func = "MarshalInSourceOrder"
+pattern = "sort-instance"
+detail = "slices.SortStableFunc"
+count = 1
+class = "hot-kept:string or pointer element: the shape is already linked by the SDK copies, so package slices adds no code"
+
+[[hit]]
 file = "internal/pigstrip/leakgate/leakgate.go"
 func = "Names"
 pattern = "compile-in-func"
@@ -5050,6 +5394,14 @@ pattern = "json-roundtrip"
 detail = "marshal+unmarshal"
 count = 1
 class = "cold: once per session file open"
+
+[[hit]]
+file = "internal/typebox/keywords.go"
+func = "fnv64.value"
+pattern = "sort-instance"
+detail = "slices.SortFunc"
+count = 1
+class = "hot-kept:string or pointer element: the shape is already linked by the SDK copies, so package slices adds no code"
 
 [[hit]]
 file = "mcp/content.go"
@@ -5180,6 +5532,14 @@ count = 1
 class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
 
 [[hit]]
+file = "schema/internal/ecmaregex/class.go"
+func = "newRuneSet"
+pattern = "sort-instance"
+detail = "slices.SortFunc"
+count = 1
+class = "hot-kept:a regex class holds up to thousands of ranges and compiles on the first turn"
+
+[[hit]]
 file = "tui/alt_screen_search.go"
 func = "findSearchCorpusMatches"
 pattern = "compile-in-func"
@@ -5202,6 +5562,62 @@ pattern = "compile-in-func"
 detail = "regexp.MustCompile"
 count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
+
+[[hit]]
+file = "tui/file_autocomplete.go"
+func = "CombinedProvider.fdFileSuggestionsCtx"
+pattern = "sort-instance"
+detail = "slices.SortFunc"
+count = 1
+class = "hot-kept:file suggestions sort thousands of entries on each keystroke"
+
+[[hit]]
+file = "tui/file_autocomplete.go"
+func = "CombinedProvider.readdirFileSuggestions"
+pattern = "sort-instance"
+detail = "slices.SortFunc"
+count = 1
+class = "hot-kept:file suggestions sort thousands of entries on each keystroke"
+
+[[hit]]
+file = "tui/fuzzy.go"
+func = "FuzzyFilter"
+pattern = "sort-instance"
+detail = "slices.SortStableFunc"
+count = 1
+class = "hot-kept:source of an SDK copy; the nested module cannot import internal/sortx"
+
+[[hit]]
+file = "tui/keybindings.go"
+func = "TUIKeybindingsManager.rebuild"
+pattern = "sort-instance"
+detail = "slices.SortFunc"
+count = 1
+class = "hot-kept:source of an SDK copy; the nested module cannot import internal/sortx"
+
+[[hit]]
+file = "tui/login_dialog.go"
+func = "LoginDialogComponent.redactLocked"
+pattern = "sort-instance"
+detail = "slices.SortFunc"
+count = 1
+class = "hot-kept:string or pointer element: the shape is already linked by the SDK copies, so package slices adds no code"
+
+[[hit]]
+file = "tui/model_select.go"
+func = "sortModelItems"
+pattern = "sort-instance"
+detail = "slices.SortStableFunc"
+count = 1
+class = "hot-kept:model picker of up to thousands of items"
+
+[[hit]]
+file = "tui/theme.go"
+func = "ThemeRegistry.Names"
+pattern = "sort-instance"
+detail = "slices.SortStableFunc"
+count = 1
+class = "hot-kept:string or pointer element: the shape is already linked by the SDK copies, so package slices adds no code"
 
 [[hit]]
 file = "tui/theme_loader.go"

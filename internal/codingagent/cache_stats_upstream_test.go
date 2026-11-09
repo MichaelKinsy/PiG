@@ -24,7 +24,7 @@ func cacheStatsSession(t *testing.T, entries ...any) *Session {
 	for _, entry := range entries {
 		var value any
 		if message, ok := entry.(*agent.AssistantMessage); ok {
-			value = MessageEntry{SessionEntryBase: SessionEntryBase{Type: "message", ID: "x"}, Message: agent.AgentMessage{Assistant: message}}
+			value = MessageEntry{Type: "message", ID: "x", Message: agent.AgentMessage{Assistant: message}}
 		} else {
 			value = entry
 		}
@@ -102,7 +102,7 @@ func TestCacheStatsUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/test/cache-stats.test.ts:150
 	t.Run("uses only cache-warm usage entries as cache refreshes", func(t *testing.T) {
 		for _, kind := range []string{"cache_warm", "custom_operation"} {
-			entry := UsageEntry{SessionEntryBase: SessionEntryBase{Type: "usage", ID: "usage-" + kind, Timestamp: time.UnixMilli(500000).UTC().Format(time.RFC3339Nano)}, Kind: kind, Provider: "test", Model: "test-model", Usage: ai.Usage{CacheRead: 100000, TotalTokens: 100000}}
+			entry := UsageEntry{Type: "usage", ID: "usage-" + kind, Timestamp: time.UnixMilli(500000).UTC().Format(time.RFC3339Nano), Kind: kind, Provider: "test", Model: "test-model", Usage: ai.Usage{CacheRead: 100000, TotalTokens: 100000}}
 			got := cacheStatsSession(t, first, entry).detectCacheMiss(missTurn(600000))
 			want := int64(600000)
 			if kind == "cache_warm" {

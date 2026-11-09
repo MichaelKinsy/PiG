@@ -53,9 +53,9 @@ func TestMarkdownModeReplacementWaitsForCallbackBody(t *testing.T) {
 		defer cancel()
 		m := &InteractiveMode{backgroundCtx: ctx, tuiInst: tui.NewWithOutput(io.Discard, 80, 24), uiTaskCh: make(chan func(), 8)}
 		m.newRunner = inproc.NewRunner([]extension.Extension{
-			{MarkdownTransformer: func(text string, _ extension.MarkdownTransformContext) string { record("B " + text); return text }},
+			{MarkdownTransformer: extension.NewMarkdownTransformerRegistration(func(text string, _ extension.MarkdownTransformContext) string { record("B " + text); return text }, nil)},
 			*remote,
-			{MarkdownTransformer: func(text string, _ extension.MarkdownTransformContext) string { record("C " + text); return text }},
+			{MarkdownTransformer: extension.NewMarkdownTransformerRegistration(func(text string, _ extension.MarkdownTransformContext) string { record("C " + text); return text }, nil)},
 		}, "")
 		block := m.newAssistantMessageBlock(messageMeta{})
 		block.SetContent([]tui.AssistantSegment{{Text: "first"}})
@@ -97,7 +97,7 @@ func TestMarkdownModeCrossComponentAdmissionOrder(t *testing.T) {
 		var trace []string
 		started, release := make(chan struct{}), make(chan struct{})
 		m := &InteractiveMode{backgroundCtx: ctx, tuiInst: tui.NewWithOutput(io.Discard, 80, 24), uiTaskCh: make(chan func(), 8)}
-		m.newRunner = inproc.NewRunner([]extension.Extension{{MarkdownTransformer: func(text string, _ extension.MarkdownTransformContext) string {
+		m.newRunner = inproc.NewRunner([]extension.Extension{{MarkdownTransformer: extension.NewMarkdownTransformerRegistration(func(text string, _ extension.MarkdownTransformContext) string {
 			mu.Lock()
 			trace = append(trace, text)
 			mu.Unlock()
@@ -106,7 +106,7 @@ func TestMarkdownModeCrossComponentAdmissionOrder(t *testing.T) {
 				<-release
 			}
 			return "transformed " + text
-		}}}, "")
+		}, nil)}}, "")
 		a, b := m.newAssistantMessageBlock(messageMeta{}), m.newUserMessageBlock("B1", messageMeta{})
 		a.SetContent([]tui.AssistantSegment{{Text: "A1"}})
 		a.Render(80)
@@ -238,7 +238,7 @@ func TestMarkdownBodyOutlivingDisconnectOrShutdownPublishesNothing(t *testing.T)
 				m := &InteractiveMode{backgroundCtx: ctx, tuiInst: tui.NewWithOutput(io.Discard, 80, 24), uiTaskCh: make(chan func(), 8)}
 				m.newRunner = inproc.NewRunner([]extension.Extension{
 					*remote,
-					{MarkdownTransformer: func(text string, _ extension.MarkdownTransformContext) string { record("C " + text); return text }},
+					{MarkdownTransformer: extension.NewMarkdownTransformerRegistration(func(text string, _ extension.MarkdownTransformContext) string { record("C " + text); return text }, nil)},
 				}, "")
 				block := m.newAssistantMessageBlock(messageMeta{})
 				block.SetContent([]tui.AssistantSegment{{Text: "first"}})

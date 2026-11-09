@@ -57,6 +57,7 @@ const (
 	ReasonBusy          ChordErrorReason = "busy"
 	ReasonStorageFailed ChordErrorReason = "storage_failed"
 	ReasonUndeclared    ChordErrorReason = "undeclared"
+	ReasonReloadCycle   ChordErrorReason = "reload_cycle"
 )
 
 // chordErrorCodes lists every code in the order of upstream's CHORD_ERROR_REASONS.
@@ -84,7 +85,9 @@ func ChordErrorReasons(code ChordErrorCode) ([]ChordErrorReason, bool) {
 	case CodeTooLarge:
 		return []ChordErrorReason{ReasonPart}, true
 	case CodeUnavailable:
-		return []ChordErrorReason{ReasonLocked, ReasonParkTimeout, ReasonBusy, ReasonStorageFailed, ReasonUndeclared}, true
+		// `undeclared`: a registry no plugin serves on this host; `version`: waiting for a dependency refused for its version
+		// (it heals with another host's reload); `reload_cycle`: old work waiting on its own drain during a reload.
+		return []ChordErrorReason{ReasonLocked, ReasonParkTimeout, ReasonBusy, ReasonStorageFailed, ReasonUndeclared, ReasonVersion, ReasonReloadCycle}, true
 	}
 	return nil, false
 }
@@ -183,6 +186,16 @@ func (err *PluginError) Error() string { return err.Message }
 // Invalid returns an `invalid` error with the given reason; details is optional.
 func Invalid(reason ChordErrorReason, message string, details ...delta.JsonValue) *ChordError {
 	init := ChordErrorInit{Code: CodeInvalid, Reason: reason, Message: message}
+	if len(details) > 0 {
+		init.Details, init.HasDetails = details[0], true
+	}
+	return NewChordError(init, nil)
+}
+
+// Forbidden returns a `forbidden` error without a reason: what a plugin or an `authorize` returns for a principal it
+// refuses (`revoked` is Chord's own, for a revoked authority); details is optional.
+func Forbidden(message string, details ...delta.JsonValue) *ChordError {
+	init := ChordErrorInit{Code: CodeForbidden, Message: message}
 	if len(details) > 0 {
 		init.Details, init.HasDetails = details[0], true
 	}

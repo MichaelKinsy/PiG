@@ -32,7 +32,7 @@ func limitDetails(t *testing.T, result agent.AgentToolResult) string {
 	return string(data)
 }
 
-// Pi main 676af1d77 test/tools.test.ts (#7121), find and ls (D253).
+// Pi main 676af1d77 test/tools.test.ts (#7121), find and ls.
 func TestFindLimitEdgeCases7121(t *testing.T) {
 	t.Run("reports the result limit only when more results exist", func(t *testing.T) {
 		dir := limitFixture(t, "a.txt", "b.txt", "c.txt")

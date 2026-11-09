@@ -14,6 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -387,7 +388,7 @@ func (s *HuggingFaceSearch) runSearch(query string) {
 		s.filterResults("")
 		return
 	}
-	// pig divergence (D312): Pi df0d88aac keeps the row the user browsed to while the search was in flight; otherwise the best match shows.
+	// Pi df0d88aac: keep the row the user browsed to while the search was in flight; otherwise the best match shows.
 	selectedID := ""
 	if s.selectionTouched && s.selectedIndex < len(s.filteredResults) {
 		selectedID = s.filteredResults[s.selectedIndex].ID
@@ -519,7 +520,7 @@ func (v *LlamaView) showList(list *tui.FilterableList, title string, before []tu
 // ShowModels mirrors LlamaView.showModels.
 func (v *LlamaView) ShowModels(serverURL string, models []LlamaModelInfo) LlamaManagerAction {
 	sorted := slices.Clone(models)
-	slices.SortStableFunc(sorted, func(left, right LlamaModelInfo) int {
+	sortx.Stable(sorted, func(left, right LlamaModelInfo) int {
 		leftLoaded := left.Status.Value == LlamaModelStatusLoaded
 		rightLoaded := right.Status.Value == LlamaModelStatusLoaded
 		if leftLoaded != rightLoaded {
@@ -730,8 +731,8 @@ func RunWithProgress[T any](ui LlamaUi, options RunWithProgressOptions[T]) (valu
 	runCtx, abort := context.WithCancelCause(context.Background())
 	defer abort(nil)
 	var stateMu sync.Mutex
-	state := ProgressState{Title: options.Title, Model: options.Model}
-	state.Message = options.InitialMessage
+	state := ProgressState{Title: options.Title, Model: options.Model,
+		Message: options.InitialMessage}
 	showProgress := func() <-chan struct{} {
 		stateMu.Lock()
 		defer stateMu.Unlock()

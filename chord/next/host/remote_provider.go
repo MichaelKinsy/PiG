@@ -4,10 +4,13 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"time"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
+	chordtelemetry "github.com/MichaelKinsy/PiG/chord/next/telemetry"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Ports packages/chord/src/next/remote/provider.ts. The provider side of one origin on a link (§3, §22, W1; decision
@@ -33,8 +36,10 @@ type runningCall struct {
 	hold    providerEntry
 	served  *hold
 	relayed *relayedHold
-	bytes   bool
-	abort   func(cause error)
+	// span is its `chord.relay` span while its reply is awaited, when this host records (relayed calls).
+	span  *chordtelemetry.OpenSpan
+	bytes bool
+	abort func(cause error)
 }
 
 // relayState is a relaying origin: its number on upstream links, and the open upstream links it relayed holds to.
@@ -61,10 +66,14 @@ type providerSide struct {
 	sent []*hostLink
 	// inFlight is this host's own messages in flight.
 	inFlight int
+	// ownSent and ownAcked count this host's own `bound` and `state` messages sent, and acknowledged by its consumer.
+	ownSent, ownAcked int
 	// touchedHolds are the holds the current batch touched, in order; its flush sends or queues them.
 	touchedHolds []*hold
 	// waiting are the holds whose ops wait in their pending queues for a slot.
 	waiting orderedTable[*hold, struct{}]
+	// waitingSince is when the first hold started waiting for a slot; zero while none waits.
+	waitingSince time.Time
 	// binding are the holds waiting for a slot to send their first binding.
 	binding orderedTable[*hold, struct{}]
 	// bindingTurn: the waiting bindings take the next slot: the last one went to waiting state while they waited.
@@ -124,6 +133,8 @@ func (p *providerSide) closed() {
 	for _, call := range p.calls.values() {
 		if call.served != nil {
 			call.abort(closed)
+		} else if call.span != nil {
+			relayEnded(call.span, nil)
 		}
 	}
 	p.calls.clear()
@@ -297,6 +308,8 @@ func (p *providerSide) forget(entry providerEntry, err *data.ChordError) {
 		p.calls.delete(callID)
 		if call.served != nil {
 			call.abort(reason)
+		} else if call.span != nil {
+			relayEnded(call.span, nil)
 		}
 	}
 	if served, isServed := entry.(*hold); isServed {
@@ -330,12 +343,23 @@ func (p *providerSide) unbound(h *hold, err *data.ChordError) {
 	}
 }
 
-// reply: a call ended with reply (a result or an error): its slot is free; nothing is sent for one already gone.
+// reply: a call ended with reply (a result or an error, its own or forwarded from upstream): its slot is free; nothing is sent
+// for one already gone. The state waiting for a slot goes first, past the window if it is full (decision "A call's answer
+// follows its state"): when the call settles at the consumer, every change this host committed before answering is applied
+// there. At most one extra message per answer, acknowledged before the call its answer frees a slot for (one direction keeps
+// its order): running calls and messages past the window stay within this side's N together.
 func (p *providerSide) reply(id int, reply link.OriginMessage) {
+	call, found := p.calls.get(id)
 	if !p.calls.delete(id) {
 		return
 	}
+	if p.waiting.len() > 0 {
+		p.sendWaiting(p.link.context)
+	}
 	p.send(reply)
+	if found && call.span != nil {
+		relayEnded(call.span, reply)
+	}
 	p.settle()
 }
 
@@ -352,6 +376,10 @@ func (p *providerSide) bind(h *hold, ctx context.Context) {
 func (p *providerSide) unbind(h *hold) {
 	p.waiting.delete(h)
 	p.binding.delete(h)
+	// Nothing waits any more: no wait to record.
+	if p.waiting.len() == 0 {
+		p.waitingSince = time.Time{}
+	}
 }
 
 // touched: a hold's members changed in the current batch; its flush sends or queues it.
@@ -416,7 +444,7 @@ func (p *providerSide) hold(message *link.HoldMessage) error {
 	// Whom it acts for is decided here once (callerOf), never passed on: a relay names it only on a route link.
 	request := holdRequest{
 		Type: message.Type, Version: message.Version, Fingerprint: message.Fingerprint, Params: message.Params,
-		Address: message.Address,
+		Address: message.Address, Trace: message.Trace, TraceOrder: message.TraceOrder,
 	}
 	if message.Chain != nil && l.trusted {
 		request.Chain = message.Chain
@@ -501,15 +529,14 @@ func (p *providerSide) call(message *link.CallMessage) (*link.Handling, error) {
 				return nil, nil
 			}
 		}
-		p.calls.set(message.Call, &runningCall{hold: relayed, relayed: relayed})
-		relayed.call(message)
+		running := &runningCall{hold: relayed, relayed: relayed}
+		p.calls.set(message.Call, running)
+		running.span = relayed.call(message)
 		return nil, nil
 	}
 	served := entry.(*hold)
 	if !served.callable() {
-		p.refuse(message.Call, data.NewChordError(data.ChordErrorInit{
-			Code: data.CodeNotReady, Message: fmt.Sprintf("hold %d: not bound yet", served.id),
-		}, nil))
+		p.refuse(message.Call, served.refusal())
 		return nil, nil
 	}
 	name, resultBytes, err := served.method(message.Method)
@@ -540,17 +567,35 @@ func (p *providerSide) call(message *link.CallMessage) (*link.Handling, error) {
 	signal, abort := chordctx.WithCancel(chordctx.Background())
 	call := &runningCall{hold: served, served: served, bytes: resultBytes, abort: abort}
 	p.calls.set(message.Call, call)
+	// Old work of another host's reload (`call.old`), honoured only from a trusted link (decision "Reload restarts every
+	// affected object"): it runs on open old attempts here, and counts as this host's old work while it runs.
+	scope := p.link.context
+	old := message.Old && p.link.trusted
+	if old {
+		scope = asRemoteOldWork(scope)
+		p.link.host.oldWork.open()
+	}
+	// The caller's span over the link: its carrier with this host's adapter (absent or unknown: the adapter's root), the no-op
+	// parent without one. It is the call's parent, not its scope: the handler's ctx stays the link's (Pi's `call(method, args,
+	// parent, context)`), so an untraced type's handler records nothing.
+	parent := telemetry.NoopTelemetryContext
+	if extracted := chordtelemetry.ParentOf(message.Trace, p.link.host.telemetry); !chordtelemetry.Untraced(extracted) {
+		parent = chordtelemetry.AsSpan(extracted)
+	}
 	// A link's context has no abort signal, so this is the call's own signal: no combined signal per call.
-	p.run(message.Call, call, name, args, chordctx.WithAbortSignal(p.link.context, signal))
+	p.run(message.Call, call, name, args, chordctx.WithAbortSignal(scope, signal), parent, old)
 	return nil, nil
 }
 
 // run starts a call's handler, in this section and so in message order (Pi's `#run` starts it synchronously), and sends its
 // result (absent when nil) or error when it settled, unless it was aborted, released or gone meanwhile. A result that
 // cannot be encoded is sent as its error. Nobody waits for it: the reaction is a microtask of the host's loop.
-func (p *providerSide) run(id int, call *runningCall, method string, args any, ctx context.Context) {
-	result := call.served.call(method, args, ctx)
+func (p *providerSide) run(id int, call *runningCall, method string, args any, ctx context.Context, parent telemetry.TelemetrySpan, old bool) {
+	result := call.served.call(method, args, ctx, parent)
 	result.then(p.link.host.loop(), func(value any, err error) {
+		if old {
+			p.link.host.oldWork.close()
+		}
 		var reply link.OriginMessage
 		if err != nil {
 			reply = &link.ErrorMessage{Call: id, Error: link.WireErrorOf(err)}
@@ -578,6 +623,9 @@ func (p *providerSide) abort(id int) {
 	p.calls.delete(id)
 	if call.relayed != nil {
 		call.relayed.abort(id)
+		if call.span != nil {
+			relayEnded(call.span, nil)
+		}
 		return
 	}
 	call.abort(data.NewChordError(data.ChordErrorInit{Code: data.CodeAborted, Message: fmt.Sprintf("call %d: aborted by its caller", id)}, nil))
@@ -598,8 +646,16 @@ func (p *providerSide) ack() {
 		return
 	}
 	p.inFlight--
+	p.ownAcked++
 	p.slotFreed()
 }
+
+// nextOwn is the number the next of this host's own `bound` and `state` messages gets (counted from 1).
+func (p *providerSide) nextOwn() int { return p.ownSent + 1 }
+
+// acknowledged is whether its consumer acknowledged this host's own message number own, so applied it: a call it sent after
+// that arrives after the `ack` (one direction keeps its order).
+func (p *providerSide) acknowledged(own int) bool { return p.ownAcked >= own }
 
 // flush is the end of a batch: while a slot is free and nothing waits, one `state` message with an entry per touched
 // hold; otherwise each touched hold's ops join its pending queues until a slot frees.
@@ -630,6 +686,9 @@ func (p *providerSide) flush(ctx context.Context) {
 		}
 		h.queue()
 		p.waiting.set(h, struct{}{})
+		if p.waitingSince.IsZero() {
+			p.waitingSince = time.Now()
+		}
 	}
 }
 
@@ -656,18 +715,34 @@ func (p *providerSide) slotFreed() {
 			}
 			p.sendOwn(&link.BoundMessage{Holds: entries})
 		case p.waiting.len() > 0:
-			holds := p.waiting.keys()
-			p.waiting.clear()
-			p.bindingTurn = p.binding.len() > 0
-			entries := make([]link.StateEntry, len(holds))
-			for index, h := range holds {
-				entries[index] = h.pendingEntry(ctx)
-			}
-			p.sendOwn(&link.StateMessage{Holds: entries})
+			p.sendWaiting(ctx)
 		default:
 			return
 		}
 	}
+}
+
+// sendWaiting sends the waiting state as one `state` message, taking a slot: a freed one, or one past the window before an
+// answer. Waiting bindings take the next slot.
+func (p *providerSide) sendWaiting(ctx context.Context) {
+	holds := p.waiting.keys()
+	p.waiting.clear()
+	p.waited()
+	p.bindingTurn = p.binding.len() > 0
+	entries := make([]link.StateEntry, len(holds))
+	for index, h := range holds {
+		entries[index] = h.pendingEntry(ctx)
+	}
+	p.sendOwn(&link.StateMessage{Holds: entries})
+}
+
+// waited: the waiting state went out (or its holds left): how long it waited for its slot is recorded.
+func (p *providerSide) waited() {
+	if p.waitingSince.IsZero() {
+		return
+	}
+	p.link.host.metrics.Histogram("chord.backpressure.wait").Record(float64(time.Since(p.waitingSince))/float64(time.Millisecond), nil, nil)
+	p.waitingSince = time.Time{}
 }
 
 // result is a call's result message, its part deflated above the threshold when this host compresses; with byte segments
@@ -684,7 +759,11 @@ func (p *providerSide) result(id int, result any, bytes bool) (*link.ResultMessa
 // sendOwn sends one of this host's own `bound` or `state` messages, taking a slot.
 func (p *providerSide) sendOwn(message link.OriginMessage) {
 	p.inFlight++
+	p.ownSent++
 	p.sent = append(p.sent, nil)
+	if _, ok := message.(*link.StateMessage); ok {
+		p.link.host.metrics.Counter("chord.link.state_messages").Add(1, nil)
+	}
 	p.send(message)
 }
 

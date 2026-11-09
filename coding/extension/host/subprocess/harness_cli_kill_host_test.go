@@ -1,11 +1,10 @@
-//go:build !pig_strip_node_extensions
+//go:build !windows && !pig_strip_node_extensions
 
 package subprocess
 
 import (
 	"os"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -15,9 +14,6 @@ import (
 
 // A Node extension runs the harness entry of the materialized runtime (packed or isolated), not the one in the source tree: it starts the entry again the way pi-subagents does (process.execPath process.argv[1] ...), and SIGKILL of that entry must end the binary the entry runs.
 func TestHarnessEntryKillAcrossIsolationModes(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("the stand-in binary is a POSIX shell script")
-	}
 	for _, isolation := range []string{"shared-ok", "strict"} {
 		t.Run(isolation, func(t *testing.T) {
 			privatePackedLogTemp(t)

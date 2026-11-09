@@ -8,14 +8,16 @@
 //   - `read` callbacks are blocking calls that return the value or the error that failed the read. Upstream's
 //     microtask interleavings around `await read()` are the interleavings of the goroutines that call Apply while a
 //     read is out; no lock is held across `read`.
-//   - Kept markers are shared, not copied: Object.freeze has no Go counterpart, so the immutability of entry records
-//     (`Tx.AppendEntry`) is by convention, as everywhere in this port.
+//   - Kept markers are detached copies: Object.freeze has no Go counterpart, so Apply keeps its own copy of the written
+//     record and Marker returns a copy of the kept one, as a Storage read does. A caller that changes the record it wrote
+//     or the marker it got changes neither the kept marker nor another caller's.
 package session
 
 import (
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/internal/detach"
 )
 
 // HeadMarker is an entry that carries a Head: the marker of a context range.
@@ -106,8 +108,9 @@ func (tails *ConversationTails) Marker(conversationId durable.ConversationId, at
 		return nil, nil
 	}
 	if known && (atOrBefore == nil || *atOrBefore >= marker.Id) {
+		kept := detach.Entry(*marker)
 		tails.mu.Unlock()
-		return marker, nil
+		return &kept, nil
 	}
 	latest, latestKnown := tails.latest.peek(conversationId)
 	tails.mu.Unlock()
@@ -156,7 +159,8 @@ func (tails *ConversationTails) Apply(writes []durable.StorageWrite) {
 			entry := write.Value
 			tails.latest.set(entry.ConversationId, tail{id: entry.Id, present: true})
 			if entry.Head != nil {
-				tails.markers.set(entry.ConversationId, &entry)
+				kept := detach.Entry(entry)
+				tails.markers.set(entry.ConversationId, &kept)
 			}
 		}
 	}

@@ -20,10 +20,11 @@ var packedUIConfigs = map[string]func() ([]subprocess.ExtConfig, error){
 	"rust":   sync.OnceValues(func() ([]subprocess.ExtConfig, error) { return createPackedUIConfigs("rust") }),
 }
 
-// Sources live as long as their cached runners, including Python's imported modules.
+// Sources live as long as their cached runners, including Python's imported modules, in the directory every process of the package shares (sharedSources), so the
+// cell of one process is the cell of the next.
 func createPackedUIConfigs(language string) ([]subprocess.ExtConfig, error) {
 	root := fixtureSourceRoot
-	dir := filepath.Join(fixtureRoot, "packed-ui-"+language)
+	dir := filepath.Join(sharedSources, "packed-ui-"+language)
 	files := make(map[string]string)
 	write := func(path, text string) { files[path] = text }
 	name := map[string]string{"go": "sdk-fixture", "python": "python-sdk-fixture", "rust": "rust-sdk-fixture"}[language]
@@ -72,10 +73,7 @@ func Extension() *sdk.Extension { return sdk.New("ui-peer") }
 		}
 	}
 	for path, text := range files {
-		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
-			return nil, err
-		}
-		if err := os.WriteFile(path, []byte(text), 0o600); err != nil {
+		if err := writeSharedSource(path, text); err != nil {
 			return nil, err
 		}
 	}
@@ -112,11 +110,12 @@ func makePackedUIHarness(t *testing.T, language string) *harness {
 	bridge := subprocess.NewUIBridge(func() {})
 	bridge.SetUIContext(ui)
 	bridge.SetActions(conformanceActions(actions))
-	host := subprocess.NewHost(t.TempDir())
+	host := subprocess.NewHost(harnessHostCwd(t))
 	if rpcRowMode != "" {
 		host.SetMode(rpcRowMode)
 	}
 	host.SetHostInfo(conformanceHostInfo)
+	host.ShareCells(conformanceCellRegistry)
 	host.SetUIBridge(bridge)
 	wire := observeWire(t, host)
 	host.SetConfigLoader(func() ([]subprocess.ExtConfig, error) { return configs, nil })

@@ -134,7 +134,7 @@ func startRemoteServer(ctx context.Context, request RemoteRequest, exchange Remo
 }
 
 func failureMessage(failure *Error) *RemoteMessage {
-	return &RemoteMessage{WorkerToHostMessage: WorkerToHostMessage{Type: MessageFailure}, Failure: failure}
+	return &RemoteMessage{Type: MessageFailure, Failure: failure}
 }
 
 // stopChannel stops the VM once, whichever of the loop and a context that ended gets there first.
@@ -148,7 +148,7 @@ func (s *remoteServer) takeBuffer() []RemoteMessage {
 	batch := s.buffered
 	s.buffered = nil
 	if s.hosted > 0 {
-		batch = []RemoteMessage{{WorkerToHostMessage: WorkerToHostMessage{Type: messageHostedOutput, ID: s.hosted}}}
+		batch = []RemoteMessage{{Type: messageHostedOutput, ID: s.hosted}}
 		s.hosted = 0
 	}
 	s.chars = 0

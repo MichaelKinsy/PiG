@@ -19,7 +19,7 @@ func BenchmarkStoreStoragePublishing(b *testing.B) {
 			store := memoryStore(b).(*chordstore.ChordStore)
 			storage := value(Open(background, store, "harness"))
 			if attached {
-				batch := state.NewBatch(func(state.BatchError) {}, nil).UseSection(func(work func()) { work() })
+				batch := state.NewBatch(func(state.BatchError) {}, nil).UseSection(func(work func()) { work() }, nil)
 				must(b, store.Attach(chordstore.Attachment{Batch: batch}))
 				b.Cleanup(store.Detach)
 			}

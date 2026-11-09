@@ -22,7 +22,7 @@ SPDX-License-Identifier: MIT
 [![Follow PiG on X](https://img.shields.io/badge/X-%40PiGCodingAgent-000000?logo=x&logoColor=white)](https://x.com/PiGCodingAgent)
 [![Join r/PiGCodingAgent](https://img.shields.io/badge/Reddit-r%2FPiGCodingAgent-FF4500?logo=reddit&logoColor=white)](https://www.reddit.com/r/PiGCodingAgent/)
 
-PiG is [Pi](https://github.com/earendil-works/pi), the minimal and extensible coding agent for the terminal, rebuilt in Go as one native binary. It starts quickly, needs no Node.js, and runs Pi's TypeScript extensions unchanged. You can also write extensions in Go, Rust, or Python, and bundle extensions, skills, and prompts into a Piglet: one named agent you can share or build into its own executable.
+PiG is [Pi](https://github.com/earendil-works/pi), the minimal and extensible coding agent for the terminal, rebuilt in Go as one native binary. The binary needs no Node.js. Pi's TypeScript extensions run on your Node.js 22.13 or newer through PiG's compatible runtime modules, and [extension API parity](docs/extension-api-parity.md) lists the differences. You can also write extensions in Go, Rust, Python, or Common Lisp, and bundle extensions, skills, and prompts into a Piglet: one named agent you can share or build into its own executable.
 
 PiG is a pre-stable 0.x release. Core paths are ported and checked against Pi 1.5.0+c23b9ec1 with paired parity scenarios; edge cases are still hardening. See the [port status](test/parity/coverage.md) and [file map](docs/parity/PORT_MAP.md) for current scope and evidence.
 
@@ -75,6 +75,18 @@ Interactive `/login` masks secret input by default. Turn off **Mask secret input
 
 The [documentation](https://pi-in-go.dev/docs/latest) covers everything else, starting with the [quickstart](https://pi-in-go.dev/docs/latest/quickstart). You can also ask PiG to explain itself.
 
+## Serve many sessions (unreleased)
+
+`pig --mode rpc --listen <path>` serves one RPC session per connection on the Unix socket at `<path>`, with Pi's RPC protocol unchanged on each connection (D232). It is on the 0.7.1 branch and not in PiG 0.7.0, and Pi has no equivalent.
+
+- There is no default socket path: `--listen` requires one, `--mode rpc`, and a path that does not exist. A path longer than a socket address holds (104 bytes on macOS, 108 on Linux) is refused.
+- The socket has mode 0600 from the moment the path exists and **has no authentication**: any process that runs as your user, and root, can connect and drive a full session with the server's credentials, tools and approvals. Put the socket in a directory only you can reach, such as `$XDG_RUNTIME_DIR`.
+- Every session has its own extension processes, so no extension state is shared between sessions. `--listen-share-extensions` shares the extension processes instead, which costs less per session but shares module-level state between sessions.
+- `--listen` rejects `--continue`, `--resume`, `--session`, `--session-id` and `--fork`. The server runs until a termination signal and then exits with 128 plus the signal number.
+- On Windows the server listens on an `AF_UNIX` socket (Windows 10 version 1803 or later), not a named pipe, and its access follows the permissions of the socket's directory. The Windows tests have not been run yet.
+
+See [serving many sessions](docs/site/docs/rpc.md#serve-many-sessions) for the protocol details.
+
 ## Upstream Pi
 
 Pi is the reference implementation. PiG follows Pi's behavior and design unless a Go constraint or an approved product-neutral requirement makes a difference necessary.
@@ -123,7 +135,7 @@ its standalone telemetry and evaluation packages. See
 - Main verification gate: `make check`
 - Full verification and coverage refresh: `make verify`
 
-`pig --version` and `pig -v` print the pinned Pi package version, exactly as `pi --version` does, so a launcher that checks Pi's version reads it. The help and diagnostics banner and the interactive startup line print PiG's version as `<PiG release>+<Pi release>`, for example `0.7.0+1.5.0+c23b9ec1`: the Pi release is semver build metadata, so the version sorts as the PiG release. `pig version` prints the PiG release and the pinned Pi release as separate fields. Neither `pig --version` nor `pig version` reads user configuration.
+`pig version` prints the PiG release and the pinned Pi release as separate fields. The interactive startup line prints PiG's version as `<PiG release>+<Pi release>`, for example `0.7.0+1.5.0+c23b9ec1`: the Pi release is semver build metadata, so the version sorts as the PiG release. `pig --version` and `pig -v` print the pinned Pi package version alone, exactly as `pi --version` does, so a launcher that checks Pi's version reads it. That change is on the 0.7.1 branch and unreleased: PiG 0.7.0 prints its own version with the Pi release as build metadata for `pig --version`. Neither command reads user configuration.
 
 ## Repository map
 
@@ -135,7 +147,7 @@ its standalone telemetry and evaluation packages. See
 | `tui/`        | Public terminal components, rendering, input, and terminal lifecycle.              |
 | `cmd/pig/`    | Stock PiG command-line application and RPC process surface.                        |
 | `internal/`   | Private implementation used by Stock PiG. External modules cannot import it.       |
-| `extensions/` | Go, Rust, Python, and declaration-only TypeScript extension SDKs.                  |
+| `extensions/` | Go, Rust, Python, Common Lisp, and declaration-only TypeScript extension SDKs.     |
 | `piglets/`    | Explicit agent compositions such as PiG Standard and Pig Porter.                   |
 | `test/parity/`     | Pinned Pi correspondence, scenarios, inventories, and generated evidence.          |
 | `test/`      | Integration, extension-conformance, clean-repository, and upstream-contract tests. |
@@ -158,8 +170,8 @@ A Piglet explicitly selects Resources, tools, discovery, defaults, and environme
 
 PiG Standard is the explicit Piglet at
 [`piglets/standard/pig-standard.yaml`](piglets/standard/pig-standard.yaml).
-It currently selects the extension-provided PiG login, sprite catalogue, and
-PiG Runner. Run it from source with:
+It currently selects four extensions: PiG login and the sprite catalogue, PiG Runner,
+Angry Pigs, and the Bun runtime installer. Run it from source with:
 
 ```bash
 pig --piglet piglets/standard/pig-standard.yaml
@@ -182,13 +194,13 @@ Install the command with npm (Node.js 18 or newer):
 
 ```bash
 npm install -g @pi-in-go/pig
-pig --version
+pig version
 ```
 
 Or run it once without installing:
 
 ```bash
-npx @pi-in-go/pig --version
+npx @pi-in-go/pig version
 ```
 
 `pig` itself is the native binary: npm installs the matching platform package
@@ -201,7 +213,7 @@ npm-installed binary; update through npm.
 
 ## Install with Go
 
-Install the command without a source checkout with Go 1.26 or newer:
+Install the command without a source checkout with Go 1.27 or newer (an older Go, 1.21 or newer, downloads the toolchain `go.mod` names unless `GOTOOLCHAIN=local`):
 
 ```bash
 go install github.com/MichaelKinsy/PiG/cmd/pig@latest
@@ -224,7 +236,7 @@ commit; `go install` needs both.
 The flake builds PiG from source in the Nix sandbox, with every input pinned by `flake.lock`:
 
 ```bash
-nix run github:MichaelKinsy/PiG -- --version
+nix run github:MichaelKinsy/PiG -- version
 nix profile add github:MichaelKinsy/PiG
 ```
 
@@ -243,16 +255,17 @@ Requirements:
 - Go 1.27.3
 - Git
 - macOS 13 or later for native macOS builds
-- Node.js 24.22.1 and npm 12.2.1 for parity tooling
+- Node.js 24.22.2 and npm 12.2.1 for parity tooling
 - Python 3.12 for Python SDK tests, and CPython 3.11 for `make test-sdk-py-311`, which `make check` runs (`PIG_SDK_PY_311` names the interpreter; the default is `python3.11`)
 - Rust 1.97.1 for Rust SDK tests
+- SBCL 2.6.9 for Lisp SDK tests (`make test-sdk-lisp`, which `make check` runs; `pig setup` reports it, and `PIG_SBCL` names another executable)
 - tmux for terminal parity tests on Unix
 
 Build the binary:
 
 ```bash
 go build -o bin/pig ./cmd/pig
-./bin/pig --version
+./bin/pig version
 ```
 
 Prepare the exact Pi comparator and source mirror:
@@ -284,10 +297,12 @@ A ported row means that code exists. It does not prove behavioral compatibility.
 
 ## Extensions
 
-PiG supports Go, Rust, Python, and Node extension factories through its public extension host. Extensions can register tools, commands, event handlers, flags, shortcuts, providers, and user-interface contributions.
+PiG supports Go, Rust, Python, Common Lisp, and Node extension factories through its public extension host. The SDKs are `extensions/sdk` (Go), `extensions/sdk-rs`, `extensions/sdk-py`, and `extensions/sdk-lisp`. A Node extension needs no SDK directory, because it imports Pi's package. Extensions can register tools, commands, event handlers, flags, shortcuts, providers, and user-interface contributions.
+
+Each language needs its toolchain on your `PATH`: Go, Cargo for Rust, Python 3, SBCL 2.6.9 for Common Lisp, or Node.js 22.13 or newer for TypeScript and JavaScript. `pig setup` reports what is missing. PiG compiles Rust and Lisp extensions on your machine.
 
 Node extensions use Pi's TypeScript extension API. PiG supplies compatible
-runtime modules. The declaration-only package in `extensions/sdk-ts` adds types
+runtime modules. Node.js is the default runtime. The `extensionsTypescriptRuntime` setting or `PIG_TS_RUNTIME` selects another runtime that an extension or Piglet installed, such as the Bun runtime that PiG Standard installs on command (D19). The declaration-only package in `extensions/sdk-ts` adds types
 for PiG-only extension capabilities without replacing Pi's TypeScript runtime.
 
 Start with:

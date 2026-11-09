@@ -40,8 +40,8 @@ func TestToJsonValueIsStrictCopyJson(t *testing.T) {
 	}
 
 	token := DefineDoc(DocDefinition[gauge]{
-		CommonDocDefinition: CommonDocDefinition[gauge]{Kind: "test.gauge", Version: 1, Initial: func() gauge { return gauge{Level: math.NaN()} }, CheckpointWhen: func(gauge, []Op, CheckpointInfo) bool { return false }},
-		DocumentSemantics:   DocumentSemantics{Scope: ScopeSession},
+		Kind: "test.gauge", Version: 1, Initial: func() gauge { return gauge{Level: math.NaN()} }, CheckpointWhen: func(gauge, []Op, CheckpointInfo) bool { return false },
+		Scope: ScopeSession,
 	})
 	if _, err := token.AnyDefinition().Initial(nil); !errors.Is(err, delta.ErrNotStrictJSON) {
 		t.Fatalf("initial err = %v, want a strict JSON error", err)
@@ -73,13 +73,11 @@ func TestCopyJsonDetachesAndRejectsNonFiniteNumbers(t *testing.T) {
 func TestDocumentConversionsKeepRevisionsAndStayStrict(t *testing.T) {
 	var seen JsonObject
 	token := DefineDoc(DocDefinition[JsonObject]{
-		CommonDocDefinition: CommonDocDefinition[JsonObject]{
-			Kind: "test.exact", Version: 1,
-			CheckpointWhen: func(value JsonObject, _ []Op, _ CheckpointInfo) bool { seen = value; return false },
+		Kind: "test.exact", Version: 1,
+		CheckpointWhen: func(value JsonObject, _ []Op, _ CheckpointInfo) bool { seen = value; return false },
 
-			Initial: func() JsonObject { return delta.NewJsonObject(0) },
-		},
-		DocumentSemantics: DocumentSemantics{Scope: ScopeSession},
+		Initial: func() JsonObject { return delta.NewJsonObject(0) },
+		Scope:   ScopeSession,
 	})
 	revision := delta.JsonObjectOf("count", 1.0)
 	if _, err := token.AnyDefinition().CheckpointWhen(revision, nil, CheckpointInfo{}); err != nil {
@@ -93,9 +91,9 @@ func TestDocumentConversionsKeepRevisionsAndStayStrict(t *testing.T) {
 	family := DefineDocFamily(DocFamilyDefinition[JsonObject, JsonValue]{
 		Family: true,
 		Kind:   "test.family", Version: 1,
-		DocumentSemantics: DocumentSemantics{Scope: ScopeSession},
-		Initial:           func(seed JsonValue) JsonObject { return delta.JsonObjectOf("seed", seed) },
-		CheckpointWhen:    func(JsonObject, []Op, CheckpointInfo) bool { return false },
+		Scope:          ScopeSession,
+		Initial:        func(seed JsonValue) JsonObject { return delta.JsonObjectOf("seed", seed) },
+		CheckpointWhen: func(JsonObject, []Op, CheckpointInfo) bool { return false },
 	})
 	if _, err := family.AnyDefinition().Initial(math.NaN()); !errors.Is(err, delta.ErrNotStrictJSON) {
 		t.Fatalf("NaN seed err = %v, want a strict JSON error", err)

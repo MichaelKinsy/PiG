@@ -7,7 +7,7 @@ import (
 )
 
 // fakeLoop is a deterministic eventLoop for helper tests, as vitest's fake timers are for Pi's: `fakeTimers()` fakes
-// setTimeout, clearTimeout and Date from 0 (test/next/support.ts) and leaves microtasks real. The clock moves only
+// setTimeout, clearTimeout and Date from 0 (test/support.ts) and leaves microtasks real. The clock moves only
 // through Advance and AdvanceAsync; Queue jobs run when Flush (or AdvanceAsync) runs them, as promise callbacks run at an
 // await. Its state is locked (a blocking helper such as sleepOn runs on a goroutine of its own); jobs run unlocked.
 type fakeLoop struct {
@@ -106,6 +106,18 @@ func (l *fakeLoop) Advance(ms int64) { l.advance(ms, false) }
 
 // AdvanceAsync is vi.advanceTimersByTimeAsync(ms): Advance with the microtasks flushed before each timer and at the end.
 func (l *fakeLoop) AdvanceAsync(ms int64) { l.advance(ms, true) }
+
+// JumpClock is vi.setSystemTime(Date.now() + ms): Date.now() moves by ms and no timer fires; every pending timer moves with
+// it (fake-timers' setSystemTime), so each still fires as many milliseconds from now as it would have before. The clock of
+// a process that slept: time went by that no timer saw.
+func (l *fakeLoop) JumpClock(ms int64) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.now += ms
+	for _, timer := range l.timers {
+		timer.at += ms
+	}
+}
 
 func (l *fakeLoop) advance(ms int64, flush bool) {
 	l.mu.Lock()

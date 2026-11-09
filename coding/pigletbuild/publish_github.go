@@ -18,6 +18,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"github.com/MichaelKinsy/PiG/internal/linkerexec"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 
 	"golang.org/x/mod/semver"
 
@@ -445,7 +446,7 @@ func compareTargets(a, b Target) int {
 }
 
 func sortedAssets(assets []publishAsset) []publishAsset {
-	slices.SortFunc(assets, func(a, b publishAsset) int { return strings.Compare(a.name, b.name) })
+	sortx.Func(assets, func(a, b publishAsset) int { return strings.Compare(a.name, b.name) })
 	return assets
 }
 

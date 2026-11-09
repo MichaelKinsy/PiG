@@ -16,9 +16,9 @@ type (
 
 func str(description string, required bool, high bool, values ...string) attribute {
 	definition := pitelemetry.TelemetryAttributeDefinition{
-		TelemetryAttributeMetadata: pitelemetry.TelemetryAttributeMetadata{Description: description},
-		Type:                       pitelemetry.TelemetryAttributeTypeString,
-		Values:                     values,
+		Description: description,
+		Type:        pitelemetry.TelemetryAttributeTypeString,
+		Values:      values,
 	}
 	if high {
 		definition.Cardinality = pitelemetry.TelemetryAttributeCardinalityHigh
@@ -28,11 +28,9 @@ func str(description string, required bool, high bool, values ...string) attribu
 
 func num(description string, required bool) attribute {
 	return attribute{
-		TelemetryAttributeDefinition: pitelemetry.TelemetryAttributeDefinition{
-			TelemetryAttributeMetadata: pitelemetry.TelemetryAttributeMetadata{Description: description},
-			Type:                       pitelemetry.TelemetryAttributeTypeNumber,
-		},
-		Required: required,
+		Description: description,
+		Type:        pitelemetry.TelemetryAttributeTypeNumber,
+		Required:    required,
 	}
 }
 

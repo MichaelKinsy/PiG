@@ -51,7 +51,7 @@ func TestEditorSlotTreeSelectorTakesAndReturnsFocus(t *testing.T) {
 	if m.tuiInst.GetFocusedComponent() != ts {
 		t.Errorf("focus = %T, want the tree selector", m.tuiInst.GetFocusedComponent())
 	}
-	// pi main 2cfab7c26 (#9157; D248): the focus the mode gives the selector shows the search cursor.
+	// pi main 2cfab7c26 (#9157): the focus the mode gives the selector shows the search cursor.
 	if !strings.Contains(strings.Join(ts.Render(80), "\n"), widthx.CursorMarker+"\x1b[7m \x1b[27m") {
 		t.Error("the focused /tree selector draws no search cursor")
 	}

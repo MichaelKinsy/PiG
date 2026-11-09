@@ -67,7 +67,11 @@ const (
 	RuleDialogResults       = "dialog-results-are-json-values"
 	RuleHostHighlightCode   = "host-helpers-highlight-code-no-markdown"
 	RuleGrepReadFile        = "grep-operations-read-file-removed"
+	RuleMarkdownTransformer = "markdown-transformer-options"
 )
+
+// markdownTransformerSymbol names the changed method as apidiff reports it.
+const markdownTransformerSymbol = "(*Extension).MarkdownTransformer"
 
 // getter is one Context method that gained an error result. Params is the
 // parameter list and Old and New are the result lists, as Go writes them.
@@ -192,13 +196,15 @@ func Rules() []Rule {
 		},
 		{
 			ID:      RuleNotComparable,
-			Summary: "ToolInfo, OAuthCredentials, RemoteOverlayOptions and Editor are no longer comparable",
+			Summary: "ToolInfo, OAuthCredentials, RemoteOverlayOptions, Editor, MessageRenderOptions and EntryRenderOptions are no longer comparable",
 			Remedy:  "Compare the fields you need, or use reflect.DeepEqual. Do not use these types as map keys or compare them with ==.",
 			Changes: []Change{
 				{Symbol: "ToolInfo", Old: "comparable struct", New: "struct with a slice and a raw message", Since: "0.3.0"},
 				{Symbol: "OAuthCredentials", Old: "comparable struct", New: "struct that is not comparable", Since: "0.3.0"},
 				{Symbol: "RemoteOverlayOptions", Old: "comparable struct", New: "struct with a function field (OnHandle) and a pointer to OverlayOptions", Since: "0.5.0"},
 				{Symbol: "Editor", Old: "comparable struct", New: "struct with the handler table of CustomEditor's actions (hooks)", Since: "0.5.2"},
+				{Symbol: "MessageRenderOptions", Old: "comparable struct", New: "struct with a State map (the message's renderer state)", Since: "0.7.1"},
+				{Symbol: "EntryRenderOptions", Old: "comparable struct", New: "struct with a State map (the entry's renderer state)", Since: "0.7.1"},
 			},
 		},
 		{
@@ -270,6 +276,14 @@ func Rules() []Rule {
 			Remedy:   "Delete the member. Grep takes its context lines from ripgrep and never read a matched file, so nothing called it. The rewrite deletes the ReadFile entry of a GrepOperations literal; a call of ops.ReadFile has no replacement and goes with the code that made it.",
 			Changes: []Change{
 				{Symbol: grepReadFileSymbol, Old: "func(string) (string, error)", New: "removed", Since: "0.8.0"},
+			},
+		},
+		{
+			ID:      RuleMarkdownTransformer,
+			Summary: "Extension.MarkdownTransformer takes the MarkdownTransformerOptions that choose the surfaces",
+			Remedy:  "A call `ext.MarkdownTransformer(fn)` still compiles and keeps the default surfaces (user, assistant and thinking messages). To transform custom, summary or changelog messages pass `sdk.MarkdownTransformerOptions{MessageTypes: ...}` as the second argument. Only a use of the method as a value (a variable, a field or an interface whose method has the one-parameter signature) fails to compile: give it the signature func(sdk.MarkdownTransformerFunc, ...sdk.MarkdownTransformerOptions).",
+			Changes: []Change{
+				{Symbol: markdownTransformerSymbol, Old: "func(MarkdownTransformerFunc)", New: "func(MarkdownTransformerFunc, ...MarkdownTransformerOptions)", Since: "0.8.0"},
 			},
 		},
 	}

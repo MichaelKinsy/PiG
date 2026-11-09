@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// Ports packages/chord/test/next/store/claims.test.ts: tests of claims (slice 6b "owner names and claims", "claims
+// Ports packages/chord/test/store/claims.test.ts: tests of claims (slice 6b "owner names and claims", "claims
 // per table and per document namespace"): a table by its SQL name and documents by owner and namespace, once per
 // store; released by their claimant's end; none taken while a batch applies.
 //

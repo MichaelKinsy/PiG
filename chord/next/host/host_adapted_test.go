@@ -15,7 +15,7 @@ import (
 )
 
 // pi: packages/chord/src/next/host/adapted.ts
-// Ports packages/chord/test/next/host/adapted.test.ts (Q10, §22, slice 7b §7): consumers bound at an older version a provider
+// Ports packages/chord/test/host/adapted.test.ts (Q10, §22, slice 7b §7): consumers bound at an older version a provider
 // accepts read its state mapped (diffs per commit), call it with mapped arguments and results or its replacement of a
 // removed method, read keyed members mapped per key, and are refused a member the provider refuses. Every describe of the
 // file is ported, in its order; the helpers are in host_adapted_support_test.go.
@@ -345,7 +345,7 @@ func TestReloadAdaptedMembersFollowTheProvidersTopologyRebuildsAnExistingAdapted
 
 // Mirrors "reload: adapted members publish one coherent frame (fix round 1) › does not publish the new mapping applied to the old attempt's state".
 //
-// Pi: packages/chord/test/next/host/adapted.test.ts:282 (does not publish the new mapping applied to the old attempt's state)
+// Pi: packages/chord/test/host/adapted.test.ts:282 (does not publish the new mapping applied to the old attempt's state)
 func TestReloadAdaptedMembersPublishOneCoherentFrameDoesNotPublishTheNewMappingAppliedToTheOldAttemptsState(t *testing.T) {
 	v1 := adaptedLocal("astra.atomic", contracts.Mem("n", contracts.Int()))
 	v2 := adaptedEvolve(v1, func(e *contracts.LocalEditor) *contracts.LocalEditor { return e.State("n", contracts.Int()) })
@@ -370,7 +370,7 @@ func TestReloadAdaptedMembersPublishOneCoherentFrameDoesNotPublishTheNewMappingA
 
 // Mirrors "› never computes a new accepted-version mapping over the old provider shape".
 //
-// Pi: packages/chord/test/next/host/adapted.test.ts:306 (never computes a new accepted-version mapping over the old provider shape)
+// Pi: packages/chord/test/host/adapted.test.ts:306 (never computes a new accepted-version mapping over the old provider shape)
 func TestReloadAdaptedMembersPublishOneCoherentFrameNeverComputesANewAcceptedVersionMappingOverTheOldProviderShape(t *testing.T) {
 	v1 := adaptedLocal("sol.mapping-publication", contracts.Mem("x", contracts.Int()))
 	v2 := adaptedEvolve(v1, func(e *contracts.LocalEditor) *contracts.LocalEditor { return e.State("x", adaptedObjOf("n")) })
@@ -900,8 +900,8 @@ func TestReloadAnOlderConsumersReadsWhileItsTypeIsRemovedReadsItsLastMappedValue
 	old.Release()
 }
 
-// Mirrors "reload: an older consumer's first read during a parked swap (fix round 2) › maps with the provider whose attempt is shown until the new one goes live (Sol)".
-func TestReloadAnOlderConsumersFirstReadDuringAParkedSwapMapsWithTheProviderWhoseAttemptIsShownUntilTheNewOneGoesLive(t *testing.T) {
+// Mirrors "reload: an older consumer's first read during a parked restart (fix round 2) › maps with the provider whose attempt is shown until the new one goes live (Sol)".
+func TestReloadAnOlderConsumersFirstReadDuringAParkedRestartMapsWithTheProviderWhoseAttemptIsShownUntilTheNewOneGoesLive(t *testing.T) {
 	v1 := adaptedLocal("app.lazy", contracts.Mem("x", contracts.Int()))
 	v2 := adaptedEvolve(v1, func(e *contracts.LocalEditor) *contracts.LocalEditor { return e.State("x", adaptedObjOf("n")) })
 	missing := adaptedLocal("app.lazy.missing")
@@ -1199,10 +1199,10 @@ func TestReloadStoppingAKeyedWatchDropsItsPinAndLastValueWhileItsReferenceWaitsD
 	ref.Release()
 }
 
-// --- reload: a reference that never had values reads none during a parked swap (fix round 4) --------------------------------
+// --- reload: a reference that never had values reads none during a parked restart (fix round 4) --------------------------------
 
-// Mirrors "reload: a reference that never had values reads none during a parked swap (fix round 4) › has a newer reference read nothing during a parked swap, its watch waiting, then the new instance's values (Sol)".
-func TestReloadAReferenceThatNeverHadValuesReadsNoneDuringAParkedSwapHasANewerReferenceReadNothingDuringAParkedSwapItsWatchWaitingThenTheNewInstancesValues(t *testing.T) {
+// Mirrors "reload: a reference that never had values reads none during a parked restart (fix round 4) › has a newer reference read nothing during a parked restart, its watch waiting, then the new instance's values (Sol)".
+func TestReloadAReferenceThatNeverHadValuesReadsNoneDuringAParkedRestartHasANewerReferenceReadNothingDuringAParkedRestartItsWatchWaitingThenTheNewInstancesValues(t *testing.T) {
 	n1 := adaptedLocal("app.unshown", contracts.Mem("x", contracts.Int()))
 	n2 := adaptedEvolve(n1, func(e *contracts.LocalEditor) *contracts.LocalEditor { return e.State("x", adaptedObjOf("n")) })
 	missing := adaptedLocal("app.unshown.missing")
@@ -1217,7 +1217,7 @@ func TestReloadAReferenceThatNeverHadValuesReadsNoneDuringAParkedSwapHasANewerRe
 	newer := mustHold(t, host, n2, jsonObject())
 	adaptedWantWaiting(t, newer)
 	// The swap parks: the shown values are v1's; a v2 reference never had values, never v1's shape: its read throws the
-	// parked swap's failure.
+	// parked restart's failure.
 	if got := memberOf(t, old, "x"); got != 1.0 {
 		t.Fatalf("old x = %v, want 1", got)
 	}

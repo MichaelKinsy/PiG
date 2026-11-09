@@ -2,12 +2,21 @@ package workers
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/chord"
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
@@ -15,6 +24,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // Ports packages/chord/src/next-node/workers/workers.ts. The workers component (slice 10 §3, §4; decision "Slice 10's
@@ -44,6 +54,10 @@ type WorkersOptions struct {
 	Entry    string
 	ExecArgv []string
 	Env      map[string]string
+	// BaseDir is the private directory the worker base's copy of Entry is written into at the first fork: the component's own while
+	// it is open (emptied first, removed at Close, never touched after it, so a later start may own it then); none: a new temporary
+	// directory. One that stays the same between starts is the kit's (`cache/workers/<kind>/`).
+	BaseDir string
 	// Authorize is the route's `authorize`: whether principal may reach address.
 	Authorize func(principal data.Principal, address contracts.Address) (bool, error)
 	// Principal is who the worker at address is (stamped on its link).
@@ -58,6 +72,10 @@ type WorkersOptions struct {
 	// OnOutput is a worker's output; without it, mirrored to this process's own.
 	OnOutput func(address contracts.Address, stream string, chunk []byte)
 	OnError  func(err WorkersError)
+	// Forgotten is called, on the component's loop (it must not block), once an address has no worker, no operation and no failure
+	// left: the app's per-address bookkeeping made at Start ends there. Pi has no such hook (its app keeps the entries it made at start for
+	// the process's life); this is a Go addition that changes nothing observable.
+	Forgotten func(address contracts.Address)
 
 	// clock is the clock of the component's timers; the loop's own by default. Tests give one with virtual timers.
 	clock clock
@@ -132,7 +150,137 @@ func (WorkerExitedError) workersError()    {}
 func (WorkerLinkLostError) workersError()  {}
 func (BatchWorkersError) workersError()    {}
 
-// CreateWorkers creates the workers component on h: it routes kind itself (`host.Route`, before `Load`).
+// WorkersBuilt is how a worker kind's base build ended: built (the file it was built from with its bytes' hash), or failed. A
+// Go worker's base is a private copy of its own executable, which holds its code already (no bundle: see the worker base note in
+// doc.go); its build checks that Entry is a program that can be started and copies it.
+type WorkersBuilt struct {
+	// Inputs is the file the base was built from with the hash of the bytes copied: the app's base code for its workers, an edit
+	// of it outdates the base. Nil when it failed.
+	Inputs model.BaseInputs
+	// Err is why it did not build.
+	Err error
+}
+
+// Build copies the worker's entry into the base's private directory and records its bytes, once (a start waits for it, and starts
+// it when nothing did); Pi's `build` bundles the worker base in memory and writes it at the first fork. A program cannot be held in
+// memory: the copy is the base, and what an edit of the entry afterwards does is what Pi's edit of a bundled source does, nothing
+// to a worker. A component that closed copies nothing (what its build finishes after the close is dropped: the kit releases the
+// data directory's lock after its close, and a later start owns the directory then). It returns how it ended: every start fails
+// while it failed.
+func (c *Workers) Build() WorkersBuilt {
+	c.buildOnce.Do(func() {
+		built := WorkersBuilt{}
+		found, hash, err := c.snapshot("")
+		if err != nil {
+			built.Err = err
+		} else {
+			c.entryPath = found
+			built.Inputs = model.BaseInputs{found: hash}
+		}
+		c.built.Store(&built)
+	})
+	return *c.built.Load()
+}
+
+// Built is how the build ended, once it did (nil before).
+func (c *Workers) Built() *WorkersBuilt { return c.built.Load() }
+
+// snapshot copies the entry (resolved from Options.Entry, or the resolved path given) into the component's private directory: the
+// directory emptied first (the files of an earlier build go), or a new temporary one without BaseDir. It returns the resolved entry
+// and the hash of the bytes copied.
+func (c *Workers) snapshot(resolved string) (found, hash string, err error) {
+	c.baseMu.Lock()
+	defer c.baseMu.Unlock()
+	if c.isClosing() {
+		return "", "", closed()
+	}
+	found = resolved
+	if found == "" {
+		if found, err = exec.LookPath(c.options.Entry); err == nil {
+			found, err = filepath.Abs(found)
+		}
+		if err != nil {
+			return "", "", fmt.Errorf("workers: the worker entry cannot be started: %w", err)
+		}
+	}
+	dir, copied, hash, err := writeWorkerBase(found, c.options.BaseDir)
+	if err != nil {
+		return "", "", fmt.Errorf("workers: the worker base cannot be made from %s: %w", found, err)
+	}
+	c.baseDir, c.baseCopy = dir, copied
+	return found, hash, nil
+}
+
+// baseFile is the file every worker is forked from: the base's copy, made again from the entry when it is gone (a cleaner of
+// temporary files) if the entry has the bytes the base was built with. A component that closed gives none.
+func (c *Workers) baseFile() (string, error) {
+	c.baseMu.Lock()
+	copied := c.baseCopy
+	c.baseMu.Unlock()
+	if copied != "" {
+		if _, err := os.Stat(copied); err == nil {
+			return copied, nil
+		}
+	}
+	built := c.built.Load()
+	_, hash, err := c.snapshot(c.entryPath)
+	if err != nil {
+		return "", err
+	}
+	if want := built.Inputs[c.entryPath]; hash != want {
+		c.removeBase()
+		return "", fmt.Errorf("workers: the worker base is gone and %s changed since it was built", c.entryPath)
+	}
+	c.baseMu.Lock()
+	defer c.baseMu.Unlock()
+	return c.baseCopy, nil
+}
+
+// removeBase removes the directory this component wrote its base copy into, once it wrote one.
+func (c *Workers) removeBase() {
+	c.baseMu.Lock()
+	defer c.baseMu.Unlock()
+	if c.baseDir != "" {
+		_ = os.RemoveAll(c.baseDir)
+	}
+	c.baseDir, c.baseCopy = "", ""
+}
+
+// writeWorkerBase copies the executable at path into a private directory (mode 0700, the copy 0700): dir, emptied first, or a new
+// temporary one when dir is empty. It returns the directory, the copy and the hash of the bytes written.
+func writeWorkerBase(path, dir string) (written, copied, hash string, err error) {
+	source, err := os.Open(path)
+	if err != nil {
+		return "", "", "", err
+	}
+	defer func() { _ = source.Close() }()
+	if dir == "" {
+		dir, err = os.MkdirTemp("", "chord-workers-base-")
+	} else if err = os.RemoveAll(dir); err == nil {
+		err = os.MkdirAll(dir, 0o700)
+	}
+	if err != nil {
+		return "", "", "", err
+	}
+	copied = filepath.Join(dir, "worker"+filepath.Ext(path))
+	target, err := os.OpenFile(copied, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o700)
+	if err == nil {
+		sum := sha256.New()
+		_, err = io.Copy(io.MultiWriter(target, sum), source)
+		if closeErr := target.Close(); err == nil {
+			err = closeErr
+		}
+		hash = hex.EncodeToString(sum.Sum(nil))
+	}
+	if err != nil {
+		_ = os.RemoveAll(dir)
+		return "", "", "", err
+	}
+	return dir, copied, hash, nil
+}
+
+// CreateWorkers creates the workers component on h: it routes kind itself (`host.Route`, before `Load`). Its worker base is not
+// built yet (Build).
 func CreateWorkers(h host.Host, kind *contracts.HostKind, options WorkersOptions, ctx context.Context) (*Workers, error) {
 	component := newWorkers(options, ctx)
 	route, err := h.Route(kind, host.RouteOptions{
@@ -257,6 +405,15 @@ type Workers struct {
 	routing   bool
 	idleTimer host.Timer
 	tasks     taskGroup
+	// built is how the build ended, once it did; buildOnce runs it; entryPath is the entry it resolved.
+	built     atomic.Pointer[WorkersBuilt]
+	buildOnce sync.Once
+	entryPath string
+	// baseMu guards the base copy: baseDir is the directory this component wrote it into, baseCopy the copy ("" before the
+	// Build and after the removal).
+	baseMu   sync.Mutex
+	baseDir  string
+	baseCopy string
 }
 
 func newWorkers(options WorkersOptions, ctx context.Context) *Workers {
@@ -267,14 +424,19 @@ func newWorkers(options WorkersOptions, ctx context.Context) *Workers {
 	}
 	c.closingCtx, c.closing = chordctx.WithCancel(chordctx.Background())
 	batch := state.NewBatch(func(err state.BatchError) { options.OnError(BatchWorkersError{err}) }, nil).
-		UseMicrotasks(c.loop.Queue).UseSection(c.loop.Run)
+		UseMicrotasks(c.loop.Queue).UseSection(c.loop.Run, c.loop.InSection)
 	c.state = newWorkersState(c, batch)
 	c.closeWith(ctx)
 	return c
 }
 
 // State is per address key its WorkerState; no entry when stopped or never started. A JSON watchable.
-func (c *Workers) State() state.SourceHandle { return c.state }
+func (c *Workers) State() chord.Watchable[delta.JsonValue] { return host.Expose(c.state) }
+
+// Inputs are the files its worker base was built from, with their bytes' hashes: the app's base code for its workers (Pi's
+// `inputs`, `base.inputs` of the base `createWorkers` built before it returned). Go builds the base lazily (Build): it is built
+// here when nothing did, and none when the build failed (Pi's `createWorkers` rejects then).
+func (c *Workers) Inputs() model.BaseInputs { return c.Build().Inputs }
 
 // isClosing reports whether `Close` was called.
 func (c *Workers) isClosing() bool { return c.closingCtx.Err() != nil }
@@ -361,7 +523,7 @@ func (c *Workers) Retry(address contracts.Address, _ context.Context) error {
 // Step is a rollout step shipping the kind's current set to every worker, one result per worker (§4).
 func (c *Workers) Step(name string) plugins.RolloutStep {
 	return plugins.RolloutStep{Name: name, Kinds: []string{c.options.Kind}, Reload: func(_ *plugins.Built, applied map[string][]plugins.PluginScript, ctx context.Context) (plugins.StepResult, error) {
-		hosts, err := c.rollout(applied[c.options.Kind], ctx)
+		hosts, err := c.Rollout(applied[c.options.Kind], ctx)
 		return plugins.StepResult{Hosts: hosts}, err
 	}}
 }
@@ -393,19 +555,34 @@ func (c *Workers) close(ctx context.Context) error {
 		}
 	})
 	// Each stop, then what its exit queued (the clear of a killed child's lock file).
-	for index, stop := range stops {
-		if _, err := stop.await(ctx); err != nil {
-			return err
+	exited := func(ctx context.Context) error {
+		for index, stop := range stops {
+			if _, err := stop.await(ctx); err != nil {
+				return err
+			}
+			var queue chan struct{}
+			c.loop.Run(func() { queue = records[index].queue })
+			select {
+			case <-queue:
+			case <-ctx.Done():
+				return context.Cause(ctx)
+			}
 		}
-		var queue chan struct{}
-		c.loop.Run(func() { queue = records[index].queue })
-		select {
-		case <-queue:
-		case <-ctx.Done():
-			return context.Cause(ctx)
-		}
+		return nil
 	}
-	return nil
+	// The base's copy stays until every child exited or was killed (a stopping worker may still need it), also when ctx ends the
+	// wait first: nothing forks once closing, and only the directory this component wrote goes. The kit releases the data
+	// directory's lock only after this close resolved.
+	err := exited(ctx)
+	if err == nil {
+		c.removeBase()
+		return nil
+	}
+	c.task(func() {
+		_ = exited(chordctx.Background())
+		c.removeBase()
+	})
+	return err
 }
 
 // closeWith: ctx's abort closes the component (the route's is aborted when the host closes).
@@ -477,6 +654,9 @@ func (c *Workers) forget(record *routed) {
 	if record.pending == 0 && record.child == nil && record.failure == nil {
 		delete(c.addresses, record.address.Key)
 		c.order = slices.DeleteFunc(c.order, func(key string) bool { return key == record.address.Key })
+		if c.options.Forgotten != nil {
+			c.options.Forgotten(record.address)
+		}
 	}
 }
 
@@ -504,6 +684,10 @@ func (c *Workers) start(record *routed, routing context.Context) (host.ResolvedL
 	if closing {
 		return host.ResolvedLink{}, closed()
 	}
+	// The kind's worker base: a start builds it when nothing did, and fails while it failed.
+	if built := c.Build(); built.Err != nil {
+		return host.ResolvedLink{}, c.failLocked(record, cause{err: built.Err, public: &startFailed}, "")
+	}
 	// The start's context ends with the route's or with Close, and its registrations on both end with the start.
 	own, release := chordctx.WithCancel(routing)
 	defer release(nil)
@@ -525,9 +709,16 @@ func (c *Workers) start(record *routed, routing context.Context) (host.ResolvedL
 	if c.isClosing() {
 		return host.ResolvedLink{}, closed()
 	}
+	entry, err := c.baseFile()
+	if err != nil {
+		if c.isClosing() {
+			return host.ResolvedLink{}, closed()
+		}
+		return host.ResolvedLink{}, c.failLocked(record, cause{err: err, public: &startFailed}, "")
+	}
 	var forked *child
 	var forkErr error
-	c.loop.Run(func() { forked, forkErr = c.fork(record) })
+	c.loop.Run(func() { forked, forkErr = c.fork(record, entry) })
 	if forkErr != nil {
 		return host.ResolvedLink{}, c.failLocked(record, cause{err: forkErr, public: &startFailed}, "")
 	}
@@ -602,10 +793,10 @@ func (c *Workers) startChild(record *routed, spawned *child, data delta.JsonValu
 }
 
 // fork forks the address's worker and records its events on it as they happen. It runs in a section.
-func (c *Workers) fork(record *routed) (*child, error) {
+func (c *Workers) fork(record *routed, entry string) (*child, error) {
 	address := record.address
 	var spawned *child
-	options := ForkOptions{Entry: c.options.Entry, ExecArgv: c.options.ExecArgv, Env: c.options.Env}
+	options := ForkOptions{Entry: entry, ExecArgv: c.options.ExecArgv, Env: c.options.Env}
 	if output := c.options.OnOutput; output != nil {
 		options.OnOutput = func(stream string, chunk []byte) { output(address, stream, chunk) }
 	}
@@ -883,12 +1074,13 @@ func (c *Workers) idleFor() time.Duration {
 	return defaultIdle
 }
 
-// rollout is the rollout step (§4): scripts is the set as this rollout applied it (Pi reads `plugins.current(kind)` in the
+// Rollout is the rollout step (§4), for an app that ships the set itself (without a plugins component, p2's compiled-in
+// plugins): scripts is the set as this rollout applied it (Pi reads `plugins.current(kind)` in the
 // same synchronous section as the rollout's ship; the component hands it over); the
 // failures recorded before it cleared and the held ones retried (listed once ready or failed); the set shipped to every
 // worker whose last applied set differs, in parallel. ctx's abort ends only this wait: the entries still waiting are listed
 // with its error.
-func (c *Workers) rollout(scripts []plugins.PluginScript, ctx context.Context) ([]plugins.RolloutHost, error) {
+func (c *Workers) Rollout(scripts []plugins.PluginScript, ctx context.Context) ([]plugins.RolloutHost, error) {
 	key := keyOf(scripts)
 	type entry struct {
 		host  string
@@ -1152,7 +1344,7 @@ func stateOf(component *Workers) delta.JsonValue {
 // scriptKey is one script's identity: its plugin and its digest.
 func scriptKey(script plugins.PluginScript) string {
 	digest := "failed"
-	if script.Built.Kind == plugins.BuiltFacetScript {
+	if script.Built.Kind == model.BuiltFacetScript {
 		digest = script.Built.Digest
 	}
 	return script.Plugin.Name + "@" + digest

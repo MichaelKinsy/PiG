@@ -25,7 +25,7 @@ func renderCustomMessage(c *CustomMessageComponent, width int) []string {
 func TestCustomMessageComponentRendersItsBoxPaddingLabelAndReplacesRebuiltContent(t *testing.T) {
 	message := &CustomMessage{CustomType: "note", Content: "hello"}
 	for _, pad := range []int{0, 1, 3} {
-		c := NewCustomMessageComponent(message, nil, nil, pad)
+		c := NewCustomMessageComponent(message, nil, nil, pad, nil, "", "")
 		lines := renderCustomMessage(c, 40)
 		var label string
 		for _, line := range lines {
@@ -52,7 +52,7 @@ func TestCustomMessageComponentRendersItsBoxPaddingLabelAndReplacesRebuiltConten
 		d := &dirtyText{Text: NewText("custom body")}
 		built = append(built, d)
 		return d
-	}, nil, 1)
+	}, nil, 1, nil, "", "")
 	if !c.SurfaceLive() {
 		t.Error("a message whose renderer component reports changes is not live")
 	}

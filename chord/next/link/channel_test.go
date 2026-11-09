@@ -16,7 +16,7 @@ import (
 )
 
 // pi: packages/chord/src/next/link/channel.ts
-// Ports packages/chord/test/next/link/channel.test.ts at the channel's own level: the handshake, checks, the
+// Ports packages/chord/test/link/channel.test.ts at the channel's own level: the handshake, checks, the
 // heartbeat, trusted links, and in-order handling while a message waits for an asynchronous inflate. The cases that
 // run a host over the channel (the queued messages before the peer's hello, the heartbeat references going loading, one timer
 // per host, the numbers from the host's options, the codec mismatch between two hosts) are in chord/next/host/host_channel_test.go;
@@ -314,6 +314,27 @@ func TestTheHeartbeat(t *testing.T) {
 			transported(setup.ends, setup.peerEnd)
 			if kinds := setup.peer.kinds(); !slices.Equal(kinds, []string{"hello", "pong"}) {
 				t.Fatalf("kinds = %v", kinds)
+			}
+		})
+
+		t.Run("answers each ping with a pong at once; two sides pinging at once both answer", func(t *testing.T) {
+			setup := openChannel(t, codec, false, true)
+			setup.channel.Tick(16_500, 0, 15_000, 30_000)
+			setup.clock.set(16_500)
+			// The peer pinged at the same moment: the channel answers it while its own ping is out.
+			setup.peer.send(&link.PingMessage{})
+			transported(setup.ends, setup.peerEnd)
+			if kinds := setup.peer.kinds(); !slices.Equal(kinds, []string{"hello", "ping", "pong"}) {
+				t.Fatalf("kinds = %v", kinds)
+			}
+			setup.peer.send(&link.PongMessage{})
+			transported(setup.ends, setup.peerEnd)
+			// Both answered: the channel's ping is armed again, so another 15 s of silence pings once more and the link lives.
+			setup.clock.set(32_000)
+			setup.channel.Tick(32_000, 0, 15_000, 30_000)
+			transported(setup.ends, setup.peerEnd)
+			if kinds := setup.peer.kinds(); !slices.Equal(kinds, []string{"hello", "ping", "pong", "ping"}) || setup.peer.isClosed() {
+				t.Fatalf("kinds = %v, closed = %v", kinds, setup.peer.isClosed())
 			}
 		})
 	})

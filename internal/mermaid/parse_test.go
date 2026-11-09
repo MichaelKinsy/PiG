@@ -2,16 +2,18 @@ package mermaid
 
 import (
 	"bufio"
+	"compress/gzip"
 	"encoding/json"
 	"os"
 	"reflect"
 	"testing"
 )
 
-// TestParseMatchesUpstream diffs pig's parser model against grok-mermaid's own
-// exported parse functions (parse.js), structurally, before layout lands. It
-// covers diagramKind dispatch and the parsed nodes/edges/groups/infos/items of
-// all five diagram types plus every fallback (null-model) path.
+// TestParseMatchesUpstream diffs pig's parser model against lovely-mermaid@0.3.3's
+// own exported parse functions (diagrams/*.js), structurally, before layout lands.
+// It covers diagramKind dispatch and the parsed nodes/edges/groups/sections/
+// classes/hrefs/classDefs/items/activations of the five diagram types that export
+// a parser, plus every fallback (null-model) path.
 
 func strsJSON(s []string) []any {
 	out := []any{}
@@ -31,7 +33,21 @@ func pstr(p *string) any {
 func nodesJSON(nodes []node) []any {
 	out := []any{}
 	for _, n := range nodes {
-		out = append(out, map[string]any{"label": n.label, "shape": string(n.shape)})
+		m := map[string]any{"label": n.label, "shape": string(n.shape)}
+		if n.sections != nil {
+			sections := []any{}
+			for _, sec := range n.sections {
+				sections = append(sections, strsJSON(sec))
+			}
+			m["sections"] = sections
+		}
+		if n.classes != nil {
+			m["classes"] = strsJSON(n.classes)
+		}
+		if n.href != "" {
+			m["href"] = n.href
+		}
+		out = append(out, m)
 	}
 	return out
 }
@@ -39,10 +55,17 @@ func nodesJSON(nodes []node) []any {
 func edgesJSON(edges []edge) []any {
 	out := []any{}
 	for _, e := range edges {
-		out = append(out, map[string]any{
+		m := map[string]any{
 			"from": e.from, "to": e.to, "label": pstr(e.label),
 			"headTo": string(e.headTo), "headFrom": string(e.headFrom), "line": string(e.line),
-		})
+		}
+		if e.cardFrom != "" {
+			m["cardFrom"] = e.cardFrom
+		}
+		if e.cardTo != "" {
+			m["cardTo"] = e.cardTo
+		}
+		out = append(out, m)
 	}
 	return out
 }
@@ -59,20 +82,31 @@ func groupsJSON(groups []group) []any {
 	return out
 }
 
-func infosJSON(infos []classInfo) []any {
+func nodeGroupJSON(ng []*int) []any {
 	out := []any{}
-	for _, ci := range infos {
-		out = append(out, map[string]any{
-			"annotation": pstr(ci.annotation), "attrs": strsJSON(ci.attrs), "methods": strsJSON(ci.methods),
-		})
+	for _, p := range ng {
+		if p == nil {
+			out = append(out, nil)
+		} else {
+			out = append(out, *p)
+		}
 	}
 	return out
+}
+
+func truncatedJSON(s string) any {
+	if s == "" {
+		return nil
+	}
+	return s
 }
 
 func graphModelJSON(g *graph) map[string]any {
 	return map[string]any{
 		"nodes": nodesJSON(g.nodes), "edges": edgesJSON(g.edges),
-		"dir": string(g.dir), "groups": groupsJSON(g.groups), "warnings": strsJSON(g.warnings),
+		"dir": string(g.dir), "groups": groupsJSON(g.groups), "nodeGroup": nodeGroupJSON(g.nodeGroup),
+		"warnings": strsJSON(g.warnings), "classDefs": classDefsJSON(g.classDefs),
+		"truncated": truncatedJSON(g.truncated),
 	}
 }
 
@@ -98,10 +132,24 @@ func seqModelJSON(s *sequence) map[string]any {
 			items = append(items, map[string]any{"kind": "divider", "text": it.str})
 		}
 	}
-	return map[string]any{"labels": strsJSON(s.labels), "items": items}
+	activations := []any{}
+	for _, a := range s.activations {
+		var to any
+		if a.to != activationOpen {
+			to = a.to
+		}
+		activations = append(activations, map[string]any{"at": a.at, "from": a.from, "to": to})
+	}
+	return map[string]any{
+		"labels": strsJSON(s.labels), "items": items, "activations": activations,
+		"warnings": strsJSON(s.warnings), "truncated": truncatedJSON(s.truncated),
+	}
 }
 
+// buildParseModel mirrors mermaid-parse-pi.mjs: render() strips control
+// characters before dispatching, so the parsers see the stripped source.
 func buildParseModel(src string) any {
+	src = stripControls(src)
 	switch diagramKind(src) {
 	case "flowchart":
 		if g := parseGraph(src); g != nil {
@@ -112,16 +160,12 @@ func buildParseModel(src string) any {
 			return graphModelJSON(g)
 		}
 	case "class":
-		if g, infos, ok := parseClass(src); ok {
-			m := graphModelJSON(g)
-			m["infos"] = infosJSON(infos)
-			return m
+		if g := parseClass(src); g != nil {
+			return graphModelJSON(g)
 		}
 	case "er":
-		if g, infos, ok := parseEr(src); ok {
-			m := graphModelJSON(g)
-			m["infos"] = infosJSON(infos)
-			return m
+		if g := parseEr(src); g != nil {
+			return graphModelJSON(g)
 		}
 	case "sequence":
 		if s := parseSequence(src); s != nil {
@@ -144,14 +188,18 @@ func canonical(t *testing.T, v any) any {
 }
 
 func TestParseMatchesUpstream(t *testing.T) {
-	f, err := os.Open("testdata/parse-golden.jsonl")
+	f, err := os.Open("testdata/parse-golden.jsonl.gz")
 	if err != nil {
 		t.Fatalf("open goldens: %v", err)
 	}
 	defer func() { _ = f.Close() }()
+	unzipped, err := gzip.NewReader(f)
+	if err != nil {
+		t.Fatalf("gunzip goldens: %v", err)
+	}
 
 	var total, nullModels int
-	sc := bufio.NewScanner(f)
+	sc := bufio.NewScanner(unzipped)
 	sc.Buffer(make([]byte, 1<<20), 1<<20)
 	for sc.Scan() {
 		if len(sc.Bytes()) == 0 {
@@ -191,5 +239,5 @@ func TestParseMatchesUpstream(t *testing.T) {
 	if total == 0 {
 		t.Fatal("no goldens")
 	}
-	t.Logf("checked %d sources (%d null-model fallbacks) across 5 diagram types", total, nullModels)
+	t.Logf("checked %d sources (%d null-model fallbacks) across the 5 diagram types with an exported parser", total, nullModels)
 }

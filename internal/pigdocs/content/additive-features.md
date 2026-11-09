@@ -1,6 +1,6 @@
 # Additive features
 
-These PiG-only features have no Pi equivalent. This page lists the ones that matter when you extend or modify PiG: extensions and SDKs, Piglets and Binaries, and diagnostic commands. 22 more additive records cover performance, crash handling, security, and platform details; they do not change how you author. Search this page with `grep -n -i <word>`. [Divergences](divergences.md) lists the places where PiG behaves differently from Pi.
+These PiG-only features have no Pi equivalent. This page lists the ones that matter when you extend or modify PiG: extensions and SDKs, Piglets and Binaries, and diagnostic commands. 23 more additive records cover performance, crash handling, security, and platform details; they do not change how you author. Search this page with `grep -n -i <word>`. [Divergences](divergences.md) lists the places where PiG behaves differently from Pi.
 
 | ID | Title | Summary |
 |---|---|---|
@@ -27,3 +27,5 @@ These PiG-only features have no Pi equivalent. This page lists the ones that mat
 | D214 | An extension can own thinking runs, so a run that draws no rows leaves no blank rows (ownThinkingRuns) | An extension that calls ownThinkingRuns() leaves no blank rows around a thinking run that is hidden or rewritten to empty text, and can turn that on and off while it runs. |
 | D216 | A configured local Package that does not exist is reported at startup and by pig install --validate-only | A local Package in packages[] whose directory is gone shows as a session warning and fails pig install --validate-only, with its resolved path and the pig remove that drops it. |
 | D223 | The plugins' Node subprocess: a store, a spare process, exit details, and the link waits it needs | A program that evaluates chord plugins can give them a SQLite store, keep a spare Node process warm, read why the process ended, and wait for a host to handle a link's deliveries. |
+| D273 | A Go handler can read the key order of an event's objects (Context.ObjectKeys) | A Go extension reads the keys of an object of the event it is handling in the order Object.keys gives them in Pi; Node, Rust, Python and Lisp objects already keep that order. |
+| D276 | A message or entry renderer of an SDK keeps per-message state and takes the mouse events of its view (MessageViewEvent, EntryViewEvent, MessageRenderOptions.State) | A Go, Rust, Python or Lisp extension keeps state per displayed message or entry in its renderer and gets clicks on its view's mouse regions, so a click-expanded card works in every SDK as in Pi. |

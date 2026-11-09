@@ -4,6 +4,8 @@ package runner
 
 import (
 	"encoding/json"
+	"encoding/json/jsontext"
+	"errors"
 	"fmt"
 	"io"
 	"math/big"
@@ -15,6 +17,8 @@ import (
 	"time"
 	"unicode/utf16"
 	"unicode/utf8"
+
+	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 )
 
 // JSONAliasRule identifies scalar identities at explicit JSON pointer patterns. * matches one segment; ** matches zero or more. No field is removed.
@@ -413,13 +417,12 @@ func parseJSONRecords(output string) ([]any, error) {
 	lines := strings.Split(strings.TrimSuffix(output, "\n"), "\n")
 	records := make([]any, 0, len(lines))
 	for i, line := range lines {
-		decoder := json.NewDecoder(strings.NewReader(line))
-		decoder.UseNumber()
+		decoder := jsontext.NewDecoder(strings.NewReader(line), jsonopts.Parse)
 		value, err := decodeJSONValue(decoder, line)
 		if err != nil {
 			return nil, fmt.Errorf("JSONL record %d: %w", i+1, err)
 		}
-		if _, err := decoder.Token(); err != io.EOF {
+		if _, err := decoder.ReadToken(); !errors.Is(err, io.EOF) {
 			return nil, fmt.Errorf("JSONL record %d has trailing data", i+1)
 		}
 		if _, ok := value.(map[string]any); !ok {
@@ -430,21 +433,21 @@ func parseJSONRecords(output string) ([]any, error) {
 	return records, nil
 }
 
-func decodeJSONValue(d *json.Decoder, source string) (any, error) {
-	token, err := readJSONToken(d, source)
+func decodeJSONValue(d *jsontext.Decoder, source string) (any, error) {
+	kind, token, err := readJSONToken(d, source)
 	if err != nil {
 		return nil, err
 	}
-	switch token {
-	case json.Delim('{'):
+	switch kind {
+	case '{':
 		value := map[string]any{}
-		for d.More() {
-			key, err := readJSONToken(d, source)
+		for d.PeekKind() != '}' {
+			keyKind, key, err := readJSONToken(d, source)
 			if err != nil {
 				return nil, err
 			}
 			name, ok := key.(string)
-			if !ok {
+			if !ok || keyKind != '"' {
 				return nil, fmt.Errorf("object key is not a string")
 			}
 			if _, ok := value[name]; ok {
@@ -456,35 +459,43 @@ func decodeJSONValue(d *json.Decoder, source string) (any, error) {
 			}
 			value[name] = child
 		}
-		_, err := d.Token()
+		_, err := d.ReadToken()
 		return value, err
-	case json.Delim('['):
+	case '[':
 		value := []any{}
-		for d.More() {
+		for d.PeekKind() != ']' {
 			child, err := decodeJSONValue(d, source)
 			if err != nil {
 				return nil, err
 			}
 			value = append(value, child)
 		}
-		_, err := d.Token()
+		_, err := d.ReadToken()
 		return value, err
 	default:
 		return token, nil
 	}
 }
 
-func readJSONToken(d *json.Decoder, source string) (any, error) {
+// readJSONToken reads one token and returns its kind and its value: a string as its comparison identity, a number as a json.Number holding
+// its text, a boolean as a bool, null as nil. A delimiter has no value.
+func readJSONToken(d *jsontext.Decoder, source string) (jsontext.Kind, any, error) {
 	start := d.InputOffset()
-	token, err := d.Token()
+	token, err := d.ReadToken()
 	if err != nil {
-		return nil, err
+		return 0, nil, err
 	}
-	if value, ok := token.(string); ok {
+	switch kind := token.Kind(); kind {
+	case '"':
 		raw := strings.TrimLeft(source[start:d.InputOffset()], ",: \t\r\n")
-		return jsonStringIdentity(raw, value), nil
+		return kind, jsonStringIdentity(raw, token.String()), nil
+	case '0':
+		return kind, json.Number(token.String()), nil
+	case 't', 'f':
+		return kind, token.Bool(), nil
+	default:
+		return kind, nil, nil
 	}
-	return token, nil
 }
 
 // jsonStringIdentity retains lone UTF-16 units as WTF-8 bytes inside comparison strings only. encoding/json has already validated the token; its replacement-character decoding must not collapse distinct JSON strings or keys.

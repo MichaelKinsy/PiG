@@ -1041,35 +1041,6 @@
    "new": "func ZaiProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
   }
  ],
- "packages/chord/src/cluster.ts": [
-  {
-   "file": "chord/host/cluster.go",
-   "old": "connection.peer.kind == KindHost && connection.open() && connection.synced {",
-   "new": "connection.peer.kind == KindHost && connection.open() {"
-  },
-  {
-   "file": "chord/host/cluster.go",
-   "old": "\treload.waitForRetirement()\n\tvar participants",
-   "new": "\tvar participants"
-  },
-  {
-   "file": "chord/host/cluster.go",
-   "old": "\t\tname := connection.name()\n\t\t\tif name == \"\" {\n\t\t\t\tname = \"child\"\n\t\t\t}",
-   "new": "\t\tname := \"child\""
-  },
-  {
-   "file": "chord/host/cluster.go",
-   "old": "CodeVersion: report.CodeVersion, Previous: report.Previous, Changed: report.Changed, Removed: report.Removed, Prepared: report.Prepared, Gated: report.Gated}\n}\n\nfunc reportToWire",
-   "new": "CodeVersion: report.CodeVersion, Previous: report.Previous, Removed: report.Removed, Prepared: report.Prepared, Gated: report.Gated}\n}\n\nfunc reportToWire"
-  }
- ],
- "packages/chord/src/loader.ts": [
-  {
-   "file": "chord/host/loader.go",
-   "old": "\t\tName: info.name,\n",
-   "new": "\t\tName: info.name + \"?\",\n"
-  }
- ],
  "packages/chord/src/next-node/compression.ts": [
   {
    "file": "chord/nextnode/compression.go",
@@ -1126,13 +1097,6 @@
    "new": "strings.HasPrefix(name, \"x-forwarder-\")"
   }
  ],
- "packages/chord/src/next-node/http/node.ts": [
-  {
-   "file": "chord/nextnode/http/node.go",
-   "old": "WireRefusal{Status: 501}",
-   "new": "WireRefusal{Status: 500}"
-  }
- ],
  "packages/chord/src/next-node/http/request.ts": [
   {
    "file": "chord/nextnode/http/request.go",
@@ -1163,16 +1127,16 @@
  ],
  "packages/chord/src/next-node/plugins/build.ts": [
   {
-   "file": "chord/nextnode/plugins/plugins_build.go",
+   "file": "chord/nextnode/plugins/build/build_facet.go",
    "old": "entry.originalLine+1",
    "new": "entry.originalLine"
   }
  ],
  "packages/chord/src/next-node/plugins/discover.ts": [
   {
-   "file": "chord/nextnode/plugins/plugins_discover.go",
-   "old": "return compareUTF16(a.Name, b.Name) })",
-   "new": "return compareUTF16(b.Name, a.Name) })"
+   "file": "chord/nextnode/plugins/model/model_discover.go",
+   "old": "return CompareUTF16(a.Name, b.Name) })",
+   "new": "return CompareUTF16(b.Name, a.Name) })"
   }
  ],
  "packages/chord/src/next-node/plugins/evaluate.ts": [
@@ -1185,22 +1149,22 @@
  "packages/chord/src/next-node/plugins/install.ts": [
   {
    "file": "chord/nextnode/plugins/plugins_install.go",
-   "old": "install failed (exit",
-   "new": "install did not succeed (exit"
+   "old": "%s failed (exit",
+   "new": "%s did not succeed (exit"
   }
  ],
  "packages/chord/src/next-node/plugins/plugins.ts": [
   {
    "file": "chord/nextnode/plugins/plugins_plugins.go",
-   "old": "if !slices.ContainsFunc(plugins, func(plugin Plugin) bool { return plugin.Name == name }) {",
-   "new": "if slices.ContainsFunc(plugins, func(plugin Plugin) bool { return plugin.Name == name }) {"
+   "old": "if !slices.ContainsFunc(plugins, func(plugin model.Plugin) bool { return plugin.Name == name }) {",
+   "new": "if slices.ContainsFunc(plugins, func(plugin model.Plugin) bool { return plugin.Name == name }) {"
   }
  ],
  "packages/chord/src/next-node/plugins/runtime.ts": [
   {
    "file": "chord/nextnode/plugins/plugins_runtime.go",
-   "old": "return host.LoadReport{Failed: failures(wire.Failed)}, nil",
-   "new": "return host.LoadReport{}, nil"
+   "old": "return host.LoadReport{Failed: failures(wire.Failed)}, failures(wire.Required), nil",
+   "new": "return host.LoadReport{}, failures(wire.Required), nil"
   }
  ],
  "packages/chord/src/next-node/plugins/stack.ts": [
@@ -1215,6 +1179,11 @@
    "file": "chord/nextnode/plugins/plugins_watcher.go",
    "old": "latest <= snapshot.Plugins[name]",
    "new": "latest < snapshot.Plugins[name]"
+  },
+  {
+   "file": "chord/nextnode/plugins/plugins_watcher.go",
+   "old": "\t\tif hash != \"\" {\n\t\t\trecord[files[i]] = hash",
+   "new": "\t\tif hash == \"\" {\n\t\t\thash = \"unreadable\"\n\t\t}\n\t\tif hash != \"\" {\n\t\t\trecord[files[i]] = hash"
   }
  ],
  "packages/chord/src/next-node/workers/control.ts": [
@@ -1582,8 +1551,8 @@
   },
   {
    "file": "chord/next/host/remote_provider.go",
-   "old": "Code: data.CodeNotReady, Message: fmt.Sprintf(\"hold %d: not bound yet\", served.id)",
-   "new": "Code: data.CodeUnavailable, Message: fmt.Sprintf(\"hold %d: not bound yet\", served.id)"
+   "old": "p.calls.len() >= p.limit",
+   "new": "p.calls.len() > p.limit"
   }
  ],
  "packages/chord/src/next/remote/relay.ts": [
@@ -1691,44 +1660,11 @@
    "new": "write := &PutWrite{Table: table, Row: row.Row, Version: version + 1, Columns: row.Columns}"
   }
  ],
- "packages/chord/src/node.ts": [
-  {
-   "file": "chord/host/loader.go",
-   "old": "\t\tName: info.name,\n",
-   "new": "\t\tName: info.name + \"?\",\n"
-  }
- ],
- "packages/chord/src/publish.ts": [
-  {
-   "file": "chord/host/publish.go",
-   "old": "if queue.draining || queue.held > 0 {",
-   "new": "if queue.held > 0 {"
-  },
-  {
-   "file": "chord/host/publish.go",
-   "old": "if current := deliveringQueue(); current != nil && current != queue {\n\t\t// The queue",
-   "new": "if current := deliveringQueue(); current != nil && current == nil {\n\t\t// The queue"
-  }
- ],
- "packages/chord/src/remote.ts": [
-  {
-   "file": "chord/host/remote.go",
-   "old": "target.decoder.Decode(frame.Ops)",
-   "new": "target.decoder.Decode(nil)"
-  }
- ],
- "packages/chord/src/schema.ts": [
-  {
-   "file": "chord/host/schema.go",
-   "old": "^ (b >> 13)",
-   "new": "^ (b >> 12)"
-  }
- ],
  "packages/chord/src/telemetry-sqlite/store.ts": [
   {
    "file": "chord/telemetrysqlite/store.go",
-   "old": "ORDER BY started_ms DESC, trace_id LIMIT ?",
-   "new": "ORDER BY started_ms, trace_id LIMIT ?"
+   "old": "ORDER BY started_us DESC, trace_id LIMIT ?",
+   "new": "ORDER BY started_us, trace_id LIMIT ?"
   },
   {
    "file": "chord/telemetrysqlite/store.go",
@@ -1737,248 +1673,8 @@
   },
   {
    "file": "chord/telemetrysqlite/store.go",
-   "old": "ORDER BY started_ms, id LIMIT 1) = ?",
-   "new": "ORDER BY started_ms DESC, id LIMIT 1) = ?"
-  },
-  {
-   "file": "chord/telemetrysqlite/store.go",
-   "old": "ORDER BY started_ms, id\", string(encoded))",
-   "new": "ORDER BY started_ms DESC, id\", string(encoded))"
-  }
- ],
- "packages/chord/test/next/examples/01-objects.ts": [
-  {
-   "file": "chord/next/data/args.go",
-   "old": "if err := Check(validator, raw, ReasonArgs, ctx); err != nil {",
-   "new": "if err := Check(validator, raw, ReasonParams, ctx); err != nil {"
-  }
- ],
- "packages/chord/test/next/examples/02-documents.ts": [
-  {
-   "file": "chord/next/documents/transaction.go",
-   "old": "\te.draft = nil\n\te.retire = true",
-   "new": "\te.draft = nil\n\te.retire = false"
-  }
- ],
- "packages/chord/test/next/examples/03-derives.ts": [
-  {
-   "file": "chord/next/state/derive.go",
-   "old": "if pointer == nil {",
-   "new": "if pointer != nil {"
-  }
- ],
- "packages/chord/test/next/examples/04-watches.ts": [
-  {
-   "file": "chord/next/state/derive.go",
-   "old": "if beforeKind != framedNoValue {",
-   "new": "if beforeKind == framedNoValue {"
-  }
- ],
- "packages/chord/test/next/examples/05-errors.ts": [
-  {
-   "file": "chord/next/host/host_dependencies.go",
-   "old": "return (err.Code == data.CodeInvalid && err.Reason == data.ReasonCycle) || err.Code == data.CodeForbidden",
-   "new": "return err.Code == data.CodeForbidden"
-  }
- ],
- "packages/chord/test/next/examples/06-natives.ts": [
-  {
-   "file": "chord/next/host/host_native.go",
-   "old": "if state.kind == nativeUnopened || state.kind == nativeOpening {",
-   "new": "if state.kind != nativeUnopened || state.kind == nativeOpening {"
-  }
- ],
- "packages/chord/test/next/examples/07-failures.ts": [
-  {
-   "file": "chord/next/host/host_backoff.go",
-   "old": "const firstDelay = time.Second",
-   "new": "const firstDelay = 6 * time.Second"
-  }
- ],
- "packages/chord/test/next/examples/08-remote.ts": [
-  {
-   "file": "chord/next/host/remote_replica.go",
-   "old": "\tr.state = replicaState{kind: replicaValue, value: value}\n\tr.ops = ops",
-   "new": "\tr.state = replicaState{kind: replicaValue, value: r.state.value}\n\tr.ops = ops"
-  }
- ],
- "packages/chord/test/next/examples/09-calls.ts": [
-  {
-   "file": "chord/next/link/errors.go",
-   "old": "if kind != \"plugin\" {",
-   "new": "if kind == \"plugin\" {"
-  },
-  {
-   "file": "chord/next/link/values.go",
-   "old": "if node.Len() != 1 || !isNumber || index < 0 || index != math.Trunc(index) || index >= float64(len(segments)) {",
-   "new": "if node.Len() == 1 || !isNumber || index < 0 || index != math.Trunc(index) || index >= float64(len(segments)) {"
-  }
- ],
- "packages/chord/test/next/examples/10-drops.ts": [
-  {
-   "file": "chord/next/host/host_reference.go",
-   "old": "b.parked.flush(b.send, func() bool { return b.refState().Kind == RefStateLive })",
-   "new": "b.parked.flush(b.send, func() bool { return b.refState().Kind != RefStateLive })"
-  }
- ],
- "packages/chord/test/next/examples/11-linger-and-retry.ts": [
-  {
-   "file": "chord/next/host/host_object.go",
-   "old": "if kind != objectLive || o.served.linger == 0 {",
-   "new": "if kind != objectLive || true {"
-  }
- ],
- "packages/chord/test/next/examples/12-routes.ts": [
-  {
-   "file": "chord/next/host/host_ctx.go",
-   "old": "if c.settling == nil {",
-   "new": "if c.settling != nil {"
-  },
-  {
-   "file": "chord/next/host/host_ctx.go",
-   "old": "if acquireErr != nil {",
-   "new": "if acquireErr == nil {"
-  }
- ],
- "packages/chord/test/next/examples/13-relay.ts": [
-  {
-   "file": "chord/next/link/websocket.go",
-   "old": "if socket.ReadyState() == socketConnecting {",
-   "new": "if socket.ReadyState() != socketConnecting {"
-  },
-  {
-   "file": "chord/next/link/ipc.go",
-   "old": "if err != nil {",
-   "new": "if err == nil {"
-  }
- ],
- "packages/chord/test/next/examples/14-flow-control.ts": [
-  {
-   "file": "chord/next/host/remote_hold.go",
-   "old": "if member.pending.Size() == 0 {",
-   "new": "if member.pending.Size() != 0 {"
-  }
- ],
- "packages/chord/test/next/examples/15-revocation.ts": [
-  {
-   "file": "chord/next/host/host_host.go",
-   "old": "if each.role == linkRoleRoute {",
-   "new": "if each.role != linkRoleRoute {"
-  },
-  {
-   "file": "chord/next/host/remote_host_link.go",
-   "old": "if l.role == linkRoleParent {",
-   "new": "if l.role != linkRoleParent {"
-  }
- ],
- "packages/chord/test/next/examples/16-presence-and-activity.ts": [
-  {
-   "file": "chord/next/host/host_activity.go",
-   "old": "a.counts.Calls += by",
-   "new": "a.counts.Calls -= by"
-  }
- ],
- "packages/chord/test/next/examples/17-limits-and-compression.ts": [
-  {
-   "file": "chord/next/link/part.go",
-   "old": "if inflated == nil {",
-   "new": "if inflated != nil {"
-  }
- ],
- "packages/chord/test/next/examples/18-routines.ts": [
-  {
-   "file": "chord/next/host/host_routines.go",
-   "old": "if start.Kind == state.StartValue {",
-   "new": "if start.Kind != state.StartValue {"
-  }
- ],
- "packages/chord/test/next/examples/19-jobs.ts": [
-  {
-   "file": "chord/next/host/jobs_job.go",
-   "old": "if refused = current.state != invocationRunning; refused {",
-   "new": "if refused = current.state == invocationRunning; refused {"
-  },
-  {
-   "file": "chord/next/host/jobs_run_states.go",
-   "old": "if stored != nil {",
-   "new": "if stored == nil {"
-  }
- ],
- "packages/chord/test/next/examples/20-tables.ts": [
-  {
-   "file": "chord/next/store/query.go",
-   "old": "if query.direction != \"\" && query.direction != direction {",
-   "new": "if query.direction == \"\" && query.direction != direction {"
-  }
- ],
- "packages/chord/test/next/examples/21-persisted-documents.ts": [
-  {
-   "file": "chord/next/store/engine.go",
-   "old": "if changed != 1 {",
-   "new": "if changed == 1 {"
-  }
- ],
- "packages/chord/test/next/examples/22-migrations.ts": [
-  {
-   "file": "chord/next/store/table_evolve.go",
-   "old": "if err := e.assertBefore(\"rename\"); err != nil {",
-   "new": "if err := e.assertBefore(\"rename\"); err == nil {"
-  }
- ],
- "packages/chord/test/next/examples/23-keyed-watches.ts": [
-  {
-   "file": "chord/next/documents/address_source.go",
-   "old": "source.retired = true",
-   "new": "source.retired = false"
-  }
- ],
- "packages/chord/test/next/examples/24-keyed-members.ts": [
-  {
-   "file": "chord/next/host/host_reference_keys.go",
-   "old": "for first := true; wait != nil; first = false {",
-   "new": "for first := true; wait != nil && !first; first = false {"
-  }
- ],
- "packages/chord/test/next/examples/25-export-import.ts": [
-  {
-   "file": "chord/next/store/import.go",
-   "old": "if content.Kind == \"base\" {",
-   "new": "if content.Kind != \"base\" {"
-  }
- ],
- "packages/chord/test/next/examples/28-persisted-jobs.ts": [
-  {
-   "file": "chord/next/host/jobs_run_states.go",
-   "old": "if each == nil || !found || tracker == nil {",
-   "new": "if each != nil || !found || tracker == nil {"
-  }
- ],
- "packages/chord/test/next/examples/29-registries.ts": [
-  {
-   "file": "chord/next/registries/registry.go",
-   "old": "if provider.Compose != nil {",
-   "new": "if provider.Compose == nil {"
-  }
- ],
- "packages/chord/test/next/examples/30-host-root.ts": [
-  {
-   "file": "chord/next/host/host_root.go",
-   "old": "if ctx.Err() != nil {",
-   "new": "if ctx.Err() == nil {"
-  }
- ],
- "packages/chord/test/next/examples/31-parked-dependencies.ts": [
-  {
-   "file": "chord/next/host/host_dependencies.go",
-   "old": "shown = firstFailed",
-   "new": "shown = refLoading"
-  }
- ],
- "packages/chord/test/next/examples/32-startup.ts": [
-  {
-   "file": "chord/next/host/remote_remote_object.go",
-   "old": "func (*remoteObject) blocksFirstPass() bool { return false }",
-   "new": "func (*remoteObject) blocksFirstPass() bool { return true }"
+   "old": "const spanOrder = \"started_us, length(id), id\"",
+   "new": "const spanOrder = \"started_us DESC, length(id), id\""
   }
  ],
  "packages/codemode/src/cloudflare.ts": [
@@ -4252,6 +3948,11 @@
    "file": "ai/openai_responses.go",
    "old": "Type: \"additional_tools\", Role: \"developer\"",
    "new": "Type: \"additional_tools\", Role: \"user\""
+  },
+  {
+   "file": "ai/openai_responses.go",
+   "old": "\tif options.SupportsToolSearch {\n\t\treturn TranscriptToolSupportAdditions",
+   "new": "\tif options.SupportsToolSearch && options.SupportsAdditionalTools {\n\t\treturn TranscriptToolSupportAdditions"
   }
  ],
  "packages/ai/src/api/openai-codex-responses.ts": [
@@ -4273,6 +3974,11 @@
    "file": "ai/tool_flow.go",
    "old": "ToolResultMessage{ToolCallID: call.ID, ToolName: call.Name,",
    "new": "ToolResultMessage{ToolCallID: call.Name, ToolName: call.Name,"
+  },
+  {
+   "file": "ai/transform_messages.go",
+   "old": "\tif !message.IsError {\n\t\treturn nil\n\t}\n\tvar images",
+   "new": "\tvar images"
   }
  ],
  "packages/ai/src/api/openrouter-images.ts": [
@@ -4629,6 +4335,11 @@
    "file": "coding/extension/opaque_types.go",
    "old": "orderedjson.UnmarshalFields(data, (*plain)(r), \"details\")",
    "new": "orderedjson.UnmarshalFields(data, (*plain)(r), \"detailz\")"
+  },
+  {
+   "file": "coding/extension/keybinding_hints.go",
+   "old": "func (ToolRenderContext) KeyHint(keybinding, description string) string {\n\treturn tui.KeyHint(tui.ActionKeyText(keybinding), description)",
+   "new": "func (ToolRenderContext) KeyHint(keybinding, description string) string {\n\treturn tui.KeyHint(tui.ActionKeyText(keybinding), \"\")"
   }
  ],
  "packages/coding-agent/src/core/extensions/virtual-modules.ts": [
@@ -5510,6 +5221,1001 @@
    "file": "internal/evals/evalsuites/audit.go",
    "old": "chordjson.ObjectOf(\"type\", \"string\", \"const\", \"match\")",
    "new": "chordjson.ObjectOf(\"type\", \"string\", \"const\", \"mutant\")"
+  }
+ ],
+ "packages/schema/src/builders.ts": [
+  {
+   "file": "schema/builders.go",
+   "old": "chordjson.ObjectOf(\"type\", \"string\"), options)",
+   "new": "chordjson.ObjectOf(\"type\", \"number\"), options)"
+  },
+  {
+   "file": "schema/builders.go",
+   "old": "\tif len(schema) > 0 {\n\t\treturn schema[0]\n\t}\n\treturn &Object{}",
+   "new": "\treturn &Object{}"
+  },
+  {
+   "file": "schema/builders.go",
+   "old": "ObjectOf(\"anyOf\", schemaList(schemas))",
+   "new": "ObjectOf(\"oneOf\", schemaList(schemas))"
+  }
+ ],
+ "packages/schema/src/types.ts": [
+  {
+   "file": "schema/types.go",
+   "old": "Draft7 Draft = \"7\"",
+   "new": "Draft7 Draft = \"\""
+  }
+ ],
+ "packages/schema/src/validator.ts": [
+  {
+   "file": "schema/validator.go",
+   "old": "return ParseResult{OK: true, Value: value}, nil",
+   "new": "return ParseResult{OK: false, Value: value}, nil"
+  }
+ ],
+ "packages/mcp/src/config.ts": [
+  {
+   "file": "mcp/config.go",
+   "old": "mcpshared.ValidateMcpServerConfig(name, raw, options)",
+   "new": "mcpshared.ValidateMcpServerConfig(name+\"x\", raw, options)"
+  }
+ ],
+ "packages/mcp/src/input-schema.ts": [
+  {
+   "file": "mcp/input_schema.go",
+   "old": "!obj.Has(\"properties\")",
+   "new": "obj.Has(\"properties\")"
+  }
+ ],
+ "packages/mcp/src/naming.ts": [
+  {
+   "file": "mcp/naming.go",
+   "old": "return mcpshared.McpNamespace(server)",
+   "new": "return mcpshared.McpNamespace(server + \"_\")"
+  }
+ ],
+ "packages/mcp/src/oauth/client-settings.ts": [
+  {
+   "file": "mcp/oauth/client_settings.go",
+   "old": "settings.ClientID == \"\" && settings.ClientName == \"\" && documents != nil",
+   "new": "settings.ClientID == \"\" && settings.ClientName != \"\" && documents != nil"
+  }
+ ],
+ "packages/mcp/src/oauth/errors.ts": [
+  {
+   "file": "mcp/oauth/errors.go",
+   "old": "\treturn \"Another process is refreshing the MCP server's tokens\"",
+   "new": "\treturn \"Another process is refreshing the MCP server tokens\""
+  }
+ ],
+ "packages/mcp/src/oauth/sign-in.ts": [
+  {
+   "file": "mcp/oauth/sign_in.go",
+   "old": "return \"Sign-in cancelled\"",
+   "new": "return \"Sign-in canceled\""
+  }
+ ],
+ "packages/mcp/src/output-limit.ts": [
+  {
+   "file": "mcp/output_limit.go",
+   "old": "tokens := (truncation.totalBytes + 3) / 4",
+   "new": "tokens := (truncation.totalBytes + 2) / 4"
+  }
+ ],
+ "packages/mcp/src/transports/pipe.ts": [
+  {
+   "file": "mcp/pipe.go",
+   "old": "t.lines.readStdout(bytes)",
+   "new": "t.lines.readStdout(nil)"
+  }
+ ],
+ "packages/mcp/src/oauth/auth-provider.ts": [
+  {
+   "file": "mcp/oauth/auth_provider.go",
+   "old": "if state == nil || state.Tokens == nil || state.Tokens.RefreshToken == \"\" {",
+   "new": "if state == nil || state.Tokens == nil || state.Tokens.RefreshToken != \"\" {"
+  }
+ ],
+ "packages/mcp/src/oauth/loopback.ts": [
+  {
+   "file": "mcp/oauth/loopback.go",
+   "old": "if strings.TrimFunc(input, jsstring.IsSpace) == \"\" {",
+   "new": "if input == \"\" {"
+  }
+ ],
+ "packages/telemetry/src/memory.ts": [
+  {
+   "file": "telemetry/memory.go",
+   "old": "timed.intervalMs > *query.StartMax",
+   "new": "timed.intervalMs >= *query.StartMax"
+  },
+  {
+   "file": "telemetry/memory.go",
+   "old": "\tif len(spans) == 0 {\n\t\treturn nil, nil\n\t}\n\treturn &StoredTrace{TraceID: traceID, Spans: spans}, nil",
+   "new": "\tif len(spans) < 2 {\n\t\treturn nil, nil\n\t}\n\treturn &StoredTrace{TraceID: traceID, Spans: spans}, nil"
+  },
+  {
+   "file": "telemetry/memory_now.go",
+   "old": "math.Abs(anchor+clock-wall) > telemetryToleranceMs",
+   "new": "math.Abs(anchor+clock-wall) > 0"
+  }
+ ],
+ "packages/tui/src/components/editor.ts": [
+  {
+   "file": "tui/editor.go",
+   "old": "func (e *Editor) AutocompleteOpen() bool { return !e.forwards() && len(e.autocompleteItems) > 0 }",
+   "new": "func (e *Editor) AutocompleteOpen() bool { return !e.forwards() && len(e.autocompleteItems) >= 0 }"
+  }
+ ],
+ "packages/tui/src/terminal.ts": [
+  {
+   "file": "tui/terminal_exit_restore.go",
+   "old": "sequence += \"\\x1b[?2004l\"",
+   "new": "sequence += \"\""
+  }
+ ],
+ "packages/tui/src/keybindings.ts": [
+  {
+   "file": "tui/selection_navigation.go",
+   "old": "selectedIndex+direction*pageSize",
+   "new": "selectedIndex-direction*pageSize"
+  }
+ ],
+ "packages/ai/src/utils/identity.ts": [
+  {
+   "file": "ai/identity.go",
+   "old": "headers[\"User-Agent\"] = FormatUserAgent(identity)",
+   "new": "headers[\"User-Agent\"] = \"\""
+  },
+  {
+   "file": "ai/identity.go",
+   "old": "\t\tif source.Version != nil {",
+   "new": "\t\tif source.Version == nil {"
+  },
+  {
+   "file": "ai/identity_models.go",
+   "old": "MergeClientIdentity(identity, merged.Identity)",
+   "new": "MergeClientIdentity(merged.Identity, identity)"
+  }
+ ],
+ "packages/ai/src/utils/streaming-json.ts": [
+  {
+   "file": "ai/streaming_json_parser.go",
+   "old": "return parseToolCallArguments(stream.text.String())",
+   "new": "return stream.arguments, stream.order, \"\""
+  },
+  {
+   "file": "ai/streaming_json_parser.go",
+   "old": "return &ToolCallArgumentsStream{arguments: JsonObject{}, valid: true}",
+   "new": "return &ToolCallArgumentsStream{arguments: JsonObject{\"x\": nil}, valid: true}"
+  }
+ ],
+ "packages/ai/src/utils/json-parse.ts": [
+  {
+   "file": "ai/json_repair.go",
+   "old": "\t\treturn JsonObject{}, nil, \"\"\n\t}\n\t// The common case",
+   "new": "\t\treturn JsonObject{\"x\": nil}, nil, \"\"\n\t}\n\t// The common case"
+  }
+ ],
+ "packages/chord/test/examples/01-objects.ts": [
+  {
+   "file": "chord/next/data/args.go",
+   "old": "if err := Check(validator, raw, ReasonArgs, ctx); err != nil {",
+   "new": "if err := Check(validator, raw, ReasonParams, ctx); err != nil {"
+  }
+ ],
+ "packages/chord/test/examples/02-documents.ts": [
+  {
+   "file": "chord/next/documents/transaction.go",
+   "old": "\te.draft = nil\n\te.retire = true",
+   "new": "\te.draft = nil\n\te.retire = false"
+  }
+ ],
+ "packages/chord/test/examples/03-derives.ts": [
+  {
+   "file": "chord/next/state/derive.go",
+   "old": "if pointer == nil {",
+   "new": "if pointer != nil {"
+  }
+ ],
+ "packages/chord/test/examples/04-watches.ts": [
+  {
+   "file": "chord/next/state/derive.go",
+   "old": "if beforeKind != framedNoValue {",
+   "new": "if beforeKind == framedNoValue {"
+  }
+ ],
+ "packages/chord/test/examples/05-errors.ts": [
+  {
+   "file": "chord/next/host/host_dependencies.go",
+   "old": "return (err.Code == data.CodeInvalid && err.Reason == data.ReasonCycle) || err.Code == data.CodeForbidden",
+   "new": "return err.Code == data.CodeForbidden"
+  }
+ ],
+ "packages/chord/test/examples/06-natives.ts": [
+  {
+   "file": "chord/next/host/host_native.go",
+   "old": "if state.kind == nativeUnopened || state.kind == nativeOpening {",
+   "new": "if state.kind != nativeUnopened || state.kind == nativeOpening {"
+  }
+ ],
+ "packages/chord/test/examples/07-failures.ts": [
+  {
+   "file": "chord/next/host/host_backoff.go",
+   "old": "const firstDelay = time.Second",
+   "new": "const firstDelay = 6 * time.Second"
+  }
+ ],
+ "packages/chord/test/examples/08-remote.ts": [
+  {
+   "file": "chord/next/host/remote_replica.go",
+   "old": "\tr.state = replicaState{kind: replicaValue, value: value}\n\tr.ops = ops",
+   "new": "\tr.state = replicaState{kind: replicaValue, value: r.state.value}\n\tr.ops = ops"
+  }
+ ],
+ "packages/chord/test/examples/09-calls.ts": [
+  {
+   "file": "chord/next/link/errors.go",
+   "old": "if kind != \"plugin\" {",
+   "new": "if kind == \"plugin\" {"
+  },
+  {
+   "file": "chord/next/link/values.go",
+   "old": "if node.Len() != 1 || !isNumber || index < 0 || index != math.Trunc(index) || index >= float64(len(segments)) {",
+   "new": "if node.Len() == 1 || !isNumber || index < 0 || index != math.Trunc(index) || index >= float64(len(segments)) {"
+  }
+ ],
+ "packages/chord/test/examples/10-drops.ts": [
+  {
+   "file": "chord/next/host/host_reference.go",
+   "old": "b.parked.flush(b.send, func() bool { return b.refState().Kind == RefStateLive })",
+   "new": "b.parked.flush(b.send, func() bool { return b.refState().Kind != RefStateLive })"
+  }
+ ],
+ "packages/chord/test/examples/11-linger-and-retry.ts": [
+  {
+   "file": "chord/next/host/host_object.go",
+   "old": "if kind != objectLive || o.served.linger == 0 {",
+   "new": "if kind != objectLive || true {"
+  }
+ ],
+ "packages/chord/test/examples/12-routes.ts": [
+  {
+   "file": "chord/next/host/host_ctx.go",
+   "old": "if c.settling == nil {",
+   "new": "if c.settling != nil {"
+  },
+  {
+   "file": "chord/next/host/host_ctx.go",
+   "old": "if acquireErr != nil {",
+   "new": "if acquireErr == nil {"
+  }
+ ],
+ "packages/chord/test/examples/13-relay.ts": [
+  {
+   "file": "chord/next/link/websocket.go",
+   "old": "if socket.ReadyState() == socketConnecting {",
+   "new": "if socket.ReadyState() != socketConnecting {"
+  },
+  {
+   "file": "chord/next/link/ipc.go",
+   "old": "if err != nil {",
+   "new": "if err == nil {"
+  }
+ ],
+ "packages/chord/test/examples/14-flow-control.ts": [
+  {
+   "file": "chord/next/host/remote_hold.go",
+   "old": "if member.pending.Size() == 0 {",
+   "new": "if member.pending.Size() != 0 {"
+  }
+ ],
+ "packages/chord/test/examples/15-revocation.ts": [
+  {
+   "file": "chord/next/host/host_host.go",
+   "old": "if each.role == linkRoleRoute {",
+   "new": "if each.role != linkRoleRoute {"
+  },
+  {
+   "file": "chord/next/host/remote_host_link.go",
+   "old": "if l.role == linkRoleParent {",
+   "new": "if l.role != linkRoleParent {"
+  }
+ ],
+ "packages/chord/test/examples/16-presence-and-activity.ts": [
+  {
+   "file": "chord/next/host/host_activity.go",
+   "old": "a.counts.Calls += by",
+   "new": "a.counts.Calls -= by"
+  }
+ ],
+ "packages/chord/test/examples/17-limits-and-compression.ts": [
+  {
+   "file": "chord/next/link/part.go",
+   "old": "if inflated == nil {",
+   "new": "if inflated != nil {"
+  }
+ ],
+ "packages/chord/test/examples/18-routines.ts": [
+  {
+   "file": "chord/next/host/host_routines.go",
+   "old": "if start.Kind == state.StartValue {",
+   "new": "if start.Kind != state.StartValue {"
+  }
+ ],
+ "packages/chord/test/examples/19-jobs.ts": [
+  {
+   "file": "chord/next/host/jobs_job.go",
+   "old": "if refused = current.state != invocationRunning; refused {",
+   "new": "if refused = current.state == invocationRunning; refused {"
+  },
+  {
+   "file": "chord/next/host/jobs_run_states.go",
+   "old": "if stored != nil {",
+   "new": "if stored == nil {"
+  }
+ ],
+ "packages/chord/test/examples/20-tables.ts": [
+  {
+   "file": "chord/next/store/query.go",
+   "old": "if query.direction != \"\" && query.direction != direction {",
+   "new": "if query.direction == \"\" && query.direction != direction {"
+  }
+ ],
+ "packages/chord/test/examples/21-persisted-documents.ts": [
+  {
+   "file": "chord/next/store/engine.go",
+   "old": "if changed != 1 {",
+   "new": "if changed == 1 {"
+  }
+ ],
+ "packages/chord/test/examples/22-migrations.ts": [
+  {
+   "file": "chord/next/store/table_evolve.go",
+   "old": "if err := e.assertBefore(\"rename\"); err != nil {",
+   "new": "if err := e.assertBefore(\"rename\"); err == nil {"
+  }
+ ],
+ "packages/chord/test/examples/23-keyed-watches.ts": [
+  {
+   "file": "chord/next/documents/address_source.go",
+   "old": "source.retired = true",
+   "new": "source.retired = false"
+  }
+ ],
+ "packages/chord/test/examples/24-keyed-members.ts": [
+  {
+   "file": "chord/next/host/host_reference_keys.go",
+   "old": "for first := true; wait != nil; first = false {",
+   "new": "for first := true; wait != nil && !first; first = false {"
+  }
+ ],
+ "packages/chord/test/examples/25-export-import.ts": [
+  {
+   "file": "chord/next/store/import.go",
+   "old": "if content.Kind == \"base\" {",
+   "new": "if content.Kind != \"base\" {"
+  }
+ ],
+ "packages/chord/test/examples/28-persisted-jobs.ts": [
+  {
+   "file": "chord/next/host/jobs_run_states.go",
+   "old": "if each == nil || !found || tracker == nil {",
+   "new": "if each != nil || !found || tracker == nil {"
+  }
+ ],
+ "packages/chord/test/examples/29-registries.ts": [
+  {
+   "file": "chord/next/registries/registry.go",
+   "old": "if provider.Compose != nil {",
+   "new": "if provider.Compose == nil {"
+  }
+ ],
+ "packages/chord/test/examples/30-host-root.ts": [
+  {
+   "file": "chord/next/host/host_root.go",
+   "old": "if ctx.Err() != nil {",
+   "new": "if ctx.Err() == nil {"
+  }
+ ],
+ "packages/chord/test/examples/31-parked-dependencies.ts": [
+  {
+   "file": "chord/next/host/host_dependencies.go",
+   "old": "shown = firstFailed",
+   "new": "shown = refLoading"
+  }
+ ],
+ "packages/chord/test/examples/32-startup.ts": [
+  {
+   "file": "chord/next/host/remote_remote_object.go",
+   "old": "func (*remoteObject) blocksFirstPass() bool { return false }",
+   "new": "func (*remoteObject) blocksFirstPass() bool { return true }"
+  }
+ ],
+ "packages/chord/src/watch.ts": [
+  {
+   "file": "chord/watch_impl.go",
+   "old": "\tif call.Kind == WatchCallFailed {\n",
+   "new": "\tif call.Kind != WatchCallFailed {\n"
+  },
+  {
+   "file": "chord/watch.go",
+   "old": "\tWatchEnded         WatchEndKind = \"ended\"\n",
+   "new": "\tWatchEnded         WatchEndKind = \"ended \"\n"
+  },
+  {
+   "file": "chord/watch.go",
+   "old": "\tWatchCallFailed WatchCallKind = \"failed\"\n",
+   "new": "\tWatchCallFailed WatchCallKind = \"failed \"\n"
+  }
+ ],
+ "packages/chord/src/sync/remote.ts": [
+  {
+   "file": "chord/sync/remote.go",
+   "old": "\tif from == nil || *from == LogStart {\n",
+   "new": "\tif from != nil || *from == LogStart {\n"
+  }
+ ],
+ "packages/chord/src/sync/filesystem.ts": [
+  {
+   "file": "chord/sync/filesystem.go",
+   "old": "\tif err != nil || bytes == nil {\n",
+   "new": "\tif err == nil || bytes == nil {\n"
+  },
+  {
+   "file": "chord/sync/filesystem.go",
+   "old": "\tif !sessionIDPat.MatchString(sessionID) {\n",
+   "new": "\tif sessionIDPat.MatchString(sessionID) {\n"
+  },
+  {
+   "file": "chord/sync/filesystem.go",
+   "old": "remote.fs.CreateDir(ctx, dir, true)",
+   "new": "remote.fs.CreateDir(ctx, dir, false)"
+  },
+  {
+   "file": "chord/sync/filesystem.go",
+   "old": "remote.fs.Remove(ctx, path, false, true)",
+   "new": "remote.fs.Remove(ctx, path, true, true)"
+  }
+ ],
+ "packages/chord/src/surfaces/connection.ts": [
+  {
+   "file": "chord/next/surfaces/surfaces_connection.go",
+   "old": "\tif l.current != at {\n",
+   "new": "\tif l.current == at {\n"
+  }
+ ],
+ "packages/chord/src/sync/client.ts": [
+  {
+   "file": "chord/sync/client.go",
+   "old": "\t\t\t\tif err != nil {\n",
+   "new": "\t\t\t\tif err == nil {\n"
+  },
+  {
+   "file": "chord/sync/scheduler.go",
+   "old": "\tif due != nil {\n",
+   "new": "\tif due == nil {\n"
+  }
+ ],
+ "packages/chord/src/tui/scope.ts": [
+  {
+   "file": "chord/next/tui/tui_scope.go",
+   "old": "\t\tif last == nil || !surfaces.SameValue(last.base, base) || !sameActions(last.actions, actions) {\n",
+   "new": "\t\tif last != nil || !surfaces.SameValue(last.base, base) || !sameActions(last.actions, actions) {\n"
+  }
+ ],
+ "packages/chord/src/surfaces/themes.ts": [
+  {
+   "file": "chord/next/surfaces/surfaces_themes.go",
+   "old": "\t\tif first == nil {\n",
+   "new": "\t\tif first != nil {\n"
+  }
+ ],
+ "packages/chord/src/telemetry-sqlite/index.ts": [
+  {
+   "file": "chord/telemetrysqlite/index.go",
+   "old": "\t\tif err := tx.Run(\"DELETE FROM telemetry_spans WHERE ended_us < ?\", cutoff*1000); err != nil {\n",
+   "new": "\t\tif err := tx.Run(\"DELETE FROM telemetry_spans WHERE ended_us < ?\", cutoff*1000); err == nil {\n"
+  }
+ ],
+ "packages/chord/src/telemetry-sqlite/node.ts": [
+  {
+   "file": "chord/telemetrysqlite/node.go",
+   "old": "\tif err != nil {\n",
+   "new": "\tif err == nil {\n"
+  }
+ ],
+ "packages/chord/src/sync/state.ts": [
+  {
+   "file": "chord/sync/state.go",
+   "old": "\tif err := store.fs.CreateDir(ctx, store.directory, true); err != nil {\n",
+   "new": "\tif err := store.fs.CreateDir(ctx, store.directory, false); err != nil {\n"
+  },
+  {
+   "file": "chord/sync/state.go",
+   "old": "\treturn store.fs.Remove(ctx, path, false, true)\n",
+   "new": "\treturn store.fs.Remove(ctx, path, false, false)\n"
+  }
+ ],
+ "packages/chord/src/surfaces/registered.ts": [
+  {
+   "file": "chord/next/surfaces/surfaces_registered.go",
+   "old": "\t\tif recovered := recover(); recovered != nil {\n",
+   "new": "\t\tif recovered := recover(); recovered == nil {\n"
+  }
+ ],
+ "packages/chord/src/node/app/files-copy.ts": [
+  {
+   "file": "chord/nextnode/app/files_copy.go",
+   "old": "\t\t\treturn true\n",
+   "new": "\t\t\treturn false\n"
+  }
+ ],
+ "packages/chord/src/node/plugins/testing.ts": [
+  {
+   "file": "chord/nextnode/plugins/plugins_testing.go",
+   "old": "\tif real, err = filepath.Abs(real); err != nil {\n",
+   "new": "\tif real, err = filepath.Abs(real); err == nil {\n"
+  }
+ ],
+ "packages/chord/src/store/store.ts": [
+  {
+   "file": "chord/next/store/store.go",
+   "old": "\tif !isAnnounced || (record != nil && record.Version >= announced) {\n",
+   "new": "\tif !isAnnounced || (record != nil || record.Version >= announced) {\n"
+  },
+  {
+   "file": "chord/next/store/store.go",
+   "old": "\t\tif announced, ok := store.announced[name]; ok && announced == version {\n",
+   "new": "\t\tif announced, ok := store.announced[name]; ok || announced == version {\n"
+  }
+ ],
+ "packages/chord/src/surfaces/active-language.ts": [
+  {
+   "file": "chord/next/surfaces/surfaces_active_language.go",
+   "old": "\t\tif current != nil && current.Locale == locale && current.Translations == translations {\n",
+   "new": "\t\tif current == nil && current.Locale == locale && current.Translations == translations {\n"
+  }
+ ],
+ "packages/chord/src/surfaces/active-theme.ts": [
+  {
+   "file": "chord/next/surfaces/surfaces_active_theme.go",
+   "old": "\t\tif err != nil {\n",
+   "new": "\t\tif err == nil {\n"
+  }
+ ],
+ "packages/chord/src/surfaces/page-state.ts": [
+  {
+   "file": "chord/next/surfaces/surfaces_page_state.go",
+   "old": "\treturn a == b\n",
+   "new": "\treturn a != b\n"
+  }
+ ],
+ "packages/chord/src/surfaces/translations.ts": [
+  {
+   "file": "chord/next/surfaces/surfaces_translations.go",
+   "old": "\t\t\tif byLocale == nil {\n",
+   "new": "\t\t\tif byLocale != nil {\n"
+  }
+ ],
+ "packages/chord/src/node/app/users.ts": [
+  {
+   "file": "chord/nextnode/app/users.go",
+   "old": "\t\tPersist: true,\n",
+   "new": "\t\tPersist: false,\n"
+  }
+ ],
+ "packages/chord/src/json.ts": [
+  {
+   "file": "chord/json.go",
+   "old": "\tif err != nil {\n",
+   "new": "\tif err == nil {\n"
+  }
+ ],
+ "packages/chord/src/output.ts": [
+  {
+   "file": "chord/output/output.go",
+   "old": "\tif buffer.limits.Retain != \"tail\" {\n",
+   "new": "\tif buffer.limits.Retain == \"tail\" {\n"
+  }
+ ],
+ "packages/chord/src/sqlite/migrations.ts": [
+  {
+   "file": "chord/sqlite/migrations.go",
+   "old": "\t\t\tif err := transaction.Run(\"UPDATE \"+table+\" SET version = ? WHERE singleton = 1\", migration.Version); err != nil {\n",
+   "new": "\t\t\tif err := transaction.Run(\"UPDATE \"+table+\" SET version = ? WHERE singleton = 1\", migration.Version); err == nil {\n"
+  }
+ ],
+ "packages/chord/src/sync/lines.ts": [
+  {
+   "file": "chord/sync/lines.go",
+   "old": "\t\treturn 0, false\n",
+   "new": "\t\treturn 0, true\n"
+  }
+ ],
+ "packages/chord/src/sync/batch.ts": [
+  {
+   "file": "chord/sync/batch.go",
+   "old": "\t\t\treturn BatchLine{}, false, nil\n",
+   "new": "\t\t\treturn BatchLine{}, true, nil\n"
+  }
+ ],
+ "packages/chord/src/data/principal.ts": [
+  {
+   "file": "chord/next/data/principal.go",
+   "old": "\tif cache.entries == nil {\n",
+   "new": "\tif cache.entries != nil {\n"
+  }
+ ],
+ "packages/chord/src/sqlite/node.ts": [
+  {
+   "file": "chord/sqlite/node/node.go",
+   "old": "\tif options.Mode == ReadOnly {\n",
+   "new": "\tif options.Mode != ReadOnly {\n"
+  }
+ ],
+ "packages/chord/src/delta/pending.ts": [
+  {
+   "file": "chord/delta/pending.go",
+   "old": "\tif kind == pendingReplace {\n",
+   "new": "\tif kind != pendingReplace {\n"
+  }
+ ],
+ "packages/chord/src/host/follow.ts": [
+  {
+   "file": "chord/next/host/host_follow.go",
+   "old": "\treturn (kind == followEnded && s.ending == endingNone) || kind == followDetached\n",
+   "new": "\treturn (kind == followEnded || s.ending == endingNone) || kind == followDetached\n"
+  }
+ ],
+ "packages/chord/src/node/tui/filter.ts": [
+  {
+   "file": "chord/nextnode/tui/tui_filter.go",
+   "old": "\t\tfor index+1 < len(output) && output[index+1] >= 0x20 && output[index+1] <= 0x3f {\n",
+   "new": "\t\tfor index+1 < len(output) || output[index+1] >= 0x20 && output[index+1] <= 0x3f {\n"
+  }
+ ],
+ "packages/chord/src/node/tui/sandbox.ts": [
+  {
+   "file": "chord/nextnode/tui/tui_sandbox.go",
+   "old": "\tif major > 26 || (major == 26 && (minor > 5 || (minor == 5 && patch >= 1))) {\n",
+   "new": "\tif major > 26 || (major == 26 || (minor > 5 || (minor == 5 && patch >= 1))) {\n"
+  }
+ ],
+ "packages/chord/src/node/surfaces/bundle.ts": [
+  {
+   "file": "chord/nextnode/surfaces/surfaces_bundle.go",
+   "old": "\tif resolving == nil {\n",
+   "new": "\tif resolving != nil {\n"
+  }
+ ],
+ "packages/chord/src/node/app/invite.ts": [
+  {
+   "file": "chord/nextnode/app/invite.go",
+   "old": "\t\t\t{Key: \"POST \" + InvitePath, Route: chordhttp.HttpRouteOptions{Public: true, Handler: func(request chordhttp.HttpRequest, ctx host.Ctx) (chordhttp.HttpResponse, error) {\n",
+   "new": "\t\t\t{Key: \"POST \" + InvitePath, Route: chordhttp.HttpRouteOptions{Public: false, Handler: func(request chordhttp.HttpRequest, ctx host.Ctx) (chordhttp.HttpResponse, error) {\n"
+  }
+ ],
+ "packages/chord/src/registries/entries.ts": [
+  {
+   "file": "chord/next/registries/entries.go",
+   "old": "\t\t\tcase difference < 0:\n",
+   "new": "\t\t\tcase difference > 0:\n"
+  },
+  {
+   "file": "chord/next/registries/entries.go",
+   "old": "\tif orderOf != nil {\n",
+   "new": "\tif orderOf == nil {\n"
+  }
+ ],
+ "packages/chord/src/sqlite/schema.ts": [
+  {
+   "file": "chord/sqlite/schema.go",
+   "old": "strings.HasPrefix(strings.ToLower(prefix), \"sqlite_\")",
+   "new": "strings.HasPrefix(prefix, \"sqlite_\")"
+  }
+ ],
+ "packages/chord/src/surfaces/theme-choice.ts": [
+  {
+   "file": "chord/next/surfaces/surfaces_theme_choice.go",
+   "old": "contracts.Str(contracts.Max(128))",
+   "new": "contracts.Str()"
+  },
+  {
+   "file": "chord/next/surfaces/surfaces_theme_choice.go",
+   "old": "delta.JsonObjectOf(\"dark\", nil, \"light\", nil)",
+   "new": "delta.JsonObjectOf(\"dark\", \"x\", \"light\", nil)"
+  }
+ ],
+ "packages/chord/src/node/plugins/evaluate.ts": [
+  {
+   "file": "chord/nextnode/plugins/plugins_pluginfile.go",
+   "old": "\treturn \"\", fmt.Errorf(",
+   "new": "\treturn path, fmt.Errorf("
+  }
+ ],
+ "packages/chord/src/surfaces/locale-choice.ts": [
+  {
+   "file": "chord/next/surfaces/surfaces_locale_choice.go",
+   "old": "contracts.Max(35)",
+   "new": "contracts.Max(36)"
+  }
+ ],
+ "packages/chord/src/sync/files.ts": [
+  {
+   "file": "chord/sync/files.go",
+   "old": "func IsNotFound(err error) bool { return errors.Is(err, fs.ErrNotExist) }",
+   "new": "func IsNotFound(err error) bool { return !errors.Is(err, fs.ErrNotExist) }"
+  }
+ ],
+ "packages/chord/src/node/app/app.ts": [
+  {
+   "file": "chord/nextnode/app/app.go",
+   "old": "\t\tif manifest.App != name {\n",
+   "new": "\t\tif manifest.App == name {\n"
+  },
+  {
+   "file": "chord/nextnode/app/app.go",
+   "old": "\t\tif manifest.Format != ArchiveFormat {\n",
+   "new": "\t\tif manifest.Format == ArchiveFormat {\n"
+  },
+  {
+   "file": "chord/nextnode/app/app.go",
+   "old": "\tif lock == nil {\n\t\treturn fmt.Errorf(\"importData: %s has data (its worker runs)\", address.Key)\n",
+   "new": "\tif lock != nil {\n\t\treturn fmt.Errorf(\"importData: %s has data (its worker runs)\", address.Key)\n"
+  },
+  {
+   "file": "chord/nextnode/app/app.go",
+   "old": "\tif len(options.Workers) > 0 && options.Principal.Worker == nil {\n",
+   "new": "\tif len(options.Workers) > 0 && options.Principal.Worker != nil {\n"
+  },
+  {
+   "file": "chord/nextnode/app/app.go",
+   "old": "\tif !a.closing.Swap(true) {\n",
+   "new": "\tif a.closing.Swap(true) {\n"
+  }
+ ],
+ "packages/chord/src/store/step.ts": [
+  {
+   "file": "chord/next/store/step.go",
+   "old": "\tstep.Statements++\n\treturn step.Executor.RunCounted(sql, params...)\n",
+   "new": "\treturn step.Executor.RunCounted(sql, params...)\n"
+  }
+ ],
+ "packages/chord/src/node/tui/launcher.ts": [
+  {
+   "file": "chord/nextnode/tui/tui_launcher.go",
+   "old": "\tif l.sockets[id] != socket {\n",
+   "new": "\tif l.sockets[id] == socket {\n"
+  }
+ ],
+ "packages/chord/src/store/outbox.ts": [
+  {
+   "file": "chord/next/store/outbox.go",
+   "old": "\t\t\t`SELECT seq, format, next_id, writes FROM `+TableOutbox+` WHERE seq > ? ORDER BY seq LIMIT ?`,\n",
+   "new": "\t\t\t`SELECT seq, format, next_id, writes FROM `+TableOutbox+` WHERE seq >= ? ORDER BY seq LIMIT ?`,\n"
+  }
+ ],
+ "packages/chord/src/store/expression.ts": [
+  {
+   "file": "chord/next/store/expression.go",
+   "old": "\t\treturn typed, true\n",
+   "new": "\t\treturn typed, false\n"
+  }
+ ],
+ "packages/chord/src/store/adapter.ts": [
+  {
+   "file": "chord/next/store/adapter.go",
+   "old": "\tif err != nil || stored == nil {\n",
+   "new": "\tif err != nil && stored == nil {\n"
+  }
+ ],
+ "packages/chord/src/node/http/router.ts": [
+  {
+   "file": "chord/nextnode/http/router.go",
+   "old": "\t\t\t\tcontributed = true\n",
+   "new": "\t\t\t\tcontributed = false\n"
+  }
+ ],
+ "packages/chord/src/contracts/schema.ts": [
+  {
+   "file": "chord/next/contracts/schema.go",
+   "old": "\t\t\tok = ok || name == option.name\n",
+   "new": "\t\t\tok = ok || name != option.name\n"
+  }
+ ],
+ "packages/chord/src/surfaces/loaded.ts": [
+  {
+   "file": "chord/next/surfaces/surfaces_loaded.go",
+   "old": "\t\tif entry.Digest != nil && has && *entry.Digest == loaded.digest {\n",
+   "new": "\t\tif entry.Digest != nil || has && *entry.Digest == loaded.digest {\n"
+  }
+ ],
+ "packages/chord/src/node/app/files.ts": [
+  {
+   "file": "chord/nextnode/app/files.go",
+   "old": "\t\tuploads = 64\n",
+   "new": "\t\tuploads = 63\n"
+  }
+ ],
+ "packages/chord/src/node/surfaces/web.ts": [
+  {
+   "file": "chord/nextnode/surfaces/surfaces_web.go",
+   "old": "`<link rel=\"stylesheet\" href=\"`+href+`\">`",
+   "new": "`<link rel=stylesheet href=\"`+href+`\">`"
+  }
+ ],
+ "packages/chord/src/node/app/worker.ts": [
+  {
+   "file": "chord/nextnode/app/worker.go",
+   "old": "\tif err := PrivateStore(storePath); err != nil {\n",
+   "new": "\tif err := error(nil); err != nil {\n"
+  }
+ ],
+ "packages/chord/src/node/workers/main.ts": [
+  {
+   "file": "chord/nextnode/workers/workers_main.go",
+   "old": "\tw.port.sendControlThen(payload, func() { exitProcess(1) })\n",
+   "new": "\tw.port.sendControlThen(payload, func() { exitProcess(2) })\n"
+  }
+ ],
+ "packages/chord/src/node/plugins/plugins.ts": [
+  {
+   "file": "chord/nextnode/plugins/plugins_plugins.go",
+   "old": "\t\t\tscripts, ok = set.values(), true\n",
+   "new": "\t\t\tscripts, ok = set.values(), false\n"
+  }
+ ],
+ "packages/chord/src/node/app/layout.ts": [
+  {
+   "file": "chord/nextnode/app/layout.go",
+   "old": "\tfor _, name := range []string{path, path + \"-wal\", path + \"-shm\"} {\n",
+   "new": "\tfor _, name := range []string{path, path + \"-shm\"} {\n"
+  }
+ ],
+ "packages/chord/src/node/http/node.ts": [
+  {
+   "file": "chord/nextnode/http/node.go",
+   "old": "&WireRefusal{Status: WireNotImplemented}",
+   "new": "&WireRefusal{Status: WireForbidden}"
+  }
+ ],
+ "packages/chord/src/jobs/definition.ts": [
+  {
+   "file": "chord/next/host/jobs_definition.go",
+   "old": "if version < 1 {",
+   "new": "if version < 0 {"
+  },
+  {
+   "file": "chord/next/host/jobs_definition.go",
+   "old": "if key < 1 || key >= version {",
+   "new": "if key < 1 || key > version {"
+  },
+  {
+   "file": "chord/next/host/jobs_definition.go",
+   "old": "*options.Concurrency <= 0",
+   "new": "*options.Concurrency < 0"
+  }
+ ],
+ "packages/chord/src/documents/handles.ts": [
+  {
+   "file": "chord/next/documents/handles.go",
+   "old": "return handle.declarer.At(handle.Slot, key) }",
+   "new": "return handle.declarer.At(handle.Slot, \"\") }"
+  }
+ ],
+ "packages/chord/src/host/attempt.ts": [
+  {
+   "file": "chord/next/host/host_attempt.go",
+   "old": "if !declared {\n\t\tpanic(declarationError(\"%s: self.query",
+   "new": "if declared {\n\t\tpanic(declarationError(\"%s: self.query"
+  },
+  {
+   "file": "chord/next/host/host_attempt.go",
+   "old": "table.Owner.Queries().Add(live)\n",
+   "new": ""
+  },
+  {
+   "file": "chord/next/host/host_attempt.go",
+   "old": "declarations.retrySources = append(declarations.retrySources, wake)",
+   "new": "_ = wake\n\t\tdeclarations.retrySources = append(declarations.retrySources, retrySourceType{})"
+  }
+ ],
+ "packages/chord/src/surfaces/messages.ts": [
+  {
+   "file": "chord/next/surfaces/surfaces_messages.go",
+   "old": "m.first = m.own[order[0]]",
+   "new": "m.first = m.own[order[len(order)-1]]"
+  },
+  {
+   "file": "chord/next/surfaces/surfaces_messages.go",
+   "old": "if err := matchesFirst(m.first, m.own[locale]); err != nil {",
+   "new": "if err := matchesFirst(m.first, m.first); err != nil {"
+  }
+ ],
+ "packages/chord/src/data/errors.ts": [
+  {
+   "file": "chord/next/data/errors.go",
+   "old": "init := ChordErrorInit{Code: CodeForbidden, Message: message}",
+   "new": "init := ChordErrorInit{Code: CodeUnavailable, Message: message}"
+  }
+ ],
+ "packages/chord/src/node/plugins/base-inputs.ts": [
+  {
+   "file": "chord/nextnode/workers/workers_base.go",
+   "old": "if !info.Mode().IsRegular() {",
+   "new": "if info.Mode().IsRegular() {"
+  },
+  {
+   "file": "chord/nextnode/workers/workers_base.go",
+   "old": "return model.BaseInputs{path: hash}, nil",
+   "new": "return model.BaseInputs{path + \"x\": hash}, nil"
+  }
+ ],
+ "packages/chord/src/node/app/ephemeral.ts": [
+  {
+   "file": "chord/nextnode/app/ephemeral.go",
+   "old": "HttpResponse{Kind: chordhttp.KindError, Status: 400}",
+   "new": "HttpResponse{Kind: chordhttp.KindError, Status: 401}"
+  }
+ ],
+ "packages/chord/src/tui/theme.ts": [
+  {
+   "file": "chord/next/tui/tui_theme.go",
+   "old": "+ text + \"\\x1b[39m\"",
+   "new": "+ text + \"\\x1b[49m\""
+  },
+  {
+   "file": "chord/next/tui/tui_theme.go",
+   "old": "\tt.theme = theme\n",
+   "new": ""
+  }
+ ],
+ "packages/chord/src/store/engine.ts": [
+  {
+   "file": "chord/next/store/engine.go",
+   "old": "return DocumentContentAt{Value: value, Version: baseVersion, DeltasSinceBase: len(deltas)}, nil",
+   "new": "return DocumentContentAt{Value: value, Version: baseVersion, DeltasSinceBase: len(deltas) + 1}, nil"
+  }
+ ],
+ "packages/chord/src/state/watchable.ts": [
+  {
+   "file": "chord/next/state/watchable.go",
+   "old": "func (c *constantOf[T]) Watch(ctx context.Context) (chord.WatchHandle[T], error) {\n\twatch := chord.NewWatch(c.value, func() {}, func(error) {})",
+   "new": "func (c *constantOf[T]) Watch(ctx context.Context) (chord.WatchHandle[T], error) {\n\twatch := chord.NewWatch(*new(T), func() {}, func(error) {})"
+  }
+ ],
+ "packages/chord/src/surfaces/client.ts": [
+  {
+   "file": "chord/next/surfaces/surfaces_client.go",
+   "old": "entries := make([]SetEntry, len(options.Initial))",
+   "new": "entries := make([]SetEntry, len(options.Initial)-len(options.Initial))"
+  },
+  {
+   "file": "chord/next/surfaces/surfaces_client.go",
+   "old": "return &Client{Host: h, connect: loop, updates: u}, nil",
+   "new": "loop.Stop()\n\treturn &Client{Host: h, connect: loop, updates: u}, nil"
+  },
+  {
+   "file": "chord/next/surfaces/surfaces_client.go",
+   "old": "loaded, report, err := LoadFacets(h, options.Core, entries, ctx)",
+   "new": "loaded, report, err := LoadFacets(h, nil, entries, ctx)"
+  },
+  {
+   "file": "chord/next/surfaces/surfaces_client.go",
+   "old": "OnError: func(err host.HostError) { options.OnError(ClientError{Kind: ClientHostError, Host: err}) }",
+   "new": "OnError: func(err host.HostError) {}"
+  },
+  {
+   "file": "chord/next/surfaces/surfaces_client.go",
+   "old": "if len(report.Failed) > 0 {\n\t\toptions.OnError(ClientError{Kind: ClientPluginsError, Failed: report.Failed})\n\t}\n\tleft := map",
+   "new": "if len(report.Failed) > 1 {\n\t\toptions.OnError(ClientError{Kind: ClientPluginsError, Failed: report.Failed})\n\t}\n\tleft := map"
+  },
+  {
+   "file": "chord/next/surfaces/surfaces_client.go",
+   "old": "\t\toptions.OnError(ClientError{Kind: ClientPluginsError, Failed: report.Failed})\n\t}\n\tleft := map",
+   "new": "\t}\n\tleft := map"
   }
  ]
 }

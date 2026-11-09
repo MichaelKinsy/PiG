@@ -15,7 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Ports packages/chord/test/next/store/apply-batch.test.ts
+// Ports packages/chord/test/store/apply-batch.test.ts
 //
 // Tests of batch apply (slice 6b §1.6, S5, S17): a store's outbox replayed into an empty store gives the same
 // archive, manifest included; every write kind (an adapter's create-plus-retire and change-plus-retire too); the
@@ -32,7 +32,7 @@ var batchCounts = func() (v1, v2 *TableDefinition) {
 	if err != nil {
 		panic(err)
 	}
-	v2, err = EvolveTable(v1, func(t *TableEditor) *TableEditor {
+	v2, err = EvolveTable(v1, func(t *TableEditor) TableTailEditor {
 		return t.Add("extra", Int(contracts.Default(0))).DropIndex("by_tag")
 	})
 	if err != nil {
@@ -69,7 +69,7 @@ func batchEveryKind(t *testing.T) *ChordStore {
 	noError(t, err)
 	noError(t, PrepareTables([]DeclaredTable{{Definition: countsV2, Table: "app.store:counts"}}, store, openFence, "app.store", background))
 	var created []int64
-	fence := CommitFence{Admit: func() bool { return true }, Adopt: func(_ int64, ids []int64) error {
+	fence := CommitFence{Admit: func() bool { return true }, Adopt: func(_ int64, ids []int64, _ int) error {
 		created = append(created, ids...)
 		return nil
 	}}

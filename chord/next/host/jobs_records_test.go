@@ -17,7 +17,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/sqlite"
 )
 
-// Ports packages/chord/test/next/jobs/records.test.ts: a job's records on its object (slice 6a §1.2, §15 rule 5): runs
+// Ports packages/chord/test/jobs/records.test.ts: a job's records on its object (slice 6a §1.2, §15 rule 5): runs
 // across attempts, cut off by an attempt's seal, finished on the next live attempt, and the keep-alive of runs waiting
 // for one. Go forms: jobs_job_test.go.
 //
@@ -455,12 +455,8 @@ func entryMatches(got []any, want ...map[string]any) bool {
 	return true
 }
 
-func outcomeIs(outcome Outcome, kind OutcomeKind, result any) bool {
-	return outcome.Kind == kind && nexttest.JSONEqual(outcome.Result, result)
-}
-
-// records.test.ts › jobs across a reload (slice 7b §8) › an older run finishes on its old code across a swap; its finish runs on the new code, mapped forwards once
-func TestRecordsJobsAcrossAReloadAnOlderRunFinishesOnItsOldCodeAcrossASwapItsFinishRunsOnTheNewCodeMappedForwardsOnce(t *testing.T) {
+// records.test.ts › jobs across a reload (slice 7b §8; decision "Reload restarts every affected object") › an older in-memory run is cut at the restart's seal; its finish runs on the new code, mapped forwards once
+func TestRecordsJobsAcrossAReloadAnOlderInMemoryRunIsCutAtTheRestartsSealItsFinishRunsOnTheNewCodeMappedForwardsOnce(t *testing.T) {
 	finished := &finishedLog{}
 	g := newJobGate()
 	host := newJobHost(t, HostOptions{OnError: func(HostError) {}})
@@ -471,23 +467,17 @@ func TestRecordsJobsAcrossAReloadAnOlderRunFinishesOnItsOldCodeAcrossASwapItsFin
 	nexttest.Flushed()
 	jobsReloaded(t, host, "@test/app", runner("v2", jobWorkV2, finished, runnerOptions{}))
 	nexttest.Flushed()
-	// Listed with its args mapped forwards.
-	eventually(t, "the old run listed with its args mapped forwards", func() bool {
-		return entryMatches(runnerRunning(t, jobs), map[string]any{
-			"version": float64(1), "args": jsonObject("text", "a", "priority", float64(0)), "phase": "running",
-		})
-	})
 	g.Open()
 	got := finishesAfterATurn(t, finished)
-	if got[0].code != "v2" || got[0].outcome.Kind != OutcomeDone ||
+	if got[0].code != "v2" || got[0].outcome.Kind != OutcomeFailed ||
 		!nexttest.JSONEqual(got[0].outcome.Args, jsonObject("text", "a", "priority", float64(0))) ||
-		!nexttest.JSONEqual(got[0].outcome.Result, jsonObject("text", "a by v1")) {
+		got[0].outcome.Error.Kind != JobAborted || got[0].outcome.Error.Reason != AbortedByReload {
 		t.Fatalf("finished = %+v", got)
 	}
 	must(t, host.Close(background))
 }
 
-// records.test.ts › jobs across a reload (slice 7b §8) › a run without an adapter is blocked (version) until a reload brings matching code
+// records.test.ts › jobs across a reload (slice 7b §8; decision "Reload restarts every affected object") › a run without an adapter is blocked (version) until a reload brings matching code
 func TestRecordsJobsAcrossAReloadARunWithoutAnAdapterIsBlockedVersionUntilAReloadBringsMatchingCode(t *testing.T) {
 	finished := &finishedLog{}
 	g := newJobGate()
@@ -512,14 +502,15 @@ func TestRecordsJobsAcrossAReloadARunWithoutAnAdapterIsBlockedVersionUntilAReloa
 	}
 	jobsReloaded(t, host, "@test/app", runner("v1b", jobWork, finished, runnerOptions{}))
 	got := finishesAfterATurn(t, finished)
-	if got[0].code != "v1b" || !outcomeIs(got[0].outcome, OutcomeDone, "a by v1") {
+	if got[0].code != "v1b" || got[0].outcome.Kind != OutcomeFailed ||
+		got[0].outcome.Error.Kind != JobAborted || got[0].outcome.Error.Reason != AbortedByReload {
 		t.Fatalf("finished = %+v", got)
 	}
 	eventually(t, "the list to be empty", func() bool { return len(runnerRunning(t, jobs)) == 0 })
 	must(t, host.Close(background))
 }
 
-// records.test.ts › jobs across a reload (slice 7b §8) › a native restart aborts running in-memory runs (reload); their finish runs on the new code
+// records.test.ts › jobs across a reload (slice 7b §8; decision "Reload restarts every affected object") › a native restart aborts running in-memory runs (reload); their finish runs on the new code
 func TestRecordsJobsAcrossAReloadANativeRestartAbortsRunningInMemoryRunsReloadTheirFinishRunsOnTheNewCode(t *testing.T) {
 	finished := &finishedLog{}
 	host := newJobHost(t, HostOptions{OnError: func(HostError) {}})
@@ -538,7 +529,7 @@ func TestRecordsJobsAcrossAReloadANativeRestartAbortsRunningInMemoryRunsReloadTh
 	must(t, host.Close(background))
 }
 
-// records.test.ts › jobs across a reload (slice 7b §8) › a job the new code no longer declares blocks its runs (version); declared again, they go on
+// records.test.ts › jobs across a reload (slice 7b §8; decision "Reload restarts every affected object") › a job the new code no longer declares blocks its runs (version); declared again, they go on
 func TestRecordsJobsAcrossAReloadAJobTheNewCodeNoLongerDeclaresBlocksItsRunsVersionDeclaredAgainTheyGoOn(t *testing.T) {
 	finished := &finishedLog{}
 	g := newJobGate()
@@ -556,7 +547,8 @@ func TestRecordsJobsAcrossAReloadAJobTheNewCodeNoLongerDeclaresBlocksItsRunsVers
 	}
 	jobsReloaded(t, host, "@test/app", runner("v3", jobWork, finished, runnerOptions{}))
 	got := finishesAfterATurn(t, finished)
-	if got[0].code != "v3" || !outcomeIs(got[0].outcome, OutcomeDone, "a by v1") {
+	if got[0].code != "v3" || got[0].outcome.Kind != OutcomeFailed ||
+		got[0].outcome.Error.Kind != JobAborted || got[0].outcome.Error.Reason != AbortedByReload {
 		t.Fatalf("finished = %+v", got)
 	}
 	must(t, host.Close(background))
@@ -597,7 +589,7 @@ func (db *nthTransactionDatabase) Transaction(callback func(transaction sqlite.S
 	})
 }
 
-// records.test.ts › a reservation released after a swap (final review) › starts the old code's run with its own args, not the new version's mapping (Sol)
+// records.test.ts › a reservation released during a restart (final review) › starts the old code's run with its own args, not the new version's mapping (Sol)
 func TestRecordsAReservationReleasedAfterASwapStartsTheOldCodesRunWithItsOwnArgsNotTheNewVersionsMappingSol(t *testing.T) {
 	owner := mustContract(contracts.Local("app.reserve-owner", contracts.LocalDeclaration{Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{}}))
 	options := func(version int) JobOptions {
@@ -639,7 +631,7 @@ func TestRecordsAReservationReleasedAfterASwapStartsTheOldCodesRunWithItsOwnArgs
 	reference, err := host.Get(background, owner, jsonObject(), GetOptions{})
 	must(t, err)
 	defer reference.Release()
-	// The run's reservation (the second commit after the start) waits on `gate` until the swap to V2 happened.
+	// The run's reservation (the second commit after the start) waits on `gate` until the reload to V2 committed.
 	held := db.arm(2)
 	run := jobStart(t, handle, jsonObject("n", float64(1)), background)
 	<-held.Entered()

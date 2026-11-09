@@ -27,6 +27,11 @@ import (
 // pig divergence (D111): Pi awaits an aborted tool indefinitely (agent-loop.ts:831-853); a subprocess call must not block the agent loop forever.
 const ToolAbortGrace = 3 * time.Second
 
+// HandlerWaitQuantum is how long a handler of a runtime that cannot report its waits runs before the host takes it to be waiting.
+//
+// pig divergence (D86): a Node handler reports the end of its event-loop window, the point after which Pi serves stdin while the handler awaits a timer, I/O or another real wait. A Go, Rust, Python or Lisp handler blocks in the language's own call, which only the language can tell from computing, so the host infers the wait from the handler's age. A handler that answers within the quantum is a microtask-only continuation, as in Pi; one that does not is acknowledged as suspended (acknowledgeBlocked, and the quantum function the caller bound with withRequestQuantum).
+const HandlerWaitQuantum = 250 * time.Millisecond
+
 // readBufferBytes sizes the connection's read buffer: a burst of small frames costs one socket read.
 // pig additive (D112): Pi loads extensions in process and has no IPC reads; a frame longer than the buffer is read across refills with the same bytes.
 const readBufferBytes = 64 << 10
@@ -873,6 +878,13 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 	// A caller that must serve the calls the request's handler makes on its own goroutine (withRequestInterjections) receives them here, while it waits.
 	interjected := requestInterjections(ctx)
 	var abortGraceC <-chan time.Time
+	var quantumC <-chan time.Time
+	quantum, quantumBound := requestQuantum(ctx)
+	if quantumBound {
+		timer := c.clock.NewTimer(HandlerWaitQuantum)
+		defer timer.Stop()
+		quantumC = timer.C()
+	}
 	suspensionApplied := false
 	for {
 		select {
@@ -955,6 +967,13 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 			return nil, ctx.Err()
 		case <-abortGraceC:
 			return nil, ErrToolAborted
+		case <-quantumC:
+			// pig divergence (D86): the handler outlived the quantum, so it is waiting.
+			quantumC = nil
+			acknowledgeBlocked(ctx)
+			if quantum != nil {
+				quantum()
+			}
 		}
 	}
 }
@@ -1194,7 +1213,7 @@ func (c *Conn) readLoop(ctx context.Context) {
 
 		// Decode the envelope. Unmarshal copies every string and json.RawMessage it keeps, so the frame is free once it returns.
 		var env Envelope
-		err = json.Unmarshal(frame.data, &env)
+		err = decodeEnvelope(frame.data, &env)
 		frame.release()
 		if err != nil {
 			c.fail(&TransportError{Extension: c.name, Operation: "decode frame", Err: err})
@@ -2309,6 +2328,18 @@ type requestSuspension struct {
 // withRequestSuspension has request report the runtime's suspended state of the request to fn, in frame order before the response. A suspension affects the response only while decides reports true, or always when decides is nil; otherwise the response does not wait for a suspension that the host has not delivered yet.
 func withRequestSuspension(ctx context.Context, fn func(suspended bool), decides func() bool) context.Context {
 	return context.WithValue(ctx, requestSuspensionKey{}, requestSuspension{report: fn, decides: decides})
+}
+
+type requestQuantumKey struct{}
+
+// withRequestQuantum has request treat the handler as waiting once it has run for HandlerWaitQuantum without a response: it acknowledges the invocation as suspended and then runs fn, if any, on the request's goroutine. A request of a runtime that reports its own waits never carries it.
+func withRequestQuantum(ctx context.Context, fn func()) context.Context {
+	return context.WithValue(ctx, requestQuantumKey{}, fn)
+}
+
+func requestQuantum(ctx context.Context) (fn func(), bound bool) {
+	fn, bound = ctx.Value(requestQuantumKey{}).(func())
+	return fn, bound
 }
 
 type requestAnsweredKey struct{}

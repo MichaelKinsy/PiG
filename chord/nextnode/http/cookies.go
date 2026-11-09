@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsclock"
 )
 
-// Ports packages/chord/src/next-node/http/cookies.ts. Cookies (decision "The HTTP component's security baseline" (5)):
+// Ports packages/chord/src/node/http/cookies.ts. Cookies (decision "The HTTP component's security baseline" (5)):
 // `Cookie` makes a signed `Set-Cookie` value with the safe defaults (`HttpOnly`, `Path=/`, `SameSite=Strict`, `Secure` on
 // a remote origin), `ReadCookie` reads one back, its signature checked in constant time.
 //
@@ -22,17 +22,20 @@ import (
 // now is `Date.now()` as a time: jsclock's, so a test that mocks the date (the app kit's rolling cookies) moves it too.
 var now = jsclock.DateTime
 
-// SameSite is a cookie's `SameSite` attribute: Pi's closed union `"Strict" | "Lax"`, which no text can extend.
-type SameSite uint8
+// SameSite is a cookie's `SameSite` attribute: Pi's closed union `"Strict" | "Lax"`. The zero value is absent (`Strict`, as
+// Pi's `sameSite ?? "Strict"`), and a value that is neither literal is written as `Strict` too, so no text injects an attribute
+// into the header (Pi's type forbids it at compile time; a Go string type cannot).
+type SameSite string
 
 const (
 	// SameSiteStrict is the default.
-	SameSiteStrict SameSite = iota
+	SameSiteStrict SameSite = "Strict"
 	// SameSiteLax lets a top-level navigation from another site carry the cookie.
-	SameSiteLax
+	SameSiteLax SameSite = "Lax"
 )
 
-func (s SameSite) String() string {
+// attribute is the attribute's value as written: Lax, else Strict.
+func (s SameSite) attribute() string {
 	if s == SameSiteLax {
 		return "Lax"
 	}
@@ -64,7 +67,7 @@ func Cookie(name, value string, options CookieOptions) string {
 		name + "=" + payload + "." + signature(name, payload, options.Secret),
 		"HttpOnly",
 		"Path=/",
-		"SameSite=" + options.SameSite.String(),
+		"SameSite=" + options.SameSite.attribute(),
 	}
 	if options.Request.Provenance().Kind != "local" {
 		parts = append(parts, "Secure")

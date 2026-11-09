@@ -46,7 +46,7 @@ func TestFindCustomGlobRootPort(t *testing.T) {
 }
 
 func TestFindOperationsPreserveNumericLimitDetails(t *testing.T) {
-	// pig divergence (D253): Pi main 676af1d77 reads zero and fractional limits as max(1, floor(limit)), asks glob for one more and details store that number.
+	// Pi main 676af1d77 (#11747) reads zero and fractional limits as max(1, floor(limit)), asks glob for one more and details store that number.
 	for _, limit := range []float64{0, 1.5} {
 		t.Run(jsNumber(limit), func(t *testing.T) {
 			tool := &FindTool{CWD: t.TempDir(), Operations: &FindOperations{Exists: func(string) (bool, error) { return true, nil }, Glob: func(_ string, _ string, opts FindGlobOptions) ([]string, error) {
@@ -70,7 +70,7 @@ func TestFindOperationsPreserveNumericLimitDetails(t *testing.T) {
 }
 
 func TestFindZeroLimitDetailsThroughFD(t *testing.T) {
-	// pig divergence (D253): Pi main 676af1d77 reads a zero limit as 1 and reports the limit only when more results exist, so the one match of the probe gives no notice and no details (Pi 1.5.0: `[0 results limit reached. Use limit=0 for more, or refine pattern]`, details 0; test/parity/testdata/find-operations-pi.mjs). Two or more matches with limit 0 are TestFindLimitEdgeCases7121.
+	// Pi main 676af1d77 (#11747) reads a zero limit as 1 and reports the limit only when more results exist, so the one match of the probe gives no notice and no details (Pi 1.5.0 printed `[0 results limit reached. Use limit=0 for more, or refine pattern]` with details 0; the parity probe test/parity/testdata/find-operations-pi.mjs asserts the pin's result). Two or more matches with limit 0 are TestFindLimitEdgeCases7121.
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "a.txt"), nil, 0o600); err != nil {
 		t.Fatal(err)

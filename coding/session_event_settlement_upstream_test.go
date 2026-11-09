@@ -39,7 +39,7 @@ func createEchoTool(t *testing.T) *bridgeTool {
 
 func persistedBranchRoles(session *Session) []string {
 	roles := []string{}
-	for _, entry := range session.inner.GetBranch() {
+	for _, entry := range session.inner.Load().GetBranch() {
 		if message, ok := entry.(icodingagent.MessageEntry); ok {
 			roles = append(roles, message.Message.Role())
 		}

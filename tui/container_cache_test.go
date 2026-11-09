@@ -116,7 +116,7 @@ func TestContainerAlwaysRendersNonDirtyComponent(t *testing.T) {
 // A custom message whose renderer component changes on its own after the first frame (an extension renderer proxy whose lines arrive from a goroutine) must reach a parent that caches the message component (custom-message.ts renders its renderer's component on every frame).
 func TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges(t *testing.T) {
 	child := &cacheProbeComponent{lines: []string{"fallback"}}
-	message := NewCustomMessageComponent(&CustomMessage{CustomType: "x", Content: "hi"}, func(*CustomMessage, MessageRenderOptions) Component { return child }, nil, 1)
+	message := NewCustomMessageComponent(&CustomMessage{CustomType: "x", Content: "hi"}, func(*CustomMessage, MessageRenderOptions) Component { return child }, nil, 1, nil, "", "")
 	parent := NewContainer(message)
 
 	if got := parent.Render(80); got[len(got)-1] != "fallback" {

@@ -44,7 +44,7 @@ func TestZeroUsageAutoCompactionUsesMessageEstimate(t *testing.T) {
 				Provider: model.Provider.ID(), ModelID: model.ID, StopReason: ai.StopReasonStop, Usage: &ai.Usage{}, Timestamp: now,
 			}
 			for _, message := range []agent.AgentMessage{user, {Assistant: assistant}} {
-				if _, err := sess.inner.AppendMessage(message); err != nil {
+				if _, err := sess.inner.Load().AppendMessage(message); err != nil {
 					t.Fatal(err)
 				}
 			}

@@ -3,11 +3,12 @@ package http
 import (
 	"fmt"
 	"net/netip"
+	"slices"
 	"strconv"
 	"strings"
 )
 
-// Ports packages/chord/src/next-node/http/admission.ts. Admission (slice 10 §2, R4; decision "The HTTP component's security
+// Ports packages/chord/src/node/http/admission.ts. Admission (slice 10 §2, R4; decision "The HTTP component's security
 // baseline" (1)-(3), "Relays"): where a request comes from, decided before anything else. Local only when the connection
 // arrived on a loopback address, its `Host` is a loopback name with the listening port, and it carries no forwarded
 // header; a forwarded request on loopback only when a contributed relay verifies it; otherwise only through an allowed
@@ -75,7 +76,7 @@ func (*Refused) admission()  {}
 // Admit admits request arriving on connection with the allowed hosts and contributed relays, or refuses it (403): no or
 // several `Host`s, a host neither loopback nor allowed, a loopback `Host` on another connection, forwarded headers no relay
 // verifies.
-func admit(request Incoming, connection Connection, hosts *StringSet, relays []*HttpRelay) Admission {
+func admit(request Incoming, connection Connection, hosts []string, relays []*HttpRelay) Admission {
 	value, ok := request.Header("host")
 	host := asciiLower(value)
 	// Several `Host` headers arrive joined with commas.
@@ -91,7 +92,7 @@ func admit(request Incoming, connection Connection, hosts *StringSet, relays []*
 		}
 		return relayed(request, relays)
 	}
-	if !hosts.Has(host) {
+	if !slices.Contains(hosts, host) {
 		return refusedAdmission
 	}
 	return &Admitted{

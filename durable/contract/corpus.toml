@@ -2214,6 +2214,30 @@ levels = ["store", "commit", "context", "output", "order"]
 status = "ready"
 
 [[scenario]]
+id = "F-ticks-warm-gate"
+family = "differential"
+runner = "diff"
+source = "durable/contract/scenarios/warm-ticks.mjs"
+seed = 0
+profile = "gate"
+owner = "dcore-host"
+about = "microtask passes of the submit and the wait of five warm turns of eight sequential lookups on the gate storage profile"
+levels = ["store", "commit", "context", "output", "order"]
+status = "ready"
+
+[[scenario]]
+id = "F-ticks-warm-node"
+family = "differential"
+runner = "diff"
+source = "durable/contract/scenarios/warm-ticks.mjs"
+seed = 0
+profile = "node"
+owner = "dcore-host"
+about = "microtask passes of the submit and the wait of five warm turns of eight sequential lookups on the node storage profile"
+levels = ["store", "commit", "context", "output", "order"]
+status = "ready"
+
+[[scenario]]
 id = "F-fail-gate-2"
 family = "differential"
 runner = "diff"

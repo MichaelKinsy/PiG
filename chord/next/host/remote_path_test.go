@@ -5,11 +5,12 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/chord/next/data"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // pi: packages/chord/src/next/remote/path.ts
 
-// Ports packages/chord/test/next/remote/path.test.ts.
+// Ports packages/chord/test/remote/path.test.ts.
 
 // recordingHolder records where it was held and what it was told, as `name@link` and `name dropped`: the path calls only
 // attach and dropped (Pi's test fakes the holder the same way).
@@ -19,7 +20,8 @@ type recordingHolder struct {
 	names map[*hostLink]string
 }
 
-func (*recordingHolder) kind() string { return "recording" }
+func (*recordingHolder) kind() string                  { return "recording" }
+func (*recordingHolder) span() telemetry.TelemetrySpan { return nil }
 func (h *recordingHolder) attach(l *hostLink) {
 	*h.log = append(*h.log, h.name+"@"+h.names[l])
 }

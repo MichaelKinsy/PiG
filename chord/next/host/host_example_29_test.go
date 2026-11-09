@@ -1,6 +1,6 @@
 package host
 
-// pi: packages/chord/test/next/examples/29-registries.ts
+// pi: packages/chord/test/examples/29-registries.ts
 
 import (
 	"context"
@@ -13,6 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
+	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
 )
 
@@ -110,25 +111,21 @@ func TestExample29Registries(t *testing.T) {
 		}
 		errs.push(err)
 	}})
-	// 5. A reader before `load` waits: the provider comes with `load`, which composes every registry before any object.
-	type early struct {
-		value registries.RegistryValue[any]
-		err   error
+	// 5. A reader before `load` is refused at once (`not_ready`, "call host.load first"); `load` composes every registry
+	// before any object.
+	_, err = host.Registry(background, registries.Registry[any, any](http), GetOptions{})
+	if chordErr := exCode(t, err, data.CodeNotReady, ""); !strings.Contains(chordErr.Message, "call host.load first") {
+		t.Fatalf("before load: %v", err)
 	}
-	earlyRead := make(chan early, 1)
-	go func() {
-		value, err := host.Registry(background, registries.Registry[any, any](http), GetOptions{})
-		earlyRead <- early{value, err}
-	}()
 	mustLoad(t)(host.Load([]HostFacet{
 		{Name: "@example/http", Facet: httpPlugin}, {Name: "@example/notes", Facet: notesPlugin},
 		{Name: "@example/search", Facet: searchPlugin}, {Name: "@example/mounts", Facet: mountsPlugin},
 	}, background))
-	read := <-earlyRead
-	must(t, read.err)
+	value, err := host.Registry(background, registries.Registry[any, any](http), GetOptions{})
+	must(t, err)
+	read := struct{ value registries.RegistryValue[any] }{value}
 	routerNow := func() []string {
-		value, err := read.value.Value(), error(nil)
-		must(t, err)
+		value := read.value.Value()
 		var out []string
 		for key, item := range value.(*registries.KeyedItems[exHandler]).All() {
 			out = append(out, key+" ("+item.Plugin+")")

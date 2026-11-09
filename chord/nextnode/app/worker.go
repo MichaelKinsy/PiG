@@ -13,14 +13,17 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
+	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
 	"github.com/MichaelKinsy/PiG/chord/next/telemetryingest"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/workers"
 	"github.com/MichaelKinsy/PiG/chord/sqlite/node"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Ports packages/chord/src/node/app/worker.ts
@@ -46,13 +49,15 @@ import (
 // WorkerOptions is what StartWorker takes: the app's API and kinds as the server's StartServer has them, this process's modules.
 type WorkerOptions struct {
 	API   AppAPI
-	Kinds []AppKind
+	Kinds []AppKindEntry
 	// WorkerKinds are the app's worker host kinds: the one of the address the server starts places the worker's route.
 	WorkerKinds []*contracts.HostKind
 	// Busy is the app's extra keep-alive counts (a record of numbers, all zero when idle).
-	Busy workers.BusyWatchable
+	Busy chord.Watchable[delta.JsonValue]
 	// OnError gets the worker host's errors (host.HostError) and a failed start's.
 	OnError func(err any)
+	// PrincipalAttributes is who a span was for (`createHost`'s `principalAttributes`): this worker's hook, as the server's is its own.
+	PrincipalAttributes func(principal data.Principal) telemetry.SpanAttributes
 	// Node is how the worker's Node subprocess is started.
 	Node plugins.NodeOptions
 }
@@ -70,7 +75,7 @@ func StartWorker(options WorkerOptions) {
 	packages := plugins.HostPackages{}
 	maps.Copy(packages, options.API.Modules)
 	for _, kind := range options.Kinds {
-		maps.Copy(packages, kind.Packages)
+		maps.Copy(packages, kind.Kind.Packages)
 	}
 	nodeOptions := options.Node
 	workers.WorkerMain(func(start workers.WorkerStart, ctx context.Context) (*workers.WorkerResult, error) {
@@ -97,7 +102,7 @@ func runWorker(options WorkerOptions, start workers.WorkerStart, ctx context.Con
 	if err := PrivateDirectory(kit.Dir); err != nil {
 		return nil, err
 	}
-	// Two stores, as two chord stores cannot share a file (each allocates document ids): `store.sqlite` is the plugins' (the NodeHost opens
+	// pig divergence (D462): two stores, as two chord stores cannot share a file (each allocates document ids): `store.sqlite` is the plugins' (the NodeHost opens
 	// it: StoreOptions), `kit.sqlite` the Go kit's (Files). An export packs both.
 	storePath := filepath.Join(kit.Dir, archiveStore)
 	if err := PrivateStore(storePath); err != nil {
@@ -119,7 +124,7 @@ func runWorker(options WorkerOptions, start workers.WorkerStart, ctx context.Con
 	var recorder *telemetryingest.Recorder
 	hostOptions := host.HostOptions{
 		Principal: kit.Principal, Store: opened, OnError: func(err host.HostError) { options.OnError(err) },
-		CloseTimeout: kit.Timeouts.close(), ReadyTimeout: kit.Timeouts.ready(),
+		CloseTimeout: kit.Timeouts.close(), ReadyTimeout: kit.Timeouts.ready(), ReloadDrainTimeout: kit.Timeouts.reloadDrain(),
 	}
 	if kit.Telemetry {
 		scope := uuid.NewString()
@@ -156,21 +161,35 @@ func runWorker(options WorkerOptions, start workers.WorkerStart, ctx context.Con
 	if err := os.WriteFile(dataModule, []byte(hostDataModule(kit.Server, token)), 0o600); err != nil {
 		return nil, err
 	}
+	// The module holds this start's token: gone with the worker (Pi has no such file: its data facet is a closure).
+	start.OnClose(func(context.Context) error {
+		if err := os.Remove(dataModule); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+		return nil
+	})
+	// pig divergence (D460): the kit's worker facets are Go core facets on the worker's relay host, beside the plugins' NodeHost.
 	goCore := []host.HostFacet{
 		{Name: "chord.app.worker-info", Facet: WorkerInfoFacet(WorkerInfoValues{Kind: start.Address.Kind, Key: start.Address.Key, Params: start.Address.Params, Start: app})},
+		// pig divergence (D461): Files is not bridged to the plugins (its keyed member cannot be forwarded).
 		{Name: "chord.app.files", Facet: FilesFacet(files, kit.Files, kit.Uploads)},
 		{Name: "chord.app.data.export", Facet: HostDataFacet(kit.Dir, opened, token)},
 	}
-	if _, err := start.Plugins.Load(relay, workers.WorkerLoad{
-		Kind: kit.Facet, HostKind: hostKind, GoCore: goCore,
-		Core: []plugins.CoreFacet{{Name: "chord.app.data", Module: dataModule}},
+	load := workers.WorkerLoad{
+		Kind: kit.Facet, HostKind: hostKind, Core: goCore,
+		NodeCore: []plugins.CoreFacet{{Name: "chord.app.data", Module: dataModule}},
 		Bridged: []plugins.BridgedFacet{
 			{Name: "chord.app.worker-info", Contracts: []*contracts.Contract{WorkerInfo}},
 			{Name: "chord.app.data.export", Contracts: []*contracts.Contract{HostDataExport}},
 		},
-		Principal: kit.Principal, Peer: kit.Server,
-		Store: &plugins.StoreOptions{Path: storePath}, CloseTimeout: kit.Timeouts.close(), ReadyTimeout: kit.Timeouts.ready(),
-	}, ctx); err != nil {
+		Principal: kit.Principal, Peer: kit.Server, PrincipalAttributes: options.PrincipalAttributes,
+		Store: &plugins.StoreOptions{Path: storePath}, CloseTimeout: kit.Timeouts.close(), ReadyTimeout: kit.Timeouts.ready(), ReloadDrainTimeout: kit.Timeouts.reloadDrain(),
+	}
+	// The NodeHost's spans are the worker's: its recorder takes them (a nil *Recorder is no adapter, so none is set without one).
+	if recorder != nil {
+		load.Telemetry = recorder
+	}
+	if _, err := start.Plugins.Load(ctx, relay, load); err != nil {
 		return nil, err
 	}
 	if recorder != nil {
@@ -181,7 +200,7 @@ func runWorker(options WorkerOptions, start workers.WorkerStart, ctx context.Con
 		ticker := time.NewTicker(workerSend)
 		stopped := make(chan struct{})
 		done := make(chan struct{})
-		//portlint:allow golifetime the sender's timer ends when the worker closes (the closer below stops it and joins)
+		//portlint:allow golifetime the sender's timer ends when the worker closes (the closer below stops it; the bounded final send joins it)
 		go func() {
 			defer close(done)
 			for {
@@ -198,15 +217,7 @@ func runWorker(options WorkerOptions, start workers.WorkerStart, ctx context.Con
 		start.OnClose(func(context.Context) error {
 			ticker.Stop()
 			close(stopped)
-			<-done
-			sent := make(chan struct{})
-			//portlint:allow golifetime bounded by the select below; Send returns once the link ends
-			go func() { sender.Send(true); close(sent) }()
-			select {
-			case <-sent:
-			case <-time.After(workerSend):
-			}
-			sender.Stop()
+			closeTelemetry(sender, done, workerSend)
 			return nil
 		})
 	}
@@ -215,4 +226,28 @@ func runWorker(options WorkerOptions, start workers.WorkerStart, ctx context.Con
 		result.Busy = options.Busy
 	}
 	return result, nil
+}
+
+// telemetrySender is what a worker's close sends through.
+type telemetrySender interface {
+	Send(partial bool)
+	Stop()
+}
+
+// closeTelemetry is Pi's `await Promise.race([sender.send(true), sleep(WORKER_SEND_MS)])` then `sender.stop()`: the final send chains
+// behind a periodic send still in flight (the ticker goroutine, joined by ticked) and the one bound covers both, so a periodic send
+// that does not end cannot hold the close past bound.
+func closeTelemetry(sender telemetrySender, ticked <-chan struct{}, bound time.Duration) {
+	sent := make(chan struct{})
+	//portlint:allow golifetime bounded by the select below; Send returns once the link ends
+	go func() {
+		<-ticked
+		sender.Send(true)
+		close(sent)
+	}()
+	select {
+	case <-sent:
+	case <-time.After(bound):
+	}
+	sender.Stop()
 }

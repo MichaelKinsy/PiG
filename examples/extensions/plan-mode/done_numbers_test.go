@@ -7,22 +7,22 @@ import (
 	"testing"
 )
 
-// utils.ts:extractDoneSteps retains every finite Number; count is not the number of matched todos.
-func TestDoneStepsRetainsFiniteJavaScriptNumbers(t *testing.T) {
+// utils.ts:extractDoneSteps retains every distinct Number (Infinity included); MarkCompletedSteps counts newly completed items.
+func TestDoneStepsRetainsDistinctJavaScriptNumbers(t *testing.T) {
 	message := "[DONE:0] [DONE:1] [DONE:9007199254740993] [DONE:9223372036854775807] [DONE:9223372036854775808] [DONE:100000000000000000000] [DONE:" + strings.Repeat("9", 309) + "]"
-	want := []float64{0, 1, 9007199254740992, 9223372036854775808, 9223372036854775808, 1e20}
+	want := []float64{0, 1, 9007199254740992, 9223372036854775808, 1e20, math.Inf(1)}
 	if got := ExtractDoneSteps(message); !reflect.DeepEqual(got, want) {
 		t.Errorf("parsed Numbers = %v, want %v", got, want)
 	}
-	if got := MarkCompletedSteps(message, nil); got != len(want) {
-		t.Errorf("finite marker count = %d, want %d", got, len(want))
+	if got := MarkCompletedSteps(message, nil); got != 0 {
+		t.Errorf("completed count = %d, want 0", got)
 	}
 }
 
 func TestDoneStepsNeverConvertsLargeMarkerToNegativeStep(t *testing.T) {
 	items := []TodoItem{{Step: math.MinInt, Text: "Not a positive step"}, {Step: 1, Text: "Actual step"}}
-	if count := MarkCompletedSteps("[DONE:9223372036854775808] [DONE:1] [DONE:100000000000000000000]", items); count != 3 {
-		t.Errorf("finite marker count = %d, want 3", count)
+	if count := MarkCompletedSteps("[DONE:9223372036854775808] [DONE:1] [DONE:100000000000000000000]", items); count != 1 {
+		t.Errorf("completed count = %d, want 1", count)
 	}
 	if items[0].Completed || !items[1].Completed {
 		t.Errorf("completion state = %+v, want only step 1 completed", items)

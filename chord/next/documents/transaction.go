@@ -21,7 +21,7 @@ import (
 // A Transaction is used by its callback's goroutine and, through Cut and Discard, by the host.
 //
 // Go forced differences: the table type parameters and the `draft`/`retire` overloads are designed out (see the
-// package documentation); the table handle is the store's *TableHandle; `rows` is a TxRows iterator.
+// package documentation); the table is the store's Table interface (its handle is a *TableHandle); `rows` is a TxRows iterator.
 
 // Tx is what `self.tx` gives its callback. Inside it: only `tx.*`, no other `self.tx`, no calls to other objects.
 type Tx interface {
@@ -36,21 +36,21 @@ type Tx interface {
 	// unsettled run (one started earlier in this transaction too) returns that run.
 	Start(job JobHandle, args any, options ...StartOptions) (Run, error)
 	// Get is the row with key as this transaction leaves it (its own put, update, delete overlaid; W10).
-	Get(table *store.TableHandle, key any) (store.Row, error)
+	Get(table store.Table, key any) (store.Row, error)
 	// Page is a page of committed rows, stable for the transaction (without its own writes).
-	Page(table *store.TableHandle, q *store.Query, limit int64, options ...store.PageOptions) (store.Page, error)
+	Page(table store.Table, q *store.Query, limit int64, options ...store.PageOptions) (store.Page, error)
 	// Rows is every committed row of q, as Page.
-	Rows(table *store.TableHandle, q *store.Query) *TxRows
+	Rows(table store.Table, q *store.Query) *TxRows
 	// Put writes row when the transaction commits (an upsert: the whole row replaced).
-	Put(table *store.TableHandle, row any) error
+	Put(table store.Table, row any) error
 	// Update changes the row with key when the transaction commits; an absent key changes nothing.
-	Update(table *store.TableHandle, key, set any) error
+	Update(table store.Table, key, set any) error
 	// Delete deletes the row with key when the transaction commits.
-	Delete(table *store.TableHandle, key any) error
+	Delete(table store.Table, key any) error
 	// UpdateWhere changes every row matching where when the transaction commits (one statement, its count recorded).
-	UpdateWhere(table *store.TableHandle, where, set any) error
+	UpdateWhere(table store.Table, where, set any) error
 	// DeleteWhere deletes every row matching where when the transaction commits.
-	DeleteWhere(table *store.TableHandle, where any) error
+	DeleteWhere(table store.Table, where any) error
 }
 
 // Staged is Chord's own changes staged in a transaction (a job's run records): adopted in its commit step with the
@@ -132,6 +132,10 @@ type Transaction struct {
 	// persistence is when its commit reaches the store (a run state's deferred change, D8).
 	persistence CommitPersistence
 	state       txState
+	// adoptions are what its commit adopts (set at its preparation, counted when Committed asks); rows the table rows its
+	// commit's step changed.
+	adoptions []*adoption
+	rows      int64
 	// queued rejects the commit while it waits in the store's queue (cut): its caller is told at once (rule 3).
 	queued chan error
 }
@@ -329,7 +333,7 @@ func (tx *Transaction) Start(job JobHandle, args any, options ...StartOptions) (
 }
 
 // Get is the row with key as this transaction leaves it.
-func (tx *Transaction) Get(table *store.TableHandle, key any) (store.Row, error) {
+func (tx *Transaction) Get(table store.Table, key any) (store.Row, error) {
 	var handle *store.TableHandle
 	var changes *store.TableChanges
 	var err error
@@ -350,7 +354,7 @@ func (tx *Transaction) Get(table *store.TableHandle, key any) (store.Row, error)
 }
 
 // Page is a page of committed rows, stable for the transaction (without its own writes).
-func (tx *Transaction) Page(table *store.TableHandle, q *store.Query, limit int64, options ...store.PageOptions) (store.Page, error) {
+func (tx *Transaction) Page(table store.Table, q *store.Query, limit int64, options ...store.PageOptions) (store.Page, error) {
 	var option store.PageOptions
 	if len(options) > 0 {
 		option = options[0]
@@ -369,7 +373,7 @@ func (tx *Transaction) Page(table *store.TableHandle, q *store.Query, limit int6
 // TxRows is every committed row of a query, read a page of store.RowsPage at a time (Pi's `rows` AsyncIterable).
 type TxRows struct {
 	tx       *Transaction
-	table    *store.TableHandle
+	table    store.Table
 	q        *store.Query
 	buffer   []store.Row
 	after    *string
@@ -377,7 +381,7 @@ type TxRows struct {
 }
 
 // Rows is every committed row of q, as Page.
-func (tx *Transaction) Rows(table *store.TableHandle, q *store.Query) *TxRows {
+func (tx *Transaction) Rows(table store.Table, q *store.Query) *TxRows {
 	return &TxRows{tx: tx, table: table, q: q}
 }
 
@@ -410,7 +414,7 @@ func (rows *TxRows) Close() {
 	rows.buffer = nil
 }
 
-func (tx *Transaction) withChanges(table *store.TableHandle, write func(changes *store.TableChanges) error) error {
+func (tx *Transaction) withChanges(table store.Table, write func(changes *store.TableChanges) error) error {
 	var err error
 	tx.documents.Do(func() {
 		var changes *store.TableChanges
@@ -422,27 +426,27 @@ func (tx *Transaction) withChanges(table *store.TableHandle, write func(changes 
 }
 
 // Put writes row when the transaction commits (an upsert: the whole row replaced).
-func (tx *Transaction) Put(table *store.TableHandle, row any) error {
+func (tx *Transaction) Put(table store.Table, row any) error {
 	return tx.withChanges(table, func(changes *store.TableChanges) error { return changes.Put(row) })
 }
 
 // Update changes the row with key when the transaction commits; an absent key changes nothing.
-func (tx *Transaction) Update(table *store.TableHandle, key, set any) error {
+func (tx *Transaction) Update(table store.Table, key, set any) error {
 	return tx.withChanges(table, func(changes *store.TableChanges) error { return changes.Update(key, set) })
 }
 
 // Delete deletes the row with key when the transaction commits.
-func (tx *Transaction) Delete(table *store.TableHandle, key any) error {
+func (tx *Transaction) Delete(table store.Table, key any) error {
 	return tx.withChanges(table, func(changes *store.TableChanges) error { return changes.Delete(key) })
 }
 
 // UpdateWhere changes every row matching where when the transaction commits.
-func (tx *Transaction) UpdateWhere(table *store.TableHandle, where, set any) error {
+func (tx *Transaction) UpdateWhere(table store.Table, where, set any) error {
 	return tx.withChanges(table, func(changes *store.TableChanges) error { return changes.UpdateWhere(where, set) })
 }
 
 // DeleteWhere deletes every row matching where when the transaction commits.
-func (tx *Transaction) DeleteWhere(table *store.TableHandle, where any) error {
+func (tx *Transaction) DeleteWhere(table store.Table, where any) error {
 	return tx.withChanges(table, func(changes *store.TableChanges) error { return changes.DeleteWhere(where) })
 }
 
@@ -477,7 +481,9 @@ func (tx *Transaction) Commit() error {
 		return err
 	}
 	var writes *txWrites
-	tx.documents.Do(func() { writes = tx.writes })
+	tx.documents.Do(func() {
+		writes = tx.writes
+	})
 	if writes == nil {
 		tx.documents.Do(func() {
 			if err = tx.adopt(adoptions); err == nil {
@@ -541,6 +547,7 @@ func (tx *Transaction) prepareCommit() ([]*adoption, error) {
 		}
 		adoptions = append(adoptions, &adoption{entry: e, prepared: prepared, retires: retires, stored: stored})
 	}
+	tx.adoptions = adoptions
 	return adoptions, nil
 }
 
@@ -560,9 +567,12 @@ func (tx *Transaction) step(chordStore *store.ChordStore, staged []store.StagedW
 			})
 			return admitted
 		},
-		Adopt: func(int64, []int64) error {
+		Adopt: func(_ int64, _ []int64, rows int) error {
 			var err error
-			tx.documents.Do(func() { err = tx.adopt(adoptions) })
+			tx.documents.Do(func() {
+				tx.rows = int64(rows)
+				err = tx.adopt(adoptions)
+			})
 			return err
 		},
 	}
@@ -634,6 +644,20 @@ func (tx *Transaction) adopt(adoptions []*adoption) error {
 		}
 		return nil
 	}, tx.ctx)
+}
+
+// Committed is what its commit adopted: its documents, their ops, its store writes and the table rows they changed (all 0
+// before it committed). A section.
+func (tx *Transaction) Committed() (documents, ops, writes, rows int64) {
+	for _, a := range tx.adoptions {
+		if a.prepared != nil {
+			ops += int64(len(a.prepared.Ops()))
+		}
+	}
+	if tx.writes != nil {
+		writes = int64(len(tx.writes.staged))
+	}
+	return int64(len(tx.adoptions)), ops, writes, tx.rows
 }
 
 // Discard aborts every draft and prepared change. A section.
@@ -738,11 +762,12 @@ func (tx *Transaction) refreshQueries() error {
 }
 
 // handle is the handle behind table, one of this object's tables (another object's is refused).
-func (tx *Transaction) handle(table *store.TableHandle) (*store.TableHandle, error) {
+func (tx *Transaction) handle(given store.Table) (*store.TableHandle, error) {
 	if err := tx.assertOpen(); err != nil {
 		return nil, err
 	}
 	// Plugin code may pass any table: only this object's handles are taken.
+	table, _ := given.(*store.TableHandle)
 	if table == nil || table.Owner.Scope() != any(tx.documents) {
 		return nil, fmt.Errorf("%s: a transaction writes only its own object's tables", tx.documents.Label())
 	}
@@ -753,7 +778,7 @@ func (tx *Transaction) handle(table *store.TableHandle) (*store.TableHandle, err
 }
 
 // changes are the writes to table in this transaction, made by the first.
-func (tx *Transaction) changes(table *store.TableHandle) (*store.TableChanges, error) {
+func (tx *Transaction) changes(table store.Table) (*store.TableChanges, error) {
 	handle, err := tx.handle(table)
 	if err != nil {
 		return nil, err
