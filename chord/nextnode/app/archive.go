@@ -140,7 +140,7 @@ func PackRunning(ctx context.Context, dir string, kit store.Store, manifest Arch
 // snapshotDatabase writes a copy of the SQLite file at source, as of one instant, to the new file into. The source is opened read-only: its
 // other writer (the NodeHost) is not disturbed, and its WAL is not checkpointed by this close.
 func snapshotDatabase(source, into string) error {
-	database, err := node.OpenNodeSqliteDatabase(source, node.NodeSqliteDatabaseOptions{Mode: node.ReadOnly})
+	database, err := node.OpenNodeSqliteDatabase(source, node.NodeSqliteDatabaseOptions{Mode: node.NodeSqliteReadOnly})
 	if err != nil {
 		return err
 	}
