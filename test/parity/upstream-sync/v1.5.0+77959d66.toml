@@ -4,30 +4,30 @@ to = "1.5.0+77959d66"
 [[files]]
 path = "packages/ai/src/api/anthropic-messages.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream"]
+rationale = "45344bd3a starts disablePreferredStrictTools from the session's remembered limit and marks the session on the strict-tool fallback (ai/anthropic.go); the ported anthropic-strict-tool-fallback.test.ts cases pin both."
 
 [[files]]
 path = "packages/ai/src/api/bedrock-converse-stream.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/providers/bedrock/bedrock_strict_tool_fallback_upstream_test.go#TestBedrockStrictToolLimitRememberedPerSession", "test:ai/providers/bedrock/bedrock_strict_tool_fallback_upstream_test.go#TestBedrockPreferredStrictToolFallbackUpstream", "test:ai/providers/bedrock/bedrock_strict_tool_fallback_upstream_test.go#TestBedrockStrictToolLimitForgottenAfterSessionCleanup"]
+rationale = "45344bd3a builds the first Bedrock request with the session's remembered strict tool limit fallback and marks the session on fallback (ai/providers/bedrock/bedrock.go); the ported bedrock-strict-tool-fallback.test.ts cases pin remembered, not remembered without a session, and forgotten after cleanup."
 
 [[files]]
 path = "packages/ai/src/api/constrained-sampling.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/strict_tool_limit_upstream_test.go#TestIsStrictToolLimitErrorMessage"]
+rationale = "45344bd3a removes isStrictToolLimitErrorMessage from constrained-sampling.ts (it moves to strict-tool-limits.ts); ai/constrained_sampling.go drops it and ai/strict_tool_limits.go holds it, and the message-matching test is ported."
 
 [[files]]
 path = "packages/ai/src/api/strict-tool-limits.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/strict_tool_limit_upstream_test.go#TestStrictToolLimitSessionsRememberedUntilCleanup", "test:ai/strict_tool_limit_upstream_test.go#TestStrictToolLimitSessionsDropOldestBeyondCap"]
+rationale = "45344bd3a adds the per-session memory of strict tool limit rejections (new file). ai/strict_tool_limits.go holds it (isStrictToolLimitErrorMessage moved there from ai/constrained_sampling.go, as upstream); MarkStrictToolLimitsExceeded and HasExceededStrictToolLimits in ai/provider_kit.go serve the Bedrock package. Pi's strict-tool-limits.test.ts cases (sessions remembered until cleanup, cap of 10,000 drops the oldest) are ported with the same inputs."
 
 [[files]]
 path = "packages/ai/src/cache-warming.ts"
@@ -144,9 +144,9 @@ rationale = ""
 [[files]]
 path = "packages/codemode/src/runtime/prelude-source.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:codemode/sandbox_test.go#TestPrintsNonFiniteNumbersInConsoleOutputAndThrownValuesLikeText", "test:codemode/script_oracle_test.go#TestScriptOutcomesMatchPi"]
+rationale = "33cd7e507 (#11945) prints NaN and Infinity in console output and thrown values: format() prints a number with String() before the JSON path. codemode/assets/prelude.js carries the same change on top of PiG's D145 errorReplacer patch (PROVENANCE.md hashes updated); the ported sandbox.test.ts case runs on the worker, inline and remote backends, and the script oracle runs the pinned Pi."
 
 [[files]]
 path = "packages/coding-agent/src/core/cache-warmer.ts"
@@ -228,6 +228,6 @@ rationale = ""
 [[files]]
 path = "packages/tui/src/components/editor.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/editor_sticky_paste_upstream_test.go#TestUpstreamEditorPasteMarkerAtomicBehavior"]
+rationale = "a77207d9c renames a short paste marker with an empty size-suffix group when renumbering after backspace. tui/editor.go removePasteFromRegistry already behaved so (Go's FindStringSubmatch returns an empty string for a group that did not participate): no production change; the ported editor.test.ts case 'renumbers short paste markers without a size suffix' is subtest renumbers_short_paste_markers_without_a_size_suffix."
