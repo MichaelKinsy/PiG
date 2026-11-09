@@ -488,6 +488,7 @@ func (index *FilesIndex) Add(id string, write FileWrite, blob BlobUse, ctx conte
 	}
 	created := write.Created
 	if created == 0 {
+		//portlint:allow clock the package has no clock seam: its one func() time.Time field, App.processStart, is the program start for an edit check, and Pi reads Date.now() for an unset `created`, `write.created ?? Date.now()` at files-index.ts:332
 		created = time.Now().UnixMilli()
 	}
 	row := store.Row{
@@ -1004,6 +1005,7 @@ func (index *FilesIndex) folder(space, path string, ctx context.Context) (store.
 // missingFolders are the rows of path and its parents that do not exist yet, parents first; refused where a file is.
 func (index *FilesIndex) missingFolders(space, path string, ctx context.Context) ([]store.Row, error) {
 	missing := []store.Row{}
+	//portlint:allow clock the package has no clock seam: its one func() time.Time field, App.processStart, is the program start for an edit check, and Pi reads Date.now() for a missing folder rows, `const created = Date.now()` at files-index.ts:584
 	created := time.Now().UnixMilli()
 	for _, folder := range foldersOf(path) {
 		if len(missing) == 0 {

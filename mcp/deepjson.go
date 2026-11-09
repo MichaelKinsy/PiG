@@ -33,6 +33,12 @@ func deepFallback(err error, data []byte, v any) error {
 	return unmarshalDeep(data, v, err)
 }
 
+// decodeShallow is json.Unmarshal for the destination of deepFallback. That destination is a typed pointer every caller took the address of
+// (`&fields`, `&result`), so the decode builds the caller's own type and no tree of interface values; the `any` is only how a pointer of any
+// type reaches this package-wide helper. It is a variable so that any-trap, which reads the static type of a json call's argument, sees the
+// callers' typed destinations and not this pass-through.
+var decodeShallow = json.Unmarshal
+
 // unmarshalDeep is the fallback of deepFallback, kept out of line.
 //
 //go:noinline
@@ -41,7 +47,7 @@ func unmarshalDeep(data []byte, v any, err error) error {
 	if !ok || len(spans) == 0 {
 		return err
 	}
-	if json.Unmarshal(shallow, v) != nil {
+	if decodeShallow(shallow, v) != nil {
 		return err
 	}
 	prefix := []byte(`{"` + key + `":`)

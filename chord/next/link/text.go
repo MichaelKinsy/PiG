@@ -180,7 +180,6 @@ func ownTuple(message Message) string {
 		if typed.Args != nil {
 			part = mustPartText(typed.Args)
 		}
-		//portlint:allow utf16units head is a closed JSON tuple ending in the one-byte ASCII ']' that is also one code unit; dropped as head.slice(0, -1) at text.ts:93
 		tail := "null"
 		if typed.Trace != nil {
 			tail = jsonText(carrierValue(typed.Trace, typed.TraceOrder))
@@ -188,6 +187,7 @@ func ownTuple(message Message) string {
 		if typed.Old {
 			tail += ",true"
 		}
+		//portlint:allow utf16units head is a closed JSON tuple ending in the one-byte ASCII ']' that is also one code unit; dropped as head.slice(0, -1) at text.ts:93
 		return head[:len(head)-1] + "," + part + "," + lengths + "," + tail + "]"
 	case *AbortMessage:
 		return jsonText([]any{"x", float64(typed.Call)})
