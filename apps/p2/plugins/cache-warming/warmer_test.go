@@ -339,6 +339,34 @@ func TestALifetimeBeyondSetTimeoutsRangeSendsNoRefreshAndStopsAtTheClamp(t *test
 	})
 }
 
+// The clamp touches only a delay beyond 2^31-1 ms: every delay at or below it fires at that delay, as Pi's setTimeout does
+// (Node 24: 2147483646 and 2147483647 stay, 2147483648 becomes 1 ms), and a longer one fires at the clamp, not after 1 ms. A
+// refresh the host calls pointless stops the run when the timer fires, which is how this sees the firing.
+func TestTheClampLeavesEveryDelayAtOrBelowSetTimeoutsMaximumAlone(t *testing.T) {
+	for _, delayMs := range []float64{300_000, 2147483646, 2147483647, 2147483648, 3e12} {
+		want := time.Duration(min(delayMs, clampMs)) * time.Millisecond
+		synctest.Test(t, func(t *testing.T) {
+			h := setup(t, ModeIdle)
+			h.host.phase = nil
+			ctx, cancel := context.WithCancel(context.Background())
+			started := &run{request: h.request, models: h.models, delayMs: delayMs, startedAt: time.Now().UnixMilli(), ctx: ctx, cancel: cancel}
+			h.warmers.mu.Lock()
+			h.warmers.runs[conversation] = started
+			h.warmers.host.KeepAlive(1)
+			h.warmers.armLocked(conversation, started)
+			h.warmers.mu.Unlock()
+			advance(want - time.Millisecond)
+			if alive, _ := h.host.state(); alive != 1 {
+				t.Fatalf("delay %v ms: the timer fired before %v", delayMs, want)
+			}
+			advance(time.Millisecond)
+			if alive, _ := h.host.state(); alive != 0 {
+				t.Fatalf("delay %v ms: the timer did not fire at %v", delayMs, want)
+			}
+		})
+	}
+}
+
 func TestALifetimeBeyondSetTimeoutsRangeStopEndsTheRun(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		h := longLifetime(t)
