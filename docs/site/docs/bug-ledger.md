@@ -509,6 +509,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-4e5b684](#bf-4e5b684) | A list item whose first line is another list item is rendered as a nested list with no bullet of its own, and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4e8c517](#bf-4e8c517) | fix(runtimecell): keep the Python runner's _run callable without the built event | PiG's own defect | All platforms | Unreleased |
 | [BF-4f079a7](#bf-4f079a7) | An MCP request over Streamable HTTP that is cancelled or times out while the server's authorization is being… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
+| [BF-4f3cc2e](#bf-4f3cc2e) | `Session.ID`, `Session.Path`, `Session.CWD` and `Session.Inner` no longer race with a session swap (`/new`… | PiG's own defect | All platforms | Unreleased |
 | [BF-4f6992d](#bf-4f6992d) | Durable: a tool's `PrepareArguments` result of a typed object (a struct, or a map of another element type)… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4f6992d-2](#bf-4f6992d-2) | Durable: a `PrepareArguments` result that is not an object fails validation as an `invalid_arguments` tool… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4fab2ef](#bf-4fab2ef) | Durable error values (FileError, ExecutionError, JsonlCorruptionError, ReadAfterWrite, StorageRejected… | PiG's own defect | All platforms | 0.5.0 |
@@ -1584,6 +1585,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-d80425c](#bf-d80425c) | fix(train): gate repairs after merging train 3 and the ordering stack | PiG's own defect | All platforms | Unreleased |
 | [BF-d80c1cd](#bf-d80c1cd) | Where Pi calls `new URL(value)`, Pig now parses a `ws:`, `wss:`, `ftp:` or `file:` URL, and a bracketed IPv6… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d80cb24](#bf-d80cb24) | A Chord singleton state document's handle reads its value in a section of the host's loop, as its watch does… | PiG's own defect | All platforms | Unreleased |
+| [BF-d818c21](#bf-d818c21) | Durable's SQLite storage stores a lone UTF-16 surrogate in a row of more than 8 Ki characters as U+FFFD, the… | PiG's own defect | All platforms | Unreleased |
 | [BF-d8357e2](#bf-d8357e2) | Cache warmer pure functions against live Pi: new `TestCacheWarmerPureFunctionsMatchPi`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d87b70c](#bf-d87b70c) | A second `ctx.ui.custom` component opened while one is shown now opens over it at once, as in Pi, whether it… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d88dca7](#bf-d88dca7) | `harness.ToolTaskInput.Kind` and `ToolTaskResult.Kind` are the named string type `harness.ToolTaskKind` with… | PiG's own defect | All platforms | 0.5.0 |
@@ -8687,6 +8689,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `4f079a786c` (2026-10-12)
 - **Tests:** `mcp/streamable_http_send_signal_test.go::TestStreamableHTTPTransportDoesNotRetryRequestsThatWereCancelledWhileAuthorizationWasRecovering`
 - **Release note:** An MCP request over Streamable HTTP that is cancelled or times out while the server's authorization is being refreshed is no longer sent again after the refresh; other requests waiting on the same refresh still complete.
+
+### BF-4f3cc2e
+
+**`Session.ID`, `Session.Path`, `Session.CWD` and `Session.Inner` no longer race with a session swap (`/new`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `Session.ID`, `Session.Path`, `Session.CWD` and `Session.Inner` no longer race with a session swap (`/new`, `/resume`, `/fork`, `Session.ReplaceInner`): a host call that reads the session id while the swap runs sees the old or the new session, and the Go race detector no longer reports the read.
+- **Root cause:** ReplaceInner stored the log pointer under the Session mutex while ID, Path, CWD and Inner (and a host call that reads the Session id during a /new, /resume or /fork swap) read it without the mutex: a data race, although a Session's methods may be called from any goroutine. The swap holds the mutex through the host's report of the change, so a reader cannot take it. The pointer is now an atomic.Pointer, loaded by every reader and stored by ReplaceInner and the constructor.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `4f3cc2e060` (2026-11-08)
+- **Tests:** None recorded.
+- **Release note:** `Session.ID`, `Session.Path`, `Session.CWD` and `Session.Inner` no longer race with a session swap (`/new`, `/resume`, `/fork`, `Session.ReplaceInner`): a host call that reads the session id while the swap runs sees the old or the new session, and the Go race detector no longer reports the read.
 
 ### BF-4f6992d
 
@@ -23634,6 +23650,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `d80cb241f7` (2026-11-08)
 - **Tests:** `chord/next/host/host_singleton_value_test.go::TestSingletonValueReadFromGoroutinesDoesNotRaceTheObjectsChanges`
 - **Release note:** A Chord singleton state document's handle reads its value in a section of the host's loop, as its watch does: Go code that reads it from a job's goroutine no longer races the object's own commits and its seal when the host closes.
+
+### BF-d818c21
+
+**Durable's SQLite storage stores a lone UTF-16 surrogate in a row of more than 8 Ki characters as U+FFFD, the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Durable's SQLite storage stores a lone UTF-16 surrogate in a row of more than 8 Ki characters as U+FFFD, the text Pi's bound insert (node:sqlite) stores, instead of its raw WTF-8 bytes (rows of up to 8 Ki characters keep the bytes of Pi's JSON route, as before); the row's size is measured as Pi measures it, in UTF-16 units of the text with each ill-formed UTF-8 subpart as one U+FFFD.
+- **Root cause:** Not recorded.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d818c21407` (2026-11-08)
+- **Tests:** `durable/storage/sqlite/insert_values_differential_test.go::TestValuesInsertsStoreTheRowsOfPiJsonEachInserts`
+- **Release note:** Durable's SQLite storage stores a lone UTF-16 surrogate in a row of more than 8 Ki characters as U+FFFD, the text Pi's bound insert (node:sqlite) stores, instead of its raw WTF-8 bytes (rows of up to 8 Ki characters keep the bytes of Pi's JSON route, as before); the row's size is measured as Pi measures it, in UTF-16 units of the text with each ill-formed UTF-8 subpart as one U+FFFD. A test compares the stored bytes with Pi's own insertRows (statements.ts under Node) at 8 Ki characters and either side of it, for lone high and low surrogates, pairs, and ill-formed UTF-8.
 
 ### BF-d8357e2
 

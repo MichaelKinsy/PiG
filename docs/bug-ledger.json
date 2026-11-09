@@ -13987,6 +13987,26 @@
       ]
     },
     {
+      "id": "BF-4f3cc2e",
+      "title": "`Session.ID`, `Session.Path`, `Session.CWD` and `Session.Inner` no longer race with a session swap (`/new`…",
+      "symptom": "`Session.ID`, `Session.Path`, `Session.CWD` and `Session.Inner` no longer race with a session swap (`/new`, `/resume`, `/fork`, `Session.ReplaceInner`): a host call that reads the session id while the swap runs sees the old or the new session, and the Go race detector no longer reports the read.",
+      "rootCause": "ReplaceInner stored the log pointer under the Session mutex while ID, Path, CWD and Inner (and a host call that reads the Session id during a /new, /resume or /fork swap) read it without the mutex: a data race, although a Session's methods may be called from any goroutine. The swap holds the mutex through the host's report of the change, so a reader cannot take it. The pointer is now an atomic.Pointer, loaded by every reader and stored by ReplaceInner and the constructor.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`Session.ID`, `Session.Path`, `Session.CWD` and `Session.Inner` no longer race with a session swap (`/new`, `/resume`, `/fork`, `Session.ReplaceInner`): a host call that reads the session id while the swap runs sees the old or the new session, and the Go race detector no longer reports the read.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4f3cc2e060",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-4f6992d",
       "title": "Durable: a tool's `PrepareArguments` result of a typed object (a struct, or a map of another element type)…",
       "symptom": "Durable: a tool's `PrepareArguments` result of a typed object (a struct, or a map of another element type) reaches validation and execution as that object; it reached them as no arguments.",
@@ -44391,6 +44411,28 @@
       ],
       "tests": [
         "chord/next/host/host_singleton_value_test.go::TestSingletonValueReadFromGoroutinesDoesNotRaceTheObjectsChanges"
+      ]
+    },
+    {
+      "id": "BF-d818c21",
+      "title": "Durable's SQLite storage stores a lone UTF-16 surrogate in a row of more than 8 Ki characters as U+FFFD, the…",
+      "symptom": "Durable's SQLite storage stores a lone UTF-16 surrogate in a row of more than 8 Ki characters as U+FFFD, the text Pi's bound insert (node:sqlite) stores, instead of its raw WTF-8 bytes (rows of up to 8 Ki characters keep the bytes of Pi's JSON route, as before); the row's size is measured as Pi measures it, in UTF-16 units of the text with each ill-formed UTF-8 subpart as one U+FFFD.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Durable's SQLite storage stores a lone UTF-16 surrogate in a row of more than 8 Ki characters as U+FFFD, the text Pi's bound insert (node:sqlite) stores, instead of its raw WTF-8 bytes (rows of up to 8 Ki characters keep the bytes of Pi's JSON route, as before); the row's size is measured as Pi measures it, in UTF-16 units of the text with each ill-formed UTF-8 subpart as one U+FFFD. A test compares the stored bytes with Pi's own insertRows (statements.ts under Node) at 8 Ki characters and either side of it, for lone high and low surrogates, pairs, and ill-formed UTF-8.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d818c21407",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "durable/storage/sqlite/insert_values_differential_test.go::TestValuesInsertsStoreTheRowsOfPiJsonEachInserts"
       ]
     },
     {

@@ -35,7 +35,7 @@ func borrowBuild(s borrowSpec) Component {
 var borrowChunks = []string{"## H\n\n", "text **bold** `c` that wraps around a narrow width for sure ok ", "\n\n- a\n- b\n\n", "```go\nfunc x() {\n", "\treturn\n}\n```\n\n", "| a | b |\n|--|--|\n| 1 | 2 |\n\n", "> quote\n\n", "plain tail ", "é日本語 "}
 
 func TestBorrowedRowsEqualFreshComponents(t *testing.T) {
-	for seed := uint64(0); seed < 120; seed++ {
+	for seed := range uint64(120) {
 		rng := rand.New(rand.NewPCG(seed, seed^0x9e3779b97f4a7c15))
 		var specs []borrowSpec
 		chat := NewContainer()
@@ -56,7 +56,7 @@ func TestBorrowedRowsEqualFreshComponents(t *testing.T) {
 		width := 50
 		var retained [][]string
 		var want [][]string
-		for step := 0; step < 60; step++ {
+		for step := range 60 {
 			switch op := rng.IntN(10); {
 			case op < 4: // stream into a markdown/assistant
 				i := rng.IntN(len(comps))
