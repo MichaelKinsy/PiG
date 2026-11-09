@@ -36,7 +36,6 @@ func baseOp(t *testing.T, h extension.RemoteEditorHost, op string, args any) map
 // A delegated editor component is Pi's CustomEditor subclass: the host's keys and text operations reach the component, and the component's `super` calls reach the host's stock editor, its app-action dispatch and its extension shortcuts. The component's frame, not the stock rows, is what the screen shows.
 func TestDelegatedEditorBaseIsTheHostsStockEditor(t *testing.T) {
 	m, _ := newCustomEditorDispatchMode(t)
-	m.uiTaskCh = make(chan func(), 64)
 	m.editor.Focused = true
 	m.editor.SetText("carried")
 	var shortcutKeys []string
@@ -111,7 +110,6 @@ func TestDelegatedEditorBaseIsTheHostsStockEditor(t *testing.T) {
 // component still handles the second, whose action (for example a selector) Pi has already run when the third arrives.
 func TestDelegatedEarlyReleaseKeepsAcknowledgementsPaired(t *testing.T) {
 	m, _ := newCustomEditorDispatchMode(t)
-	m.uiTaskCh = make(chan func(), 64)
 	fake := &fakeDelegatedEditor{}
 	m.setRemoteEditor(fake)
 	h := m.remoteEditor
@@ -188,7 +186,6 @@ func TestDelegatedEditorEmbedsTheWorkingStatusWhenItOptsIn(t *testing.T) {
 // The editor holds JavaScript strings: a lone UTF-16 unit in its text survives getText, getLines and render as a standard surrogate escape on the wire, not as U+FFFD.
 func TestDelegatedEditorBaseRepliesKeepLoneSurrogates(t *testing.T) {
 	m, _ := newCustomEditorDispatchMode(t)
-	m.uiTaskCh = make(chan func(), 64)
 	m.editor.Focused = true
 	fake := &fakeDelegatedEditor{}
 	m.setRemoteEditor(fake)
@@ -208,7 +205,6 @@ func TestDelegatedEditorBaseRepliesKeepLoneSurrogates(t *testing.T) {
 // restores still recalls its own prompts (interactive-mode.ts setCustomEditorComponent, this.editor.addToHistory).
 func TestDelegatedEditorHistoryIsTheComponentsOwn(t *testing.T) {
 	m, _ := newCustomEditorDispatchMode(t)
-	m.uiTaskCh = make(chan func(), 64)
 	m.editor.AddToHistory("before")
 	fake := &fakeDelegatedEditor{}
 	m.setRemoteEditor(fake)
