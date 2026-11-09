@@ -30581,7 +30581,7 @@
       "evidence": [
         "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream",
         "test:test/extension-conformance/provider_oauth_refresh_test.go#TestProviderRefreshModelsAcrossSDKs",
-        "test:ai/openrouter_user_models_signal_test.go#TestPersonalizeOpenRouterCatalogAbortsTheRequestWhenTheRefreshSignalIsAborted"
+        "test:test/extension-conformance/provider_refresh_context_node_test.go#TestRefreshModelsContextMembersNode"
       ]
     },
     {
@@ -74658,7 +74658,7 @@
       "evidence": [
         "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream",
         "test:test/extension-conformance/provider_oauth_refresh_test.go#TestProviderRefreshModelsAcrossSDKs",
-        "test:ai/openrouter_user_models_signal_test.go#TestPersonalizeOpenRouterCatalogAbortsTheRequestWhenTheRefreshSignalIsAborted"
+        "test:test/extension-conformance/provider_refresh_context_node_test.go#TestRefreshModelsContextMembersNode"
       ]
     },
     {
@@ -87338,7 +87338,7 @@
       "evidence": [
         "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream",
         "test:test/extension-conformance/provider_oauth_refresh_test.go#TestProviderRefreshModelsAcrossSDKs",
-        "test:ai/openrouter_user_models_signal_test.go#TestPersonalizeOpenRouterCatalogAbortsTheRequestWhenTheRefreshSignalIsAborted"
+        "test:test/extension-conformance/provider_refresh_context_node_test.go#TestRefreshModelsContextMembersNode"
       ]
     },
     {
@@ -199041,8 +199041,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/provider_oauth_refresh_test.go#TestProviderRefreshModelsAcrossSDKs",
-        "test:coding/custom_provider_stream_upstream_test.go#TestRegisteredProviderCallbackPanicIsRequestError",
-        "test:coding/custom_provider_stream_upstream_test.go#TestRegisteredProviderCallbackServesOnlyItsAPI"
+        "test:test/extension-conformance/provider_refresh_context_node_test.go#TestRefreshModelsContextMembersNode",
+        "test:coding/custom_provider_stream_upstream_test.go#TestRegisteredProviderCallbackPanicIsRequestError"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -199283,8 +199283,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/provider_oauth_refresh_test.go#TestProviderRefreshModelsAcrossSDKs",
-        "test:coding/extension/host/subprocess/provider_refresh_entries_test.go#TestConfigRefreshEntryIsFreedWhenTheRequestSettles",
-        "test:coding/provider_config_refresh_models_test.go#TestRegisterProviderConfigRefreshModelsReplacesTheModels"
+        "test:test/extension-conformance/provider_refresh_context_node_test.go#TestRefreshModelsContextMembersNode",
+        "test:coding/extension/host/subprocess/provider_refresh_entries_test.go#TestConfigRefreshEntryIsFreedWhenTheRequestSettles"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -306418,7 +306418,7 @@
       "evidence": [
         "test:internal/codingagent/interactive_startup_input_upstream_test.go#TestUpstreamInteractiveStartupInput",
         "test:internal/codingagent/interactive_resume_message_roles_test.go#TestResumedSessionRendersCustomAndSummaryMessageRoles",
-        "test:tui/child_cache_contract_test.go#TestAParentContainerShowsWhatAnyExportedMutatorChanged"
+        "test:tui/components_parity_test.go#TestSpacer_SetLines"
       ]
     },
     {
@@ -306440,7 +306440,7 @@
       "evidence": [
         "test:internal/codingagent/interactive_startup_input_upstream_test.go#TestUpstreamInteractiveStartupInput",
         "test:internal/codingagent/interactive_resume_message_roles_test.go#TestResumedSessionRendersCustomAndSummaryMessageRoles",
-        "test:tui/child_cache_contract_test.go#TestAParentContainerShowsWhatAnyExportedMutatorChanged"
+        "test:tui/components_parity_test.go#TestSpacer_SetLines"
       ]
     },
     {
