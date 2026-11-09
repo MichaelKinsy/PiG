@@ -5356,14 +5356,6 @@ count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
 [[hit]]
-file = "internal/orderedjson/orderedjson.go"
-func = "Object.MarshalJSON"
-pattern = "nested-marshal"
-detail = "json.Marshal"
-count = 1
-class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
-
-[[hit]]
 file = "internal/orderedjson/source_order.go"
 func = "MarshalInSourceOrder"
 pattern = "sort-instance"
