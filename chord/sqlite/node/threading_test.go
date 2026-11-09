@@ -1,6 +1,6 @@
 package node
 
-// pig additive: the driver opens every connection in SQLite's multi-thread mode (SQLITE_OPEN_NOMUTEX, see
+// The driver opens every connection in SQLite's multi-thread mode (SQLITE_OPEN_NOMUTEX, see
 // dataSourceName), which is only sound when one goroutine at a time uses a connection. These tests enforce that
 // contract on the real driver connections the package opens (NewDatabaseSync and OpenNodeSqliteDatabase, through the
 // newConnector seam): a wrapper refuses, and counts, every driver call that starts while another call on the same

@@ -70,7 +70,7 @@ func NewDatabaseSync(path string, options DatabaseSyncOptions) (*DatabaseSync, e
 	if err != nil {
 		return nil, err
 	}
-	conn, err := connector.Connect(context.Background())
+	conn, err := connector.Connect(context.Background()) //portlint:allow ctxbackground node:sqlite DatabaseSync opens its connection synchronously and takes no signal
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +119,7 @@ func (database *DatabaseSync) Exec(sqlText string) error {
 	if err != nil {
 		return err
 	}
-	_, err = conn.(driver.ExecerContext).ExecContext(context.Background(), sqlText, nil)
+	_, err = conn.(driver.ExecerContext).ExecContext(context.Background(), sqlText, nil) //portlint:allow ctxbackground node:sqlite DatabaseSync.exec is synchronous and takes no signal
 	return err
 }
 
@@ -135,7 +135,7 @@ func (database *DatabaseSync) Prepare(sqlText string) (*StatementSync, error) {
 	if observe != nil {
 		observe(sqlText)
 	}
-	statement, err := conn.(driver.ConnPrepareContext).PrepareContext(context.Background(), sqlText)
+	statement, err := conn.(driver.ConnPrepareContext).PrepareContext(context.Background(), sqlText) //portlint:allow ctxbackground node:sqlite DatabaseSync.prepare is synchronous and takes no signal
 	if err != nil {
 		return nil, err
 	}
