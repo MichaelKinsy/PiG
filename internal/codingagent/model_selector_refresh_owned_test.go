@@ -135,3 +135,163 @@ func TestModelSelectorRefreshDoesNotOutliveShutdown(t *testing.T) {
 		}
 	})
 }
+
+// The interactive mode is the task owner of the selector's refresh (model-selector.ts `void this.refreshModels()`).
+var _ tui.ModelSelectorTaskOwner = modelSelectorRuntime{}
+
+// selectorTaskMode is a mode whose background context is live, as Run leaves it, and a runtime for a selector whose caller runs under caller.
+func selectorTaskMode(t *testing.T, caller context.Context) (*InteractiveMode, modelSelectorRuntime) {
+	t.Helper()
+	registry, _, _ := radiusTestRegistry(t, "", nil)
+	m := NewInteractiveMode(nil, InteractiveModeOptions{AgentDir: t.TempDir(), ModelRegistry: registry})
+	m.backgroundCtx, m.backgroundCancel = context.WithCancel(t.Context())
+	return m, modelSelectorRuntime{m: m, registry: registry, ctx: caller}
+}
+
+// Run's teardown cancels the background context and then joins m.backgroundTasks: the selector's refresh is one of them, so the join waits for it.
+func TestModelSelectorTaskIsJoinedByTheModesBackgroundTasks(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		m, runtime := selectorTaskMode(t, t.Context())
+		started := make(chan struct{})
+		var finished atomic.Bool
+		if !runtime.StartModelSelectorTask(func(ctx context.Context) {
+			close(started)
+			<-ctx.Done()
+			time.Sleep(time.Second) // the refresh call is still returning
+			finished.Store(true)
+		}) {
+			t.Fatal("a live mode refused the selector's refresh")
+		}
+		<-started
+
+		m.backgroundCancel()
+		m.backgroundTasks.Wait()
+		finishedAtJoin := finished.Load()
+		time.Sleep(2 * time.Second) // lets a task the join did not wait for end, so the failure reports instead of deadlocking the bubble
+
+		if !finishedAtJoin {
+			t.Error("the mode's background-task join returned while the selector's refresh was still running")
+		}
+	})
+}
+
+// The mode's background context, which Run cancels at teardown, ends the selector's refresh while its caller is still alive.
+func TestModelSelectorTaskEndsWithTheModesBackgroundContext(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		caller, cancelCaller := context.WithCancel(t.Context())
+		m, runtime := selectorTaskMode(t, caller)
+		taskCtx := make(chan context.Context, 1)
+		runtime.StartModelSelectorTask(func(ctx context.Context) { taskCtx <- ctx; <-ctx.Done() })
+		ctx := <-taskCtx
+
+		m.backgroundCancel()
+		synctest.Wait()
+		ended := ctx.Err() != nil
+		cancelCaller() // lets a task that ignored the background context end
+		m.backgroundTasks.Wait()
+
+		if !ended {
+			t.Error("cancelling the mode's background context did not end the selector's refresh")
+		}
+	})
+}
+
+// The selector's caller ends the refresh too (the picker's context), while the mode is still running.
+func TestModelSelectorTaskEndsWithItsCaller(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		caller, cancelCaller := context.WithCancel(t.Context())
+		m, runtime := selectorTaskMode(t, caller)
+		taskCtx := make(chan context.Context, 1)
+		runtime.StartModelSelectorTask(func(ctx context.Context) { taskCtx <- ctx; <-ctx.Done() })
+		ctx := <-taskCtx
+
+		cancelCaller()
+		synctest.Wait()
+		ended := ctx.Err() != nil
+		m.backgroundCancel() // lets a task that ignored its caller end
+		m.backgroundTasks.Wait()
+
+		if !ended {
+			t.Error("cancelling the selector's caller did not end its refresh")
+		}
+	})
+}
+
+// A mode that is already shutting down admits no refresh.
+func TestModelSelectorTaskIsRefusedAfterTheModeShutsDown(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		m, runtime := selectorTaskMode(t, t.Context())
+		m.backgroundCancel()
+		ran := false
+		if runtime.StartModelSelectorTask(func(context.Context) { ran = true }) {
+			t.Error("a shut-down mode admitted the selector's refresh")
+		}
+		m.backgroundTasks.Wait()
+		if ran {
+			t.Error("a shut-down mode ran the selector's refresh")
+		}
+	})
+}
+
+// The production path: opening the selector through PickModel, the mode's background cancellation (Run's teardown) ends the catalog operation the
+// selector's refresh started, although the picker is still open and its caller alive.
+func TestOpenModelSelectorRefreshEndsWhenTheModesBackgroundContextIsCancelled(t *testing.T) {
+	t.Setenv("PI_OFFLINE", "1")
+	registry, _, store := radiusTestRegistry(t, "", nil)
+	synctest.Test(t, func(t *testing.T) {
+		blocked := &interactiveCatalogStore{InMemoryModelsStore: store, release: make(chan struct{}), started: make(chan context.Context, 4)}
+		registry.SetModelsStore(blocked)
+		var output bytes.Buffer
+		m := NewInteractiveMode(nil, InteractiveModeOptions{AgentDir: t.TempDir(), ModelRegistry: registry})
+		m.runCtx = t.Context()
+		m.backgroundCtx, m.backgroundCancel = context.WithCancel(t.Context())
+		m.tuiInst = tui.NewWithOutput(&output, 100, 40)
+		m.installRenderDispatcher()
+		m.statusLine = NewFooterComponent(nil, "", nil)
+		done := make(chan bool, 1)
+		go func() {
+			_, ok := m.buildSlashContext(t.Context()).PickModel("")
+			done <- ok
+		}()
+		operation := <-blocked.started
+		synctest.Wait()
+
+		m.backgroundCancel()
+		synctest.Wait()
+		ended := operation.Err() != nil
+		close(blocked.release) // lets an operation that kept running end
+
+		input, _ := m.modalRoute()
+		input <- []byte("\x1b")
+		<-done
+		m.backgroundTasks.Wait()
+		registry.CloseModelTasks()
+		if !ended {
+			t.Error("cancelling the mode's background context left the open selector's catalog operation running")
+		}
+	})
+}
+
+// A refresh that panics is reported to the uncaught handler as an unawaited Promise's rejection is, and every waiter gets the aborted result
+// rather than waiting for an operation that will never settle.
+func TestPanickingCatalogRefreshIsReportedAndSettlesItsWaiters(t *testing.T) {
+	t.Setenv("PI_OFFLINE", "1")
+	registry, _, _ := radiusTestRegistry(t, "", nil)
+	synctest.Test(t, func(t *testing.T) {
+		var reported atomic.Value
+		defer SetUncaughtGoroutineHandler(func(value any, _ []byte) { reported.Store(value) })()
+		detach := registry.ObserveChanges(func() { panic("observer failed") })
+		defer detach()
+		ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
+		defer cancel()
+
+		result, err := RefreshModelCatalogs(ctx, registry)
+
+		if err != nil || !result.Aborted {
+			t.Errorf("waiter of a panicking refresh = %+v, %v; want the aborted result", result, err)
+		}
+		if got := reported.Load(); got != "observer failed" {
+			t.Errorf("uncaught handler received %v, want the panic value", got)
+		}
+	})
+}

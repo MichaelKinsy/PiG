@@ -68,18 +68,20 @@ func (c *modelCatalogRefreshCoordinator) refresh(ctx context.Context, registry *
 }
 
 func (c *modelCatalogRefreshCoordinator) run(ctx context.Context, registry *ModelRegistry, active *activeModelCatalogRefresh) {
+	// The waiters settle however the operation ends. A panic reaches the uncaught handler (RecoverUncaught) and leaves the aborted result.
+	defer func() {
+		c.mu.Lock()
+		defer c.mu.Unlock()
+		if c.activeByRuntime[registry] == active {
+			delete(c.activeByRuntime, registry)
+		}
+		close(active.done)
+	}()
 	defer RecoverUncaught()
 	defer active.cancel()
+	active.result = CatalogRefreshResult{Aborted: true, Errors: map[string]error{}}
 	registry.YieldToRegistrationRefresh(ctx)
-	if registry.refreshContext(ctx, nil).Aborted {
-		active.result = CatalogRefreshResult{Aborted: true, Errors: map[string]error{}}
-	} else {
+	if !registry.refreshContext(ctx, nil).Aborted {
 		active.result = registry.RefreshCatalogs(ctx, CatalogRefreshOptions{AllowNetwork: ModelNetworkEnabled()})
 	}
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.activeByRuntime[registry] == active {
-		delete(c.activeByRuntime, registry)
-	}
-	close(active.done)
 }
