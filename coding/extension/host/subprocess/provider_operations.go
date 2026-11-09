@@ -167,8 +167,10 @@ func (h *Host) providerRefreshModels(me *managedExt, provider string) func(exten
 		}
 		signal := refresh.Signal
 		if signal == nil {
+			//portlint:allow ctxbackground RefreshModelsContext.Signal is optional (types.ts:1930 passes a signal only when the caller can abort); without one the connection's close ends the request
 			signal = context.Background()
 		}
+		//portlint:allow mapkeyorder host-runtime IPC arguments the Go, Rust, Python and Node SDKs read by member name, not Pi output; the context object keeps refreshModelsParams's members
 		args, err := json.Marshal(map[string]any{"kind": ProviderOperationRefreshModels, "context": refreshModelsParams(refresh)})
 		if err != nil {
 			return nil, err
@@ -176,6 +178,7 @@ func (h *Host) providerRefreshModels(me *managedExt, provider string) func(exten
 		id := "r" + strconv.FormatUint(conn.nextID.Add(1), 10)
 		key := configRefreshKey{conn: conn, request: id}
 		h.configRefreshes.Store(key, refreshPublication(refresh, func(token string) error {
+			//portlint:allow mapkeyorder host-runtime IPC frame the Go, Rust, Python and Node SDKs read by member name, not Pi output; one fixed member order
 			update, err := json.Marshal(map[string]any{"method": "update", "params": map[string]string{"token": token}})
 			if err != nil {
 				return err
@@ -229,6 +232,7 @@ func providerModifyModels(me *managedExt, provider string) func([]extension.Mode
 		if err != nil {
 			return nil, err
 		}
+		//portlint:allow ctxbackground Pi's oauth.modifyModels is synchronous and takes no signal (types.ts:2034); the connection's close ends the request
 		raw, err := providerRequest(context.Background(), conn, provider, &Envelope{Type: MsgRequest, Request: &RequestPayload{Method: MethodOAuthModifyModels, Tool: provider, Args: args}})
 		if err != nil {
 			return nil, err
