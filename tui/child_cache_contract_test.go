@@ -88,7 +88,13 @@ type contractCall struct {
 type contractFixture struct {
 	build  func(t *testing.T) Component
 	extras []contractCall
+	// ownRender names the methods the walker compares with the component's own render and not with contractReference, each with the reason: a rebuild
+	// of what the component draws (which invalidation runs) does not keep what the method changed.
+	ownRender map[string]string
 }
+
+// contractOwnChildren is the reason of a method that adds or removes children of a component that builds its own: its rebuild replaces them.
+const contractOwnChildren = "the component builds its children from its state on every rebuild, which replaces the ones this method added or removed"
 
 type contractNode struct {
 	id, label string
@@ -108,12 +114,15 @@ func contractFixtures() map[string]contractFixture {
 	noop := func() {}
 	return map[string]contractFixture{
 		"AssistantMessageComponent": {
+			// A thinking block hidden behind its label and an answer: SetHideThinkingBlock, SetHiddenThinkingLabel and SetOutputPad each change what it draws.
 			build: func(*testing.T) Component {
-				return NewAssistantMessageComponent(&AssistantMessage{Content: []AssistantContentBlock{{Type: "text", Text: "first"}}}, false, nil, "", nil, nil, "id", "")
+				return NewAssistantMessageComponent(&AssistantMessage{Content: []AssistantContentBlock{{Type: "thinking", Thinking: "pondering"}, {Type: "text", Text: "first"}}}, true, nil, "", nil, nil, "id", "")
 			},
 			extras: []contractCall{
 				{"UpdateContent", []any{&AssistantMessage{Content: []AssistantContentBlock{{Type: "text", Text: "second answer"}, {Type: "thinking", Thinking: "hmm"}}}}},
 				{"UpdateContent", []any{&AssistantMessage{StopReason: "error", ErrorMessage: "boom"}}},
+				{"SetTerminalError", []any{"error", "boom"}},
+				{"SetTerminalError", []any{"aborted", ""}},
 			},
 		},
 		"AuthURL": {build: func(*testing.T) Component {
@@ -129,13 +138,40 @@ func contractFixtures() map[string]contractFixture {
 		"BorderedLoader": {build: func(t *testing.T) Component { return NewBorderedLoader(contractTUI(t), ActiveTheme(), "Working") }},
 		"Box":            {build: func(*testing.T) Component { b := NewBox(); b.AddChild(NewText("inside")); return b }},
 		"Container":      {build: func(*testing.T) Component { return NewContainer(NewText("a")) }},
+		"BranchSummaryMessageComponent": {
+			build: func(*testing.T) Component {
+				return NewBranchSummaryMessageComponent(BranchSummaryMessage{Summary: "branch summary"}, nil, 1, nil, "", "")
+			},
+			ownRender: map[string]string{"AddChild": contractOwnChildren, "RemoveChild": contractOwnChildren, "Clear": contractOwnChildren},
+		},
+		"CompactionSummaryMessageComponent": {
+			build: func(*testing.T) Component {
+				return NewCompactionSummaryMessageComponent(CompactionSummaryMessage{Summary: "compaction summary", TokensBefore: 1234}, nil, 1, nil, "", "")
+			},
+			ownRender: map[string]string{"AddChild": contractOwnChildren, "RemoveChild": contractOwnChildren, "Clear": contractOwnChildren},
+		},
+		"SkillInvocationMessageComponent": {
+			build: func(*testing.T) Component {
+				return NewSkillInvocationMessageComponent(ParsedSkillBlock{Name: "skill", Content: "skill body"}, nil, 1, nil, "", "")
+			},
+			ownRender: map[string]string{"AddChild": contractOwnChildren, "RemoveChild": contractOwnChildren, "Clear": contractOwnChildren},
+		},
 		"ConfigSelectorComponent": {build: func(*testing.T) Component {
 			return NewConfigSelector([]*ResourceGroup{{Key: "k", Label: "Group", Scope: "user"}}, 20)
 		}},
 		"CustomMessageComponent": {
 			build: func(*testing.T) Component {
-				return NewCustomMessageComponent(&CustomMessage{CustomType: "card", Content: "body"}, func(*CustomMessage, MessageRenderOptions) Component { return NewText("custom card") }, nil, 1, nil, "id", "")
+				return NewCustomMessageComponent(&CustomMessage{CustomType: "card", Content: "body"}, func(_ *CustomMessage, o MessageRenderOptions) Component {
+					return NewText(fmt.Sprintf("custom card expanded=%t pad=%d", o.Expanded, o.OutputPad))
+				}, nil, 1, nil, "id", "")
 			},
+			ownRender: map[string]string{"Add": contractOwnChildren, "AddChild": contractOwnChildren, "Remove": contractOwnChildren, "RemoveChild": contractOwnChildren, "Clear": contractOwnChildren},
+		},
+		"CustomMessageComponent#default box": {
+			build: func(*testing.T) Component {
+				return NewCustomMessageComponent(&CustomMessage{CustomType: "card", Content: "body"}, nil, nil, 1, nil, "id", "")
+			},
+			ownRender: map[string]string{"Add": contractOwnChildren, "AddChild": contractOwnChildren, "Remove": contractOwnChildren, "RemoveChild": contractOwnChildren, "Clear": contractOwnChildren},
 		},
 		"DiffComponent": {build: func(*testing.T) Component { return NewDiffComponent("-a\n+b\n", "f.txt") }},
 		"DynamicBorder": {build: func(*testing.T) Component { return NewDynamicBorder() }},
@@ -190,7 +226,12 @@ func contractFixtures() map[string]contractFixture {
 		"ThemeSelectorComponent": {build: func(*testing.T) Component {
 			return NewThemeSelectorComponent("dark", func(string) {}, noop, func(string) {})
 		}},
-		"ThemedText":    {build: func(*testing.T) Component { return NewThemedText(func() string { return "themed" }, 0, 0) }},
+		"ThemedText": {
+			build: func(*testing.T) Component { return NewThemedText(func() string { return "themed" }, 0, 0) },
+			ownRender: map[string]string{
+				"SetText": "the content is rebuilt from build on every invalidation, as Pi's themed-text.ts does, so a SetText does not survive one",
+			},
+		},
 		"ThinkingBlock": {build: func(*testing.T) Component { return NewThinkingBlock(false) }},
 		"ToolExecutionComponent": {
 			build: func(t *testing.T) Component {
@@ -233,6 +274,11 @@ var contractStatic = map[string]string{
 
 // contractExempt names the exported component types the walker does not build, each with the reason it cannot show a stale child.
 var contractExempt = map[string]string{
+	"CancellableLoader":        "a Loader, which is exempted below",
+	"StatusIndicator":          "a Loader, which is exempted below",
+	"TuiAltScreen":             "a root renderer: it draws the screen and is never a child of a cached container",
+	"TuiMainScreen":            "a root renderer: it draws the screen and is never a child of a cached container",
+	"TuiSurface":               "a root renderer: it draws the screen and is never a child of a cached container",
 	"AltScreenFlashContainer":  "drawn only by TuiAltScreen, which renders its flashes from its own timer",
 	"AltScreenSearchComponent": "drawn only by TuiAltScreen as its search overlay, never a child of a cached container",
 	"BaseComponent":            "the invalidation mixin; it renders nothing",
@@ -288,13 +334,21 @@ func contractArgs(t reflect.Type) []reflect.Value {
 		}
 		return zero()
 	case reflect.Func:
-		return []reflect.Value{reflect.MakeFunc(t, func([]reflect.Value) []reflect.Value {
+		zeroFn := reflect.MakeFunc(t, func([]reflect.Value) []reflect.Value {
 			out := make([]reflect.Value, t.NumOut())
 			for i := range out {
 				out[i] = reflect.Zero(t.Out(i))
 			}
 			return out
-		})}
+		})
+		out := []reflect.Value{zeroFn}
+		if t.NumIn() == 1 && t.NumOut() == 1 && t.In(0).Kind() == reflect.String && t.Out(0).Kind() == reflect.String {
+			// A function that marks its argument, which a key made of a sample of its output (Box's background) tells from the zero function.
+			out = append(out, reflect.MakeFunc(t, func(in []reflect.Value) []reflect.Value {
+				return []reflect.Value{reflect.ValueOf("«" + in[0].String() + "»").Convert(t.Out(0))}
+			}))
+		}
+		return out
 	}
 	return nil
 }
@@ -382,13 +436,108 @@ func (c contractInvocation) String() string {
 	return c.name + "(" + strings.Join(parts, ", ") + ")"
 }
 
-// TestAParentContainerShowsWhatAnyExportedMutatorChanged is the guard on the per-child render cache. For every exported component type it
-// builds the component beneath a parent container (directly, and beneath a component that embeds a Container, as selectors and cards do), renders
-// the parent, calls an exported method with the argument values of contractArgs, renders the parent again and requires the component's own
-// render to be what the parent shows. Each method starts from a component of its own, so a method that empties or ends the component (Clear,
-// Remove) cannot hide the methods after it. A mutator that changes what a component draws without telling its parent fails here whatever the
-// component is, so the next one cannot return unnoticed: a new exported component type must be added to contractFixtures or named in
-// contractExempt.
+// contractContainer is the Container a component embeds or is, or nil.
+func contractContainer(x Component) *Container {
+	if c, ok := x.(*Container); ok {
+		return c
+	}
+	v := reflect.ValueOf(x)
+	if v.Kind() != reflect.Pointer || v.Elem().Kind() != reflect.Struct {
+		return nil
+	}
+	field := v.Elem().FieldByName("Container")
+	if !field.IsValid() || field.Type() != reflect.TypeFor[Container]() {
+		return nil
+	}
+	return field.Addr().Interface().(*Container)
+}
+
+// contractReference is what Pi would draw for x now, with no cache in the way. Pi's Container.render calls render on every child on every frame, and
+// a component's invalidate drops its render caches and rebuilds what it baked from its state, so a component invalidated down its tree and rendered shows
+// the state its mutators left whatever any flag, per-child cache or settled window holds. It changes x (it leaves x and its children dirty), so the walker
+// takes it after it took the parent's frame.
+func contractReference(x Component, width int) []string {
+	var invalidate func(Component)
+	invalidate = func(c Component) {
+		c.Invalidate()
+		if container := contractContainer(c); container != nil {
+			for _, child := range container.Children() {
+				invalidate(child)
+			}
+		}
+	}
+	invalidate(x)
+	return slices.Clone(x.Render(width))
+}
+
+// contractWalk is the walk of one fixture in one layout, and the check of every mutator of it: it builds the component beneath a parent container
+// (directly, or beneath a component that embeds a Container, as selectors and cards do), renders the parent, calls an exported method with the argument values
+// of contractArgs, renders the parent again, and requires the parent to show contractReference. Each method starts from a component of its own, so a method
+// that empties or ends the component (Clear, Remove) cannot hide the methods after it. It returns the first mismatch, and how many calls changed what the component draws.
+func contractWalk(t *testing.T, fixture contractFixture, layout string) (changed int, err error) {
+	lead := len(NewSpacer(1).Render(contractWidth))
+	var methods []string
+	for _, call := range contractCalls(fixture.build(t), fixture.extras) {
+		if !slices.Contains(methods, call.name) {
+			methods = append(methods, call.name)
+		}
+	}
+	var current contractInvocation
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("after %s a render panicked: %v", current, r)
+		}
+	}()
+	for _, method := range methods {
+		x := fixture.build(t)
+		root := NewContainer(NewSpacer(1))
+		if layout == "child" {
+			root.Add(x)
+		} else {
+			wrapper := &contractWrapper{}
+			wrapper.Add(x)
+			root.Add(wrapper)
+		}
+		_ = renderThroughParent(root, contractWidth)
+		_ = renderThroughParent(root, contractWidth)
+		previous := contractReference(x, contractWidth)
+		_ = renderThroughParent(root, contractWidth)
+		for _, call := range contractCalls(x, fixture.extras) {
+			if call.name != method {
+				continue
+			}
+			current = call
+			if !call.call(x) {
+				continue
+			}
+			got := renderThroughParent(root, contractWidth)
+			reference := contractReference
+			if _, own := fixture.ownRender[call.name]; own {
+				reference = func(x Component, width int) []string { return slices.Clone(x.Render(width)) }
+			}
+			want := reference(x, contractWidth)
+			if !slices.Equal(want, reference(x, contractWidth)) {
+				// The component renders differently for one state (a clock, an animation): there is no render to compare.
+				previous = want
+				continue
+			}
+			if len(got) < lead || !slices.Equal(got[lead:], want) {
+				return changed, fmt.Errorf("after %s the parent container shows\n%q\nbut Pi would draw (the component invalidated and rendered with no cache)\n%q", call, plain(got[min(lead, len(got)):]), plain(want))
+			}
+			if !slices.Equal(previous, want) {
+				changed++
+			}
+			previous = want
+			// A second render with nothing changed is what makes a container trust a settled child to report its own invalidations.
+			_ = renderThroughParent(root, contractWidth)
+		}
+	}
+	return changed, nil
+}
+
+// TestAParentContainerShowsWhatAnyExportedMutatorChanged is the guard on the per-child render cache: contractWalk over every exported component type in both
+// layouts. A mutator that changes what a component draws without telling its parent fails here whatever the component is, as does one that does not
+// rebuild what it draws from, so the next one cannot return unnoticed: a new exported component type must be added to contractFixtures or named in contractExempt.
 func TestAParentContainerShowsWhatAnyExportedMutatorChanged(t *testing.T) {
 	fixtures := contractFixtures()
 	names := make([]string, 0, len(fixtures))
@@ -396,62 +545,13 @@ func TestAParentContainerShowsWhatAnyExportedMutatorChanged(t *testing.T) {
 		names = append(names, name)
 	}
 	sort.Strings(names)
-	lead := len(NewSpacer(1).Render(contractWidth))
 	for _, name := range names {
 		fixture := fixtures[name]
 		for _, layout := range []string{"child", "beneath an embedding component"} {
 			t.Run(name+"/"+layout, func(t *testing.T) {
-				var methods []string
-				for _, call := range contractCalls(fixture.build(t), fixture.extras) {
-					if !slices.Contains(methods, call.name) {
-						methods = append(methods, call.name)
-					}
-				}
-				changed := 0
-				var current contractInvocation
-				defer func() {
-					if r := recover(); r != nil {
-						t.Fatalf("after %s a render panicked: %v", current, r)
-					}
-				}()
-				for _, method := range methods {
-					x := fixture.build(t)
-					root := NewContainer(NewSpacer(1))
-					if layout == "child" {
-						root.Add(x)
-					} else {
-						wrapper := &contractWrapper{}
-						wrapper.Add(x)
-						root.Add(wrapper)
-					}
-					_ = renderThroughParent(root, contractWidth)
-					_ = renderThroughParent(root, contractWidth)
-					previous := slices.Clone(x.Render(contractWidth))
-					for _, call := range contractCalls(x, fixture.extras) {
-						if call.name != method {
-							continue
-						}
-						current = call
-						if !call.call(x) {
-							continue
-						}
-						got := renderThroughParent(root, contractWidth)
-						want := slices.Clone(x.Render(contractWidth))
-						if !slices.Equal(want, x.Render(contractWidth)) {
-							// The component renders differently for one state (a clock, an animation): there is no render to compare.
-							previous = want
-							continue
-						}
-						if len(got) < lead || !slices.Equal(got[lead:], want) {
-							t.Fatalf("after %s the parent container shows\n%q\nbut the component renders\n%q", call, plain(got[min(lead, len(got)):]), plain(want))
-						}
-						if !slices.Equal(previous, want) {
-							changed++
-						}
-						previous = want
-						// A second render with nothing changed is what makes a container trust a settled child to report its own invalidations.
-						_ = renderThroughParent(root, contractWidth)
-					}
+				changed, err := contractWalk(t, fixture, layout)
+				if err != nil {
+					t.Fatal(err)
 				}
 				if _, static := contractStatic[name]; changed == 0 && !static {
 					t.Fatalf("no exported method changed what %s renders, so the walk proves nothing: give it a fixture whose mutators have something to show, or name it in contractStatic", name)
@@ -464,9 +564,182 @@ func TestAParentContainerShowsWhatAnyExportedMutatorChanged(t *testing.T) {
 	}
 }
 
-// TestEveryExportedComponentTypeIsInTheCacheContract keeps the walker complete: an exported struct type of this package that embeds a Container,
-// BaseComponent or the invalidation mixin, or declares Render on a pointer receiver, is a component, and must be built by contractFixtures or
-// exempted with its reason.
+// contractLeaf draws its text and, as a Text does, is cached by its parent until it is invalidated.
+type contractLeaf struct {
+	invalidatable
+	text string
+}
+
+func (l *contractLeaf) Render(int) []string { return []string{l.text} }
+
+// contractFaulty is a component with a mutator each way a component can be wrong: SetLeaf changes what a child beneath it draws without invalidating that
+// child (a container whose own render is as stale as its parent's), SetLabel stores what it draws from and does not rebuild (Invalidate does, as a
+// component that bakes its state into children does), and the sound variants do neither. The fault is a field, so one type is the mutant and its control.
+type contractFaulty struct {
+	Container
+	leaf    *contractLeaf
+	label   string
+	faulty  string // "", "leaf" or "rebuild"
+	rebuilt *Text
+}
+
+func newContractFaulty(faulty string) *contractFaulty {
+	f := &contractFaulty{leaf: &contractLeaf{text: "leaf"}, label: "label", faulty: faulty}
+	f.rebuilt = NewText("label")
+	f.Add(f.leaf)
+	f.Add(f.rebuilt)
+	return f
+}
+
+func (f *contractFaulty) SetLeaf(text string) {
+	f.leaf.text = text
+	if f.faulty != "leaf" {
+		f.leaf.Invalidate()
+	}
+}
+
+func (f *contractFaulty) SetLabel(label string) {
+	f.label = label
+	if f.faulty != "rebuild" {
+		f.rebuild()
+	}
+}
+
+func (f *contractFaulty) Invalidate() {
+	f.Container.Invalidate()
+	f.rebuild()
+}
+
+func (f *contractFaulty) rebuild() { f.rebuilt.SetText(f.label) }
+
+// TestTheWalkFailsOnAMutatorThatStalesWhatIsBeneathItOrDropsItsRebuild holds the walker's oracle to the mutants the component's own render cannot see: a
+// component compared with its own Render agrees with a parent that is as stale as it is.
+func TestTheWalkFailsOnAMutatorThatStalesWhatIsBeneathItOrDropsItsRebuild(t *testing.T) {
+	for _, faulty := range []string{"", "leaf", "rebuild"} {
+		fixture := contractFixture{build: func(*testing.T) Component { return newContractFaulty(faulty) }}
+		for _, layout := range []string{"child", "beneath an embedding component"} {
+			changed, err := contractWalk(t, fixture, layout)
+			switch {
+			case faulty == "" && err != nil:
+				t.Errorf("sound component, %s: %v", layout, err)
+			case faulty == "" && changed == 0:
+				t.Errorf("sound component, %s: no call changed what it draws, so the walk proves nothing", layout)
+			case faulty != "" && err == nil:
+				t.Errorf("component with the %q fault, %s: the walk found nothing", faulty, layout)
+			}
+		}
+	}
+}
+
+// contractComponentTypes returns the exported types of the parsed files that are components: a struct type that embeds a Container, BaseComponent or the
+// invalidation mixin, or a type that declares Render (on a pointer or a value receiver), or a struct type that embeds a component type of the files, which
+// it gets Render and the invalidation from by promotion.
+func contractComponentTypes(files []*ast.File) map[string]bool {
+	embeddedName := func(field *ast.Field) string {
+		expr := field.Type
+		if star, ok := expr.(*ast.StarExpr); ok {
+			expr = star.X
+		}
+		if id, ok := expr.(*ast.Ident); ok {
+			return id.Name
+		}
+		return ""
+	}
+	component := map[string]bool{}
+	exported := map[string]bool{}
+	embeds := map[string][]string{}
+	for _, file := range files {
+		for _, decl := range file.Decls {
+			switch d := decl.(type) {
+			case *ast.GenDecl:
+				for _, spec := range d.Specs {
+					ts, ok := spec.(*ast.TypeSpec)
+					if !ok {
+						continue
+					}
+					exported[ts.Name.Name] = ts.Name.IsExported()
+					if st, ok := ts.Type.(*ast.StructType); ok {
+						for _, field := range st.Fields.List {
+							if name := embeddedName(field); len(field.Names) == 0 && name != "" {
+								embeds[ts.Name.Name] = append(embeds[ts.Name.Name], name)
+							}
+						}
+					}
+				}
+			case *ast.FuncDecl:
+				if d.Recv == nil || d.Name.Name != "Render" || len(d.Recv.List) == 0 {
+					continue
+				}
+				recv := d.Recv.List[0].Type
+				if star, ok := recv.(*ast.StarExpr); ok {
+					recv = star.X
+				}
+				if id, ok := recv.(*ast.Ident); ok {
+					component[id.Name] = true
+				}
+			}
+		}
+	}
+	for name, kids := range embeds {
+		for _, kid := range kids {
+			if kid == "Container" || kid == "BaseComponent" || kid == "invalidatable" {
+				component[name] = true
+			}
+		}
+	}
+	for changed := true; changed; {
+		changed = false
+		for name, kids := range embeds {
+			if component[name] {
+				continue
+			}
+			for _, kid := range kids {
+				if component[kid] {
+					component[name], changed = true, true
+					break
+				}
+			}
+		}
+	}
+	out := map[string]bool{}
+	for name := range component {
+		if exported[name] {
+			out[name] = true
+		}
+	}
+	return out
+}
+
+// TestTheComponentTypeGuardSeesPromotedAndValueReceiverRender holds contractComponentTypes to the shapes a pointer-receiver Render on a struct that embeds a
+// Container misses: Render promoted from an embedded component, at any depth and through a pointer, and Render on a value receiver.
+func TestTheComponentTypeGuardSeesPromotedAndValueReceiverRender(t *testing.T) {
+	const source = `package p
+type Text struct{ x int }
+func (t *Text) Render(w int) []string { return nil }
+type Panel struct{ Container }
+type Promoted struct{ *Text }
+type Deep struct{ Promoted }
+type ByValue struct{ x int }
+func (ByValue) Render(w int) []string { return nil }
+type base struct{ *Text }
+type ViaUnexported struct{ base }
+type unexportedEmbedder struct{ *Text }
+type Plain struct{ x int }
+type Holder struct{ text *Text }
+`
+	file, err := parser.ParseFile(token.NewFileSet(), "p.go", source, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := contractComponentTypes([]*ast.File{file})
+	want := map[string]bool{"Text": true, "Panel": true, "Promoted": true, "Deep": true, "ByValue": true, "ViaUnexported": true}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("component types = %v, want %v", got, want)
+	}
+}
+
+// TestEveryExportedComponentTypeIsInTheCacheContract keeps the walker complete: an exported type of this package that is a component (see
+// contractComponentTypes) must be built by contractFixtures or exempted with its reason.
 func TestEveryExportedComponentTypeIsInTheCacheContract(t *testing.T) {
 	fset := token.NewFileSet()
 	entries, err := os.ReadDir(".")
@@ -483,59 +756,23 @@ func TestEveryExportedComponentTypeIsInTheCacheContract(t *testing.T) {
 			files = append(files, file)
 		}
 	}
-	pkgs := [][]*ast.File{files}
-	components := map[string]bool{}
-	embeds := func(field *ast.Field) bool {
-		expr := field.Type
-		if star, ok := expr.(*ast.StarExpr); ok {
-			expr = star.X
-		}
-		id, ok := expr.(*ast.Ident)
-		return ok && (id.Name == "Container" || id.Name == "BaseComponent" || id.Name == "invalidatable")
-	}
-	for _, pkg := range pkgs {
-		for _, file := range pkg {
-			for _, decl := range file.Decls {
-				switch d := decl.(type) {
-				case *ast.GenDecl:
-					for _, spec := range d.Specs {
-						ts, ok := spec.(*ast.TypeSpec)
-						if !ok || !ts.Name.IsExported() {
-							continue
-						}
-						if st, ok := ts.Type.(*ast.StructType); ok {
-							for _, field := range st.Fields.List {
-								if len(field.Names) == 0 && embeds(field) {
-									components[ts.Name.Name] = true
-								}
-							}
-						}
-					}
-				case *ast.FuncDecl:
-					if d.Recv == nil || d.Name.Name != "Render" {
-						continue
-					}
-					if star, ok := d.Recv.List[0].Type.(*ast.StarExpr); ok {
-						if id, ok := star.X.(*ast.Ident); ok && id.IsExported() {
-							components[id.Name] = true
-						}
-					}
-				}
-			}
-		}
-	}
+	components := contractComponentTypes(files)
 	fixtures := contractFixtures()
+	built := map[string]bool{}
+	for name := range fixtures {
+		typeName, _, _ := strings.Cut(name, "#") // "Type#variant" is another fixture of Type
+		built[typeName] = true
+	}
 	for name := range components {
-		_, built := fixtures[name]
 		reason, exempt := contractExempt[name]
 		switch {
-		case built && exempt:
+		case built[name] && exempt:
 			t.Errorf("%s is both built by contractFixtures and exempted (%s)", name, reason)
-		case !built && !exempt:
+		case !built[name] && !exempt:
 			t.Errorf("exported component type %s is not in the cache contract: add a fixture to contractFixtures, or name it in contractExempt with the reason it cannot show a stale child", name)
 		}
 	}
-	for name := range fixtures {
+	for name := range built {
 		if !components[name] {
 			t.Errorf("contractFixtures builds %s, which is not an exported component type of this package", name)
 		}
