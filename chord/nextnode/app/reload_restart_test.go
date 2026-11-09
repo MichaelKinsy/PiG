@@ -103,8 +103,8 @@ func TestAReloadRestartingAnObjectWithNativesCutsARunningCallOffAtTheReloadDrain
 			arriving := tab.call("alpha", "code")
 			cut := tab.result(stuck)
 			// The kit passes `reloadDrainTimeout` to the server and the workers: the cut comes before `closeTimeout`.
-			if elapsed := time.Since(started); elapsed < reloadTimeouts.ReloadDrain-100*time.Millisecond || elapsed >= reloadTimeouts.Close {
-				t.Fatalf("the cut came after %v, want within [%v, %v)", elapsed, reloadTimeouts.ReloadDrain-100*time.Millisecond, reloadTimeouts.Close)
+			if elapsed := time.Since(started); elapsed < reloadTimeouts.ReloadDrainTimeout-100*time.Millisecond || elapsed >= reloadTimeouts.CloseTimeout {
+				t.Fatalf("the cut came after %v, want within [%v, %v)", elapsed, reloadTimeouts.ReloadDrainTimeout-100*time.Millisecond, reloadTimeouts.CloseTimeout)
 			}
 			if cut.Status != "error" || cut.Code != "released" {
 				t.Fatalf("the cut call = %+v, want an error released", cut)

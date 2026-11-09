@@ -2248,6 +2248,20 @@
       ]
     },
     {
+      "path": "packages/chord/test/contracts/evolve.test.ts",
+      "upstreamTestHash": "sha256:0157519b735afb2a3bb9472986578e79c0b88bd1cf6401d5a49eb0c480883dc9",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; its package is imported by non-chord production code (chord/next/contracts), so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (derived_runtime_test.go, evolve_test.go) runs in package chord/next/contracts through exported production functions such as Prop, NewMethod, TakesNoArgs, CheckAccepts; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/contracts/fingerprint.test.ts",
+      "upstreamTestHash": "sha256:ba9581e830968ec447bb7143627165ca596f6937e3941b822e5ba21425d6f1ed",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; its package is imported by non-chord production code (chord/next/contracts), so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (fingerprint_test.go) runs in package chord/next/contracts through exported production functions such as Prop, Hash64, Union, NewMethod; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
       "path": "packages/chord/test/contracts/history.test.ts",
       "upstreamTestHash": "sha256:bc4d85db829570df8dc8830a67ba1f811c3f6ea69de4e7b54c734dd896fa26dc",
       "area": "extensions",
@@ -2262,6 +2276,27 @@
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
+      "path": "packages/chord/test/contracts/params.test.ts",
+      "upstreamTestHash": "sha256:d634ffed135a273bf11f82827311d1ba711a5b5a6139619250186da85088afd4",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; its package is imported by non-chord production code (chord/next/contracts), so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (params_test.go) runs in package chord/next/contracts through exported production functions such as Prop, JoinKey, OneOf, Bool; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/contracts/schema.test.ts",
+      "upstreamTestHash": "sha256:73bb6fd4ffc79261823d042c75a4f5abfc03861b73455ef1ff9b2cfee5efec29",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; its package is imported by non-chord production code (chord/next/contracts), so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (schema_test.go) runs in package chord/next/contracts through exported production functions such as NewMethod, Bytes, Prop, Keyed; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/contracts/snapshot.test.ts",
+      "upstreamTestHash": "sha256:a708093d51b16658f44fe0993b4d3d83b65857b3d87ca348d817da8d00cc3e38",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; its package is imported by non-chord production code (chord/next/contracts), so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (snapshot_test.go) runs in package chord/next/contracts through exported production functions such as SnapshotSchema, Prop, SnapshotArguments, Bytes; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
       "path": "packages/chord/test/data/args.test.ts",
       "upstreamTestHash": "sha256:f980f2518c939d6a6c611d58c4bf3d12441cf8f8e38d2ac91b0cdad21ee2400d",
       "area": "extensions",
@@ -2272,11 +2307,39 @@
       ]
     },
     {
+      "path": "packages/chord/test/data/errors.test.ts",
+      "upstreamTestHash": "sha256:2335b29a88d7d0d4d9b252aa630e2a285ddd4a0c1bb2b8cabdebb5e87f389727",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (errors_test.go, typelevel_test.go) runs in package chord/next/data through exported production functions such as IsChordError, ChordErrorFromJson, NewChordError, Invalid; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
       "path": "packages/chord/test/data/failure.test.ts",
       "upstreamTestHash": "sha256:057a4956c96187ee0fd6456218cc00c5d85f6b3621992c5843d721a16b84be37",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/data/params.test.ts",
+      "upstreamTestHash": "sha256:a5bcca7e5757cb669cfcaaa8e80db84512db0838e558e4634ae58c020d97ad3e",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (params_test.go) runs in package chord/next/data through exported production functions such as CheckParams, IdentityKey, ValidatorFor, IsChordErrorCode; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/data/principal.test.ts",
+      "upstreamTestHash": "sha256:6bd737329d34b7a713827133bd787f242ec673fed2d913b9d9a574d4d406f40d",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (principal_test.go) runs in package chord/next/data through exported production functions such as PrincipalKey, CanonicalJson, NewPrincipalKeyFunction, SamePrincipal; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/data/validator.test.ts",
+      "upstreamTestHash": "sha256:c9a9eaec6bd94fd0214f92896cbfc22b9a15fd19f82ef17a193acea5d59a754b",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (validator_test.go) runs in package chord/next/data through exported production functions such as Check, ValidatorFor, IsChordErrorCode; no export_test seam or test-only stand-in replaces the code under test."
     },
     {
       "path": "packages/chord/test/delta-append-text.test.ts",
@@ -2374,6 +2437,13 @@
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
+      "path": "packages/chord/test/documents/documents.test.ts",
+      "upstreamTestHash": "sha256:3a3b3103ce02255404ccbab1ee69187e04bf40945c7945440b25a3bf2c87bb8e",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (documents_cost_test.go, documents_telemetry_test.go, documents_test.go, host_documents_cancel_test.go) runs in package chord/next/documents, chord/next/host through exported production functions such as DefineState; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
       "path": "packages/chord/test/documents/fence.test.ts",
       "upstreamTestHash": "sha256:3ae48c03edb122a2887c61ab9c10189a9ae5f355461e6a88ac1f23a4cf8602ac",
       "area": "extensions",
@@ -2430,11 +2500,46 @@
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
+      "path": "packages/chord/test/examples/61-tutorial/plugins/lists/worker.test.ts",
+      "upstreamTestHash": "sha256:22afbe9db3be1818842f466e76b8dc06c5d5213e0dd31ceaa65777d6ae9bca51",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (plugins_examples_tutorial_test.go) runs in package chord/nextnode/plugins through exported production functions such as of the package (methods of its exported types); no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/examples/61-tutorial/plugins/traces/clock.test.ts",
+      "upstreamTestHash": "sha256:bb8c1305e4727dd134487975daeaa72cb0eef45306b6cbbb24ce5d48a5cf6098",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (plugins_examples_tutorial_test.go) runs in package chord/nextnode/plugins through exported production functions such as of the package (methods of its exported types); no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/examples/61-tutorial/tutorial.test.ts",
+      "upstreamTestHash": "sha256:80138fbe8d042d39d7aec298c286f32a580e97d98bd7524e50e35e003f13b0d1",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package. Owner hold (2026-11-08): the mapping row is partial, not designed out (D604 not approved). Intention: the book and the example cannot drift (quoted blocks match the example's files, the files are what run, the shown output is what they print); ported as a PiG tutorial (docs/chord/tutorial.md, examples/chord-todo) with the same three checks, the first chapter written, the rest recorded in the mapping row."
+    },
+    {
       "path": "packages/chord/test/host/activity.test.ts",
       "upstreamTestHash": "sha256:afc9dcd2fc3a8f01caa8a368636733a545a86435d2346cd9cdb6f659f2047d31",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/host/adapted.test.ts",
+      "upstreamTestHash": "sha256:7ad0408d1f6c667669727a5a278a88ec15c4d737689ef7aaad04521bcdf37e37",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_adapted_test.go) runs in package chord/next/host through exported production functions such as DefineFacet, ExposeKeyed, Expose; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/host/attempt.test.ts",
+      "upstreamTestHash": "sha256:b08d38ef243b22955b78f3d41f8b633ad0de7114118fa670edb6635283ccf611",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_attempt_test.go) runs in package chord/next/host through exported production functions such as Expose, DefineFacet; no export_test seam or test-only stand-in replaces the code under test."
     },
     {
       "path": "packages/chord/test/host/backoff.test.ts",
@@ -2444,11 +2549,32 @@
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
+      "path": "packages/chord/test/host/ctx.test.ts",
+      "upstreamTestHash": "sha256:dc961893e2eff074cf517a3ff3c8d9448bb7fed96a2b14626dd2bcb4d776c514",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_ctx_test.go, host_spans_test.go) runs in package chord/next/host through exported production functions such as DefineFacet, UntilAborted; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
       "path": "packages/chord/test/host/deadline.test.ts",
       "upstreamTestHash": "sha256:9863d41bbe2c0fc380111fb29880f93bc707b5066912313b76d119a5fa320070",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/host/dependencies.test.ts",
+      "upstreamTestHash": "sha256:4ff56ce57e1f1f92f10007efa137b2914ce88cad55b71204d1e760e31968e35b",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_dependencies_test.go) runs in package chord/next/host through exported production functions such as DefineFacet, Expose; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/host/facet.test.ts",
+      "upstreamTestHash": "sha256:fef49d564dda4c911046658e3ed763203e0d53ecb0a04e30d32a3261f1039809",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_facet_test.go, host_spans_test.go) runs in package chord/next/host through exported production functions such as DefineFacet; no export_test seam or test-only stand-in replaces the code under test."
     },
     {
       "path": "packages/chord/test/host/follow.test.ts",
@@ -2461,11 +2587,39 @@
       ]
     },
     {
+      "path": "packages/chord/test/host/host.test.ts",
+      "upstreamTestHash": "sha256:5a3ef416cd4d5d6822984e03e9f473a112e71ee5584a4ae5bdae321bde4fe497",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_host_test.go, host_spans_test.go, plugins_node_hostoptions_test.go) runs in package chord/next/host, chord/nextnode/plugins through exported production functions such as DefineFacet, NewPluginRuntime, Expose, CreateHost; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
       "path": "packages/chord/test/host/members.test.ts",
       "upstreamTestHash": "sha256:3be9818adbdda664c94eb5eb4d1512d267dc864402817182faa1836a1ba8b23f",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/host/native.test.ts",
+      "upstreamTestHash": "sha256:2848ff91df2df1bc91905f7bcca52473015ac3015c43eeeec7ac7305969357e3",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_facet_test.go, host_native_test.go, host_spans_test.go) runs in package chord/next/host through exported production functions such as DefineFacet, Sleep; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/host/object.test.ts",
+      "upstreamTestHash": "sha256:54aa7584f8748ed1704d041635cfabcce685b8824de1e91b242ef2a6cc68dd67",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_object_reload_test.go, host_object_test.go, host_old_work_test.go) runs in package chord/next/host through exported production functions such as DefineFacet, Expose, DefineJob, Awaiting; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/host/old-work.test.ts",
+      "upstreamTestHash": "sha256:50cf46a8244cb7d728026a7c6bebb866f859afd5a4e99317e4d0e55e660a68c6",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_old_work_test.go) runs in package chord/next/host through exported production functions such as DefineFacet; no export_test seam or test-only stand-in replaces the code under test."
     },
     {
       "path": "packages/chord/test/host/parked.test.ts",
@@ -2482,6 +2636,13 @@
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
+      "path": "packages/chord/test/host/readiness.test.ts",
+      "upstreamTestHash": "sha256:39f18a29e80649c1a27841d98a6f7062d72b36a44ed280e639c019f652121788",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_readiness_test.go) runs in package chord/next/host through exported production functions such as DefineFacet; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
       "path": "packages/chord/test/host/ref-state.test.ts",
       "upstreamTestHash": "sha256:0f32607aa90e256bfdcfe2e2ff1dae496adee49f56fb791451d2a3b07e1f8275",
       "area": "extensions",
@@ -2489,11 +2650,32 @@
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
+      "path": "packages/chord/test/host/reference-keys.test.ts",
+      "upstreamTestHash": "sha256:0816583233b1104806cd4f36b1fa27bfbdb2a149d64f784d4837885c10189cea",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_reference_keys_test.go) runs in package chord/next/host through exported production functions such as Expose, DefineFacet, ExposeKeyed; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
       "path": "packages/chord/test/host/reference-source.test.ts",
       "upstreamTestHash": "sha256:79b50f2e28198a3f3920a2336524c984e7645eb10eeb002ebf2ac1d57a704336",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/host/reference.test.ts",
+      "upstreamTestHash": "sha256:97a8a2ff546a571ff778293577f1a42e63a6aa88352704853acaac5b3fce78e5",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_reference_test.go) runs in package chord/next/host through exported production functions such as Expose, DefineFacet, UntilAborted; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/host/reload-cycle.test.ts",
+      "upstreamTestHash": "sha256:90b15216a79e13e9f31d73e6b12cd95070be1f6a847dc88c447dd99d863f31ad",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_old_work_test.go) runs in package chord/next/host through exported production functions such as DefineFacet; no export_test seam or test-only stand-in replaces the code under test."
     },
     {
       "path": "packages/chord/test/host/retry-on.test.ts",
@@ -2510,6 +2692,27 @@
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
+      "path": "packages/chord/test/host/root.test.ts",
+      "upstreamTestHash": "sha256:584a833b6d3b7f639164cf9938e8d7e677094ea338c729c2cc50f0d68d3c2395",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_root_test.go, host_spans_test.go) runs in package chord/next/host through exported production functions such as DefineFacet, Sleep; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/host/route.test.ts",
+      "upstreamTestHash": "sha256:e97e7a65d309971cb353a82f0d818fb3e062e10c309c23422816737f19b3ba93",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_route_test.go) runs in package chord/next/host through exported production functions such as DefineFacet; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/host/routines.test.ts",
+      "upstreamTestHash": "sha256:c5281925707cf88d03603c967a29847279dab7d059f2c228f0ed569c35945cee",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_routines_test.go, host_spans_test.go, remote_host_link_test.go) runs in package chord/next/host through exported production functions such as Threw, DefineFacet, Expose, Pending; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
       "path": "packages/chord/test/host/sleep.test.ts",
       "upstreamTestHash": "sha256:1ec0f1066f4027620c3a3fe3f703fb4f398a55d85f7cd0964c89ddd71084d7f6",
       "area": "extensions",
@@ -2517,11 +2720,53 @@
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
+      "path": "packages/chord/test/host/staging.test.ts",
+      "upstreamTestHash": "sha256:0da374000229e4ab06e931d5683a4436a74de73565f7a3926efe022ae0fe9dbd",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_staging_test.go, plugins_node_bridged_test.go) runs in package chord/next/host, chord/nextnode/plugins through exported production functions such as DefineFacet, NewPluginRuntime, DefineJob, Expose; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/host/unbound-clock.test.ts",
+      "upstreamTestHash": "sha256:77cf774db1a46ab5f17b6a4dd18761e8eaa07987eb69ad2329074550d6941d16",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_unbound_clock_test.go) runs in package chord/next/host through exported production functions such as DefineFacet; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/host/unbound.test.ts",
+      "upstreamTestHash": "sha256:057d3920a248acdc5d836e40ebf9700496a910e4ae128e1204ccc893acab86f4",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_unbound_test.go) runs in package chord/next/host through exported production functions such as DefineFacet; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
       "path": "packages/chord/test/jobs/definition.test.ts",
       "upstreamTestHash": "sha256:281371fa39c648ec4ffef194a4ec22aa94f7890caa52f132ea6cb8ff08579e19",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/jobs/job.test.ts",
+      "upstreamTestHash": "sha256:c369378ef5a3b5a0eaf501f68670c15dcaa529436058d9959dbfd9ee1d7e4117",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (jobs_job_end_test.go, jobs_job_runs_test.go, jobs_job_test.go) runs in package chord/next/host through exported production functions such as DefineJob, DefineFacet, UntilAborted, Expose; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/jobs/persisted.test.ts",
+      "upstreamTestHash": "sha256:61af78e308288f09a2ab2ae1234644bcc72cbefa2de0e8e54c7f012996bbac46",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (jobs_persisted_test.go) runs in package chord/next/host through exported production functions such as DefineJob, DefineFacet; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/jobs/records.test.ts",
+      "upstreamTestHash": "sha256:0fa45d30419083ef031a761ce23d10776a8ad11ffb26d9c0d965d5b3545bec97",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (jobs_records_test.go) runs in package chord/next/host through exported production functions such as DefineJob, DefineFacet, Expose; no export_test seam or test-only stand-in replaces the code under test."
     },
     {
       "path": "packages/chord/test/jobs/run.test.ts",
@@ -2547,6 +2792,13 @@
       "rationale": "CLI startup, selected execution mode, settings, or command routing. Every case is ported. Per owner direction the omitUndefinedProperties case is a Go equivalence test: unset object entries (nil pointers, omitempty fields) are omitted by Stored and rejected by Copy, and array elements and null values are never dropped, matching Pi 1.0.0 output for the same inputs; see the mapping rationale."
     },
     {
+      "path": "packages/chord/test/link/channel.test.ts",
+      "upstreamTestHash": "sha256:0a5b3d552e3874df97ffc525ecf9d4d2e6952a521741b6500ba37d9c0e58d656",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_channel_test.go, channel_test.go) runs in package chord/next/host, chord/next/link through exported production functions such as NewChannel, MemoryLinkPair, Sleep, NewHandling; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
       "path": "packages/chord/test/link/errors.test.ts",
       "upstreamTestHash": "sha256:178b9c284e506085a5d9e1cbb176bc51c865973ae33247a8241e65a04e94652a",
       "area": "extensions",
@@ -2568,6 +2820,13 @@
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
+      "path": "packages/chord/test/link/message.test.ts",
+      "upstreamTestHash": "sha256:ea2ee944fae53fb74db283000f5b6257875b8fcd33e4535b69ec0ad0f023e148",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (message_test.go, message_trace_test.go) runs in package chord/next/link through exported production functions such as CheckMessage, JsonPart, NewDeflatedPart, DescribeMessage; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
       "path": "packages/chord/test/link/part.test.ts",
       "upstreamTestHash": "sha256:9804b66b81c76ed6fcab117368b6265db12ce1503e32575bfa4055c192d2e7d3",
       "area": "extensions",
@@ -2575,11 +2834,158 @@
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
+      "path": "packages/chord/test/link/values.test.ts",
+      "upstreamTestHash": "sha256:c0407ce66ad2489ad3b19ac9be78c23bd6761476e43b19784b9b81439c4cb614",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (values_test.go) runs in package chord/next/link through exported production functions such as ParsePart, PayloadPart, ResolveSegments, JsonPart; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
       "path": "packages/chord/test/link/websocket.test.ts",
       "upstreamTestHash": "sha256:8cad040a7cc000888f20c79148cc6e2c470d7aa02da73d467a499e2337ab97fa",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/node/app/app.test.ts",
+      "upstreamTestHash": "sha256:f37461c6de1d420c72b433c29f3012ffa117b441ed39bbc44c5cedec6c43cc28",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (app_export_test.go, app_test.go, app_workers_test.go) runs in package chord/nextnode/app through exported production functions such as StartServer, AddressParam; no export_test seam or test-only stand-in replaces the code under test. The last case (an inactive optional import that is missing) is tested on the plugins' import graph (app_executable_test.go: TestAppStartsWhenAnOptionalPluginsFacetImportsAFileThatIsNotThere...); D603 keeps it off the executable only."
+    },
+    {
+      "path": "packages/chord/test/node/app/archive.test.ts",
+      "upstreamTestHash": "sha256:aae9b853143c638f9b69bc8d406e02f4e0956fbef2bfa930886d7db6cd6f1e7f",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (archive_upstream_test.go) runs in package chord/nextnode/app through exported production functions such as UnpackData, PackData, WriteTar; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/app/blobs.test.ts",
+      "upstreamTestHash": "sha256:ee6582c90375ec9ad86fe520efbc8f877357f41d427b55a3a82e29e5eb8d8eff",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (blobs_test.go) runs in package chord/nextnode/app through exported production functions such as NewBlobs; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/app/ephemeral-sessions.test.ts",
+      "upstreamTestHash": "sha256:fab1945f8e105433609797ebe1e35d35ba97a4ff6b0ca5e4f112fed332fe9fea",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (ephemeral_sessions_test.go) runs in package chord/nextnode/app through exported production functions such as NewEphemeralSessions; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/app/ephemeral.test.ts",
+      "upstreamTestHash": "sha256:ec253d3829821e05710a789b9f34c2ac6a43a7111f5ba81a44cdb88ad3a71e35",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (ephemeral_upstream_test.go) runs in package chord/nextnode/app through exported production functions such as StartServer, EphemeralLoginFacet; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/app/files-copy.test.ts",
+      "upstreamTestHash": "sha256:3cc424cacb23a58e2f24196715d180985a7d73e4c1b7996575306cd78137cc7b",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (files_copy_test.go) runs in package chord/nextnode/app through exported production functions such as CopyFiles; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/app/files-index.test.ts",
+      "upstreamTestHash": "sha256:984734e58283ec1fde9d0bb2f33484c445b165da08fda9c2d451c82b1f221476",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (files_index_test.go) runs in package chord/nextnode/app through exported production functions such as CheckPath, CheckSpace, ParentOf; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/app/files.test.ts",
+      "upstreamTestHash": "sha256:6e263eca7289c8131323e141149c0247aec04b648c3018f1d3627bfc5fbd1a64",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (files_support_test.go, files_test.go) runs in package chord/nextnode/app through exported production functions such as FilesFacet; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/app/folder-views.test.ts",
+      "upstreamTestHash": "sha256:97a757b358bea1a92a9b76b154c88d2bad38614e14b3275b41876105ef1a2334",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (folder_views_test.go) runs in package chord/nextnode/app through exported production functions such as NewFolderViews; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/app/info.test.ts",
+      "upstreamTestHash": "sha256:df221e845e51ea29f069fa179f5f590963dba8607eafe11ec50d7a3f66f78a67",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (info_upstream_test.go) runs in package chord/nextnode/app through exported production functions such as WorkerInfoFacet, AppInfoFacet; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/app/invite.test.ts",
+      "upstreamTestHash": "sha256:56ec62cbb7ce2aff8e3e1e518b10e9244017bb8fe952da98f3c5d744570ba2b7",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (invite_upstream_test.go) runs in package chord/nextnode/app through exported production functions such as AppInfoFacet, InviteFacet; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/app/layout.test.ts",
+      "upstreamTestHash": "sha256:22920a2be00f0a12133dbc50debfcf8d06d21eae7f63e5803f9285ae39129e66",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (layout_test.go) runs in package chord/nextnode/app through exported production functions such as WorkerDirectory, DefaultDataDir, CreateLayout; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/app/owner.test.ts",
+      "upstreamTestHash": "sha256:9d486441db82ea400bf24dfc845197d27f1d1e9d4be8a3289daa2a824ec6fb36",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (owner_upstream_test.go) runs in package chord/nextnode/app through exported production functions such as OwnerFacet, OwnerTokenFile; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/app/pairing.test.ts",
+      "upstreamTestHash": "sha256:b80b2cf65d8b194475143fcede004c85192b64475b00c08a8d75ac05fdfb554b",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (pairing_upstream_test.go) runs in package chord/nextnode/app through exported production functions such as NewPairings, PairingFacet; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/app/secrets.test.ts",
+      "upstreamTestHash": "sha256:9c5da2ee36ae8b6f13f1ff69ff16a8d719a39ebb6b1508943b6134ed2c1400ee",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (secrets_test.go, secrets_umask_unix_test.go) runs in package chord/nextnode/app through exported production functions such as WriteSecret, MatchesHash, ReadSecret, NewToken; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/app/sessions.test.ts",
+      "upstreamTestHash": "sha256:80ef31c8fdfc51eed65bf752cb66e2e3839dfa8846cac85d4c345d5e4487c77f",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (sessions_upstream_test.go) runs in package chord/nextnode/app through exported production functions such as HashToken; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/app/tar.test.ts",
+      "upstreamTestHash": "sha256:e1f2d96f849c95f2bb9bb0c03b6ce462455bf2d54a6ddff4f693853888427a80",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (tar_test.go) runs in package chord/nextnode/app through exported production functions such as ReadTar, WriteTar; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/app/uploads.test.ts",
+      "upstreamTestHash": "sha256:ca237dda3ce284a22002de0c98e0cb3872809179f212d89d6d0ed8789484262e",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (uploads_test.go) runs in package chord/nextnode/app through exported production functions such as NewUploads; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/app/users.test.ts",
+      "upstreamTestHash": "sha256:5e1abd052fa46f4e380a7e537eb5355a93d78dfb497927cd53ae79ef02af84c0",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (users_upstream_test.go) runs in package chord/nextnode/app through exported production functions such as DefineUsers; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/app/worker.test.ts",
+      "upstreamTestHash": "sha256:f90976f7e213ffa02f641d10f100a68cd2f0404a0b6a7703e282799a3c522b1d",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (app_workers_test.go) runs in package chord/nextnode/app through exported production functions such as of the package (methods of its exported types); no export_test seam or test-only stand-in replaces the code under test."
     },
     {
       "path": "packages/chord/test/node/compression.test.ts",
@@ -2610,11 +3016,109 @@
       "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
+      "path": "packages/chord/test/node/http/file.test.ts",
+      "upstreamTestHash": "sha256:1d63bba73b8e868ec2e3a3a927253a3bef295fbadac09c0b8a53e18cdaa297aa",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (file_test.go) runs in package chord/nextnode/http through exported production functions such as FileResponse; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
       "path": "packages/chord/test/node/http/headers.test.ts",
       "upstreamTestHash": "sha256:64825b54655e1ace14f048b81075a3d83c3658055490d035cdf7d8513b2d5703",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/node/http/http.test.ts",
+      "upstreamTestHash": "sha256:def0f4f53af1817366e25c5acf672c232b209180ac7d1985251032132b283bf5",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (http_spans_test.go, http_test.go) runs in package chord/nextnode/http through exported production functions such as Cookie, HeaderOf, NewHttpFailure, RouteFunc; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/http/node.test.ts",
+      "upstreamTestHash": "sha256:dc777460fa4dcbd12a27093ab60ec984442d275223c2848b441f56b99379c59a",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (node_test.go) runs in package chord/nextnode/http through exported production functions such as NodeRequestOf; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/http/request.test.ts",
+      "upstreamTestHash": "sha256:d12a18b57fd0cf9af458e7365a0751c88a46e2566955c26a9ee81e770d0e9461",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (request_test.go) runs in package chord/nextnode/http through exported production functions such as HeaderGet; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/http/response.test.ts",
+      "upstreamTestHash": "sha256:bc5cb7f2946bed48d2c6d07fa04fef72ae553a55df88d124dec46c747c752a37",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (response_test.go) runs in package chord/nextnode/http through exported production functions such as Cookie, HeaderOf; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/http/router.test.ts",
+      "upstreamTestHash": "sha256:4367dd0cf02105a9837260ce4acf47dabecdd5626095dd78c7586d779c0d4b01",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (router_test.go) runs in package chord/nextnode/http through exported production functions such as RouteFunc, ComposeRouter; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/http/upgrades.test.ts",
+      "upstreamTestHash": "sha256:08d3e1f9559e62b4e55e674185333fb4d6086d5d12409998762d3fd87d57cc2b",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (upgrades_test.go) runs in package chord/nextnode/http through exported production functions such as HeaderGet; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/plugins/base-inputs.test.ts",
+      "upstreamTestHash": "sha256:6a00a348d8e11c0febd25e446cb2b81bbfe58e4ef977920c83cd11b3cedb5c3e",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (plugins_baseinputs_test.go) runs in package chord/nextnode/plugins through exported production functions such as ContentHash, NewRecorder; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/plugins/build.test.ts",
+      "upstreamTestHash": "sha256:0cf142af28726b7ef9b76f515d07340ecac657d6153556e2a7522073a7f7485b",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (plugins_build_test.go, plugins_cssmodules_test.go) runs in package chord/nextnode/plugins through exported production functions such as DiscoverPlugins, BuildFacet, CreatePlugins; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/plugins/discover.test.ts",
+      "upstreamTestHash": "sha256:c2c44f15e621cbbf7f1bdcda1027e00bcaeeaad4c2f9a6f12f860854028249ea",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (plugins_discover_test.go) runs in package chord/nextnode/plugins through exported production functions such as DiscoverPlugins, SameFiles; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/plugins/evaluate.test.ts",
+      "upstreamTestHash": "sha256:7ff1ce2c08a4b03bfe247b67dbbca3e8b981c9016a2049ac474d3558a0932ea5",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (plugins_evaluate_test.go, plugins_node_test.go) runs in package chord/nextnode/plugins through exported production functions such as NewPluginRuntime, BuildFacet, DiscoverPlugins; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/plugins/install.test.ts",
+      "upstreamTestHash": "sha256:ae9f02459719ce69b1f910b53a22187379796cca8304a21ffbc80ae7bb123472",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (plugins_install_test.go) runs in package chord/nextnode/plugins through exported production functions such as InstallPlugin, InstallDependencies, DiscoverPlugins, BuildFacet; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/plugins/plugins.test.ts",
+      "upstreamTestHash": "sha256:2130f7a727ac19aa03a900b8a8ce9c3d56a90ba8ac7e96c5524f3dc0b99a7c8d",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (plugins_endtoend_test.go, plugins_examples_test.go, plugins_node_bridged_test.go, plugins_node_test.go, plugins_plugins_test.go, plugins_runtime_test.go) runs in package chord/nextnode/plugins through exported production functions such as NewPluginRuntime, InstallDependencies, CreatePlugins, InstallPlugin; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/plugins/runtime.test.ts",
+      "upstreamTestHash": "sha256:932547aca8c5d5bd5633a46ab4f747aa131c97a590e82827a4e8d23095a9598c",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (plugins_runtime_test.go) runs in package chord/nextnode/plugins through exported production functions such as BuildFacet, DiscoverPlugins, NewPluginRuntime; no export_test seam or test-only stand-in replaces the code under test."
     },
     {
       "path": "packages/chord/test/node/plugins/stack.test.ts",
@@ -2624,11 +3128,221 @@
       "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
+      "path": "packages/chord/test/node/plugins/testing.test.ts",
+      "upstreamTestHash": "sha256:8fd2065075c0baa29d8d0bef8320b9fd91873a4d0066b3a648f254869e35320f",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (plugins_testing_test.go) runs in package chord/nextnode/plugins through exported production functions such as TestPlugin; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/plugins/watcher.test.ts",
+      "upstreamTestHash": "sha256:c7f0de0a08218fae9c2d89014cb4a498304b2bd5b82a213dd00622532e3e30d7",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (plugins_watcher_base_test.go, plugins_watcher_linux_test.go, plugins_watcher_test.go) runs in package chord/nextnode/plugins through exported production functions such as DiscoverPlugins, ContentHash; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/react/hooks.test.ts",
+      "upstreamTestHash": "sha256:8becb1af90184457de3a89fb1711ea0ba1f313e19d629c1a8c5a2116323697ce",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (app_web_browser_test.go) runs in package chord/nextnode/app through exported production functions such as of the package (methods of its exported types); no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/react/stores.test.ts",
+      "upstreamTestHash": "sha256:5d49f62d4c2658f54799af692ef9a1e1fd12bd4a60c1f2528460b9b8861f1fd9",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (surfaces_react_test.go) runs in package chord/nextnode/surfaces through exported production functions such as of the package (methods of its exported types); no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/reload/base.test.ts",
+      "upstreamTestHash": "sha256:19018791c06b556ba20b429b0ad4fc9067ecfcb8e339739bbeaa6e2a0dea516a",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (reload_web_test.go) runs in package chord/nextnode/app through exported production functions such as of the package (methods of its exported types); no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/reload/contracts.test.ts",
+      "upstreamTestHash": "sha256:b72b2a6a6d823532b5b6e65106446a636542a7e08c14f21d9532d62e5782ccc1",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (reload_contracts_test.go) runs in package chord/nextnode/app through exported production functions such as of the package (methods of its exported types); no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/reload/failed.test.ts",
+      "upstreamTestHash": "sha256:01df3121b616efc1eb1dd3eda3db6896588830d6ebff0b162821a5aec8fc6b10",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (reload_failed_test.go, reload_web_test.go) runs in package chord/nextnode/app through exported production functions such as of the package (methods of its exported types); no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/reload/jobs.test.ts",
+      "upstreamTestHash": "sha256:d9f263d9c3a6ffa2585b7ec2f882c315bb2e57dc2db4985153c956729a63da23",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (reload_jobs_test.go) runs in package chord/nextnode/app through exported production functions such as of the package (methods of its exported types); no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/reload/pure.test.ts",
+      "upstreamTestHash": "sha256:abbc104ceed9a0b6c0eaf7e60b76c1de88e792e4953351ab29d1bf7b65d79745",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (reload_pure_test.go) runs in package chord/nextnode/app through exported production functions such as of the package (methods of its exported types); no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/reload/restart.test.ts",
+      "upstreamTestHash": "sha256:ab258f5c5386813d772d0ee4dd6df16ef4a7285b9c209bc4ff7598c339bfb116",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (reload_restart_test.go) runs in package chord/nextnode/app through exported production functions such as of the package (methods of its exported types); no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/reload/rollout.test.ts",
+      "upstreamTestHash": "sha256:a7b79448a5cc056f705b9dc01cff5ceab4d035b289c428731f207426089b6656",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (reload_rollout_test.go) runs in package chord/nextnode/app through exported production functions such as of the package (methods of its exported types); no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/reload/web.test.ts",
+      "upstreamTestHash": "sha256:c1ee67f99a1b67af96d6f770958b73cb210e80a12959deebc961743c23f42559",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (reload_web_test.go) runs in package chord/nextnode/app through exported production functions such as of the package (methods of its exported types); no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/surfaces/bundle.test.ts",
+      "upstreamTestHash": "sha256:320d3595a23da8e5c2b3a42a5a6e5ba725afa56ba504b7b83b776096d9c0c7ef",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (surfaces_bundle_test.go) runs in package chord/nextnode/surfaces through exported production functions such as BuildBase, ProcessConditions; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/surfaces/tui.test.ts",
+      "upstreamTestHash": "sha256:7195a06f4cffbfe206b44129bd2935f23c9975204e88bccb94ad9c3d95ac618c",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (tui_kit_upstream_test.go) runs in package chord/nextnode/tui through exported production functions such as Attach; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/surfaces/web.test.ts",
+      "upstreamTestHash": "sha256:ea587206867b0ecb99a576b6c08ce4ea4c3e19572f639321a7f3ccaaa6cbc5eb",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (app_surfaces_test.go) runs in package chord/nextnode/app through exported production functions such as of the package (methods of its exported types); no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/tui/actions.test.ts",
+      "upstreamTestHash": "sha256:85652f2ba42cdcf9fc7860b6031b6ff0ab7021faeab208d0a9fbc9492d598331",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (tui_actions_test.go) runs in package chord/nextnode/tui through exported production functions such as Attach, PromptLines, Wrap, OpenerCommand; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/tui/credentials.test.ts",
+      "upstreamTestHash": "sha256:d6801b85c1e6f8f84e0694ee4ce85cadbead55d2638d8caebd765e22a27c18d9",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (tui_credentials_test.go) runs in package chord/nextnode/tui through exported production functions such as TokenOf; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/tui/filter.test.ts",
+      "upstreamTestHash": "sha256:b1aec08238bc2f7b2ca3cb8e9db8efda68ff2b31661631f98c4e533511e1fab8",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (tui_filter_test.go) runs in package chord/nextnode/tui through exported production functions such as FilterOutput; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/tui/launcher.test.ts",
+      "upstreamTestHash": "sha256:d12ab9479e4422ccf72ad917eceead4740c351bc1b6c385c8fb0892fb86d3c87",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (tui_kit_upstream_test.go) runs in package chord/nextnode/tui through exported production functions such as Attach; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/tui/pipe.test.ts",
+      "upstreamTestHash": "sha256:d5ea97db17f981a194be5860668fdb66f7b516b0094e1b2fabd7ca6a5fd13f38",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (tui_pipe_test.go) runs in package chord/nextnode/tui through exported production functions such as NewFrameReader, LauncherFrame; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/tui/sandbox.test.ts",
+      "upstreamTestHash": "sha256:012b6c4676863bd8224316426c9a2c92bbd6313478b26778956d9063691310e6",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (tui_sandbox_test.go) runs in package chord/nextnode/tui through exported production functions such as SandboxEnvironment, SandboxFlags, StartSandbox; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/web/language.test.ts",
+      "upstreamTestHash": "sha256:46e2730a29eb51430f648126124b32d0e40268461b561348bb53536b804e854b",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (app_web_browser_test.go) runs in package chord/nextnode/app through exported production functions such as of the package (methods of its exported types); no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/web/page.test.ts",
+      "upstreamTestHash": "sha256:bf7d5a585b21af094470ffd57cb986b866607feea95329446bc3729d60e0b6a7",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (app_web_browser_test.go) runs in package chord/nextnode/app through exported production functions such as of the package (methods of its exported types); no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/web/styles.test.ts",
+      "upstreamTestHash": "sha256:28355c162bbb909951099b4f6e706448fac184e0822375c2355ebdd2c261cd41",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (app_web_styles_test.go) runs in package chord/nextnode/app through exported production functions such as of the package (methods of its exported types); no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/workers/base.test.ts",
+      "upstreamTestHash": "sha256:c81aa14f3f9a3cff377c94ce876bc4cd572b048b38109fc3963979c785ff5b7b",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Owner hold (2026-11-08): D600 is not approved as a design-out of this file; every case is ported in PiG form (plugins_workerbase_test.go, surfaces_bundle_test.go, plugins_build_test.go, workers_workers_test.go), each stating what it protects."
+    },
+    {
+      "path": "packages/chord/test/node/workers/child.test.ts",
+      "upstreamTestHash": "sha256:547c8c230bba723cdd50963d49ead7d846cc4f6e944e2eaf0e1829b203c9fa41",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Owner hold (2026-11-08): D600 is not approved as a design-out of this file; the case is ported in PiG form. Intention of \"the child entry's imports › loads no esbuild\": a forked worker does not pay for the server's build tool. PiG form: workers_child_test.go, a deps test that `go list -deps` of the workers package, the plugin runtime and the plugin data links no esbuild; it holds since the plugins component is split in three layers (plugins/model, plugins/build, plugins) and the component takes the builder as PluginsOptions.Build. An app's worker executable is the server's own program (`app.StartWorker`), so it still links `app` and the 25 esbuild packages behind it; the test protects the worker side (`workers`, the plugin runtime and the plugin data) only."
+    },
+    {
+      "path": "packages/chord/test/node/workers/control.test.ts",
+      "upstreamTestHash": "sha256:9858e5fb069dd676631234e0f756276f3660a447e4806bd7dde9a7c1b72dacc3",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (workers_control_test.go) runs in package chord/nextnode/workers through exported production functions such as of the package (methods of its exported types); no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/workers/lock.test.ts",
+      "upstreamTestHash": "sha256:d867c8df557729d75b865949bae00ac9648da05364fe7d7eddbcf7f50dd946eb",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (workers_lock_test.go) runs in package chord/nextnode/workers through exported production functions such as ProcessLock; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/node/workers/main.test.ts",
+      "upstreamTestHash": "sha256:a1e14f4a90bc3160a8ce94139dd68b987e99d11f466cffc99f658feb47a77bb5",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (workers_main_test.go, workers_signal_unix_test.go) runs in package chord/nextnode/workers through exported production functions such as NewWorkerProcess; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
       "path": "packages/chord/test/node/workers/process.test.ts",
       "upstreamTestHash": "sha256:3d2965a061584446c91dd22387b730f28f5d78879874dffa793f742802a49279",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..b556cfe5) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/node/workers/workers.test.ts",
+      "upstreamTestHash": "sha256:3c37d4d8b6ba7e8aacc072959d4c8eea747276567858a847056ec81a511686b6",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (workers_rollout_blocked_unix_test.go, workers_rollout_test.go, workers_workers_test.go) runs in package chord/nextnode/workers through exported production functions such as of the package (methods of its exported types); no export_test seam or test-only stand-in replaces the code under test."
     },
     {
       "path": "packages/chord/test/output-skip.test.ts",
@@ -2656,11 +3370,46 @@
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
+      "path": "packages/chord/test/registries/record.test.ts",
+      "upstreamTestHash": "sha256:d6fbed9b8fb3f739df996ee613daed7884b3d6af6d4823888bf69b8f83a4fd4b",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; its package is imported by non-chord production code (chord/next/registries), so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_registry_record_test.go, host_registry_undeclared_test.go, record_test.go) runs in package chord/next/host, chord/next/registries through exported production functions such as CheckProvider, KeyedEntries; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/registries/registry.test.ts",
+      "upstreamTestHash": "sha256:965875230011ae1ae5b31f968fbfda07647a884c9b511ae07b85901ed1985cf1",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; its package is imported by non-chord production code (chord/next/registries), so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_registry_providers_test.go, registry_test.go) runs in package chord/next/host, chord/next/registries through exported production functions such as DefineRegistry; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/registries/value.test.ts",
+      "upstreamTestHash": "sha256:ffa55b51329ce7e1cad65b69a3dddff92e01f11801dfea7210322caecbf61e9a",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; its package is imported by non-chord production code (chord/next/registries), so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_registry_readers_test.go, value_test.go) runs in package chord/next/host, chord/next/registries through exported production functions such as Sleep, DefineFacet, NewRegistryValue; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
       "path": "packages/chord/test/remote/calls.test.ts",
       "upstreamTestHash": "sha256:76761bad6a17f31315542cc0a91072a6245866ea7c1db9c9999f62675a67ce5d",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/remote/consumer.test.ts",
+      "upstreamTestHash": "sha256:0d0a5542d166f9979bfbfcb0b791048858b9055a9336fd2597527b21a224ec3e",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (remote_consumer_test.go) runs in package chord/next/host through exported production functions such as DefineFacet, Sleep; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/remote/hold.test.ts",
+      "upstreamTestHash": "sha256:a095726e41fa26f03d6f0067400df0af5635ca90cf0bdb6f68c657a87cd9d160",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (remote_hold_kept_test.go, remote_hold_reload_test.go, remote_hold_test.go) runs in package chord/next/host through exported production functions such as DefineFacet, Expose, Sleep, DefineJob; no export_test seam or test-only stand-in replaces the code under test."
     },
     {
       "path": "packages/chord/test/remote/host-link.test.ts",
@@ -2675,6 +3424,27 @@
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/remote/provider.test.ts",
+      "upstreamTestHash": "sha256:1a6c594059ef8fba2092041bc3a67bf6ce047d35140d7607248a62ee7eb07143",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (remote_provider_test.go) runs in package chord/next/host through exported production functions such as DefineFacet, Expose; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/remote/relay.test.ts",
+      "upstreamTestHash": "sha256:4703e080e11777bbb5bd03b770807a9bda8ba76592b4d05cb1ed39ff8623e91f",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (remote_relay_test.go) runs in package chord/next/host through exported production functions such as DefineFacet, Sleep; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/remote/remote-object.test.ts",
+      "upstreamTestHash": "sha256:4fa596ec91d2fcfaf5ae40e78233dba2fabeec9516e2957ea83a635ac5e6d8df",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (remote_remote_object_test.go) runs in package chord/next/host through exported production functions such as DefineFacet, Expose; no export_test seam or test-only stand-in replaces the code under test."
     },
     {
       "path": "packages/chord/test/remote/replica.test.ts",
@@ -2768,11 +3538,25 @@
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
+      "path": "packages/chord/test/state/native-source.test.ts",
+      "upstreamTestHash": "sha256:8142e0a96067cb50197e6d65d15ebe12720a2f3c4eaa4d1d9b0ca5be90b7af0f",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; its package is imported by non-chord production code (chord/next/state), so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_state_sources_test.go, derive_sources_own_test.go, native_own_test.go) runs in package chord/next/host, chord/next/state through exported production functions such as NewDerive, NewConstant; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
       "path": "packages/chord/test/state/watchable.test.ts",
       "upstreamTestHash": "sha256:2742844ed86fdfe8d53c05d12a71a93cc710158696595e424c112f5a0f289147",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/state/writable.test.ts",
+      "upstreamTestHash": "sha256:5af6ce5d280b3620c41c1e59a6644a264193a433c79e5f7ecb4e5c020a7ecf6b",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; its package is imported by non-chord production code (chord/next/state), so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (writable_own_test.go) runs in package chord/next/state through exported production functions such as Identical, NewWritableSource; no export_test seam or test-only stand-in replaces the code under test."
     },
     {
       "path": "packages/chord/test/store/allocator.test.ts",
@@ -2876,6 +3660,13 @@
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
+      "path": "packages/chord/test/store/live-query.test.ts",
+      "upstreamTestHash": "sha256:c8f5fe3c9eb996a99d97890a61443f2699e2b8783ba197a829b7e63298ebd308",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; its package is imported by non-chord production code (chord/next/store), so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_live_query_test.go, live_query_test.go) runs in package chord/next/host, chord/next/store through exported production functions such as DefineFacet, NewQueryRefresh; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
       "path": "packages/chord/test/store/outbox.test.ts",
       "upstreamTestHash": "sha256:4e6ee55b2bbada0c6dbd0a6352f1f63409d0bb41768d8f61aa72e632d37c841e",
       "area": "extensions",
@@ -2911,6 +3702,13 @@
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
+      "path": "packages/chord/test/store/store.test.ts",
+      "upstreamTestHash": "sha256:65a12ac4b523b6c94be83390ef602104946e059715d4c43ed548ed373e6d6124",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; its package is imported by non-chord production code (chord/next/store), so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (group_commit_test.go, store_test.go) runs in package chord/next/store through exported production functions such as Read, CreateDocument, ChangeDocument, SqliteBackend; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
       "path": "packages/chord/test/store/table-changes.test.ts",
       "upstreamTestHash": "sha256:9b5dc907c42da0d10b91336b1bb9036312871f753cea51834b0aa14cab33f043",
       "area": "extensions",
@@ -2939,11 +3737,25 @@
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
+      "path": "packages/chord/test/store/table-migration.test.ts",
+      "upstreamTestHash": "sha256:8c450eed99c1381a2339ecf9c7807800be6b4f5e4d2a5169855c9ba9a4d37807",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; its package is imported by non-chord production code (chord/next/store), so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (evidence_storeB_test.go, table_migration_test.go) runs in package chord/next/store through exported production functions such as Json, Read, NewTableChanges, PrepareTables; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
       "path": "packages/chord/test/store/table-writes.test.ts",
       "upstreamTestHash": "sha256:0073b6aa0fccfea5a30348c8623b02e03f0fe2bd834ba056d3df11d7b0c44f95",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/store/table.test.ts",
+      "upstreamTestHash": "sha256:a5c2f09931f05e2e160cf332bd2a1408cdab703fbfa606cd1a55467563119a2a",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; its package is imported by non-chord production code (chord/next/store), so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (table_test.go) runs in package chord/next/store through exported production functions such as DefineTable, EvolveTable, Json; no export_test seam or test-only stand-in replaces the code under test."
     },
     {
       "path": "packages/chord/test/store/text.test.ts",
@@ -2953,13 +3765,137 @@
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
+      "path": "packages/chord/test/surfaces/active-language.test.ts",
+      "upstreamTestHash": "sha256:9e2b73e4007163ac09df66f6572202d25e6e55db3f8cfabc70d0cf30e13e5ff4",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (surfaces_active_language_test.go) runs in package chord/next/surfaces through exported production functions such as HostLanguage, FollowActiveLanguage, LocaleChoiceFacet, TranslationsFacet; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/surfaces/active-theme.test.ts",
+      "upstreamTestHash": "sha256:c33fe6fcea6078ca55762614ecf5f4bdca94c463ed0c00cadaf765a38041b717",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (surfaces_active_theme_test.go) runs in package chord/next/surfaces through exported production functions such as ThemeChoiceFacet, ThemesFacet, FollowActiveTheme; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/surfaces/client.test.ts",
+      "upstreamTestHash": "sha256:227e4ce02a1dbcd614060684dff02eff2be8da27a6a641879fab174278af1edc",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (surfaces_client_test.go) runs in package chord/next/surfaces through exported production functions such as StartClient; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/surfaces/connection.test.ts",
+      "upstreamTestHash": "sha256:b30dd3c9989390028c4ef27fb7365b5ee437f6155df14337b1986667b7a85274",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (surfaces_connection_test.go) runs in package chord/next/surfaces through exported production functions such as KeepConnected; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/surfaces/format.test.ts",
+      "upstreamTestHash": "sha256:bd72b1edce3512483cac854712c5b44ac60980582d168f15fdac002239c1614a",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (surfaces_format_test.go) runs in package chord/next/surfaces through exported production functions such as FormatNumber, FormatTime; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/surfaces/language.test.ts",
+      "upstreamTestHash": "sha256:30d6d83b3c2fef27e9512e79ebad8edfff7d23067426cde4917bd4da581c915c",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (surfaces_active_language_test.go, surfaces_language_test.go) runs in package chord/next/surfaces through exported production functions such as HostLanguage, CreateLanguage, FollowActiveLanguage, MatchLocale; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/surfaces/locale-choice.test.ts",
+      "upstreamTestHash": "sha256:31ea47fbf567707cbaa3b9b181753d5973e0e1fcc18b275e1fe64b6e2af52672",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (surfaces_preference_test.go) runs in package chord/next/surfaces through exported production functions such as PreferenceFacet, PreferenceContract, LocaleChoiceFacet; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/surfaces/messages.test.ts",
+      "upstreamTestHash": "sha256:dc0e01ea71ba913db7077f354f65ffd7299553e96b3b255538b9a7dd49dba0ce",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (surfaces_messages_test.go) runs in package chord/next/surfaces through exported production functions such as DefineMessages, FormatNumber, CreateLanguage, ComposeTranslations; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/surfaces/page-state.test.ts",
+      "upstreamTestHash": "sha256:bb0b6c79b14f670c565ea5cbaf9e6f1bfccd9afbb1cd1a055e79be7ab3fadaed",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (surfaces_page_state_test.go) runs in package chord/next/surfaces through exported production functions such as PageStateOf; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/surfaces/preference.test.ts",
+      "upstreamTestHash": "sha256:1282fc600f619854a440f9aac3782b206e948596c4a88564b40337f26960c19e",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (surfaces_preference_test.go) runs in package chord/next/surfaces through exported production functions such as PreferenceFacet, PreferenceContract, LocaleChoiceFacet; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/surfaces/registered.test.ts",
+      "upstreamTestHash": "sha256:e9629f578d67e60503e3e5c7852dfdeb8d89f40cb965afe6d43fbcd1bf911a69",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (surfaces_registered_test.go) runs in package chord/next/surfaces through exported production functions such as EvaluateRegistered, RegisteredSource; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/surfaces/themes.test.ts",
+      "upstreamTestHash": "sha256:d6da5eb341a8892010f056624b7e919ac48d85b5c06a65e0f4bb0d21344f7197",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (surfaces_themes_test.go) runs in package chord/next/surfaces through exported production functions such as TerminalColor, ActiveTheme, ThemeVariables; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/surfaces/translations.test.ts",
+      "upstreamTestHash": "sha256:3263b221c526f24f29cd5b2eb7636fb0e91b8895de1030e89358e5635f1decca",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (surfaces_translations_test.go) runs in package chord/next/surfaces through exported production functions such as DefineMessages, TranslationsFacet, ComposeTranslations; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/sync/lines.test.ts",
+      "upstreamTestHash": "sha256:2ea5d667417d4d9e723bd804190863d36effab9581d0780cd53f1f76fe94fa99",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (lines_test.go) runs in package chord/sync through exported production functions such as DecodeBatch, DecodeLogLine, EncodeLogLine, EncodeSnapshot; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/sync/sync.test.ts",
+      "upstreamTestHash": "sha256:205560922cb58d3488db139a10ac5e85835daed045d005ed8977200b924c048b",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (sync_test.go) runs in package chord/sync through exported production functions such as PullSession, UploadSession, NewFlushScheduler, RemoteHistoryOf; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/telemetry-ingest/facet.test.ts",
+      "upstreamTestHash": "sha256:52be8bdf165741a144b10be8cef383b2c730f019169f1d3eac11d4998540f34a",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (ingest_upstream_test.go) runs in package chord/next/telemetryingest through exported production functions such as SendPageTelemetry, IngestFacet, NewRecorder, SendWorkerTelemetry; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/telemetry-ingest/recorder.test.ts",
+      "upstreamTestHash": "sha256:3b53bc1746c41ca0aaabe5ee803a05caf13f4650c790259f615d1d36ce747f20",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (recorder_upstream_test.go) runs in package chord/next/telemetryingest through exported production functions such as NewRecorder; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
+      "path": "packages/chord/test/telemetry-ingest/sender.test.ts",
+      "upstreamTestHash": "sha256:e6d0c1c57d9e7515d7cd4558f02075091c504ea14cee0240694152a23aed11ab",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (ingest_upstream_test.go) runs in package chord/next/telemetryingest through exported production functions such as SendPageTelemetry, IngestFacet, NewRecorder, SendWorkerTelemetry; no export_test seam or test-only stand-in replaces the code under test."
+    },
+    {
       "path": "packages/chord/test/telemetry-sqlite-node.test.ts",
       "upstreamTestHash": "sha256:80c33d2ee955433d8baf75df4f60de9456cfbd742a32c36027d3b9009edd342c",
-      "area": "cli",
-      "tags": [
-        "hot-path"
-      ],
-      "rationale": "Telemetry recording, propagation, storage, or rendering (Pi 2ec55d80 and d9025a5f)."
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (telemetry_sqlite_v2_test.go) runs in package chord/telemetrysqlite through exported production functions such as OpenTelemetryStore, CreateSqliteTelemetry; no export_test seam or test-only stand-in replaces the code under test."
     },
     {
       "path": "packages/chord/test/telemetry-sqlite-store.test.ts",
@@ -2982,25 +3918,23 @@
     {
       "path": "packages/chord/test/telemetry.test.ts",
       "upstreamTestHash": "sha256:e2411807ef5c1a744489182c765f92fbb54395eaa52bfc6e9d8964fe781b60df",
-      "area": "cli",
-      "tags": [
-        "hot-path"
-      ],
-      "rationale": "Telemetry recording, propagation, storage, or rendering (Pi 2ec55d80 and d9025a5f)."
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (host_telemetry_test.go, telemetry_upstream_test.go) runs in package chord/next/host, chord/next/telemetry through exported production functions such as Metrics, NewOpenSpan, ParentOf, Untraced; no export_test seam or test-only stand-in replaces the code under test."
     },
     {
       "path": "packages/chord/test/tui/frames.test.ts",
       "upstreamTestHash": "sha256:6b9fd15c8c399981f3f145211f31191b27798b21f3f12f6c977c11b9d6801990",
       "area": "extensions",
       "tags": [],
-      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (tui_frames_test.go) runs in package chord/nextnode/tui through exported production functions such as FilterOutput; no export_test seam or test-only stand-in replaces the code under test."
     },
     {
       "path": "packages/chord/test/tui/scope.test.ts",
       "upstreamTestHash": "sha256:c2e06b4a37798ddbc10313923edd0069be510089a17191bdf6858c74617e9cdc",
       "area": "extensions",
       "tags": [],
-      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (tui_scope_test.go) runs in package chord/next/tui through exported production functions such as PageState, Registry, OptimisticLast, WatchMember; no export_test seam or test-only stand-in replaces the code under test."
     },
     {
       "path": "packages/chord/test/watch.test.ts",

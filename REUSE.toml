@@ -19,6 +19,16 @@ SPDX-FileCopyrightText = [
 ]
 SPDX-License-Identifier = "MIT"
 
+# The Chord tutorial adapts Pi's tutorial (packages/chord/docs/tutorial/book.md); PiG-authored revisions retain the same MIT license.
+[[annotations]]
+path = "docs/chord/**"
+precedence = "closest"
+SPDX-FileCopyrightText = [
+  "Copyright Michael Kinsy",
+  "Copyright (c) 2025 Mario Zechner",
+]
+SPDX-License-Identifier = "MIT"
+
 # The project banner contains an adapted Go gopher. The remaining composition
 # is PiG-authored artwork.
 [[annotations]]
@@ -508,7 +518,7 @@ SPDX-FileCopyrightText = "Copyright the JSON Schema organization"
 SPDX-License-Identifier = "BSD-3-Clause"
 
 # The schema-switch fixtures of Chord v2 (chord/next/host/testdata/schema-switch) are Pi's test files, byte for byte
-# (packages/chord/test/next/schema at b556cfe5): the recorded fingerprints and the stored SQLite store and archive.
+# (packages/chord/test/schema at b556cfe5): the recorded fingerprints and the stored SQLite store and archive.
 [[annotations]]
 path = "chord/next/host/testdata/schema-switch/**"
 precedence = "closest"

@@ -6,7 +6,7 @@ import (
 )
 
 // pi: packages/chord/src/next/host/deadline.ts
-// Ports packages/chord/test/next/host/deadline.test.ts: an activation's deadline (slice 6a §9) expires once after its
+// Ports packages/chord/test/host/deadline.test.ts: an activation's deadline (slice 6a §9) expires once after its
 // budget; paused time does not count; a cleared deadline never expires.
 
 func TestDeadlineExpiresOnceAfterItsBudget(t *testing.T) {

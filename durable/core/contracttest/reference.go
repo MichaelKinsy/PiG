@@ -11,7 +11,7 @@ import (
 )
 
 // ReferenceEncode is a Go model of JSON.stringify(JSON.parse(in)) for the JSON the core writes (CONTRACT 3.1, 5.6). It exists so a
-// core's encoder can be fuzzed against an oracle with unlimited inputs; the vectors in testdata/oracle/encode.jsonl, produced by
+// core's encoder can be fuzzed against an oracle with unlimited inputs; the vectors in testdata/oracle/encode.jsonl.gz, produced by
 // the reference runtime, prove the model (TestReferenceEncodeReproducesEveryEncodeVector). It is test tooling: it uses the
 // standard library freely and is not part of the core.
 //

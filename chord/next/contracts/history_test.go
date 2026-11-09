@@ -8,7 +8,7 @@ import (
 )
 
 // pi: packages/chord/src/next/contracts/history.ts
-// Ports packages/chord/test/next/contracts/history.test.ts. Upstream's history is a type-level structure
+// Ports packages/chord/test/contracts/history.test.ts. Upstream's history is a type-level structure
 // (Increment, CurrentStep, OlderVersions, StepAt, ChangesAfter, tested with expectTypeOf only); Go does not type it,
 // so the cases are runtime tests (ChangesAfter: TestChangesAfter in derived_runtime_test.go). At
 // runtime a contract holds its versions as numbers and the changes of each version (contracts.VersionData), so the

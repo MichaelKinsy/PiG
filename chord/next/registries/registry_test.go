@@ -7,7 +7,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
 )
 
-// Ports packages/chord/test/next/registries/registry.test.ts.
+// Ports packages/chord/test/registries/registry.test.ts.
 //
 // Designed out: `expectTypeOf(Http).toEqualTypeOf<Registry<...>>()` and `expectTypeOf(value).toEqualTypeOf<
 // RegistryValue<number>>()` are type-level only; Go checks them at compile time with the typed assignments below.

@@ -91,7 +91,7 @@ func TestCompactionExtensionsUpstream(t *testing.T) {
 					"session_compact": {func(args ...any) (any, error) {
 						after = append(after, args[0].(extension.SessionCompactEvent))
 						order = append(order, name+"-after")
-						for _, entry := range s.inner.GetEntries() {
+						for _, entry := range s.inner.Load().GetEntries() {
 							if entry.Base().Type == "compaction" {
 								savedAtAfter = true
 							}
@@ -153,7 +153,7 @@ func TestCompactionExtensionsUpstream(t *testing.T) {
 			// session_compact.compactionEntry is the persisted entry itself (types.ts SessionCompactEvent), read here through its typed members.
 			typed := after[0].CompactionEntry
 			var persisted icodingagent.CompactionEntry
-			for _, stored := range s.inner.GetEntries() {
+			for _, stored := range s.inner.Load().GetEntries() {
 				if stored.Base().Type == "compaction" {
 					if err := json.Unmarshal(mustMarshal(t, stored), &persisted); err != nil {
 						t.Fatal(err)
@@ -183,7 +183,7 @@ func TestCompactionExtensionsUpstream(t *testing.T) {
 			if tc.mode == "data" {
 				// Go combines request authentication with preparation on the Session's runtime.
 				runtime := s.services.ModelRuntime()
-				if runtime == nil || len(s.inner.GetEntries()) == 0 {
+				if runtime == nil || len(s.inner.Load().GetEntries()) == 0 {
 					t.Fatal("session runtime unavailable")
 				}
 				if _, _, _, err := runtime.prepareRequest(t.Context(), s.Model(), ai.StreamOptions{}); err != nil {

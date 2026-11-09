@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// Ports packages/chord/test/next-node/plugins/stack.test.ts: `mapStack` names plugin files and lines through each evaluated
+// Ports packages/chord/test/node/plugins/stack.test.ts: `mapStack` names plugin files and lines through each evaluated
 // script's source map; nothing global; a script's map goes with its facet. The plugins are built by the real BuildFacet and
 // evaluated by Pi's evaluateFacet and mapped by Pi's mapStack in the Node subprocess, read through the probe (the ops of
 // plugins_evaluate_test.go's prelude; the GC cases run in a subprocess started with --expose-gc). The import-time throw and

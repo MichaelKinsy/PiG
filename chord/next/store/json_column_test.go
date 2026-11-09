@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 )
 
-// Ports packages/chord/test/next/store/json-column.test.ts: `json(...)` columns (rule 8): their declaration, and a cell
+// Ports packages/chord/test/store/json-column.test.ts: `json(...)` columns (rule 8): their declaration, and a cell
 // read and migrated on access.
 
 var (

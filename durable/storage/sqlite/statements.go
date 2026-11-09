@@ -6,8 +6,9 @@ package sqlite
 // JSON array parameter through json_each(?) (one SQL text per query, no bound-parameter limit). Inserts bind every cell:
 // multi-row VALUES of a few fixed sizes (1, 2, 4 ... rows), so no row is JSON-encoded to be decoded again by SQLite and a
 // record is not escaped a second time. Pi inserts the rows of little text from one JSON array parameter through
-// json_each(?) and binds only the large ones; the stored rows are the same either way (insertRowsOfJSON in the tests is
-// Pi's statement, and a differential test compares the two).
+// json_each(?) and binds only the large ones; the stored rows are the same either way, except for a lone surrogate, which a
+// bound row stores as U+FFFD and a JSON one keeps (normalizeRow gives each row the text of Pi's route; the tests compare the
+// rows with Pi's insertRows under Node).
 
 import (
 	"strconv"
@@ -161,12 +162,8 @@ func insertRows(executor SqliteExecutor, statement *insertStatement, rows [][]ce
 	width := statement.width
 	params := make([]SqliteValue, 0, len(rows)*width)
 	for _, row := range rows {
-		for _, item := range row {
-			if text, ok := item.(string); ok {
-				item = wellFormed(text)
-			}
-			params = append(params, item)
-		}
+		params = append(params, row...)
+		normalizeRow(params[len(params)-len(row):])
 	}
 	// shape only shrinks: lowered before a chunk to fit the rows left, it is also what the loop then steps over.
 	shape := statement.shapes - 1
@@ -184,11 +181,45 @@ func insertRows(executor SqliteExecutor, statement *insertStatement, rows [][]ce
 	return nil
 }
 
-// wellFormed is text as a JavaScript string holds it once stored: what SQLite reads back from the text JSON.stringify
-// writes for it (the rows of little text in Pi's inserts). Valid UTF-8 is as it is. The WTF-8 bytes of a lone UTF-16
-// surrogate stay, but a high one directly followed by a low one is one character, and each maximal ill-formed subpart is one
-// U+FFFD, where binding the bytes would store them raw.
-func wellFormed(text string) string {
+// largeRowCharacters is Pi's bound: rows whose string cells hold more UTF-16 units than this are bound (node:sqlite), the
+// others go through JSON.stringify and json_each.
+const largeRowCharacters = 8 * 1024
+
+// normalizeRow replaces the string cells of row, which insertRows binds as they are, by the text Pi's insertRows stores for
+// them: wellFormed, with bound set when the row is one Pi binds (more than largeRowCharacters units of string cells). Only a
+// cell of ill-formed UTF-8 (the bytes of a lone surrogate included) changes with either, so a row of valid text is not
+// measured.
+func normalizeRow(row []cell) {
+	ill := false
+	for _, item := range row {
+		if text, ok := item.(string); ok && !utf8.ValidString(text) {
+			ill = true
+			break
+		}
+	}
+	if !ill {
+		return
+	}
+	units := 0
+	for _, item := range row {
+		if text, ok := item.(string); ok {
+			units += utf16Length(wellFormed(text, false))
+		}
+	}
+	bound := units > largeRowCharacters
+	for index, item := range row {
+		if text, ok := item.(string); ok {
+			row[index] = wellFormed(text, bound)
+		}
+	}
+}
+
+// wellFormed is text as the JavaScript string Pi holds for it, as that string is stored. Valid UTF-8 is as it is. Each
+// maximal ill-formed subpart is one U+FFFD, where binding the bytes would store them raw. The WTF-8 bytes of a lone UTF-16
+// surrogate are that unit, and a high one directly followed by a low one is one character. Stored through JSON.stringify and
+// json_each (bound false: a row of up to largeRowCharacters) a lone surrogate stays as its WTF-8 bytes; bound by node:sqlite
+// (bound true, V8 writing the string as UTF-8) it is U+FFFD.
+func wellFormed(text string, bound bool) string {
 	if utf8.ValidString(text) {
 		return text
 	}
@@ -206,7 +237,11 @@ func wellFormed(text string) string {
 				i += 6
 				continue
 			}
-			out = append(out, text[i:i+3]...)
+			if bound {
+				out = append(out, "\ufffd"...)
+			} else {
+				out = append(out, text[i:i+3]...)
+			}
 			i += 3
 			continue
 		}

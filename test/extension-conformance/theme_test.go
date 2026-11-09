@@ -228,7 +228,7 @@ func TestThemeQueriesAcrossSDKs(t *testing.T) {
 		t.Cleanup(func() { tui.SetTerminalColors(tui.TerminalColors{}) })
 		tui.SetTerminalColors(tui.TerminalColors{})
 		custom := conformanceTheme(t, tui.TerminalColorMode256)
-		// What Pi's resource loader sets on a theme it loaded from a file (core/source-info.ts SourceInfo): the file, a local source, user scope, a top-level origin and the theme's directory.
+		// What Pi's resource loader sets on a theme file under the agent's themes directory (core/source-info.ts SourceInfo): the file, a local source, user scope, a top-level origin and the theme's directory.
 		custom.SourceInfo = &source.SourceInfo{Path: custom.SourcePath, Source: "local", Scope: "user", Origin: "top-level", BaseDir: filepath.Dir(custom.SourcePath)}
 		themes := map[string]*tui.Theme{"custom file theme, 256 colors": custom, "built-in system theme": tui.NewThemeRegistry().Get(tui.SystemThemeName)}
 		// The palette's modifiers flag is the host's chalk level (theme.bold draws nothing at level 0); the row sets it so both outcomes are compared whatever the test's stdout is.

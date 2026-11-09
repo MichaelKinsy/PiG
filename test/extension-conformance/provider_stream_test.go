@@ -135,7 +135,7 @@ func TestProviderProducersAcrossSDKs(t *testing.T) {
 			}
 			cancel()
 			result := pending.Result()
-			// api/lazy.ts:61-86 (Pi c23b9ec1) ends a setup or iterator that fails while the stream's signal is aborted as stopReason aborted, and one that fails otherwise as error.
+			// api/lazy.ts lazyStream's catch reports a throwing setup or iterator as stopReason `signal?.aborted ? "aborted" : "error"` (Pi f3a64af07, PR #8635, issue #8409): a request cancelled while the provider callback runs ends as aborted, with the error's message.
 			if result.StopReason != ai.StopReasonAborted || result.ErrorMessage == "" {
 				t.Fatalf("cancel result=%+v", result)
 			}

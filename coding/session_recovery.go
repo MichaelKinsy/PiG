@@ -59,7 +59,7 @@ func (s *Session) refreshReplacementContext() {
 
 func (s *Session) refreshProjectedContext(preserveInstructionBaseline bool) {
 	// The agent's transcript shares the messages of the kept projection, as the requests do: the history is held once, not once for the agent and once for the projection.
-	projection := s.inner.BuildSessionProjectionView()
+	projection := s.inner.Load().BuildSessionProjectionView()
 	ids := make(map[any]string, len(projection.Messages))
 	for _, entry := range projection.Entries {
 		for _, message := range entry.Messages {
@@ -110,7 +110,7 @@ func (s *Session) findPersistedMessageEntryID(message agent.AgentMessage) (strin
 	}
 	if message.ToolResult != nil {
 		// The newest projected entries are the turn's own: the kept projection extends by each append, so the lookup reads them without projecting the history, and a match ends the walk.
-		projection := s.inner.BuildSessionProjectionView()
+		projection := s.inner.Load().BuildSessionProjectionView()
 		for _, entry := range slices.Backward(projection.Entries) {
 			for _, projected := range entry.Messages {
 				if projected.ToolResult != nil && projected.ToolResult.ToolCallID == message.ToolResult.ToolCallID {
@@ -126,7 +126,7 @@ func (s *Session) findPersistedMessageEntryID(message agent.AgentMessage) (strin
 	if messageIndex < 0 {
 		return "", false
 	}
-	projection := s.inner.BuildSessionProjectionView()
+	projection := s.inner.Load().BuildSessionProjectionView()
 	// Restoring a transcript without a system entry prepends the current
 	// baseline. It has no persisted entry and shifts projected positions.
 	messages := s.agent.Messages()
@@ -220,11 +220,11 @@ func (s *Session) omitRecoveryAttempt(message *agent.AssistantMessage) error {
 		if targetID == "" {
 			continue
 		}
-		editID, err := s.inner.AppendContextEdit(targetID, nil)
+		editID, err := s.inner.Load().AppendContextEdit(targetID, nil)
 		if err != nil {
 			return err
 		}
-		if entry, ok := s.inner.GetEntry(editID); ok {
+		if entry, ok := s.inner.Load().GetEntry(editID); ok {
 			s.emitOrderedEvent(agent.EntryAppendedEvent{Entry: entry.Raw()})
 		}
 	}
@@ -437,7 +437,7 @@ func (s *Session) contextWindow() int {
 }
 
 func (s *Session) currentBranch() []icodingagent.SessionEntry {
-	return s.inner.GetContextBranch()
+	return s.inner.Load().GetContextBranch()
 }
 
 // compactionSettings returns the compaction settings for the current model,

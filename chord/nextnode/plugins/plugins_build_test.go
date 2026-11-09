@@ -10,7 +10,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"io/fs"
 	"maps"
 	"os"
 	"os/exec"
@@ -22,28 +21,31 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"unicode/utf16"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/build"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
-// Ports packages/chord/test/next-node/plugins/build.test.ts, which runs the real esbuild build, against BuildFacet on
+// Ports packages/chord/test/node/plugins/build.test.ts, which runs the real esbuild build, against BuildFacet on
 // esbuild's Go API: every row of the import table, failures as results, source maps relative to the plugin and digests
 // stable across two checkout paths, inputs hashed as esbuild read them.
 
 var (
-	esbuildNode    = BuildOptions{HostPackages: []string{"@earendil-works/chord"}, Platform: PlatformNode}
-	esbuildBrowser = BuildOptions{
+	esbuildNode    = model.BuildOptions{HostPackages: []string{"@earendil-works/chord"}, Platform: model.PlatformNode}
+	esbuildBrowser = model.BuildOptions{
 		HostPackages: []string{"@earendil-works/chord", "react/jsx-runtime"},
-		Platform:     PlatformBrowser,
+		Platform:     model.PlatformBrowser,
 		PublicPath:   new("/assets/"),
 	}
 )
 
 // esbuildDiscovered is the plugins under roots and the one named name (test's `discovered`).
-func esbuildDiscovered(t *testing.T, name string, roots ...string) ([]Plugin, Plugin) {
+func esbuildDiscovered(t *testing.T, name string, roots ...string) ([]model.Plugin, model.Plugin) {
 	t.Helper()
-	discovery, err := DiscoverPlugins(plainRoots(roots...), DiscoveryOptions{Kinds: kinds}, background)
+	discovery, err := model.DiscoverPlugins(plainRoots(roots...), model.DiscoveryOptions{Kinds: kinds}, background)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,13 +55,19 @@ func esbuildDiscovered(t *testing.T, name string, roots ...string) ([]Plugin, Pl
 		}
 	}
 	t.Fatalf("no plugin %q in %+v", name, discovery)
-	return nil, Plugin{}
+	return nil, model.Plugin{}
 }
 
 // esbuildBuild is BuildFacet's result, which must not be an error.
-func esbuildBuild(t *testing.T, plugin Plugin, kind string, options BuildOptions) BuiltFacet {
+func esbuildBuild(t *testing.T, plugin model.Plugin, kind string, options model.BuildOptions) model.BuiltFacet {
 	t.Helper()
-	built, err := BuildFacet(plugin, kind, options, background)
+	if options.Mappings == nil {
+		// The builder does not own a Node subprocess for CSS modules: the caller's, as the component's, reads their mappings.
+		own := newMappingEvaluator(NodeOptions{})
+		defer own.close()
+		options.Mappings = own
+	}
+	built, err := build.BuildFacet(plugin, kind, options, background)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,28 +75,28 @@ func esbuildBuild(t *testing.T, plugin Plugin, kind string, options BuildOptions
 }
 
 // esbuildScript is the script of a build that must have made one (test's `script`: fails with the build's errors).
-func esbuildScript(t *testing.T, built BuiltFacet) BuiltFacet {
+func esbuildScript(t *testing.T, built model.BuiltFacet) model.BuiltFacet {
 	t.Helper()
-	if built.Kind == BuiltFacetFailed {
+	if built.Kind == model.BuiltFacetFailed {
 		t.Fatalf("build failed: %s", strings.Join(built.Errors, "\n"))
 	}
-	if built.Kind != BuiltFacetScript {
+	if built.Kind != model.BuiltFacetScript {
 		t.Fatalf("build is %+v", built)
 	}
 	return built
 }
 
 // esbuildErrors is the errors of a build that must fail (test's `errors`).
-func esbuildErrors(t *testing.T, built BuiltFacet) []string {
+func esbuildErrors(t *testing.T, built model.BuiltFacet) []string {
 	t.Helper()
-	if built.Kind != BuiltFacetFailed {
+	if built.Kind != model.BuiltFacetFailed {
 		t.Fatal("the build succeeded")
 	}
 	return built.Errors
 }
 
 // esbuildMap is the parsed inline source map of a built script.
-func esbuildMap(t *testing.T, built BuiltFacet) map[string]any {
+func esbuildMap(t *testing.T, built model.BuiltFacet) map[string]any {
 	t.Helper()
 	match := regexp.MustCompile(`sourceMappingURL=data:application/json;base64,(\S+)`).FindStringSubmatch(built.Source)
 	if match == nil {
@@ -106,7 +114,7 @@ func esbuildMap(t *testing.T, built BuiltFacet) map[string]any {
 }
 
 // esbuildSourcesOf is the sources of a built script's inline source map.
-func esbuildSourcesOf(t *testing.T, built BuiltFacet) []string {
+func esbuildSourcesOf(t *testing.T, built model.BuiltFacet) []string {
 	t.Helper()
 	var sources []string
 	for _, each := range esbuildMap(t, built)["sources"].([]any) {
@@ -221,12 +229,12 @@ func TestEsbuildBuildHashesEachInputAsEsbuildReadItTheDigestIsTheSourcesHash(t *
 // Ports build.test.ts "gives the same script and digest from two checkout paths (relative source maps)".
 func TestEsbuildBuildGivesTheSameScriptAndDigestFromTwoCheckoutPaths(t *testing.T) {
 	roots := []string{tempRoot(t, "contracts", "notes"), tempRoot(t, "contracts", "notes")}
-	builds := make([]BuiltFacet, len(roots))
+	builds := make([]model.BuiltFacet, len(roots))
 	errs := make([]error, len(roots))
 	var wait sync.WaitGroup
 	for i, root := range roots {
 		wait.Go(func() {
-			discovery, err := DiscoverPlugins(plainRoots(root), DiscoveryOptions{Kinds: kinds}, background)
+			discovery, err := model.DiscoverPlugins(plainRoots(root), model.DiscoveryOptions{Kinds: kinds}, background)
 			if err != nil {
 				errs[i] = err
 				return
@@ -235,7 +243,7 @@ func TestEsbuildBuildGivesTheSameScriptAndDigestFromTwoCheckoutPaths(t *testing.
 			options.Plugins = discovery.Plugins
 			for _, plugin := range discovery.Plugins {
 				if plugin.Name == "@test/notes" {
-					builds[i], errs[i] = BuildFacet(plugin, "worker", options, background)
+					builds[i], errs[i] = build.BuildFacet(plugin, "worker", options, background)
 				}
 			}
 		})
@@ -445,7 +453,7 @@ func TestEsbuildBuildInlinesAnotherPluginsFilesOfTheSameRootByRelativePathRefuse
 	writePlugin(t, first, "named", "@test/named", map[string]string{
 		"worker.ts": "import { name } from \"@test/contracts/contract\";\nexport default { setup: () => name };",
 	}, nil)
-	discovery, err := DiscoverPlugins(plainRoots(first, second), DiscoveryOptions{Kinds: kinds}, background)
+	discovery, err := model.DiscoverPlugins(plainRoots(first, second), model.DiscoveryOptions{Kinds: kinds}, background)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -470,25 +478,9 @@ func TestEsbuildBuildReturnsASyntaxErrorAndAMissingFacetAsFailedResultsNeverAThr
 	writePlugin(t, root, "syntax", "@test/syntax", map[string]string{"worker.ts": "export default {"}, nil)
 	_, plugin := esbuildDiscovered(t, "@test/syntax", root)
 	esbuildMatches(t, esbuildErrors(t, esbuildBuild(t, plugin, "worker", esbuildNode)), `re:^worker\.ts:1:\d+: Expected `)
-	want := BuiltFacet{Kind: BuiltFacetFailed, Plugin: "@test/syntax", Facet: "server", Errors: []string{`plugin "@test/syntax" has no server facet`}}
+	want := model.BuiltFacet{Kind: model.BuiltFacetFailed, Plugin: "@test/syntax", Facet: "server", Errors: []string{`plugin "@test/syntax" has no server facet`}}
 	if built := esbuildBuild(t, plugin, "server", esbuildNode); !reflect.DeepEqual(built, want) {
 		t.Errorf("built = %#v, want %#v", built, want)
-	}
-}
-
-// An input that cannot be read is a build error whose text is Node's (Pi's build reads it with `readFile`): the code, what it
-// means, and the path. (Pi's text has the location of esbuild's own library in front of it, an artifact of its JavaScript API.)
-func TestEsbuildBuildAnInputThatCannotBeReadIsNodesErrorText(t *testing.T) {
-	missing := filepath.Join(t.TempDir(), "gone.ts")
-	_, err := os.ReadFile(missing)
-	if got, want := nodeReadError(err, missing), "ENOENT: no such file or directory, open '"+missing+"'"; got != want {
-		t.Errorf("a missing input: %q, want %q", got, want)
-	}
-	if got, want := nodeReadError(&fs.PathError{Op: "open", Path: missing, Err: fs.ErrPermission}, missing), "EACCES: permission denied, open '"+missing+"'"; got != want {
-		t.Errorf("a forbidden input: %q, want %q", got, want)
-	}
-	if got, want := nodeReadError(errors.New("another failure"), missing), "another failure"; got != want {
-		t.Errorf("another failure: %q, want %q", got, want)
 	}
 }
 
@@ -502,8 +494,8 @@ func TestEsbuildBuildAnAbortedContextIsItsCause(t *testing.T) {
 	ctx, cancel := context.WithCancelCause(chordctx.Background())
 	cause := os.ErrDeadlineExceeded
 	cancel(cause)
-	built, err := BuildFacet(plugin, "worker", options, ctx)
-	if !errors.Is(err, cause) || !reflect.DeepEqual(built, BuiltFacet{}) {
+	built, err := build.BuildFacet(plugin, "worker", options, ctx)
+	if !errors.Is(err, cause) || !reflect.DeepEqual(built, model.BuiltFacet{}) {
 		t.Fatalf("built = %+v, err = %v, want the cause %v", built, err, cause)
 	}
 }
@@ -552,11 +544,11 @@ func TestEsbuildBuildColumnsAreBytesForErrorsAndUTF16CodeUnitsForGlobals(t *test
 	}, nil)
 	_, plugin := esbuildDiscovered(t, "@test/wide", root)
 	got := esbuildErrors(t, esbuildBuild(t, plugin, "worker", esbuildNode))
-	if column := len(prefix+"export default {") + 1; utf16Length(prefix+"export default {")+1 == column || len(got) != 1 || !strings.HasPrefix(got[0], "worker.ts:1:"+strconv.Itoa(column)+": Expected ") {
+	if column := len(prefix+"export default {") + 1; len(utf16.Encode([]rune(prefix+"export default {")))+1 == column || len(got) != 1 || !strings.HasPrefix(got[0], "worker.ts:1:"+strconv.Itoa(column)+": Expected ") {
 		t.Errorf("syntax error = %q, want it at byte column %d", got, column)
 	}
 	got = esbuildErrors(t, esbuildBuild(t, plugin, "server", esbuildNode))
-	want := "server.ts:1:" + strconv.Itoa(utf16Length(`console.log("é😀", `)+1) + ": " + noModuleIdentity
+	want := "server.ts:1:" + strconv.Itoa(len(utf16.Encode([]rune(`console.log("é😀", `)))+1) + ": " + noModuleIdentityText
 	if len(got) != 1 || got[0] != want {
 		t.Errorf("__dirname = %q, want %q", got, want)
 	}
@@ -569,7 +561,7 @@ func TestEsbuildBuildColumnsAreBytesForErrorsAndUTF16CodeUnitsForGlobals(t *test
 // `../contracts/contract.ts`), built with `hostPackages: ["@earendil-works/chord"]`, `platform: "node"`.
 func TestBuildMakesTheSameScriptsAsPisBuildFacetForTheFixtures(t *testing.T) {
 	root := tempRoot(t, "contracts", "notes", "files")
-	discovery, err := DiscoverPlugins(plainRoots(root), DiscoveryOptions{Kinds: kinds}, background)
+	discovery, err := model.DiscoverPlugins(plainRoots(root), model.DiscoveryOptions{Kinds: kinds}, background)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -585,8 +577,8 @@ func TestBuildMakesTheSameScriptsAsPisBuildFacetForTheFixtures(t *testing.T) {
 	got := 0
 	for _, plugin := range discovery.Plugins {
 		for kind := range plugin.Facets {
-			built, err := BuildFacet(plugin, kind, BuildOptions{HostPackages: []string{"@earendil-works/chord"}, Platform: PlatformNode, Plugins: discovery.Plugins}, background)
-			if err != nil || built.Kind != BuiltFacetScript {
+			built, err := build.BuildFacet(plugin, kind, model.BuildOptions{HostPackages: []string{"@earendil-works/chord"}, Platform: model.PlatformNode, Plugins: discovery.Plugins}, background)
+			if err != nil || built.Kind != model.BuiltFacetScript {
 				t.Fatalf("%s %s: %+v, %v", plugin.Name, kind, built, err)
 			}
 			expected, ok := want[key{plugin.Name, kind}]
@@ -605,15 +597,15 @@ func TestBuildMakesTheSameScriptsAsPisBuildFacetForTheFixtures(t *testing.T) {
 }
 
 // esbuildAPI is the app's API of slice 12's tests: two versions, a shared module and per-kind modules.
-var esbuildAPI = AppApi{Name: "@acme/app", Versions: []string{"v3", "v2"}}
+var esbuildAPI = model.AppApi{Name: "@acme/app", Versions: []string{"v3", "v2"}}
 
 // esbuildAPIKind is each kind's host packages with the API: v3's shared and kind modules, and v2 (test's `apiKind`).
-func esbuildAPIKind(kind string) BuildOptions {
-	platform := PlatformNode
+func esbuildAPIKind(kind string) model.BuildOptions {
+	platform := model.PlatformNode
 	if kind == "web" {
-		platform = PlatformBrowser
+		platform = model.PlatformBrowser
 	}
-	return BuildOptions{
+	return model.BuildOptions{
 		HostPackages: []string{"@acme/app/v3", "@acme/app/v3/" + kind, "@acme/app/v2"},
 		Platform:     platform,
 		Api:          &esbuildAPI,
@@ -622,7 +614,7 @@ func esbuildAPIKind(kind string) BuildOptions {
 }
 
 // esbuildNodeKinds is NODE with the app's kinds and the plugins (test's `{ ...NODE, kinds: KINDS, plugins }`).
-func esbuildNodeKinds(plugins []Plugin) BuildOptions {
+func esbuildNodeKinds(plugins []model.Plugin) model.BuildOptions {
 	options := esbuildNode
 	options.Kinds = kinds
 	options.Plugins = plugins
@@ -656,9 +648,9 @@ func esbuildPackage(t *testing.T, dir, name, main string, files map[string]strin
 }
 
 // esbuildBuilder builds the facet of kind of the plugin of the given name among plugins.
-func esbuildBuilder(t *testing.T, plugins []Plugin, kind string, options BuildOptions) func(name string) BuiltFacet {
+func esbuildBuilder(t *testing.T, plugins []model.Plugin, kind string, options model.BuildOptions) func(name string) model.BuiltFacet {
 	t.Helper()
-	return func(name string) BuiltFacet {
+	return func(name string) model.BuiltFacet {
 		t.Helper()
 		for _, plugin := range plugins {
 			if plugin.Name == name {
@@ -666,12 +658,12 @@ func esbuildBuilder(t *testing.T, plugins []Plugin, kind string, options BuildOp
 			}
 		}
 		t.Fatalf("no plugin %q", name)
-		return BuiltFacet{}
+		return model.BuiltFacet{}
 	}
 }
 
 // esbuildInputFiles is the files of a build's inputs.
-func esbuildInputFiles(built BuiltFacet) []string {
+func esbuildInputFiles(built model.BuiltFacet) []string {
 	files := []string{}
 	for _, input := range built.Inputs {
 		files = append(files, input.File)
@@ -695,7 +687,7 @@ func TestEsbuildBuildKeepsAListedVersionAndTheKindsModuleExternalAndThePluginsCo
 	if !strings.Contains(built.Source, `require("@acme/app/v3/worker")`) {
 		t.Errorf("the kind's module is not required: %s", built.Source)
 	}
-	if want := (&BuiltApi{Name: "@acme/app", Version: "v3"}); !reflect.DeepEqual(built.Api, want) {
+	if want := (&model.BuiltApi{Name: "@acme/app", Version: "v3"}); !reflect.DeepEqual(built.Api, want) {
 		t.Errorf("api = %+v, want %+v", built.Api, want)
 	}
 }
@@ -911,7 +903,7 @@ func TestEsbuildBuildRefusesAPackageFileWhoseRealPathIsOutsideThePluginsNodeModu
 	esbuildPackage(t, c, "dep", "package.json", map[string]string{"package.json": `{ "name": "dep", "main": "index.js" }`}, nil)
 	// A link inside the package pointing out of it.
 	testenv.RequireSymlink(t, filepath.Join(app, "src", "core.ts"), filepath.Join(c, "node_modules", "dep", "index.js"))
-	discovery, err := DiscoverPlugins(plainRoots(root), DiscoveryOptions{Kinds: kinds}, background)
+	discovery, err := model.DiscoverPlugins(plainRoots(root), model.DiscoveryOptions{Kinds: kinds}, background)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -933,7 +925,7 @@ func TestEsbuildBuildRefusesAFacetFileLinkedOutOfItsPluginOrToAFileOfAnotherKind
 	testenv.RequireSymlink(t, filepath.Join(away, "facet.ts"), filepath.Join(out, "worker.ts"))
 	kind := writePlugin(t, root, "kind", "@test/kind", map[string]string{"web.tsx": "export default { setup: () => {} };"}, nil)
 	testenv.RequireSymlink(t, filepath.Join(kind, "web.tsx"), filepath.Join(kind, "worker.ts"))
-	discovery, err := DiscoverPlugins(plainRoots(root), DiscoveryOptions{Kinds: kinds}, background)
+	discovery, err := model.DiscoverPlugins(plainRoots(root), model.DiscoveryOptions{Kinds: kinds}, background)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1001,7 +993,7 @@ func TestEsbuildBuildAllowsHostPackagesOnlyRefusingOtherFilesPackagesAndBuiltins
 			"export default { setup: () => [a, b, join] };",
 		}, "\n"),
 	})
-	discovery, err := DiscoverPlugins(plainRoots(root), DiscoveryOptions{Kinds: kinds}, background)
+	discovery, err := model.DiscoverPlugins(plainRoots(root), model.DiscoveryOptions{Kinds: kinds}, background)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1018,3 +1010,39 @@ func TestEsbuildBuildAllowsHostPackagesOnlyRefusingOtherFilesPackagesAndBuiltins
 		`bad.server.ts:3:22: "node:path": `+hint,
 	)
 }
+
+// Intention of workers/base.test.ts "the snapshot › bundles the entry and its imports once: an edit after the build runs
+// nowhere; inputs name both files" (D600 made the worker's base a copy of its executable; the plugin scripts a worker runs are
+// what BuildFacet bundles): a script is the facet's file and what it imports at the time of the build, so an edit afterwards
+// changes neither the script nor its digest, and the inputs name the facet's file and the file it imports.
+func TestEsbuildBuildBundlesAFacetAndItsImportsOnceAnEditAfterTheBuildChangesNothingInputsNameBothFiles(t *testing.T) {
+	root := tempRoot(t)
+	dir := writePlugin(t, root, "snap", "@test/snap", map[string]string{
+		"worker.ts": "import { label } from \"./label.ts\";\nexport default { setup: () => label };",
+		"label.ts":  `export const label = "before";`,
+	}, nil)
+	_, plugin := esbuildDiscovered(t, "@test/snap", root)
+	built := esbuildScript(t, esbuildBuild(t, plugin, "worker", esbuildNode))
+	if !strings.Contains(built.Source, `"before"`) {
+		t.Fatalf("the import is not bundled: %s", built.Source)
+	}
+	var inputs []string
+	for _, input := range built.Inputs {
+		inputs = append(inputs, input.File)
+	}
+	slices.Sort(inputs)
+	if want := []string{filepath.Join(realOf(t, dir), "label.ts"), filepath.Join(realOf(t, dir), "worker.ts")}; !reflect.DeepEqual(inputs, want) {
+		t.Fatalf("inputs = %q, want %q", inputs, want)
+	}
+	writeFiles(t, dir, map[string]string{"label.ts": `export const label = "after";`})
+	if strings.Contains(built.Source, `"after"`) || !strings.Contains(built.Source, `"before"`) {
+		t.Fatal("the built script changed with an edit after the build")
+	}
+	again := esbuildScript(t, esbuildBuild(t, plugin, "worker", esbuildNode))
+	if again.Digest == built.Digest || !strings.Contains(again.Source, `"after"`) {
+		t.Fatalf("a build after the edit has digest %s (was %s) and its source lacks the edit", again.Digest, built.Digest)
+	}
+}
+
+// noModuleIdentityText is the message of an `import.meta.url`, `__dirname` or `__filename` in a plugin script, as build.ts words it.
+const noModuleIdentityText = "import.meta.url, __dirname and __filename are not available in a plugin script (a file of the plugin is read through pluginFile(path) from \"@earendil-works/chord/plugins\")"

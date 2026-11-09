@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // Not a port of a case of upstream's tests, a case of its behavior: `#watchAlone` passes every event of a recorded file to
@@ -19,7 +21,7 @@ func TestTheBaseMarkComparesARecordedFileWhoseAttributesChangedAnUnreadableOneDi
 	dir := realOf(t, tempRoot(t))
 	file := filepath.Join(dir, "entry.ts")
 	write(t, file, "as built")
-	f.recordBase(BaseInputs{file: hashOf("as built")})
+	f.recordBase(model.BaseInputs{file: hashOf("as built")})
 	f.settled()
 	if f.marks().Base {
 		t.Fatal("base set at the record")

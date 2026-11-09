@@ -27,10 +27,10 @@ func TestCompactAbortsActiveRun(t *testing.T) {
 		}
 	}()
 	for i := range 3 {
-		if _, err := sess.inner.AppendMessage(agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: fmt.Sprintf("q%d", i)}}}}); err != nil {
+		if _, err := sess.inner.Load().AppendMessage(agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: fmt.Sprintf("q%d", i)}}}}); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := sess.inner.AppendMessage(agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: agent.RoleAssistant, Content: []ai.AssistantContentBlock{ai.TextContent{Text: fmt.Sprintf("a%d", i)}}, StopReason: ai.StopReasonStop}}); err != nil {
+		if _, err := sess.inner.Load().AppendMessage(agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: agent.RoleAssistant, Content: []ai.AssistantContentBlock{ai.TextContent{Text: fmt.Sprintf("a%d", i)}}, StopReason: ai.StopReasonStop}}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -54,14 +54,14 @@ func TestCompactAbortsActiveRun(t *testing.T) {
 		t.Fatal("Compact waited for the active run instead of aborting it")
 	}
 	<-sent
-	entries := sess.inner.GetEntries()
+	entries := sess.inner.Load().GetEntries()
 	if last := entries[len(entries)-1]; last.Base().Type != "compaction" || !abortedRunPersisted(sess) {
 		t.Fatalf("last entry %s, aborted run persisted %v; want the aborted run, then the compaction", last.Base().Type, abortedRunPersisted(sess))
 	}
 }
 
 func abortedRunPersisted(sess *Session) bool {
-	for _, entry := range sess.inner.GetEntries() {
+	for _, entry := range sess.inner.Load().GetEntries() {
 		if message, ok := entry.(icodingagent.MessageEntry); ok && message.Message.Assistant != nil && message.Message.Assistant.StopReason == ai.StopReasonAborted {
 			return true
 		}

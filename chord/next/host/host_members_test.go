@@ -15,7 +15,7 @@ import (
 )
 
 // pi: packages/chord/src/next/host/members.ts
-// Ports packages/chord/test/next/host/members.test.ts: its two cases (TestHostGet...) serve a contract through a whole
+// Ports packages/chord/test/host/members.test.ts: its two cases (TestHostGet...) serve a contract through a whole
 // host and assert the message the host builds from the object's label and the cause. The other tests are own tests of the
 // member check and of the resolution behind derives and contributions, driven directly; each names the upstream case
 // whose behavior it mirrors.

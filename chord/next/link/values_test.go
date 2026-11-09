@@ -12,7 +12,7 @@ import (
 )
 
 // pi: packages/chord/src/next/link/values.ts
-// Ports packages/chord/test/next/link/values.test.ts.
+// Ports packages/chord/test/link/values.test.ts.
 
 func TestPartsAreJSONText(t *testing.T) {
 	t.Run("are JSON text at their origin, parsed from text or from UTF-8 bytes where they are owned", func(t *testing.T) {
@@ -62,6 +62,27 @@ func TestPayloads(t *testing.T) {
 			t.Fatal("data is not the segment")
 		}
 		nexttest.RequireJSONEqual(t, root.Value("thumbs").([]any)[1], []byte{3})
+	})
+
+	// Pi's "carry any Uint8Array subclass as bytes: a Node Buffer, whose toJSON the replacer never sees (slice 11)" guards a
+	// JavaScript mechanic: a Buffer reaches JSON.stringify's replacer as what its toJSON made, so the replacer reads the holder's
+	// own value. Go has no subclass and no toJSON the encoder could reach first: a byte leaf is the []byte itself, wherever it
+	// sits (an object member, an array element or the whole value), and its segment is that slice, not a copy.
+	t.Run("carry a byte leaf as its own segment wherever it sits: a member, an element and the whole value (slice 11)", func(t *testing.T) {
+		buffer := []byte{1, 2, 3}
+		part, err := link.PayloadPart(object("bytes", buffer, "at", []any{buffer}), true)
+		requireNoError(t, err)
+		if want := `{"bytes":{"$bytes":0},"at":[{"$bytes":1}]}`; part.Json != want {
+			t.Fatalf("json = %s, want %s", part.Json, want)
+		}
+		if len(part.Segments) != 2 || &part.Segments[0][0] != &buffer[0] || &part.Segments[1][0] != &buffer[0] {
+			t.Fatal("a segment is not the value's own bytes")
+		}
+		whole, err := link.PayloadPart(buffer, true)
+		requireNoError(t, err)
+		if whole.Json != `{"$bytes":0}` || len(whole.Segments) != 1 || &whole.Segments[0][0] != &buffer[0] {
+			t.Fatalf("whole = %+v", whole)
+		}
 	})
 
 	t.Run("marked as carrying bytes refuse the reserved key $bytes with invalid/args", func(t *testing.T) {

@@ -11,6 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
@@ -63,7 +64,7 @@ func RunAuthLogout(ctx context.Context, args []string, options AuthLogoutOptions
 		for index, credential := range stored {
 			storedIDs[index] = credential.ProviderID
 		}
-		slices.SortFunc(storedIDs, func(a, b string) int { return slices.Compare(jsstring.ToUTF16(a), jsstring.ToUTF16(b)) })
+		sortx.Func(storedIDs, func(a, b string) int { return slices.Compare(jsstring.ToUTF16(a), jsstring.ToUTF16(b)) })
 		list := strings.Join(storedIDs, ", ")
 		if list == "" {
 			list = "none"

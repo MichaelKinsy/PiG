@@ -365,7 +365,7 @@ func (rt *Runtime) NewSession(ctx context.Context, options *extension.NewSession
 }
 
 func (rt *Runtime) freshSessionManager(parent string) (*SessionManager, error) {
-	if !rt.Session().inner.IsPersisted() {
+	if !rt.Session().inner.Load().IsPersisted() {
 		manager, err := NewInMemorySessionManager(rt.CWD())
 		if err == nil && parent != "" {
 			_, err = manager.NewSession(&icodingagent.NewSessionOptions{ParentSession: parent})
@@ -376,7 +376,7 @@ func (rt *Runtime) freshSessionManager(parent string) (*SessionManager, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newSessionManagerForDir(rt.Services(), rt.Session().inner.GetSessionDir()).Create(id, parent)
+	return newSessionManagerForDir(rt.Services(), rt.Session().inner.Load().GetSessionDir()).Create(id, parent)
 }
 
 // SwitchSessionOptions is the options object of AgentSessionRuntime.switchSession (agent-session-runtime.ts:196-201).
@@ -475,7 +475,7 @@ func forkSessionOf(ctx context.Context) *Session {
 
 // forkTarget is the check Pi's fork makes against the current Session once the before handlers returned: the entry exists, and for position "before" it is a user message. It returns the leaf to branch at and the selected text.
 func (s *Session) forkTarget(entryID, position string) (leaf, selected *string, err error) {
-	entry, ok := s.inner.GetEntry(entryID)
+	entry, ok := s.inner.Load().GetEntry(entryID)
 	if !ok {
 		return nil, nil, errors.New("Invalid entry ID for forking")
 	}
@@ -500,8 +500,8 @@ func (s *Session) ValidateFork(entryID, position string) error {
 	if _, _, err := s.forkTarget(entryID, position); err != nil {
 		return err
 	}
-	if s.inner.IsPersisted() {
-		if _, err := os.Stat(s.inner.Path()); errors.Is(err, os.ErrNotExist) {
+	if s.inner.Load().IsPersisted() {
+		if _, err := os.Stat(s.inner.Load().Path()); errors.Is(err, os.ErrNotExist) {
 			return errors.New("This session has not been saved yet. Send a message before cloning or forking it.")
 		}
 	}
@@ -541,7 +541,7 @@ func (rt *Runtime) Fork(ctx context.Context, entryID string, options *extension.
 	if err != nil {
 		return RuntimeForkResult{}, err
 	}
-	if source := forkFrom.inner; !source.IsPersisted() {
+	if source := forkFrom.inner.Load(); !source.IsPersisted() {
 		outgoing := rt.Session()
 		previous := source.Path()
 		if err := rt.teardownCurrent(ctx, "fork", previous); err != nil {
@@ -565,7 +565,7 @@ func (rt *Runtime) Fork(ctx context.Context, entryID string, options *extension.
 	if leaf == nil {
 		manager, err = rt.freshSessionManager(forkFrom.Path())
 	} else {
-		source := forkFrom.inner
+		source := forkFrom.inner.Load()
 		storage := newSessionManagerForDir(rt.Services(), source.GetSessionDir())
 		if source.IsPersisted() {
 			if _, err := os.Stat(source.Path()); errors.Is(err, os.ErrNotExist) {
@@ -600,7 +600,7 @@ func (rt *Runtime) ImportFromJsonl(ctx context.Context, input string, cwdOverrid
 	if _, err := os.Stat(path); err != nil {
 		return extension.CancelledResult{}, &SessionImportFileNotFoundError{FilePath: path}
 	}
-	dir := rt.Session().inner.GetSessionDir()
+	dir := rt.Session().inner.Load().GetSessionDir()
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return extension.CancelledResult{}, err
 	}

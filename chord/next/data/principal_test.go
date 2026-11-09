@@ -13,7 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 )
 
-// Ports packages/chord/test/next/data/principal.test.ts.
+// Ports packages/chord/test/data/principal.test.ts.
 
 func user(id string) data.Principal { return delta.JsonObjectOf("kind", "user", "id", id) }
 

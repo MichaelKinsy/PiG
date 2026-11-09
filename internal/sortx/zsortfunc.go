@@ -345,7 +345,7 @@ func order2_func(data lessSwap, a, b int, swaps *int) (int, int) {
 // median_func returns x where data[x] is the median of data[a],data[b],data[c], where x is a, b, or c.
 func median_func(data lessSwap, a, b, c int, swaps *int) int {
 	a, b = order2_func(data, a, b, swaps)
-	b, c = order2_func(data, b, c, swaps)
+	b, _ = order2_func(data, b, c, swaps)
 	_, b = order2_func(data, a, b, swaps)
 	return b
 }

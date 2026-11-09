@@ -447,10 +447,11 @@ func (s *Session) modelForMessage(message *agent.AssistantMessage) *ai.Model {
 //
 // upstream: agent-session.ts _recordSelection
 func (s *Session) recordSelection() {
-	if s.inner == nil {
+	in := s.inner.Load()
+	if in == nil {
 		return
 	}
-	branch := s.inner.GetContextBranch()
+	branch := in.GetContextBranch()
 	if s.modelRuntime != nil {
 		s.recordModelSelection(branch)
 	}
@@ -473,7 +474,7 @@ func (s *Session) recordModelSelection(branch []icodingagent.SessionEntry) {
 	if !IsVirtualModel(model) && (recordedModel == nil || !IsVirtualModel(recordedModel)) {
 		return
 	}
-	_, _ = s.inner.AppendModelChange(providerID(model), model.ID)
+	_, _ = s.inner.Load().AppendModelChange(providerID(model), model.ID)
 }
 
 // recordThinkingLevel records the thinking level on the current branch when the branch implies another one (#11451). Tree navigation can leave the latest `thinking_level_change` on another branch. The recorded level is compared after clamping to the current model, so a level clamped on resume (for example `xhigh` running as `high`) is not recorded over the requested one.
@@ -505,7 +506,7 @@ func (s *Session) recordThinkingLevel(branch []icodingagent.SessionEntry) {
 	if effective == s.ThinkingLevel() {
 		return
 	}
-	_, _ = s.inner.AppendThinkingLevelChange(string(s.ThinkingLevel()))
+	_, _ = s.inner.Load().AppendThinkingLevelChange(string(s.ThinkingLevel()))
 }
 
 // routeRequest routes the request of a virtual selection. The selection stays in agent state; only this request uses the routed model. Only messages the user wrote start a turn; extension messages can follow them, for example from before_agent_start.
@@ -526,7 +527,7 @@ func (s *Session) routeRequest(ctx context.Context, model *ai.Model, thinking ai
 	case userTurn:
 		reason = ModelRouteReasonUser
 	}
-	options := ResolveModelOptions{Reason: reason, ThinkingLevel: thinking, State: GetVirtualModelState(s.inner.GetContextBranch(), providerID(model), model.ID)}
+	options := ResolveModelOptions{Reason: reason, ThinkingLevel: thinking, State: GetVirtualModelState(s.inner.Load().GetContextBranch(), providerID(model), model.ID)}
 	if failed != nil {
 		response := failed.LLMMessage()
 		options.Failed = &response
@@ -537,8 +538,8 @@ func (s *Session) routeRequest(ctx context.Context, model *ai.Model, thinking ai
 	}
 	if route.State != nil && !bytes.Equal(route.State, options.State) {
 		data := VirtualModelStateData{Provider: providerID(model), ModelID: model.ID, State: route.State}
-		if id, err := s.inner.AppendCustomEntry(VirtualModelStateEntry, data); err == nil {
-			if entry, ok := s.inner.GetEntry(id); ok {
+		if id, err := s.inner.Load().AppendCustomEntry(VirtualModelStateEntry, data); err == nil {
+			if entry, ok := s.inner.Load().GetEntry(id); ok {
 				s.emitEvent(agent.EntryAppendedEvent{Entry: entry.Raw()})
 			}
 		}

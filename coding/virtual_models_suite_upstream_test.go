@@ -462,12 +462,12 @@ func TestVirtualSuiteCompactsBetweenTurnsOfARunWhenTheNextRequestIsRoutedToASmal
 func TestVirtualSuiteProjectsTheSessionOncePerRequestUnderAVirtualSelection(t *testing.T) {
 	s := newVirtualSuite(t, defaultVirtualRoute, "", nil)
 	s.faux.SetResponses([]ai.FauxResponseStep{fauxEchoCall(), fauxText("done")})
-	before := s.session.inner.BuildSessionProjectionCalls()
+	before := s.session.inner.Load().BuildSessionProjectionCalls()
 
 	s.prompt(t, "hello")
 
 	// One per request, one between the turns, and one for the compaction check after the run.
-	if got := s.session.inner.BuildSessionProjectionCalls() - before; got != 4 {
+	if got := s.session.inner.Load().BuildSessionProjectionCalls() - before; got != 4 {
 		t.Fatalf("projections = %d, want 4", got)
 	}
 }

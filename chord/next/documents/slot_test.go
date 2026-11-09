@@ -13,7 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/store"
 )
 
-// Ports packages/chord/test/next/documents/slot.test.ts
+// Ports packages/chord/test/documents/slot.test.ts
 // pi: packages/chord/src/next/documents/slot.ts
 //
 // Pi's `restartable(objects, factory)` host is the harness's object + attempt: `restart()` is the failed attempt
@@ -127,7 +127,7 @@ func slotErrorCode(err error) data.ChordErrorCode {
 }
 
 // TestRetirementReachesWatchesAsInitialWithRetiredTrue runs `it("reaches watches as initial() with retired: true")` of
-// packages/chord/test/next/documents/slot.test.ts:34 (`list.watch`, `list.change`, `list.retire` at slot.test.ts:40-42),
+// packages/chord/test/documents/slot.test.ts:34 (`list.watch`, `list.change`, `list.retire` at slot.test.ts:40-42),
 // on the list held as the SingletonHandle interface `self.state` hands out: Watch, Change and Retire.
 func TestRetirementReachesWatchesAsInitialWithRetiredTrue(t *testing.T) {
 	ListV1 := slotListV1(t)

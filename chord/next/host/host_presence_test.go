@@ -16,7 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// Ports packages/chord/test/next/host/presence.test.ts: presence (§19): `host.references(Type)`, its entries and
+// Ports packages/chord/test/host/presence.test.ts: presence (§19): `host.references(Type)`, its entries and
 // incarnations, its batches (a link drop as a departure, one discovered while a commit sends lands in the next batch),
 // derives over it, its cost and GC. Every case runs on whole hosts, as upstream does.
 

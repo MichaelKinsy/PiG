@@ -517,6 +517,7 @@ func TestCacheWarmerRefreshPanicOutsideTheCaughtRequestReachesTheUncaughtHandler
 
 // An in-process extension's ctx.shutdown() ends the session without a user request, like the subprocess host action.
 func TestInprocExtensionShutdownLeavesALine(t *testing.T) {
+	freshEnding(t)
 	agentDir := t.TempDir()
 	runner := inproc.NewRunner([]extension.Extension{{Name: "test-ext"}}, t.TempDir())
 	m := &InteractiveMode{

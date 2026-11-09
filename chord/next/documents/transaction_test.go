@@ -23,7 +23,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/sqlite"
 )
 
-// Ports packages/chord/test/next/documents/transaction.test.ts
+// Ports packages/chord/test/documents/transaction.test.ts
 // pi: packages/chord/src/next/documents/transaction.ts
 //
 // Pi runs these on a `createHost` host: objects served with `h.serve`, reached through `host.get` references, and
@@ -519,8 +519,8 @@ func TestTransactionsCommitTheObjectsDocumentsInOneBatchOneComputeOneFrame(t *te
 }
 
 // TestTransactionsCommitTheirOtherChangesWhenTheyRetireAnAbsentDocument runs `it("commit their other changes when
-// they retire an absent document (R13)")` of packages/chord/test/next/documents/transaction.test.ts:177;
-// `tx.retire(one.b)` is packages/chord/test/next/documents/transaction.test.ts:180, Tx.Retire.
+// they retire an absent document (R13)")` of packages/chord/test/documents/transaction.test.ts:177;
+// `tx.retire(one.b)` is packages/chord/test/documents/transaction.test.ts:180, Tx.Retire.
 func TestTransactionsCommitTheirOtherChangesWhenTheyRetireAnAbsentDocument(t *testing.T) {
 	one, _ := objects(t, nil)
 	_, err := one.attempt.Tx(func(tx Tx) (any, error) {
@@ -540,8 +540,8 @@ func TestTransactionsCommitTheirOtherChangesWhenTheyRetireAnAbsentDocument(t *te
 }
 
 // TestTransactionsDraftARetiredDocumentAnewWatchesGetARootReplacement runs `it("draft a retired document anew:
-// watches get a root replacement")` of packages/chord/test/next/documents/transaction.test.ts:186; `tx.retire(one.a)`
-// is packages/chord/test/next/documents/transaction.test.ts:193, Tx.Retire.
+// watches get a root replacement")` of packages/chord/test/documents/transaction.test.ts:186; `tx.retire(one.a)`
+// is packages/chord/test/documents/transaction.test.ts:193, Tx.Retire.
 func TestTransactionsDraftARetiredDocumentAnewWatchesGetARootReplacement(t *testing.T) {
 	one, _ := objects(t, nil)
 	_, err := one.a.Change(background, func(draft *delta.Object) (any, error) { return nil, draft.Set("n", float64(3)) })
@@ -939,8 +939,8 @@ func holdBackend(t *testing.T, st *store.ChordStore) (release func()) {
 
 // TestTablesInATransactionCommitRowsAndDocumentsInOneStepTheDocumentsAdoptInsideItOneSeq runs `it("commit rows and
 // documents in one step: the documents adopt inside it, one seq")` of
-// packages/chord/test/next/documents/transaction.test.ts:336; `tx.put(edits, ...)` is
-// packages/chord/test/next/documents/transaction.test.ts:346, Tx.Put.
+// packages/chord/test/documents/transaction.test.ts:336; `tx.put(edits, ...)` is
+// packages/chord/test/documents/transaction.test.ts:346, Tx.Put.
 func TestTablesInATransactionCommitRowsAndDocumentsInOneStepTheDocumentsAdoptInsideItOneSeq(t *testing.T) {
 	s := storedOn(t, nil, false, nil)
 	watch := watchOf(t, s.o, s.n[0])
@@ -1002,11 +1002,12 @@ func TestTablesInATransactionInMemoryOnlyCommitsTakeNoStepAndNoSeq(t *testing.T)
 
 // TestTablesInATransactionReadCommittedRowsWithPageAndRowsOverlayOwnWritesWithGet runs `it("read committed rows with
 // tx.page and tx.rows, overlay own writes with tx.get")` of
-// packages/chord/test/next/documents/transaction.test.ts:373: `tx.put`
-// (packages/chord/test/next/documents/transaction.test.ts:377), `tx.page`
-// (packages/chord/test/next/documents/transaction.test.ts:378), `tx.rows`
-// (packages/chord/test/next/documents/transaction.test.ts:380) and `tx.get`
-// (packages/chord/test/next/documents/transaction.test.ts:382), Tx.Put, Page, Rows and Get.
+// packages/chord/test/documents/transaction.test.ts:373: `tx.put`
+// (packages/chord/test/documents/transaction.test.ts:377), `tx.page`
+// (packages/chord/test/documents/transaction.test.ts:378), `tx.rows`
+// (packages/chord/test/documents/transaction.test.ts:380) and `tx.get`
+// (packages/chord/test/documents/transaction.test.ts:382), Tx.Put, Page, Rows and Get.
+// Cites packages/chord/src/documents/transaction.ts:48 and :55 (Tx.page and Tx.rows of committed rows).
 func TestTablesInATransactionReadCommittedRowsWithPageAndRowsOverlayOwnWritesWithGet(t *testing.T) {
 	s := storedOn(t, nil, false, nil)
 	edits := s.edits[0]
@@ -1093,8 +1094,8 @@ func TestTablesInATransactionWriteNothingOnAThrowOrAnAbortAndRefuseACallbackThat
 }
 
 // TestTablesInATransactionRefuseAnotherObjectsTable runs `it("refuse another object's table")` of
-// packages/chord/test/next/documents/transaction.test.ts:416; `tx.put(other.edits, ...)` is
-// packages/chord/test/next/documents/transaction.test.ts:419, Tx.Put.
+// packages/chord/test/documents/transaction.test.ts:416; `tx.put(other.edits, ...)` is
+// packages/chord/test/documents/transaction.test.ts:419, Tx.Put.
 func TestTablesInATransactionRefuseAnotherObjectsTable(t *testing.T) {
 	s := storedOn(t, nil, false, nil)
 	other := storedOn(t, nil, false, nil)
@@ -1210,8 +1211,8 @@ func TestPersistedDocumentsInATransactionCommitPersistedAndInMemoryDocumentsInOn
 
 // TestPersistedDocumentsInATransactionAKeyedRetirementTakes6asStatementsTheCountedDeleteTheRevisionsLastSeq runs
 // `it("a keyed retirement takes 6a's statements: the counted DELETE, the revisions, lastSeq (cost guard)")` of
-// packages/chord/test/next/documents/transaction.test.ts:536; `tx.retire(k, "a")` is
-// packages/chord/test/next/documents/transaction.test.ts:544, Tx.Retire.
+// packages/chord/test/documents/transaction.test.ts:536; `tx.retire(k, "a")` is
+// packages/chord/test/documents/transaction.test.ts:544, Tx.Retire.
 func TestPersistedDocumentsInATransactionAKeyedRetirementTakes6asStatementsTheCountedDeleteTheRevisionsLastSeq(t *testing.T) {
 	meter := nexttest.Metered(t)
 	s := storedOn(t, nil, true, nil)
@@ -1236,8 +1237,8 @@ func TestPersistedDocumentsInATransactionAKeyedRetirementTakes6asStatementsTheCo
 
 // TestPersistedDocumentsInATransactionAssignTheCreatedDocumentsIdsByTheirOrderInTheCommitRetireAndRecreateInOneCommit
 // runs `it("assign the created documents' ids by their order in the commit; retire and recreate in one commit")` of
-// packages/chord/test/next/documents/transaction.test.ts:552; `tx.retire(k, "b")` is
-// packages/chord/test/next/documents/transaction.test.ts:559, Tx.Retire.
+// packages/chord/test/documents/transaction.test.ts:552; `tx.retire(k, "b")` is
+// packages/chord/test/documents/transaction.test.ts:559, Tx.Retire.
 func TestPersistedDocumentsInATransactionAssignTheCreatedDocumentsIdsByTheirOrderInTheCommitRetireAndRecreateInOneCommit(t *testing.T) {
 	s := storedOn(t, nil, true, nil)
 	k := s.k[0]

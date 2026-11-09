@@ -9,7 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 )
 
-// Ports packages/chord/test/next/store/columns.test.ts: table columns (decisions "Flat columns", "Nullable columns
+// Ports packages/chord/test/store/columns.test.ts: table columns (decisions "Flat columns", "Nullable columns
 // and the `set` form"): descriptors.
 //
 // Designed out: "row types" (the `RowOf` / `PutRowOf` type-level Equal checks): Go has no type-level machinery over

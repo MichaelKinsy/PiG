@@ -405,8 +405,13 @@ func Partial() Other                    { return Other{} }
 		return agree(up, t)
 	}
 	env.Alias = func(name string) (string, bool) {
-		if name == "Result" {
+		switch name {
+		case "Result":
 			return "{ ok: true; value: TValue } | { ok: false; error: TError }", true
+		case "FileResult":
+			return "{ readonly ok: true; readonly value: T } | { readonly ok: false; readonly error: Error }", true
+		case "Tagged":
+			return "{ code: number }", true
 		}
 		return "", false
 	}
@@ -425,6 +430,15 @@ func Partial() Other                    { return Other{} }
 		{"value of another type", "Result<string, FileError>", "Wrong", No, "result"},
 		{"extra Go value", "Result<string, FileError>", "Extra", No, "S13"},
 		{"void result with a Go value", "Result<void, FileError>", "VoidValue", No, "S13"},
+		// S13f: an alias of the union with the error type fixed (chord sync FileResult<T>) is the same, readonly members included.
+		{"fixed-error alias, void", "FileResult<void>", "Void", Yes, ""},
+		{"fixed-error alias, value", "FileResult<string>", "Value", Yes, ""},
+		{"fixed-error alias, promised", "Promise<FileResult<string>>", "Value", Yes, ""},
+		{"fixed-error alias needs an error result", "FileResult<string>", "ValueNoErr", No, "S13"},
+		{"fixed-error alias value of another type", "FileResult<string>", "Wrong", No, "result"},
+		{"fixed-error alias void with a Go value", "FileResult<void>", "VoidValue", No, "S13"},
+		{"Result takes two type arguments", "Result<string>", "Value", Unknown, ""},
+		{"an alias that is not the union is no result", "Tagged<string>", "Value", Unknown, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got := Result(env, tc.returns, sigOf(t, scope, tc.fn).Results())

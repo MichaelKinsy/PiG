@@ -21,7 +21,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/sqlite/node"
 )
 
-// Ports packages/chord/test/next/schema/{declarations,owner,proofs,write-stored}.ts and schema-switch.test.ts: the tests of
+// Ports packages/chord/test/schema/{declarations,owner,proofs,write-stored}.ts and schema-switch.test.ts: the tests of
 // the schema switch from TypeBox to pi-schema (decision "A schema package beneath pi-ai and Chord"). The same
 // declarations give byte-identical fingerprints and normal forms, and data stored by the code before the switch loads
 // after it. `testdata/schema-switch/recorded.json` and `stored/` are Pi's files, byte for byte: they were made with the
@@ -163,13 +163,13 @@ func declareSchemaSwitch() *ssDeclarations {
 		Columns: []store.ColumnProp{store.Col("id", store.Str()), store.Col("file", store.Str()), store.Col("at", store.Int())},
 		Key:     []string{"id"},
 	}))
-	d.EditsV2 = ssMust(store.EvolveTable(d.EditsV1, func(e *store.TableEditor) *store.TableEditor {
+	d.EditsV2 = ssMust(store.EvolveTable(d.EditsV1, func(e *store.TableEditor) store.TableTailEditor {
 		return e.Rename("file", "path").Add("dir", store.Str(contracts.Default(""))).Rows(func(row store.Row) (any, error) {
 			path := row["path"].(string)
 			return store.Row{"dir": path[:strings.LastIndex(path, "/")]}, nil
 		})
 	}))
-	d.EditsV3 = ssMust(store.EvolveTable(d.EditsV2, func(e *store.TableEditor) *store.TableEditor {
+	d.EditsV3 = ssMust(store.EvolveTable(d.EditsV2, func(e *store.TableEditor) store.TableTailEditor {
 		return e.Drop("dir").Index("by_path", []string{"path", "at"})
 	}))
 	// A persisted job with a state document.
@@ -355,7 +355,7 @@ func ssOwnerFacet(t testing.TB, d *ssDeclarations, edits *store.TableDefinition,
 
 // ssPage is `(await table.page(query(definition), 10, ctx)).items` as JSON: each row's keys in column order, an absent
 // optional column left out as JSON.stringify leaves out `undefined`.
-func ssPage(table *store.TableHandle, definition *store.TableDefinition, ctx context.Context) ([]any, error) {
+func ssPage(table store.Table, definition *store.TableDefinition, ctx context.Context) ([]any, error) {
 	page, err := table.Page(ctx, store.NewQuery(definition), 10, store.PageOptions{})
 	if err != nil {
 		return nil, err

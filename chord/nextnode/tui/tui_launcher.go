@@ -46,8 +46,12 @@ type TerminalOptions struct {
 	// URL is the app's server (`http://127.0.0.1:8788`).
 	URL         string
 	Credentials TerminalCredentials
-	// Terminal is the terminal's input and output: the process's by default (raw mode while running, when a TTY).
-	Terminal Terminal
+	// Input is the terminal's input: the process's by default (raw mode while running, when it is a TTY: an Input that
+	// has SetRawMode(bool) error and IsTTY() bool, as Node's `setRawMode?` and `isTTY?`).
+	Input io.Reader
+	// Output is the terminal's output: the process's by default; an Output that has Columns() int, Rows() int and
+	// OnResize(func()) func() reports its size and resizes, as Node's `columns?`, `rows?` and the "resize" event.
+	Output io.Writer
 	// Colors is how many colours the terminal shows ("truecolor" or "256"): true colour when `COLORTERM` says so, else 256.
 	Colors string
 	// Mode is the terminal's background, choosing between the user's dark and light theme: "dark" by default.
@@ -128,9 +132,7 @@ func StartTerminal(ctx context.Context, options TerminalOptions) (*RunningTermin
 	if options.Node == "" {
 		options.Node = "node"
 	}
-	if options.Terminal == nil {
-		options.Terminal = &ProcessTerminal{}
-	}
+	terminal := terminalOf(options.Input, options.Output)
 	if options.Client == nil {
 		options.Client = http.DefaultClient
 	}
@@ -141,7 +143,7 @@ func StartTerminal(ctx context.Context, options TerminalOptions) (*RunningTermin
 	if err != nil {
 		return nil, err
 	}
-	output := options.Terminal.Output()
+	output := terminal.Output()
 	// What the launcher prints of the server's (the pairing's code) passes the output filter too.
 	say := func(line string) {
 		if filtered, err := FilterOutput(line); err == nil {
@@ -152,7 +154,7 @@ func StartTerminal(ctx context.Context, options TerminalOptions) (*RunningTermin
 	if err != nil {
 		return nil, err
 	}
-	launcher := newLauncher(ctx, base, token, options)
+	launcher := newLauncher(ctx, base, token, options, terminal)
 	if err := launcher.start(ctx); err != nil {
 		return nil, err
 	}
@@ -218,10 +220,10 @@ type Launcher struct {
 	restoreSig func()
 }
 
-func newLauncher(parent context.Context, base *url.URL, token string, options TerminalOptions) *Launcher {
+func newLauncher(parent context.Context, base *url.URL, token string, options TerminalOptions, terminal Terminal) *Launcher {
 	ctx, cancel := context.WithCancel(parent)
 	return &Launcher{
-		base: base, token: token, options: options, term: options.Terminal, output: options.Terminal.Output(), client: options.Client,
+		base: base, token: token, options: options, term: terminal, output: terminal.Output(), client: options.Client,
 		ctx: ctx, cancel: cancel, events: make(chan func(), eventQueue), loopDone: make(chan struct{}), exited: make(chan int, 1),
 		sockets: map[int]*linkSocket{},
 	}

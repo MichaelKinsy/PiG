@@ -6,7 +6,6 @@ import (
 
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
-	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 	"github.com/MichaelKinsy/PiG/telemetry"
@@ -22,8 +21,10 @@ import (
 //
 // Forced Go differences (D551): the callbacks that are promises in Pi (`fetchScript`, `serverBase`, `canRetry`,
 // `styles.prepare`) take the client's context and block; the loop's, a watch's and an update's events run on goroutines of
-// their own, one update at a time, in order. A watch's listener queues the update and returns: the reload it makes waits on
-// the host's own publications, which wait for the listener's return. `Host.Connect` fails with an error where Pi's throws; it
+// their own, one update at a time, in order. A watch's listener queues the update and waits for it, as Pi's `await this.#queue(...)`
+// does (the watch delivers the next set after the call returned); the reload the update makes waits on the host's own publications,
+// which would wait for the listener's return, so the listener says it has entered (chord.DeliveryEntered, D224) before it waits.
+// `Host.Connect` fails with an error where Pi's throws; it
 // is reported as `connect_failed` and the link closed (the loop tries again).
 
 // ClientErrorKind tags a ClientError.
@@ -73,7 +74,7 @@ type ClientStyles interface {
 // ClientOptions is what StartClient takes.
 type ClientOptions struct {
 	// Scripts is the kind's scripts object (WebScripts, TuiScripts).
-	Scripts *contracts.Contract
+	Scripts ScriptsContract
 	// Base is the hash of the base bundle this client runs.
 	Base string
 	// Initial are the plugin scripts it started with (the combined file's), in any order.
@@ -110,12 +111,11 @@ type Client struct {
 	updates *updates
 }
 
-// StartClient starts a client: its host loaded with the initial scripts, its link kept, its plugins kept current. ctx is the
-// client's lifetime: it bounds the scripts object's hold and watch, the script fetches and the stylesheets' loads, so a ctx
-// cancelled while the client runs stops its plugin updates (the link stays up until Stop); Pi's client uses BACKGROUND_CONTEXT.
-// Pass a context that lives as long as the client.
-func StartClient(options ClientOptions, ctx context.Context) (*Client, error) {
-	ctx, cancel := context.WithCancel(ctx)
+// StartClient starts a client: its host loaded with the initial scripts, its link kept, its plugins kept current. As in Pi
+// the client's lifetime is BACKGROUND_CONTEXT (context.Background): it bounds the scripts object's hold and watch, the
+// script fetches and the stylesheets' loads, and Stop ends it.
+func StartClient(options ClientOptions) (*Client, error) {
+	ctx, cancel := context.WithCancel(context.Background())
 	var made host.Host
 	var madeMu sync.Mutex
 	hostOptions := host.HostOptions{OnError: func(err host.HostError) { options.OnError(ClientError{Kind: ClientHostError, Host: err}) }}
@@ -298,6 +298,8 @@ type updates struct {
 
 type queued struct {
 	set *ScriptSet
+	// done is closed once the update was applied or skipped (a set that is not the newest, a stopped client).
+	done chan struct{}
 }
 
 func newUpdates(h host.Host, loaded *LoadedFacets, left map[string]bool, options ClientOptions, ctx context.Context, abort context.CancelFunc) *updates {
@@ -341,7 +343,10 @@ func (u *updates) follow() error {
 			if retry != nil {
 				retry()
 			}
-			u.enqueue(&set)
+			// Pi: `await this.#queue(set, ctx)`: the watch's call returns when the update ended.
+			applied := u.enqueue(&set)
+			chord.DeliveryEntered()
+			<-applied
 			return nil
 		})
 	})
@@ -378,18 +383,21 @@ func (u *updates) stop() {
 	}
 }
 
-// enqueue applies set after the updates before it, unless a newer set replaced it meanwhile.
-func (u *updates) enqueue(set *ScriptSet) {
+// enqueue applies set after the updates before it, unless a newer set replaced it meanwhile; the channel it returns is closed when
+// the update ended (Pi's `#queue` promise).
+func (u *updates) enqueue(set *ScriptSet) <-chan struct{} {
+	done := make(chan struct{})
 	u.mu.Lock()
-	u.queue = append(u.queue, queued{set})
+	u.queue = append(u.queue, queued{set, done})
 	if u.working {
 		u.mu.Unlock()
-		return
+		return done
 	}
 	u.working = true
 	u.mu.Unlock()
 	//portlint:allow golifetime work drains the queue and returns when none is left (the `working` flag admits one drainer); there is no longer-lived owner to join
 	go u.work()
+	return done
 }
 
 // work applies the queued updates one after another until none is left.
@@ -405,16 +413,17 @@ func (u *updates) work() {
 		u.queue = u.queue[1:]
 		current := u.latest == next.set
 		u.mu.Unlock()
-		if !current || u.ctx.Err() != nil {
-			continue
-		}
-		if !u.apply(*next.set) {
+		if current && u.ctx.Err() == nil && !u.apply(*next.set) {
 			u.retryLater(next.set)
 		}
+		close(next.done)
 	}
 }
 
-// retryLater tries set again after the next pause (1 s doubling to 30 s).
+// retryLater tries set again after the next pause (1 s doubling to 30 s). The retry's cancel is in place before its timer
+// exists: Pi's `#retry = { cancel: after(…) }` is one step, and the two steps here must not leave a gap a newer set could land
+// in unseen (its watch call then finds nothing to cancel). A newer set that lands while the timer is being set cancels it the
+// moment it exists.
 func (u *updates) retryLater(set *ScriptSet) {
 	u.mu.Lock()
 	if u.pause == 0 {
@@ -423,8 +432,18 @@ func (u *updates) retryLater(set *ScriptSet) {
 		u.pause = min(u.pause*2, updateRetryMaxMs)
 	}
 	pause := u.pause
-	u.mu.Unlock()
 	var cancelled bool
+	var cancelTimer func()
+	u.retry = func() {
+		u.mu.Lock()
+		cancelled = true
+		cancel := cancelTimer
+		u.mu.Unlock()
+		if cancel != nil {
+			cancel()
+		}
+	}
+	u.mu.Unlock()
 	cancel := u.options.Environment.After(pause, func() {
 		u.mu.Lock()
 		if cancelled {
@@ -436,13 +455,12 @@ func (u *updates) retryLater(set *ScriptSet) {
 		u.enqueue(set)
 	})
 	u.mu.Lock()
-	u.retry = func() {
-		u.mu.Lock()
-		cancelled = true
-		u.mu.Unlock()
+	cancelTimer = cancel
+	replaced := cancelled
+	u.mu.Unlock()
+	if replaced {
 		cancel()
 	}
-	u.mu.Unlock()
 }
 
 // apply applies set: a new base calls Outdated; else the changed scripts fetched, their new stylesheets loaded, the host

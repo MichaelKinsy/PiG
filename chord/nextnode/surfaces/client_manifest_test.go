@@ -71,7 +71,8 @@ func TestClientVendoredFilesAreExactlyTheManifests(t *testing.T) {
 	}
 	err = filepath.WalkDir(filepath.Join("client", "pi"), func(path string, entry fs.DirEntry, err error) error {
 		relative, _ := filepath.Rel("client", path)
-		if err == nil && !entry.IsDir() && !listed[filepath.ToSlash(relative)] {
+		// pi/go.mod is the data-only directory's own module file (automation/gen/vendor-chord-surfaces-client.mjs writes it), not Pi's.
+		if err == nil && !entry.IsDir() && relative != filepath.Join("pi", "go.mod") && !listed[filepath.ToSlash(relative)] {
 			t.Errorf("%s is vendored but not in the manifest", path)
 		}
 		return err

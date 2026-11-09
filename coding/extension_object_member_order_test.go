@@ -81,7 +81,7 @@ func TestExtensionCompactionDetailsKeepMemberOrder(t *testing.T) {
 	if _, err := s.Compact(t.Context(), ""); err != nil {
 		t.Fatal(err)
 	}
-	for _, entry := range s.inner.GetEntries() {
+	for _, entry := range s.inner.Load().GetEntries() {
 		if entry.Base().Type == "compaction" {
 			var compacted struct {
 				Details json.RawMessage `json:"details"`

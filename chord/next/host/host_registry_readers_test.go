@@ -24,7 +24,7 @@ import (
 // pi: packages/chord/src/next/registries/record.ts
 // pi: packages/chord/src/next/registries/internal.ts
 
-// Ports the host-run cases of packages/chord/test/next/registries/value.test.ts: the readers of a registry (`self.registry`,
+// Ports the host-run cases of packages/chord/test/registries/value.test.ts: the readers of a registry (`self.registry`,
 // `host.registry`) on a loaded host with plugins, which the record-level cases in registries/value_test.go cannot run:
 // "older readers (S2)" (value mapping, a reader newer than the provider, a contributor that failed live, a native that
 // closed), "readers (S3)", "readers' memory" and "values' memory".

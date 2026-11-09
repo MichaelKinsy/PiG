@@ -2,6 +2,7 @@ package mermaid
 
 import (
 	"bufio"
+	"compress/gzip"
 	"encoding/json"
 	"os"
 	"reflect"
@@ -62,14 +63,18 @@ func artJSON(a Art) map[string]any {
 }
 
 func TestRenderMatchesUpstream(t *testing.T) {
-	f, err := os.Open("testdata/render-golden.jsonl")
+	f, err := os.Open("testdata/render-golden.jsonl.gz")
 	if err != nil {
 		t.Fatalf("open goldens: %v", err)
 	}
 	defer func() { _ = f.Close() }()
+	unzipped, err := gzip.NewReader(f)
+	if err != nil {
+		t.Fatalf("gunzip goldens: %v", err)
+	}
 
 	var total, nullArt int
-	sc := bufio.NewScanner(f)
+	sc := bufio.NewScanner(unzipped)
 	sc.Buffer(make([]byte, 1<<20), 1<<20)
 	for sc.Scan() {
 		if len(sc.Bytes()) == 0 {

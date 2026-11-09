@@ -44,9 +44,10 @@ libs  ./chord/next/telemetry
 libs  ./chord/nextnode/app
 libs  ./chord/nextnode/http
 libs  ./chord/nextnode/plugins
-libs  ./chord/nextnode/workers
+libs  ./chord/nextnode/plugins/model
 libs  ./chord/nextnode/surfaces
 libs  ./chord/nextnode/tui
+libs  ./chord/nextnode/workers
 libs  ./codemode
 libs  ./coding/extension/builtin/codemode
 libs  ./durable

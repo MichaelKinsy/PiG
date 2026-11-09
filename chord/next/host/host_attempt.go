@@ -123,13 +123,13 @@ type Self interface {
 type StoreSelf interface {
 	Self
 	// Table is this object's table definition in the host's store, once per table name.
-	Table(definition *store.TableDefinition) *store.TableHandle
+	Table(definition *store.TableDefinition) store.Table
 	// Query is a live query (decision "Live queries over an object's own tables"): the rows of q (at most limit, in its
 	// order) over table, a table this factory declared, as a JSON watchable (a state member, a derive source). Run before
 	// the object goes live, and again in the commit step of every commit of this object that writes table (one query per
 	// such commit, bounded by limit; not for tables written hundreds of times a second). A limit is required
 	// (`invalid/args`).
-	Query(table *store.TableHandle, q *store.Query, limit int64) chord.Watchable[delta.JsonValue]
+	Query(table store.Table, q *store.Query, limit int64) chord.Watchable[delta.JsonValue]
 	// Contribute contributes value to registry R from the moment this object is live until it ends, fails or restarts (R21:
 	// a host-lifetime object): a plain value, or a Chord watchable of one (followed: its change recomposes). At most one
 	// per registry.
@@ -403,7 +403,7 @@ func (a *attempt) At(slot *documents.KeyedSlot, key string) (*documents.KeySourc
 }
 
 // Table implements StoreSelf.
-func (a *attempt) Table(definition *store.TableDefinition) *store.TableHandle {
+func (a *attempt) Table(definition *store.TableDefinition) store.Table {
 	a.assertDeclaring("table")
 	object := a.object
 	chordStore := a.assertPersistable(`table "` + definition.Name + `"`)
@@ -462,13 +462,14 @@ func (o *attemptQueryOwner) Report(err error) {
 // the commit step of every commit of the object that writes its table, and detached when its attempt ends.
 //
 // pig divergence (D431): Pi main 2439933cf, ahead of the v1.5.0 pin.
-func (a *attempt) Query(table *store.TableHandle, q *store.Query, limit int64) chord.Watchable[delta.JsonValue] {
+func (a *attempt) Query(given store.Table, q *store.Query, limit int64) chord.Watchable[delta.JsonValue] {
 	a.assertDeclaring("query")
 	object := a.object
 	// Plugin code may pass any table: only a handle this attempt declared is taken (its object's own table).
+	table, _ := given.(*store.TableHandle)
 	declared := false
 	for _, each := range a.tables {
-		declared = declared || each.handle == table
+		declared = declared || (table != nil && each.handle == table)
 	}
 	if !declared {
 		panic(declarationError("%s: self.query: the table is not one this factory declared", object.text))
@@ -982,9 +983,6 @@ func (a *attempt) call(method string, args any, ctx context.Context, parent tele
 	// The caller's wait ends at once when the call's context is aborted: awaitWithContext(running, callContext).
 	stopWait := context.AfterFunc(callContext, func() { result.settle(nil, context.Cause(callContext)) })
 	loop := host.loop()
-	if span != nil {
-		result.then(loop, func(_ any, err error) { span.EndWith(err, "method_failed", callContext) })
-	}
 	// The handler's synchronous part runs inside this section, as Pi's does: the section is lent to it (Loop.Lend) until it
 	// returns or parks (Park of its ctx, at the first wait for something that is not a section of the host).
 	signal := parking.New()
@@ -1004,6 +1002,12 @@ func (a *attempt) call(method string, args any, ctx context.Context, parent tele
 		loop.Run(func() {
 			stopWait()
 			settle(err)
+			// The span ends with the handler's own promise (`span.endWhen(running.promise, ...)`), not with the caller's wait: a
+			// caller that left at an abort leaves the span open until the handler returns, and a handler that returns ok after
+			// the abort ends it ok.
+			if span != nil {
+				span.EndWith(err, "method_failed", callContext)
+			}
 			// An abort that came before the handler returned wins, as Pi's `awaitWithContext` rejects at the abort: the
 			// listener of `AfterFunc` runs on a goroutine of its own and may not have settled the result yet.
 			// The child context follows its sources on a goroutine of its own, so the sources are read at once: an abort of the
@@ -1039,7 +1043,7 @@ func (a *attempt) methodSpan(parent telemetry.TelemetryContext, method string, a
 		telemetry.Attr("object", chordtelemetry.Capped(object.text)),
 		telemetry.Attr("principal.kind", chordtelemetry.Capped(kind)),
 	}
-	attributes = append(attributes, object.host.principalAttributes(acting.principal, ctx)...)
+	attributes = append(attributes, object.host.PrincipalAttributes(acting.principal, ctx)...)
 	return chordtelemetry.NewOpenSpan(parent, "chord.method", attributes)
 }
 

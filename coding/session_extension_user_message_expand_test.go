@@ -62,8 +62,8 @@ func TestSubprocessSendUserMessageExpandsPromptTemplatesInTheSession(t *testing.
 			t.Setenv("PIG_HOME", t.TempDir())
 			bridge := subprocess.NewUIBridge(func() {})
 			ext := loadSendExpandExtension(t, bridge)
-			requests := []string{}
-			h := newBoundaryHarness(t, harnessOptions{extension: ext}, boundaryCapture(t, &requests, "done"))
+			sink := []string{}
+			h := newBoundaryHarness(t, harnessOptions{extension: ext}, boundaryCapture(t, &sink, "done"))
 			h.session.SetPromptResources([]PromptTemplate{{Name: "greet", Content: "expanded:$1"}}, nil)
 			BindSessionExtensionActions(nil, bridge, func() *Session { return h.session }, extension.ContextActions{}, nil)
 
@@ -74,6 +74,9 @@ func TestSubprocessSendUserMessageExpandsPromptTemplatesInTheSession(t *testing.
 			if err := h.session.FlushEvents(t.Context()); err != nil {
 				t.Fatal(err)
 			}
+			h.provider.mu.Lock()
+			requests := append([]string(nil), h.provider.requests...)
+			h.provider.mu.Unlock()
 			if len(requests) != 1 {
 				t.Fatalf("model requests = %d, want 1: %v", len(requests), requests)
 			}

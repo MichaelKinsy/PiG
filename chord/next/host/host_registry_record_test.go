@@ -22,7 +22,7 @@ import (
 // pi: packages/chord/src/next/registries/record.ts
 // pi: packages/chord/src/next/registries/contribution.ts
 
-// Ports the host-run cases of packages/chord/test/next/registries/record.test.ts that registries/record_test.go cannot
+// Ports the host-run cases of packages/chord/test/registries/record.test.ts that registries/record_test.go cannot
 // run on a record alone: a watched registry composed in the batch of a document commit, a ring through a derive and
 // through one factory, a followed contribution whose runtime ended, and an object's contribution while it lives, fails
 // and is retried.

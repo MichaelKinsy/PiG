@@ -15,6 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
@@ -105,7 +106,7 @@ func bridgedScripts(kind string, facets []BridgedFacet) ([]scriptWire, error) {
 		plugin := pluginWire{Name: facet.Name, Dir: "/", Facets: map[string]string{kind: "/" + kind + ".go"}, Dependencies: []string{}, External: []string{}}
 		if facet.Failed != nil {
 			scripts = append(scripts, scriptWire{Plugin: plugin, Built: builtWire{
-				Kind: BuiltFacetFailed, Plugin: facet.Name, Facet: kind, Errors: []string{facet.Failed.Error()},
+				Kind: model.BuiltFacetFailed, Plugin: facet.Name, Facet: kind, Errors: []string{facet.Failed.Error()},
 			}})
 			continue
 		}
@@ -124,7 +125,7 @@ func bridgedScripts(kind string, facets []BridgedFacet) ([]scriptWire, error) {
 		source := `(function (require, module, exports) { module.exports = { default: require(` + quoteJS(bridgePackage) + `).proxyFacet(` + string(encoded) + `) }; })`
 		sum := sha256.Sum256([]byte(source))
 		scripts = append(scripts, scriptWire{Plugin: plugin, Built: builtWire{
-			Kind: BuiltFacetScript, Plugin: facet.Name, Facet: kind, Source: source, Digest: hex.EncodeToString(sum[:]),
+			Kind: model.BuiltFacetScript, Plugin: facet.Name, Facet: kind, Source: source, Digest: hex.EncodeToString(sum[:]),
 		}})
 	}
 	return scripts, nil

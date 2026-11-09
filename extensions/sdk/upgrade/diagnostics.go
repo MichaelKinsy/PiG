@@ -197,6 +197,8 @@ func classifyDiagnostic(diagnostic Diagnostic, source FileSource, files map[stri
 		return RuleGrepReadFile, grepReadFileSymbol, true
 	case strings.Contains(message, "too many values in struct literal") && strings.Contains(message, "GrepOperations"):
 		return RuleGrepReadFile, grepReadFileSymbol, true
+	case strings.Contains(message, "MarkdownTransformer") && strings.Contains(message, "MarkdownTransformerOptions") && importsSDK(diagnostic, source, files):
+		return RuleMarkdownTransformer, markdownTransformerSymbol, true
 	case strings.Contains(message, "TransformHeaders") && strings.Contains(message, "ProviderStreamOptions"):
 		return RuleTransformHeaders, "ProviderStreamOptions.TransformHeaders", true
 	case credentialType().MatchString(message) && importsSDK(diagnostic, source, files):

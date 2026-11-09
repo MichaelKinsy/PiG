@@ -35,7 +35,7 @@ func newTreeTestSession(t *testing.T) *Session {
 
 func appendTreeUser(t *testing.T, sess *Session, text string) string {
 	t.Helper()
-	id, err := sess.inner.AppendMessage(agent.AgentMessage{User: &agent.UserMessage{
+	id, err := sess.inner.Load().AppendMessage(agent.AgentMessage{User: &agent.UserMessage{
 		Role:    "user",
 		Content: ai.UserContentBlocks{ai.TextContent{Text: text}},
 	}})
@@ -47,7 +47,7 @@ func appendTreeUser(t *testing.T, sess *Session, text string) string {
 
 func appendTreeAssistant(t *testing.T, sess *Session, text string) string {
 	t.Helper()
-	id, err := sess.inner.AppendMessage(agent.AgentMessage{Assistant: &agent.AssistantMessage{
+	id, err := sess.inner.Load().AppendMessage(agent.AgentMessage{Assistant: &agent.AssistantMessage{
 		Role:       agent.RoleAssistant,
 		Content:    []ai.AssistantContentBlock{ai.TextContent{Text: text}},
 		StopReason: ai.StopReasonStop,
@@ -106,7 +106,7 @@ func (c *promptCapturingCompleter) CompleteSimple(_ context.Context, _ *ai.Model
 }
 
 func treeLeaf(sess *Session) string {
-	if leaf := sess.inner.GetLeafID(); leaf != nil {
+	if leaf := sess.inner.Load().GetLeafID(); leaf != nil {
 		return *leaf
 	}
 	return "<nil>"
@@ -119,7 +119,7 @@ func TestNavigateTreeToCurrentLeafIsNoOp(t *testing.T) {
 	appendTreeUser(t, sess, "hello")
 	appendTreeAssistant(t, sess, "hi")
 	leaf := appendTreeUser(t, sess, "unanswered")
-	entriesBefore := len(sess.inner.GetEntries())
+	entriesBefore := len(sess.inner.Load().GetEntries())
 
 	res, err := sess.NavigateTree(context.Background(), leaf, NavigateTreeOptions{Summarize: true})
 	if err != nil {
@@ -131,7 +131,7 @@ func TestNavigateTreeToCurrentLeafIsNoOp(t *testing.T) {
 	if got := treeLeaf(sess); got != leaf {
 		t.Fatalf("leaf = %s, want unchanged %s", got, leaf)
 	}
-	if got := len(sess.inner.GetEntries()); got != entriesBefore {
+	if got := len(sess.inner.Load().GetEntries()); got != entriesBefore {
 		t.Fatalf("entries = %d, want %d", got, entriesBefore)
 	}
 }
@@ -192,7 +192,7 @@ func TestNavigateTreeCustomMessageTarget(t *testing.T) {
 			sess := newTreeTestSession(t)
 			appendTreeUser(t, sess, "hello")
 			parent := appendTreeAssistant(t, sess, "hi")
-			target, err := sess.inner.AppendCustomMessageEntry("note", tc.content, true, nil)
+			target, err := sess.inner.Load().AppendCustomMessageEntry("note", tc.content, true, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -216,7 +216,7 @@ func TestNavigateTreeCustomMessageTarget(t *testing.T) {
 // the user message, joined without a separator.
 func TestNavigateTreeUserTargetJoinsTextBlocks(t *testing.T) {
 	sess := newTreeTestSession(t)
-	target, err := sess.inner.AppendMessage(agent.AgentMessage{User: &agent.UserMessage{
+	target, err := sess.inner.Load().AppendMessage(agent.AgentMessage{User: &agent.UserMessage{
 		Role: "user",
 		Content: ai.UserContentBlocks{
 			ai.TextContent{Text: "look at "},
@@ -296,7 +296,7 @@ func TestNavigateTreeSummaryReplaceInstructions(t *testing.T) {
 func treeLabelTargets(t *testing.T, sess *Session) map[string]string {
 	t.Helper()
 	labels := map[string]string{}
-	for _, entry := range sess.inner.GetEntries() {
+	for _, entry := range sess.inner.Load().GetEntries() {
 		if entry.Base().Type != "label" {
 			continue
 		}
@@ -325,7 +325,7 @@ func TestNavigateTreeLabelsTargetWithoutSummary(t *testing.T) {
 	if got := treeLabelTargets(t, sess); got[target] != "checkpoint" || len(got) != 1 {
 		t.Fatalf("labels = %v, want %s labelled checkpoint", got, target)
 	}
-	leaf, ok := sess.inner.GetEntry(treeLeaf(sess))
+	leaf, ok := sess.inner.Load().GetEntry(treeLeaf(sess))
 	if !ok || leaf.Base().Type != "label" || leaf.Base().ParentID == nil || *leaf.Base().ParentID != target {
 		t.Fatalf("leaf = %+v, want label entry under %s", leaf.Base(), target)
 	}
@@ -344,7 +344,7 @@ func TestNavigateTreeLabelsBranchSummary(t *testing.T) {
 		t.Fatalf("NavigateTree: %v", err)
 	}
 	var summaryID string
-	for _, entry := range sess.inner.GetEntries() {
+	for _, entry := range sess.inner.Load().GetEntries() {
 		if entry.Base().Type == "branch_summary" {
 			summaryID = entry.Base().ID
 		}
@@ -364,7 +364,7 @@ func TestNavigateTreeLabelsBranchSummary(t *testing.T) {
 
 func TestNavigateTreeRootUserMessageResetsLeaf(t *testing.T) {
 	sess := newTreeTestSession(t)
-	if err := sess.inner.SetLeafID(nil); err != nil {
+	if err := sess.inner.Load().SetLeafID(nil); err != nil {
 		t.Fatal(err)
 	}
 	root := appendTreeUser(t, sess, "First message")
@@ -379,7 +379,7 @@ func TestNavigateTreeRootUserMessageResetsLeaf(t *testing.T) {
 	if res.Cancelled || res.EditorText != "First message" || res.SummaryEntry != nil {
 		t.Fatalf("result = %+v", res)
 	}
-	if leaf := sess.inner.GetLeafID(); leaf != nil {
+	if leaf := sess.inner.Load().GetLeafID(); leaf != nil {
 		t.Fatalf("leaf = %s, want nil", *leaf)
 	}
 }
@@ -387,7 +387,7 @@ func TestNavigateTreeRootUserMessageResetsLeaf(t *testing.T) {
 func TestNavigateTreeSummaryAtRootIsRootEntry(t *testing.T) {
 	sess := newTreeTestSession(t)
 	sess.completer = &fakeCompleter{summary: "summary of 2+2"}
-	if err := sess.inner.SetLeafID(nil); err != nil {
+	if err := sess.inner.Load().SetLeafID(nil); err != nil {
 		t.Fatal(err)
 	}
 	root := appendTreeUser(t, sess, "What is 2+2?")
@@ -438,7 +438,7 @@ func TestNavigateTreeSummaryAttachesToNestedUserParent(t *testing.T) {
 		t.Fatalf("summary parentId = %v, want %s", res.SummaryEntry.ParentID, a1)
 	}
 	var childTypes []string
-	for _, entry := range sess.inner.GetEntries() {
+	for _, entry := range sess.inner.Load().GetEntries() {
 		if entry.Base().ParentID != nil && *entry.Base().ParentID == a1 {
 			childTypes = append(childTypes, entry.Base().Type)
 		}
@@ -479,7 +479,7 @@ func TestNavigateTreeWithoutSummarizeCreatesNoEntries(t *testing.T) {
 	appendTreeAssistant(t, sess, "a1")
 	appendTreeUser(t, sess, "Second")
 	appendTreeAssistant(t, sess, "a2")
-	before := len(sess.inner.GetEntries())
+	before := len(sess.inner.Load().GetEntries())
 
 	res, err := sess.NavigateTree(context.Background(), first, NavigateTreeOptions{})
 	if err != nil {
@@ -488,7 +488,7 @@ func TestNavigateTreeWithoutSummarizeCreatesNoEntries(t *testing.T) {
 	if res.SummaryEntry != nil || completer.called.Load() {
 		t.Fatalf("summary created without summarize: %+v", res)
 	}
-	if got := len(sess.inner.GetEntries()); got != before {
+	if got := len(sess.inner.Load().GetEntries()); got != before {
 		t.Fatalf("entries = %d, want %d", got, before)
 	}
 }
@@ -501,7 +501,7 @@ func TestNavigateTreeBetweenBranchesSummarizesLeftBranch(t *testing.T) {
 	a1 := appendTreeAssistant(t, sess, "a1")
 	u2 := appendTreeUser(t, sess, "Main branch continue")
 	appendTreeAssistant(t, sess, "a2")
-	if err := sess.inner.Branch(a1); err != nil {
+	if err := sess.inner.Load().Branch(a1); err != nil {
 		t.Fatal(err)
 	}
 	appendTreeUser(t, sess, "Branch path")
@@ -529,7 +529,7 @@ func TestNavigateTreeAbortDuringSummarization(t *testing.T) {
 	appendTreeAssistant(t, sess, "a1")
 	appendTreeUser(t, sess, "Continue")
 	leafBefore := appendTreeAssistant(t, sess, "a2")
-	entriesBefore := len(sess.inner.GetEntries())
+	entriesBefore := len(sess.inner.Load().GetEntries())
 
 	type outcome struct {
 		res NavigateTreeResult
@@ -553,7 +553,7 @@ func TestNavigateTreeAbortDuringSummarization(t *testing.T) {
 	if !got.res.Cancelled || !got.res.Aborted || got.res.SummaryEntry != nil {
 		t.Fatalf("result = %+v, want cancelled and aborted without summary", got.res)
 	}
-	if n := len(sess.inner.GetEntries()); n != entriesBefore {
+	if n := len(sess.inner.Load().GetEntries()); n != entriesBefore {
 		t.Fatalf("entries = %d, want %d", n, entriesBefore)
 	}
 	if leaf := treeLeaf(sess); leaf != leafBefore {
@@ -575,7 +575,7 @@ func TestNavigateTreeEmitsSessionBeforeTreeWithPreparation(t *testing.T) {
 	appendTreeUser(t, sess, "hello")
 	common := appendTreeAssistant(t, sess, "hi")
 	target := appendTreeUser(t, sess, "target")
-	if err := sess.inner.Branch(common); err != nil {
+	if err := sess.inner.Load().Branch(common); err != nil {
 		t.Fatal(err)
 	}
 	abandonedUser := appendTreeUser(t, sess, "abandoned")
@@ -676,7 +676,7 @@ func TestNavigateTreeExtensionSummary(t *testing.T) {
 			}}, nil
 		}},
 	})
-	if err := sess.inner.SetLeafID(nil); err != nil {
+	if err := sess.inner.Load().SetLeafID(nil); err != nil {
 		t.Fatal(err)
 	}
 	target := appendTreeUser(t, sess, "first branch")

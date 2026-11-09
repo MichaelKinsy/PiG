@@ -1,4 +1,4 @@
-// Package contractstest holds the test helpers of packages/chord/test/next/support.ts that need the contracts package: kept apart from
+// Package contractstest holds the test helpers of packages/chord/test/support.ts that need the contracts package: kept apart from
 // nexttest so the helpers that do not need it (counters, collectors) build without it.
 package contractstest
 

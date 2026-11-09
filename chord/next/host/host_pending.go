@@ -2,12 +2,13 @@ package host
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 )
 
-// Go-only additions (no Pi file; D430): the two halves of Reference.Call (Start, Wait), and AwaitingCtx.
+// Go-only additions (no Pi file; D430): the two halves of Reference.Call (Start, Wait), AwaitingCtx and Resume.
 //
 // The two halves of Reference.Call. Pi's `ref.method(args)` starts the call at once
 // and returns a Promise; a caller may start several before awaiting any (a chunked upload's pipelined appends), and the
@@ -47,4 +48,19 @@ func (p *PendingCall) Wait(ctx context.Context) (delta.JsonValue, error) { retur
 // pig divergence (D430): the awaits of a handler's async remainder run from outside the host package.
 func AwaitingCtx(ctx Ctx, work func() error) *Handled {
 	return Awaiting(ctx.(*callContext).host.loop(), work)
+}
+
+// Resume runs work as one synchronous section of the host's loop, on the goroutine of a method handler that suspended: the
+// awaits of Pi's handler resume inside the loop, so code that reads the host's state after a wait (a transaction, a
+// blocking call) reads it there. ctx is the handler's own ctx. When the handler still runs in its admitting section, work
+// runs inline. A ctx that is not a handler's returns an error and runs nothing.
+//
+// pig divergence (D430): the awaits of a handler's async remainder run from outside the host package.
+func Resume(ctx context.Context, work func()) error {
+	call, ok := ctx.(*callContext)
+	if !ok {
+		return errors.New("host.Resume: ctx is not a handler's ctx")
+	}
+	call.host.loop().Run(work)
+	return nil
 }

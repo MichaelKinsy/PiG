@@ -95,11 +95,11 @@ func (s *Session) bindExtensionCore(runner *inproc.Runner) {
 		// upstream: agent-session.ts:3339-3355 binds the tool actions of the runtime the extension API reads.
 		GetActiveTools: s.ActiveToolNames, GetAllTools: s.GetAllTools, SetActiveTools: s.SetActiveToolsByName, RefreshTools: s.RefreshTools,
 		SetLabel: func(entryID string, label *string) error {
-			_, err := s.inner.AppendLabelChange(entryID, label)
+			_, err := s.inner.Load().AppendLabelChange(entryID, label)
 			return err
 		},
 	}, extension.ContextActions{
-		SessionManager: s.inner, ModelRegistry: s.services.Registry(),
+		SessionManager: s.inner.Load(), ModelRegistry: s.services.Registry(),
 		GetModel: func() extension.Model { return s.Model() },
 		IsIdle:   s.IsIdle, HasPendingMessages: s.HasPendingMessages, GetSignal: s.Signal,
 		IsProjectTrusted: s.SettingsManager().IsProjectTrusted,

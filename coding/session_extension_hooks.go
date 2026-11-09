@@ -444,7 +444,7 @@ func (s *Session) bindExtensionCommandActions(runner *inproc.Runner) {
 		runner.BindTools(extension.ContextActions{
 			GetAllTools: s.GetAllTools, GetActiveTools: s.ActiveToolNames,
 			SetActiveTools: s.SetActiveToolsByName, RefreshTools: s.RefreshTools, GetSystemPrompt: s.systemPrompt,
-			GetModel: func() extension.Model { return s.Model() }, SessionManager: s.inner,
+			GetModel: func() extension.Model { return s.Model() }, SessionManager: s.inner.Load(),
 			ModelRegistry: s.ModelRegistry(), IsIdle: s.IsIdle, HasPendingMessages: s.HasPendingMessages, GetSignal: s.Signal,
 			SendUserMessage: s.SendExtensionUserMessage,
 			ToolActions:     s.ToolActions(),
@@ -468,7 +468,7 @@ func (s *Session) ReloadExtensions(extensions []extension.Extension, runtime ...
 	if len(runtime) > 0 {
 		extensionRuntime = runtime[0]
 	}
-	runner := NewExtensionRunner(extensions, extensionRuntime, s.services.CWD(), s.inner, s.services.Registry())
+	runner := NewExtensionRunner(extensions, extensionRuntime, s.services.CWD(), s.inner.Load(), s.services.Registry())
 	s.bindExtensionCore(runner)
 	s.ReplaceRunner(runner)
 	if previous != nil {
