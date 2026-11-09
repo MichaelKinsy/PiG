@@ -132,6 +132,19 @@ const NOT_THE_CORE = {
 // because the window is filled by the run's own work and any other row's processes on the host stretch that work past it.
 // Read-only: assigned once at initialization.
 const REAL_TIME = {
+	"harness-ownership": [
+		"# `tracks ownership chains deeper than the call stack` builds a 20,000-task chain inside Pi's own 60 s budget (`}, 60_000)`): 24 s of CPU in the",
+		"# reference and 24.5 s in the candidate, alone. A process the host gives under ~40% of a CPU for that stretch misses the budget. The gate's own",
+		"# load did that (a full run at 5 gates on one host: the candidate ended at 62 s, 1 of 5), so the gate runs the row alone.",
+		`exclusive = true`,
+	],
+	"harness-scheduler-retention": [
+		"# `forgets ended subagent chains once their work ends` runs 201 subagent cycles under vitest's default 5 s test budget (Pi's config sets none). It is",
+		"# CPU-bound: the candidate takes 1.8 s at 8 CPUs, 2.3 s at 2 and 4.6 s at 1, about 2.5 times the reference (each commit crosses the host/core",
+		"# boundary), so a process the host gives under ~40% of a CPU misses the budget while the reference, at 0.6 s, does not. The gate's own load does that:",
+		"# 8 concurrent runs of the row (the shape of -j 8) on 4 CPUs all ended at 10-11 s; alone it passes. The gate therefore runs the row alone.",
+		`exclusive = true`,
+	],
 	"harness-tools": [
 		"# The test sleeps 20 ms (real setTimeout) inside the 100 ms output throttle window; a process stall longer than ~80 ms flushes the",
 		"# buffered output in the reference as well as in the candidate (checked with an 85 ms stall: both fail; 70 ms: both pass).",

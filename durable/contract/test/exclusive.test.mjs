@@ -64,13 +64,13 @@ test("runVitestRow: the control of an exclusive row runs the reference once", as
 	assert.deepEqual(log, ["start ref", "end ref"])
 })
 
-test("corpus: exclusive is true and a field of vitest rows; the rows that name real-time tests or windows carry it", () => {
+test("corpus: exclusive is true and a field of vitest rows; the rows that name real-time tests, windows or a CPU-bound budget the gate's own load exceeds carry it", () => {
 	const base = { id: "U-x", family: "upstream-test", runner: "vitest", owner: "dcore-session", status: "ready" }
 	const problems = r => validateCorpus({ scenario: [{ ...base, ...r }] })
 	assert.deepEqual(problems({ exclusive: true }), [])
 	assert.match(problems({ exclusive: false }).join("\n"), /exclusive is true/)
 	assert.match(problems({ exclusive: true, runner: "bench" }).join("\n"), /exclusive is true/)
 	const exclusive = loadCorpus().scenario.filter(s => s.exclusive).map(s => s.id)
-	assert.deepEqual(exclusive, ["U-codemode", "U-harness-tools"])
+	assert.deepEqual(exclusive, ["U-codemode", "U-harness-ownership", "U-harness-scheduler-retention", "U-harness-tools"])
 	for (const s of loadCorpus().scenario) if (s.real_time_tests) assert.equal(s.exclusive, true, `${s.id} names real-time tests; the gate must not run it beside other rows`)
 })
