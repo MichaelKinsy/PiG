@@ -11466,15 +11466,15 @@
     },
     {
       "id": "BF-4219d7a",
-      "title": "`docs/project/PROVENANCE.md` named Pi v0.99.1 as the upstream pin",
-      "symptom": "`docs/project/PROVENANCE.md` named Pi v0.99.1 as the upstream pin.",
+      "title": "`docs/project/PROVENANCE.md` named an earlier release of Pi, not the pin, as the upstream pin",
+      "symptom": "`docs/project/PROVENANCE.md` named an earlier release of Pi, not the pin, as the upstream pin.",
       "rootCause": "The pin tool already derives every committed copy of the pin and make pin-check fails on drift, so the file joins its RULES: pin.py provenance rewrites the two lines (release tag or commit form) and make pin-sync fixes the text. It cannot go stale again without make pin-check failing.",
       "rootCauseSource": "commit",
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "`docs/project/PROVENANCE.md` named Pi v0.99.1 as the upstream pin. It now states the pin from `.upstream/pin` (`1.5.0+c23b9ec1`, with the full commit), and `make pin-sync` and `make pin-check` keep it current.",
+      "releaseNote": "`docs/project/PROVENANCE.md` named an earlier release of Pi, not the pin, as the upstream pin. It now states the pin from `.upstream/pin` (`1.5.0+c23b9ec1`, with the full commit), and `make pin-sync` and `make pin-check` keep it current.",
       "origin": "release note",
       "commits": [
         {
