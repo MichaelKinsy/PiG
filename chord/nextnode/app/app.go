@@ -1011,32 +1011,46 @@ func (a *App) workerLock(address contracts.Address, ctx context.Context) (*worke
 	return lock, nil
 }
 
-// Close closes the HTTP component, the workers, the host, the store, the plugins' watcher and the data directory's lock: in that
-// order (HTTP first: it drains requests the host's close would seal).
+// Close closes the HTTP component, the workers (in the options' order), the host, the store, the plugins' watcher and the data
+// directory's lock: in that order (HTTP first: it drains requests the host's close would seal). As Pi's `#close`, the first step that
+// fails ends the close there (the later steps do not run) and is what Close returns, to every caller: the first caller runs the
+// steps, the later ones wait for it.
 func (a *App) Close(ctx context.Context) error {
 	if !a.closing.Swap(true) {
 		close(a.ended)
 	}
-	a.close.Do(func() {
-		var errs []error
-		if a.HTTP != nil {
-			a.HTTP.Close(ctx)
-		}
-		for _, each := range a.Workers {
-			errs = append(errs, each.Close(ctx))
-		}
-		if a.Node != nil {
-			errs = append(errs, a.Node.Close(ctx))
-		}
-		if a.Host != nil {
-			errs = append(errs, a.Host.Close(ctx))
-		}
-		errs = append(errs, a.store.Close(ctx))
-		if a.Plugins.Component != nil {
-			a.Plugins.Component.Close()
-		}
-		errs = append(errs, a.lock.Release())
-		a.closed = errors.Join(errs...)
-	})
+	a.close.Do(func() { a.closed = a.closeSteps(ctx) })
 	return a.closed
+}
+
+// closeSteps is Pi's `#close`: each step awaited, the first failure returned.
+func (a *App) closeSteps(ctx context.Context) error {
+	if a.HTTP != nil {
+		a.HTTP.Close(ctx)
+	}
+	for _, kind := range a.options.Workers {
+		if each := a.Workers[kind.Kind.Kind]; each != nil {
+			if err := each.Close(ctx); err != nil {
+				return err
+			}
+		}
+	}
+	// The plugins' Node host is the Go form of Pi's one host (D462): it closes with the server's.
+	if a.Node != nil {
+		if err := a.Node.Close(ctx); err != nil {
+			return err
+		}
+	}
+	if a.Host != nil {
+		if err := a.Host.Close(ctx); err != nil {
+			return err
+		}
+	}
+	if err := a.store.Close(ctx); err != nil {
+		return err
+	}
+	if a.Plugins.Component != nil {
+		a.Plugins.Component.Close()
+	}
+	return a.lock.Release()
 }
