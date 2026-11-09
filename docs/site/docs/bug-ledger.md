@@ -419,7 +419,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-41b25ac](#bf-41b25ac) | fix(chord): surfaces followers stop before their pick watch binds and call out with no lock held… | PiG's own defect | All platforms | Unreleased |
 | [BF-41b305d](#bf-41b305d) | Codemode rejects a `// @options:` line that is not the first line of the script with an error before the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-42116f8](#bf-42116f8) | Durable: the system baseline written after a compaction now leads the model context when the kept history… | PiG's own defect | All platforms | 0.5.0 |
-| [BF-4219d7a](#bf-4219d7a) | `docs/project/PROVENANCE.md` named Pi v0.99.1 as the upstream pin | PiG's own defect | All platforms | Unreleased |
+| [BF-4219d7a](#bf-4219d7a) | `docs/project/PROVENANCE.md` named an earlier release of Pi, not the pin, as the upstream pin | PiG's own defect | All platforms | Unreleased |
 | [BF-4259631](#bf-4259631) | An extension's direct call into a pi-ai API module (`openAICompletionsApi()` and the other bridged APIs)… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4273a6a](#bf-4273a6a) | fix(durable/core): the run's abort resumes on its invocation's own resumer | PiG's own defect | All platforms | Unreleased |
 | [BF-42c059a](#bf-42c059a) | fix(tui): bash block strips ANSI with Pi's utils/ansi.ts rule | PiG's own defect | All platforms | Unreleased |
@@ -7480,17 +7480,17 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 ### BF-4219d7a
 
-**`docs/project/PROVENANCE.md` named Pi v0.99.1 as the upstream pin**
+**`docs/project/PROVENANCE.md` named an earlier release of Pi, not the pin, as the upstream pin**
 
 - **Source:** PiG's own defect
-- **Symptom:** `docs/project/PROVENANCE.md` named Pi v0.99.1 as the upstream pin.
+- **Symptom:** `docs/project/PROVENANCE.md` named an earlier release of Pi, not the pin, as the upstream pin.
 - **Root cause:** The pin tool already derives every committed copy of the pin and make pin-check fails on drift, so the file joins its RULES: pin.py provenance rewrites the two lines (release tag or commit form) and make pin-sync fixes the text. It cannot go stale again without make pin-check failing.
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `4219d7aa50` (2026-11-09)
 - **Tests:** None recorded.
-- **Release note:** `docs/project/PROVENANCE.md` named Pi v0.99.1 as the upstream pin. It now states the pin from `.upstream/pin` (`1.5.0+c23b9ec1`, with the full commit), and `make pin-sync` and `make pin-check` keep it current.
+- **Release note:** `docs/project/PROVENANCE.md` named an earlier release of Pi, not the pin, as the upstream pin. It now states the pin from `.upstream/pin` (`1.5.0+c23b9ec1`, with the full commit), and `make pin-sync` and `make pin-check` keep it current.
 
 ### BF-4259631
 
