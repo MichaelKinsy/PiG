@@ -87,14 +87,15 @@ type FrameReader struct {
 // NewFrameReader is a reader with nothing read.
 func NewFrameReader() *FrameReader { return &FrameReader{buffer: make([]byte, 64*1024)} }
 
-// Push is the messages complete with chunk.
+// Push is the messages complete with chunk. A malformed frame in it fails the whole chunk with no message, as Pi's `push` throws
+// before it returns any: the valid frames read before the bad one are dropped.
 func (r *FrameReader) Push(chunk []byte) ([]SandboxMessage, error) {
 	r.append(chunk)
 	var messages []SandboxMessage
 	for r.end-r.start >= 4 {
 		length := int(binary.BigEndian.Uint32(r.buffer[r.start:]))
 		if length < 4 || length > MaxPipeFrame {
-			return messages, ErrMalformedFrame
+			return nil, ErrMalformedFrame
 		}
 		if r.end-r.start < 4+length {
 			break
@@ -102,7 +103,7 @@ func (r *FrameReader) Push(chunk []byte) ([]SandboxMessage, error) {
 		// The message copies what it keeps: the buffer is reused.
 		message, err := sandboxMessage(r.buffer[r.start+4 : r.start+4+length])
 		if err != nil {
-			return messages, err
+			return nil, err
 		}
 		messages = append(messages, message)
 		r.start += 4 + length
