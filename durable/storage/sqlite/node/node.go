@@ -36,7 +36,7 @@ func OpenNodeSqliteDatabase(path string, options NodeSqliteDatabaseOptions) (*No
 }
 
 // NodeSqliteStorageOptions is the connection settings plus the durable storage options: the table Prefix (Pi's
-// SqliteStorageOptions.prefix) and the working set. A nil field selects its default.
+// SqliteStorageOptions.prefix), the working set and the read cache. A nil field selects its default.
 type NodeSqliteStorageOptions struct {
 	chordnode.NodeSqliteDatabaseOptions
 	// Prefix namespaces every table and index of the durable schema; see sqlite.SqliteStorageOptions.Prefix.
@@ -45,6 +45,10 @@ type NodeSqliteStorageOptions struct {
 	// again. It defaults to sqlite.DefaultWorkingSetBytes; 0 retains nothing.
 	// pig additive (D104): the working set of decoded entries has no Pi counterpart.
 	WorkingSetBytes *int64
+	// ReadCacheBytes bounds the estimated size of the results the storage keeps for its reads while no other connection or
+	// process commits to the file. It defaults to sqlite.DefaultReadCacheBytes; 0 keeps nothing.
+	// pig additive (D104): the read cache has no Pi counterpart.
+	ReadCacheBytes *int64
 }
 
 // OpenNodeSqliteStorage opens or creates file-backed durable storage, optionally under a table prefix. An invalid
@@ -63,6 +67,13 @@ func OpenNodeSqliteStorage(path string, options NodeSqliteStorageOptions) (*dura
 		retained.WorkingSetBytes = *options.WorkingSetBytes
 		if retained.WorkingSetBytes == 0 {
 			retained.WorkingSetBytes = -1
+		}
+	}
+	if options.ReadCacheBytes != nil {
+		// SqliteStorageOptions.ReadCacheBytes zero selects the default and a negative value keeps nothing.
+		retained.ReadCacheBytes = *options.ReadCacheBytes
+		if retained.ReadCacheBytes == 0 {
+			retained.ReadCacheBytes = -1
 		}
 	}
 	return durablesqlite.Open(database, retained)

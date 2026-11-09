@@ -5,6 +5,8 @@ package sqlite
 
 // Ports packages/chord/src/sqlite/database.ts
 
+import "encoding/binary"
+
 // SqliteValue is a value supported by the portable SQLite drivers: nil, int64 (or any Go integer), float64, string, or
 // []byte.
 type SqliteValue = any
@@ -54,4 +56,30 @@ type SqliteDatabase interface {
 // pig additive (D104): row reading without per-row maps has no Pi counterpart.
 type TextReader interface {
 	EachText(sql string, params []SqliteValue, fn func(text []byte) error) error
+}
+
+// CommitToken names the committed state of a database: two tokens are equal only when no commit was made to the database
+// between the two calls that returned them, by any connection of any process.
+// pig additive (D104): a change token has no Pi counterpart.
+type CommitToken [48]byte
+
+// Commits is the number of commits the token counts. A token that Follows another is the state exactly one commit later.
+func (token CommitToken) Commits() uint32 { return binary.NativeEndian.Uint32(token[8:12]) }
+
+// Follows reports whether token is the committed state exactly one commit after previous: a commit increments the count,
+// so tokens of a database committed to once between them Follow.
+func (token CommitToken) Follows(previous CommitToken) bool {
+	return token.Commits() == previous.Commits()+1
+}
+
+// CommitTokener is implemented by a database that can name its committed state without opening a read transaction.
+// AttachCommitToken checks once, outside any transaction, that it can, and returns why it cannot when it cannot: a
+// database that is not a WAL file, or whose index it cannot reach. After it, CommitToken is ok whenever the state can be
+// read; it is not ok for a moment when a commit is half written, and the caller then reads the database itself. The token
+// of a read is taken before the read starts: a read sees the state of its token or a later one, so what a reader keeps
+// under that token goes stale, never ahead of it.
+// pig additive (D104): a change token has no Pi counterpart.
+type CommitTokener interface {
+	AttachCommitToken() error
+	CommitToken() (token CommitToken, ok bool)
 }
