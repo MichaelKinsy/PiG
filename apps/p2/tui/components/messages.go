@@ -268,6 +268,8 @@ func (c *AssistantMessageComponent) Render(width int) []string {
 
 // UpdateContent shows message; isStreaming is whether it is still arriving.
 func (c *AssistantMessageComponent) UpdateContent(message *ai.AssistantMessage, isStreaming bool) {
+	// The content changes in the nested container, which the parent containers cache does not see: this components own flag is what makes the parent render it again.
+	defer c.Invalidate()
 	c.lastMessage = message
 	c.isStreaming = isStreaming
 	theme := c.ctx.Theme().Current()
