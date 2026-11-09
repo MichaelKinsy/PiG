@@ -3,13 +3,14 @@ and Date.parse (the host's port of V8's). They read no session state, so the hos
 factory runs (before ``run``) dials the host itself: the first call opens the connection and ``run`` later reuses it. A call from a handler uses the
 handler's own connection (``ctx.parse_frontmatter``, ``ctx.parse_date``)."""
 import base64
+import contextlib
 import json
 import os
 import re
 import struct
 import threading
 from dataclasses import dataclass
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Iterator, Optional
 
 from .image_dimension_note import ResizedImage
 
@@ -40,8 +41,9 @@ class _State:
     # Guards the tables below for the moment each is read or changed, never across a read from the host: a factory-time call that waits for the host's answer holds
     # only the lock of its own socket path (``_path_lock``), because every member's ``run`` takes this one.
     lock = threading.RLock()
-    # The lock of each socket path a factory-time call dialled, by path: held for the length of one call on that connection. Re-entrant: a listener the host dispatches
-    # while a factory-time call waits makes bus calls of its own on the same thread (``loading_call``).
+    # The lock of each socket path a factory-time call is using, by path: ``[lock, users]``, held for the length of one call on that connection. Re-entrant: a listener
+    # the host dispatches while a factory-time call waits makes bus calls of its own on the same thread (``loading_call``). ``users`` counts the threads that hold or
+    # wait for the lock (``_path_lock``); the entry is dropped when it reaches zero, so a path has one lock for as long as anyone holds or awaits it.
     path_locks: dict = {}
     # The extension whose factory-time bus calls dialled each socket, by path: the owner of the listeners the host dispatches on that connection before ``run``.
     owners: dict = {}
@@ -246,15 +248,27 @@ def _helper_call(method: str, args: Any) -> Any:
     return loading_call(method, args)
 
 
-def _path_lock(path: str) -> Any:
-    """The lock that serialises the factory-time calls on the connection dialled to ``path``. The host accepts a packed cell's members in order and serves a connection
-    only after the members before it have registered, so a call waits for the host's answer while an earlier member's ``run`` still has to take its own connection:
-    the wait holds the lock of its own path and never ``_State.lock``."""
+@contextlib.contextmanager
+def _path_lock(path: str) -> Iterator[None]:
+    """Hold the lock that serialises the factory-time calls on the connection dialled to ``path``. The host accepts a packed cell's members in order and serves a
+    connection only after the members before it have registered, so a call waits for the host's answer while an earlier member's ``run`` still has to take its own
+    connection: the wait holds the lock of its own path and never ``_State.lock``.
+
+    The caller counts itself among the path's users before it waits for the lock and leaves the count after it has released it, and the lock leaves the table only
+    when the count reaches zero: while any thread holds or waits for a path's lock, every other caller on that path finds the same one."""
     with _State.lock:
-        lock = _State.path_locks.get(path)
-        if lock is None:
-            lock = _State.path_locks[path] = threading.RLock()
-        return lock
+        entry = _State.path_locks.get(path)
+        if entry is None:
+            entry = _State.path_locks[path] = [threading.RLock(), 0]
+        entry[1] += 1
+    try:
+        with entry[0]:
+            yield
+    finally:
+        with _State.lock:
+            entry[1] -= 1
+            if entry[1] == 0:
+                del _State.path_locks[path]
 
 
 def loading_call(method: str, args: Any, owner: Any = None) -> Any:
@@ -383,9 +397,4 @@ def take_helper_socket(path: str) -> Any:
     with _path_lock(path):
         with _State.lock:
             _State.owners.pop(path, None)
-            sock = _State.dialled.pop(path, None)
-    # Forgotten once released: a lock removed while held would let a thread waiting on it and a later caller use two locks for one path. A path has one member and
-    # its factory calls run one after another, so no thread is left waiting on it once the connection is taken.
-    with _State.lock:
-        _State.path_locks.pop(path, None)
-    return sock
+            return _State.dialled.pop(path, None)
