@@ -33,7 +33,8 @@
 //     at the first fork into a private directory its component owns, and `close` removes it after every worker exited, so an edit
 //     after the build runs in no worker. A Go worker is this program's own compiled executable: `Build` (run by the kit right
 //     after the server listens, and by a start when nothing did) copies the `Entry` executable into `WorkersOptions.BaseDir` (the
-//     kit's `cache/workers/<kind>/`, emptied first; a new temporary directory without one), records its bytes (`WorkersBuilt.Inputs`:
+//     kit's `cache/workers/<kind>/`, emptied first; a new temporary directory without one: the copy is written in a directory
+//     beside it and renamed into place while the component is open), records its bytes (`WorkersBuilt.Inputs`:
 //     an edit of the entry marks the app's `base`), every worker forks that copy, and `Close` removes the directory once every
 //     worker exited. A program cannot be held in memory, so the copy is made at the build and not at the first fork; a component
 //     that closed copies nothing and leaves a named directory as it is. It fails when `Entry` cannot be started or copied, as
@@ -46,6 +47,11 @@
 //     goroutine; a write never blocks its sender. Per address, starts and stops run one after another (a chain of done
 //     channels); an event of a child is recorded on that child as it happens, in the order its source tells it, and a late
 //     event of an old child never changes a new one. A process's exit handler runs before anyone waiting on the exit resumes.
+//   - The base build (Pi 284e63d9 `#built()`): one goroutine the component starts at the first `Build`, `Inputs`, or start, shared
+//     by every waiter and owned by none; a start's wait for it ends with `Close` (`closed`, as Pi's `awaitWithContext(#built(),
+//     #closingContext)`), a caller of `Build` waits for it. `Close` does not wait for it: what it finishes after the close is
+//     dropped (the copy is committed only while open, under the base lock `Close`'s removal also takes), so a build that outlives
+//     the close never writes into a directory the kit's next start owns. A failed build fails every start (`worker failed to start`).
 //   - Cancellation: `context.Context` is `AbortSignal`. `Close` cancels starts waiting in the app's `Start`, for `started`
 //     or for the plugins; the caller's context ends only its own wait. A worker's context aborts at shutdown.
 //   - Shutdown draining: `Close` stops every child (`shutdown`, a 5 s grace, then the tree is killed), clears the timers and
