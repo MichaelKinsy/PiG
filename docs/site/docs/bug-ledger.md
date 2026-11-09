@@ -832,7 +832,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-86c411a](#bf-86c411a) | fix(builtin): codemode and tool_search declare their parameters in TypeBox key order | PiG's own defect | All platforms | Unreleased |
 | [BF-8780292](#bf-8780292) | The footer's thinking level no longer reads `thinking off` in the first frames of an interactive start | PiG's own defect | All platforms | 0.7.0 |
 | [BF-87a6ac5](#bf-87a6ac5) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
-| [BF-87d4c01](#bf-87d4c01) | Searching a long session in `/tree` allocates 30% less than in 0.7.0: lowercasing text with non-ASCII… | PiG's own defect | All platforms | Unreleased |
+| [BF-87d4c01](#bf-87d4c01) | Searching a long session in `/tree` allocates as many objects as in 0.7.0 again, 30% fewer than with the… | PiG's own defect | All platforms | Unreleased |
 | [BF-8894a13](#bf-8894a13) | A double-quoted YAML string in a skill, prompt template or `parseFrontmatter` header now reads a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8894a13-2](#bf-8894a13-2) | The liveness conformance harness answers the host-parser helper calls a factory makes before the register… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8897a1b](#bf-8897a1b) | Interactive startup lists skill diagnostics under `[Skill warnings]` instead of `[Skill conflicts]`; most of… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
@@ -1091,6 +1091,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ab5be97](#bf-ab5be97) | Long streamed answers render each frame faster: the Markdown view re-wraps and re-renders only the lines and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ab8e9e4](#bf-ab8e9e4) | Tool output and `!` command output no longer show the parameters of control sequences with a `<`, `=` or `>`… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-ab99da4](#bf-ab99da4) | fix(chord/delta): the tracker holds its one open change without a weak registration | PiG's own defect | All platforms | Unreleased |
+| [BF-abd1431](#bf-abd1431) | After a Radius sign-in, accepting the offer to configure the Radius MCP server updates the chat (its notices… | PiG's own defect | All platforms | Unreleased |
 | [BF-abe0137](#bf-abe0137) | fix(durable/core): deliver the extra hops of Pi without closures | PiG's own defect | All platforms | Unreleased |
 | [BF-ac0dc3b](#bf-ac0dc3b) | An empty list item ends its list: a following unindented line is no longer taken for its lazy continuation… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ac6fcea](#bf-ac6fcea) | A `session_start` handler that calls `ctx.shutdown()` during `/reload` ends the session and exits 0, as Pi… | PiG's own defect | All platforms | 0.5.0 |
@@ -11172,7 +11173,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Source:** PiG's own defect
 - **Symptom:** Every frame the renderer paints allocates two fewer objects: the cursor's hide and show copied their escape sequence into a new slice, where they had copied it into a pooled buffer before dead-terminal handling routed them through `WriteToTerminal`.
 - **Root cause:** Not recorded.
-- **User impact:** Wrong display
+- **User impact:** Extra allocation or slower run
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `72999669a8` (2026-11-08)
@@ -12851,17 +12852,17 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 ### BF-87d4c01
 
-**Searching a long session in `/tree` allocates 30% less than in 0.7.0: lowercasing text with non-ASCII…**
+**Searching a long session in `/tree` allocates as many objects as in 0.7.0 again, 30% fewer than with the…**
 
 - **Source:** PiG's own defect
-- **Symptom:** Searching a long session in `/tree` allocates 30% less than in 0.7.0: lowercasing text with non-ASCII characters (the search text of every row, model ids and names, and other callers of `jsstring.ToLower`) made a second copy of each text, which raised `BenchmarkTreeRecompute` by 43%.
+- **Symptom:** Searching a long session in `/tree` allocates as many objects as in 0.7.0 again, 30% fewer than with the regression: lowercasing text with non-ASCII characters (the search text of every row, model ids and names, and other callers of `jsstring.ToLower`) made a second copy of each text, which raised `BenchmarkTreeRecompute` by 43%.
 - **Root cause:** An earlier change kept lone surrogates in ToLower by decoding into a heap slice and converting a byte slice with string(...), two allocations more per non-ASCII text than []rune(s) on the stack and a strings.Builder. The lowercase memo of a /tree search lowercases every row once, so BenchmarkTreeRecompute rose from 11328 to 16254 allocs/op (bisected to that commit on the 0.7.1 line). UpperRune likewise built a byte slice for string(...). Same results, the old allocation counts, and a guard test for each.
-- **User impact:** Behavior differed from Pi
+- **User impact:** Extra allocation or slower run
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `87d4c01443` (2026-11-06)
 - **Tests:** `internal/jsstring/case_allocs_norace_test.go::TestToLowerOfLongNonASCIITextAllocatesTwice`, `internal/jsstring/case_allocs_norace_test.go::TestToLowerOfShortNonASCIITextAllocatesItsResultOnly`, `internal/jsstring/case_allocs_norace_test.go::TestUpperRuneOfAPlainCharacterAllocatesOnce`
-- **Release note:** Searching a long session in `/tree` allocates 30% less than in 0.7.0: lowercasing text with non-ASCII characters (the search text of every row, model ids and names, and other callers of `jsstring.ToLower`) made a second copy of each text, which raised `BenchmarkTreeRecompute` by 43%.
+- **Release note:** Searching a long session in `/tree` allocates as many objects as in 0.7.0 again, 30% fewer than with the regression: lowercasing text with non-ASCII characters (the search text of every row, model ids and names, and other callers of `jsstring.ToLower`) made a second copy of each text, which raised `BenchmarkTreeRecompute` by 43%.
 
 ### BF-8894a13
 
@@ -15722,7 +15723,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Source:** PiG's own defect
 - **Symptom:** `/fork` of a session that is not file-backed builds the clone's entries from the source's decoded messages again instead of decoding every record a second time, which doubled the allocations of that clone.
 - **Root cause:** An earlier change made Clone stream its records and decode each one it keeps in memory with DecodeFileEntry, where the earlier code rebased the source's decoded message entries onto their new parent and decoded only the other records.
-- **User impact:** Wrong output or ordering
+- **User impact:** Extra allocation or slower run
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `a0eeb24909` (2026-11-07)
@@ -16458,6 +16459,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `ab99da4063` (2026-10-29)
 - **Tests:** `chord/delta/retention_upstream_test.go::TestDeltaTrackerRetentionAcrossGCJobs`, `chord/delta/retention_upstream_test.go::TestTrackerReleasesADroppedOpenChangeWhenTheNextOpens`
+
+### BF-abd1431
+
+**After a Radius sign-in, accepting the offer to configure the Radius MCP server updates the chat (its notices…**
+
+- **Source:** PiG's own defect
+- **Symptom:** After a Radius sign-in, accepting the offer to configure the Radius MCP server updates the chat (its notices, the reload status and the last paint) on the interactive loop, as Pi's single-threaded TUI does, and no longer from the login's own goroutine, where it raced the loop's status line (a data race the nightly race job reported).
+- **Root cause:** After a Radius sign-in, accepting the offer to configure the Radius MCP server updates the chat (its notices, the reload status and the last paint) on the interactive loop, as Pi's single-threaded TUI does, and no longer from the login's own goroutine, where it raced the loop's status line (a data race the nightly race job reported).
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `abd143147f` (2026-11-08)
+- **Tests:** `internal/codingagent/radius_login_mcp_offer_upstream_test.go::TestRadiusLoginOffersTheRadiusMCPServerUpstream`
+- **Release note:** After a Radius sign-in, accepting the offer to configure the Radius MCP server updates the chat (its notices, the reload status and the last paint) on the interactive loop, as Pi's single-threaded TUI does, and no longer from the login's own goroutine, where it raced the loop's status line (a data race the nightly race job reported).
 
 ### BF-abe0137
 

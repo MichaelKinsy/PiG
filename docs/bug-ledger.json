@@ -19724,7 +19724,7 @@
       "symptom": "Every frame the renderer paints allocates two fewer objects: the cursor's hide and show copied their escape sequence into a new slice, where they had copied it into a pooled buffer before dead-terminal handling routed them through `WriteToTerminal`.",
       "rootCause": "",
       "rootCauseSource": "",
-      "userImpact": "Wrong display",
+      "userImpact": "Extra allocation or slower run",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
@@ -23138,15 +23138,15 @@
     },
     {
       "id": "BF-87d4c01",
-      "title": "Searching a long session in `/tree` allocates 30% less than in 0.7.0: lowercasing text with non-ASCII…",
-      "symptom": "Searching a long session in `/tree` allocates 30% less than in 0.7.0: lowercasing text with non-ASCII characters (the search text of every row, model ids and names, and other callers of `jsstring.ToLower`) made a second copy of each text, which raised `BenchmarkTreeRecompute` by 43%.",
+      "title": "Searching a long session in `/tree` allocates as many objects as in 0.7.0 again, 30% fewer than with the…",
+      "symptom": "Searching a long session in `/tree` allocates as many objects as in 0.7.0 again, 30% fewer than with the regression: lowercasing text with non-ASCII characters (the search text of every row, model ids and names, and other callers of `jsstring.ToLower`) made a second copy of each text, which raised `BenchmarkTreeRecompute` by 43%.",
       "rootCause": "An earlier change kept lone surrogates in ToLower by decoding into a heap slice and converting a byte slice with string(...), two allocations more per non-ASCII text than []rune(s) on the stack and a strings.Builder. The lowercase memo of a /tree search lowercases every row once, so BenchmarkTreeRecompute rose from 11328 to 16254 allocs/op (bisected to that commit on the 0.7.1 line). UpperRune likewise built a byte slice for string(...). Same results, the old allocation counts, and a guard test for each.",
       "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
+      "userImpact": "Extra allocation or slower run",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "Searching a long session in `/tree` allocates 30% less than in 0.7.0: lowercasing text with non-ASCII characters (the search text of every row, model ids and names, and other callers of `jsstring.ToLower`) made a second copy of each text, which raised `BenchmarkTreeRecompute` by 43%.",
+      "releaseNote": "Searching a long session in `/tree` allocates as many objects as in 0.7.0 again, 30% fewer than with the regression: lowercasing text with non-ASCII characters (the search text of every row, model ids and names, and other callers of `jsstring.ToLower`) made a second copy of each text, which raised `BenchmarkTreeRecompute` by 43%.",
       "origin": "release note",
       "commits": [
         {
@@ -28794,7 +28794,7 @@
       "symptom": "`/fork` of a session that is not file-backed builds the clone's entries from the source's decoded messages again instead of decoding every record a second time, which doubled the allocations of that clone.",
       "rootCause": "An earlier change made Clone stream its records and decode each one it keeps in memory with DecodeFileEntry, where the earlier code rebased the source's decoded message entries onto their new parent and decoded only the other records.",
       "rootCauseSource": "commit",
-      "userImpact": "Wrong output or ordering",
+      "userImpact": "Extra allocation or slower run",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
@@ -30463,6 +30463,28 @@
       "tests": [
         "chord/delta/retention_upstream_test.go::TestDeltaTrackerRetentionAcrossGCJobs",
         "chord/delta/retention_upstream_test.go::TestTrackerReleasesADroppedOpenChangeWhenTheNextOpens"
+      ]
+    },
+    {
+      "id": "BF-abd1431",
+      "title": "After a Radius sign-in, accepting the offer to configure the Radius MCP server updates the chat (its notices…",
+      "symptom": "After a Radius sign-in, accepting the offer to configure the Radius MCP server updates the chat (its notices, the reload status and the last paint) on the interactive loop, as Pi's single-threaded TUI does, and no longer from the login's own goroutine, where it raced the loop's status line (a data race the nightly race job reported).",
+      "rootCause": "After a Radius sign-in, accepting the offer to configure the Radius MCP server updates the chat (its notices, the reload status and the last paint) on the interactive loop, as Pi's single-threaded TUI does, and no longer from the login's own goroutine, where it raced the loop's status line (a data race the nightly race job reported).",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "After a Radius sign-in, accepting the offer to configure the Radius MCP server updates the chat (its notices, the reload status and the last paint) on the interactive loop, as Pi's single-threaded TUI does, and no longer from the login's own goroutine, where it raced the loop's status line (a data race the nightly race job reported).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "abd143147f",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/radius_login_mcp_offer_upstream_test.go::TestRadiusLoginOffersTheRadiusMCPServerUpstream"
       ]
     },
     {
