@@ -11,13 +11,13 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// maxStringifyDepth bounds the nesting appendEntryData follows; a deeper value goes to MarshalJSON, which reports it.
+// maxStringifyDepth bounds the nesting appendEntryData follows; a deeper value goes to marshalGeneral, which reports it.
 const maxStringifyDepth = 1000
 
-// entryMarshaler hides EntryRecord's AppendStringify, so the general encoder runs MarshalJSON and compacts its output.
+// entryMarshaler hides EntryRecord's AppendStringify, so the general encoder runs marshalGeneral and compacts its output.
 type entryMarshaler EntryRecord
 
-func (entry entryMarshaler) MarshalJSON() ([]byte, error) { return EntryRecord(entry).marshalGeneral() } //perf:ok the cold fallback of AppendStringify: it runs MarshalJSON, the encoder AppendStringify stands in for, and compacts its output
+func (entry entryMarshaler) MarshalJSON() ([]byte, error) { return EntryRecord(entry).marshalGeneral() } //perf:ok the cold fallback of AppendStringify: it runs marshalGeneral, the encoding/json encoding of the record, and compacts its output
 
 // AppendStringify appends the JSON.stringify text of the record to dst (json.StringifyAppender): the members are written in
 // place, in the order of MarshalJSON, instead of through the wire struct and a second compacting pass. MarshalJSON writes the
@@ -94,8 +94,7 @@ func appendString(dst []byte, s string) []byte { return jsparity.AppendString(ds
 
 // appendEntryData appends the JSON.stringify text of a Data value as MarshalJSON writes it. It writes the JSON kinds a
 // durable decode or copy produces (nil, bool, float64, string, []any, *delta.JsonObject), a Go map[string]any, whose keys
-// MarshalJSON sorts as strings, and int, int32 and int64. ok is false for any other value, and for one MarshalJSON writes
-// differently or fails on.
+// MarshalJSON sorts as strings, and int, int32 and int64. ok is false for any other value, and for one the in-place writer does not write the way marshalGeneral does or that fails there.
 func appendEntryData(dst []byte, value any, depth int) ([]byte, bool) {
 	if depth > maxStringifyDepth {
 		return dst, false
