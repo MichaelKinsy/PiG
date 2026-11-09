@@ -9,3 +9,5 @@ Pi 33cd7e507 "fix(codemode): print NaN and Infinity in console output and thrown
 | packages/codemode/CHANGELOG.md | ported | changelog.d/codemodenan-62339c4642.md | n/a | n/a |
 
 Not touched (PinBump / vendored): coding/extension/host/subprocess/runtime-node/shims/pi-dist/pi-codemode/runtime/prelude-source.js is the vendored Pi dist copy (Node-side extension host); it gets the fix with the pin bump's re-vendor.
+
+Oracle: codemode/script_oracle_test.go TestScriptOutcomesMatchPi runs the PINNED Pi build. Its `console.log(NaN, ...)` script, which already existed, and the added `console.log(Infinity, ...)`, `throw NaN`, `throw -Infinity`, `throw -0` scripts print NaN/Infinity in Pi only from 33cd7e507 on. They are red against the current pin (c23b9ec1, Pi prints null) and green once PinBump's pin includes 33cd7e507 (T=77959d66 does).
