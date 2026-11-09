@@ -107,6 +107,16 @@ def new_extension() -> pig_sdk.Extension:
 
         ctx.fork(leaf_id, {"position": "at", "withSession": with_session})
 
+    def expand_it(ctx, args):
+        # types.ts:463-473: the replacement context's sendUserMessage takes expandPromptTemplates; true expands the prompt template, false and no option send the text as typed.
+        def with_session(replaced):
+            replaced.send_user_message("/echo Alice", expand_prompt_templates=True)
+            replaced.send_user_message("/echo reply with exactly: Bob", expand_prompt_templates=False)
+            replaced.send_user_message("/echo reply with exactly: Carol")
+            _log("conversation:" + _conversation(replaced.session_manager))
+
+        ctx.new_session({"withSession": with_session})
+
     def mark(ctx, name):
         marks = _marks()
         marks[name] = ctx.session_manager.get_session_file()
@@ -141,6 +151,7 @@ def new_extension() -> pig_sdk.Extension:
     ext.command("throw-it", "throw-it", throw_it)
     ext.command("keep-it", "keep-it", keep_it)
     ext.command("fork-it", "fork-it", fork_it)
+    ext.command("expand-it", "expand-it", expand_it)
     ext.command("mark", "mark", mark)
     ext.command("new", "new", lambda ctx, args: ctx.new_session())
     ext.command("switch", "switch", lambda ctx, name: ctx.switch_session(_marks()[name]))

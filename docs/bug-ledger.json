@@ -17267,6 +17267,31 @@
       ]
     },
     {
+      "id": "BF-5efaf92",
+      "title": "The embedded Node runtime and the packed Go, Rust, Python and Lisp SDK bundles were not regenerated when…",
+      "symptom": "The embedded Node runtime and the packed Go, Rust, Python and Lisp SDK bundles were not regenerated when `sendUserMessage` gained `expandPromptTemplates` and the Node theme gained `sourceInfo`, so shipped Node extensions saw no `ctx.ui.theme.sourceInfo` and the packed Lisp SDK rejected `:expand-prompt-templates`.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The embedded Node runtime and the packed Go, Rust, Python and Lisp SDK bundles were not regenerated when `sendUserMessage` gained `expandPromptTemplates` and the Node theme gained `sourceInfo`, so shipped Node extensions saw no `ctx.ui.theme.sourceInfo` and the packed Lisp SDK rejected `:expand-prompt-templates`. They are regenerated, and the theme row now compares a real `SourceInfo`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5efaf92237",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "coding/cli/session_replaced_2860_sdk_test.go::TestReplacedSession2860AcrossSDKs",
+        "coding/session_extension_user_message_expand_test.go::TestGraphBridgeSendUserMessageForwardsExpandPromptTemplates",
+        "coding/session_extension_user_message_expand_test.go::TestSubprocessSendUserMessageExpandsPromptTemplatesInTheSession",
+        "test/extension-conformance/theme_test.go::TestThemeQueriesAcrossSDKs"
+      ]
+    },
+    {
       "id": "BF-5f03fa4",
       "title": "An extension that a child agent session's resource loader loads now receives the session's events, as in Pi…",
       "symptom": "An extension that a child agent session's resource loader loads now receives the session's events, as in Pi, where `createAgentSession` over a `DefaultResourceLoader` that loads an extension gives it `session_start` (after `bindExtensions`), `input`, `before_agent_start`, `agent_start`, `turn_*`, `message_*`, `context` and `agent_end`.",
@@ -36662,6 +36687,28 @@
       "tests": [
         "chord/delta/retention_upstream_test.go::TestDeltaTrackerRetentionAcrossGCJobs",
         "chord/delta/retention_upstream_test.go::TestTrackerReleasesADroppedOpenChangeWhenTheNextOpens"
+      ]
+    },
+    {
+      "id": "BF-abc54d0",
+      "title": "`pi.sendUserMessage(content, { expandPromptTemplates: true })` and the same option on a `withSession` context…",
+      "symptom": "The host used to drop the option, so a message such as `/my-command` or `/skill:name` was sent to the model as plain text.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pi.sendUserMessage(content, { expandPromptTemplates: true })` and the same option on a `withSession` context now reach the Session from Go, Rust, Python, Lisp and Node extensions (`Context.SendUserMessageWith`, `send_user_message_with`, `expand_prompt_templates=`, `:expand-prompt-templates`). The host used to drop the option, so a message such as `/my-command` or `/skill:name` was sent to the model as plain text. `ctx.ui.theme.sourceInfo` is now set on the Node runtime theme.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "abc54d0438",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/send_user_message_expand_test.go::TestSendUserMessageExpandPromptTemplatesAcrossSDKs"
       ]
     },
     {

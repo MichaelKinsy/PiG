@@ -174,10 +174,10 @@ wire = "subprocess.SendUserMessageOptions.deliverAs"
 [[row]]
 key = "pi.sendUserMessage(options.expandPromptTemplates)"
 node = "api.sendUserMessage"
-go = "-"
-rust = "-"
-python = "-"
-lisp = "-"
+go = "Context.SendUserMessageWith|SendUserMessageOptions.ExpandPromptTemplates"
+rust = "Context::send_user_message_with"
+python = "Context.send_user_message(expand_prompt_templates)"
+lisp = "pig:ctx-send-user-message(expand-prompt-templates)|pig:ctx-send-user-message-p(expand-prompt-templates)"
 wire = "subprocess.SendUserMessageOptions.expandPromptTemplates"
 
 [[row]]
@@ -446,11 +446,12 @@ wire = "extension.InputEventResultTransform.images"
 
 [[row]]
 key = "user_bash return.operations"
-node = "-"
-go = "-"
-rust = "-"
-python = "-"
-lisp = "-"
+node = "read:result.operations"
+go = "BashOperations"
+rust = "Context::bash_operations"
+python = "BashOperations"
+lisp = "pig:make-bash-operations"
+wire = "literal:operations"
 
 # ── ctx (ExtensionContext) ─────────────────────────────────────────────────
 
@@ -568,11 +569,12 @@ wire = "extension.NewSessionOptions.parentSession"
 
 [[row]]
 key = "ctx.newSession(options.setup)"
-node = "-"
-go = "-"
-rust = "-"
-python = "-"
-lisp = "-"
+node = "read:entry.callback"
+go = "SetupFunc"
+rust = "Context::new_session_setup"
+python = "SetupSessionManager"
+lisp = "pig:ctx-new-session(setup)"
+wire = "subprocess.SetupArgs.handle"
 
 [[row]]
 key = "ctx.newSession(options.withSession)"
@@ -766,10 +768,10 @@ wire = "subprocess.SendUserMessageOptions.deliverAs"
 [[row]]
 key = "withSession ctx.sendUserMessage(options.expandPromptTemplates)"
 node = "read:context.sendUserMessage"
-go = "-"
-rust = "-"
-python = "-"
-lisp = "-"
+go = "Context.SendUserMessageWith|SendUserMessageOptions.ExpandPromptTemplates"
+rust = "Context::send_user_message_with"
+python = "Context.send_user_message(expand_prompt_templates)"
+lisp = "pig:ctx-send-user-message(expand-prompt-templates)|pig:ctx-send-user-message-p(expand-prompt-templates)"
 wire = "subprocess.SendUserMessageOptions.expandPromptTemplates"
 
 # ── ctx.ui (ExtensionUIContext) ────────────────────────────────────────────
@@ -1011,11 +1013,8 @@ rust = "Theme.source_path"
 
 [[row]]
 key = "ctx.ui.theme.sourceInfo"
-node = "-"
-go = "-"
-rust = "-"
-python = "-"
-lisp = "-"
+go = "UITheme.SourceInfo"
+rust = "Theme.source_info"
 
 [[row]]
 key = "ctx.ui.theme.appearance"
@@ -1307,11 +1306,12 @@ wire = "extension.ProviderConfig.api"
 
 [[row]]
 key = "provider.streamSimple"
-node = "-"
-go = "-"
-rust = "-"
-python = "-"
-lisp = "-"
+node = "read:config.streamSimple"
+go = "ProviderStreamSimpleFunc"
+rust = "ProviderOperations.stream_simple"
+python = "Extension.register_provider"
+lisp = "pig:register-provider|pig:register-provider-p"
+wire = "subprocess.ProviderDecl.stream_simple"
 
 [[row]]
 key = "provider.headers"

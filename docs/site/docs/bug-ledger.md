@@ -618,6 +618,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-5eb8bb9](#bf-5eb8bb9) | `tool_search` and codemode `searchTools()` rank a tool that matches more of the query's distinct terms, in… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-5ec5204](#bf-5ec5204) | fix(durable/core): join split surrogates through jv.AppendConcat, not byte slices | PiG's own defect | All platforms | Unreleased |
 | [BF-5ec5f5f](#bf-5ec5f5f) | The built-in bash, read and list tool cards now show an image block that has no MIME type as `[Image… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-5efaf92](#bf-5efaf92) | The embedded Node runtime and the packed Go, Rust, Python and Lisp SDK bundles were not regenerated when… | PiG's own defect | All platforms | Unreleased |
 | [BF-5f03fa4](#bf-5f03fa4) | An extension that a child agent session's resource loader loads now receives the session's events, as in Pi… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-5f03fa4-2](#bf-5f03fa4-2) | The contexts of those extensions read the child session: `ctx.model`, `ctx.scopedModels` (the session's… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-5f22b85](#bf-5f22b85) | fix(coding): shut down the extension host of a DefaultResourceLoader an extension constructed when its last… | PiG's own defect | All platforms | Unreleased |
@@ -1324,6 +1325,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ab5be97](#bf-ab5be97) | Long streamed answers render each frame faster: the Markdown view re-wraps and re-renders only the lines and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ab8e9e4](#bf-ab8e9e4) | Tool output and `!` command output no longer show the parameters of control sequences with a `<`, `=` or `>`… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-ab99da4](#bf-ab99da4) | fix(chord/delta): the tracker holds its one open change without a weak registration | PiG's own defect | All platforms | Unreleased |
+| [BF-abc54d0](#bf-abc54d0) | `pi.sendUserMessage(content, { expandPromptTemplates: true })` and the same option on a `withSession` context… | PiG's own defect | All platforms | Unreleased |
 | [BF-abe0137](#bf-abe0137) | fix(durable/core): deliver the extra hops of Pi without closures | PiG's own defect | All platforms | Unreleased |
 | [BF-ac0dc3b](#bf-ac0dc3b) | An empty list item ends its list: a following unindented line is no longer taken for its lazy continuation… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ac6fcea](#bf-ac6fcea) | A `session_start` handler that calls `ctx.shutdown()` during `/reload` ends the session and exits 0, as Pi… | PiG's own defect | All platforms | 0.5.0 |
@@ -10205,6 +10207,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `5ec5f5f282` (2026-10-09)
 - **Tests:** `internal/codingagent/render_utils_pi_test.go::TestRenderUtilsReplaceTabsAndTextOutputMatchPi`
 - **Release note:** The built-in bash, read and list tool cards now show an image block that has no MIME type as `[Image: [image/unknown]]`, as Pi's `getTextOutput` does. They previously showed `[Image: []]`.
+
+### BF-5efaf92
+
+**The embedded Node runtime and the packed Go, Rust, Python and Lisp SDK bundles were not regenerated when…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The embedded Node runtime and the packed Go, Rust, Python and Lisp SDK bundles were not regenerated when `sendUserMessage` gained `expandPromptTemplates` and the Node theme gained `sourceInfo`, so shipped Node extensions saw no `ctx.ui.theme.sourceInfo` and the packed Lisp SDK rejected `:expand-prompt-templates`.
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `5efaf92237` (2026-11-09)
+- **Tests:** `coding/cli/session_replaced_2860_sdk_test.go::TestReplacedSession2860AcrossSDKs`, `coding/session_extension_user_message_expand_test.go::TestGraphBridgeSendUserMessageForwardsExpandPromptTemplates`, `coding/session_extension_user_message_expand_test.go::TestSubprocessSendUserMessageExpandsPromptTemplatesInTheSession`, `test/extension-conformance/theme_test.go::TestThemeQueriesAcrossSDKs`
+- **Release note:** The embedded Node runtime and the packed Go, Rust, Python and Lisp SDK bundles were not regenerated when `sendUserMessage` gained `expandPromptTemplates` and the Node theme gained `sourceInfo`, so shipped Node extensions saw no `ctx.ui.theme.sourceInfo` and the packed Lisp SDK rejected `:expand-prompt-templates`. They are regenerated, and the theme row now compares a real `SourceInfo`.
 
 ### BF-5f03fa4
 
@@ -20047,6 +20063,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `ab99da4063` (2026-10-29)
 - **Tests:** `chord/delta/retention_upstream_test.go::TestDeltaTrackerRetentionAcrossGCJobs`, `chord/delta/retention_upstream_test.go::TestTrackerReleasesADroppedOpenChangeWhenTheNextOpens`
+
+### BF-abc54d0
+
+**`pi.sendUserMessage(content, { expandPromptTemplates: true })` and the same option on a `withSession` context…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The host used to drop the option, so a message such as `/my-command` or `/skill:name` was sent to the model as plain text.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `abc54d0438` (2026-11-09)
+- **Tests:** `test/extension-conformance/send_user_message_expand_test.go::TestSendUserMessageExpandPromptTemplatesAcrossSDKs`
+- **Release note:** `pi.sendUserMessage(content, { expandPromptTemplates: true })` and the same option on a `withSession` context now reach the Session from Go, Rust, Python, Lisp and Node extensions (`Context.SendUserMessageWith`, `send_user_message_with`, `expand_prompt_templates=`, `:expand-prompt-templates`). The host used to drop the option, so a message such as `/my-command` or `/skill:name` was sent to the model as plain text. `ctx.ui.theme.sourceInfo` is now set on the Node runtime theme.
 
 ### BF-abe0137
 

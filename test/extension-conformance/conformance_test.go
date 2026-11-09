@@ -1948,7 +1948,15 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 							return err
 						}
 					}
-					return recordUserContent(actions, content, "followUp")
+					return recordUserContent(actions, content, "followUp", nil)
+				},
+			},
+			"send_user_message_expand": {
+				Name:        "send_user_message_expand",
+				Description: "Send a user message with expandPromptTemplates set to the argument",
+				Handler: func(_ context.Context, args string) error {
+					expand := args == "true"
+					return recordUserContent(actions, "expand-user", "followUp", &expand)
 				},
 			},
 			"set_session_name": {
@@ -3243,7 +3251,7 @@ func conformanceActions(actions *[]string) *subprocess.HostCallbacks {
 			return nil
 		},
 		SendUserMessage: func(content any, opts subprocess.SendUserMessageOptions) error {
-			return recordUserContent(actions, content, opts.DeliverAs)
+			return recordUserContent(actions, content, opts.DeliverAs, opts.ExpandPromptTemplates)
 		},
 		SetSessionName: func(name string) error {
 			*actions = append(*actions, "setSessionName:"+name)

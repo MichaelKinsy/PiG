@@ -3113,9 +3113,12 @@ class Context:
             message["details"] = details
         self._call("sendMessage", {"message": message, "options": options})
 
-    def send_user_message(self, content: str | list[dict[str, Any]], deliver_as: str = "followUp") -> None:
-        """Send text or a list of text/image content blocks as a user message."""
-        self._call("sendUserMessage", {"content": content, "options": {"deliverAs": deliver_as}})
+    def send_user_message(self, content: str | list[dict[str, Any]], deliver_as: str = "followUp", expand_prompt_templates: bool | None = None) -> None:
+        """Send text or a list of text/image content blocks as a user message. ``expand_prompt_templates=True`` dispatches an extension command and expands a skill command or prompt template in the text as typed input would (types.ts:1792); None is Pi's default, False."""
+        options: dict[str, Any] = {"deliverAs": deliver_as}
+        if expand_prompt_templates is not None:
+            options["expandPromptTemplates"] = bool(expand_prompt_templates)
+        self._call("sendUserMessage", {"content": content, "options": options})
 
     def scoped_models(self) -> list[dict[str, Any]]:
         """Return the resolved session scope in selection order."""

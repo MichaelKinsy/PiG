@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/coding/source"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -227,6 +228,8 @@ func TestThemeQueriesAcrossSDKs(t *testing.T) {
 		t.Cleanup(func() { tui.SetTerminalColors(tui.TerminalColors{}) })
 		tui.SetTerminalColors(tui.TerminalColors{})
 		custom := conformanceTheme(t, tui.TerminalColorMode256)
+		// What Pi's resource loader sets on a theme file under the agent's themes directory (core/source-info.ts SourceInfo): the file, a local source, user scope, a top-level origin and the theme's directory.
+		custom.SourceInfo = &source.SourceInfo{Path: custom.SourcePath, Source: "local", Scope: "user", Origin: "top-level", BaseDir: filepath.Dir(custom.SourcePath)}
 		themes := map[string]*tui.Theme{"custom file theme, 256 colors": custom, "built-in system theme": tui.NewThemeRegistry().Get(tui.SystemThemeName)}
 		// The palette's modifiers flag is the host's chalk level (theme.bold draws nothing at level 0); the row sets it so both outcomes are compared whatever the test's stdout is.
 		modifiers := map[string]bool{"custom file theme, 256 colors": true, "built-in system theme": false}
@@ -328,8 +331,17 @@ func TestThemeQueriesAcrossSDKs(t *testing.T) {
 			if !reflect.DeepEqual(got["sourceInfo"], wantInfo) {
 				t.Errorf("%s: sourceInfo = %v, want %v", name, got["sourceInfo"], wantInfo)
 			}
-			if name == "custom file theme, 256 colors" && wantSource == nil {
-				t.Errorf("the custom theme has no source path, so the row proves nothing")
+			if name == "custom file theme, 256 colors" {
+				if wantSource == nil {
+					t.Errorf("the custom theme has no source path, so the row proves nothing")
+				}
+				// The expected object is written out here, not derived from theme.SourceInfo, so an SDK that drops the field or any member of it fails (nil == nil proves nothing).
+				literal := map[string]any{"path": theme.SourcePath, "source": "local", "scope": "user", "origin": "top-level", "baseDir": filepath.Dir(theme.SourcePath)}
+				if !reflect.DeepEqual(wantInfo, literal) {
+					t.Errorf("the custom theme's SourceInfo = %v, want %v", wantInfo, literal)
+				}
+			} else if wantInfo != nil {
+				t.Errorf("%s: the built-in theme carries sourceInfo %v, want none", name, wantInfo)
 			}
 		}
 	})

@@ -312,6 +312,8 @@
                (lambda (ctx args) (declare (ignore args)) (pig:ctx-send-message ctx "notice" "default")))
   (pig:command ext "send_user_message" "Send a user message"
                (lambda (ctx args) (pig:ctx-send-user-message ctx (if (plusp (length args)) (pig:from-json args) "hello-user") :deliver-as "followUp")))
+  (pig:command ext "send_user_message_expand" "Send a user message with expandPromptTemplates set to the argument"
+               (lambda (ctx args) (pig:ctx-send-user-message ctx "expand-user" :deliver-as "followUp" :expand-prompt-templates (if (string= args "true") t :false))))
   (pig:command ext "status" "Set a status entry" (lambda (ctx args) (declare (ignore args)) (pig:ctx-set-status ctx "conformance" "ok")))
   (pig:command ext "status_burst" "Set one status repeatedly without awaiting"
                (lambda (ctx args) (declare (ignore args)) (dotimes (i 200) (pig:ctx-set-status ctx "burst" (princ-to-string i)))))
