@@ -361,7 +361,7 @@ Factories of one language may share a generated language cell. Packed TypeScript
 
 A Piglet Binary may fuse a compatible Go factory into Pig's process. Fused code must return errors and use extension host/UI APIs for output. The build rejects `os.Exit`, `os.Chdir`, `log.Fatal*`, `fmt.Print*`, and `os.Stdout` in the factory's local package closure with `PIGLET_FUSED_PROCESS_HAZARD` because those operations would terminate Pig, change its working directory, or corrupt terminal output.
 
-Use `pig extension init <path>` to create a factory. Add `--isolated` to create a standalone. The scaffold writes no extension metadata file.
+Use `pig extension init <path> [--lang go|python|rust|lisp|node]` to create a factory (`--lang node` writes `package.json` and a TypeScript `index.ts`). Add `--isolated` to create a standalone (not available for Node, whose executable scripts have no SDK to speak the wire with). The scaffold writes no extension metadata file.
 
 ### Extension directories that hold resource directories
 

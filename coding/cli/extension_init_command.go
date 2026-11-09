@@ -41,12 +41,12 @@ type scaffoldFile struct {
 	mode os.FileMode
 }
 
-var initLanguages = []string{"go", "python", "rust", "lisp"}
+var initLanguages = []string{"go", "python", "rust", "lisp", "node"}
 
 // runExtensionInit scaffolds a minimal, self-contained extension whose
 // versioned SDK dependency is resolved by Pig to the staged copy under the
 // active config root, so a clean, binary-only host needs no source checkout. Go is fully offline;
-// Python needs only python3; Lisp needs SBCL; Rust needs cargo and (on a cold cache) crates.io
+// Python needs only python3; Lisp needs SBCL; Node needs only Node, which supplies the Pi API module itself and has no SDK to stage; Rust needs cargo and (on a cold cache) crates.io
 // for transitive dependencies.
 func runExtensionInit(args []string) int {
 	opts := parseExtensionInitOptions(args)
@@ -66,14 +66,20 @@ func runExtensionInit(args []string) int {
 	if opts.lang == "" {
 		opts.lang = "go"
 	}
-	if opts.lang == "common-lisp" {
+	switch opts.lang {
+	case "common-lisp":
 		opts.lang = "lisp"
+	case "typescript", "ts", "javascript", "js":
+		opts.lang = "node"
 	}
 	if !isInitLanguage(opts.lang) {
 		return printExtensionInitReport(extensionInitReport{Language: opts.lang, Error: fmt.Sprintf("unsupported --lang %q; supported: %s", opts.lang, strings.Join(initLanguages, ", "))}, opts.jsonOutput)
 	}
 	if opts.login && opts.lang != "go" {
 		return printExtensionInitReport(extensionInitReport{Language: opts.lang, Error: "--login currently supports --lang go only"}, opts.jsonOutput)
+	}
+	if opts.isolated && opts.lang == "node" {
+		return printExtensionInitReport(extensionInitReport{Language: opts.lang, Error: "--isolated is not available for --lang node: a Node extension is Pi's default-export factory, and an executable Node script has no SDK to speak the wire with"}, opts.jsonOutput)
 	}
 	if opts.login && opts.isolated {
 		return printExtensionInitReport(extensionInitReport{Language: opts.lang, Error: "--login requires the conventional Go factory form"}, opts.jsonOutput)
@@ -96,13 +102,18 @@ func runExtensionInit(args []string) int {
 
 	// Stage the SDK for this language so the first Pig-managed cold build is
 	// ready even when no interactive session has run under this config root.
-	configRoot := codingagent.ConfigRoot()
-	if err := pigsdk.EnsureSyncedLang(configRoot, opts.lang); err != nil {
-		return printExtensionInitReport(extensionInitReport{Name: name, Path: root, Language: opts.lang, Error: fmt.Sprintf("stage %s SDK: %v", opts.lang, err)}, opts.jsonOutput)
-	}
-	sdkDir, err := pigsdk.SDKDirFor(configRoot, opts.lang)
-	if err != nil {
-		return printExtensionInitReport(extensionInitReport{Name: name, Path: root, Language: opts.lang, Error: err.Error()}, opts.jsonOutput)
+	// Node has no SDK package: the runtime supplies Pi's API module.
+	var sdkDir string
+	if opts.lang != "node" {
+		configRoot := codingagent.ConfigRoot()
+		if err := pigsdk.EnsureSyncedLang(configRoot, opts.lang); err != nil {
+			return printExtensionInitReport(extensionInitReport{Name: name, Path: root, Language: opts.lang, Error: fmt.Sprintf("stage %s SDK: %v", opts.lang, err)}, opts.jsonOutput)
+		}
+		var err error
+		sdkDir, err = pigsdk.SDKDirFor(configRoot, opts.lang)
+		if err != nil {
+			return printExtensionInitReport(extensionInitReport{Name: name, Path: root, Language: opts.lang, Error: err.Error()}, opts.jsonOutput)
+		}
 	}
 
 	files := scaffoldFiles(opts.lang, name, filepath.Base(root), sdkDir, opts.isolated, opts.login)
@@ -142,7 +153,9 @@ func runExtensionInit(args []string) int {
 	for _, rel := range written {
 		fmt.Printf("  %s\n", rel)
 	}
-	fmt.Printf("\nSDK: %s\n", sdkDir)
+	if sdkDir != "" {
+		fmt.Printf("\nSDK: %s\n", sdkDir)
+	}
 	fmt.Printf("\nNext steps:\n")
 	fmt.Printf("  pig install %s --validate-only --json\n", root)
 	fmt.Printf("  pig -e %s          # load it into a session, then edit and /reload\n", root)
@@ -174,6 +187,11 @@ func scaffoldFiles(lang, name, dirBase, sdkDir string, isolated, login bool) []s
 		}
 	}
 	switch lang {
+	case "node":
+		return []scaffoldFile{
+			{rel: "package.json", body: nodePackageTemplate(name)},
+			{rel: "index.ts", body: nodeFactoryTemplate(name)},
+		}
 	case "lisp":
 		return []scaffoldFile{
 			{rel: name + ".asd", body: lispSystemTemplate(name)},
@@ -518,6 +536,46 @@ func lispStandaloneTemplate(name string) string {
 `, name, strings.ReplaceAll(name, "-", "_"))
 }
 
+// ── Node templates ───────────────────────────────────────────────────────────
+
+func nodePackageTemplate(name string) string {
+	return fmt.Sprintf(`{
+  "name": %[1]q,
+  "private": true,
+  "type": "module"
+}
+`, name)
+}
+
+func nodeFactoryTemplate(name string) string {
+	return fmt.Sprintf(`// The Node runtime supplies "@earendil-works/pi-coding-agent" itself; the type-only import is erased when the file loads.
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+
+export default function (pi: ExtensionAPI) {
+  pi.registerTool({
+    name: "%[2]s_ping",
+    label: "Ping",
+    description: "Return a short pong so you can confirm the extension is wired up.",
+    parameters: { type: "object", properties: {} },
+    async execute() {
+      return { content: [{ type: "text", text: "pong from %[1]s" }], details: {} };
+    },
+  });
+
+  pi.registerCommand(%[1]q, {
+    description: "Say hello from the %[1]s extension.",
+    handler: async (_args, ctx) => {
+      ctx.ui.notify("hello from %[1]s", "info");
+    },
+  });
+
+  pi.on("session_start", async (_event, ctx) => {
+    ctx.ui.setStatus(%[1]q, "%[1]s loaded");
+  });
+}
+`, name, strings.ReplaceAll(name, "-", "_"))
+}
+
 // ── Rust templates ───────────────────────────────────────────────────────────
 
 func rustCargoTemplate(crate string) string {
@@ -572,16 +630,16 @@ func printExtensionInitReport(report extensionInitReport, jsonOut bool) int {
 }
 
 func printExtensionInitHelp() {
-	fmt.Print("Usage:\n  pig extension init <path> [--name <name>] [--lang go|python|rust|lisp] [--login] [--isolated] [--force] [--json]\n\n" +
+	fmt.Print("Usage:\n  pig extension init <path> [--name <name>] [--lang go|python|rust|lisp|node] [--login] [--isolated] [--force] [--json]\n\n" +
 		"Scaffold a new extension whose versioned SDK dependency Pig resolves to its\n" +
 		"staged copy, so it builds with no Pig source checkout or committed SDK path.\n" +
-		"Go builds fully offline; Python needs python3; Lisp needs SBCL 2.6.9; Rust needs cargo (and crates.io\n" +
+		"Go builds fully offline; Python needs python3; Lisp needs SBCL 2.6.9; Node needs only Node (its Pi API module is supplied by Pig); Rust needs cargo (and crates.io\n" +
 		"on a cold cache for transitive dependencies).\n\n" +
 		"Options:\n" +
 		"  --name <name>   Extension name; it must match the sanitized directory base name.\n" +
-		"  --lang <lang>   Language to scaffold: go (default), python, rust, or lisp.\n" +
+		"  --lang <lang>   Language to scaffold: go (default), python, rust, lisp, or node (a TypeScript factory).\n" +
 		"  --login         Scaffold a conventional Go login factory with standard PiG art.\n" +
-		"  --isolated      Generate an exact standalone instead of a factory.\n" +
+		"  --isolated      Generate an exact standalone instead of a factory (not available for node).\n" +
 		"  --force, -f     Overwrite existing files.\n" +
 		"  --json          Machine-readable output.\n")
 }
