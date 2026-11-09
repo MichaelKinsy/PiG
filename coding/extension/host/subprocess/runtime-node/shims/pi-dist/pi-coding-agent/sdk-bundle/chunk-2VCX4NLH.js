@@ -136,7 +136,7 @@ var SETTINGS_DEFAULTS = {
     mode: "on",
     inlineBudget: 3e3
   },
-  cacheWarming: "streaming",
+  cacheWarming: "idle",
   tuiMode: "fullscreen",
   fullscreenExitOutput: "transcript",
   fullscreenScrollbar: "auto",

@@ -19,7 +19,7 @@ import {
   addUsageToTotals,
   combineUsage,
   createUsageTotals
-} from "./chunk-IJFG4BUL.js";
+} from "./chunk-2VCX4NLH.js";
 import {
   createOutputFileStream,
   createToolDefinitionFromAgentTool,
@@ -16427,32 +16427,7 @@ async function createAgentSessionRuntime(createRuntime, options) {
 __name(createAgentSessionRuntime, "createAgentSessionRuntime");
 
 // pi-dist/pi-coding-agent/core/cache-warmer.js
-import { calculateCost } from "../../pi-ai/sdk-bundle/index.js";
-import { getProviderEnvValue } from "../../pi-ai/utils/provider-env.js";
-var MAX_WARMING_AGE_MS = 60 * 6e4;
-var MAX_IDLE_WARMING_AGE_MS = 30 * 6e4;
-var CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS = 0.05;
-var IDLE_CONTINUATION_PROBABILITY = 0.15;
-function getCacheWarmingDelayMs(ttlMs) {
-  if (ttlMs <= 1e4)
-    return void 0;
-  return Math.max(1, Math.floor(Math.min(ttlMs * 0.9, ttlMs - 1e4)));
-}
-__name(getCacheWarmingDelayMs, "getCacheWarmingDelayMs");
-function getPromptCacheTtlMs(model, options) {
-  const retention = options?.cacheRetention ?? (getProviderEnvValue("PI_CACHE_RETENTION", options?.env) === "long" ? "long" : "short");
-  if (retention === "none")
-    return void 0;
-  const seconds = model.promptCache?.[retention];
-  return seconds === void 0 ? void 0 : seconds * 1e3;
-}
-__name(getPromptCacheTtlMs, "getPromptCacheTtlMs");
-function isReplayable(model, options) {
-  if (!options?.reasoning || model.api !== "anthropic-messages")
-    return true;
-  return model.compat?.forceAdaptiveThinking === true;
-}
-__name(isReplayable, "isReplayable");
+import { CACHE_WARMING_MAX_AGE_MS, CACHE_WARMING_MAX_IDLE_AGE_MS, CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS, evaluateCacheWarming, getCacheWarmingDelayMs, getCacheWarmingRequestOptions, getPromptCacheTtlMs, isCacheWarmingReplayable } from "../../pi-ai/sdk-bundle/index.js";
 function lastPromptTokens(entries) {
   for (let index = entries.length - 1; index >= 0; index--) {
     const entry = entries[index];
@@ -16464,19 +16439,6 @@ function lastPromptTokens(entries) {
   return 0;
 }
 __name(lastPromptTokens, "lastPromptTokens");
-function price(model, tokens) {
-  const usage = {
-    input: 0,
-    output: 0,
-    cacheRead: 0,
-    cacheWrite: 0,
-    totalTokens: 0,
-    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
-    ...tokens
-  };
-  return calculateCost(model, usage).total;
-}
-__name(price, "price");
 var CacheWarmer = class {
   static {
     __name(this, "CacheWarmer");
@@ -16525,7 +16487,7 @@ var CacheWarmer = class {
       this.stop("cache warming disabled");
       return;
     }
-    if (!isReplayable(request.model, request.options)) {
+    if (!isCacheWarmingReplayable(request.model, request.options)) {
       this.stop("request cannot be replayed safely");
       return;
     }
@@ -16562,7 +16524,7 @@ var CacheWarmer = class {
       return;
     }
     run.phase = "idle";
-    const deadline = run.startedAt + MAX_IDLE_WARMING_AGE_MS;
+    const deadline = run.startedAt + CACHE_WARMING_MAX_IDLE_AGE_MS;
     if (run.nextWarmAt > deadline || Date.now() >= deadline) {
       this.stop("30-minute idle safety limit reached");
     }
@@ -16596,7 +16558,7 @@ var CacheWarmer = class {
     run.extensionOverride = false;
     run.nextWarmAt = Date.now() + run.delayMs;
     run.refreshDeadlineAt = run.nextWarmAt + Math.floor((run.ttlMs - run.delayMs) / 2);
-    const deadline = run.startedAt + (run.phase === "idle" ? MAX_IDLE_WARMING_AGE_MS : MAX_WARMING_AGE_MS);
+    const deadline = run.startedAt + (run.phase === "idle" ? CACHE_WARMING_MAX_IDLE_AGE_MS : CACHE_WARMING_MAX_AGE_MS);
     if (run.nextWarmAt > deadline || Date.now() >= deadline) {
       this.stop(run.phase === "idle" ? "30-minute idle safety limit reached" : "one-hour safety limit reached");
       return;
@@ -16633,14 +16595,7 @@ var CacheWarmer = class {
     }
     run.extensionOverride = extensionOverride;
     try {
-      const message = await this.models.streamSimple(run.model, run.context, {
-        ...run.options,
-        maxTokens: 1,
-        // The warm request repeats the last request; it must not replace the conversation's thread state.
-        disableContinuation: true,
-        maxRetries: 0,
-        signal: run.controller.signal
-      }).result();
+      const message = await this.models.streamSimple(run.model, run.context, getCacheWarmingRequestOptions(run.options, run.controller.signal)).result();
       if (!this.validateRun(run))
         return;
       if (message.stopReason !== "error" && message.stopReason !== "aborted") {
@@ -16676,24 +16631,7 @@ var CacheWarmer = class {
     return void 0;
   }
   evaluate(run) {
-    const model = run.model;
-    const promptTokens = lastPromptTokens(this.sessionManager.getBranch());
-    const cacheHitCost = price(model, { cacheRead: promptTokens });
-    const cacheMissCost = price(model, model.cost.cacheWrite > 0 ? { cacheWrite: promptTokens } : { input: promptTokens });
-    const warmCost = price(model, { cacheRead: promptTokens, output: 1 });
-    const missCost = Math.max(0, cacheMissCost - cacheHitCost);
-    const continuationProbability = run.phase === "idle" ? IDLE_CONTINUATION_PROBABILITY : 1;
-    const economicsAvailable = promptTokens > 0 && (cacheHitCost > 0 || cacheMissCost > 0);
-    const expectedSavings = continuationProbability * missCost - warmCost;
-    return {
-      phase: run.phase,
-      warmCost,
-      missCost,
-      continuationProbability,
-      expectedSavings,
-      economicsAvailable,
-      action: expectedSavings >= CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS ? "warm" : "stop"
-    };
+    return evaluateCacheWarming(run.model, lastPromptTokens(this.sessionManager.getBranch()), run.phase);
   }
 };
 function formatDollars(value) {

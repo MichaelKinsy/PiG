@@ -138,6 +138,10 @@
       "sha256": "01ae2a5b120382f9a648ced7ee8507493a134f216d100fc61600c6c9738235d2"
     },
     {
+      "path": "pi-dist/pi-ai/cache-warming.js",
+      "sha256": "22ec1ee804bfad2a15832a44e7c758a47456e9ccfd6ea7bddeaafe6157bb3995"
+    },
+    {
       "path": "pi-dist/pi-ai/compat.js",
       "sha256": "df55dca273cb2a7053187b7b29d0fe5b91966a5099ab02d2efe38bb31c3f9738"
     },
@@ -159,7 +163,7 @@
     },
     {
       "path": "pi-dist/pi-ai/index.js",
-      "sha256": "5c1a13b16ba62ce20c60e76a79721ddebfd50801f6932141d7923ac468f63473"
+      "sha256": "dae2e8973404eab96233f9c36a99f0981fbb14205f07fec1b0bcbc84f476fffe"
     },
     {
       "path": "pi-dist/pi-ai/legacy-api-aliases.js",
@@ -259,7 +263,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/.manifest.json",
-      "sha256": "73109aea5a6f6baefb61b96cb7f34aa2caf89cea8d6a50646b6b5c292a60c4e2"
+      "sha256": "d6f44050753589a3af1cf77555332768b58b7c1168923613fb8289cb68c8a42b"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/amazon-bedrock.json",
@@ -275,7 +279,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/azure.json",
-      "sha256": "9171f3122524c248862d24961e2716812b1d18827cad4c0edfb99b8f75e96fbe"
+      "sha256": "7a427b902bafd502dd52442768ad1f41fa9cdfe0bc1f136eae53029816390a24"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/baseten.json",
@@ -299,7 +303,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/fireworks.json",
-      "sha256": "5fddd877cf29df4aceec6e42e8329ccc97051c81130e55491a0dd434cbf42d09"
+      "sha256": "d955cb73bb7fbab137f9d5532cf865999484b7a43d0e06cdc4561c90e9048476"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/github-copilot.json",
@@ -363,15 +367,15 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/opencode-go.json",
-      "sha256": "50dcbc02accf7155c3a5cca14d79767ceb4632a4233d8d2201fead905254f47b"
+      "sha256": "e64b95750a60ed63c2ccea2bb06083ef8565a14fa56aae5e9a5deb17c6e70d04"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/opencode.json",
-      "sha256": "17c0615f82816a068b10ecc9f2b4579471563d9c22bb7dcefdf9955b593bc0eb"
+      "sha256": "91aff5a8623ef72518ad4775040ec7e0e230c6f36171a8384cd58e8249003780"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/openrouter.json",
-      "sha256": "b2ad59d9dcc58e3fd5081c3248aaad7b8ae0592e72cfb269d14f038381461144"
+      "sha256": "6c8b215493707f5241e4e187573f3cc3744c0117b36eaa16ced6d6c37dd0a02b"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/qwen-token-plan-cn.json",
@@ -403,7 +407,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/vercel-ai-gateway.json",
-      "sha256": "7e9560343eedab64435792f5cc4c3d4a301e964d3adb8dad67e2c7960db16e08"
+      "sha256": "c294e0f526150bfc64ce13c0b4d668bd83a970e8b8daa9e53042e3cacda62b55"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/xai.json",

@@ -19,8 +19,10 @@
 
 - The default model for the `anthropic` provider is now Claude Opus 5.5 (`claude-opus-5-5`) instead of Claude Opus 4.8
 - Default models moved to newer models at the same or a lower price: `amazon-bedrock` Claude Opus 5.5, `azure` GPT-6.1 Sol, `google` and `google-vertex` Gemini 4 Argon, `vercel-ai-gateway` GLM 5.3, `baseten` GLM 5.3, `minimax` and `minimax-cn` MiniMax-M3, `qwen-token-plan` and `qwen-token-plan-cn` Qwen3.8 Max, `opencode-go` Kimi K3.1 Pro, and Kimi K2.7 Code instead of Kimi K2.6 for `moonshotai`, `moonshotai-cn`, `huggingface`, `opencode`, `openrouter`, `cloudflare-workers-ai` and `cloudflare-ai-gateway`
+- `cacheWarming` now defaults to `"idle"` instead of `"streaming"`: pi also keeps eligible prompt caches warm for up to 30 minutes between agent runs, but only when a refresh is expected to pay for itself. Set `"cacheWarming": "streaming"` in global settings for the previous behavior
 - Consecutive cache warms now show as one `Cache warmed: $<total>` line with the cumulative cost instead of one line per warm
 - The OpenAI Codex provider is shown as "OpenAI Codex" again instead of "OpenAI Codex (legacy)" in `/login` and the model selector
+- The `/login` and `/logout` provider lists and `/login <provider>` completions now show the preferred partners Radius and OpenRouter first, then all other providers alphabetically. In the provider lists, partners are marked with `✦`, the selected Radius row shimmers in the Radius logo colors and the selected OpenRouter row glows in OpenRouter's brand color (lime on dark themes, violet on light themes)
 
 ### Fixed
 
@@ -49,6 +51,7 @@
 - Fixed resuming a session restoring an old thinking level after `/tree` navigated to before a `/thinking` change. Like the model, the live thinking level is now recorded on the new branch with the next prompt ([#11451](https://github.com/earendil-works/pi/issues/11451))
 - Fixed inline images in fullscreen mode showing only their first row in Orca, while regular mode showed them in full. Fullscreen now draws Kitty images after the rows they cover on every terminal, as it already did for WezTerm ([#11835](https://github.com/earendil-works/pi/issues/11835))
 - Fixed the edit tool rewriting the line endings of untouched lines in files with mixed CRLF/LF or lone CR line endings, and running out of memory on large files after the file was already written; the diff now covers only the changed lines and their surroundings and is computed before writing ([#8544](https://github.com/earendil-works/pi/issues/8544))
+- Fixed the Windows installer (`irm https://pi.dev/install.ps1 | iex`) aborting with `NativeCommandError` in Windows PowerShell 5.1 when npm or Node.js printed any warning, for example `npm warn Unknown user config` from an unknown `.npmrc` key. It failed before the action menu when migrating an npm installation, and during managed installs. An invalid `managed-install.json` also aborted the installer instead of being reported ([#11944](https://github.com/earendil-works/pi/issues/11944))
 
 ## [1.5.0] - 2026-11-02
 

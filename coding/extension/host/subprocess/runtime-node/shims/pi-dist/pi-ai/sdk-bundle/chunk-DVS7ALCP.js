@@ -1,4 +1,5 @@
 import {
+  calculateCost,
   createProvider,
   getSystemMessageText
 } from "./chunk-DQ3IPTWT.js";
@@ -8,6 +9,69 @@ import {
 
 // pi-dist/pi-ai/index.js
 import { lazyStream, lazyApi } from "../api/lazy.js";
+
+// pi-dist/pi-ai/cache-warming.js
+import { getProviderEnvValue } from "../utils/provider-env.js";
+var CACHE_WARMING_MAX_AGE_MS = 60 * 6e4;
+var CACHE_WARMING_MAX_IDLE_AGE_MS = 30 * 6e4;
+var CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS = 0.05;
+var CACHE_WARMING_IDLE_CONTINUATION_PROBABILITY = 0.15;
+function getCacheWarmingDelayMs(ttlMs) {
+  if (ttlMs <= 1e4)
+    return void 0;
+  return Math.max(1, Math.floor(Math.min(ttlMs * 0.9, ttlMs - 1e4)));
+}
+__name(getCacheWarmingDelayMs, "getCacheWarmingDelayMs");
+function getPromptCacheTtlMs(model, options) {
+  const retention = options?.cacheRetention ?? (getProviderEnvValue("PI_CACHE_RETENTION", options?.env) === "long" ? "long" : "short");
+  if (retention === "none")
+    return void 0;
+  const seconds = model.promptCache?.[retention];
+  return seconds === void 0 ? void 0 : seconds * 1e3;
+}
+__name(getPromptCacheTtlMs, "getPromptCacheTtlMs");
+function isCacheWarmingReplayable(model, options) {
+  if (!options?.reasoning || model.api !== "anthropic-messages")
+    return true;
+  return model.compat?.forceAdaptiveThinking === true;
+}
+__name(isCacheWarmingReplayable, "isCacheWarmingReplayable");
+function getCacheWarmingRequestOptions(options, signal) {
+  return { ...options, maxTokens: 1, disableContinuation: true, maxRetries: 0, signal };
+}
+__name(getCacheWarmingRequestOptions, "getCacheWarmingRequestOptions");
+function evaluateCacheWarming(model, promptTokens, phase) {
+  const cacheHitCost = price(model, { cacheRead: promptTokens });
+  const cacheMissCost = price(model, model.cost.cacheWrite > 0 ? { cacheWrite: promptTokens } : { input: promptTokens });
+  const warmCost = price(model, { cacheRead: promptTokens, output: 1 });
+  const missCost = Math.max(0, cacheMissCost - cacheHitCost);
+  const continuationProbability = phase === "idle" ? CACHE_WARMING_IDLE_CONTINUATION_PROBABILITY : 1;
+  const economicsAvailable = promptTokens > 0 && (cacheHitCost > 0 || cacheMissCost > 0);
+  const expectedSavings = continuationProbability * missCost - warmCost;
+  return {
+    phase,
+    warmCost,
+    missCost,
+    continuationProbability,
+    expectedSavings,
+    economicsAvailable,
+    action: expectedSavings >= CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS ? "warm" : "stop"
+  };
+}
+__name(evaluateCacheWarming, "evaluateCacheWarming");
+function price(model, tokens) {
+  const usage = {
+    input: 0,
+    output: 0,
+    cacheRead: 0,
+    cacheWrite: 0,
+    totalTokens: 0,
+    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+    ...tokens
+  };
+  return calculateCost(model, usage).total;
+}
+__name(price, "price");
 
 // pi-dist/pi-ai/providers/faux.js
 import { createAssistantMessageEventStream } from "../utils/event-stream.js";
@@ -1469,6 +1533,15 @@ ${JSON.stringify(toolCall.arguments, null, 2)}`;
 __name(validateToolArguments, "validateToolArguments");
 
 export {
+  CACHE_WARMING_MAX_AGE_MS,
+  CACHE_WARMING_MAX_IDLE_AGE_MS,
+  CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS,
+  CACHE_WARMING_IDLE_CONTINUATION_PROBABILITY,
+  getCacheWarmingDelayMs,
+  getPromptCacheTtlMs,
+  isCacheWarmingReplayable,
+  getCacheWarmingRequestOptions,
+  evaluateCacheWarming,
   repairJson,
   parseJsonWithRepair,
   parseToolCallArguments,

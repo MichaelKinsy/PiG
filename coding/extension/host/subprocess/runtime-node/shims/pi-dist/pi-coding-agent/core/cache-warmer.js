@@ -1,48 +1,4 @@
-import { calculateCost, } from "../../pi-ai/sdk-bundle/index.js";
-import { getProviderEnvValue } from "../../pi-ai/utils/provider-env.js";
-/** Streaming warming never continues past this long after the real request that started it. */
-const MAX_WARMING_AGE_MS = 60 * 60_000;
-/** Idle warming uses a shorter horizon because continuation estimates become less reliable with age. */
-const MAX_IDLE_WARMING_AGE_MS = 30 * 60_000;
-/** A refresh is sent only when it is expected to save at least this many dollars. */
-const CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS = 0.05;
-/**
- * Chance that a real request arrives before the cache entry expires while the
- * agent sits idle. Measured from our own usage; per-session estimates were not
- * better than this constant.
- */
-const IDLE_CONTINUATION_PROBABILITY = 0.15;
-/** Refresh at 90% of the TTL while preserving at least ten seconds of margin. */
-export function getCacheWarmingDelayMs(ttlMs) {
-    if (ttlMs <= 10_000)
-        return undefined;
-    return Math.max(1, Math.floor(Math.min(ttlMs * 0.9, ttlMs - 10_000)));
-}
-/**
- * Lifetime of the prompt cache entry a request writes, from the model's
- * `promptCache` tier for the retention the request used. Undefined when the
- * model has no lifetime for that tier or caching is off.
- */
-export function getPromptCacheTtlMs(model, options) {
-    const retention = options?.cacheRetention ??
-        (getProviderEnvValue("PI_CACHE_RETENTION", options?.env) === "long" ? "long" : "short");
-    if (retention === "none")
-        return undefined;
-    const seconds = model.promptCache?.[retention];
-    return seconds === undefined ? undefined : seconds * 1000;
-}
-/**
- * Whether replaying the request with a one-token output cap leaves its cache
- * entry untouched. Anthropic's budget-based thinking (Claude models without
- * adaptive thinking) derives `budget_tokens` from `max_tokens`; the replay
- * would get a different budget, which Anthropic keys the message cache on,
- * and the model could still think for thousands of tokens.
- */
-export function isReplayable(model, options) {
-    if (!options?.reasoning || model.api !== "anthropic-messages")
-        return true;
-    return model.compat?.forceAdaptiveThinking === true;
-}
+import { CACHE_WARMING_MAX_AGE_MS, CACHE_WARMING_MAX_IDLE_AGE_MS, CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS, evaluateCacheWarming, getCacheWarmingDelayMs, getCacheWarmingRequestOptions, getPromptCacheTtlMs, isCacheWarmingReplayable, } from "../../pi-ai/sdk-bundle/index.js";
 /** Prompt size of the most recent real request on the branch, as reported by the provider. */
 function lastPromptTokens(entries) {
     for (let index = entries.length - 1; index >= 0; index--) {
@@ -53,18 +9,6 @@ function lastPromptTokens(entries) {
         }
     }
     return 0;
-}
-function price(model, tokens) {
-    const usage = {
-        input: 0,
-        output: 0,
-        cacheRead: 0,
-        cacheWrite: 0,
-        totalTokens: 0,
-        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
-        ...tokens,
-    };
-    return calculateCost(model, usage).total;
 }
 /**
  * Keeps one prompt cache entry alive by re-sending its request with a
@@ -116,7 +60,7 @@ export class CacheWarmer {
             this.stop("cache warming disabled");
             return;
         }
-        if (!isReplayable(request.model, request.options)) {
+        if (!isCacheWarmingReplayable(request.model, request.options)) {
             this.stop("request cannot be replayed safely");
             return;
         }
@@ -155,7 +99,7 @@ export class CacheWarmer {
             return;
         }
         run.phase = "idle";
-        const deadline = run.startedAt + MAX_IDLE_WARMING_AGE_MS;
+        const deadline = run.startedAt + CACHE_WARMING_MAX_IDLE_AGE_MS;
         if (run.nextWarmAt > deadline || Date.now() >= deadline) {
             this.stop("30-minute idle safety limit reached");
         }
@@ -192,7 +136,7 @@ export class CacheWarmer {
         // the planned pre-expiry margin for that delay and request dispatch; a
         // late refresh is likely a full-price cache write, not a cache warm.
         run.refreshDeadlineAt = run.nextWarmAt + Math.floor((run.ttlMs - run.delayMs) / 2);
-        const deadline = run.startedAt + (run.phase === "idle" ? MAX_IDLE_WARMING_AGE_MS : MAX_WARMING_AGE_MS);
+        const deadline = run.startedAt + (run.phase === "idle" ? CACHE_WARMING_MAX_IDLE_AGE_MS : CACHE_WARMING_MAX_AGE_MS);
         if (run.nextWarmAt > deadline || Date.now() >= deadline) {
             this.stop(run.phase === "idle" ? "30-minute idle safety limit reached" : "one-hour safety limit reached");
             return;
@@ -236,14 +180,7 @@ export class CacheWarmer {
         run.extensionOverride = extensionOverride;
         try {
             const message = await this.models
-                .streamSimple(run.model, run.context, {
-                ...run.options,
-                maxTokens: 1,
-                // The warm request repeats the last request; it must not replace the conversation's thread state.
-                disableContinuation: true,
-                maxRetries: 0,
-                signal: run.controller.signal,
-            })
+                .streamSimple(run.model, run.context, getCacheWarmingRequestOptions(run.options, run.controller.signal))
                 .result();
             if (!this.validateRun(run))
                 return;
@@ -282,24 +219,7 @@ export class CacheWarmer {
         return undefined;
     }
     evaluate(run) {
-        const model = run.model;
-        const promptTokens = lastPromptTokens(this.sessionManager.getBranch());
-        const cacheHitCost = price(model, { cacheRead: promptTokens });
-        const cacheMissCost = price(model, model.cost.cacheWrite > 0 ? { cacheWrite: promptTokens } : { input: promptTokens });
-        const warmCost = price(model, { cacheRead: promptTokens, output: 1 });
-        const missCost = Math.max(0, cacheMissCost - cacheHitCost);
-        const continuationProbability = run.phase === "idle" ? IDLE_CONTINUATION_PROBABILITY : 1;
-        const economicsAvailable = promptTokens > 0 && (cacheHitCost > 0 || cacheMissCost > 0);
-        const expectedSavings = continuationProbability * missCost - warmCost;
-        return {
-            phase: run.phase,
-            warmCost,
-            missCost,
-            continuationProbability,
-            expectedSavings,
-            economicsAvailable,
-            action: expectedSavings >= CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS ? "warm" : "stop",
-        };
+        return evaluateCacheWarming(run.model, lastPromptTokens(this.sessionManager.getBranch()), run.phase);
     }
 }
 function formatDollars(value) {

@@ -83,6 +83,7 @@ end = "\tprivate async handleOpenExternalEditor(): Promise<void> {"
 sha256 = "574dd4d83f03bdbb8f2cf9770c598f0a10029970fb68314af801951b6e39d68d"
 keybindings = ["app.editor.external", "tui.select.cancel"]
 
+# Re-reviewed at c23b9ec1: setToolsExpanded also walks pendingMessagesContainer; the startup header transition is unchanged.
 # The generated startup owner is init. Its ExpandableText header receives subsequent expansion changes through setToolsExpanded; this contract closes that transition, not the complete init surface.
 [[contract]]
 id = "coding-agent/startup/verbose-header-collapse"
@@ -106,7 +107,7 @@ evidence = [
 path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
 start = "\tprivate setToolsExpanded(expanded: boolean): void {"
 end = "\t/** Update rendered assistant messages without rebuilding live tool components. */"
-sha256 = "c616d5de55de545f831efc875a3271f7323b003ebe8e806d2d6347f41cfd1839"
+sha256 = "de33262eac93ce9e3304a32bd6bb4e5a3df609570727faec2b37b4f16dd1f1f4"
 keybindings = ["app.clear"]
 
 [[contract]]
@@ -651,17 +652,19 @@ id = "coding-agent/extensions/custom-message-renderer"
 upstream_id = "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderInitialMessages"
 family = "extensions-runtime"
 kind = "custom-message-render-dispatch"
-claim = "displayed custom messages resolve the first registered renderer, preserve expanded state, fall back visibly on invalid output, and subprocess rendering never performs IPC or JSON work on the TUI render loop"
+claim = "displayed custom messages resolve the first registered renderer, preserve expanded state, fall back visibly on invalid output, subprocess rendering never performs IPC or JSON work on the TUI render loop, and the message body runs the registered markdown transformers with the custom message type and the entry id and timestamp of a restored entry (Pi 1.5.0+c23b9ec1 passes getMarkdownTransformers, messageId and timestamp to CustomMessageComponent)"
 status = "ported"
 pig_targets = [
   "internal/codingagent/interactive_transcript.go#appendCustomMessage",
   "coding/extension/host/subprocess/render_proxy.go#Render(width int)",
   "coding/extension/host/subprocess/render_proxy.go#requestLoop",
+  "internal/codingagent/interactive_chat.go#surfaceMarkdownTransform",
 ]
 evidence = [
   "internal/codingagent/custom_message_renderer_test.go#TestCustomMessageUsesRegisteredProductionRenderer",
   "coding/extension/host/subprocess/render_proxy_test.go#TestRenderProxyRenderNeverWaitsForIPC",
   "coding/extension/host/subprocess/render_proxy_test.go#TestAC52RenderProxyRejectsStaleGeneration",
+  "internal/codingagent/live_message_meta_test.go#TestRestoredCustomMessageAndSummaryKeepTheirEntryIdentity",
   "test/parity/scenarios/extensions-runtime/14-subprocess-message-renderer.toml",
 ]
 
@@ -669,7 +672,7 @@ evidence = [
 path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
 start = "\t\t\tcase \"custom\": {"
 end = "\t\t\tcase \"compactionSummary\": {"
-sha256 = "b13c4b57fec9c420327daff4cbb801126f61426e9aff096a789b9a697871dd02"
+sha256 = "be6a0ddefd9d630b9a79ff6f5bab8d8e55f9fd524eab5d8fd47980cebdf227f7"
 keybindings = []
 
 [[contract]]
@@ -711,7 +714,7 @@ pig_targets = [
   "coding/session.go#currentRunner",
   "coding/session_boundaries.go#handleAgentEvent",
   "coding/session_extension_hooks.go#normalizeReplacementContent",
-  "coding/session_extension_hooks.go#replaceMessageInPlace",
+  "agent/message_json.go#ReplaceMessageInPlace",
 ]
 evidence = [
   "agent/message_custom_order_test.go#TestAdoptMemberOrderReachesEveryCopy",
@@ -736,17 +739,19 @@ id = "coding-agent/model-selector/refresh-result-status"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/components/model-selector.ts#ModelSelectorComponent.refreshModels"
 family = "model-resolver-selector"
 kind = "refresh-result-error-status"
-claim = "model picker errors derive from the actual refresh result or registry error: success, the runtime error, one or several failed catalogs in failure order each show Pi's message and reload the snapshot with the query kept; the 15 second timeout rejects refreshModelCatalogs, so the picker shows the timeout and keeps its list even when the refresh ignores the abort; OAuth credential expiry alone never fabricates a catalog refresh failure; frames equal Pi byte for byte"
+claim = "model picker errors derive from the actual refresh result or registry error: success, the runtime error, one or several failed catalogs in failure order each show Pi's message and reload the snapshot with the query kept; the 15 second timeout rejects refreshModelCatalogs, so the picker shows the timeout and keeps its list even when the refresh ignores the abort; OAuth credential expiry alone never fabricates a catalog refresh failure; a refresh keeps the model the user had selected when it is still listed (Pi c23b9ec1 passes the selected model to filterModels); frames equal Pi byte for byte"
 status = "ported"
 pig_targets = [
   "tui/model_selector_runtime.go#NewModelSelectorComponent",
   "tui/model_selector_runtime.go#applyCatalogRefresh",
   "tui/model_selector_runtime.go#rejectCatalogRefresh",
+  "tui/model_select.go#UpdateModels",
   "internal/codingagent/interactive_models.go#modelSelectorRuntime",
 ]
 evidence = [
   "tui/model_selector_refresh_oracle_test.go#TestModelSelectorRefreshModelsMatchesPi",
   "tui/model_selector_runtime_test.go#TestModelSelectorConstructorKeepsTheListAfterATimedOutRefresh",
+  "tui/model_select_refresh_test.go#TestModelSelectorUpdateModelsKeepsTheSelectionWhileASearchQueryIsActive",
   "test/parity/scenarios/model-resolver-selector/03-model-invalid.toml",
   "test/parity/scenarios/model-resolver-selector/12-expired-credential-is-not-refresh-failure.toml",
 ]
@@ -755,7 +760,7 @@ evidence = [
 path = "packages/coding-agent/src/modes/interactive/components/model-selector.ts"
 start = "\tprivate async refreshModels()"
 end = "\n\tdispose(): void {"
-sha256 = "b344cf6948d2ec8ccada9de32f8918048a6798619c7315e10d07c700bfec0d08"
+sha256 = "ba3bb7b4442eb5865910b97969a3f99d7dadd4b10e6d6e752b6ec5e4496c5edf"
 keybindings = []
 
 [[contract]]
@@ -1250,12 +1255,13 @@ id = "coding-agent/handle-event/agent-end-settled"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.handleEvent"
 family = "compaction"
 kind = "event-dispatch"
-claim = "agent_end stops the terminal progress when the setting is on, clears the working status only, removes a message still streaming, clears the pending tools and requests a render; agent_settled ends the session when an extension asked for shutdown during the run (ctx.shutdown() ends an idle session at once)"
+claim = "agent_end stops the terminal progress when the setting is on, clears the working status only, removes a message still streaming, clears the pending tools and requests a render; agent_settled ends the session when an extension asked for shutdown during the run (ctx.shutdown() ends an idle session at once); agent_settled first moves user bash output shown while the run worked into the chat and requests a render (Pi acd059b72, kept as D311)"
 status = "ported"
 pig_targets = [
   "internal/codingagent/interactive_events.go#handleAgentEvent",
   "internal/codingagent/interactive_tui.go#checkShutdownRequested",
   "internal/codingagent/interactive_tui.go#requestExtensionShutdown",
+  "internal/codingagent/interactive_turn.go#flushPendingBashBlocks",
 ]
 evidence = [
   "internal/codingagent/interactive_events_contract_test.go#TestEventAgentEndClearsTheRunState",
@@ -1263,13 +1269,14 @@ evidence = [
   "internal/codingagent/interactive_handle_event_run_test.go#TestHandleEventAgentSettledChecksTheShutdownRequest",
   "test/parity/scenarios/interactive-rendering/66-handle-event-differential.toml",
   "test/parity/scenarios/extensions-runtime/93-shutdown-during-run-waits-for-settle.toml",
+  "internal/codingagent/interactive_pending_bash_test.go#TestSettlingTheRunMovesUserBashOutputToTheChat",
 ]
 
 [contract.upstream]
 path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
 start = "\t\t\tcase \"agent_end\":"
 end = "\t\t\tcase \"compaction_start\": {"
-sha256 = "597aa4959da44f6369a4d829b0a79b8330ff70a4fa5a81013faaab6464bc06d9"
+sha256 = "b707e2d2e1e075abd752ed3dc51e89b6de1b530f09ccdbb557c8736ef3ed93c5"
 keybindings = []
 
 [[contract]]
@@ -2503,13 +2510,12 @@ keybindings = []
 
 [[contract]]
 id = "coding-agent/mcp/callback-page-render"
-upstream_id = "render:packages/coding-agent/src/extensions/mcp/oauth.ts#<module>.options.renderPage"
+upstream_id = "render:packages/coding-agent/src/extensions/mcp/oauth.ts#<module>.renderCallbackPage"
 family = "extensions-runtime"
 kind = "render-layout"
 claim = "a successful callback renders the success page with the MCP sign-in message and any other callback renders the error page with the page's message and details (absent, empty, markup, newlines and U+2028), as byte-identical HTML against Pi's oauthSuccessHtml and oauthErrorHtml"
 status = "ported"
 pig_targets = [
-  "coding/mcpext/oauth.go#listenForCallback",
   "coding/mcpext/oauth.go#renderCallbackPage",
 ]
 evidence = [
@@ -2520,9 +2526,9 @@ evidence = [
 
 [contract.upstream]
 path = "packages/coding-agent/src/extensions/mcp/oauth.ts"
-start = "\t\trenderPage: (page: OAuthCallbackPage) =>"
-end = "\t};\n\ttry {\n\t\treturn await OAuthCallbackServer.listen"
-sha256 = "193d67c3d101bfc1782ef0102560ae4a684d7b10bedb970d6c26db4ddc858349"
+start = "function renderCallbackPage(page: OAuthCallbackPage): string {"
+end = "\n}\n\n/**\n * Sign in to an MCP server."
+sha256 = "652e3f3ce22690c758dfe6ac27b3fab876f2576f66dfb2368cb370ce2765b3c2"
 keybindings = []
 
 [[contract]]
@@ -2945,6 +2951,7 @@ status = "divergence"
 pig_targets = [
   "tui/markdown.go#Render",
   "tui/markdown_blocks.go#renderBlocks",
+  "tui/markdown_html_comments.go#removeHTMLCommentBlocks",
   "tui/markdown_marked_lexer.go#blockTokens"
 ]
 evidence = [
@@ -2991,13 +2998,14 @@ evidence = [
   "tui/markdown_lexer_pool_allocs_norace_test.go#TestMarkdownRenderReusesPooledLexerState",
   "tui/markdown_partial_fence_markers_oracle_test.go#TestMarkdownPartialClosingFencesMatchPi",
   "tui/markdown_partial_fence_markers_oracle_test.go#TestMarkdownPreservedListMarkersMatchPi",
+  "tui/markdown_html_comments_upstream_test.go#TestUpstreamMarkdownHTMLComments",
 ]
 
 [contract.upstream]
 path = "packages/tui/src/components/markdown.ts"
 start = "\trender(width: number): string[] {"
 end = "\n\t/** Render one top-level block to output lines"
-sha256 = "226162d7638a5c3b887935dcdb086e6e481a837df2b99a2c6bf2f02668a7d91b"
+sha256 = "ca7334eaf43d2e2ae5a939318d0ad887e1bd2c520c7ebd52a6717ccd5859bb77"
 keybindings = []
 
 [[contract]]
@@ -3102,13 +3110,14 @@ evidence = [
   "tui/markdown_marked_lexer_pool_test.go#TestMarkedBlockLexerResetsItsQueueAndKeepsItsTokenList",
   "tui/markdown_partial_fence_markers_oracle_test.go#TestMarkdownPartialClosingFencesMatchPi",
   "tui/markdown_partial_fence_markers_oracle_test.go#TestMarkdownPreservedListMarkersMatchPi",
+  "tui/markdown_html_comments_upstream_test.go#TestUpstreamMarkdownHTMLComments",
 ]
 
 [contract.upstream]
 path = "packages/tui/src/components/markdown.ts"
 start = "\tprivate renderToken("
 end = "\n\tprivate renderInlineTokens("
-sha256 = "d839291b6cd3ce07a73d3270bd361577bb2ce97268e31c6742ed34f1d44071c9"
+sha256 = "40cae20c5d9c9773257145293912516a99d30ebb72ad3b35519e7717d183ca3f"
 keybindings = []
 
 [[contract]]
@@ -3120,6 +3129,7 @@ claim = "inline text renders with CommonMark emphasis and strong (flanking, intr
 status = "ported"
 pig_targets = [
   "tui/markdown.go#renderInlineMarkdown",
+  "tui/markdown_html_comments.go#skipsHTMLComment",
   "tui/markdown_marked.go#emStrong"
 ]
 evidence = [
@@ -3149,13 +3159,14 @@ evidence = [
   "tui/markdown_memo_work_contract_test.go#TestMarkdownDefaultStyleWithoutColorKeepsInlineRenderings",
   "tui/markdown_memo_work_contract_test.go#TestMarkdownThemeStyleChangedBetweenRendersIsReadAgain",
   "tui/markdown_memo_work_contract_test.go#TestMarkdownInlineMarkdownAfterRenderStartsClean",
+  "tui/markdown_html_comments_upstream_test.go#TestUpstreamMarkdownHTMLComments",
 ]
 
 [contract.upstream]
 path = "packages/tui/src/components/markdown.ts"
 start = "\tprivate renderInlineTokens("
 end = "\n\tprivate getOrderedListMarker("
-sha256 = "0b2c309be5f1758d9c4cbaf13cbdd02f0c6ad4e6a6080d92aad09588d82f2484"
+sha256 = "70bcbef1e553129f415b30eaa75fbf9b3d88593112693484f33996e246749a0e"
 keybindings = []
 
 [[contract]]
@@ -3250,6 +3261,7 @@ pig_targets = [
 evidence = [
   "tui/diff_render_oracle_test.go#TestRenderDiffMatchesPi",
   "test/parity/scenarios/interactive-rendering/10-edit-tool-diff.toml",
+  "tui/diff_render_test.go#TestRenderDiffDoesNotHighlightSharedIndentationAsAnInsertion",
   "test/parity/scenarios/interactive-rendering/49-edit-tool-diff-output-pad-0.toml"
 ]
 
@@ -3257,7 +3269,7 @@ evidence = [
 path = "packages/coding-agent/src/modes/interactive/components/diff.ts"
 start = "function renderIntraLineDiff("
 end = "export interface RenderDiffOptions"
-sha256 = "c22347f87fe5e86c8dbc397a661b9cd431e6d13335c64247a74e53ceb00ee23c"
+sha256 = "f353d4d331efe886af4dc2e4186cebd062ac848f45dfff0eb513211edfc279e4"
 keybindings = []
 
 [[contract]]
@@ -4081,7 +4093,7 @@ id = "coding-agent/tree-selector/search-line-render"
 upstream_id = "render:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#SearchLine.render"
 family = "tree"
 kind = "render-layout"
-claim = "the search row shows the muted \"Type to search:\" prompt and, when a query exists, the accent query after one space, cut to the width without padding, byte for byte for ASCII, wide, emoji, combining and long queries at every width from 0 to 70 in both themes"
+claim = "the search row shows the muted \"Type to search:\" prompt and, when a query exists, the accent query after one space, cut to the width without padding, byte for byte for ASCII, wide, emoji, combining and long queries at every width from 0 to 70 in both themes; focused with no label edit it ends in a cursor marker and a reverse-video cell, and an empty query keeps its trailing space (Pi 2cfab7c26)"
 status = "ported"
 pig_targets = [
   "tui/tree_select.go#renderSearchLine",
@@ -4094,9 +4106,9 @@ evidence = [
 
 [contract.upstream]
 path = "packages/coding-agent/src/modes/interactive/components/tree-selector.ts"
-start = "class SearchLine implements Component {"
+start = "class SearchLine implements Component, Focusable {"
 end = "\thandleInput(_keyData: string): void {}"
-sha256 = "46410df91d4e9637966958a9ae1accc0cd8f558560ab32ee27c221f4bb244cff"
+sha256 = "3a55a07d84437473790452f7b8d2568bfffab2698e003f8e57a570013370efec"
 keybindings = []
 [[contract]]
 id = "coding-agent/tree-selector/help-render"
@@ -4563,7 +4575,7 @@ id = "tui/terminal-image/detect-capabilities"
 upstream_id = "input:packages/tui/src/terminal-image.ts#<module>.detectCapabilities"
 family = "tui-components"
 kind = "boundary-transition"
-claim = "the image protocol, truecolor and hyperlink capabilities follow Pi's environment order: tmux (hyperlinks from the probe) and screen first, then herdr, Rex, kitty, ghostty, wezterm, Warp, iTerm, Windows Terminal, alacritty, vscode, zed, JetBrains JediTerm and the Windows console, with Rex reporting Kitty images, with the COLORTERM and -direct truecolor hint, and the PI_IMAGE_PROTOCOL (case-insensitive kitty, iterm2, none, 0), PI_HYPERLINKS and PI_TRUE_COLOR (exactly 1 or 0) overrides, over 2072 environments"
+claim = "the image protocol, truecolor and hyperlink capabilities follow Pi's environment order: tmux (hyperlinks from the probe) and screen first, then herdr, Rex, kitty, ghostty, wezterm, Warp, iTerm, Windows Terminal, alacritty, vscode, zed, JetBrains JediTerm and the Windows console, with Rex reporting Kitty images, with the COLORTERM and -direct truecolor hint, and the PI_IMAGE_PROTOCOL (case-insensitive kitty, iterm2, none, 0), PI_HYPERLINKS and PI_TRUE_COLOR (exactly 1 or 0) overrides, over 2072 environments; Alacritty is also detected by TERM=alacritty* or ALACRITTY_WINDOW_ID (Pi 2af8a42f5, D259)"
 status = "ported"
 pig_targets = [
   "tui/terminal_image.go#DetectCapabilities",
@@ -4580,7 +4592,7 @@ evidence = [
 path = "packages/tui/src/terminal-image.ts"
 start = "function detectCapabilitiesFromEnvironment(tmuxForwardsHyperlink: () => boolean): TerminalCapabilities {"
 end = "export function getCapabilities(): TerminalCapabilities {"
-sha256 = "bc783ced6bbc5d452d144b55df1d9ec8a883f4dde21f92e285d257b3d18b0d85"
+sha256 = "c69d602675b1aaad9b9b7ff81624d64c35a218905f9601af99d8bd1f0c313537"
 keybindings = []
 
 [[contract]]
@@ -5469,7 +5481,7 @@ id = "tui/tui-alt-screen/doRender"
 upstream_id = "render:packages/tui/src/tui-alt-screen.ts#TuiAltScreen.doRender"
 family = "fullscreen"
 kind = "render-layout"
-claim = "one frame of the alternate screen (layout, overlays, scroll-to-end indicator, selection, flashes, cursor extraction, line resets, width cut, full or per-row redraw, Kitty image placement cache with eviction and WezTerm ordering, iTerm2 clear, hardware cursor) writes the bytes Pi writes and counts the same full redraws, over 500 seeded trees with resizes, forced renders, overlays, flashes, scrolling, cursor toggles, kitty and iTerm2 images, tmux and WezTerm environments and 24-step image churn; the width and height change hooks are Pig-only and the 32 MiB transmission-size eviction boundary is not reached"
+claim = "one frame of the alternate screen (layout, overlays, scroll-to-end indicator, selection, flashes, cursor extraction, line resets, width cut, full or per-row redraw, Kitty image placement cache with eviction and WezTerm ordering, iTerm2 clear, hardware cursor) writes the bytes Pi writes and counts the same full redraws, over 500 seeded trees with resizes, forced renders, overlays, flashes, scrolling, cursor toggles, kitty and iTerm2 images, tmux and WezTerm environments and 24-step image churn; the width and height change hooks are Pig-only and the 32 MiB transmission-size eviction boundary is not reached; Kitty images are drawn after every clear and text write on every Kitty-protocol terminal, not only WezTerm (Pi 4622edb79)"
 status = "ported"
 pig_targets = [
   "tui/tui_alt_screen.go#doRender",
@@ -5493,7 +5505,7 @@ evidence = [
 path = "packages/tui/src/tui-alt-screen.ts"
 start = "protected override doRender(): void {"
 end = "this.currentLayout = nextLayout;\n\t}"
-sha256 = "b8838b08b034cf2f280e63de33c4eb224ec868de25a50c76c441c50dcb2f8824"
+sha256 = "0407a20896b5757a9e85671306cbc42acdb40eccadaabe398c9296d64a6af9e3"
 keybindings = []
 
 [[contract]]
@@ -5620,7 +5632,7 @@ id = "coding-agent/llama-search/handle-input"
 upstream_id = "input:packages/coding-agent/src/extensions/llama/ui.ts#HuggingFaceSearch.handleInput"
 family = "extensions-runtime"
 kind = "boundary-transition"
-claim = "tui.select.up and tui.select.down move the selection with wrap-around over the filtered results (nothing on an empty list), tui.select.pageUp and tui.select.pageDown move the selection by ten results and clamp, tui.select.confirm takes an owner/repository query as typed or the selected result, tui.select.cancel closes, and every other key edits the input; a changed trimmed query starts a new search while a key that leaves the trimmed query as it is keeps the pending 500 ms debounce: fewer than two characters show the hint, a cached query shows its results, otherwise the status reads Searching and the search starts after 500 ms, aborting the previous one; frames, settlements and completed searches (with their abort flags) agree with Pi over 600 seeded scenarios and eight directed page-key and debounce scenarios on a virtual clock; a key after close starts no timer (Q12)"
+claim = "tui.select.up and tui.select.down move the selection with wrap-around over the filtered results (nothing on an empty list), tui.select.pageUp and tui.select.pageDown move the selection by ten results and clamp, tui.select.confirm takes an owner/repository query as typed or the selected result, tui.select.cancel closes, and every other key edits the input; a changed trimmed query starts a new search while a key that leaves the trimmed query as it is keeps the pending 500 ms debounce: fewer than two characters show the hint, a cached query shows its results, otherwise the status reads Searching and the search starts after 500 ms, aborting the previous one; frames, settlements and completed searches (with their abort flags) agree with Pi over 600 seeded scenarios and eight directed page-key and debounce scenarios on a virtual clock; a key after close starts no timer (Q12); moving the selection marks it touched, and the next search result keeps the browsed model selected only then (Pi df0d88aac)"
 status = "ported"
 pig_targets = [
   "internal/codingagent/llama/ui.go#HandleInput",
@@ -5633,13 +5645,15 @@ evidence = [
   "test/parity/scenarios/extensions-runtime/76-llama-search.toml",
   "internal/codingagent/llama/ui_test.go#TestHuggingFaceSearchPageKeysMoveTenResults",
   "internal/codingagent/llama/search_contract_test.go#TestLlamaSearchDirectedKeysMatchPi",
+  "internal/codingagent/llama/ui_selection_test.go#TestHuggingFaceSearchKeepsTheBrowsedModelSelectedWhenTheNextSearchLands",
+  "internal/codingagent/llama/ui_selection_test.go#TestHuggingFaceSearchSelectsTheBestMatchWhenTheUserDidNotBrowse",
 ]
 
 [contract.upstream]
 path = "packages/coding-agent/src/extensions/llama/ui.ts"
 start = "\thandleInput(data: string): void {\n\t\tif (this.keybindings.matches(data, \"tui.select.up\")) {"
 end = "\t\tthis.scheduleSearch();\n\t}\n}"
-sha256 = "9d1d350a7deb37dc84da096ec040c8ab4b45d9cc26cb9b50dc6dd8192c59cfc4"
+sha256 = "917eb5b8993d48050f3b7092950095874f36eefd255a9bf976a0de54b800703a"
 keybindings = ["tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.up"]
 
 [[contract]]
@@ -5746,7 +5760,7 @@ id = "coding-agent/interactive/render-current-session-state"
 upstream_id = "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderCurrentSessionState"
 family = "interactive-input"
 kind = "state-reset-repaint"
-claim = "a Session replacement clears the loaded resources, the transcript and the pending messages, drops the compaction queue, forgets the streaming assistant component and the pending tool cards, and repaints the current Session through renderInitialMessages (entries, then the trust warning and the compaction count); the repaint fills the editor history from the rendered user messages and reports the compaction count"
+claim = "a Session replacement clears the loaded resources, the transcript and the pending messages, drops the compaction queue and the pending bash components, forgets the streaming assistant component and the pending tool cards, and repaints the current Session through renderInitialMessages (entries, then the trust warning and the compaction count); the repaint fills the editor history from the rendered user messages and reports the compaction count"
 status = "ported"
 pig_targets = [
   "internal/codingagent/interactive_rebind.go#renderCurrentSessionState",
@@ -5754,6 +5768,7 @@ pig_targets = [
 ]
 evidence = [
   "internal/codingagent/render_initial_messages_test.go#TestRenderCurrentSessionStateForgetsTheReplacedSessionsState",
+  "internal/codingagent/render_initial_messages_test.go#TestRenderCurrentSessionStateForgetsPendingBashBlocks",
   "internal/codingagent/render_initial_messages_test.go#TestRepaintAfterReplacementOrNavigationShowsTheTrustWarning",
   "internal/codingagent/interactive_resume_bash_test.go#TestResumedSessionRendersPersistedBashExecutionBlocks",
   "test/parity/scenarios/project-trust/21-new-session-repaints-trust-warning.toml",
@@ -5765,7 +5780,7 @@ evidence = [
 path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
 start = "\tprivate renderCurrentSessionState(): void {"
 end = "\t/**\n\t * Get a registered tool definition by name"
-sha256 = "8a6b5fa36883997b3588541e3676f0c5b79be0bc36899d2ce20c89c1d5bf9c30"
+sha256 = "94c9560ced20177443e36c05649d3c1da81028bac1ad1a3ca4f2a6ccdbb1113c"
 keybindings = []
 
 [[contract]]
@@ -7181,7 +7196,7 @@ id = "tui/terminal-image/detect-capabilities-branch-order"
 upstream_id = "input:packages/tui/src/terminal-image.ts#<module>.detectCapabilities"
 family = "tui-components"
 kind = "boundary-transition"
-claim = "detectCapabilitiesFromEnvironment tests tmux (environment variable or TERM prefix), screen, herdr, rex, orca with ORCA_IMAGE_PROTOCOL=kitty, kitty, ghostty, wezterm, Warp, iTerm, Windows Terminal, alacritty/vscode/zed, JetBrains JediTerm and the Windows console in that order, so an environment matching two of them takes the first; every environment, every pair of the 28 trigger environments (Orca with and without its protocol variable included), each with the tmux probe answering both ways, on Linux and on a Windows console, matches Pi's detectCapabilities"
+claim = "detectCapabilitiesFromEnvironment tests tmux (environment variable or TERM prefix), screen, herdr, rex, orca with ORCA_IMAGE_PROTOCOL=kitty, kitty, ghostty, wezterm, Warp, iTerm, Windows Terminal, alacritty/vscode/zed, JetBrains JediTerm and the Windows console in that order, so an environment matching two of them takes the first; every environment, every pair of the 28 trigger environments (Orca with and without its protocol variable included), each with the tmux probe answering both ways, on Linux and on a Windows console, matches Pi's detectCapabilities; Alacritty is also recognised by TERM=alacritty* or ALACRITTY_WINDOW_ID in the same branch (Pi 2af8a42f5, D259)"
 status = "ported"
 pig_targets = [
   "tui/terminal_image.go#detectCapabilitiesFromEnvironment",
@@ -7196,7 +7211,7 @@ evidence = [
 path = "packages/tui/src/terminal-image.ts"
 start = "function detectCapabilitiesFromEnvironment(tmuxForwardsHyperlink: () => boolean): TerminalCapabilities {"
 end = "export function getCapabilities(): TerminalCapabilities {"
-sha256 = "bc783ced6bbc5d452d144b55df1d9ec8a883f4dde21f92e285d257b3d18b0d85"
+sha256 = "c69d602675b1aaad9b9b7ff81624d64c35a218905f9601af99d8bd1f0c313537"
 keybindings = [
 ]
 
