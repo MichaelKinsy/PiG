@@ -109291,7 +109291,7 @@
       "evidence": [
         "test:chord/next/contracts/host_kind_test.go#TestHostKinds",
         "test:chord/nextnode/app/app_bases_test.go#TestAppReportsABaseThatFailsAfterTheListenAndRunsOnThePageAnswers503TheKindsWorkersFailTheirStart",
-        "test:chord/nextnode/app/app_changes_test.go#TestAppMarksBaseForAChangeOfAWorkerKindsEntryNotForARewriteWithTheSameBytes"
+        "test:chord/nextnode/app/app_bases_workers_linux_test.go#TestAppAClosedStartsLateWorkerBaseBuildNeverTouchesTheNextStartsDirectoryItsBaseStaysAsItWas"
       ]
     },
     {
@@ -122116,7 +122116,7 @@
       "evidence": [
         "test:chord/nextnode/app/app_bases_linux_test.go#TestAppAnswersItsOwnerPageBeforeTheWebBaseIsBuiltAPageRequestWaitsForItsBase",
         "test:chord/nextnode/app/app_bases_linux_test.go#TestAppClosesWithoutWaitingForABaseBuildStalledOnAReadItsLateResultIsDropped",
-        "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginEndsItsSessionsWithTheServer"
+        "test:chord/nextnode/app/app_bases_scan_test.go#TestAppAnswersBeforeTheScanOfItsOwnCodeFinishedTheScanRunsAfterTheStart"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -122162,7 +122162,7 @@
       "evidence": [
         "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginEndsItsSessionsWithTheServer",
         "test:chord/nextnode/app/app_bases_linux_test.go#TestAppClosesWithoutWaitingForABaseBuildStalledOnAReadItsLateResultIsDropped",
-        "test:chord/nextnode/app/app_close_test.go#TestAppCloseStopsAtTheFirstFailedStepAndLeavesTheLaterStepsUndone"
+        "test:chord/nextnode/app/app_bases_scan_test.go#TestAppClosesWithoutWaitingForAScanOfItsOwnCodeStalledOnAReadItsLateResultIsDropped"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -122185,7 +122185,7 @@
       "evidence": [
         "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginEndsItsSessionsWithTheServer",
         "test:chord/nextnode/app/app_bases_linux_test.go#TestAppClosesWithoutWaitingForABaseBuildStalledOnAReadItsLateResultIsDropped",
-        "test:chord/nextnode/app/app_close_test.go#TestAppCloseStopsAtTheFirstFailedStepAndLeavesTheLaterStepsUndone"
+        "test:chord/nextnode/app/app_bases_scan_test.go#TestAppClosesWithoutWaitingForAScanOfItsOwnCodeStalledOnAReadItsLateResultIsDropped"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -122425,8 +122425,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
-        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesBuildsTheDirtyPluginsAndRollsThemOutToTheServer",
-        "test:chord/nextnode/app/app_changes_test.go#TestAppInstallsAPluginFromGitIntoTheUsersRootApplyingChangesLoadsIt"
+        "test:chord/nextnode/app/app_bases_scan_test.go#TestAppClosesWithoutWaitingForAScanOfItsOwnCodeStalledOnAReadItsLateResultIsDropped",
+        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesBuildsTheDirtyPluginsAndRollsThemOutToTheServer"
       ]
     },
     {
@@ -122599,8 +122599,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/app/app_bases_test.go#TestAppReportsABaseThatFailsAfterTheListenAndRunsOnThePageAnswers503TheKindsWorkersFailTheirStart",
-        "test:chord/nextnode/app/app_changes_test.go#TestAppInstallsAPluginFromGitIntoTheUsersRootApplyingChangesLoadsIt",
-        "test:chord/nextnode/app/app_changes_test.go#TestAppMarksBaseForAChangeOfAWorkerKindsEntryNotForARewriteWithTheSameBytes"
+        "test:chord/nextnode/app/app_bases_workers_linux_test.go#TestAppAClosedStartsLateWorkerBaseBuildNeverTouchesTheNextStartsDirectoryItsBaseStaysAsItWas",
+        "test:chord/nextnode/app/app_bases_workers_linux_test.go#TestAppAnswersBeforeAWorkerKindsBaseIsBuiltAWorkerStartWaitsForItsBase"
       ]
     },
     {
@@ -122622,7 +122622,7 @@
       "evidence": [
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
         "test:chord/nextnode/app/app_changes_test.go#TestAppInstallsAPluginFromGitIntoTheUsersRootApplyingChangesLoadsIt",
-        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesBuildsTheDirtyPluginsAndRollsThemOutToTheServer"
+        "test:chord/nextnode/app/app_bases_scan_test.go#TestAppClosesWithoutWaitingForAScanOfItsOwnCodeStalledOnAReadItsLateResultIsDropped"
       ]
     },
     {
@@ -129244,8 +129244,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
-        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesBuildsTheDirtyPluginsAndRollsThemOutToTheServer",
-        "test:chord/nextnode/app/app_changes_test.go#TestAppInstallsAPluginFromGitIntoTheUsersRootApplyingChangesLoadsIt"
+        "test:chord/nextnode/app/app_bases_scan_test.go#TestAppClosesWithoutWaitingForAScanOfItsOwnCodeStalledOnAReadItsLateResultIsDropped",
+        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesBuildsTheDirtyPluginsAndRollsThemOutToTheServer"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -139521,8 +139521,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/workers/proof_chord_test.go#TestWorkerMainRunsTheForkedWorkerFromItsStartMessageToItsFirstServedCall",
-        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFailuresStayARunningWorkersLostLinkABlockedWorkerPastTheHeartbeatIsKilledAfterTheGraceItsHoldersGetANewWorkerASecondWithinAMinuteFailsTheAddress",
-        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterTheGraceALostLinkItsHolderGetsANewWorkerFor"
+        "test:chord/nextnode/workers/workers_base_close_test.go#TestTheWorkerBaseCloseKeepsTheBasesCopyUntilItsWorkersExitedACloserStillFindsItsProgram",
+        "test:chord/nextnode/workers/workers_base_held_linux_test.go#TestTheWorkerBaseACloseDoesNotWaitForTheBasesBuildAStartWaitingForItEndsAtTheCloseTheLateBuildWritesNothing"
       ]
     },
     {
@@ -139543,8 +139543,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/workers/proof_chord_test.go#TestWorkerMainRunsTheForkedWorkerFromItsStartMessageToItsFirstServedCall",
-        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFailuresStayARunningWorkersLostLinkABlockedWorkerPastTheHeartbeatIsKilledAfterTheGraceItsHoldersGetANewWorkerASecondWithinAMinuteFailsTheAddress",
-        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterTheGraceALostLinkItsHolderGetsANewWorkerFor"
+        "test:chord/nextnode/workers/workers_base_close_test.go#TestTheWorkerBaseCloseKeepsTheBasesCopyUntilItsWorkersExitedACloserStillFindsItsProgram",
+        "test:chord/nextnode/workers/workers_base_held_linux_test.go#TestTheWorkerBaseACloseDoesNotWaitForTheBasesBuildAStartWaitingForItEndsAtTheCloseTheLateBuildWritesNothing"
       ]
     },
     {
@@ -139868,9 +139868,9 @@
         "call:chord/nextnode/workers/workers_workers.go#Workers.Build"
       ],
       "evidence": [
+        "test:chord/nextnode/workers/workers_base_held_linux_test.go#TestTheWorkerBaseACloseDoesNotWaitForTheBasesBuildAStartWaitingForItEndsAtTheCloseTheLateBuildWritesNothing",
         "test:chord/nextnode/workers/workers_workers_test.go#TestTheWorkerBaseABrokenEntryFailsItsBuildAndEveryStartWorkerFailedThePublicStartErrorNothingForks",
-        "test:chord/nextnode/workers/workers_workers_test.go#TestTheWorkerBaseAComponentThatClosedBeforeItsBuildWritesNothingAndLeavesANamedDirectoryAsItIs",
-        "test:chord/nextnode/workers/workers_workers_test.go#TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeTheBaseWasBuiltWith"
+        "test:chord/nextnode/workers/workers_workers_test.go#TestTheWorkerBaseAComponentThatClosedBeforeItsBuildWritesNothingAndLeavesANamedDirectoryAsItIs"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -139891,9 +139891,9 @@
         "call:chord/nextnode/workers/workers_workers.go#Workers.Build"
       ],
       "evidence": [
+        "test:chord/nextnode/workers/workers_base_held_linux_test.go#TestTheWorkerBaseACloseDoesNotWaitForTheBasesBuildAStartWaitingForItEndsAtTheCloseTheLateBuildWritesNothing",
         "test:chord/nextnode/workers/workers_workers_test.go#TestTheWorkerBaseABrokenEntryFailsItsBuildAndEveryStartWorkerFailedThePublicStartErrorNothingForks",
-        "test:chord/nextnode/workers/workers_workers_test.go#TestTheWorkerBaseAComponentThatClosedBeforeItsBuildWritesNothingAndLeavesANamedDirectoryAsItIs",
-        "test:chord/nextnode/workers/workers_workers_test.go#TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeTheBaseWasBuiltWith"
+        "test:chord/nextnode/workers/workers_workers_test.go#TestTheWorkerBaseAComponentThatClosedBeforeItsBuildWritesNothingAndLeavesANamedDirectoryAsItIs"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -139914,8 +139914,9 @@
         "call:chord/nextnode/workers/workers_workers.go#Workers.Built"
       ],
       "evidence": [
-        "test:chord/nextnode/workers/workers_workers_test.go#TestTheWorkerBaseAStartWaitsForTheBasesBuildAndStartsItWhenNothingDid",
-        "test:chord/nextnode/workers/workers_workers_test.go#TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeTheBaseWasBuiltWith"
+        "test:chord/nextnode/workers/workers_base_held_linux_test.go#TestTheWorkerBaseACloseDoesNotWaitForTheBasesBuildAStartWaitingForItEndsAtTheCloseTheLateBuildWritesNothing",
+        "test:chord/nextnode/workers/workers_base_held_linux_test.go#TestTheWorkerBaseAStartWaitsForAHeldBuildAndForksOnceItEndedTheStartDataIsAskedForThen",
+        "test:chord/nextnode/workers/workers_workers_test.go#TestTheWorkerBaseAStartWaitsForTheBasesBuildAndStartsItWhenNothingDid"
       ]
     },
     {
@@ -139935,9 +139936,9 @@
         "call:chord/nextnode/workers/workers_workers.go#Workers.Close"
       ],
       "evidence": [
-        "test:chord/nextnode/workers/workers_workers_test.go#TestCloseCancelsAStartWaitingInStartAddressNothingForksNewStartsRejectNoWorkerFailedAtShutdown",
-        "test:chord/nextnode/workers/workers_workers_test.go#TestCloseLeavesNoSocketDirectoryOfAWorkersNodeHostThatWasStillStarting",
-        "test:chord/nextnode/workers/workers_workers_test.go#TestCloseStopsWaitingWhenItsContextEndsAWorkerThatIgnoresShutdownKeepsRunning"
+        "test:chord/nextnode/workers/workers_base_close_test.go#TestTheWorkerBaseCloseKeepsTheBasesCopyUntilItsWorkersExitedACloserStillFindsItsProgram",
+        "test:chord/nextnode/workers/workers_base_held_linux_test.go#TestTheWorkerBaseACloseDoesNotWaitForTheBasesBuildAStartWaitingForItEndsAtTheCloseTheLateBuildWritesNothing",
+        "test:chord/nextnode/workers/workers_workers_test.go#TestCloseCancelsAStartWaitingInStartAddressNothingForksNewStartsRejectNoWorkerFailedAtShutdown"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -139958,9 +139959,9 @@
         "call:chord/nextnode/workers/workers_workers.go#Workers.Close"
       ],
       "evidence": [
-        "test:chord/nextnode/workers/workers_workers_test.go#TestCloseCancelsAStartWaitingInStartAddressNothingForksNewStartsRejectNoWorkerFailedAtShutdown",
-        "test:chord/nextnode/workers/workers_workers_test.go#TestCloseLeavesNoSocketDirectoryOfAWorkersNodeHostThatWasStillStarting",
-        "test:chord/nextnode/workers/workers_workers_test.go#TestCloseStopsWaitingWhenItsContextEndsAWorkerThatIgnoresShutdownKeepsRunning"
+        "test:chord/nextnode/workers/workers_base_close_test.go#TestTheWorkerBaseCloseKeepsTheBasesCopyUntilItsWorkersExitedACloserStillFindsItsProgram",
+        "test:chord/nextnode/workers/workers_base_held_linux_test.go#TestTheWorkerBaseACloseDoesNotWaitForTheBasesBuildAStartWaitingForItEndsAtTheCloseTheLateBuildWritesNothing",
+        "test:chord/nextnode/workers/workers_workers_test.go#TestCloseCancelsAStartWaitingInStartAddressNothingForksNewStartsRejectNoWorkerFailedAtShutdown"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -140144,9 +140145,9 @@
         "call:chord/nextnode/app/app.go#App.workersOf"
       ],
       "evidence": [
+        "test:chord/nextnode/workers/workers_base_close_test.go#TestTheWorkerBaseCloseKeepsTheBasesCopyUntilItsWorkersExitedACloserStillFindsItsProgram",
         "test:chord/nextnode/workers/proof_chord_test.go#TestWorkerMainRunsTheForkedWorkerFromItsStartMessageToItsFirstServedCall",
-        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFailuresStayARunningWorkersLostLinkABlockedWorkerPastTheHeartbeatIsKilledAfterTheGraceItsHoldersGetANewWorkerASecondWithinAMinuteFailsTheAddress",
-        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterTheGraceALostLinkItsHolderGetsANewWorkerFor"
+        "test:chord/nextnode/workers/workers_base_held_linux_test.go#TestTheWorkerBaseACloseDoesNotWaitForTheBasesBuildAStartWaitingForItEndsAtTheCloseTheLateBuildWritesNothing"
       ]
     },
     {
