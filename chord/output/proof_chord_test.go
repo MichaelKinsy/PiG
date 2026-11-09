@@ -1,5 +1,7 @@
 package output
 
+// pi: packages/chord/src/output.ts
+
 import "testing"
 
 // Proof of output.ts's OutputBuffer and utf8ByteLength as a consumer sees them: the retained window, what it dropped, and
