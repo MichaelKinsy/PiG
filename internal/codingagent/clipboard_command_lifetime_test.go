@@ -17,6 +17,9 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/nodespawn"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // clipboardDescendantEnv names the test's loopback address. This test binary, run with it set, connects and reports "child", starts a grandchild that inherits its stdin and stdout, reports the grandchild's PID, waits for the test's acknowledgement of that report, and exits without closing the connection, so the test reads the connection's end as the child's exit. The acknowledgement matters on Windows, where a process that exits with an open socket resets the connection and the reset discards report bytes the test has not read yet.
@@ -346,6 +349,9 @@ func BenchmarkClipboardImageCommand(b *testing.B) {
 		b.Fatal(err)
 	}
 	const size = 1024 * 1024
+	testenv.PathOnlyEnvironment(b, "node")
+	// Each spawn reads the machine's binfmt_misc handlers (about 14 allocations each): 82 allocs/op with the one handler of the development host, 153 with the nightly runner's.
+	defer nodespawn.UseBinfmtMiscDir(b.TempDir())()
 	b.SetBytes(size)
 	b.ReportAllocs()
 	for b.Loop() {

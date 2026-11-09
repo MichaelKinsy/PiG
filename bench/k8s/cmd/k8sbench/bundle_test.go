@@ -1029,7 +1029,14 @@ func TestBundleBuildsEveryProgramWithThePinnedGo(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(tools, "tinygo"), []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("PATH", tools+string(os.PathListSeparator)+"/usr/bin:/bin")
+	systemPath := "/usr/bin:/bin"
+	// Outside the FHS (NixOS) git and coreutils are elsewhere.
+	for _, program := range []string{"git", "dirname"} {
+		if path, err := exec.LookPath(program); err == nil {
+			systemPath += string(os.PathListSeparator) + filepath.Dir(path)
+		}
+	}
+	t.Setenv("PATH", tools+string(os.PathListSeparator)+systemPath)
 	t.Setenv("STANDIN_LOG", log)
 	t.Setenv("GOWORK", "off")
 	t.Setenv("GOTOOLCHAIN", "")

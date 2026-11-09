@@ -3,7 +3,6 @@ package codingagent
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -47,12 +46,18 @@ func TestWholeMarkdownBlocksRenderBytes(t *testing.T) {
 	if got := hex.EncodeToString(appended.Sum(nil)); got != wantAppended {
 		t.Errorf("appended rows hash %s, want %s", got, wantAppended)
 	}
-	// The /hotkeys text is the host's: upstream's handleHotkeysCommand adds " (Ctrl+Enter on Windows Terminal)" to a row on win32, and Windows
-	// keybindings change the keys, so its rows have one hash on Windows and another elsewhere; the one below was taken on Linux.
-	if runtime.GOOS == "windows" {
+	// The /hotkeys text is the host's: upstream's handleHotkeysCommand adds " (Ctrl+Enter on Windows Terminal)" to a row on win32, Windows
+	// keybindings change the keys, and macOS has its own default keys and shows alt as "option" (tui.FormatKeyText), so its rows
+	// have one hash per keybinding platform. Linux's was taken on Linux and macOS's on a macos-15 runner (the nightly's race job, which is the
+	// only run of this package on macOS); Windows and WSL are not hashed.
+	hotkeysRowsHash := map[tui.KeybindingPlatform]string{
+		tui.KeybindingPlatformLinux:  "6c6e446dd091ddae67cc390a41ffa268a9c7418088c7a9c5274abd08eb345e76",
+		tui.KeybindingPlatformDarwin: "ab2af2a15656f36e688c7975b31fdf80fd6c781d76ab4bf3b96223340b4cee88",
+	}
+	want, hashed := hotkeysRowsHash[tui.HostKeybindingPlatform()]
+	if !hashed {
 		return
 	}
-	const want = "6c6e446dd091ddae67cc390a41ffa268a9c7418088c7a9c5274abd08eb345e76"
 	if got := hex.EncodeToString(hash.Sum(nil)); got != want {
 		t.Errorf("rows hash %s, want %s", got, want)
 	}
