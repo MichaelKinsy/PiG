@@ -5768,6 +5768,7 @@ pig_targets = [
 ]
 evidence = [
   "internal/codingagent/render_initial_messages_test.go#TestRenderCurrentSessionStateForgetsTheReplacedSessionsState",
+  "internal/codingagent/render_initial_messages_test.go#TestRenderCurrentSessionStateForgetsPendingBashBlocks",
   "internal/codingagent/render_initial_messages_test.go#TestRepaintAfterReplacementOrNavigationShowsTheTrustWarning",
   "internal/codingagent/interactive_resume_bash_test.go#TestResumedSessionRendersPersistedBashExecutionBlocks",
   "test/parity/scenarios/project-trust/21-new-session-repaints-trust-warning.toml",
