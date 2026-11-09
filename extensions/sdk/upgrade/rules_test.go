@@ -763,3 +763,12 @@ func TestDialogResultChangesAreNamed(t *testing.T) {
 		t.Fatalf("drift = %+v", drift)
 	}
 }
+
+// A method value of Extension.MarkdownTransformer that still has the one-parameter signature is named with the new variadic one: a plain call compiles unchanged, so no rewrite exists.
+func TestClassifyNamesTheMarkdownTransformerOptions(t *testing.T) {
+	output := "# example.com/x\n./x.go:9:30: cannot use ext.MarkdownTransformer (value of type func(transformer sdk.MarkdownTransformerFunc, options ...sdk.MarkdownTransformerOptions)) as func(sdk.MarkdownTransformerFunc) value in variable declaration\n"
+	drifts := upgrade.Classify(upgrade.ParseDiagnostics([]byte(output)), nil)
+	if len(drifts) != 1 || drifts[0].Rule != upgrade.RuleMarkdownTransformer || drifts[0].Symbol != "(*Extension).MarkdownTransformer" || drifts[0].Rewrites || !upgrade.Covers("(*Extension).MarkdownTransformer") {
+		t.Fatalf("drifts = %+v", drifts)
+	}
+}

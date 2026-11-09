@@ -107055,8 +107055,12 @@
     },
     {
       "id": "pkg:chord/.#HostKind::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:ded2aa42300a65ffe0266f2c3b9b74bda995f6c85aea1342f57e788c63fd71b5"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:ded2aa42300a65ffe0266f2c3b9b74bda995f6c85aea1342f57e788c63fd71b5",
+      "rationale": "Pi packages/chord/src/contracts/host-kind.ts:19 HostKind::call:0 (Pi 1.5.0+c23b9ec1) is the call signature of a callable host kind: its rest parameter is the conditional tuple type `keyof P extends never ? [params?: Record<never, never>] : [params: {[F in keyof P]: Static<P[F]>}]`, which types the params from the kind's type-level P. Go has no callable struct and no conditional tuple: the call is the method HostKind.Address(values *delta.JsonObject) (chord/next/contracts/host_kind.go:54), whose params are the JSON object keyed by the kind's declared properties and unchecked until the address is routed (the forced Go difference recorded in the host_kind.go header). The shape is judged by name and behavior, not by the type checker, which cannot compare the tuple (T12). Exercised by TestHostAddress and TestHostAddressParams (chord/next/contracts).",
+      "pigTargets": [
+        "chord/next/contracts/host_kind.go#HostKind.Address"
+      ]
     },
     {
       "id": "pkg:chord/.#HostKind::property:~params",
