@@ -22985,8 +22985,8 @@
     {
       "id": "BF-6d3043e",
       "title": "The startup prompts (the project-trust and extension selectors, the extension text input and first-time…",
-      "symptom": "The startup prompts (the project-trust and extension selectors, the extension text input and first-time setup) now load the `keybindings.json` of the agent directory, as Pi's startup UI does.",
-      "rootCause": "Pi's createStartupTui calls setKeybindings(KeybindingsManager.create()) for each startup prompt (cli/startup-ui.ts:91). configureStartupTheme only set the theme, so the selector, input and first-time-setup prompts took whatever keybindings the process held: a tui.select.confirm remapped earlier left a prompt Enter could not confirm, and runStartupComponentWith waited for a key that never came. The user's keybindings.json was ignored by those prompts too.",
+      "symptom": "The startup prompts (the project-trust and extension selectors, the extension text input and first-time setup) ignored the keybindings.json of the agent directory: a remapped tui.select.confirm or tui.select.cancel had no effect in them.",
+      "rootCause": "Pi's createStartupTui calls setKeybindings(KeybindingsManager.create()) for each startup prompt (cli/startup-ui.ts:91). configureStartupTheme only set the theme, so the selector, input and first-time-setup prompts took whatever keybindings the process already held and never read the user's keybindings.json.",
       "rootCauseSource": "commit",
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
@@ -23001,11 +23001,8 @@
         }
       ],
       "tests": [
-        "internal/codingagent/startup_ui_theme_test.go::TestStartupPromptAppliesColorsThatArriveAfterTheTimeout",
-        "internal/codingagent/startup_ui_theme_test.go::TestStartupPromptAppliesTerminalColorsAndKeepsRepliesOutOfInput",
-        "internal/codingagent/startup_ui_theme_test.go::TestStartupPromptWithFixedThemeQueriesAndKeepsTheTheme",
-        "internal/codingagent/theme_selection_presence_test.go::TestStartupPromptExplicitEmptyThemeFallsBackToSystem",
-        "internal/codingagent/theme_selection_presence_test.go::TestStartupPromptMalformedThemeUsesSystemTheme"
+        "internal/codingagent/startup_keybindings_test.go::TestStartupPromptsApplyTheKeybindingsOfTheAgentDirectory",
+        "internal/codingagent/startup_keybindings_test.go::TestStartupPromptsDoNotInheritKeybindingsInstalledBefore"
       ]
     },
     {

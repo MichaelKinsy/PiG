@@ -13258,13 +13258,13 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 **The startup prompts (the project-trust and extension selectors, the extension text input and first-time…**
 
 - **Source:** PiG's own defect
-- **Symptom:** The startup prompts (the project-trust and extension selectors, the extension text input and first-time setup) now load the `keybindings.json` of the agent directory, as Pi's startup UI does.
-- **Root cause:** Pi's createStartupTui calls setKeybindings(KeybindingsManager.create()) for each startup prompt (cli/startup-ui.ts:91). configureStartupTheme only set the theme, so the selector, input and first-time-setup prompts took whatever keybindings the process held: a tui.select.confirm remapped earlier left a prompt Enter could not confirm, and runStartupComponentWith waited for a key that never came. The user's keybindings.json was ignored by those prompts too.
+- **Symptom:** The startup prompts (the project-trust and extension selectors, the extension text input and first-time setup) ignored the keybindings.json of the agent directory: a remapped tui.select.confirm or tui.select.cancel had no effect in them.
+- **Root cause:** Pi's createStartupTui calls setKeybindings(KeybindingsManager.create()) for each startup prompt (cli/startup-ui.ts:91). configureStartupTheme only set the theme, so the selector, input and first-time-setup prompts took whatever keybindings the process already held and never read the user's keybindings.json.
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `6d3043e50b` (2026-11-09)
-- **Tests:** `internal/codingagent/startup_ui_theme_test.go::TestStartupPromptAppliesColorsThatArriveAfterTheTimeout`, `internal/codingagent/startup_ui_theme_test.go::TestStartupPromptAppliesTerminalColorsAndKeepsRepliesOutOfInput`, `internal/codingagent/startup_ui_theme_test.go::TestStartupPromptWithFixedThemeQueriesAndKeepsTheTheme`, `internal/codingagent/theme_selection_presence_test.go::TestStartupPromptExplicitEmptyThemeFallsBackToSystem`, `internal/codingagent/theme_selection_presence_test.go::TestStartupPromptMalformedThemeUsesSystemTheme`
+- **Tests:** `internal/codingagent/startup_keybindings_test.go::TestStartupPromptsApplyTheKeybindingsOfTheAgentDirectory`, `internal/codingagent/startup_keybindings_test.go::TestStartupPromptsDoNotInheritKeybindingsInstalledBefore`
 - **Release note:** The startup prompts (the project-trust and extension selectors, the extension text input and first-time setup) now load the `keybindings.json` of the agent directory, as Pi's startup UI does. They took whatever keybindings the process held before, so a remapped `tui.select.confirm` or `tui.select.cancel` was ignored by them.
 
 ### BF-6d3cfc8
