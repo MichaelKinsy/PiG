@@ -1,6 +1,6 @@
 // Package node adapts a native SQLite connection to the portable Chord SQLite facade. It is the Go counterpart of
 // Pi's node:sqlite driver and the only Chord SQLite package that links a SQLite driver (modernc.org/sqlite's driver
-// layer, vendored in internal/third_party/sqlite, over its pure Go, CGO-free SQLite library).
+// layer, vendored in third_party/sqlite, over its pure Go, CGO-free SQLite library).
 package node
 
 // Ports packages/chord/src/sqlite/node.ts
@@ -23,7 +23,7 @@ import (
 	chordsqlite "github.com/MichaelKinsy/PiG/chord/sqlite"
 	// The pure-Go SQLite driver. The connection is opened through its driver.Connector and driven directly: one
 	// dedicated connection needs none of database/sql's pooling, argument conversion or row scanning.
-	"github.com/MichaelKinsy/PiG/internal/third_party/sqlite"
+	"github.com/MichaelKinsy/PiG/third_party/sqlite"
 )
 
 // DatabaseSyncOptions configures one native SQLite connection.
@@ -38,6 +38,12 @@ var errDatabaseNotOpen = errors.New("database is not open")
 
 // DatabaseSync is one native SQLite connection whose operations run on the caller's goroutine, the Go counterpart of
 // node:sqlite's DatabaseSync.
+//
+// The connection is opened in SQLite's multi-thread mode (see dataSourceName): a DatabaseSync, and every StatementSync
+// and row set taken from it, must be used by one goroutine at a time, and a goroutine hand-off needs a happens-before
+// edge (a channel, a mutex). Two goroutines inside the connection at once corrupt the driver's memory instead of waiting
+// for each other. NodeSqliteDatabase is the safe way to share a connection: its serial queue holds every operation, a
+// transaction as a whole, and Close.
 type DatabaseSync struct {
 	mu   sync.Mutex
 	conn driver.Conn
@@ -54,9 +60,13 @@ func (database *DatabaseSync) ObservePrepare(observe func(sqlText string)) {
 	database.prepared = observe
 }
 
+// newConnector opens the driver's connector for a data source name; tests replace it to see the name NewDatabaseSync
+// builds.
+var newConnector = sqlite.NewConnector
+
 // NewDatabaseSync opens path (or ":memory:") as one dedicated connection.
 func NewDatabaseSync(path string, options DatabaseSyncOptions) (*DatabaseSync, error) {
-	connector, err := sqlite.NewConnector(dataSourceName(path, options.ReadOnly))
+	connector, err := newConnector(dataSourceName(path, options.ReadOnly))
 	if err != nil {
 		return nil, err
 	}
@@ -634,7 +644,10 @@ func (adapter *NodeSqliteDatabase) run(operation func() error) error {
 }
 
 // Transaction runs callback inside BEGIN IMMEDIATE ... COMMIT (BEGIN for a read-only connection) and rolls back when it
-// fails or panics.
+// fails or panics. The transaction handle runs its operations directly on the connection: it is for the goroutine
+// that runs callback (or goroutines it hands the handle to one at a time), and not past the callback's return, because
+// the connection is in SQLite's multi-thread mode and another goroutine's operation, queued behind this transaction,
+// starts the moment it settles.
 func (adapter *NodeSqliteDatabase) Transaction(
 	callback func(transaction chordsqlite.SqliteExecutor) error,
 ) (err error) {

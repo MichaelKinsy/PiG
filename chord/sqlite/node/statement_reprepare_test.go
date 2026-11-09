@@ -3,7 +3,7 @@ package node
 import (
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/internal/third_party/sqlite"
+	"github.com/MichaelKinsy/PiG/third_party/sqlite"
 )
 
 // headLookup is the shape that SQLite 3.54 plans again when its bound integer changes between 0 or 1 and any other value:
