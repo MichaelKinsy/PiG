@@ -207,6 +207,53 @@ func TestFoldRefusesABulletTheLedgerWouldGuessAbout(t *testing.T) {
 	}
 }
 
+// set-version leaves the entries under "## [Unreleased]" there unless it is given --move-unreleased, and the fold only
+// moves fragments, so a fold at release would publish a section that lacks them (0.8.0's Security entry). The fold
+// refuses until they are moved, and refuses before it changes anything.
+func TestFoldRefusesWhileUnreleasedHoldsEntries(t *testing.T) {
+	const withEntry = "## [Unreleased]\n\n### Security\n\n- Update a dependency.\n\n## [1.0.0] - 2026-10-15\n\n### Fixed\n\n- Fix X.\n"
+	marked := []fragment{{name: "a-0123abc.md", items: map[string][]string{"Fixed": {"Fix A. <!-- fix: 0123abcdef -->"}}}}
+	for name, fragments := range map[string][]fragment{"with fragments": marked, "without fragments": nil} {
+		_, err := fold(withEntry, fragments, "1.0.0")
+		if err == nil || !strings.Contains(err.Error(), "[Unreleased]") || !strings.Contains(err.Error(), "--move-unreleased") {
+			t.Errorf("%s: fold with an entry under Unreleased: err = %v", name, err)
+		}
+	}
+	// Whitespace alone is not an entry, and entries of a released section are not Unreleased's.
+	for _, changelog := range []string{
+		"## [Unreleased]\n\n## [1.0.0] - 2026-10-15\n\n### Fixed\n\n- Fix X.\n",
+		"# Changelog\n\n## [Unreleased]\n\n\n\n## [1.0.0] - 2026-10-15\n\n### Fixed\n\n- Fix X.\n",
+	} {
+		if _, err := fold(changelog, marked, "1.0.0"); err != nil {
+			t.Errorf("fold with an empty Unreleased: %v", err)
+		}
+	}
+
+	root := t.TempDir()
+	dir := filepath.Join(root, "changelog.d")
+	if err := os.Mkdir(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	fragmentText := "### Fixed\n\n- Fix A. <!-- fix: 0123abcdef -->\n"
+	changelog := filepath.Join(root, "CHANGELOG.md")
+	legacyPath := filepath.Join(root, "legacy.txt")
+	recordsPath := filepath.Join(root, "version-records.toml")
+	for path, text := range map[string]string{filepath.Join(dir, "a-0123abc.md"): fragmentText, changelog: withEntry, legacyPath: "", recordsPath: ""} {
+		if err := os.WriteFile(path, []byte(text), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	fragments, problems := load(dir)
+	if len(problems) != 0 {
+		t.Fatal(problems)
+	}
+	if err := foldInto(dir, changelog, legacyPath, recordsPath, "1.0.0", fragments); err == nil {
+		t.Fatal("foldInto succeeded with an entry under Unreleased")
+	}
+	assertFile(t, changelog, withEntry)
+	assertFile(t, filepath.Join(dir, "a-0123abc.md"), fragmentText)
+}
+
 func assertFile(t *testing.T, path, want string) {
 	t.Helper()
 	got, err := os.ReadFile(path)
