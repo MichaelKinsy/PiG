@@ -615,7 +615,7 @@ func (adapter *NodeSqliteDatabase) Close() error {
 	}
 	adapter.closed = true
 	if adapter.commitTokens != nil {
-		adapter.commitTokens.close()
+		adapter.commitTokens.stop()
 	}
 	adapter.statements.mu.Lock()
 	var errs []error
@@ -630,7 +630,12 @@ func (adapter *NodeSqliteDatabase) Close() error {
 		checkpointErr = adapter.database.Exec("PRAGMA wal_checkpoint(TRUNCATE)")
 	}
 	// Pi closes in a finally block, so a close failure replaces the checkpoint failure.
-	if closeErr := adapter.database.Close(); closeErr != nil {
+	closeErr := adapter.database.Close()
+	if adapter.commitTokens != nil {
+		// The SQLite connection has released its locks: a descriptor of the wal-index can be closed now.
+		adapter.commitTokens.release()
+	}
+	if closeErr != nil {
 		return closeErr
 	}
 	if checkpointErr != nil {

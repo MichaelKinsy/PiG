@@ -13,3 +13,5 @@ import (
 func openWalIndex(string) (*os.File, error) {
 	return nil, errors.New("the wal-index is not read on this system")
 }
+
+func walIndexKey(string) ([2]uint64, bool) { return [2]uint64{}, false }
