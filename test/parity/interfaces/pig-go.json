@@ -109468,6 +109468,17 @@
       "shapeHash": "sha256:f22a157c465647e1cd62fca2c56dc2f6cbd1e938c613e22bae0bde758b95a0d8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#MarkdownTransformerRegistration",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "MarkdownTransformerRegistration",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "MarkdownTransformerRegistration"
+      },
+      "shapeHash": "sha256:a028e080acdae1fb4347a0643f0700d3ed55b34361eae1ba229ec459b6343501"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#MarshalInputEventResult",
       "package": "github.com/MichaelKinsy/PiG/coding/extension",
       "name": "MarshalInputEventResult",
@@ -110291,6 +110302,17 @@
         "type": "func(cwd string, uiContext UIContext, assertActive func() error, actions ContextActions) *Context"
       },
       "shapeHash": "sha256:fd626e38b6f6dfa7b32c9d5effb06dd4474cc6f8ad52442943a322f16b26aa69"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#NewMarkdownTransformerRegistration",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "NewMarkdownTransformerRegistration",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(transformer MarkdownTransformer, messageTypes []MarkdownMessageType) *MarkdownTransformerRegistration"
+      },
+      "shapeHash": "sha256:902ff3e01d95a936e4feaacc38c958bdc68c48b8b9e9a371d05ca070721abd5e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#NewMcpServerRegistry",
@@ -120314,17 +120336,6 @@
       "shapeHash": "sha256:250fe441e1a41bca61a097d2793d13e925df4bf1b3ab7305ed9f6b6b43fd10ef"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/factoryload#markdownMessageTypes",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension/factoryload",
-      "name": "markdownMessageTypes",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(options []github.com/MichaelKinsy/PiG/coding/extension.MarkdownTransformerOptions) []github.com/MichaelKinsy/PiG/coding/extension.MarkdownMessageType"
-      },
-      "shapeHash": "sha256:030e583d78197574af89a32a67743e5865d44b5ea25031d43ef5059db3ffb6d4"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/factoryload#newAPI",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/factoryload",
       "name": "newAPI",
@@ -122347,17 +122358,6 @@
         "type": "map[string]struct{}"
       },
       "shapeHash": "sha256:3f1500f5206ca374887ea183646e34a02f1a3d4f5e6a6bef8c19e3d87d4c7dd0"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#restrictMarkdownTransformer",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/inproc",
-      "name": "restrictMarkdownTransformer",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(transformer github.com/MichaelKinsy/PiG/coding/extension.MarkdownTransformer, types []github.com/MichaelKinsy/PiG/coding/extension.MarkdownMessageType) github.com/MichaelKinsy/PiG/coding/extension.MarkdownTransformer"
-      },
-      "shapeHash": "sha256:820d72cc196906adfa30a5f82a290f8b819ed1a1e0c54e7661063612ce9d3f39"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#sameMessageIdentity",
@@ -142727,9 +142727,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(_ context.Context, path string) (io.ReadCloser, error)"
+        "type": "func(_ context.Context, path string) (*github.com/MichaelKinsy/PiG/internal/codingagent/tools.ReadStream, error)"
       },
-      "shapeHash": "sha256:507f00c43727734b296e0e18ccffbf2013564dbe45facf023024fc375806d5eb"
+      "shapeHash": "sha256:35c1929ed3e6d3129b1278f7ef638b0458fad25aa89f49a5010cb6ef683f9ca2"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#builtinCallbacks.editOperations",
@@ -318655,6 +318655,17 @@
       "shapeHash": "sha256:93003f6ec7124e06c8910e82bb54f8f54e6aced4a3d52d6fa02e4f9a78ff278b"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#NewReadStream",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "NewReadStream",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(source io.ReadCloser) *ReadStream"
+      },
+      "shapeHash": "sha256:84c7309c2f0cd19036d5941511b636d21a96f9d80f607361a0bf3f778ca5b235"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#NewToolsManager",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
       "name": "NewToolsManager",
@@ -319060,6 +319071,61 @@
         "type": "ReadOperations"
       },
       "shapeHash": "sha256:24098b59981265af635845d8368e565dc07721efa75d05c488906d15e9574839"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#ReadStream",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "ReadStream",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "ReadStream"
+      },
+      "shapeHash": "sha256:cadffff7fe84298cb0349d3b4031eec0705fb0561216352a916749afb05d0bb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#ReadStream.All",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "ReadStream.All",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() iter.Seq[[]byte]"
+      },
+      "shapeHash": "sha256:12dc8174343cda513e64b653fe82f73c45af6208dd6084debf01d78e9622ad3b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#ReadStream.Close",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "ReadStream.Close",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() error"
+      },
+      "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#ReadStream.Err",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "ReadStream.Err",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() error"
+      },
+      "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#ReadStream.Read",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "ReadStream.Read",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(p []byte) (n int, err error)"
+      },
+      "shapeHash": "sha256:a53011a1ff068fa64f19d96a5c186623578e9655c76d7bc1d8d8f2b97a53173f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#ReadTool",
@@ -341409,9 +341475,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func(message BranchSummaryMessage, markdownTheme *MarkdownTheme, outputPad int) *BranchSummaryMessageComponent"
+        "type": "func(message BranchSummaryMessage, markdownTheme *MarkdownTheme, outputPad int, markdownTransformers []github.com/MichaelKinsy/PiG/coding/extension/markdowntransform.MarkdownTransformer, messageID string, timestamp string) *BranchSummaryMessageComponent"
       },
-      "shapeHash": "sha256:67c80c10eb58e4423b61eb2e4324e7d614b7c6dd74b610aab5cc4865f623da28"
+      "shapeHash": "sha256:7122671510058074decdae69121443cbb1f7c21a1b2c0c21da3c3c1164dbefaf"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#NewBranchSummaryMessageComponentWithSurface",
@@ -341453,9 +341519,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func(message CompactionSummaryMessage, markdownTheme *MarkdownTheme, outputPad ...int) *CompactionSummaryMessageComponent"
+        "type": "func(message CompactionSummaryMessage, markdownTheme *MarkdownTheme, outputPad int, markdownTransformers []github.com/MichaelKinsy/PiG/coding/extension/markdowntransform.MarkdownTransformer, messageID string, timestamp string) *CompactionSummaryMessageComponent"
       },
-      "shapeHash": "sha256:aebd2b44b90a7dc9268c37cad6e59eb37f25cd1e3254cb039e31663f2d3fcc0a"
+      "shapeHash": "sha256:738a48b4b3c1ce757dadfc03c2e65f432c8fdb8f0de8ed67899df45ec7e0dcda"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#NewCompactionSummaryMessageComponentWithSurface",
@@ -341508,9 +341574,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func(message *CustomMessage, customRenderer MessageRenderer, markdownTheme *MarkdownTheme, outputPad int) *CustomMessageComponent"
+        "type": "func(message *CustomMessage, customRenderer MessageRenderer, markdownTheme *MarkdownTheme, outputPad int, markdownTransformers []github.com/MichaelKinsy/PiG/coding/extension/markdowntransform.MarkdownTransformer, messageID string, timestamp string) *CustomMessageComponent"
       },
-      "shapeHash": "sha256:3a6bb4961f48062d2a3356404d75e57a17e6117e17202bd96a7fff28da3f9629"
+      "shapeHash": "sha256:16d6970818c42b4bbcfc6438ee2246891506df5041b068ab51256e55e0958799"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#NewCustomMessageComponentWithSurface",
@@ -341937,9 +342003,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func(block ParsedSkillBlock, markdownTheme *MarkdownTheme, outputPad int) *SkillInvocationMessageComponent"
+        "type": "func(block ParsedSkillBlock, markdownTheme *MarkdownTheme, outputPad int, markdownTransformers []github.com/MichaelKinsy/PiG/coding/extension/markdowntransform.MarkdownTransformer, messageID string, timestamp string) *SkillInvocationMessageComponent"
       },
-      "shapeHash": "sha256:12a72df758e3daf49ad96ae5de028d2d0d1f20188c76dd105c82bd444083427a"
+      "shapeHash": "sha256:8cb9b08329e35f3118e4bb6732bb61c7aa6c0a3630c623df771990417a3295d3"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#NewSkillInvocationMessageComponentWithSurface",
@@ -382939,6 +383005,17 @@
       "shapeHash": "sha256:563456666151dc337bf926e266ddebafbd736c8832ee689193d301f7dde7d750"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#summarySurface",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "summarySurface",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(transformers []github.com/MichaelKinsy/PiG/coding/extension/markdowntransform.MarkdownTransformer, messageID string, timestamp string) MarkdownSurface"
+      },
+      "shapeHash": "sha256:55cb3e77aa5f7bf2793d81d011649edf121c1cf0195ecd43949ada75e7fb9e47"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#surfaceComponent",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "surfaceComponent",
@@ -385170,6 +385247,17 @@
         "type": "func(name string) string"
       },
       "shapeHash": "sha256:7d508d280c61decf247115e90b8749e71ea5dfc4d0ae712cc664fb5de63b74fe"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#transformerSurface",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "transformerSurface",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(messageType github.com/MichaelKinsy/PiG/coding/extension/markdowntransform.MarkdownMessageType, transformers []github.com/MichaelKinsy/PiG/coding/extension/markdowntransform.MarkdownTransformer, messageID string, timestamp string) MarkdownSurface"
+      },
+      "shapeHash": "sha256:40fa1c9dbaa76ae76abe15c9450cb680ad347ed7bd23b9fea306853050110d1b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#translateBox",
