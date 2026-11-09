@@ -525,17 +525,17 @@ rationale = "Promise appears only in the type of a method's call signature (acce
 
 [[files]]
 path = "packages/chord/src/contracts/contract.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/next/contracts/contract_test.go#TestContractHandles", "test:chord/next/contracts/contract_test.go#TestContractTakesNoArgs"]
+rationale = "contract.ts declares Promise-returning types only, no runtime async: KeyedWatchable.get(key, context) / watch(key, context) resolve with the document (or undefined when absent) and MethodFunction<M, X> is `(args, context) => Promise<Static<result>>` (without the args parameter when the args schema is null, null staying the wire form). Every consumer awaits them (the caller waits for the value or the rejection), the context is the cancellation (its abort signal ends the wait and the call), there is no ordering beyond one call's own and no executor of its own: the host's section runs them. The only throw is synchronous (a spread or hand-built copy of a contract is refused at handle time). Go: contracts.MethodFunction is `func(args, ctx context.Context) (delta.JsonValue, error)`, a blocking call whose error is the rejection and whose ctx is the signal, KeyedWatchable's Get/Watch (ctx, key) block the same way; no goroutine is added for the Promise type (TestContractHandles exercises the handle and method function shapes, TestContractTakesNoArgs the null-args form)."
 
 [[files]]
 path = "packages/chord/src/data/args.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/next/data/args_test.go#TestBindProvider", "test:chord/next/data/args_test.go#TestCheckArgs", "test:chord/next/data/args_test.go#TestMemory"]
+rationale = "args.ts has no runtime async code: the CheckedArgs `call` variant carries the provider's own replacement `(args, context) => Promise<Value>` for old-version arguments (a contract's `call` mapping, dispatched by the attempt: the caller of the method waits for it as for any handler, errors propagate as the call's rejection, the context's signal cancels it), and the version checks (contract_mismatch, invalid/member) are synchronous throws raised before any handler runs (checkArgs throws, so the attempt rejects the call before admission). Go data.CheckArgs returns (CheckedArgs, error) for the same refusals and CheckedArgs.Call is contracts.CallFunc, a blocking function the attempt invokes inside the call's section when the kind is call (host_attempt.go call: `handler = func(...) { return call(callArgs, ctx) }`); no goroutine is added (TestCheckArgs covers the refusals and both kinds, TestBindProvider the provider's mapping, TestMemory the bound-version cache)."
 
 [[files]]
 path = "packages/chord/src/documents/documents.ts"
