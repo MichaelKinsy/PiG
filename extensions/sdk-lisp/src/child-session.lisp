@@ -19,8 +19,14 @@
 (defun child-registry-of (ext) (extension-extra ext :child-sessions #'child-make-registry))
 
 (defstruct (agent-session (:constructor child-make-session (extension id ctx)))
-  "A child agent session. Every reader (agent-session-session-id, agent-session-model, ...) asks the host for the session's current value."
+  "A child agent session.
+
+Deprecated readers: agent-session-session-id, -session-file, -model, -thinking-level, -active-tools and -system-prompt return what the session
+held when ctx-create-agent-session returned, a snapshot that never follows the session. Read the current values with
+agent-session-current-session-id, -current-session-file, -current-model, -current-thinking-level, agent-session-get-active-tool-names and
+agent-session-current-system-prompt."
   extension id ctx
+  (session-id "") (session-file nil) (model nil) (thinking-level "") (active-tools #()) (system-prompt "")
   (tools (make-hash-table :test 'equal))
   (lock (sb-thread:make-mutex :name "pig child session"))
   (queue (sb-thread:make-waitqueue))
@@ -113,9 +119,16 @@ SCOPED-MODELS is a list of {model, thinkingLevel}; SESSION-START-EVENT is make-s
                                         (sb-thread:with-mutex ((child-registry-lock registry))
                                           (remhash (agent-session-id session) (child-registry-by-id registry))))))
                   (or (ctx-call-host ctx "childSession.create" args) (obj)))))
-      (flet ((present (key) (let ((v (jget info key))) (and (stringp v) (plusp (length v)) v)))
+      (flet ((text (key) (let ((v (jget info key))) (if (stringp v) v "")))
+             (present (key) (let ((v (jget info key))) (and (stringp v) (plusp (length v)) v)))
              (vec (key) (let ((v (jget info key))) (if (and (vectorp v) (not (stringp v))) v #()))))
-        (setf (agent-session-model-fallback-message session) (present "modelFallbackMessage")
+        (setf (agent-session-session-id session) (text "sessionId")
+              (agent-session-session-file session) (present "sessionFile")
+              (agent-session-model session) (let ((m (jget info "model"))) (and (hash-table-p m) m))
+              (agent-session-thinking-level session) (text "thinkingLevel")
+              (agent-session-active-tools session) (vec "activeTools")
+              (agent-session-system-prompt session) (text "systemPrompt")
+              (agent-session-model-fallback-message session) (present "modelFallbackMessage")
               (agent-session-extension-errors session) (vec "extensionErrors"))))
     session))
 
@@ -350,12 +363,12 @@ function unsubscribes it, the session is disposed or the connection ends."
 (def-child-member agent-session-retry-attempt () "`session.retryAttempt`." ("retryAttempt") child-number)
 (def-child-member agent-session-pending-message-count () "`session.pendingMessageCount`: the queued steering and follow-up messages."
   ("pendingMessageCount") child-number)
-(def-child-member agent-session-session-id () "`session.sessionId`." ("sessionId") child-string)
-(def-child-member agent-session-session-file () "`session.sessionFile`; NIL for an in-memory session." ("sessionFile") child-maybe-string)
+(def-child-member agent-session-current-session-id () "`session.sessionId`." ("sessionId") child-string)
+(def-child-member agent-session-current-session-file () "`session.sessionFile`; NIL for an in-memory session." ("sessionFile") child-maybe-string)
 (def-child-member agent-session-session-name () "`session.sessionName`; NIL when the session has no name." ("sessionName") child-maybe-string)
-(def-child-member agent-session-system-prompt () "`session.systemPrompt`." ("systemPrompt") child-string)
-(def-child-member agent-session-thinking-level () "`session.thinkingLevel`." ("thinkingLevel") child-string)
-(def-child-member agent-session-model () "`session.model`: the session's model object, NIL without one." ("model") child-object)
+(def-child-member agent-session-current-system-prompt () "`session.systemPrompt`." ("systemPrompt") child-string)
+(def-child-member agent-session-current-thinking-level () "`session.thinkingLevel`." ("thinkingLevel") child-string)
+(def-child-member agent-session-current-model () "`session.model`: the session's model object, NIL without one." ("model") child-object)
 (def-child-member agent-session-routed-model ()
   "`session.routedModel`: under a virtual selection, {model, thinkingLevel} of the latest successful response, NIL otherwise."
   ("routedModel") child-object)

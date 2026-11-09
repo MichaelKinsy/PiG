@@ -24,6 +24,7 @@ Async contract (Pi's promises, kept as blocking calls):
 from __future__ import annotations
 
 import threading
+import warnings
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Callable
 
@@ -172,8 +173,48 @@ class _ChildSessions:
             session._enqueue(seq, args.get("event") if stream is None else session._apply_update(stream, args.get("event")))
 
 
+class _Snapshot:
+    """A deprecated attribute of :class:`AgentSession`: the value the session held when it was created, kept as the attribute always was (a plain, assignable value that never follows the session). Reading it warns with ``DeprecationWarning``; ``live`` names the member that reads the current value."""
+
+    def __init__(self, default: Callable[[], Any], live: str) -> None:
+        self._default = default
+        self._live = live
+        self._name = ""
+
+    def __set_name__(self, owner: type, name: str) -> None:
+        self._name = name
+
+    def __get__(self, instance: Any, owner: type | None = None) -> Any:
+        if instance is None:
+            return self
+        warnings.warn(
+            f"AgentSession.{self._name} is a snapshot taken when the session was created, not its current value; use AgentSession.{self._live}",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return instance.__dict__.get("_snapshot_" + self._name, self._default())
+
+    def __set__(self, instance: Any, value: Any) -> None:
+        instance.__dict__["_snapshot_" + self._name] = value
+
+
 class AgentSession:
-    """A child agent session: Pi's AgentSession as an extension holds it. Create it with :meth:`Context.create_agent_session`."""
+    """A child agent session: Pi's AgentSession as an extension holds it. Create it with :meth:`Context.create_agent_session`.
+
+    Deprecated attributes: ``session_id``, ``session_file``, ``model``, ``thinking_level``, ``active_tools`` and ``system_prompt`` hold what the session had when it was created and warn with ``DeprecationWarning``. Read the current values with ``current_session_id``, ``current_session_file``, ``current_model``, ``current_thinking_level``, ``get_active_tool_names()`` and ``current_system_prompt``."""
+
+    #: ``session.sessionId`` when the session was created. Deprecated: use :attr:`current_session_id`.
+    session_id = _Snapshot(lambda: "", "current_session_id")
+    #: ``session.sessionFile`` when the session was created (``None`` for an in-memory session). Deprecated: use :attr:`current_session_file`.
+    session_file = _Snapshot(lambda: None, "current_session_file")
+    #: ``session.model`` when the session was created. Deprecated: use :attr:`current_model`.
+    model = _Snapshot(lambda: None, "current_model")
+    #: ``session.thinkingLevel`` when the session was created. Deprecated: use :attr:`current_thinking_level`.
+    thinking_level = _Snapshot(lambda: "", "current_thinking_level")
+    #: ``session.getActiveToolNames()`` when the session was created. Deprecated: use :meth:`get_active_tool_names`.
+    active_tools = _Snapshot(list, "get_active_tool_names()")
+    #: ``session.systemPrompt`` when the session was created. Deprecated: use :attr:`current_system_prompt`.
+    system_prompt = _Snapshot(lambda: "", "current_system_prompt")
 
     def __init__(self, extension: "Extension", session_id: str) -> None:
         self._extension = extension
@@ -253,12 +294,12 @@ class AgentSession:
         return int(self._member("pendingMessageCount") or 0)
 
     @property
-    def session_id(self) -> str:
+    def current_session_id(self) -> str:
         """``session.sessionId``."""
         return str(self._member("sessionId") or "")
 
     @property
-    def session_file(self) -> str | None:
+    def current_session_file(self) -> str | None:
         """``session.sessionFile``; ``None`` for an in-memory session, Pi's undefined."""
         return self._member("sessionFile") or None
 
@@ -268,17 +309,17 @@ class AgentSession:
         return self._member("sessionName") or None
 
     @property
-    def system_prompt(self) -> str:
+    def current_system_prompt(self) -> str:
         """``session.systemPrompt``."""
         return str(self._member("systemPrompt") or "")
 
     @property
-    def thinking_level(self) -> str:
+    def current_thinking_level(self) -> str:
         """``session.thinkingLevel``."""
         return str(self._member("thinkingLevel") or "")
 
     @property
-    def model(self) -> dict[str, Any] | None:
+    def current_model(self) -> dict[str, Any] | None:
         """``session.model``: the session's model object, ``None`` without one."""
         return self._member("model")
 
@@ -706,6 +747,12 @@ def create_agent_session(extension: "Extension", call: Callable[[str, Any], dict
     except BaseException:
         extension._children.remove(session._id)
         raise
+    session.session_id = str(info.get("sessionId") or "")
+    session.session_file = info.get("sessionFile") or None
+    session.model = info.get("model")
+    session.thinking_level = str(info.get("thinkingLevel") or "")
+    session.active_tools = list(info.get("activeTools") or [])
+    session.system_prompt = str(info.get("systemPrompt") or "")
     session.model_fallback_message = info.get("modelFallbackMessage") or None
     session.extension_errors = list(info.get("extensionErrors") or [])
     return session

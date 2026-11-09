@@ -104,6 +104,7 @@ func Extension() *sdk.Extension {
 	registerLifecycle(e)
 	registerEvents(e)
 	registerMembers(e)
+	registerSnapshot(e)
 	registerAsyncProbes(e)
 	return e
 }

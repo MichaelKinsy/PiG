@@ -30,17 +30,34 @@ def session_with(replies=None):
 def test_getters_are_live_host_reads():
     session, host = session_with({"sessionId": "s-1", "sessionFile": None, "model": {"id": "echo"}, "thinkingLevel": "high", "isIdle": True,
                                   "sessionName": None, "getActiveToolNames": ["a"], "systemPrompt": "p"})
-    assert session.session_id == "s-1"
-    assert session.session_file is None
-    assert session.model == {"id": "echo"}
-    assert session.thinking_level == "high"
+    assert session.current_session_id == "s-1"
+    assert session.current_session_file is None
+    assert session.current_model == {"id": "echo"}
+    assert session.current_thinking_level == "high"
     assert session.is_idle is True
     assert session.session_name is None
     assert session.get_active_tool_names() == ["a"]
-    assert session.system_prompt == "p"
+    assert session.current_system_prompt == "p"
     assert host.calls[0] == ("childSession.op", {"id": "c1", "op": "sessionId"})
     host.replies["sessionId"] = "s-2"
-    assert session.session_id == "s-2"
+    assert session.current_session_id == "s-2"
+
+
+def test_deprecated_attributes_keep_their_creation_snapshot():
+    import warnings
+
+    session, host = session_with({"sessionId": "live-2"})
+    session.session_id = "created-1"
+    session.active_tools = ["a"]
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        assert session.session_id == "created-1"
+        assert session.active_tools == ["a"]
+        assert session.model is None and session.thinking_level == "" and session.system_prompt == ""
+    assert len(caught) == 5 and all(issubclass(w.category, DeprecationWarning) for w in caught)
+    assert "current_session_id" in str(caught[0].message)
+    assert session.current_session_id == "live-2"
+    assert host.calls == [("childSession.op", {"id": "c1", "op": "sessionId"})]
 
 
 def test_changes_send_pis_member_arguments():
@@ -79,9 +96,9 @@ CALLS = [
     ("isStreaming", lambda s: s.is_streaming), ("isIdle", lambda s: s.is_idle), ("isCompacting", lambda s: s.is_compacting),
     ("isRetrying", lambda s: s.is_retrying), ("isBashRunning", lambda s: s.is_bash_running),
     ("hasPendingBashMessages", lambda s: s.has_pending_bash_messages), ("retryAttempt", lambda s: s.retry_attempt),
-    ("pendingMessageCount", lambda s: s.pending_message_count), ("sessionId", lambda s: s.session_id), ("sessionFile", lambda s: s.session_file),
-    ("sessionName", lambda s: s.session_name), ("systemPrompt", lambda s: s.system_prompt), ("thinkingLevel", lambda s: s.thinking_level),
-    ("model", lambda s: s.model), ("routedModel", lambda s: s.routed_model), ("scopedModels", lambda s: s.scoped_models),
+    ("pendingMessageCount", lambda s: s.pending_message_count), ("sessionId", lambda s: s.current_session_id), ("sessionFile", lambda s: s.current_session_file),
+    ("sessionName", lambda s: s.session_name), ("systemPrompt", lambda s: s.current_system_prompt), ("thinkingLevel", lambda s: s.current_thinking_level),
+    ("model", lambda s: s.current_model), ("routedModel", lambda s: s.routed_model), ("scopedModels", lambda s: s.scoped_models),
     ("steeringMode", lambda s: s.steering_mode), ("followUpMode", lambda s: s.follow_up_mode),
     ("autoCompactionEnabled", lambda s: s.auto_compaction_enabled), ("autoRetryEnabled", lambda s: s.auto_retry_enabled),
     ("promptTemplates", lambda s: s.prompt_templates), ("cacheWarmingStatus", lambda s: s.cache_warming_status),

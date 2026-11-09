@@ -49,11 +49,11 @@ func registerMembers(e *sdk.Extension) {
 			set := func(key string, value any, err error) { out[key] = ok(value, err) }
 
 			// Reads of a fresh session.
-			id, err := session.SessionID()
+			id, err := session.CurrentSessionID()
 			set("sessionId", id != "", err)
-			file, err := session.SessionFile()
+			file, err := session.CurrentSessionFile()
 			set("sessionFile", file, err)
-			model, err := session.Model()
+			model, err := session.CurrentModel()
 			set("model", model["id"], err)
 			set("isIdle", ok(session.IsIdle()), nil)
 			set("isStreaming", ok(session.IsStreaming()), nil)
@@ -70,7 +70,7 @@ func registerMembers(e *sdk.Extension) {
 			set("promptTemplates", len(ok(session.PromptTemplates()).([]sdk.PromptTemplate)), nil)
 			set("hasHandlers", ok(session.HasExtensionHandlers("agent_start")), nil)
 			set("lastTextStart", ok(session.GetLastAssistantText()) == (*string)(nil), nil)
-			set("systemPromptLen", len(ok(session.SystemPrompt()).(string)) > 0, nil)
+			set("systemPromptLen", len(ok(session.CurrentSystemPrompt()).(string)) > 0, nil)
 
 			// Changes read back: each value is one no default holds.
 			ok(nil, session.SetSteeringMode("all"))
@@ -108,7 +108,7 @@ func registerMembers(e *sdk.Extension) {
 			out["setModelRefused"] = errText(session.SetModel(context.Background(), map[string]any{"provider": "nokey", "id": "locked"}))
 			ok(nil, session.SetModel(context.Background(), map[string]any{"provider": "sentinel", "id": "echo"}))
 			ok(nil, session.SetThinkingLevel("off"))
-			set("thinkingLevel", ok(session.ThinkingLevel()), nil)
+			set("thinkingLevel", ok(session.CurrentThinkingLevel()), nil)
 			set("availableThinkingLevels", ok(session.GetAvailableThinkingLevels()), nil)
 			ok(nil, session.SetCacheWarmingMode("off"))
 
@@ -172,7 +172,7 @@ func registerMembers(e *sdk.Extension) {
 			_, err = session.ExportToHTML(context.Background(), filepath.Join(dir, "export.html"))
 			out["exportHtmlInMemory"] = errText(err)
 			ok(nil, session.Reload(context.Background()))
-			set("afterReload", ok(session.SessionID()) == id, nil)
+			set("afterReload", ok(session.CurrentSessionID()) == id, nil)
 			// A file-backed session: its sessionFile is a real path (the in-memory one above is empty, so a reader that returned the fallback would still pass there).
 			persisted, err := ctx.CreateAgentSession(sdk.CreateAgentSessionOptions{
 				Cwd: dir, AgentDir: filepath.Join(dir, "agent"), Model: map[string]any{"provider": "sentinel", "id": "echo"}, Tools: []string{},
@@ -182,8 +182,8 @@ func registerMembers(e *sdk.Extension) {
 			if err != nil {
 				return nil, err
 			}
-			persistedID, idErr := persisted.SessionID()
-			persistedFile, fileErr := persisted.SessionFile()
+			persistedID, idErr := persisted.CurrentSessionID()
+			persistedFile, fileErr := persisted.CurrentSessionFile()
 			persisted.Dispose()
 			ok(nil, idErr)
 			ok(nil, fileErr)

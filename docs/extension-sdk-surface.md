@@ -25,11 +25,11 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Runtime | implemented | stand-in/partial | missing (all with a reviewed exception) |
 |---|---|---|---|
-| Node runtime | 499 | 26 | 4 |
-| Go | 503 | 23 | 3 |
-| Rust | 501 | 25 | 3 |
-| Python | 503 | 23 | 3 |
-| Lisp | 507 | 19 | 3 |
+| Node runtime | 502 | 26 | 1 |
+| Go | 506 | 23 | 0 |
+| Rust | 504 | 25 | 0 |
+| Python | 506 | 23 | 0 |
+| Lisp | 510 | 19 | 0 |
 
 35 PiG-only surfaces:
 
@@ -1343,15 +1343,15 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `provider.headers` | `ProviderConfig.headers` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
 | `provider.authHeader` | `ProviderConfig.authHeader` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
 | `provider.models` | `ProviderConfig.models` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
-| `provider.refreshModels` | `ProviderConfig.refreshModels` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
+| `provider.refreshModels` | `ProviderConfig.refreshModels` | implemented `read:config.refreshModels` | implemented `ProviderRefreshModelsFunc` | implemented `ProviderOperations.refresh_models` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
 | `provider.oauth` | `ProviderConfig.oauth` | implemented `api.registerProvider` | implemented `OAuthProvider` | implemented `Extension::register_oauth_provider` | implemented `Extension.register_oauth_provider` | implemented `pig:register-oauth-provider` |
 | `provider.oauth.name` | `ProviderConfig.oauth.name` | implemented `read:oauth.name` | implemented `OAuthProvider.Name` | implemented `OAuthProvider.name` | implemented `OAuthProvider.name` | implemented `pig:oauth-provider-name` |
 | `provider.oauth.isSubscription` | `ProviderConfig.oauth.isSubscription` | implemented `read:oauth.isSubscription` | implemented `OAuthProvider.IsSubscription` | implemented `OAuthProvider.is_subscription` | implemented `OAuthProvider.is_subscription` | implemented `pig:oauth-provider-is-subscription` |
-| `provider.oauth.usesCallbackServer` | `ProviderConfig.oauth.usesCallbackServer` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
+| `provider.oauth.usesCallbackServer` | `ProviderConfig.oauth.usesCallbackServer` | implemented `read:oauth.usesCallbackServer` | implemented `OAuthProvider.UsesCallbackServer` | implemented `OAuthProvider.uses_callback_server` | implemented `OAuthProvider.uses_callback_server` | implemented `pig:oauth-provider-uses-callback-server` |
 | `provider.oauth.login` | `ProviderConfig.oauth.login` | implemented `read:oauth.login` | implemented `OAuthProvider.Login` | implemented `OAuthProvider.login` | implemented `OAuthProvider.login` | implemented `pig:oauth-provider-login` |
 | `provider.oauth.refreshToken` | `ProviderConfig.oauth.refreshToken` | implemented `read:oauth.refreshToken` | implemented `OAuthProvider.RefreshToken` | implemented `OAuthProvider.refresh_token` | implemented `OAuthProvider.refresh_token` | implemented `pig:oauth-provider-refresh-token` |
 | `provider.oauth.getApiKey` | `ProviderConfig.oauth.getApiKey` | implemented `read:oauth.getApiKey` | implemented `OAuthProvider.GetAPIKey` | implemented `OAuthProvider.get_api_key` | implemented `OAuthProvider.get_api_key` | implemented `pig:oauth-provider-get-api-key` |
-| `provider.oauth.modifyModels` | `ProviderConfig.oauth.modifyModels` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
+| `provider.oauth.modifyModels` | `ProviderConfig.oauth.modifyModels` | implemented `read:oauth.modifyModels` | implemented `OAuthProvider.ModifyModels` | implemented `OAuthProvider.modify_models` | implemented `OAuthProvider.modify_models` | implemented `pig:oauth-provider-modify-models` |
 | `provider model.type` | `ProviderModelConfig.type` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
 | `provider model.api` | `ProviderModelConfig.api` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
 | `provider model.reasoning` | `ProviderModelConfig.reasoning` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
@@ -3107,9 +3107,6 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Surface | Runtimes | Reason |
 |---|---|---|
-| `provider.refreshModels` | Node runtime, Go, Rust, Python, Lisp | The provider bridge has no host-to-extension refreshModels request or publication callback handles. |
-| `provider.oauth.usesCallbackServer` | Node runtime, Go, Rust, Python, Lisp | Deprecated and ignored by upstream 0.99.2 canonical auth flows (core/extensions/types.ts); runtimes do not forward this inert legacy metadata. |
-| `provider.oauth.modifyModels` | Node runtime, Go, Rust, Python, Lisp | The host OAuth bridge has no credential-dependent modify-models callback request. |
 | `ctx.ui.setTheme → error` | Node runtime | Node returns synchronously before host theme validation, so it cannot report host errors. Requires synchronous validation/state acknowledgement rather than optimistic success. |
 | `pi-coding-agent: KeybindingsManager` | Node runtime | Pi's published root index.d.ts re-exports KeybindingsManager as a type only. Both actual runtime namespaces omit it (TestNodeCodingAgentTypeOnlyExportsMatchPi). |
 | `pi-coding-agent: KeybindingsManager.*` | Node runtime | Members of the type-only root re-export have no runtime receiver. Both Pi and PiG omit the value; the actual class remains in the private core/keybindings module. |

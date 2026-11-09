@@ -192,11 +192,11 @@
                                                           (lambda (c args) (declare (ignore c)) (concatenate 'string (string-upcase (pig:jget args "x")) "!")))))))
     (flet ((put (key value) (setf (gethash key out) value)))
       (unwind-protect
-           (let ((id (pig:agent-session-session-id session)))
+           (let ((id (pig:agent-session-current-session-id session)))
              ;; reads of a fresh session
              (put "sessionId" (flag (plusp (length id))))
-             (put "sessionFile" (or (pig:agent-session-session-file session) ""))
-             (put "model" (pig:jget (pig:agent-session-model session) "id"))
+             (put "sessionFile" (or (pig:agent-session-current-session-file session) ""))
+             (put "model" (pig:jget (pig:agent-session-current-model session) "id"))
              (put "isIdle" (flag (pig:agent-session-idle-p session)))
              (put "isStreaming" (flag (pig:agent-session-streaming-p session)))
              (put "isCompacting" (flag (pig:agent-session-compacting-p session)))
@@ -212,7 +212,7 @@
              (put "promptTemplates" (length (pig:agent-session-prompt-templates session)))
              (put "hasHandlers" (flag (pig:agent-session-has-extension-handlers-p session "agent_start")))
              (put "lastTextStart" (flag (null (pig:agent-session-get-last-assistant-text session))))
-             (put "systemPromptLen" (flag (plusp (length (pig:agent-session-system-prompt session)))))
+             (put "systemPromptLen" (flag (plusp (length (pig:agent-session-current-system-prompt session)))))
              ;; changes read back: each value is one no default holds
              (pig:agent-session-set-steering-mode session "all")
              (pig:agent-session-set-follow-up-mode session "all")
@@ -240,7 +240,7 @@
              (put "setModelRefused" (error-text (lambda () (pig:agent-session-set-model session (pig:obj "provider" "nokey" "id" "locked")))))
              (pig:agent-session-set-model session sentinel)
              (pig:agent-session-set-thinking-level session "off")
-             (put "thinkingLevel" (pig:agent-session-thinking-level session))
+             (put "thinkingLevel" (pig:agent-session-current-thinking-level session))
              (put "availableThinkingLevels" (pig:agent-session-get-available-thinking-levels session))
              (pig:agent-session-set-cache-warming-mode session "off")
              ;; a run, observed through the members
@@ -285,13 +285,13 @@
              (put "exportHtmlInMemory"
                   (error-text (lambda () (pig:agent-session-export-to-html session :output-path (concatenate 'string dir "/export.html")))))
              (pig:agent-session-reload session)
-             (put "afterReload" (flag (equal (pig:agent-session-session-id session) id)))
+             (put "afterReload" (flag (equal (pig:agent-session-current-session-id session) id)))
              ;; A file-backed session: its sessionFile is a real path (the in-memory one above is empty, so a reader that returned the fallback would still pass there).
              (let* ((persisted (pig:ctx-create-agent-session
                                 ctx :cwd dir :agent-dir (concatenate 'string dir "/agent") :model sentinel
                                     :settings (no-compaction) :resources (quiet-resources)))
-                    (persisted-id (pig:agent-session-session-id persisted))
-                    (persisted-file (or (pig:agent-session-session-file persisted) "")))
+                    (persisted-id (pig:agent-session-current-session-id persisted))
+                    (persisted-file (or (pig:agent-session-current-session-file persisted) "")))
                (pig:agent-session-dispose persisted)
                (put "fileBackedSessionFile"
                     (flag (and (eql 0 (search dir persisted-file))
@@ -303,6 +303,38 @@
              (pig:agent-session-abort-retry session)
              (pig:to-json out))
         (pig:agent-session-dispose session)))))
+
+(defun child-snapshot (ctx params)
+  "The deprecated creation-time readers beside the live ones (the Go fixture's child_snapshot): a file-backed session with one active tool, then its active tools are emptied."
+  (let* ((dir (pig:jget params "dir"))
+         (session (pig:ctx-create-agent-session
+                   ctx :cwd dir :agent-dir (concatenate 'string dir "/agent") :model (pig:obj "provider" "sentinel" "id" "echo") :tools '("sentinel_tool")
+                       :settings (no-compaction) :resources (quiet-resources)
+                       :custom-tools (list (pig:child-tool "sentinel_tool" "uppercases x" (pig:obj "type" "object") (lambda (c args) (declare (ignore c args)) "") :prompt-snippet "sentinel-snippet")))))
+    (unwind-protect
+         (let* ((id (pig:agent-session-session-id session)) (file (or (pig:agent-session-session-file session) ""))
+                (prompt (pig:agent-session-system-prompt session))
+                (start (pig:obj "model" (pig:jget (pig:agent-session-current-model session) "id")
+                                "thinking" (pig:agent-session-current-thinking-level session)
+                                "prompt" (flag (equal (pig:agent-session-current-system-prompt session) prompt))
+                                "tools" (pig:agent-session-get-active-tool-names session)))
+                (out (pig:obj "snapshotId" (flag (and (plusp (length id)) (equal id (pig:agent-session-current-session-id session))))
+                              "snapshotFile" (flag (and (eql 0 (search dir file)) (>= (length file) 6) (string= ".jsonl" file :start2 (- (length file) 6))
+                                                        (search id file) (equal file (or (pig:agent-session-current-session-file session) ""))))
+                              "snapshotModel" (pig:jget (pig:agent-session-model session) "id")
+                              "snapshotThinking" (pig:agent-session-thinking-level session)
+                              "snapshotTools" (pig:agent-session-active-tools session)
+                              "snapshotPromptListsTool" (flag (search "sentinel-snippet" prompt))
+                              "liveStart" start)))
+           (pig:agent-session-set-active-tools-by-name session '())
+           (let ((changed (pig:agent-session-current-system-prompt session)))
+             (setf (gethash "afterChange" out)
+                   (pig:obj "liveTools" (pig:agent-session-get-active-tool-names session)
+                            "snapshotTools" (pig:agent-session-active-tools session)
+                            "livePromptDropsTool" (flag (and (not (equal changed prompt)) (not (search "sentinel-snippet" changed))))
+                            "snapshotPrompt" (flag (equal (pig:agent-session-system-prompt session) prompt)))))
+           (pig:to-json out))
+      (pig:agent-session-dispose session))))
 
 (defun child-queue (ctx params)
   "steer, follow-up and getContextUsage on an idle sentinel session, observed back."
@@ -388,7 +420,7 @@
   (let ((ext (pig:make-extension "child-session")))
     (loop for (name function) in (list (list "child_run" #'child-run) (list "child_lifecycle" #'child-lifecycle) (list "child_hold" #'child-hold)
                                        (list "child_errors" #'child-errors) (list "child_events" #'child-events)
-                                       (list "child_members" #'child-members) (list "child_queue" #'child-queue)
+                                       (list "child_members" #'child-members) (list "child_snapshot" #'child-snapshot) (list "child_queue" #'child-queue)
                                        (list "child_abort_probe" #'child-abort-bash) (list "child_order_probe" #'child-order-probe)
                                        (list "child_usage" #'child-usage) (list "child_ctx_cancel" #'child-ctx-cancel))
           do (pig:tool ext name name (pig:obj "type" "object") function))

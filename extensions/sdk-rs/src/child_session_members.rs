@@ -142,12 +142,12 @@ impl AgentSession {
     }
 
     /// `session.sessionId`.
-    pub fn session_id(&self) -> io::Result<String> {
+    pub fn current_session_id(&self) -> io::Result<String> {
         self.decode("sessionId", None)
     }
 
     /// `session.sessionFile`; `None` for an in-memory session, Pi's undefined.
-    pub fn session_file(&self) -> io::Result<Option<String>> {
+    pub fn current_session_file(&self) -> io::Result<Option<String>> {
         self.decode("sessionFile", None)
     }
 
@@ -157,17 +157,17 @@ impl AgentSession {
     }
 
     /// `session.systemPrompt`.
-    pub fn system_prompt(&self) -> io::Result<String> {
+    pub fn current_system_prompt(&self) -> io::Result<String> {
         self.decode("systemPrompt", None)
     }
 
     /// `session.thinkingLevel`.
-    pub fn thinking_level(&self) -> io::Result<String> {
+    pub fn current_thinking_level(&self) -> io::Result<String> {
         self.decode("thinkingLevel", None)
     }
 
     /// `session.model`: the session's Pi `Model` object, `None` without one.
-    pub fn model(&self) -> io::Result<Option<Value>> {
+    pub fn current_model(&self) -> io::Result<Option<Value>> {
         self.decode("model", None)
     }
 

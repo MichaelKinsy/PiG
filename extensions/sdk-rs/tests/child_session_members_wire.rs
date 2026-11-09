@@ -108,12 +108,12 @@ fn members() -> Vec<Member> {
     member!("hasPendingBashMessages", |s| s.has_pending_bash_messages());
     member!("retryAttempt", |s| s.retry_attempt());
     member!("pendingMessageCount", |s| s.pending_message_count());
-    member!("sessionId", |s| s.session_id());
-    member!("sessionFile", |s| s.session_file());
+    member!("sessionId", |s| s.current_session_id());
+    member!("sessionFile", |s| s.current_session_file());
     member!("sessionName", |s| s.session_name());
-    member!("systemPrompt", |s| s.system_prompt());
-    member!("thinkingLevel", |s| s.thinking_level());
-    member!("model", |s| s.model());
+    member!("systemPrompt", |s| s.current_system_prompt());
+    member!("thinkingLevel", |s| s.current_thinking_level());
+    member!("model", |s| s.current_model());
     member!("routedModel", |s| s.routed_model());
     member!("scopedModels", |s| s.scoped_models());
     member!("steeringMode", |s| s.steering_mode());

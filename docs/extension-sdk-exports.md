@@ -86,7 +86,7 @@ None.
 | `AgentSession.isRetrying` | 0 | served | native:AgentSession.IsRetrying | native:AgentSession::is_retrying | native:AgentSession.is_retrying | native:pig:agent-session-retrying-p |
 | `AgentSession.isStreaming` | 0 | served | native:AgentSession.IsStreaming | native:AgentSession::is_streaming | native:AgentSession.is_streaming | native:pig:agent-session-streaming-p |
 | `AgentSession.messages` | 0 | served | native:AgentSession.Messages | native:AgentSession::messages | native:AgentSession.messages | native:pig:agent-session-messages |
-| `AgentSession.model` | 0 | served | native:AgentSession.Model | native:AgentSession::model | native:AgentSession.model | native:pig:agent-session-model |
+| `AgentSession.model` | 0 | served | native:AgentSession.CurrentModel | native:AgentSession::current_model | native:AgentSession.current_model | native:pig:agent-session-current-model |
 | `AgentSession.modelRuntime` | 0 | served | gap:C2SessionsGraph | gap:C2SessionsGraph | gap:C2SessionsGraph | gap:C2SessionsGraph |
 | `AgentSession.navigateTree` | 0 | served | native:AgentSession.NavigateTree | native:AgentSession::navigate_tree | native:AgentSession.navigate_tree | native:pig:agent-session-navigate-tree |
 | `AgentSession.pendingMessageCount` | 0 | served | native:AgentSession.PendingMessageCount | native:AgentSession::pending_message_count | native:AgentSession.pending_message_count | native:pig:agent-session-pending-message-count |
@@ -101,8 +101,8 @@ None.
 | `AgentSession.scopedModels` | 0 | served | native:AgentSession.ScopedModels | native:AgentSession::scoped_models | native:AgentSession.scoped_models | native:pig:agent-session-scoped-models |
 | `AgentSession.sendCustomMessage` | 0 | served | native:AgentSession.SendCustomMessage | native:AgentSession::send_custom_message | native:AgentSession.send_custom_message | native:pig:agent-session-send-custom-message |
 | `AgentSession.sendUserMessage` | 0 | served | native:AgentSession.SendUserMessage | native:AgentSession::send_user_message | native:AgentSession.send_user_message | native:pig:agent-session-send-user-message |
-| `AgentSession.sessionFile` | 0 | served | native:AgentSession.SessionFile | native:AgentSession::session_file | native:AgentSession.session_file | native:pig:agent-session-session-file |
-| `AgentSession.sessionId` | 0 | served | native:AgentSession.SessionID | native:AgentSession::session_id | native:AgentSession.session_id | native:pig:agent-session-session-id |
+| `AgentSession.sessionFile` | 0 | served | native:AgentSession.CurrentSessionFile | native:AgentSession::current_session_file | native:AgentSession.current_session_file | native:pig:agent-session-current-session-file |
+| `AgentSession.sessionId` | 0 | served | native:AgentSession.CurrentSessionID | native:AgentSession::current_session_id | native:AgentSession.current_session_id | native:pig:agent-session-current-session-id |
 | `AgentSession.sessionManager` | 0 | served | native:AgentSession.SessionManager | native:AgentSession::session_manager | native:AgentSession.session_manager | native:pig:agent-session-session-manager |
 | `AgentSession.sessionName` | 0 | served | native:AgentSession.SessionName | native:AgentSession::session_name | native:AgentSession.session_name | native:pig:agent-session-session-name |
 | `AgentSession.setActiveToolsByName` | 0 | served | native:AgentSession.SetActiveToolsByName | native:AgentSession::set_active_tools_by_name | native:AgentSession.set_active_tools_by_name | native:pig:agent-session-set-active-tools-by-name |
@@ -122,8 +122,8 @@ None.
 | `AgentSession.subscribe` | 0 | served | native:AgentSession.Subscribe | native:AgentSession::subscribe | native:AgentSession.subscribe | native:pig:agent-session-subscribe |
 | `AgentSession.summarizeForBugReport` | 0 | served | native:AgentSession.SummarizeForBugReport | native:AgentSession::summarize_for_bug_report | native:AgentSession.summarize_for_bug_report | native:pig:agent-session-summarize-for-bug-report |
 | `AgentSession.supportsThinking` | 0 | served | native:AgentSession.SupportsThinking | native:AgentSession::supports_thinking | native:AgentSession.supports_thinking | native:pig:agent-session-supports-thinking-p |
-| `AgentSession.systemPrompt` | 0 | served | native:AgentSession.SystemPrompt | native:AgentSession::system_prompt | native:AgentSession.system_prompt | native:pig:agent-session-system-prompt |
-| `AgentSession.thinkingLevel` | 0 | served | native:AgentSession.ThinkingLevel | native:AgentSession::thinking_level | native:AgentSession.thinking_level | native:pig:agent-session-thinking-level |
+| `AgentSession.systemPrompt` | 0 | served | native:AgentSession.CurrentSystemPrompt | native:AgentSession::current_system_prompt | native:AgentSession.current_system_prompt | native:pig:agent-session-current-system-prompt |
+| `AgentSession.thinkingLevel` | 0 | served | native:AgentSession.CurrentThinkingLevel | native:AgentSession::current_thinking_level | native:AgentSession.current_thinking_level | native:pig:agent-session-current-thinking-level |
 | `AgentSession.waitForIdle` | 0 | served | native:AgentSession.WaitForIdle | native:AgentSession::wait_for_idle | native:AgentSession.wait_for_idle | native:pig:agent-session-wait-for-idle |
 | `AgentSessionRuntime` | 1 | served | native:AgentSessionRuntime | native:AgentSessionRuntime | native:AgentSessionRuntime | native:pig:agent-session-runtime |
 | `AgentSessionRuntime.cwd` | 0 | served | native:AgentSessionRuntime.Cwd | native:AgentSessionRuntime::cwd | native:AgentSessionRuntime.cwd | native:pig:agent-session-runtime-cwd |

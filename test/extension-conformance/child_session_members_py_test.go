@@ -14,6 +14,7 @@ const childMembersPython = `import json
 import os
 import threading
 import time
+import warnings
 import pig_sdk
 
 
@@ -43,10 +44,10 @@ def new_extension():
 
         try:
             # Reads of a fresh session.
-            session_id = session.session_id
+            session_id = session.current_session_id
             out["sessionId"] = session_id != ""
-            out["sessionFile"] = session.session_file or ""
-            out["model"] = (session.model or {}).get("id")
+            out["sessionFile"] = session.current_session_file or ""
+            out["model"] = (session.current_model or {}).get("id")
             out["isIdle"] = session.is_idle
             out["isStreaming"] = session.is_streaming
             out["isCompacting"] = session.is_compacting
@@ -62,7 +63,7 @@ def new_extension():
             out["promptTemplates"] = len(session.prompt_templates)
             out["hasHandlers"] = session.has_extension_handlers("agent_start")
             out["lastTextStart"] = session.get_last_assistant_text() is None
-            out["systemPromptLen"] = len(session.system_prompt) > 0
+            out["systemPromptLen"] = len(session.current_system_prompt) > 0
 
             # Changes read back: each value is one no default holds.
             session.set_steering_mode("all")
@@ -92,7 +93,7 @@ def new_extension():
             out["setModelRefused"] = refused(lambda: session.set_model({"provider": "nokey", "id": "locked"}))
             session.set_model({"provider": "sentinel", "id": "echo"})
             session.set_thinking_level("off")
-            out["thinkingLevel"] = session.thinking_level
+            out["thinkingLevel"] = session.current_thinking_level
             out["availableThinkingLevels"] = session.get_available_thinking_levels()
             session.set_cache_warming_mode("off")
 
@@ -146,7 +147,7 @@ def new_extension():
                 out["cacheWarming"] = status["state"]
             out["exportHtmlInMemory"] = refused(lambda: session.export_to_html(os.path.join(directory, "export.html")))
             session.reload()
-            out["afterReload"] = session.session_id == session_id
+            out["afterReload"] = session.current_session_id == session_id
             # A file-backed session: its sessionFile is a real path (the in-memory one above is empty, so a reader that returned the fallback would still pass there).
             persisted = ctx.create_agent_session(pig_sdk.CreateAgentSessionOptions(
                 cwd=directory, agent_dir=os.path.join(directory, "agent"), model={"provider": "sentinel", "id": "echo"}, tools=[],
@@ -154,8 +155,8 @@ def new_extension():
                 resources=pig_sdk.ResourceOptions(no_extensions=True, no_skills=True, no_prompt_templates=True, no_themes=True, no_context_files=True),
             ))
             try:
-                persisted_file = persisted.session_file or ""
-                out["fileBackedSessionFile"] = persisted_file.startswith(directory) and persisted_file.endswith(".jsonl") and persisted.session_id in persisted_file
+                persisted_file = persisted.current_session_file or ""
+                out["fileBackedSessionFile"] = persisted_file.startswith(directory) and persisted_file.endswith(".jsonl") and persisted.current_session_id in persisted_file
             finally:
                 persisted.dispose()
             # An awaited member never holds a later call: execute_bash blocks in one thread and abort_bash, sent from this one, ends it.
@@ -178,6 +179,48 @@ def new_extension():
             session.dispose()
 
     ext.register_tool(pig_sdk.ToolDefinition(name="child_members", label="child_members", description="child_members", parameters={"type": "object"}, execute=child_members))
+
+    def child_snapshot(ctx, args):
+        directory = args["dir"]
+        sentinel = pig_sdk.ToolDefinition(name="sentinel_tool", label="sentinel", description="uppercases x", parameters={"type": "object"}, prompt_snippet="sentinel-snippet", execute=lambda c, params: "")
+        session = ctx.create_agent_session(pig_sdk.CreateAgentSessionOptions(
+            cwd=directory, agent_dir=os.path.join(directory, "agent"), model={"provider": "sentinel", "id": "echo"}, tools=["sentinel_tool"],
+            settings={"compaction": {"enabled": False}},
+            resources=pig_sdk.ResourceOptions(no_extensions=True, no_skills=True, no_prompt_templates=True, no_themes=True, no_context_files=True),
+            custom_tools=[sentinel],
+        ))
+        try:
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter("always")
+                snap_id, snap_file, snap_prompt = session.session_id, session.session_file or "", session.system_prompt
+                snap_model, snap_thinking, snap_tools = session.model, session.thinking_level, session.active_tools
+            if len(caught) != 6 or not all(issubclass(w.category, DeprecationWarning) for w in caught):
+                raise RuntimeError("the deprecated attributes did not warn: %r" % [str(w.message) for w in caught])
+            live_file = session.current_session_file or ""
+            out = {
+                "snapshotId": snap_id != "" and snap_id == session.current_session_id,
+                "snapshotFile": snap_file.startswith(directory) and snap_file.endswith(".jsonl") and snap_id in snap_file and snap_file == live_file,
+                "snapshotModel": (snap_model or {}).get("id"),
+                "snapshotThinking": snap_thinking,
+                "snapshotTools": snap_tools,
+                "snapshotPromptListsTool": "sentinel-snippet" in snap_prompt,
+                "liveStart": {"model": (session.current_model or {}).get("id"), "thinking": session.current_thinking_level,
+                              "prompt": session.current_system_prompt == snap_prompt, "tools": session.get_active_tool_names()},
+            }
+            session.set_active_tools_by_name([])
+            changed = session.current_system_prompt
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", DeprecationWarning)
+                out["afterChange"] = {
+                    "liveTools": session.get_active_tool_names(), "snapshotTools": session.active_tools,
+                    "livePromptDropsTool": changed != snap_prompt and "sentinel-snippet" not in changed,
+                    "snapshotPrompt": session.system_prompt == snap_prompt,
+                }
+            return json.dumps(out)
+        finally:
+            session.dispose()
+
+    ext.register_tool(pig_sdk.ToolDefinition(name="child_snapshot", label="child_snapshot", description="child_snapshot", parameters={"type": "object"}, execute=child_snapshot))
     return ext
 `
 
@@ -204,6 +247,33 @@ func TestChildAgentSessionMembersPython(t *testing.T) {
 				t.Fatalf("load: %v", failures)
 			}
 			checkChildMembers(t, loaded[0])
+		})
+	}
+}
+
+// TestChildAgentSessionSnapshotPython runs the Python child_snapshot scenario isolated and packed with a sibling: the deprecated attributes beside the live members.
+func TestChildAgentSessionSnapshotPython(t *testing.T) {
+	for _, isolation := range []string{"strict", "shared-ok"} {
+		t.Run(isolation, func(t *testing.T) {
+			host, _ := newChildSessionHost(t)
+			root := findModuleRoot(t)
+			cfg := packedFlagFactory(t, root, "python", "child-session", false)
+			cfg.Isolation = isolation
+			cfg.ContentHash = "python-child-members-" + fmt.Sprint(len(childMembersPython))
+			if err := os.WriteFile(filepath.Join(cfg.Source, cfg.Package+".py"), []byte(childMembersPython), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			configs := []subprocess.ExtConfig{cfg}
+			if isolation == "shared-ok" {
+				peer := packedFlagFactory(t, root, "python", "child-session-peer", false)
+				peer.Isolation = isolation
+				configs = append(configs, peer)
+			}
+			loaded, failures := host.LoadAll(t.Context(), configs)
+			if len(failures) != 0 || len(loaded) != len(configs) {
+				t.Fatalf("load: %v", failures)
+			}
+			checkChildSnapshot(t, loaded[0])
 		})
 	}
 }

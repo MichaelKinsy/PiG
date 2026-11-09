@@ -44,10 +44,10 @@ pub fn new_extension() -> Extension {
             let echo = json!({"provider": "sentinel", "id": "echo"});
 
             // Reads of a fresh session.
-            let id = session.session_id()?;
+            let id = session.current_session_id()?;
             out.insert("sessionId".into(), json!(!id.is_empty()));
-            out.insert("sessionFile".into(), json!(session.session_file()?.unwrap_or_default()));
-            out.insert("model".into(), session.model()?.map_or(Value::Null, |model| model["id"].clone()));
+            out.insert("sessionFile".into(), json!(session.current_session_file()?.unwrap_or_default()));
+            out.insert("model".into(), session.current_model()?.map_or(Value::Null, |model| model["id"].clone()));
             out.insert("isIdle".into(), json!(session.is_idle()?));
             out.insert("isStreaming".into(), json!(session.is_streaming()?));
             out.insert("isCompacting".into(), json!(session.is_compacting()?));
@@ -63,7 +63,7 @@ pub fn new_extension() -> Extension {
             out.insert("promptTemplates".into(), json!(session.prompt_templates()?.len()));
             out.insert("hasHandlers".into(), json!(session.has_extension_handlers("agent_start")?));
             out.insert("lastTextStart".into(), json!(session.get_last_assistant_text()?.is_none()));
-            out.insert("systemPromptLen".into(), json!(!session.system_prompt()?.is_empty()));
+            out.insert("systemPromptLen".into(), json!(!session.current_system_prompt()?.is_empty()));
 
             // Changes read back: each value is one no default holds.
             session.set_steering_mode("all")?;
@@ -95,7 +95,7 @@ pub fn new_extension() -> Extension {
             out.insert("setModelRefused".into(), json!(session.set_model(&json!({"provider": "nokey", "id": "locked"}), none).err().map(|error| error.to_string()).unwrap_or_default()));
             session.set_model(&echo, none)?;
             session.set_thinking_level("off", none)?;
-            out.insert("thinkingLevel".into(), json!(session.thinking_level()?));
+            out.insert("thinkingLevel".into(), json!(session.current_thinking_level()?));
             out.insert("availableThinkingLevels".into(), json!(session.get_available_thinking_levels()?));
             session.set_cache_warming_mode("off")?;
 
@@ -152,7 +152,7 @@ pub fn new_extension() -> Extension {
             let html = std::path::Path::new(&dir).join("export.html").to_string_lossy().into_owned();
             out.insert("exportHtmlInMemory".into(), json!(session.export_to_html(Some(&html), None).err().map(|error| error.to_string()).unwrap_or_default()));
             session.reload()?;
-            out.insert("afterReload".into(), json!(session.session_id()? == id));
+            out.insert("afterReload".into(), json!(session.current_session_id()? == id));
             // A file-backed session: its sessionFile is a real path (the in-memory one above is empty, so a reader that returned the fallback would still pass there).
             let persisted = ctx.create_agent_session(CreateAgentSessionOptions {
                 cwd: Some(dir.clone()),
@@ -163,8 +163,8 @@ pub fn new_extension() -> Extension {
                 resources: Some(ResourceOptions { no_extensions: true, no_skills: true, no_prompt_templates: true, no_themes: true, no_context_files: true, ..Default::default() }),
                 ..Default::default()
             })?;
-            let persisted_file = persisted.session_file();
-            let persisted_id = persisted.session_id();
+            let persisted_file = persisted.current_session_file();
+            let persisted_id = persisted.current_session_id();
             persisted.dispose();
             let (persisted_file, persisted_id) = (persisted_file?.unwrap_or_default(), persisted_id?);
             out.insert("fileBackedSessionFile".into(), json!(persisted_file.starts_with(&dir) && persisted_file.ends_with(".jsonl") && persisted_file.contains(&persisted_id)));
@@ -248,6 +248,60 @@ pub fn new_extension() -> Extension {
             Err(error) => ToolResult::Error(error.to_string()),
         }
     }));
+
+    // The deprecated creation-time fields beside the live members (checkChildSnapshot, childSnapshotWant): a file-backed session with one active tool, then its active tools are emptied.
+    e.register_tool(ToolDefinition::new("child_snapshot", "child_snapshot", "child_snapshot", json!({"type": "object"}), |ctx, args: Value| {
+        let dir = args["dir"].as_str().unwrap_or("").to_string();
+        let mut sentinel = ToolDefinition::new("sentinel_tool", "sentinel", "uppercases x", json!({"type": "object"}), |_ctx, _params: Value| ToolResult::text(""));
+        sentinel.prompt_snippet = Some("sentinel-snippet".to_string());
+        let session = match ctx.create_agent_session(CreateAgentSessionOptions {
+            cwd: Some(dir.clone()),
+            agent_dir: Some(std::path::Path::new(&dir).join("agent").to_string_lossy().into_owned()),
+            model: Some(json!({"provider": "sentinel", "id": "echo"})),
+            tools: Some(vec!["sentinel_tool".to_string()]),
+            settings: Some(json!({"compaction": {"enabled": false}})),
+            resources: Some(ResourceOptions { no_extensions: true, no_skills: true, no_prompt_templates: true, no_themes: true, no_context_files: true, ..Default::default() }),
+            custom_tools: vec![sentinel],
+            ..Default::default()
+        }) {
+            Ok(session) => session,
+            Err(error) => return ToolResult::Error(error.to_string()),
+        };
+        #[allow(deprecated)]
+        let outcome = (|| -> std::io::Result<Value> {
+            let (id, file, prompt) = (session.session_id.clone(), session.session_file.clone().unwrap_or_default(), session.system_prompt.clone());
+            let live_file = session.current_session_file()?.unwrap_or_default();
+            let live_prompt = session.current_system_prompt()?;
+            let start = json!({
+                "model": session.current_model()?.map_or(Value::Null, |model| model["id"].clone()),
+                "thinking": session.current_thinking_level()?,
+                "prompt": live_prompt == prompt,
+                "tools": session.get_active_tool_names()?,
+            });
+            session.set_active_tools_by_name(&[] as &[&str])?;
+            let changed = session.current_system_prompt()?;
+            Ok(json!({
+                "snapshotId": !id.is_empty() && id == session.current_session_id()?,
+                "snapshotFile": file.starts_with(&dir) && file.ends_with(".jsonl") && file.contains(&id) && file == live_file,
+                "snapshotModel": session.model["id"].clone(),
+                "snapshotThinking": session.thinking_level.clone(),
+                "snapshotTools": session.active_tools.clone(),
+                "snapshotPromptListsTool": prompt.contains("sentinel-snippet"),
+                "liveStart": start,
+                "afterChange": {
+                    "liveTools": session.get_active_tool_names()?,
+                    "snapshotTools": session.active_tools.clone(),
+                    "livePromptDropsTool": changed != prompt && !changed.contains("sentinel-snippet"),
+                    "snapshotPrompt": session.system_prompt == prompt,
+                },
+            }))
+        })();
+        session.dispose();
+        match outcome {
+            Ok(value) => ToolResult::text(value.to_string()),
+            Err(error) => ToolResult::Error(error.to_string()),
+        }
+    }));
     e
 }
 `
@@ -257,6 +311,15 @@ func TestChildAgentSessionMembersRust(t *testing.T) {
 	for _, isolation := range []string{"strict", "shared-ok"} {
 		t.Run(isolation, func(t *testing.T) {
 			checkChildMembers(t, loadChildMembersRust(t, isolation))
+		})
+	}
+}
+
+// TestChildAgentSessionSnapshotRust runs the Rust child_snapshot scenario packed, isolated and with a sibling: the deprecated fields beside the live members.
+func TestChildAgentSessionSnapshotRust(t *testing.T) {
+	for _, isolation := range []string{"strict", "shared-ok"} {
+		t.Run(isolation, func(t *testing.T) {
+			checkChildSnapshot(t, loadChildMembersRust(t, isolation))
 		})
 	}
 }

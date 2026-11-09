@@ -315,6 +315,36 @@ pub struct AgentSession {
     context: crate::context::Context,
     conn: Arc<Connection>,
     shared: Arc<SessionShared>,
+    /// `session.sessionId` as it was when the session was created.
+    ///
+    /// Deprecated: a snapshot, not the session's current value. Use [`AgentSession::current_session_id`].
+    #[deprecated(note = "a snapshot taken when the session was created, not its current value; use AgentSession::current_session_id")]
+    pub session_id: String,
+    /// `session.sessionFile` as it was when the session was created; `None` for an in-memory session.
+    ///
+    /// Deprecated: a snapshot, not the session's current value. Use [`AgentSession::current_session_file`].
+    #[deprecated(note = "a snapshot taken when the session was created, not its current value; use AgentSession::current_session_file")]
+    pub session_file: Option<String>,
+    /// `session.model` as it was when the session was created.
+    ///
+    /// Deprecated: a snapshot, not the session's current value. Use [`AgentSession::current_model`].
+    #[deprecated(note = "a snapshot taken when the session was created, not its current value; use AgentSession::current_model")]
+    pub model: Value,
+    /// `session.thinkingLevel` as it was when the session was created.
+    ///
+    /// Deprecated: a snapshot, not the session's current value. Use [`AgentSession::current_thinking_level`].
+    #[deprecated(note = "a snapshot taken when the session was created, not its current value; use AgentSession::current_thinking_level")]
+    pub thinking_level: String,
+    /// `session.getActiveToolNames()` as it was when the session was created.
+    ///
+    /// Deprecated: a snapshot, not the session's current value. Use [`AgentSession::get_active_tool_names`].
+    #[deprecated(note = "a snapshot taken when the session was created, not its current value; use AgentSession::get_active_tool_names")]
+    pub active_tools: Vec<String>,
+    /// `session.systemPrompt` as it was when the session was created.
+    ///
+    /// Deprecated: a snapshot, not the session's current value. Use [`AgentSession::current_system_prompt`].
+    #[deprecated(note = "a snapshot taken when the session was created, not its current value; use AgentSession::current_system_prompt")]
+    pub system_prompt: String,
     /// `CreateAgentSessionResult.modelFallbackMessage`.
     pub model_fallback_message: Option<String>,
     /// The errors of `CreateAgentSessionResult.extensionsResult.errors`, as `"path: error"`.
@@ -436,10 +466,29 @@ pub(crate) fn create(
             return Err(error);
         }
     };
+    let text = |key: &str| info[key].as_str().unwrap_or("").to_string();
+    #[allow(deprecated)]
     Ok(AgentSession {
         context: context.clone(),
         conn: conn.clone(),
         shared,
+        session_id: text("sessionId"),
+        session_file: info["sessionFile"]
+            .as_str()
+            .filter(|file| !file.is_empty())
+            .map(str::to_string),
+        model: info["model"].clone(),
+        thinking_level: text("thinkingLevel"),
+        active_tools: info["activeTools"]
+            .as_array()
+            .map(|tools| {
+                tools
+                    .iter()
+                    .filter_map(|t| t.as_str().map(str::to_string))
+                    .collect()
+            })
+            .unwrap_or_default(),
+        system_prompt: text("systemPrompt"),
         model_fallback_message: info["modelFallbackMessage"]
             .as_str()
             .filter(|m| !m.is_empty())

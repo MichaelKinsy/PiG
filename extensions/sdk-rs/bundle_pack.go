@@ -21,6 +21,7 @@ var bundledFiles = []string{
 	"src/branch_summary.rs",
 	"src/builtin_tool.rs",
 	"src/child_session.rs",
+	"src/child_session_members.rs",
 	"src/compaction_cutpoint.rs",
 	"src/compaction_estimate.rs",
 	"src/compaction_usage.rs",
@@ -102,4 +103,4 @@ var bundledFiles = []string{
 }
 
 // stagedHash is the staging hash of the files, as pigsdk names a staged SDK by it: the first 16 hex digits.
-const stagedHash = "e6982a1fc4a12089"
+const stagedHash = "29d7580b18bcd83d"

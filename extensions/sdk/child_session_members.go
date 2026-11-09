@@ -213,11 +213,11 @@ func (s *AgentSession) PendingMessageCount() (int, error) {
 	return member[int](s, "pendingMessageCount", nil)
 }
 
-// SessionID is `session.sessionId`.
-func (s *AgentSession) SessionID() (string, error) { return member[string](s, "sessionId", nil) }
+// CurrentSessionID is `session.sessionId`.
+func (s *AgentSession) CurrentSessionID() (string, error) { return member[string](s, "sessionId", nil) }
 
-// SessionFile is `session.sessionFile`; it is empty for an in-memory session, Pi's undefined.
-func (s *AgentSession) SessionFile() (string, error) {
+// CurrentSessionFile is `session.sessionFile`; it is empty for an in-memory session, Pi's undefined.
+func (s *AgentSession) CurrentSessionFile() (string, error) {
 	file, err := member[*string](s, "sessionFile", nil)
 	if file == nil {
 		return "", err
@@ -234,16 +234,16 @@ func (s *AgentSession) SessionName() (string, error) {
 	return *name, err
 }
 
-// SystemPrompt is `session.systemPrompt`.
-func (s *AgentSession) SystemPrompt() (string, error) { return member[string](s, "systemPrompt", nil) }
+// CurrentSystemPrompt is `session.systemPrompt`.
+func (s *AgentSession) CurrentSystemPrompt() (string, error) { return member[string](s, "systemPrompt", nil) }
 
-// ThinkingLevel is `session.thinkingLevel`.
-func (s *AgentSession) ThinkingLevel() (string, error) {
+// CurrentThinkingLevel is `session.thinkingLevel`.
+func (s *AgentSession) CurrentThinkingLevel() (string, error) {
 	return member[string](s, "thinkingLevel", nil)
 }
 
-// Model is `session.model`: the session's model object, nil without one.
-func (s *AgentSession) Model() (map[string]any, error) {
+// CurrentModel is `session.model`: the session's model object, nil without one.
+func (s *AgentSession) CurrentModel() (map[string]any, error) {
 	return member[map[string]any](s, "model", nil)
 }
 
