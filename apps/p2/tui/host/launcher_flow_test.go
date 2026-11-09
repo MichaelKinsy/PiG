@@ -45,7 +45,7 @@ func TestServerShippedTUIDrivesCreateSendQueuesStopAndReconnect(t *testing.T) {
 	// Server defaults sit below the visitor's local preferences; privileged bindings never come from the server.
 	mine := theme.DarkTheme.WithColor("accent", theme.Str("#123456"))
 	mine.Name = "mine"
-	l := startReal(t, launcherOptions{
+	l := startRealWith(t, append(append([]string(nil), realPlugins...), "coding-tools"), launcherOptions{
 		options: func(options *host.ClientOptions) {
 			options.Reconnect, options.Poll = 20*time.Millisecond, 50*time.Millisecond
 			options.Capabilities = &host.Capabilities{TrueColor: true, Platform: "linux"}
@@ -101,42 +101,19 @@ func TestServerShippedTUIDrivesCreateSendQueuesStopAndReconnect(t *testing.T) {
 	l.typed("unsent draft")
 	poll(t, func() bool { return l.draft() == "unsent draft" })
 	selected := l.client.Snapshot().Session
-	// Pi resizes to 80x24; the rows are many here so that a rerun of the queue steps (below) cannot push the first answer off the screen.
-	l.terminal.Resize(80, 150)
-	// Alt+Up must meet the follow-up still queued, and the fake provider's slow stream lasts about 3 s (200 tokens/s, Pi's too). On a machine so loaded that
-	// the stream ended first, the follow-up went out as a message of its own and there is nothing to restore: the steps then run again on a fresh stream.
-	idle := func() {
-		l.until(30*time.Second, "the run ending", func() bool { return !contains(l.terminal.screen(), "Working...") })
-	}
-	restored := false
-	for attempt := 0; attempt < 5 && !restored; attempt++ {
-		l.terminal.SendInput("\x15")
-		l.typed("slow stream")
-		l.terminal.SendInput(keyEnter)
-		// pi's working indicator in the editor border.
-		l.waitScreen(10*time.Second, "Working...")
-		l.typed("queued text")
-		// Alt+Enter in kitty's encoding: the virtual terminal reports the kitty protocol, which the runtime knows.
-		l.terminal.SendInput("\x1b[13;3u")
-		l.until(10*time.Second, "the follow-up queued or sent", func() bool {
-			screen := l.terminal.screen()
-			return contains(screen, "Follow-up: queued text") || !contains(screen, "Working...")
-		})
-		if !contains(l.terminal.screen(), "Follow-up: queued text") {
-			idle()
-			continue
-		}
-		l.terminal.SendInput("\x1b[1;3A")
-		l.until(10*time.Second, "Alt+Up's answer", func() bool {
-			return strings.Contains(l.draft(), "queued text") || contains(l.terminal.screen(), "queued message") || contains(l.terminal.screen(), "No queued messages")
-		})
-		if restored = strings.Contains(l.draft(), "queued text"); !restored {
-			idle()
-		}
-	}
-	if !restored {
-		t.Fatal("Alt+Up never met a queued follow-up")
-	}
+	// Alt+Up must meet the follow-up still queued: the run is held by a tool call that lasts until Esc stops it (no stream to outlast), so the follow-up
+	// cannot go out as a message of its own however loaded the machine is.
+	l.terminal.SendInput("\x15")
+	l.typed("hold-tool")
+	l.terminal.SendInput(keyEnter)
+	// pi's working indicator in the editor border.
+	l.waitScreen(10*time.Second, "Working...")
+	l.typed("queued text")
+	// Alt+Enter in kitty's encoding: the virtual terminal reports the kitty protocol, which the runtime knows.
+	l.terminal.SendInput("\x1b[13;3u")
+	l.waitScreen(10*time.Second, "Follow-up: queued text")
+	l.terminal.SendInput("\x1b[1;3A")
+	l.until(10*time.Second, "Alt+Up's answer", func() bool { return strings.Contains(l.draft(), "queued text") })
 	l.terminal.SendInput(keyEsc)
 	l.until(10*time.Second, "Esc clearing the working indicator (draft "+l.draft()+")", func() bool { return !contains(l.terminal.screen(), "Working...") })
 	port := fixture.Server.Port
@@ -155,7 +132,7 @@ func TestServerShippedTUIDrivesCreateSendQueuesStopAndReconnect(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = restarted.Close(context.Background()) })
-	pollFor(t, 20*time.Second, func() bool {
+	l.until(20*time.Second, "the reconnect showing the first answer and the draft", func() bool {
 		screen := l.terminal.screen()
 		return l.client.Connected() && contains(screen, "Echo: hello terminal") && contains(screen, "queued text")
 	})

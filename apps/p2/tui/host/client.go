@@ -1055,6 +1055,9 @@ func (c *Client) connect(attempt int) {
 	}
 	opened := false
 	var current Socket
+	// Every callback takes c.mu first, and a transport calls them from goroutines of its own, possibly before Socket returns: c.mu is held until `current`
+	// and c.socket are set, so none sees a socket that is not published.
+	c.mu.Lock()
 	current = c.transport.Socket("/chord", SocketEvents{
 		Open: func() {
 			c.mu.Lock()
@@ -1126,7 +1129,6 @@ func (c *Client) connect(attempt int) {
 			l.drop()
 		},
 	})
-	c.mu.Lock()
 	c.socket = current
 	c.mu.Unlock()
 }

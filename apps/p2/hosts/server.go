@@ -582,9 +582,7 @@ func (s *serverState) handle(response http.ResponseWriter, request *http.Request
 	// A stream (the sprite events) outlives the host's root scope: dispatch hands it back to run once the scope has ended, so
 	// closing the host never waits for it.
 	var stream func()
-	_, err := s.host.Root(func(ctx host.Ctx) (any, error) {
-		return nil, s.dispatch(response, request, path, ctx, &stream)
-	}, chordctx.Background(), host.RootOptions{})
+	err := s.serveRoot(func(ctx host.Ctx) error { return s.dispatch(response, request, path, ctx, &stream) })
 	if err == nil && stream != nil {
 		stream()
 		return
@@ -593,6 +591,46 @@ func (s *serverState) handle(response http.ResponseWriter, request *http.Request
 		fmt.Fprintln(os.Stderr, "p2 server: request failed", err)
 		http.Error(response, "", http.StatusInternalServerError)
 	}
+}
+
+// serveRoot runs fn, which writes the response, in a root scope of the host, and returns once fn does not write any more: the response has one writer at a
+// time. A root scope returns at once when the host closes (an uncooperative fn runs on and fails at its next use of Chord), and the caller then answers
+// the request itself (the error) or returns from the handler, while fn still writes. So an fn that has not begun is abandoned (it does nothing when it
+// does), and one that has is waited for; what it returned is the result then, not the scope's rejection.
+func (s *serverState) serveRoot(fn func(ctx host.Ctx) error) error {
+	var mu sync.Mutex
+	var abandoned, running, completed bool
+	var fnErr error
+	finished := make(chan struct{})
+	_, err := s.host.Root(func(ctx host.Ctx) (any, error) {
+		mu.Lock()
+		if abandoned {
+			mu.Unlock()
+			return nil, nil
+		}
+		running = true
+		mu.Unlock()
+		defer close(finished)
+		fnErr = fn(ctx)
+		completed = true
+		return nil, fnErr
+	}, chordctx.Background(), host.RootOptions{})
+	if err == nil {
+		return nil
+	}
+	mu.Lock()
+	abandoned = true
+	waits := running
+	mu.Unlock()
+	if !waits {
+		return err
+	}
+	<-finished
+	if completed {
+		return fnErr
+	}
+	// A panic of fn: the scope's rejection.
+	return err
 }
 
 func (s *serverState) dispatch(response http.ResponseWriter, request *http.Request, path string, ctx host.Ctx, stream *func()) error {

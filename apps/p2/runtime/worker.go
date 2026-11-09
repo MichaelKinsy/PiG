@@ -264,8 +264,8 @@ type Liveness struct {
 	// releases the count.
 	fenceHeld bool
 	stopping  bool
-	counts     map[string]int
-	watches    map[*livenessWatch]struct{}
+	counts    map[string]int
+	watches   map[*livenessWatch]struct{}
 }
 
 // NewLiveness is a Liveness with every count zero.
@@ -285,12 +285,9 @@ func (l *Liveness) object() *delta.JsonObject {
 var livenessKinds = []string{"activeCalls", "viewers", "durableTasks", "references", "calls", "jobs", "lingering"}
 
 // FollowActivity counts what keeps h busy (the references held on it, its calls, jobs and lingering objects, Chord's own
-// keep-alive counts) as part of the worker's: the worker is idle when those are zero too.
+// keep-alive counts) as part of the worker's: the worker is idle when those are zero too. The watch opens, and its first
+// counts are read, in a section of h's loop: the counts change there while the links of h hold references.
 func (l *Liveness) FollowActivity(h host.Host) error {
-	watch, err := h.Activity().Watch(chordctx.Background())
-	if err != nil {
-		return err
-	}
 	apply := func(value delta.JsonValue) {
 		counts, _ := value.(*delta.JsonObject)
 		if counts == nil {
@@ -301,14 +298,26 @@ func (l *Liveness) FollowActivity(h host.Host) error {
 			l.set(kind, int(count))
 		}
 	}
-	apply(watch.Value())
-	watch.Start(func(_ context.Context, call chord.WatchCall[delta.JsonValue]) error {
-		if call.Kind == chord.WatchCallValue {
-			apply(call.Value)
+	_, err := h.Root(func(ctx host.Ctx) (any, error) {
+		var watchErr error
+		if err := host.InSection(ctx, func() {
+			var watch chord.WatchHandle[delta.JsonValue]
+			if watch, watchErr = h.Activity().Watch(chordctx.Background()); watchErr != nil {
+				return
+			}
+			apply(watch.Value())
+			watch.Start(func(_ context.Context, call chord.WatchCall[delta.JsonValue]) error {
+				if call.Kind == chord.WatchCallValue {
+					apply(call.Value)
+				}
+				return nil
+			})
+		}); err != nil {
+			return nil, err
 		}
-		return nil
-	})
-	return nil
+		return nil, watchErr
+	}, chordctx.Background(), host.RootOptions{})
+	return err
 }
 
 // Value is the counts.
