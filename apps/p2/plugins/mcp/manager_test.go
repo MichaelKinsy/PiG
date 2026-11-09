@@ -791,20 +791,33 @@ func TestAToolCallInTheManagerDoesNotHoldTheHostsLoopAndLeaseChangesRacingTheHos
 			h := newMcpHost(t, func(log string) map[string]any { return map[string]any{"files": stdioEntry(t, log, nil)} })
 			one := h.at("one")
 			var calls sync.WaitGroup
+			// committed closes when the first setLocations has been answered: its lease is in. A watch on the leases cannot stand for it, because a caller that is quick releases its lease before the watch exists and the value is empty again.
+			committed := make(chan struct{})
+			var firstCommit sync.Once
 			for caller := 0; caller < 8; caller++ {
 				session := fmt.Sprintf("s%d", caller)
 				calls.Add(1)
 				go func() {
 					defer calls.Done()
 					for generation := 1; generation <= 4; generation++ {
-						_, _ = h.manager.Call("setLocations", delta.JsonObjectOf("session", session, "generation", float64(generation), "incarnation", "i", "locations", []any{one}), p2test.Background)
+						if _, err := h.manager.Call("setLocations", delta.JsonObjectOf("session", session, "generation", float64(generation), "incarnation", "i", "locations", []any{one}), p2test.Background); err == nil {
+							firstCommit.Do(func() { close(committed) })
+						}
 					}
 					_, _ = h.manager.Call("releaseLeases", delta.JsonObjectOf("session", session, "generation", float64(4)), p2test.Background)
 				}()
 			}
+			allAnswered := make(chan struct{})
+			go func() { calls.Wait(); close(allAnswered) }()
 			// The host ends as the first lease commits: the callers that committed read the placement for their reconcile at once.
-			if _, err := p2test.Until(h.manager.Member("leases"), func(value delta.JsonValue) bool { return len(value.([]any)) > 0 }, 0); err != nil {
-				t.Fatal(err)
+			select {
+			case <-committed:
+			case <-allAnswered:
+				select {
+				case <-committed:
+				default:
+					t.Fatal("no setLocations was answered")
+				}
 			}
 			h.shutdown()
 			calls.Wait()
