@@ -116,7 +116,9 @@ func contractFixtures() map[string]contractFixture {
 				{"UpdateContent", []any{&AssistantMessage{StopReason: "error", ErrorMessage: "boom"}}},
 			},
 		},
-		"AuthURL": {build: func(*testing.T) Component { return NewAuthURL("https://example.test/auth", func(string) error { return nil }, noop) }},
+		"AuthURL": {build: func(*testing.T) Component {
+			return NewAuthURL("https://example.test/auth", func(string) error { return nil }, noop)
+		}},
 		"BashExecutionComponent": {
 			build: func(t *testing.T) Component { return NewBashExecutionComponent("echo hi", contractTUI(t), false, 1) },
 			extras: []contractCall{
@@ -135,10 +137,12 @@ func contractFixtures() map[string]contractFixture {
 				return NewCustomMessageComponent(&CustomMessage{CustomType: "card", Content: "body"}, func(*CustomMessage, MessageRenderOptions) Component { return NewText("custom card") }, nil, 1, nil, "id", "")
 			},
 		},
-		"DiffComponent":         {build: func(*testing.T) Component { return NewDiffComponent("-a\n+b\n", "f.txt") }},
-		"DynamicBorder":         {build: func(*testing.T) Component { return NewDynamicBorder() }},
-		"Editor":                {build: func(*testing.T) Component { return NewEditor() }},
-		"ExtensionInputComponent": {build: func(*testing.T) Component { return NewExtensionInputComponent("Title", "placeholder", func(string) {}, noop) }},
+		"DiffComponent": {build: func(*testing.T) Component { return NewDiffComponent("-a\n+b\n", "f.txt") }},
+		"DynamicBorder": {build: func(*testing.T) Component { return NewDynamicBorder() }},
+		"Editor":        {build: func(*testing.T) Component { return NewEditor() }},
+		"ExtensionInputComponent": {build: func(*testing.T) Component {
+			return NewExtensionInputComponent("Title", "placeholder", func(string) {}, noop)
+		}},
 		"ExtensionSelectorComponent": {build: func(*testing.T) Component {
 			return NewExtensionSelectorComponent("Title", []string{"one", "two", "three"}, func(string) {}, noop)
 		}},
@@ -146,8 +150,10 @@ func contractFixtures() map[string]contractFixture {
 		"HStack": {build: func(*testing.T) Component {
 			return NewHStack([]StackChild{{Component: NewText("left")}, {Component: NewText("right")}}, StackOptions{})
 		}},
-		"LoginDialogComponent": {build: func(t *testing.T) Component { return NewLoginDialogComponent(contractTUI(t), "github-copilot", func(bool, string) {}, "") }},
-		"Markdown":             {build: func(*testing.T) Component { return NewMarkdown("# heading\n\nbody text") }},
+		"LoginDialogComponent": {build: func(t *testing.T) Component {
+			return NewLoginDialogComponent(contractTUI(t), "github-copilot", func(bool, string) {}, "")
+		}},
+		"Markdown": {build: func(*testing.T) Component { return NewMarkdown("# heading\n\nbody text") }},
 		"ModelSelectorComponent": {build: func(t *testing.T) Component {
 			ui, _ := newModelSelectorTUI(t)
 			current, other := selectorTestModel("current-model", "Current Model"), selectorTestModel("other-model", "Other Model")
@@ -155,7 +161,9 @@ func contractFixtures() map[string]contractFixture {
 			t.Cleanup(selector.Dispose)
 			return selector
 		}},
-		"MouseRegion":           {build: func(*testing.T) Component { return NewMouseRegion(NewText("region"), func(TuiMouseEvent) *TuiMouseEventResult { return nil }) }},
+		"MouseRegion": {build: func(*testing.T) Component {
+			return NewMouseRegion(NewText("region"), func(TuiMouseEvent) *TuiMouseEventResult { return nil })
+		}},
 		"OAuthSelectorComponent": {build: func(*testing.T) Component {
 			return NewOAuthSelectorComponent("login", []OAuthProvider{{ID: "a", Name: "Alpha", AuthType: "oauth"}, {ID: "b", Name: "Beta", AuthType: "api_key"}}, func(string, string) {}, noop)
 		}},
@@ -461,10 +469,21 @@ func TestAParentContainerShowsWhatAnyExportedMutatorChanged(t *testing.T) {
 // exempted with its reason.
 func TestEveryExportedComponentTypeIsInTheCacheContract(t *testing.T) {
 	fset := token.NewFileSet()
-	pkgs, err := parser.ParseDir(fset, ".", func(info os.FileInfo) bool { return !strings.HasSuffix(info.Name(), "_test.go") }, 0)
+	entries, err := os.ReadDir(".")
 	if err != nil {
 		t.Fatal(err)
 	}
+	var files []*ast.File
+	for _, entry := range entries {
+		if name := entry.Name(); strings.HasSuffix(name, ".go") && !strings.HasSuffix(name, "_test.go") {
+			file, err := parser.ParseFile(fset, name, nil, 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			files = append(files, file)
+		}
+	}
+	pkgs := [][]*ast.File{files}
 	components := map[string]bool{}
 	embeds := func(field *ast.Field) bool {
 		expr := field.Type
@@ -475,7 +494,7 @@ func TestEveryExportedComponentTypeIsInTheCacheContract(t *testing.T) {
 		return ok && (id.Name == "Container" || id.Name == "BaseComponent" || id.Name == "invalidatable")
 	}
 	for _, pkg := range pkgs {
-		for _, file := range pkg.Files {
+		for _, file := range pkg {
 			for _, decl := range file.Decls {
 				switch d := decl.(type) {
 				case *ast.GenDecl:
