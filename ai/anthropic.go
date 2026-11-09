@@ -1922,7 +1922,7 @@ func decodeAnthropicDeltaEvent(sse anthropicStreamEvent, ev *anthEventContentBlo
 // decodeAnthropicDeltaEventReflect is the decode with json.Unmarshal and the second look, for every record the fast decode leaves.
 func decodeAnthropicDeltaEventReflect(sse anthropicStreamEvent, ev *anthEventContentBlockDelta) error {
 	text := sse.JSON
-	err := jsonwire.Unmarshal(text, ev)
+	err := json.Unmarshal(jsonwire.Bytes(text), ev)
 	if _, ok := errors.AsType[*json.UnmarshalTypeError](err); ok {
 		if coerced, ok := coerceAnthropicDelta([]byte(text)); ok {
 			*ev, err = coerced, nil
