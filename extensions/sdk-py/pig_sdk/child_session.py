@@ -15,7 +15,7 @@ Async contract (Pi's promises, kept as blocking calls):
 * The session ends with the connection: its run is aborted, its tools' contexts are cancelled and no listener runs afterwards.
 * The other members of Pi's AgentSession run on the session the host owns (``childSession.op``), so each returns what the session holds now. Pi's getters
   are properties; a member Pi types ``X | undefined`` is ``None``; values are Pi's JSON shapes as dicts and lists. A member Pi declares ``async``
-  (``wait_for_idle``, ``reload``, ``compact``, ``navigate_tree``, ``execute_bash``, ``export_to_html``, ``summarize_for_bug_report``, ``set_model``,
+  (``wait_for_idle``, ``reload``, ``compact``, ``navigate_tree``, ``execute_bash``, ``export_to_html``, ``summarize_for_bug_report``, ``set_model``, ``cycle_model``,
   ``send_custom_message``, ``send_user_message``) blocks until its Promise settles, starts in call order and never holds a later call: abort a running
   ``compact``, ``navigate_tree`` or ``execute_bash`` with ``abort_compaction``, ``abort_branch_summary`` or ``abort_bash`` from another thread. Scope: a
   tool's ``execute`` and hooks do not cross the wire, ``execute_bash`` has no ``onChunk`` (the chunks reach ``subscribe`` listeners).
@@ -383,7 +383,7 @@ class AgentSession:
 
     def cycle_model(self, direction: str = "forward", *, persist: bool = False) -> dict[str, Any] | None:
         """``session.cycleModel(direction, options)``: ``direction`` is ``"forward"`` or ``"backward"``. Returns ``{"model", "thinkingLevel", "isScoped"}``, ``None`` when there is no model to cycle to."""
-        return self._member("cycleModel", {"direction": direction, "persist": persist})
+        return self._member_async("cycleModel", {"direction": direction, "persist": persist})
 
     def set_thinking_level(self, level: str, *, persist: bool = False) -> None:
         """``session.setThinkingLevel(level, options)``; the level is clamped to the model."""
