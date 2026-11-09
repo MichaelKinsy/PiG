@@ -1,0 +1,3 @@
+### Fixed
+
+- Opening the model selector no longer leaves a catalog refresh running after the session ends. Before, the refresh the selector starts and the shared catalog operation behind it were not joined by anything, so with a file-backed registry the operation could still write `auth.json` and `models-store.json` in the agent directory after shutdown or after the registry's model tasks were closed. The selector's refresh is now an owned task of the interactive mode, and the operation a task of the model registry, and shutdown cancels and joins both; the refresh result and the picker are unchanged. <!-- fix: 81a9b7614 -->
