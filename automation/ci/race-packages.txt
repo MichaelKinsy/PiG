@@ -3,7 +3,9 @@
 # missing here fails `make race-coverage`). A path with its own go.mod is a nested module, run as `go test ./...` inside it.
 # Groups are the matrix of .github/workflows/nightly.yml.
 #
-# group   path   [reason, for exempt]
+# group   path   [reason, for exempt | `workspace`, for a nested module that only builds inside a go.work]
+# `workspace` runs the module without GOWORK=off (test-race-nightly.sh): the nearest go.work above it, the repository's or the module's own
+# (apps/p2desktop has one), resolves its sibling modules. race-coverage.sh accepts nothing else in the third column of a group entry.
 ai    ./ai
 ai    ./ai/providers/bedrock
 rest  ./agent
@@ -14,8 +16,8 @@ rest  ./durable/core/driver
 rest  ./durable/core/sqlhost
 rest  ./durable/storage/store
 rest  ./coding/extension/host/subprocess
-rest  ./apps/p2
-rest  ./apps/p2desktop
+rest  ./apps/p2 workspace
+rest  ./apps/p2desktop workspace
 host  ./coding/extension
 host  ./coding/extension/host/inproc
 host  ./coding/extension/host/runtimecell
@@ -78,7 +80,7 @@ libs  ./internal/terminalquestion
 libs  ./internal/testenv
 libs  ./mcp/mcptest
 libs  ./piglets/pig-bolt
-libs  ./piglets/porter/extensions/pig-porter
+libs  ./piglets/porter/extensions/pig-porter workspace
 libs  ./piglets/standard
 libs  ./durable/images
 libs  ./internal/nodefs
