@@ -550,7 +550,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-53312d8](#bf-53312d8) | `pi.exec()` no longer buffers a command's output without limit, which exhausted memory when a command printed… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-53312d8-2](#bf-53312d8-2) | `pi.exec()` no longer waits forever for a command that ignores SIGTERM after a timeout, an abort or the… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-53385a3](#bf-53385a3) | Registering a large MCP catalog, building a CodeMode sandbox from one, and CodeMode tool discovery were… | PiG's own defect | All platforms | 0.5.2 |
-| [BF-536faf0](#bf-536faf0) | A load error no longer loses the cause a Go, Rust, Python or Lisp extension's runner wrote when it failed its… | PiG's own defect | All platforms | Unreleased |
+| [BF-536faf0](#bf-536faf0) | A failed extension load could report a less specific error than the extension's stderr gave | PiG's own defect | All platforms | Unreleased |
 | [BF-5380e0a](#bf-5380e0a) | fix(extension): load failure shows the extension's own cause; registration edge-case rows | PiG's own defect | All platforms | Unreleased |
 | [BF-54283ce](#bf-54283ce) | fix(extension): Shutdown closes live child sessions and releases the objects they hold | PiG's own defect | All platforms | Unreleased |
 | [BF-542b536](#bf-542b536) | fix(cli): PIG_VERSION_FORMAT=pi prints the pinned Pi package version | PiG's own defect | All platforms | Unreleased |
@@ -9286,17 +9286,17 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 ### BF-536faf0
 
-**A load error no longer loses the cause a Go, Rust, Python or Lisp extension's runner wrote when it failed its…**
+**A failed extension load could report a less specific error than the extension's stderr gave**
 
 - **Source:** PiG's own defect
-- **Symptom:** A load error no longer loses the cause a Go, Rust, Python or Lisp extension's runner wrote when it failed its only member and exited at once.
+- **Symptom:** A failed extension load could report a less specific error than the extension's stderr gave.
 - **Root cause:** A runner that fails its only member writes the cause to stderr, closes the member's socket and exits. The host reads the socket closing, flushes the console pipe and reads the cause from the stderr log; but the reaper's finish had already closed the pipe behind the exited process, and flush returned at once on a closed pipe while the copy was still forwarding what the process wrote. The load error then lacked the factory's own failure and read as a bare "connection closed before register", so an isolated member and the same member in a shared cell reported different errors. A flush on a closed pipe now waits, bounded by consoleFlushWait, for the copy to end.
-- **User impact:** Lost or altered data
+- **User impact:** An operation failed or was rejected
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `536faf0fb3` (2026-11-09)
 - **Tests:** None recorded.
-- **Release note:** A load error no longer loses the cause a Go, Rust, Python or Lisp extension's runner wrote when it failed its only member and exited at once. A factory that returned nothing after a host helper call was reported as a bare "connection closed before register" when the host read the log before its copy had forwarded the runner's last line, while the same factory in a shared cell reported "factory returned nil". The host now waits for that copy to end, within two seconds, before it reads the cause.
+- **Release note:** A failed extension load could report a less specific error than the extension's stderr gave. When a Go, Rust, Python or Lisp runner failed its only member and exited at once, the host read the stderr log before its copy had forwarded the runner's last line, so a factory that returned nothing after a host helper call was reported as a bare "connection closed before register", while the same factory in a shared cell reported "factory returned nil". The host now waits for that copy to end, within two seconds, before it reads the cause.
 
 ### BF-5380e0a
 
