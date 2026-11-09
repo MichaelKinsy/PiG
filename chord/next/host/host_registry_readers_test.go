@@ -228,6 +228,58 @@ func TestOlderReadersWithoutAValueMappingAndForAReaderNewerThanTheProviderParkRe
 	must(t, host.Close(background))
 }
 
+// overdueLoop is a loop whose timer of one delay is due the moment its section ends, before the goroutine that armed it
+// runs on: the deadline of a `host.registry` call that the machine let the waiter miss, as a loaded CI runner does with a
+// 5 ms one. Pi's single event loop cannot do that to its `await`: the microtasks after the arming section (the
+// publication's, the first `usable()`) run before any timer, so the reason the registry cannot be read is what the
+// deadline reports.
+type overdueLoop struct {
+	*Loop
+	delay time.Duration
+}
+
+var _ sectionLoop = (*overdueLoop)(nil)
+
+// AfterFunc is the real timer, except for the delay that is overdue: its job is queued as a microtask.
+func (l *overdueLoop) AfterFunc(d time.Duration, job func()) Timer {
+	if d != l.delay {
+		return l.Loop.AfterFunc(d, job)
+	}
+	timer := &overdueTimer{job: job}
+	l.Queue(func() {
+		if timer.state.CompareAndSwap(timerPending, timerFired) {
+			timer.job()
+		}
+	})
+	return timer
+}
+
+type overdueTimer struct {
+	state atomic.Int32
+	job   func()
+}
+
+// Stop implements Timer.
+func (t *overdueTimer) Stop() bool { return t.state.CompareAndSwap(timerPending, timerStopped) }
+
+func TestReadersAHostRegistryWhoseDeadlineElapsedBeforeItsFirstLookReportsWhyTheRegistryIsNotUsable(t *testing.T) {
+	const deadline = 5 * time.Millisecond
+	host, _ := rvPlugins(t, HostOptions{loop: &overdueLoop{Loop: NewLoop(), delay: deadline}}, rvPlugin("@app/sum", func(h FacetHost, _ FacetSelf) error {
+		return rvServeSum(h, rvTotalCompose, nil)
+	}))
+	for _, registry := range []registries.Registry[any, any]{rvSumV1, rvSumV3} {
+		_, err := host.Registry(background, registry, rvWithin(deadline))
+		if chordErr, ok := data.IsChordErrorCode(err, data.CodeContractMismatch); !ok {
+			t.Fatalf("host.registry(v%d) = %v, want contract_mismatch (%v)", registry.Version, err, chordErr)
+		}
+	}
+	_, err := host.Registry(background, rvRegistry(t, "app.nobody", 1), rvWithin(deadline))
+	if chordErr, ok := data.IsChordErrorCode(err, data.CodeUnavailable); !ok || chordErr.Reason != data.ReasonUndeclared {
+		t.Fatalf("host.registry(app.nobody) = %v, want unavailable/undeclared", err)
+	}
+	must(t, host.Close(background))
+}
+
 func TestOlderReadersDropAnOlderReadersLastGoodMappingAfterAContributorItWasBuiltFromFailedLive(t *testing.T) {
 	current := rvRegistry(t, "app.mapped", 2)
 	old := rvRegistry(t, "app.mapped", 1)
