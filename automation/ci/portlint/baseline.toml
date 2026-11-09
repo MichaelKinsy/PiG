@@ -5925,12 +5925,6 @@ snippet = "return runPublish(context.Background(), args, stdout, stderr, configu
 
 [[hit]]
 check = "ctxbackground"
-file = "coding/pigletbuild/records.go"
-func = "smokeArtifact"
-snippet = "ctx, cancel := context.WithTimeout(context.Background(), smokeArtifactTimeout)"
-
-[[hit]]
-check = "ctxbackground"
 file = "coding/resource_loader.go"
 func = "DefaultResourceLoader.Reload"
 snippet = "return l.ReloadWith(context.Background(), options...)"

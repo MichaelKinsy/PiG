@@ -644,17 +644,19 @@ func sha256Sum(data []byte) []byte {
 }
 
 // smokeArtifactTimeout bounds how long the artifact's `--version` run may take once its process has started. The wait
-// for the start is not charged to it: a first start can block in the operating system (Windows scans a freshly written
-// executable before it runs it, which on a loaded machine has taken over a minute), and a process that has not started
-// has not hung. A started artifact that does not exit still fails.
+// for the start is not charged to it: a first start can block in the operating system (Windows is suspected to scan a
+// freshly written executable before it runs it; that is the leading hypothesis for the Windows failure of
+// TestKeepModePigletBuildsASignedBinary, not a measured fact), and a process that has not started has not hung. A
+// started artifact that does not exit still fails.
 var smokeArtifactTimeout = 60 * time.Second // pig additive (D18): Piglet binary builds are PiG's own; Pi has no artifact check.
 
 // smokeStart starts the artifact's process. Tests replace it to model a first start that blocks.
 var smokeStart = (*exec.Cmd).Start
 
-// smokeArtifact runs the artifact's `--version`. The start waits only for the operating system and the build's
-// context; the run, from the moment the process exists, has smokeArtifactTimeout. A failure names which of the two was
-// spent, so a log tells a slow start from a hang.
+// smokeArtifact runs the artifact's `--version`. The start waits only for the operating system: os/exec watches ctx
+// only before and after the start, so a start the operating system never returns from is not interrupted and is
+// unbounded. The run, from the moment the process exists, has smokeArtifactTimeout, and ctx cancels it. A failure
+// names the time the start took and what the process printed, so a log tells a slow start from a hang.
 func smokeArtifact(ctx context.Context, path string) error {
 	cmd := linkerexec.CommandContext(ctx, path, "--version")
 	var output bytes.Buffer

@@ -1,3 +1,4 @@
+ 1 file changed, 15 insertions(+), 4 deletions(-)
 {
   "goVersion": "1.27",
   "packages": [
@@ -178652,9 +178653,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(lock buildLock, p *github.com/MichaelKinsy/PiG/coding/piglet.Piglet, artifactPath string) (binaryBuildRecords, error)"
+        "type": "func(ctx context.Context, lock buildLock, p *github.com/MichaelKinsy/PiG/coding/piglet.Piglet, artifactPath string) (binaryBuildRecords, error)"
       },
-      "shapeHash": "sha256:066ea2228b6ee3248e051ffc9bec8e21c935edf66ab504bd37f4d3856e158f1c"
+      "shapeHash": "sha256:45ebe44542c23b3ea069b87d7947d75559dd4590fc53e6ff45b072e4f4d0e71e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#buildGoCell",
@@ -180852,9 +180853,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(path string) error"
+        "type": "func(ctx context.Context, path string) error"
       },
-      "shapeHash": "sha256:994416f39888c33ce485b66148e3a3a2f3d65db3841cf51fef67eec1cdc34d1b"
+      "shapeHash": "sha256:7076fba2f8715cf92c08cd86fb19e5bef422912d0a45a697283f71d34e70b9bc"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#smokeArtifactTimeout",
@@ -180987,6 +180988,17 @@
         "type": "func(buf *[32]byte) int"
       },
       "shapeHash": "sha256:2dfd215036b14c3898ddd16ce618fec9fa6ba141357d49869e3171fbf3801867"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#smokeStart",
+      "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
+      "name": "smokeStart",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "func(*os/exec.Cmd) error"
+      },
+      "shapeHash": "sha256:f4063364fe78e70a3e4a747088863887020617706d16f29cfd7c5c13733282a5"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#sortedAssets",
