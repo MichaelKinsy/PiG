@@ -187,6 +187,8 @@ const (
 )
 
 // writeWarmStep is how many bytes a streaming write call's content of length n grows before its next warm-up.
+//
+//portlint:allow numbers a byte count of pig-only pacing (D112): no JS expression to match, and a step a byte short moves only when a warm-up runs
 func writeWarmStep(n int) int { return min(max(n/16, writeWarmMinStep), writeWarmMaxStep) }
 
 // warmWholeHighlight keeps the highlighting of the whole file of a streaming write call continuing from the text so far. The

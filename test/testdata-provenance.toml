@@ -88,12 +88,12 @@ owner = "pi"
 generator = "test/parity/testdata/mermaid-labels-pi.mjs"
 
 [[golden]]
-paths = ["internal/mermaid/testdata/parse-golden.jsonl"]
+paths = ["internal/mermaid/testdata/parse-golden.jsonl.gz"]
 owner = "pi"
 generator = "test/parity/testdata/mermaid-parse-pi.mjs"
 
 [[golden]]
-paths = ["internal/mermaid/testdata/render-golden.jsonl"]
+paths = ["internal/mermaid/testdata/render-golden.jsonl.gz"]
 owner = "pi"
 generator = "test/parity/testdata/mermaid-pi.mjs"
 
