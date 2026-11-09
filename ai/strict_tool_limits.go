@@ -25,6 +25,7 @@ func isStrictToolLimitErrorMessage(message string) bool {
 }
 
 // maxSessionsOverStrictToolLimits is upstream MAX_SESSIONS_OVER_STRICT_TOOL_LIMITS.
+// upstream: packages/ai/src/api/strict-tool-limits.ts:MAX_SESSIONS_OVER_STRICT_TOOL_LIMITS
 const maxSessionsOverStrictToolLimits = 10_000
 
 // strictToolLimitSessions is upstream sessionsOverStrictToolLimits: the sessions whose strict tools Claude rejected for exceeding its
