@@ -3,6 +3,7 @@ package contracttest
 import (
 	"bufio"
 	"bytes"
+	"compress/gzip"
 	"embed"
 	"encoding/hex"
 	"encoding/json"
@@ -18,17 +19,21 @@ type Reporter interface {
 	Fatalf(format string, args ...any)
 }
 
-//go:embed testdata/oracle/*.jsonl
+//go:embed testdata/oracle/*.jsonl.gz
 var oracle embed.FS
 
 func rows[R any](tb Reporter, name string) []R {
 	tb.Helper()
-	data, err := oracle.ReadFile("testdata/oracle/" + name)
+	data, err := oracle.ReadFile("testdata/oracle/" + name + ".gz")
+	if err != nil {
+		tb.Fatalf("oracle vectors %s: %v", name, err)
+	}
+	unzipped, err := gzip.NewReader(bytes.NewReader(data))
 	if err != nil {
 		tb.Fatalf("oracle vectors %s: %v", name, err)
 	}
 	var out []R
-	sc := bufio.NewScanner(bytes.NewReader(data))
+	sc := bufio.NewScanner(unzipped)
 	sc.Buffer(make([]byte, 0, 1<<20), 16<<20)
 	for sc.Scan() {
 		var row R
