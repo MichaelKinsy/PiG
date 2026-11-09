@@ -368,11 +368,14 @@ func (l *Launcher) onResize() {
 	}
 }
 
-// finish ends the client with code: the terminal given back, the sockets closed, the sandbox ended.
-// finishAsync ends the client from the loop's own goroutine: finish waits for the loop, so it cannot run on it.
+// finishAsync ends the client from the loop, as Pi's `void this.finish(code)` does: the synchronous prefix (beginFinish: finished, the
+// terminal given back, RESET_MODES written, the sockets closed) runs now, in the caller's turn, so no event queued behind it is
+// handled before it (launcher.ts:207-218); what Pi awaits (the sandbox's termination, the exit) runs on a goroutine, because
+// endFinish waits for the loop, so it cannot run on it.
 func (l *Launcher) finishAsync(code int) {
-	//portlint:allow golifetime ends with finish, which closes loopDone and the sandbox; it runs once (the `finished` flag) and every post it makes is dropped once the loop ended
-	go l.finish(code) //portlint:allow asyncorder launcher.ts:150-154, 244, 253, 279, 282 `void this.finish(...)` starts the finish unawaited, as here; finish queues its work to the loop, which orders it, and runs once (the finished flag)
+	sandbox := l.beginFinish()
+	//portlint:allow golifetime ends with the launcher: it closes l.ctx, ends the sandbox and waits for the loop, which stops once finished is set
+	go l.endFinish(code, sandbox) //portlint:allow asyncorder launcher.ts:219-220 `await this.#sandbox?.terminate(); this.#exit(code)` is the part of finish Pi awaits, after the synchronous prefix beginFinish ran on the loop; the exit code is delivered once (exited)
 }
 
 // outdatedAsync restarts the sandbox for a newer base bundle off the loop (it downloads).
@@ -381,38 +384,52 @@ func (l *Launcher) outdatedAsync() {
 	go l.outdated() //portlint:allow asyncorder launcher.ts:275 `void this.#outdated()` starts it unawaited, as here; it reads the loop's state through sync and restarts through the loop
 }
 
+// finish ends the client with code from outside the loop: the terminal given back, the sockets closed, the sandbox ended.
 func (l *Launcher) finish(code int) {
 	done := make(chan struct{})
 	var sandbox *Sandbox
 	l.post(func() {
 		defer close(done)
-		if l.finished {
-			return
-		}
-		l.finished = true
-		if l.stopResize != nil {
-			l.stopResize()
-		}
-		if l.restoreSig != nil {
-			l.restoreSig()
-		}
-		if l.term.IsTTY() {
-			_ = l.term.SetRaw(false)
-		}
-		if l.prompt != nil {
-			l.prompt.answer <- false
-			l.prompt = nil
-		}
-		_, _ = io.WriteString(l.output, resetModes)
-		l.closeSockets()
-		sandbox = l.sandbox
-		l.sandbox = nil
-		l.generation++
+		sandbox = l.beginFinish()
 	})
 	select {
 	case <-done:
 	case <-l.loopDone:
 	}
+	l.endFinish(code, sandbox)
+}
+
+// beginFinish is the synchronous prefix of Pi's finish (launcher.ts:207-218), on the loop: the launcher is finished, the terminal
+// given back, the open prompt answered no, RESET_MODES written, the sockets closed. It returns the sandbox to end; nil when the
+// launcher was finished already.
+func (l *Launcher) beginFinish() *Sandbox {
+	if l.finished {
+		return nil
+	}
+	l.finished = true
+	if l.stopResize != nil {
+		l.stopResize()
+	}
+	if l.restoreSig != nil {
+		l.restoreSig()
+	}
+	if l.term.IsTTY() {
+		_ = l.term.SetRaw(false)
+	}
+	if l.prompt != nil {
+		l.prompt.answer <- false
+		l.prompt = nil
+	}
+	_, _ = io.WriteString(l.output, resetModes)
+	l.closeSockets()
+	sandbox := l.sandbox
+	l.sandbox = nil
+	l.generation++
+	return sandbox
+}
+
+// endFinish is what Pi's finish awaits: the launcher's context ended, the sandbox terminated, the loop stopped, then the exit code.
+func (l *Launcher) endFinish(code int, sandbox *Sandbox) {
 	l.cancel()
 	if sandbox != nil {
 		sandbox.Terminate()
@@ -606,7 +623,7 @@ func (l *Launcher) dialed(id int, socket *linkSocket, sandbox *Sandbox, conn *we
 	socket.open = true
 	sandbox.Post(LauncherMessage{Kind: "socket_opened", Socket: id})
 	//portlint:allow golifetime ends when the socket closes (close ends out and the connection), which the launcher's finish does for every socket
-	go socket.writeLoop() //portlint:allow asyncorder launcher.ts:330 #send writes each frame to the socket as it arrives; writeLoop drains out in that order and ends when close ends out
+	go socket.writeLoop() //portlint:allow asyncorder launcher.ts:328-335 #send writes each frame to the socket as it arrives; writeLoop drains out in that order and ends when close ends out
 	//portlint:allow golifetime ends when the connection closes (close does, and the launcher's finish closes every socket)
 	go func() { //portlint:allow asyncorder launcher.ts:317-329 the socket's message and close events: each message goes to the sandbox in read order, and the close is posted to the loop
 		for {
