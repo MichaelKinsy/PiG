@@ -293850,6 +293850,17 @@
       "shapeHash": "sha256:edab9c65ed6924d915e2b6677b7660b58d92dbcb0fc58ac2c5e833a6077b7077"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#modelSelectorRuntime.StartModelSelectorTask",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "modelSelectorRuntime.StartModelSelectorTask",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(refresh func(context.Context)) bool"
+      },
+      "shapeHash": "sha256:74a902887d79e4e6eaa78bc78517173a124f0839cea2dbfca6b9f5d077654dfb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#modelSpec",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "modelSpec",
@@ -341788,6 +341799,17 @@
       "shapeHash": "sha256:abda90b0a9dee566c1c4d8a5e69e5e1e0dc21a5f6a3f00ada27ad225d1a5f10b"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ModelSelectorComponent.Wait",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ModelSelectorComponent.Wait",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#ModelSelectorComponent.addLocked",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "ModelSelectorComponent.addLocked",
@@ -342303,6 +342325,17 @@
         "type": "ModelSelectorRuntime"
       },
       "shapeHash": "sha256:fdf237cff39b3552b487c0d1ef134f0d8f1bf167d7cffbda4f56a72260922671"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ModelSelectorTaskOwner",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ModelSelectorTaskOwner",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "ModelSelectorTaskOwner"
+      },
+      "shapeHash": "sha256:548ee241d0740cfe457dad6ad3a8456bcaa92b894f963bfb816fd45ff2357150"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#ModifierCommand",
