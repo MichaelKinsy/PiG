@@ -17259,6 +17259,31 @@
       ]
     },
     {
+      "id": "BF-5e55e0d",
+      "title": "A Node extension's `refreshModels`, both as a provider config's callback and as a provider object's method…",
+      "symptom": "A Node extension's `refreshModels`, both as a provider config's callback and as a provider object's method, now receives the context object Pi builds (`packages/ai/src/models.ts`): its members in Pi's order (the login, the stored catalog, `publish`, `allowNetwork`, `force`, `signal`, `baseUrl`), every key present, and a member Pi has no value for (no login, no stored catalog, no `force`, no `baseUrl`) is `undefined`.",
+      "rootCause": "The Node runtime rebuilt the refreshModels context in its own order for both forms of the callback: the config form listed allowNetwork, baseUrl, credential, stored, force, signal, publish, and the provider object credential, stored, allowNetwork, force, baseUrl, signal, publish, with the unset members null (object) or missing (config). Pi hands the object of models.ts:554-562: credential, stored, publish, allowNetwork, force, signal, baseUrl, every key present and the members it has no value for undefined. Both forms now build that object (refreshModelsContext), and the host leaves unset credential, stored and force out of the request, as JSON.stringify drops them.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Node extension's `refreshModels`, both as a provider config's callback and as a provider object's method, now receives the context object Pi builds (`packages/ai/src/models.ts`): its members in Pi's order (the login, the stored catalog, `publish`, `allowNetwork`, `force`, `signal`, `baseUrl`), every key present, and a member Pi has no value for (no login, no stored catalog, no `force`, no `baseUrl`) is `undefined`. The config form listed `allowNetwork` and `baseUrl` first and `publish` last and left the unset members out, so `Object.keys(context)` and `'force' in context` answered differently from Pi; the provider object listed `publish` last and gave the unset members `null`, so `Object.keys(context)` and an `=== undefined` check on an unset member answered differently from Pi.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5e55e0d13d",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/provider_operations_wire_test.go::TestModifyModelsHostCloseIsTheConnectionsError",
+        "coding/extension/host/subprocess/provider_operations_wire_test.go::TestProviderRequestsOnAConnectionNotYetStarted",
+        "coding/extension/host/subprocess/provider_operations_wire_test.go::TestRefreshModelsRequestWithoutOptionalMembers",
+        "test/extension-conformance/provider_refresh_context_node_test.go::TestRefreshModelsContextMembersNode"
+      ]
+    },
+    {
       "id": "BF-5e60e71",
       "title": "fix(chord/next/store): outbox reads as JSON.parse, one commit API, no exported test seam, refusal by code",
       "symptom": "fix(chord/next/store): outbox reads as JSON.parse, one commit API, no exported test seam, refusal by code",

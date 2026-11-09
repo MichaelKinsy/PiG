@@ -620,6 +620,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-5dbfed1](#bf-5dbfed1) | A scripted faux response can carry `DurationMs` | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5e36d87](#bf-5e36d87) | The assistant-message frame encoder no longer re-parses and re-serializes a whole tool call's arguments for… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5e3e346](#bf-5e3e346) | An explicit `anthropic-beta` header, from a model's `headers` or the request, no longer makes a… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
+| [BF-5e55e0d](#bf-5e55e0d) | A Node extension's `refreshModels`, both as a provider config's callback and as a provider object's method… | PiG's own defect | All platforms | Unreleased |
 | [BF-5e60e71](#bf-5e60e71) | fix(chord/next/store): outbox reads as JSON.parse, one commit API, no exported test seam, refusal by code | PiG's own defect | All platforms | Unreleased |
 | [BF-5eab79d](#bf-5eab79d) | `processImage` against live Pi: new `TestProcessImageMatchesPi`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5eb8bb9](#bf-5eb8bb9) | `tool_search` and codemode `searchTools()` rank a tool that matches more of the query's distinct terms, in… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
@@ -10253,6 +10254,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `5e3e346a69` (2026-10-10)
 - **Tests:** `ai/anthropic_beta_override_test.go::TestAnthropicManagedEffortBodyFollowsTheBetasSent`
 - **Release note:** An explicit `anthropic-beta` header, from a model's `headers` or the request, no longer makes a managed-effort Claude model (claude-opus-5, opus-5-5, sonnet-5-5, haiku-5-5, fable-5-1) fail with 400. The override still replaces the default betas. PiG now sends `thinking.block_binding` only with `thinking-binding-controls-2026-08-01`, and the mid-conversation effort markers only with `mid-conversation-output-config-2026-07-01`. Without the markers, the effort is sent as the top-level effort. Pi sends both regardless (Pi #10759, D130).
+
+### BF-5e55e0d
+
+**A Node extension's `refreshModels`, both as a provider config's callback and as a provider object's method…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Node extension's `refreshModels`, both as a provider config's callback and as a provider object's method, now receives the context object Pi builds (`packages/ai/src/models.ts`): its members in Pi's order (the login, the stored catalog, `publish`, `allowNetwork`, `force`, `signal`, `baseUrl`), every key present, and a member Pi has no value for (no login, no stored catalog, no `force`, no `baseUrl`) is `undefined`.
+- **Root cause:** The Node runtime rebuilt the refreshModels context in its own order for both forms of the callback: the config form listed allowNetwork, baseUrl, credential, stored, force, signal, publish, and the provider object credential, stored, allowNetwork, force, baseUrl, signal, publish, with the unset members null (object) or missing (config). Pi hands the object of models.ts:554-562: credential, stored, publish, allowNetwork, force, signal, baseUrl, every key present and the members it has no value for undefined. Both forms now build that object (refreshModelsContext), and the host leaves unset credential, stored and force out of the request, as JSON.stringify drops them.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `5e55e0d13d` (2026-11-09)
+- **Tests:** `coding/extension/host/subprocess/provider_operations_wire_test.go::TestModifyModelsHostCloseIsTheConnectionsError`, `coding/extension/host/subprocess/provider_operations_wire_test.go::TestProviderRequestsOnAConnectionNotYetStarted`, `coding/extension/host/subprocess/provider_operations_wire_test.go::TestRefreshModelsRequestWithoutOptionalMembers`, `test/extension-conformance/provider_refresh_context_node_test.go::TestRefreshModelsContextMembersNode`
+- **Release note:** A Node extension's `refreshModels`, both as a provider config's callback and as a provider object's method, now receives the context object Pi builds (`packages/ai/src/models.ts`): its members in Pi's order (the login, the stored catalog, `publish`, `allowNetwork`, `force`, `signal`, `baseUrl`), every key present, and a member Pi has no value for (no login, no stored catalog, no `force`, no `baseUrl`) is `undefined`. The config form listed `allowNetwork` and `baseUrl` first and `publish` last and left the unset members out, so `Object.keys(context)` and `'force' in context` answered differently from Pi; the provider object listed `publish` last and gave the unset members `null`, so `Object.keys(context)` and an `=== undefined` check on an unset member answered differently from Pi.
 
 ### BF-5e60e71
 
