@@ -3,13 +3,16 @@ package ai
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 type piMessagesRecordedRequest struct {
@@ -95,6 +98,57 @@ func collectPiMessages(t *testing.T, provider Provider, opts StreamOptions) ([]A
 	return events, stream.Result()
 }
 
+// iteratePiMessagesAsTheAgentDoes creates the provider's stream and iterates it inside one stream continuation, as the Agent does (agent/agent_loop.go requestStream). Pi's for-await consumer attaches in the tick that created the stream, before any response I/O can complete (packages/agent/src/agent-loop.ts:412 awaits streamFunction, :424 iterates), so its Start event reads the message createEventConverter builds (stopReason "pending") however long the creating turn takes. A goroutine that calls Events after Stream returns can run after the provider has read the whole buffered response and read the terminal state at Start: the converter mutates one partial in place and every event carries it (packages/ai/src/api/pi-messages.ts:185,290), the queue holds that reference (packages/ai/src/utils/event-stream.ts:43-86), and the consumer reads it at its own tick. whileCreating, if set, runs in the creating turn after Stream returns and before its first await.
+func iteratePiMessagesAsTheAgentDoes(t *testing.T, provider Provider, opts StreamOptions, whileCreating func(*continuationExecutor) error) (*AssistantMessageEventStream, []AssistantMessageEvent, StopReason) {
+	t.Helper()
+	ctx := WithStreamContinuations(t.Context())
+	_, executor := withContinuationExecutor(ctx)
+	var (
+		stream            *AssistantMessageEventStream
+		events            []AssistantMessageEvent
+		initialStopReason StopReason
+	)
+	err := RunStreamContinuation(ctx, func(observation *StreamObservation) error {
+		var err error
+		if stream, err = provider.Stream(ctx, piMessagesTestContext(), opts); err != nil {
+			return err
+		}
+		if whileCreating != nil {
+			if err := whileCreating(executor); err != nil {
+				return err
+			}
+		}
+		for event := range stream.Events(observation.Context(ctx)) {
+			if start, ok := event.(StartEvent); ok {
+				initialStopReason = start.Partial.Observe().StopReason
+			}
+			events = append(events, event)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return stream, events, initialStopReason
+}
+
+// awaitPiMessagesResponseReady returns once the provider has read its response and queued its response turn behind the creating turn, which still holds execution. That is the order a loaded runner reaches when the consumer is descheduled between Stream and its first await, made certain: a consumer that does not hold the turn would then run after the provider finished the response. The wait spins on the executor's external queue because the executor offers nothing to block on: responseContinuation queues the provider's grant there and returns without a notification, and only an external reaction that runs reaches executorTrace.external, which cannot happen while the creating turn holds execution. A hook for it would be production code for one test. The deadline only bounds a hang.
+func awaitPiMessagesResponseReady(executor *continuationExecutor) error {
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		executor.mu.Lock()
+		queued := executor.external.len()
+		executor.mu.Unlock()
+		if queued > 0 {
+			return nil
+		}
+		if time.Now().After(deadline) {
+			return errors.New("the provider never queued its response turn behind the creating turn")
+		}
+		runtime.Gosched()
+	}
+}
+
 // Ported from pi-messages.test.ts "streams text and tool calls and resolves the terminal message".
 func TestPiMessagesStreamsTextAndToolCalls(t *testing.T) {
 	baseURL, requests := startPiMessagesServer(t, piMessagesResponder{events: []any{
@@ -111,18 +165,7 @@ func TestPiMessagesStreamsTextAndToolCalls(t *testing.T) {
 	}})
 	provider := newTestPiMessagesProvider(baseURL, nil)
 
-	stream, err := provider.Stream(t.Context(), piMessagesTestContext(), StreamOptions{SessionID: "session-1", MaxTokens: 100, Headers: ProviderHeaders{"x-custom": new("1")}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	var events []AssistantMessageEvent
-	var initialStopReason StopReason
-	for event := range stream.Events(t.Context()) {
-		if start, ok := event.(StartEvent); ok {
-			initialStopReason = start.Partial.Observe().StopReason
-		}
-		events = append(events, event)
-	}
+	stream, events, initialStopReason := iteratePiMessagesAsTheAgentDoes(t, provider, StreamOptions{SessionID: "session-1", MaxTokens: 100, Headers: ProviderHeaders{"x-custom": new("1")}}, awaitPiMessagesResponseReady)
 	message := stream.Result()
 	if _, ok := events[0].(StartEvent); !ok || initialStopReason != StopReasonPending {
 		t.Fatalf("first event = %#v, initial stop reason=%s", events[0], initialStopReason)
