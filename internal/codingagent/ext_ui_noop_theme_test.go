@@ -12,8 +12,7 @@ import (
 // Pi's no-op UI context answers `ctx.ui.theme` with the global theme (runner.ts noOpUIContext), so an in-process extension running with no UI (print, JSON) reads
 // the palette the TUI would. This package registers the active theme with the shared no-op context at init.
 func TestNoopUIContextThemeIsTheActiveTheme(t *testing.T) {
-	previous := tui.ActiveTheme()
-	t.Cleanup(func() { tui.SetThemeInstance(previous) })
+	restoreStartupTheme(t)
 	theme, err := tui.LoadThemeFromPath(filepath.Join("..", "..", "tui", "theme_dark.json"), tui.TerminalColorModeTrueColor)
 	if err != nil {
 		t.Fatal(err)

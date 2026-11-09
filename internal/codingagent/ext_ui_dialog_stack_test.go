@@ -520,6 +520,7 @@ func TestExtensionCustomThatNeverMountsLeavesTheShownDialog(t *testing.T) {
 // Pi's handleReloadCommand calls resetExtensionUI before the reload box shows, which disposes every stacked dialog; a dialog the reload left
 // in the stack would come back over the editor later.
 func TestReloadDisposesEveryExtensionDialog(t *testing.T) {
+	restoreStartupTheme(t)
 	r := newCustomRig(t)
 	ctx, abort := context.WithCancel(t.Context())
 	defer abort()

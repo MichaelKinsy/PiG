@@ -12,10 +12,11 @@ import (
 // Pi's TuiMainScreen owns terminal input; PiG's InteractiveMode owns that same
 // dispatch path. These cases route through it, not just the response parser.
 func TestUpstreamTUICellSizeInput(t *testing.T) {
+	restoreStartupTheme(t)
 	newMode := func(t *testing.T, initial *tui.CellDimensions) (*InteractiveMode, *focusedInputProbe) {
 		t.Helper()
-		capabilities, dimensions := tui.GetCapabilities(), tui.GetCellDimensions()
-		t.Cleanup(func() { tui.SetCapabilities(capabilities); tui.SetCellDimensions(dimensions) })
+		dimensions := tui.GetCellDimensions()
+		t.Cleanup(func() { tui.SetCellDimensions(dimensions) })
 		t.Setenv("TERM_PROGRAM", "ghostty")
 		// Keep the fixture on Ghostty itself, independent of the test runner's multiplexer, Herdr session (D44 detects Herdr before Ghostty) or PI_IMAGE_PROTOCOL override (terminal-image.ts detectCapabilities lets it replace detection).
 		for _, name := range []string{"TERM", "GHOSTTY_RESOURCES_DIR", "TMUX", "HERDR_ENV", "HERDR_KITTY_GRAPHICS", "PI_IMAGE_PROTOCOL"} {

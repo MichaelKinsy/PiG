@@ -19,6 +19,7 @@ import (
 // The MCP tool card (mcp/tools.ts createMcpToolRenderers: the `server/tool` call line with its arguments, the output preview, the full-output
 // path) through tool-execution.ts against pinned Pi, collapsed and expanded, pending and with results.
 func TestMcpToolCardsMatchPi(t *testing.T) {
+	restoreStartupTheme(t)
 	lines := func(n int, prefix string) string {
 		rows := make([]string, n)
 		for i := range rows {
@@ -68,8 +69,6 @@ func TestMcpToolCardsMatchPi(t *testing.T) {
 	if err := json.Unmarshal(output, &expected); err != nil {
 		t.Fatal(err)
 	}
-	previousCaps := tui.GetCapabilities()
-	t.Cleanup(func() { tui.SetCapabilities(previousCaps) })
 	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true})
 	tui.SetTheme("dark")
 	t.Cleanup(func() { tui.SetAppKeyTextResolver(nil) })

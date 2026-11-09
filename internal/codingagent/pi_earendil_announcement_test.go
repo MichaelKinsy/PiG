@@ -13,8 +13,7 @@ import (
 // the bundled clankolas.png (640x537, shown as terminal-image fallback text without image support) and a spacer, and an accent border (earendil-announcement.ts:
 // 27-47; fallback text from terminal-image.ts:750-762). Pi has no test of this file.
 func TestPiCodingAgentSrcModesInteractiveComponentsEarendilAnnouncement(t *testing.T) {
-	caps := tui.GetCapabilities()
-	t.Cleanup(func() { tui.SetCapabilities(caps) })
+	restoreStartupTheme(t)
 	tui.SetCapabilities(tui.TerminalCapabilities{})
 	const width = 60
 	lines := newEarendilAnnouncementComponent().Render(width)

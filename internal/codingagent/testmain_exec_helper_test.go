@@ -125,8 +125,14 @@ func TestMain(m *testing.M) {
 	getNativeClipboard = func() *tui.NativeClipboard { return nil }
 	// The queued-message hint and the Up key depend on TERM_PROGRAM and TERM (D228); a test that needs a terminal sets them.
 	_ = os.Unsetenv("TERM_PROGRAM")
+	startupThemeState = captureThemeState()
 	code := testenv.RunScoped(m, "pig-ca-")
 	if code == 0 {
+		// The last test must not leave the theme state changed either (TestThemeStateIsAsTheProcessStarted).
+		if drift := themeStateDrift(); drift != "" {
+			fmt.Fprintf(os.Stderr, "FAIL: the tests left the theme state changed: %s\n", drift)
+			code = 1
+		}
 		// A test binary that passed must not end with goroutines blocked forever on primitives nothing can reach.
 		leaked, text, err := testenv.LeakedGoroutines()
 		if err != nil {

@@ -18,6 +18,7 @@ import (
 // TestScopedModelsOverlappingBindingsMatchPi binds one key to each pair of the eleven bound actions, and Escape and Ctrl+C to each
 // action, over an unfiltered, a filtered, a single-match and an empty list with a partial and a null enabled set.
 func TestScopedModelsOverlappingBindingsMatchPi(t *testing.T) {
+	restoreStartupTheme(t)
 	models := []scopedOracleModel{
 		{"claude-sonnet", "Claude Sonnet", "anthropic"}, {"claude-haiku", "Claude Haiku", "anthropic"},
 		{"gpt-5", "GPT 5", "openai"}, {"gpt-5-mini", "GPT 5 Mini", "openai"}, {"o4", "O4", "openai"},

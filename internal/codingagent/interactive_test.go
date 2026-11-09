@@ -1819,8 +1819,7 @@ func TestDynamicProviderInModelSurfaces(t *testing.T) {
 // buildChatViewport must install the live-themed scrollbar track and thumb (not
 // the ScrollView defaults), and a live theme change must repaint them.
 func TestBuildChatViewportWiresLiveThemedScrollbar(t *testing.T) {
-	prev := tui.ActiveTheme().Name
-	t.Cleanup(func() { tui.SetTheme(prev) })
+	restoreStartupTheme(t)
 
 	m := &InteractiveMode{
 		extHeader:                newSpecialLinesComponent(func() {}),

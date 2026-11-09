@@ -74,7 +74,6 @@ func newThemeTestMode(t *testing.T) *InteractiveMode {
 // theme.ts:795) and nothing is persisted; the instance becomes the active theme under the in-memory name.
 func TestExtensionSetThemeAcceptsAThemeInstance(t *testing.T) {
 	pinTrueColorCapabilities(t)
-	restoreStartupTheme(t)
 	tui.SetThemeRegistry(tui.NewThemeRegistry())
 	tui.SetThemeByName("dark")
 	ui := &ExtUIContext{m: newThemeTestMode(t)}

@@ -204,6 +204,7 @@ func TestSessionAccountingMatchesPi(t *testing.T) {
 // interactive-mode.ts handleSessionCommand (/session) and cache-warmer.ts formatCacheWarmingStatus against pinned Pi, over generated sessions,
 // names, cache-warming modes and statuses. Statuses that depend on the clock use a fixed `now`, so /session itself only gets clock-independent ones.
 func TestSessionInfoCommandMatchesPi(t *testing.T) {
+	restoreStartupTheme(t)
 	r := rand.New(rand.NewPCG(7, 9))
 	sessions := generateAccountingSessions(r, 400)
 	// /session shows a re-billed cost only from $0.0001 up: a miss of exactly that cost and one of the next float below it.
@@ -316,8 +317,6 @@ func TestSessionInfoCommandMatchesPi(t *testing.T) {
 			t.Errorf("no probe reached %q", section)
 		}
 	}
-	previousCaps := tui.GetCapabilities()
-	t.Cleanup(func() { tui.SetCapabilities(previousCaps) })
 	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true})
 	tui.SetTheme("dark")
 	failures := 0

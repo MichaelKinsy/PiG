@@ -42,6 +42,7 @@ func TestResourceLoaderUpstreamThemePrecedence(t *testing.T) {
 // Upstream dedupeThemes keeps the first theme of a name in precedence order
 // (resource-loader.ts); loadThemeResources gives the registry the same winner.
 func TestLoadThemePathsKeepsTheFirstThemeOfAName(t *testing.T) {
+	restoreStartupTheme(t)
 	fixture, err := os.ReadFile(filepath.Join("..", "..", "test/parity", "scenarios", "startup", "testdata", "listing", "pig-agent", "themes", "fixture-theme.json"))
 	if err != nil {
 		t.Fatal(err)
@@ -62,8 +63,6 @@ func TestLoadThemePathsKeepsTheFirstThemeOfAName(t *testing.T) {
 		}
 	}
 	// The assertion compares a 24-bit color, so pin the capability instead of inheriting the host's COLORTERM.
-	previousCaps := tui.GetCapabilities()
-	t.Cleanup(func() { tui.SetCapabilities(previousCaps) })
 	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true})
 	registry := tui.NewThemeRegistry()
 	loadThemeResources(registry, []string{first, second}, tui.GetTerminalColorMode())

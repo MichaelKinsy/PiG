@@ -37,8 +37,6 @@ func TestLoadThemeResourcesRejectsAnEmptyNameAndKeepsTheLiteralUnnamed(t *testin
 // An excluded custom-directory file stays selectable (theme.ts:426-478) but is not a loaded resource; a deleted theme is not retained.
 func TestReloadThemeDiagnosticsReplaceResolvedSet(t *testing.T) {
 	restoreStartupTheme(t) // Reload applies the theme setting, which selects the process-wide active theme.
-	old := tui.ActiveThemeRegistry()
-	t.Cleanup(func() { tui.SetThemeRegistry(old) })
 	tui.SetThemeRegistry(tui.NewThemeRegistry())
 	dir := t.TempDir()
 	themesDir := filepath.Join(dir, "themes")
@@ -83,9 +81,8 @@ func TestReloadThemeDiagnosticsReplaceResolvedSet(t *testing.T) {
 // Pi retains unnamed loaded themes for diagnostics even though setRegisteredThemes skips their empty registry keys. A user theme file can no
 // longer carry an empty name (42a3497d theme-schema.ts), so the loaded set and the collision are supplied directly.
 func TestLoadedEmptyThemeRetainsDiagnosticProvenance(t *testing.T) {
+	restoreStartupTheme(t)
 	isolateDisplayHome(t)
-	old := tui.ActiveThemeRegistry()
-	t.Cleanup(func() { tui.SetThemeRegistry(old) })
 	dir := t.TempDir()
 	winner, loser := filepath.Join(dir, "first.json"), filepath.Join(dir, "second.json")
 	m := upstreamListingMode(t, false, nil)
@@ -104,8 +101,7 @@ func TestLoadedEmptyThemeRetainsDiagnosticProvenance(t *testing.T) {
 
 // Pi interactive-mode.ts:1760-1765 gathers metadata from loaded themes even when --no-themes disables discovery.
 func TestLoadedExplicitThemeDiagnosticsRetainSourceWithNoThemes(t *testing.T) {
-	old := tui.ActiveThemeRegistry()
-	t.Cleanup(func() { tui.SetThemeRegistry(old) })
+	restoreStartupTheme(t)
 	winner, loser := filepath.FromSlash("/pkg-a/dusk.json"), filepath.FromSlash("/pkg-b/dusk.json")
 	m := upstreamListingMode(t, false, nil)
 	m.loadedThemes = []loadedTheme{{theme: &tui.Theme{Name: "dusk"}, path: winner}}

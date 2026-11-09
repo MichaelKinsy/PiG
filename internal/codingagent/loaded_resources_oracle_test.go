@@ -33,6 +33,7 @@ type loadedResourceItem struct {
 // interactive-mode.ts getShortPath, buildScopeGroups, formatScopeGroups, findSourceInfoForPath, formatPathWithSource and
 // formatDiagnostics against pinned Pi, called through InteractiveMode's prototype with a fixed home directory.
 func TestLoadedResourcesFormattingMatchesPi(t *testing.T) {
+	restoreStartupTheme(t)
 	const home = "/home/tester"
 	// A SourceInfo always carries a source and a scope upstream; Go has no undefined string, so an empty one is not probed.
 	sources := []string{"local", "cli", "npm:foo", "npm:@scope/pkg", "git:github.com/user/repo", "auto", "npm:@a/b@1.2.3"}
@@ -102,8 +103,6 @@ func TestLoadedResourcesFormattingMatchesPi(t *testing.T) {
 	if err := json.Unmarshal(output, &expected); err != nil {
 		t.Fatal(err)
 	}
-	previousCaps := tui.GetCapabilities()
-	t.Cleanup(func() { tui.SetCapabilities(previousCaps) })
 	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true})
 	tui.SetTheme("dark")
 	t.Setenv("HOME", home)

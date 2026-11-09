@@ -255,6 +255,7 @@ func runTreeContracts(t *testing.T, cases []treeContractCase) []treeContractTrac
 // replayTreeContract drives PiG's production constructor the way testdata/tree_selector.mjs drives Pi's: callbacks append events and every key is followed by a render.
 func replayTreeContract(t *testing.T, probe treeOracleProbe) treeContractTrace {
 	t.Helper()
+	restoreStartupTheme(t)
 	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true})
 	tui.SetTheme(probe.Theme)
 	bindingMap := map[string][]KeyID{}
@@ -330,6 +331,7 @@ func replayTreeContract(t *testing.T, probe treeOracleProbe) treeContractTrace {
 // is between building the selector and its first key, as a slow -race run does; the timer's cancel must stay out of the trace, and recording it from the
 // timer's goroutine is what raced the replay's reads of the trace (TestTreeListHandleInputContractsMatchPi/down/moves-one-row on macOS).
 func TestTreeContractReplayLeavesTheEmptyTreeSelfCancelOutOfTheTrace(t *testing.T) {
+	restoreStartupTheme(t)
 	previousTheme, previousCaps, previousKeys := tui.ActiveTheme(), tui.GetCapabilities(), tui.GetTUIKeybindings()
 	t.Cleanup(func() {
 		tui.SetCapabilities(previousCaps)
@@ -598,6 +600,7 @@ func treeListInputCases() []treeContractCase {
 }
 
 func TestTreeListHandleInputContractsMatchPi(t *testing.T) {
+	restoreStartupTheme(t)
 	runTreeContracts(t, treeListInputCases())
 }
 
@@ -649,5 +652,6 @@ func treeRemapCases() []treeContractCase {
 }
 
 func TestTreeListRemappedKeysMatchPi(t *testing.T) {
+	restoreStartupTheme(t)
 	runTreeContracts(t, treeRemapCases())
 }

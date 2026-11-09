@@ -39,6 +39,7 @@ func treeRowPanned(frame []string) (panned, found bool) {
 // TestTreeHorizontalViewportMatchesPiAtEveryWidth sweeps the terminal width over a deep tree and moves the highlight along its rows, so the pan
 // threshold, the anchor-context clamps and the cut at the right edge are each compared with Pi's renderHorizontalViewport.
 func TestTreeHorizontalViewportMatchesPiAtEveryWidth(t *testing.T) {
+	restoreStartupTheme(t)
 	var cases []treeContractCase
 	for width := 0; width <= 140; width++ {
 		for _, initial := range []string{"d0", "f1", "d1", "f4", "d6", "f12", "d11", "d12"} {
@@ -78,6 +79,7 @@ type treeRenderScript struct {
 // TestTreeListRenderMatchesPi compares the list rows, markers, labels, label times, selected-row styling, windowing and position line with Pi
 // over every fixture, the filter modes, folds, the label-time toggle, windows of several heights and both themes.
 func TestTreeListRenderMatchesPi(t *testing.T) {
+	restoreStartupTheme(t)
 	scripts := []treeRenderScript{
 		{"start", nil},
 		{"label-time", []string{"T"}},
@@ -146,6 +148,7 @@ func TestTreeListRenderMatchesPi(t *testing.T) {
 
 // TestTreeSearchLineRenderMatchesPi types queries of every shape at many widths and compares the search row with Pi's SearchLine.render.
 func TestTreeSearchLineRenderMatchesPi(t *testing.T) {
+	restoreStartupTheme(t)
 	queries := map[string][]string{
 		"empty":      nil,
 		"one":        {"a"},
@@ -172,6 +175,7 @@ func TestTreeSearchLineRenderMatchesPi(t *testing.T) {
 
 // TestTreeHelpRenderMatchesPi runs TreeHelp.render over every width with default, partly unbound, compacted, glyph-substituted and rebound keys.
 func TestTreeHelpRenderMatchesPi(t *testing.T) {
+	restoreStartupTheme(t)
 	variants := map[string]map[string][]string{
 		"default":                nil,
 		"move-keys-unbound":      {"tui.select.up": {}, "tui.select.down": {}},
@@ -213,6 +217,7 @@ func TestTreeHelpRenderMatchesPi(t *testing.T) {
 
 // TestTreeLabelInputRenderMatchesPi opens the label editor over labels of every shape at many widths and with rebound confirm and cancel keys.
 func TestTreeLabelInputRenderMatchesPi(t *testing.T) {
+	restoreStartupTheme(t)
 	typed := map[string][]string{
 		"empty":     nil,
 		"short":     {"a", "b"},

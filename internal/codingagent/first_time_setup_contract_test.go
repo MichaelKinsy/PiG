@@ -18,6 +18,7 @@ import (
 // key to two of the actions, or binds the raw keys to another action, and the dialog's events and frames are compared with the pinned Pi's. D88's sprite
 // step is passed by pressing the key that entered it once more.
 func TestFirstTimeSetupBindingOverlapsMatchPi(t *testing.T) {
+	restoreStartupTheme(t)
 	bindings := []map[string][]string{
 		{"tui.select.confirm": {"ctrl+y"}, "tui.select.cancel": {"ctrl+y"}},
 		{"tui.select.up": {"ctrl+y"}, "tui.select.cancel": {"ctrl+y"}},

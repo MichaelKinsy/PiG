@@ -13,6 +13,7 @@ import (
 // initTheme(name) installs the theme of that name in the terminal's color mode, and the system theme for an absent or unknown name. The palettes of dark and light are the
 // ones Pi's initTheme left as its global theme (test/parity/sdk-vectors/pi-coding-agent/initTheme.json).
 func TestLoadExtensionThemeMatchesPiInitTheme(t *testing.T) {
+	restoreStartupTheme(t)
 	raw, err := os.ReadFile(filepath.Join("..", "..", "test", "parity", "sdk-vectors", "pi-coding-agent", "initTheme.json"))
 	if err != nil {
 		t.Fatal(err)
@@ -35,8 +36,6 @@ func TestLoadExtensionThemeMatchesPiInitTheme(t *testing.T) {
 	if err := json.Unmarshal(raw, &file); err != nil {
 		t.Fatal(err)
 	}
-	previousRegistry, previousCaps := tui.ActiveThemeRegistry(), tui.GetCapabilities()
-	t.Cleanup(func() { tui.SetThemeRegistry(previousRegistry); tui.SetCapabilities(previousCaps) })
 	tui.SetThemeRegistry(tui.NewThemeRegistry())
 	for _, c := range file.Cases {
 		mode, _ := c.Args[1].(string)

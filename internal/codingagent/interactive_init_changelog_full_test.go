@@ -92,6 +92,8 @@ func TestInitShowsTheStartupChangelogOfAnUpdateChild(t *testing.T) {
 	if report == "" {
 		t.Skip("runs only as the pty child of TestInitShowsTheStartupChangelogOfAnUpdate")
 	}
+	// The production startup this child runs selects a theme and replaces the registry; TestMain fails a binary that leaves them.
+	icodingagent.RestoreStartupTheme(t)
 	fail := func(format string, args ...any) {
 		_ = os.WriteFile(report, fmt.Appendf(nil, format, args...), 0o600)
 		t.Fatalf(format, args...)

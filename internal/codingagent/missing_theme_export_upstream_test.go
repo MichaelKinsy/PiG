@@ -17,8 +17,8 @@ import (
 
 // Ports packages/coding-agent/test/suite/regressions/5596-missing-theme-export.test.ts:25-95. ExportSessionToHTML is the Session export path called by /export and RPC export_html; it uses the active theme without rewriting the configured preference.
 func TestMissingConfiguredThemeExportsWithActiveFallback(t *testing.T) {
+	icodingagent.RestoreStartupTheme(t)
 	t.Setenv("PIG_HOME", t.TempDir())
-	t.Cleanup(func() { tui.SetTheme("dark") })
 	cwd := t.TempDir()
 	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: cwd, AgentDir: t.TempDir()})
 	if err != nil {
@@ -81,8 +81,8 @@ func TestMissingConfiguredThemeExportsWithActiveFallback(t *testing.T) {
 // agent-session.ts exportToHtml: the export theme is the first of options.themeName and the settings theme that names a registered theme (getThemeByName), else the active theme; the page carries that theme's resolved colors.
 // Pi: packages/coding-agent/src/core/agent-session.ts:4273 (Session.exportToHtml).
 func TestExportToHTMLChoosesTheNamedThenSettingsTheme(t *testing.T) {
+	icodingagent.RestoreStartupTheme(t)
 	t.Setenv("PIG_HOME", t.TempDir())
-	t.Cleanup(func() { tui.SetTheme("dark") })
 	tui.SetTheme("dark")
 	dark, light := tui.ThemeByName("dark"), tui.ThemeByName("light")
 	if dark == nil || light == nil || dark.GetResolvedThemeColors()["accent"] == light.GetResolvedThemeColors()["accent"] {

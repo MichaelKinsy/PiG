@@ -17,10 +17,11 @@ import (
 // initSettingsSelectorTheme is the test file's beforeAll: initTheme("dark") and setKeybindings(new KeybindingsManager()).
 func initSettingsSelectorTheme(t *testing.T) {
 	t.Helper()
-	previousKeys, previousTheme := tui.GetTUIKeybindings(), tui.ActiveTheme().Name
+	restoreStartupTheme(t)
+	previousKeys := tui.GetTUIKeybindings()
 	_ = DefaultKeybindingsManager()
 	tui.SetThemeByName("dark")
-	t.Cleanup(func() { tui.SetTUIKeybindings(previousKeys); tui.SetThemeByName(previousTheme) })
+	t.Cleanup(func() { tui.SetTUIKeybindings(previousKeys) })
 }
 
 // packages/ai/src/providers/faux.ts:141-154,668 (FauxProviderHandle.appendResponses, unregister).
@@ -147,7 +148,6 @@ func TestSettingsSelectorUpstream(t *testing.T) {
 func TestAutomaticThemeSubmenuCancelRestoresPendingPair(t *testing.T) {
 	restoreStartupTheme(t)
 	previous := tui.GetCapabilities()
-	t.Cleanup(func() { tui.SetCapabilities(previous) })
 	for _, trueColor := range []bool{true, false} {
 		t.Run(fmt.Sprintf("truecolor=%t", trueColor), func(t *testing.T) {
 			capabilities := previous
@@ -209,8 +209,7 @@ func BenchmarkAutomaticThemeChildPicker(b *testing.B) {
 // newThemeBrowsingList returns the selector's list for a registry of names with the given terminal appearance; onPreview receives each previewed theme setting and no change may reach OnThemeChange.
 func newThemeBrowsingList(t *testing.T, current, appearance string, names []string, onPreview func(string)) *tui.SettingsList {
 	t.Helper()
-	oldRegistry, oldTheme := tui.ActiveThemeRegistry(), tui.ActiveTheme().Name
-	t.Cleanup(func() { tui.SetThemeRegistry(oldRegistry); tui.SetThemeByName(oldTheme) })
+	restoreStartupTheme(t)
 	registry := tui.NewThemeRegistry()
 	for _, name := range names {
 		if registry.Get(name) == nil {

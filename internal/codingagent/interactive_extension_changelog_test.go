@@ -221,6 +221,7 @@ func TestExtensionChangelogUpdatesUpstream(t *testing.T) {
 
 // interactive-mode.ts showStartupNoticesIfNeeded: the extension block follows Pi's own changelog block and sits between the same borders.
 func TestStartupExtensionChangelogBlock(t *testing.T) {
+	restoreStartupTheme(t)
 	tui.SetCapabilityOverrides(tui.CapabilityOverrides{Hyperlinks: new(false)})
 	t.Cleanup(func() { tui.SetCapabilityOverrides(tui.CapabilityOverrides{}); tui.ResetCapabilitiesCache() })
 	updates := []extensionChangelogUpdate{
@@ -261,6 +262,7 @@ func TestStartupExtensionChangelogBlock(t *testing.T) {
 // Pi eebd5d90 interactive-mode-extension-changelog.test.ts "InteractiveMode startup notices": the What's New and Extension Updates blocks run the transformers
 // registered for the changelog type, and skip those that did not list it.
 func TestStartupChangelogRunsTheChangelogMarkdownTransformers(t *testing.T) {
+	restoreStartupTheme(t)
 	tui.SetCapabilityOverrides(tui.CapabilityOverrides{Hyperlinks: new(false)})
 	t.Cleanup(func() { tui.SetCapabilityOverrides(tui.CapabilityOverrides{}); tui.ResetCapabilitiesCache() })
 	replaceWarning := func(markdown string, _ extension.MarkdownTransformContext) string {

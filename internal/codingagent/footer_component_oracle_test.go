@@ -62,6 +62,7 @@ type footerJSONLatest struct {
 // thinking and routed model, the provider prefix and its fallback, the subscription marker, the home-relative cwd, branch and
 // session name, and the sorted extension status row, at several widths.
 func TestFooterComponentMatchesPi(t *testing.T) {
+	restoreStartupTheme(t)
 	base := footerProbe{Model: "gpt-4o", Provider: "openai", ContextWindow: 128000, ThinkingLevel: "off", Auto: true, Providers: 1,
 		Cwd: "/home/u/project", Home: "/home/u", Width: 100, Percent: 12.34}
 	vary := func(mutate func(*footerProbe)) footerProbe {
@@ -141,10 +142,7 @@ func TestFooterComponentMatchesPi(t *testing.T) {
 	if err := json.Unmarshal(output, &expected); err != nil {
 		t.Fatal(err)
 	}
-	previousCaps := tui.GetCapabilities()
-	t.Cleanup(func() { tui.SetCapabilities(previousCaps) })
 	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true})
-	t.Cleanup(func() { tui.SetTheme("dark") })
 	failures := 0
 	for i, probe := range probes {
 		tui.SetTheme(probe.Theme)

@@ -14,13 +14,11 @@ import (
 // transcript. They finish it, so it keeps no memo for a next streamed delta; the rows must be what they were with the
 // memos. The hash covers both blocks at several widths and themes, and was taken on the tree before the change.
 func TestWholeMarkdownBlocksRenderBytes(t *testing.T) {
+	restoreStartupTheme(t)
 	previous := tui.GetTUIKeybindings()
 	DefaultKeybindingsManager().syncToTUI()
-	prevTheme := tui.ActiveTheme()
-	t.Cleanup(func() { tui.SetKeybindings(previous); tui.SetTheme(prevTheme.Name) })
+	t.Cleanup(func() { tui.SetKeybindings(previous) })
 	// The hash was taken on a terminal that is not truecolor; detection reports truecolor for a Windows host or COLORTERM=truecolor.
-	previousCaps := tui.GetCapabilities()
-	t.Cleanup(func() { tui.SetCapabilities(previousCaps) })
 	tui.SetCapabilities(tui.TerminalCapabilities{})
 	text := "# Heading\n\nSome **bold**, *italic* and `code` with a [link](https://example.com).\n\n- one\n- two\n\n```go\nfmt.Println(1)\n```\n\n" + strings.Repeat("A long line that wraps at every width tested. ", 6) + "\n"
 	hash, appended := sha256.New(), sha256.New()

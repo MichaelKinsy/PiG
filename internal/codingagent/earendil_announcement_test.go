@@ -16,8 +16,7 @@ import (
 )
 
 func TestEarendilAnnouncementMatchesPinnedPi(t *testing.T) {
-	caps := tui.GetCapabilities()
-	t.Cleanup(func() { tui.SetCapabilities(caps) })
+	restoreStartupTheme(t)
 	tui.SetCapabilities(tui.TerminalCapabilities{})
 	colors := map[string]string{}
 	for _, token := range []string{"accent", "muted", "mdLink"} {
@@ -46,6 +45,7 @@ func TestEarendilAnnouncementMatchesPinnedPi(t *testing.T) {
 
 // Pi: packages/tui/src/components/image.ts:84 (getImageId).
 func TestEarendilEmbeddedAssetAndImageProtocols(t *testing.T) {
+	restoreStartupTheme(t)
 	upstream, err := os.ReadFile("../../.upstream/current/packages/coding-agent/src/modes/interactive/assets/clankolas.png")
 	if err != nil {
 		t.Fatal(err)
@@ -53,8 +53,6 @@ func TestEarendilEmbeddedAssetAndImageProtocols(t *testing.T) {
 	if sha256.Sum256(upstream) != sha256.Sum256(clankolasPNG) {
 		t.Fatal("embedded PNG differs from pinned Pi")
 	}
-	caps := tui.GetCapabilities()
-	t.Cleanup(func() { tui.SetCapabilities(caps) })
 	for _, protocol := range []tui.ImageProtocol{tui.ImageProtocolKitty, tui.ImageProtocolITerm2} {
 		t.Run(string(protocol), func(t *testing.T) {
 			tui.SetCapabilities(tui.TerminalCapabilities{Images: protocol})
@@ -94,8 +92,7 @@ func TestEarendilEmbeddedAssetAndImageProtocols(t *testing.T) {
 }
 
 func TestEarendilInvalidationRefreshesImageCapabilities(t *testing.T) {
-	caps := tui.GetCapabilities()
-	t.Cleanup(func() { tui.SetCapabilities(caps) })
+	restoreStartupTheme(t)
 	tui.SetCapabilities(tui.TerminalCapabilities{})
 	component := newEarendilAnnouncementComponent()
 	if got := strings.Join(component.Render(80), "\n"); !strings.Contains(got, "clankolas.png") {
@@ -109,8 +106,7 @@ func TestEarendilInvalidationRefreshesImageCapabilities(t *testing.T) {
 }
 
 func BenchmarkEarendilAnnouncementRender(b *testing.B) {
-	caps := tui.GetCapabilities()
-	b.Cleanup(func() { tui.SetCapabilities(caps) })
+	restoreStartupTheme(b)
 	tui.SetCapabilities(tui.TerminalCapabilities{})
 	component := newEarendilAnnouncementComponent()
 	component.Render(100)

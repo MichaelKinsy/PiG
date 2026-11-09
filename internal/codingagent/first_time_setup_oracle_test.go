@@ -31,6 +31,7 @@ type firstSetupOracleResult struct {
 // step and draws its own logo and "PiG" name (Pi: APP_NAME "pi"), so the harness presses the key that entered the sprite step once more (Pi has no such
 // step) and the frames compare from the "Welcome" line down with the app name read as Pi's; events, results and every option line must agree.
 func TestFirstTimeSetupMatchesPi(t *testing.T) {
+	restoreStartupTheme(t)
 	bindings := []map[string][]string{
 		nil,
 		{"tui.select.cancel": {"ctrl+g"}, "tui.select.confirm": {"ctrl+y"}},

@@ -74,6 +74,7 @@ func TestMissingPromptTemplatePathsAreReportedAfterTheLoadersDiagnostics(t *test
 // path a diagnostic already names. An extension's resources_discover reloads only the kinds it returned (extendResources, :476-499), so
 // a discovery of skills or themes keeps the error and a discovery of prompts drops it.
 func TestMissingPromptTemplatePathErrorFollowsTheLoadersDiagnostics(t *testing.T) {
+	restoreStartupTheme(t)
 	cwd := t.TempDir()
 	bad := filepath.Join(cwd, "bad.md")
 	if err := os.WriteFile(bad, []byte("---\ndescription: [broken\n---\nbody\n"), 0o644); err != nil {

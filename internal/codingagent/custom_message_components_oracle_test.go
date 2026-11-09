@@ -27,6 +27,7 @@ type customComponentProbe struct {
 // markdown) and its output pad, a custom renderer's component, a renderer that returns nothing or throws, the entry's
 // renderer-failed box and hasContent, across expansion and output pad changes.
 func TestCustomMessageAndEntryComponentsMatchPi(t *testing.T) {
+	restoreStartupTheme(t)
 	contents := map[string]any{
 		"string": "Hello **bold** and `code`\n\n- one\n- two",
 		"blocks": []any{map[string]any{"type": "text", "text": "first"}, map[string]any{"type": "image", "data": "AAAA", "mimeType": "image/png"}, map[string]any{"type": "text", "text": "second **b**"}},
@@ -70,8 +71,6 @@ func TestCustomMessageAndEntryComponentsMatchPi(t *testing.T) {
 	if err := json.Unmarshal(output, &expected); err != nil {
 		t.Fatal(err)
 	}
-	previousCaps := tui.GetCapabilities()
-	t.Cleanup(func() { tui.SetCapabilities(previousCaps) })
 	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true})
 	tui.SetTheme("dark")
 	tui.SetKeybindings(tui.NewKeybindingsManager(tui.TUIKeybindingDefinitionsFor(tui.HostKeybindingPlatform()), nil))

@@ -18,6 +18,7 @@ import (
 // startup bind must therefore list, and only list, prompt conflicts, extension
 // issues (built-in command conflicts) and theme warnings, in Pi's order.
 func TestQuietStartupBindShowsDiagnosticsOnly(t *testing.T) {
+	icodingagent.RestoreStartupTheme(t)
 	dir := t.TempDir()
 	first, second := filepath.Join(dir, "a", "same.md"), filepath.Join(dir, "b", "same.md")
 	for _, path := range []string{first, second} {
@@ -29,8 +30,6 @@ func TestQuietStartupBindShowsDiagnosticsOnly(t *testing.T) {
 		}
 	}
 	missingTheme := filepath.Join(dir, "missing-theme.json")
-	old := tui.ActiveThemeRegistry()
-	t.Cleanup(func() { tui.SetThemeRegistry(old) })
 	tui.SetThemeRegistry(tui.NewThemeRegistry())
 	f := newRebindFixture(t, func(*coding.Session, ...any) (any, error) { return nil, nil }, nil, func(o *icodingagent.InteractiveModeOptions) {
 		o.PromptPaths = []string{first, second}

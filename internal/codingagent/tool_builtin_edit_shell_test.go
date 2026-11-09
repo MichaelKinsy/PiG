@@ -22,6 +22,7 @@ import (
 // The rows are Pi 1.0.4's, from the probe's "edit:ok" call once its preview diff settled.
 // Pi: packages/coding-agent/src/modes/interactive/components/tool-execution.ts:175 (ToolExecutionComponent.setArgsComplete).
 func TestStockEditCardDrawsItsOwnShell(t *testing.T) {
+	restoreStartupTheme(t)
 	data, err := os.ReadFile(filepath.Join("testdata", "pi104-render-probe", "builtin-renderers.golden.json"))
 	if err != nil {
 		t.Fatal(err)
@@ -52,8 +53,6 @@ func TestStockEditCardDrawsItsOwnShell(t *testing.T) {
 	t.Setenv("PI_TRUE_COLOR", "1")
 	// Cleanups run last-first: the capability cache drops the pinned mode, then the previous theme is rebuilt in the
 	// restored environment, so no later test inherits this truecolor theme.
-	previousTheme := tui.ActiveTheme().Name
-	t.Cleanup(func() { tui.SetThemeByName(previousTheme) })
 	tui.ResetCapabilitiesCache()
 	t.Cleanup(tui.ResetCapabilitiesCache)
 	tui.SetTheme("dark")

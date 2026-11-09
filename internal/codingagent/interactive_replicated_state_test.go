@@ -86,12 +86,11 @@ var _ hostStateNotifier = (*hostStateBridge)(nil)
 
 // Pi's ctx.model, pi.getSettings() and pi.getSessionName() read the live Session, ctx.ui.theme is the global theme (interactive-mode.ts:2665), and a footer reads the live git branch and provider count: a user's model switch, settings edit or /name, a theme selection, a branch checkout or a login changes them with no extension call. Interactive mode reports each change of the Session's replicated state, of the active theme and of the footer's branch and provider count to the extension host, and stops when its wiring is detached.
 func TestInteractiveModeReportsReplicatedStateChangesToTheExtensionHost(t *testing.T) {
+	restoreStartupTheme(t)
 	bridge := &hostStateBridge{}
 	handle := &stateObservingHandle{}
 	m := &InteractiveMode{opts: InteractiveModeOptions{SubprocessUIBridge: bridge, SessionHandle: handle}}
 	m.statusLine = NewFooterComponent(nil, "", nil)
-	previousTheme := tui.ActiveTheme()
-	t.Cleanup(func() { tui.SetThemeInstance(previousTheme) })
 	detach := m.wireSubprocessHostCallbacks()
 
 	handle.changed()

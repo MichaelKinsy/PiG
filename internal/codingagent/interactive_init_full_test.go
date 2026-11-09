@@ -153,6 +153,8 @@ func TestInitBuildsTheInteractiveModeChild(t *testing.T) {
 	if reportPath == "" {
 		t.Skip("runs only as the pty child of TestInitBuildsTheInteractiveModeFromTheSettingsAndTheSession")
 	}
+	// The production startup this child runs selects a theme and replaces the registry; TestMain fails a binary that leaves them.
+	icodingagent.RestoreStartupTheme(t)
 	report := struct {
 		Failure  string
 		InitErr  string

@@ -65,6 +65,7 @@ func randomThinkingProbes(bindings []map[string][]string) []thinkingProbe {
 // highlighted level, up/down/confirm/cancel drive the list (wrapping), and every other key edits the search whose Input submit
 // (LF or tui.input.submit) selects, then the list is rebuilt around the previously highlighted level.
 func TestThinkingSelectorInputMatchesPi(t *testing.T) {
+	restoreStartupTheme(t)
 	levels := []string{"off", "minimal", "low", "medium", "high", "xhigh"}
 	scripts := [][]string{
 		{"\x1b[A"},

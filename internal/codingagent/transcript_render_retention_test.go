@@ -165,6 +165,7 @@ const (
 // session keeps per row must stay within transcriptRowBound once the spare capacity and the streaming caches are gone,
 // and every full redraw must write the rows of a session in which no row ever left the screen.
 func TestFinishedTranscriptRowsRetainOnlyAFixedRecordEach(t *testing.T) {
+	restoreStartupTheme(t)
 	// The rows a session keeps depend on the terminal: one with OSC 8 links (kitty, Ghostty, iTerm2, WezTerm, ...)
 	// links every read card's path as file://<cwd>/<path>, and 256-color escapes are shorter than truecolor ones, so the
 	// heap per row would follow the host's terminal and the length of its temp directory. Measure one terminal: truecolor,

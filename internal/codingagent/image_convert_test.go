@@ -159,6 +159,7 @@ func TestConvertToPngAcceptsWrappedBase64(t *testing.T) {
 // the PNG transcoder itself, through the loader the package installs, so a non-PNG tool image renders as a Kitty image in any host. A
 // replaced partial image does not resurface, and invalidating reuses the converted Image, so the Kitty image id stays the same.
 func TestToolCardRegistersTheTranscoderAndConvertsNonPNGImages(t *testing.T) {
+	restoreStartupTheme(t)
 	prev := tui.GetCapabilities()
 	t.Cleanup(func() {
 		tui.SetCapabilities(prev)
@@ -186,6 +187,7 @@ func TestToolCardRegistersTheTranscoderAndConvertsNonPNGImages(t *testing.T) {
 
 // Off Kitty the card registers no transcoder: iTerm2 shows any format unconverted.
 func TestToolCardRegistersNoTranscoderOffKitty(t *testing.T) {
+	restoreStartupTheme(t)
 	prev := tui.GetCapabilities()
 	t.Cleanup(func() {
 		tui.SetCapabilities(prev)
@@ -220,6 +222,7 @@ func TestPngTranscoderConvertsSynchronouslyToOrientedPNGData(t *testing.T) {
 // interactive-mode.ts applyRuntimeSettings (1.0.1): on Kitty the interactive mode registers the transcoder, so a
 // non-PNG tui.Image renders as an image instead of its text fallback.
 func TestEnsurePngTranscoderRegistersOnKittyOnly(t *testing.T) {
+	restoreStartupTheme(t)
 	prev := tui.GetCapabilities()
 	t.Cleanup(func() {
 		tui.SetCapabilities(prev)
@@ -242,6 +245,7 @@ func TestEnsurePngTranscoderRegistersOnKittyOnly(t *testing.T) {
 // image-convert.ts ensurePngTranscoder: onRegistered runs after a new registration, not when a transcoder was already registered, and
 // not off Kitty.
 func TestEnsurePngTranscoderRunsOnRegisteredOnlyForANewRegistration(t *testing.T) {
+	restoreStartupTheme(t)
 	prev := tui.GetCapabilities()
 	t.Cleanup(func() {
 		tui.SetCapabilities(prev)

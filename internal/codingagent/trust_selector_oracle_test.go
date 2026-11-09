@@ -67,6 +67,7 @@ type trustOracleResult struct {
 // trust-selector.ts handleInput against pinned Pi: up/down and k/j clamp (no wrap), confirm or LF selects the highlighted option's
 // trust and updates, cancel cancels, other keys are ignored; the saved decision picks the initial row and the check mark.
 func TestTrustSelectorInputMatchesPi(t *testing.T) {
+	restoreStartupTheme(t)
 	scripts := [][]string{
 		{},
 		{"\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\r"},

@@ -58,6 +58,7 @@ type piRenderCase struct {
 // through PiG's built-in read, write and edit renderers and compares the rows.
 // Pi: packages/coding-agent/src/core/extensions/types.ts:463 (ToolRenderResultOptions.isPartial).
 func TestBuiltInRenderersMatchPi104(t *testing.T) {
+	restoreStartupTheme(t)
 	data, err := os.ReadFile(filepath.Join("testdata", "pi104-render-probe", "builtin-renderers.golden.json"))
 	if err != nil {
 		t.Fatal(err)
@@ -83,8 +84,6 @@ func TestBuiltInRenderersMatchPi104(t *testing.T) {
 	t.Setenv("PI_TRUE_COLOR", "1")
 	// Cleanups run last-first: the capability cache drops the pinned mode, then the previous theme is rebuilt in the
 	// restored environment, so no later test inherits this truecolor theme.
-	previousTheme := tui.ActiveTheme().Name
-	t.Cleanup(func() { tui.SetThemeByName(previousTheme) })
 	tui.ResetCapabilitiesCache()
 	t.Cleanup(tui.ResetCapabilitiesCache)
 	tui.SetTheme("dark")

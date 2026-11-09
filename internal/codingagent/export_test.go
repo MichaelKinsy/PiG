@@ -334,3 +334,7 @@ func BindDequeueToAltUp(t *testing.T) {
 	harnessUserBindings = map[string][]KeyID{"app.message.dequeue": {"alt+up"}}
 	t.Cleanup(func() { harnessUserBindings = nil })
 }
+
+// RestoreStartupTheme is restoreStartupTheme for tests in package codingagent_test: it puts the theme, its color mode, the theme registry and the terminal
+// capabilities back when the test ends. TestNoTestLeavesAThemeSelected accepts it as that helper.
+func RestoreStartupTheme(t testing.TB) { restoreStartupTheme(t) }

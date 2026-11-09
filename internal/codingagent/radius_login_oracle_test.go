@@ -31,6 +31,7 @@ type radiusLoginProbe struct {
 // the label, equals the pinned Pi's rendered rows; an unselected row renders
 // as the plain selector does.
 func TestRadiusLoginMenuRendersLikePi(t *testing.T) {
+	restoreStartupTheme(t)
 	text := "Sign in with Radius"
 	label := text + tui.FormatAuthSelectorProviderStatus(tui.OAuthProvider{ID: "radius", Name: "Radius", AuthType: "oauth"})
 	options := []string{"Sign in with an account", "Sign in with an API key", label}

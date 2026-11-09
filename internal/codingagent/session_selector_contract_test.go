@@ -227,6 +227,7 @@ func runSessionContracts(t *testing.T, cases []sessionContractCase) []sessionCon
 
 func replaySessionContract(t *testing.T, probe sessionContractProbe, c sessionContractCase) (sessionContractTrace, int) {
 	t.Helper()
+	restoreStartupTheme(t)
 	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true})
 	tui.SetTheme(probe.Theme)
 	manager := func(bindings map[string][]string) *KeybindingsManager {
@@ -565,6 +566,7 @@ func sessionListInputCases() []sessionContractCase {
 }
 
 func TestSessionListHandleInputContractsMatchPi(t *testing.T) {
+	restoreStartupTheme(t)
 	runSessionContracts(t, sessionListInputCases())
 }
 
@@ -622,12 +624,14 @@ func sessionComponentInputCases() []sessionContractCase {
 }
 
 func TestSessionSelectorComponentHandleInputContractsMatchPi(t *testing.T) {
+	restoreStartupTheme(t)
 	runSessionContracts(t, sessionComponentInputCases())
 }
 
 // TestSessionSelectorKeybindingSourcesMatchPi pins which keybinding manager Pi consults for each action: app.session.toggleNamedFilter comes from
 // the manager passed to the component, every other action from the process-wide manager that the hints also read.
 func TestSessionSelectorKeybindingSourcesMatchPi(t *testing.T) {
+	restoreStartupTheme(t)
 	type action struct {
 		id, defaultKey string
 		acted          func(t *testing.T, tr sessionContractTrace)
@@ -686,6 +690,7 @@ func TestSessionSelectorKeybindingSourcesMatchPi(t *testing.T) {
 
 // TestSessionSelectorSharedKeysFollowRebinding rebinds each tui.* key the list reads to ctrl+g: the new key acts and the old one does not.
 func TestSessionSelectorSharedKeysFollowRebinding(t *testing.T) {
+	restoreStartupTheme(t)
 	recent := skCtrlS
 	type remap struct {
 		id               string
@@ -718,6 +723,7 @@ func TestSessionSelectorSharedKeysFollowRebinding(t *testing.T) {
 // their own messages, a failure in the error colour with "Failed to delete: " and the error text ("Unknown error" when there is none). Pi's trash
 // path cannot fail in the oracle, so the outcomes are driven through the injected delete operation.
 func TestSessionSelectorDeleteOutcomeReportsInTheHeader(t *testing.T) {
+	restoreStartupTheme(t)
 	previousTheme, previousCaps, previousKeys := tui.ActiveTheme(), tui.GetCapabilities(), tui.GetTUIKeybindings()
 	t.Cleanup(func() {
 		tui.SetCapabilities(previousCaps)

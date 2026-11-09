@@ -51,9 +51,7 @@ func compactionUIUsage(total float64) *ai.Usage {
 }
 
 func TestInteractiveCompactionUpstream(t *testing.T) {
-	saved := tuiCapabilitiesForTest()
-	t.Cleanup(saved.restore)
-	tuiSetCapsForTest(false)
+	tuiSetCapsForTest(t, false)
 	run := func(name string, test func(*testing.T)) {
 		t.Run(name, func(t *testing.T) { synctest.Test(t, func(t *testing.T) { test(t); synctest.Wait() }) })
 	}

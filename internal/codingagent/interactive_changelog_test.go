@@ -90,6 +90,7 @@ func TestChangelogCommandUsesUpstreamInlineLayout(t *testing.T) {
 // version, newest first as the file lists them with their links normalized, between two borders under a "What's New" title; with
 // collapseChangelog one condensed line names the latest version and the /changelog command instead.
 func TestStartupChangelogFollowsPi(t *testing.T) {
+	restoreStartupTheme(t)
 	tui.SetCapabilityOverrides(tui.CapabilityOverrides{Hyperlinks: new(false)}) // links print their URL as text, whatever terminal runs the test
 	t.Cleanup(func() { tui.SetCapabilityOverrides(tui.CapabilityOverrides{}); tui.ResetCapabilitiesCache() })
 	entries := ParseChangelog("## [0.3.0]\nNewest [doc](docs/a.md)\n\n## [0.2.0]\nMiddle\n\n## [0.1.0]\nOldest")

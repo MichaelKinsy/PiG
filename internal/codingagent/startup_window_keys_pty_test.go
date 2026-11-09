@@ -23,6 +23,8 @@ func TestInitBindsOnlyTheClearAndExitKeysDuringStartupChild(t *testing.T) {
 	if report == "" {
 		t.Skip("runs only as the pty child of TestInitBindsOnlyTheClearAndExitKeysDuringStartup")
 	}
+	// The production startup this child runs selects a theme and replaces the registry; TestMain fails a binary that leaves them.
+	restoreStartupTheme(t)
 	t.Cleanup(func() {
 		if t.Failed() {
 			_ = os.WriteFile(report, []byte(childFailure), 0o600)
@@ -126,6 +128,8 @@ func TestInitEndsWhenAStartupKeyQuitsChild(t *testing.T) {
 	if report == "" {
 		t.Skip("runs only as the pty child of TestInitEndsWhenAStartupKeyQuits")
 	}
+	// The production startup this child runs selects a theme and replaces the registry; TestMain fails a binary that leaves them.
+	restoreStartupTheme(t)
 	t.Cleanup(func() {
 		if t.Failed() {
 			_ = os.WriteFile(report, []byte(childFailure), 0o600)
@@ -180,6 +184,8 @@ func runStartupQuitWithInitialMessageChild(t *testing.T, envKey, message string)
 	if report == "" {
 		t.Skip("runs only as a pty child")
 	}
+	// The production startup this child runs selects a theme and replaces the registry; TestMain fails a binary that leaves them.
+	restoreStartupTheme(t)
 	t.Cleanup(func() {
 		if t.Failed() {
 			_ = os.WriteFile(report, []byte(childFailure), 0o600)

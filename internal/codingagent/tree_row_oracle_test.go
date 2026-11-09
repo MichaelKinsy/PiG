@@ -170,10 +170,10 @@ func treeOracleChains() [][]map[string]any {
 // useTreeOracleTUIDefaults installs Pi's default keybindings, the dark theme, truecolor output and legacy (non-Kitty) key parsing for the test: earlier tests in the package leave other bindings and capabilities installed.
 func useTreeOracleTUIDefaults(t *testing.T) {
 	t.Helper()
-	previousKeybindings, previousCaps, previousKitty := tui.GetTUIKeybindings(), tui.GetCapabilities(), tui.IsKittyProtocolActive()
+	restoreStartupTheme(t)
+	previousKeybindings, previousKitty := tui.GetTUIKeybindings(), tui.IsKittyProtocolActive()
 	t.Cleanup(func() {
 		tui.SetKeybindings(previousKeybindings)
-		tui.SetCapabilities(previousCaps)
 		tui.SetKittyProtocolActive(previousKitty)
 	})
 	tui.SetKittyProtocolActive(false)

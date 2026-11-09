@@ -26,6 +26,8 @@ func TestInitBuildsTheInteractiveStateBeforeTheSessionBindChild(t *testing.T) {
 	if report == "" {
 		t.Skip("runs only as the pty child of TestInitBuildsTheInteractiveStateBeforeTheSessionBind")
 	}
+	// The production startup this child runs selects a theme and replaces the registry; TestMain fails a binary that leaves them.
+	restoreStartupTheme(t)
 	t.Cleanup(func() {
 		if t.Failed() {
 			_ = os.WriteFile(report, []byte(childFailure), 0o600)

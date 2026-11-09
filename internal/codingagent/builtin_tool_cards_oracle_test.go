@@ -419,10 +419,8 @@ func renderBuiltinToolCards(t *testing.T, probes []toolCardProbe) [][]string {
 	t.Helper()
 	// A preview that never lands is a hang, not a slow machine: the wait for its repaint ends at the test's hang bound.
 	waitCtx := testbudget.Context(t)
-	previousCaps := tui.GetCapabilities()
-	t.Cleanup(func() { tui.SetCapabilities(previousCaps) })
+	restoreStartupTheme(t)
 	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true})
-	t.Cleanup(func() { tui.SetTheme("dark") })
 	t.Cleanup(func() { tui.SetAppKeyTextResolver(nil) })
 	// The card clock reads cardClock, which stands at the probe's start until its result lands, as the Pi probe moves Date.now().
 	var cardClock atomic.Int64

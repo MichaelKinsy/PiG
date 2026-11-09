@@ -110,6 +110,8 @@ func TestInitFailingAfterTheTuiStartsChild(t *testing.T) {
 	if report == "" {
 		t.Skip("runs only as the pty child of TestInitFailingAfterTheTuiStartsStaysInitialized")
 	}
+	// The production startup this child runs selects a theme and replaces the registry; TestMain fails a binary that leaves them.
+	restoreStartupTheme(t)
 	// The terminal UI owns the pseudo-terminal, so the child reports its failure through a file.
 	t.Cleanup(func() {
 		if t.Failed() {

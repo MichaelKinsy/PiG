@@ -52,6 +52,7 @@ func (*selectorStatusTerminal) Stop()        {}
 func (*selectorStatusTerminal) Write(string) {}
 
 func TestSessionSelectorStatusExpiryWakesIdleOwners(t *testing.T) {
+	restoreStartupTheme(t)
 	for _, tc := range []struct {
 		name, mode string
 		all        bool

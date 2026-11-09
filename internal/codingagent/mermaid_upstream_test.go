@@ -13,6 +13,7 @@ import (
 )
 
 func TestMermaidRenderingUpstream(t *testing.T) {
+	restoreStartupTheme(t)
 	assertToolContains := func(t *testing.T, text string, wants ...string) {
 		t.Helper()
 		for _, want := range wants {

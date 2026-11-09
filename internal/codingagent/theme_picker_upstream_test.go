@@ -11,6 +11,7 @@ import (
 
 // theme-picker.test.ts:34; startup's directory and explicit-file loading paths must expose the content name and its source path through getAllThemes.
 func TestThemeContentNamePathReachesExtension(t *testing.T) {
+	restoreStartupTheme(t)
 	data, err := os.ReadFile("../../tui/theme_dark.json")
 	if err != nil {
 		t.Fatal(err)
@@ -38,8 +39,6 @@ func TestThemeContentNamePathReachesExtension(t *testing.T) {
 			if _, diagnostics := loadThemeResources(registry, []string{source}, tui.GetTerminalColorMode()); len(diagnostics) != 0 {
 				t.Fatalf("diagnostics = %#v", diagnostics)
 			}
-			old := tui.ActiveThemeRegistry()
-			t.Cleanup(func() { tui.SetThemeRegistry(old) })
 			tui.SetThemeRegistry(registry)
 			ui := &ExtUIContext{}
 			found := false

@@ -115,6 +115,7 @@ func jsonParent(parent string) string {
 // and the LabelInput (confirm saves a trimmed label, cancel hides it, everything else edits). Every frame is compared byte for byte, colours,
 // the selected row's background and the unpadded rows included.
 func TestTreeSelectorInputMatchesPi(t *testing.T) {
+	restoreStartupTheme(t)
 	fixtures := treeOracleFixtures()
 	scripts := [][]string{
 		{},

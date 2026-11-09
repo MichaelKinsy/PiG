@@ -13,8 +13,9 @@ import (
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
-// restoreStartupTheme restores the process-global theme state a startup
-// prompt changes.
+// restoreStartupTheme puts the process-global theme state back when the test ends: the active theme by name and in the color mode it was built in, the theme
+// registry, and the terminal capabilities (and clears the terminal colors a startup prompt records). Call it before the test changes any of them;
+// TestNoTestLeavesAThemeSelected requires it, and TestRestoreStartupThemeRestoresEveryAspectOfTheThemeState pins what it restores.
 func restoreStartupTheme(t testing.TB) {
 	t.Helper()
 	previousRegistry := tui.ActiveThemeRegistry()
@@ -26,6 +27,10 @@ func restoreStartupTheme(t testing.TB) {
 		// Rebuild the previous theme in its own color mode, which can differ from the capabilities' (see pinHeaderTerminal).
 		tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: previousTheme.GetColorMode() == tui.TerminalColorModeTrueColor})
 		tui.SetThemeByName(previousTheme.Name)
+		if tui.ActiveTheme().Name != previousTheme.Name {
+			// An instance a test set directly (SetThemeInstance) is in no registry, so the name selected the system theme instead.
+			tui.SetThemeInstance(previousTheme)
+		}
 		tui.SetCapabilities(previousCaps)
 	})
 }
@@ -205,13 +210,11 @@ func TestStartupPromptFlushesALoneEscape(t *testing.T) {
 	}
 }
 
-// pinTrueColorCapabilities fixes the terminal capabilities at truecolor for a test that compares theme instances by
-// identity. storeActiveTheme converts a theme into the capabilities' color mode and returns a copy when the mode
-// differs, so on a 256-color host (TERM=screen) an instance built in truecolor is not the active theme itself. Register
-// it before restoreStartupTheme so its cleanup runs after that helper's.
+// pinTrueColorCapabilities fixes the terminal capabilities at truecolor until the test ends, for a test that compares theme
+// instances by identity. storeActiveTheme converts a theme into the capabilities' color mode and returns a copy when the
+// mode differs, so on a 256-color host (TERM=screen) an instance built in truecolor is not the active theme itself.
 func pinTrueColorCapabilities(t testing.TB) {
 	t.Helper()
-	previous := tui.GetCapabilities()
+	restoreStartupTheme(t)
 	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true})
-	t.Cleanup(func() { tui.SetCapabilities(previous) })
 }

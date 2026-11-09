@@ -60,6 +60,7 @@ func callHTMLOf(t *testing.T, exportPath string) string {
 }
 
 func TestRegression10285RendersThemInHTMLExportsToo(t *testing.T) {
+	restoreStartupTheme(t)
 	tui.SetTheme("dark")
 	dir := t.TempDir()
 	sessionPath := write10285Session(t, dir)
@@ -75,6 +76,7 @@ func TestRegression10285RendersThemInHTMLExportsToo(t *testing.T) {
 // The same export through /export, which is the Session's exportToHtml of the Pi test: the handler hands the host's
 // tool renderers to the exporter, so the MCP call that no extension registered is still drawn by the MCP renderer.
 func TestRegression10285SlashExportRendersThemInHTMLExports(t *testing.T) {
+	restoreStartupTheme(t)
 	tui.SetTheme("dark")
 	dir := t.TempDir()
 	session := &Session{header: SessionHeader{CWD: dir}, path: write10285Session(t, dir)}

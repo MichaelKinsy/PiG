@@ -54,8 +54,7 @@ func TestLoadThemeResourcesNodeFSErrorText(t *testing.T) {
 // Pi getAvailableThemesWithPaths (theme.ts:426-478) lists every valid named theme in the custom themes directory, and loadThemeJson (theme.ts:506-526) loads it, even when resource settings or --no-themes leave it unregistered.
 // Those themes are selectable without becoming loaded resources or diagnostics.
 func TestLoadThemesKeepsCustomDirectoryThemesSelectable(t *testing.T) {
-	old := tui.ActiveThemeRegistry()
-	t.Cleanup(func() { tui.SetThemeRegistry(old) })
+	restoreStartupTheme(t)
 	agentDir := t.TempDir()
 	themesDir := filepath.Join(agentDir, "themes")
 	if err := os.Mkdir(themesDir, 0o700); err != nil {

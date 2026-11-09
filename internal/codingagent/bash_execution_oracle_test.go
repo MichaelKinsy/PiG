@@ -35,6 +35,7 @@ type bashProbe struct {
 // the hidden-lines hint, the cancelled / exit / truncation status rows and the context truncation of very long output, at several
 // widths, output pads and cancel bindings.
 func TestBashExecutionComponentMatchesPi(t *testing.T) {
+	restoreStartupTheme(t)
 	var many strings.Builder
 	for i := 1; i <= 2500; i++ {
 		fmt.Fprintf(&many, "line %d\n", i)
@@ -100,8 +101,6 @@ func TestBashExecutionComponentMatchesPi(t *testing.T) {
 	if err := json.Unmarshal(output, &expected); err != nil {
 		t.Fatal(err)
 	}
-	previousCaps := tui.GetCapabilities()
-	t.Cleanup(func() { tui.SetCapabilities(previousCaps) })
 	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true})
 	tui.SetTheme("dark")
 	t.Cleanup(func() { tui.SetAppKeyTextResolver(nil) })

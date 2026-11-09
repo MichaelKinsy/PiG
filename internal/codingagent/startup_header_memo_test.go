@@ -66,13 +66,11 @@ func registerHeaderMemoSprite(t *testing.T, body string) {
 func restoreHeaderMemoGlobals(t *testing.T) {
 	t.Helper()
 	isolatePigHome(t)
-	caps, theme, halfBlock := tui.GetCapabilities(), tui.ActiveTheme().Name, supportsHalfBlockMark
+	restoreStartupTheme(t)
+	halfBlock := supportsHalfBlockMark
 	t.Cleanup(func() {
 		supportsHalfBlockMark = halfBlock
 		piglogin.Unregister("header-memo-test")
-		tui.SetCapabilities(caps)
-		tui.SetTheme(theme)
-		tui.RefreshActiveThemeColorMode()
 		piglogin.Refresh()
 	})
 	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true})

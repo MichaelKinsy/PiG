@@ -158,6 +158,7 @@ func TestExtensionThemePaletteOmitsNonFiniteColors(t *testing.T) {
 
 // The palette the host encodes for a subprocess extension is shared while no input of ExtensionThemePalette changes, and is rebuilt, equal to a fresh ExtensionThemePalette, as soon as the active theme, the terminal's reported colors or the theme's color mode change.
 func TestActiveExtensionThemeWireIsSharedUntilAnInputChanges(t *testing.T) {
+	restoreStartupTheme(t)
 	previous := tui.ActiveTheme()
 	t.Cleanup(func() {
 		tui.SetThemeInstance(previous)

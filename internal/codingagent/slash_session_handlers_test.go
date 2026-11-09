@@ -394,9 +394,7 @@ func settingsRowsFor(t *testing.T, sm *SettingsManager) (map[string]tui.SettingI
 }
 
 func TestSettingsItems_UpstreamCoreRosterPresentAndOrdered(t *testing.T) {
-	prev := tuiCapabilitiesForTest()
-	defer prev.restore()
-	tuiSetCapsForTest(true)
+	tuiSetCapsForTest(t, true)
 	_, ids := settingsRowsFor(t, NewSettingsManager(t.TempDir(), t.TempDir()))
 
 	wantPrefix := []string{
@@ -545,11 +543,9 @@ func TestAnthropicExtraUsageWarningEnabled(t *testing.T) {
 
 func TestSettingsItems_ImageCapabilityGating(t *testing.T) {
 	// Force capabilities so the test is deterministic regardless of terminal.
-	prev := tuiCapabilitiesForTest()
-	defer prev.restore()
 	sm := NewSettingsManager(t.TempDir(), t.TempDir())
 
-	tuiSetCapsForTest(false)
+	tuiSetCapsForTest(t, false)
 	rows, _ := settingsRowsFor(t, sm)
 	for _, id := range []string{"show-images", "image-width-cells"} {
 		if _, ok := rows[id]; ok {
@@ -557,7 +553,7 @@ func TestSettingsItems_ImageCapabilityGating(t *testing.T) {
 		}
 	}
 
-	tuiSetCapsForTest(true)
+	tuiSetCapsForTest(t, true)
 	rows, _ = settingsRowsFor(t, sm)
 	for _, id := range []string{"show-images", "image-width-cells"} {
 		if _, ok := rows[id]; !ok {
@@ -567,8 +563,6 @@ func TestSettingsItems_ImageCapabilityGating(t *testing.T) {
 }
 
 func TestSettingsItems_TerminalProgressAlwaysVisible(t *testing.T) {
-	prev := tuiCapabilitiesForTest()
-	defer prev.restore()
 	sm := NewSettingsManager(t.TempDir(), t.TempDir())
 
 	// Upstream settings-selector.ts:438 inserts terminal-progress
@@ -577,7 +571,7 @@ func TestSettingsItems_TerminalProgressAlwaysVisible(t *testing.T) {
 	// always appears in the settings selector even when the terminal
 	// does not support OSC 9;4.
 	for _, images := range []bool{false, true} {
-		tuiSetCapsForTest(images)
+		tuiSetCapsForTest(t, images)
 		if rows, _ := settingsRowsFor(t, sm); rows["terminal-progress"].ID == "" {
 			t.Fatalf("expected terminal-progress with images=%v", images)
 		}

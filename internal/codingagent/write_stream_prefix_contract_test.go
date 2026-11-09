@@ -17,8 +17,6 @@ import (
 // 48 to 51 and close after line 50, and a Python docstring and a template literal across the boundary.
 func TestInteractiveStreamedWriteCardMatchesPiAtTheLeadingBlockBoundary(t *testing.T) {
 	useTreeOracleTUIDefaults(t)
-	previousCaps := tui.GetCapabilities()
-	t.Cleanup(func() { tui.SetCapabilities(previousCaps) })
 	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true, Hyperlinks: true})
 	code := func(n int) string {
 		var b strings.Builder

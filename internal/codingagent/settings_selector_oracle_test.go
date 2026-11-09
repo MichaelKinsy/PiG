@@ -209,6 +209,7 @@ func settingsOracleBase() settingsOracleConfig {
 // must agree. Pi has no "Mask secret input" row (D80), so the oracle driver inserts that one row into its own copy of the module, and
 // PiG has no "Session share destination" row (D64; TestSettingsSelectorOmitsShareDestination), so the copy drops Pi's.
 func TestSettingsSelectorMatchesPi(t *testing.T) {
+	restoreStartupTheme(t)
 	base := settingsOracleBase()
 	variants := []settingsOracleConfig{base}
 	{

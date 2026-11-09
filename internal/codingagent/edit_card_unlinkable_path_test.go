@@ -16,8 +16,7 @@ import (
 // \\host\x and resolves, while file:///tmp/a%20b has no drive letter and throws "File URL path must be absolute"; on POSIX the host throws and the
 // absolute path resolves. An encoded slash throws on both.
 func TestEditCardDrawsTheCallFallbackForAnUnlinkablePath(t *testing.T) {
-	previous := tui.GetCapabilities()
-	t.Cleanup(func() { tui.SetCapabilities(previous) })
+	restoreStartupTheme(t)
 	for _, tc := range []struct {
 		path       string
 		hyperlinks bool

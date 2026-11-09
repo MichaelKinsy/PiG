@@ -56,6 +56,7 @@ var sessionRenderScripts = []sessionRenderScript{
 // TestSessionListRenderMatchesPi compares the search row, empty messages, row layout (cursor, tree prefix, name or first message, colours, age, cwd and path
 // parts, selection background) and the position line with Pi over every fixture, script, width and both themes.
 func TestSessionListRenderMatchesPi(t *testing.T) {
+	restoreStartupTheme(t)
 	var cases []sessionContractCase
 	for _, fixture := range []string{"small", "big", "unnamed", "one", "empty", "empty-current", "ages", "text", "threads"} {
 		for _, width := range []int{1, 3, 7, 12, 20, 24, 40, 72, 100} {
@@ -95,6 +96,7 @@ func TestSessionListRenderMatchesPi(t *testing.T) {
 // TestSessionHeaderRenderMatchesPi runs SessionSelectorHeader.render over every width, scope, name filter, sort, path state, confirmation and status
 // message, with default and rebound hint keys and with and without the rename hint.
 func TestSessionHeaderRenderMatchesPi(t *testing.T) {
+	restoreStartupTheme(t)
 	states := []sessionRenderScript{
 		{"default", nil},
 		{"all-scope", []string{skTab}},

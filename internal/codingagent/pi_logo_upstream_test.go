@@ -49,16 +49,10 @@ func newHeaderMode(t *testing.T) *InteractiveMode {
 // capabilities, the theme and the half-block check afterwards; a test of Apple Terminal stubs the check after it.
 func pinHeaderTerminal(t *testing.T, mode tui.TerminalColorMode) {
 	t.Helper()
-	previousTheme, previousCaps, previousHalfBlocks := tui.ActiveTheme(), tui.GetCapabilities(), supportsHalfBlockMark
+	restoreStartupTheme(t)
+	previousHalfBlocks := supportsHalfBlockMark
 	supportsHalfBlockMark = func() bool { return true }
-	t.Cleanup(func() {
-		supportsHalfBlockMark = previousHalfBlocks
-		// Rebuild the previous theme in its own color mode, which can differ from the capabilities' (the lazily created
-		// default theme is truecolor whatever the terminal reports), so later tests see the theme they would have seen.
-		tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: previousTheme.GetColorMode() == tui.TerminalColorModeTrueColor})
-		tui.SetThemeByName(previousTheme.Name)
-		tui.SetCapabilities(previousCaps)
-	})
+	t.Cleanup(func() { supportsHalfBlockMark = previousHalfBlocks })
 	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: mode == tui.TerminalColorModeTrueColor})
 	tui.SetTheme("dark")
 	if got := tui.ActiveTheme().GetColorMode(); got != mode {

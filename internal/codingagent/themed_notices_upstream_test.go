@@ -12,8 +12,6 @@ import (
 func TestChatNoticesFollowThemeChangesUpstream(t *testing.T) {
 	restoreStartupTheme(t)
 	// In 256 colors the dark and light dim colors can quantize to one index; a terminal that reports truecolor is the case the assertions compare.
-	previousCaps := tui.GetCapabilities()
-	t.Cleanup(func() { tui.SetCapabilities(previousCaps) })
 	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true})
 	for _, tc := range []struct {
 		name  string

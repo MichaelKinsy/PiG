@@ -77,6 +77,7 @@ func TestMermaidTransformMatchesUpstream(t *testing.T) {
 // hyperlink capability. The goldens carry the palette they were generated
 // with; a theme change that moves it needs a regeneration.
 func TestMermaidThemedTransformMatchesUpstream(t *testing.T) {
+	restoreStartupTheme(t)
 	f, err := os.Open("testdata/mermaid-transform-themed-golden.jsonl")
 	if err != nil {
 		t.Fatalf("open goldens: %v", err)

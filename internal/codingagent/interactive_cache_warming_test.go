@@ -60,9 +60,7 @@ func TestEntryAppendedRendersCacheWarmingUsage(t *testing.T) {
 	// Each iteration creates an ephemeral TUI whose requested render runs on a
 	// timer. Pin the process-wide capability cache before those renders overlap,
 	// and drain each render before restoring it after the test.
-	savedCaps := tuiCapabilitiesForTest()
-	t.Cleanup(savedCaps.restore)
-	tuiSetCapsForTest(false)
+	tuiSetCapsForTest(t, false)
 	synctest.Test(t, func(t *testing.T) {
 		for _, notices := range []bool{true, false} {
 			mode := cacheWarmingTestMode(t, session, notices)

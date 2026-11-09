@@ -21,6 +21,7 @@ func recordTerminalProgress(t *testing.T) *[]bool {
 // false (settings-manager.ts getShowTerminalProgress), which is what keeps
 // unsupported terminals from receiving it. No terminal allowlist applies.
 func TestTerminalProgressFollowsSettingOnly(t *testing.T) {
+	restoreStartupTheme(t)
 	tui.SetCapabilities(tui.TerminalCapabilities{})
 	t.Cleanup(tui.ResetCapabilitiesCache)
 

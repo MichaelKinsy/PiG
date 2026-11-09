@@ -158,8 +158,7 @@ func renderCodemodeCards(t *testing.T, probes []toolCardProbe) [][]string {
 // driveCodemodeCards hands observe each probe's card after its start and result events, with the probe's expansion applied.
 func driveCodemodeCards(t *testing.T, probes []toolCardProbe, observe func(i int, f toolComponentFixture)) {
 	t.Helper()
-	previousCaps := tui.GetCapabilities()
-	t.Cleanup(func() { tui.SetCapabilities(previousCaps) })
+	restoreStartupTheme(t)
 	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true})
 	tui.SetTheme("dark")
 	t.Cleanup(func() { tui.SetAppKeyTextResolver(nil) })

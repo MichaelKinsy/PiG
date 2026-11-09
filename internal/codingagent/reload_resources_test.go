@@ -350,6 +350,7 @@ func TestReloadSkillsUsesStartupValidationAndKeepsValidSiblings(t *testing.T) {
 }
 
 func TestInteractiveModeExtendResourcesFromExtensions_MergesDiscoveredPaths(t *testing.T) {
+	restoreStartupTheme(t)
 	cwd := t.TempDir()
 	promptPath := filepath.Join(cwd, "dynamic.md")
 	skillDir := filepath.Join(cwd, "dynamic-skill")
@@ -508,9 +509,8 @@ func TestResourceLoaderUpstreamNoSkillsReload(t *testing.T) {
 
 // All three no-resource flags suppress automatic discovery, not extension-selected paths (resource-loader.ts:extendResources and update*FromPaths).
 func TestResourceLoaderUpstreamDisabledDiscoveryKeepsExtensions(t *testing.T) {
-	previous := tui.ActiveThemeRegistry()
+	restoreStartupTheme(t)
 	tui.SetThemeRegistry(tui.NewThemeRegistry())
-	t.Cleanup(func() { tui.SetThemeRegistry(previous) })
 	root := t.TempDir()
 	skillPath := filepath.Join(root, "custom", "SKILL.md")
 	promptPath := filepath.Join(root, "custom.md")

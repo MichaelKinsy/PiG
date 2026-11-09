@@ -197,12 +197,9 @@ func TestCustomEditorMatchesPi(t *testing.T) {
 	if err := json.Unmarshal(output, &expected); err != nil {
 		t.Fatal(err)
 	}
-	previousCaps := tui.GetCapabilities()
+	restoreStartupTheme(t)
 	previousKeys := tui.GetKeybindings()
-	t.Cleanup(func() {
-		tui.SetCapabilities(previousCaps)
-		tui.SetKeybindings(previousKeys)
-	})
+	t.Cleanup(func() { tui.SetKeybindings(previousKeys) })
 	failures := 0
 	for i, probe := range probes {
 		got := runCeOracleWithPig(probe)

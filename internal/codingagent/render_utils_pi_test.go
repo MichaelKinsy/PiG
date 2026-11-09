@@ -18,6 +18,7 @@ import (
 // render-utils.js with images unsupported: each text block is stripped of ANSI, sanitized and loses every carriage
 // return, and an image block without a MIME type is shown as image/unknown.
 func TestRenderUtilsReplaceTabsAndTextOutputMatchPi(t *testing.T) {
+	restoreStartupTheme(t)
 	if got, want := replaceTabs("\ta\t\tb"), "   a      b"; got != want {
 		t.Errorf("replaceTabs = %q, want %q", got, want)
 	}
@@ -25,8 +26,6 @@ func TestRenderUtilsReplaceTabsAndTextOutputMatchPi(t *testing.T) {
 		t.Errorf("shellTextOutput = %q, want %q", got, want)
 	}
 
-	previous := tui.GetCapabilities()
-	t.Cleanup(func() { tui.SetCapabilities(previous) })
 	tui.SetCapabilities(tui.TerminalCapabilities{})
 	for _, tc := range []struct {
 		name       string

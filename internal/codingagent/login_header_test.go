@@ -334,12 +334,12 @@ func TestLoginHeaderCompactFallbackFitsEveryPositiveBoundaryWidth(t *testing.T) 
 }
 
 func TestLoginHeaderRendererCachesDefensivelyAndTracksTheme(t *testing.T) {
+	restoreStartupTheme(t)
 	definition := loginHeaderFixture(t)
 	options := LoginHeaderOptions{TrueColor: true, OperationalLines: []string{"Pig v1"}}
 	renderer := newLoginHeaderRenderer(definition, options)
 	options.OperationalLines[0] = "changed outside renderer"
 	tui.SetTheme("dark")
-	defer tui.SetTheme("dark")
 
 	first := renderer.Render(66)
 	first[0] = "changed returned line"

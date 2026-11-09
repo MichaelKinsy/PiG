@@ -23,8 +23,7 @@ func (r *themeWatcherRenderProbe) RequestRender(...bool) { r.requests++ }
 func (r *themeWatcherRenderProbe) ForceFullRender()      { r.fullRepaints++ }
 
 func TestInteractiveThemeWatcherAppliesOnOwnerLoop(t *testing.T) {
-	registry, active := tui.ActiveThemeRegistry(), tui.ActiveTheme()
-	t.Cleanup(func() { tui.SetThemeRegistry(registry); tui.SetThemeByName(active.Name) })
+	restoreStartupTheme(t)
 	agent := t.TempDir()
 	dir := filepath.Join(agent, "themes")
 	if err := os.MkdirAll(dir, 0o755); err != nil {

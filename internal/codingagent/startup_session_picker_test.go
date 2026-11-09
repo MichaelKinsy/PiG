@@ -60,6 +60,7 @@ func pickerResult(t *testing.T, done <-chan startupPickResult, why string) start
 // Pi cli/session-picker.ts:25-36: the selector's select callback resolves the chosen session's path, once.
 // mutation-checked: returning no path, or the wrong path, from selectStartupSession fails it
 func TestSelectStartupSessionResolvesTheSelectedPath(t *testing.T) {
+	restoreStartupTheme(t)
 	t.Setenv(ENV_AGENT_DIR, t.TempDir())
 	cwd := t.TempDir()
 	path := listingPersistedSession(t, defaultSessionDir(cwd), cwd, "only session")
@@ -74,6 +75,7 @@ func TestSelectStartupSessionResolvesTheSelectedPath(t *testing.T) {
 // Pi cli/session-picker.ts:37-42 and session-selector.ts:636: the cancel key resolves null, which main.ts:421 reports as "No session selected".
 // mutation-checked: reporting a selection after the cancel key fails it
 func TestSelectStartupSessionResolvesNullOnCancel(t *testing.T) {
+	restoreStartupTheme(t)
 	t.Setenv(ENV_AGENT_DIR, t.TempDir())
 	cwd := t.TempDir()
 	listingPersistedSession(t, defaultSessionDir(cwd), cwd, "only session")
@@ -88,6 +90,7 @@ func TestSelectStartupSessionResolvesNullOnCancel(t *testing.T) {
 // Pi cli/session-picker.ts:22-23: KeybindingsManager.create() reads the user's keybindings.json and setKeybindings installs it, so a rebound tui.select.cancel is the cancel key.
 // mutation-checked: building the picker's keybindings without the agent dir leaves ctrl+x unbound and fails it
 func TestSelectStartupSessionUsesTheUsersKeybindings(t *testing.T) {
+	restoreStartupTheme(t)
 	t.Setenv(ENV_AGENT_DIR, t.TempDir())
 	cwd := t.TempDir()
 	listingPersistedSession(t, defaultSessionDir(cwd), cwd, "only session")
@@ -111,6 +114,7 @@ func TestSelectStartupSessionUsesTheUsersKeybindings(t *testing.T) {
 // Pi cli/session-picker.ts:42: the picker passes { showRenameHint: false }, so its header offers sort and name filtering but no rename.
 // mutation-checked: leaving showRenameHint on in newStartupSessionSelector puts the rename hint in the header and fails it
 func TestSelectStartupSessionShowsNoRenameHint(t *testing.T) {
+	restoreStartupTheme(t)
 	t.Setenv(ENV_AGENT_DIR, t.TempDir())
 	cwd := t.TempDir()
 	listingPersistedSession(t, defaultSessionDir(cwd), cwd, "only session")
