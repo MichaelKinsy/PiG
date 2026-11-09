@@ -67,11 +67,11 @@ func (m *Models) Refresh(ctx context.Context, options ...ModelsRefreshOptions) M
 			if !allowNetwork || signal.Err() != nil {
 				return nil
 			}
-			credential, err := m.resolveRefreshCredential(signal, provider, stored)
-			if err != nil || credential == nil {
+			network, err := m.resolveNetworkRefresh(signal, provider, stored)
+			if err != nil || network == nil {
 				return err
 			}
-			return m.runProviderRefreshPhase(provider, credential, true, opts.Force, generation, signal)
+			return m.runProviderRefreshPhase(provider, network.credential, true, opts.Force, generation, signal)
 		}
 		if inline {
 			err := run()
@@ -183,6 +183,26 @@ func (m *Models) publishProviderModels(providerID string, generation uint64, sig
 	case <-signal.Done():
 		return false, context.Cause(signal)
 	}
+}
+
+// networkRefresh is the credential for the network refresh phase: nil for a provider that needs only to be configured.
+type networkRefresh struct{ credential *Credential }
+
+// resolveNetworkRefresh returns nil when the provider is not configured.
+// upstream: packages/ai/src/models.ts:resolveNetworkRefresh
+func (m *Models) resolveNetworkRefresh(ctx context.Context, provider *ModelsProvider, stored *Credential) (*networkRefresh, error) {
+	if provider.RefreshModelsAuth == RefreshModelsAuthConfigured {
+		check, err := m.checkProviderAuth(ctx, provider, stored)
+		if err != nil || check == nil {
+			return nil, err
+		}
+		return &networkRefresh{}, nil
+	}
+	credential, err := m.resolveRefreshCredential(ctx, provider, stored)
+	if err != nil || credential == nil {
+		return nil, err
+	}
+	return &networkRefresh{credential: credential}, nil
 }
 
 func (m *Models) resolveRefreshCredential(ctx context.Context, provider *ModelsProvider, stored *Credential) (*Credential, error) {

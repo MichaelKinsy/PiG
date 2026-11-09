@@ -7,6 +7,14 @@ import (
 	"sync"
 )
 
+// RefreshModelsAuthMode mirrors upstream Provider.refreshModelsAuth ("credential" | "configured"); the zero value is the default, "credential".
+type RefreshModelsAuthMode string
+
+const (
+	RefreshModelsAuthCredential RefreshModelsAuthMode = "credential"
+	RefreshModelsAuthConfigured RefreshModelsAuthMode = "configured"
+)
+
 // ModelsProvider is the provider-owned runtime unit from models.ts; Provider remains the existing bound-backend streaming contract.
 type ModelsProvider struct {
 	ID            string
@@ -16,7 +24,12 @@ type ModelsProvider struct {
 	Auth          ProviderAuth
 	GetModels     func() ([]*Model, error)
 	RefreshModels func(RefreshModelsContext) error
-	FilterModels  func([]*Model, *Credential) []*Model
+	// RefreshModelsAuth is what the network phase of RefreshModels needs. The default, RefreshModelsAuthCredential, receives the effective
+	// credential, so an expired OAuth token is refreshed first. RefreshModelsAuthConfigured is for catalogs served by a source other than the
+	// provider, such as pi.dev: the phase still runs only when the provider is configured, but OAuth is never refreshed for it and
+	// RefreshModelsContext.Credential is nil.
+	RefreshModelsAuth RefreshModelsAuthMode
+	FilterModels      func([]*Model, *Credential) []*Model
 	// GetAllModels lists models of every type. Providers with only chat models may leave it nil.
 	GetAllModels func() ([]AnyModel, error)
 	// FilterAllModels is the credential-specific availability policy across every model type.
