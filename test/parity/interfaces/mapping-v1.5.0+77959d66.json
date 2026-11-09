@@ -10484,13 +10484,43 @@
     },
     {
       "id": "pkg:ai/.#CACHE_WARMING_MAX_AGE_MS",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:ec4b71bd4dc0b3aac2fea721ba74a18eb456f2cabef62c687f94ab806c1ced11"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:ec4b71bd4dc0b3aac2fea721ba74a18eb456f2cabef62c687f94ab806c1ced11",
+      "rationale": "Derived by the interface gap detector: CACHE_WARMING_MAX_AGE_MS is Go ai/cache_warming.go#CacheWarmingMaxAgeMs (name rule N2), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/cache_warming.go#CacheWarmingMaxAgeMs"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:internal/codingagent/cache_warmer.go#CacheWarmer.scheduleLocked"
+      ],
+      "evidence": [
+        "reach:internal/codingagent/cache_warmer.go#CacheWarmer.scheduleLocked"
+      ]
     },
     {
       "id": "pkg:ai/.#CACHE_WARMING_MAX_IDLE_AGE_MS",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:ec4b71bd4dc0b3aac2fea721ba74a18eb456f2cabef62c687f94ab806c1ced11"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:ec4b71bd4dc0b3aac2fea721ba74a18eb456f2cabef62c687f94ab806c1ced11",
+      "rationale": "Derived by the interface gap detector: CACHE_WARMING_MAX_IDLE_AGE_MS is Go ai/cache_warming.go#CacheWarmingMaxIdleAgeMs (name rule N2), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/cache_warming.go#CacheWarmingMaxIdleAgeMs"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:internal/codingagent/cache_warmer.go#CacheWarmer.OnAgentSettled"
+      ],
+      "evidence": [
+        "reach:internal/codingagent/cache_warmer.go#CacheWarmer.OnAgentSettled"
+      ]
     },
     {
       "id": "pkg:ai/.#CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS",
@@ -10523,9 +10553,9 @@
       "id": "pkg:ai/.#CacheWarmingAction",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:874681724059ef7dee9346c5a0385704279509754e9ced2e4827dc310572d0b1",
-      "rationale": "Derived by the interface gap detector: CacheWarmingAction is Go coding/extension/cache_warming.go#CacheWarmingAction (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: CacheWarmingAction is Go ai/cache_warming.go#CacheWarmingAction (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/cache_warming.go#CacheWarmingAction"
+        "ai/cache_warming.go#CacheWarmingAction"
       ],
       "layers": {
         "behavior": "complete",
@@ -10533,21 +10563,19 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/inproc/cache_warming.go#Runner.EmitCacheWarmingDecision"
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
       ],
       "evidence": [
-        "test:coding/cache_warming_decision_upstream_test.go#TestCacheWarmingDecisionUsesLastExtensionOverride",
-        "test:test/extension-conformance/api_on_emitters_more_test.go#TestConformanceAPIOnCacheWarmingDecisionOverridesTheAction",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
+        "reach:ai/cache_warming.go#EvaluateCacheWarming"
       ]
     },
     {
       "id": "pkg:ai/.#CacheWarmingDecision",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:f6ef157616af7b8c4b19487c42b779e45dcbe13bddbf587ee04bf2e411a440e8",
-      "rationale": "Derived by the interface gap detector: CacheWarmingDecision is Go internal/codingagent/cache_warmer.go#CacheWarmingDecision (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: CacheWarmingDecision is Go ai/cache_warming.go#CacheWarmingDecision (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "internal/codingagent/cache_warmer.go#CacheWarmingDecision"
+        "ai/cache_warming.go#CacheWarmingDecision"
       ],
       "layers": {
         "behavior": "complete",
@@ -10555,7 +10583,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/cache_warmer.go#CacheWarmer.Status"
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
       ],
       "evidence": [
         "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
@@ -10567,9 +10595,9 @@
       "id": "pkg:ai/.#CacheWarmingDecision::property:action",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:0256259170da898741b6daae815ee4157d4de180d8220196df3ebcf1fa84efc6",
-      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:action is Go internal/codingagent/cache_warmer.go#CacheWarmingDecision.Action (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:action is Go ai/cache_warming.go#CacheWarmingDecision.Action (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "internal/codingagent/cache_warmer.go#CacheWarmingDecision.Action"
+        "ai/cache_warming.go#CacheWarmingDecision.Action"
       ],
       "layers": {
         "behavior": "complete",
@@ -10577,7 +10605,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/cache_warmer.go#CacheWarmer.applyDecision"
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
       ],
       "evidence": [
         "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
@@ -10589,9 +10617,9 @@
       "id": "pkg:ai/.#CacheWarmingDecision::property:continuationProbability",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:afcf5f10a115de1823d3fb04b2ab5819849304d8200b22c528fb013c2da156b8",
-      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:continuationProbability is Go internal/codingagent/cache_warmer.go#CacheWarmingDecision.ContinuationProbability (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:continuationProbability is Go ai/cache_warming.go#CacheWarmingDecision.ContinuationProbability (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "internal/codingagent/cache_warmer.go#CacheWarmingDecision.ContinuationProbability"
+        "ai/cache_warming.go#CacheWarmingDecision.ContinuationProbability"
       ],
       "layers": {
         "behavior": "complete",
@@ -10599,7 +10627,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/cache_warmer.go#CacheWarmer.evaluate"
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
       ],
       "evidence": [
         "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
@@ -10611,9 +10639,9 @@
       "id": "pkg:ai/.#CacheWarmingDecision::property:economicsAvailable",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:bac064f8a357ca6db3a67f4b98f05666f3ef4298e60fa3a38fdb5332c5889d2f",
-      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:economicsAvailable is Go internal/codingagent/cache_warmer.go#CacheWarmingDecision.EconomicsAvailable (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:economicsAvailable is Go ai/cache_warming.go#CacheWarmingDecision.EconomicsAvailable (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "internal/codingagent/cache_warmer.go#CacheWarmingDecision.EconomicsAvailable"
+        "ai/cache_warming.go#CacheWarmingDecision.EconomicsAvailable"
       ],
       "layers": {
         "behavior": "complete",
@@ -10621,7 +10649,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/cache_warmer.go#CacheWarmer.Status"
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
       ],
       "evidence": [
         "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
@@ -10633,9 +10661,9 @@
       "id": "pkg:ai/.#CacheWarmingDecision::property:expectedSavings",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:d01688118afeb91c5519e5a2fb42f106260e5d7533ce58ab94e7f03e4993502f",
-      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:expectedSavings is Go internal/codingagent/cache_warmer.go#CacheWarmingDecision.ExpectedSavings (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:expectedSavings is Go ai/cache_warming.go#CacheWarmingDecision.ExpectedSavings (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "internal/codingagent/cache_warmer.go#CacheWarmingDecision.ExpectedSavings"
+        "ai/cache_warming.go#CacheWarmingDecision.ExpectedSavings"
       ],
       "layers": {
         "behavior": "complete",
@@ -10643,7 +10671,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/cache_warmer.go#CacheWarmer.evaluate"
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
       ],
       "evidence": [
         "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
@@ -10655,9 +10683,9 @@
       "id": "pkg:ai/.#CacheWarmingDecision::property:missCost",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:1f6b4d61e586748effcdaa202e17e1b3abb3edf582d8c33c4b8f7abac2295956",
-      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:missCost is Go internal/codingagent/cache_warmer.go#CacheWarmingDecision.MissCost (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:missCost is Go ai/cache_warming.go#CacheWarmingDecision.MissCost (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "internal/codingagent/cache_warmer.go#CacheWarmingDecision.MissCost"
+        "ai/cache_warming.go#CacheWarmingDecision.MissCost"
       ],
       "layers": {
         "behavior": "complete",
@@ -10665,7 +10693,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/cache_warmer.go#CacheWarmer.evaluate"
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
       ],
       "evidence": [
         "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
@@ -10677,9 +10705,9 @@
       "id": "pkg:ai/.#CacheWarmingDecision::property:phase",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:725229016826e110f8150100db1b12acad7caefbd8c9a2ef1f8de6ed8a42b38e",
-      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:phase is Go internal/codingagent/cache_warmer.go#CacheWarmingDecision.Phase (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:phase is Go ai/cache_warming.go#CacheWarmingDecision.Phase (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "internal/codingagent/cache_warmer.go#CacheWarmingDecision.Phase"
+        "ai/cache_warming.go#CacheWarmingDecision.Phase"
       ],
       "layers": {
         "behavior": "complete",
@@ -10687,7 +10715,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/cache_warmer.go#CacheWarmer.evaluate"
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
       ],
       "evidence": [
         "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
@@ -10699,9 +10727,9 @@
       "id": "pkg:ai/.#CacheWarmingDecision::property:warmCost",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:04ed344ef6f83d4908a03a3cb42b9d8057bb4ed59a6e74e32d5869b207e0f94a",
-      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:warmCost is Go internal/codingagent/cache_warmer.go#CacheWarmingDecision.WarmCost (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:warmCost is Go ai/cache_warming.go#CacheWarmingDecision.WarmCost (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "internal/codingagent/cache_warmer.go#CacheWarmingDecision.WarmCost"
+        "ai/cache_warming.go#CacheWarmingDecision.WarmCost"
       ],
       "layers": {
         "behavior": "complete",
@@ -10709,7 +10737,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/cache_warmer.go#CacheWarmer.evaluate"
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
       ],
       "evidence": [
         "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
@@ -10719,8 +10747,24 @@
     },
     {
       "id": "pkg:ai/.#CacheWarmingPhase",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:3a25884e0ca854f9c514a428a08cebc23b8587841aab3c38f2fbb2b3082597d5"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:3a25884e0ca854f9c514a428a08cebc23b8587841aab3c38f2fbb2b3082597d5",
+      "rationale": "Derived by the interface gap detector: CacheWarmingPhase is Go ai/cache_warming.go#CacheWarmingPhase (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/cache_warming.go#CacheWarmingPhase"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
+      ],
+      "evidence": [
+        "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
+        "test:internal/codingagent/cache_warming_mode_union_test.go#TestCacheWarmingModeUnionAllKindsAreHandled"
+      ]
     },
     {
       "id": "pkg:ai/.#calculateCost",
@@ -14503,13 +14547,43 @@
     },
     {
       "id": "pkg:ai/.#evaluateCacheWarming",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:1e71ebde0c7b9f7edef213f7d49ade0033983667095587b65c4d4bb47557185e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:1e71ebde0c7b9f7edef213f7d49ade0033983667095587b65c4d4bb47557185e",
+      "rationale": "Derived by the interface gap detector: evaluateCacheWarming is Go ai/cache_warming.go#EvaluateCacheWarming (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/cache_warming.go#EvaluateCacheWarming"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
+      ],
+      "evidence": [
+        "reach:ai/cache_warming.go#EvaluateCacheWarming"
+      ]
     },
     {
       "id": "pkg:ai/.#evaluateCacheWarming::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b07dac779cb87982e0483de5dca4a42f69475e574ce7c66e2690e2a524037755"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:b07dac779cb87982e0483de5dca4a42f69475e574ce7c66e2690e2a524037755",
+      "rationale": "Derived by the interface gap detector: evaluateCacheWarming::call:0 is Go ai/cache_warming.go#EvaluateCacheWarming (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/cache_warming.go#EvaluateCacheWarming"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
+      ],
+      "evidence": [
+        "reach:ai/cache_warming.go#EvaluateCacheWarming"
+      ]
     },
     {
       "id": "pkg:ai/.#EventStream",
@@ -16123,9 +16197,9 @@
       "id": "pkg:ai/.#getCacheWarmingDelayMs",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:dd666b488d9374ee4dc3ca990948f018093a54d4d5f10838bd7e8bd6efef9697",
-      "rationale": "Derived by the interface gap detector: getCacheWarmingDelayMs is Go internal/codingagent/cache_warmer.go#GetCacheWarmingDelayMs (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: getCacheWarmingDelayMs is Go ai/cache_warming.go#GetCacheWarmingDelayMs (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "internal/codingagent/cache_warmer.go#GetCacheWarmingDelayMs"
+        "ai/cache_warming.go#GetCacheWarmingDelayMs"
       ],
       "layers": {
         "behavior": "complete",
@@ -16133,7 +16207,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/cache_warmer.go#GetCacheWarmingDelayMs"
+        "call:ai/cache_warming.go#GetCacheWarmingDelayMs"
       ],
       "evidence": [
         "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
@@ -16145,9 +16219,9 @@
       "id": "pkg:ai/.#getCacheWarmingDelayMs::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:9e818d14e63b1e482d7ea7851655315f9a3f99309559b9a61e42945f561f426f",
-      "rationale": "Derived by the interface gap detector: getCacheWarmingDelayMs::call:0 is Go internal/codingagent/cache_warmer.go#GetCacheWarmingDelayMs (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: getCacheWarmingDelayMs::call:0 is Go ai/cache_warming.go#GetCacheWarmingDelayMs (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "internal/codingagent/cache_warmer.go#GetCacheWarmingDelayMs"
+        "ai/cache_warming.go#GetCacheWarmingDelayMs"
       ],
       "layers": {
         "behavior": "complete",
@@ -16155,7 +16229,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/cache_warmer.go#GetCacheWarmingDelayMs"
+        "call:ai/cache_warming.go#GetCacheWarmingDelayMs"
       ],
       "evidence": [
         "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
@@ -16165,49 +16239,13 @@
     },
     {
       "id": "pkg:ai/.#getCacheWarmingRequestOptions",
-      "disposition": "ported",
-      "upstreamShapeHash": "sha256:074fdb50b91090d88147095c9f2985649a218a66549350fbd55549e47ace1e5e",
-      "rationale": "Derived by the interface gap detector: getCacheWarmingRequestOptions is Go ai/google.go#RetryGoogleRequest (name rule N5), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
-      "pigTargets": [
-        "ai/google.go#RetryGoogleRequest"
-      ],
-      "layers": {
-        "behavior": "complete",
-        "production": "complete",
-        "shape": "complete"
-      },
-      "production": [
-        "call:ai/google.go#RetryGoogleRequest"
-      ],
-      "evidence": [
-        "test:ai/google_retry_request_test.go#TestRetryGoogleRequestDoesNotRetryANonRetryableStatus",
-        "test:ai/google_retry_request_test.go#TestRetryGoogleRequestDoesNotRetryWhenMaxRetriesIsUnset",
-        "test:ai/google_retry_request_test.go#TestRetryGoogleRequestPassesTheDelayCapOn"
-      ],
-      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:074fdb50b91090d88147095c9f2985649a218a66549350fbd55549e47ace1e5e"
     },
     {
       "id": "pkg:ai/.#getCacheWarmingRequestOptions::call:0",
-      "disposition": "ported",
-      "upstreamShapeHash": "sha256:e76c791957d2277b823373bf6bc13e2e21ff69011452262203d659fa94d09a41",
-      "rationale": "Derived by the interface gap detector: getCacheWarmingRequestOptions::call:0 is Go ai/google.go#RetryGoogleRequest (name rule N5), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
-      "pigTargets": [
-        "ai/google.go#RetryGoogleRequest"
-      ],
-      "layers": {
-        "behavior": "complete",
-        "production": "complete",
-        "shape": "complete"
-      },
-      "production": [
-        "call:ai/google.go#RetryGoogleRequest"
-      ],
-      "evidence": [
-        "test:ai/google_retry_request_test.go#TestRetryGoogleRequestDoesNotRetryANonRetryableStatus",
-        "test:ai/google_retry_request_test.go#TestRetryGoogleRequestDoesNotRetryWhenMaxRetriesIsUnset",
-        "test:ai/google_retry_request_test.go#TestRetryGoogleRequestPassesTheDelayCapOn"
-      ],
-      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:e76c791957d2277b823373bf6bc13e2e21ff69011452262203d659fa94d09a41"
     },
     {
       "id": "pkg:ai/.#getClientVersion",
@@ -16643,9 +16681,9 @@
       "id": "pkg:ai/.#getPromptCacheTtlMs",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:85862ff880dbf102dd748a1a8db978549b6e33ff979f4bc9bc6deacde4e578b8",
-      "rationale": "Derived by the interface gap detector: getPromptCacheTtlMs is Go internal/codingagent/cache_warmer.go#GetPromptCacheTtlMs (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: getPromptCacheTtlMs is Go ai/cache_warming.go#GetPromptCacheTtlMs (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "internal/codingagent/cache_warmer.go#GetPromptCacheTtlMs"
+        "ai/cache_warming.go#GetPromptCacheTtlMs"
       ],
       "layers": {
         "behavior": "complete",
@@ -16653,7 +16691,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/cache_warmer.go#GetPromptCacheTtlMs"
+        "call:ai/cache_warming.go#GetPromptCacheTtlMs"
       ],
       "evidence": [
         "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
@@ -16665,9 +16703,9 @@
       "id": "pkg:ai/.#getPromptCacheTtlMs::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:b6ca99024c3972d2370726e2b0e5bb307f7793109dd3ad63252cc2ab1ee4db15",
-      "rationale": "Derived by the interface gap detector: getPromptCacheTtlMs::call:0 is Go internal/codingagent/cache_warmer.go#GetPromptCacheTtlMs (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: getPromptCacheTtlMs::call:0 is Go ai/cache_warming.go#GetPromptCacheTtlMs (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "internal/codingagent/cache_warmer.go#GetPromptCacheTtlMs"
+        "ai/cache_warming.go#GetPromptCacheTtlMs"
       ],
       "layers": {
         "behavior": "complete",
@@ -16675,7 +16713,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/cache_warmer.go#GetPromptCacheTtlMs"
+        "call:ai/cache_warming.go#GetPromptCacheTtlMs"
       ],
       "evidence": [
         "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
@@ -19379,13 +19417,47 @@
     },
     {
       "id": "pkg:ai/.#isCacheWarmingReplayable",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:6f55b0ceb654d02bce22f654e03aa1f858fa33d4dde260062018e19d79125481"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:6f55b0ceb654d02bce22f654e03aa1f858fa33d4dde260062018e19d79125481",
+      "rationale": "Derived by the interface gap detector: isCacheWarmingReplayable is Go ai/cache_warming.go#IsCacheWarmingReplayable (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/cache_warming.go#IsCacheWarmingReplayable"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/cache_warming.go#IsCacheWarmingReplayable"
+      ],
+      "evidence": [
+        "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
+        "test:internal/codingagent/cache_warmer_oracle_test.go#TestCachePromptTTLAndReplayableMatchPi",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingDerivesEligibilityAndTiming"
+      ]
     },
     {
       "id": "pkg:ai/.#isCacheWarmingReplayable::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e61a8dc8c01b357644bd99a21a8f7750e001f99bea4c2614bea5f8e651fbc36e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e61a8dc8c01b357644bd99a21a8f7750e001f99bea4c2614bea5f8e651fbc36e",
+      "rationale": "Derived by the interface gap detector: isCacheWarmingReplayable::call:0 is Go ai/cache_warming.go#IsCacheWarmingReplayable (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/cache_warming.go#IsCacheWarmingReplayable"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/cache_warming.go#IsCacheWarmingReplayable"
+      ],
+      "evidence": [
+        "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
+        "test:internal/codingagent/cache_warmer_oracle_test.go#TestCachePromptTTLAndReplayableMatchPi",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingDerivesEligibilityAndTiming"
+      ]
     },
     {
       "id": "pkg:ai/.#isContextOverflow",
@@ -21003,7 +21075,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/models_catalog_codec.go#anyModelRecord"
+        "call:ai/cache_warming.go#GetPromptCacheTtlMs"
       ],
       "evidence": [
         "test:coding/model_registry_overrides_upstream_test.go#TestModelRegistryModelOverridesUpstream",
@@ -54977,13 +55049,43 @@
     },
     {
       "id": "pkg:ai/compat#CACHE_WARMING_MAX_AGE_MS",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:ec4b71bd4dc0b3aac2fea721ba74a18eb456f2cabef62c687f94ab806c1ced11"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:ec4b71bd4dc0b3aac2fea721ba74a18eb456f2cabef62c687f94ab806c1ced11",
+      "rationale": "Derived by the interface gap detector: CACHE_WARMING_MAX_AGE_MS is Go ai/cache_warming.go#CacheWarmingMaxAgeMs (name rule N2), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/cache_warming.go#CacheWarmingMaxAgeMs"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:internal/codingagent/cache_warmer.go#CacheWarmer.scheduleLocked"
+      ],
+      "evidence": [
+        "reach:internal/codingagent/cache_warmer.go#CacheWarmer.scheduleLocked"
+      ]
     },
     {
       "id": "pkg:ai/compat#CACHE_WARMING_MAX_IDLE_AGE_MS",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:ec4b71bd4dc0b3aac2fea721ba74a18eb456f2cabef62c687f94ab806c1ced11"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:ec4b71bd4dc0b3aac2fea721ba74a18eb456f2cabef62c687f94ab806c1ced11",
+      "rationale": "Derived by the interface gap detector: CACHE_WARMING_MAX_IDLE_AGE_MS is Go ai/cache_warming.go#CacheWarmingMaxIdleAgeMs (name rule N2), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/cache_warming.go#CacheWarmingMaxIdleAgeMs"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:internal/codingagent/cache_warmer.go#CacheWarmer.OnAgentSettled"
+      ],
+      "evidence": [
+        "reach:internal/codingagent/cache_warmer.go#CacheWarmer.OnAgentSettled"
+      ]
     },
     {
       "id": "pkg:ai/compat#CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS",
@@ -55016,9 +55118,9 @@
       "id": "pkg:ai/compat#CacheWarmingAction",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:874681724059ef7dee9346c5a0385704279509754e9ced2e4827dc310572d0b1",
-      "rationale": "Derived by the interface gap detector: CacheWarmingAction is Go coding/extension/cache_warming.go#CacheWarmingAction (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: CacheWarmingAction is Go ai/cache_warming.go#CacheWarmingAction (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/cache_warming.go#CacheWarmingAction"
+        "ai/cache_warming.go#CacheWarmingAction"
       ],
       "layers": {
         "behavior": "complete",
@@ -55026,21 +55128,19 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/inproc/cache_warming.go#Runner.EmitCacheWarmingDecision"
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
       ],
       "evidence": [
-        "test:coding/cache_warming_decision_upstream_test.go#TestCacheWarmingDecisionUsesLastExtensionOverride",
-        "test:test/extension-conformance/api_on_emitters_more_test.go#TestConformanceAPIOnCacheWarmingDecisionOverridesTheAction",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
+        "reach:ai/cache_warming.go#EvaluateCacheWarming"
       ]
     },
     {
       "id": "pkg:ai/compat#CacheWarmingDecision",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:f6ef157616af7b8c4b19487c42b779e45dcbe13bddbf587ee04bf2e411a440e8",
-      "rationale": "Derived by the interface gap detector: CacheWarmingDecision is Go internal/codingagent/cache_warmer.go#CacheWarmingDecision (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: CacheWarmingDecision is Go ai/cache_warming.go#CacheWarmingDecision (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "internal/codingagent/cache_warmer.go#CacheWarmingDecision"
+        "ai/cache_warming.go#CacheWarmingDecision"
       ],
       "layers": {
         "behavior": "complete",
@@ -55048,7 +55148,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/cache_warmer.go#CacheWarmer.Status"
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
       ],
       "evidence": [
         "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
@@ -55060,9 +55160,9 @@
       "id": "pkg:ai/compat#CacheWarmingDecision::property:action",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:0256259170da898741b6daae815ee4157d4de180d8220196df3ebcf1fa84efc6",
-      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:action is Go internal/codingagent/cache_warmer.go#CacheWarmingDecision.Action (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:action is Go ai/cache_warming.go#CacheWarmingDecision.Action (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "internal/codingagent/cache_warmer.go#CacheWarmingDecision.Action"
+        "ai/cache_warming.go#CacheWarmingDecision.Action"
       ],
       "layers": {
         "behavior": "complete",
@@ -55070,7 +55170,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/cache_warmer.go#CacheWarmer.applyDecision"
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
       ],
       "evidence": [
         "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
@@ -55082,9 +55182,9 @@
       "id": "pkg:ai/compat#CacheWarmingDecision::property:continuationProbability",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:afcf5f10a115de1823d3fb04b2ab5819849304d8200b22c528fb013c2da156b8",
-      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:continuationProbability is Go internal/codingagent/cache_warmer.go#CacheWarmingDecision.ContinuationProbability (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:continuationProbability is Go ai/cache_warming.go#CacheWarmingDecision.ContinuationProbability (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "internal/codingagent/cache_warmer.go#CacheWarmingDecision.ContinuationProbability"
+        "ai/cache_warming.go#CacheWarmingDecision.ContinuationProbability"
       ],
       "layers": {
         "behavior": "complete",
@@ -55092,7 +55192,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/cache_warmer.go#CacheWarmer.evaluate"
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
       ],
       "evidence": [
         "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
@@ -55104,9 +55204,9 @@
       "id": "pkg:ai/compat#CacheWarmingDecision::property:economicsAvailable",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:bac064f8a357ca6db3a67f4b98f05666f3ef4298e60fa3a38fdb5332c5889d2f",
-      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:economicsAvailable is Go internal/codingagent/cache_warmer.go#CacheWarmingDecision.EconomicsAvailable (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:economicsAvailable is Go ai/cache_warming.go#CacheWarmingDecision.EconomicsAvailable (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "internal/codingagent/cache_warmer.go#CacheWarmingDecision.EconomicsAvailable"
+        "ai/cache_warming.go#CacheWarmingDecision.EconomicsAvailable"
       ],
       "layers": {
         "behavior": "complete",
@@ -55114,7 +55214,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/cache_warmer.go#CacheWarmer.Status"
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
       ],
       "evidence": [
         "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
@@ -55126,9 +55226,9 @@
       "id": "pkg:ai/compat#CacheWarmingDecision::property:expectedSavings",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:d01688118afeb91c5519e5a2fb42f106260e5d7533ce58ab94e7f03e4993502f",
-      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:expectedSavings is Go internal/codingagent/cache_warmer.go#CacheWarmingDecision.ExpectedSavings (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:expectedSavings is Go ai/cache_warming.go#CacheWarmingDecision.ExpectedSavings (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "internal/codingagent/cache_warmer.go#CacheWarmingDecision.ExpectedSavings"
+        "ai/cache_warming.go#CacheWarmingDecision.ExpectedSavings"
       ],
       "layers": {
         "behavior": "complete",
@@ -55136,7 +55236,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/cache_warmer.go#CacheWarmer.evaluate"
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
       ],
       "evidence": [
         "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
@@ -55148,9 +55248,9 @@
       "id": "pkg:ai/compat#CacheWarmingDecision::property:missCost",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:1f6b4d61e586748effcdaa202e17e1b3abb3edf582d8c33c4b8f7abac2295956",
-      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:missCost is Go internal/codingagent/cache_warmer.go#CacheWarmingDecision.MissCost (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:missCost is Go ai/cache_warming.go#CacheWarmingDecision.MissCost (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "internal/codingagent/cache_warmer.go#CacheWarmingDecision.MissCost"
+        "ai/cache_warming.go#CacheWarmingDecision.MissCost"
       ],
       "layers": {
         "behavior": "complete",
@@ -55158,7 +55258,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/cache_warmer.go#CacheWarmer.evaluate"
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
       ],
       "evidence": [
         "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
@@ -55170,9 +55270,9 @@
       "id": "pkg:ai/compat#CacheWarmingDecision::property:phase",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:725229016826e110f8150100db1b12acad7caefbd8c9a2ef1f8de6ed8a42b38e",
-      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:phase is Go internal/codingagent/cache_warmer.go#CacheWarmingDecision.Phase (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:phase is Go ai/cache_warming.go#CacheWarmingDecision.Phase (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "internal/codingagent/cache_warmer.go#CacheWarmingDecision.Phase"
+        "ai/cache_warming.go#CacheWarmingDecision.Phase"
       ],
       "layers": {
         "behavior": "complete",
@@ -55180,7 +55280,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/cache_warmer.go#CacheWarmer.evaluate"
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
       ],
       "evidence": [
         "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
@@ -55192,9 +55292,9 @@
       "id": "pkg:ai/compat#CacheWarmingDecision::property:warmCost",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:04ed344ef6f83d4908a03a3cb42b9d8057bb4ed59a6e74e32d5869b207e0f94a",
-      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:warmCost is Go internal/codingagent/cache_warmer.go#CacheWarmingDecision.WarmCost (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:warmCost is Go ai/cache_warming.go#CacheWarmingDecision.WarmCost (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "internal/codingagent/cache_warmer.go#CacheWarmingDecision.WarmCost"
+        "ai/cache_warming.go#CacheWarmingDecision.WarmCost"
       ],
       "layers": {
         "behavior": "complete",
@@ -55202,7 +55302,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/cache_warmer.go#CacheWarmer.evaluate"
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
       ],
       "evidence": [
         "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
@@ -55212,8 +55312,24 @@
     },
     {
       "id": "pkg:ai/compat#CacheWarmingPhase",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:3a25884e0ca854f9c514a428a08cebc23b8587841aab3c38f2fbb2b3082597d5"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:3a25884e0ca854f9c514a428a08cebc23b8587841aab3c38f2fbb2b3082597d5",
+      "rationale": "Derived by the interface gap detector: CacheWarmingPhase is Go ai/cache_warming.go#CacheWarmingPhase (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/cache_warming.go#CacheWarmingPhase"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
+      ],
+      "evidence": [
+        "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
+        "test:internal/codingagent/cache_warming_mode_union_test.go#TestCacheWarmingModeUnionAllKindsAreHandled"
+      ]
     },
     {
       "id": "pkg:ai/compat#calculateCost",
@@ -59086,13 +59202,43 @@
     },
     {
       "id": "pkg:ai/compat#evaluateCacheWarming",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:1e71ebde0c7b9f7edef213f7d49ade0033983667095587b65c4d4bb47557185e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:1e71ebde0c7b9f7edef213f7d49ade0033983667095587b65c4d4bb47557185e",
+      "rationale": "Derived by the interface gap detector: evaluateCacheWarming is Go ai/cache_warming.go#EvaluateCacheWarming (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/cache_warming.go#EvaluateCacheWarming"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
+      ],
+      "evidence": [
+        "reach:ai/cache_warming.go#EvaluateCacheWarming"
+      ]
     },
     {
       "id": "pkg:ai/compat#evaluateCacheWarming::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b07dac779cb87982e0483de5dca4a42f69475e574ce7c66e2690e2a524037755"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:b07dac779cb87982e0483de5dca4a42f69475e574ce7c66e2690e2a524037755",
+      "rationale": "Derived by the interface gap detector: evaluateCacheWarming::call:0 is Go ai/cache_warming.go#EvaluateCacheWarming (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/cache_warming.go#EvaluateCacheWarming"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
+      ],
+      "evidence": [
+        "reach:ai/cache_warming.go#EvaluateCacheWarming"
+      ]
     },
     {
       "id": "pkg:ai/compat#EventStream",
@@ -60942,9 +61088,9 @@
       "id": "pkg:ai/compat#getCacheWarmingDelayMs",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:dd666b488d9374ee4dc3ca990948f018093a54d4d5f10838bd7e8bd6efef9697",
-      "rationale": "Derived by the interface gap detector: getCacheWarmingDelayMs is Go internal/codingagent/cache_warmer.go#GetCacheWarmingDelayMs (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: getCacheWarmingDelayMs is Go ai/cache_warming.go#GetCacheWarmingDelayMs (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "internal/codingagent/cache_warmer.go#GetCacheWarmingDelayMs"
+        "ai/cache_warming.go#GetCacheWarmingDelayMs"
       ],
       "layers": {
         "behavior": "complete",
@@ -60952,7 +61098,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/cache_warmer.go#GetCacheWarmingDelayMs"
+        "call:ai/cache_warming.go#GetCacheWarmingDelayMs"
       ],
       "evidence": [
         "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
@@ -60964,9 +61110,9 @@
       "id": "pkg:ai/compat#getCacheWarmingDelayMs::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:9e818d14e63b1e482d7ea7851655315f9a3f99309559b9a61e42945f561f426f",
-      "rationale": "Derived by the interface gap detector: getCacheWarmingDelayMs::call:0 is Go internal/codingagent/cache_warmer.go#GetCacheWarmingDelayMs (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: getCacheWarmingDelayMs::call:0 is Go ai/cache_warming.go#GetCacheWarmingDelayMs (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "internal/codingagent/cache_warmer.go#GetCacheWarmingDelayMs"
+        "ai/cache_warming.go#GetCacheWarmingDelayMs"
       ],
       "layers": {
         "behavior": "complete",
@@ -60974,7 +61120,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/cache_warmer.go#GetCacheWarmingDelayMs"
+        "call:ai/cache_warming.go#GetCacheWarmingDelayMs"
       ],
       "evidence": [
         "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
@@ -60984,49 +61130,13 @@
     },
     {
       "id": "pkg:ai/compat#getCacheWarmingRequestOptions",
-      "disposition": "ported",
-      "upstreamShapeHash": "sha256:074fdb50b91090d88147095c9f2985649a218a66549350fbd55549e47ace1e5e",
-      "rationale": "Derived by the interface gap detector: getCacheWarmingRequestOptions is Go ai/google.go#RetryGoogleRequest (name rule N5), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
-      "pigTargets": [
-        "ai/google.go#RetryGoogleRequest"
-      ],
-      "layers": {
-        "behavior": "complete",
-        "production": "complete",
-        "shape": "complete"
-      },
-      "production": [
-        "call:ai/google.go#RetryGoogleRequest"
-      ],
-      "evidence": [
-        "test:ai/google_retry_request_test.go#TestRetryGoogleRequestDoesNotRetryANonRetryableStatus",
-        "test:ai/google_retry_request_test.go#TestRetryGoogleRequestDoesNotRetryWhenMaxRetriesIsUnset",
-        "test:ai/google_retry_request_test.go#TestRetryGoogleRequestPassesTheDelayCapOn"
-      ],
-      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:074fdb50b91090d88147095c9f2985649a218a66549350fbd55549e47ace1e5e"
     },
     {
       "id": "pkg:ai/compat#getCacheWarmingRequestOptions::call:0",
-      "disposition": "ported",
-      "upstreamShapeHash": "sha256:e76c791957d2277b823373bf6bc13e2e21ff69011452262203d659fa94d09a41",
-      "rationale": "Derived by the interface gap detector: getCacheWarmingRequestOptions::call:0 is Go ai/google.go#RetryGoogleRequest (name rule N5), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
-      "pigTargets": [
-        "ai/google.go#RetryGoogleRequest"
-      ],
-      "layers": {
-        "behavior": "complete",
-        "production": "complete",
-        "shape": "complete"
-      },
-      "production": [
-        "call:ai/google.go#RetryGoogleRequest"
-      ],
-      "evidence": [
-        "test:ai/google_retry_request_test.go#TestRetryGoogleRequestDoesNotRetryANonRetryableStatus",
-        "test:ai/google_retry_request_test.go#TestRetryGoogleRequestDoesNotRetryWhenMaxRetriesIsUnset",
-        "test:ai/google_retry_request_test.go#TestRetryGoogleRequestPassesTheDelayCapOn"
-      ],
-      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:e76c791957d2277b823373bf6bc13e2e21ff69011452262203d659fa94d09a41"
     },
     {
       "id": "pkg:ai/compat#getClientVersion",
@@ -61786,9 +61896,9 @@
       "id": "pkg:ai/compat#getPromptCacheTtlMs",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:85862ff880dbf102dd748a1a8db978549b6e33ff979f4bc9bc6deacde4e578b8",
-      "rationale": "Derived by the interface gap detector: getPromptCacheTtlMs is Go internal/codingagent/cache_warmer.go#GetPromptCacheTtlMs (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: getPromptCacheTtlMs is Go ai/cache_warming.go#GetPromptCacheTtlMs (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "internal/codingagent/cache_warmer.go#GetPromptCacheTtlMs"
+        "ai/cache_warming.go#GetPromptCacheTtlMs"
       ],
       "layers": {
         "behavior": "complete",
@@ -61796,7 +61906,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/cache_warmer.go#GetPromptCacheTtlMs"
+        "call:ai/cache_warming.go#GetPromptCacheTtlMs"
       ],
       "evidence": [
         "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
@@ -61808,9 +61918,9 @@
       "id": "pkg:ai/compat#getPromptCacheTtlMs::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:b6ca99024c3972d2370726e2b0e5bb307f7793109dd3ad63252cc2ab1ee4db15",
-      "rationale": "Derived by the interface gap detector: getPromptCacheTtlMs::call:0 is Go internal/codingagent/cache_warmer.go#GetPromptCacheTtlMs (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: getPromptCacheTtlMs::call:0 is Go ai/cache_warming.go#GetPromptCacheTtlMs (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "internal/codingagent/cache_warmer.go#GetPromptCacheTtlMs"
+        "ai/cache_warming.go#GetPromptCacheTtlMs"
       ],
       "layers": {
         "behavior": "complete",
@@ -61818,7 +61928,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/cache_warmer.go#GetPromptCacheTtlMs"
+        "call:ai/cache_warming.go#GetPromptCacheTtlMs"
       ],
       "evidence": [
         "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
@@ -64791,13 +64901,47 @@
     },
     {
       "id": "pkg:ai/compat#isCacheWarmingReplayable",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:6f55b0ceb654d02bce22f654e03aa1f858fa33d4dde260062018e19d79125481"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:6f55b0ceb654d02bce22f654e03aa1f858fa33d4dde260062018e19d79125481",
+      "rationale": "Derived by the interface gap detector: isCacheWarmingReplayable is Go ai/cache_warming.go#IsCacheWarmingReplayable (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/cache_warming.go#IsCacheWarmingReplayable"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/cache_warming.go#IsCacheWarmingReplayable"
+      ],
+      "evidence": [
+        "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
+        "test:internal/codingagent/cache_warmer_oracle_test.go#TestCachePromptTTLAndReplayableMatchPi",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingDerivesEligibilityAndTiming"
+      ]
     },
     {
       "id": "pkg:ai/compat#isCacheWarmingReplayable::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e61a8dc8c01b357644bd99a21a8f7750e001f99bea4c2614bea5f8e651fbc36e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e61a8dc8c01b357644bd99a21a8f7750e001f99bea4c2614bea5f8e651fbc36e",
+      "rationale": "Derived by the interface gap detector: isCacheWarmingReplayable::call:0 is Go ai/cache_warming.go#IsCacheWarmingReplayable (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/cache_warming.go#IsCacheWarmingReplayable"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/cache_warming.go#IsCacheWarmingReplayable"
+      ],
+      "evidence": [
+        "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
+        "test:internal/codingagent/cache_warmer_oracle_test.go#TestCachePromptTTLAndReplayableMatchPi",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingDerivesEligibilityAndTiming"
+      ]
     },
     {
       "id": "pkg:ai/compat#isContextOverflow",
@@ -66459,7 +66603,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/models_catalog_codec.go#anyModelRecord"
+        "call:ai/cache_warming.go#GetPromptCacheTtlMs"
       ],
       "evidence": [
         "test:coding/model_registry_overrides_upstream_test.go#TestModelRegistryModelOverridesUpstream",
@@ -162557,114 +162701,9 @@
       "id": "pkg:coding-agent/.#CacheWarmingDecision::property:action",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:0256259170da898741b6daae815ee4157d4de180d8220196df3ebcf1fa84efc6",
-      "rationale": "CacheWarmingDecision: Go CacheWarmingDecision has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:action is Go ai/cache_warming.go#CacheWarmingDecision.Action (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "internal/codingagent/cache_warmer.go#CacheWarmingDecision.Action"
-      ],
-      "layers": {
-        "shape": "complete",
-        "production": "complete",
-        "behavior": "complete"
-      },
-      "production": [
-        "call:internal/codingagent/cache_warmer.go#CacheWarmer.beginRefresh"
-      ],
-      "evidence": [
-        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingFormatsStatusAndUsageEntries",
-        "test:internal/codingagent/slash_session_cache_warming_test.go#TestSessionHandlerRendersCacheWarmingSection"
-      ]
-    },
-    {
-      "id": "pkg:coding-agent/.#CacheWarmingDecision::property:continuationProbability",
-      "disposition": "ported",
-      "upstreamShapeHash": "sha256:afcf5f10a115de1823d3fb04b2ab5819849304d8200b22c528fb013c2da156b8",
-      "rationale": "CacheWarmingDecision: Go CacheWarmingDecision has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types.",
-      "pigTargets": [
-        "internal/codingagent/cache_warmer.go#CacheWarmingDecision.ContinuationProbability"
-      ],
-      "layers": {
-        "shape": "complete",
-        "production": "complete",
-        "behavior": "complete"
-      },
-      "production": [
-        "call:internal/codingagent/cache_warmer.go#CacheWarmer.beginRefresh"
-      ],
-      "evidence": [
-        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingFormatsStatusAndUsageEntries",
-        "test:internal/codingagent/slash_session_cache_warming_test.go#TestSessionHandlerRendersCacheWarmingSection"
-      ]
-    },
-    {
-      "id": "pkg:coding-agent/.#CacheWarmingDecision::property:economicsAvailable",
-      "disposition": "ported",
-      "upstreamShapeHash": "sha256:bac064f8a357ca6db3a67f4b98f05666f3ef4298e60fa3a38fdb5332c5889d2f",
-      "rationale": "CacheWarmingDecision: Go CacheWarmingDecision has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types.",
-      "pigTargets": [
-        "internal/codingagent/cache_warmer.go#CacheWarmingDecision.EconomicsAvailable"
-      ],
-      "layers": {
-        "shape": "complete",
-        "production": "complete",
-        "behavior": "complete"
-      },
-      "production": [
-        "call:internal/codingagent/cache_warmer.go#CacheWarmer.beginRefresh"
-      ],
-      "evidence": [
-        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingFormatsStatusAndUsageEntries",
-        "test:internal/codingagent/slash_session_cache_warming_test.go#TestSessionHandlerRendersCacheWarmingSection"
-      ]
-    },
-    {
-      "id": "pkg:coding-agent/.#CacheWarmingDecision::property:expectedSavings",
-      "disposition": "ported",
-      "upstreamShapeHash": "sha256:d01688118afeb91c5519e5a2fb42f106260e5d7533ce58ab94e7f03e4993502f",
-      "rationale": "CacheWarmingDecision: Go CacheWarmingDecision has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types.",
-      "pigTargets": [
-        "internal/codingagent/cache_warmer.go#CacheWarmingDecision.ExpectedSavings"
-      ],
-      "layers": {
-        "shape": "complete",
-        "production": "complete",
-        "behavior": "complete"
-      },
-      "production": [
-        "call:internal/codingagent/cache_warmer.go#CacheWarmer.beginRefresh"
-      ],
-      "evidence": [
-        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingFormatsStatusAndUsageEntries",
-        "test:internal/codingagent/slash_session_cache_warming_test.go#TestSessionHandlerRendersCacheWarmingSection"
-      ]
-    },
-    {
-      "id": "pkg:coding-agent/.#CacheWarmingDecision::property:missCost",
-      "disposition": "ported",
-      "upstreamShapeHash": "sha256:1f6b4d61e586748effcdaa202e17e1b3abb3edf582d8c33c4b8f7abac2295956",
-      "rationale": "CacheWarmingDecision: Go CacheWarmingDecision has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types.",
-      "pigTargets": [
-        "internal/codingagent/cache_warmer.go#CacheWarmingDecision.MissCost"
-      ],
-      "layers": {
-        "shape": "complete",
-        "production": "complete",
-        "behavior": "complete"
-      },
-      "production": [
-        "call:internal/codingagent/cache_warmer.go#CacheWarmer.beginRefresh"
-      ],
-      "evidence": [
-        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingFormatsStatusAndUsageEntries",
-        "test:internal/codingagent/slash_session_cache_warming_test.go#TestSessionHandlerRendersCacheWarmingSection"
-      ]
-    },
-    {
-      "id": "pkg:coding-agent/.#CacheWarmingDecision::property:phase",
-      "disposition": "ported",
-      "upstreamShapeHash": "sha256:725229016826e110f8150100db1b12acad7caefbd8c9a2ef1f8de6ed8a42b38e",
-      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:phase is Go internal/codingagent/cache_warmer.go#CacheWarmingDecision.Phase (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
-      "pigTargets": [
-        "internal/codingagent/cache_warmer.go#CacheWarmingDecision.Phase"
+        "ai/cache_warming.go#CacheWarmingDecision.Action"
       ],
       "layers": {
         "behavior": "complete",
@@ -162672,7 +162711,117 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/cache_warmer.go#CacheWarmer.evaluate"
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
+      ],
+      "evidence": [
+        "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingAppliesEconomicDecisionsAndExtensionOverrides",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingFormatsStatusAndUsageEntries"
+      ]
+    },
+    {
+      "id": "pkg:coding-agent/.#CacheWarmingDecision::property:continuationProbability",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:afcf5f10a115de1823d3fb04b2ab5819849304d8200b22c528fb013c2da156b8",
+      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:continuationProbability is Go ai/cache_warming.go#CacheWarmingDecision.ContinuationProbability (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/cache_warming.go#CacheWarmingDecision.ContinuationProbability"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
+      ],
+      "evidence": [
+        "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingExpectedSavingsRoundsTheProductLikePi",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingFormatsStatusAndUsageEntries"
+      ]
+    },
+    {
+      "id": "pkg:coding-agent/.#CacheWarmingDecision::property:economicsAvailable",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:bac064f8a357ca6db3a67f4b98f05666f3ef4298e60fa3a38fdb5332c5889d2f",
+      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:economicsAvailable is Go ai/cache_warming.go#CacheWarmingDecision.EconomicsAvailable (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/cache_warming.go#CacheWarmingDecision.EconomicsAvailable"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
+      ],
+      "evidence": [
+        "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingAppliesEconomicDecisionsAndExtensionOverrides",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingFormatsStatusAndUsageEntries"
+      ]
+    },
+    {
+      "id": "pkg:coding-agent/.#CacheWarmingDecision::property:expectedSavings",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:d01688118afeb91c5519e5a2fb42f106260e5d7533ce58ab94e7f03e4993502f",
+      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:expectedSavings is Go ai/cache_warming.go#CacheWarmingDecision.ExpectedSavings (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/cache_warming.go#CacheWarmingDecision.ExpectedSavings"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
+      ],
+      "evidence": [
+        "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingExpectedSavingsRoundsTheProductLikePi",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingFormatsStatusAndUsageEntries"
+      ]
+    },
+    {
+      "id": "pkg:coding-agent/.#CacheWarmingDecision::property:missCost",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:1f6b4d61e586748effcdaa202e17e1b3abb3edf582d8c33c4b8f7abac2295956",
+      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:missCost is Go ai/cache_warming.go#CacheWarmingDecision.MissCost (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/cache_warming.go#CacheWarmingDecision.MissCost"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
+      ],
+      "evidence": [
+        "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingExpectedSavingsRoundsTheProductLikePi",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingFormatsStatusAndUsageEntries"
+      ]
+    },
+    {
+      "id": "pkg:coding-agent/.#CacheWarmingDecision::property:phase",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:725229016826e110f8150100db1b12acad7caefbd8c9a2ef1f8de6ed8a42b38e",
+      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:phase is Go ai/cache_warming.go#CacheWarmingDecision.Phase (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/cache_warming.go#CacheWarmingDecision.Phase"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
       ],
       "evidence": [
         "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
@@ -162684,21 +162833,22 @@
       "id": "pkg:coding-agent/.#CacheWarmingDecision::property:warmCost",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:04ed344ef6f83d4908a03a3cb42b9d8057bb4ed59a6e74e32d5869b207e0f94a",
-      "rationale": "CacheWarmingDecision: Go CacheWarmingDecision has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:warmCost is Go ai/cache_warming.go#CacheWarmingDecision.WarmCost (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "internal/codingagent/cache_warmer.go#CacheWarmingDecision.WarmCost"
+        "ai/cache_warming.go#CacheWarmingDecision.WarmCost"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/cache_warmer.go#CacheWarmer.beginRefresh"
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
       ],
       "evidence": [
-        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingFormatsStatusAndUsageEntries",
-        "test:internal/codingagent/slash_session_cache_warming_test.go#TestSessionHandlerRendersCacheWarmingSection"
+        "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingExpectedSavingsRoundsTheProductLikePi",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingFormatsStatusAndUsageEntries"
       ]
     },
     {
@@ -199384,13 +199534,47 @@
     },
     {
       "id": "pkg:coding-agent/.#OAuthSelectorComponent::property:dispose",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:38ae7b309a81dcb42836da521f0ee31861d5a3d387d7b590f32ae4bef2920bf7"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:38ae7b309a81dcb42836da521f0ee31861d5a3d387d7b590f32ae4bef2920bf7",
+      "rationale": "Derived by the interface gap detector: OAuthSelectorComponent::property:dispose is Go tui/oauth_selector.go#OAuthSelectorComponent.Dispose (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "tui/oauth_selector.go#OAuthSelectorComponent.Dispose"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:tui/oauth_selector.go#OAuthSelectorComponent.Dispose"
+      ],
+      "evidence": [
+        "test:tui/oauth_selector_partner_test.go#TestOAuthSelectorAnimatesAPartnerRowUntilDisposed",
+        "test:tui/oauth_selector_partner_test.go#TestOAuthSelectorShowsTheBrandStyleOnlyOnTheSelectedPartnerRow",
+        "test:tui/component_width_table_test.go#TestSelectorDialogListComponentsNeverExceedRenderWidth"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#OAuthSelectorComponent::property:dispose::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9ca6a314a982a3e688c5c5ffde6bd32f25f07554352674c9e2234fc7f4b40b92"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9ca6a314a982a3e688c5c5ffde6bd32f25f07554352674c9e2234fc7f4b40b92",
+      "rationale": "Derived by the interface gap detector: OAuthSelectorComponent::property:dispose::call:0 is Go tui/oauth_selector.go#OAuthSelectorComponent.Dispose (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "tui/oauth_selector.go#OAuthSelectorComponent.Dispose"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:tui/oauth_selector.go#OAuthSelectorComponent.Dispose"
+      ],
+      "evidence": [
+        "test:tui/oauth_selector_partner_test.go#TestOAuthSelectorAnimatesAPartnerRowUntilDisposed",
+        "test:tui/oauth_selector_partner_test.go#TestOAuthSelectorShowsTheBrandStyleOnlyOnTheSelectedPartnerRow",
+        "test:tui/component_width_table_test.go#TestSelectorDialogListComponentsNeverExceedRenderWidth"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#OAuthSelectorComponent::property:focused",
@@ -199598,9 +199782,9 @@
       "id": "pkg:coding-agent/.#OAuthSelectorComponent::property:render",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:f29af00107c5800aef466b23d0146bb1244e54eb852bf1d8a89a4235d4db629c",
-      "rationale": "Derived by the interface gap detector: OAuthSelectorComponent::property:render is Go tui/tui.go#Container.Render (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: OAuthSelectorComponent::property:render is Go tui/oauth_selector.go#OAuthSelectorComponent.Render (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "tui/tui.go#Container.Render"
+        "tui/oauth_selector.go#OAuthSelectorComponent.Render"
       ],
       "layers": {
         "behavior": "complete",
@@ -199608,21 +199792,21 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/tui.go#Container.Render"
+        "call:tui/oauth_selector.go#OAuthSelectorComponent.Render"
       ],
       "evidence": [
-        "test:coding/cli/config_builtin_upstream_test.go#TestUpstreamConfigTogglesBuiltinExtensionsInGlobalMode",
-        "test:internal/codingagent/auth_warnings_upstream_test.go#TestAnthropicSubscriptionWarningUpstream",
-        "test:internal/codingagent/clipboard_image_native_errors_upstream_test.go#TestNativeImageErrorsAbortPasteWithoutReadingTextOrChangingEditor"
+        "test:tui/oauth_selector_oracle_test.go#TestOAuthSelectorHandleInputMatchesPi",
+        "test:tui/oauth_selector_upstream_test.go#TestOAuthSelectorUpstreamStatuses",
+        "test:internal/codingagent/selector_focus_test.go#TestEditorSlotOAuthSelectorTakesAndReturnsFocus"
       ]
     },
     {
       "id": "pkg:coding-agent/.#OAuthSelectorComponent::property:render::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:9a059646dfc483afcc74c10248dd3cb99f2e52c8ba8805a2ab913e752f5690a7",
-      "rationale": "Derived by the interface gap detector: OAuthSelectorComponent::property:render::call:0 is Go tui/tui.go#Container.Render (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: OAuthSelectorComponent::property:render::call:0 is Go tui/oauth_selector.go#OAuthSelectorComponent.Render (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "tui/tui.go#Container.Render"
+        "tui/oauth_selector.go#OAuthSelectorComponent.Render"
       ],
       "layers": {
         "behavior": "complete",
@@ -199630,12 +199814,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/tui.go#Container.Render"
+        "call:tui/oauth_selector.go#OAuthSelectorComponent.Render"
       ],
       "evidence": [
-        "test:coding/cli/config_builtin_upstream_test.go#TestUpstreamConfigTogglesBuiltinExtensionsInGlobalMode",
-        "test:internal/codingagent/auth_warnings_upstream_test.go#TestAnthropicSubscriptionWarningUpstream",
-        "test:internal/codingagent/clipboard_image_native_errors_upstream_test.go#TestNativeImageErrorsAbortPasteWithoutReadingTextOrChangingEditor"
+        "test:tui/oauth_selector_oracle_test.go#TestOAuthSelectorHandleInputMatchesPi",
+        "test:tui/oauth_selector_upstream_test.go#TestOAuthSelectorUpstreamStatuses",
+        "test:internal/codingagent/selector_focus_test.go#TestEditorSlotOAuthSelectorTakesAndReturnsFocus"
       ]
     },
     {
@@ -301841,42 +302025,44 @@
       "id": "pkg:tui/.#mixColors",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:a1eb9ceacf152d230e2462398cf755a2cb7d872366a0c4f52080a88b99680d31",
-      "rationale": "mixColors: Go MixColors has the upstream parameters and result (signatures reviewed); callers attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: mixColors is Go tui/colors.go#MixColors (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "tui/colors.go#MixColors"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/radius_login_selector.go#radiusShimmer"
+        "call:tui/colors.go#MixColors"
       ],
       "evidence": [
         "test:tui/colors_oracle_test.go#TestColorsMatchUpstreamOracle",
-        "test:tui/colors_test.go#TestColorErrorsAndEdges"
+        "test:tui/colors_test.go#TestColorErrorsAndEdges",
+        "test:tui/colors_test.go#TestColorMixEndpointsAndHueWrap"
       ]
     },
     {
       "id": "pkg:tui/.#mixColors::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:61ea13064fef509596f43a4cd37e2214f610cf5df61afbb4469f34b4c8539da9",
-      "rationale": "mixColors: Go MixColors has the upstream parameters and result (signatures reviewed); callers attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: mixColors::call:0 is Go tui/colors.go#MixColors (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "tui/colors.go#MixColors"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/radius_login_selector.go#radiusShimmer"
+        "call:tui/colors.go#MixColors"
       ],
       "evidence": [
         "test:tui/colors_oracle_test.go#TestColorsMatchUpstreamOracle",
-        "test:tui/colors_test.go#TestColorErrorsAndEdges"
+        "test:tui/colors_test.go#TestColorErrorsAndEdges",
+        "test:tui/colors_test.go#TestColorMixEndpointsAndHueWrap"
       ]
     },
     {
