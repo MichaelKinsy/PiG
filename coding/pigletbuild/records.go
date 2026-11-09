@@ -643,27 +643,49 @@ func sha256Sum(data []byte) []byte {
 	return sum[:]
 }
 
-// smokeArtifactTimeout bounds the artifact's `--version` run. A freshly linked, unsigned binary's first start can wait on
-// the operating system's on-access malware scan (Windows Defender scans a new executable before it runs), which on a busy
-// machine takes well over ten seconds; a hung artifact still fails.
+// smokeArtifactTimeout bounds how long the artifact's `--version` run may take once its process has started. The wait
+// for the start is not charged to it: a first start can block in the operating system (Windows scans a freshly written
+// executable before it runs it, which on a loaded machine has taken over a minute), and a process that has not started
+// has not hung. A started artifact that does not exit still fails.
 var smokeArtifactTimeout = 60 * time.Second // pig additive (D18): Piglet binary builds are PiG's own; Pi has no artifact check.
 
 // smokeStart starts the artifact's process. Tests replace it to model a first start that blocks.
 var smokeStart = (*exec.Cmd).Start
 
+// smokeArtifact runs the artifact's `--version`. The start waits only for the operating system and the build's
+// context; the run, from the moment the process exists, has smokeArtifactTimeout. A failure names which of the two was
+// spent, so a log tells a slow start from a hang.
 func smokeArtifact(ctx context.Context, path string) error {
-	ctx, cancel := context.WithTimeout(ctx, smokeArtifactTimeout)
-	defer cancel()
 	cmd := linkerexec.CommandContext(ctx, path, "--version")
 	var output bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &output, &output
-	err := smokeStart(cmd)
-	if err == nil {
-		err = cmd.Wait()
+	began := time.Now()
+	if err := smokeStart(cmd); err != nil {
+		if ctx.Err() != nil {
+			return fmt.Errorf("basic artifact verification canceled while starting %s: %w", path, ctx.Err())
+		}
+		return fmt.Errorf("basic artifact verification failed: start %s: %w", path, err)
 	}
-	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+	started := time.Since(began).Round(time.Millisecond)
+	done := make(chan error, 1)
+	go func() { done <- cmd.Wait() }()
+	timer := time.NewTimer(smokeArtifactTimeout)
+	defer timer.Stop()
+	var err error
+	select {
+	case err = <-done:
+	case <-timer.C:
+		_ = cmd.Process.Kill() // A process that already exited makes Kill fail; <-done reports the end either way.
+		<-done
 		// A killed process reports only its exit status (1 on Windows), so name the deadline instead.
-		return fmt.Errorf("basic artifact verification timed out after %s running %s --version", smokeArtifactTimeout, path)
+		message := fmt.Sprintf("basic artifact verification timed out after %s running %s --version (the process took %s to start and had not exited)", smokeArtifactTimeout, path, started)
+		if printed := strings.TrimSpace(output.String()); printed != "" {
+			message += fmt.Sprintf("; it printed %q", printed)
+		}
+		return errors.New(message)
+	}
+	if err != nil && ctx.Err() != nil {
+		return fmt.Errorf("basic artifact verification canceled while running %s --version: %w", path, ctx.Err())
 	}
 	if err != nil {
 		return fmt.Errorf("basic artifact verification failed: %w: %s", err, strings.TrimSpace(output.String()))
