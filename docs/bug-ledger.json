@@ -55462,6 +55462,33 @@
       "tests": []
     },
     {
+      "id": "BF-ff6b95e",
+      "title": "Chord's terminal launcher no longer ends the session when a stop and continue (Ctrl+Z, then `fg`) interrupts…",
+      "symptom": "Chord's terminal launcher no longer ends the session when a stop and continue (Ctrl+Z, then `fg`) interrupts the termios ioctl of raw mode: macOS reports that as EINTR, and Node's `setRawMode` retries it, but the launcher's `SetRaw` called `x/term` directly and failed with `interrupted system call`.",
+      "rootCause": "ProcessTerminal.SetRaw called x/term MakeRaw and Restore directly. A stop and continue (Ctrl+Z, fg) resumes inside the termios ioctl, which macOS reports as EINTR, where Node's setRawMode retries it (libuv uv_tty_set_mode). tui.TestTerminalSyscallsThatCanSleepRetryEINTR flagged both calls. Chord may not link the Pi tui package, so raw mode now has its own copy: unix ioctls in retry loops (platform request constants split by OS) and the Windows console-mode form.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "macOS",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord's terminal launcher no longer ends the session when a stop and continue (Ctrl+Z, then `fg`) interrupts the termios ioctl of raw mode: macOS reports that as EINTR, and Node's `setRawMode` retries it, but the launcher's `SetRaw` called `x/term` directly and failed with `interrupted system call`. Entering and leaving raw mode now retries the ioctls on EINTR.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "aadacbc03e",
+          "date": "2026-11-09"
+        },
+        {
+          "hash": "ff6b95eb25",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "tui/terminal_syscall_eintr_audit_test.go::TestEINTRAuditCoversTheWholeRepository",
+        "tui/terminal_syscall_eintr_audit_test.go::TestTerminalSyscallsThatCanSleepRetryEINTR"
+      ]
+    },
+    {
       "id": "BF-ffcd800",
       "title": "Text after an empty heading follows the same space-token rule as after any other block: blank lines or spaces…",
       "symptom": "Text after an empty heading follows the same space-token rule as after any other block: blank lines or spaces after a final empty heading add the empty row Pi shows.",
