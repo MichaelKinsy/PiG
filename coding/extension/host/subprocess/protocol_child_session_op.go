@@ -9,7 +9,7 @@ import (
 // Calls on one session run in the order they were sent.
 const CallChildSessionOp = "childSession.op"
 
-// CallChildSessionOpAsync is CallChildSessionOp for a member Pi declares `async` (waitForIdle, compact, navigateTree, reload, executeBash, exportToHtml, summarizeForBugReport, setModel, sendCustomMessage, sendUserMessage). It starts in order and returns when the Promise settles; the call's lane advances first, so an abort sent next never waits for it.
+// CallChildSessionOpAsync is CallChildSessionOp for a member Pi declares `async` (waitForIdle, compact, navigateTree, reload, executeBash, exportToHtml, summarizeForBugReport, setModel, cycleModel, sendCustomMessage, sendUserMessage): every `async` member of agent-session.ts that has no call of its own (prompt, steer, followUp, abort and bindExtensions have). It starts in order and returns when the Promise settles; the call's lane advances first, so an abort sent next never waits for it.
 const CallChildSessionOpAsync = "childSession.opAsync"
 
 // ChildSessionOp is the CallChildSessionOp argument.

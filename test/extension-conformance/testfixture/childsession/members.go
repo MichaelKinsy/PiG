@@ -88,7 +88,7 @@ func registerMembers(e *sdk.Extension) {
 			if len(scoped) == 1 {
 				set("scopedModelsSet", fmt.Sprintf("%v:%s", scoped[0].Model["id"], scoped[0].ThinkingLevel), nil)
 			}
-			cycled, err := session.CycleModel("forward")
+			cycled, err := session.CycleModel(context.Background(), "forward")
 			set("cycleOnlyModel", cycled == nil, err)
 			ok(nil, session.SetActiveToolsByName([]string{}))
 			set("activeToolsEmpty", ok(session.GetActiveToolNames()), nil)
@@ -173,6 +173,21 @@ func registerMembers(e *sdk.Extension) {
 			out["exportHtmlInMemory"] = errText(err)
 			ok(nil, session.Reload(context.Background()))
 			set("afterReload", ok(session.SessionID()) == id, nil)
+			// A file-backed session: its sessionFile is a real path (the in-memory one above is empty, so a reader that returned the fallback would still pass there).
+			persisted, err := ctx.CreateAgentSession(sdk.CreateAgentSessionOptions{
+				Cwd: dir, AgentDir: filepath.Join(dir, "agent"), Model: map[string]any{"provider": "sentinel", "id": "echo"}, Tools: []string{},
+				Settings:  map[string]any{"compaction": map[string]any{"enabled": false}},
+				Resources: sdk.ResourceOptions{NoExtensions: true, NoSkills: true, NoPromptTemplates: true, NoThemes: true, NoContextFiles: true},
+			})
+			if err != nil {
+				return nil, err
+			}
+			persistedID, idErr := persisted.SessionID()
+			persistedFile, fileErr := persisted.SessionFile()
+			persisted.Dispose()
+			ok(nil, idErr)
+			ok(nil, fileErr)
+			set("fileBackedSessionFile", strings.HasPrefix(persistedFile, dir) && strings.HasSuffix(persistedFile, ".jsonl") && strings.Contains(persistedFile, persistedID), nil)
 			for _, abort := range []func() error{session.AbortBash, session.AbortBranchSummary, session.AbortCompaction, session.AbortRetry} {
 				ok(nil, abort())
 			}

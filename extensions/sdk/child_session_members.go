@@ -8,7 +8,7 @@ import (
 
 // The members of Pi's AgentSession that an extension reaches over the wire, after the ones in child_session.go. Each one is the host's own AgentSession member (CallChildSessionOp): the value is read from, or the change made on, the session the host owns, so a call returns what the session holds now. A member Pi types `X | undefined` returns a nil pointer, map or an empty string for undefined, as noted on it.
 //
-// Async contract. A member Pi declares `async` blocks until its Promise settles and returns its value or error (Compact, NavigateTree, Reload, WaitForIdle, ExecuteBash, ExportToHTML, SummarizeForBugReport, SetModel, SendCustomMessage, SendUserMessage); it starts in call order, and a later call (an abort from another goroutine) never waits for it. Cancelling the ctx of Compact, NavigateTree and ExecuteBash runs Pi's abort for the work (AbortCompaction, AbortBranchSummary, AbortBash); the other awaited members have no abort in Pi and ctx ends only the wait before they start. A member Pi declares synchronous is a blocking call that returns the host's error with its value.
+// Async contract. A member Pi declares `async` blocks until its Promise settles and returns its value or error (Compact, NavigateTree, Reload, WaitForIdle, ExecuteBash, ExportToHTML, SummarizeForBugReport, SetModel, CycleModel, SendCustomMessage, SendUserMessage); it starts in call order, and a later call (an abort from another goroutine) never waits for it. Cancelling the ctx of Compact, NavigateTree and ExecuteBash runs Pi's abort for the work (AbortCompaction, AbortBranchSummary, AbortBash); the other awaited members have no abort in Pi and ctx ends only the wait before they start. A member Pi declares synchronous is a blocking call that returns the host's error with its value.
 
 // SessionStatsTokens is Pi's SessionStats.tokens.
 type SessionStatsTokens struct {
@@ -369,8 +369,8 @@ func (s *AgentSession) SetModel(ctx context.Context, model map[string]any, optio
 }
 
 // CycleModel is `session.cycleModel(direction, options)`: direction is "forward" (empty) or "backward". It is nil when there is no model to cycle to.
-func (s *AgentSession) CycleModel(direction string, options ...ModelMutationOptions) (*ModelCycleResult, error) {
-	return member[*ModelCycleResult](s, "cycleModel", map[string]any{"direction": direction, "persist": persistOf(options)})
+func (s *AgentSession) CycleModel(ctx context.Context, direction string, options ...ModelMutationOptions) (*ModelCycleResult, error) {
+	return memberAsync[*ModelCycleResult](ctx, s, "cycleModel", map[string]any{"direction": direction, "persist": persistOf(options)}, "")
 }
 
 // SetThinkingLevel is `session.setThinkingLevel(level, options)`; the level is clamped to the model.
