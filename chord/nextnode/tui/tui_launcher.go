@@ -209,6 +209,8 @@ type Launcher struct {
 	// confirming is whether an action is being confirmed (one at a time), from its request to its end: meanwhile the sandbox's
 	// frames are held (held, at most maxHeld bytes), so nothing draws over the prompt, even before it appears.
 	confirming bool
+	// confirmDone is closed when the action being confirmed ended and its held frames were written (the claim made it).
+	confirmDone chan struct{}
 	// requests are the running sandbox's requests being answered (at most maxRequests).
 	requests   int
 	prompt     *prompt
@@ -373,9 +375,9 @@ func (l *Launcher) onResize() {
 // handled before it (launcher.ts:207-218); what Pi awaits (the sandbox's termination, the exit) runs on a goroutine, because
 // endFinish waits for the loop, so it cannot run on it.
 func (l *Launcher) finishAsync(code int) {
-	sandbox := l.beginFinish()
+	sandbox, confirmed := l.beginFinish()
 	//portlint:allow golifetime ends with the launcher: it closes l.ctx, ends the sandbox and waits for the loop, which stops once finished is set
-	go l.endFinish(code, sandbox) //portlint:allow asyncorder launcher.ts:219-220 `await this.#sandbox?.terminate(); this.#exit(code)` is the part of finish Pi awaits, after the synchronous prefix beginFinish ran on the loop; the exit code is delivered once (exited)
+	go l.endFinish(code, sandbox, confirmed) //portlint:allow asyncorder launcher.ts:219-220 `await this.#sandbox?.terminate(); this.#exit(code)` is the part of finish Pi awaits, after the synchronous prefix beginFinish ran on the loop; the exit code is delivered once (exited)
 }
 
 // outdatedAsync restarts the sandbox for a newer base bundle off the loop (it downloads).
@@ -388,23 +390,25 @@ func (l *Launcher) outdatedAsync() {
 func (l *Launcher) finish(code int) {
 	done := make(chan struct{})
 	var sandbox *Sandbox
+	var confirmed <-chan struct{}
 	l.post(func() {
 		defer close(done)
-		sandbox = l.beginFinish()
+		sandbox, confirmed = l.beginFinish()
 	})
 	select {
 	case <-done:
 	case <-l.loopDone:
 	}
-	l.endFinish(code, sandbox)
+	l.endFinish(code, sandbox, confirmed)
 }
 
 // beginFinish is the synchronous prefix of Pi's finish (launcher.ts:207-218), on the loop: the launcher is finished, the terminal
-// given back, the open prompt answered no, RESET_MODES written, the sockets closed. It returns the sandbox to end; nil when the
-// launcher was finished already.
-func (l *Launcher) beginFinish() *Sandbox {
+// given back, the open prompt answered no, RESET_MODES written, the sockets closed. It returns the sandbox to end, nil when the
+// launcher was finished already, and, when a prompt was open, the channel closed once its action ended and wrote the frames held meanwhile
+// (Pi's #confirm finally block runs after the answer, launcher.ts:376-383, before the sandbox's termination settles).
+func (l *Launcher) beginFinish() (*Sandbox, <-chan struct{}) {
 	if l.finished {
-		return nil
+		return nil, nil
 	}
 	l.finished = true
 	if l.stopResize != nil {
@@ -416,25 +420,31 @@ func (l *Launcher) beginFinish() *Sandbox {
 	if l.term.IsTTY() {
 		_ = l.term.SetRaw(false)
 	}
+	var confirmed <-chan struct{}
 	if l.prompt != nil {
 		l.prompt.answer <- false
 		l.prompt = nil
+		confirmed = l.confirmDone
 	}
 	_, _ = io.WriteString(l.output, resetModes)
 	l.closeSockets()
 	sandbox := l.sandbox
 	l.sandbox = nil
 	l.generation++
-	return sandbox
+	return sandbox, confirmed
 }
 
-// endFinish is what Pi's finish awaits: the launcher's context ended, the sandbox terminated, the loop stopped, then the exit code.
-func (l *Launcher) endFinish(code int, sandbox *Sandbox) {
+// endFinish is what Pi's finish awaits: the launcher's context ended, the sandbox terminated, the loop stopped, the answered prompt's action
+// ended, then the exit code.
+func (l *Launcher) endFinish(code int, sandbox *Sandbox, confirmed <-chan struct{}) {
 	l.cancel()
 	if sandbox != nil {
 		sandbox.Terminate()
 	}
 	<-l.loopDone
+	if confirmed != nil {
+		<-confirmed
+	}
 	select {
 	case l.exited <- code:
 	default:
@@ -722,6 +732,7 @@ func (l *Launcher) answer(id int, request BridgeRequest) {
 			return
 		}
 		l.confirming = true
+		l.confirmDone = make(chan struct{})
 	}
 	l.requests++
 	//portlint:allow golifetime a request answers once (at most maxRequests run); its downloads take l.ctx, which finish cancels, and its prompt ends with the loop (Ask returns false on loopDone)
@@ -782,22 +793,36 @@ func (l *Launcher) reply(id int, request BridgeRequest) (LauncherMessage, error)
 }
 
 // confirm runs the action run (it asks the user); the request claimed the prompt (`answer`, one at a time). Afterwards the held
-// frames are written and the sandbox asked to redraw.
+// frames are written and the sandbox asked to redraw. When the launcher finished meanwhile the loop has stopped: Pi's finally block still
+// writes the held frames (launcher.ts:376-383), after the RESET_MODES the loop wrote, and there is no sandbox to redraw.
 func (l *Launcher) confirm(run func() error) error {
+	done := l.confirmDone
+	defer close(done)
 	err := run()
+	ran := false
 	l.sync(func() {
-		l.confirming = false
-		held := l.held
-		l.held = nil
-		l.heldBytes = 0
-		for _, frame := range held {
-			l.write(frame)
-		}
-		if l.sandbox != nil {
-			l.sandbox.Post(LauncherMessage{Kind: "resize", Columns: l.columns(), Rows: l.rows()})
-		}
+		ran = true
+		l.flushHeld()
 	})
+	if !ran {
+		// The loop ended, so nothing else touches the launcher's state.
+		l.flushHeld()
+	}
 	return err
+}
+
+// flushHeld ends the confirmation: the frames held meanwhile are written, the sandbox asked to redraw.
+func (l *Launcher) flushHeld() {
+	l.confirming = false
+	held := l.held
+	l.held = nil
+	l.heldBytes = 0
+	for _, frame := range held {
+		l.write(frame)
+	}
+	if l.sandbox != nil {
+		l.sandbox.Post(LauncherMessage{Kind: "resize", Columns: l.columns(), Rows: l.rows()})
+	}
 }
 
 // launcherPrompt is the launcher's own prompt on the real terminal, for the action being confirmed: its key not the sandbox's.
