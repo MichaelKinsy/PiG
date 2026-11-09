@@ -1,10 +1,7 @@
 package mcpext
 
 import (
-	"context"
 	"testing"
-
-	"github.com/MichaelKinsy/PiG/mcp/oauth"
 )
 
 // String.prototype.trim removes U+FEFF and keeps U+0085; Go's strings.TrimSpace does the reverse. These cases tell the
@@ -20,9 +17,3 @@ func TestParseStatesTreatsJavaScriptWhitespaceAsEmpty(t *testing.T) {
 		t.Fatal("parseStates(U+0085) succeeded; JSON.parse of a non-whitespace character fails")
 	}
 }
-
-type fixedPrompt string
-
-func (fixedPrompt) ShowAuthorizationURL(oauth.URL) {}
-
-func (p fixedPrompt) PromptForRedirectURL(context.Context) (string, error) { return string(p), nil }
