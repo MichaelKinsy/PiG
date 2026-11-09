@@ -290,5 +290,14 @@
    "pkg:ai/api/constrained-sampling#isStrictToolLimitErrorMessage": "ai/constrained_sampling.go#isStrictToolLimitErrorMessage",
    "pkg:ai/api/constrained-sampling#isStrictToolLimitErrorMessage::call:0": "ai/constrained_sampling.go#isStrictToolLimitErrorMessage"
   }
+ },
+ "packages/chord/src/contracts/schema.ts": {
+  "reason": "str, int, num and bool are the contract schema constructors (chord/next/contracts/schema.go: Str, Int, Num, Bool); the interface gap detector bound them to the column-schema wrappers of the same names in chord/next/store/columns.go by name rule N1, which wrap these.",
+  "members": {
+   "pkg:chord/.#str": "chord/next/contracts/schema.go#Str",
+   "pkg:chord/.#int": "chord/next/contracts/schema.go#Int",
+   "pkg:chord/.#num": "chord/next/contracts/schema.go#Num",
+   "pkg:chord/.#bool": "chord/next/contracts/schema.go#Bool"
+  }
  }
 }

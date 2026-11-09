@@ -5649,8 +5649,8 @@
  "packages/chord/test/examples/32-startup.ts": [
   {
    "file": "chord/next/host/remote_remote_object.go",
-   "old": "func (*remoteObject) blocksFirstPass() bool { return false }",
-   "new": "func (*remoteObject) blocksFirstPass() bool { return true }"
+   "old": "\t\tif replica != nil {\n",
+   "new": "\t\tif replica == nil {\n"
   }
  ],
  "packages/chord/src/watch.ts": [
@@ -6241,8 +6241,8 @@
  "packages/chord/src/node/app/tar.ts": [
   {
    "file": "chord/nextnode/app/tar.go",
-   "old": "\t\tif _, err := dst.Write(header); err != nil {\n",
-   "new": "\t\tif _, err := dst.Write(header); err == nil {\n"
+   "old": "\t\tif written > entry.Size {\n",
+   "new": "\t\tif written >= entry.Size {\n"
   }
  ],
  "packages/coding-agent/src/cli/auth-logout.ts": [
@@ -6283,8 +6283,8 @@
  "packages/chord/src/node/app/secrets.ts": [
   {
    "file": "chord/nextnode/app/secrets.go",
-   "old": "\tif len(bytes) > 0 {\n",
-   "new": "\tif len(bytes) >= 0 {\n"
+   "old": "\tsize := 32\n",
+   "new": "\tsize := 33\n"
   }
  ],
  "packages/coding-agent/src/core/provider-matching.ts": [
@@ -6318,8 +6318,8 @@
  "packages/durable/src/storage/sqlite/rows.ts": [
   {
    "file": "durable/storage/sqlite/commit.go",
-   "old": "\tif record.RetiredAt != nil {\n",
-   "new": "\tif record.RetiredAt == nil {\n"
+   "old": "\t\tif err := pending.addDocument(id, actions.actions[id], seq, state.documents[int64(id)]); err != nil {\n",
+   "new": "\t\tif err := pending.addDocument(id, actions.actions[id], seq, state.documents[int64(id)]); err == nil {\n"
   }
  ],
  "packages/coding-agent/src/utils/terminal-question.ts": [
@@ -6353,22 +6353,22 @@
  "packages/durable/src/storage/sqlite/commit.ts": [
   {
    "file": "durable/storage/sqlite/commit.go",
-   "old": "\tif record.RetiredAt != nil {\n",
-   "new": "\tif record.RetiredAt == nil {\n"
+   "old": "\t\t\t\tif typed.Content.Kind == durable.ContentDelta {\n",
+   "new": "\t\t\t\tif typed.Content.Kind != durable.ContentDelta {\n"
   }
  ],
  "packages/durable/src/storage/sqlite/statements.ts": [
   {
    "file": "durable/storage/sqlite/statements.go",
-   "old": "\tif width < 2 {\n",
-   "new": "\tif width <= 2 {\n"
+   "old": "\trow := \"(?\" + strings.Repeat(\", ?\", width-1) + \")\"\n",
+   "new": "\trow := \"(?\" + strings.Repeat(\", ?\", width-2) + \")\"\n"
   }
  ],
  "packages/chord/src/node/plugins/css-modules.ts": [
   {
    "file": "chord/nextnode/plugins/build/build_cssmodules.go",
-   "old": "\tif evaluator == nil {\n",
-   "new": "\tif evaluator != nil {\n"
+   "old": "\tscope := hex.EncodeToString(sum[:])[:8]\n",
+   "new": "\tscope := hex.EncodeToString(sum[:])[:9]\n"
   }
  ],
  "packages/chord/src/telemetry-sqlite/schema.ts": [
@@ -6376,6 +6376,55 @@
    "file": "chord/telemetrysqlite/schema.go",
    "old": "\tif len(tables) == 0 {\n",
    "new": "\tif len(tables) != 0 {\n"
+  }
+ ],
+ "packages/coding-agent/src/cli/auth-login.ts": [
+  {
+   "file": "coding/cli/auth_login.go",
+   "old": "\t\t} else if ctx.Err() != nil || message == errLoginCancelled.Error() { //portlint:allow erroridentity Pi compares the message (auth-login.ts:78 `message === \"Login cancelled\"`): providers, extension subprocesses and the OAuth callback server each build their own \"Login cancelled\" error, so there is no shared identity to match\n",
+   "new": "\t\t} else if ctx.Err() != nil || message != errLoginCancelled.Error() { //portlint:allow erroridentity Pi compares the message (auth-login.ts:78 `message === \"Login cancelled\"`): providers, extension subprocesses and the OAuth callback server each build their own \"Login cancelled\" error, so there is no shared identity to match\n"
+  }
+ ],
+ "packages/coding-agent/src/core/radius-mcp.ts": [
+  {
+   "file": "internal/codingagent/radius_mcp.go",
+   "old": "\t\treturn server.Config.IsHTTP() && normalizeURL(server.Config.URL) == normalizeURL(RadiusMcpURL)\n",
+   "new": "\t\treturn server.Config.IsHTTP() && normalizeURL(server.Config.URL) != normalizeURL(RadiusMcpURL)\n"
+  }
+ ],
+ "packages/chord/src/host/reload-cycle.ts": [
+  {
+   "file": "chord/next/host/host_reload_cycle.go",
+   "old": "\tif at := slices.Index(c.waits, wait); at >= 0 {\n",
+   "new": "\tif at := slices.Index(c.waits, wait); at > 0 {\n"
+  }
+ ],
+ "packages/chord/src/host/unbound-clock.ts": [
+  {
+   "file": "chord/next/host/host_unbound_clock.go",
+   "old": "\tif c.timer == nil {\n",
+   "new": "\tif c.timer != nil {\n"
+  }
+ ],
+ "packages/ai/catalog/providers/qwen-token-plan-individual-cn.ts": [
+  {
+   "file": "internal/modelgen/providers/qwen_token_plan_individual_cn.go",
+   "old": "qwenTokenPlanIndividualModels(ctx, \"alibaba-token-plan-cn\", cnBaseURL)",
+   "new": "qwenTokenPlanIndividualModels(ctx, \"alibaba-token-plan\", cnBaseURL)"
+  }
+ ],
+ "packages/chord/src/node/app/data.ts": [
+  {
+   "file": "chord/nextnode/app/data.go",
+   "old": "\t\t\t\t\t\tif subtle.ConstantTimeCompare([]byte(object.Value(\"token\").(string)), []byte(token)) != 1 {\n",
+   "new": "\t\t\t\t\t\tif subtle.ConstantTimeCompare([]byte(object.Value(\"token\").(string)), []byte(token)) == 1 {\n"
+  }
+ ],
+ "packages/chord/src/node/surfaces/current.ts": [
+  {
+   "file": "chord/nextnode/surfaces/surfaces_current.go",
+   "old": "\t\tif err != nil {\n",
+   "new": "\t\tif err == nil {\n"
   }
  ]
 }

@@ -2,6 +2,8 @@
 
 package plugins
 
+// Ports packages/chord/src/node/plugins/watcher.ts
+
 import "syscall"
 
 // statIdentity is the inode of the entry at path, not following a link, and no birth time: Go's syscall package gives none here.

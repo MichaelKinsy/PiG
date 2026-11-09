@@ -1,5 +1,9 @@
 package tui
 
+// pi: packages/chord/src/node/surfaces/tui.ts
+// pi: packages/chord/src/node/surfaces/served.ts
+// pi: packages/chord/src/node/surfaces/current.ts
+
 import (
 	"context"
 	"os"

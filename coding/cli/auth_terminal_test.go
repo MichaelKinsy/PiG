@@ -1,5 +1,7 @@
 package cli
 
+// pi: packages/coding-agent/src/cli/auth-terminal.ts
+
 // Ports packages/coding-agent/test/auth-terminal.test.ts
 
 import (

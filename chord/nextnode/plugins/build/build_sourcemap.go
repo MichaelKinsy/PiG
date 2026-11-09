@@ -1,5 +1,7 @@
 package build
 
+// Ports packages/chord/src/node/plugins/build.ts (the inline source map reader its freeGlobals needs)
+
 import (
 	"encoding/base64"
 	"encoding/json"

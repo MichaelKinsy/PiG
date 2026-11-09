@@ -1,5 +1,7 @@
 package cli
 
+// pi: packages/coding-agent/src/cli/auth-login.ts
+
 // Ports packages/coding-agent/test/auth-login.test.ts and, with auth_logout_test.go, the shared model-runtime setup. Expected texts name the command `pig`
 // where Pi's name `pi` (D2).
 
