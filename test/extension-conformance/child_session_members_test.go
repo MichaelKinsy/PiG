@@ -66,6 +66,55 @@ func TestChildAgentSessionMembersGoFused(t *testing.T) {
 	checkChildMembers(t, *ext)
 }
 
+// TestChildAgentSessionMembersLisp runs the Lisp port of the child_members scenario (testdata/child-session-lisp) isolated and packed with a sibling.
+func TestChildAgentSessionMembersLisp(t *testing.T) {
+	for _, isolation := range []string{"strict", "shared-ok"} {
+		t.Run(isolation, func(t *testing.T) {
+			host, _ := newChildSessionHost(t)
+			root := findModuleRoot(t)
+			cfg := lispFixtureConfig(t, "child-session-lisp", childsession.Name)
+			cfg.Isolation = isolation
+			configs := []subprocess.ExtConfig{cfg}
+			if isolation == "shared-ok" {
+				peer := packedFlagFactory(t, root, "lisp", "child-session-peer", false)
+				peer.Isolation = isolation
+				configs = append(configs, peer)
+			}
+			loaded, failures := host.LoadAll(t.Context(), configs)
+			if len(failures) != 0 || len(loaded) != len(configs) {
+				t.Fatalf("load: %v", failures)
+			}
+			checkChildMembers(t, loaded[0])
+		})
+	}
+}
+
+// TestChildAgentSessionQueueLisp reads the queueing members and the context usage of an idle session through the Lisp SDK (the abort ordering is in child_session_async_lisp_test.go).
+func TestChildAgentSessionQueueLisp(t *testing.T) {
+	host, _ := newChildSessionHost(t)
+	cfg := lispFixtureConfig(t, "child-session-lisp", childsession.Name)
+	loaded, failures := host.LoadAll(t.Context(), []subprocess.ExtConfig{cfg})
+	if len(failures) != 0 || len(loaded) != 1 {
+		t.Fatalf("load: %v", failures)
+	}
+	for tool, want := range map[string]string{
+		"child_queue": `{"steer":"resolved","followUp":"resolved","usage":null,"isAgentSession":true,"queued":2}`,
+	} {
+		result, err := loaded[0].Tools[tool].Definition.Execute(t.Context(), "call", json.RawMessage(`{}`), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got, wantValue any
+		if err := json.Unmarshal([]byte(result.Text()), &got); err != nil {
+			t.Fatalf("%s %q: %v", tool, result.Text(), err)
+		}
+		_ = json.Unmarshal([]byte(want), &wantValue)
+		if !reflect.DeepEqual(got, wantValue) {
+			t.Errorf("%s = %s, want %s", tool, result.Text(), want)
+		}
+	}
+}
+
 func checkChildMembers(t *testing.T, ext extension.Extension) {
 	t.Helper()
 	result, err := ext.Tools["child_members"].Definition.Execute(t.Context(), "call", json.RawMessage(`{"dir":`+quoteJSON(t.TempDir())+`}`), nil)
