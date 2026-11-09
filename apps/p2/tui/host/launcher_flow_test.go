@@ -107,9 +107,10 @@ func TestServerShippedTUIDrivesCreateSendQueuesStopAndReconnect(t *testing.T) {
 	l.terminal.SendInput(keyEnter)
 	// pi's working indicator in the editor border.
 	l.waitScreen(10*time.Second, "Working...")
-	// The run is live once its thinking block shows: the follow-up is then queued behind a running agent. (A send that reaches a session whose worker is
-	// still starting parks until it is up, and an Alt+Up meanwhile finds nothing queued: the worker's start is slow under load, which Pi's in-process agent never is.)
-	l.waitScreen(20*time.Second, "Thinking...")
+	// The server's agent is running once its answer streams in ("Working..." and the thinking line are the TUI's own): a follow-up is queued behind a running
+	// agent only then. A send that reaches a session whose worker is still starting parks until it is up, and an Alt+Up meanwhile finds nothing queued; the
+	// worker's start is slow under load, which Pi's in-process agent never is.
+	l.waitScreen(20*time.Second, "Echo: slow")
 	l.typed("queued text")
 	// Alt+Enter in kitty's encoding: the virtual terminal reports the kitty protocol, which the runtime knows.
 	l.terminal.SendInput("\x1b[13;3u")
