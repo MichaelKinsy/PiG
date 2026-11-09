@@ -27,10 +27,9 @@ func TestCommitTokenCloseKeepsTheLocksOfOtherConnections(t *testing.T) {
 	if _, err := second.All("SELECT * FROM t"); err != nil {
 		t.Fatal(err)
 	}
-	for _, database := range []*NodeSqliteDatabase{first, second} {
-		if err := database.AttachCommitToken(); err != nil {
-			t.Fatal(err)
-		}
+	// Only the first attaches a token: the second is a connection like any other, and its locks must outlive the first.
+	if err := first.AttachCommitToken(); err != nil {
+		t.Fatal(err)
 	}
 	info, err := os.Stat(path + "-shm")
 	if err != nil {
@@ -63,10 +62,11 @@ func TestCommitTokenCloseKeepsTheLocksOfOtherConnections(t *testing.T) {
 	if err := second.Close(); err != nil {
 		t.Fatal(err)
 	}
-	walIndexes.Lock()
-	open := len(walIndexes.files)
-	walIndexes.Unlock()
-	if open != 0 {
-		t.Fatalf("%d wal-index descriptors stay open after the last connection closed", open)
+	key, _ := walIndexKey(path)
+	openDatabases.Lock()
+	_, registered := openDatabases.files[key]
+	openDatabases.Unlock()
+	if registered {
+		t.Fatal("the database file stays registered after the last connection closed")
 	}
 }

@@ -542,7 +542,7 @@ func newNodeSqliteDatabase(database connection) *NodeSqliteDatabase {
 		runOperation: adapter.run,
 	}
 	if file, ok := database.(*DatabaseSync); ok && file.path != "" {
-		adapter.commitTokens = &commitTokenFile{path: file.path}
+		adapter.commitTokens = &commitTokenFile{path: file.path, database: registerDatabase(file.path)}
 	}
 	return adapter
 }
