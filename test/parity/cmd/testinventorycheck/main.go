@@ -77,11 +77,6 @@ type mappingEntry struct {
 	Evidence         []string `json:"evidence,omitempty"`
 	Divergence       string   `json:"divergence,omitempty"`
 	Rationale        string   `json:"rationale,omitempty"`
-	// Protects, PigTest and WhyNot record the intention check of a row with a designed-out case: what the upstream
-	// case protects, the PiG-shaped test that protects it, and why that test does not port the case as written.
-	Protects string `json:"protects,omitempty"`
-	PigTest  string `json:"pigTest,omitempty"`
-	WhyNot   string `json:"whyNot,omitempty"`
 	// DesignedOutCases names upstream case IDs (exact inventory ids) that are
 	// designed out inside a ported or partial file. The remaining cases are
 	// covered by the entry's verified evidence; the file itself is not designed out.

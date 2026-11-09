@@ -624,7 +624,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	modules := plugins.HostPackages{}
 	maps.Copy(modules, options.API.Modules)
 	if serverKind != nil {
-		maps.Copy(modules, serverKind.Packages)
+		maps.Copy(modules, serverKind.Kind.Packages)
 	}
 	// The server host's own store is the kit's; the plugins' is another file (two chord stores cannot share one).
 	pluginsStore := filepath.Join(opened.layout.Server, "plugins.sqlite")
