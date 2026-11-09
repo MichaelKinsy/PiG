@@ -12,6 +12,8 @@ import (
 // childMembersPython is the child_members scenario of the Go fixture (testfixture/childsession/members.go) for the Python SDK: the same session, the same members in the same order, the same observation keys, so childMembersWant is the golden of both.
 const childMembersPython = `import json
 import os
+import threading
+import time
 import pig_sdk
 
 
@@ -79,7 +81,7 @@ def new_extension():
                 out["scopedModelsSet"] = f"{scoped[0]['model']['id']}:{scoped[0].get('thinkingLevel', '')}"
             out["cycleOnlyModel"] = session.cycle_model("forward") is None
             session.set_active_tools_by_name([])
-            out["activeToolsEmpty"] = session.get_active_tool_names()
+            out["activeToolsEmpty"] = session.active_tools
             session.set_active_tools_by_name(["sentinel_tool"])
             out["activeTools"] = session.get_active_tool_names()
             out["allTools"] = [tool["name"] for tool in session.get_all_tools()]
@@ -145,6 +147,17 @@ def new_extension():
             out["exportHtmlInMemory"] = refused(lambda: session.export_to_html(os.path.join(directory, "export.html")))
             session.reload()
             out["afterReload"] = session.session_id == session_id
+            # An awaited member never holds a later call: execute_bash blocks in one thread and abort_bash, sent from this one, ends it.
+            running = {}
+            runner = threading.Thread(target=lambda: running.update(result=session.execute_bash("sleep 20")))
+            runner.start()
+            deadline = time.monotonic() + 10
+            while not session.is_bash_running and time.monotonic() < deadline:
+                time.sleep(0.01)
+            session.abort_bash()
+            runner.join(10)
+            if runner.is_alive() or not (running.get("result") or {}).get("cancelled"):
+                raise RuntimeError("execute_bash was not ended by abort_bash: the awaited member held the later call")
             session.abort_bash()
             session.abort_branch_summary()
             session.abort_compaction()
