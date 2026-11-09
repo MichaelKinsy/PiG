@@ -985,7 +985,7 @@ rationale = "Moved to packages/chord/src/node/http/upgrades.ts by the root move 
 path = "packages/chord/src/next-node/plugins/build.ts"
 change = "removed"
 disposition = "ported"
-evidence = ["test:chord/nextnode/plugins/plugins_build_test.go", "test:chord/nextnode/plugins/plugins_sourcemap_test.go"]
+evidence = ["test:chord/nextnode/plugins/plugins_build_test.go", "test:chord/nextnode/plugins/build/build_sourcemap_test.go"]
 rationale = "Moved to packages/chord/src/node/plugins/build.ts by the root move (Pi e9c0ff4d8; 334 changed lines since v1.5.0). The Go port (chord/nextnode/plugins/build/build_facet.go, chord/nextnode/plugins/build/build_sourcemap.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
