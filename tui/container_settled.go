@@ -15,9 +15,11 @@ type nestedRender struct {
 	kept    int
 }
 
-// kidInvalidation is the invalidation of ch when ch is of a type whose IsDirty reads that invalidation's flag and nothing else, and
-// nil for any other child. The types are listed exactly: a type that embeds one of them may override IsDirty, which a container
-// then has to ask on every frame. A card is listed too, while kidQuiet holds.
+// kidInvalidation is the invalidation of ch when ch is of a type that a container may stop asking about once it read the child clean:
+// from then on a child of these types reaches the container through its Invalidate (the child's own, or a mutator that calls it), so a
+// settled child costs no IsDirty. The types are listed exactly: a type that embeds one of them may override IsDirty, which a container
+// then has to ask on every frame. A card is listed too, while kidQuiet holds. Every other child is asked on every frame, and a
+// child that embeds a Container answers by Container.IsDirty, which looks at its own children (see there).
 func kidInvalidation(ch Component) *invalidatable {
 	switch v := ch.(type) {
 	case *Spacer:
@@ -144,6 +146,38 @@ func (c *Container) scanSettledLocked(width int, n *nestedRender) int {
 	}
 	c.settled = first
 	return first
+}
+
+// IsDirty reports whether a render of the container would differ from the last one: its own invalidation, a change of its children, or
+// a child whose lines may have changed, which is the scan that Render itself runs. A component that embeds the Container and renders
+// by it (a selector, a message card, a dialog) is asked by its parent container through this method, so a change anywhere beneath it
+// reaches the parent whether or not the change called the embedding component's own Invalidate. Pi has no per-child cache (Container.render
+// renders every child on every frame), so this is what keeps the Go cache from showing a child Pi would have redrawn.
+// A component that overrides IsDirty must still call Container.IsDirty to keep that.
+//
+// A Container that has never rendered is not what its embedding component draws with (a message block that renders by an inner component
+// embeds one for its own flag), so it answers by its flag alone. One whose last render was capped or at another theme, or that is rendering for
+// reference (wholeFrames), is dirty.
+func (c *Container) IsDirty() bool {
+	if c.dirty.Load() {
+		return true
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return !c.settledLocked()
+}
+
+// settledLocked reports that the lines of the last render are the container's lines now. c.mu must be held.
+func (c *Container) settledLocked() bool {
+	if c.cacheWidth == 0 {
+		return true
+	}
+	if !c.windowValid || !c.renderedValid || wholeFrames.Load() || c.cacheTheme != ActiveTheme() {
+		return false
+	}
+	var n nestedRender
+	first := c.scanSettledLocked(c.cacheWidth, &n)
+	return first == len(c.children) && first == len(c.builtKids)
 }
 
 // trustKidHook, when set by a test, runs in trustKidLocked after the child was read clean and before the container claims it.

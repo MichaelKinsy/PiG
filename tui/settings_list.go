@@ -162,11 +162,13 @@ func (s *SettingsList) Reset() {
 	s.ChangedValue = ""
 }
 
-// UpdateValue sets a new current value for the item with the given ID.
+// UpdateValue sets a new current value for the item with the given ID. Pi's updateValue only assigns the value, because Pi's Container renders every child on every frame; the Invalidate is what a Go
+// parent's per-child cache needs to draw it.
 func (s *SettingsList) UpdateValue(id, newValue string) {
 	for i := range s.items {
 		if s.items[i].ID == id {
 			s.items[i].CurrentValue = newValue
+			s.Invalidate()
 			break
 		}
 	}

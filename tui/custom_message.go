@@ -55,9 +55,11 @@ func NewCustomMessageComponentWithSurface(message *CustomMessage, customRenderer
 	return c
 }
 
-// IsDirty reports a renderer component whose output changed on its own (an extension renderer proxy whose lines arrive after the first frame), so the parent container that caches this component re-renders it.
+// IsDirty reports the message's own invalidation, which every mutator sets (rebuild changes the children), and not Container.IsDirty's scan beneath it (see
+// AssistantMessageComponent.IsDirty): a renderer's card may be a component that reports nothing, which the scan would count as changing every frame. It also reports a
+// renderer component whose output changed on its own (an extension renderer proxy whose lines arrive after the first frame), so the parent container that caches this component re-renders it.
 func (c *CustomMessageComponent) IsDirty() bool {
-	if c.Container.IsDirty() {
+	if c.invalidatable.IsDirty() {
 		return true
 	}
 	dirty, ok := c.customComponent.(interface{ IsDirty() bool })
