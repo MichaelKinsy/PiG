@@ -11,7 +11,7 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// a call's detail, as the web's sheet shows it (plugins/coding-tools/activity.tsx): a command and its output as
+// pig additive (D481): a call's detail, as the web's sheet shows it (plugins/coding-tools/activity.tsx): a command and its output as
 // a terminal, a read's numbered lines, a write's content or an edit's diff; any other tool's input as JSON, then its output.
 
 func argText(s activity.Step, key string) string {

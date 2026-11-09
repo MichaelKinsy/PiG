@@ -1,4 +1,4 @@
-// Package sprite is the PiG Standard sprite hook of the branded p2 web UI: the sprite the user
+// Package sprite is the PiG Standard sprite hook of the branded p2 web UI (pig additive (D482): Pi has no sprites): the sprite the user
 // chose with `/sprite` (coding/piglogin: the built-in variants and the extensions' registered ones, the selection saved in
 // piglogin.StatePath) as SVGs rendered from its grid and palette, kept current by watching the state file. Only a branded
 // executable passes a Source to hosts.ServerOptions.Sprite; the Stock server has no sprites.

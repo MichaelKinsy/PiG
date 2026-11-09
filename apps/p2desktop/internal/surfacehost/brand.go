@@ -10,7 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/surfaces"
 )
 
-// the native client's PiG colours are two themes in Chord's `Themes` registry, the same registry
+// pig additive (D481): the native client's PiG colours are two themes in Chord's `Themes` registry, the same registry
 // every web page and terminal reads, so the user's theme choice (`chord.themes.choice`) restyles the native window too.
 
 // Roles beyond the kit's base set (surfaces.BaseRoles) that the native views use: the raised surface, the soft fill of

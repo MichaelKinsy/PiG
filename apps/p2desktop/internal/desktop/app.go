@@ -247,7 +247,7 @@ func (a *App) startNative(server *hosts.P2Server, route string) {
 	}
 }
 
-// the server runs in the app's process on loopback; the port of the last launch is asked for first so the
+// pig additive (D481): the server runs in the app's process on loopback; the port of the last launch is asked for first so the
 // web UI keeps its per-origin settings.
 // listen starts the server on the port asked for: the last one when it is free, else any free port.
 func (a *App) listen() (*hosts.P2Server, error) {
@@ -262,7 +262,7 @@ func (a *App) listen() (*hosts.P2Server, error) {
 	configureFetch.Do(p2runtime.ConfigureFetch)
 	options := hosts.ServerOptions{DataDir: a.cfg.DataDir, Port: &port, Fake: a.cfg.Fake, Idle: a.cfg.Idle}
 	if a.cfg.Native != nil {
-		// the server serves the desktop surface's scripts object beside its own.
+		// pig additive (D481): the server serves the desktop surface's scripts object beside its own.
 		options.Facets = append(options.Facets, surfacehost.ServerFacet(builtinPlugins))
 	}
 	withSprite := func() { // the branded web UI (browser, phone, fallback webview) draws the sprite the user chose with /sprite

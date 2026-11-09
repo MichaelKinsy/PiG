@@ -48,7 +48,7 @@ func trayIcon() (icon []byte, template bool) {
 	return trayColor64, false
 }
 
-// the desktop app is one executable that is the app and the session worker the in-process server forks.
+// pig additive (D481): the desktop app is one executable that is the app and the session worker the in-process server forks.
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == hosts.WorkerArg {
 		hosts.RunWorker()
