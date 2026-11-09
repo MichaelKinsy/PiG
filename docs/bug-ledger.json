@@ -15156,6 +15156,26 @@
       ]
     },
     {
+      "id": "BF-536faf0",
+      "title": "A load error no longer loses the cause a Go, Rust, Python or Lisp extension's runner wrote when it failed its…",
+      "symptom": "A load error no longer loses the cause a Go, Rust, Python or Lisp extension's runner wrote when it failed its only member and exited at once.",
+      "rootCause": "A runner that fails its only member writes the cause to stderr, closes the member's socket and exits. The host reads the socket closing, flushes the console pipe and reads the cause from the stderr log; but the reaper's finish had already closed the pipe behind the exited process, and flush returned at once on a closed pipe while the copy was still forwarding what the process wrote. The load error then lacked the factory's own failure and read as a bare \"connection closed before register\", so an isolated member and the same member in a shared cell reported different errors. A flush on a closed pipe now waits, bounded by consoleFlushWait, for the copy to end.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A load error no longer loses the cause a Go, Rust, Python or Lisp extension's runner wrote when it failed its only member and exited at once. A factory that returned nothing after a host helper call was reported as a bare \"connection closed before register\" when the host read the log before its copy had forwarded the runner's last line, while the same factory in a shared cell reported \"factory returned nil\". The host now waits for that copy to end, within two seconds, before it reads the cause.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "536faf0fb3",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-5380e0a",
       "title": "fix(extension): load failure shows the extension's own cause; registration edge-case rows",
       "symptom": "fix(extension): load failure shows the extension's own cause; registration edge-case rows",
