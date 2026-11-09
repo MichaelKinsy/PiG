@@ -259,7 +259,7 @@ func requireConnectionClosed(t *testing.T, operation string, done <-chan error) 
 func TestConnectionEndedIsTheConnectionsRemoteError(t *testing.T) {
 	conn := NewConn("dyn", nil)
 	other := errors.New("other")
-	if got := connectionEnded(conn, context.Canceled); got != context.Canceled {
+	if got := connectionEnded(conn, context.Canceled); !errors.Is(got, context.Canceled) {
 		t.Fatalf("a running lifetime's cancellation = %v, want it unchanged", got)
 	}
 	conn.endLifetime()
@@ -267,7 +267,7 @@ func TestConnectionEndedIsTheConnectionsRemoteError(t *testing.T) {
 	if got := connectionEnded(conn, context.Canceled); !errors.As(got, &remote) || got.Error() != "connection closed" || errors.Is(got, context.Canceled) {
 		t.Fatalf("an ended lifetime's cancellation = %#v, want the remote error \"connection closed\"", got)
 	}
-	if got := connectionEnded(conn, other); got != other {
+	if got := connectionEnded(conn, other); !errors.Is(got, other) {
 		t.Fatalf("another error = %v, want it unchanged", got)
 	}
 	if got := connectionEnded(conn, nil); got != nil {
@@ -277,7 +277,7 @@ func TestConnectionEndedIsTheConnectionsRemoteError(t *testing.T) {
 	conn.failureMu.Lock()
 	conn.failure = failure
 	conn.failureMu.Unlock()
-	if got := connectionEnded(conn, context.Canceled); got != failure {
+	if got := connectionEnded(conn, context.Canceled); !errors.Is(got, failure) {
 		t.Fatalf("an ended lifetime with a failure = %v, want the failure", got)
 	}
 }
