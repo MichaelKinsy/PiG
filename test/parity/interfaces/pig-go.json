@@ -95674,6 +95674,28 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#nodeFactoryTemplate",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "nodeFactoryTemplate",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(name string) string"
+      },
+      "shapeHash": "sha256:7d508d280c61decf247115e90b8749e71ea5dfc4d0ae712cc664fb5de63b74fe"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#nodePackageTemplate",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "nodePackageTemplate",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(name string) string"
+      },
+      "shapeHash": "sha256:7d508d280c61decf247115e90b8749e71ea5dfc4d0ae712cc664fb5de63b74fe"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#normalizeConfigInputSequence",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "normalizeConfigInputSequence",
@@ -209326,6 +209348,17 @@
       "shapeHash": "sha256:a5b37aaba08bb738e383f08e55c0687857d0630d3c65c3561e706f122c58ded4"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#ToolRenderComponent",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "ToolRenderComponent",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "ToolRenderComponent"
+      },
+      "shapeHash": "sha256:806ecdfd1a64e05a95b4713337b539637a2aef07da7aa815d01e81f5004a2d5c"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#ToolRenderContext",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "ToolRenderContext",
@@ -218817,6 +218850,17 @@
         "type": "func(lease providerLease)"
       },
       "shapeHash": "sha256:d3282d60d1533d418d3d8e6b986603ae481833f7adac68614d5489080af50054"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#remember",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "remember",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(component *ToolRenderComponent, err error) *ToolRenderComponent"
+      },
+      "shapeHash": "sha256:05372f2ce598116b72d8c75cbf74638508072de1452181591c513e6b244a9287"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#remoteComponentStopTimeout",
@@ -235218,6 +235262,17 @@
         "type": "[25]int16"
       },
       "shapeHash": "sha256:43983ff94e6601de804eabb64ed134c23c1e47f364abe01a0e36d3a0a2369411"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine#fuzzyRank",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine",
+      "name": "fuzzyRank",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "fuzzyRank"
+      },
+      "shapeHash": "sha256:70a4c689e74da3701b99ac7e61c881909e42479b3e60bf08d6a820b0268e11ba"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine#globalTUIKeybindings",
@@ -371453,6 +371508,17 @@
         "type": "[25]int16"
       },
       "shapeHash": "sha256:43983ff94e6601de804eabb64ed134c23c1e47f364abe01a0e36d3a0a2369411"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#fuzzyRank",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "fuzzyRank",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "fuzzyRank"
+      },
+      "shapeHash": "sha256:70a4c689e74da3701b99ac7e61c881909e42479b3e60bf08d6a820b0268e11ba"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#getActiveFormatter",
