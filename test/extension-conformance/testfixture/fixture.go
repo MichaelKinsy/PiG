@@ -1515,6 +1515,32 @@ func Extension() *sdk.Extension {
 		ext.OnEvent(name, func(sdk.Context, map[string]any) (any, error) { return result, nil })
 		return nil
 	})
+	// event_signal_probe subscribes to session_before_compact or session_before_tree with a handler that reports, in the result it returns, whether the event's signal (the handler request's cancellation) is aborted: on its first line for the mode "first", after it waited for the abort for the mode "wait" (the mode is the event's customInstructions). TestSessionBeforeSignalReachesEverySDKWhenAbortedDuringDispatch.
+	ext.Command("event_signal_probe", "Subscribe to session_before_compact or session_before_tree with a handler that returns the state of its event signal", func(ctx sdk.Context, args string) error {
+		name := strings.TrimSpace(args)
+		ext.OnEvent(name, func(hctx sdk.Context, data map[string]any) (any, error) {
+			source := data
+			if name == "session_before_tree" {
+				source, _ = data["preparation"].(map[string]any)
+			}
+			mode, _ := source["customInstructions"].(string)
+			aborted := hctx.Err() != nil
+			if mode == "wait" {
+				hctx.Notify("event_signal:"+name+":entered", "info")
+				select {
+				case <-hctx.Done():
+				case <-time.After(8 * time.Second):
+				}
+				aborted = hctx.Err() != nil
+			}
+			state := fmt.Sprintf("event_signal:%s:%t", mode, aborted)
+			if name == "session_before_compact" {
+				return map[string]any{"compaction": map[string]any{"summary": state, "firstKeptEntryId": "k", "tokensBefore": 1}}, nil
+			}
+			return map[string]any{"label": state}, nil
+		})
+		return nil
+	})
 	// event_ordered_result_probe is event_result_probe whose result keeps its members in the order they are written: a Go handler authors an object with
 	// member order as a json.RawMessage (TestConformance_HandedBackEventObjectsKeepTheirMemberOrder proposes a draft this way).
 	ext.Command("event_ordered_result_probe", "Subscribe to an event with a handler that returns the given JSON, members in written order", func(ctx sdk.Context, args string) error {

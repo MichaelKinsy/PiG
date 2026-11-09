@@ -923,6 +923,17 @@ export default function (pi) {
   pi.registerCommand("send_user_message_expand", { description: "Send a user message with expandPromptTemplates set to the argument", handler: async (args) => pi.sendUserMessage("expand-user", { deliverAs: "followUp", expandPromptTemplates: args === "true" }) });
   pi.registerCommand("set_session_name", { description: "Set the session name", handler: async () => pi.setSessionName("conformance-session") });
   pi.registerCommand("event_result_probe", { description: "Subscribe to an event with a handler that returns the given JSON", handler: async (args) => { const [name, ...rest] = String(args).trim().split(" "); const result = JSON.parse(rest.join(" ")); pi.on(name, async () => result); } });
+  pi.registerCommand("event_signal_probe", { description: "Subscribe to session_before_compact or session_before_tree with a handler that returns the state of its event signal", handler: async (args) => { const name = String(args).trim(); pi.on(name, async (event, ctx) => {
+    const mode = (name === "session_before_tree" ? event.preparation : event).customInstructions;
+    let aborted = event.signal.aborted;
+    if (mode === "wait") {
+      ctx.ui.notify(`event_signal:${name}:entered`, "info");
+      await new Promise((resolve) => { const timer = setTimeout(resolve, 8000); event.signal.aborted ? resolve() : event.signal.addEventListener("abort", () => { clearTimeout(timer); resolve(); }, { once: true }); });
+      aborted = event.signal.aborted;
+    }
+    const state = `event_signal:${mode}:${aborted}`;
+    return name === "session_before_compact" ? { compaction: { summary: state, firstKeptEntryId: "k", tokensBefore: 1 } } : { label: state };
+  }); } });
   pi.registerCommand("event_ordered_result_probe", { description: "Subscribe to an event with a handler that returns the given JSON, members in written order", handler: async (args) => { const [name, ...rest] = String(args).trim().split(" "); const result = JSON.parse(rest.join(" ")); pi.on(name, async () => result); } });
   pi.registerCommand("event_keys_probe", { description: "Subscribe to the event named by the argument with a handler that reports the key order of its payload", handler: async (args) => { const name = String(args).trim(); pi.on(name, async (event, ctx) => { ctx.ui.notify("event_keys:" + name + ":" + JSON.stringify([Object.keys(event.payload), Object.keys(event.payload.zeta)]), "info"); }); } });
   pi.registerCommand("event_echo_probe", { description: "Subscribe to the event named by the argument with a handler that hands back the objects it was sent", handler: async (args) => { const name = String(args).trim(); pi.on(name, async (event) => { switch (name) { case "turn_end": return { entries: event.entries }; case "context": return { messages: event.messages.slice(1) }; case "before_provider_request": return event.payload; case "tool_result": return { content: event.content, details: event.details }; case "message_end": return { message: event.message }; } throw new Error(`event_echo_probe has no echo for ${name}`); }); } });

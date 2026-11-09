@@ -2517,6 +2517,29 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("event_result_probe", "Subscribe to an event with a handler that returns the given JSON", event_result_probe)
 
+    def event_signal_probe(ctx, args):
+        # Subscribe to session_before_compact or session_before_tree with a handler that returns the state of its event signal (the request's cancellation): on its first line for the mode "first", after it waited for the abort for "wait".
+        name = args.strip()
+
+        def handler(hctx, data):
+            source = data.get("preparation", {}) if name == "session_before_tree" else data
+            mode = source.get("customInstructions", "")
+            aborted = hctx.is_cancelled()
+            if mode == "wait":
+                hctx.notify("event_signal:%s:entered" % name, "info")
+                deadline = time.monotonic() + 8
+                while not hctx.is_cancelled() and time.monotonic() < deadline:
+                    time.sleep(0.005)
+                aborted = hctx.is_cancelled()
+            state = "event_signal:%s:%s" % (mode, str(aborted).lower())
+            if name == "session_before_compact":
+                return {"compaction": {"summary": state, "firstKeptEntryId": "k", "tokensBefore": 1}}
+            return {"label": state}
+
+        ext.on_event(name, handler)
+
+    ext.command("event_signal_probe", "Subscribe to session_before_compact or session_before_tree with a handler that returns the state of its event signal", event_signal_probe)
+
     def event_ordered_result_probe(ctx, args):
         # A Python dict keeps its members in the order they were written, so this is event_result_probe.
         name, _, raw = args.strip().partition(" ")
