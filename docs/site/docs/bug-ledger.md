@@ -1481,6 +1481,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-d803ffa](#bf-d803ffa) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-d80425c](#bf-d80425c) | fix(train): gate repairs after merging train 3 and the ordering stack | PiG's own defect | All platforms | Unreleased |
 | [BF-d80c1cd](#bf-d80c1cd) | Where Pi calls `new URL(value)`, Pig now parses a `ws:`, `wss:`, `ftp:` or `file:` URL, and a bracketed IPv6… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-d818c21](#bf-d818c21) | Durable's SQLite storage stores a lone UTF-16 surrogate in a row of more than 8 Ki characters as U+FFFD, the… | PiG's own defect | All platforms | Unreleased |
 | [BF-d8357e2](#bf-d8357e2) | Cache warmer pure functions against live Pi: new `TestCacheWarmerPureFunctionsMatchPi`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d87b70c](#bf-d87b70c) | A second `ctx.ui.custom` component opened while one is shown now opens over it at once, as in Pi, whether it… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d88dca7](#bf-d88dca7) | `harness.ToolTaskInput.Kind` and `ToolTaskResult.Kind` are the named string type `harness.ToolTaskKind` with… | PiG's own defect | All platforms | 0.5.0 |
@@ -22099,6 +22100,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `056bbfb74e` (2026-10-09), `15a5c0b670` (2026-10-09), `23aa78b173` (2026-10-09), `2c04c1445a` (2026-10-09), `7c4d874438` (2026-10-09), `97e178f7f6` (2026-10-09), `c4d51d5c1a` (2026-10-09), `d80c1cd150` (2026-10-09), `da99854d1b` (2026-10-09)
 - **Tests:** `ai/authorization_input_oracle_test.go::TestAuthorizationInputParsersMatchPi`, `ai/codex_account_id_oracle_test.go::TestCodexAccountIDMatchesPi`, `ai/githubcopilot_oracle_test.go::TestGitHubCopilotHelpersMatchPi`, `ai/streaming_json_oracle_test.go::TestStreamingJSONMatchesPiOnSeededInput`, `ai/trusted_url_oracle_test.go::TestTrustedVerificationURLsMatchPi`, `coding/cli/strip_app_features_test.go::TestStripExportHTMLBuildOmitsExportPackage`, `internal/nodeurl/genericurl_oracle_test.go::TestParseURLMatchesNode`, `internal/nodeurl/url_oracle_test.go::TestParseMatchesNodeURL` and 1 more in docs/bug-ledger.json
 - **Release note:** Where Pi calls `new URL(value)`, Pig now parses a `ws:`, `wss:`, `ftp:` or `file:` URL, and a bracketed IPv6 host of any other scheme, instead of refusing it. This affects package and repository sources (`coding/source`), the OAuth paste and GitHub Copilot enterprise-domain inputs.
+
+### BF-d818c21
+
+**Durable's SQLite storage stores a lone UTF-16 surrogate in a row of more than 8 Ki characters as U+FFFD, the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Durable's SQLite storage stores a lone UTF-16 surrogate in a row of more than 8 Ki characters as U+FFFD, the text Pi's bound insert (node:sqlite) stores, instead of its raw WTF-8 bytes (rows of up to 8 Ki characters keep the bytes of Pi's JSON route, as before); the row's size is measured as Pi measures it, in UTF-16 units of the text with each ill-formed UTF-8 subpart as one U+FFFD.
+- **Root cause:** Not recorded.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d818c21407` (2026-11-08)
+- **Tests:** `durable/storage/sqlite/insert_values_differential_test.go::TestValuesInsertsStoreTheRowsOfPiJsonEachInserts`
+- **Release note:** Durable's SQLite storage stores a lone UTF-16 surrogate in a row of more than 8 Ki characters as U+FFFD, the text Pi's bound insert (node:sqlite) stores, instead of its raw WTF-8 bytes (rows of up to 8 Ki characters keep the bytes of Pi's JSON route, as before); the row's size is measured as Pi measures it, in UTF-16 units of the text with each ill-formed UTF-8 subpart as one U+FFFD. A test compares the stored bytes with Pi's own insertRows (statements.ts under Node) at 8 Ki characters and either side of it, for lone high and low surrogates, pairs, and ill-formed UTF-8.
 
 ### BF-d8357e2
 
