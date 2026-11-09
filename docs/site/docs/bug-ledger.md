@@ -1757,6 +1757,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-eb34085](#bf-eb34085) | The find tool trims each fd result line like JavaScript trim(): a name ending in U+FEFF loses it and a name… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-eb6626f](#bf-eb6626f) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-eba1115](#bf-eba1115) | Starting a new Session in a working directory that was removed, where the system still reports its path… | PiG's own defect | macOS | 0.7.0 |
+| [BF-ebaa4b5](#bf-ebaa4b5) | Changing the output padding now applies at once to the branch-summary, compaction-summary and… | PiG's own defect | All platforms | Unreleased |
 | [BF-ebb4c0e](#bf-ebb4c0e) | An `"m"` operation whose permutation a Go caller builds as `[]int` validates and applies again, as it did in… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ebb4c0e-2](#bf-ebb4c0e-2) | `durable.DocumentContent` decoded by `encoding/json` keeps the key order of the objects its operations carry… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ebbdfe7](#bf-ebbdfe7) | fix(extensions): load highlight.js grammars after the startup session_start, as Pi does | PiG's own defect | All platforms | Unreleased |
@@ -26035,6 +26036,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `eba1115c50` (2026-11-03)
 - **Tests:** None recorded.
 - **Release note:** Starting a new Session in a working directory that was removed, where the system still reports its path (macOS), ends with Pi's `Stored session working directory does not exist` message and exit 1 in print, JSON and RPC mode, and offers to continue in the current directory in interactive mode, instead of failing later with a `construct session` error.
+
+### BF-ebaa4b5
+
+**Changing the output padding now applies at once to the branch-summary, compaction-summary and…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Changing the output padding now applies at once to the branch-summary, compaction-summary and skill-invocation cards already in the transcript.
+- **Root cause:** RevTuiCache cleared with test-strength nits. This commit closes them.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `ebaa4b5e2d` (2026-11-09), `f2641e8906` (2026-11-09)
+- **Tests:** `internal/codingagent/output_pad_test.go::TestApplyOutputPadReachesTheCardsTheChatContainerCaches`, `tui/child_cache_contract_test.go::TestAParentContainerShowsWhatAnyExportedMutatorChanged`, `tui/child_cache_contract_test.go::TestEveryExportedComponentTypeIsInTheCacheContract`, `tui/child_cache_contract_test.go::TestTheComponentTypeGuardSeesPromotedAndValueReceiverRender`, `tui/child_cache_contract_test.go::TestTheWalkFailsOnAMutatorThatStalesWhatIsBeneathItOrDropsItsRebuild`
+- **Release note:** Changing the output padding now applies at once to the branch-summary, compaction-summary and skill-invocation cards already in the transcript. Their padding change reached the card's box without telling the transcript, which kept showing the card at the old padding until the card changed for another reason.
 
 ### BF-ebb4c0e
 

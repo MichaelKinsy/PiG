@@ -49940,6 +49940,36 @@
       "tests": []
     },
     {
+      "id": "BF-ebaa4b5",
+      "title": "Changing the output padding now applies at once to the branch-summary, compaction-summary and…",
+      "symptom": "Changing the output padding now applies at once to the branch-summary, compaction-summary and skill-invocation cards already in the transcript.",
+      "rootCause": "RevTuiCache cleared with test-strength nits. This commit closes them.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Changing the output padding now applies at once to the branch-summary, compaction-summary and skill-invocation cards already in the transcript. Their padding change reached the card's box without telling the transcript, which kept showing the card at the old padding until the card changed for another reason.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ebaa4b5e2d",
+          "date": "2026-11-09"
+        },
+        {
+          "hash": "f2641e8906",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/output_pad_test.go::TestApplyOutputPadReachesTheCardsTheChatContainerCaches",
+        "tui/child_cache_contract_test.go::TestAParentContainerShowsWhatAnyExportedMutatorChanged",
+        "tui/child_cache_contract_test.go::TestEveryExportedComponentTypeIsInTheCacheContract",
+        "tui/child_cache_contract_test.go::TestTheComponentTypeGuardSeesPromotedAndValueReceiverRender",
+        "tui/child_cache_contract_test.go::TestTheWalkFailsOnAMutatorThatStalesWhatIsBeneathItOrDropsItsRebuild"
+      ]
+    },
+    {
       "id": "BF-ebb4c0e",
       "title": "An `\"m\"` operation whose permutation a Go caller builds as `[]int` validates and applies again, as it did in…",
       "symptom": "`AssertValidOp` reported `m permutation is not an array`.",
