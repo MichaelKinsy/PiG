@@ -168,6 +168,68 @@ def test_a_shutdown_read_during_a_factory_call_ends_the_run_after_it_registers(h
     assert fake.conn.recv(1) == b""
 
 
+def test_a_factory_call_waiting_for_the_host_does_not_hold_up_another_members_register(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A packed cell's members build one after another, and the host accepts their connections in that order, serving a connection only after the members before it have
+    registered. The second member's factory-time call therefore waits for the first member's register, so the first member's run, which takes its own connection to
+    register, must not wait for that call: a lock held across the wait deadlocks the two, and the host never sees the first register."""
+    directory = tempfile.mkdtemp()
+    first_path, second_path = os.path.join(directory, "first.sock"), os.path.join(directory, "second.sock")
+    first_listener, second_listener = _start_fake_host(first_path), _start_fake_host(second_path)
+    connections: list[socket.socket] = []
+    threads: list[threading.Thread] = []
+    second_call: dict[str, Any] = {}
+
+    def factory_call() -> threading.Thread:
+        thread = threading.Thread(target=lambda: host_helpers.loading_call("factory-time", {}), daemon=True)
+        thread.start()
+        threads.append(thread)
+        return thread
+
+    def accept(listener: socket.socket) -> socket.socket:
+        conn, _ = listener.accept()
+        conn.settimeout(15)
+        connections.append(conn)
+        return conn
+
+    try:
+        # the first member's factory made its one host call and returned: its connection is dialled and waits for its run to take it
+        monkeypatch.setenv("PIG_EXT_SOCKET", first_path)
+        first_caller = factory_call()
+        first_conn = accept(first_listener)
+        call = _read_frame_raw(first_conn)
+        _write_frame(first_conn, {"type": "call_result", "id": call["id"], "call_result": {"result": None}})
+        first_caller.join(timeout=10)
+        # the second member's factory calls the host, which has not accepted its connection yet: the call waits
+        monkeypatch.setenv("PIG_EXT_SOCKET", second_path)
+        factory_call()
+        second_conn = accept(second_listener)
+        second_call.update(_read_frame_raw(second_conn))
+        assert second_call["type"] == "call"
+        # the first member's run registers meanwhile; a bounded wait, so a run held up by the second member's call fails the test instead of hanging it
+        first = pig_sdk.Extension("first")
+        runner = threading.Thread(target=lambda: first.run_with_socket(first_path), daemon=True)
+        runner.start()
+        threads.append(runner)
+        registered: list[str] = []
+        reader = threading.Thread(target=lambda: registered.append(_read_frame_raw(first_conn)["type"]), daemon=True)
+        reader.start()
+        reader.join(timeout=10)
+        assert registered == ["register"], "the first member did not register while the second member's call waited for the host"
+    finally:
+        # answer the waiting call so a held-up run finishes, then end both threads
+        if second_call:
+            _write_frame(connections[1], {"type": "call_result", "id": second_call["id"], "call_result": {"result": None}})
+        if connections:
+            _write_frame(connections[0], {"type": "shutdown", "shutdown": {"reason": "test"}})
+        for thread in threads:
+            thread.join(timeout=10)
+        for conn in connections:
+            conn.close()
+        first_listener.close()
+        second_listener.close()
+        host_helpers._State.dialled.clear()
+
+
 def test_a_listener_failure_fails_only_its_dispatch(host) -> None:
     ext = pig_sdk.Extension("bus")
     fake = host(None, None, None)
