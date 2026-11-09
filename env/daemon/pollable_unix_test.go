@@ -3,6 +3,7 @@
 package daemon
 
 import (
+	"errors"
 	"os"
 	"strings"
 	"testing"
@@ -10,6 +11,16 @@ import (
 
 	"golang.org/x/sys/unix"
 )
+
+// closeAtCleanup closes file when the test ends and fails the test on a close error other than a close already made.
+func closeAtCleanup(t *testing.T, file *os.File) {
+	t.Helper()
+	t.Cleanup(func() {
+		if err := file.Close(); err != nil && !errors.Is(err, os.ErrClosed) {
+			t.Errorf("closing %s: %v", file.Name(), err)
+		}
+	})
+}
 
 // TestPollableMovesInheritedPipesIntoThePoller: the daemon's stdin and stdout arrive as blocking pipes. A goroutine blocked in
 // a read or write on one holds a scheduler slot, so a request that arrives while every slot is held waits for sysmon to take
@@ -22,8 +33,8 @@ func TestPollableMovesInheritedPipesIntoThePoller(t *testing.T) {
 	}
 	// os.NewFile of a blocking descriptor is not in the poller: it has no deadlines.
 	read, write := os.NewFile(uintptr(fds[0]), "read"), os.NewFile(uintptr(fds[1]), "write")
-	defer func() { _ = read.Close() }()
-	defer func() { _ = write.Close() }()
+	closeAtCleanup(t, read)
+	closeAtCleanup(t, write)
 	if read.SetReadDeadline(time.Now()) == nil {
 		t.Fatal("a blocking inherited pipe is already in the poller; the test has nothing to prove")
 	}
@@ -32,7 +43,11 @@ func TestPollableMovesInheritedPipesIntoThePoller(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = unix.Close(holder) }()
+	t.Cleanup(func() {
+		if err := unix.Close(holder); err != nil {
+			t.Errorf("closing the other holder: %v", err)
+		}
+	})
 	moved, restore := pollable(read)
 	if flags, err := unix.FcntlInt(uintptr(holder), unix.F_GETFL, 0); err != nil || flags&unix.O_NONBLOCK == 0 {
 		t.Fatalf("the other holder does not see the description non-blocking: flags %#x, %v", flags, err)
@@ -67,7 +82,7 @@ func TestPollableLeavesOtherFilesAlone(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = file.Close() }()
+	closeAtCleanup(t, file)
 	moved, restore := pollable(file)
 	defer restore()
 	if moved != file {
@@ -84,8 +99,8 @@ func TestWriteStderrWaitsOnAFullPipe(t *testing.T) {
 	}
 	// Blocking-mode files, as os.Stderr is, on a description that is then made non-blocking by the other holder.
 	read, write := os.NewFile(uintptr(fds[0]), "read"), os.NewFile(uintptr(fds[1]), "write")
-	defer func() { _ = read.Close() }()
-	defer func() { _ = write.Close() }()
+	closeAtCleanup(t, read)
+	closeAtCleanup(t, write)
 	if err := unix.SetNonblock(fds[1], true); err != nil {
 		t.Fatal(err)
 	}
