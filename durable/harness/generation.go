@@ -16,6 +16,7 @@ import (
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/internal/streamattachhook"
 )
 
 // GenerationInput is the input of the built-in generation task, Pi's Record<string, never> (generation.ts:49): an object
@@ -947,7 +948,24 @@ func streamResponse(ctx context.Context, runtime generationRuntime, model *ai.Mo
 	if !frozen {
 		messages = append([]ai.Message{}, messages...)
 	}
-	stream := runtime.Models().StreamSimple(signal, model, ai.Context{Messages: messages, Frozen: frozen}, options)
+	stream, err := observeResponse(signal, runtime.Models(), model, ai.Context{Messages: messages, Frozen: frozen}, options, throttle.observe)
+	if err != nil {
+		return ai.AssistantMessage{}, err
+	}
+	result, err := stream.ResultContext(signal)
+	if err != nil {
+		return ai.AssistantMessage{}, err
+	}
+	if result == nil {
+		return ai.AssistantMessage{}, errors.New("stream ended without a result")
+	}
+	return *result, nil
+}
+
+// observeResponse creates the response's stream and calls observe with every partial that shows content (generation.ts:740-746).
+func observeResponse(signal context.Context, models durable.Models, model *ai.Model, request ai.Context, options ai.StreamOptions, observe func(ai.AssistantMessageEvent, *ai.AssistantMessage)) (*ai.AssistantMessageEventStream, error) {
+	stream := models.StreamSimple(signal, model, request, options)
+	streamattachhook.Attach(signal, stream)
 	for event := range stream.Events(signal) {
 		switch event.(type) {
 		case ai.DoneEvent, *ai.DoneEvent, ai.ErrorEvent, *ai.ErrorEvent:
@@ -959,16 +977,9 @@ func streamResponse(ctx context.Context, runtime generationRuntime, model *ai.Mo
 		if partial == nil || len(partial.Content) == 0 {
 			continue
 		}
-		throttle.observe(event, partial)
+		observe(event, partial)
 	}
-	result, err := stream.ResultContext(signal)
-	if err != nil {
-		return ai.AssistantMessage{}, err
-	}
-	if result == nil {
-		return ai.AssistantMessage{}, errors.New("stream ended without a result")
-	}
-	return *result, nil
+	return stream, nil
 }
 
 func partialOf(event ai.AssistantMessageEvent) *ai.AssistantMessage {

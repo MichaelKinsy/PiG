@@ -13,6 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/rpcclient"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/streamattachhook"
 )
 
 // providerBridgeRequest is one line of the provider bridge's input. Type "stream" starts the stream named by ID; "cancel" aborts it.
@@ -161,6 +162,7 @@ func serveBridgeStream(ctx context.Context, request providerBridgeRequest, trans
 	}
 	// Events are delivered under the process context, not the stream's: a cancelled stream still ends with the provider's terminal event.
 	//portlint:allow ctxmapping events are read under the process, not the stream's ctx, so a cancelled stream still delivers its terminal aborted event, as Pi's for-await over the stream does
+	streamattachhook.Attach(context.Background(), stream)
 	for event := range stream.Events(context.Background()) {
 		if !send(providerBridgeReply{ID: request.ID, Type: "event", Event: event}) {
 			return

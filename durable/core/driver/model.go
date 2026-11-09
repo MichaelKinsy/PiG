@@ -17,6 +17,7 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/core/abi/payload"
 	"github.com/MichaelKinsy/PiG/durable/core/history"
 	"github.com/MichaelKinsy/PiG/durable/core/sqlhost"
+	"github.com/MichaelKinsy/PiG/internal/streamattachhook"
 )
 
 // maxKeptLists and maxKeptMessages bound the message lists kept for the delta form of model_context. A list is the whole
@@ -248,6 +249,7 @@ func (m *Models) modelContext(ctx context.Context, call *sqlhost.Call) error {
 	// The stream is consumed to its end, also after an abort: the provider ends it on its signal with the aborted message, which
 	// the core waits for (generation.ts consumes the stream to its end and classifies afterwards). Iterating under ctx would stop at
 	// the abort and leave the core's request unanswered, and its generation's abort invocation never runs.
+	streamattachhook.Attach(context.WithoutCancel(ctx), stream)
 	for event := range stream.Events(context.WithoutCancel(ctx)) {
 		body, err := json.Marshal(event)
 		if err != nil {

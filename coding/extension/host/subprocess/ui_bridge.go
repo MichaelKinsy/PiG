@@ -14,6 +14,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
+	"github.com/MichaelKinsy/PiG/internal/streamattachhook"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -4408,6 +4409,7 @@ func (b *UIBridge) handleModelStream(ctx context.Context, owner *Conn, actions *
 	// Stream creation is the synchronous prefix. Event delivery and final
 	// result collection complete independently of later calls in the lane.
 	extension.CallInitiated(ctx)
+	streamattachhook.Attach(ctx, stream)
 	for event := range stream.Events(ctx) {
 		notifyArgs, err := json.Marshal(map[string]any{"streamId": request.StreamID, "event": event})
 		if err != nil {
