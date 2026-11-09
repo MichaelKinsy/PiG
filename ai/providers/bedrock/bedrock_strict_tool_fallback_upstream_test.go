@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"reflect"
 	"sync"
 	"testing"
 
@@ -68,6 +69,7 @@ type strictToolFallbackReply struct {
 
 func newStrictToolFallbackHarness(t *testing.T, respond func(attempt int) strictToolFallbackReply) *strictToolFallbackHarness {
 	t.Helper()
+	t.Cleanup(func() { _ = ai.CleanupSessionResources("") })
 	h := &strictToolFallbackHarness{}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		raw, _ := io.ReadAll(r.Body)
@@ -119,10 +121,16 @@ func newStrictToolFallbackHarness(t *testing.T, respond func(attempt int) strict
 
 func (h *strictToolFallbackHarness) run(t *testing.T, tools []ai.ToolSchema, onPayload func(any, *ai.Model) (any, error)) *ai.AssistantMessage {
 	t.Helper()
+	return h.runSession(t, tools, onPayload, "")
+}
+
+func (h *strictToolFallbackHarness) runSession(t *testing.T, tools []ai.ToolSchema, onPayload func(any, *ai.Model) (any, error), sessionID string) *ai.AssistantMessage {
+	t.Helper()
 	stream, err := h.provider.Stream(t.Context(), ai.NormalizeContext(ai.Context{Tools: tools, Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Hello"), Timestamp: 1}}}), ai.StreamOptions{
 		CacheRetention: ai.CacheRetentionNone,
 		Env:            ai.ProviderEnv{"AWS_BEDROCK_SKIP_AUTH": "1", "AWS_REGION": "us-east-1"},
 		OnPayload:      onPayload,
+		SessionID:      sessionID,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -255,6 +263,65 @@ func TestBedrockPreferredStrictToolFallbackUpstream(t *testing.T) {
 			t.Fatalf("requests = %d, want 2", len(requests))
 		}
 	})
+}
+
+// strictFlags is the strict flag of every tool of every request, in order.
+func (h *strictToolFallbackHarness) strictFlags() [][]bool {
+	var flags [][]bool
+	for _, request := range h.snapshot() {
+		var perRequest []bool
+		for _, tool := range request.ToolConfig.Tools {
+			perRequest = append(perRequest, tool.ToolSpec.Strict != nil && *tool.ToolSpec.Strict)
+		}
+		flags = append(flags, perRequest)
+	}
+	return flags
+}
+
+func unionLimitThenSuccess(attempt int) strictToolFallbackReply {
+	if attempt == 1 {
+		return strictToolFallbackReply{validationMessage: strictToolFallbackUnionLimitMessage}
+	}
+	return strictToolFallbackReply{}
+}
+
+// bedrock-strict-tool-fallback.test.ts: "does not remember a rejection without a session"
+func TestBedrockStrictToolLimitNotRememberedWithoutSession(t *testing.T) {
+	h := newStrictToolFallbackHarness(t, unionLimitThenSuccess)
+	tools := []ai.ToolSchema{strictToolFallbackTool(t, "preferred", "prefer")}
+	h.run(t, tools, nil)
+	h.run(t, tools, nil)
+	if got, want := h.strictFlags(), [][]bool{{true}, {false}, {true}}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("strict flags = %v, want %v", got, want)
+	}
+}
+
+// Regression tests for https://github.com/earendil-works/pi/issues/11626.
+func TestBedrockStrictToolLimitRememberedPerSession(t *testing.T) {
+	h := newStrictToolFallbackHarness(t, unionLimitThenSuccess)
+	tools := []ai.ToolSchema{strictToolFallbackTool(t, "preferred", "prefer"), strictToolFallbackTool(t, "required", "require")}
+	h.runSession(t, tools, nil, "rejected")
+	second := h.runSession(t, tools, nil, "rejected")
+	h.runSession(t, tools, nil, "other")
+	if second.StopReason != ai.StopReasonStop || second.Diagnostics != nil {
+		t.Fatalf("second stop = %s, diagnostics = %#v", second.StopReason, second.Diagnostics)
+	}
+	if got, want := h.strictFlags(), [][]bool{{true, true}, {false, true}, {false, true}, {true, true}}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("strict flags = %v, want %v", got, want)
+	}
+}
+
+func TestBedrockStrictToolLimitForgottenAfterSessionCleanup(t *testing.T) {
+	h := newStrictToolFallbackHarness(t, unionLimitThenSuccess)
+	tools := []ai.ToolSchema{strictToolFallbackTool(t, "preferred", "prefer")}
+	h.runSession(t, tools, nil, "cleaned")
+	if err := ai.CleanupSessionResources("cleaned"); err != nil {
+		t.Fatal(err)
+	}
+	h.runSession(t, tools, nil, "cleaned")
+	if got, want := h.strictFlags(), [][]bool{{true}, {false}, {true}}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("strict flags = %v, want %v", got, want)
+	}
 }
 
 // convertBedrockTools reports a strict: "prefer" tool sent strict (hasPreferredStrictTools) and, for the fallback, sends it without strict.
