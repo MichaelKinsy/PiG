@@ -74,7 +74,7 @@ opened = "0.5.2"
 closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (test/parity/sdk-vectors), keybinding and theme helpers with a conformance row per SDK"
 
 [export]
-"pi-coding-agent: AgentSession" = { go = "native:AgentSession", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
+"pi-coding-agent: AgentSession" = { go = "native:AgentSession", rust = "native:AgentSession", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
 "pi-coding-agent: AgentSession.abort" = { go = "native:AgentSession.Abort", rust = "native:AgentSession::abort", python = "native:AgentSession.abort", lisp = "native:pig:agent-session-abort" }
 "pi-coding-agent: AgentSession.abortBash" = { go = "native:AgentSession.AbortBash", rust = "native:AgentSession::abort_bash", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
 "pi-coding-agent: AgentSession.abortBranchSummary" = { go = "native:AgentSession.AbortBranchSummary", rust = "native:AgentSession::abort_branch_summary", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
