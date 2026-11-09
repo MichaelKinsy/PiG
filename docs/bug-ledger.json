@@ -3043,6 +3043,26 @@
       ]
     },
     {
+      "id": "BF-142baa3",
+      "title": "Every strict and packed Go cell of the extension conformance suite (the theme, child-session, markdown…",
+      "symptom": "Every strict and packed Go cell of the extension conformance suite (the theme, child-session, markdown, exec-abort and other rows) failed to build with `go: updates to go.mod needed` since the root module moved to an SDK pseudo-version: 23 in-tree fixture, example and bench modules still required the PiG and SDK modules at v0.7.0.",
+      "rootCause": "Every strict and packed Go cell of the extension conformance suite (the theme, child-session, markdown, exec-abort and other rows) failed to build with `go: updates to go.mod needed` since the root module moved to an SDK pseudo-version: 23 in-tree fixture, example and bench modules still required the PiG and SDK modules at v0.7.0.",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Every strict and packed Go cell of the extension conformance suite (the theme, child-session, markdown, exec-abort and other rows) failed to build with `go: updates to go.mod needed` since the root module moved to an SDK pseudo-version: 23 in-tree fixture, example and bench modules still required the PiG and SDK modules at v0.7.0. They are pinned to the root's requirement, and `make module-pins`, part of `ci-bookkeeping`, now fails when one drifts.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "142baa38fb",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-14886f9",
       "title": "A call to `Session.DeferUntilPublished` from a goroutine other than the publishing one (a Harness's wait for…",
       "symptom": "A call to `Session.DeferUntilPublished` from a goroutine other than the publishing one (a Harness's wait for idleness makes it from its caller's) no longer races the commit that arms the publication it lands on: the commit read the publication's queue without the lock the call appends under, which the race detector reported.",
