@@ -2,13 +2,18 @@ package sqlite
 
 // Ports packages/durable/src/storage/sqlite/statements.ts
 //
-// The multi-row statements of a commit call, few whatever the number of rows: rows as one JSON array parameter read
-// through json_each(?) (one SQL text per table, no bound-parameter limit), and large rows bound column by column in
-// multi-row VALUES of a few fixed sizes, so their already JSON-encoded records are not escaped a second time.
+// The multi-row statements of a commit call, few whatever the number of rows. Reads and deletions take their keys as one
+// JSON array parameter through json_each(?) (one SQL text per query, no bound-parameter limit). Inserts bind every cell:
+// multi-row VALUES of a few fixed sizes (1, 2, 4 ... rows), so no row is JSON-encoded to be decoded again by SQLite and a
+// record is not escaped a second time. Pi inserts the rows of little text from one JSON array parameter through
+// json_each(?) and binds only the large ones; the stored rows are the same either way (insertRowsOfJSON in the tests is
+// Pi's statement, and a differential test compares the two).
 
 import (
 	"strconv"
 	"strings"
+	"sync/atomic"
+	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
@@ -89,99 +94,167 @@ func runForEach(executor SqliteExecutor, sql string, values []cell) error {
 	return nil
 }
 
-// largeRowCharacters: rows whose string cells hold more characters than this (before escaping) go bound: a second JSON
-// escaping of their records costs more than the statements they need.
-const largeRowCharacters = 8 * 1024
+// maxParameters: Durable Objects bind at most 100 parameters per statement.
+const maxParameters = 100
 
-// insertStatement is the SQL of one table's inserts: the same texts on every call, so built once per schema.
+// maxShapes is how many statement sizes fit maxParameters: 1, 2, 4 ... rows of at least two cells, up to 32 rows.
+const maxShapes = 6
+
+// insertStatement is the SQL of one table's inserts: the same texts on every call, each built when first needed.
 type insertStatement struct {
-	// small is the insert of rows of little text from one JSON array parameter.
-	small string
-	// head is INSERT INTO t (columns) VALUES, for the large rows bound column by column.
-	head string
-	// row is one row of placeholders.
-	row      string
-	width    int
-	conflict string
+	// head is INSERT INTO t (columns) VALUES, row one row of placeholders, conflict an upsert's clause.
+	head, row, conflict string
+	width               int
+	// shapes is how many sizes fit maxParameters; texts[shape] inserts 1<<shape rows, or is nil until built.
+	shapes int
+	texts  [maxShapes]atomic.Pointer[string]
 }
 
-// newInsertStatement builds the inserts of table's columns, then conflict (an upsert's clause).
-func newInsertStatement(table string, columns []string, conflict string) insertStatement {
-	names := strings.Join(columns, ", ")
-	cells := make([]string, len(columns))
-	placeholders := make([]string, len(columns))
-	for index := range columns {
-		cells[index] = "json_extract(item.value, '$[" + strconv.Itoa(index) + "]')"
-		placeholders[index] = "?"
+// newInsertStatement describes the inserts of table's columns, then conflict (an upsert's clause).
+func newInsertStatement(table string, columns []string, conflict string) *insertStatement {
+	width := len(columns)
+	if width < 2 {
+		panic("durable sqlite: an insert has at least two columns")
 	}
-	return insertStatement{
-		// WHERE true keeps SQLite from reading an upsert's ON as a join constraint of the SELECT.
-		small:    "INSERT INTO " + table + " (" + names + ") SELECT " + strings.Join(cells, ", ") + " FROM json_each(?) AS item WHERE true " + conflict,
-		head:     "INSERT INTO " + table + " (" + names + ") VALUES",
-		row:      "(" + strings.Join(placeholders, ", ") + ")",
-		width:    len(columns),
+	row := "(?" + strings.Repeat(", ?", width-1) + ")"
+	statement := &insertStatement{
+		head:     "INSERT INTO " + table + " (" + strings.Join(columns, ", ") + ") VALUES ",
+		row:      row,
 		conflict: conflict,
+		width:    width,
 	}
+	for rows := 1; rows*width <= maxParameters; rows *= 2 {
+		statement.shapes++
+	}
+	return statement
 }
 
-// insertRows inserts rows (one cell per column, in order) with statement: the rows of little text from one JSON array
-// parameter per chunk, the same SQL text whatever their number; the large ones bound column by column.
+// text is the SQL that inserts 1<<shape rows.
+func (statement *insertStatement) text(shape int) string {
+	if cached := statement.texts[shape].Load(); cached != nil {
+		return *cached
+	}
+	rows := 1 << shape
+	var text strings.Builder
+	text.Grow(len(statement.head) + rows*(len(statement.row)+2) + len(statement.conflict) + 1)
+	text.WriteString(statement.head)
+	for index := range rows {
+		if index > 0 {
+			text.WriteString(", ")
+		}
+		text.WriteString(statement.row)
+	}
+	text.WriteByte(' ')
+	text.WriteString(statement.conflict)
+	built := text.String()
+	statement.texts[shape].Store(&built)
+	return built
+}
+
+// insertRows inserts rows (one cell per column, in order) with statement, bound column by column in statements of 1, 2,
+// 4, ... rows up to maxParameters cells, the largest first: few statements, and at most a handful of SQL texts per table
+// for prepared statements.
 func insertRows(executor SqliteExecutor, statement *insertStatement, rows [][]cell) error {
 	if len(rows) == 0 {
 		return nil
 	}
-	var small []string
-	var large [][]cell
-	for _, row := range rows {
-		text := 0
-		for _, item := range row {
-			if value, ok := item.(string); ok {
-				text += utf16Length(value)
-			}
-		}
-		if text > largeRowCharacters {
-			large = append(large, row)
-		} else {
-			small = append(small, jsonText(row))
-		}
-	}
-	if len(small) > 0 {
-		for _, array := range jsonArrays(small) {
-			if err := executor.Run(statement.small, array); err != nil {
-				return err
-			}
-		}
-	}
-	return insertBound(executor, statement, large)
-}
-
-// maxParameters: Durable Objects bind at most 100 parameters per statement.
-const maxParameters = 100
-
-// insertBound inserts rows with statement.head, statement.width cells each, in statements of 1, 2, 4, ... rows up to
-// maxParameters cells: few statements, and at most a handful of SQL texts per table for prepared statements.
-func insertBound(executor SqliteExecutor, statement *insertStatement, rows [][]cell) error {
 	width := statement.width
-	size := 1
-	for size*2*width <= maxParameters {
-		size *= 2
+	params := make([]SqliteValue, 0, len(rows)*width)
+	for _, row := range rows {
+		for _, item := range row {
+			if text, ok := item.(string); ok {
+				item = wellFormed(text)
+			}
+			params = append(params, item)
+		}
 	}
-	// size only shrinks: halved before a chunk to fit the rows left, it is also what the loop then steps over.
-	for start := 0; start < len(rows); start += size {
-		for size > len(rows)-start {
-			size /= 2
+	// shape only shrinks: lowered before a chunk to fit the rows left, it is also what the loop then steps over.
+	shape := statement.shapes - 1
+	for start := 0; start < len(rows); {
+		for 1<<shape > len(rows)-start {
+			shape--
 		}
-		values := make([]string, size)
-		params := make([]SqliteValue, 0, size*width)
-		for index := range values {
-			values[index] = statement.row
-			params = append(params, rows[start+index]...)
-		}
-		if err := executor.Run(statement.head+" "+strings.Join(values, ", ")+" "+statement.conflict, params...); err != nil {
+		end := start + 1<<shape
+		// The chunk's capacity ends with it: a caller keeping its parameters cannot see the next chunk's through append.
+		if err := executor.Run(statement.text(shape), params[start*width:end*width:end*width]...); err != nil {
 			return err
 		}
+		start = end
 	}
 	return nil
+}
+
+// wellFormed is text as a JavaScript string holds it once stored: what SQLite reads back from the text JSON.stringify
+// writes for it (the rows of little text in Pi's inserts). Valid UTF-8 is as it is. The WTF-8 bytes of a lone UTF-16
+// surrogate stay, but a high one directly followed by a low one is one character, and each maximal ill-formed subpart is one
+// U+FFFD, where binding the bytes would store them raw.
+func wellFormed(text string) string {
+	if utf8.ValidString(text) {
+		return text
+	}
+	out := make([]byte, 0, len(text)+8)
+	for i := 0; i < len(text); {
+		r, size := utf8.DecodeRuneInString(text[i:])
+		if r != utf8.RuneError || size != 1 {
+			out = append(out, text[i:i+size]...)
+			i += size
+			continue
+		}
+		if high, ok := wtf8Surrogate(text[i:]); ok {
+			if low, ok := wtf8Surrogate(text[i+3:]); ok && high < 0xdc00 && low >= 0xdc00 {
+				out = utf8.AppendRune(out, 0x10000+(high-0xd800)<<10+low-0xdc00)
+				i += 6
+				continue
+			}
+			out = append(out, text[i:i+3]...)
+			i += 3
+			continue
+		}
+		out = append(out, "\ufffd"...)
+		i += maximalSubpart(text, i)
+	}
+	return string(out)
+}
+
+// wtf8Surrogate is the UTF-16 surrogate unit the three WTF-8 bytes at the start of text spell.
+func wtf8Surrogate(text string) (rune, bool) {
+	if len(text) < 3 || text[0] != 0xed || text[1] < 0xa0 || text[1] > 0xbf || text[2] < 0x80 || text[2] > 0xbf {
+		return 0, false
+	}
+	return rune(text[0]&15)<<12 | rune(text[1]&63)<<6 | rune(text[2]&63), true
+}
+
+// maximalSubpart is the length of the ill-formed sequence at text[i] that a WHATWG UTF-8 decoder (Node's Buffer and
+// TextDecoder) replaces with one U+FFFD: a lead byte with the continuation bytes it accepts before the sequence breaks off,
+// or one byte that cannot start a sequence.
+func maximalSubpart(text string, i int) int {
+	need, lo, hi := 0, byte(0x80), byte(0xbf)
+	switch c := text[i]; {
+	case c >= 0xc2 && c <= 0xdf:
+		need = 2
+	case c == 0xe0:
+		need, lo = 3, 0xa0
+	case c == 0xed:
+		need, hi = 3, 0x9f
+	case c >= 0xe1 && c <= 0xef:
+		need = 3
+	case c == 0xf0:
+		need, lo = 4, 0x90
+	case c >= 0xf1 && c <= 0xf3:
+		need = 4
+	case c == 0xf4:
+		need, hi = 4, 0x8f
+	default:
+		return 1
+	}
+	n := 1
+	if i+n < len(text) && text[i+n] >= lo && text[i+n] <= hi {
+		n++
+		for n < need && i+n < len(text) && text[i+n]&0xc0 == 0x80 {
+			n++
+		}
+	}
+	return n
 }
 
 // maxArrayCharacters: Durable Objects refuse a string over 2 MB, a bound parameter too; 512 Ki characters are at most

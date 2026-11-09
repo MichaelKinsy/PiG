@@ -9640,7 +9640,7 @@
         "durable/storage/sqlite/sqlite_commit_test.go#TestSqliteStorageBatchCommitStatements",
         "durable/storage/sqlite/sqlite_commit_test.go#TestSqliteStorageBatchCommitRegressions"
       ],
-      "rationale": "All 6 cases ported under Pi's names (the random batch calls against MemoryStorage per seed, the four statement-count cases: the same eight statements for one batch and 150, the 512 Ki character split, column-bound large rows, no table scans by EXPLAIN QUERY PLAN, and the regression of a third incarnation after a replacement in an earlier batch for each order). The Go suite adds a stored document record that cannot be parsed, which rejects the whole call as a storage failure."
+      "rationale": "All 6 cases ported under Pi's names (the random batch calls against MemoryStorage per seed, the four statement-count cases, adapted to bound VALUES inserts (eight statements for one batch; VALUES statements of 1, 2, 4 ... rows within 100 parameters for 150; rows of little text and large rows both bound column by column; the 512 Ki character split of the JSON array has no counterpart), no table scans by EXPLAIN QUERY PLAN, and the regression of a third incarnation after a replacement in an earlier batch for each order). The Go suite adds a stored document record that cannot be parsed, which rejects the whole call as a storage failure."
     },
     {
       "path": "packages/durable/test/sqlite-facade.test.ts",

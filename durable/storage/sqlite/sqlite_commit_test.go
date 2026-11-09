@@ -675,44 +675,79 @@ func entryInserts(statements []ran) []ran {
 	return slices.DeleteFunc(slices.Clone(statements), func(statement ran) bool { return !strings.HasPrefix(statement.sql, "INSERT INTO entries") })
 }
 
+// valuesChunks is the parameters of each statement that inserts rows of width cells: VALUES of 1, 2, 4 ... rows within 100
+// parameters, the largest first.
+func valuesChunks(rows, width int) []int {
+	size := 1
+	for size*2*width <= 100 {
+		size *= 2
+	}
+	var chunks []int
+	for rows > 0 {
+		for size > rows {
+			size /= 2
+		}
+		chunks = append(chunks, size*width)
+		rows -= size
+	}
+	return chunks
+}
+
+// insertsInto is the parameters of each statement of statements that inserts into table, in order.
+func insertsInto(statements []ran, table string) []int {
+	var counts []int
+	for _, statement := range statements {
+		if strings.HasPrefix(statement.sql, "INSERT INTO "+table+" ") {
+			counts = append(counts, len(statement.params))
+		}
+	}
+	return counts
+}
+
 func TestSqliteStorageBatchCommitStatements(t *testing.T) {
-	t.Run("runs the same eight statements for one batch and for a group of 150", func(t *testing.T) {
+	t.Run("runs eight statements for one batch and binds the rows of a group in VALUES of 1, 2, 4 ... rows", func(t *testing.T) {
 		// Metadata read, three check reads (IDs, documents, latest versions), three inserts, metadata write.
 		one, _ := groupOf(t, 1, float64(0))
 		if len(one) != 8 {
 			t.Fatalf("one batch ran %d statements, want 8", len(one))
 		}
-		group, _ := groupOf(t, 150, float64(0))
-		if len(group) != 8 {
-			t.Fatalf("a group of 150 ran %d statements, want 8", len(group))
+		// Pi inserts the rows of little text from one JSON array parameter, eight statements for any group; the stored rows
+		// are the same, written here by statements of 1, 2, 4 ... rows of bound cells (insert_values_differential_test.go).
+		group, database := groupOf(t, 150, float64(0))
+		for table, width := range map[string]int{"record_ids": 2, "entries": 5, "document_revisions": 5} {
+			if got, want := insertsInto(group, table), valuesChunks(150, width); !slices.Equal(got, want) {
+				t.Fatalf("parameters per %s insert = %v, want %v", table, got, want)
+			}
 		}
-		// One SQL text per table whatever the group's size: prepared statements are reused.
-		three, _ := groupOf(t, 3, float64(0))
-		texts := func(statements []ran) []string {
-			return mapSlice(statements, func(statement ran) string { return statement.sql })
+		for _, statement := range group {
+			if strings.HasPrefix(statement.sql, "INSERT INTO") && strings.Contains(statement.sql, "json_each") {
+				t.Fatalf("an insert reads a JSON array: %s", statement.sql)
+			}
 		}
-		if !slices.Equal(texts(group), texts(three)) {
-			t.Fatalf("statement texts differ between a group of 150 and of 3:\n%q\n%q", texts(group), texts(three))
+		if got := must(database.Get("SELECT count(*) AS n FROM entries")); got["n"] != int64(150) {
+			t.Fatalf("%v entries stored, want 150", got["n"])
+		}
+		// One SQL text per table and size, a handful per table whatever the group: 150 rows are 9 statements of 16, one of 4, one of 2.
+		texts := map[string]bool{}
+		for _, statement := range entryInserts(group) {
+			texts[statement.sql] = true
+		}
+		if len(texts) != 3 {
+			t.Fatalf("%d SQL texts for the entry inserts of a group of 150, want 3", len(texts))
 		}
 	})
 
-	t.Run("splits the JSON array of small rows only by size: at most 512 Ki characters each", func(t *testing.T) {
-		// 100 entries of 7,000 characters: under the large-row bound each, 700 K characters together.
-		statements, _ := groupOf(t, 100, strings.Repeat("x", 7_000))
-		inserts := entryInserts(statements)
-		if len(inserts) != 2 {
-			t.Fatalf("%d entry inserts, want 2", len(inserts))
+	t.Run("binds the rows of little text column by column, whatever the characters they hold", func(t *testing.T) {
+		// 100 entries of 7,000 characters: 700 K characters together, which Pi's insert sends as two JSON arrays.
+		statements, database := groupOf(t, 100, strings.Repeat("x", 7_000))
+		if got, want := insertsInto(statements, "entries"), valuesChunks(100, 5); !slices.Equal(got, want) {
+			t.Fatalf("parameters per entry insert = %v, want %v", got, want)
 		}
-		for _, insert := range inserts {
-			if !strings.Contains(insert.sql, "json_each") {
-				t.Fatalf("an entry insert is not a JSON array insert: %s", insert.sql)
+		for _, row := range must(database.All("SELECT record FROM entries")) {
+			var record struct{ Data string }
+			if err := json.Unmarshal([]byte(row["record"].(string)), &record); err != nil || len(record.Data) != 7_000 {
+				t.Fatalf("stored entry data is %d characters, want 7000: %v", len(record.Data), err)
 			}
-			if length := len(insert.params[0].(string)); length > 512*1024 {
-				t.Fatalf("an array of %d characters", length)
-			}
-		}
-		if len(statements) != 9 {
-			t.Fatalf("%d statements, want 9", len(statements))
 		}
 	})
 
@@ -765,14 +800,16 @@ func TestSqliteStorageBatchCommitStatements(t *testing.T) {
 				durable.DocumentCreateWrite{Record: record(second), Content: base(chorddelta.JsonObjectOf())},
 			},
 		}, func(int, durable.Seq) {}))
-		batched := slices.DeleteFunc(slices.Clone(statements[before:]), func(statement ran) bool { return !strings.Contains(statement.sql, "json_each") })
+		batched := slices.DeleteFunc(slices.Clone(statements[before:]), func(statement ran) bool {
+			return !strings.Contains(statement.sql, "json_each") && !strings.HasPrefix(statement.sql, "INSERT INTO")
+		})
 		if len(batched) <= 5 {
-			t.Fatalf("%d json_each statements, want more than 5", len(batched))
+			t.Fatalf("%d json_each and insert statements, want more than 5", len(batched))
 		}
 		for _, statement := range batched {
 			for _, row := range must(database.All("EXPLAIN QUERY PLAN "+statement.sql, statement.params...)) {
 				detail, _ := row["detail"].(string)
-				if strings.HasPrefix(detail, "SCAN") && !strings.Contains(detail, "VIRTUAL TABLE") {
+				if strings.HasPrefix(detail, "SCAN") && !strings.Contains(detail, "VIRTUAL TABLE") && !strings.Contains(detail, "VALUES CLAUSE") {
 					t.Fatalf("%s\nscans: %s", statement.sql, detail)
 				}
 			}
