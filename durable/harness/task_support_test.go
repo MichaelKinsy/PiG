@@ -5,6 +5,7 @@ package harness
 import (
 	"context"
 	"errors"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -107,6 +108,8 @@ type reportLog struct {
 	mu      sync.Mutex
 	reports []error
 	infos   []durable.ReportInfo
+	// arrived is closed by the next add and replaced after it; awaitInfo waits on it.
+	arrived chan struct{}
 }
 
 func (log *reportLog) add(report durable.Report) {
@@ -114,6 +117,35 @@ func (log *reportLog) add(report durable.Report) {
 	defer log.mu.Unlock()
 	log.reports = append(log.reports, report.Error)
 	log.infos = append(log.infos, report.ReportInfo)
+	if log.arrived != nil {
+		close(log.arrived)
+		log.arrived = nil
+	}
+}
+
+// awaitInfo returns the info of every report so far once one of them satisfies match, waiting for the report that does. A task
+// raises its report on the goroutine whose commit call just returned, so a reader that came from another wait of the Harness
+// has no order against it; upstream's event loop gives one, as the continuation that raises it runs before the awaits that
+// follow the reader's wait. ctx ends the wait.
+func (log *reportLog) awaitInfo(ctx context.Context, match func(durable.ReportInfo) bool) ([]durable.ReportInfo, error) {
+	for {
+		log.mu.Lock()
+		if slices.ContainsFunc(log.infos, match) {
+			infos := slices.Clone(log.infos)
+			log.mu.Unlock()
+			return infos, nil
+		}
+		if log.arrived == nil {
+			log.arrived = make(chan struct{})
+		}
+		arrived := log.arrived
+		log.mu.Unlock()
+		select {
+		case <-arrived:
+		case <-ctx.Done():
+			return nil, context.Cause(ctx)
+		}
+	}
 }
 
 // allInfos is the info of every report, in order (task-support.ts openTasks infos).
