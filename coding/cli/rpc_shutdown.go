@@ -49,6 +49,9 @@ type rpcShutdown struct {
 	disposing atomic.Bool
 	disposed  chan struct{}
 
+	// bound closes when the mode's first bind has ended. The dispose waits for it: it emits session_shutdown through the runner, and BindCore, which the first bind runs, is not safe beside an in-flight dispatch (Runner.BindCore). A connection that registers after a server's signal fan-out began is shut down from its own goroutine while that bind runs. It may be nil, for a shutdown with no bind to wait for.
+	bound <-chan struct{}
+
 	// exiting is set when an exit starts; a later exit does nothing, except the repeated signal's.
 	exiting atomic.Bool
 
@@ -174,6 +177,9 @@ func (s *rpcShutdown) startDispose() bool {
 		return false
 	}
 	defer close(s.disposed)
+	if s.bound != nil {
+		<-s.bound
+	}
 	s.detach()
 	s.dispose()
 	return true
