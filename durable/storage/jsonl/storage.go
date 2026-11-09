@@ -33,6 +33,9 @@ const (
 	formatVersion = 1
 	mainFile      = "main.jsonl"
 	reclaimSuffix = ".reclaim"
+	// readOnlyOpenAttempts bounds the retries of a read-only open that raced a writer's commits; each retry means another
+	// commit landed meanwhile.
+	readOnlyOpenAttempts = 5
 )
 
 type storedTask = durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue]
@@ -48,6 +51,7 @@ type FileSystem interface {
 	FlushFile(ctx context.Context, path string) error
 	RenameFile(ctx context.Context, sourcePath, destinationPath string) error
 	ListDir(ctx context.Context, path string) ([]env.FileInfo, error)
+	FileInfo(ctx context.Context, path string) (env.FileInfo, error)
 	CreateDir(ctx context.Context, path string, options *env.CreateDirOptions) error
 	Remove(ctx context.Context, path string, options *env.RemoveOptions) error
 }
@@ -58,6 +62,10 @@ var _ FileSystem = env.FileSystem(nil)
 type JsonlStorageOptions struct {
 	// Fsync flushes every affected sidecar before appending the main marker. Defaults to false.
 	Fsync bool
+	// ReadOnly opens without writing, for a viewer of a directory another process may be writing: recovery skips torn
+	// final lines and unconfirmed sidecar tails in memory instead of truncating them, reclaims nothing, and creates no
+	// directory. The storage holds the state committed at open and Commit rejects. Defaults to false.
+	ReadOnly bool
 }
 
 // JsonlCorruptionError reports complete persisted data that cannot be recovered.
@@ -100,6 +108,23 @@ func (e *JsonlStoragePoisonedError) Error() string { return e.Message }
 
 // Unwrap returns the cause.
 func (e *JsonlStoragePoisonedError) Unwrap() error { return e.Cause }
+
+// JsonlStorageReadOnlyError is what Commit rejects with on a storage opened with ReadOnly. Nothing was written.
+type JsonlStorageReadOnlyError struct {
+	// Message is the `message` property the constructor sets.
+	Message string
+}
+
+// NewJsonlStorageReadOnlyError is `new JsonlStorageReadOnlyError()`: it sets the fixed message "JSONL storage is open
+// read-only".
+func NewJsonlStorageReadOnlyError() *JsonlStorageReadOnlyError {
+	return &JsonlStorageReadOnlyError{Message: "JSONL storage is open read-only"}
+}
+
+// Name is the `name` property, "JsonlStorageReadOnlyError".
+func (e *JsonlStorageReadOnlyError) Name() string { return "JsonlStorageReadOnlyError" }
+
+func (e *JsonlStorageReadOnlyError) Error() string { return e.Message }
 
 // fileFailure is the upstream `JSONL <action> failed: <message>` wrapper of a file system failure.
 type fileFailure struct {
@@ -267,6 +292,8 @@ type parsedLine[T any] struct {
 type parsedFile[T any] struct {
 	path  string
 	lines []parsedLine[T]
+	// size is the bytes read, a torn final line included; 0 for a missing file.
+	size int64
 }
 
 type encodedCommit struct {
@@ -290,7 +317,10 @@ type JsonlStorage struct {
 	directory string
 	mainPath  string
 	fsync     bool
+	readOnly  bool
 	memory    *storage.MemoryStorage
+	// mainSize is the bytes of main.jsonl recovery read (mainChanged).
+	mainSize int64
 
 	// commitMu serializes commits and owns the sidecar bookkeeping below.
 	commitMu             sync.Mutex
@@ -306,32 +336,45 @@ type JsonlStorage struct {
 
 var _ durable.Storage = (*JsonlStorage)(nil)
 
-// Open opens or creates a JSONL storage directory using the supplied file system and recovers its state.
+// Open opens or creates a JSONL storage directory using the supplied file system and recovers its state. With ReadOnly it
+// opens an existing one without writing; a recovery that fails while main.jsonl changes raced a writer's commit and is
+// retried.
 func Open(ctx context.Context, directory string, fs FileSystem, options JsonlStorageOptions) (*JsonlStorage, error) {
 	absolute, err := fs.AbsolutePath(ctx, directory)
 	if err != nil {
 		return nil, errorFromFile("path resolution", err)
 	}
-	if err := fs.CreateDir(ctx, absolute, &env.CreateDirOptions{Recursive: new(true)}); err != nil {
-		return nil, errorFromFile("directory creation", err)
+	if !options.ReadOnly {
+		if err := fs.CreateDir(ctx, absolute, &env.CreateDirOptions{Recursive: new(true)}); err != nil {
+			return nil, errorFromFile("directory creation", err)
+		}
 	}
 	mainPath, err := fs.JoinPath(ctx, []string{absolute, mainFile})
 	if err != nil {
 		return nil, errorFromFile("path join", err)
 	}
-	jsonl := &JsonlStorage{
-		fs:                   fs,
-		directory:            absolute,
-		mainPath:             mainPath,
-		fsync:                options.Fsync,
-		memory:               storage.NewMemoryStorage(),
-		currentOnlyDocuments: map[durable.DocumentId]bool{},
-		liveTaskSidecars:     map[durable.TaskId]bool{},
+	for attempt := 1; ; attempt++ {
+		jsonl := &JsonlStorage{
+			fs:                   fs,
+			directory:            absolute,
+			mainPath:             mainPath,
+			fsync:                options.Fsync,
+			readOnly:             options.ReadOnly,
+			memory:               storage.NewMemoryStorage(),
+			currentOnlyDocuments: map[durable.DocumentId]bool{},
+			liveTaskSidecars:     map[durable.TaskId]bool{},
+		}
+		err := jsonl.recover(ctx)
+		if err == nil {
+			return jsonl, nil
+		}
+		if !jsonl.readOnly || attempt == readOnlyOpenAttempts {
+			return nil, err
+		}
+		if _, corrupt := errors.AsType[*JsonlCorruptionError](err); !corrupt || !jsonl.mainChanged(ctx) {
+			return nil, err
+		}
 	}
-	if err := jsonl.recover(ctx); err != nil {
-		return nil, err
-	}
-	return jsonl, nil
 }
 
 type resolvedSidecar struct {
@@ -351,6 +394,9 @@ func (jsonl *JsonlStorage) Commit(
 	defer jsonl.commitMu.Unlock()
 	if err := jsonl.assertUsable(); err != nil {
 		return durable.CommitResult{}, err
+	}
+	if jsonl.readOnly {
+		return durable.CommitResult{}, NewJsonlStorageReadOnlyError()
 	}
 	var seqs []durable.Seq
 	var encoded []encodedCommit
@@ -820,12 +866,16 @@ func (jsonl *JsonlStorage) replaceSidecar(ctx context.Context, file, content str
 	_ = jsonl.fs.RenameFile(ctx, temporaryPath, path)
 }
 
+// recover loads the confirmed state. A writable open also repairs the files: it truncates torn lines and unconfirmed
+// sidecar tails, removes leftover reclaim files, and reclaims sidecar records later commits made unnecessary. A read-only
+// open skips the same records in memory only.
 func (jsonl *JsonlStorage) recover(ctx context.Context) error {
 	fs := jsonl.fs
-	main, err := readLines(ctx, fs, jsonl.mainPath, mainFile, parseMainMarker)
+	main, err := readLines(ctx, fs, jsonl.readOnly, jsonl.mainPath, mainFile, parseMainMarker)
 	if err != nil {
 		return err
 	}
+	jsonl.mainSize = main.size
 	var previousSeq int64
 	for _, marker := range main.lines {
 		if marker.value.seq <= previousSeq {
@@ -839,7 +889,7 @@ func (jsonl *JsonlStorage) recover(ctx context.Context) error {
 		return errorFromFile("directory listing", err)
 	}
 	for _, info := range listed {
-		if info.Kind == env.FileKindFile && reclaimFilePattern.MatchString(info.Name) {
+		if !jsonl.readOnly && info.Kind == env.FileKindFile && reclaimFilePattern.MatchString(info.Name) {
 			_ = fs.Remove(ctx, info.Path, &env.RemoveOptions{Force: true})
 		}
 	}
@@ -857,7 +907,7 @@ func (jsonl *JsonlStorage) recover(ctx context.Context) error {
 		if err != nil {
 			return errorFromFile("path join", err)
 		}
-		parsed, err := readLines(ctx, fs, path, file, func(text []byte, line int) (sidecarRecord, error) {
+		parsed, err := readLines(ctx, fs, jsonl.readOnly, path, file, func(text []byte, line int) (sidecarRecord, error) {
 			return parseSidecarRecord(text, file, line)
 		})
 		if err != nil {
@@ -1013,7 +1063,7 @@ func (jsonl *JsonlStorage) recover(ctx context.Context) error {
 				unconfirmedAt = line.start
 			}
 		}
-		if unconfirmedAt >= 0 {
+		if unconfirmedAt >= 0 && !jsonl.readOnly {
 			if err := fs.TruncateFile(ctx, parsed.path, unconfirmedAt); err != nil {
 				return errorFromFile("tail truncation of "+file, err)
 			}
@@ -1054,7 +1104,9 @@ func (jsonl *JsonlStorage) recover(ctx context.Context) error {
 			reclamations.set(file, content.String())
 		}
 	}
-	jsonl.reclaimSidecars(ctx, reclamations)
+	if !jsonl.readOnly {
+		jsonl.reclaimSidecars(ctx, reclamations)
+	}
 
 	for id := range currentOnlyDocuments {
 		jsonl.currentOnlyDocuments[id] = true
@@ -1088,10 +1140,10 @@ func confirmRecord(
 
 var utf8BOM = []byte{0xEF, 0xBB, 0xBF}
 
-// readLines parses every complete line of a file. A torn final line is truncated away first; a missing file has no
-// lines.
+// readLines parses every complete line of a file; a missing file has no lines. A torn final line is truncated away first,
+// or only skipped when readOnly. size is the bytes read, a torn final line included (storage.ts readLines).
 func readLines[T any](
-	ctx context.Context, fs FileSystem, path, name string, parse func(text []byte, line int) (T, error),
+	ctx context.Context, fs FileSystem, readOnly bool, path, name string, parse func(text []byte, line int) (T, error),
 ) (parsedFile[T], error) {
 	content, err := fs.ReadBinaryFile(ctx, path)
 	if err != nil {
@@ -1103,8 +1155,10 @@ func readLines[T any](
 	completeSize := len(content)
 	if completeSize > 0 && content[completeSize-1] != '\n' {
 		completeSize = bytes.LastIndexByte(content, '\n') + 1
-		if err := fs.TruncateFile(ctx, path, int64(completeSize)); err != nil {
-			return parsedFile[T]{}, errorFromFile("torn-line truncation of "+name, err)
+		if !readOnly {
+			if err := fs.TruncateFile(ctx, path, int64(completeSize)); err != nil {
+				return parsedFile[T]{}, errorFromFile("torn-line truncation of "+name, err)
+			}
 		}
 	}
 	var lines []parsedLine[T]
@@ -1127,7 +1181,15 @@ func readLines[T any](
 		start = end + 1
 		lineNumber++
 	}
-	return parsedFile[T]{path: path, lines: lines}, nil
+	return parsedFile[T]{path: path, lines: lines, size: int64(len(content))}, nil
+}
+
+// mainChanged reports whether main.jsonl changed size since recovery read it. A writer reclaims a sidecar only after
+// appending the marker that allows it, so sidecars read while main.jsonl stayed the same match its markers; a recovery
+// that failed while it changed may have read a sidecar a newer commit reclaimed (storage.ts mainChanged).
+func (jsonl *JsonlStorage) mainChanged(ctx context.Context) bool {
+	info, err := jsonl.fs.FileInfo(ctx, jsonl.mainPath)
+	return err == nil && info.Size != jsonl.mainSize
 }
 
 func parseJSON(text []byte, description string) (any, error) {
