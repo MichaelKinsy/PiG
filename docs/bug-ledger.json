@@ -250,6 +250,26 @@
       ]
     },
     {
+      "id": "BF-0223bea",
+      "title": "`make changelog-fold` stops, changing nothing, while `## [Unreleased]` still holds entries, and names…",
+      "symptom": "`make changelog-fold` stops, changing nothing, while `## [Unreleased]` still holds entries, and names `set-version --move-unreleased`; `make changelog-fold VERSION=Unreleased` is refused with its own message.",
+      "rootCause": "Finding R4 of the 0.8.0 release dry run: set-version leaves the [Unreleased] entries (the klauspost/compress GO-2026-6865 Security entry) under Unreleased, and changelog-fold moves only fragments, so the [0.8.0] section had no Security section while the notes draft listed it.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`make changelog-fold` stops, changing nothing, while `## [Unreleased]` still holds entries, and names `set-version --move-unreleased`; `make changelog-fold VERSION=Unreleased` is refused with its own message. The fold moves fragments only, so an entry left under Unreleased (the 0.8.0 `klauspost/compress` Security entry) was missing from the release section.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0223bea7e7",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-0225926",
       "title": "fix: symlink callers, changelog fragment name, behavior contract hash at the new pin, interface extractor…",
       "symptom": "fix: symlink callers, changelog fragment name, behavior contract hash at the new pin, interface extractor cache keyed by the package list, generated patterns",
@@ -11443,6 +11463,26 @@
         "durable/harness/harness_compaction_test.go::TestOverflowCompaction",
         "durable/harness/harness_context_test.go::TestConversationContext"
       ]
+    },
+    {
+      "id": "BF-4219d7a",
+      "title": "`docs/project/PROVENANCE.md` named Pi v0.99.1 as the upstream pin",
+      "symptom": "`docs/project/PROVENANCE.md` named Pi v0.99.1 as the upstream pin.",
+      "rootCause": "The pin tool already derives every committed copy of the pin and make pin-check fails on drift, so the file joins its RULES: pin.py provenance rewrites the two lines (release tag or commit form) and make pin-sync fixes the text. It cannot go stale again without make pin-check failing.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`docs/project/PROVENANCE.md` named Pi v0.99.1 as the upstream pin. It now states the pin from `.upstream/pin` (`1.5.0+c23b9ec1`, with the full commit), and `make pin-sync` and `make pin-check` keep it current.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4219d7aa50",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-4259631",
@@ -45246,6 +45286,66 @@
         {
           "hash": "d983b74821",
           "date": "2026-10-09"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-d986ba3",
+      "title": "Release workflow: a run from a private repository now fails in its first step, with the reason, instead of…",
+      "symptom": "Release workflow: a run from a private repository now fails in its first step, with the reason, instead of building every archive and stopping at the publish job.",
+      "rootCause": "Findings R3, R9 and R11 of the 0.8.0 release dry run.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Release workflow: a run from a private repository now fails in its first step, with the reason, instead of building every archive and stopping at the publish job. Attestation is skipped for private repositories and `assemble-evidence.py` requires a Sigstore bundle for every archive.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d986ba346f",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-d986ba3-2",
+      "title": "Release workflow: the draft GitHub Release takes its body from…",
+      "symptom": "Release workflow: the draft GitHub Release takes its body from `docs/release/\u003cversion\u003e-release-notes-draft.md` when that file exists, and from GitHub's generated notes only when it does not.",
+      "rootCause": "Findings R3, R9 and R11 of the 0.8.0 release dry run.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Release workflow: the draft GitHub Release takes its body from `docs/release/\u003cversion\u003e-release-notes-draft.md` when that file exists, and from GitHub's generated notes only when it does not. The publish job stops, before it creates anything, while that draft still has the generator's \"Draft. Not published.\" banner.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d986ba346f",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-d986ba3-3",
+      "title": "Release workflow: the packaged smoke steps compare the `pig:` line of `pig version` with the release version…",
+      "symptom": "Release workflow: the packaged smoke steps compare the `pig:` line of `pig version` with the release version, for the `pig` archives and for the `pig` inside each `pig-acp` archive.",
+      "rootCause": "Findings R3, R9 and R11 of the 0.8.0 release dry run.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Release workflow: the packaged smoke steps compare the `pig:` line of `pig version` with the release version, for the `pig` archives and for the `pig` inside each `pig-acp` archive. They checked only exit codes before.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d986ba346f",
+          "date": "2026-11-09"
         }
       ],
       "tests": []

@@ -124,6 +124,23 @@ class RepositoryTests(unittest.TestCase):
         self.assertRegex(moved["README.md"], r"for example `\d+\.\d+\.\d+\+1\.1\.0\+bbbbbbbb`")
         self.assertTrue("ARG PI_COMMIT=" + "b" * 40 in moved["automation/images/ci-parity/Dockerfile"])
 
+    def test_provenance_names_the_committed_pin(self):
+        # docs/project/PROVENANCE.md once kept naming Pi v0.99.1 / d86654ab long after the pin moved.
+        pin = pinlib.committed()
+        text = (pinlib.ROOT / "docs/project/PROVENANCE.md").read_text(encoding="utf-8")
+        self.assertIn(f"`{pin.version}`", text)
+        self.assertIn(f"`{pin.commit}`", text)
+        self.assertNotIn("v0.99.1", text)
+        self.assertIn("docs/project/PROVENANCE.md", pin_tool.derived(pin))
+
+    def test_provenance_follows_a_moved_pin_of_either_kind(self):
+        for pin in (COMMIT, TAG):
+            text = pin_tool.derived(pin)["docs/project/PROVENANCE.md"]
+            self.assertIn(f"- Upstream pin: `{pin.version}`", text)
+            self.assertIn(f"- Upstream commit: `{pin.commit}`", text)
+        self.assertIn("Upstream pin: `1.1.0+bbbbbbbb` (a commit of Pi's main branch)", pin_tool.derived(COMMIT)["docs/project/PROVENANCE.md"])
+        self.assertIn("Upstream pin: `1.1.0` (release tag `v1.1.0`)", pin_tool.derived(TAG)["docs/project/PROVENANCE.md"])
+
     def test_no_pin_literal_outside_the_pin_file_and_its_derivations(self):
         # Every pin consumer reads the pin through pigversion.go or pin.py: a hard-coded literal would survive a bump.
         pin = pinlib.committed()

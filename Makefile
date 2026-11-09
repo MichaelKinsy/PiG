@@ -248,7 +248,7 @@ changelog-unreleased: ## Print the Unreleased changelog assembled from the fragm
 changelog-check: ## Fail on a changelog fragment that is not named <lane>-<sha>.md after a commit reachable from HEAD, is not sections of bullets, or has a "### Fixed" bullet without a reachable <!-- fix: <sha> --> marker; needs the full history (fragments listed in automation/ci/changelogfrag/legacy.txt are exempt from the name and reachability rules, not from the marker rule)
 	@go run ./automation/ci/changelogfrag -check
 
-changelog-fold: ## Fold the changelog.d fragments into the VERSION section of CHANGELOG.md and delete them (integrator; rerun at release for later fragments)
+changelog-fold: ## Fold the changelog.d fragments into the VERSION section of CHANGELOG.md and delete them (integrator; rerun at release for later fragments); stops while the Unreleased section holds entries (set-version --move-unreleased moves them) and does not fold into Unreleased
 	@test -n "$(VERSION)" || { echo "usage: make changelog-fold VERSION=x.y.z" >&2; exit 2; }
 	@go run ./automation/ci/changelogfrag -fold=$(VERSION)
 
