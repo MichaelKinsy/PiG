@@ -1414,59 +1414,59 @@ rationale = "One JSON file per session, replaced through a temporary file and a 
 
 [[files]]
 path = "packages/chord/src/telemetry-ingest/facet.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "microtask-ordering"]
+evidence = ["test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageBatchWritesItsOwnSpansMarkedBrowserWithItsLinksPrincipalNoAttributeOfItsOverriding", "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageBatchCapsAPagesSpansPerMinuteDroppingAndCountingPastTheBudget", "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageBatchRecordsNoSpanForAnIngestCall", "test:chord/next/telemetryingest/ingest_upstream_test.go#TestWorkerBatchWritesSpansAndMetricsAsTheyAreStampedWithItsHostAnyoneElseHasNothingToCall"]
+rationale = "facet.ts: the two `ingest` members (PageTelemetry, WorkerTelemetry) are declared `async` with no await: the body is synchronous (budget check, stamping, options.target.ingest(batch) which queues and returns a count) and only the Promise wrapper adds a microtask boundary before the caller sees the receipt {written, dropped}; the served type is untraced so a batch records no span of its own. No cancellation, no executor of its own: the call runs in the object's call path on the host's loop. Go's handler returns the receipt directly in the call's section (facet.go IngestFacet), the same observable order: the batch is queued in the section of the call and the receipt follows it (TestPageBatchWritesItsOwnSpansMarkedBrowserWithItsLinksPrincipalNoAttributeOfItsOverriding, TestPageBatchRecordsNoSpanForAnIngestCall, TestPageBatchCapsAPagesSpansPerMinuteDroppingAndCountingPastTheBudget)."
 
 [[files]]
 path = "packages/chord/src/telemetry-ingest/recorder.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "microtask-ordering"]
+evidence = ["test:chord/next/telemetryingest/recorder_upstream_test.go#TestRecorderKeepsSettledSpansOnlyUnderTheScopeItReadsAtItsFirstSpan", "test:chord/next/telemetryingest/recorder_upstream_test.go#TestRecorderCountsATakenBatchAgainstItsBoundUntilReleased", "test:chord/next/telemetryingest/recorder_upstream_test.go#TestRecorderRecordsNothingOnceStoppedAndADiscardingStopDropsWhatWaits", "test:chord/next/telemetryingest/recorder_upstream_test.go#TestRecorderQueuesIngestedSpansAndMergesIngestedMetricRowsWithinItsBounds"]
+rationale = "recorder.ts TelemetryRecorder.startSpan(options, callback) -> #start: awaited. The caller waits for `await callback(span)`: the callback's value or error is the call's result and a throw is rethrown after the span recorded its error status (unless set explicitly); a `finally` settles the span (settled = true, so later addEvent/setAttributes are ignored and a child started after settling is inert), queues it when it fits the capacity (else droppedSpans++), and counts it in flight until released. No timer, no thread: recording is synchronous bookkeeping and the span's own clock reads (telemetryNow, performance.now) happen at start and end. A recorder that stopped starts an inert span: the callback still runs and its result is returned, nothing is kept (#inert, awaited the same way). take(partial, limit) hands out a batch and counts it in flight; release() ends that count; ingest queues rows within the bound. Go Recorder.StartSpan (recorder.go) invokes and waits for the callback, settles the span on return, error or panic and re-panics; the recorder's state is under its own mutex (TestRecorderKeepsSettledSpansOnlyUnderTheScopeItReadsAtItsFirstSpan, TestRecorderCountsATakenBatchAgainstItsBoundUntilReleased, TestRecorderRecordsNothingOnceStoppedAndADiscardingStopDropsWhatWaits)."
 
 [[files]]
 path = "packages/chord/src/telemetry-ingest/sender.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "detached-owned", "cancellable"]
+evidence = ["test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageSenderSendsItsSpansWithoutMetricsOnceBoundUntilThenTheyWaitInTheRecorder", "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageSenderGivesARefusedBatchUp", "test:chord/next/telemetryingest/ingest_upstream_test.go#TestWorkerSenderSendsSpansAndMetricsToTheWorkerVariant"]
+rationale = "sender.ts sender(recorder, limit, waiting, release, call): send(partial) chains onto the previous send (`(sending ?? Promise.resolve()).then(() => once(partial))`), so sends run one after another in call order; once takes a batch only when something waits, calls the hold's ingest (`call` answers undefined when the reference is not live or not the worker variant: the batch goes back to the recorder at the back and the recorder's count is released), and otherwise awaits the call best effort (`await sent.catch(() => {})`: a refused or lost batch is given up, the count released). Nobody waits on the timer's sends (`void sender.send(false)` in page.ts and the worker's interval): detached tasks owned by the sender, errors swallowed by design, never rejecting. The worker's close awaits `Promise.race([send(true), sleep(WORKER_SEND_MS)])`, i.e. the final partial send is bounded by one second and then stop() releases the hold. Go Sender.Send is a blocking call under a mutex (one send at a time, in lock order), the final send in nextnode/app/worker.go runs on its own goroutine bounded by the same one second with the ticker goroutine stopped and joined first; Stop releases the hold. A Go tick that finds the previous send still running is dropped by the ticker rather than queued behind it (a batch waits in the recorder until the next tick, the same bound). The page sender is the vendored browser client (D601), not ported to Go (TestPageSenderSendsItsSpansWithoutMetricsOnceBoundUntilThenTheyWaitInTheRecorder, TestPageSenderGivesARefusedBatchUp, TestWorkerSenderSendsSpansAndMetricsToTheWorkerVariant)."
 
 [[files]]
 path = "packages/chord/src/telemetry-sqlite/index.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "concurrent-joined", "cancellable"]
+evidence = ["test:chord/telemetrysqlite/telemetry_sqlite_test.go#TestSerializesConcurrentFlushAndCloseWithoutLosingMeasurements", "test:chord/telemetrysqlite/telemetry_sqlite_test.go#TestStopsPermanentlyAfterAWriteFailureAndReportsTheIdenticalError", "test:chord/telemetrysqlite/telemetry_sqlite_test.go#TestRemembersABackgroundWriteFailureAndStopsItsTimer", "test:chord/telemetrysqlite/telemetry_sqlite_test.go#TestFlushesOncePerSecondAndRetainsOnlyRowsInsideTheRetentionWindow", "test:chord/telemetrysqlite/telemetry_sqlite_test.go#TestCloseDoesNotWaitForActiveCallbacksAndLeavesTheDatabaseOpen", "test:chord/telemetrysqlite/telemetry_sqlite_test.go#TestRollsBackSpansAndMetricAggregatesTogetherOnSQLFailure", "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestWritesIngestedSpansAndMetricRowsWithItsOwnNeverReplacingAStoredSpan", "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestMigratesAStoreOfVersion1ToMicrosecondsItsRowsKept"]
+rationale = "startSpan awaits the callback: Go's StartSpan blocks and returns the callback's error, the span settles on return, error or panic, and a panic is re-raised. flush and close await the commit: both block until it settles and return its error; a mutex serializes writes so at most one transaction runs at a time, and close is idempotent (every call returns the first call's result; flush after close returns close's result). The one-second `setInterval(...).catch(() => {})` flush is a concurrent task joined by close: Go starts one owned goroutine in CreateSqliteTelemetry, a tick is skipped while a write is in flight, a write failure or close stops it, and close joins it. The failure is not lost: it is remembered and flush and close return the same error value, with no retry. Upstream has no AbortSignal here, so close is the only shutdown and it drains partial metric intervals; close does not wait for active business callbacks. | Delta v1.5.0+c23b9ec1: (1) The recorder moved out: startSpan is no longer an async method of the store but `readonly startSpan = (options, callback) => this.#recorder.startSpan(options, callback)`, delegated to the shared TelemetryRecorder (telemetry-ingest/recorder.ts, row there): the callback is awaited by the span's caller, the span settles when it returns or throws, and the store adds nothing of its own. Go SqliteTelemetry.StartSpan delegates to the recorder (index.go). (2) The write is a batch from the recorder: #drain(partial) waits for the write in flight (`while (#writing) await #writing`), throws the remembered failure, takes the batch, and runs ONE transaction (spans via writeSpan with INSERT OR IGNORE so an ingested span never replaces a stored one, metrics via writeMetric, then the retention deletes on the microsecond column); a failure sets #failed, stops the recorder discarding and clears the timer, and the same error is thrown by every later flush/close; the interval flush is still `void this.flush().catch(() => {})`, a detached task owned by the store that close stops and joins through #closing. Go: writeMu serializes drainLocked, the one-second ticker goroutine is stopped by haltTimer and skips a tick while a write runs, flush and close return the first failure (TestSerializesConcurrentFlushAndCloseWithoutLosingMeasurements, TestStopsPermanentlyAfterAWriteFailureAndReportsTheIdenticalError, TestRemembersABackgroundWriteFailureAndStopsItsTimer, TestRollsBackSpansAndMetricAggregatesTogetherOnSQLFailure, TestFlushesOncePerSecondAndRetainsOnlyRowsInsideTheRetentionWindow). (3) ingest(batch) is synchronous, returns how many spans were queued (the rest dropped and counted past the bound), and the rows go out with the next flush: no await, no ordering beyond the queue (TestWritesIngestedSpansAndMetricRowsWithItsOwnNeverReplacingAStoredSpan). (4) createSqliteTelemetry awaits migrateTelemetryStore(db) (schema.ts, version 1 to 2 microseconds) before constructing the store; a migration failure rejects the creation and nothing is started. Go CreateSqliteTelemetry migrates and returns (store, error) before it starts the ticker (TestMigratesAStoreOfVersion1ToMicrosecondsItsRowsKept)."
 
 [[files]]
 path = "packages/chord/src/telemetry-sqlite/node.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreReadsWhatRecordersWroteWhileOneStillRecordsAndNeverWritesTheFile", "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestReadOnlyStoreRefusesAMissingFileAFileWithoutAStoreAndAStoreOfAnotherVersion"]
+rationale = "node.ts openTelemetryStore(path): awaited. It awaits openNodeSqliteDatabase(path, {mode: 'read-only'}) then assertTelemetryStore(db); a failed assertion closes the database (await db.close()) and rethrows the same error, so no handle is left open and the caller sees the assertion's error; close() returns the database's close promise. The store reads committed rows only and never writes, so it is safe beside a recorder that still writes the file. No cancellation parameter, no background task. Go OpenTelemetryStore (telemetrysqlite/node.go) is a blocking call returning (store, error), closing the database on a failed assertion before it returns, and Close returns the database's close result (TestReadOnlyStoreReadsWhatRecordersWroteWhileOneStillRecordsAndNeverWritesTheFile, TestReadOnlyStoreRefusesAMissingFileAFileWithoutAStoreAndAStoreOfAnotherVersion)."
 
 [[files]]
 path = "packages/chord/src/telemetry-sqlite/schema.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestMigratesAStoreOfVersion1ToMicrosecondsItsRowsKept", "test:chord/telemetrysqlite/telemetry_sqlite_test.go#TestReusesMigrationsPreservesIdentitiesAcrossReopenAndMergesAggregates"]
+rationale = "schema.ts migrateTelemetryStore(db) and assertTelemetryStore(db) are awaited SQL steps. migrate runs the schema migrations in order under the database's migration transaction: a version 1 store is converted to microsecond columns with its rows kept, a failure rolls the whole step back and rejects, and nothing runs after it (the store is not created). assertTelemetryStore awaits the table list and the version row and rejects with a plain Error for a file that is not a telemetry store or a store of a newer/other version, which openTelemetryStore turns into a closed database. No timers, cancellation or concurrency: one database, one caller. Go migrateTelemetryStore/assertTelemetryStore in telemetrysqlite/schema.go are blocking calls returning an error (TestMigratesAStoreOfVersion1ToMicrosecondsItsRowsKept, TestReusesMigrationsPreservesIdentitiesAcrossReopenAndMergesAggregates, TestReadOnlyStoreRefusesAMissingFileAFileWithoutAStoreAndAStoreOfAnotherVersion)."
 
 [[files]]
 path = "packages/chord/src/telemetry-sqlite/store.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestReadsCommittedRowsWithoutImplicitlyFlushingIncludingAfterClose", "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestUsesTwoSpanQueriesForAPageNotOnePerTrace", "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestSqliteTelemetryStoreConformance", "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestOrdersSpansStartedInTheSameMillisecondAsTheyStarted", "test:chord/telemetrysqlite/telemetry_sqlite_v2_test.go#TestStoresSpanTimesInWholeMicrosecondsReadBackAsMilliseconds"]
+rationale = "findTraces, getTrace and findMetrics await their queries. Go's FindTraces, GetTrace and FindMetrics block and return (value, error); they have no cancellation, as upstream, and they read committed rows without flushing, including after close. | Delta v1.5.0+c23b9ec1: The readers (findTraces, getTrace, findMetrics) are unchanged awaited queries on one read transaction; the only delta is that spans are read by started_us (whole microseconds, ordered started_us, length(id), id), converted back to milliseconds. They read committed rows only (no flush) and take no cancellation, as before; Go FindTraces/GetTrace/FindMetrics block and return (value, error) (TestOrdersSpansStartedInTheSameMillisecondAsTheyStarted, TestStoresSpanTimesInWholeMicrosecondsReadBackAsMilliseconds)."
 
 [[files]]
 path = "packages/chord/src/telemetry.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "detached-owned", "cancellable"]
+evidence = ["test:chord/next/telemetry/telemetry_upstream_test.go", "test:chord/next/telemetry/telemetry_metrics_cache_test.go", "test:chord/next/host/host_spans_test.go#TestMethodSpanEndsWithTheHandlerNotWithACallerThatLeftAtAnAbortAHandlerReturningAfterItEndsItOk", "test:chord/next/host/jobs_job_runs_test.go#TestPhaseSpansMarkARunThatThrewFailedJobFailedAndAnAbortedOneOk"]
+rationale = "telemetry.ts: chordSpans(parent) is the typed span starter (the callback is awaited by the caller exactly as startSpan: value and error pass through); OpenSpan is a span whose end is an event: `void parent.startSpan({...}, span => { this.#span = span; return this.#done.promise; })` holds the adapter's span open on a promise resolved by end() (once; later calls do nothing); the adapter calls back at once so #span is set before the constructor returns. endWhen(work, category, signal) attaches `work.then(ok, error)` to end the span with outcome ok, aborted (signal aborted or a Chord `aborted` error: status ok) or error with the category; the reaction is detached and owned by the span, never rejects, and the span stays open for as long as `work` does (callers pass the work's own promise, not the caller's abort-bounded wait: attempt.call, job run). ended(span, category, error, signal) classifies the outcome. Go: telemetry.NewOpenSpan starts the adapter's StartSpan on an owned goroutine that blocks on `done` until End and waits for the callback to hand the span back (so the span is set on return); End is once; EndWith(err, category, ctx) and Ended classify identically; call sites end the span from the work's own settlement (TestMethodSpanEndsWithTheHandlerNotWithACallerThatLeftAtAnAbortAHandlerReturningAfterItEndsItOk pins that for method calls, TestPhaseSpansMarkARunThatThrewFailedJobFailedAndAnAbortedOneOk for jobs). The schema and cost counters are synchronous."
 
 [[files]]
 path = "packages/chord/src/tui/channel.ts"
