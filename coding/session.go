@@ -76,7 +76,7 @@ type Session struct {
 	modelRuntime     *ModelRuntime
 	modelRegistry    *ModelRegistry
 	sessionDir       string
-	noSession        bool
+	noSession        atomic.Bool // whether the installed log has no file: ReplaceInner stores it under mu, /new, /fork and Clone read it without mu
 	scopedModels     sessionScopedModels
 	runnerMu         sync.RWMutex
 	runner           *inproc.Runner // extension runner for event dispatch
@@ -742,7 +742,6 @@ func NewSession(svcs *AgentSessionServices, opts SessionOptions) (*Session, erro
 		modelRuntime:            svcs.ModelRuntime(),
 		modelRegistry:           svcs.Registry(),
 		sessionDir:              opts.SessionDir,
-		noSession:               opts.NoSession,
 		runner:                  opts.Runner,
 		extensionHost:           opts.extensionHost,
 		sharedRunner:            sharedRunner(opts),
@@ -759,6 +758,7 @@ func NewSession(svcs *AgentSessionServices, opts SessionOptions) (*Session, erro
 		},
 	}
 	sess.inner.Store(inner)
+	sess.noSession.Store(opts.NoSession)
 	sess.resourceLoader.Store(resourceLoader)
 	sess.SetScopedModels(opts.ScopedModels)
 	var initialToolNames []string
@@ -1460,7 +1460,7 @@ func (s *Session) ReplaceInner(sess *icodingagent.Session) {
 	if runner := s.currentRunner(); runner != nil {
 		runner.BindSessionManager(sess)
 	}
-	s.noSession = sess.Path() == ""
+	s.noSession.Store(sess.Path() == "")
 	s.agent.SetSessionID(sess.ID())
 	s.refreshReplacementContext()
 	model, thinking := restoreSessionRuntimeState(sess, s.services, s.Model(), s.agent.ThinkingLevel(), true)
@@ -3138,7 +3138,8 @@ func (s *Session) navigateTree(ctx context.Context, targetID string, opts Naviga
 
 	// Snapshot current leaf under lock.
 	s.mu.Lock()
-	oldLeafID := s.inner.Load().GetLeafID()
+	in := s.inner.Load()
+	oldLeafID := in.GetLeafID()
 	s.mu.Unlock()
 
 	// No-op if already at target.
@@ -3149,13 +3150,13 @@ func (s *Session) navigateTree(ctx context.Context, targetID string, opts Naviga
 	if opts.Summarize && s.Model() == nil {
 		return NavigateTreeResult{}, errors.New("No model available for summarization")
 	}
-	targetEntry, entryFound := s.inner.Load().GetEntry(targetID)
+	targetEntry, entryFound := in.GetEntry(targetID)
 	if !entryFound {
 		return NavigateTreeResult{}, fmt.Errorf("Entry %s not found", targetID)
 	}
 
 	// Collect entries to summarize (from old leaf to common ancestor).
-	collected := compaction.CollectEntriesForBranchSummary(icodingagent.HandleReads{Session: s.inner.Load()}, derefLeafID(oldLeafID), targetID)
+	collected := compaction.CollectEntriesForBranchSummary(icodingagent.HandleReads{Session: in}, derefLeafID(oldLeafID), targetID)
 
 	// Extensions may override the instructions and label.
 	customInstructions := opts.CustomInstructions
@@ -3545,9 +3546,10 @@ func (s *Session) runAutoCompaction(ctx context.Context, reason string, willRetr
 	if err == nil && compactCtx.Err() != nil {
 		err = errCompactionCancelled
 	}
+	in := s.inner.Load()
 	var entryID string
 	if err == nil {
-		entryID, err = s.inner.Load().AppendCompaction(result.Summary, result.FirstKeptEntryID, result.TokensBefore, result.Details, fromExtension, result.Usage)
+		entryID, err = in.AppendCompaction(result.Summary, result.FirstKeptEntryID, result.TokensBefore, result.Details, fromExtension, result.Usage)
 	}
 	if err != nil {
 		aborted := compactCtx.Err() != nil || cancelledByExtension
@@ -3565,7 +3567,7 @@ func (s *Session) runAutoCompaction(ctx context.Context, reason string, willRetr
 
 	s.refreshContext()
 	estimatedTokensAfter := estimateMessagesTokens(s.agent.Messages())
-	if entry, haveEntry := s.inner.Load().GetEntry(entryID); haveEntry {
+	if entry, haveEntry := in.GetEntry(entryID); haveEntry {
 		s.emitSessionCompact(compactCtx, entry, fromExtension, reason, willRetry)
 	}
 	s.emitCompactionEvent(agent.CompactionEndEvent{

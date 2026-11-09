@@ -527,7 +527,8 @@ func (s *Session) routeRequest(ctx context.Context, model *ai.Model, thinking ai
 	case userTurn:
 		reason = ModelRouteReasonUser
 	}
-	options := ResolveModelOptions{Reason: reason, ThinkingLevel: thinking, State: GetVirtualModelState(s.inner.Load().GetContextBranch(), providerID(model), model.ID)}
+	in := s.inner.Load()
+	options := ResolveModelOptions{Reason: reason, ThinkingLevel: thinking, State: GetVirtualModelState(in.GetContextBranch(), providerID(model), model.ID)}
 	if failed != nil {
 		response := failed.LLMMessage()
 		options.Failed = &response
@@ -538,8 +539,8 @@ func (s *Session) routeRequest(ctx context.Context, model *ai.Model, thinking ai
 	}
 	if route.State != nil && !bytes.Equal(route.State, options.State) {
 		data := VirtualModelStateData{Provider: providerID(model), ModelID: model.ID, State: route.State}
-		if id, err := s.inner.Load().AppendCustomEntry(VirtualModelStateEntry, data); err == nil {
-			if entry, ok := s.inner.Load().GetEntry(id); ok {
+		if id, err := in.AppendCustomEntry(VirtualModelStateEntry, data); err == nil {
+			if entry, ok := in.GetEntry(id); ok {
 				s.emitEvent(agent.EntryAppendedEvent{Entry: entry.Raw()})
 			}
 		}

@@ -229,12 +229,13 @@ func (s *Session) commitBoundaryDrafts(drafts []extension.SessionBoundaryDraft) 
 }
 
 func (s *Session) createBoundaryPreviewManager(drafts []extension.SessionBoundaryDraft) (*icodingagent.Session, error) {
+	in := s.inner.Load()
 	var branch []icodingagent.SessionEntry
-	if leaf := s.inner.Load().GetLeafID(); leaf != nil {
+	if leaf := in.GetLeafID(); leaf != nil {
 		// The preview walks parent links, so it takes the whole branch.
-		branch = s.inner.Load().GetBranch(*leaf)
+		branch = in.GetBranch(*leaf)
 	}
-	preview := icodingagent.NewBranchSession(s.inner.Load().GetHeader(), branch)
+	preview := icodingagent.NewBranchSession(in.GetHeader(), branch)
 	if _, err := applyBoundaryDrafts(preview, drafts); err != nil {
 		return nil, err
 	}
