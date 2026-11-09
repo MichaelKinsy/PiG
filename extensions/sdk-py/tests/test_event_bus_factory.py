@@ -11,6 +11,8 @@ import os
 import socket
 import tempfile
 import threading
+from collections import defaultdict
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -228,6 +230,90 @@ def test_a_factory_call_waiting_for_the_host_does_not_hold_up_another_members_re
         first_listener.close()
         second_listener.close()
         host_helpers._State.dialled.clear()
+
+
+class _SpyLock:
+    """An ``RLock`` that records which lock object each thread went to take, and tells the test (``attempted``) when a thread is about to wait for it."""
+
+    def __init__(self, seen: dict[str, "_SpyLock"], attempted: dict[str, threading.Event]) -> None:
+        self._lock = threading.RLock()
+        self._seen = seen
+        self._attempted = attempted
+
+    def __enter__(self) -> "_SpyLock":
+        name = threading.current_thread().name
+        self._seen[name] = self
+        self._attempted[name].set()
+        self._lock.acquire()
+        return self
+
+    def __exit__(self, *exc: Any) -> None:
+        self._lock.release()
+
+
+class _PausingDialled(dict):
+    """The table of dialled connections, whose ``pop`` stops until the test lets it go. ``take_helper_socket`` makes that call while it holds its path's lock and
+    ``_State.lock``; the pause gives ``_State.lock`` up, as any wait for the host would, so other threads can look the path's lock up while the take holds it."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.in_pop = threading.Event()
+        self.go = threading.Event()
+
+    def pop(self, key: Any, *default: Any) -> Any:
+        self.in_pop.set()
+        host_helpers._State.lock.release()
+        try:
+            self.go.wait(timeout=10)
+        finally:
+            host_helpers._State.lock.acquire()
+        return super().pop(key, *default)
+
+
+def test_a_path_lock_is_not_dropped_while_a_thread_holds_or_waits_for_it(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every call on a socket path takes that path's lock, and two threads on one path must never hold two different locks for it. ``take_helper_socket`` holds
+    the lock while it takes the connection; thread B comes to the same path and waits for that lock; the take ends, B takes the lock, and a third caller C then
+    comes to the path. C must wait for B: a lock the take dropped from the table while B waited for it gives C a new one, and B and C run at once."""
+    path = "/nonexistent/pig-path-lock.sock"
+    seen: dict[str, _SpyLock] = {}
+    attempted: dict[str, threading.Event] = defaultdict(threading.Event)
+    dialled = _PausingDialled()
+    monkeypatch.setattr(host_helpers, "threading", SimpleNamespace(**{**vars(threading), "RLock": lambda: _SpyLock(seen, attempted)}))
+    monkeypatch.setattr(host_helpers._State, "path_locks", {})
+    monkeypatch.setattr(host_helpers._State, "dialled", dialled)
+    holding = {"B": threading.Event(), "C": threading.Event()}
+    release = threading.Event()
+
+    def call_on_the_path(name: str) -> threading.Thread:
+        def run() -> None:
+            with host_helpers._path_lock(path):
+                holding[name].set()
+                release.wait(timeout=10)
+
+        thread = threading.Thread(target=run, name=name, daemon=True)
+        thread.start()
+        return thread
+
+    taker = threading.Thread(target=lambda: host_helpers.take_helper_socket(path), name="taker", daemon=True)
+    threads = [taker]
+    try:
+        taker.start()
+        assert dialled.in_pop.wait(timeout=10), "take_helper_socket never reached the connection table"
+        threads.append(call_on_the_path("B"))
+        assert attempted["B"].wait(timeout=10), "B never came to the path's lock"
+        dialled.go.set()
+        taker.join(timeout=10)
+        assert not taker.is_alive(), "take_helper_socket did not end"
+        assert holding["B"].wait(timeout=10), "B never took the path's lock after the take ended"
+        threads.append(call_on_the_path("C"))
+        assert attempted["C"].wait(timeout=10), "C never came to the path's lock"
+        assert seen["C"] is seen["B"], "B holds one lock for the path and C went for another: both run at once"
+    finally:
+        dialled.go.set()
+        release.set()
+        for thread in threads:
+            thread.join(timeout=10)
+    assert host_helpers._State.path_locks == {}, "a path's lock stays in the table after its last user left"
 
 
 def test_a_listener_failure_fails_only_its_dispatch(host) -> None:
