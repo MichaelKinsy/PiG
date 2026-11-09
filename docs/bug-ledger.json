@@ -47091,6 +47091,10 @@
       "id": "D233",
       "title": "A Streamable HTTP application/json reply is capped at maxMessageBytes, and an HTTP error body keeps its first…",
       "entry": "BF-d4e641b"
+    },
+    {
+      "id": "D613",
+      "title": "The Go, Python and Lisp SDKs show the host each provider stream event as it was when the provider pushed it…"
     }
   ],
   "exemptCommits": {
