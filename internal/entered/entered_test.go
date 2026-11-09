@@ -239,3 +239,57 @@ func TestParkedKeepsAFileDescriptorLockAsALock(t *testing.T) {
 		time.Sleep(time.Millisecond)
 	}
 }
+
+// The runtime stops a goroutine for the execution tracer and for a heap dump too, and ends those stops itself, but only a
+// goroutine of a test run with -trace or of a heap dump is ever in them.
+func TestClassifyTakesTheTracerAndHeapDumpStopsForBusy(t *testing.T) {
+	for _, header := range []string{"trace goroutine status]:", "trace proc status]:", "page trace flush]:", "dumping heap]:"} {
+		if got := Classify([]byte(header), []byte("main.f()\n\t/x.go:1 +0x1")); got != Busy {
+			t.Errorf("Classify(%q) = %s, want Busy", header, className(got))
+		}
+	}
+}
+
+// Only the waits of a file descriptor's lock are Lock, not any goroutine with an internal/poll frame: poll code that allocates
+// waits for a collection's world lock in "semacquire" with its frames on the stack. The lock wait of an fd is in
+// internal/poll.(*fdMutex).rwlock (a read or write that waits for another's), and FD.Close waits for the reads it evicted in
+// internal/poll.runtime_Semacquire.
+func TestClassifyTakesOnlyAFileDescriptorLocksFramesForALock(t *testing.T) {
+	for _, test := range []struct {
+		name, frames string
+		want         Class
+	}{
+		{"a read allocating in poll code", "reflect.unsafe_New(0x1)\n\t/malloc.go:1 +0x1\ninternal/poll.(*FD).Read(0x1, {0x2, 0x3})\n\t/fd_unix.go:1 +0x1\nos.(*File).read(0x1)\n\t/file.go:1 +0x1", Busy},
+		{"a pollDesc wait allocating", "main.f()\n\t/x.go:1 +0x1\ninternal/poll.(*pollDesc).wait(0x1)\n\t/fd_poll_runtime.go:1 +0x1", Busy},
+		{"the lock of a read", "internal/poll.runtime_Semacquire(0x1)\n\t/sema.go:1 +0x1\ninternal/poll.(*fdMutex).rwlock(0x1, 0x1)\n\t/fd_mutex.go:1 +0x1\ninternal/poll.(*FD).readLock(0x1)\n\t/fd_unix.go:1 +0x1", Lock},
+		{"the close of an fd", "internal/poll.runtime_Semacquire(0x1)\n\t/sema.go:1 +0x1\ninternal/poll.(*FD).Close(0x1)\n\t/fd_unix.go:1 +0x1", Lock},
+	} {
+		if got := Classify([]byte("semacquire]:"), []byte(test.frames)); got != test.want {
+			t.Errorf("%s: Classify = %s, want %s", test.name, className(got), className(test.want))
+		}
+	}
+}
+
+// A header's state ends at the first " (" too: a goroutine whose stack a collection scans is "running (scan)", and one the
+// runtime found leaked is "chan receive (leaked)", inside the brackets.
+func TestClassifyReadsTheStateBeforeItsSuffixes(t *testing.T) {
+	const frames = "main.f()\n\t/x.go:1 +0x1"
+	for _, test := range []struct {
+		header string
+		want   Class
+	}{
+		{"running (scan)]:", Busy},
+		{"runnable (scan)]:", Busy},
+		{"running (scan), locked to thread]:", Busy},
+		{"GC assist wait (scan)]:", Busy},
+		{"semacquire (scan)]:", Busy},
+		{"sync.Mutex.Lock (leaked)]:", Lock},
+		{"sync.RWMutex.RLock (leaked), 4 minutes]:", Lock},
+		{"chan receive (leaked)]:", Waiting},
+		{"select (scan)]:", Waiting},
+	} {
+		if got := Classify([]byte(test.header), []byte(frames)); got != test.want {
+			t.Errorf("Classify(%q) = %s, want %s", test.header, className(got), className(test.want))
+		}
+	}
+}
