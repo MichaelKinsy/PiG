@@ -1034,13 +1034,11 @@ fn observe_child(
         session.bind_extensions()?;
     }
     let file = manager.get_session_file()?;
-    let session_model = session.model()?.unwrap_or(Value::Null);
-    let session_file = session.session_file()?;
     let created = json!({
-        "model": {"provider": session_model["provider"], "id": session_model["id"]}, "thinkingLevel": session.thinking_level()?, "activeTools": session.get_active_tool_names()?,
-        "fallback": session.model_fallback_message, "extensionErrors": session.extension_errors.len(), "appendix": session.system_prompt()?.contains("Handle appendix"),
-        "sessionId": json!(session.session_id()?) == manager.get_session_id()?, "sessionFile": session_file.as_ref().map_or(file.is_null(), |path| file.as_str() == Some(path.as_str())),
-        "persisted": session_file.is_some(),
+        "model": {"provider": session.model["provider"], "id": session.model["id"]}, "thinkingLevel": session.thinking_level, "activeTools": session.active_tools,
+        "fallback": session.model_fallback_message, "extensionErrors": session.extension_errors.len(), "appendix": session.system_prompt.contains("Handle appendix"),
+        "sessionId": json!(session.session_id) == manager.get_session_id()?, "sessionFile": session.session_file.as_ref().map_or(file.is_null(), |path| file.as_str() == Some(path.as_str())),
+        "persisted": session.session_file.is_some(),
     });
     session.prompt("hello")?;
     let state = session.state()?;
@@ -1142,7 +1140,7 @@ fn child_handles_build(
     )?;
     let file_path = file.get_session_file()?;
     second_report["onDisk"] = json!(Path::new(text(&file_path)).exists());
-    second_report["samePath"] = json!(second.session_file()?.as_deref() == file_path.as_str());
+    second_report["samePath"] = json!(second.session_file.as_deref() == file_path.as_str());
     r.insert("file".into(), second_report);
     Ok((first, second, memory, file))
 }
@@ -1291,10 +1289,9 @@ fn services_script(ctx: &Context, args: &Value) -> io::Result<Value> {
         sink.lock().unwrap().push(name);
     });
     session.bind_extensions()?;
-    let session_model = session.model()?.unwrap_or(Value::Null);
     let created = json!({
-        "model": {"provider": session_model["provider"], "id": session_model["id"]}, "thinkingLevel": session.thinking_level()?, "fallback": session.model_fallback_message,
-        "extensionErrors": session.extension_errors.len(), "appendix": session.system_prompt()?.contains("Services appendix"), "sessionId": json!(session.session_id()?) == memory.get_session_id()?,
+        "model": {"provider": session.model["provider"], "id": session.model["id"]}, "thinkingLevel": session.thinking_level, "fallback": session.model_fallback_message,
+        "extensionErrors": session.extension_errors.len(), "appendix": session.system_prompt.contains("Services appendix"), "sessionId": json!(session.session_id) == memory.get_session_id()?,
     });
     session.prompt("hello")?;
     let roles: Vec<Value> = session
@@ -2251,8 +2248,7 @@ fn settle_pending_probe(rt: &ModelRuntime, auth: &str) -> io::Result<Value> {
         let start = std::time::Instant::now();
         rt.settle_credential_writes()?;
         let waited = start.elapsed() >= std::time::Duration::from_secs(1);
-        let stored: Value =
-            serde_json::from_str(&std::fs::read_to_string(auth)?).map_err(io::Error::other)?;
+        let stored: Value = serde_json::from_str(&std::fs::read_to_string(auth)?).map_err(io::Error::other)?;
         let key = stored["openai"]["key"].clone();
         let logged_in = login.join().unwrap_or(false);
         rt.logout("openai")?;

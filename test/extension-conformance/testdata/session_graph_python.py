@@ -882,7 +882,7 @@ def child_handles_script(ctx, args):
         if bind:
             session.bind_extensions()
         created = {
-            "model": {"provider": session.model["provider"], "id": session.model["id"]}, "thinkingLevel": session.thinking_level, "activeTools": session.get_active_tool_names(),
+            "model": {"provider": session.model["provider"], "id": session.model["id"]}, "thinkingLevel": session.thinking_level, "activeTools": session.active_tools,
             "fallback": session.model_fallback_message, "extensionErrors": len(session.extension_errors), "appendix": "Handle appendix" in session.system_prompt,
             "sessionId": session.session_id == manager.get_session_id(), "sessionFile": session.session_file == manager.get_session_file(), "persisted": session.session_file is not None,
         }
@@ -1736,7 +1736,7 @@ def agent_session_runtime_script(ctx, args):
 
     # dispose settles a run in flight before it emits session_shutdown; the model never ends this run, so only the abort can end it.
     observe_file = os.path.join(cwd, "observe-run")
-    open(observe_file, "w", newline="").close()
+    open(observe_file, "w").close()
     hung = runtime.session
     running = threading.Thread(target=lambda: hung.prompt("hang-forever"))
     running.start()
