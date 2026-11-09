@@ -74,7 +74,37 @@ type scopeColumns struct {
 
 // encodeJSON serializes a stored value as JSON.stringify does (storage.ts encodeJson): lone UTF-16 surrogates survive, and <, >, & and U+2028/U+2029 stay literal.
 func encodeJSON(value any) (string, error) {
-	encoded, err := jsstring.MarshalJSON(value)
+	buffer := encodeBuffers.Get().(*[]byte)
+	encoded, err := jsstring.AppendMarshalJSON((*buffer)[:0], value)
+	return finishEncoding(buffer, encoded, err)
+}
+
+// encodeEntryJSON is encodeJSON of an entry record without boxing it: the record writes its own text.
+func encodeEntryJSON(entry durable.EntryRecord) (string, error) {
+	buffer := encodeBuffers.Get().(*[]byte)
+	encoded, err := entry.AppendStringify((*buffer)[:0])
+	return finishEncoding(buffer, encoded, err)
+}
+
+// encodeBuffers holds the buffers stored values are encoded into. The text leaves as a string copy, so one buffer serves
+// every row a commit encodes.
+var encodeBuffers = sync.Pool{New: func() any { return new([]byte) }}
+
+// maxPooledEncodeBuffer bounds the buffer kept between calls (golang/go#23199): a larger one is left to the collector.
+const maxPooledEncodeBuffer = 64 << 10
+
+// finishEncoding returns buffer to the pool and the encoded text as a string, or the error encodeJSON reports.
+func finishEncoding(buffer *[]byte, encoded []byte, err error) (string, error) {
+	var text string
+	if err == nil {
+		text = string(encoded)
+	}
+	if cap(encoded) <= maxPooledEncodeBuffer {
+		*buffer = encoded[:0]
+	} else {
+		*buffer = nil
+	}
+	encodeBuffers.Put(buffer)
 	if err != nil {
 		var unsupported *json.UnsupportedValueError
 		if errors.As(err, &unsupported) && strings.Contains(unsupported.Str, "cycle") {

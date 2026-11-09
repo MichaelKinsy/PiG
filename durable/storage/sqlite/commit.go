@@ -447,7 +447,7 @@ func (pending *pendingWrites) addWrite(write durable.StorageWrite, seq durable.S
 		pending.conversations = append(pending.conversations, []cell{int64(value.Id), ownerConversation, ownerTask, record})
 	case durable.EntryWrite:
 		value := typed.Value
-		record, err := encodeJSON(value)
+		record, err := encodeEntryJSON(value)
 		if err != nil {
 			return err
 		}
