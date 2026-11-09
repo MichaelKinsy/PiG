@@ -14,6 +14,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -26,6 +27,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/apps/p2/hosts"
 	"github.com/MichaelKinsy/PiG/apps/p2/p2test"
+	chatcontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/chat/contract"
 	devicescontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/devices/contract"
 	logincontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/login/contract"
 	portscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/ports/contract"
@@ -312,6 +314,46 @@ func TestRadiusPluginAdmitsItsAuthenticatedRemoteOwnerIncludingProviderLoginWith
 	}
 	if got := f.get("/probe", nil).Status; got != 200 {
 		t.Fatalf("local = %d", got)
+	}
+}
+
+// Ports "Radius-relayed artifact previews may sit below the Radius shell's frame" (Pi main 82d6f34f).
+func TestRadiusRelayedArtifactPreviewsMaySitBelowTheRadiusShellsFrame(t *testing.T) {
+	p2test.NoLeakedGoroutines(t)
+	f := radiusFixture(t, nil, radiustest.Options{})
+	owner := f.fixture.Browser()
+	sessions, err := p2test.HoldIn(owner, sessionscontract.Sessions, delta.NewJsonObject(0), "owner")
+	if err != nil {
+		t.Fatal(err)
+	}
+	created, err := sessions.Call("create", delta.JsonObjectOf("cwd", f.fixture.Workspace), p2test.Background)
+	if err != nil {
+		t.Fatal(err)
+	}
+	session := object(created).Value("id").(string)
+	chat, err := p2test.HoldIn(owner, chatcontract.Chat, delta.JsonObjectOf("session", session, "conversation", float64(1)), "participant")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := chat.Call("send", delta.JsonObjectOf("text", "artifact", "requestId", "artifact"), p2test.Background); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p2test.Until(chat.Member("view"), func(view delta.JsonValue) bool {
+		return view != nil && len(toolResults(view, "artifact")) == 1 && !running(view)
+	}, 0); err != nil {
+		t.Fatal(err)
+	}
+	chat.Release()
+	// The relayed app is framed by the shell, and `frame-ancestors` checks every ancestor: `'self'` alone showed Chrome's
+	// blocked-frame page instead of every inline preview.
+	query := url.Values{"session": {session}, "name": {"demo"}, "version": {"1"}}.Encode()
+	response := f.radius.Response(f.open("/artifact?"+query, radiusOpen{}))
+	if response["status"] != float64(200) {
+		t.Fatalf("response = %v", response)
+	}
+	csp, _ := radiustest.Header(response, "content-security-policy")
+	if !strings.HasSuffix(csp, "; frame-ancestors 'self' https://radius.earendil.com") {
+		t.Fatalf("content-security-policy = %q", csp)
 	}
 }
 

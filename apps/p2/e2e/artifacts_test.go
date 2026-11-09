@@ -1,5 +1,5 @@
 // Ports test/p2/artifacts.test.ts (Pi main c23b9ec1): the `artifact` tool, the artifact index, the `/artifact` route and the
-// inline preview contract, owner and guests.
+// inline preview contract, owner and guests; Pi main 82d6f34f adds the `frame-ancestors 'self'` tail.
 //
 // The long-preview case of "serves Markdown/text as non-executable documents and validates byte bounds" is PENDING the codemode
 // plugin (see the case); the store's refusal of a large artifact before touching the files is `plugins/artifacts/store_test.go`.
@@ -175,6 +175,9 @@ func TestArtifactsFakeProvider(t *testing.T) {
 		csp := preview.Headers.Get("Content-Security-Policy")
 		if !strings.Contains(csp, "sandbox allow-scripts allow-modals allow-pointer-lock") || strings.Contains(csp, "allow-same-origin") ||
 			!regexp.MustCompile(`frame-src 'none'.*object-src 'none'.*base-uri 'none'.*form-action 'none'`).MatchString(csp) {
+			t.Fatalf("Content-Security-Policy = %q", csp)
+		}
+		if !strings.HasSuffix(csp, "; frame-ancestors 'self'") {
 			t.Fatalf("Content-Security-Policy = %q", csp)
 		}
 		if got := preview.Headers.Get("Cross-Origin-Resource-Policy"); got != "same-origin" {
@@ -378,7 +381,7 @@ func TestArtifactsFakeProvider(t *testing.T) {
 			if got := response.Headers.Get("Content-Type"); got != "text/plain; charset=utf-8" {
 				t.Fatalf("%s Content-Type = %q", kind, got)
 			}
-			if !strings.HasSuffix(response.Headers.Get("Content-Security-Policy"), "; sandbox") || strings.Contains(response.Body, "p2-artifact-diagnostic") {
+			if !strings.HasSuffix(response.Headers.Get("Content-Security-Policy"), "; sandbox; frame-ancestors 'self'") || strings.Contains(response.Body, "p2-artifact-diagnostic") {
 				t.Fatalf("%s: CSP %q body %q", kind, response.Headers.Get("Content-Security-Policy"), response.Body)
 			}
 		}
