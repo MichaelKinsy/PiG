@@ -101,7 +101,7 @@ func TestCheckCompactionSilentOverflowCompactsWithoutRetry(t *testing.T) {
 		Content: []ai.AssistantContentBlock{ai.TextContent{Text: "done"}},
 		Usage:   &ai.Usage{Input: 8001, Output: 20}, Timestamp: time.Now().UnixMilli(),
 	}
-	if _, err := sess.inner.AppendMessage(agent.AgentMessage{Assistant: message}); err != nil {
+	if _, err := sess.inner.Load().AppendMessage(agent.AgentMessage{Assistant: message}); err != nil {
 		t.Fatal(err)
 	}
 	sess.refreshContext()
@@ -113,7 +113,7 @@ func TestCheckCompactionSilentOverflowCompactsWithoutRetry(t *testing.T) {
 	if continueRun {
 		t.Fatal("a completed overflowing response must not be retried")
 	}
-	for _, entry := range sess.inner.GetEntries() {
+	for _, entry := range sess.inner.Load().GetEntries() {
 		if entry.Base().Type == "context_edit" {
 			t.Fatal("a completed response must stay in context, not be omitted")
 		}
@@ -146,7 +146,7 @@ func TestCheckCompactionErrorWithoutUsageEstimatesFromLastUsage(t *testing.T) {
 		{Role: "assistant", StopReason: "stop", Provider: "fake", ModelID: "fake-1", Content: []ai.AssistantContentBlock{ai.TextContent{Text: "large"}}, Usage: &ai.Usage{Input: 190000, Output: 10}, Timestamp: now},
 		{Role: "assistant", StopReason: "error", Provider: "fake", ModelID: "fake-1", ErrorMessage: "boom", Timestamp: now + 1},
 	} {
-		if _, err := sess.inner.AppendMessage(agent.AgentMessage{Assistant: message}); err != nil {
+		if _, err := sess.inner.Load().AppendMessage(agent.AgentMessage{Assistant: message}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -165,7 +165,7 @@ func TestCheckCompactionErrorWithoutUsageEstimatesFromLastUsage(t *testing.T) {
 		t.Fatalf("compaction_end = %+v, want a threshold compaction from the usage estimate", end)
 	}
 	compacted := false
-	for _, entry := range sess.inner.GetEntries() {
+	for _, entry := range sess.inner.Load().GetEntries() {
 		var compaction icodingagent.CompactionEntry
 		if entry.Base().Type == "compaction" && json.Unmarshal(entry.Raw(), &compaction) == nil {
 			compacted = true

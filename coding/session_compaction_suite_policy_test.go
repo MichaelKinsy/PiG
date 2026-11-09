@@ -92,7 +92,7 @@ func TestAgentSessionCompactionSuitePolicyUpstream(t *testing.T) {
 		assistant := queueAssistant(s, "", 610000, 0, ai.StopReasonStop, now-10000)
 		first := persistQueueMessage(t, s, queueUser("before compaction", assistant.Timestamp-1000))
 		persistQueueMessage(t, s, agent.AgentMessage{Assistant: assistant})
-		if _, err := s.inner.AppendCompaction("summary", first, assistant.Usage.TotalTokens, nil, false, nil); err != nil {
+		if _, err := s.inner.Load().AppendCompaction("summary", first, assistant.Usage.TotalTokens, nil, false, nil); err != nil {
 			t.Fatal(err)
 		}
 		persistQueueMessage(t, s, queueUser("after compaction", now))
@@ -136,7 +136,7 @@ func TestAgentSessionCompactionSuitePolicyUpstream(t *testing.T) {
 		kept := queueAssistant(s, "", 190000, 0, ai.StopReasonStop, now-10000)
 		first := persistQueueMessage(t, s, queueUser("before compaction", kept.Timestamp-1000))
 		persistQueueMessage(t, s, agent.AgentMessage{Assistant: kept})
-		if _, err := s.inner.AppendCompaction("summary", first, kept.Usage.TotalTokens, nil, false, nil); err != nil {
+		if _, err := s.inner.Load().AppendCompaction("summary", first, kept.Usage.TotalTokens, nil, false, nil); err != nil {
 			t.Fatal(err)
 		}
 		failure := queueAssistant(s, "", 0, 0, ai.StopReasonError, now)

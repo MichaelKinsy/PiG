@@ -179,7 +179,7 @@ func newConcurrentSession(t *testing.T, p *concurrentProvider, ext extension.Ext
 
 func concurrentPersistedRoles(session *Session) []string {
 	var roles []string
-	for _, entry := range session.inner.GetEntries() {
+	for _, entry := range session.inner.Load().GetEntries() {
 		if message, ok := entry.(icodingagent.MessageEntry); ok {
 			roles = append(roles, message.Message.Role())
 		}

@@ -153,7 +153,7 @@ func runtimeEventRecorder(events *[]any, cancelNew *string, cancelFork *bool) ex
 func TestRuntimeOriginalImportCollision(t *testing.T) {
 	recordRuntimeOriginal(t, 216)
 	h := newRuntimeTestHarness(t, runtimeTestOptions{})
-	dir := h.runtime.Session().inner.GetSessionDir()
+	dir := h.runtime.Session().inner.Load().GetSessionDir()
 	importDir := filepath.Join(t.TempDir(), "import")
 	if err := os.MkdirAll(importDir, 0o755); err != nil {
 		t.Fatal(err)
@@ -334,7 +334,7 @@ func TestRuntimeOriginalDuplicateCurrentBranch(t *testing.T) {
 				t.Fatal("fork kept the outgoing Session")
 			}
 			// Pi runtime.ts keeps the in-memory manager object while replacing its owning Session.
-			if memory && previous.inner != h.runtime.Session().inner {
+			if memory && previous.inner.Load() != h.runtime.Session().inner.Load() {
 				t.Fatal("memory fork replaced the manager object")
 			}
 			if memory && h.runtime.Session().Path() != "" {

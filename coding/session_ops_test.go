@@ -23,7 +23,7 @@ func appendUser(t *testing.T, s *Session, text string) string {
 			Timestamp: 1,
 		},
 	}
-	id, err := s.inner.AppendMessage(msg)
+	id, err := s.inner.Load().AppendMessage(msg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +39,7 @@ func appendAsst(t *testing.T, s *Session, text string) string {
 			Timestamp: 2,
 		},
 	}
-	id, err := s.inner.AppendMessage(msg)
+	id, err := s.inner.Load().AppendMessage(msg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +63,7 @@ func TestSessionForkRebuildsAgentMessages(t *testing.T) {
 	appendAsst(t, sess, "DEAD-END answer")
 
 	// Rebuild agent's in-memory state to match disk so we can fork.
-	sess.agent.SetMessages(sess.inner.BuildContext(nil))
+	sess.agent.SetMessages(sess.inner.Load().BuildContext(nil))
 	if got := sess.Messages(); len(got) != 4 || got[0].User == nil {
 		t.Fatalf("pre-fork: want 4 directly appended conversation messages, got %v", got)
 	}
@@ -289,7 +289,7 @@ func TestDispatchSlashForkWithExplicitID(t *testing.T) {
 	appendUser(t, sess, "first")
 	appendAsst(t, sess, "reply")
 	deadEnd := appendUser(t, sess, "DEAD-END")
-	sess.agent.SetMessages(sess.inner.BuildContext(nil))
+	sess.agent.SetMessages(sess.inner.Load().BuildContext(nil))
 	srcPath := sess.Path()
 
 	// Pi's /fork takes no argument and opens a picker; the headless Session.DispatchSlash has no picker, so PiG's approved additive argument is
@@ -306,8 +306,8 @@ func TestDispatchSlashForkWithExplicitID(t *testing.T) {
 	if sess.Path() == srcPath {
 		t.Errorf("/fork must switch to a new session file; still on %s", srcPath)
 	}
-	if sess.inner.ParentSession() != srcPath {
-		t.Errorf("forked session parentSession=%q want %q", sess.inner.ParentSession(), srcPath)
+	if sess.inner.Load().ParentSession() != srcPath {
+		t.Errorf("forked session parentSession=%q want %q", sess.inner.Load().ParentSession(), srcPath)
 	}
 	// Selected message and its tail are excluded; earlier context is kept.
 	for _, m := range sess.Messages() {
@@ -451,7 +451,7 @@ func TestSessionCloneExposesItsOwnSessionToTools(t *testing.T) {
 	if got.SessionFile == "" || got.SessionFile != cloned.Path() || got.SessionFile == sess.Path() {
 		t.Fatalf("tool SessionFile = %q, want the clone's %q (source %q)", got.SessionFile, cloned.Path(), sess.Path())
 	}
-	if got.SessionID != cloned.inner.ID() || got.SessionID == sess.inner.ID() {
-		t.Fatalf("tool SessionID = %q, want the clone's %q", got.SessionID, cloned.inner.ID())
+	if got.SessionID != cloned.inner.Load().ID() || got.SessionID == sess.inner.Load().ID() {
+		t.Fatalf("tool SessionID = %q, want the clone's %q", got.SessionID, cloned.inner.Load().ID())
 	}
 }

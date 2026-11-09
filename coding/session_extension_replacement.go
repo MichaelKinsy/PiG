@@ -126,7 +126,7 @@ func (s *Session) extensionFork(ctx context.Context, entryID string, opts *exten
 	if err != nil || cancelled {
 		return extension.CancelledResult{Cancelled: cancelled}, err
 	}
-	entry, ok := s.inner.GetEntry(entryID)
+	entry, ok := s.inner.Load().GetEntry(entryID)
 	if !ok {
 		return extension.CancelledResult{}, errors.New("Invalid entry ID for forking")
 	}
@@ -147,7 +147,7 @@ func (s *Session) extensionFork(ctx context.Context, entryID string, opts *exten
 		}
 		next = icodingagent.NewSession(id, s.services.CWD())
 		if leaf != nil {
-			for _, item := range s.inner.GetBranch(*leaf) {
+			for _, item := range s.inner.Load().GetBranch(*leaf) {
 				if err := next.AppendEntry(item); err != nil {
 					return extension.CancelledResult{}, err
 				}
@@ -160,10 +160,10 @@ func (s *Session) extensionFork(ctx context.Context, entryID string, opts *exten
 		}
 		next, err = newSessionManagerForDir(s.services, s.sessionDir).Create(id, s.Path())
 	default:
-		if err := s.inner.CheckSavedForFork(); err != nil {
+		if err := s.inner.Load().CheckSavedForFork(); err != nil {
 			return extension.CancelledResult{}, err
 		}
-		next, err = newSessionManagerForDir(s.services, s.sessionDir).Clone(s.inner, *leaf)
+		next, err = newSessionManagerForDir(s.services, s.sessionDir).Clone(s.inner.Load(), *leaf)
 	}
 	if err != nil {
 		return extension.CancelledResult{}, err

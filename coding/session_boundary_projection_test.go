@@ -28,7 +28,8 @@ func TestBoundaryProjectionWithoutDraftsIsTheCopiedPreviewProjection(t *testing.
 	} {
 		t.Run(name, func(t *testing.T) {
 			inner := build(t)
-			s := &Session{inner: inner}
+			s := &Session{}
+			s.inner.Store(inner)
 			got, err := s.boundaryProjection(nil)
 			if err != nil {
 				t.Fatal(err)
@@ -51,7 +52,8 @@ func TestBoundaryProjectionWithoutDraftsIsTheCopiedPreviewProjection(t *testing.
 // Drafts still go through a preview, and the session itself never sees them.
 func TestBoundaryProjectionWithDraftsLeavesTheSessionAlone(t *testing.T) {
 	inner := boundaryConversation(t)
-	s := &Session{inner: inner}
+	s := &Session{}
+	s.inner.Store(inner)
 	before := len(inner.GetEntries())
 	got, err := s.boundaryProjection([]extension.SessionBoundaryDraft{{Type: "custom_message", CustomType: "note", Content: "drafted", Display: true}})
 	if err != nil {
@@ -185,7 +187,8 @@ func TestBoundaryProjectionWithoutDraftsDoesNotCopyTheBranch(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	s := &Session{inner: inner}
+	s := &Session{}
+	s.inner.Store(inner)
 	inPlace := testing.AllocsPerRun(5, func() {
 		boundaryProjectionSink, _ = s.boundaryProjection(nil)
 	})
@@ -209,7 +212,7 @@ func TestRecordedBoundaryContextKeysTheProjectedInputs(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = sess.Close() }()
-	if _, err := sess.inner.AppendMessage(agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: "hello"}}, Timestamp: 1}}); err != nil {
+	if _, err := sess.inner.Load().AppendMessage(agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: "hello"}}, Timestamp: 1}}); err != nil {
 		t.Fatal(err)
 	}
 	_, wire := boundarywire.WithCache(t.Context())
@@ -234,7 +237,7 @@ func TestRecordedBoundaryContextKeysTheProjectedInputs(t *testing.T) {
 	if !encoded(nil) {
 		t.Fatal("an unchanged session did not share the encoding")
 	}
-	if _, err := sess.inner.AppendCustomEntry("state", map[string]any{"n": 1}); err != nil {
+	if _, err := sess.inner.Load().AppendCustomEntry("state", map[string]any{"n": 1}); err != nil {
 		t.Fatal(err)
 	}
 	if encoded(nil) {
@@ -244,13 +247,13 @@ func TestRecordedBoundaryContextKeysTheProjectedInputs(t *testing.T) {
 		t.Fatal("the build after the append did not share its encoding")
 	}
 	var first string
-	for _, entry := range sess.inner.GetEntries() {
+	for _, entry := range sess.inner.Load().GetEntries() {
 		if entry.Base().Type == "message" {
 			first = entry.Base().ID
 			break
 		}
 	}
-	if err := sess.inner.SetLeafID(&first); err != nil {
+	if err := sess.inner.Load().SetLeafID(&first); err != nil {
 		t.Fatal(err)
 	}
 	if encoded(nil) {
@@ -261,9 +264,9 @@ func TestRecordedBoundaryContextKeysTheProjectedInputs(t *testing.T) {
 	if !encoded(nil) {
 		t.Fatal("the build after the leaf move did not share its encoding")
 	}
-	revision := sess.inner.Revision()
+	revision := sess.inner.Load().Revision()
 	sess.agent.SetModel(&other)
-	if sess.inner.Revision() != revision {
+	if sess.inner.Load().Revision() != revision {
 		t.Fatal("setting the agent's model changed the session log, so the model is not what this step tests")
 	}
 	if !encoded(nil) {
@@ -286,12 +289,12 @@ func TestRecordedBoundaryContextReusesTheProjectionOfUnchangedInputs(t *testing.
 	}
 	defer func() { _ = sess.Close() }()
 	for i := range 40 {
-		if _, err := sess.inner.AppendMessage(agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: fmt.Sprintf("message %d", i)}}, Timestamp: int64(i + 1)}}); err != nil {
+		if _, err := sess.inner.Load().AppendMessage(agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: fmt.Sprintf("message %d", i)}}, Timestamp: int64(i + 1)}}); err != nil {
 			t.Fatal(err)
 		}
 	}
 	// The history ends with an answer, so the preview can continue only once a message is queued.
-	if _, err := sess.inner.AppendMessage(agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: "assistant", Content: []ai.AssistantContentBlock{ai.TextContent{Text: "answer"}}, StopReason: ai.StopReasonStop, Provider: "faux", ModelID: "faux-1", Timestamp: 50}}); err != nil {
+	if _, err := sess.inner.Load().AppendMessage(agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: "assistant", Content: []ai.AssistantContentBlock{ai.TextContent{Text: "answer"}}, StopReason: ai.StopReasonStop, Provider: "faux", ModelID: "faux-1", Timestamp: 50}}); err != nil {
 		t.Fatal(err)
 	}
 	_, wire := boundarywire.WithCache(t.Context())
@@ -348,7 +351,7 @@ func TestRecordedBoundaryContextReusesTheProjectionOfUnchangedInputs(t *testing.
 		t.Fatal("a build after a Go handler reused the projection that handler held")
 	}
 	wire.HandlerStarted()
-	if _, err := sess.inner.AppendCustomEntry("state", map[string]any{"n": 1}); err != nil {
+	if _, err := sess.inner.Load().AppendCustomEntry("state", map[string]any{"n": 1}); err != nil {
 		t.Fatal(err)
 	}
 	if fifth := build(nil); reused(fourth, fifth) {
@@ -368,7 +371,7 @@ func TestRecordedBoundaryContextReusesTheProjectionOfUnchangedInputs(t *testing.
 		wire.HandlerStarted()
 		build(nil)
 	})
-	if entries := len(sess.inner.GetEntries()); allocs >= float64(entries) {
+	if entries := len(sess.inner.Load().GetEntries()); allocs >= float64(entries) {
 		t.Fatalf("a reused build costs %.0f allocations with %d entries", allocs, entries)
 	}
 }
@@ -390,7 +393,7 @@ func TestBoundaryPreviewHandsGoHandlersCopiesOfTheSessionsMessages(t *testing.T)
 	}
 	defer func() { _ = sess.Close() }()
 	for i := range 3 {
-		if _, err := sess.inner.AppendMessage(agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: fmt.Sprintf("message %d", i)}}, Timestamp: int64(i + 1)}}); err != nil {
+		if _, err := sess.inner.Load().AppendMessage(agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: fmt.Sprintf("message %d", i)}}, Timestamp: int64(i + 1)}}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -399,7 +402,7 @@ func TestBoundaryPreviewHandsGoHandlersCopiesOfTheSessionsMessages(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	own := sess.inner.BuildSessionProjectionView().Messages
+	own := sess.inner.Load().BuildSessionProjectionView().Messages
 	entryMessages := func() []agent.AgentMessage {
 		var all []agent.AgentMessage
 		for _, entry := range preview.ContextEntries {
@@ -435,7 +438,7 @@ func TestBoundaryPreviewHandsGoHandlersCopiesOfTheSessionsMessages(t *testing.T)
 	preview.ContextMessages[0].User.Content = ai.UserContentBlocks{ai.TextContent{Text: "changed"}}
 	llm := preview.LLMMessages[1].(ai.UserMessage)
 	llm.Content.(ai.UserContentBlocks)[0] = ai.TextContent{Text: "changed"}
-	after := sess.inner.BuildSessionProjectionView().Messages
+	after := sess.inner.Load().BuildSessionProjectionView().Messages
 	for i, message := range after {
 		if text := message.User.Content.(ai.UserContentBlocks)[0].(ai.TextContent).Text; text != fmt.Sprintf("message %d", i) {
 			t.Fatalf("a Go handler's change reached the session: message %d is %q", i, text)
