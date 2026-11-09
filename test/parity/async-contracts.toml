@@ -756,17 +756,17 @@ rationale = "inflateAsync (part.ts:142-154) awaits the stream-based inflate; Abo
 
 [[files]]
 path = "packages/chord/src/node/app/app.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "detached-owned", "microtask-ordering"]
+evidence = ["test:chord/nextnode/app/app_test.go#TestAppLaysOutTheDataDirectoryServesAppInfoAndTheServersPluginsAndClosesEverything", "test:chord/nextnode/app/app_test.go#TestAppFailsWhenAPluginOfTheAppsRootFailsWithEverythingClosed", "test:chord/nextnode/app/app_test.go#TestAppRefusesASecondServerOnTheSameDataDirectoryWhileTheFirstRuns", "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesOneAfterAnotherSoTheNewestBuildStaysDeployed", "test:chord/nextnode/app/app_bases_linux_test.go#TestAppAnAbortedApplyWaitingAtTheWebStepForTheInitialBuildStopsThereTheBuildGoesOn", "test:chord/nextnode/app/app_bases_linux_test.go#TestAppClosesWithoutWaitingForABaseBuildStalledOnAReadItsLateResultIsDropped", "test:chord/nextnode/app/app_export_test.go#TestAppExportsARunningWorkersDataWithoutStoppingItTheWorkerPacksItsOwnStore", "test:chord/nextnode/app/app_export_test.go#TestAppExportsWithoutAWorkerUnderItsLockAHoldArrivingMeanwhileStartsTheWorkerAfterIt", "test:chord/nextnode/app/app_export_test.go#TestAppLeavesAFailedAddressFailedAfterAnExport", "test:chord/nextnode/app/app_export_test.go#TestAppRoundTripsAWorkersDocumentsAndTablesAndRefusesAnExistingAddressAndAnotherApp"]
+rationale = "app.ts startServer/App. startServer(options, context) is one awaited chain, in order: openServer (open the data dir, then `processLock('chord-app:<dir>', ...)` bounded by AbortSignal.timeout(SERVER_LOCK_MS) joined with the caller's signal: a timeout becomes `another server runs on <dir>`, a caller abort stays the abort; layout, cookie secret, private store, store open; a failure after the lock releases it), the node base inputs, the host, workers per kind, surfaces and plugins in order, the owner token file, then `app.started(link.renew(), await http.listening(context))`; any failure in that chain awaits `app.close(context)` and rethrows the original error (the app is never returned half open). Go startServer is the same order on the caller's goroutine with ctx: workers.ProcessLock(…, waited) with context.WithTimeout(ctx, serverLock) and the same message, Close on every failing path (TestAppFailsWhenAPluginOfTheAppsRootFailsWithEverythingClosed, TestAppRefusesASecondServerOnTheSameDataDirectoryWhileTheFirstRuns). applyChanges(context) is serialised: `#applying.then(() => #applyChanges(context))`, the chain is advanced by `applied.then(noop, noop)`, so a later call always waits for the earlier one whatever its outcome and the earlier failure reaches only its own caller; the waiting call's own context is not consulted while it waits (the signal reaches the build and the rollout once its turn comes). Go ApplyChanges takes applyMu (not cancellable while waiting: the same), runs build, then the server step, every worker kind's step in options order, every surface step, then rollout (TestAppAppliesChangesOneAfterAnotherSoTheNewestBuildStaysDeployed; an aborted apply stops at the step it waits at and the build goes on: TestAppAnAbortedApplyWaitingAtTheWebStepForTheInitialBuildStopsThereTheBuildGoesOn). exportData/importData: a running worker packs its own store through the HostData `exportTo` call under the caller's context (nothing stopped); otherwise the server takes the worker's process lock bounded by ADDRESS_LOCK_MS (timeout = the lock is held, so a worker runs or starts), up to 5 attempts (`keeps starting`), packs under the lock and always releases it in finally; importData takes the same lock (refused `has data (its worker runs)` when held), unpacks and releases in finally. Go ExportData/ImportData loop and error text are the same, errors.Join(pack, lock.Release()) as the finally (TestAppExportsWithoutAWorkerUnderItsLockAHoldArrivingMeanwhileStartsTheWorkerAfterIt, TestAppLeavesAFailedAddressFailedAfterAnExport). close(context) is memoised: the first call starts #close and every later call returns the same promise, whatever its context; the order is http.close, each workers.close in turn, host.close, store.close, the plugins watcher, then the lock release, each awaited so the first rejection ends the close there (later steps do not run). Go Close is sync.Once: the first caller runs the steps with its ctx and later callers block until it ends and get the same joined error; Go keeps going after a failed step and joins every error (a stricter close: nothing is left held when HTTP or a worker fails to close; the Pi chain would leave the host, store and lock open). Executor: Node's event loop for Pi; Go's callers' goroutines with no goroutine of its own."
 
 [[files]]
 path = "packages/chord/src/node/app/archive.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/nextnode/app/archive_upstream_test.go#TestRoundTripsAHostDirectorysStoreAndFilesWithoutUploadsUnderWay", "test:chord/nextnode/app/archive_upstream_test.go#TestRefusesToPackAnAddressWithoutData", "test:chord/nextnode/app/archive_upstream_test.go#TestRefusesAnArchivePastItsLimitsUnpackedBytesAndEntriesCountedBeforeWriting", "test:chord/nextnode/app/archive_upstream_test.go#TestRefusesAnExistingDirectory", "test:chord/nextnode/app/archive_upstream_test.go#TestRefusesWhatAcceptRefusesAnArchiveNotStartingWithItsManifestAndAForeignEntryLeavingNothing"]
+rationale = "archive.ts packData/packStore/unpackData: each is one awaited chain whose caller waits for the whole archive. packStore creates a staging directory (mkdtemp beside the target), streams `encodeJsonl(store.export(context))` to a staging file through stream.pipeline, then pipelines `writeTar(entries())` (manifest.json, store.archive, then every file under files/ in sorted order, skipping `.uploads`) to a staging file and renames it onto `path`, removing the staging directory in finally: a failure at any step rejects with that step's error and leaves no staging directory and no half-written target (the rename is last). packData wraps it with a store opened for the call and closes the store in finally. unpackData refuses an existing target before anything is written, unpacks into a staging directory (`for await (readTar(createReadStream(archive)))`, `context.abortSignal?.throwIfAborted()` at every entry, entry and byte limits counted before writing, the manifest first, `accept` consulted on it, a foreign entry refused), imports the store archive, removes it, and renames the directory into place; any failure removes the staging directory and rethrows. Cancellation is the abort checked at each entry and inside store.export/importStore (which take the same context); a file copy under way is not interrupted mid-stream. Go: PackData/PackRunning/UnpackData are blocking calls on the caller's goroutine with a context: ReadTar's visit callback checks ctx.Err() per entry (archive.go unpackEntries), fileBytes.Next checks ctx.Err() before each chunk of the store export, the staging directory is removed by a deferred join on error, and the target is renamed last (TestRefusesAnArchivePastItsLimits…, TestRefusesWhatAcceptRefuses… 'leaving nothing'); the abort tests are TestUnpackDataStopsAtTheEntryAfterTheContextEndsLeavingNothing and TestPackDataWithAnEndedContextLeavesNeitherATargetNorAStagingDirectory in archive_cancel_test.go. Streams and pipeline back-pressure have no Go counterpart: io.Reader/io.Writer are pull-based on the one goroutine."
 
 [[files]]
 path = "packages/chord/src/node/app/blobs.ts"
@@ -777,17 +777,17 @@ rationale = "Blob files of one host: each file operation is awaited in turn; Go 
 
 [[files]]
 path = "packages/chord/src/node/app/data.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/nextnode/app/data_export_test.go#TestPackRunningExportsBothStoresAtOnePointWhileTheyAreWritten", "test:chord/nextnode/app/app_export_test.go#TestAppRefusesTheWorkersDataObjectToAnyPrincipalButTheServers", "test:chord/nextnode/app/app_export_test.go#TestAppExportsARunningWorkersDataWithoutStoppingItTheWorkerPacksItsOwnStore"]
+rationale = "data.ts hostDataFacet: the worker-side `exportTo({path, manifest}, ctx)` handler awaits packStore(store, files, JSON.parse(manifest), path, ctx) and answers null when it ends, rejecting with the pack's error; the object is the server's only (any other principal is refused `forbidden` before the member exists), so the call is the server's exportData waiting on the worker under its own context (the server's abort ends the wait; the worker's pack sees the call's context abort too). The pack runs inside the worker's own call section: the store keeps being written meanwhile and the pack reads one consistent point. Go HostDataFacet exportTo handler calls PackRunning(ctx, dir, kit, manifest, path) inline in the call's section with the call's ctx (TestPackRunningExportsBothStoresAtOnePointWhileTheyAreWritten, TestAppExportsARunningWorkersDataWithoutStoppingItTheWorkerPacksItsOwnStore), and the non-server principal is refused by the same condition (TestAppRefusesTheWorkersDataObjectToAnyPrincipalButTheServers). No timer, no ordering beyond the one call."
 
 [[files]]
 path = "packages/chord/src/node/app/ephemeral.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginSignsInUnderAPickedNameAsAFreshUserEachLoginItsOwn", "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginEndsItsSessionsWithTheServer"]
+rationale = "ephemeral.ts POST /_chord/login (public): the handler awaits request.json(4096) (a body past 4096 bytes rejects: the caller sees the error), validates the name synchronously (400 without a name), awaits `ctx.get(Sessions, {})` and then `sessions.issue(...)`, and answers with the new principal and a Set-Cookie. Nothing runs after the response and there is no timer or concurrency; the request's context is the cancellation (a client that goes away aborts the in-flight get/issue). Go EphemeralLoginFacet's route handler reads the body with the same cap, then calls the Sessions object and issue in the handler's goroutine with the request context, one after the other (TestEphemeralLoginSignsInUnderAPickedNameAsAFreshUserEachLoginItsOwn); the ephemeral session lives in memory and ends with the server (TestEphemeralLoginEndsItsSessionsWithTheServer)."
 
 [[files]]
 path = "packages/chord/src/node/app/files-copy.ts"
@@ -819,10 +819,10 @@ rationale = "Live folder listings: Files reads a watched folder again after each
 
 [[files]]
 path = "packages/chord/src/node/app/invite.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/nextnode/app/invite_upstream_test.go#TestInvitesSignTheInviteeInAsTheChosenPrincipalOnceOnlyTheOwnerInvites", "test:chord/nextnode/app/invite_upstream_test.go#TestInvitesAcceptTheOwnerTheAppChoseAndRefuseAnotherUser"]
+rationale = "invite.ts: POST /_chord/invites awaits `ctx.get(AppInfo, {})` for the owner, checks the caller is the owner (refused otherwise before reading the body), awaits request.json() and issues a link with a one-time token; the public GET page is a handler returning the fragment page synchronously; the public POST awaits request.json() then `ctx.get(Sessions, {})` then `sessions.issue`, and consumes the one-time token before issuing (a token is spent by one successful call; the consumption is synchronous so two concurrent posts cannot both win). Every step is awaited in order on the request's own context; there is no timer or background work. Go InviteFacet's handlers do the same on the request goroutine with the request context (TestInvitesSignTheInviteeInAsTheChosenPrincipalOnceOnlyTheOwnerInvites: the second use of a token is refused; TestInvitesAcceptTheOwnerTheAppChoseAndRefuseAnotherUser)."
 
 [[files]]
 path = "packages/chord/src/node/app/layout.ts"
@@ -833,17 +833,17 @@ rationale = "The data directory's layout is made by awaited file operations in t
 
 [[files]]
 path = "packages/chord/src/node/app/owner.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/nextnode/app/owner_upstream_test.go#TestOwnerLinkServesAPageReadingTheFragmentSignsTheOwnerInOnceAndRefusesTheTokenASecondTime", "test:chord/nextnode/app/owner_upstream_test.go#TestOwnerLinkRefusesAnExpiredTokenAWrongOneAndThePreviousStarts", "test:chord/nextnode/app/owner_upstream_test.go#TestOwnerTokenFileIsWrittenAtFirstStartWithMode0600SignsInAsTheOwnerAndIsKeptAcrossStarts", "test:chord/nextnode/app/owner_upstream_test.go#TestOwnerTokenFileIsReplacedAtTheNextStartWhenItsSecretNoLongerMatchesItsSession", "test:chord/nextnode/app/owner_upstream_test.go#TestOwnerTokenFileIsReplacedAtTheNextStartOnceItsSessionWasRevoked", "test:chord/nextnode/app/owner_upstream_test.go#TestTheOwnerTokenFileIsReplacedWhenTheOwnerChangesItsSessionRevokedTheOldOwnersOthersStay"]
+rationale = "owner.ts: the owner link's POST handler awaits request.json(), consumes the link token synchronously (one use) and awaits `ctx.get(Sessions, {})` and `sessions.issue`. ownerTokenFile(path, owner, host, context) awaits readSecret(path), then `host.root(async ctx => ...)` (the root section: the whole body runs on the host's root context, so a host close ends it): it verifies the existing secret through sessions.verify, chmods a still-valid file, and otherwise revokes the stale session (awaited) and issues a new device session and writes the file (create or replace) before returning the path; each step is awaited in order, so the file never holds a token whose session is not yet stored. Go OwnerFacet handler and OwnerTokenFile(path, owner, host, ctx) run the same steps in sequence on the caller's goroutine with host.Root's context (the six owner_upstream tests: written once with mode 0600, kept across starts, replaced when the secret no longer matches or the session was revoked, replaced when the owner changes)."
 
 [[files]]
 path = "packages/chord/src/node/app/pairing.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/nextnode/app/pairing_upstream_test.go#TestPairsAClientCodeOwnerApprovalOneStatusPollWithTheTokenThenNothing", "test:chord/nextnode/app/pairing_upstream_test.go#TestRefusesAnUnknownPollSecret", "test:chord/nextnode/app/pairing_upstream_test.go#TestRefusesPairingsPastTheLimitPerClientAddressAndInAllWith429", "test:chord/nextnode/app/pairing_upstream_test.go#TestFreesAClientAddressesPlaceOnceItsPairingEnds", "test:chord/nextnode/app/pairing_upstream_test.go#TestPairingCodesExpireAfter10MinutesForTheOwnerAndThePollAlike"]
+rationale = "pairing.ts pairingFacet: four routes, each an async handler on the request's context. POST /pair awaits labelOf(request) (request.json(4096): an oversized body rejects), then the begin is synchronous (the limit check and the new code/poll secret are taken in one turn, so concurrent starts from one address are counted in arrival order and the limit is exact), 429 when refused. POST /pair/poll awaits request.json() and polls synchronously (waiting or approved-with-token, the token handed out once: the poll that takes it ends the pairing). GET /pair/:code is synchronous after the owner check; POST /pair/:code awaits `ctx.get(Sessions, {})` and `sessions.issue(...)` and only then stores the token on the pairing (a poll arriving in between still sees `waiting`). Expiry is lazy (Date.now() compared at each call, no timer), so nothing runs after the response. Go Pairings.Begin/Poll/Waiting/Approve take the pairings mutex for the synchronous step, and PairingFacet's handlers do the awaited steps in sequence on the request goroutine and context (TestPairsAClientCodeOwnerApprovalOneStatusPollWithTheTokenThenNothing, TestRefusesPairingsPastTheLimitPerClientAddressAndInAllWith429, TestPairingCodesExpireAfter10MinutesForTheOwnerAndThePollAlike)."
 
 [[files]]
 path = "packages/chord/src/node/app/secrets.ts"
@@ -854,17 +854,17 @@ rationale = "Secret files are written by awaited file operations in turn (a temp
 
 [[files]]
 path = "packages/chord/src/node/app/sessions.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "detached-owned"]
+evidence = ["test:chord/nextnode/app/sessions_upstream_test.go#TestSessionsIssueATokenAsBearerAndCookieListItWithoutItsHashRevokeIt", "test:chord/nextnode/app/sessions_upstream_test.go#TestSessionsRefuseATokenWithAWrongSecretAnUnknownIDAndAForgedCookie", "test:chord/nextnode/app/sessions_upstream_test.go#TestSessionsEndAPersistedSessionUnusedFor400DaysAtItsNextUse", "test:chord/nextnode/app/sessions_upstream_test.go#TestRollingCookiesRenewABrowsersCookieOnceItIsOlderThanADayWithAFreshSignedExpiry", "test:chord/nextnode/app/sessions_upstream_test.go#TestRollingCookiesDoNotRenewAnEphemeralSessionsCookieNorARevokedSessions", "test:chord/nextnode/app/sessions_upstream_test.go#TestEphemeralSessionsAuthenticateInMemoryAreNotListedAndEndWithTheServerPersistedOnesStay"]
+rationale = "sessions.ts: `issue`, `verify`, `revoke` and the Sessions object's members are async calls on the caller's context; issue/revoke of a persisted session await `document.change(fn, ctx)` (the write is committed before the token is returned or the call answers; an ephemeral session is in memory and synchronous). authenticate(token, context) is SYNCHRONOUS and returns the principal at once: the touch of `lastUsed` (at most once a minute) and the lazy removal of an idle session (> 400 days) are started with `void document.change(...).catch(() => {})` and not awaited, so the request goes on and a failed write is simply made again by a later request (detached on the call's context: a write whose context has ended is dropped and left to the next request). The rolling-cookie wrap awaits `next(request)` and then renews the cookie synchronously from the response. Go: issue/revoke call document.Change in the handler's goroutine and return after it (TestSessionsIssueATokenAsBearerAndCookieListItWithoutItsHashRevokeIt), authenticate is synchronous and its change(ctx, fn) starts the write on a goroutine of the package's sessionWrites group with context.WithoutCancel(ctx): the touch is not awaited by the request and not dropped when the request's context ends (a deliberate, benign difference: Pi's write on an ended context is lost, Go's completes; both are 'made again by a later request' for failures and the only observable effect is one fewer lost touch); tests join the group with sessionWrites.Wait() (TestSessionsEndAPersistedSessionUnusedFor400DaysAtItsNextUse). The rolling wrap is sequential (TestRollingCookiesRenewABrowsersCookieOnceItIsOlderThanADayWithAFreshSignedExpiry)."
 
 [[files]]
 path = "packages/chord/src/node/app/tar.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/nextnode/app/tar_test.go#TestTarReadsBackWhatItWroteLongPathsEmptyAndMultiBlockFilesDataLeftUnread", "test:chord/nextnode/app/tar_test.go#TestTarRefusesToWriteAPathItWouldRefuseToRead", "test:chord/nextnode/app/tar_test.go#TestTarRefusesAHeaderWhoseChecksumDoesNotHoldAndATruncatedArchive", "test:chord/nextnode/app/tar_test.go#TestTarRefusesAnEntryWhoseDataIsNotItsSize"]
+rationale = "tar.ts: writeTar and readTar are async generators that pull from their sources: writeTar `for await`s the entries and each entry's data chunks and yields header, chunks and padding in order, throwing when an entry's data is larger or smaller than its declared size; readTar reads blocks from the source through a buffering reader (`await reader.read(BLOCK)`), yields each entry whose `data` iterable the consumer MUST drain or leave (an undrained entry's data is skipped before the next header is read, `reader.skip`), and throws for a bad checksum, an unsupported type, an unsafe path or a truncated archive; a consumer that stops early closes the generator (no resource is held). All pull-driven on the consumer's turn: there is no concurrency, timer or cancellation of its own (an abort is the source's or the consumer's). Go WriteTar(dst, iter.Seq[TarEntry]) and ReadTar(src, visit) are the same loops over io.Writer and io.Reader on the caller's goroutine; the entry's data is an io.Reader the visit callback reads or leaves (tarData.Read, the rest skipped after visit returns), and the same refusals are returned as errors (the tar_test.go cases above). Cancellation is the caller's: unpackEntries checks ctx in the visit callback."
 
 [[files]]
 path = "packages/chord/src/node/app/uploads.ts"
@@ -875,17 +875,17 @@ rationale = "An append is accepted at the offset the accepted appends reached an
 
 [[files]]
 path = "packages/chord/src/node/app/users.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/nextnode/app/users_upstream_test.go#TestUsersKeepAccountsByIDWithTheAppsProfileListedUpdatedRemovedAndKeptAcrossStarts"]
+rationale = "users.ts: `get` is an async member that answers from the in-memory document value (no await on storage); `update` and `remove` await `accounts.change(fn, ctx)`, so the call answers null once the change is committed, and `update` throws `invalid('args', ...)` for the `__proto__` id before any change. `list` is a derived value of the document (re-derived on each commit, the watchers see changes in commit order). The caller waits for the commit, the call's context is the cancellation of the wait, and calls from different callers are ordered by the document's own queue. Go DefineUsers' facet serves the same members with the Document.Change inside the call's section on the call's ctx (TestUsersKeepAccountsByIDWithTheAppsProfileListedUpdatedRemovedAndKeptAcrossStarts)."
 
 [[files]]
 path = "packages/chord/src/node/app/worker.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "detached-owned"]
+evidence = ["test:chord/nextnode/app/app_workers_test.go#TestAppStartsAWorkerPerAddressWithTheKitsStartDataAndItsOwnDirectoryTwoKindsSideBySide", "test:chord/nextnode/app/app_workers_test.go#TestAppAWorkersDirectoryKeepsItsStoreAndFilesAcrossItsProcessesRestarts", "test:chord/nextnode/app/app_workers_test.go#TestAppAWorkersHostDataModuleHoldingItsTokenIsPrivateWhileItRunsAndGoneAfterItsEnd", "test:chord/nextnode/app/worker_close_test.go#TestWorkerCloseBoundCoversAPeriodicSendStillInFlight", "test:chord/nextnode/app/worker_close_test.go#TestWorkerCloseSendsTheFinalPartialSendOnceThePeriodicOneEnded"]
+rationale = "worker.ts startWorker: the worker's start function is one awaited chain in the worker process on the start message's context: private directory, private store, `openStore`, `createHost`, `host.connect(parent, {principal: server, trusted: true}, context)` first (the server sees the worker started), then `await plugins.load(host, {kind, core}, context)`; each resource registers a closer with `onClose` (store, host) and closers run in reverse. When telemetry is on, the sender is created after the load, `setInterval(() => void sender.send(false), WORKER_SEND_MS)` (unref'd, fire-and-forget: one batch each second, errors are swallowed by the sender) and its closer clears the timer, then awaits `Promise.race([sender.send(true), sleep(WORKER_SEND_MS)])` (the last spans and metrics are sent while the link is up, for at most a second) and stops the sender; because closers run in reverse this runs before the host closes. Go workers/start function: the same sequence with ctx; the telemetry sender runs on a ticker goroutine owned by the worker (stopped and joined by the closer, `<-done`), and the final send runs in a goroutine bounded by `select { case <-sent: case <-time.After(workerSend) }`, then sender.Stop() (worker.go; the //portlint:allow golifetime marks the two goroutines). Final send: Go closeTelemetry(sender, ticked, workerSend) joins the ticker goroutine INSIDE the one bound: the final Send(true) waits for the ticker goroutine (a periodic Send(false) possibly in flight; the telemetryingest sender serialises sends under its mutex, as Pi chains send behind send) and `select` with time.After(workerSend) covers both, so a periodic send that does not end cannot hold the close past the second (fixed at the source: the close used to join the ticker before the bound; TestWorkerCloseBoundCoversAPeriodicSendStillInFlight is the bound, TestWorkerCloseSendsTheFinalPartialSendOnceThePeriodicOneEnded the order and the partial flag). Pi's periodic tick is `void sender.send(false)`; Go's ticker drops no tick differently from a timer: a tick that arrives while a send runs is delivered after it (the ticker channel holds one), Pi's setInterval callbacks run as the loop allows, each send chaining behind the last. Tests: app_workers_test.go (start with kit data and the worker's own directory, restart keeps store and files, host-data module private)."
 
 [[files]]
 path = "packages/chord/src/node/http/authenticate.ts"
@@ -994,10 +994,10 @@ rationale = "`evaluateFacet` and `createPluginRuntime().load/reload` run in the 
 
 [[files]]
 path = "packages/chord/src/node/plugins/testing.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginLoadsThePluginBuiltAgainstTheAPIBesideAStubCollectsItsContributionsAndListsWhatItWaitsFor", "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginRejectsABuildProductionWouldRefuseAndASetupThatThrows", "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginCollectsUntilNoNewRegistryAppearsAnObjectLiveAfterTheFirstCollectionContributesTooSol", "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginWaitsForSlowActivationsACollectionWokeBeforeItLooksAgainOpusR1", "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginRejectsAScriptThatThrowsWhileItEvaluatesWithItsOwnError"]
+rationale = "testing.ts testPlugin(dir, options, context): one awaited chain that the caller waits for: realpath, root, kinds named in the checkout (a directory walk, awaited), the plugin found by discoverPlugins, `buildFacet` (a failed build throws `failed to build` with the errors), an in-memory store, createHost, `host.load(facets, context)` (a setup failure throws), then collect(); any throw after the host exists awaits `host.close(context)` and `store.close(context)` and rethrows the original error. collect is a fixed point: each round awaits settle(host) (3 setImmediate turns, then polling every 5 ms until `activationsUnderWay() === 0`, bounded by the host's ready timeout: objects the previous reload woke reach their outcome, slow openers included), takes the registries not yet collected, serves them with a collecting facet through `host.reload(...)` (awaited, a failure throws), and loops until no new registry appears; then each registry's value is read with `await host.registry(token, context)`. Tested.root(fn, context) is the host's root section and close awaits host.close then store.close (the first rejection stops there). Cancellation is the context given to build, load, reload and the registry reads. Go: TestPlugin(dir, options, ctx) does the same chain on the caller's goroutine over the Node-hosted plugin (loadStubs, `NodeHost.loadFailed`, then `collect` as one `testCollect` request awaited with the ctx: the settle and fixed-point loop run inside the Node side (node/testing.mjs, which carries Pi's settle and collect loops), so the timing is Pi's own), and on a failing step closes with `context.WithoutCancel(ctx)` (Pi awaits the close on the same, possibly aborted, context: Go's close of an aborted test is therefore not cut short; benign, no resource is left held); Close joins the host's, the stubs' and the runtime's errors (Pi stops at the first rejection). Tests: the five above (plus TestTestPluginTestsASingleFilePluginAndAPluginInACheckoutOfSeveralOpusL4 for the root and kinds walk)."
 
 [[files]]
 path = "packages/chord/src/node/plugins/watcher.ts"
@@ -1008,80 +1008,80 @@ rationale = "The marks' microtask publication is `Batch.Soon` and fsnotify event
 
 [[files]]
 path = "packages/chord/src/node/surfaces/bundle.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/nextnode/surfaces/surfaces_bundle_test.go#TestConditionsResolvesWithTheGivenConditionsTheSourceAsInputNotDistEachWithItsBytesHash", "test:chord/nextnode/surfaces/surfaces_bundle_test.go#TestConditionsTakesTheServerProcessesConditionsByDefaultItsFlagsAndAQuotedNODEOPTIONS", "test:chord/nextnode/app/app_surfaces_test.go#TestWebSurfaceRebuildsTheBaseBundleAtEachStartTheSameCodeGivesTheSameHashOtherCodeAnother"]
+rationale = "bundle.ts buildBase(entry, platform, prefix, conditions): one `await build({...})` of esbuild (write: false, in memory) and then a synchronous assembly of the hash, the served files and the recorded inputs; it takes no signal and nothing is cancellable (an esbuild failure rejects with its error, which the surface's callers report). Every caller waits for the whole build; there is no ordering beyond that (the hash is the sorted outputs'). Go BuildBase is the same esbuild Go API call, blocking on the caller's goroutine without a context (api.Build has none), the same options and the same assembly; its failure is returned as the error. Cancelling is by the callers, not the build: the surface build goroutine (surfaces_build.go) lets a waiter's context end its own wait while the build runs on (D608, approved)."
 
 [[files]]
 path = "packages/chord/src/node/surfaces/current.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/nextnode/surfaces/surfaces_current_test.go#TestScriptsFacetRefusesAnUnknownSurface", "test:chord/nextnode/surfaces/surfaces_build_test.go#TestOneSharedBuildBuildsOnceForEveryWaiterTheScriptsObjectShowsAnEmptySetBeforeTheFirstSetAfter", "test:chord/nextnode/app/app_surfaces_test.go#TestWebSurfacePublishesANewSetOnARolloutWithoutWaitingForClientsThePreviousFilesStayServed"]
+rationale = "current.ts: the `publish` method of the surface's Current object is `async (next) => { set.set(next); return null }` (the body is synchronous, so the call answers once the set is written; callers see the new set through the derived `set` at their next turn) and publishTo(host, surface, set, context) is `await host.get(CURRENT[surface], {}, context)`, then `try { await current.publish(set, context) } finally { current.release() }`: the caller waits for the object to be bound and the publish to return, the context's signal ends either wait, and the reference is released on success and failure alike. Go PublishTo does h.Get(ctx, ...), `defer reference.Release()`, `reference.Call(\"publish\", set.JSON(), ctx)` and returns the call's error; the Go method body is a Writable.Set inside the call's section (TestWebSurfacePublishesANewSetOnARolloutWithoutWaitingForClientsThePreviousFilesStayServed: the rollout step returns once published, clients are not waited for). Go's ScriptsFacet starts the object's set at `published()` (empty until the first set exists: TestOneSharedBuildBuildsOnceForEveryWaiterTheScriptsObjectShowsAnEmptySetBeforeTheFirstSetAfter), the unknown-surface refusal is the facet's load error (TestScriptsFacetRefusesAnUnknownSurface)."
 
 [[files]]
 path = "packages/chord/src/node/surfaces/published.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/nextnode/app/app_surfaces_test.go#TestWebSurfacePublishesANewSetOnARolloutWithoutWaitingForClientsThePreviousFilesStayServed", "test:chord/nextnode/app/app_surfaces_test.go#TestWebSurfaceKeepsAPluginsAssetsWhileItKeepsItsOldScriptAfterFailedBuildsOpusL4FableM3", "test:chord/nextnode/surfaces/surfaces_build_linux_test.go#TestARolloutStepDuringTheBuildStopsWaitingAtItsContextsAbortBeforeTheBuildEndsTheBuildGoesOn"]
+rationale = "published.ts PublishedScripts: start(context) is `this.#publish(await this.#plugins.scripts(kind, context))`: the kind's plugin facets are built on first use under the context and the first set is taken once they are in (a build failure is reported per plugin and the plugin keeps no script; the caller waits). The rollout step's `reload(built, context)` runs #publish synchronously on the plugins' current scripts (the whole set is replaced in one turn; a failed plugin keeps its last script and stays dirty), then awaits publishTo(host, surface, set, context) and builds the report (added/changed/removed by digest) after the await: the step ends when the server's Current object took the set, and no client is waited for; its error is the publish's (aborted by the context's signal). The file lookup is synchronous over the last KEPT_SETS sets. Go Start/Step are the same on the caller's goroutine: Scripts(kind, ctx), publish under p.mu, PublishTo(ctx), report computed after it; one difference of form: Go's step takes the set from `applied[kind]` (the rollout's applied build handed to the step) where Pi's step reads `plugins.current(kind)` at that moment, the same set because the rollout applies one build at a time under ApplyChanges' mutex. Tests: TestWebSurfacePublishesANewSetOnARolloutWithoutWaitingForClientsThePreviousFilesStayServed, TestWebSurfaceKeepsAPluginsAssetsWhileItKeepsItsOldScriptAfterFailedBuilds…, and the abort of a step's wait (TestARolloutStepDuringTheBuildStopsWaitingAtItsContextsAbortBeforeTheBuildEndsTheBuildGoesOn)."
 
 [[files]]
 path = "packages/chord/src/node/surfaces/served.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/nextnode/app/app_surfaces_test.go#TestWebSurfaceServesThePageWithTheBootstrapTheScriptsAndTheStylesheetsTheFilesForever"]
+rationale = "served.ts served(found): a synchronous builder of the response; its only async piece is the bytes response's `read: async (offset, length) => bytes.subarray(offset, offset + length)`, which returns a slice of the file already in memory (clamped like subarray) for the HTTP node's body pump to await, one chunk at a time; no waiting, no cancellation of its own (the pump stops asking when the response ends). Go Served builds the same response with `Read func(offset, length, ctx)` returning the clamped slice at once (a range past the end is empty, as subarray) and the same long-lived Cache-Control header (TestWebSurfaceServesThePageWithTheBootstrapTheScriptsAndTheStylesheetsTheFilesForever)."
 
 [[files]]
 path = "packages/chord/src/node/surfaces/tui.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/nextnode/app/app_surfaces_test.go#TestAppRunsTheWebAndTheTerminalSurfacesWithTheirOwnBaseBundles", "test:chord/nextnode/app/app_surfaces_test.go#TestAppAppliesChangesToTheServerThenTheWebAndTheTerminalSurfacesEachWithItsOwnPlugins", "test:chord/nextnode/surfaces/surfaces_build_test.go#TestOneSharedBuildBuildsOnceForEveryWaiterTheScriptsObjectShowsAnEmptySetBeforeTheFirstSetAfter", "test:chord/nextnode/surfaces/surfaces_build_test.go#TestAFailedBuildAnswers503ForTheSurfacesFilesAndFailsItsStepsHost"]
+rationale = "tui.ts tuiSurface(server, options, context): `await buildBase(...)` then `await published.start(context)`, then returns the surface; so Pi's server cannot listen with the terminal surface unbuilt, and a failing base rejects the start. Its routes are async handlers over what is already built (start: {base, script, combined} from the published set now, base hash public, files and plugin files served from base.files then the published sets). Go takes the approved divergence D608 (client surfaces built after the listen): NewTuiSurface returns at once, the kit starts the build right after the server listens (once, a goroutine that waits for no caller), every route that needs it waits for the shared outcome with the request's own ctx (a waiter's abort ends only its wait; the build goes on and its late result is dropped if the server closed), a failed build answers 503 and fails the step's one host (the server runs on), and the scripts object shows an empty set until the first set is published (TestOneSharedBuildBuildsOnceForEveryWaiterTheScriptsObjectShowsAnEmptySetBeforeTheFirstSetAfter, TestAFailedBuildAnswers503ForTheSurfacesFilesAndFailsItsStepsHost, TestARolloutStepDuringTheBuildStopsWaitingAtItsContextsAbortBeforeTheBuildEndsTheBuildGoesOn). The surface's step is `published.step(name)` in Pi; Go's step first waits for the build (ctx-bounded) then runs the published step. Executor: Pi's event loop; Go's one build goroutine (portlint:allow golifetime, documented in surfaces_build.go) plus the requests' goroutines."
 
 [[files]]
 path = "packages/chord/src/node/surfaces/web.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/nextnode/app/app_surfaces_test.go#TestAppRunsTheWebAndTheTerminalSurfacesWithTheirOwnBaseBundles", "test:chord/nextnode/app/app_surfaces_test.go#TestWebSurfaceServesThePageWithTheBootstrapTheScriptsAndTheStylesheetsTheFilesForever", "test:chord/nextnode/app/app_surfaces_test.go#TestWebSurfaceAnswersTheCurrentBaseHashPubliclyAndRefusesThePageAndFilesToARequestWithoutASession", "test:chord/nextnode/app/app_surfaces_test.go#TestWebSurfaceRebuildsTheBaseBundleAtEachStartTheSameCodeGivesTheSameHashOtherCodeAnother", "test:chord/nextnode/app/app_surfaces_test.go#TestWebSurfacePublishesANewSetOnARolloutWithoutWaitingForClientsThePreviousFilesStayServed", "test:chord/nextnode/surfaces/surfaces_build_test.go#TestAFailedBuildAnswers503ForTheSurfacesFilesAndFailsItsStepsHost", "test:chord/nextnode/surfaces/surfaces_build_linux_test.go#TestARolloutStepDuringTheBuildStopsWaitingAtItsContextsAbortBeforeTheBuildEndsTheBuildGoesOn"]
+rationale = "web.ts webSurface(server, options, context): as tuiSurface, `await buildBase(entry, 'browser', ...)` then `await published.start(context)` before it returns; the page route is `async (request) => ({kind: 'html', body: await options.page(request, assets())})` (the caller's page function may return a string or a Promise: the request waits for it; `assets()` reads the current set at that moment, so a page rendered during a rollout shows either the old or the new set, never a mixture), the file, plugin-file, asset and base routes answer from memory. Go follows D608 (approved; see tui.ts): the build runs once off the server's start and the routes wait for it with the request ctx (surfaces_web.go webRoutes: file/base/page call building.parts or building.file, a waiter's abort ends its wait, a failed build is 503); Go's WebSurfaceOptions.Page is `func(request, assets) (string, error)`, blocking inside the request's goroutine (the Promise form is the goroutine's own wait), and pageAssets reads the set once under the published lock (TestWebSurfaceServesThePageWithTheBootstrapTheScriptsAndTheStylesheetsTheFilesForever). Public routes (base hash) wait for the build too (a request before the build ends waits, it is not answered with a stale hash). Reload rollouts: TestWebSurfacePublishesANewSetOnARolloutWithoutWaitingForClientsThePreviousFilesStayServed."
 
 [[files]]
 path = "packages/chord/src/node/tui/actions.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/nextnode/tui/tui_actions_test.go#TestCopyingShowsEveryLineUpToFiveThenHowManyMoreOSC52OnlyOnceConfirmed", "test:chord/nextnode/tui/tui_actions_test.go#TestOpeningAURLNamesTheHostFirstRefusesUserInfoAndOtherSchemesFableL4", "test:chord/nextnode/tui/tui_actions_test.go#TestThePlatformsOpenerGetsAURLWithShellMetacharactersAsOneArgumentNeverThroughAShellFableH2OpusM3", "test:chord/nextnode/tui/tui_actions_test.go#TestAttachingAFileShowsThePathByItsTextBeforeTheYesRefusesADirectoryAMissingFileAndOneOver16MiBAlikeOpusL2E5E9", "test:chord/nextnode/tui/tui_actions_test.go#TestAttachingAFileReadsOnlyTheFileConfirmedAParentDirectorySwappedForALinkAfterTheYesIsRefusedOpusR1", "test:chord/nextnode/tui/tui_actions_test.go#TestAttachingAFileNeverWaitsOnAFIFOOpenedWithoutBlockingRefusedAsNoRegularFileOpusE12"]
+rationale = "actions.ts act/attach run one action at a time under the launcher's confirmation (the launcher's #confirm refuses a second while one runs): every step is awaited in order. act(copy): validation first (control characters throw before anything is asked), then `await terminal.ask(lines)` (resolves with the user's key, rejects when the prompt does not fit), then the OSC 52 write; act(open): validate the URL, ask, then `await opener(url)` (the platform opener spawns detached, `stdio: ignore`, `.unref()`, `.on('error', noop)`: the open is not waited for and a missing opener is no crash). attach: validate the path, ask (nothing on the machine looked at before the yes), `realpath`, `stat` (identity), a second ask when the link leads elsewhere, `open` with O_NONBLOCK|O_NOFOLLOW, then stat by the handle (identity must equal the confirmed one, a regular file of at most 16 MiB) and a read loop to the size, the handle closed in finally; every refusal is the one `cannot attach` error. There is no signal: the only waiting is the user's answer, which the launcher ends by answering false at finish. Go Act/Attach are the same sequence as blocking calls with the prompt's `Ask` returning (false, nil) when the launcher's loop ends, platformOpener starting the opener detached with `cmd.Start()` and a goroutine reaping it (`go cmd.Wait()`, portlint:allow golifetime: the launcher never waits for it), a Start failure returned as success (best effort, as Pi's error handler), and the file steps as one goroutine's sequence (the nonblocking-open and identity checks have their own tests above)."
 
 [[files]]
 path = "packages/chord/src/node/tui/credentials.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/nextnode/tui/tui_credentials_test.go#TestPairingRefusesACodeThatIsNoPlainCodeShowingNothing", "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientPairsWithTheServerTheCodeShownApprovedByTheOwnerThenTheClientRuns"]
+rationale = "credentials.ts tokenOf(credentials, url, say, signal): `token` returns at once, `file` awaits readFile, `pairing` awaits pair(): a POST /_chord/pair (fetch with the signal; a non-2xx status rejects `the server refused to pair`), the answer's code and poll validated (a malformed code is refused before anything is shown), then `say(code line)` and a loop of: sleep POLL_MS (2000 ms, a bare setTimeout that the signal does not cut short), `signal.throwIfAborted()`, a poll POST (signal passed), a non-2xx ends it with `ended without approval`, anything but `approved` with a token goes on, an approved answer is saved with writeSecret(save, token, 'create') when asked (awaited, a failure rejects: the token is not returned unsaved) and returned. Strictly sequential, one request in flight, no timeout of its own: the caller's signal is the only end (startTerminal's controller is never aborted, so Pi's pairing waits until approval, refusal or a transport error). Go TokenOf(ctx, ...) is the same loop on the caller's goroutine: http requests take ctx, the wait between polls is a timer selected against ctx.Done (an abort ends it at once with the cause: Pi's ends at the next tick, at most one POLL_MS later; the launcher's ctx is the caller's, which Pi lacks), pollInterval and the refusals as Pi's. Evidence: the malformed-code refusal test; the whole pairing flow (code shown, owner approval, polling, token) is TestATerminalClientPairsWithTheServer…."
 
 [[files]]
 path = "packages/chord/src/node/tui/launcher.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "detached-owned", "microtask-ordering"]
+evidence = ["test:chord/nextnode/tui/tui_launcher_hazards_test.go#TestALinkSocketClosedDuringItsDialStaysClosedAndASendOnItIsDropped", "test:chord/nextnode/tui/tui_launcher_hazards_test.go#TestALinkSocketClosedAfterItsDialFinishedButBeforeTheLoopTookItIsClosedAndNeverOpened", "test:chord/nextnode/tui/tui_launcher_hazards_test.go#TestALinkSocketTheServerDropsIsEndedOnTheLoopAndASendOnItIsDropped", "test:chord/nextnode/tui/tui_launcher_hazards_test.go#TestASandboxEndingOnAPostTheLoopMakesWithTheQueueFullDoesNotBlockTheLoop", "test:chord/nextnode/tui/tui_launcher_hazards_test.go#TestATerminalIsNotLeftRawWhenTheSandboxEndsWhileTheLauncherStarts", "test:chord/nextnode/tui/tui_launcher_send_closed_test.go#TestALinkSocketTheSandboxClosesWhileOpenDropsASendBeforeItsEndIsSeen", "test:chord/nextnode/tui/tui_launcher_test.go#TestTheFilesTheSandboxMayFetchAreTheTerminalSurfacesAfterDotSegmentsAndEncodingsResolveOpusM2FableL1", "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientHoldsTheSandboxsFramesWhileItsPromptIsOpenAndRefusesASecondRequestMeanwhileFableH1OpusM1", "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientAnswersEightRequestsAtOnceRefusesMoreAndIgnoresSIGUSR1OpusE10E8", "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientEndsOnCtrlCWhileItsPromptIsOpenWhateverTheSandboxAsksOpusE11", "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientSurvivesWhatTheSandboxSendsToBreakItAndGivesTheTerminalBackWhenTheSandboxDiesOpusE3"]
+rationale = "launcher.ts Launcher. startTerminal awaits tokenOf, then `launcher.start()`: #startSandbox = await GET `start` (JSON), `Promise.all` of the script and the combined file (downloads in parallel; one failure rejects the start), then `await Sandbox.start(...)`, then raw mode and the input/resize/exit/SIGUSR1 listeners; it resolves with `{exited, stop}`. After that everything is Node's single event loop: sandbox messages arrive through onMessage synchronously and a throwing handler ends the client (finish(1)); a bridge request `#answer` is an async function per request (fetch/base: a GET with no timeout and no signal, so only the 8 MiB bound ends a download; attach/copy/open: `await #confirm(...)`, one prompt at a time, a second refused with `a prompt is open`; the claim `#confirming = true` is made at the request's turn, before the first await, so frames the sandbox writes after a request are held in order, not drawn before the prompt); at most MAX_REQUESTS outstanding, the reply goes to the sandbox that asked (never to a restarted one); `#confirm` in finally writes the held frames and posts a resize. Prompts are promises resolved by the key handler (`#answered`) or by finish (answers false). Sockets (`#openSocket`) are event-driven WebSockets: open/message/close are posted to the sandbox in event order, a send before open is dropped, more than 16 MiB buffered terminates the socket, more than MAX_SOCKETS refuses. #outdated awaits GET `base` (a failure counts as unchanged) and #restart: close the sockets, await terminate, await #startSandbox, resize; a failure ends the client (finish(1)). finish(code) is idempotent: it removes the listeners, restores the terminal, answers an open prompt false, writes RESET_MODES, closes the sockets, awaits the sandbox's termination, then resolves `exited`. Go (D602, draft) keeps the observable order with one event-loop goroutine: handlers are closures posted to `events` (`post`/`sync`, a bounded queue of 256) and run one at a time, so the claim of the prompt (`confirming = true`), the request count and the held frames happen on the loop in the order the sandbox sent them; downloads, prompts and the reply run in a goroutine per request (at most maxRequests, `l.get` takes l.ctx, so finish cancels them: Pi's cannot be cancelled), `confirm` re-enters the loop with `sync` to release the held frames and post the resize; the prompt's Ask waits on its answer channel or loopDone (finish answers false); sockets are a dial goroutine plus a write loop per link, their open/message/close events re-posted to the loop with a generation check so a socket ended before the loop saw it stays closed and a send on it is dropped (the four socket tests); outdated/restart run off the loop (they download) and take it only to read the running hash and swap the sandbox (generation++), a restart failure finishes with 1 (TestATerminalIsNotLeftRawWhenTheSandboxEndsWhileTheLauncherStarts for the start path). Two differences from Pi: cancelling StartTerminal's ctx ends the client (Pi has no cancellation: its controller is never aborted), and finish joins the loop before reporting exit (Pi awaits only the sandbox's termination). Executor: Node's loop; one launcher goroutine plus per-request, per-link and per-sandbox goroutines for Go, each ended by finish (portlint:allow golifetime comments in tui_launcher.go)."
 
 [[files]]
 path = "packages/chord/src/node/tui/sandbox.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "detached-owned"]
+evidence = ["test:chord/nextnode/tui/tui_sandbox_test.go#TestTheSandboxAsAProcessReachesNoTerminalFileSQLiteNetworkOrEnvironmentPastAnyJavaScriptOpusE1E2", "test:chord/nextnode/tui/tui_sandbox_test.go#TestTheSandboxGivesRawDownloadedCodeNoBuiltinAndNoImportWhateverItPutsOnObjectPrototype", "test:chord/nextnode/tui/tui_sandbox_test.go#TestTheSandboxFlagsAndEnvironmentAreTheOperatingSystemLayerPi", "test:chord/nextnode/tui/tui_launcher_hazards_test.go#TestASandboxEndingOnAPostTheLoopMakesWithTheQueueFullDoesNotBlockTheLoop", "test:chord/nextnode/tui/tui_launcher_hazards_test.go#TestATerminalIsNotLeftRawWhenTheSandboxEndsWhileTheLauncherStarts"]
+rationale = "sandbox.ts Sandbox: `static async start(source, start, onMessage, onEnd)` checks the Node version and the bundle size, awaits mkdtemp and writeFile of the bootstrap, spawns the child (`spawn(process.execPath, flags)`, three pipes, stderr drained and dropped, stdin errors swallowed) and writes the start frame; it resolves as soon as the child is spawned (not when it is ready). The child's stdout is read in `data` events on Node's loop, frames parsed in order, each message handed to `onMessage` synchronously (a malformed frame kills the child and ends the sandbox: the messages of that chunk are dropped, as push throws before returning any); the first output removes the bootstrap file. `post(message)` is fire-and-forget: it writes a frame to the child's stdin, and a child that is not reading (more than MAX_UNREAD + MAX_PIPE_FRAME buffered) is killed and ended. `onEnd` runs once (a close, an error event, a failure), `terminate()` sets ended (so onEnd is NOT reported for it), SIGKILLs and awaits the `close` event, which also removes the directory in the background. Go StartSandbox/Post/Terminate: Post queues the frame under a mutex with the same bound (the sandbox is ended when it is exceeded) and a writer goroutine writes the queue to stdin in order; a reader goroutine reads stdout, calls onMessage in order on its own goroutine (the launcher turns each into a post to its single event loop: one handler runs at a time), reaps the child with cmd.Wait, reports the end once, closes the writer and removes the directory; Terminate marks ended, kills and waits for the reader's exit (`<-s.exited`). Difference: for a chunk holding valid frames before a malformed one, Go delivers the valid frames and then fails the sandbox, Pi drops the whole chunk's messages and fails; Go's Post never blocks the loop (TestASandboxEndingOnAPostTheLoopMakesWithTheQueueFullDoesNotBlockTheLoop). Executor: Node's loop for Pi; the sandbox's own two goroutines plus the child process for Go (D602, draft: the Go launcher replaces Pi's TS launcher; the sandbox child is Pi's Node bootstrap)."
 
 [[files]]
 path = "packages/chord/src/node/workers/base.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/nextnode/workers/workers_base_test.go#TestNodeBaseInputsRecordsTheEntrysCodeWithItsBytesHash", "test:chord/nextnode/workers/workers_base_test.go#TestNodeBaseInputsFailsForWhatCannotBeReadWhole", "test:chord/nextnode/workers/workers_workers_test.go#TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeTheBaseWasBuiltWith", "test:chord/nextnode/workers/workers_workers_test.go#TestTheWorkerBaseAStartWaitsForTheBasesBuildAndStartsItWhenNothingDid", "test:chord/nextnode/workers/workers_workers_test.go#TestTheWorkerBaseABrokenEntryFailsItsBuildAndEveryStartWorkerFailedThePublicStartErrorNothingForks"]
+rationale = "base.ts has two async functions, both one `await build({...})` of esbuild with no signal (the caller waits for the whole build; an esbuild failure rejects with its error; the output is in memory). buildWorkerBase(entry, execArgv) bundles a worker kind's entry with the base code into split ESM chunks the worker's component writes at its first fork (the kit starts the build after the server listens; a start waits for the build and starts it when nothing did). nodeBaseInputs(entry, conditions) bundles the entry only to record every file the import graph reads (static graph, recorded sources, onResolve/onLoad awaited by esbuild) and resolves with the file -> hash map the app watches (the server's own code), rejecting for what esbuild cannot parse. Go: nodeBaseInputs is workers.NodeBaseInputs(entry, conditions): a blocking call on the caller's goroutine returning the entry's own absolute path with the hash of its bytes (a Go program's code is its executable, one file, so `conditions` resolve nothing), failing for what cannot be read whole (TestNodeBaseInputsRecordsTheEntrysCodeWithItsBytesHash, TestNodeBaseInputsFailsForWhatCannotBeReadWhole); buildWorkerBase has no Go counterpart as a bundle: Workers.Build copies the entry executable into the component's base directory once, a worker start waits for that build (started when nothing did) and a broken entry fails the build and every start with the public start error (TestTheWorkerBaseAStartWaitsForTheBasesBuildAndStartsItWhenNothingDid, TestTheWorkerBaseABrokenEntryFailsItsBuildAndEveryStartWorkerFailedThePublicStartErrorNothingForks, TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeTheBaseWasBuiltWith). That design divergence is D600 (chord-reload-workers): STATUS draft, narrowed by ChordDeltaPorts, NOT approved (owner HOLD on D600/603/604/605 quality per PiMainInt3 handoff 2026-11-08); this row records the difference as drafted and does not claim approval. Orders: Pi's build runs in a worker thread of esbuild and a Go copy is synchronous I/O; neither is cancellable by its waiters."
 
 [[files]]
 path = "packages/chord/src/node/workers/lock.ts"
@@ -1120,17 +1120,17 @@ rationale = "Progress paces output commits: mark() schedules a commit (the first
 
 [[files]]
 path = "packages/chord/src/react/hooks.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["cancellable", "detached-owned"]
+evidence = ["test:chord/nextnode/surfaces/client_manifest_test.go#TestClientVendoredFilesAreExactlyTheManifests", "test:chord/nextnode/app/app_web_browser_test.go#TestReactBindingsHoldWhileMountedReRenderOnChangeReleaseOnUnmount", "test:chord/nextnode/app/app_web_browser_test.go#TestReactBindingsKeepPageStateAcrossARemountByANewFunctionANewKeyStartingFresh"]
+rationale = "hooks.ts (React effects, no awaiting caller): `useHold`'s effect holds the object synchronously (`host.hold(Type, params, BACKGROUND_CONTEXT)`), stores the reference in state and releases it in the effect's cleanup, so a hold is released on unmount and on a key change; `useRegistry`'s effect starts `host.registry(R, withAbortSignal(abort.signal, BACKGROUND_CONTEXT)).then(setValue, () => {})` (not awaited: the value arrives in a later microtask, a failure from the abort is ignored) and aborts in the cleanup, so a registry that resolves after the unmount sets nothing the component sees (the abort rejects it first); `useWatch` is `useSyncExternalStore` over watchStore. Ordering is React's (effects after commit, cleanup before the next effect); no timer of its own; errors of the registry are swallowed. Vendored client (D601, draft: not yet approved): the file is shipped byte-for-byte under chord/nextnode/surfaces/client and TestClientVendoredFilesAreExactlyTheManifests re-checks its sha256 against the manifest, so the code that runs is Pi's own and its async behaviour is Pi's by construction; the evidence tests run it in a real engine. Run in Chromium by TestReactBindingsHoldWhileMountedReRenderOnChangeReleaseOnUnmount (hold, re-render, release on unmount) and TestReactBindingsKeepPageStateAcrossARemountByANewFunctionANewKeyStartingFresh."
 
 [[files]]
 path = "packages/chord/src/react/stores.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["cancellable", "detached-owned"]
+evidence = ["test:chord/nextnode/surfaces/client_manifest_test.go#TestClientVendoredFilesAreExactlyTheManifests", "test:chord/nextnode/surfaces/surfaces_react_test.go#TestReactWatchStoresReadTheValueCallBackOnChangesGiveUndefinedForNoWatchable"]
+rationale = "stores.ts watchStore(source): `subscribe(changed)` creates an AbortController, starts `source.watch(context).then(watch => { watch.start(async () => changed()); changed(); }, () => {})` (not awaited: the watch binds in a later microtask; a source that ended or an abort that came first only means no more changes) and returns `() => abort.abort()` as the unsubscribe; the extra `changed()` after start covers a watch that starts at a value newer than the snapshot React read; `snapshot()` reads `source.value` synchronously (a throwing read gives undefined). Ordering: the unsubscribe aborts the context, so a watch that binds after it never starts; every call after the abort is dropped by the watch. Vendored client (D601, draft: not yet approved): the file is shipped byte-for-byte under chord/nextnode/surfaces/client and TestClientVendoredFilesAreExactlyTheManifests re-checks its sha256 against the manifest, so the code that runs is Pi's own and its async behaviour is Pi's by construction; the evidence tests run it in a real engine."
 
 [[files]]
 path = "packages/chord/src/remote/consumer.ts"
@@ -1330,45 +1330,45 @@ rationale = "`Stage*`/`Apply*` run inside the commit step on its goroutine, stat
 
 [[files]]
 path = "packages/chord/src/surfaces/active-language.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "detached-owned", "microtask-ordering"]
+evidence = ["test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState", "test:chord/next/surfaces/surfaces_active_language_test.go#TestPassesEachDistinctReportOnOnce", "test:chord/next/surfaces/surfaces_follower_cancel_test.go#TestCancellingAFollowersContextBeforeItsPickWatchBindsEndsQuietly", "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestStoppingAFollowerBeforeItsPickWatchBindsEndsQuietly", "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestAFollowersCallbackMayStopItAndChangeTheDevice", "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestAnOutboxDeliversAgainAfterADeliveryPanicked"]
+rationale = "active-language.ts followActiveLanguage(host, preferred, changed, report, context): sets the language at once (`update()` before any await), then `await host.registry(Translations, ctx)` (the caller waits for the registry; an abort rejects), updates again, `(await registry.watch(ctx)).start(...)` (each registry change updates), and holds LocaleChoice: `choice.pick.watch(ctx).then(start, () => {})`, NOT awaited: the pick follows once the hold binds, and a hold that ends (the follower stopped) before its first value is no error. update() recomputes the locale from the pick, the device and the catalogs and, only when the locale or catalogs changed, sets the host's language and calls `changed` synchronously on the thread, so a callback that calls setDevice or stop runs after the current update finished, in order. stop() aborts the controller and releases the hold. Go FollowActiveLanguage: the same sequence on the caller's goroutine (the registry call takes ctx; a failure stops what already started), the pick follows from a goroutine started after the hold (`go func`: bind the watch, then under `gate` start it unless the follower was stopped, ignoring a bind error: Pi's `.then(start, () => {})`), and update() delivers through an outbox so changes are delivered one at a time in order with no lock held while `changed` runs, a callback may call SetDevice or Stop and its own change is queued behind it (TestAFollowersCallbackMayStopItAndChangeTheDevice); a delivery that panics leaves the outbox usable (TestAnOutboxDeliversAgainAfterADeliveryPanicked). Stop marks the follower stopped under gate before it ends the watches (TestStoppingAFollowerBeforeItsPickWatchBindsEndsQuietly, TestCancellingAFollowersContextBeforeItsPickWatchBindsEndsQuietly)."
 
 [[files]]
 path = "packages/chord/src/surfaces/active-theme.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "detached-owned", "microtask-ordering"]
+evidence = ["test:chord/next/surfaces/surfaces_active_theme_test.go#TestFollowsTheRegistryThePrincipalsPickAndTheMode", "test:chord/next/surfaces/surfaces_follower_cancel_test.go#TestCancellingAFollowersContextBeforeItsPickWatchBindsEndsQuietly", "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestStoppingAThemeFollowerBeforeItsPickWatchBindsEndsQuietly", "test:chord/next/surfaces/surfaces_follower_stop_test.go#TestAThemeFollowersCallbackMayStopItAndSetTheMode"]
+rationale = "active-theme.ts followActiveTheme(host, mode, changed, context): the same shape as active-language: `await host.registry(Themes, ctx)`, `(await registry.watch(ctx)).start(...)`, the pick held through ThemeChoice with `choice.pick.watch(ctx).then(start, () => {})` not awaited, `changed` called synchronously on each distinct change, stop() = abort + release, setMode updates at once. Go FollowActiveTheme uses the same outbox for ordered delivery without a lock held, a goroutine for the pick bind and the stop gate (TestStoppingAThemeFollowerBeforeItsPickWatchBindsEndsQuietly, TestAThemeFollowersCallbackMayStopItAndSetTheMode: a callback may call SetMode or Stop and its change is delivered after the callback returns, as Pi's single thread runs it), the registry call and the watch take ctx (cancel and stop end them)."
 
 [[files]]
 path = "packages/chord/src/surfaces/client.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "detached-owned", "microtask-ordering"]
+evidence = ["test:chord/next/surfaces/surfaces_client_test.go#TestLoadsTheInitialScriptsWithTheCoreFacets", "test:chord/next/surfaces/surfaces_client_test.go#TestStartClientReportsAnInitialScriptThatFailsAndStartsWithTheOthers", "test:chord/next/surfaces/surfaces_client_test.go#TestFetchesOnlyChangedScriptsReloadsTheHostKeepsAnUnchangedPluginsFacet", "test:chord/next/surfaces/surfaces_client_test.go#TestKeepsAPluginsOldFacetWhenItsNewScriptFailsAndReportsIt", "test:chord/next/surfaces/surfaces_client_test.go#TestTriesAFailedPluginsScriptAgainWhenAReconnectsSnapshotHasItNotTakenAsApplied", "test:chord/next/surfaces/surfaces_client_test.go#TestLoadsTheNewStylesheetsBeforeTheReloadThenSettlesThemWithThePluginsThatKeptTheirOldCode", "test:chord/next/surfaces/surfaces_client_test.go#TestEndsTheWaitForStylesheetsAtTheClientsStopTheUpdateStopsThere", "test:chord/next/surfaces/surfaces_client_test.go#TestTriesASetWhoseScriptDidNotLoadAgainAfter1sThen2sUntilItApplies", "test:chord/next/surfaces/surfaces_client_test.go#TestDropsTheRetryOfASetANewerOneReplacedAndAppliesTheNewerOne", "test:chord/next/surfaces/surfaces_client_test.go#TestDropsTheRetryOfASetANewerOneReplacedWhileItsTimerWasBeingSet", "test:chord/next/surfaces/surfaces_client_test.go#TestCallsOutdatedForASetWithAnotherBase", "test:chord/next/surfaces/surfaces_client_test.go#TestAsksTheServersBaseBeforeReconnectingAnotherOneCallsOutdatedAndStops"]
+rationale = "client.ts startClient(options): `await LoadedFacets.load(host, core, initial entries, BACKGROUND_CONTEXT)` (a load failure rejects and the client is not returned), then the connection loop is started (`keepConnected`, its canRetry awaits `serverBase()` and asks the app's canRetry: another base calls `outdated()` and stops the loop) and `await updates.follow(context)`; the client's lifetime is the background context (nothing but stop ends the hold and the watch). Updates: the scripts object's `set` is watched; the watch callback does `#latest = set`, cancels a pending retry, resets the pause and `await #queue(set, ctx)`; #queue chains onto `#applying` (one update at a time, in the order the sets arrived; an update whose set is no longer #latest or whose client stopped is skipped), #apply (a set of another base: `outdated()`, applied; else for a changed set each changed plugin's script is awaited from `fetchScript` in plugin order, `await styles.prepare(set, signal)` (stylesheets loaded inactive, each wait ended by its load, an error, 10 s or the abort), an abort after that ends quietly, `await #loaded.reload(host, entries, context)`, then `styles.settle`) and on any throw reports `update_failed` and returns false: #retryLater arms `environment.after(pause)` (1 s doubling to 30 s) whose cancel is stored as one step, and a newer set cancels it. reconnected(): re-queues the newest set when this client does not run all of it. stop(): aborts the follower's signal (ends the watch wait and the stylesheets' waits), cancels the retry and releases the hold; the client's stop awaits updates.stop then host.close(ctx). Go: StartClient runs the same on the caller's goroutine (LoadFacets, connect, follow) with `ctx` from context.WithCancel(Background) as the BACKGROUND_CONTEXT and Stop cancelling it; follow starts the watch callback, which only records latest, cancels the retry and enqueues, and the updates run in ONE drainer goroutine (`working` flag, one at a time, in arrival order, skipping a superseded set or a stopped client; portlint:allow golifetime in surfaces_client.go) where Pi's watch callback itself awaits its update: a difference of back-pressure only (Go's watch callback returns at once; the superseded-set check at the head of every update gives the same applied sequence). The retry's cancel is installed before its timer exists (TestDropsTheRetryOfASetANewerOneReplacedWhileItsTimerWasBeingSet: the one-step `{cancel: after(...)}` of Pi), fetchScript, Styles.Prepare and Reload take the client's ctx so Stop ends them, and an update that fails after the client stopped reports nothing."
 
 [[files]]
 path = "packages/chord/src/surfaces/connection.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "microtask-ordering", "detached-owned"]
+evidence = ["test:chord/next/surfaces/surfaces_connection_test.go#TestReconnectsAfterAGrowingPauseAndReportsItsStates", "test:chord/next/surfaces/surfaces_connection_test.go#TestStartsThePausesAgainAfterAConnectionThatStayedOpen10s", "test:chord/next/surfaces/surfaces_connection_test.go#TestWaitsTheLongestPauseWhileOfflineAndRetriesAtOnceOnAWake", "test:chord/next/surfaces/surfaces_connection_test.go#TestGivesUpASocketNotOpenAfter20s", "test:chord/next/surfaces/surfaces_connection_test.go#TestStopsWhenCanRetrySaysNo", "test:chord/next/surfaces/surfaces_connection_test.go#TestRetriesAtOnceWhenWokenWhileCanRetryIsDeciding", "test:chord/next/surfaces/surfaces_connection_test.go#TestAnErrorFromCanRetryRetries", "test:chord/next/surfaces/surfaces_connection_test.go#TestClosesTheLinkAtStopAndOpensNoOther", "test:chord/next/surfaces/surfaces_connection_test.go#TestAnOpenLandingAsTheLoopStopsReportsNothing", "test:chord/next/surfaces/surfaces_connection_test.go#TestStopCancelsAPendingCanRetry"]
+rationale = "connection.ts keepConnected: an event-driven loop on one thread: connect() opens a link (a 20 s connect timeout timer), and every event (opened, frame, link closed, wake, retry timer) runs to completion one at a time. When a link closes the loop reports `waiting`, resets the failures when the link stayed open STABLE_MS, sets `deciding`, and calls `canRetry().then(decided, () => decided(true))`: the answer arrives later in a microtask and, when true, schedules the next attempt (now when a wake came meanwhile, else after min(RETRY_MAX, RETRY_INITIAL * 2^failures), the longest pause while offline); a stop in the meantime makes the late answer schedule nothing (`#stopped` is checked in #schedule); a canRetry rejection retries. stop() sets stopped, removes the wake listener, cancels the retry and closes the current link. A wake runs the pending retry now, or replaces a silent socket once its overdue ping check says so. Go (loop): the events are closures run through the follower's outbox (one at a time, in order, no lock held while client code runs), CanRetry is asked in a goroutine of the loop's WaitGroup (`asking`) with the loop's context, and its answer re-enters the outbox as one more event (`deciding=false`, schedule), so the ordering of the answer against a wake, a stop or a close is the same; stop cancels the context (a pending CanRetry ends) and an answer landing after stop schedules nothing. Tests above, in Pi's order (growing pause, stable reset, offline longest pause and wake, 20 s connect, stop on a no, wake while deciding, error retries, stop closing the link, an open landing as the loop stops, stop cancelling a pending canRetry)."
 
 [[files]]
 path = "packages/chord/src/surfaces/loaded.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "microtask-ordering"]
+evidence = ["test:chord/next/surfaces/surfaces_client_test.go#TestFetchesOnlyChangedScriptsReloadsTheHostKeepsAnUnchangedPluginsFacet", "test:chord/next/surfaces/surfaces_client_test.go#TestKeepsAPluginsOldFacetWhenItsNewScriptFailsAndReportsIt", "test:chord/next/surfaces/surfaces_client_test.go#TestKeepsAPluginsOldFacetWhenItsNewScriptPanicsOrHasNoFunctionAndReportsIt", "test:chord/next/surfaces/surfaces_client_test.go#TestTriesAFailedPluginsScriptAgainWhenAReconnectsSnapshotHasItNotTakenAsApplied"]
+rationale = "loaded.ts LoadedFacets: `static async load` awaits `host.load(facets, context)` and records what loaded; `reload(host, entries, context)` runs one reload at a time: `#reloading.then(() => #reload(...))` with the tail replaced by a promise that settles to nothing (so an earlier failure does not stop later reloads and no report is retained), because a reload computing its set from a loaded map an earlier one is about to change would pass that plugin's old facet and roll it back. #reload prepares changed entries synchronously, then `await host.reload(facets, context, {failed})`; a rejection `aborted` after the commit adopts what the host committed (`details.committed`) and rethrows; a success adopts the set (a plugin the host kept old stays as it was, an added one it left out is not loaded). The caller waits for the whole reload; the context's signal is the host's. Go LoadedFacets.Reload takes the `reloading` mutex for the whole call (the same one-at-a-time order, a later caller blocks on the lock and not on its own ctx: as Pi's chain, which does not look at the waiting call's signal either), runs the same preparation, `h.Reload(facets, ctx, ...)`, and adopts the committed set from `committedOf(err)` when the error is `aborted` after the commit (TestKeepsAPluginsOldFacetWhenItsNewScriptFailsAndReportsIt; the commit-after-abort adoption rides on host.Reload's committed detail, tested in chord/next/host)."
 
 [[files]]
 path = "packages/chord/src/surfaces/preference.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/next/surfaces/surfaces_preference_test.go#TestPreferenceIsNoneBeforeAChoiceAndEachPrincipalsOwnAfter", "test:chord/next/surfaces/surfaces_preference_test.go#TestPreferenceIsKeptInTheServersStoreAcrossARestart", "test:chord/next/surfaces/surfaces_preference_test.go#TestLocaleChoiceKeepsALanguageTagOrNullPerPrincipalAndRefusesAnythingElse"]
+rationale = "preference.ts: the PickStore object's `set({key, pick}, ctx)` is an async member that awaits `picks.change(fn, ctx)` (the draft re-adds the key last and trims to MAX_PICKS in one change) and answers null once the change committed; `picks` is a derived value of the document; the per-principal Choice object derives its `pick` from the store's value under the principal's key (no awaits). The caller waits for the commit, the call's context is the cancellation, two callers are ordered by the document's own queue. Go preference facet's `set` runs Document.Change inside the call's section on the call's ctx and answers after the commit (TestPreferenceIsKeptInTheServersStoreAcrossARestart), and the Choice's derive and refusal of a bad pick are the same (TestLocaleChoiceKeepsALanguageTagOrNullPerPrincipalAndRefusesAnythingElse)."
 
 [[files]]
 path = "packages/chord/src/sync/batch.ts"
@@ -1430,8 +1430,8 @@ rationale = "recorder.ts TelemetryRecorder.startSpan(options, callback) -> #star
 path = "packages/chord/src/telemetry-ingest/sender.ts"
 disposition = "translated"
 contracts = ["awaited", "detached-owned", "cancellable"]
-evidence = ["test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageSenderSendsItsSpansWithoutMetricsOnceBoundUntilThenTheyWaitInTheRecorder", "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageSenderGivesARefusedBatchUp", "test:chord/next/telemetryingest/ingest_upstream_test.go#TestWorkerSenderSendsSpansAndMetricsToTheWorkerVariant"]
-rationale = "sender.ts sender(recorder, limit, waiting, release, call): send(partial) chains onto the previous send (`(sending ?? Promise.resolve()).then(() => once(partial))`), so sends run one after another in call order; once takes a batch only when something waits, calls the hold's ingest (`call` answers undefined when the reference is not live or not the worker variant: the batch goes back to the recorder at the back and the recorder's count is released), and otherwise awaits the call best effort (`await sent.catch(() => {})`: a refused or lost batch is given up, the count released). Nobody waits on the timer's sends (`void sender.send(false)` in page.ts and the worker's interval): detached tasks owned by the sender, errors swallowed by design, never rejecting. The worker's close awaits `Promise.race([send(true), sleep(WORKER_SEND_MS)])`, i.e. the final partial send is bounded by one second and then stop() releases the hold. Go Sender.Send is a blocking call under a mutex (one send at a time, in lock order), the final send in nextnode/app/worker.go runs on its own goroutine bounded by the same one second with the ticker goroutine stopped and joined first; Stop releases the hold. A Go tick that finds the previous send still running is dropped by the ticker rather than queued behind it (a batch waits in the recorder until the next tick, the same bound). The page sender is the vendored browser client (D601), not ported to Go (TestPageSenderSendsItsSpansWithoutMetricsOnceBoundUntilThenTheyWaitInTheRecorder, TestPageSenderGivesARefusedBatchUp, TestWorkerSenderSendsSpansAndMetricsToTheWorkerVariant)."
+evidence = ["test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageSenderSendsItsSpansWithoutMetricsOnceBoundUntilThenTheyWaitInTheRecorder", "test:chord/next/telemetryingest/ingest_upstream_test.go#TestPageSenderGivesARefusedBatchUp", "test:chord/next/telemetryingest/ingest_upstream_test.go#TestWorkerSenderSendsSpansAndMetricsToTheWorkerVariant", "test:chord/nextnode/app/worker_close_test.go#TestWorkerCloseBoundCoversAPeriodicSendStillInFlight", "test:chord/nextnode/app/worker_close_test.go#TestWorkerCloseSendsTheFinalPartialSendOnceThePeriodicOneEnded"]
+rationale = "sender.ts sender(recorder, limit, waiting, release, call): send(partial) chains onto the previous send (`(sending ?? Promise.resolve()).then(() => once(partial))`), so sends run one after another in call order; once takes a batch only when something waits, calls the hold's ingest (`call` answers undefined when the reference is not live or not the worker variant: the batch goes back to the recorder at the back and the recorder's count is released), and otherwise awaits the call best effort (`await sent.catch(() => {})`: a refused or lost batch is given up, the count released). Nobody waits on the timer's sends (`void sender.send(false)` in page.ts and the worker's interval): detached tasks owned by the sender, errors swallowed by design, never rejecting. The worker's close awaits `Promise.race([send(true), sleep(WORKER_SEND_MS)])`, i.e. the final partial send is bounded by one second and then stop() releases the hold. Go Sender.Send is a blocking call under a mutex (one send at a time, in lock order), the final send in nextnode/app/worker.go runs on its own goroutine bounded by the same one second with the ticker goroutine stopped and joined first; Stop releases the hold. A Go tick that finds the previous send still running is dropped by the ticker rather than queued behind it (a batch waits in the recorder until the next tick, the same bound). The page sender is the vendored browser client (D601), not ported to Go (TestPageSenderSendsItsSpansWithoutMetricsOnceBoundUntilThenTheyWaitInTheRecorder, TestPageSenderGivesARefusedBatchUp, TestWorkerSenderSendsSpansAndMetricsToTheWorkerVariant). | Close bound (review RevAsync): the worker's close races the final send, which chains behind any periodic send in flight (Go Sender.Send holds the sender mutex for a whole send), against one second; Go closeTelemetry in chord/nextnode/app/worker.go now joins the ticker goroutine inside that bound (it used to join it before the bound) and the two worker_close tests pin the bound and the order; the send chaining itself is the mutex in Sender.Send."
 
 [[files]]
 path = "packages/chord/src/telemetry-sqlite/index.ts"
@@ -1470,24 +1470,24 @@ rationale = "telemetry.ts: chordSpans(parent) is the typed span starter (the cal
 
 [[files]]
 path = "packages/chord/src/tui/channel.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/nextnode/surfaces/client_manifest_test.go#TestClientVendoredFilesAreExactlyTheManifests", "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientAnswersEightRequestsAtOnceRefusesMoreAndIgnoresSIGUSR1OpusE10E8", "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientHoldsTheSandboxsFramesWhileItsPromptIsOpenAndRefusesASecondRequestMeanwhileFableH1OpusM1"]
+rationale = "channel.ts SandboxChannel.request(request): numbers the request (`++#next`), stores `{resolve, reject}` under the id and sends a `request` frame to the launcher at once, returning the promise; the launcher's `reply`, `attached` or `refused` message with that id settles it (resolve with the value, or reject with the launcher's refusal message), removing the entry; many requests may be outstanding (the launcher caps them at MAX_REQUESTS and answers the rest `refused`); there is no timeout and no cancellation in the sandbox: a request is settled by the launcher, which finishes every open request's reply path when the sandbox ends (the sandbox dies with it). Replies are dispatched in arrival order on the sandbox's thread. Vendored client (D601, draft: not yet approved): the file is shipped byte-for-byte under chord/nextnode/surfaces/client and TestClientVendoredFilesAreExactlyTheManifests re-checks its sha256 against the manifest, so the code that runs is Pi's own and its async behaviour is Pi's by construction; the evidence tests run it in a real engine. Exercised end to end with the Go launcher by the two kit tests (eight concurrent requests answered, the ninth refused; a second prompting request refused while one is open)."
 
 [[files]]
 path = "packages/chord/src/tui/runtime.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "detached-owned"]
+evidence = ["test:chord/nextnode/surfaces/client_manifest_test.go#TestClientVendoredFilesAreExactlyTheManifests", "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientRunsTheAppsTerminalCodeWithThePluginsConfirmsItsActionsAppliesAnEditInPlaceExits", "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientSurvivesWhatTheSandboxSendsToBreakItAndGivesTheTerminalBackWhenTheSandboxDiesOpusE3", "test:chord/next/tui/tui_scope_test.go#TestScopeHoldsFollowsAndCallsChangedOnEveryChangeReleasingEverythingAtDispose"]
+rationale = "runtime.ts startTerminalRuntime(options): one awaited chain inside the sandbox: `await startClient({... fetchScript: async entry => await channel.request({kind: 'fetch'}) then scripts.run(text) ..., serverBase: () => channel.request({kind: 'base'}).then(v => v, () => undefined), outdated: () => channel.outdated(), environment: TERMINAL_ENVIRONMENT (setTimeout timers, no page wakes) })`, then `await followActiveTheme(...)` and `await followActiveLanguage(...)`, then `options.render(runtime)`; copy/open/attach are one `channel.request(...)` each, resolved by the launcher after the user's prompt (`Boolean` / the file or undefined), exit sends a frame. A fetch whose script did not register rejects (`did not register`), which the client reports as an update failure and retries. All waiting is for the launcher's replies; there is no cancellation here (the sandbox's end is the launcher's SIGKILL). Vendored client (D601, draft: not yet approved): the file is shipped byte-for-byte under chord/nextnode/surfaces/client and TestClientVendoredFilesAreExactlyTheManifests re-checks its sha256 against the manifest, so the code that runs is Pi's own and its async behaviour is Pi's by construction; the evidence tests run it in a real engine. The Go launcher side of every request is in tui_launcher.go (async-contracts row packages/chord/src/node/tui/launcher.ts); the surface the runtime builds is the Go-side client rows above (chord/next/surfaces)."
 
 [[files]]
 path = "packages/chord/src/tui/scope.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["detached-owned", "cancellable"]
+evidence = ["test:chord/next/tui/tui_scope_test.go#TestScopeHoldsFollowsAndCallsChangedOnEveryChangeReleasingEverythingAtDispose", "test:chord/next/tui/tui_scope_test.go#TestOptimisticShowsTheValueWhileItsCallIsPendingThenTheReadersCallingChangedOnEachChange", "test:chord/next/tui/tui_scope_test.go#TestOptimisticShowsTheLastValueUntilEveryCallSettledAFailedCallDropsItAsASucceededOneDoes", "test:chord/next/tui/tui_scope_test.go#TestOptimisticNeverCallsChangedAfterDispose", "test:chord/next/tui/tui_scope_test.go#TestOptimisticAddReturnsTheResultOfItsCall", "test:chord/next/tui/tui_scope_release_test.go#TestAHoldersOwnReleaseBeforeTheScopesWatchStartsEndsQuietly"]
+rationale = "scope.ts TerminalScope: a watch per source is started with `source.watch(context).then(watch => watch.start(async () => { if (!aborted) changed(); }), () => {})` (not awaited: it binds in a later microtask; an end before the bind is no error), registries through `host.registry(R, context).then(...)` the same way, all under one AbortController whose abort (dispose) ends every watch and drops every later `changed`; the optimistic helper `add(action, call)` records the action, returns the promise of `call` itself (its result or rejection reaches the caller unchanged) and, when `call` settles either way (`call.then(settled, settled)`), removes the action and calls changed (unless disposed): the value shown while a call is pending is the reducer over every action in flight, in order. Go tui_scope.go is a port of the same class: sources are watched from goroutines that start the watch under the scope's gate unless it was disposed, Optimistic.Add runs the call in the caller's goroutine (the result and error are returned as they are) and removes the action in a defer, and `changed` is never called after Dispose (TestOptimisticNeverCallsChangedAfterDispose, TestAHoldersOwnReleaseBeforeTheScopesWatchStartsEndsQuietly)."
 
 [[files]]
 path = "packages/chord/src/watch.ts"
@@ -1498,38 +1498,38 @@ rationale = "WatchLifecycle (the base of Watch and NativeWatch). start installs 
 
 [[files]]
 path = "packages/chord/src/web/language.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "detached-owned"]
+evidence = ["test:chord/nextnode/surfaces/client_manifest_test.go#TestClientVendoredFilesAreExactlyTheManifests", "test:chord/nextnode/app/app_web_browser_test.go#TestThePagesLanguageWritesLangAndDirOnTheRootElementFromTheDeviceThenTheUsersPick"]
+rationale = "language.ts followLanguage(host, report, context): `await followActiveLanguage(...)` (the caller waits for the registry), registers a `languagechange` listener whose handler reads the device languages and calls the follower's setDevice (synchronous), applies lang and dir to the root element from `changed`, and returns a function that removes the listener and stops the follower. No timers; ordering is the event loop's. Vendored client (D601, draft: not yet approved): the file is shipped byte-for-byte under chord/nextnode/surfaces/client and TestClientVendoredFilesAreExactlyTheManifests re-checks its sha256 against the manifest, so the code that runs is Pi's own and its async behaviour is Pi's by construction; the evidence tests run it in a real engine."
 
 [[files]]
 path = "packages/chord/src/web/page.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "detached-owned", "microtask-ordering"]
+evidence = ["test:chord/nextnode/surfaces/client_manifest_test.go#TestClientVendoredFilesAreExactlyTheManifests", "test:chord/nextnode/app/app_web_browser_test.go#TestAPageLoadsThePluginsAppliesAnEditInPlaceKeepingThePagesStateAndFollowsTheTheme", "test:chord/nextnode/app/app_web_browser_test.go#TestAPageReloadsWhenTheServerComesBackWithAnotherBaseBundle"]
+rationale = "page.ts startPage(options): takes the bootstrap the server wrote, then `await startClient({... open: a WebSocket whose open and message events call events.opened/received ..., fetchScript: scripts.fetch (a <script src> that resolves once the script registered, rejects on an error event or a load that registered nothing), serverBase: async fetch(`${PREFIX}base`, {cache: 'no-store'}) returning undefined on any failure, outdated: location.reload, styles: PageStyles })`, then (telemetry on) `setInterval(send(false), 3000)` fire-and-forget and a visibilitychange handler that sends at once when the page is hidden, then `await followThemes(...)`, `await followLanguage(...)`, then `options.render(host)`; it resolves with the client. Failures of the startClient chain reject startPage (the page shows nothing). Reconnection and updates are client.ts's (rows above); cancellation is the page's lifetime (a reload ends everything). Vendored client (D601, draft: not yet approved): the file is shipped byte-for-byte under chord/nextnode/surfaces/client and TestClientVendoredFilesAreExactlyTheManifests re-checks its sha256 against the manifest, so the code that runs is Pi's own and its async behaviour is Pi's by construction; the evidence tests run it in a real engine. TestAPageLoadsThePluginsAppliesAnEditInPlaceKeepingThePagesStateAndFollowsTheTheme runs startPage, an edit and the theme in Chromium, TestAPageReloadsWhenTheServerComesBackWithAnotherBaseBundle the serverBase / outdated path."
 
 [[files]]
 path = "packages/chord/src/web/scripts.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/nextnode/surfaces/client_manifest_test.go#TestClientVendoredFilesAreExactlyTheManifests", "test:chord/nextnode/app/app_web_browser_test.go#TestAPageLoadsThePluginsAppliesAnEditInPlaceKeepingThePagesStateAndFollowsTheTheme", "test:chord/nextnode/app/app_surfaces_test.go#TestWebSurfaceServesEachWebFacetAsAScriptThatRegistersItselfAndTheSetAsOneCombinedFileNoEval"]
+rationale = "scripts.ts PageScripts.fetch(entry): returns a promise created at the call: it registers a waiter under `name\\0digest`, appends a `<script src>` to the head, and settles from the element's events: the registration of exactly that script (the plugin's script calls the page's `chordFacet`, which resolves the waiter) resolves with the registered script, an `error` event rejects `did not load`, and a `load` event with the waiter still waiting (the file loaded and registered another digest or nothing) rejects `did not register`; the element is removed in every case. There is no timeout and no signal: a script that neither loads nor errors waits (the browser's own network timeout ends it), and the updates retry by backoff after a rejection. Vendored client (D601, draft: not yet approved): the file is shipped byte-for-byte under chord/nextnode/surfaces/client and TestClientVendoredFilesAreExactlyTheManifests re-checks its sha256 against the manifest, so the code that runs is Pi's own and its async behaviour is Pi's by construction; the evidence tests run it in a real engine."
 
 [[files]]
 path = "packages/chord/src/web/styles.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "detached-owned", "microtask-ordering"]
+evidence = ["test:chord/nextnode/surfaces/client_manifest_test.go#TestClientVendoredFilesAreExactlyTheManifests", "test:chord/nextnode/app/app_web_styles_test.go#TestAPagesPluginStylesheetsLoadASlowNewStylesheetBeforeTheReloadARenamedClassIsStyledInItsFirstFrameTheOldOneNeverMissing", "test:chord/nextnode/app/app_web_styles_test.go#TestAPagesPluginStylesheetsReportAStylesheetThatFailsApplyTheNewCodeAndLoadTheStylesheetAgainWithTheNextUpdate", "test:chord/nextnode/app/app_web_styles_test.go#TestAPagesPluginStylesheetsApplyAStylesheetThatLoadsAfterItsTenSecondsWithoutAnotherUpdate", "test:chord/nextnode/app/app_web_styles_test.go#TestAPagesPluginStylesheetsEndTheWaitForAStalledStylesheetAfterTenSecondsAndAtTheClientsStopWhichRemovesWhatItPrepared"]
+rationale = "styles.ts PageStyles.prepare(set, signal): for each plugin whose stylesheet is not already the loaded one, an inactive `<link media=not all>` is inserted (a failed earlier one is replaced) and every sheet's `wait(signal)` is collected; `await Promise.all(waits)` waits for all of them concurrently, each ending when its link loads, errors (reported `stylesheet_failed`), after STYLESHEET_WAIT_MS (10 s: `timeout`, reported) or when the signal aborts (`cancelled`: the timer and the abort listener are removed in every case); after the wait, an aborted signal drops everything it prepared. The update then reloads the host and settle() activates the prepared sheets and retires the old ones after the next drawn frame (`setTimeout` + two `requestAnimationFrame`s), keeping the old sheet for a plugin that kept its old code; a stylesheet that failed does not stop the update (the code applies and the sheet is retried with the next update). Ordering: all sheets load before the reload starts (a renamed class is styled in its first frame), settle runs after the reload. Vendored client (D601, draft: not yet approved): the file is shipped byte-for-byte under chord/nextnode/surfaces/client and TestClientVendoredFilesAreExactlyTheManifests re-checks its sha256 against the manifest, so the code that runs is Pi's own and its async behaviour is Pi's by construction; the evidence tests run it in a real engine. The four styles tests run it in Chromium: slow sheet before the reload, failed sheet reported and retried, a sheet loading after 10 s applied without another update, the 10 s wait and the client's stop removing what was prepared."
 
 [[files]]
 path = "packages/chord/src/web/themes.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "detached-owned"]
+evidence = ["test:chord/nextnode/surfaces/client_manifest_test.go#TestClientVendoredFilesAreExactlyTheManifests", "test:chord/nextnode/app/app_web_browser_test.go#TestAPageLoadsThePluginsAppliesAnEditInPlaceKeepingThePagesStateAndFollowsTheTheme", "test:chord/next/surfaces/surfaces_themes_test.go"]
+rationale = "themes.ts followThemes(host, context): `await followActiveTheme(host, mode, changed, context)` (the caller waits for the registry), then a `change` listener on the prefers-color-scheme media query that calls the follower's setMode (synchronous) and applies the active theme's variables from `changed`; returns a function removing the listener and stopping the follower. No timers; the ordering is the follower's (active-theme.ts row). Vendored client (D601, draft: not yet approved): the file is shipped byte-for-byte under chord/nextnode/surfaces/client and TestClientVendoredFilesAreExactlyTheManifests re-checks its sha256 against the manifest, so the code that runs is Pi's own and its async behaviour is Pi's by construction; the evidence tests run it in a real engine."
 
 [[files]]
 path = "packages/codemode/src/cloudflare.ts"

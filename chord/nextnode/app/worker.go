@@ -200,7 +200,7 @@ func runWorker(options WorkerOptions, start workers.WorkerStart, ctx context.Con
 		ticker := time.NewTicker(workerSend)
 		stopped := make(chan struct{})
 		done := make(chan struct{})
-		//portlint:allow golifetime the sender's timer ends when the worker closes (the closer below stops it and joins)
+		//portlint:allow golifetime the sender's timer ends when the worker closes (the closer below stops it; the bounded final send joins it)
 		go func() {
 			defer close(done)
 			for {
@@ -217,15 +217,7 @@ func runWorker(options WorkerOptions, start workers.WorkerStart, ctx context.Con
 		start.OnClose(func(context.Context) error {
 			ticker.Stop()
 			close(stopped)
-			<-done
-			sent := make(chan struct{})
-			//portlint:allow golifetime bounded by the select below; Send returns once the link ends
-			go func() { sender.Send(true); close(sent) }()
-			select {
-			case <-sent:
-			case <-time.After(workerSend):
-			}
-			sender.Stop()
+			closeTelemetry(sender, done, workerSend)
 			return nil
 		})
 	}
@@ -234,4 +226,28 @@ func runWorker(options WorkerOptions, start workers.WorkerStart, ctx context.Con
 		result.Busy = options.Busy
 	}
 	return result, nil
+}
+
+// telemetrySender is what a worker's close sends through.
+type telemetrySender interface {
+	Send(partial bool)
+	Stop()
+}
+
+// closeTelemetry is Pi's `await Promise.race([sender.send(true), sleep(WORKER_SEND_MS)])` then `sender.stop()`: the final send chains
+// behind a periodic send still in flight (the ticker goroutine, joined by ticked) and the one bound covers both, so a periodic send
+// that does not end cannot hold the close past bound.
+func closeTelemetry(sender telemetrySender, ticked <-chan struct{}, bound time.Duration) {
+	sent := make(chan struct{})
+	//portlint:allow golifetime bounded by the select below; Send returns once the link ends
+	go func() {
+		<-ticked
+		sender.Send(true)
+		close(sent)
+	}()
+	select {
+	case <-sent:
+	case <-time.After(bound):
+	}
+	sender.Stop()
 }
