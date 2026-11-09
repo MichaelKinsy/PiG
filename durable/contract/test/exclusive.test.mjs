@@ -114,3 +114,29 @@ test("corpus: a cost bound is a vitest row's test prefix and a ratio above 1, on
 	assert.match(problems({ cost_max_ratio: 4 }).join("\n"), /cost bound/)
 	assert.match(problems({ cost_test: "t", cost_max_ratio: 4, exclusive: undefined }).join("\n"), /exclusive row/)
 })
+
+test("costOf: the reference's time is the smaller of its two samples, so a stalled reference run cannot hide a slow candidate", () => {
+	const stalled = timed("suite slow one", 1700)
+	const again = timed("suite slow one", 450)
+	const hidden = costOf(costRow, stalled, timed("suite slow one", 2300))
+	assert.equal(hidden.over, undefined, "one sample alone: 1.35x, within the bound")
+	const caught = costOf(costRow, stalled, timed("suite slow one", 2300), again)
+	assert.equal(caught.over.bound, 4)
+	assert.match(caught.over.problem, /2300 ms against the reference's 450 ms \(the smaller of 1700 and 450\) \(5\.11x/)
+	assert.equal(costOf(costRow, timed("suite slow one", 450), timed("suite slow one", 1700), timed("suite slow one", 1700)).over, undefined, "a stalled second sample does not raise the reference")
+})
+
+test("runVitestRow: an exclusive row with a cost bound runs the reference's test a second time, after the candidate, and uses the smaller time", async () => {
+	const name = "suite slow one"
+	const log = []
+	const refTimes = [1700, 450]
+	const run = async (impl, _ctx, include, label, _isSc, _timeout, testName) => {
+		log.push(`${impl.name}${testName ? ` only ${testName}` : ""}`)
+		const ms = impl.name === "ref" ? refTimes.shift() : 2300
+		return Object.assign(new Map([[include.split("/").pop(), { status: "passed", tests: new Map([[name, "passed"]]), failures: new Map(), durations: new Map([[name, ms]]) }]]), { timedOut: false, guard: [] })
+	}
+	const result = await runVitestRow(row("twice", { exclusive: true, ...costRow }), { name: "cand-twice", vitest: true, candidateDir: "x", env: {} }, { out: "x", run }, corpus)
+	assert.equal(result.status, "fail", JSON.stringify(result))
+	assert.deepEqual(log, ["ref", "cand-twice", "ref only suite slow"])
+	assert.match(result.detail.problem, /the smaller of 1700 and 450/)
+})

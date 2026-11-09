@@ -129,13 +129,13 @@ const VITEST_TIMEOUT_MS = Number(process.env.CONTRACT_VITEST_TIMEOUT_MS ?? 600_0
  * unchanged: the provider brings the candidate's write encoder). The result maps test files to their statuses; `timedOut` is set
  * when the run was killed.
  */
-export async function vitestRun(impl, ctx, include, label = "sc", isSc = label === "sc", timeoutMs = VITEST_TIMEOUT_MS) {
+export async function vitestRun(impl, ctx, include, label = "sc", isSc = label === "sc", timeoutMs = VITEST_TIMEOUT_MS, testName = undefined) {
 	const outFile = join(ctx.out, impl.name, `vitest-${label}.json`)
 	mkdirSync(join(ctx.out, impl.name), { recursive: true })
 	rmSync(outFile, { force: true })
 	const sc = isSc && impl.scExe
 	// The run's own cache directory: vitest writes it, and the reference checkout (the working directory of the E rows' `ls`) must not change.
-	const env = { ...process.env, CONTRACT_PI_SOURCE: piSource(), CONTRACT_VITEST_CACHE: resolve(ctx.out, impl.name, `vitest-cache-${label}`), ...(include ? { CONTRACT_TEST_INCLUDE: include } : {}), ...(impl.candidateDir && !sc ? { CONTRACT_CANDIDATE: impl.candidateDir, ...impl.env } : {}), ...(sc ? { CONTRACT_SC_EXE: impl.scExe, CONTRACT_SC_PROVIDER: join(CONTRACT_DIR, "impls", "sc-native-provider.ts") } : {}) }
+	const env = { ...process.env, CONTRACT_PI_SOURCE: piSource(), CONTRACT_VITEST_CACHE: resolve(ctx.out, impl.name, `vitest-cache-${label}`), ...(include ? { CONTRACT_TEST_INCLUDE: include } : {}), ...(testName ? { CONTRACT_TEST_NAME: testName } : {}), ...(impl.candidateDir && !sc ? { CONTRACT_CANDIDATE: impl.candidateDir, ...impl.env } : {}), ...(sc ? { CONTRACT_SC_EXE: impl.scExe, CONTRACT_SC_PROVIDER: join(CONTRACT_DIR, "impls", "sc-native-provider.ts") } : {}) }
 	const bin = join(piSource(), "node_modules", ".bin", "vitest")
 	const child = spawnGroup(bin, ["run", "--config", join(CONTRACT_DIR, "scenarios", "vitest.contract.config.mjs"), "--reporter=json", `--outputFile=${outFile}`], { cwd: join(piSource(), "packages", "durable"), env, stdio: ["ignore", "ignore", "pipe"] })
 	let err = ""
@@ -158,15 +158,17 @@ export async function vitestRun(impl, ctx, include, label = "sc", isSc = label =
  * The recorded cost bound of a U row (corpus `cost_test`, `cost_max_ratio`). A row the gate runs alone (`exclusive`) is not held to its
  * budget by the load of its neighbours, so a candidate that became several times slower would still pass the upstream test's own limit
  * until it crossed it. The bound is on the candidate's duration of the named test over the reference's, in the same gate run, one run after
- * the other on the same host. Undefined when the row records none.
+ * the other on the same host. The reference's time is the smaller of its two samples (`again`: a second run of the test alone), so a stalled
+ * reference run cannot hide a slow candidate. Undefined when the row records none.
  */
-export function costOf(row, r, c) {
+export function costOf(row, r, c, again) {
 	if (!row.cost_test) return undefined
 	const name = [...r.tests.keys()].find(n => n.startsWith(row.cost_test))
-	const ref = name === undefined ? undefined : r.durations?.get(name), cand = name === undefined ? undefined : c.durations?.get(name)
-	if (!(ref > 0) || !(cand >= 0)) return { over: { problem: `the cost bound's test ${row.cost_test} has no duration in the reports (reference ${ref}, candidate ${cand})` } }
+	const samples = name === undefined ? [] : [r.durations?.get(name), again?.durations?.get(name)].filter(ms => ms > 0)
+	const ref = Math.min(...samples), cand = name === undefined ? undefined : c.durations?.get(name)
+	if (!samples.length || !(cand >= 0)) return { over: { problem: `the cost bound's test ${row.cost_test} has no duration in the reports (reference ${samples}, candidate ${cand})` } }
 	const ratio = cand / ref
-	const text = `${name}: ${Math.round(cand)} ms against the reference's ${Math.round(ref)} ms (${ratio.toFixed(2)}x of at most ${row.cost_max_ratio}x)`
+	const text = `${name}: ${Math.round(cand)} ms against the reference's ${Math.round(ref)} ms${samples.length > 1 ? ` (the smaller of ${samples.map(Math.round).join(" and ")})` : ""} (${ratio.toFixed(2)}x of at most ${row.cost_max_ratio}x)`
 	return ratio > row.cost_max_ratio ? { text, over: { problem: `the candidate is slower than the recorded bound: ${text}`, ratio, bound: row.cost_max_ratio } } : { text }
 }
 
@@ -187,12 +189,15 @@ export async function runVitestRow(row, impl, ctx) {
 	if (!impl.control && !impl.vitest) return pending(lacks(impl))
 	const file = row.source.split("/test/").pop()
 	const label = `u-${file.replace(/[^\w.-]/g, "_")}`
-	const { ref, cand } = await memo(`vitest:${impl.name}:${file}`, async () => {
+	const { ref, cand, refAgain } = await memo(`vitest:${impl.name}:${file}`, async () => {
 		const runRef = () => run({ name: "ref" }, ctx, `test/${file}`, label, false)
 		const runCand = () => (impl.control ? undefined : run(impl, ctx, `test/${file}`, label, false))
 		if (row.exclusive) {
 			const ref = await runRef()
-			return { ref, cand: (await runCand()) ?? ref }
+			const cand = (await runCand()) ?? ref
+			// The cost bound's second reference sample, the test alone (see costOf): a stalled reference run must not hide a slow candidate.
+			const refAgain = row.cost_test && !impl.control ? await run({ name: "ref" }, ctx, `test/${file}`, `${label}-cost`, false, VITEST_TIMEOUT_MS, row.cost_test) : undefined
+			return { ref, cand, refAgain }
 		}
 		const [ref, cand] = await Promise.all([runRef(), runCand()])
 		return { ref, cand: cand ?? ref }
@@ -231,7 +236,7 @@ export async function runVitestRow(row, impl, ctx) {
 	if (bad.length) return failed({ problem: `${bad.length} test(s) the reference passes did not pass`, first: bad.slice(0, 5), ...(detail.length ? { detail } : {}) })
 	// The recorded cost bound (corpus cost_test, cost_max_ratio): an exclusive row's two runs take turns on an idle host, so the candidate's time
 	// for the test is compared with the reference's.
-	const cost = impl.control ? undefined : costOf(row, r, c)
+	const cost = impl.control ? undefined : costOf(row, r, c, refAgain?.timedOut ? undefined : refAgain?.get(file))
 	if (cost?.over) return failed(cost.over)
 	const count = [...r.tests.values()].filter(s => s === "passed").length
 	const refFailed = [...r.tests].filter(([, st]) => st === "failed").map(([name]) => name)

@@ -151,11 +151,11 @@ const REAL_TIME = {
 	"harness-scheduler-retention": [
 		"# `forgets ended subagent chains once their work ends` runs 201 subagent cycles under vitest's default 5 s test budget (Pi's config sets none). The",
 		"# reference clears it with headroom (0.5-0.7 s at 8 CPUs); the candidate costs 2-4 times that CPU (1.4-2.0 s at 8 CPUs, 2.3 s at 2 and 4.6 s at 1):",
-		"# the core is a separate process behind the facade, and the test's 41,372 steps (each a hop of the host/core loop) are each a pipe round trip.",
+		"# the core is a separate process behind the facade, so each step of the test is a pipe round trip.",
 		"# A process the host gives under ~40% of a CPU misses the 5 s budget on the candidate alone: 8 concurrent runs of the row (the shape of -j 8) on",
 		"# 4 CPUs all ended at 10-11 s, alone it passes. The gate therefore runs the row alone, and because that no longer lets a slowdown show as a missed",
 		"# budget, the row records a bound on the candidate's time for the test over the reference's: 5x (cost_max_ratio), 1.3 times the largest ratio",
-		"# measured in 13 paired runs at 8 CPUs (2.1-3.9, median 2.5; durable/contract/README.md, Exclusive rows). The gate reads it in costOf (gate.mjs).",
+		"# measured in 20 paired runs at 8 CPUs (2.1-3.9, median 2.9; durable/contract/README.md, Exclusive rows). The gate reads it in costOf (gate.mjs).",
 		`exclusive = true`,
 		`cost_test = "scheduler retention forgets ended subagent chains"`,
 		`cost_max_ratio = 5`,
