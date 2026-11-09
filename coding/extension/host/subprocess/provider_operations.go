@@ -209,48 +209,40 @@ func oauthModifiesModels(config json.RawMessage) bool {
 }
 
 // providerModifyModels is oauth.modifyModels of a provider config registered by an extension (types.ts:2034): the callback runs in the extension with the chat models
-// and the stored OAuth credential, and the models it returns are the result. Pi's callback is synchronous and its exception reaches the caller of getModels, so a request
-// that fails panics with the error: the composer recovers it into the error of the model listing (modifyExtensionModels).
-func providerModifyModels(me *managedExt, provider string) func([]extension.Model, extension.OAuthCredentials) []extension.Model {
-	return func(models []extension.Model, creds extension.OAuthCredentials) []extension.Model {
-		modified, err := requestModifyModels(me, provider, models, creds)
-		if err != nil {
-			panic(err)
+// and the stored OAuth credential, and the models it returns are the result. Pi's callback is synchronous and its exception reaches the caller of the model listing,
+// so a failed request is the error of the composer's model listing.
+func providerModifyModels(me *managedExt, provider string) func([]extension.Model, extension.OAuthCredentials) ([]extension.Model, error) {
+	return func(models []extension.Model, creds extension.OAuthCredentials) ([]extension.Model, error) {
+		conn := me.connection()
+		if conn == nil {
+			return nil, errors.New("extension not connected")
 		}
-		return modified
+		encoded, err := extension.MarshalModelObjects(models)
+		if err != nil {
+			return nil, err
+		}
+		credential, err := storedOAuthCredential(creds)
+		if err != nil {
+			return nil, err
+		}
+		args, err := json.Marshal(OAuthModifyModelsArgs{Models: encoded, Credentials: credential})
+		if err != nil {
+			return nil, err
+		}
+		raw, err := providerRequest(context.Background(), conn, provider, &Envelope{Type: MsgRequest, Request: &RequestPayload{Method: MethodOAuthModifyModels, Tool: provider, Args: args}})
+		if err != nil {
+			return nil, err
+		}
+		var result OAuthModifyModelsResult
+		if err := json.Unmarshal(raw, &result); err != nil {
+			return nil, err
+		}
+		decoded, err := decodeProviderModels(provider, result.Models)
+		if err != nil {
+			return nil, err
+		}
+		return chatModels(decoded), nil
 	}
-}
-
-func requestModifyModels(me *managedExt, provider string, models []extension.Model, creds extension.OAuthCredentials) ([]extension.Model, error) {
-	conn := me.connection()
-	if conn == nil {
-		return nil, errors.New("extension not connected")
-	}
-	encoded, err := extension.MarshalModelObjects(models)
-	if err != nil {
-		return nil, err
-	}
-	credential, err := storedOAuthCredential(creds)
-	if err != nil {
-		return nil, err
-	}
-	args, err := json.Marshal(OAuthModifyModelsArgs{Models: encoded, Credentials: credential})
-	if err != nil {
-		return nil, err
-	}
-	raw, err := providerRequest(context.Background(), conn, provider, &Envelope{Type: MsgRequest, Request: &RequestPayload{Method: MethodOAuthModifyModels, Tool: provider, Args: args}})
-	if err != nil {
-		return nil, err
-	}
-	var result OAuthModifyModelsResult
-	if err := json.Unmarshal(raw, &result); err != nil {
-		return nil, err
-	}
-	decoded, err := decodeProviderModels(provider, result.Models)
-	if err != nil {
-		return nil, err
-	}
-	return chatModels(decoded), nil
 }
 
 // generateImages runs the provider object's generateImages in its extension.

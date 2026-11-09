@@ -298,6 +298,28 @@ pub struct OAuthProvider {
     pub uses_callback_server: bool,
 }
 
+impl OAuthProvider {
+    /// A provider with its required `login`; every optional capability is
+    /// unset. Build one with `..OAuthProvider::new(name, login)` to set only
+    /// the capabilities the provider implements, so a capability added to the
+    /// struct later does not break the literal.
+    pub fn new(
+        name: impl Into<String>,
+        login: impl Fn(&OAuthLoginCallbacks) -> Result<OAuthCredentials, String> + Send + Sync + 'static,
+    ) -> Self {
+        Self {
+            name: name.into(),
+            is_subscription: false,
+            login: Box::new(login),
+            refresh_token: None,
+            get_api_key: None,
+            credential_store: None,
+            modify_models: None,
+            uses_callback_server: false,
+        }
+    }
+}
+
 /// The serializable capability descriptor placed under the "oauth" key of a
 /// provider config on the wire. Matches the host `ProviderOAuthConfig`.
 #[derive(Serialize)]

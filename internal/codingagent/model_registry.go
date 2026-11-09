@@ -1028,6 +1028,9 @@ func (r *ModelRegistry) upsertRegisteredProviderLocked(name string, incoming pro
 	if incoming.StreamSimple != nil {
 		existing.StreamSimple = incoming.StreamSimple
 	}
+	if incoming.RefreshModels != nil {
+		existing.RefreshModels = incoming.RefreshModels
+	}
 	if incoming.Images != nil {
 		existing.Images = incoming.Images
 	}

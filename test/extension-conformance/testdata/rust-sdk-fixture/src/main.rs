@@ -6021,6 +6021,8 @@ fn register_conformance_oauth_object(ext: &mut Extension) {
             })),
             is_subscription: false,
             credential_store: None,
+            modify_models: None,
+            uses_callback_server: false,
         },
     );
 }
@@ -6052,6 +6054,8 @@ fn register_conformance_oauth_large(ext: &mut Extension) {
             })),
             is_subscription: false,
             credential_store: None,
+            modify_models: None,
+            uses_callback_server: false,
         },
     );
 }
@@ -6102,6 +6106,8 @@ fn register_conformance_oauth(ext: &mut Extension) {
                 format!("key:{}", creds.access)
             })),
             credential_store: Some(Box::new(ConformanceStore)),
+            modify_models: None,
+            uses_callback_server: false,
         },
     );
 }

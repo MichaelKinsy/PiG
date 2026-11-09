@@ -446,7 +446,8 @@ func (r *ModelRegistry) composeProvider(base *ai.ModelsProvider, extension *Prov
 				}
 			}
 			if credential != nil && extension.OAuth != nil && extension.OAuth.ModifyModels != nil {
-				models, err = modifyExtensionModels(base.ID, extension.OAuth.ModifyModels, models, *credential)
+				// provider-composer.ts:566-575: an exception of the synchronous hook reaches the caller of the model listing; the error is the listing's.
+				models, err = extension.OAuth.ModifyModels(models, *credential)
 				if err != nil {
 					return nil, err
 				}
@@ -699,15 +700,4 @@ func composedExtensionStream(custom ai.ModelsStreamFunction, api ai.API, base ai
 		}
 		return base(ctx, model, transcript, options)
 	}
-}
-
-// modifyExtensionModels runs an extension's oauth.modifyModels (provider-composer.ts:566-575), which is synchronous: its exception reaches the caller of the model listing there, and
-// here a panic of the callback (a remote callback panics with its failure) is the listing's error.
-func modifyExtensionModels(providerID string, modify func([]*ai.Model, ai.Credential) []*ai.Model, models []*ai.Model, credential ai.Credential) (modified []*ai.Model, err error) {
-	defer func() {
-		if recovered := recover(); recovered != nil {
-			modified, err = nil, fmt.Errorf("provider %q modifyModels: %v", providerID, recovered)
-		}
-	}()
-	return modify(models, credential), nil
 }

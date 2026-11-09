@@ -596,6 +596,43 @@ once the response arrives. A responder that returns (values nil message) answers
       (check-equal t (pig:jget oauth "has_login"))
       (check-equal t (pig:jget oauth "has_credential_store")))))
 
+(defun pt-modify-models-ext ()
+  (let ((ext (pt-ext)))
+    (pig:register-oauth-provider
+     ext "mm" (pig:obj "baseUrl" "https://mm.test/v1" "refreshModels" (lambda (refresh) (declare (ignore refresh)) nil))
+     (pig:make-oauth-provider
+      :name "MM" :login (lambda (callbacks) (declare (ignore callbacks)) (pig:oauth-credentials :access "login"))
+      :uses-callback-server t
+      :modify-models (lambda (models credentials)
+                       (when (equal (pig:jget credentials "access") "boom") (error "modify boom"))
+                       (loop for model in (reverse (coerce models 'list))
+                             unless (equal (pig:jget model "id") "drop")
+                               collect (pig:obj "id" (pig:jget model "id") "name" (format nil "~A+~A" (pig:jget model "name") (pig:jget credentials "access")))))))
+    ext))
+
+(deftest an-oauth-registration-carries-refresh-models-and-runs-modify-models
+  (with-host (host (pt-modify-models-ext) register)
+    (let* ((providers (pig:jref register "register" "providers")) (entry (aref providers 0)) (oauth (pig:jref entry "config" "oauth")))
+      (check-equal 1 (length providers))
+      (check-equal t (pig:jget entry "refresh_models"))
+      (check (null (nth-value 1 (gethash "refreshModels" (pig:jget entry "config")))))
+      (check-equal "https://mm.test/v1" (pig:jref entry "config" "baseUrl"))
+      (check-equal t (pig:jget oauth "has_modify_models"))
+      (check-equal t (pig:jget oauth "usesCallbackServer")))
+    (let* ((models (pig:arr (pig:obj "id" "a" "name" "A") (pig:obj "id" "drop" "name" "Drop") (pig:obj "id" "b" "name" "B")))
+           (result (pt-run host "m1" "oauth_modify_models" #'pt-none "tool" "mm"
+                           "args" (pig:obj "models" models "credentials" (pig:obj "access" "tok"))))
+           (out (pig:jget result "models")))
+      (check-equal 2 (length out))
+      (check-equal "b" (pig:jget (aref out 0) "id"))
+      (check-equal "B+tok" (pig:jget (aref out 0) "name"))
+      (check-equal "A+tok" (pig:jget (aref out 1) "name")))
+    (multiple-value-bind (result message)
+        (pt-run host "m2" "oauth_modify_models" #'pt-none "tool" "mm"
+                "args" (pig:obj "models" (pig:arr) "credentials" (pig:obj "access" "boom")))
+      (declare (ignore result))
+      (check (search "modify boom" message)))))
+
 (deftest an-oauth-login-drives-the-hosts-login-ui-and-returns-the-credentials
   (with-host (host (pt-oauth-ext))
     (multiple-value-bind (result message frames)

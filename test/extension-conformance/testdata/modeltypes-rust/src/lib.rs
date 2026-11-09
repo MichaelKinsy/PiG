@@ -332,12 +332,8 @@ fn register_dynamic_provider(ext: &mut Extension) {
         "dyn",
         json!({}),
         OAuthProvider {
-            name: "Dynamic OAuth".to_string(),
-            is_subscription: false,
-            login: Box::new(|_| Ok(OAuthCredentials { access: "login".to_string(), ..Default::default() })),
             refresh_token: Some(Box::new(Ok)),
             get_api_key: Some(Box::new(|credentials| credentials.access)),
-            credential_store: None,
             // The models without the "drop" id, in reverse order, each named after the credential's access token.
             modify_models: Some(Box::new(|models, credentials| {
                 if credentials.access == "boom" {
@@ -348,12 +344,22 @@ fn register_dynamic_provider(ext: &mut Extension) {
                     .rev()
                     .filter(|model| model["id"] != "drop")
                     .map(|mut model| {
-                        model["name"] = json!(format!("{}+{}", model["name"].as_str().unwrap_or_default(), credentials.access));
+                        model["name"] = json!(format!(
+                            "{}+{}",
+                            model["name"].as_str().unwrap_or_default(),
+                            credentials.access
+                        ));
                         model
                     })
                     .collect())
             })),
             uses_callback_server: true,
+            ..OAuthProvider::new("Dynamic OAuth", |_| {
+                Ok(OAuthCredentials {
+                    access: "login".to_string(),
+                    ..Default::default()
+                })
+            })
         },
     );
 }

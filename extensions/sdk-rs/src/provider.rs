@@ -24,9 +24,8 @@ pub type ProviderOperationFn = Arc<
     dyn Fn(ProviderModel, Value, ProviderOperationOptions) -> ProviderResult<Value> + Send + Sync,
 >;
 /// The legacy `refreshModels` of a provider config: it refreshes the provider's models and returns the model definitions that replace the extension-provided ones, or `None` to leave them.
-pub type ProviderRefreshModelsFn = Arc<
-    dyn Fn(RefreshModelsContext) -> ProviderResult<Option<Vec<Value>>> + Send + Sync,
->;
+pub type ProviderRefreshModelsFn =
+    Arc<dyn Fn(RefreshModelsContext) -> ProviderResult<Option<Vec<Value>>> + Send + Sync>;
 /// The legacy `streamSimple` of a provider config: it runs in the extension with the request's context and returns the provider's event stream.
 pub type ProviderStreamSimpleFn = Arc<
     dyn Fn(&crate::Context, Value, Value, Value) -> ProviderResult<Arc<ModelEventStream>>
@@ -786,9 +785,9 @@ impl ProviderObjects {
                 provider
                     .refresh_models
                     .as_ref()
-                    .ok_or("refreshModels absent")?(self.refresh_context(
-                    callback, params, signal,
-                ))?;
+                    .ok_or("refreshModels absent")?(
+                    self.refresh_context(callback, params, signal),
+                )?;
                 Ok(Value::Null)
             }
             "stream" | "streamSimple" | "fetchDeferred" | "cancelDeferred" => {

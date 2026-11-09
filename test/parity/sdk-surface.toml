@@ -1349,11 +1349,12 @@ wire = "extension.ProviderConfig.models"
 
 [[row]]
 key = "provider.refreshModels"
-node = "-"
-go = "-"
-rust = "-"
-python = "-"
-lisp = "-"
+node = "read:config.refreshModels"
+go = "ProviderRefreshModelsFunc"
+rust = "ProviderOperations.refresh_models"
+python = "Extension.register_provider"
+lisp = "pig:register-provider|pig:register-provider-p"
+wire = "subprocess.ProviderDecl.refresh_models"
 
 [[row]]
 key = "provider.images"
@@ -1402,11 +1403,12 @@ wire = "subprocess.ProviderOAuthConfig.isSubscription"
 
 [[row]]
 key = "provider.oauth.usesCallbackServer"
-node = "-"
-go = "-"
-rust = "-"
-python = "-"
-lisp = "-"
+node = "read:oauth.usesCallbackServer"
+go = "OAuthProvider.UsesCallbackServer"
+rust = "OAuthProvider.uses_callback_server"
+python = "OAuthProvider.uses_callback_server"
+lisp = "pig:oauth-provider-uses-callback-server"
+wire = "subprocess.ProviderOAuthConfig.usesCallbackServer"
 
 [[row]]
 key = "provider.oauth.login"
@@ -1437,11 +1439,12 @@ wire = "subprocess.ProviderOAuthConfig.has_get_api_key"
 
 [[row]]
 key = "provider.oauth.modifyModels"
-node = "-"
-go = "-"
-rust = "-"
-python = "-"
-lisp = "-"
+node = "read:oauth.modifyModels"
+go = "OAuthProvider.ModifyModels"
+rust = "OAuthProvider.modify_models"
+python = "OAuthProvider.modify_models"
+lisp = "pig:oauth-provider-modify-models"
+wire = "subprocess.ProviderOAuthConfig.has_modify_models"
 
 [[row]]
 key = "provider model.id"

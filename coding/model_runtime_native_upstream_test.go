@@ -279,11 +279,11 @@ func TestModelRuntimeNativeCompatibilityUpstream(t *testing.T) {
 		services, _ := nativeCompatServices(t, "", map[string]ai.Credential{"extension-oauth": {Type: ai.CredentialOAuth, Access: "access", Refresh: "refresh", Expires: time.Now().Add(time.Minute).UnixMilli()}})
 		runtime := services.ModelRuntime()
 		model := nativeCompatModel("base", "extension-oauth", "https://example.test/v1")
-		if err := runtime.RegisterProvider("extension-oauth", ProviderConfigInput{BaseURL: model.ProviderMeta.BaseURL, API: model.ProviderMeta.API, Models: []ai.AnyModel{model}, OAuth: &ExtensionOAuthConfig{Name: "Extension OAuth", RefreshToken: func(_ context.Context, credential ai.Credential) (ai.Credential, error) { return credential, nil }, GetAPIKey: func(credential ai.Credential) string { return credential.Access }, ModifyModels: func(models []*ai.Model, credential ai.Credential) []*ai.Model {
+		if err := runtime.RegisterProvider("extension-oauth", ProviderConfigInput{BaseURL: model.ProviderMeta.BaseURL, API: model.ProviderMeta.API, Models: []ai.AnyModel{model}, OAuth: &ExtensionOAuthConfig{Name: "Extension OAuth", RefreshToken: func(_ context.Context, credential ai.Credential) (ai.Credential, error) { return credential, nil }, GetAPIKey: func(credential ai.Credential) string { return credential.Access }, ModifyModels: func(models []*ai.Model, credential ai.Credential) ([]*ai.Model, error) {
 			if credential.Access == "access" {
-				return append(models, nativeCompatModel("credential-model", "extension-oauth", "https://example.test/v1"))
+				return append(models, nativeCompatModel("credential-model", "extension-oauth", "https://example.test/v1")), nil
 			}
-			return models
+			return models, nil
 		}}}); err != nil {
 			t.Fatal(err)
 		}
