@@ -7747,6 +7747,29 @@
       ]
     },
     {
+      "id": "BF-3a61c56",
+      "title": "The file mutation conformance rows no longer take a slow registration in the host's queue for a file an SDK…",
+      "symptom": "The file mutation conformance rows no longer take a slow registration in the host's queue for a file an SDK task holds.",
+      "rootCause": "No wait decides it.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The file mutation conformance rows no longer take a slow registration in the host's queue for a file an SDK task holds. They ran a host mutation while a task that had not entered yet was waiting to, and reported \"a host mutation ran 89.667ms after the SDK task started\" on Windows for the isolated Lisp SDK. The rows now register in the queue and ask whether their place was admitted, which does not depend on how long the registration took.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3a61c5670a",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/file_mutation_queue_host_test.go::TestHostQueueBusyIsNotFooledByASlowRegistration",
+        "test/extension-conformance/file_mutation_queue_host_test.go::TestHostQueueBusySeesAHeldFile"
+      ]
+    },
+    {
       "id": "BF-3a708ed",
       "title": "fix(durable): list D206 in the docs bundle; the cut-off tool case types its task id; the retry delay product…",
       "symptom": "fix(durable): list D206 in the docs bundle; the cut-off tool case types its task id; the retry delay product is wrapped in float64",
