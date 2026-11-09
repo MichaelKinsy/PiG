@@ -1270,14 +1270,6 @@ call = "sdkjson.Unmarshal"
 dest = "*any"
 count = 1
 
-# once per session entry at resume/load, not per turn
-[[hit]]
-file = "internal/codingagent/session_stats_scan.go"
-func = "walkIndexProbe"
-call = "sdkjson.Unmarshal"
-dest = "any"
-count = 1
-
 # decodes into a concrete type (a type parameter T or durable.JsonValue), not an untyped interface
 [[hit]]
 file = "internal/codingagent/settings.go"

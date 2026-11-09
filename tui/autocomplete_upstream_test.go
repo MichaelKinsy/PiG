@@ -101,6 +101,10 @@ func newAutocompleteFixture(t *testing.T, withFD bool) (root, base, outside stri
 	fd := ""
 	if withFD {
 		fd = requireFDForTest(t)
+		// fd reads the user's git ignore rules from these.
+		t.Setenv("HOME", t.TempDir())
+		t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+		t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
 	}
 	return root, base, outside, NewCombinedProvider(nil, base, fd)
 }

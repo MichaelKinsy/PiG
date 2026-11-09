@@ -3413,6 +3413,29 @@
       "tests": []
     },
     {
+      "id": "BF-1a9093e",
+      "title": "The pi-env daemon on macOS: a small reply (an `lstat`, a ping) could come after megabytes of queued command…",
+      "symptom": "The pi-env daemon on macOS: a small reply (an `lstat`, a ping) could come after megabytes of queued command output, more than a client buffers, where Pi's daemon answers between output frames.",
+      "rootCause": "The writer buffered up to 1 MiB of frames and flushed only when the queue ran empty, so a reply queued behind a full buffer; Pi flushes after every frame (output.rs, frame.rs write_frame). The inherited stdin and stdout were also blocking descriptors: a goroutine reading or writing one held its scheduler slot until sysmon took it back, up to 10 ms, so a request that arrived with every slot held waited that long before a worker ran it, and 1.4 to 2 MB of command output flowed past the reply meanwhile (macOS CI, 64 KiB pipes: 2,162,688 bytes against the 1,600,000 bound). Serve now moves pipes and sockets it is given onto a poller duplicate and restores the mode on return.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "macOS",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The pi-env daemon on macOS: a small reply (an `lstat`, a ping) could come after megabytes of queued command output, more than a client buffers, where Pi's daemon answers between output frames. The writer now flushes after every frame as Pi's does instead of holding up to 1 MiB, and the daemon waits on its inherited stdin and stdout through the runtime poller, so a request that arrives while the runtime is busy with the output no longer waits up to 10 ms for a worker.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1a9093eb86",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "env/daemon/pollable_unix_test.go::TestPollableLeavesOtherFilesAlone",
+        "env/daemon/pollable_unix_test.go::TestPollableMovesInheritedPipesIntoThePoller"
+      ]
+    },
+    {
       "id": "BF-1b5540a",
       "title": "`client.Client.Disconnect` takes the reason string as Pi's `Client.disconnect(reason)` does (it was an…",
       "symptom": "`client.Client.Disconnect` takes the reason string as Pi's `Client.disconnect(reason)` does (it was an `error`); the connection fails with a `DisconnectedError` carrying it.",
@@ -4406,6 +4429,29 @@
       "tests": [
         "durable/core/hops_host_answer_test.go::TestAHostCommitIsAnsweredHostAnswerLeadTicksBeforeItsCallerResumes",
         "durable/core/session/sched_restart_test.go::TestTheAbortStepIsEnqueuedAbortReturnHopsAfterTheHandlerCommit"
+      ]
+    },
+    {
+      "id": "BF-22ef80f",
+      "title": "`pi.exec` reports `killed: true` for a timeout that came due while the call waited, as Pi does: a host that…",
+      "symptom": "`pi.exec` reports `killed: true` for a timeout that came due while the call waited, as Pi does: a host that kept the process off the CPU past the timer and past the child's end (a command that traps SIGTERM and finishes by itself) settled with the cancellation not yet delivered and reported `killed: false`.",
+      "rootCause": "Nightly 42514658073 (, Linux test-fast): TestExecOracleTimerScenariosHoldWhileTheCallerStalls scenario 3 (trap TERM, sleep 4) reported killed:false where Pi reports true. ExecCommand sets killed only when the watcher took ctx.Done before stopWatch; a host that kept the process off the CPU past the timer and past the child end made both ready, or the deadline due with its cancellation not yet delivered. exec.ts keeps its timer until the call settles, so the settle now checks the context and its deadline (the same change as on follow/pi-main).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pi.exec` reports `killed: true` for a timeout that came due while the call waited, as Pi does: a host that kept the process off the CPU past the timer and past the child's end (a command that traps SIGTERM and finishes by itself) settled with the cancellation not yet delivered and reported `killed: false`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "22ef80f126",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "coding/extension/exec_oracle_stall_unix_test.go::TestExecOracleTimerScenariosHoldWhileTheCallerStalls",
+        "coding/extension/exec_timeout_unix_test.go::TestExecCommandReportsKilledWhenTheDeadlineIsDueAtSettle"
       ]
     },
     {
@@ -5519,6 +5565,26 @@
       "tests": [
         "ai/google_convert_tools_upstream_test.go::TestGoogleSharedConvertToolsUpstream"
       ]
+    },
+    {
+      "id": "BF-2b6e9a6",
+      "title": "Loading a packed Lisp cell no longer hangs when two of its extensions each make a host call, such as a…",
+      "symptom": "Loading a packed Lisp cell no longer hangs when two of its extensions each make a host call, such as a `pi.events` subscription, while their factories run.",
+      "rootCause": "helper-loading-call held *helper-lock* across the whole wait for the host's answer. The host accepts a packed cell's members in order and serves a connection only after the members before it registered, so the second member's call waited for the first member's register, and the first member's run needed the same lock to take its connection: when the second member's factory reached its first call before the first member's run took its connection, the two deadlocked and the cell's load never ended.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Loading a packed Lisp cell no longer hangs when two of its extensions each make a host call, such as a `pi.events` subscription, while their factories run. The host serves a cell's connections in order, so the second extension's first call waits for the first extension's register; the first extension's run needed the lock that call held to take its connection, and when the second factory reached its call before the first run took its connection, neither could continue and the load never ended. A factory-time call now holds only the lock of its own connection.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2b6e9a6e21",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-2b8731a",
@@ -13823,6 +13889,28 @@
       "tests": []
     },
     {
+      "id": "BF-606a74f",
+      "title": "`TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits` no longer counts the probe's own module as a write on…",
+      "symptom": "`TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits` no longer counts the probe's own module as a write on the exit path: the host replies to a load before it writes the load's cache entries, so the test now waits for that write with one more request, and its probe loads 300 modules so a count that did not wait fails on every run.",
+      "rootCause": "#426 Linux test-fast (job 129105350415): TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits, \"the compile cache has 16 entries before the process exited and 17 after\". A count taken right after Load, on a loaded machine, precedes that write and reads it as an exit-path write. (a cherry-pick of) lacked pi-main's barrier.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits` no longer counts the probe's own module as a write on the exit path: the host replies to a load before it writes the load's cache entries, so the test now waits for that write with one more request, and its probe loads 300 modules so a count that did not wait fails on every run. The host's comment states what its exit can still write (modules a plugin's call compiled after the last load or reload).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "606a74fefd",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_node_test.go::TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits"
+      ]
+    },
+    {
       "id": "BF-609d2bd",
       "title": "fix(photonimage): decode DDS (DXT1, DXT3, DXT5) as Photon does",
       "symptom": "fix(photonimage): decode DDS (DXT1, DXT3, DXT5) as Photon does",
@@ -19673,6 +19761,28 @@
       "tests": []
     },
     {
+      "id": "BF-7299966",
+      "title": "Every frame the renderer paints allocates two fewer objects: the cursor's hide and show copied their escape…",
+      "symptom": "Every frame the renderer paints allocates two fewer objects: the cursor's hide and show copied their escape sequence into a new slice, where they had copied it into a pooled buffer before dead-terminal handling routed them through `WriteToTerminal`.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Extra allocation or slower run",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Every frame the renderer paints allocates two fewer objects: the cursor's hide and show copied their escape sequence into a new slice, where they had copied it into a pooled buffer before dead-terminal handling routed them through `WriteToTerminal`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "72999669a8",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "tui/terminal_write_allocs_norace_test.go::TestWriteToTerminalOfAByteWriterDoesNotAllocate"
+      ]
+    },
+    {
       "id": "BF-72db80f",
       "title": "fix(durable): a streamed partial commits the text of its own events",
       "symptom": "fix(durable): a streamed partial commits the text of its own events",
@@ -23067,6 +23177,30 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-87d4c01",
+      "title": "Searching a long session in `/tree` allocates as many objects as in 0.7.0 again, 30% fewer than with the…",
+      "symptom": "Searching a long session in `/tree` allocates as many objects as in 0.7.0 again, 30% fewer than with the regression: lowercasing text with non-ASCII characters (the search text of every row, model ids and names, and other callers of `jsstring.ToLower`) made a second copy of each text, which raised `BenchmarkTreeRecompute` by 43%.",
+      "rootCause": "An earlier change kept lone surrogates in ToLower by decoding into a heap slice and converting a byte slice with string(...), two allocations more per non-ASCII text than []rune(s) on the stack and a strings.Builder. The lowercase memo of a /tree search lowercases every row once, so BenchmarkTreeRecompute rose from 11328 to 16254 allocs/op (bisected to that commit on the 0.7.1 line). UpperRune likewise built a byte slice for string(...). Same results, the old allocation counts, and a guard test for each.",
+      "rootCauseSource": "commit",
+      "userImpact": "Extra allocation or slower run",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Searching a long session in `/tree` allocates as many objects as in 0.7.0 again, 30% fewer than with the regression: lowercasing text with non-ASCII characters (the search text of every row, model ids and names, and other callers of `jsstring.ToLower`) made a second copy of each text, which raised `BenchmarkTreeRecompute` by 43%.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "87d4c01443",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "internal/jsstring/case_allocs_norace_test.go::TestToLowerOfLongNonASCIITextAllocatesTwice",
+        "internal/jsstring/case_allocs_norace_test.go::TestToLowerOfShortNonASCIITextAllocatesItsResultOnly",
+        "internal/jsstring/case_allocs_norace_test.go::TestUpperRuneOfAPlainCharacterAllocatesOnce"
+      ]
     },
     {
       "id": "BF-8894a13",
@@ -28124,6 +28258,26 @@
       ]
     },
     {
+      "id": "BF-9faf2de",
+      "title": "Chord's workers on macOS and the BSDs: a worker killed by a signal (the grace's or the start timer's SIGKILL)…",
+      "symptom": "Chord's workers on macOS and the BSDs: a worker killed by a signal (the grace's or the start timer's SIGKILL) left its lock's socket file, and every later start of its address failed with `... is a stale lock file`, `retry` too, until the file was removed by hand.",
+      "rootCause": "Ports Pi. A worker killed by a signal left its lock's socket file, and every later start of its address failed closed on it, retry too. The workers component now removes a lock socket file nobody accepts on before each start and after a child's exit by a signal, in the address's queue. ProcessLock also treats ENOTSOCK as stale instead of retrying until its context ended.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "macOS",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord's workers on macOS and the BSDs: a worker killed by a signal (the grace's or the start timer's SIGKILL) left its lock's socket file, and every later start of its address failed with `... is a stale lock file`, `retry` too, until the file was removed by hand. The workers component now removes a lock socket file nobody accepts on before each start and after a child's exit by a signal, in the address's queue. `ProcessLock` on macOS no longer spins until its context ends when a regular file sits at the lock's path (`ENOTSOCK`); it fails closed naming the file, as for a socket file nobody listens on.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "9faf2de0f5",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-D110",
       "title": "Git sources: `#subdirectory=` selects a subdirectory; `git://` and upper-case schemes yield usable…",
       "symptom": "for (2) and (3) Pi's `parseGitUrl` returns a repository no Git client can clone (`https:////host/org/repo`, `https://HTTPS://host/org/repo`), so `pi install` of such a source fails at clone time.",
@@ -28694,6 +28848,28 @@
         "internal/codingagent/settings_shared_read_test.go::TestSettingsReadHonorsPiWriterLock",
         "internal/codingagent/tool_render_shell_details_test.go::TestShellCardIgnoresACaseVariantTruncatedBy",
         "internal/codingagent/tool_render_shell_details_test.go::TestShellDetailsFromReadsTheExactKeys"
+      ]
+    },
+    {
+      "id": "BF-a0eeb24",
+      "title": "`/fork` of a session that is not file-backed builds the clone's entries from the source's decoded messages…",
+      "symptom": "`/fork` of a session that is not file-backed builds the clone's entries from the source's decoded messages again instead of decoding every record a second time, which doubled the allocations of that clone.",
+      "rootCause": "An earlier change made Clone stream its records and decode each one it keeps in memory with DecodeFileEntry, where the earlier code rebased the source's decoded message entries onto their new parent and decoded only the other records.",
+      "rootCauseSource": "commit",
+      "userImpact": "Extra allocation or slower run",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`/fork` of a session that is not file-backed builds the clone's entries from the source's decoded messages again instead of decoding every record a second time, which doubled the allocations of that clone.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a0eeb24909",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/session_clone_memory_allocs_norace_test.go::TestCloneOfAnInMemorySessionReusesItsDecodedMessages"
       ]
     },
     {
@@ -30349,6 +30525,28 @@
       "tests": [
         "chord/delta/retention_upstream_test.go::TestDeltaTrackerRetentionAcrossGCJobs",
         "chord/delta/retention_upstream_test.go::TestTrackerReleasesADroppedOpenChangeWhenTheNextOpens"
+      ]
+    },
+    {
+      "id": "BF-abd1431",
+      "title": "After a Radius sign-in, accepting the offer to configure the Radius MCP server updates the chat (its notices…",
+      "symptom": "After a Radius sign-in, accepting the offer to configure the Radius MCP server updates the chat (its notices, the reload status and the last paint) on the interactive loop, as Pi's single-threaded TUI does, and no longer from the login's own goroutine, where it raced the loop's status line (a data race the nightly race job reported).",
+      "rootCause": "After a Radius sign-in, accepting the offer to configure the Radius MCP server updates the chat (its notices, the reload status and the last paint) on the interactive loop, as Pi's single-threaded TUI does, and no longer from the login's own goroutine, where it raced the loop's status line (a data race the nightly race job reported).",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "After a Radius sign-in, accepting the offer to configure the Radius MCP server updates the chat (its notices, the reload status and the last paint) on the interactive loop, as Pi's single-threaded TUI does, and no longer from the login's own goroutine, where it raced the loop's status line (a data race the nightly race job reported).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "abd143147f",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/radius_login_mcp_offer_upstream_test.go::TestRadiusLoginOffersTheRadiusMCPServerUpstream"
       ]
     },
     {
@@ -32776,6 +32974,31 @@
       ]
     },
     {
+      "id": "BF-bda636e",
+      "title": "The pi-env daemon left its stdin and stdout non-blocking for whoever shared them when it ended by SIGTERM or…",
+      "symptom": "The pi-env daemon left its stdin and stdout non-blocking for whoever shared them when it ended by SIGTERM or by its silence limit: it moves them into the runtime poller while it runs, which sets O_NONBLOCK on the open file descriptions a parent shell or a wrapper also holds, and only the normal return gave the mode back.",
+      "rootCause": "The poller duplicate of stdin and stdout shares the open file description with the original descriptors and every other holder (a parent shell, a wrapper, a stderr redirected into stdout), so Serve made them non-blocking for all of them. The deferred restore did not run on the os.Exit of the SIGTERM and silence exits; both now restore first. The restore closes the duplicate before it flips the mode, through the original descriptor, so a reader parked in the duplicate never sees the change. A thread-panic message to a stderr that shares a full stdout pipe answered EAGAIN and was lost; it now waits for room as Pi's eprintln does.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The pi-env daemon left its stdin and stdout non-blocking for whoever shared them when it ended by SIGTERM or by its silence limit: it moves them into the runtime poller while it runs, which sets O_NONBLOCK on the open file descriptions a parent shell or a wrapper also holds, and only the normal return gave the mode back. Every exit does now, and a thread-panic message written to a stderr that shares a full stdout pipe waits for room instead of being lost.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "bda636eb5c",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "env/daemon/pollable_unix_test.go::TestPollableMovesInheritedPipesIntoThePoller",
+        "env/daemon/pollable_unix_test.go::TestWriteStderrWaitsOnAFullPipe",
+        "env/daemon_stdio_mode_test.go::TestDaemonGivesBackBlockingStdioOnEveryExit",
+        "env/main_test.go::TestMain"
+      ]
+    },
+    {
       "id": "BF-bdb7ad8",
       "title": "A single server-sent-event line larger than 32 MiB (for example a base64 image chunk) no longer fails the…",
       "symptom": "A single server-sent-event line larger than 32 MiB (for example a base64 image chunk) no longer fails the stream with `token too long` on the providers that use PiG's SSE decoder.",
@@ -32909,6 +33132,26 @@
       ]
     },
     {
+      "id": "BF-bf67aae",
+      "title": "Loading a packed Python cell no longer hangs when its second extension's factory makes a host call before the…",
+      "symptom": "The Python SDK had the same lock order as the Lisp SDK: a factory-time host call held the lock `run` takes while it waited for the host, so neither could continue.",
+      "rootCause": "loading_call held _State.lock across the whole wait for the host's answer, and run_with_socket needs that lock to take its connection. The host serves a packed cell's members in order, so the second member's call waits for the first member's register: when the second member's factory reached its first call before the first member's run took its connection, the two deadlocked.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Loading a packed Python cell no longer hangs when its second extension's factory makes a host call before the first extension's run has taken its connection. The Python SDK had the same lock order as the Lisp SDK: a factory-time host call held the lock `run` takes while it waited for the host, so neither could continue. A factory-time call now holds only the lock of its own connection.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "bf67aaefc7",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-bf73e77",
       "title": "fix(durable/core): join split surrogates through jv.AppendConcat, not byte slices",
       "symptom": "fix(durable/core): join split surrogates through jv.AppendConcat, not byte slices",
@@ -33036,6 +33279,28 @@
         "test/ci-images/verification_shards_test.go::TestGroupedTestsDoNotRunWhenTheAgentDirectoriesCannotBeSeeded",
         "test/ci-images/verification_shards_test.go::TestGroupedTestsIsolateAndGuardTheAgentDirectories",
         "test/ci-images/verification_shards_test.go::TestIsUnderDirComparesFileIdentity"
+      ]
+    },
+    {
+      "id": "BF-c0649a6",
+      "title": "On Windows, a chord plugin's Node host whose link had closed could be killed by the host after its…",
+      "symptom": "The process had ended its channel and run its exit handlers within 50 ms; what kept it alive was Node writing the V8 compile cache of every module it compiled, one file after another, as it exited, which on a loaded Windows machine and a cold cache (a new extraction directory or new plugins) took from one to over five seconds.",
+      "rootCause": "A host whose link closed was killed on Windows after the 5 s stop grace (exit status 1, \"its link closed and it did not exit within 5s\"). The process had ended its channel, run its exit handlers and reached its `exit` event 50 ms after the link closed; what kept it alive was Node writing the V8 compile cache of every module it compiled, one file after another, as the process exits (mkstemp, write, rename: Node's CompileCacheHandler::Persist, run at exit). A cold cache (a tree extracted for a new CacheDir, new plugins) made that many writes, and on a loaded Windows runner they took from 1 to over 5 s: 30 of about 8000 exits of the target test took over 2 s and 7 were killed (Windows…",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "On Windows, a chord plugin's Node host whose link had closed could be killed by the host after its five-second stop grace instead of exiting by itself (exit status 1, \"its link closed and it did not exit within 5s\"). The process had ended its channel and run its exit handlers within 50 ms; what kept it alive was Node writing the V8 compile cache of every module it compiled, one file after another, as it exited, which on a loaded Windows machine and a cold cache (a new extraction directory or new plugins) took from one to over five seconds. The host now writes the cache once it is up and after each load and reload, so its exit has none left to write.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c0649a6934",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_node_test.go::TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits"
       ]
     },
     {
@@ -40893,6 +41158,28 @@
       "tests": [
         "coding/cli/print_prompt_end_binary_test.go::TestPrintInputCallbackRunsDuringTheRun",
         "coding/extension/host/subprocess/runtime_node_run_beginning_test.go::TestNodeRunBeginningRunsTheInputsImmediateBeforeTheFramesReadWithIt"
+      ]
+    },
+    {
+      "id": "BF-e57eef0",
+      "title": "The RPC usage probe that checks Pi's stdout ordering no longer dies on an unhandled `write EPIPE` when the…",
+      "symptom": "The RPC usage probe that checks Pi's stdout ordering no longer dies on an unhandled `write EPIPE` when the CLI under test stops reading its stdin before the probe sends the prompt; it reports that the CLI wrote no frame, and any other failure to write the prompt still fails it.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The RPC usage probe that checks Pi's stdout ordering no longer dies on an unhandled `write EPIPE` when the CLI under test stops reading its stdin before the probe sends the prompt; it reports that the CLI wrote no frame, and any other failure to write the prompt still fails it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e57eef0e6d",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "coding/cli/stdout_backpressure_test.go::TestRPCUsageProbeFailsWhenTheCLIWritesNoFrame"
       ]
     },
     {

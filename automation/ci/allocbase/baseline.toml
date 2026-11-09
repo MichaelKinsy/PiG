@@ -61,12 +61,12 @@ allocs = 75151
 [[benchmark]]
 package = "./agent"
 benchmark = "BenchmarkParallelToolBatch/settled"
-allocs = 795
+allocs = 603
 
 [[benchmark]]
 package = "./agent"
 benchmark = "BenchmarkParallelToolBatch/unsettled"
-allocs = 2222
+allocs = 625
 
 [[benchmark]]
 package = "./agent"
@@ -101,7 +101,7 @@ allocs = 30
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkAnthropicNativeOAuthLogin"
-allocs = 671
+allocs = 630
 
 [[benchmark]]
 package = "./ai"
@@ -260,6 +260,86 @@ allocs = 4
 
 [[benchmark]]
 package = "./ai"
+benchmark = "BenchmarkBuiltinToolArgumentValidation/bash/coerced"
+allocs = 18
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkBuiltinToolArgumentValidation/bash/coerced/via-tool"
+allocs = 33
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkBuiltinToolArgumentValidation/bash/valid"
+allocs = 33
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkBuiltinToolArgumentValidation/bash/valid/via-tool"
+allocs = 25
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkBuiltinToolArgumentValidation/edit/coerced"
+allocs = 26
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkBuiltinToolArgumentValidation/edit/coerced/via-tool"
+allocs = 52
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkBuiltinToolArgumentValidation/edit/valid"
+allocs = 65
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkBuiltinToolArgumentValidation/edit/valid/via-tool"
+allocs = 48
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkBuiltinToolArgumentValidation/read/coerced"
+allocs = 21
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkBuiltinToolArgumentValidation/read/coerced/via-tool"
+allocs = 39
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkBuiltinToolArgumentValidation/read/valid"
+allocs = 42
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkBuiltinToolArgumentValidation/read/valid/via-tool"
+allocs = 32
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkBuiltinToolArgumentValidation/write/coerced"
+allocs = 14
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkBuiltinToolArgumentValidation/write/coerced/via-tool"
+allocs = 29
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkBuiltinToolArgumentValidation/write/valid"
+allocs = 36
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkBuiltinToolArgumentValidation/write/valid/via-tool"
+allocs = 27
+
+[[benchmark]]
+package = "./ai"
 benchmark = "BenchmarkCloneAssistantContent/deep-copy"
 allocs = 71
 
@@ -326,22 +406,22 @@ allocs = 13
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkCredentialKeyOrderRoundTrip"
-allocs = 925
+allocs = 854
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkCredentialOptionalProjection/0"
-allocs = 662
+allocs = 602
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkCredentialOptionalProjection/128"
-allocs = 8600
+allocs = 7900
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkCredentialOptionalProjection/8"
-allocs = 1192
+allocs = 1092
 
 [[benchmark]]
 package = "./ai"
@@ -936,17 +1016,17 @@ allocs = 16
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkToolArgumentValidation/edits-1"
-allocs = 1826
+allocs = 63
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkToolArgumentValidation/edits-1000"
-allocs = 100846
+allocs = 14022
 
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkToolArgumentValidation/read"
-allocs = 373
+allocs = 45
 
 [[benchmark]]
 package = "./ai"
@@ -1280,6 +1360,21 @@ allocs = 0
 
 [[benchmark]]
 package = "./coding"
+benchmark = "BenchmarkSessionSendLongTurnEvents/discarded"
+allocs = 38159
+
+[[benchmark]]
+package = "./coding"
+benchmark = "BenchmarkSessionSendLongTurnEvents/drained"
+allocs = 120846
+
+[[benchmark]]
+package = "./coding"
+benchmark = "BenchmarkSessionSendLongTurnEvents/unread"
+allocs = 38160
+
+[[benchmark]]
+package = "./coding"
 benchmark = "BenchmarkSessionSendWithSubscriber"
 allocs = 1177
 
@@ -1331,7 +1426,7 @@ allocs = 1539
 [[benchmark]]
 package = "./coding/cli"
 benchmark = "BenchmarkConfiguredPackageResources"
-allocs = 8693
+allocs = 7252
 
 [[benchmark]]
 package = "./coding/cli"
@@ -1361,7 +1456,7 @@ allocs = 8003
 [[benchmark]]
 package = "./coding/cli"
 benchmark = "BenchmarkNpmMetadataLookup"
-allocs = 138
+allocs = 92
 
 [[benchmark]]
 package = "./coding/cli"
@@ -1371,17 +1466,17 @@ allocs = 1904
 [[benchmark]]
 package = "./coding/cli"
 benchmark = "BenchmarkPackageAutoloadResolution/1000"
-allocs = 200524
+allocs = 182523
 
 [[benchmark]]
 package = "./coding/cli"
 benchmark = "BenchmarkPackageCommandTrustResolution"
-allocs = 45
+allocs = 39
 
 [[benchmark]]
 package = "./coding/cli"
 benchmark = "BenchmarkPackageInheritedOutput"
-allocs = 118
+allocs = 62
 
 [[benchmark]]
 package = "./coding/cli"
@@ -1456,7 +1551,7 @@ allocs = 606294
 [[benchmark]]
 package = "./coding/cli"
 benchmark = "BenchmarkPrintPipelineDeltas/print/text/deltas=1000"
-allocs = 24636
+allocs = 23042
 
 [[benchmark]]
 package = "./coding/cli"
@@ -1631,7 +1726,7 @@ allocs = 588
 [[benchmark]]
 package = "./coding/cli"
 benchmark = "BenchmarkSkillResourceMetadata/1000"
-allocs = 239520
+allocs = 221520
 
 [[benchmark]]
 package = "./coding/cli"
@@ -2131,17 +2226,17 @@ allocs = 223
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkAutocompleteCommandOrder/0"
-allocs = 238
+allocs = 85
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkAutocompleteCommandOrder/512"
-allocs = 7611
+allocs = 4580
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkAutocompleteCommandOrder/8"
-allocs = 370
+allocs = 171
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -2201,7 +2296,7 @@ allocs = 8038
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkClipboardBMPNormalization"
-allocs = 50
+allocs = 46
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -2245,6 +2340,16 @@ allocs = 10
 
 [[benchmark]]
 package = "./internal/codingagent"
+benchmark = "BenchmarkCompleteRowRedraw/codemode"
+allocs = 3069
+
+[[benchmark]]
+package = "./internal/codingagent"
+benchmark = "BenchmarkCompleteRowRedraw/write"
+allocs = 41
+
+[[benchmark]]
+package = "./internal/codingagent"
 benchmark = "BenchmarkConfiguredNpmProbeFailure"
 allocs = 207
 
@@ -2266,7 +2371,7 @@ allocs = 166
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkCopilotAccountAvailability"
-allocs = 992
+allocs = 908
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -2411,7 +2516,7 @@ allocs = 311
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkLoginArgumentCompletions"
-allocs = 1010
+allocs = 926
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -2441,7 +2546,7 @@ allocs = 6717
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkModelCommandCachedMatch/1"
-allocs = 725
+allocs = 651
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -2461,7 +2566,7 @@ allocs = 2046
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkModelThinkingSubmenu"
-allocs = 2301
+allocs = 1901
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -2516,12 +2621,12 @@ allocs = 78
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkRemoteCustomFocusLifecycle/1000"
-allocs = 79
+allocs = 74
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkRequestAuthProviderProjection"
-allocs = 795
+allocs = 736
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -2546,7 +2651,7 @@ allocs = 49083
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkRuntimeModelsSelection"
-allocs = 771
+allocs = 694
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -2556,22 +2661,22 @@ allocs = 108
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkSessionClone"
-allocs = 26213
+allocs = 25710
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkSessionOpen"
-allocs = 60408
+allocs = 35469
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkSessionSelectorCurrentSession/10"
-allocs = 38
+allocs = 25
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkSessionSelectorCurrentSession/1000"
-allocs = 2784
+allocs = 1583
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -2611,12 +2716,12 @@ allocs = 1138359
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkSessionSelectorSearch/10"
-allocs = 35
+allocs = 22
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkSessionSelectorSearch/1000"
-allocs = 2418
+allocs = 1217
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -3101,7 +3206,7 @@ allocs = 152
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkExtensionDialogRemapping"
-allocs = 216
+allocs = 201
 
 [[benchmark]]
 package = "./tui"
@@ -3152,6 +3257,16 @@ allocs = 46278
 package = "./tui"
 benchmark = "BenchmarkLongAnswerStream/60000"
 allocs = 482547
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkLongStreamingAssistantMessage/default"
+allocs = 122545
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkLongStreamingAssistantMessage/foreign"
+allocs = 4814365
 
 [[benchmark]]
 package = "./tui"
@@ -3311,17 +3426,17 @@ allocs = 2726
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkModelSelectorCatalogRefresh/100"
-allocs = 907
+allocs = 697
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkModelSelectorCatalogRefresh/10000"
-allocs = 70243
+allocs = 50231
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkNativeModelSelectorFilter"
-allocs = 12184
+allocs = 8184
 
 [[benchmark]]
 package = "./tui"

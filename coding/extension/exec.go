@@ -271,6 +271,15 @@ func ExecCommand(ctx context.Context, cwd, command string, args []string, opts *
 		case <-ctx.Done():
 			killProcess()
 		case <-stopWatch:
+			// exec.ts keeps its timer and abort listener until the call settles, so a timeout or abort that came due while the call
+			// waited counts, however the two ready channels would have been picked: a host that kept this process off the CPU past the
+			// timer and past the child's end settles with the deadline due and its cancellation not yet delivered, and Pi's call, on a
+			// prompt host, killed the child.
+			due, hasDeadline := ctx.Deadline()
+			//portlint:allow clock the call's own timeout is wall time against the deadline context.WithTimeout set; it is the settle's check that the timer has fired, not a scheduler's throttle
+			if ctx.Err() != nil || hasDeadline && !time.Now().Before(due) {
+				killProcess()
+			}
 		}
 	}()
 

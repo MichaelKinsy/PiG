@@ -7,9 +7,11 @@ import (
 	"encoding/json"
 	"errors"
 	"io/fs"
+	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -475,6 +477,75 @@ func TestNodeTheFirstUseOfTheLinkAttachesItAndStartsTheHostsHeartbeat(t *testing
 			node.Link().OnClose(func() { close(closed) })
 			<-closed
 		})
+	}
+}
+
+// compileCacheFiles counts the cache entries (not their temporary files) in dir, the V8 compile cache of a process's tree.
+func compileCacheFiles(t *testing.T, dir string) int {
+	t.Helper()
+	count := 0
+	err := filepath.WalkDir(dir, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !entry.IsDir() && !strings.Contains(entry.Name(), ".") {
+			count++
+		}
+		return nil
+	})
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		t.Fatal(err)
+	}
+	return count
+}
+
+// Not Pi's: Pi's plugins run in the app's process. Node writes the V8 compile cache of the modules a process compiled when the
+// process exits, one file after another, before it is gone. A process whose cache is cold (a new tree, new plugins) had its
+// writes on its exit path, where each took long enough on Windows under load that together they outlasted the stop grace after
+// its link closed: the Go side killed the process after it had run its exit handlers
+// (TestNodeTheFirstUseOfTheLinkAttachesItAndStartsTheHostsHeartbeat, "its link closed and it did not exit within 5s", exit
+// status 1). The process writes the cache once it is up and after each load and reload, so its exit has none left to write.
+//
+// host.mjs replies to a load before it writes the load's cache entries (the reply is out first, so the Go side is not held for the write), so the
+// count that follows Load must wait for them: a request after the load is handled only once the write is done. Counting right after Load took the
+// entry of the probe's own module, compiled by the load and written after its reply, for a write on the exit path (#426, Linux test-fast: 16
+// entries before the exit, 17 after). The probe here loads 300 modules, so the write after the reply is long and a count that does not wait for it
+// fails on every run, not on the loaded ones.
+func TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits(t *testing.T) {
+	cache := t.TempDir()
+	modules := t.TempDir()
+	var imports []string
+	for i := range 300 {
+		file := filepath.Join(modules, "m"+strconv.Itoa(i)+".mjs")
+		if err := os.WriteFile(file, []byte("export const n = "+strconv.Itoa(i)+";\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		imports = append(imports, strconv.Quote((&url.URL{Scheme: "file", Path: "/" + strings.TrimPrefix(filepath.ToSlash(file), "/")}).String()))
+	}
+	runtime, node := probeNode(t, `loaded: await Promise.all([`+strings.Join(imports, ",")+`].map((module) => import(module))), echo: async (args) => args`, NodeOptions{CacheDir: cache}, nil)
+	// The load's reply precedes the write of its cache; a request after it is handled only once that write is done.
+	if _, err := runtime.Reload(node, nil, background); err != nil {
+		t.Fatal(err)
+	}
+	tree, err := extractNode(cache)
+	if err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-node.Exited():
+		t.Fatalf("the process ended: %v", node.Err())
+	default:
+	}
+	dir := filepath.Join(tree, "v8")
+	before := compileCacheFiles(t, dir)
+	if before == 0 {
+		t.Fatal("the process, still running after its load, has written none of its compile cache: it would write it as it exits")
+	}
+	if err := node.Close(background); err != nil {
+		t.Fatal(err)
+	}
+	if after := compileCacheFiles(t, dir); after != before {
+		t.Fatalf("the compile cache has %d entries before the process exited and %d after: it wrote %d on its exit path", before, after, after-before)
 	}
 }
 
