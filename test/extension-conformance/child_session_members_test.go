@@ -88,7 +88,7 @@ func TestChildAgentSessionMembersLisp(t *testing.T) {
 	}
 }
 
-// TestChildAgentSessionQueueLisp reads the queueing members and the context usage of an idle session, and ends an awaited execute-bash from another thread, through the Lisp SDK. A member sent over the sync lane (childSession.op) instead of opAsync would hold abort-bash behind execute-bash for its 20 s and fail the second check.
+// TestChildAgentSessionQueueLisp reads the queueing members and the context usage of an idle session through the Lisp SDK (the abort ordering is in child_session_async_lisp_test.go).
 func TestChildAgentSessionQueueLisp(t *testing.T) {
 	host, _ := newChildSessionHost(t)
 	cfg := lispFixtureConfig(t, "child-session-lisp", childsession.Name)
@@ -97,8 +97,7 @@ func TestChildAgentSessionQueueLisp(t *testing.T) {
 		t.Fatalf("load: %v", failures)
 	}
 	for tool, want := range map[string]string{
-		"child_queue":      `{"steer":"resolved","followUp":"resolved","usage":null,"queued":2}`,
-		"child_abort_bash": `{"ended":true,"cancelled":true}`,
+		"child_queue": `{"steer":"resolved","followUp":"resolved","usage":null,"queued":2}`,
 	} {
 		result, err := loaded[0].Tools[tool].Definition.Execute(t.Context(), "call", json.RawMessage(`{}`), nil)
 		if err != nil {

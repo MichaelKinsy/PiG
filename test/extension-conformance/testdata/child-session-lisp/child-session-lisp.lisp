@@ -306,27 +306,78 @@
                                  "queued" (pig:agent-session-pending-message-count session))))
       (pig:agent-session-dispose session))))
 
+(defun seconds-since (start) (/ (float (- (get-internal-real-time) start)) internal-time-units-per-second))
+
+(defun make-child-session (ctx &optional (model (pig:obj "provider" "sentinel" "id" "echo")))
+  (pig:ctx-create-agent-session ctx :model model :in-memory t :settings (no-compaction) :resources (quiet-resources)))
+
 (defun child-abort-bash (ctx params)
-  "An awaited member never holds a later call: execute-bash blocks in one thread and abort-bash, sent from this one, ends it."
+  "child_abort_probe: execute-bash \"sleep 25\" blocks in one thread and abort-bash, sent 0.7 s later from this one, ends it long before the command would."
   (declare (ignore params))
-  (let ((session (pig:ctx-create-agent-session ctx :model (pig:obj "provider" "sentinel" "id" "echo") :in-memory t
-                                                   :settings (no-compaction) :resources (quiet-resources)))
-        (result nil))
+  (let ((session (make-child-session ctx)) (result nil) (err ""))
     (unwind-protect
-         (let ((runner (sb-thread:make-thread (lambda () (setf result (pig:agent-session-execute-bash session "sleep 20"))) :name "child-bash")))
-           (loop with deadline = (+ (get-internal-real-time) (* 10 internal-time-units-per-second))
-                 until (or (pig:agent-session-bash-running-p session) (> (get-internal-real-time) deadline)) do (sleep 0.01))
+         (let* ((start (get-internal-real-time))
+                (runner (sb-thread:make-thread (lambda ()
+                                                 (handler-case (setf result (pig:agent-session-execute-bash session "sleep 25"))
+                                                   (error (e) (setf err (princ-to-string e)))))
+                                               :name "child-bash")))
+           (sleep 0.7)
            (pig:agent-session-abort-bash session)
-           (let ((joined (sb-thread:join-thread runner :default nil :timeout 10)))
-             (declare (ignore joined))
-             (pig:to-json (pig:obj "ended" (flag (not (sb-thread:thread-alive-p runner)))
-                                   "cancelled" (flag (and result (eq (pig:jget result "cancelled") t)))))))
+           (sb-thread:join-thread runner :default nil :timeout 12)
+           (if (sb-thread:thread-alive-p runner)
+               (pig:to-json (pig:obj "returned" :false))
+               (pig:to-json (pig:obj "returned" t "cancelled" (flag (and result (eq (pig:jget result "cancelled") t)))
+                                     "err" err "seconds" (seconds-since start)))))
       (pig:agent-session-dispose session))))
+
+(defun child-order-probe (ctx params)
+  "child_order_probe: one member is held by the host; abort-bash sent 0.4 s later from this thread must not wait behind it."
+  (let* ((first (pig:jget params "first")) (session (make-child-session ctx)))
+    (unwind-protect
+         (let ((runner (sb-thread:make-thread
+                        (lambda ()
+                          (ignore-errors
+                           (cond ((equal first "cycleModel") (pig:agent-session-cycle-model session :direction "forward"))
+                                 ((equal first "executeBash") (pig:agent-session-execute-bash session "echo x"))
+                                 ((equal first "setModel") (pig:agent-session-set-model session (pig:obj "provider" "sentinel" "id" "echo"))))))
+                        :name "child-held")))
+           (sleep 0.4)
+           (let ((start (get-internal-real-time)))
+             (pig:agent-session-abort-bash session)
+             (let ((took (seconds-since start)))
+               (sb-thread:join-thread runner :default nil :timeout 15)
+               (pig:to-json (pig:obj "abortTook" took)))))
+      (pig:agent-session-dispose session))))
+
+(defun child-usage (ctx params)
+  "getContextUsage of an idle session on the model params.provider/params.model."
+  (let ((session (make-child-session ctx (pig:obj "provider" (pig:jget params "provider") "id" (pig:jget params "model")))))
+    (unwind-protect (pig:to-json (pig:obj "usage" (or (pig:agent-session-get-context-usage session) :null)))
+      (pig:agent-session-dispose session))))
+
+(defun child-ctx-cancel (ctx params)
+  "The :ctx of execute-bash, compact and navigate-tree: this tool's context is cancelled by the host while execute-bash runs; the observation is written to params.out."
+  (let ((session (make-child-session ctx)) (out (pig:obj)) (start (get-internal-real-time)))
+    (unwind-protect
+         (progn
+           (setf (gethash "bash" out)
+                 (let ((result (handler-case (pig:agent-session-execute-bash session "sleep 20" :ctx ctx)
+                                 (error (e) (pig:obj "error" (princ-to-string e))))))
+                   (pig:obj "cancelled" (flag (eq (pig:jget result "cancelled") t)) "error" (or (pig:jget result "error") ""))))
+           (setf (gethash "seconds" out) (seconds-since start))
+           (setf (gethash "compact" out) (error-text (lambda () (pig:agent-session-compact session :ctx ctx))))
+           (setf (gethash "navigate" out) (error-text (lambda () (pig:agent-session-navigate-tree session "none" :ctx ctx)))))
+      (pig:agent-session-dispose session))
+    (with-open-file (stream (pig:jget params "out") :direction :output :if-exists :supersede :external-format :utf-8)
+      (write-string (pig:to-json out) stream))
+    "done"))
 
 (defun new-extension ()
   (let ((ext (pig:make-extension "child-session")))
     (loop for (name function) in (list (list "child_run" #'child-run) (list "child_lifecycle" #'child-lifecycle) (list "child_hold" #'child-hold)
                                        (list "child_errors" #'child-errors) (list "child_events" #'child-events)
-                                       (list "child_members" #'child-members) (list "child_queue" #'child-queue) (list "child_abort_bash" #'child-abort-bash))
+                                       (list "child_members" #'child-members) (list "child_queue" #'child-queue)
+                                       (list "child_abort_probe" #'child-abort-bash) (list "child_order_probe" #'child-order-probe)
+                                       (list "child_usage" #'child-usage) (list "child_ctx_cancel" #'child-ctx-cancel))
           do (pig:tool ext name name (pig:obj "type" "object") function))
     ext))
