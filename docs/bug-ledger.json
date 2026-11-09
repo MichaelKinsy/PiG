@@ -56614,7 +56614,7 @@
     },
     {
       "id": "D615",
-      "title": "The Go, Python and Lisp SDKs show the host each provider stream event as it was when the provider pushed it…"
+      "title": "The Go, Python, Lisp and Rust SDKs show the host each provider stream event as it was when the provider…"
     }
   ],
   "exemptCommits": {

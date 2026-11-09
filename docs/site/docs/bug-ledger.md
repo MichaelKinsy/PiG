@@ -28972,7 +28972,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D605 | The server's two hosts serve one union: `Host.Delegate` one way, the Node host's destination the other | [BF-D605](#bf-d605) |
 | D607 | The plugins component loads hosts through a Node subprocess it starts: Pi's `evaluate`, `stack` and runtime… | deliberate difference |
 | D608 | A client surface is built after the server's listen: `NewWebSurface`/`NewTuiSurface` return at once and… | deliberate difference |
-| D615 | The Go, Python and Lisp SDKs show the host each provider stream event as it was when the provider pushed it… | deliberate difference |
+| D615 | The Go, Python, Lisp and Rust SDKs show the host each provider stream event as it was when the provider… | deliberate difference |
 
 ## Fix-titled commits that are not bugs in a release
 
