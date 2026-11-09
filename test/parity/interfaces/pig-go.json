@@ -144393,6 +144393,17 @@
       "shapeHash": "sha256:c7e4cdf8b4677508d9c90267234af5eaa247b328f585a662865aeaf796202d25"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#connectionEnded",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "connectionEnded",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(conn *Conn, err error) error"
+      },
+      "shapeHash": "sha256:88ac57b6c2e9503610cfe992fcf7d1931b838b0ec2ea141db512ab3b24e45163"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#consoleBufferSize",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "consoleBufferSize",
@@ -152973,6 +152984,17 @@
       "shapeHash": "sha256:48b0e3b88ea5a995e8cc8a1ac19090172b9c0cdf0a5ed43be79c1651f38932b5"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#providerSyncUpdateArgs",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "providerSyncUpdateArgs",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "providerSyncUpdateArgs"
+      },
+      "shapeHash": "sha256:6367871a68d2a794dc61b4928512b976d4b7d7ec31fa2ea93cdd34e6b770699b"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#publishesStateBeforeResult",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "publishesStateBeforeResult",
@@ -153232,9 +153254,31 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(refresh github.com/MichaelKinsy/PiG/ai.RefreshModelsContext) map[string]any"
+        "type": "func(refresh github.com/MichaelKinsy/PiG/ai.RefreshModelsContext) refreshModelsWire"
       },
-      "shapeHash": "sha256:1de8f7cdc3905cb7862d16716a30579387de91035d85a6fa17e5bc6721075cc9"
+      "shapeHash": "sha256:c27c8f8839f303ee8666c1d22899b1be939c020e47e43b5b6b9dfe9e5d22c870"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#refreshModelsRequest",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "refreshModelsRequest",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "refreshModelsRequest"
+      },
+      "shapeHash": "sha256:56d704ab3819a59349fefe6b981e210ee599c6fb58a1f2ed0eefda81d7fed08b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#refreshModelsWire",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "refreshModelsWire",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "refreshModelsWire"
+      },
+      "shapeHash": "sha256:f59e80113bf7ebb8cdedfc3b12a2e7f202327c5cc8bc638310dd5750ce8af8ad"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#refreshPublication",
