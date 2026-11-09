@@ -282,7 +282,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-38e6506](#bf-38e6506) | The faux provider (`ai.NewFauxProvider`) no longer ends a streamed chunk inside a multibyte character | PiG's own defect | All platforms | 0.7.0 |
 | [BF-397866f](#bf-397866f) | A Go MCP client that declares an empty capability, such as `sampling` or `elicitation`, now sends it as `{}` | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3a0d0e1](#bf-3a0d0e1) | A `Provider` object that an extension registers while it loads is now applied after every extension has… | PiG's own defect | All platforms | 0.7.0 |
-| [BF-3a61c56](#bf-3a61c56) | The file mutation conformance rows no longer take a slow registration in the host's queue for a file an SDK… | PiG's own defect | Windows | Unreleased |
 | [BF-3a708ed](#bf-3a708ed) | fix(durable): list D206 in the docs bundle; the cut-off tool case types its task id; the retry delay product… | PiG's own defect | All platforms | Unreleased |
 | [BF-3ab4c24](#bf-3ab4c24) | fix(coding-agent): render HTML export for sessions deeper than the call stack (Pi) | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-3ad9ec8](#bf-3ad9ec8) | fix(tui): tree label prompt gives its input width-2 cells (Pi LabelInput) | PiG's own defect | All platforms | Unreleased |
@@ -5247,20 +5246,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `3a0d0e1711` (2026-10-25)
 - **Tests:** `coding/cli/extension_host_wiring_guard_test.go::TestBuildFlushesTheExtensionHostProviderRegistrations`, `coding/extension/host/subprocess/native_provider_callback_context_test.go::TestNodeNativeProviderReceivesTheCallersOnResponseAndOnPayloadByName`, `coding/extension/host/subprocess/native_provider_oauth_test.go::TestNativeProviderOAuthRefreshAndLogin`, `coding/extension/host/subprocess/provider_load_rejection_rollback_test.go::TestRejectedLoadRegistrationLeavesAnEarlierRegistrationIntact`, `coding/extension/host/subprocess/provider_object_load_queue_test.go::TestProviderObjectRegisteredWhileLoadingIsQueuedForABoundRegistry`, `test/parity/scenarios/extensions-runtime/89-reload-provider-registration-failure.toml`
 - **Release note:** A `Provider` object that an extension registers while it loads is now applied after every extension has loaded, like a provider configuration, instead of at once. When the model registry rejects a registration, PiG now leaves nothing of it behind: the login it declared, its entry in the model list that extensions read, and its claim on the provider are given back, so a registration of the same provider by another extension stays as it was. Pi's registry validates a registration before it stores anything of it.
-
-### BF-3a61c56
-
-**The file mutation conformance rows no longer take a slow registration in the host's queue for a file an SDK…**
-
-- **Source:** PiG's own defect
-- **Symptom:** The file mutation conformance rows no longer take a slow registration in the host's queue for a file an SDK task holds.
-- **Root cause:** No wait decides it.
-- **User impact:** Behavior differed from Pi
-- **Platform:** Windows
-- **Fixed in:** Unreleased
-- **Fix commits:** `3a61c5670a` (2026-11-09)
-- **Tests:** `test/extension-conformance/file_mutation_queue_host_test.go::TestHostQueueBusyIsNotFooledByASlowRegistration`, `test/extension-conformance/file_mutation_queue_host_test.go::TestHostQueueBusySeesAHeldFile`
-- **Release note:** The file mutation conformance rows no longer take a slow registration in the host's queue for a file an SDK task holds. They ran a host mutation while a task that had not entered yet was waiting to, and reported "a host mutation ran 89.667ms after the SDK task started" on Windows for the isolated Lisp SDK. The rows now register in the queue and ask whether their place was admitted, which does not depend on how long the registration took.
 
 ### BF-3a708ed
 
