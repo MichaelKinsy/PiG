@@ -38,9 +38,14 @@ func ModelsOverOpenAI(t *testing.T) (models *ai.Models, model *ai.Model) {
 	model = &ai.Model{ID: "probe-1", Capabilities: ai.ModelCapabilities{ContextWindow: 100_000, MaxOutputTokens: 1000}, ProviderMeta: ai.ProviderMetadata{API: ai.APIOpenAICompletions, ProviderID: "probe"}}
 	models = ai.CreateModels()
 	models.SetProvider(&ai.ModelsProvider{
-		ID: "probe", Name: "probe", Auth: ai.ProviderAuth{APIKey: ai.EnvAPIKeyAuth("test")}, 		GetModels:    func() ([]*ai.Model, error) { return []*ai.Model{model}, nil },
-		Stream:       func(ctx context.Context, _ *ai.Model, request ai.TranscriptContext, opts ai.StreamOptions) (*ai.AssistantMessageEventStream, error) { return provider.Stream(ctx, request, opts) },
-		StreamSimple: func(ctx context.Context, _ *ai.Model, request ai.TranscriptContext, opts ai.StreamOptions) (*ai.AssistantMessageEventStream, error) { return provider.Stream(ctx, request, opts) },
+		ID: "probe", Name: "probe", Auth: ai.ProviderAuth{APIKey: ai.EnvAPIKeyAuth("test")},
+		GetModels: func() ([]*ai.Model, error) { return []*ai.Model{model}, nil },
+		Stream: func(ctx context.Context, _ *ai.Model, request ai.TranscriptContext, opts ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
+			return provider.Stream(ctx, request, opts)
+		},
+		StreamSimple: func(ctx context.Context, _ *ai.Model, request ai.TranscriptContext, opts ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
+			return provider.Stream(ctx, request, opts)
+		},
 	})
 	return models, model
 }
