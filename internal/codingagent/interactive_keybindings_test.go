@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"testing"
+	"testing/synctest"
 
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -24,6 +25,26 @@ func newCustomEditorDispatchMode(t *testing.T) (*InteractiveMode, context.Contex
 		chatContainer: tui.NewContainer(),
 	}
 	return m, abortCtx
+}
+
+// remoteEventQueue.post queues an editor event and starts a goroutine that hands the drain to the owner loop's uiTaskCh; when the queue does not take it (the
+// loop has stopped) the goroutine drops every queued event. A mode with no uiTaskCh never takes it, so a test that then ran the queue by hand with runPostedTasks
+// found the event only when its own drain ran before that goroutine did: TestSetRemoteEditorBackToTheDefaultKeepsCollapsedPasteContent failed in all 24 processes
+// of 150 -race runs on 3 CPUs. NewInteractiveMode, the only constructor outside tests, always makes the queue; so must the mode these tests build.
+func TestCustomEditorDispatchModeKeepsAPostedEditorEventForTheTestToRun(t *testing.T) {
+	mode, _ := newCustomEditorDispatchMode(t)
+	ran := false
+	synctest.Test(t, func(t *testing.T) {
+		if !mode.remoteEditorEvents.post(mode, func() { ran = true }) {
+			t.Fatal("post refused the event")
+		}
+		// Everything in the bubble is blocked or gone once the posting goroutine has finished: it queued the drain on uiTaskCh, or dropped the event.
+		synctest.Wait()
+	})
+	runPostedTasks(t, mode)
+	if !ran {
+		t.Fatal("the posted editor event was dropped before the test ran the owner queue")
+	}
 }
 
 // Upstream CustomEditor.handleInput checks each high-priority binding directly:
