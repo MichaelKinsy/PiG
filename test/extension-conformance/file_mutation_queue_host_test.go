@@ -238,3 +238,45 @@ func TestConformance_FileMutationQueueSpansExtensionProcesses(t *testing.T) {
 		})
 	}
 }
+
+// TestHostQueueBusyIsNotFooledByASlowRegistration: hostQueueBusy decides from the host's queue alone whether a task holds the file, and must not read the time a
+// registration takes as the answer. The registration resolves the path and reads the file under the queue's lock, which every mutation of the process shares, so
+// it can take longer than the wait for a free queue; a task that has not entered yet is not one that holds the file.
+func TestHostQueueBusyIsNotFooledByASlowRegistration(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "free.txt")
+	slow := func(path string) (*tools.MutationTicket, error) {
+		time.Sleep(150 * time.Millisecond)
+		return tools.ReserveFileMutation(path)
+	}
+	if hostQueueBusyVia(file, slow) {
+		t.Fatal("hostQueueBusy took a registration that needed 150ms for a held file: nothing holds it")
+	}
+}
+
+// TestHostQueueBusySeesAHeldFile: a file a mutation holds is busy, with a fast registration and with a slow one.
+func TestHostQueueBusySeesAHeldFile(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "held.txt")
+	inside, release, done := make(chan struct{}), make(chan struct{}), make(chan struct{})
+	go func() {
+		defer close(done)
+		_, _ = tools.WithFileMutationQueue(file, func() (struct{}, error) {
+			close(inside)
+			<-release
+			return struct{}{}, nil
+		})
+	}()
+	<-inside
+	defer func() {
+		close(release)
+		<-done
+	}()
+	slow := func(path string) (*tools.MutationTicket, error) {
+		time.Sleep(150 * time.Millisecond)
+		return tools.ReserveFileMutation(path)
+	}
+	for name, reserve := range map[string]func(string) (*tools.MutationTicket, error){"fast": tools.ReserveFileMutation, "slow": slow} {
+		if !hostQueueBusyVia(file, reserve) {
+			t.Errorf("hostQueueBusy with a %s registration: a held file is not busy", name)
+		}
+	}
+}
