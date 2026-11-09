@@ -1,7 +1,5 @@
 package cli
 
-// pi: packages/coding-agent/src/cli/auth-logout.ts
-
 import (
 	"context"
 	"encoding/json"
