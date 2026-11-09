@@ -265,7 +265,7 @@
       (sb-bsd-sockets:socket-bind listener path)
       (sb-bsd-sockets:socket-listen listener 4)
       (let* ((thread (sb-thread:make-thread (lambda () (pig::serve ext (pig::connect-unix path))) :name "test-extension"))
-             (conn (pig::socket-conn (sb-bsd-sockets:socket-accept listener)))
+             (conn (accept-host-conn listener))
              (host (make-host :listener listener :conn conn :thread thread :ext ext :path path)))
         (unwind-protect
              (let ((first (pig::read-frame conn)))
@@ -306,7 +306,7 @@
       (sb-bsd-sockets:socket-bind listener path)
       (sb-bsd-sockets:socket-listen listener 4)
       (let* ((thread (sb-thread:make-thread (lambda () (pig::serve ext (pig::connect-unix path))) :name "test-extension"))
-             (conn (pig::socket-conn (sb-bsd-sockets:socket-accept listener)))
+             (conn (accept-host-conn listener))
              (host (make-host :listener listener :conn conn :thread thread :ext ext :path path)))
         (unwind-protect
              (let* ((first (pig::read-frame conn)) (id (pig:jref first "call" "args" "handlerId")))
@@ -334,7 +334,7 @@
     (sb-bsd-sockets:socket-bind listener path)
     (sb-bsd-sockets:socket-listen listener 4)
     (let* ((thread (sb-thread:make-thread (lambda () (pig::serve ext (pig::connect-unix path))) :name "test-extension"))
-           (conn (pig::socket-conn (sb-bsd-sockets:socket-accept listener)))
+           (conn (accept-host-conn listener))
            (host (make-host :listener listener :conn conn :thread thread :ext ext :path path)))
       (unwind-protect
            (progn
@@ -342,7 +342,7 @@
              ;; a bounded wait, so a run that ignores the shutdown fails the test instead of hanging it
              (check (eq t (sb-thread:join-thread thread :default :still-running :timeout 10))
                     "the run ended with every handler stopped")
-             (check (eq :eof (handler-case (pig::read-frame conn) (error () :eof)))
+             (check (eq :eof (handler-case (pig::read-frame conn) (sb-sys:io-timeout () :timed-out) (error () :eof)))
                     "the extension closed the connection"))
         (stop-host host)))))
 
@@ -438,7 +438,7 @@
     (sb-posix:setenv "PIG_EXT_SOCKET" path 1)
     (unwind-protect
          (let* ((caller (sb-thread:make-thread (lambda () (pig::helper-call "factory-time" (pig:obj))) :name "test-factory"))
-                (conn (pig::socket-conn (sb-bsd-sockets:socket-accept listener)))
+                (conn (accept-host-conn listener))
                 (call (pig::read-frame conn)))
            (check-equal "call" (pig:jget call "type"))
            (sbr-send-shutdown conn)
@@ -447,7 +447,7 @@
                         "the factory's call returned the host's result")
            (check (eq t (pig:run-extension (pig:make-extension "rt-shutdown-factory") path)))
            (check-equal "register" (pig:jget (pig::read-frame conn) "type"))
-           (check (eq :eof (handler-case (pig::read-frame conn) (error () :eof)))
+           (check (eq :eof (handler-case (pig::read-frame conn) (sb-sys:io-timeout () :timed-out) (error () :eof)))
                   "the run closed the connection"))
       (sb-posix:unsetenv "PIG_EXT_SOCKET")
       (ignore-errors (sb-bsd-sockets:socket-close listener))
