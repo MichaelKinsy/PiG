@@ -201,7 +201,12 @@ func TestTheHandshake(t *testing.T) {
 }
 
 func TestACodecMismatchOfChannels(t *testing.T) {
-	a, b := link.MemoryLinkPair()
+	// Pi's hellos are microtasks: neither is delivered before the code that started both channels finished. On the pair's own
+	// queue a delivery goroutine can run between left.Start and right.Start, or inside right.Start between its hello and its
+	// listeners, and close the link under the second channel before it listens (a test goroutine that is descheduled there
+	// reports nothing for that side): the test runs the queue itself (fifoQueue).
+	queue := &fifoQueue{}
+	a, b := link.MemoryLinkPairOn(queue.post, queue.run)
 	first, second := &reports{}, &reports{}
 	left, err := link.NewChannel(a, &recordingHandler{}, link.ChannelOptions{Codec: link.BinaryCodec, Incarnation: incarnation, Calls: 1, Report: first.add}, background)
 	requireNoError(t, err)
