@@ -91,6 +91,7 @@ var openRouterGlowColors = sync.OnceValue(func() map[ThemeAppearance][2]Color {
 	}
 })
 
+// upstream: packages/coding-agent/src/modes/interactive/components/provider-brand.ts:GLOW_PERIOD_MS
 const openRouterGlowPeriod = 2400 * time.Millisecond
 
 // openRouterGlow colors text in OpenRouter's brand color, slowly brightening and dimming.
@@ -110,6 +111,7 @@ func openRouterGlow(text string, elapsed time.Duration) string {
 }
 
 // BrandAnimationFrame is the interval of the brand animation (ANIMATION_FRAME_MS).
+// upstream: packages/coding-agent/src/modes/interactive/components/provider-brand.ts:ANIMATION_FRAME_MS
 const BrandAnimationFrame = 50 * time.Millisecond
 
 // StartBrandAnimation calls requestRender every animation frame while isAnimating reports true, on its own

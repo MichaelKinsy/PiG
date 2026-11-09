@@ -44,8 +44,10 @@ type CacheWarmingDecision struct {
 
 const (
 	// CacheWarmingMaxAgeMs (CACHE_WARMING_MAX_AGE_MS): streaming warming never continues past this long after the real request that started it.
+	// upstream: packages/ai/src/cache-warming.ts:CACHE_WARMING_MAX_AGE_MS
 	CacheWarmingMaxAgeMs int64 = 60 * 60_000
 	// CacheWarmingMaxIdleAgeMs (CACHE_WARMING_MAX_IDLE_AGE_MS): idle warming uses a shorter horizon because continuation estimates become less reliable with age.
+	// upstream: packages/ai/src/cache-warming.ts:CACHE_WARMING_MAX_IDLE_AGE_MS
 	CacheWarmingMaxIdleAgeMs int64 = 30 * 60_000
 	// CacheWarmingMinimumExpectedSavings (CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS): a refresh is sent only when it is expected to save at least this many dollars.
 	CacheWarmingMinimumExpectedSavings = 0.05
@@ -55,6 +57,7 @@ const (
 
 // GetCacheWarmingDelayMs refreshes at 90% of the TTL while preserving at least ten seconds of margin. The bool is false when the TTL is too short. The delay is a float64 like the JavaScript number: a lifetime from a models.json promptCache can exceed the int64 range.
 func GetCacheWarmingDelayMs(ttlMs float64) (float64, bool) {
+	// upstream: packages/ai/src/cache-warming.ts:getCacheWarmingDelayMs
 	if ttlMs <= 10_000 {
 		return 0, false
 	}
