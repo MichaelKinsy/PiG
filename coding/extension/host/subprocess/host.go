@@ -287,6 +287,8 @@ type Host struct {
 	xref               xrefHub
 	// providerConfigRefs maps a provider to the xref of its effective registered configuration root in the owning Node realm.
 	providerConfigRefs map[string]providerConfigRef
+	// configRefreshes holds the publish callback of each running config-form refreshModels request (providerRefreshModels), keyed by connection and request.
+	configRefreshes sync.Map
 	eventBus           hostEventBus
 	// loopTurns holds each forwarded loop turn until every recipient took it (forwardLoopTurned).
 	loopTurns loopTurns

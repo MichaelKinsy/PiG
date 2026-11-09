@@ -8,7 +8,7 @@
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+use serde_json::{Value, json};
 
 use crate::protocol::Connection;
 
@@ -271,6 +271,9 @@ pub type OAuthRefreshFn =
     Box<dyn Fn(OAuthCredentials) -> Result<OAuthCredentials, String> + Send + Sync>;
 /// Resolves the bearer to send for a set of credentials.
 pub type OAuthGetApiKeyFn = Box<dyn Fn(OAuthCredentials) -> String + Send + Sync>;
+/// Projects the provider's chat models by the stored OAuth credential: the models in, the models out.
+pub type OAuthModifyModelsFn =
+    Box<dyn Fn(Vec<Value>, OAuthCredentials) -> Result<Vec<Value>, String> + Send + Sync>;
 
 /// An OAuth capability attached to a model provider. Only the non-`None`
 /// closures are advertised as capabilities to the host.
@@ -289,6 +292,10 @@ pub struct OAuthProvider {
     pub get_api_key: Option<OAuthGetApiKeyFn>,
     /// When set, the provider owns credential persistence.
     pub credential_store: Option<Box<dyn OAuthCredentialStore>>,
+    /// Pi's legacy synchronous credential-dependent model projection (`oauth.modifyModels`, types.ts:2034): receives the provider's chat models as Pi's model objects and the stored OAuth credential and returns the models that replace them. Optional. An error is the model listing's error.
+    pub modify_models: Option<OAuthModifyModelsFn>,
+    /// Pi's deprecated `usesCallbackServer`, retained for source compatibility: canonical auth flows ignore it (types.ts:2026), so it changes nothing.
+    pub uses_callback_server: bool,
 }
 
 /// The serializable capability descriptor placed under the "oauth" key of a
@@ -301,6 +308,11 @@ pub(crate) struct ProviderOAuthConfig {
     pub has_login: bool,
     pub has_refresh: bool,
     pub has_get_api_key: bool,
+    #[serde(skip_serializing_if = "is_false")]
+    pub has_modify_models: bool,
+    /// Pi's deprecated flag, forwarded as given: canonical auth flows ignore it.
+    #[serde(rename = "usesCallbackServer", skip_serializing_if = "is_false")]
+    pub uses_callback_server: bool,
     #[serde(skip_serializing_if = "is_false")]
     pub has_credential_store: bool,
 }
@@ -322,6 +334,8 @@ impl ProviderOAuthConfig {
             has_login: true,
             has_refresh: provider.refresh_token.is_some(),
             has_get_api_key: provider.get_api_key.is_some(),
+            has_modify_models: provider.modify_models.is_some(),
+            uses_callback_server: provider.uses_callback_server,
             has_credential_store: provider.credential_store.is_some(),
         }
     }

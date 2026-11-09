@@ -4002,6 +4002,7 @@ _OAUTH_METHODS = frozenset(
         "oauth_login",
         "oauth_refresh",
         "oauth_get_api_key",
+        "oauth_modify_models",
         "oauth_credential_status",
         "oauth_store_credentials",
         "oauth_delete_credentials",
@@ -4202,6 +4203,10 @@ class OAuthProvider:
     credential_store: OAuthCredentialStore | None = None
     # Whether access through this OAuth method is subscription-backed.
     is_subscription: bool = False
+    # Pi's legacy synchronous credential-dependent model projection (oauth.modifyModels, types.ts:2034): receives the provider's chat models as Pi's model objects and the stored OAuth credential and returns the models that replace them.
+    modify_models: Callable[[list[dict[str, Any]], OAuthCredentials], list[dict[str, Any]]] | None = None
+    # Pi's deprecated flag, retained for source compatibility: canonical auth flows ignore it (types.ts:2026), so it changes nothing.
+    uses_callback_server: bool = False
 
 
 class OAuthLoginCallbacks:
@@ -5088,6 +5093,12 @@ class Extension:
                 if not callable(implementation):
                     raise TypeError(f"provider {kind} implementation for {api} must be callable")
             operations[kind] = dict(implementations)
+        # ProviderConfig.refreshModels (types.ts:1930): a callable the host runs with provider_operation kind "refreshModels".
+        refresh = config.pop("refreshModels", None)
+        if refresh is not None:
+            if not callable(refresh):
+                raise TypeError("refreshModels must be callable")
+            operations["refreshModels"] = refresh
         _ensure_jsonable(config, f"provider config for {name}")
         if callback is not None:
             self._provider_streams[name] = callback
@@ -5101,15 +5112,17 @@ class Extension:
         declaration = {"name": name, "config": config}
         if callback is not None:
             declaration["stream_simple"] = True
+        if refresh is not None:
+            declaration["refresh_models"] = True
         if operations.get("images"):
             declaration["image_apis"] = sorted(operations["images"])
         if operations.get("classifiers"):
             declaration["classifier_apis"] = sorted(operations["classifiers"])
         return declaration
 
-    def _held_provider_callbacks(self, name: str) -> tuple[Callable | None, dict[str, dict[str, Callable]] | None]:
+    def _held_provider_callbacks(self, name: str) -> tuple[Callable | None, dict[str, Any] | None]:
         operations = self._provider_operations.get(name)
-        return self._provider_streams.get(name), None if operations is None else {kind: dict(implementations) for kind, implementations in operations.items()}
+        return self._provider_streams.get(name), None if operations is None else {kind: dict(implementations) if isinstance(implementations, dict) else implementations for kind, implementations in operations.items()}
 
     def _restore_provider_callbacks(self, name: str, kept: tuple[Callable | None, dict[str, dict[str, Callable]] | None]) -> None:
         stream, operations = kept
@@ -5149,6 +5162,10 @@ class Extension:
             "has_refresh": provider.refresh_token is not None,
             "has_get_api_key": provider.get_api_key is not None,
         }
+        if provider.uses_callback_server:
+            oauth["usesCallbackServer"] = True
+        if provider.modify_models is not None:
+            oauth["has_modify_models"] = True
         if provider.credential_store is not None:
             oauth["has_credential_store"] = True
         config["oauth"] = oauth
@@ -6384,6 +6401,13 @@ class Extension:
             resolved = OAuthCredentials._from_wire(req.get("args"))
             key = provider.get_api_key(resolved) if provider.get_api_key else ""
             self._respond(req_id, {"apiKey": key}, None)
+        elif method == "oauth_modify_models":
+            if provider.modify_models is None:
+                self._respond(req_id, None, {"message": "provider does not support modifyModels"})
+                return
+            args = req.get("args") or {}
+            models = provider.modify_models(args.get("models") or [], OAuthCredentials._from_wire(args.get("credentials")))
+            self._respond(req_id, {"models": models if models is not None else []}, None)
         elif method == "oauth_credential_status":
             store = provider.credential_store
             if store is None:

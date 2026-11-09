@@ -23,6 +23,10 @@ pub type ProviderStreamFn = Arc<
 pub type ProviderOperationFn = Arc<
     dyn Fn(ProviderModel, Value, ProviderOperationOptions) -> ProviderResult<Value> + Send + Sync,
 >;
+/// The legacy `refreshModels` of a provider config: it refreshes the provider's models and returns the model definitions that replace the extension-provided ones, or `None` to leave them.
+pub type ProviderRefreshModelsFn = Arc<
+    dyn Fn(RefreshModelsContext) -> ProviderResult<Option<Vec<Value>>> + Send + Sync,
+>;
 /// The legacy `streamSimple` of a provider config: it runs in the extension with the request's context and returns the provider's event stream.
 pub type ProviderStreamSimpleFn = Arc<
     dyn Fn(&crate::Context, Value, Value, Value) -> ProviderResult<Arc<ModelEventStream>>
@@ -220,6 +224,7 @@ pub struct ProviderOperations {
     pub images: Vec<(String, ProviderOperationFn)>,
     pub classifiers: Vec<(String, ProviderOperationFn)>,
     pub stream_simple: Option<ProviderStreamSimpleFn>,
+    pub refresh_models: Option<ProviderRefreshModelsFn>,
 }
 impl ProviderOperations {
     pub fn new() -> Self {
@@ -235,6 +240,17 @@ impl ProviderOperations {
         + 'static,
     ) -> Self {
         self.images.push((api.into(), Arc::new(generate)));
+        self
+    }
+    /// Sets the config's `refreshModels` (upstream `ProviderConfig.refreshModels`, types.ts:1930): the callback refreshes the provider's model list and returns the model definitions that replace the extension-provided models (`None` leaves them as they are). A catalog that should persist is published through `context.publish` while the callback runs.
+    pub fn refresh_models(
+        mut self,
+        handler: impl Fn(RefreshModelsContext) -> ProviderResult<Option<Vec<Value>>>
+        + Send
+        + Sync
+        + 'static,
+    ) -> Self {
+        self.refresh_models = Some(Arc::new(handler));
         self
     }
     /// Sets the config's `streamSimple`.
@@ -290,8 +306,13 @@ impl ProviderCallbacks {
         classifier_apis.sort();
         classifier_apis.dedup();
         let stream_simple = operations.stream_simple.is_some();
+        let refresh_models = operations.refresh_models.is_some();
         let mut held = self.held.lock().unwrap();
-        if !(operations.images.is_empty() && operations.classifiers.is_empty() && !stream_simple) {
+        if !(operations.images.is_empty()
+            && operations.classifiers.is_empty()
+            && !stream_simple
+            && !refresh_models)
+        {
             let kept = held.entry(name.clone()).or_default();
             if !operations.images.is_empty() {
                 kept.images = operations.images;
@@ -302,6 +323,9 @@ impl ProviderCallbacks {
             if operations.stream_simple.is_some() {
                 kept.stream_simple = operations.stream_simple;
             }
+            if operations.refresh_models.is_some() {
+                kept.refresh_models = operations.refresh_models;
+            }
         }
         ProviderDef {
             name,
@@ -310,6 +334,7 @@ impl ProviderCallbacks {
             stream_simple,
             image_apis,
             classifier_apis,
+            refresh_models,
         }
     }
 
@@ -358,6 +383,15 @@ impl ProviderCallbacks {
             .unwrap()
             .get(provider)?
             .stream_simple
+            .clone()
+    }
+
+    pub(crate) fn refresh_models(&self, provider: &str) -> Option<ProviderRefreshModelsFn> {
+        self.held
+            .lock()
+            .unwrap()
+            .get(provider)?
+            .refresh_models
             .clone()
     }
 }
@@ -500,6 +534,7 @@ impl ProviderObjects {
             stream_simple: false,
             image_apis: Vec::new(),
             classifier_apis: Vec::new(),
+            refresh_models: false,
         })
     }
     pub(crate) fn dispatch_callback(&self, request: &RequestMsg) -> ProviderResult<Value> {
@@ -513,6 +548,64 @@ impl ProviderObjects {
             .cloned()
             .ok_or("Provider callback is no longer active")?;
         callback(args["params"].clone())
+    }
+    /// The RefreshModelsContext of a refresh request: `publish` sends the publication's persistence and the token of its update to the host as a publish callback of the request, and the host runs the update here by token (the `update` provider_sync request) while it applies the publication.
+    fn refresh_context(
+        self: &Arc<Self>,
+        callback: MethodCallback,
+        params: &Value,
+        signal: ProviderSignal,
+    ) -> RefreshModelsContext {
+        let state = self.clone();
+        let publish = Arc::new(move |publication: ModelsPublication| {
+            let token = state.key();
+            let mut value = json!({"publication":{}});
+            if let Some(persist) = publication.persist {
+                value["publication"]["persist"] = persist
+            }
+            if let Some(update) = publication.update {
+                state.updates.lock().unwrap().insert(token.clone(), update);
+                value["token"] = json!(token)
+            }
+            let result = callback("publish", value);
+            state.updates.lock().unwrap().remove(&token);
+            serde_json::from_value(result?).map_err(|e| e.to_string())
+        });
+        RefreshModelsContext {
+            credential: optional(&params["credential"]),
+            stored: optional(&params["stored"]),
+            allow_network: params["allowNetwork"].as_bool().unwrap_or(false),
+            force: params["force"].as_bool(),
+            base_url: params["baseUrl"].as_str().map(str::to_owned),
+            signal,
+            publish,
+        }
+    }
+    /// Runs the `refreshModels` of a provider config (types.ts:1930) for the `provider_operation` request `id`: its context's publish calls reach the host as callbacks of that request, and the models it returns (null for none) are the answer.
+    pub(crate) fn refresh_config(
+        self: &Arc<Self>,
+        conn: &Arc<Connection>,
+        id: &str,
+        provider: &str,
+        context: &Value,
+        signal: ProviderSignal,
+        refresh: &ProviderRefreshModelsFn,
+    ) -> ProviderResult<Value> {
+        let callback: MethodCallback = {
+            let conn = conn.clone();
+            let parent = id.to_owned();
+            let key = provider.to_owned();
+            Arc::new(move |method, params| {
+                call_value(
+                    &conn,
+                    Some(&parent),
+                    "provider.callback",
+                    json!({"provider":key,"method":method,"params":params}),
+                )
+            })
+        };
+        let models = refresh(self.refresh_context(callback, context, signal))?;
+        Ok(models.map_or(Value::Null, Value::Array))
     }
     pub(crate) fn dispatch(
         self: &Arc<Self>,
@@ -690,33 +783,12 @@ impl ProviderObjects {
                 params["credential"].clone(),
             ),
             "refreshModels" => {
-                let state = self.clone();
-                let publish = Arc::new(move |publication: ModelsPublication| {
-                    let token = state.key();
-                    let mut value = json!({"publication":{}});
-                    if let Some(persist) = publication.persist {
-                        value["publication"]["persist"] = persist
-                    }
-                    if let Some(update) = publication.update {
-                        state.updates.lock().unwrap().insert(token.clone(), update);
-                        value["token"] = json!(token)
-                    }
-                    let result = callback("publish", value);
-                    state.updates.lock().unwrap().remove(&token);
-                    serde_json::from_value(result?).map_err(|e| e.to_string())
-                });
                 provider
                     .refresh_models
                     .as_ref()
-                    .ok_or("refreshModels absent")?(RefreshModelsContext {
-                    credential: optional(&params["credential"]),
-                    stored: optional(&params["stored"]),
-                    allow_network: params["allowNetwork"].as_bool().unwrap_or(false),
-                    force: params["force"].as_bool(),
-                    base_url: params["baseUrl"].as_str().map(str::to_owned),
-                    signal,
-                    publish,
-                })?;
+                    .ok_or("refreshModels absent")?(self.refresh_context(
+                    callback, params, signal,
+                ))?;
                 Ok(Value::Null)
             }
             "stream" | "streamSimple" | "fetchDeferred" | "cancelDeferred" => {

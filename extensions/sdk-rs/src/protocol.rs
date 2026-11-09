@@ -305,6 +305,9 @@ pub struct ProviderDef {
     pub image_apis: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub classifier_apis: Vec<String>,
+    /// The config's `refreshModels` callback runs in the extension (types.ts:1930).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub refresh_models: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

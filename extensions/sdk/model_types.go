@@ -176,6 +176,10 @@ type ProviderOperationOptions struct {
 // ProviderImagesFunc generates images for one image API. model, request and the result are the Pi objects as JSON maps.
 type ProviderImagesFunc func(model, request map[string]any, options ProviderOperationOptions) (map[string]any, error)
 
+// ProviderRefreshModelsFunc is ProviderConfig.refreshModels (types.ts:1930): it refreshes the provider's model list and returns the model definitions that replace the extension-provided models, as Pi's JSON
+// maps. A catalog that should persist is published through context.Publish while the callback runs; context.Signal is the refresh's cancellation.
+type ProviderRefreshModelsFunc func(context RefreshModelsContext) ([]map[string]any, error)
+
 // ProviderClassifyFunc classifies for one classifier API.
 type ProviderClassifyFunc func(model map[string]any, request ClassifierContext, options ProviderOperationOptions) (ClassifierResult, error)
 
@@ -337,11 +341,20 @@ func (r ModelRegistry) UnregisterVirtualModel(provider, id string) {
 type providerOperations struct {
 	images      map[string]ProviderImagesFunc
 	classifiers map[string]ProviderClassifyFunc
+	refresh     ProviderRefreshModelsFunc
 }
 
-// takeProviderOperations removes the images and classifiers callbacks of a provider config, which cannot cross the wire, and returns them with the API names the register payload declares. It panics on a value of another type, as it does for streamSimple.
+// takeProviderOperations removes the images, classifiers and refreshModels callbacks of a provider config, which cannot cross the wire, and returns them with the API names the register payload declares. It panics on a value of another type, as it does for streamSimple.
 func takeProviderOperations(config ProviderConfig) (providerOperations, []string, []string) {
 	var ops providerOperations
+	if raw, exists := config["refreshModels"]; exists {
+		refresh, ok := raw.(ProviderRefreshModelsFunc)
+		if !ok {
+			panic("provider refreshModels has an invalid Go callback signature")
+		}
+		ops.refresh = refresh
+		delete(config, "refreshModels")
+	}
 	if raw, exists := config["images"]; exists {
 		images, ok := raw.(map[string]ProviderImagesFunc)
 		if !ok {
@@ -374,7 +387,7 @@ func takeProviderOperations(config ProviderConfig) (providerOperations, []string
 	return ops, imageAPIs, classifierAPIs
 }
 
-// dispatchProviderOperation runs the image or classifier implementation of a provider config that a provider_operation request names. An error is the request's error (types.ts:1896-1898).
+// dispatchProviderOperation runs the image, classifier or refreshModels implementation of a provider config that a provider_operation request names. An error is the request's error (types.ts:1896-1898).
 func (e *Extension) dispatchProviderOperation(ctx Context, req *requestMsg) (any, error) {
 	var request struct {
 		Kind    string          `json:"kind"`
@@ -391,6 +404,22 @@ func (e *Extension) dispatchProviderOperation(ctx Context, req *requestMsg) (any
 	e.providerMu.RUnlock()
 	options := ProviderOperationOptions{Signal: ctx.ctx, Values: request.Options}
 	switch request.Kind {
+	case "refreshModels":
+		if ops.refresh == nil {
+			return nil, fmt.Errorf("Provider %s has no refreshModels", req.Tool)
+		}
+		var input struct {
+			Context providerObjectParams `json:"context"`
+		}
+		if err := json.Unmarshal(req.Args, &input); err != nil {
+			return nil, err
+		}
+		refresh := input.Context
+		models, err := ops.refresh(RefreshModelsContext{Credential: refresh.Credential, Stored: refresh.Stored, AllowNetwork: refresh.AllowNetwork, Force: refresh.Force, BaseURL: refresh.BaseURL, Signal: ctx.ctx, Publish: e.refreshPublisher(ctx, req.Tool)})
+		if models == nil && err == nil {
+			return nil, nil
+		}
+		return models, err
 	case "images":
 		callback := ops.images[request.API]
 		if callback == nil {
