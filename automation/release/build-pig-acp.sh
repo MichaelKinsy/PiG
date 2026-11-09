@@ -7,15 +7,15 @@
 # VERSION (PiG's version, no v prefix), GOOS, GOARCH and FORMAT (tar|zip) come
 # from the environment, as in release-candidate.yml.
 #
-# The archive is flat: pig-acp, pig and the notices sit at its root, with no version in any path, so the
-# ACP registry's fixed `cmd` (./pig-acp) stays valid across releases. The archive carries pig-acp and the
-# pig executable side by side. The pig
-# executable is extracted from PIG_ARCHIVE, the release candidate's own
-# pig-<version>-<goos>-<goarch> archive, so the pig bytes are the pig bytes that
-# archive's tests and attestation cover; this script never rebuilds pig. pig-acp
-# is built from the Pigpen Package pinned in automation/release/pig-acp.lock
-# (the source `pig acp install` builds), verified by size and sha512 before it
-# is extracted, with CGO disabled.
+# The archive is flat: pig-acp, pig and the notices sit at its root, with no
+# version in any path, so the ACP registry's fixed `cmd` (./pig-acp) stays valid
+# across releases. The archive carries pig-acp and the pig executable side by
+# side. The pig executable is extracted from PIG_ARCHIVE, the release
+# candidate's own pig-<version>-<goos>-<goarch> archive, so the pig bytes are the
+# pig bytes that archive's tests and attestation cover; this script never
+# rebuilds pig. pig-acp is built from the Pigpen Package pinned in
+# automation/release/pig-acp.lock (the source `pig acp install` builds), verified
+# by size and sha512 before it is extracted, with CGO disabled.
 #
 # Writes OUT_DIR/<name>.{tar.gz,zip} and the staged tree WORK_DIR/<name>/ (what
 # the SBOM describes). Prints "artifact=<OUT_DIR>/<archive>" and "stage=<dir>"
@@ -74,7 +74,7 @@ if [ "$FORMAT" = zip ]; then
   (cd "$stage" && zip -qr "$out_abs/$name.zip" .)
   artifact="$out/$name.zip"
 else
-  (cd "$stage" && tar -czf "$out_abs/$name.tar.gz" *)
+  (cd "$stage" && tar -czf "$out_abs/$name.tar.gz" .)
   artifact="$out/$name.tar.gz"
 fi
 printf 'artifact=%s\n' "$artifact"

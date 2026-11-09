@@ -240,7 +240,7 @@ Then point the editor at it. In Zed `settings.json`:
 }
 ```
 
-`--pig` names the `pig` executable (or a built Piglet Binary) to drive; without it `pig-acp` uses its own override variable (see `pig-acp --help`), then `pig` on `PATH`. If pig has no model or key yet, the editor shows an authentication error with `pig-acp --terminal-login`, which starts pig in the editor's terminal so you can sign in. Installing the Package or building the `acp` Piglet does not turn a Piglet Binary into an ACP server; the editor always runs `pig-acp`.
+`--pig` names the `pig` executable (or a built Piglet Binary) to drive. A relative path with a separator (`./pig`, `bin/pig`) resolves against the directory of `pig-acp`, not the session's working directory; an absolute path is used as is; a bare name (`pig`) is looked up on `PATH`. Without `--pig`, `pig-acp` tries its own override variable (see `pig-acp --help`), then the `pig` beside the `pig-acp` executable, then `pig` on `PATH`. If pig has no model or key yet, the editor shows an authentication error with `pig-acp --terminal-login`, which starts pig in the editor's terminal so you can sign in. Installing the Package or building the `acp` Piglet does not turn a Piglet Binary into an ACP server; the editor always runs `pig-acp`.
 
 ## Manage installed Packages
 
