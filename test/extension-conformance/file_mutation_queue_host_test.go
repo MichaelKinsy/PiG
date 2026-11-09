@@ -71,31 +71,32 @@ func startQueueProbe(t *testing.T, h *harness, settleMs int, tasks ...map[string
 	return run
 }
 
-// hostQueueBusy reports whether a mutation of file would have to wait in the host's queue now: it queues an empty mutation behind the current holder and sees
-// whether it runs at once. A mutation that had to wait runs later, once the holder is done, and changes nothing.
+// hostQueueBusy reports whether a mutation of file would have to wait in the host's queue now. It takes the next place in the queue and asks, at once, whether
+// that place is admitted: a place behind a holder is not, whatever the time the registration took. The place stays in the queue until the holder is done and
+// changes nothing.
 func hostQueueBusy(t *testing.T, file string) bool {
 	t.Helper()
-	return hostQueueBusyVia(file, tools.ReserveFileMutation)
+	busy, err := hostQueueBusyVia(file, tools.ReserveFileMutation)
+	if err != nil {
+		t.Fatalf("registering in the host's queue for %s: %v", file, err)
+	}
+	return busy
 }
 
 // hostQueueBusyVia is hostQueueBusy with the registration in the host's queue passed in, so a test can model a slow one.
-func hostQueueBusyVia(file string, reserve func(string) (*tools.MutationTicket, error)) bool {
-	ran := make(chan struct{})
-	go func() {
-		ticket, err := reserve(file)
-		if err != nil {
-			return
-		}
-		ticket.Wait()
-		close(ran)
-		ticket.Release()
-	}()
-	select {
-	case <-ran:
-		return false
-	case <-time.After(50 * time.Millisecond):
-		return true
+func hostQueueBusyVia(file string, reserve func(string) (*tools.MutationTicket, error)) (bool, error) {
+	ticket, err := reserve(file)
+	if err != nil {
+		return false, err
 	}
+	// A ticket with no earlier mutation is admitted whatever the context says (MutationTicket.WaitContext), and one behind a holder gives up and keeps its place.
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if ticket.WaitContext(ctx) != nil {
+		return true, nil
+	}
+	ticket.Release()
+	return false, nil
 }
 
 func awaitHostQueueBusy(t *testing.T, name, file string) {
@@ -248,8 +249,8 @@ func TestHostQueueBusyIsNotFooledByASlowRegistration(t *testing.T) {
 		time.Sleep(150 * time.Millisecond)
 		return tools.ReserveFileMutation(path)
 	}
-	if hostQueueBusyVia(file, slow) {
-		t.Fatal("hostQueueBusy took a registration that needed 150ms for a held file: nothing holds it")
+	if busy, err := hostQueueBusyVia(file, slow); err != nil || busy {
+		t.Fatalf("hostQueueBusy took a registration that needed 150ms for a held file (error %v): nothing holds it", err)
 	}
 }
 
@@ -275,8 +276,8 @@ func TestHostQueueBusySeesAHeldFile(t *testing.T) {
 		return tools.ReserveFileMutation(path)
 	}
 	for name, reserve := range map[string]func(string) (*tools.MutationTicket, error){"fast": tools.ReserveFileMutation, "slow": slow} {
-		if !hostQueueBusyVia(file, reserve) {
-			t.Errorf("hostQueueBusy with a %s registration: a held file is not busy", name)
+		if busy, err := hostQueueBusyVia(file, reserve); err != nil || !busy {
+			t.Errorf("hostQueueBusy with a %s registration: a held file is not busy (%v)", name, err)
 		}
 	}
 }
