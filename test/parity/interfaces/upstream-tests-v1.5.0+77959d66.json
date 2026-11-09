@@ -1,8 +1,8 @@
 {
-  "upstreamVersion": "1.5.0+c23b9ec1",
+  "upstreamVersion": "1.5.0+77959d66",
   "generator": "extract-test-inventory.mjs",
-  "fileCount": 981,
-  "caseCount": 10855,
+  "fileCount": 985,
+  "caseCount": 10895,
   "dynamicCaseSiteCount": 4,
   "files": [
     {
@@ -1004,7 +1004,7 @@
     {
       "path": "packages/ai/test/anthropic-empty-thinking-signature-compat.test.ts",
       "package": "ai",
-      "sha256": "sha256:a414cb8c651ac32217c0b837a62d9d11483e6f99bb248ffa37dada864a1fa542",
+      "sha256": "sha256:1e680be5df104d817df111371ce6360a4537a5de600f0aecce1a120569a3b588",
       "caseCount": 5,
       "cases": [
         {
@@ -1560,8 +1560,8 @@
     {
       "path": "packages/ai/test/anthropic-strict-tool-fallback.test.ts",
       "package": "ai",
-      "sha256": "sha256:299a03f818cb4bd0058bb4207dd0d42498a8d917b67af13de6dc4ad603b93a71",
-      "caseCount": 10,
+      "sha256": "sha256:83fdeb785957ed3be88850065228c1761f245c79bef52f3e382c4e49da233a98",
+      "caseCount": 13,
       "cases": [
         {
           "id": "Anthropic preferred strict tool fallback › retries %s with original non-strict schemas and preserves required tools",
@@ -1569,13 +1569,13 @@
           "modifiers": [
             "each"
           ],
-          "line": 69
+          "line": 72
         },
         {
           "id": "Anthropic preferred strict tool fallback › downgrades inline additions and same-name redefinitions without downgrading require",
           "kind": "it",
           "modifiers": [],
-          "line": 128
+          "line": 131
         },
         {
           "id": "Anthropic preferred strict tool fallback › does not retry a %s tool set",
@@ -1583,7 +1583,7 @@
           "modifiers": [
             "each"
           ],
-          "line": 165
+          "line": 168
         },
         {
           "id": "Anthropic preferred strict tool fallback › does not downgrade on %s",
@@ -1591,43 +1591,61 @@
           "modifiers": [
             "each"
           ],
-          "line": 180
+          "line": 183
         },
         {
           "id": "Anthropic preferred strict tool fallback › surfaces a second rejection rather than retrying again",
           "kind": "it",
           "modifiers": [],
-          "line": 191
+          "line": 194
         },
         {
           "id": "Anthropic preferred strict tool fallback › does not downgrade a hook exception, even if it looks like the provider rejection",
           "kind": "it",
           "modifiers": [],
-          "line": 206
+          "line": 209
         },
         {
           "id": "Anthropic preferred strict tool fallback › honors cancellation before the fallback attempt",
           "kind": "it",
           "modifiers": [],
-          "line": 224
+          "line": 227
         },
         {
           "id": "Anthropic preferred strict tool fallback › does not retry an SSE error after response headers",
           "kind": "it",
           "modifiers": [],
-          "line": 238
+          "line": 241
         },
         {
-          "id": "Anthropic preferred strict tool fallback › does not disable strict sampling on later requests",
+          "id": "Anthropic preferred strict tool fallback › does not disable strict sampling on later requests without a session",
           "kind": "it",
           "modifiers": [],
-          "line": 251
+          "line": 254
+        },
+        {
+          "id": "Anthropic preferred strict tool fallback › sends preferred tools non-strict right away on later requests of a rejected session",
+          "kind": "it",
+          "modifiers": [],
+          "line": 265
+        },
+        {
+          "id": "Anthropic preferred strict tool fallback › tries strict sampling again after the session's resources are cleaned up",
+          "kind": "it",
+          "modifiers": [],
+          "line": 285
+        },
+        {
+          "id": "Anthropic preferred strict tool fallback › surfaces a rejection of a remembered session's required tools without retrying",
+          "kind": "it",
+          "modifiers": [],
+          "line": 296
         },
         {
           "id": "Anthropic preferred strict tool fallback › preserves prefer through pi-messages so the gateway's Anthropic adapter can fall back",
           "kind": "it",
           "modifiers": [],
-          "line": 261
+          "line": 308
         }
       ]
     },
@@ -1806,6 +1824,20 @@
           "kind": "it",
           "modifiers": [],
           "line": 164
+        }
+      ]
+    },
+    {
+      "path": "packages/ai/test/azure-models.test.ts",
+      "package": "ai",
+      "sha256": "sha256:92a5fb5e6f8ef15871259e89579c25a0c0b42044639df85e3693b96c3be9290b",
+      "caseCount": 1,
+      "cases": [
+        {
+          "id": "Azure catalog › keeps OpenAI's long-context price tier on Azure OpenAI models",
+          "kind": "it",
+          "modifiers": [],
+          "line": 36
         }
       ]
     },
@@ -2528,32 +2560,50 @@
     {
       "path": "packages/ai/test/bedrock-strict-tool-fallback.test.ts",
       "package": "ai",
-      "sha256": "sha256:a9e1e9b9148ccd27602af2fc991f7a0b80e0e83fdcf25e9a538c72254b06752a",
-      "caseCount": 4,
+      "sha256": "sha256:2249801016bfca91462b543101ee203e86cc46109d7c293394b79fe160230e66",
+      "caseCount": 7,
       "cases": [
         {
           "id": "Bedrock preferred strict tool fallback › retries a strict tool limit rejection with preferred tools non-strict and keeps required tools strict",
           "kind": "it",
           "modifiers": [],
-          "line": 108
+          "line": 117
         },
         {
           "id": "Bedrock preferred strict tool fallback › does not retry without preferred strict tools",
           "kind": "it",
           "modifiers": [],
-          "line": 146
+          "line": 155
         },
         {
           "id": "Bedrock preferred strict tool fallback › does not retry other validation errors",
           "kind": "it",
           "modifiers": [],
-          "line": 156
+          "line": 165
         },
         {
           "id": "Bedrock preferred strict tool fallback › retries only once",
           "kind": "it",
           "modifiers": [],
-          "line": 165
+          "line": 174
+        },
+        {
+          "id": "Bedrock preferred strict tool fallback › does not remember a rejection without a session",
+          "kind": "it",
+          "modifiers": [],
+          "line": 183
+        },
+        {
+          "id": "Bedrock preferred strict tool fallback › sends preferred tools non-strict right away on later requests of a rejected session",
+          "kind": "it",
+          "modifiers": [],
+          "line": 194
+        },
+        {
+          "id": "Bedrock preferred strict tool fallback › tries strict sampling again after the session's resources are cleaned up",
+          "kind": "it",
+          "modifiers": [],
+          "line": 213
         }
       ]
     },
@@ -4726,7 +4776,7 @@
     {
       "path": "packages/ai/test/fireworks-models.test.ts",
       "package": "ai",
-      "sha256": "sha256:e3ae7f13ff9e8376e74b9f7456ff3c077af3f5b80fd359ce887c433451f91f9e",
+      "sha256": "sha256:6aaefbde5864cad03fa28a7d0483c18a32ec829c25299f9212c101870a3d3a3e",
       "caseCount": 19,
       "cases": [
         {
@@ -4772,7 +4822,7 @@
           "line": 153
         },
         {
-          "id": "Fireworks models › keeps toggle-only Messages models without a verified fallback on budget-based thinking",
+          "id": "Fireworks models › keeps non-adaptive Messages models on budget-based thinking",
           "kind": "it",
           "modifiers": [],
           "line": 162
@@ -4781,73 +4831,73 @@
           "id": "Fireworks models › resolves FIREWORKS_API_KEY from the environment",
           "kind": "it",
           "modifiers": [],
-          "line": 182
+          "line": 183
         },
         {
           "id": "Fireworks models › sets Fireworks-specific compat for session affinity and unsupported tool fields",
           "kind": "it",
           "modifiers": [],
-          "line": 189
+          "line": 190
         },
         {
           "id": "Anthropic-compatible session affinity and tool compat › sends x-session-affinity header for Fireworks models",
           "kind": "it",
           "modifiers": [],
-          "line": 336
+          "line": 337
         },
         {
           "id": "Anthropic-compatible session affinity and tool compat › omits x-session-affinity header for native Anthropic models",
           "kind": "it",
           "modifiers": [],
-          "line": 346
+          "line": 347
         },
         {
           "id": "Anthropic-compatible session affinity and tool compat › omits x-session-affinity header when cacheRetention is none",
           "kind": "it",
           "modifiers": [],
-          "line": 355
+          "line": 356
         },
         {
           "id": "Anthropic-compatible session affinity and tool compat › sends only x-session-id for OpenRouter models",
           "kind": "it",
           "modifiers": [],
-          "line": 366
+          "line": 367
         },
         {
           "id": "Anthropic-compatible session affinity and tool compat › omits OpenRouter session headers when cacheRetention is none",
           "kind": "it",
           "modifiers": [],
-          "line": 375
+          "line": 376
         },
         {
           "id": "Anthropic-compatible session affinity and tool compat › allows OpenRouter session headers to be disabled",
           "kind": "it",
           "modifiers": [],
-          "line": 385
+          "line": 386
         },
         {
           "id": "Anthropic-compatible session affinity and tool compat › omits cache_control on tools for Fireworks models",
           "kind": "it",
           "modifiers": [],
-          "line": 394
+          "line": 395
         },
         {
           "id": "Anthropic-compatible session affinity and tool compat › omits eager_input_streaming on tools for Fireworks models",
           "kind": "it",
           "modifiers": [],
-          "line": 403
+          "line": 404
         },
         {
           "id": "Anthropic-compatible session affinity and tool compat › sends cache_control on tools for native Anthropic models",
           "kind": "it",
           "modifiers": [],
-          "line": 413
+          "line": 414
         },
         {
           "id": "Anthropic-compatible session affinity and tool compat › sends eager_input_streaming on tools for native Anthropic models",
           "kind": "it",
           "modifiers": [],
-          "line": 423
+          "line": 424
         }
       ]
     },
@@ -9760,7 +9810,7 @@
     {
       "path": "packages/ai/test/providers.test.ts",
       "package": "ai",
-      "sha256": "sha256:f2182c8d6783d26973efc141bd7568ec962028b2211438c6508c7037c7dc91d5",
+      "sha256": "sha256:85d073665733efab0007b92b629e22a2c90cdde047ebc85dc63555461265f92d",
       "caseCount": 30,
       "cases": [
         {
@@ -12290,6 +12340,26 @@
           "kind": "it",
           "modifiers": [],
           "line": 392
+        }
+      ]
+    },
+    {
+      "path": "packages/ai/test/strict-tool-limits.test.ts",
+      "package": "ai",
+      "sha256": "sha256:ee075cc4c320a63375300b2015274698fa49c4b4b22e42bd69b5c56726ea6436",
+      "caseCount": 2,
+      "cases": [
+        {
+          "id": "strict tool limit sessions › remembers marked sessions until their cleanup",
+          "kind": "it",
+          "modifiers": [],
+          "line": 8
+        },
+        {
+          "id": "strict tool limit sessions › drops the oldest session beyond 10,000",
+          "kind": "it",
+          "modifiers": [],
+          "line": 24
         }
       ]
     },
@@ -23079,146 +23149,212 @@
     {
       "path": "packages/chord/test/node/app/app.test.ts",
       "package": "chord",
-      "sha256": "sha256:f37461c6de1d420c72b433c29f3012ffa117b441ed39bbc44c5cedec6c43cc28",
-      "caseCount": 23,
+      "sha256": "sha256:759c72f7008a30129f04d41d1aa0758fb895ee42bfbcd74cb5dd98d55ec628ae",
+      "caseCount": 32,
       "cases": [
         {
           "id": "starting and closing › lays out the data directory, serves AppInfo and the server's plugins, and closes everything",
           "kind": "it",
           "modifiers": [],
-          "line": 39
+          "line": 40
         },
         {
           "id": "starting and closing › refuses a second server on the same data directory while the first runs",
           "kind": "it",
           "modifiers": [],
-          "line": 61
+          "line": 62
         },
         {
           "id": "starting and closing › refuses a second server on the same data directory through a symbolic link (review L3)",
           "kind": "it",
           "modifiers": [],
-          "line": 70
+          "line": 71
         },
         {
           "id": "starting and closing › makes the data directory private at every start, also when it existed looser (review M3)",
           "kind": "it",
           "modifiers": [],
-          "line": 78
+          "line": 79
         },
         {
           "id": "starting and closing › refuses a data directory the kit must not tighten: home, root, another user's, also through a link (recheck N4)",
           "kind": "it",
           "modifiers": [],
-          "line": 104
+          "line": 110
         },
         {
           "id": "starting and closing › names the address listened on in the owner link (review L4)",
           "kind": "it",
           "modifiers": [],
-          "line": 118
+          "line": 124
         },
         {
           "id": "starting and closing › rejects when a plugin of the app's root fails, with everything closed",
           "kind": "it",
           "modifiers": [],
-          "line": 124
-        },
-        {
-          "id": "starting and closing › rejects when a worker kind's entry does not build, with everything closed",
-          "kind": "it",
-          "modifiers": [],
-          "line": 136
+          "line": 130
         },
         {
           "id": "starting and closing › starts without worker kinds and without `principal.worker`; worker kinds need it (a type error)",
           "kind": "it",
           "modifiers": [],
-          "line": 147
+          "line": 142
         },
         {
           "id": "starting and closing › refuses an owner that is not strict JSON or is the server's principal, before it opens anything",
           "kind": "it",
           "modifiers": [],
-          "line": 161
+          "line": 156
         },
         {
           "id": "workers › starts a worker per address with the kit's start data and its own directory; two kinds side by side",
           "kind": "it",
           "modifiers": [],
-          "line": 170
+          "line": 165
         },
         {
           "id": "workers › applies changes: builds the dirty plugins and rolls them out to the server, then the workers",
           "kind": "it",
           "modifiers": [],
-          "line": 223
+          "line": 218
         },
         {
           "id": "applying changes one after another › starts a later applyChanges after the earlier one rolled out, so the newest build stays deployed",
           "kind": "it",
           "modifiers": [],
-          "line": 241
+          "line": 236
         },
         {
           "id": "base code › compares the server's own code from its entry, the start script and what it imports, with no `base` given",
           "kind": "it",
           "modifiers": [],
-          "line": 293
+          "line": 288
         },
         {
           "id": "base code › starts with an entry whose inactive optional import is missing: the import is left out, the rest compared",
           "kind": "it",
           "modifiers": [],
-          "line": 313
+          "line": 309
         },
         {
           "id": "base code › starts when the scan of its entry fails (a lazy import of a file it cannot parse): reported, not compared",
           "kind": "it",
           "modifiers": [],
-          "line": 333
+          "line": 330
+        },
+        {
+          "id": "base code › answers before the scan of its own code finished: the scan runs after the start",
+          "kind": "it",
+          "modifiers": [
+            "skipIf"
+          ],
+          "line": 345
+        },
+        {
+          "id": "base code › closes without waiting for a scan of its own code stalled on a read",
+          "kind": "it",
+          "modifiers": [
+            "skipIf"
+          ],
+          "line": 369
+        },
+        {
+          "id": "base code › marks a file of its own code edited right after the start, before the scan read it (Node loaded the old)",
+          "kind": "it",
+          "modifiers": [],
+          "line": 398
+        },
+        {
+          "id": "base code › does not mark a file of its own code stamped in the future: compared by its bytes (Astra)",
+          "kind": "it",
+          "modifiers": [],
+          "line": 413
+        },
+        {
+          "id": "base code › settles baseWatched only once the base bundles' records were compared (an edit right after the start)",
+          "kind": "it",
+          "modifiers": [],
+          "line": 426
         },
         {
           "id": "base code › marks base for a change of `base`'s files and directories and of a file a worker kind's base was built from, not for a rewrite with the same bytes",
           "kind": "it",
           "modifiers": [],
-          "line": 344
+          "line": 441
+        },
+        {
+          "id": "bases built after the listen › answers its owner page before the web base is built; a page request waits for its base",
+          "kind": "it",
+          "modifiers": [
+            "skipIf"
+          ],
+          "line": 500
+        },
+        {
+          "id": "bases built after the listen › answers before a worker kind's base is built; a worker start waits for its base",
+          "kind": "it",
+          "modifiers": [
+            "skipIf"
+          ],
+          "line": 534
+        },
+        {
+          "id": "bases built after the listen › a closed start's late worker-base build never touches the next start's directory: its worker still lazy-imports",
+          "kind": "it",
+          "modifiers": [
+            "skipIf"
+          ],
+          "line": 573
+        },
+        {
+          "id": "bases built after the listen › an aborted Apply waiting at the web step for the initial build stops there; the build goes on (Sol)",
+          "kind": "it",
+          "modifiers": [
+            "skipIf"
+          ],
+          "line": 636
+        },
+        {
+          "id": "bases built after the listen › reports a base that fails after the listen and runs on: the page answers 503, the kind's workers fail their start",
+          "kind": "it",
+          "modifiers": [],
+          "line": 668
         },
         {
           "id": "installs › installs a plugin from git into the user's root; applying changes loads it",
           "kind": "it",
           "modifiers": [],
-          "line": 376
+          "line": 701
         },
         {
           "id": "export and import per address › exports a running worker's data without stopping it: the worker packs its own store (decision \"App kit naming and export\")",
           "kind": "it",
           "modifiers": [],
-          "line": 395
+          "line": 720
         },
         {
           "id": "export and import per address › refuses the worker's data object to any principal but the server's",
           "kind": "it",
           "modifiers": [],
-          "line": 422
+          "line": 747
         },
         {
           "id": "export and import per address › exports without a worker under its lock: a hold arriving meanwhile starts the worker after it (review M1)",
           "kind": "it",
           "modifiers": [],
-          "line": 438
+          "line": 763
         },
         {
           "id": "export and import per address › leaves a failed address failed after an export (recheck N5)",
           "kind": "it",
           "modifiers": [],
-          "line": 477
+          "line": 802
         },
         {
           "id": "export and import per address › round-trips a worker's documents, tables and files; refuses an existing address",
           "kind": "it",
           "modifiers": [],
-          "line": 514
+          "line": 839
         }
       ]
     },
@@ -23635,7 +23771,7 @@
     {
       "path": "packages/chord/test/node/app/layout.test.ts",
       "package": "chord",
-      "sha256": "sha256:22920a2be00f0a12133dbc50debfcf8d06d21eae7f63e5803f9285ae39129e66",
+      "sha256": "sha256:9aceff55bcea02ff0c6954bef6e7490d95c66efdd52c46814589ade44cb59846",
       "caseCount": 4,
       "cases": [
         {
@@ -23648,19 +23784,19 @@
           "id": "worker directories › encodes an address key as one directory name under its kind",
           "kind": "it",
           "modifiers": [],
-          "line": 31
+          "line": 37
         },
         {
           "id": "worker directories › keeps keys differing only in case apart, lowercased as a case-insensitive file system sees them",
           "kind": "it",
           "modifiers": [],
-          "line": 38
+          "line": 44
         },
         {
           "id": "worker directories › names a long key by its hash",
           "kind": "it",
           "modifiers": [],
-          "line": 43
+          "line": 49
         }
       ]
     },
@@ -25945,6 +26081,34 @@
       ]
     },
     {
+      "path": "packages/chord/test/node/surfaces/surface-build.test.ts",
+      "package": "chord",
+      "sha256": "sha256:9f4ea7be0779c23f752917cdca187ac3e1d14e0b11615a1d2fb672e17aa8a57b",
+      "caseCount": 3,
+      "cases": [
+        {
+          "id": "one shared build › builds once for every waiter; the scripts object shows an empty set before, the first set after",
+          "kind": "it",
+          "modifiers": [],
+          "line": 87
+        },
+        {
+          "id": "a rollout step during the build › stops waiting at its context's abort, before the build ends; the build goes on for everyone else",
+          "kind": "it",
+          "modifiers": [
+            "skipIf"
+          ],
+          "line": 110
+        },
+        {
+          "id": "a failed build › answers 503 for the surface's files and fails its step's host",
+          "kind": "it",
+          "modifiers": [],
+          "line": 134
+        }
+      ]
+    },
+    {
       "path": "packages/chord/test/node/surfaces/tui.test.ts",
       "package": "chord",
       "sha256": "sha256:7195a06f4cffbfe206b44129bd2935f23c9975204e88bccb94ad9c3d95ac618c",
@@ -26347,8 +26511,8 @@
     {
       "path": "packages/chord/test/node/workers/base.test.ts",
       "package": "chord",
-      "sha256": "sha256:c81aa14f3f9a3cff377c94ce876bc4cd572b048b38109fc3963979c785ff5b7b",
-      "caseCount": 12,
+      "sha256": "sha256:d181a6f386e082a83661bedd9b884476ef8c83a91805867566d2838498f0a25f",
+      "caseCount": 14,
       "cases": [
         {
           "id": "the snapshot › bundles the entry and its imports once: an edit after the build runs nowhere; inputs name both files",
@@ -26421,6 +26585,18 @@
           "kind": "it",
           "modifiers": [],
           "line": 284
+        },
+        {
+          "id": "the bundle's file › writes nothing before the first file(): a handle never forked leaves a named directory as it is, also at remove",
+          "kind": "it",
+          "modifiers": [],
+          "line": 301
+        },
+        {
+          "id": "the bundle's file › in a named directory: emptied first (an earlier build's files go), written again there, removed by remove",
+          "kind": "it",
+          "modifiers": [],
+          "line": 311
         }
       ]
     },
@@ -26557,8 +26733,8 @@
     {
       "path": "packages/chord/test/node/workers/workers.test.ts",
       "package": "chord",
-      "sha256": "sha256:3c37d4d8b6ba7e8aacc072959d4c8eea747276567858a847056ec81a511686b6",
-      "caseCount": 34,
+      "sha256": "sha256:d3ec1ab80a1a7e170a1dbe9d2fefe61a7820966d29892af9c5a7cf5b00d480bf",
+      "caseCount": 36,
       "cases": [
         {
           "id": "starts on demand › starts a worker for the first hold: starting, then running; its link binds the holder",
@@ -26573,196 +26749,208 @@
           "line": 52
         },
         {
-          "id": "the worker base (decision \"Workers start from the base code the server booted with\") › a worker started after an edit of the entry's imported source runs the code the component was created with",
+          "id": "the worker base (decision \"Workers start from the base code the server booted with\") › a worker started after an edit of the entry's imported source runs the code the base was built with",
           "kind": "it",
           "modifiers": [],
           "line": 62
         },
         {
-          "id": "the worker base (decision \"Workers start from the base code the server booted with\") › a broken entry rejects createWorkers: nothing is routed, the kind can be routed again",
+          "id": "the worker base (decision \"Workers start from the base code the server booted with\") › close keeps the base's files until its workers exited: a closer's first lazy import still loads (Astra)",
           "kind": "it",
           "modifiers": [],
-          "line": 93
+          "line": 95
+        },
+        {
+          "id": "the worker base (decision \"Workers start from the base code the server booted with\") › a start waits for the base's build, and starts it when nothing did",
+          "kind": "it",
+          "modifiers": [],
+          "line": 106
+        },
+        {
+          "id": "the worker base (decision \"Workers start from the base code the server booted with\") › a broken entry fails its build and every start (worker_failed, the public start error); nothing forks",
+          "kind": "it",
+          "modifiers": [],
+          "line": 116
         },
         {
           "id": "failures stay until retry or a rollout (R2) › a start that throws fails the address: holders fail waiting with it, a new hold forks nothing; retry starts it",
           "kind": "it",
           "modifiers": [],
-          "line": 118
+          "line": 138
         },
         {
           "id": "failures stay until retry or a rollout (R2) › a crash after ready stays failed (worker_exited, worker_failed), nothing restarts",
           "kind": "it",
           "modifiers": [],
-          "line": 151
+          "line": 171
         },
         {
           "id": "failures stay until retry or a rollout (R2) › a fatal crosses redacted: the secret never reaches the public state",
           "kind": "it",
           "modifiers": [],
-          "line": 166
+          "line": 186
         },
         {
           "id": "failures stay until retry or a rollout (R2) › a running worker's lost link (a blocked event loop past the heartbeat): killed after the grace, its holders get a new worker past the lock file the kill left; a second within a minute fails the address",
           "kind": "it",
           "modifiers": [],
-          "line": 180
+          "line": 200
         },
         {
           "id": "failures stay until retry or a rollout (R2) › an exit before started fails the start; a worker that never connects is killed at the start timer",
           "kind": "it",
           "modifiers": [],
-          "line": 207
+          "line": 227
         },
         {
           "id": "failures stay until retry or a rollout (R2) › the start timer covers only the start: a slow load after connecting is not killed (Q4)",
           "kind": "it",
           "modifiers": [],
-          "line": 236
+          "line": 256
         },
         {
           "id": "stale lock files (macOS, the BSDs; decision \"Stale lock files are cleared by the starter\") › a start clears the lock file a killed worker of an earlier server left: the worker runs",
           "kind": "it",
           "modifiers": [],
-          "line": 257
+          "line": 277
         },
         {
           "id": "keep-alive (D9, R3, Q5) › stops a worker idle since idleMs; a hold keeps one running; busy keeps it too",
           "kind": "it",
           "modifiers": [],
-          "line": 278
+          "line": 298
         },
         {
           "id": "keep-alive (D9, R3, Q5) › 1,000 sequential local calls in a worker nobody holds send no message (Sol)",
           "kind": "it",
           "modifiers": [],
-          "line": 294
+          "line": 314
         },
         {
           "id": "stop › suspends while held: holders fail waiting suspended, nothing starts; forgotten with the last holder (Q3)",
           "kind": "it",
           "modifiers": [],
-          "line": 305
+          "line": 325
         },
         {
           "id": "stop › a stop during a start waits for it, then stops; a start during a stop waits for its exit",
           "kind": "it",
           "modifiers": [],
-          "line": 322
+          "line": 342
         },
         {
           "id": "stop › runs the worker's closers in reverse order at its stop",
           "kind": "it",
           "modifiers": [],
-          "line": 341
+          "line": 361
         },
         {
           "id": "close › cancels a start waiting in start(address): nothing forks; new starts reject; no worker_failed at shutdown",
           "kind": "it",
           "modifiers": [],
-          "line": 354
+          "line": 374
         },
         {
           "id": "the rollout step (§4) › ships the current set to running workers, retries held failed ones, lists each",
           "kind": "it",
           "modifiers": [],
-          "line": 381
+          "line": 401
         },
         {
           "id": "the rollout step (§4) › lists a worker stopped cleanly during it as stopped and one that crashed with its error (it stays dirty)",
           "kind": "it",
           "modifiers": [],
-          "line": 407
+          "line": 427
         },
         {
           "id": "the rollout step (§4) › a worker starting during it gets the new set: a start after the rollout loads it",
           "kind": "it",
           "modifiers": [],
-          "line": 433
+          "line": 453
         },
         {
           "id": "the rollout step (§4) › an aborted wait lists the worker aborted; its late reply keeps the child's slot until it arrives",
           "kind": "it",
           "modifiers": [],
-          "line": 447
+          "line": 467
         },
         {
           "id": "GC › 100 addresses started and stopped leave no state, no record, no suspension (Astra, Sol)",
           "kind": "it",
           "modifiers": [],
-          "line": 478
+          "line": 498
         },
         {
           "id": "GC › 1,000 failed and retried addresses leave no state, no record and no suspension",
           "kind": "it",
           "modifiers": [],
-          "line": 501
+          "line": 521
         },
         {
           "id": "fix round 2 › a throwing principal hook fails the start with the public message; the error stays private",
           "kind": "it",
           "modifiers": [],
-          "line": 524
+          "line": 544
         },
         {
           "id": "fix round 2 › a throwing authorize refuses the hold (forbidden); the error stays private, reported authorize_failed",
           "kind": "it",
           "modifiers": [],
-          "line": 548
+          "line": 568
         },
         {
           "id": "fix round 1 › close during a forked start that never connects returns at once, no failure (Opus F1)",
           "kind": "it",
           "modifiers": [],
-          "line": 570
+          "line": 590
         },
         {
           "id": "fix round 1 › close during an app's start that ignores its signal returns at once; nothing forks after it (Sol)",
           "kind": "it",
           "modifiers": [],
-          "line": 582
+          "line": 602
         },
         {
           "id": "fix round 1 › a stop during the worker's startup is a stop: its closers run, nothing fails (Astra)",
           "kind": "it",
           "modifiers": [],
-          "line": 593
+          "line": 613
         },
         {
           "id": "fix round 1 › a reload queued behind one the child never answers settles when the child exits (Astra)",
           "kind": "it",
           "modifiers": [],
-          "line": 607
+          "line": 627
         },
         {
           "id": "fix round 1 › a plugin whose evaluation failed is shipped again by the next rollout and stays dirty (Astra)",
           "kind": "it",
           "modifiers": [],
-          "line": 626
+          "line": 646
         },
         {
           "id": "fix round 1 › two rollouts started together each ship their own build; the later one stays (Astra)",
           "kind": "it",
           "modifiers": [],
-          "line": 646
+          "line": 666
         },
         {
           "id": "fix round 1 › reaps a worker that closed its own IPC channel and lives on: killed after the grace, a lost link its holder gets a new worker for (Sol)",
           "kind": "it",
           "modifiers": [],
-          "line": 666
+          "line": 686
         },
         {
           "id": "fix round 1 › keeps no reload report once consumed: the reload queue settles to nothing (Sol)",
           "kind": "it",
           "modifiers": [],
-          "line": 677
+          "line": 697
         },
         {
           "id": "fix round 1 › keeps a worker's stderr out of the public state: only worker_failed carries its tail (Astra)",
           "kind": "it",
           "modifiers": [],
-          "line": 692
+          "line": 712
         }
       ]
     },
@@ -32829,8 +33017,8 @@
     {
       "path": "packages/codemode/test/sandbox.test.ts",
       "package": "codemode",
-      "sha256": "sha256:f9252a9b5851d6187ce3bdbefe89f83fff5c5395b197c378640936fd94a9da63",
-      "caseCount": 53,
+      "sha256": "sha256:a76f2e0f3688286fcb15de79a675cc05bae699117e5f740b12dd26dbb0090931",
+      "caseCount": 54,
       "cases": [
         {
           "id": "embedded sources › parse as JavaScript",
@@ -32857,292 +33045,298 @@
           "line": 97
         },
         {
+          "id": "%s backend › script execution › prints non-finite numbers in console output and thrown values like text()",
+          "kind": "it",
+          "modifiers": [],
+          "line": 133
+        },
+        {
           "id": "%s backend › script execution › rejects invalid text() and image() arguments",
           "kind": "it",
           "modifiers": [],
-          "line": 132
+          "line": 144
         },
         {
           "id": "%s backend › script execution › accepts wrapped and large base64 image data",
           "kind": "it",
           "modifiers": [],
-          "line": 180
+          "line": 192
         },
         {
           "id": "%s backend › script execution › ends the script successfully on exit(), keeping output and store writes",
           "kind": "it",
           "modifiers": [],
-          "line": 194
+          "line": 206
         },
         {
           "id": "%s backend › script execution › keeps output produced before a failure",
           "kind": "it",
           "modifiers": [],
-          "line": 212
+          "line": 224
         },
         {
           "id": "%s backend › script execution › reports syntax errors with the script's line number",
           "kind": "it",
           "modifiers": [],
-          "line": 218
+          "line": 230
         },
         {
           "id": "%s backend › script execution › reports thrown errors with the script's line number",
           "kind": "it",
           "modifiers": [],
-          "line": 228
+          "line": 240
         },
         {
           "id": "%s backend › script execution › formats stacks like V8 without prelude frames",
           "kind": "it",
           "modifiers": [],
-          "line": 237
+          "line": 249
         },
         {
           "id": "%s backend › script execution › reports non-Error throws",
           "kind": "it",
           "modifiers": [],
-          "line": 251
+          "line": 263
         },
         {
           "id": "%s backend › script execution › reports a non-serializable return value as a script error",
           "kind": "it",
           "modifiers": [],
-          "line": 257
+          "line": 269
         },
         {
           "id": "%s backend › tools › exposes tools as async functions and records calls",
           "kind": "it",
           "modifiers": [],
-          "line": 265
+          "line": 277
         },
         {
           "id": "%s backend › tools › runs concurrent calls and lists tool names",
           "kind": "it",
           "modifiers": [],
-          "line": 294
+          "line": 306
         },
         {
           "id": "%s backend › tools › exposes tools under normalized identifiers and lists them in ALL_TOOLS",
           "kind": "it",
           "modifiers": [],
-          "line": 306
+          "line": 318
         },
         {
           "id": "%s backend › tools › passes undefined arguments and results through",
           "kind": "it",
           "modifiers": [],
-          "line": 331
+          "line": 343
         },
         {
           "id": "%s backend › tools › turns tool errors into catchable Errors in the script",
           "kind": "it",
           "modifiers": [],
-          "line": 337
+          "line": 349
         },
         {
           "id": "%s backend › tools › rejects calls to unknown tools",
           "kind": "it",
           "modifiers": [],
-          "line": 358
+          "line": 370
         },
         {
           "id": "%s backend › tools › aborts unawaited calls when the script returns",
           "kind": "it",
           "modifiers": [],
-          "line": 364
+          "line": 376
         },
         {
           "id": "%s backend › tools › names close matches when a script reads a tool that does not exist",
           "kind": "it",
           "modifiers": [],
-          "line": 384
+          "line": 396
         },
         {
           "id": "%s backend › tools › supports register and unregister between executions",
           "kind": "it",
           "modifiers": [],
-          "line": 400
+          "line": 412
         },
         {
           "id": "%s backend › store and load › reads the snapshot and reports writes",
           "kind": "it",
           "modifiers": [],
-          "line": 412
+          "line": 424
         },
         {
           "id": "%s backend › store and load › returns copies, so mutating a loaded value does not change the store",
           "kind": "it",
           "modifiers": [],
-          "line": 432
+          "line": 444
         },
         {
           "id": "%s backend › store and load › rejects invalid keys, values, and oversized writes inside the script",
           "kind": "it",
           "modifiers": [],
-          "line": 442
+          "line": 454
         },
         {
           "id": "%s backend › store and load › explains oversized writes",
           "kind": "it",
           "modifiers": [],
-          "line": 460
+          "line": 472
         },
         {
           "id": "%s backend › store and load › reserves the store and load names",
           "kind": "it",
           "modifiers": [],
-          "line": 469
+          "line": 481
         },
         {
           "id": "%s backend › globals › exposes globals as top-level functions without recording them as calls",
           "kind": "it",
           "modifiers": [],
-          "line": 477
+          "line": 489
         },
         {
           "id": "%s backend › globals › groups namespaced globals and spreads arguments on request",
           "kind": "it",
           "modifiers": [],
-          "line": 494
+          "line": 506
         },
         {
           "id": "%s backend › globals › names the members of a namespace when a script reads one that does not exist",
           "kind": "it",
           "modifiers": [],
-          "line": 513
+          "line": 525
         },
         {
           "id": "%s backend › globals › rejects invalid and reserved global names",
           "kind": "it",
           "modifiers": [],
-          "line": 529
+          "line": 541
         },
         {
           "id": "%s backend › limits and lifetime › terminates a synchronous infinite loop on timeout",
           "kind": "it",
           "modifiers": [],
-          "line": 549
+          "line": 561
         },
         {
           "id": "%s backend › limits and lifetime › runs without a deadline when timeoutMs is Infinity",
           "kind": "it",
           "modifiers": [],
-          "line": 557
+          "line": 569
         },
         {
           "id": "%s backend › limits and lifetime › fails a script that waits on a promise nothing can settle",
           "kind": "it",
           "modifiers": [],
-          "line": 565
+          "line": 577
         },
         {
           "id": "%s backend › limits and lifetime › terminates a microtask-spinning loop on timeout",
           "kind": "it",
           "modifiers": [],
-          "line": 581
+          "line": 593
         },
         {
           "id": "%s backend › limits and lifetime › aborts via signal and cancels in-flight calls",
           "kind": "it",
           "modifiers": [],
-          "line": 587
+          "line": 599
         },
         {
           "id": "%s backend › limits and lifetime › fails a script whose output passes the limits, even if it catches the error",
           "kind": "it",
           "modifiers": [],
-          "line": 629
+          "line": 641
         },
         {
           "id": "%s backend › limits and lifetime › rejects execute after close",
           "kind": "it",
           "modifiers": [],
-          "line": 658
+          "line": 670
         },
         {
           "id": "%s backend › limits and lifetime › runs executions in parallel without sharing state",
           "kind": "it",
           "modifiers": [],
-          "line": 664
+          "line": 676
         },
         {
           "id": "%s backend › limits and lifetime › turns deep recursion into a catchable RangeError",
           "kind": "it",
           "modifiers": [],
-          "line": 674
+          "line": 686
         },
         {
           "id": "%s backend › escape hatches › has no host globals",
           "kind": "it",
           "modifiers": [],
-          "line": 686
+          "line": 698
         },
         {
           "id": "%s backend › escape hatches › keeps eval and Function inside the VM",
           "kind": "it",
           "modifiers": [],
-          "line": 710
+          "line": 722
         },
         {
           "id": "%s backend › escape hatches › rejects dynamic import",
           "kind": "it",
           "modifiers": [],
-          "line": 724
+          "line": 736
         },
         {
           "id": "%s backend › escape hatches › ignores patches to built-ins and built-in globals",
           "kind": "it",
           "modifiers": [],
-          "line": 736
+          "line": 748
         },
         {
           "id": "%s backend › escape hatches › freezes intrinsics that are only reachable from instances",
           "kind": "it",
           "modifiers": [],
-          "line": 750
+          "line": 762
         },
         {
           "id": "%s backend › escape hatches › still lets instances override properties of frozen prototypes",
           "kind": "it",
           "modifiers": [],
-          "line": 766
+          "line": 778
         },
         {
           "id": "%s backend › escape hatches › reports errors whose name or message is not a string",
           "kind": "it",
           "modifiers": [],
-          "line": 792
+          "line": 804
         },
         {
           "id": "%s backend › escape hatches › keeps tools and console frozen",
           "kind": "it",
           "modifiers": [],
-          "line": 798
+          "line": 810
         },
         {
           "id": "worker host › accepts a worker path string",
           "kind": "it",
           "modifiers": [],
-          "line": 816
+          "line": 828
         },
         {
           "id": "worker host › reports a missing worker file as a sandbox error",
           "kind": "it",
           "modifiers": [],
-          "line": 823
+          "line": 835
         },
         {
           "id": "worker host › reports a failing wasm module as a sandbox error",
           "kind": "it",
           "modifiers": [],
-          "line": 829
+          "line": 841
         },
         {
           "id": "worker host › ignores Node --watch notifications from the worker",
           "kind": "it",
           "modifiers": [],
-          "line": 839
+          "line": 851
         },
         {
           "id": "worker host › reports a broken bridge as a sandbox error: %j",
@@ -33150,7 +33344,7 @@
           "modifiers": [
             "each"
           ],
-          "line": 854
+          "line": 866
         }
       ]
     },
@@ -35208,7 +35402,7 @@
     {
       "path": "packages/coding-agent/test/cache-warmer.test.ts",
       "package": "coding-agent",
-      "sha256": "sha256:b1d427d2df93c9a3d893d95a79e9ea127accf4970fe319a2f46c225ad8d11d0f",
+      "sha256": "sha256:8220d3941bfd8e8441d7c87e4e0fe8bd203b4b5abdfed1acb7796e6a15309c58",
       "caseCount": 9,
       "cases": [
         {
@@ -41642,8 +41836,8 @@
     {
       "path": "packages/coding-agent/test/oauth-selector.test.ts",
       "package": "coding-agent",
-      "sha256": "sha256:076b71657cb05e62537547ed8f18ceaf0bf37c65ad57134fc25d4fcc66ca6fdd",
-      "caseCount": 6,
+      "sha256": "sha256:601f760ecab96aa2a6aeda80da60a6607610232ae2881683a302ad61e8808f3a",
+      "caseCount": 10,
       "cases": [
         {
           "id": "OAuthSelectorComponent › projects provider-owned auth options without provider-specific filtering",
@@ -41680,6 +41874,30 @@
           "kind": "it",
           "modifiers": [],
           "line": 130
+        },
+        {
+          "id": "OAuthSelectorComponent › lists preferred partners first, then the rest alphabetically",
+          "kind": "it",
+          "modifiers": [],
+          "line": 148
+        },
+        {
+          "id": "OAuthSelectorComponent › shows the brand style of a preferred partner only on its selected row",
+          "kind": "it",
+          "modifiers": [],
+          "line": 188
+        },
+        {
+          "id": "OAuthSelectorComponent › keeps the accent style without a TUI to animate in",
+          "kind": "it",
+          "modifiers": [],
+          "line": 218
+        },
+        {
+          "id": "OAuthSelectorComponent › marks preferred partners with a star",
+          "kind": "it",
+          "modifiers": [],
+          "line": 229
         }
       ]
     },
@@ -43480,6 +43698,26 @@
             "skipIf"
           ],
           "line": 17
+        }
+      ]
+    },
+    {
+      "path": "packages/coding-agent/test/preferred-providers.test.ts",
+      "package": "coding-agent",
+      "sha256": "sha256:710ec48c3fbafb6a7025b8d1dfbda56a2654df0fa017f4c52215f42093691776",
+      "caseCount": 2,
+      "cases": [
+        {
+          "id": "compareProviders › orders preferred partners first, in their order, then the rest by name",
+          "kind": "it",
+          "modifiers": [],
+          "line": 5
+        },
+        {
+          "id": "isPreferredProvider › recognizes only the preferred partners",
+          "kind": "it",
+          "modifiers": [],
+          "line": 26
         }
       ]
     },
@@ -46782,7 +47020,7 @@
     {
       "path": "packages/coding-agent/test/settings-manager.test.ts",
       "package": "coding-agent",
-      "sha256": "sha256:28af8d06e9d36a1b8f89f3d6097bced8439bb325686ea0473caca4a6905ca4be",
+      "sha256": "sha256:7b31d4e65427b306f67da6525902dc26acbce8dbf4070c706e75f82274cba101",
       "caseCount": 51,
       "cases": [
         {
@@ -46918,7 +47156,7 @@
           "line": 405
         },
         {
-          "id": "SettingsManager › cacheWarming › defaults to streaming and ignores project settings",
+          "id": "SettingsManager › cacheWarming › defaults to idle and ignores project settings",
           "kind": "it",
           "modifiers": [],
           "line": 414
@@ -57750,32 +57988,38 @@
     {
       "path": "packages/durable/test/harness-read-only.test.ts",
       "package": "durable",
-      "sha256": "sha256:ab194b95e69f2855c837d0efffbb10ddf69a7054b284dfa31f301047590a8eaf",
-      "caseCount": 4,
+      "sha256": "sha256:0bd9fb1ed6b56f2ccfb6158d158a0abd74d988adea103ddd045eadc7d2a1464d",
+      "caseCount": 5,
       "cases": [
         {
           "id": "read-only Harness › opens a session with work running elsewhere without writing",
           "kind": "it",
           "modifiers": [],
-          "line": 63
+          "line": 73
+        },
+        {
+          "id": "read-only Harness › opens a JSONL session with work running elsewhere without writing",
+          "kind": "it",
+          "modifiers": [],
+          "line": 97
         },
         {
           "id": "read-only Harness › refuses writes and scheduling, and stays usable",
           "kind": "it",
           "modifiers": [],
-          "line": 86
+          "line": 126
         },
         {
           "id": "read-only Harness › refuses to create the root of an empty storage",
           "kind": "it",
           "modifiers": [],
-          "line": 117
+          "line": 157
         },
         {
           "id": "read-only Harness › leaves recovery to the next writable open",
           "kind": "it",
           "modifiers": [],
-          "line": 127
+          "line": 167
         }
       ]
     },
@@ -59270,8 +59514,8 @@
     {
       "path": "packages/durable/test/harness-tasks.test.ts",
       "package": "durable",
-      "sha256": "sha256:167fa91d055d3660832344cf54c4afa5af7e732e7e8af021f59976262f82c8b6",
-      "caseCount": 47,
+      "sha256": "sha256:6b3c61985a68d9a96af0613a18e84a3ae30e914a7397caeae0f66e384e429f00",
+      "caseCount": 49,
       "cases": [
         {
           "id": "task phases › continues one invocation through checkpoint progress and completes with a typed result",
@@ -59364,196 +59608,208 @@
           "line": 691
         },
         {
+          "id": "task scheduling › finalizes a holder whose last child is published while a finalize pass plans other holders",
+          "kind": "it",
+          "modifiers": [],
+          "line": 732
+        },
+        {
+          "id": "task scheduling › runs a waiter whose last dependency is published while a reservation pass plans",
+          "kind": "it",
+          "modifiers": [],
+          "line": 787
+        },
+        {
           "id": "task scheduling › fails the Harness on a failed reservation commit; reopening runs the task",
           "kind": "it",
           "modifiers": [],
-          "line": 731
+          "line": 855
         },
         {
           "id": "task scheduling › fails the Harness instead of running a task again when its fault write fails",
           "kind": "it",
           "modifiers": [],
-          "line": 763
+          "line": 887
         },
         {
           "id": "task scheduling › waits for Harness and conversation idleness, counting blocked work and ignoring background tasks",
           "kind": "it",
           "modifiers": [],
-          "line": 792
+          "line": 916
         },
         {
           "id": "task scheduling › pages the newest tasks first without scanning older ones",
           "kind": "it",
           "modifiers": [],
-          "line": 830
+          "line": 954
         },
         {
           "id": "task scheduling › rejects unknown tasks and reports terminal tasks",
           "kind": "it",
           "modifiers": [],
-          "line": 842
+          "line": 966
         },
         {
           "id": "task scheduling › rejects task waits cancelled or closed while queued on the line, and pending waits on close",
           "kind": "it",
           "modifiers": [],
-          "line": 860
+          "line": 984
         },
         {
           "id": "task abort › rejects the run's commits and memo writes after the mark, and settles through a fresh abort invocation",
           "kind": "it",
           "modifiers": [],
-          "line": 903
+          "line": 1027
         },
         {
           "id": "task abort › starts no further phase after a mark that lands during a phase with progress",
           "kind": "it",
           "modifiers": [],
-          "line": 947
+          "line": 1071
         },
         {
           "id": "task abort › signals and joins the run before returning, then runs the abort handler",
           "kind": "it",
           "modifiers": [],
-          "line": 984
+          "line": 1108
         },
         {
           "id": "task abort › aborts waiting work before its wait ends and faults abort handlers that throw or settle nothing",
           "kind": "it",
           "modifiers": [],
-          "line": 1006
+          "line": 1130
         },
         {
           "id": "task abort › does not signal a running abort handler when aborted again, and a cancelled caller leaves the mark durable",
           "kind": "it",
           "modifiers": [],
-          "line": 1041
+          "line": 1165
         },
         {
           "id": "task abort › keeps a terminal outcome committed by an abort handler that throws afterwards",
           "kind": "it",
           "modifiers": [],
-          "line": 1081
+          "line": 1205
         },
         {
           "id": "task abort › never starts phase one when the abort lands while the reservation settles",
           "kind": "it",
           "modifiers": [],
-          "line": 1101
+          "line": 1225
         },
         {
           "id": "task abort › lets an abort mark win over a fault that races it",
           "kind": "it",
           "modifiers": [],
-          "line": 1122
+          "line": 1246
         },
         {
           "id": "task close › stops without outcomes and starts no fresh phase or abort invocation while closing",
           "kind": "it",
           "modifiers": [],
-          "line": 1149
+          "line": 1273
         },
         {
           "id": "task close › seals admission before signalling handlers and stops watches before joining them",
           "kind": "it",
           "modifiers": [],
-          "line": 1203
+          "line": 1327
         },
         {
           "id": "task close › writes no fault when close seals while the step after a failed phase is queued",
           "kind": "it",
           "modifiers": [],
-          "line": 1237
+          "line": 1361
         },
         {
           "id": "task close › starts no abort handler whose reservation settles while closing",
           "kind": "it",
           "modifiers": [],
-          "line": 1267
+          "line": 1391
         },
         {
           "id": "task close › rejects a runtime commit that was queued on the line when close sealed it",
           "kind": "it",
           "modifiers": [],
-          "line": 1295
+          "line": 1419
         },
         {
           "id": "task close › starts no next phase when close seals during a step that decided to continue",
           "kind": "it",
           "modifiers": [],
-          "line": 1330
+          "line": 1454
         },
         {
           "id": "task close › joins a reservation that settles while closing without starting its handler",
           "kind": "it",
           "modifiers": [],
-          "line": 1374
+          "line": 1498
         },
         {
           "id": "publication at adoption › resumes task and idle waits only once observeCommits() observers saw the terminal commit",
           "kind": "it",
           "modifiers": [],
-          "line": 1413
+          "line": 1537
         },
         {
           "id": "publication at adoption › runs host listeners before the waits a terminal commit resolves (${name})",
           "kind": "it",
           "modifiers": [],
-          "line": 1437
+          "line": 1561
         },
         {
           "id": "publication at adoption › signals a newly marked run after host listeners saw the mark, outside the storage's adopt (${name})",
           "kind": "it",
           "modifiers": [],
-          "line": 1458
+          "line": 1582
         },
         {
           "id": "publication at adoption › resolves a waitForIdle() called while the storage stores the commit at its publication, after host listeners",
           "kind": "it",
           "modifiers": [],
-          "line": 1485
+          "line": 1609
         },
         {
           "id": "publication at adoption › publishes a commit the storage rejects after adopting it, resolves its waits, then fails the Session",
           "kind": "it",
           "modifiers": [],
-          "line": 1514
+          "line": 1638
         },
         {
           "id": "publication at adoption › counts a task created by a commit the storage rejects after adopting it, and its close balances it",
           "kind": "it",
           "modifiers": [],
-          "line": 1540
+          "line": 1664
         },
         {
           "id": "publication at adoption › keeps a task wait resolved when a host listener closes the Harness on the terminal commit",
           "kind": "it",
           "modifiers": [],
-          "line": 1552
+          "line": 1676
         },
         {
           "id": "publication at adoption › ends a task wait when the Harness closes while the terminal commit is stored, and still stores it",
           "kind": "it",
           "modifiers": [],
-          "line": 1571
+          "line": 1695
         },
         {
           "id": "publication at adoption › fails the Session with the storage error when it rejects after adopting, and reports an observer's throw",
           "kind": "it",
           "modifiers": [],
-          "line": 1601
+          "line": 1725
         },
         {
           "id": "publication at adoption › stores a host listener's own commit before the reconcile commit that the same publication asks for",
           "kind": "it",
           "modifiers": [],
-          "line": 1618
+          "line": 1742
         },
         {
           "id": "publication at adoption › calls a host listener added on a Harness during a publication only when one was registered at it",
           "kind": "it",
           "modifiers": [],
-          "line": 1657
+          "line": 1781
         }
       ]
     },
@@ -60554,158 +60810,182 @@
     {
       "path": "packages/durable/test/jsonl-storage.test.ts",
       "package": "durable",
-      "sha256": "sha256:8ec8e4026789901469a2cc1ef63564a975bbb98ac5c6d06c162d01a626e21359",
-      "caseCount": 25,
+      "sha256": "sha256:b5d3ad9bfd1891aa92ed2605266ffb061d0d8fc963550a0fb2fea4d23d00c487",
+      "caseCount": 29,
       "cases": [
         {
           "id": "Pico JsonlStorage publication and recovery › opens through the Node adapter",
           "kind": "it",
           "modifiers": [],
-          "line": 326
+          "line": 335
         },
         {
           "id": "Pico JsonlStorage publication and recovery › publishes every commit before reclaiming current-only document and terminal-task sidecars",
           "kind": "it",
           "modifiers": [],
-          "line": 333
+          "line": 342
         },
         {
           "id": "Pico JsonlStorage publication and recovery › orders multiple live-task replacements in one sidecar by commit ordinal",
           "kind": "it",
           "modifiers": [],
-          "line": 382
+          "line": 391
         },
         {
           "id": "Pico JsonlStorage publication and recovery › removes a complete-plus-torn unconfirmed multi-record sidecar append",
           "kind": "it",
           "modifiers": [],
-          "line": 401
+          "line": 410
         },
         {
           "id": "Pico JsonlStorage publication and recovery › poisons the storage when an append fails after its batches applied, before a waiting read goes on (review)",
           "kind": "it",
           "modifiers": [],
-          "line": 427
+          "line": 436
         },
         {
           "id": "Pico JsonlStorage publication and recovery › serializes the complete candidate before I/O and leaves preparation failures usable",
           "kind": "it",
           "modifiers": [],
-          "line": 467
+          "line": 476
         },
         {
           "id": "Pico JsonlStorage publication and recovery › poisons after ${failure.mode} failure at append ${failure.call} and recovers only confirmed state",
           "kind": "it",
           "modifiers": [],
-          "line": 512
+          "line": 521
         },
         {
           "id": "Pico JsonlStorage publication and recovery › poisons after ${failure.mode} failure at flush ${failure.call} and never writes a marker",
           "kind": "it",
           "modifiers": [],
-          "line": 557
+          "line": 566
         },
         {
           "id": "Pico JsonlStorage publication and recovery › orders publication flushes exactly and flushes main only to authorize reclamation",
           "kind": "it",
           "modifiers": [],
-          "line": 589
+          "line": 598
         },
         {
           "id": "Pico JsonlStorage publication and recovery › recovers a committed base across reclaim ${failure.operation} ${failure.mode}",
           "kind": "it",
           "modifiers": [],
-          "line": 680
+          "line": 689
         },
         {
           "id": "Pico JsonlStorage publication and recovery › recovers document-retirement reclamation across remove ${mode}",
           "kind": "it",
           "modifiers": [],
-          "line": 734
+          "line": 743
         },
         {
           "id": "Pico JsonlStorage publication and recovery › defers reclamation after authorizing-main flush ${mode} failure",
           "kind": "it",
           "modifiers": [],
-          "line": 767
+          "line": 776
         },
         {
           "id": "Pico JsonlStorage publication and recovery › keeps a committed base usable after reclaim-temp flush ${mode} failure",
           "kind": "it",
           "modifiers": [],
-          "line": 823
+          "line": 832
         },
         {
           "id": "Pico JsonlStorage publication and recovery › recovers terminal-task reclamation across remove ${mode}",
           "kind": "it",
           "modifiers": [],
-          "line": 875
+          "line": 884
         },
         {
           "id": "Pico JsonlStorage publication and recovery › appends later deltas to the replacement sidecar after a current-only base",
           "kind": "it",
           "modifiers": [],
-          "line": 894
+          "line": 903
         },
         {
           "id": "Pico JsonlStorage publication and recovery › never reclaims rewindable document history, including after a base and retirement",
           "kind": "it",
           "modifiers": [],
-          "line": 937
+          "line": 946
         },
         {
           "id": "Pico JsonlStorage publication and recovery › reclaims retired task-, session-, and latest-conversation document sidecars",
           "kind": "it",
           "modifiers": [],
-          "line": 986
+          "line": 995
         },
         {
           "id": "Pico JsonlStorage publication and recovery › truncates torn UTF-8 tails at exact byte offsets and reuses the unconfirmed sequence",
           "kind": "it",
           "modifiers": [],
-          "line": 1054
+          "line": 1063
         },
         {
           "id": "Pico JsonlStorage publication and recovery › removes complete unconfirmed sidecar tails without resurrecting terminal tasks",
           "kind": "it",
           "modifiers": [],
-          "line": 1090
+          "line": 1099
         },
         {
           "id": "Pico JsonlStorage publication and recovery › fails open when confirmed sidecar data is missing",
           "kind": "it",
           "modifiers": [],
-          "line": 1118
+          "line": 1127
         },
         {
           "id": "Pico JsonlStorage publication and recovery › rejects a confirmed record after an unconfirmed sidecar record",
           "kind": "it",
           "modifiers": [],
-          "line": 1140
+          "line": 1149
         },
         {
           "id": "Pico JsonlStorage publication and recovery › rejects non-increasing main commit sequences",
           "kind": "it",
           "modifiers": [],
-          "line": 1182
+          "line": 1191
         },
         {
           "id": "Pico JsonlStorage publication and recovery › rejects structurally invalid confirmed document content",
           "kind": "it",
           "modifiers": [],
-          "line": 1194
+          "line": 1203
         },
         {
           "id": "Pico JsonlStorage publication and recovery › rejects malformed complete main and sidecar lines",
           "kind": "it",
           "modifiers": [],
-          "line": 1222
+          "line": 1231
         },
         {
           "id": "JsonlStorage batches › appends a batch's markers in one write and recovers a shorter prefix from a torn one",
           "kind": "it",
           "modifiers": [],
-          "line": 1242
+          "line": 1251
+        },
+        {
+          "id": "JsonlStorage read-only open › skips torn lines, unconfirmed tails, and due reclamation in memory without writing",
+          "kind": "it",
+          "modifiers": [],
+          "line": 1317
+        },
+        {
+          "id": "JsonlStorage read-only open › keeps a torn-only main file",
+          "kind": "it",
+          "modifiers": [],
+          "line": 1364
+        },
+        {
+          "id": "JsonlStorage read-only open › creates no missing directory",
+          "kind": "it",
+          "modifiers": [],
+          "line": 1372
+        },
+        {
+          "id": "JsonlStorage read-only open › retries a recovery that raced a writer's commit, and fails on corruption at once",
+          "kind": "it",
+          "modifiers": [],
+          "line": 1380
         }
       ]
     },
@@ -67744,8 +68024,8 @@
     {
       "path": "packages/tui/test/editor.test.ts",
       "package": "tui",
-      "sha256": "sha256:258a60b2aa2afbb6d0d053c7cf67e335a4b69cef2e39650b9c265d9f9ec24820",
-      "caseCount": 193,
+      "sha256": "sha256:6aa897b42a1f23a791a73469df1d3be751facf1cc1173ddf63680db3a3c7100f",
+      "caseCount": 194,
       "cases": [
         {
           "id": "Editor component › Prompt history navigation › does nothing on Up arrow when history is empty",
@@ -68834,76 +69114,82 @@
           "line": 4016
         },
         {
+          "id": "Editor component › Paste marker atomic behavior › renumbers short paste markers without a size suffix",
+          "kind": "it",
+          "modifiers": [],
+          "line": 4038
+        },
+        {
           "id": "Editor component › Paste marker atomic behavior › undo after setText restores paste markers and registry",
           "kind": "it",
           "modifiers": [],
-          "line": 4037
+          "line": 4058
         },
         {
           "id": "Editor component › Paste marker atomic behavior › handles multiple paste markers in same line",
           "kind": "it",
           "modifiers": [],
-          "line": 4052
+          "line": 4073
         },
         {
           "id": "Editor component › Paste marker atomic behavior › does not treat manually typed marker-like text as atomic (no valid paste ID)",
           "kind": "it",
           "modifiers": [],
-          "line": 4081
+          "line": 4102
         },
         {
           "id": "Editor component › Paste marker atomic behavior › does not crash when paste marker is wider than terminal width",
           "kind": "it",
           "modifiers": [],
-          "line": 4096
+          "line": 4117
         },
         {
           "id": "Editor component › Paste marker atomic behavior › does not crash when text + paste marker exceeds terminal width with cursor on marker",
           "kind": "it",
           "modifiers": [],
-          "line": 4119
+          "line": 4140
         },
         {
           "id": "Editor component › Paste marker atomic behavior › wordWrapLine re-checks overflow after backtracking to wrap opportunity",
           "kind": "it",
           "modifiers": [],
-          "line": 4154
+          "line": 4175
         },
         {
           "id": "Editor component › Paste marker atomic behavior › expands large pasted content literally in getExpandedText",
           "kind": "it",
           "modifiers": [],
-          "line": 4183
+          "line": 4204
         },
         {
           "id": "Editor component › Paste marker atomic behavior › snaps to the paste marker start when navigating down into it",
           "kind": "it",
           "modifiers": [],
-          "line": 4205
+          "line": 4226
         },
         {
           "id": "Editor component › Paste marker atomic behavior › preserves sticky column when navigating through paste marker line",
           "kind": "it",
           "modifiers": [],
-          "line": 4240
+          "line": 4261
         },
         {
           "id": "Editor component › Paste marker atomic behavior › does not get stuck moving down from a multi-visual-line paste marker",
           "kind": "it",
           "modifiers": [],
-          "line": 4282
+          "line": 4303
         },
         {
           "id": "Editor component › Paste marker atomic behavior › skips marker continuation VLs when preferred col falls in marker tail",
           "kind": "it",
           "modifiers": [],
-          "line": 4343
+          "line": 4364
         },
         {
           "id": "Editor component › Paste marker atomic behavior › submits large pasted content literally",
           "kind": "it",
           "modifiers": [],
-          "line": 4384
+          "line": 4405
         }
       ]
     },

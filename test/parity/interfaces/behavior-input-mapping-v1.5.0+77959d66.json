@@ -1,5 +1,5 @@
 {
-  "upstreamVersion": "1.5.0+c23b9ec1",
+  "upstreamVersion": "1.5.0+77959d66",
   "mappings": [
     {
       "id": "input:packages/coding-agent/src/core/agent-session.ts#AgentSession._emitExtensionEvent",
@@ -290,23 +290,10 @@
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/oauth-selector.ts#OAuthSelectorComponent.handleInput",
       "ownerFamily": "selectors",
-      "disposition": "ported",
-      "pigTargets": [
-        "tui/oauth_selector.go#HandleInput",
-        "tui/oauth_selector.go#confirm"
-      ],
-      "evidence": [
-        "test/parity/scenarios/oauth/17-login-method-search.toml",
-        "test/parity/scenarios/oauth/26-login-cancel-returns-to-provider-list.toml",
-        "tui/oauth_selector_contract_test.go#TestOAuthSelectorBranchOrderAndBoundariesMatchPi",
-        "tui/oauth_selector_input_test.go#TestOAuthSelectorInputMatchesPi",
-        "tui/oauth_selector_oracle_test.go#TestOAuthSelectorHandleInputMatchesPi",
-        "tui/select_page_keys_test.go#TestSelectorComponentsMoveByTheirPage"
-      ],
-      "contracts": [
-        "coding-agent/oauth-selector/boundary-transitions",
-        "coding-agent/oauth-selector/input-state-machine"
-      ],
+      "disposition": "pending",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
       "divergence": "",
       "rationale": ""
     },
@@ -2138,19 +2125,22 @@
       "rationale": ""
     },
     {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/oauth-selector.ts#OAuthSelectorComponent.render",
+      "ownerFamily": "selectors",
+      "disposition": "pending",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "divergence": "",
+      "rationale": ""
+    },
+    {
       "id": "render:packages/coding-agent/src/modes/interactive/components/radius-login-selector.ts#RadiusLoginMenuComponent.render",
       "ownerFamily": "selectors",
-      "disposition": "ported",
-      "pigTargets": [
-        "internal/codingagent/radius_login_selector.go#Render"
-      ],
-      "evidence": [
-        "internal/codingagent/radius_login_oracle_test.go#TestRadiusLoginMenuRendersLikePi",
-        "test/parity/scenarios/oauth/27-login-radius-method-intro.toml"
-      ],
-      "contracts": [
-        "coding-agent/radius-login/menu-render"
-      ],
+      "disposition": "pending",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
       "divergence": "",
       "rationale": ""
     },

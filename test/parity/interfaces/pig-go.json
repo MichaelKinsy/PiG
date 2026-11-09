@@ -15561,6 +15561,17 @@
       "shapeHash": "sha256:79b67989fa7bc49af003600d08e01f76c4d4980f1df12137fd23206a37790d0f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#HasExceededStrictToolLimits",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "HasExceededStrictToolLimits",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(sessionID string) bool"
+      },
+      "shapeHash": "sha256:bcefcc80926138c101b0c7d1c383cc0bfb91af28d565f2f166b549f4387e8a4c"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#HasNonAdditiveToolChanges",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "HasNonAdditiveToolChanges",
@@ -17308,6 +17319,17 @@
         "type": "func(parameters map[string]any, isUnsupportedKeyword UnsupportedStrictSchemaKeywordCheck) (map[string]any, error)"
       },
       "shapeHash": "sha256:be3f3a786002b8da64ad831270a4cffe31af1f1d6958c1ea292a7c2a2335edd5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#MarkStrictToolLimitsExceeded",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "MarkStrictToolLimitsExceeded",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(sessionID string)"
+      },
+      "shapeHash": "sha256:237daebd73a7c2064ac996110994265f25fd7f4fd6c57e39f2d38e60bba1137d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#MarshalInRecordedOrder",
@@ -33607,9 +33629,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "[1629]catalogBaseline"
+        "type": "[1632]catalogBaseline"
       },
-      "shapeHash": "sha256:3c5eccf0afb20e4326fb9a21034b75bc08731ce60dcf94033d0000f7d9f441f2"
+      "shapeHash": "sha256:5aac7741d5407178b9fd51080a9738dda416002151d68a51dbaa1b5ab20daf21"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#catalogRecordChunk",
@@ -42165,9 +42187,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "[80]ModelCompat"
+        "type": "[79]ModelCompat"
       },
-      "shapeHash": "sha256:b0aa9450b333430eeba43b81cfe299325bc3a4c342cd498337a06c05d619ee5a"
+      "shapeHash": "sha256:21885135c841e958cff3f402c652b4ab9bcb8ef72400eed13f2d1aecea3591c8"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#generatedFalse",
@@ -42286,9 +42308,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "[1629]GeneratedModel"
+        "type": "[1632]GeneratedModel"
       },
-      "shapeHash": "sha256:002711ac7f88cdd84a7366f74de693a420277ff52b8f80dc63101cc9066fc9d4"
+      "shapeHash": "sha256:d6db2d25609b52c706ab6381f45cb831d9d6632af6aa60088b129ce0918a58f9"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#generatedStrings",
@@ -42330,9 +42352,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "[871]generatedMapRef"
+        "type": "[875]generatedMapRef"
       },
-      "shapeHash": "sha256:f42e3b11ea22ce1ec7dbf02c23274a55a39842644f1ac68366446137f19a3196"
+      "shapeHash": "sha256:29503a88b4255ea1e63ac8c0354c797baef6f08240dd1b23d9cb8d3589fc12ba"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#generatedToolCallID",
@@ -43444,6 +43466,17 @@
         "type": "func(item *respOutputItem) bool"
       },
       "shapeHash": "sha256:cc8af50fac93509f4fc89944414bb19a64cbb55da48170702ac240d301460578"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#hasExceededStrictToolLimits",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "hasExceededStrictToolLimits",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(sessionID string) bool"
+      },
+      "shapeHash": "sha256:bcefcc80926138c101b0c7d1c383cc0bfb91af28d565f2f166b549f4387e8a4c"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#hasExplicitAPIKey",
@@ -47945,6 +47978,17 @@
       "shapeHash": "sha256:6fb651a1b7ee415b08c31993351f2eaa2184d189fde53b3039b3283fcf481539"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#markStrictToolLimitsExceeded",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "markStrictToolLimitsExceeded",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(sessionID string)"
+      },
+      "shapeHash": "sha256:237daebd73a7c2064ac996110994265f25fd7f4fd6c57e39f2d38e60bba1137d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#marshalAssistantEvent",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "marshalAssistantEvent",
@@ -48267,6 +48311,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/ai#maxSafeInteger",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "maxSafeInteger",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#maxSessionsOverStrictToolLimits",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "maxSessionsOverStrictToolLimits",
       "kind": "constant",
       "exported": false,
       "shape": {
@@ -62496,6 +62551,17 @@
         "type": "[]string"
       },
       "shapeHash": "sha256:a1c330895d4124c2ac5e7956eaa7a61082b08546669578b38030562429ad3b1e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#strictToolLimitSessions",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "strictToolLimitSessions",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "struct{mu sync.Mutex; set map[string]*container/list.Element; order *container/list.List}"
+      },
+      "shapeHash": "sha256:ca11f5d343bdea08028c7c588b588da716f3041ec9d5c575a280cc1a84521add"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#stringIdentity",

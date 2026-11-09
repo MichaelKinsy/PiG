@@ -99,7 +99,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/cache-warmer.js",
-      "sha256": "a5ae5e236a145982c33f4d73334507ee5a696d3756b44925fbdcb2c6d35c1826"
+      "sha256": "dbb13d9bf7236d204a6395158476d112aba5834c93287f7da921437e9e485f29"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/client-identity.js",
@@ -254,6 +254,10 @@
       "sha256": "8dafb501cc0bba5482cfb8c5c90a4fa3b534acdd08abd4c8dc5df0c94d85e876"
     },
     {
+      "path": "pi-dist/pi-coding-agent/core/preferred-providers.js",
+      "sha256": "e2eeb5937c2a347fbaba57dfcce83e9f6bdaa2a1955f327b014c6f2ffdf50bd4"
+    },
+    {
       "path": "pi-dist/pi-coding-agent/core/project-trust.js",
       "sha256": "8000aac849fc2c876b9f5831346dca4033193e59fbf4a7dd886f4c2713e603f7"
     },
@@ -311,7 +315,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/settings-defaults.js",
-      "sha256": "45b200da1a1c6879a8bf326d97adffebde875729c691ec315440af8bdb23e0b3"
+      "sha256": "56db5d275a560f6d4fbf5effbf51bc08492ddd73dfe658c46887f80b5f301516"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/settings-diagnostics.js",
@@ -683,15 +687,19 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/oauth-selector.js",
-      "sha256": "9acff725dadb1ed74fc8194df3416f81a9e474ac83b20bf0f99df09fca263341"
+      "sha256": "55d14098ff943f50d4f18013e01b4fdbc0bc736a5e2050b3bb898d14f8eed38e"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/pi-logo.js",
       "sha256": "84ceaac3f88ce97d45c4ceb768c72cba2fb74285a48a1f4382004c6f05d209e6"
     },
     {
+      "path": "pi-dist/pi-coding-agent/modes/interactive/components/provider-brand.js",
+      "sha256": "1f43c963042e0c2803a666e6224250471aaa4a34478bc93fcb62381c6a26c141"
+    },
+    {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/radius-login-selector.js",
-      "sha256": "31f635ed5db64ba736a591e0ddd38265f9a0f37028cd645ae06e8596e70a8354"
+      "sha256": "614dc09b9903b251f66fdc653134acb32016b6abc76b9ff7e31eb4cb29c606e9"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/scoped-models-selector.js",
@@ -767,7 +775,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/interactive-mode.js",
-      "sha256": "f81863c7264c1e73b0b875f679f0036c69bdb31dd01a2ffd022f065aa5f176fd"
+      "sha256": "2476bdb7c22cd06d87058834298f2db51bb3a035f1bacfded3e38e6c95534d2d"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/model-catalog-refresh.js",

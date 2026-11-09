@@ -1,6 +1,6 @@
 {
   "from": "0.84.0",
-  "to": "1.5.0+c23b9ec1",
+  "to": "1.5.0+77959d66",
   "changes": [
     {
       "id": "cli:pi/--no-mcp",
@@ -24983,10 +24983,122 @@
       "rationale": ""
     },
     {
+      "id": "pkg:ai/.#CACHE_WARMING_IDLE_CONTINUATION_PROBABILITY",
+      "change": "added",
+      "after_shape_hash": "sha256:939b6bf968da1e05d78ed82b85996253fd5433846463e78e8d261a16b4599137",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/.#CACHE_WARMING_MAX_AGE_MS",
+      "change": "added",
+      "after_shape_hash": "sha256:ec4b71bd4dc0b3aac2fea721ba74a18eb456f2cabef62c687f94ab806c1ced11",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/.#CACHE_WARMING_MAX_IDLE_AGE_MS",
+      "change": "added",
+      "after_shape_hash": "sha256:ec4b71bd4dc0b3aac2fea721ba74a18eb456f2cabef62c687f94ab806c1ced11",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/.#CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS",
+      "change": "added",
+      "after_shape_hash": "sha256:c651ce6aae51a50301daf83abc99e321e0c8b306285992ae2411c172872d361a",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
       "id": "pkg:ai/.#CacheRetention",
       "change": "changed",
       "before_shape_hash": "sha256:f0f7956c4e43a53be120ecb950c186c4f34989d0ca51c3168749258d61ea9a96",
       "after_shape_hash": "sha256:153dab85a30a97b6237e1933e9d2543cdf5b1ff7c53aa1f0238e1627ffe8e311",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/.#CacheWarmingAction",
+      "change": "added",
+      "after_shape_hash": "sha256:874681724059ef7dee9346c5a0385704279509754e9ced2e4827dc310572d0b1",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/.#CacheWarmingDecision",
+      "change": "added",
+      "after_shape_hash": "sha256:f6ef157616af7b8c4b19487c42b779e45dcbe13bddbf587ee04bf2e411a440e8",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/.#CacheWarmingDecision::property:action",
+      "change": "added",
+      "after_shape_hash": "sha256:0256259170da898741b6daae815ee4157d4de180d8220196df3ebcf1fa84efc6",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/.#CacheWarmingDecision::property:continuationProbability",
+      "change": "added",
+      "after_shape_hash": "sha256:afcf5f10a115de1823d3fb04b2ab5819849304d8200b22c528fb013c2da156b8",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/.#CacheWarmingDecision::property:economicsAvailable",
+      "change": "added",
+      "after_shape_hash": "sha256:bac064f8a357ca6db3a67f4b98f05666f3ef4298e60fa3a38fdb5332c5889d2f",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/.#CacheWarmingDecision::property:expectedSavings",
+      "change": "added",
+      "after_shape_hash": "sha256:d01688118afeb91c5519e5a2fb42f106260e5d7533ce58ab94e7f03e4993502f",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/.#CacheWarmingDecision::property:missCost",
+      "change": "added",
+      "after_shape_hash": "sha256:1f6b4d61e586748effcdaa202e17e1b3abb3edf582d8c33c4b8f7abac2295956",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/.#CacheWarmingDecision::property:phase",
+      "change": "added",
+      "after_shape_hash": "sha256:725229016826e110f8150100db1b12acad7caefbd8c9a2ef1f8de6ed8a42b38e",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/.#CacheWarmingDecision::property:warmCost",
+      "change": "added",
+      "after_shape_hash": "sha256:04ed344ef6f83d4908a03a3cb42b9d8057bb4ed59a6e74e32d5869b207e0f94a",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/.#CacheWarmingPhase",
+      "change": "added",
+      "after_shape_hash": "sha256:3a25884e0ca854f9c514a428a08cebc23b8587841aab3c38f2fbb2b3082597d5",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -29428,6 +29540,22 @@
       "rationale": ""
     },
     {
+      "id": "pkg:ai/.#evaluateCacheWarming",
+      "change": "added",
+      "after_shape_hash": "sha256:1e71ebde0c7b9f7edef213f7d49ade0033983667095587b65c4d4bb47557185e",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/.#evaluateCacheWarming::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:b07dac779cb87982e0483de5dca4a42f69475e574ce7c66e2690e2a524037755",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
       "id": "pkg:ai/.#fauxToolCall",
       "change": "changed",
       "before_shape_hash": "sha256:af8ce0a557450cf065df7d977120a7270c7bbf6778dd1e934dd725762ebae522",
@@ -29473,6 +29601,38 @@
       "id": "pkg:ai/.#getAttributionHeaders::call:0",
       "change": "added",
       "after_shape_hash": "sha256:c7e1336de006a49bb69606961a6d8bfd77289f697a98f74e98182bb58d67d59c",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/.#getCacheWarmingDelayMs",
+      "change": "added",
+      "after_shape_hash": "sha256:dd666b488d9374ee4dc3ca990948f018093a54d4d5f10838bd7e8bd6efef9697",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/.#getCacheWarmingDelayMs::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:9e818d14e63b1e482d7ea7851655315f9a3f99309559b9a61e42945f561f426f",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/.#getCacheWarmingRequestOptions",
+      "change": "added",
+      "after_shape_hash": "sha256:074fdb50b91090d88147095c9f2985649a218a66549350fbd55549e47ace1e5e",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/.#getCacheWarmingRequestOptions::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:e76c791957d2277b823373bf6bc13e2e21ff69011452262203d659fa94d09a41",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -29622,6 +29782,22 @@
       "rationale": ""
     },
     {
+      "id": "pkg:ai/.#getPromptCacheTtlMs",
+      "change": "added",
+      "after_shape_hash": "sha256:85862ff880dbf102dd748a1a8db978549b6e33ff979f4bc9bc6deacde4e578b8",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/.#getPromptCacheTtlMs::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:b6ca99024c3972d2370726e2b0e5bb307f7793109dd3ad63252cc2ab1ee4db15",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
       "id": "pkg:ai/.#getSupportedThinkingLevels",
       "change": "changed",
       "before_shape_hash": "sha256:64d0fcb16b417d0adb03b2226a82a922e3b07bdef333ff4d9802b92c4b24ad21",
@@ -29717,6 +29893,22 @@
       "id": "pkg:ai/.#hasToolRedefinitions::call:0",
       "change": "added",
       "after_shape_hash": "sha256:8c99320290181c65b24ee1b09eff0506ed99335a39f949a6a1b1303ca39ed3c1",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/.#isCacheWarmingReplayable",
+      "change": "added",
+      "after_shape_hash": "sha256:6f55b0ceb654d02bce22f654e03aa1f858fa33d4dde260062018e19d79125481",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/.#isCacheWarmingReplayable::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:e61a8dc8c01b357644bd99a21a8f7750e001f99bea4c2614bea5f8e651fbc36e",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -30897,22 +31089,6 @@
       "id": "pkg:ai/api/constrained-sampling#getJsonSchemaToolParameters::call:0",
       "change": "added",
       "after_shape_hash": "sha256:b8a3af8e82a29e68a613c5945ea7917d4a05b2b030992e400e9e585ad0e04631",
-      "disposition": "pending",
-      "evidence": [],
-      "rationale": ""
-    },
-    {
-      "id": "pkg:ai/api/constrained-sampling#isStrictToolLimitErrorMessage",
-      "change": "added",
-      "after_shape_hash": "sha256:6faf4e9bd346cc30f976ae0f7e762f0d633f946d351228897180c4094f000d49",
-      "disposition": "pending",
-      "evidence": [],
-      "rationale": ""
-    },
-    {
-      "id": "pkg:ai/api/constrained-sampling#isStrictToolLimitErrorMessage::call:0",
-      "change": "added",
-      "after_shape_hash": "sha256:b350c14870bf68cc304b6ce2cf655767817bf780f3547c5b8a0e33fe26b51167",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -32480,6 +32656,54 @@
       "rationale": ""
     },
     {
+      "id": "pkg:ai/api/strict-tool-limits#hasExceededStrictToolLimits",
+      "change": "added",
+      "after_shape_hash": "sha256:990e6fe03c7e6e9832799f63da821618844c44605d7c65c4396ec9cdb3158a28",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/api/strict-tool-limits#hasExceededStrictToolLimits::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:fd8d9697bb46c00ed14b9e57f0a18aa33cfb62f07f52e3cf5c2a9fa2c1e2ac32",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/api/strict-tool-limits#isStrictToolLimitErrorMessage",
+      "change": "added",
+      "after_shape_hash": "sha256:6faf4e9bd346cc30f976ae0f7e762f0d633f946d351228897180c4094f000d49",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/api/strict-tool-limits#isStrictToolLimitErrorMessage::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:b350c14870bf68cc304b6ce2cf655767817bf780f3547c5b8a0e33fe26b51167",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/api/strict-tool-limits#markStrictToolLimitsExceeded",
+      "change": "added",
+      "after_shape_hash": "sha256:7c9f24d8f7bf7eb90d3e8888712aec6315912f000fcfaeae09a0e597bc804d43",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/api/strict-tool-limits#markStrictToolLimitsExceeded::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:9fddbcb3e9fedc340df6b43d736c3e821a4af5642dd72e1023db0887bcde18dd",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
       "id": "pkg:ai/api/system-one-shared#ResolvedSystemOneCompat",
       "change": "added",
       "after_shape_hash": "sha256:a8bf8f89ee6b90bde7b7919bac2022e7d6778754896c19e594735776d7cc620d",
@@ -33373,10 +33597,122 @@
       "rationale": ""
     },
     {
+      "id": "pkg:ai/compat#CACHE_WARMING_IDLE_CONTINUATION_PROBABILITY",
+      "change": "added",
+      "after_shape_hash": "sha256:939b6bf968da1e05d78ed82b85996253fd5433846463e78e8d261a16b4599137",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/compat#CACHE_WARMING_MAX_AGE_MS",
+      "change": "added",
+      "after_shape_hash": "sha256:ec4b71bd4dc0b3aac2fea721ba74a18eb456f2cabef62c687f94ab806c1ced11",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/compat#CACHE_WARMING_MAX_IDLE_AGE_MS",
+      "change": "added",
+      "after_shape_hash": "sha256:ec4b71bd4dc0b3aac2fea721ba74a18eb456f2cabef62c687f94ab806c1ced11",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/compat#CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS",
+      "change": "added",
+      "after_shape_hash": "sha256:c651ce6aae51a50301daf83abc99e321e0c8b306285992ae2411c172872d361a",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
       "id": "pkg:ai/compat#CacheRetention",
       "change": "changed",
       "before_shape_hash": "sha256:f0f7956c4e43a53be120ecb950c186c4f34989d0ca51c3168749258d61ea9a96",
       "after_shape_hash": "sha256:153dab85a30a97b6237e1933e9d2543cdf5b1ff7c53aa1f0238e1627ffe8e311",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/compat#CacheWarmingAction",
+      "change": "added",
+      "after_shape_hash": "sha256:874681724059ef7dee9346c5a0385704279509754e9ced2e4827dc310572d0b1",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/compat#CacheWarmingDecision",
+      "change": "added",
+      "after_shape_hash": "sha256:f6ef157616af7b8c4b19487c42b779e45dcbe13bddbf587ee04bf2e411a440e8",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/compat#CacheWarmingDecision::property:action",
+      "change": "added",
+      "after_shape_hash": "sha256:0256259170da898741b6daae815ee4157d4de180d8220196df3ebcf1fa84efc6",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/compat#CacheWarmingDecision::property:continuationProbability",
+      "change": "added",
+      "after_shape_hash": "sha256:afcf5f10a115de1823d3fb04b2ab5819849304d8200b22c528fb013c2da156b8",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/compat#CacheWarmingDecision::property:economicsAvailable",
+      "change": "added",
+      "after_shape_hash": "sha256:bac064f8a357ca6db3a67f4b98f05666f3ef4298e60fa3a38fdb5332c5889d2f",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/compat#CacheWarmingDecision::property:expectedSavings",
+      "change": "added",
+      "after_shape_hash": "sha256:d01688118afeb91c5519e5a2fb42f106260e5d7533ce58ab94e7f03e4993502f",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/compat#CacheWarmingDecision::property:missCost",
+      "change": "added",
+      "after_shape_hash": "sha256:1f6b4d61e586748effcdaa202e17e1b3abb3edf582d8c33c4b8f7abac2295956",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/compat#CacheWarmingDecision::property:phase",
+      "change": "added",
+      "after_shape_hash": "sha256:725229016826e110f8150100db1b12acad7caefbd8c9a2ef1f8de6ed8a42b38e",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/compat#CacheWarmingDecision::property:warmCost",
+      "change": "added",
+      "after_shape_hash": "sha256:04ed344ef6f83d4908a03a3cb42b9d8057bb4ed59a6e74e32d5869b207e0f94a",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/compat#CacheWarmingPhase",
+      "change": "added",
+      "after_shape_hash": "sha256:3a25884e0ca854f9c514a428a08cebc23b8587841aab3c38f2fbb2b3082597d5",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -37863,6 +38199,22 @@
       "rationale": ""
     },
     {
+      "id": "pkg:ai/compat#evaluateCacheWarming",
+      "change": "added",
+      "after_shape_hash": "sha256:1e71ebde0c7b9f7edef213f7d49ade0033983667095587b65c4d4bb47557185e",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/compat#evaluateCacheWarming::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:b07dac779cb87982e0483de5dca4a42f69475e574ce7c66e2690e2a524037755",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
       "id": "pkg:ai/compat#fauxToolCall",
       "change": "changed",
       "before_shape_hash": "sha256:af8ce0a557450cf065df7d977120a7270c7bbf6778dd1e934dd725762ebae522",
@@ -37944,6 +38296,38 @@
       "id": "pkg:ai/compat#getAttributionHeaders::call:0",
       "change": "added",
       "after_shape_hash": "sha256:c7e1336de006a49bb69606961a6d8bfd77289f697a98f74e98182bb58d67d59c",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/compat#getCacheWarmingDelayMs",
+      "change": "added",
+      "after_shape_hash": "sha256:dd666b488d9374ee4dc3ca990948f018093a54d4d5f10838bd7e8bd6efef9697",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/compat#getCacheWarmingDelayMs::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:9e818d14e63b1e482d7ea7851655315f9a3f99309559b9a61e42945f561f426f",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/compat#getCacheWarmingRequestOptions",
+      "change": "added",
+      "after_shape_hash": "sha256:074fdb50b91090d88147095c9f2985649a218a66549350fbd55549e47ace1e5e",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/compat#getCacheWarmingRequestOptions::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:e76c791957d2277b823373bf6bc13e2e21ff69011452262203d659fa94d09a41",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -38201,6 +38585,22 @@
       "rationale": ""
     },
     {
+      "id": "pkg:ai/compat#getPromptCacheTtlMs",
+      "change": "added",
+      "after_shape_hash": "sha256:85862ff880dbf102dd748a1a8db978549b6e33ff979f4bc9bc6deacde4e578b8",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/compat#getPromptCacheTtlMs::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:b6ca99024c3972d2370726e2b0e5bb307f7793109dd3ad63252cc2ab1ee4db15",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
       "id": "pkg:ai/compat#getProviders",
       "change": "changed",
       "before_shape_hash": "sha256:c743ca723178bf60d31b20cb8c7cbd8c65c02c1146671e4f2f1735d8d24fb4c4",
@@ -38314,6 +38714,22 @@
       "id": "pkg:ai/compat#hasToolRedefinitions::call:0",
       "change": "added",
       "after_shape_hash": "sha256:8c99320290181c65b24ee1b09eff0506ed99335a39f949a6a1b1303ca39ed3c1",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/compat#isCacheWarmingReplayable",
+      "change": "added",
+      "after_shape_hash": "sha256:6f55b0ceb654d02bce22f654e03aa1f858fa33d4dde260062018e19d79125481",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:ai/compat#isCacheWarmingReplayable::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:e61a8dc8c01b357644bd99a21a8f7750e001f99bea4c2614bea5f8e651fbc36e",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -52921,7 +53337,7 @@
     {
       "id": "pkg:chord/app#App",
       "change": "added",
-      "after_shape_hash": "sha256:9e23824544f92c66147739179a02ccbb9b0b3b46c6b6f6a9c0533bcf39070d80",
+      "after_shape_hash": "sha256:02399972de201d5e2ed0db5a1be4cd54d46ff60a8b8d20314e9cb981ad1e8893",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -52938,6 +53354,22 @@
       "id": "pkg:chord/app#App::property:applyChanges::call:0",
       "change": "added",
       "after_shape_hash": "sha256:58ee165b88c3a5c829dd450e0a6639626fffc75bcda0371f6929230058a88d71",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:chord/app#App::property:baseWatched",
+      "change": "added",
+      "after_shape_hash": "sha256:42c6ec73e77970ca90780d41f9e2349b3c81687f7b1fee3335dc4600ba33430a",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:chord/app#App::property:basesBuilt",
+      "change": "added",
+      "after_shape_hash": "sha256:e8087f370a2efdd6aff419a32b3a21754774e689a56a4197418de48f4004366f",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -53049,7 +53481,7 @@
     {
       "id": "pkg:chord/app#App::property:tui",
       "change": "added",
-      "after_shape_hash": "sha256:3d389754b9497e0f9a334f27b619e3e8d9a647ed48be978347753d24066f7f1b",
+      "after_shape_hash": "sha256:72a08c4bff1cb830c62e2af23e44da108fcf02c047a457cd1a7deddab8968444",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -53057,7 +53489,7 @@
     {
       "id": "pkg:chord/app#App::property:web",
       "change": "added",
-      "after_shape_hash": "sha256:9fa52f351910d23611c7658020c270330579f9bcd7310ae1ac138bd7fc0596cc",
+      "after_shape_hash": "sha256:e456866f582b59509c0110094dd35d6529c95357232889284c989e8e833abefa",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -55673,7 +56105,7 @@
     {
       "id": "pkg:chord/plugins#Plugins",
       "change": "added",
-      "after_shape_hash": "sha256:af87ba047cef36889685ba09806479f6072825418935da65a47a32a659dcee04",
+      "after_shape_hash": "sha256:ff44c5dad3d005453115012110eb89b6888a553bba3b134f40797d8b912c73af",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -55857,7 +56289,7 @@
     {
       "id": "pkg:chord/plugins#Plugins::property:watchBase",
       "change": "added",
-      "after_shape_hash": "sha256:5cb4746b71a95183ce0812a62bdbd7fbe9270309e395438cdb6f2a8ebf4d9b45",
+      "after_shape_hash": "sha256:6e1609ff58456f10f3ca070dde2d2fe7e62060991a0e808fb8062b3ef3d26c2b",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -55865,7 +56297,7 @@
     {
       "id": "pkg:chord/plugins#Plugins::property:watchBase::call:0",
       "change": "added",
-      "after_shape_hash": "sha256:7353ca5a23f7ab3b76d1110665c354c9385562d8dd2b2929e50c8a5a82f779ab",
+      "after_shape_hash": "sha256:b01a12bc349a339e5212ebcab75731d34358e6a5ce4381eecffdb404f5669e4b",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -57063,6 +57495,14 @@
       "rationale": ""
     },
     {
+      "id": "pkg:chord/surfaces#SurfaceBuilt",
+      "change": "added",
+      "after_shape_hash": "sha256:34bdd375acedab7847cbb59aada79e41a588b2e626f2c410aa7a35a2d3fe1ce9",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
       "id": "pkg:chord/surfaces#TUI_PREFIX",
       "change": "added",
       "after_shape_hash": "sha256:5d6d944ee8c473ee95086710dc9a93ad483dca9d0252012e6b3a9acce839475d",
@@ -57153,7 +57593,7 @@
     {
       "id": "pkg:chord/surfaces#tuiSurface",
       "change": "added",
-      "after_shape_hash": "sha256:9c9adb02c354c9dc66fe8782e5e2867d4e1332c11d1866f092ec912f7b3f372c",
+      "after_shape_hash": "sha256:f334f9661456fe7ef880c69c370a3f520b24731021551b4ba6075ff291add043",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -57161,7 +57601,7 @@
     {
       "id": "pkg:chord/surfaces#tuiSurface::call:0",
       "change": "added",
-      "after_shape_hash": "sha256:2520959d155e445346ec3118b0cd5c2d09cd4f15feb35be1d3a46cdc441fcd03",
+      "after_shape_hash": "sha256:0055255cfba63a48ffa7851b66fae6d632903991e59321b28a08d799584a9e00",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -57169,7 +57609,7 @@
     {
       "id": "pkg:chord/surfaces#webSurface",
       "change": "added",
-      "after_shape_hash": "sha256:e5bc49ee5d20c294dd8d7bdbd560e42c296218011405b68822cf0fbfdb86e112",
+      "after_shape_hash": "sha256:6a086363fc1a6743c562cd9e6d86796c8b150e8189367532e430eb965345f827",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -57177,7 +57617,7 @@
     {
       "id": "pkg:chord/surfaces#webSurface::call:0",
       "change": "added",
-      "after_shape_hash": "sha256:df9b923ab5acd8a17e706e441ea2e39f924d062015fe973132f7b3bfe7afe008",
+      "after_shape_hash": "sha256:0fc9209857af6d78c823a6dfc80ceffe3148e73e26584eccd530023e53872524",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -60049,7 +60489,31 @@
     {
       "id": "pkg:chord/workers#Workers",
       "change": "added",
-      "after_shape_hash": "sha256:994d1f0f90bbe8c48f2f6b2dc6fcb7507a1d234812c371ca7be61042f81be923",
+      "after_shape_hash": "sha256:77a6267680afe969af4ee6410ec09563a2242511c50c9b89391b107c2cd05eff",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:chord/workers#Workers::property:build",
+      "change": "added",
+      "after_shape_hash": "sha256:557d9e4296ea4b7bd5abec4cee377c636ce7db2a8767006471a4fda3fb922a2e",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:chord/workers#Workers::property:build::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:c017c65e886547cb81709ec541cc41462004bdde26a8c7836994ea138212b1a8",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:chord/workers#Workers::property:built",
+      "change": "added",
+      "after_shape_hash": "sha256:74670905e45b7645e5001424788b493318219c14486fd07d433479993272e6b0",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -60066,14 +60530,6 @@
       "id": "pkg:chord/workers#Workers::property:close::call:0",
       "change": "added",
       "after_shape_hash": "sha256:dd1140ca0b327cdd5f41bc1b9810f9ffa44d096d8c1261b15b28ea9774b1b48e",
-      "disposition": "pending",
-      "evidence": [],
-      "rationale": ""
-    },
-    {
-      "id": "pkg:chord/workers#Workers::property:inputs",
-      "change": "added",
-      "after_shape_hash": "sha256:057594581bc5bc984ff9fcaae5a1ae2b17491626a08c649ee5631517fbd4914e",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -60135,6 +60591,14 @@
       "rationale": ""
     },
     {
+      "id": "pkg:chord/workers#WorkersBuilt",
+      "change": "added",
+      "after_shape_hash": "sha256:28e0838e8583587b83f3a383a3c21950c6203300232bb9dec6d58a0ed7453419",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
       "id": "pkg:chord/workers#WorkersError",
       "change": "added",
       "after_shape_hash": "sha256:2b91da1cb11f4b3962b4741f19e2f1b723c3bd0bed6f0392df9f091a5c0d7139",
@@ -60153,7 +60617,7 @@
     {
       "id": "pkg:chord/workers#createWorkers",
       "change": "added",
-      "after_shape_hash": "sha256:091f70185e4af97b4dd89fc2893d5bd986bdee39f354f1292fe27d344fc90afa",
+      "after_shape_hash": "sha256:dd11d1289db33451f70f2d376f78b21fd95390ba0be1adcf4141c7a48c8a4071",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -60161,7 +60625,7 @@
     {
       "id": "pkg:chord/workers#createWorkers::call:0",
       "change": "added",
-      "after_shape_hash": "sha256:39b4cef0f7bead34f26b477cf46d8f0b486a15431075470b4ca61d8627c14ff5",
+      "after_shape_hash": "sha256:a5326496eb9dd0e52c3c090bd9d6b011c07258259b6d6dde9f067cdf855296a1",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -65853,7 +66317,7 @@
     {
       "id": "pkg:coding-agent/.#CacheWarmingDecision",
       "change": "added",
-      "after_shape_hash": "sha256:3092e50f08c76118aae7cd071351b8d41e5216d8a01b4a9d2da6a5d9baa77e90",
+      "after_shape_hash": "sha256:335e8412223d1b5033e7f6b15bd28246a82f1b19ad610a05620dcfa56b9cc838",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -65901,7 +66365,7 @@
     {
       "id": "pkg:coding-agent/.#CacheWarmingDecision::property:phase",
       "change": "added",
-      "after_shape_hash": "sha256:121984399eae5b9afdf74cf86131346c1c5bdafe3e448980659a44e89c5c528a",
+      "after_shape_hash": "sha256:725229016826e110f8150100db1b12acad7caefbd8c9a2ef1f8de6ed8a42b38e",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -69385,7 +69849,16 @@
       "id": "pkg:coding-agent/.#OAuthSelectorComponent",
       "change": "changed",
       "before_shape_hash": "sha256:215829e8892dade0dc6b77e5bd74cd3fd73a6fe1ad64fb24561c0245fe98a600",
-      "after_shape_hash": "sha256:93f816c4719bd8baab3028c9073696ab72c69f72e5b0e106778c10bbbe2181b9",
+      "after_shape_hash": "sha256:10814f6c4284c8df9d8ed2d0bff0f0b97082cdfadf026e789a0277d7414b7805",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:coding-agent/.#OAuthSelectorComponent::construct:0",
+      "change": "changed",
+      "before_shape_hash": "sha256:d0d33b5f855e62062b6aa4cb3b489adc6d5ef3933199143de22e28a071a56330",
+      "after_shape_hash": "sha256:b48b7f2ba4c1d726843c39c906467cec50b933e317dd7f95e0f700d28d69c69a",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -69394,6 +69867,22 @@
       "id": "pkg:coding-agent/.#OAuthSelectorComponent::property:capturesViewportInput",
       "change": "added",
       "after_shape_hash": "sha256:ee2e849d12e6d232a5b85c0aba6bdc01612c7185d5923ec56db6da63fc8f40b2",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:coding-agent/.#OAuthSelectorComponent::property:dispose",
+      "change": "added",
+      "after_shape_hash": "sha256:38ae7b309a81dcb42836da521f0ee31861d5a3d387d7b590f32ae4bef2920bf7",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:coding-agent/.#OAuthSelectorComponent::property:dispose::call:0",
+      "change": "added",
+      "after_shape_hash": "sha256:9ca6a314a982a3e688c5c5ffde6bd32f25f07554352674c9e2234fc7f4b40b92",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -82487,6 +82976,54 @@
       "rationale": ""
     },
     {
+      "id": "pkg:durable/storage/jsonl#JsonlStorageReadOnlyError",
+      "change": "added",
+      "after_shape_hash": "sha256:12ac04a65152daeb1d209890694276fe82e846e9ef57d16a3fb7f11c9aaac301",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/jsonl#JsonlStorageReadOnlyError::construct:0",
+      "change": "added",
+      "after_shape_hash": "sha256:e82186acb1e6cd6e9a3be8e06933491ab3b6639d7fcba6a7ddbeb9f654f8eb21",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/jsonl#JsonlStorageReadOnlyError::property:cause",
+      "change": "added",
+      "after_shape_hash": "sha256:0ded3a5da484c0bd945c74e50b05b90f5fca69d849d99b4d1caa17e429415054",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/jsonl#JsonlStorageReadOnlyError::property:message",
+      "change": "added",
+      "after_shape_hash": "sha256:5bd47aec3aecfce7ba3ec63891a63e2d3d8ca86ae60ed8cb239a7b77a8e612ec",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/jsonl#JsonlStorageReadOnlyError::property:name",
+      "change": "added",
+      "after_shape_hash": "sha256:801e53f1d388232eae4e330db41edb2aab932c0909e2849026eeebfd0e76ec51",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/jsonl#JsonlStorageReadOnlyError::property:stack",
+      "change": "added",
+      "after_shape_hash": "sha256:6a90573a6dc1303048aed8fb94dcc54bd7b496721ad2983fdcfebd7133feef8c",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
       "id": "pkg:durable/storage/jsonl/node#JsonlStorage",
       "change": "added",
       "after_shape_hash": "sha256:9641e36da129bb36a2dfac17073d603634a734fe7d6d2f7afb92d463a2632e54",
@@ -82762,6 +83299,54 @@
       "id": "pkg:durable/storage/jsonl/node#JsonlStorageOptions",
       "change": "added",
       "after_shape_hash": "sha256:76ef5c9b2125bc90201c25769b3cf96abaa705c9c7eea66b832b63e77cf38b09",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/jsonl/node#JsonlStorageReadOnlyError",
+      "change": "added",
+      "after_shape_hash": "sha256:12ac04a65152daeb1d209890694276fe82e846e9ef57d16a3fb7f11c9aaac301",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/jsonl/node#JsonlStorageReadOnlyError::construct:0",
+      "change": "added",
+      "after_shape_hash": "sha256:e82186acb1e6cd6e9a3be8e06933491ab3b6639d7fcba6a7ddbeb9f654f8eb21",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/jsonl/node#JsonlStorageReadOnlyError::property:cause",
+      "change": "added",
+      "after_shape_hash": "sha256:0ded3a5da484c0bd945c74e50b05b90f5fca69d849d99b4d1caa17e429415054",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/jsonl/node#JsonlStorageReadOnlyError::property:message",
+      "change": "added",
+      "after_shape_hash": "sha256:5bd47aec3aecfce7ba3ec63891a63e2d3d8ca86ae60ed8cb239a7b77a8e612ec",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/jsonl/node#JsonlStorageReadOnlyError::property:name",
+      "change": "added",
+      "after_shape_hash": "sha256:801e53f1d388232eae4e330db41edb2aab932c0909e2849026eeebfd0e76ec51",
+      "disposition": "pending",
+      "evidence": [],
+      "rationale": ""
+    },
+    {
+      "id": "pkg:durable/storage/jsonl/node#JsonlStorageReadOnlyError::property:stack",
+      "change": "added",
+      "after_shape_hash": "sha256:6a90573a6dc1303048aed8fb94dcc54bd7b496721ad2983fdcfebd7133feef8c",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""

@@ -17945,6 +17945,28 @@
       ]
     },
     {
+      "id": "BF-62339c4",
+      "title": "`console.*` output and thrown non-Error values in Code Mode scripts print `NaN`, `Infinity` and `-Infinity`…",
+      "symptom": "`console.*` output and thrown non-Error values in Code Mode scripts print `NaN`, `Infinity` and `-Infinity` as `text()` prints them, not as `null` (so `throw NaN` reports `NaN`).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`console.*` output and thrown non-Error values in Code Mode scripts print `NaN`, `Infinity` and `-Infinity` as `text()` prints them, not as `null` (so `throw NaN` reports `NaN`). A number nested in an object or array still prints as `null`, as `JSON.stringify` and `text()` print it (Pi #11901).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "62339c4642",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "codemode/sandbox_test.go::TestEmbeddedSourcesMatchTheirRecordedHashes"
+      ]
+    },
+    {
       "id": "BF-6235532",
       "title": "Filterable selector lists (theme, images, tree-filter-like pickers) check up/down before confirm/cancel like…",
       "symptom": "Filterable selector lists (theme, images, tree-filter-like pickers) check up/down before confirm/cancel like Pi's SelectList when a key is bound to several of them.",
@@ -31888,6 +31910,52 @@
         "internal/codingagent/session_messagefor_cache_test.go::TestMessageForReportsAnUnparseableEntryWithoutParsingItAgain",
         "test/longsession/session_oracle_test.go::TestSessionManagerMatchesPi",
         "test/parity/scenarios/rpc/58-rpc-session-wrong-typed-members.toml"
+      ]
+    },
+    {
+      "id": "BF-9624fc4",
+      "title": "Azure OpenAI models now keep OpenAI's long-context price tier, so requests above 272K input tokens are costed…",
+      "symptom": "Azure OpenAI models now keep OpenAI's long-context price tier, so requests above 272K input tokens are costed at Azure's long-context rates (Pi #11948).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Azure OpenAI models now keep OpenAI's long-context price tier, so requests above 272K input tokens are costed at Azure's long-context rates (Pi #11948).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "9624fc4542",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "ai/strict_tool_limit_upstream_test.go::TestStrictToolLimitSessionsDropOldestBeyondCap",
+        "ai/strict_tool_limit_upstream_test.go::TestStrictToolLimitSessionsRememberedUntilCleanup"
+      ]
+    },
+    {
+      "id": "BF-9624fc4-2",
+      "title": "Anthropic and Bedrock no longer send `strict: \"prefer\"` tools strict again on every request after Claude…",
+      "symptom": "Anthropic and Bedrock no longer send `strict: \"prefer\"` tools strict again on every request after Claude rejected them for exceeding its strict tool limits, which cost a rejected request (400) per turn.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Anthropic and Bedrock no longer send `strict: \"prefer\"` tools strict again on every request after Claude rejected them for exceeding its strict tool limits, which cost a rejected request (400) per turn. Later requests with the same session id now send those tools non-strict right away, until `CleanupSessionResources(sessionID)` (Pi #11626).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "9624fc4542",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "ai/strict_tool_limit_upstream_test.go::TestStrictToolLimitSessionsDropOldestBeyondCap",
+        "ai/strict_tool_limit_upstream_test.go::TestStrictToolLimitSessionsRememberedUntilCleanup"
       ]
     },
     {

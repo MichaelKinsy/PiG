@@ -123,7 +123,7 @@ import {
   wrapRegisteredTools,
   writeBugReportArchive,
   writeRawStdout
-} from "./chunk-AE3LWF4M.js";
+} from "./chunk-6KHGSVUO.js";
 import {
   CredentialSynchronizationError,
   InMemoryCodingAgentModelsStore,
@@ -172,13 +172,13 @@ import {
   TOOL_SEARCH_TOOL_NAME,
   createCodemodeToolDefinition,
   createToolSearchToolDefinition
-} from "./chunk-L57ECBVI.js";
+} from "./chunk-UNRIEWAN.js";
 import {
   SETTINGS_DEFAULTS,
   addUsageToTotals,
   createUsageTotals,
   getUsageCostBreakdown
-} from "./chunk-IJFG4BUL.js";
+} from "./chunk-2VCX4NLH.js";
 import {
   VisualLinePreview,
   formatReadLineRange,
@@ -7058,6 +7058,26 @@ function clearCrashLog(path6 = crashLogPath()) {
 }
 __name(clearCrashLog, "clearCrashLog");
 
+// pi-dist/pi-coding-agent/core/preferred-providers.js
+var PREFERRED_PROVIDER_IDS = [RADIUS_PROVIDER_ID, "openrouter"];
+function isPreferredProvider(providerId) {
+  return PREFERRED_PROVIDER_IDS.includes(providerId);
+}
+__name(isPreferredProvider, "isPreferredProvider");
+function compareProviders(a, b) {
+  const rankA = preferredRank(a.id);
+  const rankB = preferredRank(b.id);
+  if (rankA !== rankB)
+    return rankA - rankB;
+  return a.name.localeCompare(b.name);
+}
+__name(compareProviders, "compareProviders");
+function preferredRank(providerId) {
+  const index = PREFERRED_PROVIDER_IDS.indexOf(providerId);
+  return index === -1 ? PREFERRED_PROVIDER_IDS.length : index;
+}
+__name(preferredRank, "preferredRank");
+
 // pi-dist/pi-coding-agent/core/slash-commands.js
 var BUILTIN_SLASH_COMMANDS = [
   { name: "settings", description: "Open settings menu" },
@@ -9905,6 +9925,62 @@ var ModelSelectorComponent = class extends Container19 {
 
 // pi-dist/pi-coding-agent/modes/interactive/components/oauth-selector.js
 import { Container as Container20, fuzzyFilter as fuzzyFilter4, getKeybindings as getKeybindings8, getSelectPageIndex as getSelectPageIndex3, Input as Input7, Spacer as Spacer19, TruncatedText as TruncatedText2 } from "../../../pi-tui.mjs";
+
+// pi-dist/pi-coding-agent/modes/interactive/components/provider-brand.js
+import { foregroundAnsi, mixColors, parseColor } from "../../../pi-tui.mjs";
+function getProviderBrandStyle(providerId) {
+  if (providerId === RADIUS_PROVIDER_ID)
+    return radiusShimmer;
+  if (providerId === "openrouter")
+    return openRouterGlow;
+  return void 0;
+}
+__name(getProviderBrandStyle, "getProviderBrandStyle");
+var RADIUS_COLORS = ["#4d9abf", "#83ccd2", "#f1be57", "#f09082"].map((hex) => parseColor(hex));
+var CHARS_PER_COLOR = 4;
+var CHARS_PER_SECOND = 10;
+function radiusShimmer(text, elapsedMs) {
+  const mode = theme.getColorMode();
+  const cycle = RADIUS_COLORS.length * CHARS_PER_COLOR;
+  const offset = elapsedMs / 1e3 * CHARS_PER_SECOND;
+  let result = "";
+  let index = 0;
+  for (const char of text) {
+    const position = ((index - offset) % cycle + cycle) % cycle;
+    const band = Math.floor(position / CHARS_PER_COLOR);
+    const t = position / CHARS_PER_COLOR - band;
+    const amount = t * t * (3 - 2 * t);
+    const from = RADIUS_COLORS[band];
+    const to = RADIUS_COLORS[(band + 1) % RADIUS_COLORS.length];
+    result += foregroundAnsi(mixColors(from, to, amount, "srgb"), mode) + char;
+    index++;
+  }
+  return `${result}\x1B[39m`;
+}
+__name(radiusShimmer, "radiusShimmer");
+var OPENROUTER_GLOW = {
+  dark: { base: parseColor("#c6f243"), peak: parseColor("#efffb0") },
+  light: { base: parseColor("#5d32e1"), peak: parseColor("#8f6bff") }
+};
+var GLOW_PERIOD_MS = 2400;
+function openRouterGlow(text, elapsedMs) {
+  const { base, peak } = OPENROUTER_GLOW[theme.appearance];
+  const amount = (1 - Math.cos(2 * Math.PI * elapsedMs / GLOW_PERIOD_MS)) / 2;
+  return `${foregroundAnsi(mixColors(base, peak, amount, "oklch"), theme.getColorMode())}${text}\x1B[39m`;
+}
+__name(openRouterGlow, "openRouterGlow");
+var ANIMATION_FRAME_MS = 50;
+function startBrandAnimation(tui, isAnimating) {
+  const timer = setInterval(() => {
+    if (isAnimating())
+      tui.requestRender();
+  }, ANIMATION_FRAME_MS);
+  timer.unref?.();
+  return () => clearInterval(timer);
+}
+__name(startBrandAnimation, "startBrandAnimation");
+
+// pi-dist/pi-coding-agent/modes/interactive/components/oauth-selector.js
 function formatAuthSelectorProviderType(authType, subscription) {
   if (authType === "api_key")
     return "API key";
@@ -9949,7 +10025,9 @@ var OAuthSelectorComponent = class extends Container20 {
   onSelectCallback;
   onCancelCallback;
   showAuthTypeLabels;
-  constructor(mode, providers, onSelect, onCancel, initialSearchInput) {
+  animationStart = performance.now();
+  stopAnimation;
+  constructor(mode, providers, onSelect, onCancel, initialSearchInput, tui) {
     super();
     this.mode = mode;
     this.allProviders = providers;
@@ -9979,6 +10057,22 @@ var OAuthSelectorComponent = class extends Container20 {
     this.addChild(new Spacer19(1));
     this.addChild(new DynamicBorder());
     this.filterProviders(initialSearchInput ?? "");
+    if (tui)
+      this.stopAnimation = startBrandAnimation(tui, () => this.getSelectedBrandStyle() !== void 0);
+  }
+  render(width) {
+    if (this.stopAnimation && this.getSelectedBrandStyle())
+      this.updateList();
+    return super.render(width);
+  }
+  /** Stops the brand animation. */
+  dispose() {
+    this.stopAnimation?.();
+    this.stopAnimation = void 0;
+  }
+  getSelectedBrandStyle() {
+    const selectedProvider = this.filteredProviders[this.selectedIndex];
+    return selectedProvider && getProviderBrandStyle(selectedProvider.id);
   }
   filterProviders(query) {
     this.filteredProviders = query ? fuzzyFilter4(this.allProviders, query, (provider) => `${provider.name} ${provider.id} ${provider.authType} ${provider.method?.name ?? ""}`) : this.allProviders;
@@ -9995,15 +10089,17 @@ var OAuthSelectorComponent = class extends Container20 {
         continue;
       const isSelected = i === this.selectedIndex;
       const statusIndicator = formatAuthSelectorProviderStatus(provider);
+      const partnerMarker = isPreferredProvider(provider.id) ? theme.fg("muted", " \u2726") : "";
       const authTypeLabel = this.showAuthTypeLabels ? theme.fg("muted", ` [${formatAuthSelectorProviderType(provider.authType, provider.subscription)}]`) : "";
       let line = "";
       if (isSelected) {
         const prefix = theme.fg("accent", "\u2192 ");
-        const text = theme.fg("accent", provider.name);
-        line = prefix + text + authTypeLabel + statusIndicator;
+        const brandStyle = this.stopAnimation && getProviderBrandStyle(provider.id);
+        const text = brandStyle ? brandStyle(provider.name, performance.now() - this.animationStart) : theme.fg("accent", provider.name);
+        line = prefix + text + partnerMarker + authTypeLabel + statusIndicator;
       } else {
         const text = `  ${theme.fg("text", provider.name)}`;
-        line = text + authTypeLabel + statusIndicator;
+        line = text + partnerMarker + authTypeLabel + statusIndicator;
       }
       this.listContainer.addChild(new TruncatedText2(line, 1, 0));
     }
@@ -10049,14 +10145,14 @@ var OAuthSelectorComponent = class extends Container20 {
 };
 
 // pi-dist/pi-coding-agent/modes/interactive/components/pi-logo.js
-import { backgroundAnsi, foregroundAnsi, isAppleTerminalSession, rgbColor } from "../../../pi-tui.mjs";
+import { backgroundAnsi, foregroundAnsi as foregroundAnsi2, isAppleTerminalSession, rgbColor } from "../../../pi-tui.mjs";
 var CORAL = rgbColor(228, 138, 122);
 var BLUE = rgbColor(79, 142, 179);
 var YELLOW = rgbColor(234, 182, 93);
 var RESET = "\x1B[0m";
 function piLogoLines() {
   const mode = theme.getColorMode();
-  const fg = /* @__PURE__ */ __name((color) => foregroundAnsi(color, mode), "fg");
+  const fg = /* @__PURE__ */ __name((color) => foregroundAnsi2(color, mode), "fg");
   const top = `${fg(CORAL)}${backgroundAnsi(BLUE, mode)}\u2580${RESET}${fg(CORAL)}\u2580\u2588${RESET} `;
   const bottom = `${fg(BLUE)}\u2588\u2580${RESET} ${fg(YELLOW)}\u2588${RESET}`;
   return [top, bottom];
@@ -10068,42 +10164,19 @@ function supportsPiLogo() {
 __name(supportsPiLogo, "supportsPiLogo");
 function piWordmark() {
   const mode = theme.getColorMode();
-  return `${foregroundAnsi(CORAL, mode)}P${RESET}${foregroundAnsi(YELLOW, mode)}i${RESET}`;
+  return `${foregroundAnsi2(CORAL, mode)}P${RESET}${foregroundAnsi2(YELLOW, mode)}i${RESET}`;
 }
 __name(piWordmark, "piWordmark");
 
 // pi-dist/pi-coding-agent/modes/interactive/components/radius-login-selector.js
-import { foregroundAnsi as foregroundAnsi2, mixColors, parseColor, Text as Text20 } from "../../../pi-tui.mjs";
-var RADIUS_COLORS = ["#4d9abf", "#83ccd2", "#f1be57", "#f09082"].map((hex) => parseColor(hex));
-var CHARS_PER_COLOR = 4;
-var CHARS_PER_SECOND = 10;
-var ANIMATION_FRAME_MS = 50;
-function radiusShimmer(text, elapsedMs) {
-  const mode = theme.getColorMode();
-  const cycle = RADIUS_COLORS.length * CHARS_PER_COLOR;
-  const offset = elapsedMs / 1e3 * CHARS_PER_SECOND;
-  let result = "";
-  let index = 0;
-  for (const char of text) {
-    const position = ((index - offset) % cycle + cycle) % cycle;
-    const band = Math.floor(position / CHARS_PER_COLOR);
-    const t = position / CHARS_PER_COLOR - band;
-    const amount = t * t * (3 - 2 * t);
-    const from = RADIUS_COLORS[band];
-    const to = RADIUS_COLORS[(band + 1) % RADIUS_COLORS.length];
-    result += foregroundAnsi2(mixColors(from, to, amount, "srgb"), mode) + char;
-    index++;
-  }
-  return `${result}\x1B[39m`;
-}
-__name(radiusShimmer, "radiusShimmer");
+import { Text as Text20 } from "../../../pi-tui.mjs";
 var RadiusLoginMenuComponent = class extends ExtensionSelectorComponent {
   static {
     __name(this, "RadiusLoginMenuComponent");
   }
   radiusOption;
   animationStart = performance.now();
-  animationTimer;
+  stopAnimationTimer;
   animating = false;
   constructor(tui, title, options, radiusOption, onSelect, onCancel) {
     super(title, options, (option) => {
@@ -10114,11 +10187,7 @@ var RadiusLoginMenuComponent = class extends ExtensionSelectorComponent {
       onCancel();
     });
     this.radiusOption = radiusOption;
-    this.animationTimer = setInterval(() => {
-      if (this.animating)
-        tui.requestRender();
-    }, ANIMATION_FRAME_MS);
-    this.animationTimer.unref?.();
+    this.stopAnimationTimer = startBrandAnimation(tui, () => this.animating);
   }
   render(width) {
     const lines = super.render(width);
@@ -10134,8 +10203,7 @@ var RadiusLoginMenuComponent = class extends ExtensionSelectorComponent {
     return lines;
   }
   stopAnimation() {
-    clearInterval(this.animationTimer);
-    this.animationTimer = void 0;
+    this.stopAnimationTimer();
     this.animating = false;
   }
   dispose() {
@@ -13557,7 +13625,7 @@ function getLoginProviderCompletionOptions(providerOptions) {
       subscription: provider.subscription
     });
   }
-  return Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name));
+  return Array.from(byId.values()).sort(compareProviders);
 }
 __name(getLoginProviderCompletionOptions, "getLoginProviderCompletionOptions");
 function getLoginProviderSearchText(provider) {
@@ -17963,7 +18031,7 @@ ${packageLines}`, 1, 0));
         });
       }
     }
-    return options.sort((a, b) => a.name.localeCompare(b.name));
+    return options.sort(compareProviders);
   }
   async getLogoutProviderOptions() {
     return (await this.session.modelRuntime.listCredentials({ signal: AbortSignal.timeout(15e3) })).map(({ providerId, type }) => {
@@ -17975,7 +18043,7 @@ ${packageLines}`, 1, 0));
         status: { type, source: "stored credential" },
         subscription: provider?.auth.oauth?.isSubscription === true
       };
-    }).sort((a, b) => a.name.localeCompare(b.name));
+    }).sort(compareProviders);
   }
   async handleLoginCommand(providerRef) {
     if (!providerRef) {
@@ -18083,8 +18151,8 @@ ${packageLines}`, 1, 0));
         } else {
           this.ui.requestRender();
         }
-      }, initialSearchInput);
-      return { component: selector, focus: selector };
+      }, initialSearchInput, this.ui);
+      return { component: selector, focus: selector, dispose: /* @__PURE__ */ __name(() => selector.dispose(), "dispose") };
     });
   }
   async showOAuthSelector(mode) {
@@ -18124,8 +18192,8 @@ ${packageLines}`, 1, 0));
       }, () => {
         done();
         this.ui.requestRender();
-      });
-      return { component: selector, focus: selector };
+      }, void 0, this.ui);
+      return { component: selector, focus: selector, dispose: /* @__PURE__ */ __name(() => selector.dispose(), "dispose") };
     });
   }
   async completeProviderAuthentication(providerId, providerName, authType, previousModel) {

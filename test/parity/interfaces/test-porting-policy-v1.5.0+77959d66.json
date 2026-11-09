@@ -1,5 +1,5 @@
 {
-  "upstreamVersion": "1.5.0+c23b9ec1",
+  "upstreamVersion": "1.5.0+77959d66",
   "baselineCommit": "0e6ed0048282a15531ea1652a5833de4da4dd1a7",
   "baselinePorted": [
     "packages/agent/test/agent-loop.test.ts",
@@ -575,7 +575,7 @@
     },
     {
       "path": "packages/ai/test/anthropic-empty-thinking-signature-compat.test.ts",
-      "upstreamTestHash": "sha256:a414cb8c651ac32217c0b837a62d9d11483e6f99bb248ffa37dada864a1fa542",
+      "upstreamTestHash": "sha256:1e680be5df104d817df111371ce6360a4537a5de600f0aecce1a120569a3b588",
       "area": "providers",
       "tags": [
         "hot-path"
@@ -674,7 +674,7 @@
     },
     {
       "path": "packages/ai/test/anthropic-strict-tool-fallback.test.ts",
-      "upstreamTestHash": "sha256:299a03f818cb4bd0058bb4207dd0d42498a8d917b67af13de6dc4ad603b93a71",
+      "upstreamTestHash": "sha256:83fdeb785957ed3be88850065228c1761f245c79bef52f3e382c4e49da233a98",
       "area": "providers",
       "tags": [
         "hot-path"
@@ -872,7 +872,7 @@
     },
     {
       "path": "packages/ai/test/bedrock-strict-tool-fallback.test.ts",
-      "upstreamTestHash": "sha256:a9e1e9b9148ccd27602af2fc991f7a0b80e0e83fdcf25e9a538c72254b06752a",
+      "upstreamTestHash": "sha256:2249801016bfca91462b543101ee203e86cc46109d7c293394b79fe160230e66",
       "area": "providers",
       "tags": [
         "hot-path"
@@ -967,7 +967,7 @@
       ],
       "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling. SCRUTINIZED:approved by the lead ruling LEAD-RULINGS 13:05Z 2026-10-09 (compat-schema: only the type-level cases are designed out): the case asserts TypeScript Static<> property types with expectTypeOf, which has no runtime behavior; the Go compat structs are typed and the compiler checks their property types.",
       "designedOutCases": [
-        "compatibility schemas › preserves property types in the provider superset"
+        "compatibility schemas \u203a preserves property types in the provider superset"
       ]
     },
     {
@@ -1069,7 +1069,7 @@
     },
     {
       "path": "packages/ai/test/fireworks-models.test.ts",
-      "upstreamTestHash": "sha256:e3ae7f13ff9e8376e74b9f7456ff3c077af3f5b80fd359ce887c433451f91f9e",
+      "upstreamTestHash": "sha256:6aaefbde5864cad03fa28a7d0483c18a32ec829c25299f9212c101870a3d3a3e",
       "area": "providers",
       "tags": [
         "hot-path"
@@ -1235,7 +1235,7 @@
         "hot-path"
       ],
       "designedOutCases": [
-        "Models with image models › rejects chat models at the image entry point at runtime"
+        "Models with image models \u203a rejects chat models at the image entry point at runtime"
       ],
       "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling. SCRUTINIZED:approved by owner Michael Kinsy on 2026-10-01 (lead session, 'Yes go with recommendations'): the case 'rejects chat models at the image entry point at runtime' is designed out because it is unreachable in Go: GenerateImages takes *ImageModel, so a chat model cannot reach the image entry point."
     },
@@ -1878,7 +1878,7 @@
     },
     {
       "path": "packages/ai/test/providers.test.ts",
-      "upstreamTestHash": "sha256:f2182c8d6783d26973efc141bd7568ec962028b2211438c6508c7037c7dc91d5",
+      "upstreamTestHash": "sha256:85d073665733efab0007b92b629e22a2c90cdde047ebc85dc63555461265f92d",
       "area": "providers",
       "tags": [
         "hot-path"
@@ -2133,7 +2133,7 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "Production-path review at Pi 1.5.0: every probe runs validateToolArguments, i.e. ai.ValidateToolArguments (ai/validate_arguments.go) over ai/validate.go's schema.CompileCoercing validators, the tool-argument admission of agent/tool_execution.go, durable/harness/tool.go, durable/codemode/call.go and durable/core/driver/session.go. SCRUTINIZED:approved by the owner 2026-11-03, JS-only values and mechanics (decisions item 1), verified per row: [reviewer probes (Sol) › keeps the validator of a schema object, as before, also when the schema is changed later]: object-identity caching: Pi keys its validator cache by the schema object's identity (a WeakMap), so an object mutated in place keeps its stale validator; PiG tool schemas are values read on every call and its cache is keyed by the schema text (ai/validate_arguments.go), so no Go product path holds a schema object that changes under a cached validator except an in-process AgentTool that mutates the map it returns; the rest of the case (the first outcome, and that the schema a call is given is the one it validates against) runs in TestValidateToolArgumentsValidatesTheSchemaItIsGiven."
+      "rationale": "Production-path review at Pi 1.5.0: every probe runs validateToolArguments, i.e. ai.ValidateToolArguments (ai/validate_arguments.go) over ai/validate.go's schema.CompileCoercing validators, the tool-argument admission of agent/tool_execution.go, durable/harness/tool.go, durable/codemode/call.go and durable/core/driver/session.go. SCRUTINIZED:approved by the owner 2026-11-03, JS-only values and mechanics (decisions item 1), verified per row: [reviewer probes (Sol) \u203a keeps the validator of a schema object, as before, also when the schema is changed later]: object-identity caching: Pi keys its validator cache by the schema object's identity (a WeakMap), so an object mutated in place keeps its stale validator; PiG tool schemas are values read on every call and its cache is keyed by the schema text (ai/validate_arguments.go), so no Go product path holds a schema object that changes under a cached validator except an in-process AgentTool that mutates the map it returns; the rest of the case (the first outcome, and that the schema a call is given is the one it validates against) runs in TestValidateToolArgumentsValidatesTheSchemaItIsGiven."
     },
     {
       "path": "packages/ai/test/validation.test.ts",
@@ -2244,7 +2244,7 @@
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path. SCRUTINIZED:approved by owner 2026-10-29 class approval (TypeScript type-level checks, verified per row): the designed-out case 'refuse a keyed member in a remote contract, at the type level and at declaration' is enforced in Go by the type system: Keyed() returns *contracts.KeyedMember, which is not a contracts.TSchema, so contracts.Prop, VariantDeclaration.State and RemoteEditor.State refuse it at compile time (`cannot use contracts.Keyed(contracts.Str()) (value of type *contracts.KeyedMember) as contracts.TSchema value in argument to contracts.Prop`); upstream's runtime throw has no Go counterpart.",
       "designedOutCases": [
-        "keyed members (slice 6a §12) › refuse a keyed member in a remote contract, at the type level and at declaration"
+        "keyed members (slice 6a \u00a712) \u203a refuse a keyed member in a remote contract, at the type level and at declaration"
       ]
     },
     {
@@ -2303,7 +2303,7 @@
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path. SCRUTINIZED:approved by owner 2026-10-29 class approval (TypeScript type-level checks, verified per row): the designed-out case \"types a call replacement's arguments as values\" is enforced in Go by the signature: CheckedArgs.Call is contracts.CallFunc, so a call with wrong argument types does not compile (`cannot use func(args string, ...) ... as contracts.CallFunc value`); TestCallReplacementArgumentsAreValues pins it.",
       "designedOutCases": [
-        "checkArgs › types a call replacement's arguments as values"
+        "checkArgs \u203a types a call replacement's arguments as values"
       ]
     },
     {
@@ -2581,9 +2581,9 @@
       "upstreamTestHash": "sha256:7163597e13d8d64375d364e40bcab6099b3aea1cd82bf1bee2269fccf6934df7",
       "area": "extensions",
       "tags": [],
-      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path. SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [types › infers the value type from the attachment, without a type argument]: class (a) TypeScript type-level check (expectTypeOf); Go mechanism: generic FollowAttach[T] / FollowAttachment[T]; Go test TestFollowAttachIsTypedByItsAttachment (host_follow_test.go) SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [types › infers the value type from the attachment, without a type argument]: class (a) TypeScript type-level check (expectTypeOf); Go mechanism: generic FollowAttach[T] / FollowAttachment[T]; Go test TestFollowAttachIsTypedByItsAttachment (host_follow_test.go) SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [types › infers the value type from the attachment, without a type argument]: class (a) TypeScript type-level check (expectTypeOf); Go mechanism: generic FollowAttach[T] / FollowAttachment[T]; Go test TestFollowAttachIsTypedByItsAttachment (host_follow_test.go) SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [types › infers the value type from the attachment, without a type argument]: type-level check (expectTypeOf); Go form: generic FollowAttach[T]/FollowAttachment[T], named by TestFollowAttachIsTypedByItsAttachment",
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path. SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [types \u203a infers the value type from the attachment, without a type argument]: class (a) TypeScript type-level check (expectTypeOf); Go mechanism: generic FollowAttach[T] / FollowAttachment[T]; Go test TestFollowAttachIsTypedByItsAttachment (host_follow_test.go) SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [types \u203a infers the value type from the attachment, without a type argument]: class (a) TypeScript type-level check (expectTypeOf); Go mechanism: generic FollowAttach[T] / FollowAttachment[T]; Go test TestFollowAttachIsTypedByItsAttachment (host_follow_test.go) SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [types \u203a infers the value type from the attachment, without a type argument]: class (a) TypeScript type-level check (expectTypeOf); Go mechanism: generic FollowAttach[T] / FollowAttachment[T]; Go test TestFollowAttachIsTypedByItsAttachment (host_follow_test.go) SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [types \u203a infers the value type from the attachment, without a type argument]: type-level check (expectTypeOf); Go form: generic FollowAttach[T]/FollowAttachment[T], named by TestFollowAttachIsTypedByItsAttachment",
       "designedOutCases": [
-        "types › infers the value type from the attachment, without a type argument"
+        "types \u203a infers the value type from the attachment, without a type argument"
       ]
     },
     {
@@ -2849,7 +2849,7 @@
     },
     {
       "path": "packages/chord/test/node/app/app.test.ts",
-      "upstreamTestHash": "sha256:f37461c6de1d420c72b433c29f3012ffa117b441ed39bbc44c5cedec6c43cc28",
+      "upstreamTestHash": "sha256:759c72f7008a30129f04d41d1aa0758fb895ee42bfbcd74cb5dd98d55ec628ae",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (app_export_test.go, app_test.go, app_workers_test.go) runs in package chord/nextnode/app through exported production functions such as StartServer, AddressParam; no export_test seam or test-only stand-in replaces the code under test. The last case (an inactive optional import that is missing) is tested on the plugins' import graph (app_executable_test.go: TestAppStartsWhenAnOptionalPluginsFacetImportsAFileThatIsNotThere...); D603 keeps it off the executable only."
@@ -2926,7 +2926,7 @@
     },
     {
       "path": "packages/chord/test/node/app/layout.test.ts",
-      "upstreamTestHash": "sha256:22920a2be00f0a12133dbc50debfcf8d06d21eae7f63e5803f9285ae39129e66",
+      "upstreamTestHash": "sha256:9aceff55bcea02ff0c6954bef6e7490d95c66efdd52c46814589ade44cb59846",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (layout_test.go) runs in package chord/nextnode/app through exported production functions such as WorkerDirectory, DefaultDataDir, CreateLayout; no export_test seam or test-only stand-in replaces the code under test."
@@ -3297,7 +3297,7 @@
     },
     {
       "path": "packages/chord/test/node/workers/base.test.ts",
-      "upstreamTestHash": "sha256:c81aa14f3f9a3cff377c94ce876bc4cd572b048b38109fc3963979c785ff5b7b",
+      "upstreamTestHash": "sha256:d181a6f386e082a83661bedd9b884476ef8c83a91805867566d2838498f0a25f",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Owner hold (2026-11-08): D600 is not approved as a design-out of this file; every case is ported in PiG form (plugins_workerbase_test.go, surfaces_bundle_test.go, plugins_build_test.go, workers_workers_test.go), each stating what it protects."
@@ -3307,7 +3307,7 @@
       "upstreamTestHash": "sha256:547c8c230bba723cdd50963d49ead7d846cc4f6e944e2eaf0e1829b203c9fa41",
       "area": "extensions",
       "tags": [],
-      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Owner hold (2026-11-08): D600 is not approved as a design-out of this file; the case is ported in PiG form. Intention of \"the child entry's imports › loads no esbuild\": a forked worker does not pay for the server's build tool. PiG form: workers_child_test.go, a deps test that `go list -deps` of the workers package, the plugin runtime and the plugin data links no esbuild; it holds since the plugins component is split in three layers (plugins/model, plugins/build, plugins) and the component takes the builder as PluginsOptions.Build. An app's worker executable is the server's own program (`app.StartWorker`), so it still links `app` and the 25 esbuild packages behind it; the test protects the worker side (`workers`, the plugin runtime and the plugin data) only."
+      "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Owner hold (2026-11-08): D600 is not approved as a design-out of this file; the case is ported in PiG form. Intention of \"the child entry's imports \u203a loads no esbuild\": a forked worker does not pay for the server's build tool. PiG form: workers_child_test.go, a deps test that `go list -deps` of the workers package, the plugin runtime and the plugin data links no esbuild; it holds since the plugins component is split in three layers (plugins/model, plugins/build, plugins) and the component takes the builder as PluginsOptions.Build. An app's worker executable is the server's own program (`app.StartWorker`), so it still links `app` and the 25 esbuild packages behind it; the test protects the worker side (`workers`, the plugin runtime and the plugin data) only."
     },
     {
       "path": "packages/chord/test/node/workers/control.test.ts",
@@ -3339,7 +3339,7 @@
     },
     {
       "path": "packages/chord/test/node/workers/workers.test.ts",
-      "upstreamTestHash": "sha256:3c37d4d8b6ba7e8aacc072959d4c8eea747276567858a847056ec81a511686b6",
+      "upstreamTestHash": "sha256:d3ec1ab80a1a7e170a1dbe9d2fefe61a7820966d29892af9c5a7cf5b00d480bf",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (workers_rollout_blocked_unix_test.go, workers_rollout_test.go, workers_workers_test.go) runs in package chord/nextnode/workers through exported production functions such as of the package (methods of its exported types); no export_test seam or test-only stand-in replaces the code under test."
@@ -3605,9 +3605,9 @@
       "upstreamTestHash": "sha256:6b2e106cb68743e54c7d3f603a940d98e4558f3082ee4e36e708136842a3146c",
       "area": "extensions",
       "tags": [],
-      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) store: used by Durable's store adapter. SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): the designed-out case 'row types › types rows with optional opt(...) fields and puts with optional defaulted fields' is a TypeScript type-level check; the Go mechanism is the typed API (Row = map[string]any; an optional column is a ColumnSchema made by Opt with Optional set, carried by Column and ColumnRecord) with compile-time assertions and a runtime check, TestEvidenceStoreAColumnsOptionalRowType in chord/next/store/evidence_storeA_test.go.",
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) store: used by Durable's store adapter. SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): the designed-out case 'row types \u203a types rows with optional opt(...) fields and puts with optional defaulted fields' is a TypeScript type-level check; the Go mechanism is the typed API (Row = map[string]any; an optional column is a ColumnSchema made by Opt with Optional set, carried by Column and ColumnRecord) with compile-time assertions and a runtime check, TestEvidenceStoreAColumnsOptionalRowType in chord/next/store/evidence_storeA_test.go.",
       "designedOutCases": [
-        "row types › types rows with optional opt(...) fields and puts with optional defaulted fields"
+        "row types \u203a types rows with optional opt(...) fields and puts with optional defaulted fields"
       ]
     },
     {
@@ -3974,14 +3974,14 @@
     },
     {
       "path": "packages/codemode/test/sandbox.test.ts",
-      "upstreamTestHash": "sha256:f9252a9b5851d6187ce3bdbefe89f83fff5c5395b197c378640936fd94a9da63",
+      "upstreamTestHash": "sha256:a76f2e0f3688286fcb15de79a675cc05bae699117e5f740b12dd26dbb0090931",
       "area": "extensions",
       "tags": [
         "hot-path"
       ],
       "rationale": "Codemode sandbox execution reached on coding turns: the built-in codemode tool runs every script through codemode.NewSandbox (coding/extension/builtin/codemode/execute.go); the inline and remote backends serve the durable and Cloudflare hosts. The cases 'accepts a worker path string' and 'reports a missing worker file as a sandbox error', first designed out because the Go engine runs QuickJS on wazero in process and has no worker file, are ported against SandboxOptions.Wasm, the PiG analogue of the worker file (TestWorkerHostAcceptsAModuleFromAFilePath, TestWorkerHostReportsAMissingModuleFileAsASandboxError). The 1.2.0 case 'ignores Node --watch notifications from the worker' is designed out: the in-process wazero QuickJS engine has no worker message channel, so no Node --watch notification can arrive (nodejs/node#65044 is the Node behavior the case guards against). SCRUTINIZED:approved by the lead ruling of 2026-10-11T18:42Z (Q5, commit 4c6bb3897f), confirmed for 1.2.0 by the lead on 2026-10-12.",
       "designedOutCases": [
-        "worker host › ignores Node --watch notifications from the worker"
+        "worker host \u203a ignores Node --watch notifications from the worker"
       ]
     },
     {
@@ -4265,7 +4265,7 @@
     },
     {
       "path": "packages/coding-agent/test/cache-warmer.test.ts",
-      "upstreamTestHash": "sha256:b1d427d2df93c9a3d893d95a79e9ea127accf4970fe319a2f46c225ad8d11d0f",
+      "upstreamTestHash": "sha256:8220d3941bfd8e8441d7c87e4e0fe8bd203b4b5abdfed1acb7796e6a15309c58",
       "area": "providers",
       "tags": [
         "hot-path"
@@ -4771,10 +4771,10 @@
         "hot-path"
       ],
       "designedOutCases": [
-        "shouldRunFirstTimeSetup › returns true when experimental, default agent dir, and no settings.json",
-        "shouldRunFirstTimeSetup › returns false when experimental features are disabled",
-        "shouldRunFirstTimeSetup › returns false when a custom agent dir is set",
-        "shouldRunFirstTimeSetup › returns false when settings.json already exists"
+        "shouldRunFirstTimeSetup \u203a returns true when experimental, default agent dir, and no settings.json",
+        "shouldRunFirstTimeSetup \u203a returns false when experimental features are disabled",
+        "shouldRunFirstTimeSetup \u203a returns false when a custom agent dir is set",
+        "shouldRunFirstTimeSetup \u203a returns false when settings.json already exists"
       ],
       "rationale": "CLI startup, selected execution mode, settings, or command routing. Four official-distribution cases are designed out, SCRUTINIZED:approved by owner Michael Kinsy on 2026-09-29: Pi shows first-time setup only for its official distribution identity (src/cli/startup-ui.ts:122-140; caller src/main.ts:661), which PiG never has. The mapping row test-mapping-v0.99.1.json#packages/coding-agent/test/first-time-setup.test.ts must list exactly these ids."
     },
@@ -5285,7 +5285,7 @@
     },
     {
       "path": "packages/coding-agent/test/oauth-selector.test.ts",
-      "upstreamTestHash": "sha256:076b71657cb05e62537547ed8f18ceaf0bf37c65ad57134fc25d4fcc66ca6fdd",
+      "upstreamTestHash": "sha256:601f760ecab96aa2a6aeda80da60a6607610232ae2881683a302ad61e8808f3a",
       "area": "providers",
       "tags": [
         "hot-path"
@@ -5811,7 +5811,7 @@
     },
     {
       "path": "packages/coding-agent/test/settings-manager.test.ts",
-      "upstreamTestHash": "sha256:28af8d06e9d36a1b8f89f3d6097bced8439bb325686ea0473caca4a6905ca4be",
+      "upstreamTestHash": "sha256:7b31d4e65427b306f67da6525902dc26acbce8dbf4070c706e75f82274cba101",
       "area": "cli",
       "tags": [
         "hot-path"
@@ -7529,7 +7529,7 @@
     },
     {
       "path": "packages/durable/test/harness-read-only.test.ts",
-      "upstreamTestHash": "sha256:ab194b95e69f2855c837d0efffbb10ddf69a7054b284dfa31f301047590a8eaf",
+      "upstreamTestHash": "sha256:0bd9fb1ed6b56f2ccfb6158d158a0abd74d988adea103ddd045eadc7d2a1464d",
       "area": "cli",
       "tags": [
         "hot-path"
@@ -7615,7 +7615,7 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "New with the Durable 1.1.0 line; area and tags follow the sibling tests under packages/durable/test/ until the production-path review. SCRUTINIZED:approved by owner 2026-10-29 class approval (Promise/thenable mechanics, Go callbacks return no value; verified per row): the three designed-out cases test JS promise and thenable handling of a listener or onReport; Go callbacks return no value, so a failing listener is a panic that session.Contained recovers and reports once, asserted by harness TestListenerAndReportErrors and TestSafeNow. [listener and report errors › reports a listener or onReport whose promise rejects, without an unhandled rejection] Go callbacks (SubscribeCommits/OnReport listeners) return no promise, so there is no rejection to observe; a Go listener's failure is a panic, which session.Contained recovers and reports once: asserted by harness TestListenerAndReportErrors 'reports a throwing commit or close listener and runs the others; the commit stands' and TestSafeNow [listener and report errors › contains a fulfilled thenable that calls only its fulfillment handler] Go has no thenables: every listener is a plain func run inside session.Contained, which recovers its panic (TestListenerAndReportErrors 'reports a throwing commit or close listener...') [listener and report errors › contains a rejected promise from another realm] Go has no promises or node:vm realms; a panic in a listener from any goroutine/package is recovered by the same session.Contained path (TestListenerAndReportErrors 'reports a throwing commit or close listener...')"
+      "rationale": "New with the Durable 1.1.0 line; area and tags follow the sibling tests under packages/durable/test/ until the production-path review. SCRUTINIZED:approved by owner 2026-10-29 class approval (Promise/thenable mechanics, Go callbacks return no value; verified per row): the three designed-out cases test JS promise and thenable handling of a listener or onReport; Go callbacks return no value, so a failing listener is a panic that session.Contained recovers and reports once, asserted by harness TestListenerAndReportErrors and TestSafeNow. [listener and report errors \u203a reports a listener or onReport whose promise rejects, without an unhandled rejection] Go callbacks (SubscribeCommits/OnReport listeners) return no promise, so there is no rejection to observe; a Go listener's failure is a panic, which session.Contained recovers and reports once: asserted by harness TestListenerAndReportErrors 'reports a throwing commit or close listener and runs the others; the commit stands' and TestSafeNow [listener and report errors \u203a contains a fulfilled thenable that calls only its fulfillment handler] Go has no thenables: every listener is a plain func run inside session.Contained, which recovers its panic (TestListenerAndReportErrors 'reports a throwing commit or close listener...') [listener and report errors \u203a contains a rejected promise from another realm] Go has no promises or node:vm realms; a panic in a listener from any goroutine/package is recovered by the same session.Contained path (TestListenerAndReportErrors 'reports a throwing commit or close listener...')"
     },
     {
       "path": "packages/durable/test/harness-structured-output.test.ts",
@@ -7673,7 +7673,7 @@
     },
     {
       "path": "packages/durable/test/harness-tasks.test.ts",
-      "upstreamTestHash": "sha256:167fa91d055d3660832344cf54c4afa5af7e732e7e8af021f59976262f82c8b6",
+      "upstreamTestHash": "sha256:6b3c61985a68d9a96af0613a18e84a3ae30e914a7397caeae0f66e384e429f00",
       "area": "cli",
       "tags": [
         "hot-path"
@@ -7752,7 +7752,7 @@
       ],
       "rationale": "New in 0.99.1; area and tags follow the sibling tests under packages/durable/test/ until the production-path review. SCRUTINIZED:approved by Main (lead ruling by IRC, 2026-11-02; owner confirmation pending): the case 'rejects window bounds that are not integers or put `max` below `min`' is designed out for two of its inputs, `min: 1.5` and `from: NaN`, because they are unreachable in Go: ConversationWindow takes Min and Max as *int and From as durable.EntryId, so the type system already excludes a non-integer bound. This is a Go type-system mechanic, not a behavior difference. The case's other inputs (min 0, max below min, observeConversation max 0, max equal to min) are asserted in TestConversationView.",
       "designedOutCases": [
-        "conversation view window › rejects window bounds that are not integers or put `max` below `min`"
+        "conversation view window \u203a rejects window bounds that are not integers or put `max` below `min`"
       ]
     },
     {
@@ -7773,7 +7773,7 @@
     },
     {
       "path": "packages/durable/test/jsonl-storage.test.ts",
-      "upstreamTestHash": "sha256:8ec8e4026789901469a2cc1ef63564a975bbb98ac5c6d06c162d01a626e21359",
+      "upstreamTestHash": "sha256:b5d3ad9bfd1891aa92ed2605266ffb061d0d8fc963550a0fb2fea4d23d00c487",
       "area": "cli",
       "tags": [
         "hot-path"
@@ -7823,7 +7823,7 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "Production-path review at Pi 1.5.0: the Session read cache of task and conversation records; the Go test drives durable/session/cached_storage.go (CachedStorage: written-record cache, ended-task table, live and awaited tasks, reads in flight, Published) over a counting backend. Durable's Harness and Session hold every durable turn's state, so it is tagged hot-path with the sibling packages/durable/test/ rows reviewed at Pi 1.2.0 (cmd/pig itself links only durable/core/jv from Durable). SCRUTINIZED:approved by the owner 2026-11-03, JS-only values and mechanics (decisions item 1), verified per row: [cached storage › keeps the written record itself, frozen: no copy]: Go has no Object.isFrozen: CachedStorage (durable/session/cached_storage.go) keeps the written record by shared referent and a caller who mutates a published record changes what the cache serves, so the frozen-state assertion on record.state has no Go form; the rest of the case (the identity of the task and the conversation the cache serves, no copy) runs in TestCachedStorageKeepsWrittenRecordItselfShared."
+      "rationale": "Production-path review at Pi 1.5.0: the Session read cache of task and conversation records; the Go test drives durable/session/cached_storage.go (CachedStorage: written-record cache, ended-task table, live and awaited tasks, reads in flight, Published) over a counting backend. Durable's Harness and Session hold every durable turn's state, so it is tagged hot-path with the sibling packages/durable/test/ rows reviewed at Pi 1.2.0 (cmd/pig itself links only durable/core/jv from Durable). SCRUTINIZED:approved by the owner 2026-11-03, JS-only values and mechanics (decisions item 1), verified per row: [cached storage \u203a keeps the written record itself, frozen: no copy]: Go has no Object.isFrozen: CachedStorage (durable/session/cached_storage.go) keeps the written record by shared referent and a caller who mutates a published record changes what the cache serves, so the frozen-state assertion on record.state has no Go form; the rest of the case (the identity of the task and the conversation the cache serves, no copy) runs in TestCachedStorageKeepsWrittenRecordItselfShared."
     },
     {
       "path": "packages/durable/test/session-checkpoints-migrations.test.ts",
@@ -7895,7 +7895,7 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "Production-path review at Pi 1.5.0: group commit on the Session line (docs/group-commit.md); the Go test drives durable/session/session.go, writer.go, transaction.go and cached_storage.go (the Session line, group commit writer, gates, outcome fences, publication, upkeep, held documents) and conversation_tails.go over a controlled MemoryStorage. Durable's Harness and Session hold every durable turn's state, so it is tagged hot-path with the sibling packages/durable/test/ rows reviewed at Pi 1.2.0 (cmd/pig itself links only durable/core/jv from Durable). SCRUTINIZED:approved by the owner 2026-11-03, JS-only values and mechanics (decisions item 1), verified per row: [group commit: failures per part › rejects every part of a call with its rejection value, ${value} included] [group commit: failures per part › rejects a refused part with its refusal, ${value} included, and the parts after it with SessionFailed]: a Go error cannot be present but nil: Pi tells `{stored, refused: undefined}` (rejects with undefined) from `{stored}` (\"Storage committed without adopting the batch\"), while Go's Commit returns a non-nil error on every failure and the writer (writer.go) requires result.Refused != nil, so a rejection or refusal of undefined or null has no Go form; the rest of both cases (every part rejected with the call's rejection value, the refused part's refusal and the parts after it failing SessionFailed) runs with non-nil values in TestGroupCommitFailuresPerPart."
+      "rationale": "Production-path review at Pi 1.5.0: group commit on the Session line (docs/group-commit.md); the Go test drives durable/session/session.go, writer.go, transaction.go and cached_storage.go (the Session line, group commit writer, gates, outcome fences, publication, upkeep, held documents) and conversation_tails.go over a controlled MemoryStorage. Durable's Harness and Session hold every durable turn's state, so it is tagged hot-path with the sibling packages/durable/test/ rows reviewed at Pi 1.2.0 (cmd/pig itself links only durable/core/jv from Durable). SCRUTINIZED:approved by the owner 2026-11-03, JS-only values and mechanics (decisions item 1), verified per row: [group commit: failures per part \u203a rejects every part of a call with its rejection value, ${value} included] [group commit: failures per part \u203a rejects a refused part with its refusal, ${value} included, and the parts after it with SessionFailed]: a Go error cannot be present but nil: Pi tells `{stored, refused: undefined}` (rejects with undefined) from `{stored}` (\"Storage committed without adopting the batch\"), while Go's Commit returns a non-nil error on every failure and the writer (writer.go) requires result.Refused != nil, so a rejection or refusal of undefined or null has no Go form; the rest of both cases (every part rejected with the call's rejection value, the refused part's refusal and the parts after it failing SessionFailed) runs with non-nil values in TestGroupCommitFailuresPerPart."
     },
     {
       "path": "packages/durable/test/session-observers.test.ts",
@@ -7904,7 +7904,7 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "New in 0.99.1; area and tags follow the sibling tests under packages/durable/test/ until the production-path review. SCRUTINIZED:approved by owner 2026-10-29 class approval (Promise/thenable mechanics, Go callbacks return no value; verified per row): the designed-out case tests a JS promise returned by an observer's call; a Go observer's Advance returns no value, so a failing observer is a panic that the Session reports once, detaches and ends listener_error, asserted by session TestObserveDoc (reports a throwing observer, detaches it and ends it with the error). [observeDoc throwing asynchronously › reports an observer whose call returns a rejected promise, then detaches it and ends it `listener_error`] The call returns a Promise upstream and Go has none, so the rejection has no counterpart."
+      "rationale": "New in 0.99.1; area and tags follow the sibling tests under packages/durable/test/ until the production-path review. SCRUTINIZED:approved by owner 2026-10-29 class approval (Promise/thenable mechanics, Go callbacks return no value; verified per row): the designed-out case tests a JS promise returned by an observer's call; a Go observer's Advance returns no value, so a failing observer is a panic that the Session reports once, detaches and ends listener_error, asserted by session TestObserveDoc (reports a throwing observer, detaches it and ends it with the error). [observeDoc throwing asynchronously \u203a reports an observer whose call returns a rejected promise, then detaches it and ends it `listener_error`] The call returns a Promise upstream and Go has none, so the rejection has no counterpart."
     },
     {
       "path": "packages/durable/test/session-tables.test.ts",
@@ -8316,9 +8316,9 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "Production-path review at Pi 1.5.0: schema.Compile and CompileCoercing are the tool-argument validator of the Go product (cmd/pig links schema, schema/formats, schema/formats/internal/idna and schema/internal/ecmaregex): ai/validate.go (toolArgumentValidators) compiles every tool schema, reached through ai.ValidateToolArguments from agent/tool_execution.go, durable/harness/tool.go, durable/codemode/call.go and durable/core/driver/session.go; durable/harness/structured_output.go, chord/host/schema.go, chord/host/wire.go and chord/next/data/validator.go also call schema.Compile. SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [builders › carry the static type of valid values]: Go's compiler carries the static types of the builders' results (they return plain `Schema` values and the checks take `any`); Pi's Static<> type inference has no runtime form, and the runtime halves of the same test (the JSON shapes, the compile semantics) are TestBuildersProducePlainJSONSchema, TestBuildersProduceEveryLeaf and TestBuildersAcceptEveryAnnotationAndBound in schema/builders_upstream_test.go SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [builders › carry the static type of valid values]: Go's compiler carries the static types of the builders' results (they return plain `Schema` values and the checks take `any`); Pi's Static<> type inference has no runtime form, and the runtime halves of the same test (the JSON shapes, the compile semantics) are TestBuildersProducePlainJSONSchema, TestBuildersProduceEveryLeaf and TestBuildersAcceptEveryAnnotationAndBound in schema/builders_upstream_test.go",
+      "rationale": "Production-path review at Pi 1.5.0: schema.Compile and CompileCoercing are the tool-argument validator of the Go product (cmd/pig links schema, schema/formats, schema/formats/internal/idna and schema/internal/ecmaregex): ai/validate.go (toolArgumentValidators) compiles every tool schema, reached through ai.ValidateToolArguments from agent/tool_execution.go, durable/harness/tool.go, durable/codemode/call.go and durable/core/driver/session.go; durable/harness/structured_output.go, chord/host/schema.go, chord/host/wire.go and chord/next/data/validator.go also call schema.Compile. SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [builders \u203a carry the static type of valid values]: Go's compiler carries the static types of the builders' results (they return plain `Schema` values and the checks take `any`); Pi's Static<> type inference has no runtime form, and the runtime halves of the same test (the JSON shapes, the compile semantics) are TestBuildersProducePlainJSONSchema, TestBuildersProduceEveryLeaf and TestBuildersAcceptEveryAnnotationAndBound in schema/builders_upstream_test.go SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [builders \u203a carry the static type of valid values]: Go's compiler carries the static types of the builders' results (they return plain `Schema` values and the checks take `any`); Pi's Static<> type inference has no runtime form, and the runtime halves of the same test (the JSON shapes, the compile semantics) are TestBuildersProducePlainJSONSchema, TestBuildersProduceEveryLeaf and TestBuildersAcceptEveryAnnotationAndBound in schema/builders_upstream_test.go",
       "designedOutCases": [
-        "builders › carry the static type of valid values"
+        "builders \u203a carry the static type of valid values"
       ]
     },
     {
@@ -8380,7 +8380,7 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "Production-path review at Pi 1.5.0: schema.Compile and CompileCoercing are the tool-argument validator of the Go product (cmd/pig links schema, schema/formats, schema/formats/internal/idna and schema/internal/ecmaregex): ai/validate.go (toolArgumentValidators) compiles every tool schema, reached through ai.ValidateToolArguments from agent/tool_execution.go, durable/harness/tool.go, durable/codemode/call.go and durable/core/driver/session.go; durable/harness/structured_output.go, chord/host/schema.go, chord/host/wire.go and chord/next/data/validator.go also call schema.Compile. SCRUTINIZED:approved by the owner 2026-11-03, JS-only values and mechanics (decisions item 1), verified per row: [values › treats a property set to undefined as absent]: Go has no undefined: a Go value is JSON null or an absent *Object member, never a present-but-undefined member, and no Go production path (tool arguments decode through chordjson into nil, bool, float64, string, []any or *Object) can carry one; the rest of the values group (absent versus null members, required, additional properties) runs in TestValues (schema/validator_upstream_test.go)."
+      "rationale": "Production-path review at Pi 1.5.0: schema.Compile and CompileCoercing are the tool-argument validator of the Go product (cmd/pig links schema, schema/formats, schema/formats/internal/idna and schema/internal/ecmaregex): ai/validate.go (toolArgumentValidators) compiles every tool schema, reached through ai.ValidateToolArguments from agent/tool_execution.go, durable/harness/tool.go, durable/codemode/call.go and durable/core/driver/session.go; durable/harness/structured_output.go, chord/host/schema.go, chord/host/wire.go and chord/next/data/validator.go also call schema.Compile. SCRUTINIZED:approved by the owner 2026-11-03, JS-only values and mechanics (decisions item 1), verified per row: [values \u203a treats a property set to undefined as absent]: Go has no undefined: a Go value is JSON null or an absent *Object member, never a present-but-undefined member, and no Go production path (tool arguments decode through chordjson into nil, bool, float64, string, []any or *Object) can carry one; the rest of the values group (absent versus null members, required, additional properties) runs in TestValues (schema/validator_upstream_test.go)."
     },
     {
       "path": "packages/telemetry/test/conformance.test.ts",
@@ -8483,7 +8483,7 @@
     },
     {
       "path": "packages/tui/test/editor.test.ts",
-      "upstreamTestHash": "sha256:258a60b2aa2afbb6d0d053c7cf67e335a4b69cef2e39650b9c265d9f9ec24820",
+      "upstreamTestHash": "sha256:6aa897b42a1f23a791a73469df1d3be751facf1cc1173ddf63680db3a3c7100f",
       "area": "tui",
       "tags": [
         "hot-path"

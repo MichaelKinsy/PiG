@@ -1,5 +1,5 @@
 {
-  "upstreamVersion": "1.5.0+c23b9ec1",
+  "upstreamVersion": "1.5.0+77959d66",
   "typescriptVersion": "5.9.3",
   "origin": "published",
   "packages": [
@@ -572,6 +572,10 @@
         {
           "subpath": "./api/simple-options",
           "file": "node_modules/@earendil-works/pi-ai/dist/api/simple-options.d.ts"
+        },
+        {
+          "subpath": "./api/strict-tool-limits",
+          "file": "node_modules/@earendil-works/pi-ai/dist/api/strict-tool-limits.d.ts"
         },
         {
           "subpath": "./api/system-one-shared",
@@ -15639,6 +15643,94 @@
       }
     },
     {
+      "id": "pkg:ai/.#CACHE_WARMING_IDLE_CONTINUATION_PROBABILITY",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": ".",
+      "name": "CACHE_WARMING_IDLE_CONTINUATION_PROBABILITY",
+      "kind": "variable",
+      "shape": {
+        "aliasTarget": "",
+        "type": "0.15",
+        "typeParameters": [],
+        "calls": [],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:939b6bf968da1e05d78ed82b85996253fd5433846463e78e8d261a16b4599137",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 32,
+        "column": 22
+      }
+    },
+    {
+      "id": "pkg:ai/.#CACHE_WARMING_MAX_AGE_MS",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": ".",
+      "name": "CACHE_WARMING_MAX_AGE_MS",
+      "kind": "variable",
+      "shape": {
+        "aliasTarget": "",
+        "type": "number",
+        "typeParameters": [],
+        "calls": [],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:ec4b71bd4dc0b3aac2fea721ba74a18eb456f2cabef62c687f94ab806c1ced11",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 23,
+        "column": 22
+      }
+    },
+    {
+      "id": "pkg:ai/.#CACHE_WARMING_MAX_IDLE_AGE_MS",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": ".",
+      "name": "CACHE_WARMING_MAX_IDLE_AGE_MS",
+      "kind": "variable",
+      "shape": {
+        "aliasTarget": "",
+        "type": "number",
+        "typeParameters": [],
+        "calls": [],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:ec4b71bd4dc0b3aac2fea721ba74a18eb456f2cabef62c687f94ab806c1ced11",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 25,
+        "column": 22
+      }
+    },
+    {
+      "id": "pkg:ai/.#CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": ".",
+      "name": "CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS",
+      "kind": "variable",
+      "shape": {
+        "aliasTarget": "",
+        "type": "0.05",
+        "typeParameters": [],
+        "calls": [],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:c651ce6aae51a50301daf83abc99e321e0c8b306285992ae2411c172872d361a",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 27,
+        "column": 22
+      }
+    },
+    {
       "id": "pkg:ai/.#CacheRetention",
       "package": "@earendil-works/pi-ai",
       "entrypoint": ".",
@@ -15657,6 +15749,276 @@
       "source": {
         "path": "node_modules/@earendil-works/pi-ai/dist/providers/model-schema.d.ts",
         "line": 83,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:ai/.#CacheWarmingAction",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": ".",
+      "name": "CacheWarmingAction",
+      "kind": "type-alias",
+      "shape": {
+        "aliasTarget": "",
+        "type": "CacheWarmingAction",
+        "typeParameters": [],
+        "calls": [],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:874681724059ef7dee9346c5a0385704279509754e9ced2e4827dc310572d0b1",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 3,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:ai/.#CacheWarmingDecision",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": ".",
+      "name": "CacheWarmingDecision",
+      "kind": "interface",
+      "shape": {
+        "aliasTarget": "",
+        "type": "CacheWarmingDecision",
+        "typeParameters": [],
+        "calls": [],
+        "constructs": [],
+        "properties": [
+          {
+            "name": "action",
+            "optional": false,
+            "readonly": false,
+            "type": "CacheWarmingAction",
+            "calls": []
+          },
+          {
+            "name": "continuationProbability",
+            "optional": false,
+            "readonly": false,
+            "type": "number",
+            "calls": []
+          },
+          {
+            "name": "economicsAvailable",
+            "optional": false,
+            "readonly": false,
+            "type": "boolean",
+            "calls": []
+          },
+          {
+            "name": "expectedSavings",
+            "optional": false,
+            "readonly": false,
+            "type": "number",
+            "calls": []
+          },
+          {
+            "name": "missCost",
+            "optional": false,
+            "readonly": false,
+            "type": "number",
+            "calls": []
+          },
+          {
+            "name": "phase",
+            "optional": false,
+            "readonly": false,
+            "type": "CacheWarmingPhase",
+            "calls": []
+          },
+          {
+            "name": "warmCost",
+            "optional": false,
+            "readonly": false,
+            "type": "number",
+            "calls": []
+          }
+        ],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:f6ef157616af7b8c4b19487c42b779e45dcbe13bddbf587ee04bf2e411a440e8",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 7,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:ai/.#CacheWarmingDecision::property:action",
+      "parentId": "pkg:ai/.#CacheWarmingDecision",
+      "role": "property",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": ".",
+      "name": "CacheWarmingDecision.action",
+      "kind": "property",
+      "shape": {
+        "name": "action",
+        "optional": false,
+        "readonly": false,
+        "type": "CacheWarmingAction",
+        "calls": []
+      },
+      "shapeHash": "sha256:0256259170da898741b6daae815ee4157d4de180d8220196df3ebcf1fa84efc6",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 20,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:ai/.#CacheWarmingDecision::property:continuationProbability",
+      "parentId": "pkg:ai/.#CacheWarmingDecision",
+      "role": "property",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": ".",
+      "name": "CacheWarmingDecision.continuationProbability",
+      "kind": "property",
+      "shape": {
+        "name": "continuationProbability",
+        "optional": false,
+        "readonly": false,
+        "type": "number",
+        "calls": []
+      },
+      "shapeHash": "sha256:afcf5f10a115de1823d3fb04b2ab5819849304d8200b22c528fb013c2da156b8",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 14,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:ai/.#CacheWarmingDecision::property:economicsAvailable",
+      "parentId": "pkg:ai/.#CacheWarmingDecision",
+      "role": "property",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": ".",
+      "name": "CacheWarmingDecision.economicsAvailable",
+      "kind": "property",
+      "shape": {
+        "name": "economicsAvailable",
+        "optional": false,
+        "readonly": false,
+        "type": "boolean",
+        "calls": []
+      },
+      "shapeHash": "sha256:bac064f8a357ca6db3a67f4b98f05666f3ef4298e60fa3a38fdb5332c5889d2f",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 18,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:ai/.#CacheWarmingDecision::property:expectedSavings",
+      "parentId": "pkg:ai/.#CacheWarmingDecision",
+      "role": "property",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": ".",
+      "name": "CacheWarmingDecision.expectedSavings",
+      "kind": "property",
+      "shape": {
+        "name": "expectedSavings",
+        "optional": false,
+        "readonly": false,
+        "type": "number",
+        "calls": []
+      },
+      "shapeHash": "sha256:d01688118afeb91c5519e5a2fb42f106260e5d7533ce58ab94e7f03e4993502f",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 16,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:ai/.#CacheWarmingDecision::property:missCost",
+      "parentId": "pkg:ai/.#CacheWarmingDecision",
+      "role": "property",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": ".",
+      "name": "CacheWarmingDecision.missCost",
+      "kind": "property",
+      "shape": {
+        "name": "missCost",
+        "optional": false,
+        "readonly": false,
+        "type": "number",
+        "calls": []
+      },
+      "shapeHash": "sha256:1f6b4d61e586748effcdaa202e17e1b3abb3edf582d8c33c4b8f7abac2295956",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 12,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:ai/.#CacheWarmingDecision::property:phase",
+      "parentId": "pkg:ai/.#CacheWarmingDecision",
+      "role": "property",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": ".",
+      "name": "CacheWarmingDecision.phase",
+      "kind": "property",
+      "shape": {
+        "name": "phase",
+        "optional": false,
+        "readonly": false,
+        "type": "CacheWarmingPhase",
+        "calls": []
+      },
+      "shapeHash": "sha256:725229016826e110f8150100db1b12acad7caefbd8c9a2ef1f8de6ed8a42b38e",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 8,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:ai/.#CacheWarmingDecision::property:warmCost",
+      "parentId": "pkg:ai/.#CacheWarmingDecision",
+      "role": "property",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": ".",
+      "name": "CacheWarmingDecision.warmCost",
+      "kind": "property",
+      "shape": {
+        "name": "warmCost",
+        "optional": false,
+        "readonly": false,
+        "type": "number",
+        "calls": []
+      },
+      "shapeHash": "sha256:04ed344ef6f83d4908a03a3cb42b9d8057bb4ed59a6e74e32d5869b207e0f94a",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 10,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:ai/.#CacheWarmingPhase",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": ".",
+      "name": "CacheWarmingPhase",
+      "kind": "type-alias",
+      "shape": {
+        "aliasTarget": "",
+        "type": "CacheWarmingPhase",
+        "typeParameters": [],
+        "calls": [],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:3a25884e0ca854f9c514a428a08cebc23b8587841aab3c38f2fbb2b3082597d5",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 5,
         "column": 1
       }
     },
@@ -20921,6 +21283,92 @@
       }
     },
     {
+      "id": "pkg:ai/.#evaluateCacheWarming",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": ".",
+      "name": "evaluateCacheWarming",
+      "kind": "function",
+      "shape": {
+        "aliasTarget": "",
+        "type": "(model: Model<Api>, promptTokens: number, phase: CacheWarmingPhase) => CacheWarmingDecision",
+        "typeParameters": [],
+        "calls": [
+          {
+            "typeParameters": [],
+            "parameters": [
+              {
+                "name": "model",
+                "type": "Model<Api>",
+                "optional": false,
+                "rest": false
+              },
+              {
+                "name": "promptTokens",
+                "type": "number",
+                "optional": false,
+                "rest": false
+              },
+              {
+                "name": "phase",
+                "type": "CacheWarmingPhase",
+                "optional": false,
+                "rest": false
+              }
+            ],
+            "returns": "CacheWarmingDecision"
+          }
+        ],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:1e71ebde0c7b9f7edef213f7d49ade0033983667095587b65c4d4bb47557185e",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 52,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:ai/.#evaluateCacheWarming::call:0",
+      "parentId": "pkg:ai/.#evaluateCacheWarming",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": ".",
+      "name": "evaluateCacheWarming call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [],
+        "parameters": [
+          {
+            "name": "model",
+            "type": "Model<Api>",
+            "optional": false,
+            "rest": false
+          },
+          {
+            "name": "promptTokens",
+            "type": "number",
+            "optional": false,
+            "rest": false
+          },
+          {
+            "name": "phase",
+            "type": "CacheWarmingPhase",
+            "optional": false,
+            "rest": false
+          }
+        ],
+        "returns": "CacheWarmingDecision"
+      },
+      "shapeHash": "sha256:b07dac779cb87982e0483de5dca4a42f69475e574ce7c66e2690e2a524037755",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 52,
+        "column": 1
+      }
+    },
+    {
       "id": "pkg:ai/.#EventStream",
       "package": "@earendil-works/pi-ai",
       "entrypoint": ".",
@@ -23537,6 +23985,160 @@
       }
     },
     {
+      "id": "pkg:ai/.#getCacheWarmingDelayMs",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": ".",
+      "name": "getCacheWarmingDelayMs",
+      "kind": "function",
+      "shape": {
+        "aliasTarget": "",
+        "type": "(ttlMs: number) => number | undefined",
+        "typeParameters": [],
+        "calls": [
+          {
+            "typeParameters": [],
+            "parameters": [
+              {
+                "name": "ttlMs",
+                "type": "number",
+                "optional": false,
+                "rest": false
+              }
+            ],
+            "returns": "number | undefined"
+          }
+        ],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:dd666b488d9374ee4dc3ca990948f018093a54d4d5f10838bd7e8bd6efef9697",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 34,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:ai/.#getCacheWarmingDelayMs::call:0",
+      "parentId": "pkg:ai/.#getCacheWarmingDelayMs",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": ".",
+      "name": "getCacheWarmingDelayMs call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [],
+        "parameters": [
+          {
+            "name": "ttlMs",
+            "type": "number",
+            "optional": false,
+            "rest": false
+          }
+        ],
+        "returns": "number | undefined"
+      },
+      "shapeHash": "sha256:9e818d14e63b1e482d7ea7851655315f9a3f99309559b9a61e42945f561f426f",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 34,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:ai/.#getCacheWarmingRequestOptions",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": ".",
+      "name": "getCacheWarmingRequestOptions",
+      "kind": "function",
+      "shape": {
+        "aliasTarget": "",
+        "type": "<T extends SimpleStreamOptions>(options: T, signal: AbortSignal) => T",
+        "typeParameters": [
+          {
+            "name": "T",
+            "constraint": "SimpleStreamOptions",
+            "default": ""
+          }
+        ],
+        "calls": [
+          {
+            "typeParameters": [
+              {
+                "name": "T",
+                "constraint": "SimpleStreamOptions",
+                "default": ""
+              }
+            ],
+            "parameters": [
+              {
+                "name": "options",
+                "type": "T",
+                "optional": false,
+                "rest": false
+              },
+              {
+                "name": "signal",
+                "type": "AbortSignal",
+                "optional": false,
+                "rest": false
+              }
+            ],
+            "returns": "T"
+          }
+        ],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:074fdb50b91090d88147095c9f2985649a218a66549350fbd55549e47ace1e5e",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 50,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:ai/.#getCacheWarmingRequestOptions::call:0",
+      "parentId": "pkg:ai/.#getCacheWarmingRequestOptions",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": ".",
+      "name": "getCacheWarmingRequestOptions call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [
+          {
+            "name": "T",
+            "constraint": "SimpleStreamOptions",
+            "default": ""
+          }
+        ],
+        "parameters": [
+          {
+            "name": "options",
+            "type": "T",
+            "optional": false,
+            "rest": false
+          },
+          {
+            "name": "signal",
+            "type": "AbortSignal",
+            "optional": false,
+            "rest": false
+          }
+        ],
+        "returns": "T"
+      },
+      "shapeHash": "sha256:e76c791957d2277b823373bf6bc13e2e21ff69011452262203d659fa94d09a41",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 50,
+        "column": 1
+      }
+    },
+    {
       "id": "pkg:ai/.#getClientVersion",
       "package": "@earendil-works/pi-ai",
       "entrypoint": ".",
@@ -24163,6 +24765,80 @@
       "source": {
         "path": "node_modules/@earendil-works/pi-ai/dist/utils/overflow.d.ts",
         "line": 69,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:ai/.#getPromptCacheTtlMs",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": ".",
+      "name": "getPromptCacheTtlMs",
+      "kind": "function",
+      "shape": {
+        "aliasTarget": "",
+        "type": "(model: Model<Api>, options: SimpleStreamOptions | undefined) => number | undefined",
+        "typeParameters": [],
+        "calls": [
+          {
+            "typeParameters": [],
+            "parameters": [
+              {
+                "name": "model",
+                "type": "Model<Api>",
+                "optional": false,
+                "rest": false
+              },
+              {
+                "name": "options",
+                "type": "SimpleStreamOptions | undefined",
+                "optional": false,
+                "rest": false
+              }
+            ],
+            "returns": "number | undefined"
+          }
+        ],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:85862ff880dbf102dd748a1a8db978549b6e33ff979f4bc9bc6deacde4e578b8",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 39,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:ai/.#getPromptCacheTtlMs::call:0",
+      "parentId": "pkg:ai/.#getPromptCacheTtlMs",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": ".",
+      "name": "getPromptCacheTtlMs call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [],
+        "parameters": [
+          {
+            "name": "model",
+            "type": "Model<Api>",
+            "optional": false,
+            "rest": false
+          },
+          {
+            "name": "options",
+            "type": "SimpleStreamOptions | undefined",
+            "optional": false,
+            "rest": false
+          }
+        ],
+        "returns": "number | undefined"
+      },
+      "shapeHash": "sha256:b6ca99024c3972d2370726e2b0e5bb307f7793109dd3ad63252cc2ab1ee4db15",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 39,
         "column": 1
       }
     },
@@ -28064,6 +28740,80 @@
         "path": "node_modules/@earendil-works/pi-ai/dist/models-store.d.ts",
         "line": 27,
         "column": 5
+      }
+    },
+    {
+      "id": "pkg:ai/.#isCacheWarmingReplayable",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": ".",
+      "name": "isCacheWarmingReplayable",
+      "kind": "function",
+      "shape": {
+        "aliasTarget": "",
+        "type": "(model: Model<Api>, options: SimpleStreamOptions | undefined) => boolean",
+        "typeParameters": [],
+        "calls": [
+          {
+            "typeParameters": [],
+            "parameters": [
+              {
+                "name": "model",
+                "type": "Model<Api>",
+                "optional": false,
+                "rest": false
+              },
+              {
+                "name": "options",
+                "type": "SimpleStreamOptions | undefined",
+                "optional": false,
+                "rest": false
+              }
+            ],
+            "returns": "boolean"
+          }
+        ],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:6f55b0ceb654d02bce22f654e03aa1f858fa33d4dde260062018e19d79125481",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 45,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:ai/.#isCacheWarmingReplayable::call:0",
+      "parentId": "pkg:ai/.#isCacheWarmingReplayable",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": ".",
+      "name": "isCacheWarmingReplayable call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [],
+        "parameters": [
+          {
+            "name": "model",
+            "type": "Model<Api>",
+            "optional": false,
+            "rest": false
+          },
+          {
+            "name": "options",
+            "type": "SimpleStreamOptions | undefined",
+            "optional": false,
+            "rest": false
+          }
+        ],
+        "returns": "boolean"
+      },
+      "shapeHash": "sha256:e61a8dc8c01b357644bd99a21a8f7750e001f99bea4c2614bea5f8e651fbc36e",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 45,
+        "column": 1
       }
     },
     {
@@ -58919,7 +59669,7 @@
       "shapeHash": "sha256:ff74ec1919365c07d6354cd15e28de3b58b75903351ad7f5dc6affc4af4b2d49",
       "source": {
         "path": "node_modules/@earendil-works/pi-ai/dist/api/constrained-sampling.d.ts",
-        "line": 26,
+        "line": 24,
         "column": 1
       }
     },
@@ -58958,7 +59708,7 @@
       "shapeHash": "sha256:b188fbb3d45d5d3fc1f18a8f7eec806eed5ccb35d702c82c023770b66c185b62",
       "source": {
         "path": "node_modules/@earendil-works/pi-ai/dist/api/constrained-sampling.d.ts",
-        "line": 26,
+        "line": 24,
         "column": 1
       }
     },
@@ -59005,7 +59755,7 @@
       "shapeHash": "sha256:853e12c7b4dc2fa808e3188375b6be6d11abc9ee1dd02d61f396667d5fca3341",
       "source": {
         "path": "node_modules/@earendil-works/pi-ai/dist/api/constrained-sampling.d.ts",
-        "line": 32,
+        "line": 30,
         "column": 1
       }
     },
@@ -59044,7 +59794,7 @@
       "shapeHash": "sha256:dee9e353d53c700e6bbcd42b9796b7bc1d6a60a1044cf32824226bf275684d60",
       "source": {
         "path": "node_modules/@earendil-works/pi-ai/dist/api/constrained-sampling.d.ts",
-        "line": 32,
+        "line": 30,
         "column": 1
       }
     },
@@ -59085,7 +59835,7 @@
       "shapeHash": "sha256:7e21188ec1c2525875583c4bed13b74ee85070d067883670d48cbb4b3965d6da",
       "source": {
         "path": "node_modules/@earendil-works/pi-ai/dist/api/constrained-sampling.d.ts",
-        "line": 39,
+        "line": 37,
         "column": 1
       }
     },
@@ -59118,7 +59868,7 @@
       "shapeHash": "sha256:11c4e920ef47d51340728729913ff469ca4ac6380df95395db732ae1b8b72d78",
       "source": {
         "path": "node_modules/@earendil-works/pi-ai/dist/api/constrained-sampling.d.ts",
-        "line": 39,
+        "line": 37,
         "column": 1
       }
     },
@@ -59165,7 +59915,7 @@
       "shapeHash": "sha256:39271b91c5028a7e16928842158afa2f4c39fee1f2b629a316702c07fafbc735",
       "source": {
         "path": "node_modules/@earendil-works/pi-ai/dist/api/constrained-sampling.d.ts",
-        "line": 21,
+        "line": 19,
         "column": 1
       }
     },
@@ -59204,7 +59954,7 @@
       "shapeHash": "sha256:04b1a8c68b8b21d84563b9ec69c003ca62400fabdd6609597b42c8ab813b08fc",
       "source": {
         "path": "node_modules/@earendil-works/pi-ai/dist/api/constrained-sampling.d.ts",
-        "line": 21,
+        "line": 19,
         "column": 1
       }
     },
@@ -59245,7 +59995,7 @@
       "shapeHash": "sha256:1117ae3ddcd3853355554c30d1ea35a344f1cf020d40b3abd65ecca67e713791",
       "source": {
         "path": "node_modules/@earendil-works/pi-ai/dist/api/constrained-sampling.d.ts",
-        "line": 10,
+        "line": 8,
         "column": 1
       }
     },
@@ -59278,7 +60028,7 @@
       "shapeHash": "sha256:b8a3af8e82a29e68a613c5945ea7917d4a05b2b030992e400e9e585ad0e04631",
       "source": {
         "path": "node_modules/@earendil-works/pi-ai/dist/api/constrained-sampling.d.ts",
-        "line": 10,
+        "line": 8,
         "column": 1
       }
     },
@@ -59322,7 +60072,7 @@
       "shapeHash": "sha256:54b78dc34d3d51133e1b633226afe838f87bc4c4d7746ef6aadf27bfcd5659f7",
       "source": {
         "path": "node_modules/@earendil-works/pi-ai/dist/api/constrained-sampling.d.ts",
-        "line": 11,
+        "line": 9,
         "column": 1
       }
     },
@@ -59344,7 +60094,7 @@
       "shapeHash": "sha256:f3d9eb69549df3ebd6676675fba3a51ff24ee3b9671db40d92efdc7ee705d9ef",
       "source": {
         "path": "node_modules/@earendil-works/pi-ai/dist/api/constrained-sampling.d.ts",
-        "line": 13,
+        "line": 11,
         "column": 5
       }
     },
@@ -59366,7 +60116,7 @@
       "shapeHash": "sha256:dcc6ac2fc0e4871e55fe4bcd7fef5187983f5d1fa8d90ffc6d0216d61ca87f73",
       "source": {
         "path": "node_modules/@earendil-works/pi-ai/dist/api/constrained-sampling.d.ts",
-        "line": 12,
+        "line": 10,
         "column": 5
       }
     },
@@ -59388,7 +60138,7 @@
       "shapeHash": "sha256:1166d272555c33e6e934482a2768db32fca867a143c6cd0edcf7e0f20fbae4de",
       "source": {
         "path": "node_modules/@earendil-works/pi-ai/dist/api/constrained-sampling.d.ts",
-        "line": 14,
+        "line": 12,
         "column": 5
       }
     },
@@ -59432,7 +60182,7 @@
       "shapeHash": "sha256:c41751d8e4eaacec3e6c86e89f76776a076bc7e1b1a2ea0e6924f23ff29d15a3",
       "source": {
         "path": "node_modules/@earendil-works/pi-ai/dist/api/constrained-sampling.d.ts",
-        "line": 16,
+        "line": 14,
         "column": 1
       }
     },
@@ -59454,7 +60204,7 @@
       "shapeHash": "sha256:8017d2c191c740d112e3128d01caddee5d26af6dd2dee5808305f31da3760885",
       "source": {
         "path": "node_modules/@earendil-works/pi-ai/dist/api/constrained-sampling.d.ts",
-        "line": 19,
+        "line": 17,
         "column": 5
       }
     },
@@ -59476,7 +60226,7 @@
       "shapeHash": "sha256:b11bb26de08ad17a822c56b90281fc3e928b196cc695547208f4a0c49db46b65",
       "source": {
         "path": "node_modules/@earendil-works/pi-ai/dist/api/constrained-sampling.d.ts",
-        "line": 17,
+        "line": 15,
         "column": 5
       }
     },
@@ -59498,70 +60248,8 @@
       "shapeHash": "sha256:facb276ecba7de24b3eab2ecd3154dce8b42097f844a1e32067a3e3dfdba76e5",
       "source": {
         "path": "node_modules/@earendil-works/pi-ai/dist/api/constrained-sampling.d.ts",
-        "line": 18,
+        "line": 16,
         "column": 5
-      }
-    },
-    {
-      "id": "pkg:ai/api/constrained-sampling#isStrictToolLimitErrorMessage",
-      "package": "@earendil-works/pi-ai",
-      "entrypoint": "./api/constrained-sampling",
-      "name": "isStrictToolLimitErrorMessage",
-      "kind": "function",
-      "shape": {
-        "aliasTarget": "",
-        "type": "(message: string) => boolean",
-        "typeParameters": [],
-        "calls": [
-          {
-            "typeParameters": [],
-            "parameters": [
-              {
-                "name": "message",
-                "type": "string",
-                "optional": false,
-                "rest": false
-              }
-            ],
-            "returns": "boolean"
-          }
-        ],
-        "constructs": [],
-        "properties": [],
-        "enumMembers": []
-      },
-      "shapeHash": "sha256:6faf4e9bd346cc30f976ae0f7e762f0d633f946d351228897180c4094f000d49",
-      "source": {
-        "path": "node_modules/@earendil-works/pi-ai/dist/api/constrained-sampling.d.ts",
-        "line": 9,
-        "column": 1
-      }
-    },
-    {
-      "id": "pkg:ai/api/constrained-sampling#isStrictToolLimitErrorMessage::call:0",
-      "parentId": "pkg:ai/api/constrained-sampling#isStrictToolLimitErrorMessage",
-      "role": "call-overload",
-      "package": "@earendil-works/pi-ai",
-      "entrypoint": "./api/constrained-sampling",
-      "name": "isStrictToolLimitErrorMessage call 0",
-      "kind": "call-overload",
-      "shape": {
-        "typeParameters": [],
-        "parameters": [
-          {
-            "name": "message",
-            "type": "string",
-            "optional": false,
-            "rest": false
-          }
-        ],
-        "returns": "boolean"
-      },
-      "shapeHash": "sha256:b350c14870bf68cc304b6ce2cf655767817bf780f3547c5b8a0e33fe26b51167",
-      "source": {
-        "path": "node_modules/@earendil-works/pi-ai/dist/api/constrained-sampling.d.ts",
-        "line": 9,
-        "column": 1
       }
     },
     {
@@ -59737,7 +60425,7 @@
       "shapeHash": "sha256:cf273aab24432f0c709b50d91ddc3e7ef932769e962ac8901d0714fd2faf6ca6",
       "source": {
         "path": "node_modules/@earendil-works/pi-ai/dist/api/constrained-sampling.d.ts",
-        "line": 38,
+        "line": 36,
         "column": 1
       }
     },
@@ -59770,7 +60458,7 @@
       "shapeHash": "sha256:8f0a307f9da53a0037c2102a8b58045b31a0ff262db86bb6fdaa6ba659b2cf6e",
       "source": {
         "path": "node_modules/@earendil-works/pi-ai/dist/api/constrained-sampling.d.ts",
-        "line": 38,
+        "line": 36,
         "column": 1
       }
     },
@@ -59817,7 +60505,7 @@
       "shapeHash": "sha256:f81b6ba272e19b06f231ef77116fb5f5059001f3dc23826225e0a0b3cee2fcca",
       "source": {
         "path": "node_modules/@earendil-works/pi-ai/dist/api/constrained-sampling.d.ts",
-        "line": 37,
+        "line": 35,
         "column": 1
       }
     },
@@ -59856,7 +60544,7 @@
       "shapeHash": "sha256:491cffe535e2adf78096e605b38fe895ee68fb0521942203a0106e2d176cab3e",
       "source": {
         "path": "node_modules/@earendil-works/pi-ai/dist/api/constrained-sampling.d.ts",
-        "line": 37,
+        "line": 35,
         "column": 1
       }
     },
@@ -72099,6 +72787,192 @@
       }
     },
     {
+      "id": "pkg:ai/api/strict-tool-limits#hasExceededStrictToolLimits",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": "./api/strict-tool-limits",
+      "name": "hasExceededStrictToolLimits",
+      "kind": "function",
+      "shape": {
+        "aliasTarget": "",
+        "type": "(sessionId: string | undefined) => boolean",
+        "typeParameters": [],
+        "calls": [
+          {
+            "typeParameters": [],
+            "parameters": [
+              {
+                "name": "sessionId",
+                "type": "string | undefined",
+                "optional": false,
+                "rest": false
+              }
+            ],
+            "returns": "boolean"
+          }
+        ],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:990e6fe03c7e6e9832799f63da821618844c44605d7c65c4396ec9cdb3158a28",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/api/strict-tool-limits.d.ts",
+        "line": 12,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:ai/api/strict-tool-limits#hasExceededStrictToolLimits::call:0",
+      "parentId": "pkg:ai/api/strict-tool-limits#hasExceededStrictToolLimits",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": "./api/strict-tool-limits",
+      "name": "hasExceededStrictToolLimits call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "type": "string | undefined",
+            "optional": false,
+            "rest": false
+          }
+        ],
+        "returns": "boolean"
+      },
+      "shapeHash": "sha256:fd8d9697bb46c00ed14b9e57f0a18aa33cfb62f07f52e3cf5c2a9fa2c1e2ac32",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/api/strict-tool-limits.d.ts",
+        "line": 12,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:ai/api/strict-tool-limits#isStrictToolLimitErrorMessage",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": "./api/strict-tool-limits",
+      "name": "isStrictToolLimitErrorMessage",
+      "kind": "function",
+      "shape": {
+        "aliasTarget": "",
+        "type": "(message: string) => boolean",
+        "typeParameters": [],
+        "calls": [
+          {
+            "typeParameters": [],
+            "parameters": [
+              {
+                "name": "message",
+                "type": "string",
+                "optional": false,
+                "rest": false
+              }
+            ],
+            "returns": "boolean"
+          }
+        ],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:6faf4e9bd346cc30f976ae0f7e762f0d633f946d351228897180c4094f000d49",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/api/strict-tool-limits.d.ts",
+        "line": 2,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:ai/api/strict-tool-limits#isStrictToolLimitErrorMessage::call:0",
+      "parentId": "pkg:ai/api/strict-tool-limits#isStrictToolLimitErrorMessage",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": "./api/strict-tool-limits",
+      "name": "isStrictToolLimitErrorMessage call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [],
+        "parameters": [
+          {
+            "name": "message",
+            "type": "string",
+            "optional": false,
+            "rest": false
+          }
+        ],
+        "returns": "boolean"
+      },
+      "shapeHash": "sha256:b350c14870bf68cc304b6ce2cf655767817bf780f3547c5b8a0e33fe26b51167",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/api/strict-tool-limits.d.ts",
+        "line": 2,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:ai/api/strict-tool-limits#markStrictToolLimitsExceeded",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": "./api/strict-tool-limits",
+      "name": "markStrictToolLimitsExceeded",
+      "kind": "function",
+      "shape": {
+        "aliasTarget": "",
+        "type": "(sessionId: string | undefined) => void",
+        "typeParameters": [],
+        "calls": [
+          {
+            "typeParameters": [],
+            "parameters": [
+              {
+                "name": "sessionId",
+                "type": "string | undefined",
+                "optional": false,
+                "rest": false
+              }
+            ],
+            "returns": "void"
+          }
+        ],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:7c9f24d8f7bf7eb90d3e8888712aec6315912f000fcfaeae09a0e597bc804d43",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/api/strict-tool-limits.d.ts",
+        "line": 10,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:ai/api/strict-tool-limits#markStrictToolLimitsExceeded::call:0",
+      "parentId": "pkg:ai/api/strict-tool-limits#markStrictToolLimitsExceeded",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": "./api/strict-tool-limits",
+      "name": "markStrictToolLimitsExceeded call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "type": "string | undefined",
+            "optional": false,
+            "rest": false
+          }
+        ],
+        "returns": "void"
+      },
+      "shapeHash": "sha256:9fddbcb3e9fedc340df6b43d736c3e821a4af5642dd72e1023db0887bcde18dd",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/api/strict-tool-limits.d.ts",
+        "line": 10,
+        "column": 1
+      }
+    },
+    {
       "id": "pkg:ai/api/system-one-shared#classifySystemOne",
       "package": "@earendil-works/pi-ai",
       "entrypoint": "./api/system-one-shared",
@@ -80638,6 +81512,94 @@
       }
     },
     {
+      "id": "pkg:ai/compat#CACHE_WARMING_IDLE_CONTINUATION_PROBABILITY",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": "./compat",
+      "name": "CACHE_WARMING_IDLE_CONTINUATION_PROBABILITY",
+      "kind": "variable",
+      "shape": {
+        "aliasTarget": "",
+        "type": "0.15",
+        "typeParameters": [],
+        "calls": [],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:939b6bf968da1e05d78ed82b85996253fd5433846463e78e8d261a16b4599137",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 32,
+        "column": 22
+      }
+    },
+    {
+      "id": "pkg:ai/compat#CACHE_WARMING_MAX_AGE_MS",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": "./compat",
+      "name": "CACHE_WARMING_MAX_AGE_MS",
+      "kind": "variable",
+      "shape": {
+        "aliasTarget": "",
+        "type": "number",
+        "typeParameters": [],
+        "calls": [],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:ec4b71bd4dc0b3aac2fea721ba74a18eb456f2cabef62c687f94ab806c1ced11",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 23,
+        "column": 22
+      }
+    },
+    {
+      "id": "pkg:ai/compat#CACHE_WARMING_MAX_IDLE_AGE_MS",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": "./compat",
+      "name": "CACHE_WARMING_MAX_IDLE_AGE_MS",
+      "kind": "variable",
+      "shape": {
+        "aliasTarget": "",
+        "type": "number",
+        "typeParameters": [],
+        "calls": [],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:ec4b71bd4dc0b3aac2fea721ba74a18eb456f2cabef62c687f94ab806c1ced11",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 25,
+        "column": 22
+      }
+    },
+    {
+      "id": "pkg:ai/compat#CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": "./compat",
+      "name": "CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS",
+      "kind": "variable",
+      "shape": {
+        "aliasTarget": "",
+        "type": "0.05",
+        "typeParameters": [],
+        "calls": [],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:c651ce6aae51a50301daf83abc99e321e0c8b306285992ae2411c172872d361a",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 27,
+        "column": 22
+      }
+    },
+    {
       "id": "pkg:ai/compat#CacheRetention",
       "package": "@earendil-works/pi-ai",
       "entrypoint": "./compat",
@@ -80656,6 +81618,276 @@
       "source": {
         "path": "node_modules/@earendil-works/pi-ai/dist/providers/model-schema.d.ts",
         "line": 83,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:ai/compat#CacheWarmingAction",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": "./compat",
+      "name": "CacheWarmingAction",
+      "kind": "type-alias",
+      "shape": {
+        "aliasTarget": "",
+        "type": "CacheWarmingAction",
+        "typeParameters": [],
+        "calls": [],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:874681724059ef7dee9346c5a0385704279509754e9ced2e4827dc310572d0b1",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 3,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:ai/compat#CacheWarmingDecision",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": "./compat",
+      "name": "CacheWarmingDecision",
+      "kind": "interface",
+      "shape": {
+        "aliasTarget": "",
+        "type": "CacheWarmingDecision",
+        "typeParameters": [],
+        "calls": [],
+        "constructs": [],
+        "properties": [
+          {
+            "name": "action",
+            "optional": false,
+            "readonly": false,
+            "type": "CacheWarmingAction",
+            "calls": []
+          },
+          {
+            "name": "continuationProbability",
+            "optional": false,
+            "readonly": false,
+            "type": "number",
+            "calls": []
+          },
+          {
+            "name": "economicsAvailable",
+            "optional": false,
+            "readonly": false,
+            "type": "boolean",
+            "calls": []
+          },
+          {
+            "name": "expectedSavings",
+            "optional": false,
+            "readonly": false,
+            "type": "number",
+            "calls": []
+          },
+          {
+            "name": "missCost",
+            "optional": false,
+            "readonly": false,
+            "type": "number",
+            "calls": []
+          },
+          {
+            "name": "phase",
+            "optional": false,
+            "readonly": false,
+            "type": "CacheWarmingPhase",
+            "calls": []
+          },
+          {
+            "name": "warmCost",
+            "optional": false,
+            "readonly": false,
+            "type": "number",
+            "calls": []
+          }
+        ],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:f6ef157616af7b8c4b19487c42b779e45dcbe13bddbf587ee04bf2e411a440e8",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 7,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:ai/compat#CacheWarmingDecision::property:action",
+      "parentId": "pkg:ai/compat#CacheWarmingDecision",
+      "role": "property",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": "./compat",
+      "name": "CacheWarmingDecision.action",
+      "kind": "property",
+      "shape": {
+        "name": "action",
+        "optional": false,
+        "readonly": false,
+        "type": "CacheWarmingAction",
+        "calls": []
+      },
+      "shapeHash": "sha256:0256259170da898741b6daae815ee4157d4de180d8220196df3ebcf1fa84efc6",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 20,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:ai/compat#CacheWarmingDecision::property:continuationProbability",
+      "parentId": "pkg:ai/compat#CacheWarmingDecision",
+      "role": "property",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": "./compat",
+      "name": "CacheWarmingDecision.continuationProbability",
+      "kind": "property",
+      "shape": {
+        "name": "continuationProbability",
+        "optional": false,
+        "readonly": false,
+        "type": "number",
+        "calls": []
+      },
+      "shapeHash": "sha256:afcf5f10a115de1823d3fb04b2ab5819849304d8200b22c528fb013c2da156b8",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 14,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:ai/compat#CacheWarmingDecision::property:economicsAvailable",
+      "parentId": "pkg:ai/compat#CacheWarmingDecision",
+      "role": "property",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": "./compat",
+      "name": "CacheWarmingDecision.economicsAvailable",
+      "kind": "property",
+      "shape": {
+        "name": "economicsAvailable",
+        "optional": false,
+        "readonly": false,
+        "type": "boolean",
+        "calls": []
+      },
+      "shapeHash": "sha256:bac064f8a357ca6db3a67f4b98f05666f3ef4298e60fa3a38fdb5332c5889d2f",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 18,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:ai/compat#CacheWarmingDecision::property:expectedSavings",
+      "parentId": "pkg:ai/compat#CacheWarmingDecision",
+      "role": "property",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": "./compat",
+      "name": "CacheWarmingDecision.expectedSavings",
+      "kind": "property",
+      "shape": {
+        "name": "expectedSavings",
+        "optional": false,
+        "readonly": false,
+        "type": "number",
+        "calls": []
+      },
+      "shapeHash": "sha256:d01688118afeb91c5519e5a2fb42f106260e5d7533ce58ab94e7f03e4993502f",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 16,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:ai/compat#CacheWarmingDecision::property:missCost",
+      "parentId": "pkg:ai/compat#CacheWarmingDecision",
+      "role": "property",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": "./compat",
+      "name": "CacheWarmingDecision.missCost",
+      "kind": "property",
+      "shape": {
+        "name": "missCost",
+        "optional": false,
+        "readonly": false,
+        "type": "number",
+        "calls": []
+      },
+      "shapeHash": "sha256:1f6b4d61e586748effcdaa202e17e1b3abb3edf582d8c33c4b8f7abac2295956",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 12,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:ai/compat#CacheWarmingDecision::property:phase",
+      "parentId": "pkg:ai/compat#CacheWarmingDecision",
+      "role": "property",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": "./compat",
+      "name": "CacheWarmingDecision.phase",
+      "kind": "property",
+      "shape": {
+        "name": "phase",
+        "optional": false,
+        "readonly": false,
+        "type": "CacheWarmingPhase",
+        "calls": []
+      },
+      "shapeHash": "sha256:725229016826e110f8150100db1b12acad7caefbd8c9a2ef1f8de6ed8a42b38e",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 8,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:ai/compat#CacheWarmingDecision::property:warmCost",
+      "parentId": "pkg:ai/compat#CacheWarmingDecision",
+      "role": "property",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": "./compat",
+      "name": "CacheWarmingDecision.warmCost",
+      "kind": "property",
+      "shape": {
+        "name": "warmCost",
+        "optional": false,
+        "readonly": false,
+        "type": "number",
+        "calls": []
+      },
+      "shapeHash": "sha256:04ed344ef6f83d4908a03a3cb42b9d8057bb4ed59a6e74e32d5869b207e0f94a",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 10,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:ai/compat#CacheWarmingPhase",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": "./compat",
+      "name": "CacheWarmingPhase",
+      "kind": "type-alias",
+      "shape": {
+        "aliasTarget": "",
+        "type": "CacheWarmingPhase",
+        "typeParameters": [],
+        "calls": [],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:3a25884e0ca854f9c514a428a08cebc23b8587841aab3c38f2fbb2b3082597d5",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 5,
         "column": 1
       }
     },
@@ -86128,6 +87360,92 @@
       }
     },
     {
+      "id": "pkg:ai/compat#evaluateCacheWarming",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": "./compat",
+      "name": "evaluateCacheWarming",
+      "kind": "function",
+      "shape": {
+        "aliasTarget": "",
+        "type": "(model: Model<Api>, promptTokens: number, phase: CacheWarmingPhase) => CacheWarmingDecision",
+        "typeParameters": [],
+        "calls": [
+          {
+            "typeParameters": [],
+            "parameters": [
+              {
+                "name": "model",
+                "type": "Model<Api>",
+                "optional": false,
+                "rest": false
+              },
+              {
+                "name": "promptTokens",
+                "type": "number",
+                "optional": false,
+                "rest": false
+              },
+              {
+                "name": "phase",
+                "type": "CacheWarmingPhase",
+                "optional": false,
+                "rest": false
+              }
+            ],
+            "returns": "CacheWarmingDecision"
+          }
+        ],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:1e71ebde0c7b9f7edef213f7d49ade0033983667095587b65c4d4bb47557185e",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 52,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:ai/compat#evaluateCacheWarming::call:0",
+      "parentId": "pkg:ai/compat#evaluateCacheWarming",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": "./compat",
+      "name": "evaluateCacheWarming call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [],
+        "parameters": [
+          {
+            "name": "model",
+            "type": "Model<Api>",
+            "optional": false,
+            "rest": false
+          },
+          {
+            "name": "promptTokens",
+            "type": "number",
+            "optional": false,
+            "rest": false
+          },
+          {
+            "name": "phase",
+            "type": "CacheWarmingPhase",
+            "optional": false,
+            "rest": false
+          }
+        ],
+        "returns": "CacheWarmingDecision"
+      },
+      "shapeHash": "sha256:b07dac779cb87982e0483de5dca4a42f69475e574ce7c66e2690e2a524037755",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 52,
+        "column": 1
+      }
+    },
+    {
       "id": "pkg:ai/compat#EventStream",
       "package": "@earendil-works/pi-ai",
       "entrypoint": "./compat",
@@ -89151,6 +90469,160 @@
       }
     },
     {
+      "id": "pkg:ai/compat#getCacheWarmingDelayMs",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": "./compat",
+      "name": "getCacheWarmingDelayMs",
+      "kind": "function",
+      "shape": {
+        "aliasTarget": "",
+        "type": "(ttlMs: number) => number | undefined",
+        "typeParameters": [],
+        "calls": [
+          {
+            "typeParameters": [],
+            "parameters": [
+              {
+                "name": "ttlMs",
+                "type": "number",
+                "optional": false,
+                "rest": false
+              }
+            ],
+            "returns": "number | undefined"
+          }
+        ],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:dd666b488d9374ee4dc3ca990948f018093a54d4d5f10838bd7e8bd6efef9697",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 34,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:ai/compat#getCacheWarmingDelayMs::call:0",
+      "parentId": "pkg:ai/compat#getCacheWarmingDelayMs",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": "./compat",
+      "name": "getCacheWarmingDelayMs call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [],
+        "parameters": [
+          {
+            "name": "ttlMs",
+            "type": "number",
+            "optional": false,
+            "rest": false
+          }
+        ],
+        "returns": "number | undefined"
+      },
+      "shapeHash": "sha256:9e818d14e63b1e482d7ea7851655315f9a3f99309559b9a61e42945f561f426f",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 34,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:ai/compat#getCacheWarmingRequestOptions",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": "./compat",
+      "name": "getCacheWarmingRequestOptions",
+      "kind": "function",
+      "shape": {
+        "aliasTarget": "",
+        "type": "<T extends SimpleStreamOptions>(options: T, signal: AbortSignal) => T",
+        "typeParameters": [
+          {
+            "name": "T",
+            "constraint": "SimpleStreamOptions",
+            "default": ""
+          }
+        ],
+        "calls": [
+          {
+            "typeParameters": [
+              {
+                "name": "T",
+                "constraint": "SimpleStreamOptions",
+                "default": ""
+              }
+            ],
+            "parameters": [
+              {
+                "name": "options",
+                "type": "T",
+                "optional": false,
+                "rest": false
+              },
+              {
+                "name": "signal",
+                "type": "AbortSignal",
+                "optional": false,
+                "rest": false
+              }
+            ],
+            "returns": "T"
+          }
+        ],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:074fdb50b91090d88147095c9f2985649a218a66549350fbd55549e47ace1e5e",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 50,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:ai/compat#getCacheWarmingRequestOptions::call:0",
+      "parentId": "pkg:ai/compat#getCacheWarmingRequestOptions",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": "./compat",
+      "name": "getCacheWarmingRequestOptions call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [
+          {
+            "name": "T",
+            "constraint": "SimpleStreamOptions",
+            "default": ""
+          }
+        ],
+        "parameters": [
+          {
+            "name": "options",
+            "type": "T",
+            "optional": false,
+            "rest": false
+          },
+          {
+            "name": "signal",
+            "type": "AbortSignal",
+            "optional": false,
+            "rest": false
+          }
+        ],
+        "returns": "T"
+      },
+      "shapeHash": "sha256:e76c791957d2277b823373bf6bc13e2e21ff69011452262203d659fa94d09a41",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 50,
+        "column": 1
+      }
+    },
+    {
       "id": "pkg:ai/compat#getClientVersion",
       "package": "@earendil-works/pi-ai",
       "entrypoint": "./compat",
@@ -90369,6 +91841,80 @@
       "source": {
         "path": "node_modules/@earendil-works/pi-ai/dist/utils/overflow.d.ts",
         "line": 69,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:ai/compat#getPromptCacheTtlMs",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": "./compat",
+      "name": "getPromptCacheTtlMs",
+      "kind": "function",
+      "shape": {
+        "aliasTarget": "",
+        "type": "(model: Model<Api>, options: SimpleStreamOptions | undefined) => number | undefined",
+        "typeParameters": [],
+        "calls": [
+          {
+            "typeParameters": [],
+            "parameters": [
+              {
+                "name": "model",
+                "type": "Model<Api>",
+                "optional": false,
+                "rest": false
+              },
+              {
+                "name": "options",
+                "type": "SimpleStreamOptions | undefined",
+                "optional": false,
+                "rest": false
+              }
+            ],
+            "returns": "number | undefined"
+          }
+        ],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:85862ff880dbf102dd748a1a8db978549b6e33ff979f4bc9bc6deacde4e578b8",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 39,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:ai/compat#getPromptCacheTtlMs::call:0",
+      "parentId": "pkg:ai/compat#getPromptCacheTtlMs",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": "./compat",
+      "name": "getPromptCacheTtlMs call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [],
+        "parameters": [
+          {
+            "name": "model",
+            "type": "Model<Api>",
+            "optional": false,
+            "rest": false
+          },
+          {
+            "name": "options",
+            "type": "SimpleStreamOptions | undefined",
+            "optional": false,
+            "rest": false
+          }
+        ],
+        "returns": "number | undefined"
+      },
+      "shapeHash": "sha256:b6ca99024c3972d2370726e2b0e5bb307f7793109dd3ad63252cc2ab1ee4db15",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 39,
         "column": 1
       }
     },
@@ -94681,6 +96227,80 @@
         "path": "node_modules/@earendil-works/pi-ai/dist/models-store.d.ts",
         "line": 27,
         "column": 5
+      }
+    },
+    {
+      "id": "pkg:ai/compat#isCacheWarmingReplayable",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": "./compat",
+      "name": "isCacheWarmingReplayable",
+      "kind": "function",
+      "shape": {
+        "aliasTarget": "",
+        "type": "(model: Model<Api>, options: SimpleStreamOptions | undefined) => boolean",
+        "typeParameters": [],
+        "calls": [
+          {
+            "typeParameters": [],
+            "parameters": [
+              {
+                "name": "model",
+                "type": "Model<Api>",
+                "optional": false,
+                "rest": false
+              },
+              {
+                "name": "options",
+                "type": "SimpleStreamOptions | undefined",
+                "optional": false,
+                "rest": false
+              }
+            ],
+            "returns": "boolean"
+          }
+        ],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:6f55b0ceb654d02bce22f654e03aa1f858fa33d4dde260062018e19d79125481",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 45,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:ai/compat#isCacheWarmingReplayable::call:0",
+      "parentId": "pkg:ai/compat#isCacheWarmingReplayable",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-ai",
+      "entrypoint": "./compat",
+      "name": "isCacheWarmingReplayable call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [],
+        "parameters": [
+          {
+            "name": "model",
+            "type": "Model<Api>",
+            "optional": false,
+            "rest": false
+          },
+          {
+            "name": "options",
+            "type": "SimpleStreamOptions | undefined",
+            "optional": false,
+            "rest": false
+          }
+        ],
+        "returns": "boolean"
+      },
+      "shapeHash": "sha256:e61a8dc8c01b357644bd99a21a8f7750e001f99bea4c2614bea5f8e651fbc36e",
+      "source": {
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 45,
+        "column": 1
       }
     },
     {
@@ -192355,7 +193975,7 @@
       "shapeHash": "sha256:e3df6edbd8d8f605beee09068f9565e3ae65d416cf01c712449f416572b5e628",
       "source": {
         "path": "packages/chord/src/node/app/layout.ts",
-        "line": 68,
+        "line": 76,
         "column": 1
       }
     },
@@ -192382,7 +194002,7 @@
       "shapeHash": "sha256:9bf28425521ece3070f8a8b360abc9b2f821e3cd775b831e110931c35ca98ce4",
       "source": {
         "path": "packages/chord/src/node/app/layout.ts",
-        "line": 68,
+        "line": 76,
         "column": 1
       }
     },
@@ -192417,7 +194037,7 @@
       "shapeHash": "sha256:0b5b60557ed5609588129764cafdbba95aaad60ac3344505d9adf7bf18dbedde",
       "source": {
         "path": "packages/chord/src/node/app/layout.ts",
-        "line": 77,
+        "line": 85,
         "column": 1
       }
     },
@@ -192444,7 +194064,7 @@
       "shapeHash": "sha256:d84bcdd2a3a76ed21344bcca16bf1d2cd4b552e6b63c502c76784d7f48ff7f6c",
       "source": {
         "path": "packages/chord/src/node/app/layout.ts",
-        "line": 77,
+        "line": 85,
         "column": 1
       }
     },
@@ -192508,6 +194128,20 @@
                 "returns": "Promise<RolloutResult>"
               }
             ]
+          },
+          {
+            "name": "basesBuilt",
+            "optional": false,
+            "readonly": true,
+            "type": "Promise<void>",
+            "calls": []
+          },
+          {
+            "name": "baseWatched",
+            "optional": false,
+            "readonly": true,
+            "type": "Promise<void>",
+            "calls": []
           },
           {
             "name": "close",
@@ -192645,14 +194279,14 @@
             "name": "tui",
             "optional": false,
             "readonly": true,
-            "type": "{ readonly base: string; } | undefined",
+            "type": "{ readonly base: string | undefined; } | undefined",
             "calls": []
           },
           {
             "name": "web",
             "optional": false,
             "readonly": true,
-            "type": "{ readonly base: string; } | undefined",
+            "type": "{ readonly base: string | undefined; } | undefined",
             "calls": []
           },
           {
@@ -192665,10 +194299,10 @@
         ],
         "enumMembers": []
       },
-      "shapeHash": "sha256:9e23824544f92c66147739179a02ccbb9b0b3b46c6b6f6a9c0533bcf39070d80",
+      "shapeHash": "sha256:02399972de201d5e2ed0db5a1be4cd54d46ff60a8b8d20314e9cb981ad1e8893",
       "source": {
         "path": "packages/chord/src/node/app/app.ts",
-        "line": 224,
+        "line": 226,
         "column": 1
       }
     },
@@ -192703,7 +194337,7 @@
       "shapeHash": "sha256:8ac1d2c7e8ec6ee04aa421846c583cde85d83ac1b822b919ff9c982046835a2d",
       "source": {
         "path": "packages/chord/src/node/app/app.ts",
-        "line": 244,
+        "line": 261,
         "column": 2
       }
     },
@@ -192730,7 +194364,51 @@
       "shapeHash": "sha256:58ee165b88c3a5c829dd450e0a6639626fffc75bcda0371f6929230058a88d71",
       "source": {
         "path": "packages/chord/src/node/app/app.ts",
-        "line": 244,
+        "line": 261,
+        "column": 2
+      }
+    },
+    {
+      "id": "pkg:chord/app#App::property:basesBuilt",
+      "parentId": "pkg:chord/app#App",
+      "role": "property",
+      "package": "@earendil-works/chord",
+      "entrypoint": "./app",
+      "name": "App.basesBuilt",
+      "kind": "property",
+      "shape": {
+        "name": "basesBuilt",
+        "optional": false,
+        "readonly": true,
+        "type": "Promise<void>",
+        "calls": []
+      },
+      "shapeHash": "sha256:e8087f370a2efdd6aff419a32b3a21754774e689a56a4197418de48f4004366f",
+      "source": {
+        "path": "packages/chord/src/node/app/app.ts",
+        "line": 249,
+        "column": 2
+      }
+    },
+    {
+      "id": "pkg:chord/app#App::property:baseWatched",
+      "parentId": "pkg:chord/app#App",
+      "role": "property",
+      "package": "@earendil-works/chord",
+      "entrypoint": "./app",
+      "name": "App.baseWatched",
+      "kind": "property",
+      "shape": {
+        "name": "baseWatched",
+        "optional": false,
+        "readonly": true,
+        "type": "Promise<void>",
+        "calls": []
+      },
+      "shapeHash": "sha256:42c6ec73e77970ca90780d41f9e2349b3c81687f7b1fee3335dc4600ba33430a",
+      "source": {
+        "path": "packages/chord/src/node/app/app.ts",
+        "line": 256,
         "column": 2
       }
     },
@@ -192765,7 +194443,7 @@
       "shapeHash": "sha256:857c6cc04d7f06b229c637f4364eada529cc15dfff1940d45931a4c8aa5f19b9",
       "source": {
         "path": "packages/chord/src/node/app/app.ts",
-        "line": 257,
+        "line": 274,
         "column": 2
       }
     },
@@ -192792,7 +194470,7 @@
       "shapeHash": "sha256:dd1140ca0b327cdd5f41bc1b9810f9ffa44d096d8c1261b15b28ea9774b1b48e",
       "source": {
         "path": "packages/chord/src/node/app/app.ts",
-        "line": 257,
+        "line": 274,
         "column": 2
       }
     },
@@ -192814,7 +194492,7 @@
       "shapeHash": "sha256:0170bd9e1551ef7ffc25995181270e60fd7471a645d1990fa5f489dcc11b030d",
       "source": {
         "path": "packages/chord/src/node/app/app.ts",
-        "line": 235,
+        "line": 240,
         "column": 2
       }
     },
@@ -192861,7 +194539,7 @@
       "shapeHash": "sha256:4f549093c27df7feda47ed73619ce7d306d86184a5f4e8b92c15d510fde084b8",
       "source": {
         "path": "packages/chord/src/node/app/app.ts",
-        "line": 250,
+        "line": 267,
         "column": 2
       }
     },
@@ -192900,7 +194578,7 @@
       "shapeHash": "sha256:1604b304d0968013e268d08fe65a313910716ecac0419e8e5a120eb4aaeddc96",
       "source": {
         "path": "packages/chord/src/node/app/app.ts",
-        "line": 250,
+        "line": 267,
         "column": 2
       }
     },
@@ -192922,7 +194600,7 @@
       "shapeHash": "sha256:0d8f1350fe23d25f2049a6758b9a1c8e23308007f0f288afd96df721df93262d",
       "source": {
         "path": "packages/chord/src/node/app/app.ts",
-        "line": 225,
+        "line": 227,
         "column": 2
       }
     },
@@ -192944,7 +194622,7 @@
       "shapeHash": "sha256:cd3f7c7e15d079c3e52b952754ef556326b7955a6ec159e1b90e5c6adfd92482",
       "source": {
         "path": "packages/chord/src/node/app/app.ts",
-        "line": 226,
+        "line": 228,
         "column": 2
       }
     },
@@ -192991,7 +194669,7 @@
       "shapeHash": "sha256:bc91932b6b3fe6f5a666d517b61e192b3937b9569c0eac3959059dde181b359c",
       "source": {
         "path": "packages/chord/src/node/app/app.ts",
-        "line": 255,
+        "line": 272,
         "column": 2
       }
     },
@@ -193030,7 +194708,7 @@
       "shapeHash": "sha256:85c397b735e67ada779f74cbdfa78fe7f1535076ba370cf59ab9de0fa2c42231",
       "source": {
         "path": "packages/chord/src/node/app/app.ts",
-        "line": 255,
+        "line": 272,
         "column": 2
       }
     },
@@ -193058,7 +194736,7 @@
       "shapeHash": "sha256:27375fe656eb59f1dd52e94f3d5e7ec066e0dcc5609054b35d6d26f061851154",
       "source": {
         "path": "packages/chord/src/node/app/app.ts",
-        "line": 237,
+        "line": 242,
         "column": 2
       }
     },
@@ -193078,7 +194756,7 @@
       "shapeHash": "sha256:9231ea69ae1121c895c1d3b2d307df795c874c1f1f85688b3ac32e9d1e7168c4",
       "source": {
         "path": "packages/chord/src/node/app/app.ts",
-        "line": 237,
+        "line": 242,
         "column": 2
       }
     },
@@ -193100,7 +194778,7 @@
       "shapeHash": "sha256:107f7e783a91738bdc90e8218cfde2601a7f79d3c79880e961e3b1d8f6479fc9",
       "source": {
         "path": "packages/chord/src/node/app/app.ts",
-        "line": 239,
+        "line": 244,
         "column": 2
       }
     },
@@ -193122,7 +194800,7 @@
       "shapeHash": "sha256:248ad49db00a5e01606f50a31951651bdc914a4b7b394009dd2800bcd6a96809",
       "source": {
         "path": "packages/chord/src/node/app/app.ts",
-        "line": 229,
+        "line": 231,
         "column": 2
       }
     },
@@ -193138,13 +194816,13 @@
         "name": "tui",
         "optional": false,
         "readonly": true,
-        "type": "{ readonly base: string; } | undefined",
+        "type": "{ readonly base: string | undefined; } | undefined",
         "calls": []
       },
-      "shapeHash": "sha256:3d389754b9497e0f9a334f27b619e3e8d9a647ed48be978347753d24066f7f1b",
+      "shapeHash": "sha256:72a08c4bff1cb830c62e2af23e44da108fcf02c047a457cd1a7deddab8968444",
       "source": {
         "path": "packages/chord/src/node/app/app.ts",
-        "line": 233,
+        "line": 238,
         "column": 2
       }
     },
@@ -193160,13 +194838,13 @@
         "name": "web",
         "optional": false,
         "readonly": true,
-        "type": "{ readonly base: string; } | undefined",
+        "type": "{ readonly base: string | undefined; } | undefined",
         "calls": []
       },
-      "shapeHash": "sha256:9fa52f351910d23611c7658020c270330579f9bcd7310ae1ac138bd7fc0596cc",
+      "shapeHash": "sha256:e456866f582b59509c0110094dd35d6529c95357232889284c989e8e833abefa",
       "source": {
         "path": "packages/chord/src/node/app/app.ts",
-        "line": 231,
+        "line": 236,
         "column": 2
       }
     },
@@ -193188,7 +194866,7 @@
       "shapeHash": "sha256:c66177ea471f8c1d5c2ca39a72cd6a357098f5c343aaa240392901696c62fff2",
       "source": {
         "path": "packages/chord/src/node/app/app.ts",
-        "line": 228,
+        "line": 230,
         "column": 2
       }
     },
@@ -193210,7 +194888,7 @@
       "shapeHash": "sha256:c8d7f3f010ee23ddd4b37f363b9978eee0107bb302a2661fd379c245379cd303",
       "source": {
         "path": "packages/chord/src/node/app/app.ts",
-        "line": 73,
+        "line": 72,
         "column": 1
       }
     },
@@ -193232,7 +194910,7 @@
       "shapeHash": "sha256:70abb63ff8639354fcee1fb2527849549f657a52ec8a5cdf76b3891976bfc6c0",
       "source": {
         "path": "packages/chord/src/node/app/app.ts",
-        "line": 110,
+        "line": 111,
         "column": 1
       }
     },
@@ -193276,7 +194954,7 @@
       "shapeHash": "sha256:968bf59c128a3feadf4d5bfb9241d0efa22b1c27d9ed61259af1bc37634dd52a",
       "source": {
         "path": "packages/chord/src/node/app/app.ts",
-        "line": 83,
+        "line": 82,
         "column": 1
       }
     },
@@ -193304,7 +194982,7 @@
       "shapeHash": "sha256:0509b694b900455aab5b0f4335eed8284f9dd326bdbe9d1756aa622740435826",
       "source": {
         "path": "packages/chord/src/node/app/app.ts",
-        "line": 121,
+        "line": 123,
         "column": 1
       }
     },
@@ -193326,7 +195004,7 @@
       "shapeHash": "sha256:57e24b3afe840e70cbfed32e612f16c4569766ac6e38df10be2e4de7df72f6d8",
       "source": {
         "path": "packages/chord/src/node/app/app.ts",
-        "line": 214,
+        "line": 216,
         "column": 1
       }
     },
@@ -193348,7 +195026,7 @@
       "shapeHash": "sha256:4a5070910c83191f79b62363390e19384a0929dfac65d640766ce5614182d0b7",
       "source": {
         "path": "packages/chord/src/node/app/app.ts",
-        "line": 204,
+        "line": 206,
         "column": 1
       }
     },
@@ -193376,7 +195054,7 @@
       "shapeHash": "sha256:93b5a196cb49234598b5e9c8756a63f7a4ce93f138c67872a8c01f29986055e9",
       "source": {
         "path": "packages/chord/src/node/app/app.ts",
-        "line": 86,
+        "line": 85,
         "column": 1
       }
     },
@@ -194084,7 +195762,7 @@
       "shapeHash": "sha256:e3df6edbd8d8f605beee09068f9565e3ae65d416cf01c712449f416572b5e628",
       "source": {
         "path": "packages/chord/src/node/app/layout.ts",
-        "line": 68,
+        "line": 76,
         "column": 1
       }
     },
@@ -194111,7 +195789,7 @@
       "shapeHash": "sha256:9bf28425521ece3070f8a8b360abc9b2f821e3cd775b831e110931c35ca98ce4",
       "source": {
         "path": "packages/chord/src/node/app/layout.ts",
-        "line": 68,
+        "line": 76,
         "column": 1
       }
     },
@@ -194146,7 +195824,7 @@
       "shapeHash": "sha256:0b5b60557ed5609588129764cafdbba95aaad60ac3344505d9adf7bf18dbedde",
       "source": {
         "path": "packages/chord/src/node/app/layout.ts",
-        "line": 77,
+        "line": 85,
         "column": 1
       }
     },
@@ -194173,7 +195851,7 @@
       "shapeHash": "sha256:d84bcdd2a3a76ed21344bcca16bf1d2cd4b552e6b63c502c76784d7f48ff7f6c",
       "source": {
         "path": "packages/chord/src/node/app/layout.ts",
-        "line": 77,
+        "line": 85,
         "column": 1
       }
     },
@@ -194208,7 +195886,7 @@
       "shapeHash": "sha256:e9d80a3813bf12808a8a38dda4a39026acc1b2013ffd53ac3940b0258012e1e5",
       "source": {
         "path": "packages/chord/src/node/app/app.ts",
-        "line": 67,
+        "line": 66,
         "column": 14
       }
     },
@@ -194235,7 +195913,7 @@
       "shapeHash": "sha256:a8362d2996d07749611a72e93471c3e4aacde4e62c5491c732e24445c57e8858",
       "source": {
         "path": "packages/chord/src/node/app/app.ts",
-        "line": 67,
+        "line": 66,
         "column": 14
       }
     },
@@ -194398,7 +196076,7 @@
       "shapeHash": "sha256:4407071d2a26ec0786602811a0bdb2e8ce59666db6d7e30cdc8497880882f8a5",
       "source": {
         "path": "packages/chord/src/node/app/app.ts",
-        "line": 279,
+        "line": 298,
         "column": 1
       }
     },
@@ -194437,7 +196115,7 @@
       "shapeHash": "sha256:99ef389b2947e4dcd54974f55942d5bb25f17606af318d26b2705fe57eaaa779",
       "source": {
         "path": "packages/chord/src/node/app/app.ts",
-        "line": 279,
+        "line": 298,
         "column": 1
       }
     },
@@ -204854,7 +206532,7 @@
             "name": "watchBase",
             "optional": false,
             "readonly": false,
-            "type": "(inputs: BaseInputs) => void",
+            "type": "(inputs: BaseInputs) => Promise<void>",
             "calls": [
               {
                 "typeParameters": [],
@@ -204866,14 +206544,14 @@
                     "rest": false
                   }
                 ],
-                "returns": "void"
+                "returns": "Promise<void>"
               }
             ]
           }
         ],
         "enumMembers": []
       },
-      "shapeHash": "sha256:af87ba047cef36889685ba09806479f6072825418935da65a47a32a659dcee04",
+      "shapeHash": "sha256:ff44c5dad3d005453115012110eb89b6888a553bba3b134f40797d8b912c73af",
       "source": {
         "path": "packages/chord/src/node/plugins/plugins.ts",
         "line": 93,
@@ -205722,7 +207400,7 @@
         "name": "watchBase",
         "optional": false,
         "readonly": false,
-        "type": "(inputs: BaseInputs) => void",
+        "type": "(inputs: BaseInputs) => Promise<void>",
         "calls": [
           {
             "typeParameters": [],
@@ -205734,11 +207412,11 @@
                 "rest": false
               }
             ],
-            "returns": "void"
+            "returns": "Promise<void>"
           }
         ]
       },
-      "shapeHash": "sha256:5cb4746b71a95183ce0812a62bdbd7fbe9270309e395438cdb6f2a8ebf4d9b45",
+      "shapeHash": "sha256:6e1609ff58456f10f3ca070dde2d2fe7e62060991a0e808fb8062b3ef3d26c2b",
       "source": {
         "path": "packages/chord/src/node/plugins/plugins.ts",
         "line": 146,
@@ -205763,9 +207441,9 @@
             "rest": false
           }
         ],
-        "returns": "void"
+        "returns": "Promise<void>"
       },
-      "shapeHash": "sha256:7353ca5a23f7ab3b76d1110665c354c9385562d8dd2b2929e50c8a5a82f779ab",
+      "shapeHash": "sha256:b01a12bc349a339e5212ebcab75731d34358e6a5ce4381eecffdb404f5669e4b",
       "source": {
         "path": "packages/chord/src/node/plugins/plugins.ts",
         "line": 146,
@@ -210484,7 +212162,7 @@
       "shapeHash": "sha256:91cfddc91d036d5e60b486298d1d6197ebfd1df41b9b11537793508ea298465f",
       "source": {
         "path": "packages/chord/src/node/surfaces/web.ts",
-        "line": 40,
+        "line": 39,
         "column": 1
       }
     },
@@ -210525,7 +212203,7 @@
       "shapeHash": "sha256:9f2731abc5e110b7245c85c3bb46dd6ffecdfef3a19a5da1f695713b7023d8f0",
       "source": {
         "path": "packages/chord/src/node/surfaces/web.ts",
-        "line": 142,
+        "line": 156,
         "column": 1
       }
     },
@@ -210558,7 +212236,7 @@
       "shapeHash": "sha256:31f189719e7d89af529c82f1e8196cb0456f7fb1f50450deb4a1c5b31b6d930f",
       "source": {
         "path": "packages/chord/src/node/surfaces/web.ts",
-        "line": 142,
+        "line": 156,
         "column": 1
       }
     },
@@ -210659,6 +212337,28 @@
       }
     },
     {
+      "id": "pkg:chord/surfaces#SurfaceBuilt",
+      "package": "@earendil-works/chord",
+      "entrypoint": "./surfaces",
+      "name": "SurfaceBuilt",
+      "kind": "type-alias",
+      "shape": {
+        "aliasTarget": "SurfaceBuilt",
+        "type": "SurfaceBuilt",
+        "typeParameters": [],
+        "calls": [],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:34bdd375acedab7847cbb59aada79e41a588b2e626f2c410aa7a35a2d3fe1ce9",
+      "source": {
+        "path": "packages/chord/src/node/surfaces/surface-build.ts",
+        "line": 18,
+        "column": 1
+      }
+    },
+    {
       "id": "pkg:chord/surfaces#TUI_PREFIX",
       "package": "@earendil-works/chord",
       "entrypoint": "./surfaces",
@@ -210676,7 +212376,7 @@
       "shapeHash": "sha256:5d6d944ee8c473ee95086710dc9a93ad483dca9d0252012e6b3a9acce839475d",
       "source": {
         "path": "packages/chord/src/node/surfaces/tui.ts",
-        "line": 40,
+        "line": 42,
         "column": 14
       }
     },
@@ -210698,7 +212398,7 @@
       "shapeHash": "sha256:1a80ace86cc1656cf4a5eee789992946de8d6560207b46453d2c2909ddb4d2f7",
       "source": {
         "path": "packages/chord/src/node/surfaces/tui.ts",
-        "line": 28,
+        "line": 26,
         "column": 1
       }
     },
@@ -210710,7 +212410,7 @@
       "kind": "function",
       "shape": {
         "aliasTarget": "tuiSurface",
-        "type": "<P extends Principal>(server: Host<P>, options: TuiSurfaceOptions, context: Context) => Promise<TuiSurface<P>>",
+        "type": "<P extends Principal>(server: Host<P>, options: TuiSurfaceOptions) => TuiSurface<P>",
         "typeParameters": [
           {
             "name": "P",
@@ -210739,25 +212439,19 @@
                 "type": "TuiSurfaceOptions",
                 "optional": false,
                 "rest": false
-              },
-              {
-                "name": "context",
-                "type": "Context",
-                "optional": false,
-                "rest": false
               }
             ],
-            "returns": "Promise<TuiSurface<P>>"
+            "returns": "TuiSurface<P>"
           }
         ],
         "constructs": [],
         "properties": [],
         "enumMembers": []
       },
-      "shapeHash": "sha256:9c9adb02c354c9dc66fe8782e5e2867d4e1332c11d1866f092ec912f7b3f372c",
+      "shapeHash": "sha256:f334f9661456fe7ef880c69c370a3f520b24731021551b4ba6075ff291add043",
       "source": {
         "path": "packages/chord/src/node/surfaces/tui.ts",
-        "line": 43,
+        "line": 48,
         "column": 1
       }
     },
@@ -210785,7 +212479,7 @@
       "shapeHash": "sha256:35e9642ec330fdcfe34f164dd337e37bb49b35e73d8854a7fa845951eae8c3ea",
       "source": {
         "path": "packages/chord/src/node/surfaces/tui.ts",
-        "line": 31,
+        "line": 29,
         "column": 1
       }
     },
@@ -210817,20 +212511,14 @@
             "type": "TuiSurfaceOptions",
             "optional": false,
             "rest": false
-          },
-          {
-            "name": "context",
-            "type": "Context",
-            "optional": false,
-            "rest": false
           }
         ],
-        "returns": "Promise<TuiSurface<P>>"
+        "returns": "TuiSurface<P>"
       },
-      "shapeHash": "sha256:2520959d155e445346ec3118b0cd5c2d09cd4f15feb35be1d3a46cdc441fcd03",
+      "shapeHash": "sha256:0055255cfba63a48ffa7851b66fae6d632903991e59321b28a08d799584a9e00",
       "source": {
         "path": "packages/chord/src/node/surfaces/tui.ts",
-        "line": 43,
+        "line": 48,
         "column": 1
       }
     },
@@ -210852,7 +212540,7 @@
       "shapeHash": "sha256:383000f7b74fb23969cd59a0ce5093c636b7ca8d24e81a2429e9eefa91b9897c",
       "source": {
         "path": "packages/chord/src/node/surfaces/tui.ts",
-        "line": 17,
+        "line": 15,
         "column": 1
       }
     },
@@ -210874,7 +212562,7 @@
       "shapeHash": "sha256:0d4f252f3cca704b223b379cb1c01ca4aefc088fe1e15320e26df59582d7195e",
       "source": {
         "path": "packages/chord/src/node/surfaces/web.ts",
-        "line": 58,
+        "line": 62,
         "column": 14
       }
     },
@@ -210886,7 +212574,7 @@
       "kind": "function",
       "shape": {
         "aliasTarget": "webSurface",
-        "type": "<P extends Principal>(server: Host<P>, options: WebSurfaceOptions, context: Context) => Promise<WebSurface<P>>",
+        "type": "<P extends Principal>(server: Host<P>, options: WebSurfaceOptions) => WebSurface<P>",
         "typeParameters": [
           {
             "name": "P",
@@ -210915,25 +212603,19 @@
                 "type": "WebSurfaceOptions",
                 "optional": false,
                 "rest": false
-              },
-              {
-                "name": "context",
-                "type": "Context",
-                "optional": false,
-                "rest": false
               }
             ],
-            "returns": "Promise<WebSurface<P>>"
+            "returns": "WebSurface<P>"
           }
         ],
         "constructs": [],
         "properties": [],
         "enumMembers": []
       },
-      "shapeHash": "sha256:e5bc49ee5d20c294dd8d7bdbd560e42c296218011405b68822cf0fbfdb86e112",
+      "shapeHash": "sha256:6a086363fc1a6743c562cd9e6d86796c8b150e8189367532e430eb965345f827",
       "source": {
         "path": "packages/chord/src/node/surfaces/web.ts",
-        "line": 64,
+        "line": 68,
         "column": 1
       }
     },
@@ -210961,7 +212643,7 @@
       "shapeHash": "sha256:b60e98cfb3c03d2da4e1c8da6c6fa0f5f154bea680717f59ae267d07c8d7ba82",
       "source": {
         "path": "packages/chord/src/node/surfaces/web.ts",
-        "line": 48,
+        "line": 47,
         "column": 1
       }
     },
@@ -210993,20 +212675,14 @@
             "type": "WebSurfaceOptions",
             "optional": false,
             "rest": false
-          },
-          {
-            "name": "context",
-            "type": "Context",
-            "optional": false,
-            "rest": false
           }
         ],
-        "returns": "Promise<WebSurface<P>>"
+        "returns": "WebSurface<P>"
       },
-      "shapeHash": "sha256:df9b923ab5acd8a17e706e441ea2e39f924d062015fe973132f7b3bfe7afe008",
+      "shapeHash": "sha256:0fc9209857af6d78c823a6dfc80ceffe3148e73e26584eccd530023e53872524",
       "source": {
         "path": "packages/chord/src/node/surfaces/web.ts",
-        "line": 64,
+        "line": 68,
         "column": 1
       }
     },
@@ -211028,7 +212704,7 @@
       "shapeHash": "sha256:fc7299fd1de158828c553c8b2aaea8fcac1a374addc92427651aad640353160e",
       "source": {
         "path": "packages/chord/src/node/surfaces/web.ts",
-        "line": 19,
+        "line": 18,
         "column": 1
       }
     },
@@ -225749,7 +227425,7 @@
       "kind": "function",
       "shape": {
         "aliasTarget": "createWorkers",
-        "type": "<P extends Principal, N extends string, Q extends Params>(host: Host<P>, Kind: HostKind<N, Q>, options: WorkersOptions<P, HostKind<N, Q>>, context: Context) => Promise<Workers<HostKind<N, Q>>>",
+        "type": "<P extends Principal, N extends string, Q extends Params>(host: Host<P>, Kind: HostKind<N, Q>, options: WorkersOptions<P, HostKind<N, Q>>, context: Context) => Workers<HostKind<N, Q>>",
         "typeParameters": [
           {
             "name": "P",
@@ -225812,17 +227488,17 @@
                 "rest": false
               }
             ],
-            "returns": "Promise<Workers<HostKind<N, Q>>>"
+            "returns": "Workers<HostKind<N, Q>>"
           }
         ],
         "constructs": [],
         "properties": [],
         "enumMembers": []
       },
-      "shapeHash": "sha256:091f70185e4af97b4dd89fc2893d5bd986bdee39f354f1292fe27d344fc90afa",
+      "shapeHash": "sha256:dd11d1289db33451f70f2d376f78b21fd95390ba0be1adcf4141c7a48c8a4071",
       "source": {
         "path": "packages/chord/src/node/workers/workers.ts",
-        "line": 110,
+        "line": 136,
         "column": 1
       }
     },
@@ -225878,12 +227554,12 @@
             "rest": false
           }
         ],
-        "returns": "Promise<Workers<HostKind<N, Q>>>"
+        "returns": "Workers<HostKind<N, Q>>"
       },
-      "shapeHash": "sha256:39b4cef0f7bead34f26b477cf46d8f0b486a15431075470b4ca61d8627c14ff5",
+      "shapeHash": "sha256:a5326496eb9dd0e52c3c090bd9d6b011c07258259b6d6dde9f067cdf855296a1",
       "source": {
         "path": "packages/chord/src/node/workers/workers.ts",
-        "line": 110,
+        "line": 136,
         "column": 1
       }
     },
@@ -225946,7 +227622,7 @@
       "shapeHash": "sha256:591b777a65d1d0106e3c0afc275aa4a9d849766bf537bd4030d2e7f4e87fadb3",
       "source": {
         "path": "packages/chord/src/node/workers/base.ts",
-        "line": 107,
+        "line": 111,
         "column": 1
       }
     },
@@ -225979,7 +227655,7 @@
       "shapeHash": "sha256:4628d1695c4efd5f3bc08cfa3d30f6a403305d7cabefbe1c78f8f94b6b0d7e55",
       "source": {
         "path": "packages/chord/src/node/workers/base.ts",
-        "line": 107,
+        "line": 111,
         "column": 1
       }
     },
@@ -226376,6 +228052,26 @@
         "constructs": [],
         "properties": [
           {
+            "name": "build",
+            "optional": false,
+            "readonly": false,
+            "type": "() => Promise<WorkersBuilt>",
+            "calls": [
+              {
+                "typeParameters": [],
+                "parameters": [],
+                "returns": "Promise<WorkersBuilt>"
+              }
+            ]
+          },
+          {
+            "name": "built",
+            "optional": false,
+            "readonly": true,
+            "type": "WorkersBuilt | undefined",
+            "calls": []
+          },
+          {
             "name": "close",
             "optional": false,
             "readonly": false,
@@ -226394,13 +228090,6 @@
                 "returns": "Promise<void>"
               }
             ]
-          },
-          {
-            "name": "inputs",
-            "optional": false,
-            "readonly": true,
-            "type": "BaseInputs",
-            "calls": []
           },
           {
             "name": "retry",
@@ -226484,11 +228173,81 @@
         ],
         "enumMembers": []
       },
-      "shapeHash": "sha256:994d1f0f90bbe8c48f2f6b2dc6fcb7507a1d234812c371ca7be61042f81be923",
+      "shapeHash": "sha256:77a6267680afe969af4ee6410ec09563a2242511c50c9b89391b107c2cd05eff",
       "source": {
         "path": "packages/chord/src/node/workers/workers.ts",
-        "line": 91,
+        "line": 108,
         "column": 1
+      }
+    },
+    {
+      "id": "pkg:chord/workers#Workers::property:build",
+      "parentId": "pkg:chord/workers#Workers",
+      "role": "property",
+      "package": "@earendil-works/chord",
+      "entrypoint": "./workers",
+      "name": "Workers.build",
+      "kind": "property",
+      "shape": {
+        "name": "build",
+        "optional": false,
+        "readonly": false,
+        "type": "() => Promise<WorkersBuilt>",
+        "calls": [
+          {
+            "typeParameters": [],
+            "parameters": [],
+            "returns": "Promise<WorkersBuilt>"
+          }
+        ]
+      },
+      "shapeHash": "sha256:557d9e4296ea4b7bd5abec4cee377c636ce7db2a8767006471a4fda3fb922a2e",
+      "source": {
+        "path": "packages/chord/src/node/workers/workers.ts",
+        "line": 116,
+        "column": 2
+      }
+    },
+    {
+      "id": "pkg:chord/workers#Workers::property:build::call:0",
+      "parentId": "pkg:chord/workers#Workers::property:build",
+      "role": "call-overload",
+      "package": "@earendil-works/chord",
+      "entrypoint": "./workers",
+      "name": "Workers.build call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [],
+        "parameters": [],
+        "returns": "Promise<WorkersBuilt>"
+      },
+      "shapeHash": "sha256:c017c65e886547cb81709ec541cc41462004bdde26a8c7836994ea138212b1a8",
+      "source": {
+        "path": "packages/chord/src/node/workers/workers.ts",
+        "line": 116,
+        "column": 2
+      }
+    },
+    {
+      "id": "pkg:chord/workers#Workers::property:built",
+      "parentId": "pkg:chord/workers#Workers",
+      "role": "property",
+      "package": "@earendil-works/chord",
+      "entrypoint": "./workers",
+      "name": "Workers.built",
+      "kind": "property",
+      "shape": {
+        "name": "built",
+        "optional": false,
+        "readonly": true,
+        "type": "WorkersBuilt | undefined",
+        "calls": []
+      },
+      "shapeHash": "sha256:74670905e45b7645e5001424788b493318219c14486fd07d433479993272e6b0",
+      "source": {
+        "path": "packages/chord/src/node/workers/workers.ts",
+        "line": 118,
+        "column": 2
       }
     },
     {
@@ -226522,7 +228281,7 @@
       "shapeHash": "sha256:857c6cc04d7f06b229c637f4364eada529cc15dfff1940d45931a4c8aa5f19b9",
       "source": {
         "path": "packages/chord/src/node/workers/workers.ts",
-        "line": 103,
+        "line": 129,
         "column": 2
       }
     },
@@ -226549,29 +228308,7 @@
       "shapeHash": "sha256:dd1140ca0b327cdd5f41bc1b9810f9ffa44d096d8c1261b15b28ea9774b1b48e",
       "source": {
         "path": "packages/chord/src/node/workers/workers.ts",
-        "line": 103,
-        "column": 2
-      }
-    },
-    {
-      "id": "pkg:chord/workers#Workers::property:inputs",
-      "parentId": "pkg:chord/workers#Workers",
-      "role": "property",
-      "package": "@earendil-works/chord",
-      "entrypoint": "./workers",
-      "name": "Workers.inputs",
-      "kind": "property",
-      "shape": {
-        "name": "inputs",
-        "optional": false,
-        "readonly": true,
-        "type": "BaseInputs",
-        "calls": []
-      },
-      "shapeHash": "sha256:057594581bc5bc984ff9fcaae5a1ae2b17491626a08c649ee5631517fbd4914e",
-      "source": {
-        "path": "packages/chord/src/node/workers/workers.ts",
-        "line": 95,
+        "line": 129,
         "column": 2
       }
     },
@@ -226612,7 +228349,7 @@
       "shapeHash": "sha256:1e6ae7ed01ae81400844bf365106c66a02fa41a18f654a27b8fb814cbe761441",
       "source": {
         "path": "packages/chord/src/node/workers/workers.ts",
-        "line": 99,
+        "line": 122,
         "column": 2
       }
     },
@@ -226645,7 +228382,7 @@
       "shapeHash": "sha256:37189743f1052d0751a0716b2a1a6fbc08f37e2bd65565600d08dd72161a0178",
       "source": {
         "path": "packages/chord/src/node/workers/workers.ts",
-        "line": 99,
+        "line": 122,
         "column": 2
       }
     },
@@ -226667,7 +228404,7 @@
       "shapeHash": "sha256:e60911eb5f54d7b19efe3d14aad7131d4ac13049fce4a9223eb7ad44e1666941",
       "source": {
         "path": "packages/chord/src/node/workers/workers.ts",
-        "line": 93,
+        "line": 110,
         "column": 2
       }
     },
@@ -226702,7 +228439,7 @@
       "shapeHash": "sha256:32b87ffab28c1cbaa930df92df44db32e63a7dbfb74ff4f6b43edc4425021c34",
       "source": {
         "path": "packages/chord/src/node/workers/workers.ts",
-        "line": 101,
+        "line": 124,
         "column": 2
       }
     },
@@ -226729,7 +228466,7 @@
       "shapeHash": "sha256:f708e76b7ae70538403ebe713323c11e12ed999eb28b108a82ffdea2ba4ac133",
       "source": {
         "path": "packages/chord/src/node/workers/workers.ts",
-        "line": 101,
+        "line": 124,
         "column": 2
       }
     },
@@ -226770,7 +228507,7 @@
       "shapeHash": "sha256:a1667bf9fd22701e958444cf799139399c889c86924c369ccd970953ef81eebe",
       "source": {
         "path": "packages/chord/src/node/workers/workers.ts",
-        "line": 97,
+        "line": 120,
         "column": 2
       }
     },
@@ -226803,8 +228540,30 @@
       "shapeHash": "sha256:37189743f1052d0751a0716b2a1a6fbc08f37e2bd65565600d08dd72161a0178",
       "source": {
         "path": "packages/chord/src/node/workers/workers.ts",
-        "line": 97,
+        "line": 120,
         "column": 2
+      }
+    },
+    {
+      "id": "pkg:chord/workers#WorkersBuilt",
+      "package": "@earendil-works/chord",
+      "entrypoint": "./workers",
+      "name": "WorkersBuilt",
+      "kind": "type-alias",
+      "shape": {
+        "aliasTarget": "WorkersBuilt",
+        "type": "WorkersBuilt",
+        "typeParameters": [],
+        "calls": [],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:28e0838e8583587b83f3a383a3c21950c6203300232bb9dec6d58a0ed7453419",
+      "source": {
+        "path": "packages/chord/src/node/workers/workers.ts",
+        "line": 103,
+        "column": 1
       }
     },
     {
@@ -226825,7 +228584,7 @@
       "shapeHash": "sha256:2b91da1cb11f4b3962b4741f19e2f1b723c3bd0bed6f0392df9f091a5c0d7139",
       "source": {
         "path": "packages/chord/src/node/workers/workers.ts",
-        "line": 62,
+        "line": 74,
         "column": 1
       }
     },
@@ -226858,7 +228617,7 @@
       "shapeHash": "sha256:38d4c48df43853627a53336a7cf07a40713a584ffdc15a3f627158cbbd0a9f44",
       "source": {
         "path": "packages/chord/src/node/workers/workers.ts",
-        "line": 27,
+        "line": 28,
         "column": 1
       }
     },
@@ -226902,7 +228661,7 @@
       "shapeHash": "sha256:6a0b27321268c2c7765c6a72bdd52b439d88ac3fea0a1e72751b8f899066b384",
       "source": {
         "path": "packages/chord/src/node/workers/workers.ts",
-        "line": 57,
+        "line": 69,
         "column": 1
       }
     },
@@ -260945,7 +262704,7 @@
             "name": "phase",
             "optional": false,
             "readonly": false,
-            "type": "\"streaming\" | \"idle\"",
+            "type": "CacheWarmingPhase",
             "calls": []
           },
           {
@@ -260958,10 +262717,10 @@
         ],
         "enumMembers": []
       },
-      "shapeHash": "sha256:3092e50f08c76118aae7cd071351b8d41e5216d8a01b4a9d2da6a5d9baa77e90",
+      "shapeHash": "sha256:335e8412223d1b5033e7f6b15bd28246a82f1b19ad610a05620dcfa56b9cc838",
       "source": {
-        "path": "dist/core/cache-warmer.d.ts",
-        "line": 23,
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 7,
         "column": 1
       }
     },
@@ -260982,8 +262741,8 @@
       },
       "shapeHash": "sha256:0256259170da898741b6daae815ee4157d4de180d8220196df3ebcf1fa84efc6",
       "source": {
-        "path": "dist/core/cache-warmer.d.ts",
-        "line": 37,
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 20,
         "column": 5
       }
     },
@@ -261004,8 +262763,8 @@
       },
       "shapeHash": "sha256:afcf5f10a115de1823d3fb04b2ab5819849304d8200b22c528fb013c2da156b8",
       "source": {
-        "path": "dist/core/cache-warmer.d.ts",
-        "line": 31,
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 14,
         "column": 5
       }
     },
@@ -261026,8 +262785,8 @@
       },
       "shapeHash": "sha256:bac064f8a357ca6db3a67f4b98f05666f3ef4298e60fa3a38fdb5332c5889d2f",
       "source": {
-        "path": "dist/core/cache-warmer.d.ts",
-        "line": 35,
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 18,
         "column": 5
       }
     },
@@ -261048,8 +262807,8 @@
       },
       "shapeHash": "sha256:d01688118afeb91c5519e5a2fb42f106260e5d7533ce58ab94e7f03e4993502f",
       "source": {
-        "path": "dist/core/cache-warmer.d.ts",
-        "line": 33,
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 16,
         "column": 5
       }
     },
@@ -261070,8 +262829,8 @@
       },
       "shapeHash": "sha256:1f6b4d61e586748effcdaa202e17e1b3abb3edf582d8c33c4b8f7abac2295956",
       "source": {
-        "path": "dist/core/cache-warmer.d.ts",
-        "line": 29,
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 12,
         "column": 5
       }
     },
@@ -261087,13 +262846,13 @@
         "name": "phase",
         "optional": false,
         "readonly": false,
-        "type": "\"streaming\" | \"idle\"",
+        "type": "CacheWarmingPhase",
         "calls": []
       },
-      "shapeHash": "sha256:121984399eae5b9afdf74cf86131346c1c5bdafe3e448980659a44e89c5c528a",
+      "shapeHash": "sha256:725229016826e110f8150100db1b12acad7caefbd8c9a2ef1f8de6ed8a42b38e",
       "source": {
-        "path": "dist/core/cache-warmer.d.ts",
-        "line": 25,
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 8,
         "column": 5
       }
     },
@@ -261114,8 +262873,8 @@
       },
       "shapeHash": "sha256:04ed344ef6f83d4908a03a3cb42b9d8057bb4ed59a6e74e32d5869b207e0f94a",
       "source": {
-        "path": "dist/core/cache-warmer.d.ts",
-        "line": 27,
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 10,
         "column": 5
       }
     },
@@ -261173,7 +262932,7 @@
       "shapeHash": "sha256:9254e62c758b3b748d7cb2c42bbc14d6064dfb622fdec67d35b2fe32023c2545",
       "source": {
         "path": "dist/core/cache-warmer.d.ts",
-        "line": 43,
+        "line": 10,
         "column": 1
       }
     },
@@ -261194,8 +262953,8 @@
       },
       "shapeHash": "sha256:0256259170da898741b6daae815ee4157d4de180d8220196df3ebcf1fa84efc6",
       "source": {
-        "path": "dist/core/cache-warmer.d.ts",
-        "line": 37,
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 20,
         "column": 5
       }
     },
@@ -261216,8 +262975,8 @@
       },
       "shapeHash": "sha256:afcf5f10a115de1823d3fb04b2ab5819849304d8200b22c528fb013c2da156b8",
       "source": {
-        "path": "dist/core/cache-warmer.d.ts",
-        "line": 31,
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 14,
         "column": 5
       }
     },
@@ -261238,8 +262997,8 @@
       },
       "shapeHash": "sha256:1f6b4d61e586748effcdaa202e17e1b3abb3edf582d8c33c4b8f7abac2295956",
       "source": {
-        "path": "dist/core/cache-warmer.d.ts",
-        "line": 29,
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 12,
         "column": 5
       }
     },
@@ -261261,7 +263020,7 @@
       "shapeHash": "sha256:14c3eaed52f178a495ba2cdd7f5ab30e440c61a3bad074d3201ef42f7b454ab1",
       "source": {
         "path": "dist/core/cache-warmer.d.ts",
-        "line": 44,
+        "line": 11,
         "column": 5
       }
     },
@@ -261282,8 +263041,8 @@
       },
       "shapeHash": "sha256:04ed344ef6f83d4908a03a3cb42b9d8057bb4ed59a6e74e32d5869b207e0f94a",
       "source": {
-        "path": "dist/core/cache-warmer.d.ts",
-        "line": 27,
+        "path": "node_modules/@earendil-works/pi-ai/dist/cache-warming.d.ts",
+        "line": 10,
         "column": 5
       }
     },
@@ -261313,7 +263072,7 @@
       "shapeHash": "sha256:0c04f73fa29012528f28570ab18c9838572ed006339f050bf796307386eaae4c",
       "source": {
         "path": "dist/core/cache-warmer.d.ts",
-        "line": 46,
+        "line": 13,
         "column": 1
       }
     },
@@ -261335,7 +263094,7 @@
       "shapeHash": "sha256:45076ee1e4d7033c150967ab8a8ec102a83649fa54db591dc69ae7cc9dad5974",
       "source": {
         "path": "dist/core/cache-warmer.d.ts",
-        "line": 48,
+        "line": 15,
         "column": 5
       }
     },
@@ -261415,7 +263174,7 @@
       "shapeHash": "sha256:51c2f352fa60934140f280a7009ec4e09833dcc66638bb896bdb538f5e14ee66",
       "source": {
         "path": "dist/core/cache-warmer.d.ts",
-        "line": 50,
+        "line": 17,
         "column": 1
       }
     },
@@ -261437,7 +263196,7 @@
       "shapeHash": "sha256:496491ddf9941725b26b415c77f5f4f7245ce6a4d863780110ce98f01c4f2a0f",
       "source": {
         "path": "dist/core/cache-warmer.d.ts",
-        "line": 57,
+        "line": 24,
         "column": 5
       }
     },
@@ -261459,7 +263218,7 @@
       "shapeHash": "sha256:9590f788e156e586959b24592b90ee9fc6bf95659fe31afda321b8e6df2d5a65",
       "source": {
         "path": "dist/core/cache-warmer.d.ts",
-        "line": 59,
+        "line": 26,
         "column": 5
       }
     },
@@ -261481,7 +263240,7 @@
       "shapeHash": "sha256:c0fa0beed9815365768ca763dc00101beaaaad858dc9b0857a3a567dac20ba59",
       "source": {
         "path": "dist/core/cache-warmer.d.ts",
-        "line": 55,
+        "line": 22,
         "column": 5
       }
     },
@@ -261503,7 +263262,7 @@
       "shapeHash": "sha256:c515c5e27655a48262c8927f47b5b0887b881f5c84d06143cfac38dc8c4696d3",
       "source": {
         "path": "dist/core/cache-warmer.d.ts",
-        "line": 54,
+        "line": 21,
         "column": 5
       }
     },
@@ -261525,7 +263284,7 @@
       "shapeHash": "sha256:95ea3606623b6f729e62c1e4522311129648bf515327daadca49e620eebb6357",
       "source": {
         "path": "dist/core/cache-warmer.d.ts",
-        "line": 52,
+        "line": 19,
         "column": 5
       }
     },
@@ -322900,6 +324659,12 @@
                 "type": "string",
                 "optional": true,
                 "rest": false
+              },
+              {
+                "name": "tui",
+                "type": "TUI",
+                "optional": true,
+                "rest": false
               }
             ],
             "returns": "OAuthSelectorComponent"
@@ -322942,6 +324707,19 @@
           },
           {
             "name": "clear",
+            "optional": false,
+            "readonly": false,
+            "type": "() => void",
+            "calls": [
+              {
+                "typeParameters": [],
+                "parameters": [],
+                "returns": "void"
+              }
+            ]
+          },
+          {
+            "name": "dispose",
             "optional": false,
             "readonly": false,
             "type": "() => void",
@@ -323056,10 +324834,10 @@
         ],
         "enumMembers": []
       },
-      "shapeHash": "sha256:93f816c4719bd8baab3028c9073696ab72c69f72e5b0e106778c10bbbe2181b9",
+      "shapeHash": "sha256:10814f6c4284c8df9d8ed2d0bff0f0b97082cdfadf026e789a0277d7414b7805",
       "source": {
         "path": "dist/modes/interactive/components/oauth-selector.d.ts",
-        "line": 21,
+        "line": 22,
         "column": 1
       }
     },
@@ -323103,14 +324881,20 @@
             "type": "string",
             "optional": true,
             "rest": false
+          },
+          {
+            "name": "tui",
+            "type": "TUI",
+            "optional": true,
+            "rest": false
           }
         ],
         "returns": "OAuthSelectorComponent"
       },
-      "shapeHash": "sha256:d0d33b5f855e62062b6aa4cb3b489adc6d5ef3933199143de22e28a071a56330",
+      "shapeHash": "sha256:b48b7f2ba4c1d726843c39c906467cec50b933e317dd7f95e0f700d28d69c69a",
       "source": {
         "path": "dist/modes/interactive/components/oauth-selector.d.ts",
-        "line": 21,
+        "line": 22,
         "column": 1
       }
     },
@@ -323194,7 +324978,7 @@
       "shapeHash": "sha256:ee2e849d12e6d232a5b85c0aba6bdc01612c7185d5923ec56db6da63fc8f40b2",
       "source": {
         "path": "dist/modes/interactive/components/oauth-selector.d.ts",
-        "line": 22,
+        "line": 23,
         "column": 5
       }
     },
@@ -323269,6 +325053,54 @@
       }
     },
     {
+      "id": "pkg:coding-agent/.#OAuthSelectorComponent::property:dispose",
+      "parentId": "pkg:coding-agent/.#OAuthSelectorComponent",
+      "role": "property",
+      "package": "@earendil-works/pi-coding-agent",
+      "entrypoint": ".",
+      "name": "OAuthSelectorComponent.dispose",
+      "kind": "property",
+      "shape": {
+        "name": "dispose",
+        "optional": false,
+        "readonly": false,
+        "type": "() => void",
+        "calls": [
+          {
+            "typeParameters": [],
+            "parameters": [],
+            "returns": "void"
+          }
+        ]
+      },
+      "shapeHash": "sha256:38ae7b309a81dcb42836da521f0ee31861d5a3d387d7b590f32ae4bef2920bf7",
+      "source": {
+        "path": "dist/modes/interactive/components/oauth-selector.d.ts",
+        "line": 41,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:coding-agent/.#OAuthSelectorComponent::property:dispose::call:0",
+      "parentId": "pkg:coding-agent/.#OAuthSelectorComponent::property:dispose",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-coding-agent",
+      "entrypoint": ".",
+      "name": "OAuthSelectorComponent.dispose call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [],
+        "parameters": [],
+        "returns": "void"
+      },
+      "shapeHash": "sha256:9ca6a314a982a3e688c5c5ffde6bd32f25f07554352674c9e2234fc7f4b40b92",
+      "source": {
+        "path": "dist/modes/interactive/components/oauth-selector.d.ts",
+        "line": 41,
+        "column": 5
+      }
+    },
+    {
       "id": "pkg:coding-agent/.#OAuthSelectorComponent::property:focused",
       "parentId": "pkg:coding-agent/.#OAuthSelectorComponent",
       "role": "property",
@@ -323286,7 +325118,7 @@
       "shapeHash": "sha256:17bb7ae3be40d449b5adddfc793858bf505e7efa2c044b891e0fb247f385cf28",
       "source": {
         "path": "dist/modes/interactive/components/oauth-selector.d.ts",
-        "line": 25,
+        "line": 26,
         "column": 5
       }
     },
@@ -323321,7 +325153,7 @@
       "shapeHash": "sha256:a7faa98bd958fdf8395542a46763f3bfdc94e82fcb384269325767cbad4ea7c2",
       "source": {
         "path": "dist/modes/interactive/components/oauth-selector.d.ts",
-        "line": 38,
+        "line": 45,
         "column": 5
       }
     },
@@ -323348,7 +325180,7 @@
       "shapeHash": "sha256:568e984a273e7b8970a24c2ddaff9c44b0f0104a7dc5d90df85542f31eb55c1e",
       "source": {
         "path": "dist/modes/interactive/components/oauth-selector.d.ts",
-        "line": 38,
+        "line": 45,
         "column": 5
       }
     },
@@ -323554,8 +325386,8 @@
       },
       "shapeHash": "sha256:f29af00107c5800aef466b23d0146bb1244e54eb852bf1d8a89a4235d4db629c",
       "source": {
-        "path": "node_modules/@earendil-works/pi-tui/dist/tui.d.ts",
-        "line": 214,
+        "path": "dist/modes/interactive/components/oauth-selector.d.ts",
+        "line": 39,
         "column": 5
       }
     },
@@ -323581,8 +325413,8 @@
       },
       "shapeHash": "sha256:9a059646dfc483afcc74c10248dd3cb99f2e52c8ba8805a2ab913e752f5690a7",
       "source": {
-        "path": "node_modules/@earendil-works/pi-tui/dist/tui.d.ts",
-        "line": 214,
+        "path": "dist/modes/interactive/components/oauth-selector.d.ts",
+        "line": 39,
         "column": 5
       }
     },
@@ -422668,7 +424500,7 @@
       "shapeHash": "sha256:9641e36da129bb36a2dfac17073d603634a734fe7d6d2f7afb92d463a2632e54",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 244,
+        "line": 262,
         "column": 1
       }
     },
@@ -422703,7 +424535,7 @@
       "shapeHash": "sha256:857c6cc04d7f06b229c637f4364eada529cc15dfff1940d45931a4c8aa5f19b9",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 434,
+        "line": 475,
         "column": 2
       }
     },
@@ -422730,7 +424562,7 @@
       "shapeHash": "sha256:dd1140ca0b327cdd5f41bc1b9810f9ffa44d096d8c1261b15b28ea9774b1b48e",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 434,
+        "line": 475,
         "column": 2
       }
     },
@@ -422777,7 +424609,7 @@
       "shapeHash": "sha256:7e403367181c610809ab89e97a2b171209eee6ab79bb4958066b16556c6a2170",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 288,
+        "line": 328,
         "column": 2
       }
     },
@@ -422816,7 +424648,7 @@
       "shapeHash": "sha256:e8705edbc6249379a32cb9787b40a58b412ce11e080960f44ba0850c9a587b47",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 288,
+        "line": 328,
         "column": 2
       }
     },
@@ -422857,7 +424689,7 @@
       "shapeHash": "sha256:9b5d58f63fadca2436603b2001d0b2dc9c527ed6201d8a3fd42b28610a9ecfc9",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 369,
+        "line": 410,
         "column": 2
       }
     },
@@ -422890,7 +424722,7 @@
       "shapeHash": "sha256:13b852bacb5284d58bb4733cc86b0c40e2a67ad6e4e98dceec51ac7324c53085",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 369,
+        "line": 410,
         "column": 2
       }
     },
@@ -422937,7 +424769,7 @@
       "shapeHash": "sha256:460271c0edc3e4f1e66e772e40b00870344ae697e2919780c88919fb11866925",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 426,
+        "line": 467,
         "column": 2
       }
     },
@@ -422976,7 +424808,7 @@
       "shapeHash": "sha256:32597996a158a5ec2b9becd7d25d80d041caffea1ab8d8b48294235f4864939a",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 426,
+        "line": 467,
         "column": 2
       }
     },
@@ -423041,7 +424873,7 @@
       "shapeHash": "sha256:2fb4774e08255192dcdc629d7fd25ff783f313c80f12904b3c036be76afb7298",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 377,
+        "line": 418,
         "column": 2
       }
     },
@@ -423074,7 +424906,7 @@
       "shapeHash": "sha256:0b4d63eae08cb0d71be9818db74bac13e2e7c1cc0a48414488196934f4169c9b",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 377,
+        "line": 418,
         "column": 2
       }
     },
@@ -423113,7 +424945,7 @@
       "shapeHash": "sha256:ba18ba5287b9f377c4a7c7237784a974d1bf82689d8d91ab117b5145d9afa501",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 377,
+        "line": 418,
         "column": 2
       }
     },
@@ -423160,7 +424992,7 @@
       "shapeHash": "sha256:4e5d4c9fbeb72df4a25cabf16023e393304a3f2663391217e6f31f940aff9685",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 422,
+        "line": 463,
         "column": 2
       }
     },
@@ -423199,7 +425031,7 @@
       "shapeHash": "sha256:c7390e165769639ff246d20736899d0561ca99f029e22505afea13eaf2284c50",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 422,
+        "line": 463,
         "column": 2
       }
     },
@@ -423246,7 +425078,7 @@
       "shapeHash": "sha256:c0245bb523c5e4bb8c75b0bf561e207d65547b0bf5c97d3db606372a72d3487d",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 390,
+        "line": 431,
         "column": 2
       }
     },
@@ -423285,7 +425117,7 @@
       "shapeHash": "sha256:d0c9271a9ba8ef51d1df3a0eb636e138d59bf21829b0a669004d4e613571aadd",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 390,
+        "line": 431,
         "column": 2
       }
     },
@@ -423319,7 +425151,7 @@
       "shapeHash": "sha256:de56cbba9c4dd497f2e821aadae610e208a8b1597d22d8f17196f167c6e0d151",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 365,
+        "line": 406,
         "column": 2
       }
     },
@@ -423345,7 +425177,7 @@
       "shapeHash": "sha256:6fd62caa1e26abc517caaf4a0b8f513fdc906c3fd48f56019962d8876f9a0cb8",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 365,
+        "line": 406,
         "column": 2
       }
     },
@@ -423398,7 +425230,7 @@
       "shapeHash": "sha256:77780eab571e97792e8305a6981038f219b699d306db66c78f4b364076333cc1",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 373,
+        "line": 414,
         "column": 2
       }
     },
@@ -423443,7 +425275,7 @@
       "shapeHash": "sha256:2754a22b8c5402592fa74e0a23d78fb8c9c33a8ea86b8272fd6ec5dccb0a6435",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 373,
+        "line": 414,
         "column": 2
       }
     },
@@ -423496,7 +425328,7 @@
       "shapeHash": "sha256:585203b47f199f061ff630e91ce27dda27a61862b9c7c3c62b0e4221b1297b4a",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 430,
+        "line": 471,
         "column": 2
       }
     },
@@ -423541,7 +425373,7 @@
       "shapeHash": "sha256:327a4e5f07c326839d15f14b839dab024eaa0d56438c364862185cfda917e490",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 430,
+        "line": 471,
         "column": 2
       }
     },
@@ -423594,7 +425426,7 @@
       "shapeHash": "sha256:a34e224c18c46987858914919f7f5a410d772eddc62dd5039435276c75921de0",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 398,
+        "line": 439,
         "column": 2
       }
     },
@@ -423639,7 +425471,7 @@
       "shapeHash": "sha256:3db39fc7361767adba21051a798c2b549565f807cfc49b12eef879066cdbb3ed",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 398,
+        "line": 439,
         "column": 2
       }
     },
@@ -423692,7 +425524,7 @@
       "shapeHash": "sha256:743cacff96e0f7ef323e989056f0bc3f62269c61bb3f3290f7c256ebcc455947",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 414,
+        "line": 455,
         "column": 2
       }
     },
@@ -423737,7 +425569,7 @@
       "shapeHash": "sha256:e7aae2f367d5a273f55b91b7a4129a85606e8476fc27f5998303aaae8c49604d",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 414,
+        "line": 455,
         "column": 2
       }
     },
@@ -423790,7 +425622,7 @@
       "shapeHash": "sha256:1ca6c9dc2f7243ce077bbd96a3626c487bd7fd7da392fba344b5c56290fc5e95",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 406,
+        "line": 447,
         "column": 2
       }
     },
@@ -423835,7 +425667,7 @@
       "shapeHash": "sha256:31f06927e80c939753135f1fc2a046d8480af3e671e759c5034ea696cfe3621a",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 406,
+        "line": 447,
         "column": 2
       }
     },
@@ -423876,7 +425708,7 @@
       "shapeHash": "sha256:6f480c8e883e7b8c79a32477239e2350e5d257a8c18ec248bc0cacdb15db6796",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 410,
+        "line": 451,
         "column": 2
       }
     },
@@ -423909,7 +425741,7 @@
       "shapeHash": "sha256:618e6ac405d13af41226c65e46818a321b24690561584b80d06ea2949f93ee61",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 410,
+        "line": 451,
         "column": 2
       }
     },
@@ -423956,7 +425788,7 @@
       "shapeHash": "sha256:e64de9746597854794ac16a46eb47f26d78af149ad644a422abb34891df4dffd",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 418,
+        "line": 459,
         "column": 2
       }
     },
@@ -423995,7 +425827,7 @@
       "shapeHash": "sha256:9b71d19d4ccda38d7e396b6d333d9fb1cba203965e0fe7807d38b812d59d71c3",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 418,
+        "line": 459,
         "column": 2
       }
     },
@@ -424036,7 +425868,7 @@
       "shapeHash": "sha256:e3d5844b9361df0201bbe2e5cc8df392291b142dc07c8c449cfc05174a043c5a",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 402,
+        "line": 443,
         "column": 2
       }
     },
@@ -424069,7 +425901,7 @@
       "shapeHash": "sha256:d4394db1a3ee6c2696861efc90e264077fae681e795d823f484b4aa1896b9c4a",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 402,
+        "line": 443,
         "column": 2
       }
     },
@@ -424091,8 +425923,173 @@
       "shapeHash": "sha256:76ef5c9b2125bc90201c25769b3cf96abaa705c9c7eea66b832b63e77cf38b09",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 79,
+        "line": 83,
         "column": 1
+      }
+    },
+    {
+      "id": "pkg:durable/storage/jsonl/node#JsonlStorageReadOnlyError",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/jsonl/node",
+      "name": "JsonlStorageReadOnlyError",
+      "kind": "class",
+      "shape": {
+        "aliasTarget": "JsonlStorageReadOnlyError",
+        "type": "JsonlStorageReadOnlyError",
+        "typeParameters": [],
+        "calls": [],
+        "constructs": [
+          {
+            "typeParameters": [],
+            "parameters": [],
+            "returns": "JsonlStorageReadOnlyError"
+          }
+        ],
+        "properties": [
+          {
+            "name": "cause",
+            "optional": true,
+            "readonly": false,
+            "type": "unknown",
+            "calls": []
+          },
+          {
+            "name": "message",
+            "optional": false,
+            "readonly": false,
+            "type": "string",
+            "calls": []
+          },
+          {
+            "name": "name",
+            "optional": false,
+            "readonly": false,
+            "type": "string",
+            "calls": []
+          },
+          {
+            "name": "stack",
+            "optional": true,
+            "readonly": false,
+            "type": "string | undefined",
+            "calls": []
+          }
+        ],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:12ac04a65152daeb1d209890694276fe82e846e9ef57d16a3fb7f11c9aaac301",
+      "source": {
+        "path": "packages/durable/src/storage/jsonl/storage.ts",
+        "line": 102,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:durable/storage/jsonl/node#JsonlStorageReadOnlyError::construct:0",
+      "parentId": "pkg:durable/storage/jsonl/node#JsonlStorageReadOnlyError",
+      "role": "construct-overload",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/jsonl/node",
+      "name": "JsonlStorageReadOnlyError constructor 0",
+      "kind": "construct-overload",
+      "shape": {
+        "typeParameters": [],
+        "parameters": [],
+        "returns": "JsonlStorageReadOnlyError"
+      },
+      "shapeHash": "sha256:e82186acb1e6cd6e9a3be8e06933491ab3b6639d7fcba6a7ddbeb9f654f8eb21",
+      "source": {
+        "path": "packages/durable/src/storage/jsonl/storage.ts",
+        "line": 102,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:durable/storage/jsonl/node#JsonlStorageReadOnlyError::property:cause",
+      "parentId": "pkg:durable/storage/jsonl/node#JsonlStorageReadOnlyError",
+      "role": "property",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/jsonl/node",
+      "name": "JsonlStorageReadOnlyError.cause",
+      "kind": "property",
+      "shape": {
+        "name": "cause",
+        "optional": true,
+        "readonly": false,
+        "type": "unknown",
+        "calls": []
+      },
+      "shapeHash": "sha256:0ded3a5da484c0bd945c74e50b05b90f5fca69d849d99b4d1caa17e429415054",
+      "source": {
+        "path": "node_modules/typescript/lib/lib.es2022.error.d.ts",
+        "line": 26,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/jsonl/node#JsonlStorageReadOnlyError::property:message",
+      "parentId": "pkg:durable/storage/jsonl/node#JsonlStorageReadOnlyError",
+      "role": "property",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/jsonl/node",
+      "name": "JsonlStorageReadOnlyError.message",
+      "kind": "property",
+      "shape": {
+        "name": "message",
+        "optional": false,
+        "readonly": false,
+        "type": "string",
+        "calls": []
+      },
+      "shapeHash": "sha256:5bd47aec3aecfce7ba3ec63891a63e2d3d8ca86ae60ed8cb239a7b77a8e612ec",
+      "source": {
+        "path": "node_modules/typescript/lib/lib.es5.d.ts",
+        "line": 1077,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/jsonl/node#JsonlStorageReadOnlyError::property:name",
+      "parentId": "pkg:durable/storage/jsonl/node#JsonlStorageReadOnlyError",
+      "role": "property",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/jsonl/node",
+      "name": "JsonlStorageReadOnlyError.name",
+      "kind": "property",
+      "shape": {
+        "name": "name",
+        "optional": false,
+        "readonly": false,
+        "type": "string",
+        "calls": []
+      },
+      "shapeHash": "sha256:801e53f1d388232eae4e330db41edb2aab932c0909e2849026eeebfd0e76ec51",
+      "source": {
+        "path": "node_modules/typescript/lib/lib.es5.d.ts",
+        "line": 1076,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/jsonl/node#JsonlStorageReadOnlyError::property:stack",
+      "parentId": "pkg:durable/storage/jsonl/node#JsonlStorageReadOnlyError",
+      "role": "property",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/jsonl/node",
+      "name": "JsonlStorageReadOnlyError.stack",
+      "kind": "property",
+      "shape": {
+        "name": "stack",
+        "optional": true,
+        "readonly": false,
+        "type": "string | undefined",
+        "calls": []
+      },
+      "shapeHash": "sha256:6a90573a6dc1303048aed8fb94dcc54bd7b496721ad2983fdcfebd7133feef8c",
+      "source": {
+        "path": "node_modules/typescript/lib/lib.es5.d.ts",
+        "line": 1078,
+        "column": 5
       }
     },
     {
@@ -424247,7 +426244,7 @@
       "shapeHash": "sha256:97abca6bbfd853f1bf0d1ca9eb7ad1aa173d2ef318e7538b30a049e1abbaea17",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 84,
+        "line": 94,
         "column": 1
       }
     },
@@ -424280,7 +426277,7 @@
       "shapeHash": "sha256:63963316b5b17ffdd3985bfc35713192b8a206d94d9b636de6d00734bb8a627e",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 84,
+        "line": 94,
         "column": 1
       }
     },
@@ -424908,7 +426905,7 @@
       "shapeHash": "sha256:9641e36da129bb36a2dfac17073d603634a734fe7d6d2f7afb92d463a2632e54",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 244,
+        "line": 262,
         "column": 1
       }
     },
@@ -424943,7 +426940,7 @@
       "shapeHash": "sha256:857c6cc04d7f06b229c637f4364eada529cc15dfff1940d45931a4c8aa5f19b9",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 434,
+        "line": 475,
         "column": 2
       }
     },
@@ -424970,7 +426967,7 @@
       "shapeHash": "sha256:dd1140ca0b327cdd5f41bc1b9810f9ffa44d096d8c1261b15b28ea9774b1b48e",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 434,
+        "line": 475,
         "column": 2
       }
     },
@@ -425017,7 +427014,7 @@
       "shapeHash": "sha256:7e403367181c610809ab89e97a2b171209eee6ab79bb4958066b16556c6a2170",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 288,
+        "line": 328,
         "column": 2
       }
     },
@@ -425056,7 +427053,7 @@
       "shapeHash": "sha256:e8705edbc6249379a32cb9787b40a58b412ce11e080960f44ba0850c9a587b47",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 288,
+        "line": 328,
         "column": 2
       }
     },
@@ -425097,7 +427094,7 @@
       "shapeHash": "sha256:9b5d58f63fadca2436603b2001d0b2dc9c527ed6201d8a3fd42b28610a9ecfc9",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 369,
+        "line": 410,
         "column": 2
       }
     },
@@ -425130,7 +427127,7 @@
       "shapeHash": "sha256:13b852bacb5284d58bb4733cc86b0c40e2a67ad6e4e98dceec51ac7324c53085",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 369,
+        "line": 410,
         "column": 2
       }
     },
@@ -425177,7 +427174,7 @@
       "shapeHash": "sha256:460271c0edc3e4f1e66e772e40b00870344ae697e2919780c88919fb11866925",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 426,
+        "line": 467,
         "column": 2
       }
     },
@@ -425216,7 +427213,7 @@
       "shapeHash": "sha256:32597996a158a5ec2b9becd7d25d80d041caffea1ab8d8b48294235f4864939a",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 426,
+        "line": 467,
         "column": 2
       }
     },
@@ -425281,7 +427278,7 @@
       "shapeHash": "sha256:2fb4774e08255192dcdc629d7fd25ff783f313c80f12904b3c036be76afb7298",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 377,
+        "line": 418,
         "column": 2
       }
     },
@@ -425314,7 +427311,7 @@
       "shapeHash": "sha256:0b4d63eae08cb0d71be9818db74bac13e2e7c1cc0a48414488196934f4169c9b",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 377,
+        "line": 418,
         "column": 2
       }
     },
@@ -425353,7 +427350,7 @@
       "shapeHash": "sha256:ba18ba5287b9f377c4a7c7237784a974d1bf82689d8d91ab117b5145d9afa501",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 377,
+        "line": 418,
         "column": 2
       }
     },
@@ -425400,7 +427397,7 @@
       "shapeHash": "sha256:4e5d4c9fbeb72df4a25cabf16023e393304a3f2663391217e6f31f940aff9685",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 422,
+        "line": 463,
         "column": 2
       }
     },
@@ -425439,7 +427436,7 @@
       "shapeHash": "sha256:c7390e165769639ff246d20736899d0561ca99f029e22505afea13eaf2284c50",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 422,
+        "line": 463,
         "column": 2
       }
     },
@@ -425486,7 +427483,7 @@
       "shapeHash": "sha256:c0245bb523c5e4bb8c75b0bf561e207d65547b0bf5c97d3db606372a72d3487d",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 390,
+        "line": 431,
         "column": 2
       }
     },
@@ -425525,7 +427522,7 @@
       "shapeHash": "sha256:d0c9271a9ba8ef51d1df3a0eb636e138d59bf21829b0a669004d4e613571aadd",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 390,
+        "line": 431,
         "column": 2
       }
     },
@@ -425559,7 +427556,7 @@
       "shapeHash": "sha256:de56cbba9c4dd497f2e821aadae610e208a8b1597d22d8f17196f167c6e0d151",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 365,
+        "line": 406,
         "column": 2
       }
     },
@@ -425585,7 +427582,7 @@
       "shapeHash": "sha256:6fd62caa1e26abc517caaf4a0b8f513fdc906c3fd48f56019962d8876f9a0cb8",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 365,
+        "line": 406,
         "column": 2
       }
     },
@@ -425638,7 +427635,7 @@
       "shapeHash": "sha256:77780eab571e97792e8305a6981038f219b699d306db66c78f4b364076333cc1",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 373,
+        "line": 414,
         "column": 2
       }
     },
@@ -425683,7 +427680,7 @@
       "shapeHash": "sha256:2754a22b8c5402592fa74e0a23d78fb8c9c33a8ea86b8272fd6ec5dccb0a6435",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 373,
+        "line": 414,
         "column": 2
       }
     },
@@ -425736,7 +427733,7 @@
       "shapeHash": "sha256:585203b47f199f061ff630e91ce27dda27a61862b9c7c3c62b0e4221b1297b4a",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 430,
+        "line": 471,
         "column": 2
       }
     },
@@ -425781,7 +427778,7 @@
       "shapeHash": "sha256:327a4e5f07c326839d15f14b839dab024eaa0d56438c364862185cfda917e490",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 430,
+        "line": 471,
         "column": 2
       }
     },
@@ -425834,7 +427831,7 @@
       "shapeHash": "sha256:a34e224c18c46987858914919f7f5a410d772eddc62dd5039435276c75921de0",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 398,
+        "line": 439,
         "column": 2
       }
     },
@@ -425879,7 +427876,7 @@
       "shapeHash": "sha256:3db39fc7361767adba21051a798c2b549565f807cfc49b12eef879066cdbb3ed",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 398,
+        "line": 439,
         "column": 2
       }
     },
@@ -425932,7 +427929,7 @@
       "shapeHash": "sha256:743cacff96e0f7ef323e989056f0bc3f62269c61bb3f3290f7c256ebcc455947",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 414,
+        "line": 455,
         "column": 2
       }
     },
@@ -425977,7 +427974,7 @@
       "shapeHash": "sha256:e7aae2f367d5a273f55b91b7a4129a85606e8476fc27f5998303aaae8c49604d",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 414,
+        "line": 455,
         "column": 2
       }
     },
@@ -426030,7 +428027,7 @@
       "shapeHash": "sha256:1ca6c9dc2f7243ce077bbd96a3626c487bd7fd7da392fba344b5c56290fc5e95",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 406,
+        "line": 447,
         "column": 2
       }
     },
@@ -426075,7 +428072,7 @@
       "shapeHash": "sha256:31f06927e80c939753135f1fc2a046d8480af3e671e759c5034ea696cfe3621a",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 406,
+        "line": 447,
         "column": 2
       }
     },
@@ -426116,7 +428113,7 @@
       "shapeHash": "sha256:6f480c8e883e7b8c79a32477239e2350e5d257a8c18ec248bc0cacdb15db6796",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 410,
+        "line": 451,
         "column": 2
       }
     },
@@ -426149,7 +428146,7 @@
       "shapeHash": "sha256:618e6ac405d13af41226c65e46818a321b24690561584b80d06ea2949f93ee61",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 410,
+        "line": 451,
         "column": 2
       }
     },
@@ -426196,7 +428193,7 @@
       "shapeHash": "sha256:e64de9746597854794ac16a46eb47f26d78af149ad644a422abb34891df4dffd",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 418,
+        "line": 459,
         "column": 2
       }
     },
@@ -426235,7 +428232,7 @@
       "shapeHash": "sha256:9b71d19d4ccda38d7e396b6d333d9fb1cba203965e0fe7807d38b812d59d71c3",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 418,
+        "line": 459,
         "column": 2
       }
     },
@@ -426276,7 +428273,7 @@
       "shapeHash": "sha256:e3d5844b9361df0201bbe2e5cc8df392291b142dc07c8c449cfc05174a043c5a",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 402,
+        "line": 443,
         "column": 2
       }
     },
@@ -426309,7 +428306,7 @@
       "shapeHash": "sha256:d4394db1a3ee6c2696861efc90e264077fae681e795d823f484b4aa1896b9c4a",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 402,
+        "line": 443,
         "column": 2
       }
     },
@@ -426331,7 +428328,7 @@
       "shapeHash": "sha256:76ef5c9b2125bc90201c25769b3cf96abaa705c9c7eea66b832b63e77cf38b09",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 79,
+        "line": 83,
         "column": 1
       }
     },
@@ -426395,7 +428392,7 @@
       "shapeHash": "sha256:168b8d7b4f50fcb5eae1be05f18f5c7414ca1f7238e29771c19873f580b3a466",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 91,
+        "line": 109,
         "column": 1
       }
     },
@@ -426422,7 +428419,7 @@
       "shapeHash": "sha256:0fb1986360429ff4e605c531106c36b05eade3056b4238c64b3abf618e53319e",
       "source": {
         "path": "packages/durable/src/storage/jsonl/storage.ts",
-        "line": 91,
+        "line": 109,
         "column": 1
       }
     },
@@ -426499,6 +428496,171 @@
       "package": "@earendil-works/pi-durable",
       "entrypoint": "./storage/jsonl",
       "name": "JsonlStoragePoisonedError.stack",
+      "kind": "property",
+      "shape": {
+        "name": "stack",
+        "optional": true,
+        "readonly": false,
+        "type": "string | undefined",
+        "calls": []
+      },
+      "shapeHash": "sha256:6a90573a6dc1303048aed8fb94dcc54bd7b496721ad2983fdcfebd7133feef8c",
+      "source": {
+        "path": "node_modules/typescript/lib/lib.es5.d.ts",
+        "line": 1078,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/jsonl#JsonlStorageReadOnlyError",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/jsonl",
+      "name": "JsonlStorageReadOnlyError",
+      "kind": "class",
+      "shape": {
+        "aliasTarget": "JsonlStorageReadOnlyError",
+        "type": "JsonlStorageReadOnlyError",
+        "typeParameters": [],
+        "calls": [],
+        "constructs": [
+          {
+            "typeParameters": [],
+            "parameters": [],
+            "returns": "JsonlStorageReadOnlyError"
+          }
+        ],
+        "properties": [
+          {
+            "name": "cause",
+            "optional": true,
+            "readonly": false,
+            "type": "unknown",
+            "calls": []
+          },
+          {
+            "name": "message",
+            "optional": false,
+            "readonly": false,
+            "type": "string",
+            "calls": []
+          },
+          {
+            "name": "name",
+            "optional": false,
+            "readonly": false,
+            "type": "string",
+            "calls": []
+          },
+          {
+            "name": "stack",
+            "optional": true,
+            "readonly": false,
+            "type": "string | undefined",
+            "calls": []
+          }
+        ],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:12ac04a65152daeb1d209890694276fe82e846e9ef57d16a3fb7f11c9aaac301",
+      "source": {
+        "path": "packages/durable/src/storage/jsonl/storage.ts",
+        "line": 102,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:durable/storage/jsonl#JsonlStorageReadOnlyError::construct:0",
+      "parentId": "pkg:durable/storage/jsonl#JsonlStorageReadOnlyError",
+      "role": "construct-overload",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/jsonl",
+      "name": "JsonlStorageReadOnlyError constructor 0",
+      "kind": "construct-overload",
+      "shape": {
+        "typeParameters": [],
+        "parameters": [],
+        "returns": "JsonlStorageReadOnlyError"
+      },
+      "shapeHash": "sha256:e82186acb1e6cd6e9a3be8e06933491ab3b6639d7fcba6a7ddbeb9f654f8eb21",
+      "source": {
+        "path": "packages/durable/src/storage/jsonl/storage.ts",
+        "line": 102,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:durable/storage/jsonl#JsonlStorageReadOnlyError::property:cause",
+      "parentId": "pkg:durable/storage/jsonl#JsonlStorageReadOnlyError",
+      "role": "property",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/jsonl",
+      "name": "JsonlStorageReadOnlyError.cause",
+      "kind": "property",
+      "shape": {
+        "name": "cause",
+        "optional": true,
+        "readonly": false,
+        "type": "unknown",
+        "calls": []
+      },
+      "shapeHash": "sha256:0ded3a5da484c0bd945c74e50b05b90f5fca69d849d99b4d1caa17e429415054",
+      "source": {
+        "path": "node_modules/typescript/lib/lib.es2022.error.d.ts",
+        "line": 26,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/jsonl#JsonlStorageReadOnlyError::property:message",
+      "parentId": "pkg:durable/storage/jsonl#JsonlStorageReadOnlyError",
+      "role": "property",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/jsonl",
+      "name": "JsonlStorageReadOnlyError.message",
+      "kind": "property",
+      "shape": {
+        "name": "message",
+        "optional": false,
+        "readonly": false,
+        "type": "string",
+        "calls": []
+      },
+      "shapeHash": "sha256:5bd47aec3aecfce7ba3ec63891a63e2d3d8ca86ae60ed8cb239a7b77a8e612ec",
+      "source": {
+        "path": "node_modules/typescript/lib/lib.es5.d.ts",
+        "line": 1077,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/jsonl#JsonlStorageReadOnlyError::property:name",
+      "parentId": "pkg:durable/storage/jsonl#JsonlStorageReadOnlyError",
+      "role": "property",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/jsonl",
+      "name": "JsonlStorageReadOnlyError.name",
+      "kind": "property",
+      "shape": {
+        "name": "name",
+        "optional": false,
+        "readonly": false,
+        "type": "string",
+        "calls": []
+      },
+      "shapeHash": "sha256:801e53f1d388232eae4e330db41edb2aab932c0909e2849026eeebfd0e76ec51",
+      "source": {
+        "path": "node_modules/typescript/lib/lib.es5.d.ts",
+        "line": 1076,
+        "column": 5
+      }
+    },
+    {
+      "id": "pkg:durable/storage/jsonl#JsonlStorageReadOnlyError::property:stack",
+      "parentId": "pkg:durable/storage/jsonl#JsonlStorageReadOnlyError",
+      "role": "property",
+      "package": "@earendil-works/pi-durable",
+      "entrypoint": "./storage/jsonl",
+      "name": "JsonlStorageReadOnlyError.stack",
       "kind": "property",
       "shape": {
         "name": "stack",

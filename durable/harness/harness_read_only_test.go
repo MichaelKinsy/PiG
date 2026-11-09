@@ -7,6 +7,7 @@ package harness
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"reflect"
 	"sync"
@@ -14,8 +15,20 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/storage/jsonl"
+	jsonlnode "github.com/MichaelKinsy/PiG/durable/storage/jsonl/node"
 	sqlitenode "github.com/MichaelKinsy/PiG/durable/storage/sqlite/node"
 )
+
+// jsonlDirectoryBytes is every file of directory with its bytes.
+func jsonlDirectoryBytes(t *testing.T, directory string) map[string]string {
+	t.Helper()
+	files := map[string]string{}
+	for _, entry := range must(os.ReadDir(directory)) {
+		files[entry.Name()] = string(must(os.ReadFile(filepath.Join(directory, entry.Name()))))
+	}
+	return files
+}
 
 func openReadOnly(t *testing.T, path string, setup *chatState, onWake func(Wake)) Harness {
 	t.Helper()
@@ -128,6 +141,52 @@ func TestReadOnlyHarness(t *testing.T) {
 		}
 		mu.Unlock()
 		_ = driverRoot
+		closeHarness(t, driver)
+	})
+
+	// harness-read-only.test.ts it("opens a JSONL session with work running elsewhere without writing") (#11939): JSONL
+	// storage opened with its own ReadOnly writes nothing, not even recovery repairs.
+	t.Run("opens a JSONL session with work running elsewhere without writing", func(t *testing.T) {
+		directory := t.TempDir()
+		setup := chatSetup(t)
+		busy := unanswered()
+		setup.Faux.SetResponses([]ai.FauxResponseStep{busy.step})
+		driver, driverRoot := openChat(t, must(jsonlnode.OpenNodeJsonlStorage(testContext, directory, jsonl.JsonlStorageOptions{})), setup)
+		submitInput(t, driverRoot, "slow")
+		<-busy.reached
+		// A torn line, as left by an append in flight.
+		file := must(os.OpenFile(filepath.Join(directory, "main.jsonl"), os.O_APPEND|os.O_WRONLY, 0o644))
+		must(file.WriteString(`{"format":1`))
+		if err := file.Close(); err != nil {
+			t.Fatal(err)
+		}
+		before := jsonlDirectoryBytes(t, directory)
+
+		viewerSetup := chatSetup(t)
+		viewerStorage := must(jsonlnode.OpenNodeJsonlStorage(testContext, directory, jsonl.JsonlStorageOptions{ReadOnly: true}))
+		viewer, err := OpenHarness(testContext, viewerStorage, HarnessOptions{
+			Models: viewerSetup.Models, Registry: viewerSetup.Registry, ReadOnly: true,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		root := must(viewer.Root(testContext, nil))
+		entries := allEntries(t, root)
+		if len(entries) != 1 || entries[0].Kind != durable.UserEntry.Kind {
+			t.Fatalf("entries = %+v, want one user entry", entries)
+		}
+		run := liveOf(t, viewer, root.Id()).Run
+		if run == nil {
+			t.Fatal("the live document has no run")
+		}
+		if record := must(viewer.GetTask(testContext, run.TaskId)); record == nil || record.State.Status != durable.TaskRunning {
+			t.Fatalf("task = %+v, want running as committed", record)
+		}
+		closeHarness(t, viewer)
+
+		if after := jsonlDirectoryBytes(t, directory); !reflect.DeepEqual(after, before) {
+			t.Fatalf("the viewer wrote: before %v, after %v", before, after)
+		}
 		closeHarness(t, driver)
 	})
 

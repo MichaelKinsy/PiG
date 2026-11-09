@@ -25,6 +25,7 @@ import { createCompactionSummaryMessage, createCustomMessage } from "../../core/
 import { defaultModelPerProvider, findExactModelReferenceMatch, resolveModelScopeFromModels, } from "../../core/model-resolver.js";
 import { CredentialSynchronizationError } from "../../core/model-runtime.js";
 import { DefaultPackageManager } from "../../core/package-manager.js";
+import { compareProviders } from "../../core/preferred-providers.js";
 import { findMatchingProviders } from "../../core/provider-matching.js";
 import { RADIUS_PROVIDER_ID } from "../../core/radius.js";
 import { planRadiusMcpServer } from "../../core/radius-mcp.js";
@@ -223,7 +224,7 @@ function getLoginProviderCompletionOptions(providerOptions) {
             subscription: provider.subscription,
         });
     }
-    return Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name));
+    return Array.from(byId.values()).sort(compareProviders);
 }
 function getLoginProviderSearchText(provider) {
     const authTypes = provider.authTypes
@@ -4987,7 +4988,8 @@ export class InteractiveMode {
                 });
             }
         }
-        return options.sort((a, b) => a.name.localeCompare(b.name));
+        // The sort is stable, so a provider's account option stays above its API key option.
+        return options.sort(compareProviders);
     }
     async getLogoutProviderOptions() {
         return (await this.session.modelRuntime.listCredentials({ signal: AbortSignal.timeout(15_000) }))
@@ -5001,7 +5003,7 @@ export class InteractiveMode {
                 subscription: provider?.auth.oauth?.isSubscription === true,
             };
         })
-            .sort((a, b) => a.name.localeCompare(b.name));
+            .sort(compareProviders);
     }
     async handleLoginCommand(providerRef) {
         if (!providerRef) {
@@ -5125,8 +5127,8 @@ export class InteractiveMode {
                 else {
                     this.ui.requestRender();
                 }
-            }, initialSearchInput);
-            return { component: selector, focus: selector };
+            }, initialSearchInput, this.ui);
+            return { component: selector, focus: selector, dispose: () => selector.dispose() };
         });
     }
     async showOAuthSelector(mode) {
@@ -5172,8 +5174,8 @@ export class InteractiveMode {
             }, () => {
                 done();
                 this.ui.requestRender();
-            });
-            return { component: selector, focus: selector };
+            }, undefined, this.ui);
+            return { component: selector, focus: selector, dispose: () => selector.dispose() };
         });
     }
     async completeProviderAuthentication(providerId, providerName, authType, previousModel) {

@@ -3,6 +3,7 @@ export * from "./auth/context.js";
 export * from "./auth/credential-store.js";
 export * from "./auth/helpers.js";
 export * from "./auth/types.js";
+export * from "./cache-warming.js";
 export * from "./models.js";
 export * from "./models-store.js";
 export * from "./providers/faux.js";

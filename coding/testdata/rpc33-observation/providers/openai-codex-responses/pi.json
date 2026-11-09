@@ -1,7 +1,7 @@
 {
-  "piVersion": "1.5.0+c23b9ec1",
+  "piVersion": "1.5.0+77959d66",
   "api": "openai-codex-responses",
-  "node": "v24.14.1",
+  "node": "v26.12.1",
   "runs": 8,
   "fixtures": {
     "tool": "event: response.created\ndata: {\"type\":\"response.created\",\"response\":{\"id\":\"resp_1\"}}\n\nevent: response.output_item.added\ndata: {\"type\":\"response.output_item.added\",\"output_index\":0,\"item\":{\"type\":\"function_call\",\"id\":\"fc_1\",\"call_id\":\"call_1\",\"name\":\"read\",\"arguments\":\"\"}}\n\nevent: response.function_call_arguments.delta\ndata: {\"type\":\"response.function_call_arguments.delta\",\"output_index\":0,\"delta\":\"{\\\"path\\\":\\\"parity-read-target.txt\\\"}\"}\n\nevent: response.output_item.done\ndata: {\"type\":\"response.output_item.done\",\"output_index\":0,\"item\":{\"type\":\"function_call\",\"id\":\"fc_1\",\"call_id\":\"call_1\",\"name\":\"read\",\"arguments\":\"{\\\"path\\\":\\\"parity-read-target.txt\\\"}\",\"status\":\"completed\"}}\n\nevent: response.completed\ndata: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_1\",\"status\":\"completed\",\"output\":[{\"type\":\"function_call\",\"id\":\"fc_1\",\"call_id\":\"call_1\",\"name\":\"read\",\"arguments\":\"{\\\"path\\\":\\\"parity-read-target.txt\\\"}\",\"status\":\"completed\"}],\"usage\":{\"input_tokens\":10,\"output_tokens\":3,\"total_tokens\":13}}}\n\n",
@@ -46,7 +46,7 @@
         "at": "push",
         "type": "toolcall_start",
         "segment": 1,
-        "tick": 24,
+        "tick": 23,
         "state": {
           "content": [
             {
@@ -66,7 +66,7 @@
         "at": "deliver",
         "type": "toolcall_start",
         "segment": 1,
-        "tick": 27,
+        "tick": 26,
         "state": {
           "content": [
             {
@@ -86,7 +86,7 @@
         "at": "push",
         "type": "toolcall_delta",
         "segment": 1,
-        "tick": 30,
+        "tick": 29,
         "state": {
           "content": [
             {
@@ -108,7 +108,7 @@
         "at": "deliver",
         "type": "toolcall_delta",
         "segment": 1,
-        "tick": 33,
+        "tick": 32,
         "state": {
           "content": [
             {
@@ -130,7 +130,7 @@
         "at": "push",
         "type": "toolcall_end",
         "segment": 1,
-        "tick": 36,
+        "tick": 35,
         "state": {
           "content": [
             {
@@ -152,7 +152,7 @@
         "at": "deliver",
         "type": "toolcall_end",
         "segment": 1,
-        "tick": 39,
+        "tick": 38,
         "state": {
           "content": [
             {
@@ -174,7 +174,7 @@
         "at": "push",
         "type": "done",
         "segment": 1,
-        "tick": 49,
+        "tick": 48,
         "state": {
           "content": [
             {
@@ -196,7 +196,7 @@
         "at": "deliver",
         "type": "done",
         "segment": 1,
-        "tick": 52,
+        "tick": 51,
         "state": {
           "content": [
             {
@@ -251,7 +251,7 @@
         "at": "push",
         "type": "text_start",
         "segment": 1,
-        "tick": 24,
+        "tick": 23,
         "state": {
           "content": [
             {
@@ -269,7 +269,7 @@
         "at": "deliver",
         "type": "text_start",
         "segment": 1,
-        "tick": 27,
+        "tick": 26,
         "state": {
           "content": [
             {
@@ -287,7 +287,7 @@
         "at": "push",
         "type": "text_delta",
         "segment": 1,
-        "tick": 30,
+        "tick": 29,
         "state": {
           "content": [
             {
@@ -305,7 +305,7 @@
         "at": "deliver",
         "type": "text_delta",
         "segment": 1,
-        "tick": 33,
+        "tick": 32,
         "state": {
           "content": [
             {
@@ -323,7 +323,7 @@
         "at": "push",
         "type": "text_delta",
         "segment": 1,
-        "tick": 36,
+        "tick": 35,
         "state": {
           "content": [
             {
@@ -341,7 +341,7 @@
         "at": "deliver",
         "type": "text_delta",
         "segment": 1,
-        "tick": 39,
+        "tick": 38,
         "state": {
           "content": [
             {
@@ -359,7 +359,7 @@
         "at": "push",
         "type": "text_end",
         "segment": 1,
-        "tick": 42,
+        "tick": 41,
         "state": {
           "content": [
             {
@@ -378,7 +378,7 @@
         "at": "deliver",
         "type": "text_end",
         "segment": 1,
-        "tick": 45,
+        "tick": 44,
         "state": {
           "content": [
             {
@@ -397,7 +397,7 @@
         "at": "push",
         "type": "done",
         "segment": 1,
-        "tick": 55,
+        "tick": 54,
         "state": {
           "content": [
             {
@@ -416,7 +416,7 @@
         "at": "deliver",
         "type": "done",
         "segment": 1,
-        "tick": 58,
+        "tick": 57,
         "state": {
           "content": [
             {
@@ -468,7 +468,7 @@
         "at": "push",
         "type": "toolcall_start",
         "segment": 1,
-        "tick": 24,
+        "tick": 23,
         "state": {
           "content": [
             {
@@ -488,7 +488,7 @@
         "at": "deliver",
         "type": "toolcall_start",
         "segment": 1,
-        "tick": 27,
+        "tick": 26,
         "state": {
           "content": [
             {
@@ -508,7 +508,7 @@
         "at": "push",
         "type": "error",
         "segment": 1,
-        "tick": 30,
+        "tick": 29,
         "state": {
           "content": [
             {
@@ -528,7 +528,7 @@
         "at": "deliver",
         "type": "error",
         "segment": 1,
-        "tick": 33,
+        "tick": 32,
         "state": {
           "content": [
             {
@@ -581,7 +581,7 @@
         "at": "push",
         "type": "toolcall_start",
         "segment": 1,
-        "tick": 24,
+        "tick": 23,
         "state": {
           "content": [
             {
@@ -601,7 +601,7 @@
         "at": "deliver",
         "type": "toolcall_start",
         "segment": 1,
-        "tick": 27,
+        "tick": 26,
         "state": {
           "content": [
             {
@@ -621,7 +621,7 @@
         "at": "push",
         "type": "error",
         "segment": 1,
-        "tick": 34,
+        "tick": 33,
         "state": {
           "content": [
             {
@@ -641,7 +641,7 @@
         "at": "deliver",
         "type": "error",
         "segment": 1,
-        "tick": 37,
+        "tick": 36,
         "state": {
           "content": [
             {
@@ -699,7 +699,7 @@
         "at": "push",
         "type": "toolcall_start",
         "segment": 2,
-        "tick": 16,
+        "tick": 15,
         "state": {
           "content": [
             {
@@ -719,7 +719,7 @@
         "at": "deliver",
         "type": "toolcall_start",
         "segment": 2,
-        "tick": 19,
+        "tick": 18,
         "state": {
           "content": [
             {
@@ -739,7 +739,7 @@
         "at": "push",
         "type": "toolcall_delta",
         "segment": 2,
-        "tick": 22,
+        "tick": 21,
         "state": {
           "content": [
             {
@@ -761,7 +761,7 @@
         "at": "deliver",
         "type": "toolcall_delta",
         "segment": 2,
-        "tick": 25,
+        "tick": 24,
         "state": {
           "content": [
             {
@@ -783,7 +783,7 @@
         "at": "push",
         "type": "toolcall_end",
         "segment": 2,
-        "tick": 28,
+        "tick": 27,
         "state": {
           "content": [
             {
@@ -805,7 +805,7 @@
         "at": "deliver",
         "type": "toolcall_end",
         "segment": 2,
-        "tick": 31,
+        "tick": 30,
         "state": {
           "content": [
             {
@@ -827,7 +827,7 @@
         "at": "push",
         "type": "done",
         "segment": 2,
-        "tick": 41,
+        "tick": 40,
         "state": {
           "content": [
             {
@@ -849,7 +849,7 @@
         "at": "deliver",
         "type": "done",
         "segment": 2,
-        "tick": 44,
+        "tick": 43,
         "state": {
           "content": [
             {
@@ -909,7 +909,7 @@
         "at": "push",
         "type": "text_start",
         "segment": 2,
-        "tick": 16,
+        "tick": 15,
         "state": {
           "content": [
             {
@@ -927,7 +927,7 @@
         "at": "deliver",
         "type": "text_start",
         "segment": 2,
-        "tick": 19,
+        "tick": 18,
         "state": {
           "content": [
             {
@@ -945,7 +945,7 @@
         "at": "push",
         "type": "text_delta",
         "segment": 2,
-        "tick": 22,
+        "tick": 21,
         "state": {
           "content": [
             {
@@ -963,7 +963,7 @@
         "at": "deliver",
         "type": "text_delta",
         "segment": 2,
-        "tick": 25,
+        "tick": 24,
         "state": {
           "content": [
             {
@@ -981,7 +981,7 @@
         "at": "push",
         "type": "text_delta",
         "segment": 2,
-        "tick": 28,
+        "tick": 27,
         "state": {
           "content": [
             {
@@ -999,7 +999,7 @@
         "at": "deliver",
         "type": "text_delta",
         "segment": 2,
-        "tick": 31,
+        "tick": 30,
         "state": {
           "content": [
             {
@@ -1017,7 +1017,7 @@
         "at": "push",
         "type": "text_end",
         "segment": 2,
-        "tick": 34,
+        "tick": 33,
         "state": {
           "content": [
             {
@@ -1036,7 +1036,7 @@
         "at": "deliver",
         "type": "text_end",
         "segment": 2,
-        "tick": 37,
+        "tick": 36,
         "state": {
           "content": [
             {
@@ -1055,7 +1055,7 @@
         "at": "push",
         "type": "done",
         "segment": 2,
-        "tick": 47,
+        "tick": 46,
         "state": {
           "content": [
             {
@@ -1074,7 +1074,7 @@
         "at": "deliver",
         "type": "done",
         "segment": 2,
-        "tick": 50,
+        "tick": 49,
         "state": {
           "content": [
             {
@@ -1131,7 +1131,7 @@
         "at": "push",
         "type": "toolcall_start",
         "segment": 2,
-        "tick": 16,
+        "tick": 15,
         "state": {
           "content": [
             {
@@ -1151,7 +1151,7 @@
         "at": "deliver",
         "type": "toolcall_start",
         "segment": 2,
-        "tick": 19,
+        "tick": 18,
         "state": {
           "content": [
             {
@@ -1171,7 +1171,7 @@
         "at": "push",
         "type": "error",
         "segment": 2,
-        "tick": 22,
+        "tick": 21,
         "state": {
           "content": [
             {
@@ -1191,7 +1191,7 @@
         "at": "deliver",
         "type": "error",
         "segment": 2,
-        "tick": 25,
+        "tick": 24,
         "state": {
           "content": [
             {
@@ -1249,7 +1249,7 @@
         "at": "push",
         "type": "toolcall_start",
         "segment": 2,
-        "tick": 16,
+        "tick": 15,
         "state": {
           "content": [
             {
@@ -1269,7 +1269,7 @@
         "at": "deliver",
         "type": "toolcall_start",
         "segment": 2,
-        "tick": 19,
+        "tick": 18,
         "state": {
           "content": [
             {
@@ -1289,7 +1289,7 @@
         "at": "push",
         "type": "error",
         "segment": 2,
-        "tick": 26,
+        "tick": 25,
         "state": {
           "content": [
             {
@@ -1309,7 +1309,7 @@
         "at": "deliver",
         "type": "error",
         "segment": 2,
-        "tick": 29,
+        "tick": 28,
         "state": {
           "content": [
             {
@@ -1372,7 +1372,7 @@
         "at": "push",
         "type": "toolcall_start",
         "segment": 3,
-        "tick": 10,
+        "tick": 9,
         "state": {
           "content": [
             {
@@ -1392,7 +1392,7 @@
         "at": "deliver",
         "type": "toolcall_start",
         "segment": 3,
-        "tick": 13,
+        "tick": 12,
         "state": {
           "content": [
             {
@@ -1417,7 +1417,7 @@
         "at": "push",
         "type": "toolcall_delta",
         "segment": 4,
-        "tick": 10,
+        "tick": 9,
         "state": {
           "content": [
             {
@@ -1439,7 +1439,7 @@
         "at": "deliver",
         "type": "toolcall_delta",
         "segment": 4,
-        "tick": 13,
+        "tick": 12,
         "state": {
           "content": [
             {
@@ -1466,7 +1466,7 @@
         "at": "push",
         "type": "toolcall_end",
         "segment": 5,
-        "tick": 10,
+        "tick": 9,
         "state": {
           "content": [
             {
@@ -1488,7 +1488,7 @@
         "at": "deliver",
         "type": "toolcall_end",
         "segment": 5,
-        "tick": 13,
+        "tick": 12,
         "state": {
           "content": [
             {
@@ -1515,7 +1515,7 @@
         "at": "push",
         "type": "done",
         "segment": 6,
-        "tick": 17,
+        "tick": 16,
         "state": {
           "content": [
             {
@@ -1537,7 +1537,7 @@
         "at": "deliver",
         "type": "done",
         "segment": 6,
-        "tick": 20,
+        "tick": 19,
         "state": {
           "content": [
             {
@@ -1602,7 +1602,7 @@
         "at": "push",
         "type": "text_start",
         "segment": 3,
-        "tick": 10,
+        "tick": 9,
         "state": {
           "content": [
             {
@@ -1620,7 +1620,7 @@
         "at": "deliver",
         "type": "text_start",
         "segment": 3,
-        "tick": 13,
+        "tick": 12,
         "state": {
           "content": [
             {
@@ -1643,7 +1643,7 @@
         "at": "push",
         "type": "text_delta",
         "segment": 4,
-        "tick": 10,
+        "tick": 9,
         "state": {
           "content": [
             {
@@ -1661,7 +1661,7 @@
         "at": "deliver",
         "type": "text_delta",
         "segment": 4,
-        "tick": 13,
+        "tick": 12,
         "state": {
           "content": [
             {
@@ -1684,7 +1684,7 @@
         "at": "push",
         "type": "text_delta",
         "segment": 5,
-        "tick": 10,
+        "tick": 9,
         "state": {
           "content": [
             {
@@ -1702,7 +1702,7 @@
         "at": "deliver",
         "type": "text_delta",
         "segment": 5,
-        "tick": 13,
+        "tick": 12,
         "state": {
           "content": [
             {
@@ -1725,7 +1725,7 @@
         "at": "push",
         "type": "text_end",
         "segment": 6,
-        "tick": 10,
+        "tick": 9,
         "state": {
           "content": [
             {
@@ -1744,7 +1744,7 @@
         "at": "deliver",
         "type": "text_end",
         "segment": 6,
-        "tick": 13,
+        "tick": 12,
         "state": {
           "content": [
             {
@@ -1768,7 +1768,7 @@
         "at": "push",
         "type": "done",
         "segment": 7,
-        "tick": 17,
+        "tick": 16,
         "state": {
           "content": [
             {
@@ -1787,7 +1787,7 @@
         "at": "deliver",
         "type": "done",
         "segment": 7,
-        "tick": 20,
+        "tick": 19,
         "state": {
           "content": [
             {
@@ -1849,7 +1849,7 @@
         "at": "push",
         "type": "toolcall_start",
         "segment": 3,
-        "tick": 10,
+        "tick": 9,
         "state": {
           "content": [
             {
@@ -1869,7 +1869,7 @@
         "at": "deliver",
         "type": "toolcall_start",
         "segment": 3,
-        "tick": 13,
+        "tick": 12,
         "state": {
           "content": [
             {
@@ -1894,7 +1894,7 @@
         "at": "push",
         "type": "error",
         "segment": 4,
-        "tick": 10,
+        "tick": 9,
         "state": {
           "content": [
             {
@@ -1914,7 +1914,7 @@
         "at": "deliver",
         "type": "error",
         "segment": 4,
-        "tick": 13,
+        "tick": 12,
         "state": {
           "content": [
             {
@@ -1977,7 +1977,7 @@
         "at": "push",
         "type": "toolcall_start",
         "segment": 3,
-        "tick": 10,
+        "tick": 9,
         "state": {
           "content": [
             {
@@ -1997,7 +1997,7 @@
         "at": "deliver",
         "type": "toolcall_start",
         "segment": 3,
-        "tick": 13,
+        "tick": 12,
         "state": {
           "content": [
             {
@@ -2022,7 +2022,7 @@
         "at": "push",
         "type": "error",
         "segment": 4,
-        "tick": 14,
+        "tick": 13,
         "state": {
           "content": [
             {
@@ -2042,7 +2042,7 @@
         "at": "deliver",
         "type": "error",
         "segment": 4,
-        "tick": 17,
+        "tick": 16,
         "state": {
           "content": [
             {
