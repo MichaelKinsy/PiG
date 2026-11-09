@@ -782,6 +782,31 @@ func TestTheSealFenceDiscardsTheTransactionHoldingTheLineAtTheSealTheLineIsFreeI
 	txRequireValue(t, s.o, s.handles[1], obj("n", float64(2)))
 }
 
+// Pi's overlay proxy throws a TypeError once its change settled (tracker.ts "Cannot use a settled overlay"), and a throw inside
+// the callback rejects the transaction. A draft of a transaction cut at the seal panics here (delta.ErrRevoked): the
+// transaction returns that as its error, so a callback that runs on a task of the host (p2's keepMemento, a handler's blocking
+// work) fails its handler when its object ends under it and does not crash the process.
+func TestTheSealFenceRevokesTheCutTransactionsDraftsAWriteAfterItRejectsTheTransactionWithTheRevokedOverlayNotAPanic(t *testing.T) {
+	s := newSealable(t)
+	gate := make(chan struct{})
+	entered := make(chan struct{})
+	first := goTx(s.attempts[0], func(tx Tx) (any, error) {
+		draft, err := tx.Draft(s.handles[0])
+		if err != nil {
+			return nil, err
+		}
+		close(entered)
+		<-gate
+		return nil, draft.Set("n", float64(1))
+	}, background)
+	<-entered
+	s.restart(t)
+	close(gate)
+	if err := awaitTx(t, first).err; !errors.Is(err, delta.ErrRevoked) {
+		t.Fatalf("error = %v, want the revoked overlay's (%v)", err, delta.ErrRevoked)
+	}
+}
+
 func TestTheSealFenceRefusesASealedAttemptsTransactionsWaitingForTheLineAndEveryNewOneItsHandlesStillRead(t *testing.T) {
 	s := newSealable(t)
 	gate := make(chan struct{})
