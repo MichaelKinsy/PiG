@@ -61,8 +61,9 @@ func resolveTimeoutMs(timeout *float64) (time.Duration, bool, error) {
 type LocalShellOperations struct {
 	ShellName    string
 	ResolveShell func() (ShellConfig, error)
-	// WrapCommand, when set, rewrites the command before execution.
-	WrapCommand func(string) string
+	// WrapCommand, when set, rewrites the command for the shell ResolveShell returned. The shell is resolved before the timeout and the abort are
+	// checked (createLocalPowerShellOperations calls getPowerShellConfig first), so a missing shell is the error.
+	WrapCommand func(command string, shell ShellConfig) string
 	// BinDir is prepended to PATH when the caller passes no environment
 	// (upstream getShellEnv's getBinDir).
 	BinDir string
@@ -96,8 +97,15 @@ func CreateLocalBashOperations(options *LocalBashOptions) *LocalShellOperations 
 // into one buffer, so a consumer copies what it keeps, as the bash tool's
 // accumulator and the user-bash executor do.
 func (o *LocalShellOperations) Exec(ctx context.Context, command, cwd string, opts BashOperationsExecOptions) (BashOperationsResult, error) {
+	var shell ShellConfig
+	resolved := false
 	if o.WrapCommand != nil {
-		command = o.WrapCommand(command)
+		var err error
+		if shell, err = o.ResolveShell(); err != nil {
+			return BashOperationsResult{}, err
+		}
+		resolved = true
+		command = o.WrapCommand(command, shell)
 	}
 	timeout, hasTimeout, err := resolveTimeoutMs(opts.Timeout)
 	if err != nil {
@@ -106,9 +114,10 @@ func (o *LocalShellOperations) Exec(ctx context.Context, command, cwd string, op
 	if ctx.Err() != nil {
 		return BashOperationsResult{}, errBashAborted
 	}
-	shell, err := o.ResolveShell()
-	if err != nil {
-		return BashOperationsResult{}, err
+	if !resolved {
+		if shell, err = o.ResolveShell(); err != nil {
+			return BashOperationsResult{}, err
+		}
 	}
 	if _, err := os.Stat(cwd); err != nil {
 		return BashOperationsResult{}, fmt.Errorf("Working directory does not exist: %s\nCannot execute %s commands.", cwd, o.ShellName)
