@@ -153446,9 +153446,9 @@
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/agent#messageEdits.Store",
         "go:github.com/MichaelKinsy/PiG/agent#toolBatches.Store",
         "go:github.com/MichaelKinsy/PiG/ai#alwaysMarshalsTypes.Store",
-        "go:github.com/MichaelKinsy/PiG/ai#catalogRecordBaselines.Store",
         "go:github.com/MichaelKinsy/PiG/ai#configuredHTTPIdleTimeoutMs.Store",
         "go:github.com/MichaelKinsy/PiG/ai#configuredProviderMaxRetries.Store",
         "go:github.com/MichaelKinsy/PiG/ai#configuredProviderMaxRetryDelayMs.Store",
@@ -158391,7 +158391,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "112 normalized-name Pig candidates are ambiguous."
+        "113 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -158401,6 +158401,7 @@
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/agent#messageEdits.Add",
         "go:github.com/MichaelKinsy/PiG/agent#toolBatches.Add",
         "go:github.com/MichaelKinsy/PiG/ai#ChatModelCatalog.add",
         "go:github.com/MichaelKinsy/PiG/ai#ClassifierModelCatalog.add",
@@ -158560,7 +158561,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "25 normalized-name Pig candidates are ambiguous."
+        "26 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -158570,6 +158571,7 @@
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/agent#messageEdits.And",
         "go:github.com/MichaelKinsy/PiG/agent#toolBatches.And",
         "go:github.com/MichaelKinsy/PiG/ai#configuredHTTPIdleTimeoutMs.And",
         "go:github.com/MichaelKinsy/PiG/ai#configuredProviderMaxRetries.And",
@@ -162756,7 +162758,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "29 normalized-name Pig candidates are ambiguous."
+        "30 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -162766,6 +162768,7 @@
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/agent#messageEdits.Or",
         "go:github.com/MichaelKinsy/PiG/agent#toolBatches.Or",
         "go:github.com/MichaelKinsy/PiG/ai#configuredHTTPIdleTimeoutMs.Or",
         "go:github.com/MichaelKinsy/PiG/ai#configuredProviderMaxRetries.Or",

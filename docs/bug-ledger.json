@@ -32375,6 +32375,29 @@
       "tests": []
     },
     {
+      "id": "BF-9910d00",
+      "title": "An extension that declared one provider name in several `registerProvider` calls while it loaded kept only…",
+      "symptom": "An extension that declared one provider name in several `registerProvider` calls while it loaded kept only the last call on the host: `refreshModels` or `oauth` declared first and the other fields declared second lost the first.",
+      "rootCause": "Pi pushes each registerProvider call of an extension load onto an array (loader.ts:218-219) and applies each in order through the registry, which merges the defined values over the earlier registration (runner.ts:463-480, model-runtime.ts:919-940). The host kept only the last declaration of a provider name (lastRegistrationWins), so an extension that declared refreshModels in one call and oauth in another lost the first. The host now keeps every declaration of the registration in order; only tools, commands, shortcuts, flags and renderers, which are Maps in Pi, keep the last of a name.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension that declared one provider name in several `registerProvider` calls while it loaded kept only the last call on the host: `refreshModels` or `oauth` declared first and the other fields declared second lost the first. Pi pushes every call onto an array and applies each in order through the registry, which merges the defined values over the earlier registration (`loader.ts:221-231`, `runner.ts:471-487`, `agent-session-services.ts:158-169`, `model-runtime.ts:965-986`), so the host now queues every declaration of a name in order, which fixes it for Go, Rust, Python and Lisp extensions. Node extensions were never affected: the Node runtime merges the registrations of a name before it sends them. Tools, commands, shortcuts, flags and renderers still keep the last of a name, as the Maps of Pi's loader do.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "9910d00910",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/provider_refresh_entries_test.go::TestConfigRefreshEntryIsFreedWhenTheRequestSettles",
+        "test/extension-conformance/provider_oauth_refresh_test.go::TestProviderOAuthModifyModelsNonIterableNode"
+      ]
+    },
+    {
       "id": "BF-992f3cb",
       "title": "A `before_provider_request` replacement that is not an object leaves Anthropic Messages as Pi's `{ ...value…",
       "symptom": "A `before_provider_request` replacement that is not an object leaves Anthropic Messages as Pi's `{ ...value, stream: true }` (`null`, a number or a boolean send `{\"stream\":true}`, an array or string its index members), `\"betas\": null` sends no `anthropic-beta` header, array-index keys lead a replacement body as in JavaScript, and a Codex WebSocket body's own `type` keeps the first position; a Codex payload hook that returns `null` no longer crashes PiG.",
@@ -36342,6 +36365,28 @@
         "coding/extension/host/subprocess/handler_quantum_test.go::TestHandlerAnsweringWithinTheQuantumIsNotSuspended",
         "coding/extension/host/subprocess/handler_quantum_test.go::TestHandlerOutlivingTheQuantumIsSuspended",
         "coding/extension/host/subprocess/handler_quantum_test.go::TestRequestWithoutTheQuantumSetsNoTimer"
+      ]
+    },
+    {
+      "id": "BF-a966fc9",
+      "title": "Encoding every built-in model, as an extension host does when it attaches, no longer leaves 1.2 MB of…",
+      "symptom": "Encoding every built-in model, as an extension host does when it attaches, no longer leaves 1.2 MB of per-model comparison encodings on the heap: a built-in model's baseline is kept as a 32-byte SHA-256 digest in a fixed array, so the heap retained after the encoding is 1.07 MB, not 2.27 MB, and the encoding allocates 0.2 MB less.",
+      "rootCause": "An earlier change stored the built-in catalog records as compressed chunks and kept each expanded chunk for the life of the process, so a start that reads every record (an extension host attaching) kept about 1 MB of record JSON on the heap that was static data before, and TestBuiltinCatalogEncodeCost retained 2.25 MB against its 1000 B/model bound (1.27 MB at the parent). The chunk cache is now weak, with the most recently read chunk held strongly so row-order reads inflate each chunk once; retained is 1.23 MB, allocated unchanged.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Encoding every built-in model, as an extension host does when it attaches, no longer leaves 1.2 MB of per-model comparison encodings on the heap: a built-in model's baseline is kept as a 32-byte SHA-256 digest in a fixed array, so the heap retained after the encoding is 1.07 MB, not 2.27 MB, and the encoding allocates 0.2 MB less. Record lookups cost what they did (`ResolveCatalogRecord` 3.1 ns, a pass over all 1,629 rows 5.6 µs); hashing makes `CatalogModelJSON` over all models about 1 µs per model slower (12.7 ms against 11.0 ms, a pass over all 1,629 models).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a966fc9a7c",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "ai/catalog_model_json_cost_test.go::TestBuiltinCatalogEncodeCost"
       ]
     },
     {

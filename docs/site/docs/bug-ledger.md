@@ -1187,6 +1187,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-98a21df](#bf-98a21df) | Tool output bounded by `chord/output`, the durable core and the Cloudflare host now loses whole ANSI escape… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-98f0403](#bf-98f0403) | `AgentSessionRuntime.dispose` in the Go, Python, Rust and Lisp extension SDKs now settles a run still in… | PiG's own defect | All platforms | Unreleased |
 | [BF-98f0403-2](#bf-98f0403-2) | `pig --help` in a build that strips a built-in no longer shows the `pig --tools +codemode` example when… | PiG's own defect | All platforms | Unreleased |
+| [BF-9910d00](#bf-9910d00) | An extension that declared one provider name in several `registerProvider` calls while it loaded kept only… | PiG's own defect | All platforms | Unreleased |
 | [BF-992f3cb](#bf-992f3cb) | A `before_provider_request` replacement that is not an object leaves Anthropic Messages as Pi's `{ ...value… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-99a06cf](#bf-99a06cf) | Interactive startup paints the editor and footer first and adds the startup header once the terminal reports… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-99d6e28](#bf-99d6e28) | Resizing an image no longer differs from Photon's by one in a channel of a rare pixel | PiG's own defect | All platforms | 0.7.0 |
@@ -1317,6 +1318,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a9264aa](#bf-a9264aa) | A tool running under the Durable core's Cloudflare host and `pi-durable` facade now has `api.now()`, the… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-a94455c](#bf-a94455c) | The durable code mode joins the text items of a script's output in linear time (Pi f11e50f7… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a94c58f](#bf-a94c58f) | RPC mode: a Go, Rust, Python or Lisp extension's `agent_settled` or `agent_before_settle` handler, command or… | PiG's own defect | All platforms | Unreleased |
+| [BF-a966fc9](#bf-a966fc9) | Encoding every built-in model, as an extension host does when it attaches, no longer leaves 1.2 MB of… | PiG's own defect | All platforms | Unreleased |
 | [BF-a967e74](#bf-a967e74) | A Chord HTTP socket's once-listener (the close hook an upgrade keeps its connection by) could run before it… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-a9757c8](#bf-a9757c8) | A Cloudflare model built with `coding.BuildModel` and streamed through its own `Provider` resolves… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a97bb03](#bf-a97bb03) | Highlighted code in a markdown block or a tool card, and the label of a legacy bash entry in the session… | PiG's own defect | All platforms | Unreleased |
@@ -18118,6 +18120,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** None recorded.
 - **Release note:** `pig --help` in a build that strips a built-in no longer shows the `pig --tools +codemode` example when `codemode` is stripped.
 
+### BF-9910d00
+
+**An extension that declared one provider name in several `registerProvider` calls while it loaded kept only…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An extension that declared one provider name in several `registerProvider` calls while it loaded kept only the last call on the host: `refreshModels` or `oauth` declared first and the other fields declared second lost the first.
+- **Root cause:** Pi pushes each registerProvider call of an extension load onto an array (loader.ts:218-219) and applies each in order through the registry, which merges the defined values over the earlier registration (runner.ts:463-480, model-runtime.ts:919-940). The host kept only the last declaration of a provider name (lastRegistrationWins), so an extension that declared refreshModels in one call and oauth in another lost the first. The host now keeps every declaration of the registration in order; only tools, commands, shortcuts, flags and renderers, which are Maps in Pi, keep the last of a name.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `9910d00910` (2026-11-09)
+- **Tests:** `coding/extension/host/subprocess/provider_refresh_entries_test.go::TestConfigRefreshEntryIsFreedWhenTheRequestSettles`, `test/extension-conformance/provider_oauth_refresh_test.go::TestProviderOAuthModifyModelsNonIterableNode`
+- **Release note:** An extension that declared one provider name in several `registerProvider` calls while it loaded kept only the last call on the host: `refreshModels` or `oauth` declared first and the other fields declared second lost the first. Pi pushes every call onto an array and applies each in order through the registry, which merges the defined values over the earlier registration (`loader.ts:221-231`, `runner.ts:471-487`, `agent-session-services.ts:158-169`, `model-runtime.ts:965-986`), so the host now queues every declaration of a name in order, which fixes it for Go, Rust, Python and Lisp extensions. Node extensions were never affected: the Node runtime merges the registrations of a name before it sends them. Tools, commands, shortcuts, flags and renderers still keep the last of a name, as the Maps of Pi's loader do.
+
 ### BF-992f3cb
 
 **A `before_provider_request` replacement that is not an object leaves Anthropic Messages as Pi's `{ ...value…**
@@ -19960,6 +19976,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `a94c58f227` (2026-11-06)
 - **Tests:** `coding/extension/host/subprocess/command_window_test.go::TestSettleTailCountsNativeHandlerSuspendedByTheQuantum`, `coding/extension/host/subprocess/handler_quantum_test.go::TestHandlerAnsweringWithinTheQuantumIsNotSuspended`, `coding/extension/host/subprocess/handler_quantum_test.go::TestHandlerOutlivingTheQuantumIsSuspended`, `coding/extension/host/subprocess/handler_quantum_test.go::TestRequestWithoutTheQuantumSetsNoTimer`
 - **Release note:** RPC mode: a Go, Rust, Python or Lisp extension's `agent_settled` or `agent_before_settle` handler, command or input handler that waits on the network or another blocking call no longer holds every later RPC command, `get_state` included, until it returns. The host takes such a handler to be waiting once it has run for 250 ms, as Pi's event loop serves stdin while a handler awaits; handlers that answer sooner keep their order.
+
+### BF-a966fc9
+
+**Encoding every built-in model, as an extension host does when it attaches, no longer leaves 1.2 MB of…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Encoding every built-in model, as an extension host does when it attaches, no longer leaves 1.2 MB of per-model comparison encodings on the heap: a built-in model's baseline is kept as a 32-byte SHA-256 digest in a fixed array, so the heap retained after the encoding is 1.07 MB, not 2.27 MB, and the encoding allocates 0.2 MB less.
+- **Root cause:** An earlier change stored the built-in catalog records as compressed chunks and kept each expanded chunk for the life of the process, so a start that reads every record (an extension host attaching) kept about 1 MB of record JSON on the heap that was static data before, and TestBuiltinCatalogEncodeCost retained 2.25 MB against its 1000 B/model bound (1.27 MB at the parent). The chunk cache is now weak, with the most recently read chunk held strongly so row-order reads inflate each chunk once; retained is 1.23 MB, allocated unchanged.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a966fc9a7c` (2026-11-09)
+- **Tests:** `ai/catalog_model_json_cost_test.go::TestBuiltinCatalogEncodeCost`
+- **Release note:** Encoding every built-in model, as an extension host does when it attaches, no longer leaves 1.2 MB of per-model comparison encodings on the heap: a built-in model's baseline is kept as a 32-byte SHA-256 digest in a fixed array, so the heap retained after the encoding is 1.07 MB, not 2.27 MB, and the encoding allocates 0.2 MB less. Record lookups cost what they did (`ResolveCatalogRecord` 3.1 ns, a pass over all 1,629 rows 5.6 µs); hashing makes `CatalogModelJSON` over all models about 1 µs per model slower (12.7 ms against 11.0 ms, a pass over all 1,629 models).
 
 ### BF-a967e74
 
