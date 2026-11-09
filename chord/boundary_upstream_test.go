@@ -4,7 +4,7 @@ package chord
 // or on files outside Chord. The Go form: every module package that chord/... links is Chord itself, telemetry
 // (pi-telemetry: a leaf without dependencies, needed for Context.telemetry), schema (pi-schema, for schemas: decision "A
 // schema package beneath pi-ai and Chord") or a product-neutral helper (JSON, numbers, strings, paths and the JSON Schema
-// validator), never another Pi port.
+// validator), or a vendored third-party library under third_party/, never another Pi port.
 
 import (
 	"os"
