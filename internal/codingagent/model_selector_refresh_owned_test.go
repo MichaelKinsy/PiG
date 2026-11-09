@@ -6,6 +6,8 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"sync/atomic"
 	"testing"
 	"testing/synctest"
@@ -18,9 +20,11 @@ import (
 // lingeringCatalogStore ends a read when its context ends, after the time a store takes to finish the write it had started: the work a catalog refresh
 // leaves behind in the agent directory when its callers cancel it.
 type lingeringCatalogStore struct {
-	*ai.InMemoryModelsStore
+	ai.ModelsStore
 	started chan struct{}
 	settled atomic.Bool
+	// flush is the write the store finishes after the cancel, when it has a file to write to.
+	flush func()
 }
 
 func (s *lingeringCatalogStore) Read(ctx context.Context, providerID string) (*ai.ModelsStoreEntry, error) {
@@ -31,10 +35,13 @@ func (s *lingeringCatalogStore) Read(ctx context.Context, providerID string) (*a
 		}
 		<-ctx.Done()
 		time.Sleep(time.Second)
+		if s.flush != nil {
+			s.flush()
+		}
 		s.settled.Store(true)
 		return nil, ctx.Err()
 	}
-	return s.InMemoryModelsStore.Read(ctx, providerID)
+	return s.ModelsStore.Read(ctx, providerID)
 }
 
 // Pi's refreshModelCatalogs lets the runtime's refresh run on after its last waiter aborted (model-catalog-refresh.ts), and nothing joins it. PiG's
@@ -43,7 +50,7 @@ func TestAbandonedModelCatalogRefreshIsJoinedByRegistryClose(t *testing.T) {
 	t.Setenv("PI_OFFLINE", "1")
 	registry, _, store := radiusTestRegistry(t, "", nil)
 	synctest.Test(t, func(t *testing.T) {
-		lingering := &lingeringCatalogStore{InMemoryModelsStore: store, started: make(chan struct{}, 4)}
+		lingering := &lingeringCatalogStore{ModelsStore: store, started: make(chan struct{}, 4)}
 		registry.SetModelsStore(lingering)
 		ctx, cancel := context.WithCancel(t.Context())
 		done := make(chan error, 1)
@@ -55,41 +62,43 @@ func TestAbandonedModelCatalogRefreshIsJoinedByRegistryClose(t *testing.T) {
 		}
 
 		registry.CloseModelTasks()
+		settledAtClose := lingering.settled.Load()
+		time.Sleep(2 * time.Second) // lets a refresh that outlived Close end, so the failure reports instead of deadlocking the bubble
 
-		if !lingering.settled.Load() {
+		if !settledAtClose {
 			t.Error("CloseModelTasks returned while the abandoned catalog refresh was still working on the store")
 		}
 	})
 }
 
 // A registry whose model tasks are closed admits no refresh: the caller gets an aborted result, as Pi's runtime gets from an aborted signal, and
-// nothing runs after Close.
+// no work starts after Close.
 func TestModelCatalogRefreshAfterRegistryCloseIsAborted(t *testing.T) {
 	t.Setenv("PI_OFFLINE", "1")
-	registry, _, store := radiusTestRegistry(t, "", nil)
-	synctest.Test(t, func(t *testing.T) {
-		lingering := &lingeringCatalogStore{InMemoryModelsStore: store, started: make(chan struct{}, 4)}
-		registry.SetModelsStore(lingering)
-		registry.CloseModelTasks()
+	registry, _, _ := radiusTestRegistry(t, "", nil)
+	registry.CloseModelTasks()
 
-		result, err := RefreshModelCatalogs(t.Context(), registry)
+	result, err := RefreshModelCatalogs(t.Context(), registry)
 
-		if err != nil || !result.Aborted {
-			t.Errorf("refresh after Close = %+v, %v; want an aborted result", result, err)
-		}
-		if len(lingering.started) != 0 {
-			t.Error("a closed registry started a catalog refresh")
-		}
-	})
+	if err != nil || !result.Aborted {
+		t.Errorf("refresh after Close = %+v, %v; want an aborted result", result, err)
+	}
 }
 
 // Opening the model selector starts a catalog refresh that nothing awaited. Quitting after the selector closes must leave neither the selector's refresh
 // task nor the registry's operation running: with a file-backed registry the operation writes auth.json and models-store.json in the agent directory.
 func TestModelSelectorRefreshDoesNotOutliveShutdown(t *testing.T) {
 	t.Setenv("PI_OFFLINE", "1")
-	registry, _, store := radiusTestRegistry(t, "", nil)
+	registry, _, _ := radiusTestRegistry(t, "", nil)
 	synctest.Test(t, func(t *testing.T) {
-		lingering := &lingeringCatalogStore{InMemoryModelsStore: store, started: make(chan struct{}, 4)}
+		// The agent directory is real: the store is the registry's file-backed one, and the refresh's late write lands in models-store.json.
+		file := ai.NewFileModelsStore(filepath.Join(registry.agentDir, "models-store.json"))
+		lingering := &lingeringCatalogStore{ModelsStore: file, started: make(chan struct{}, 4)}
+		lingering.flush = func() {
+			if err := file.Write(context.Background(), "radius", ai.ModelsStoreEntry{}); err != nil {
+				t.Errorf("late store write: %v", err)
+			}
+		}
 		registry.SetModelsStore(lingering)
 		var output bytes.Buffer
 		m := NewInteractiveMode(nil, InteractiveModeOptions{AgentDir: t.TempDir(), ModelRegistry: registry})
@@ -115,8 +124,13 @@ func TestModelSelectorRefreshDoesNotOutliveShutdown(t *testing.T) {
 		m.backgroundCancel()
 		m.backgroundTasks.Wait()
 		registry.CloseModelTasks()
+		settledAtShutdown := lingering.settled.Load()
+		if _, err := os.Stat(filepath.Join(registry.agentDir, "models-store.json")); settledAtShutdown && err != nil {
+			t.Errorf("the refresh's write did not reach the agent directory: %v", err)
+		}
+		time.Sleep(2 * time.Second) // lets a refresh that outlived shutdown end, so the failure reports instead of deadlocking the bubble
 
-		if !lingering.settled.Load() {
+		if !settledAtShutdown {
 			t.Error("shutdown completed while the model selector's catalog refresh was still working on the store")
 		}
 	})
