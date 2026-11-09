@@ -181,7 +181,7 @@ func (c *Workers) Build() WorkersBuilt {
 func (c *Workers) startBuild() {
 	c.buildOnce.Do(func() {
 		//portlint:allow golifetime the build is shared by every waiter and ends with the copy of the entry, which cannot be cancelled (a read of a program on a slow or stalled file system); Close does not wait for it and what it finishes after the close is dropped, as upstream's
-		go func() {
+		go func() { //portlint:allow asyncorder Pi's `#built()` is one shared Promise: its ordering point is buildDone, closed once the outcome is stored, which Build and awaitBuild wait on
 			built := WorkersBuilt{}
 			found, staged, err := c.stageBase("")
 			if err == nil {
