@@ -1,5 +1,7 @@
 package tui
 
+// Ports packages/chord/src/tui/terminal.ts
+
 import (
 	"io"
 	"os"

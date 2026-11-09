@@ -3560,13 +3560,8 @@
  "packages/coding-agent/src/extensions/mcp/oauth.ts": [
   {
    "file": "coding/mcpext/oauth.go",
-   "old": "challengeScope = oauth.StepUpScope(grantedScope, challengeScope)",
-   "new": "challengeScope = oauth.StepUpScope(grantedScope[:0], challengeScope)"
-  },
-  {
-   "file": "coding/mcpext/oauth.go",
-   "old": "\tif challenge.Error == \"insufficient_scope\" {\n\t\treturn oauth.NewMcpOAuthAuthorizationRequiredError()",
-   "new": "\tif challenge.Error == \"insufficient_scope_\" {\n\t\treturn oauth.NewMcpOAuthAuthorizationRequiredError()"
+   "old": "\tif strings.TrimFunc(content, isJSWhitespace) == \"\" {\n",
+   "new": "\tif strings.TrimFunc(content, isJSWhitespace) != \"\" {\n"
   }
  ],
  "packages/coding-agent/src/extensions/mcp/resources.ts": [
@@ -3579,8 +3574,8 @@
  "packages/coding-agent/src/extensions/mcp/tools.ts": [
   {
    "file": "coding/mcpext/tools.go",
-   "old": "maxToolNameLength-len(hash)-1",
-   "new": "maxToolNameLength-len(hash)"
+   "old": "\tif len(trimmed) == 0 {\n",
+   "new": "\tif len(trimmed) != 0 {\n"
   }
  ],
  "packages/coding-agent/src/extensions/mcp/ui.ts": [
@@ -6220,6 +6215,167 @@
    "file": "chord/next/surfaces/surfaces_client.go",
    "old": "\t\toptions.OnError(ClientError{Kind: ClientPluginsError, Failed: report.Failed})\n\t}\n\tleft := map",
    "new": "\t}\n\tleft := map"
+  }
+ ],
+ "packages/chord/src/telemetry-ingest/batch.ts": [
+  {
+   "file": "chord/next/telemetryingest/batch.go",
+   "old": "\t\t\"additionalProperties\", false,\n",
+   "new": "\t\t\"additionalProperties\", true,\n"
+  }
+ ],
+ "packages/mcp/src/transports/lines.ts": [
+  {
+   "file": "mcp/lines.go",
+   "old": "\t\tif len(bytes.TrimFunc(line, jsstring.IsSpace)) == 0 {\n",
+   "new": "\t\tif len(bytes.TrimFunc(line, jsstring.IsSpace)) != 0 {\n"
+  }
+ ],
+ "packages/chord/src/telemetry-ingest/sender.ts": [
+  {
+   "file": "chord/next/telemetryingest/sender.go",
+   "old": "\t\twaiting: func(bool) bool { return recorder.QueuedSpans() > 0 },\n",
+   "new": "\t\twaiting: func(bool) bool { return recorder.QueuedSpans() >= 0 },\n"
+  }
+ ],
+ "packages/chord/src/node/app/tar.ts": [
+  {
+   "file": "chord/nextnode/app/tar.go",
+   "old": "\t\tif _, err := dst.Write(header); err != nil {\n",
+   "new": "\t\tif _, err := dst.Write(header); err == nil {\n"
+  }
+ ],
+ "packages/coding-agent/src/cli/auth-logout.ts": [
+  {
+   "file": "coding/cli/auth_logout.go",
+   "old": "\tif len(args) == 0 || strings.HasPrefix(args[0], \"-\") || len(args) > 1 {\n",
+   "new": "\tif len(args) != 0 || strings.HasPrefix(args[0], \"-\") || len(args) > 1 {\n"
+  }
+ ],
+ "packages/chord/src/node/app/uploads.ts": [
+  {
+   "file": "chord/nextnode/app/uploads.go",
+   "old": "\t\t\treturn id, true\n",
+   "new": "\t\t\treturn id, false\n"
+  }
+ ],
+ "packages/env/daemon/src/process.rs": [
+  {
+   "file": "env/daemon/process.go",
+   "old": "\tif status, ok := state.Sys().(syscall.WaitStatus); ok && status.Signaled() {\n",
+   "new": "\tif status, ok := state.Sys().(syscall.WaitStatus); ok || status.Signaled() {\n"
+  }
+ ],
+ "packages/chord/src/node/app/owner.ts": [
+  {
+   "file": "chord/nextnode/app/owner.go",
+   "old": "\tl.hash, l.has = HashToken(token), true\n",
+   "new": "\tl.hash, l.has = HashToken(token), false\n"
+  }
+ ],
+ "packages/chord/src/telemetry-ingest/facet.ts": [
+  {
+   "file": "chord/next/telemetryingest/facet.go",
+   "old": "\t\t}, host.ServeOptions{Untraced: true}); err != nil {\n",
+   "new": "\t\t}, host.ServeOptions{Untraced: true}); err == nil {\n"
+  }
+ ],
+ "packages/chord/src/node/app/secrets.ts": [
+  {
+   "file": "chord/nextnode/app/secrets.go",
+   "old": "\tif len(bytes) > 0 {\n",
+   "new": "\tif len(bytes) >= 0 {\n"
+  }
+ ],
+ "packages/coding-agent/src/core/provider-matching.ts": [
+  {
+   "file": "internal/codingagent/provider_matching.go",
+   "old": "\tif normalized == \"\" {\n",
+   "new": "\tif normalized != \"\" {\n"
+  }
+ ],
+ "packages/chord/src/node/app/blobs.ts": [
+  {
+   "file": "chord/nextnode/app/blobs.go",
+   "old": "\tif err := blobs.Prepare(); err != nil {\n",
+   "new": "\tif err := blobs.Prepare(); err == nil {\n"
+  }
+ ],
+ "packages/chord/src/host/old-work.ts": [
+  {
+   "file": "chord/next/host/host_old_work.go",
+   "old": "\tif w.count == 0 {\n",
+   "new": "\tif w.count != 0 {\n"
+  }
+ ],
+ "packages/chord/src/surfaces/preference.ts": [
+  {
+   "file": "chord/next/surfaces/surfaces_preference.go",
+   "old": "\t\tPersist: true,\n",
+   "new": "\t\tPersist: false,\n"
+  }
+ ],
+ "packages/durable/src/storage/sqlite/rows.ts": [
+  {
+   "file": "durable/storage/sqlite/commit.go",
+   "old": "\tif record.RetiredAt != nil {\n",
+   "new": "\tif record.RetiredAt == nil {\n"
+  }
+ ],
+ "packages/coding-agent/src/utils/terminal-question.ts": [
+  {
+   "file": "internal/terminalquestion/terminalquestion.go",
+   "old": "\tif ctx.Err() != nil {\n",
+   "new": "\tif ctx.Err() == nil {\n"
+  }
+ ],
+ "packages/chord/src/node/app/pairing.ts": [
+  {
+   "file": "chord/nextnode/app/pairing.go",
+   "old": "\tp.token, p.approved = token, true\n",
+   "new": "\tp.token, p.approved = token, false\n"
+  }
+ ],
+ "packages/chord/src/node/app/ephemeral-sessions.ts": [
+  {
+   "file": "chord/nextnode/app/ephemeral_sessions.go",
+   "old": "\tif grace == 0 {\n",
+   "new": "\tif grace != 0 {\n"
+  }
+ ],
+ "packages/chord/src/host/readiness.ts": [
+  {
+   "file": "chord/next/host/host_readiness.go",
+   "old": "\t\tif each.kind == requestType {\n",
+   "new": "\t\tif each.kind != requestType {\n"
+  }
+ ],
+ "packages/durable/src/storage/sqlite/commit.ts": [
+  {
+   "file": "durable/storage/sqlite/commit.go",
+   "old": "\tif record.RetiredAt != nil {\n",
+   "new": "\tif record.RetiredAt == nil {\n"
+  }
+ ],
+ "packages/durable/src/storage/sqlite/statements.ts": [
+  {
+   "file": "durable/storage/sqlite/statements.go",
+   "old": "\tif width < 2 {\n",
+   "new": "\tif width <= 2 {\n"
+  }
+ ],
+ "packages/chord/src/node/plugins/css-modules.ts": [
+  {
+   "file": "chord/nextnode/plugins/build/build_cssmodules.go",
+   "old": "\tif evaluator == nil {\n",
+   "new": "\tif evaluator != nil {\n"
+  }
+ ],
+ "packages/chord/src/telemetry-sqlite/schema.ts": [
+  {
+   "file": "chord/telemetrysqlite/schema.go",
+   "old": "\tif len(tables) == 0 {\n",
+   "new": "\tif len(tables) != 0 {\n"
   }
  ]
 }

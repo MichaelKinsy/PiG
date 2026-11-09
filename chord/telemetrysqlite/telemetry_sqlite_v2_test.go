@@ -1,5 +1,7 @@
 package telemetrysqlite
 
+// pi: packages/chord/src/telemetry-sqlite/schema.ts
+
 // Ports packages/chord/test/telemetry-sqlite.test.ts (the slice 9 additions) and telemetry-sqlite-node.test.ts at Pi main
 // c23b9ec1: span times in whole microseconds, a version 1 store migrated, ingested spans and metric rows, and the
 // read-only store.

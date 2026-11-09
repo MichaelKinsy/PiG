@@ -1,5 +1,7 @@
 package build
 
+// Ports packages/chord/src/node/plugins/base-inputs.ts
+
 import (
 	"maps"
 	"os"

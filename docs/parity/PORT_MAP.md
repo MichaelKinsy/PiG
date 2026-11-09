@@ -327,7 +327,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/ai/src/providers/meta.ts` | `ai/provider_constructors.go` (MetaProvider: id, name, base URL, META_API_KEY auth, Muse subscription OAuth, openai-responses catalog; TestMetaCatalogMatchesPinnedProviderDefinition, TestBuiltinProviderAuthMetaAndRadiusMethods and the pinned module comparison TestBuiltinProvidersMatchPinnedProviderModules) | ✅ |
 | `packages/ai/src/providers/opencode-headers.ts` | `ai/opencode_headers.go` (WithOpenCodeSessionHeader: x-opencode-session from StreamOptions.SessionID for stream and streamSimple, case-insensitive caller override incl. null; opencode-provider-headers.test.ts cases: TestWithOpenCodeSessionHeaderPiCases, TestWithOpenCodeSessionHeaderLikeUpstream; the coding-agent model path adds the same header in its request-options wrapper, TestOpenCodeSessionHeaderMapsSessionIDWithoutCacheRetention) | ✅ |
 | `packages/ai/src/providers/qwen-token-plan-individual.models.ts` | `ai/models_generated.go (0.87.1 catalog shard; qwen-token-plan-models.test.ts cases: TestQwenTokenPlanIndividualExposesExactlyDocumentedTextModels, TestQwenTokenPlanExposesTextModelsAndOmitsImageModels)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
-| `packages/ai/src/providers/qwen-token-plan-individual-cn.models.ts` | `ai/models_generated.go (Pi main c23b9ec1 catalog shard; qwen-token-plan-models.test.ts case: TestQwenTokenPlanIndividualCnExposesExactlyDocumentedTextModels)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/qwen-token-plan-individual-cn.models.ts` | `ai/models_generated.go (Pi main c23b9ec1 catalog shard; qwen-token-plan-models.test.ts case: TestQwenTokenPlanIndividualCnExposesExactlyDocumentedTextModels)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/provider_catalogs.go` | ✅ |
 | `packages/ai/src/providers/qwen-token-plan-individual.ts` | `ai/provider_constructors.go` (QwenTokenPlanIndividualProvider: id, name, base URL, QWEN_TOKEN_PLAN_API_KEY auth, openai-completions catalog; qwen-token-plan-models.test.ts cases: TestQwenTokenPlanIndividualExposesExactlyDocumentedTextModels, TestQwenTokenPlanExposesTextModelsAndOmitsImageModels, and the pinned module comparison TestBuiltinProvidersMatchPinnedProviderModules) | ✅ |
 | `packages/ai/src/providers/qwen-token-plan-individual-cn.ts` | `ai/provider_constructors.go` (QwenTokenPlanIndividualCnProvider: id, name, base URL, QWEN_TOKEN_PLAN_CN_API_KEY auth, openai-completions catalog; qwen-token-plan-models.test.ts cases: TestQwenTokenPlanIndividualCnExposesExactlyDocumentedTextModels, TestEnvAPIKeysQwenIndividualCnUsesChinaTokenPlanVariable) | ✅ |
 | `packages/ai/src/providers/radius.models.ts` | `ai/models_generated.go (0.87.1 radius shard, served for the default gateway by the radius provider: ai/registry_test.go TestRuntimeDiscoveryIncludesRadiusCatalog, ai/radius_test.go TestRadiusProviderShipsPublicCatalogForDefaultGateway)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
@@ -797,14 +797,14 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/link/ipc.ts` | `chord/next/link/ipc.go` | ✅ |
 | `packages/chord/src/link/link.ts` | `chord/next/link/link.go` | ✅ |
 | `packages/chord/src/link/message.ts` | `chord/next/link/message.go` | ✅ |
-| `packages/chord/src/link/part.ts` | `chord/next/link/part.go` | ✅ |
+| `packages/chord/src/link/part.ts` | `chord/next/link/part.go`, `chord/nextnode/compression.go` | ✅ |
 | `packages/chord/src/link/text.ts` | `chord/next/link/text.go` | ✅ |
 | `packages/chord/src/link/values.ts` | `chord/next/link/values.go` | ✅ |
 | `packages/chord/src/link/websocket.ts` | `chord/next/link/websocket.go` | ✅ |
 | `packages/chord/src/store/table-writes.ts` | `chord/next/store/table_writes.go` | ✅ |
 | `packages/chord/src/store/table-changes.ts` | `chord/next/store/table_changes.go` | ✅ |
 | `packages/chord/src/store/table-handle.ts` | `chord/next/store/table_handle.go` | ✅ |
-| `packages/chord/src/store/engine.ts` | `chord/next/store/engine.go` | ✅ |
+| `packages/chord/src/store/engine.ts` | `chord/next/store/engine.go`, `durable/types.go` | ✅ |
 | `packages/chord/src/store/outbox.ts` | `chord/next/store/outbox.go` | ✅ |
 | `packages/chord/src/store/store.ts` | `chord/next/store/store.go (group commit S18 as enlist/runGroup; Pi's d7704516e int() key typing is TypeScript typing: designed out)` | ✅ |
 | `packages/chord/src/store/applier.ts` | `chord/next/store/applier.go` | ✅ |
@@ -936,16 +936,16 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/node/http/index.ts` | `(barrel: Go imports the package; exported names are those of Pi's index.ts, the rest is unexported)` | n/a |
 | `packages/chord/src/node/http/node.ts` | `chord/nextnode/http/node.go, chord/nextnode/http/url.go` | 🟡 |
 | `packages/chord/src/node/http/request.ts` | `chord/nextnode/http/request.go` | ✅ |
-| `packages/chord/src/node/http/response.ts` | `chord/nextnode/http/response.go, chord/nextnode/http/statuscodes.go` | ✅ |
+| `packages/chord/src/node/http/response.ts` | `chord/nextnode/http/response.go` | ✅ |
 | `packages/chord/src/node/http/router.ts` | `chord/nextnode/http/router.go` | ✅ |
 | `packages/chord/src/node/http/upgrades.ts` | `chord/nextnode/http/upgrades.go, chord/nextnode/http/websocket.go` | ✅ |
-| `packages/chord/src/node/plugins/build.ts` | `chord/nextnode/plugins/build/build_facet.go (scoped CSS modules through ScopeCSSModule, url() assets of stylesheets in a browser build), chord/nextnode/plugins/build/build_sourcemap.go` | ✅ |
+| `packages/chord/src/node/plugins/build.ts` | `chord/nextnode/plugins/build/build_facet.go (scoped CSS modules through ScopeCSSModule, url() assets of stylesheets in a browser build), chord/nextnode/plugins/build/build_sourcemap.go`, `chord/nextnode/plugins/model/model_built.go` | ✅ |
 | `packages/chord/src/node/plugins/discover.ts` | `chord/nextnode/plugins/model/model_discover.go` | ✅ |
-| `packages/chord/src/node/plugins/evaluate.ts` | `chord/nextnode/plugins/plugins_runtime.go; chord/nextnode/plugins/plugins_pluginfile.go (pluginFile outside a facet script); Pi's file runs verbatim in the Node subprocess: chord/nextnode/plugins/node/pi/chord/src/node/plugins/evaluate.ts, node/host.mjs` | ✅ |
+| `packages/chord/src/node/plugins/evaluate.ts` | `chord/nextnode/plugins/plugins_pluginfile.go (pluginFile outside a facet script); Pi's file runs verbatim in the Node subprocess: chord/nextnode/plugins/node/pi/chord/src/node/plugins/evaluate.ts, node/host.mjs` | ✅ |
 | `packages/chord/src/node/plugins/index.ts` | `(barrel: Go imports the package)` | n/a |
 | `packages/chord/src/node/plugins/install.ts` | `chord/nextnode/plugins/plugins_install.go` | ✅ |
 | `packages/chord/src/node/plugins/plugins.ts` | `chord/nextnode/plugins/plugins_plugins.go (Plugins.WatchBase)` | ✅ |
-| `packages/chord/src/node/plugins/runtime.ts` | `chord/nextnode/plugins/plugins_runtime.go, chord/nextnode/plugins/plugins_node.go; Pi's file runs verbatim in the Node subprocess: chord/nextnode/plugins/node/pi/chord/src/node/plugins/runtime.ts` | ✅ |
+| `packages/chord/src/node/plugins/runtime.ts` | `chord/nextnode/plugins/plugins_runtime.go; Pi's file runs verbatim in the Node subprocess: chord/nextnode/plugins/node/pi/chord/src/node/plugins/runtime.ts` | ✅ |
 | `packages/chord/src/node/plugins/stack.ts` | `Pi's file runs verbatim in the Node subprocess: chord/nextnode/plugins/node/pi/chord/src/node/plugins/stack.ts; Go sees *NodeError.Stack (chord/nextnode/plugins/plugins_node.go)` | ✅ |
 | `packages/chord/src/node/plugins/watcher.ts` | `chord/nextnode/plugins/plugins_watcher.go (base marks: recordBase/recordOwn, locations and ancestors watched alone, comparisons by at most 8 goroutines; an entry on the way to base code is renewed on a Create, Remove or Rename event only when its identity (inode and birth time: plugins_watcher_identity*.go, as Pi's `identityOf`) is not the one it had when watched; a watch fsnotify dropped with a move is put back without a comparison; the start reads entry types from ReadDir and hashes on at most 8 goroutines; D540 records the inode-only identity of other Unixes)` | ✅ |
 | `packages/chord/src/host/adapted.ts` | `chord/next/host/host_adapted.go` | ✅ |
@@ -957,13 +957,13 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/node/workers/lock.ts` | `chord/nextnode/workers/workers_lock.go, workers_lock_unix.go` (the Windows named-pipe variant workers_lock_windows is built only on Windows and is run by the native Windows CI job) | ✅ |
 | `packages/chord/src/node/workers/main.ts` | `chord/nextnode/workers/workers_main.go` | ✅ |
 | `packages/chord/src/node/workers/process.ts` | `chord/nextnode/workers/workers_process.go, workers_process_unix.go, workers_channel.go, workers_channel_unix.go` (the Windows variants workers_process_windows and workers_channel_windows are built only on Windows and are run by the native Windows CI job) | ✅ |
-| `packages/chord/src/node/workers/workers.ts` | `chord/nextnode/workers/workers_workers.go, workers_outcome.go` | ✅ |
+| `packages/chord/src/node/workers/workers.ts` | `chord/nextnode/workers/workers_workers.go` | ✅ |
 | `packages/chord/src/host/old-work.ts` | `chord/next/host/host_old_work.go` | ✅ |
 | `packages/chord/src/host/readiness.ts` | `chord/next/host/host_readiness.go` | ✅ |
 | `packages/chord/src/host/reload-cycle.ts` | `chord/next/host/host_reload_cycle.go` | ✅ |
 | `packages/chord/src/host/unbound-clock.ts` | `chord/next/host/host_unbound_clock.go` | ✅ |
-| `packages/chord/src/node/app/app.ts` | `chord/nextnode/app/app.go` | ✅ |
-| `packages/chord/src/node/app/archive.ts` | `chord/nextnode/app/archive.go` | ✅ |
+| `packages/chord/src/node/app/app.ts` | `chord/nextnode/app/app.go`, `chord/nextnode/plugins/model/model_built.go` | ✅ |
+| `packages/chord/src/node/app/archive.ts` | `chord/nextnode/app/archive.go`, `chord/next/store/archive.go` | ✅ |
 | `packages/chord/src/node/app/blobs.ts` | `chord/nextnode/app/blobs.go` | ✅ |
 | `packages/chord/src/node/app/data.ts` | `chord/nextnode/app/data.go, host_data.mjs` | ✅ |
 | `packages/chord/src/node/app/ephemeral-sessions.ts` | `chord/nextnode/app/ephemeral_sessions.go` | ✅ |
@@ -1008,7 +1008,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/react/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
 | `packages/chord/src/react/stores.ts` | `chord/nextnode/surfaces/client/pi/chord/src/react/stores.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/store/live-query.ts` | `chord/next/store/live_query.go (D431)` | ✅ |
-| `packages/chord/src/surfaces/active-language.ts` | `chord/next/surfaces/surfaces_active_language.go` | ✅ |
+| `packages/chord/src/surfaces/active-language.ts` | `chord/next/surfaces/surfaces_active_language.go`, `chord/next/surfaces/surfaces_page_state.go` | ✅ |
 | `packages/chord/src/surfaces/active-theme.ts` | `chord/next/surfaces/surfaces_active_theme.go` | ✅ |
 | `packages/chord/src/surfaces/client.ts` | `chord/next/surfaces/surfaces_client.go` | ✅ |
 | `packages/chord/src/surfaces/connection.ts` | `chord/next/surfaces/surfaces_connection.go` | ✅ |
@@ -1045,10 +1045,10 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/tui/channel.ts` | `chord/nextnode/surfaces/client/pi/chord/src/tui/channel.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/tui/frames.ts` | `chord/nextnode/surfaces/client/pi/chord/src/tui/frames.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/tui/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
-| `packages/chord/src/tui/runtime.ts` | `chord/nextnode/surfaces/client/pi/chord/src/tui/runtime.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
+| `packages/chord/src/tui/runtime.ts` | `chord/nextnode/surfaces/client/pi/chord/src/tui/runtime.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go), `chord/nextnode/tui/tui_actions.go` | ✅ |
 | `packages/chord/src/tui/scope.ts` | `chord/next/tui/tui_scope.go` | ✅ |
 | `packages/chord/src/tui/terminal.ts` | `chord/nextnode/tui/tui_terminal.go`, `chord/nextnode/surfaces/client/pi/chord/src/tui/terminal.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
-| `packages/chord/src/tui/theme.ts` | `chord/nextnode/surfaces/client/pi/chord/src/tui/theme.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
+| `packages/chord/src/tui/theme.ts` | `chord/nextnode/surfaces/client/pi/chord/src/tui/theme.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go), `chord/next/tui/tui_theme.go` | ✅ |
 | `packages/chord/src/web/environment.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/environment.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/web/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
 | `packages/chord/src/web/language.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/language.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
@@ -1282,8 +1282,8 @@ The daemon is a Go program with Pi's command line and wire protocol (D96); the R
 
 | Upstream | PiG | Status |
 |---|---|---|
-| `packages/telemetry/src/index.ts` | `telemetry/context.go + telemetry/schema.go + telemetry/store.go + chord/telemetrysqlite/index.go (SqliteTelemetry, the TelemetryStore the package implements)` | ✅ |
-| `packages/telemetry/src/memory.ts` | `telemetry/memory.go` | ✅ |
+| `packages/telemetry/src/index.ts` | `telemetry/context.go + telemetry/schema.go + telemetry/store.go + chord/telemetrysqlite/index.go (SqliteTelemetry, the TelemetryStore the package implements)`, `chord/telemetrysqlite/node.go` | ✅ |
+| `packages/telemetry/src/memory.ts` | `telemetry/memory.go`, `telemetry/memory_now.go` | ✅ |
 | `packages/telemetry/src/metrics.ts` | `telemetry/metrics.go` | ✅ |
 | `packages/telemetry/src/noop.ts` | `telemetry/context.go` | ✅ |
 | `packages/telemetry/src/testing/conformance.ts` | `telemetry/telemetrytest/conformance.go` | ✅ |

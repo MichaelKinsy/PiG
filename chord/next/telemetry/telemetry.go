@@ -12,6 +12,8 @@
 //     once, and it is collected with the host.
 package telemetry
 
+// Ports packages/chord/src/telemetry.ts
+
 import (
 	"context"
 	"fmt"
