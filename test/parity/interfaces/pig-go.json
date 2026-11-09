@@ -328737,9 +328737,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(width int, childLines []string, bgSample string) bool"
+        "type": "func(width int, childLines []string, hasBg bool, bgSample string) bool"
       },
-      "shapeHash": "sha256:1341099cd88843b5a61de0c2ddefc26c4762ffe3dd3dc6765a570516d962bff6"
+      "shapeHash": "sha256:878868d5d4b6d894940642bfcabec50aa075a7894d402a18a3543700b076243f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#Box.notifyOwner",
@@ -328968,9 +328968,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(width int, childLines []string, bgSample string) bool"
+        "type": "func(width int, childLines []string, hasBg bool, bgSample string) bool"
       },
-      "shapeHash": "sha256:1341099cd88843b5a61de0c2ddefc26c4762ffe3dd3dc6765a570516d962bff6"
+      "shapeHash": "sha256:878868d5d4b6d894940642bfcabec50aa075a7894d402a18a3543700b076243f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#BranchSummaryMessageComponent.notifyOwner",
@@ -330013,9 +330013,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(width int, childLines []string, bgSample string) bool"
+        "type": "func(width int, childLines []string, hasBg bool, bgSample string) bool"
       },
-      "shapeHash": "sha256:1341099cd88843b5a61de0c2ddefc26c4762ffe3dd3dc6765a570516d962bff6"
+      "shapeHash": "sha256:878868d5d4b6d894940642bfcabec50aa075a7894d402a18a3543700b076243f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#CompactionSummaryMessageComponent.notifyOwner",
@@ -350385,9 +350385,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(width int, childLines []string, bgSample string) bool"
+        "type": "func(width int, childLines []string, hasBg bool, bgSample string) bool"
       },
-      "shapeHash": "sha256:1341099cd88843b5a61de0c2ddefc26c4762ffe3dd3dc6765a570516d962bff6"
+      "shapeHash": "sha256:878868d5d4b6d894940642bfcabec50aa075a7894d402a18a3543700b076243f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#SkillInvocationMessageComponent.notifyOwner",
