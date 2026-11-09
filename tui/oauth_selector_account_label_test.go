@@ -32,7 +32,8 @@ func TestOAuthSelectorLabelsNonSubscriptionOAuthAsAccount(t *testing.T) {
 				{ID: "radius", Name: "Radius", AuthType: "api_key", Subscription: tc.subscription, Status: testAuthCheck{"oauth", ""}},
 			}, nil, nil)
 			text := stripANSI(strings.Join(selector.Render(100), "\n"))
-			if !strings.Contains(text, "Radius ["+tc.want+"]") {
+			// Radius is a preferred partner, so its rows carry the ✦ marker before the auth-type label (Pi 683a7a868).
+			if !strings.Contains(text, "Radius ✦ ["+tc.want+"]") {
 				t.Fatalf("OAuth row label is not [%s]:\n%s", tc.want, text)
 			}
 			if !strings.Contains(text, tc.want+" configured") {
