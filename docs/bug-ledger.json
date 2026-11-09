@@ -13869,6 +13869,28 @@
       "tests": []
     },
     {
+      "id": "BF-606a74f",
+      "title": "`TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits` no longer counts the probe's own module as a write on…",
+      "symptom": "`TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits` no longer counts the probe's own module as a write on the exit path: the host replies to a load before it writes the load's cache entries, so the test now waits for that write with one more request, and its probe loads 300 modules so a count that did not wait fails on every run.",
+      "rootCause": "#426 Linux test-fast (job 129105350415): TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits, \"the compile cache has 16 entries before the process exited and 17 after\". A count taken right after Load, on a loaded machine, precedes that write and reads it as an exit-path write. (a cherry-pick of) lacked pi-main's barrier.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits` no longer counts the probe's own module as a write on the exit path: the host replies to a load before it writes the load's cache entries, so the test now waits for that write with one more request, and its probe loads 300 modules so a count that did not wait fails on every run. The host's comment states what its exit can still write (modules a plugin's call compiled after the last load or reload).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "606a74fefd",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_node_test.go::TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits"
+      ]
+    },
+    {
       "id": "BF-609d2bd",
       "title": "fix(photonimage): decode DDS (DXT1, DXT3, DXT5) as Photon does",
       "symptom": "fix(photonimage): decode DDS (DXT1, DXT3, DXT5) as Photon does",
@@ -41076,6 +41098,28 @@
       "tests": [
         "coding/cli/print_prompt_end_binary_test.go::TestPrintInputCallbackRunsDuringTheRun",
         "coding/extension/host/subprocess/runtime_node_run_beginning_test.go::TestNodeRunBeginningRunsTheInputsImmediateBeforeTheFramesReadWithIt"
+      ]
+    },
+    {
+      "id": "BF-e57eef0",
+      "title": "The RPC usage probe that checks Pi's stdout ordering no longer dies on an unhandled `write EPIPE` when the…",
+      "symptom": "The RPC usage probe that checks Pi's stdout ordering no longer dies on an unhandled `write EPIPE` when the CLI under test stops reading its stdin before the probe sends the prompt; it reports that the CLI wrote no frame, and any other failure to write the prompt still fails it.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The RPC usage probe that checks Pi's stdout ordering no longer dies on an unhandled `write EPIPE` when the CLI under test stops reading its stdin before the probe sends the prompt; it reports that the CLI wrote no frame, and any other failure to write the prompt still fails it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e57eef0e6d",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "coding/cli/stdout_backpressure_test.go::TestRPCUsageProbeFailsWhenTheCLIWritesNoFrame"
       ]
     },
     {
