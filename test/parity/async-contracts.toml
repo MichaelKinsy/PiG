@@ -23,10 +23,10 @@ rationale = "`(not needed: no TS proxy)`. Delta at Pi d0aa218c: f715a15c1 moves 
 
 [[files]]
 path = "packages/agent/src/types.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "microtask-ordering"]
+evidence = ["test:agent/tool_settle_test.go#TestParallelToolEndsFollowTheOrderTheToolsSettle", "test:agent/tool_settle_test.go#TestParallelToolHooksStartInTheOrderTheToolsSettle", "test:agent/tool_settle_test.go#TestAToolHookThatStartedDoesNotHoldBackTheNextCallsHook", "test:agent/steering_test.go#TestSteering_MessageInjectedAfterToolExecution", "test:agent/steering_test.go#TestFollowUp_ProcessedAfterAgentStops", "test:agent/steering_test.go#TestSteering_PriorityOverFollowUp", "test:agent/lifecycle_upstream_test.go#TestAgent_HandlesAbortController", "test:agent/lifecycle_upstream_test.go#TestAgent_PassesActiveAbortSignalToSubscribers", "test:agent/prepare_next_turn_error_test.go#TestPrepareNextTurnRejectionFinalizesFailedAssistant", "test:agent/tool_call_hook_func_upstream_test.go#TestRunToolCallFuncHooksValidateRunAndReportFailures", "test:agent/transform_context_snapshot_test.go#TestTransformContextAssignedDuringARunAppliesToTheNextRun", "test:agent/abort_events_test.go#TestAbortedRunDeliversTerminalEvents", "test:agent/abort_events_test.go#TestCancelledStreamStartEndsAborted"]
+rationale = "Declarations of the callbacks the agent loop awaits, which is where the file's Promise contract lives: streamFn may return a stream or a Promise of one (:37); getApiKey may return a value or a Promise (:254); convertToLlm, transformContext(messages, signal) (:222, :244), the turn hooks (prepareNextTurn / finishTurn, :157, :188, :280), getSteeringMessages and getFollowUpMessages (:293, :306), beforeToolCall and afterToolCall (`(context, signal) => Promise<... | undefined>`, :326, :341) and a tool's execute(toolCallId, params, signal, onUpdate) (:498-500) are all awaited by the loop in source order at their call sites in agent-loop.ts: tool calls prepared in source order, executed concurrently with Promise.all, each hook awaited before the tool it guards, results emitted in the order the tools settle; the AbortSignal passed to each is the run's and an abort ends the run with terminal events. The file itself runs no async code; the loop's behaviour is the agent-loop.ts and agent.ts rows. Go agent/types.go declares these as blocking functions taking ctx (the signal) and returning (value, error), and the loop in agent/ calls them in the same order (a hook goroutine per started tool, joined before the results are emitted). The cited tests pin tool end and hook order by settle order, steering and follow-up queues, the abort signal reaching subscribers and handlers, a prepare-next-turn rejection finishing the assistant as failed, hook function validation and failure reporting, transformContext changes taking effect on the next run, and the terminal events of an aborted run."
 
 [[files]]
 path = "packages/ai/src/api/anthropic-messages.ts"
@@ -1743,10 +1743,10 @@ rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1;
 
 [[files]]
 path = "packages/coding-agent/src/core/compaction/branch-summarization.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:coding/session_branch_summary_upstream_test.go#TestBranchSummaryAgentStreamCancellation", "test:coding/session_branch_summary_upstream_test.go#TestBranchSummarizationUpstream", "test:coding/session_branch_summary_upstream_test.go#TestBranchSummaryRequestAuth", "test:coding/session_branch_summary_upstream_test.go#TestNavigateTreeSummaryOmitsFailedRetriedAttempt", "test:coding/session_tree_prompt_overlap_test.go#TestNavigationStartedFromSessionTreeKeepsItsOwnState"]
+rationale = "generateBranchSummary (:307-400) is one awaited call: it prepares the entries synchronously, then awaits completeSummarization(model, context, { apiKey, headers, env, signal }, streamFn, retry, callbacks) (the session stream function when given, retried through the configured retry policy), and maps the outcome: stopReason aborted returns { aborted: true } (the caller's AbortSignal ended the request), a summarization failure or a tool call returns { error }, otherwise the summary text with the read and modified files. The caller waits for the whole request; the abort signal is the AbortController navigateTree owns (see the agent-session.ts row), and an abort is a result, not a rejection. Go internal/codingagent/compaction/branch_summarization.go GenerateBranchSummary(ctx, ...) blocks on the same completion with ctx as the signal and returns the same three result shapes; the tests pin that the session's Agent stream (with its retry and attribution behaviour) is used, that its cancellation yields the aborted result, request auth, that a failed retried attempt is omitted from the summary, and that a navigation started from session_tree keeps its own controller."
 
 [[files]]
 path = "packages/coding-agent/src/core/compaction/compaction.ts"
@@ -1778,10 +1778,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`interna
 
 [[files]]
 path = "packages/coding-agent/src/core/extensions/loader.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "microtask-ordering"]
+evidence = ["test:coding/extension/factoryload/load_test.go#TestFailedFactoryDiscardsRuntimeChangesAndDisablesItsAPI", "test:coding/extension/factoryload/load_test.go#TestFailedFactoryKeepsAConcurrentlyLoadedProvider", "test:coding/extension/factoryload/load_test.go#TestFactoryPanicIsALoadError", "test:coding/extension/factoryload/own_thinking_runs_test.go#TestFactoryOwnsThinkingRunsAtLoadAndLater", "test:coding/extension/host/subprocess/load_time_actions_test.go#TestNodeActionsThrowDuringFactory", "test:coding/extension/host/subprocess/node_factory_failure_exit_order_test.go#TestNodeFactoryFailureOutranksTheProcessExit", "test:coding/extension/host/subprocess/reload_issue_diagnostics_test.go#TestReloadNodeFactoryDiagnosticMessages", "test:coding/extension/host/subprocess/reload_issue_diagnostics_test.go#TestReloadIssuePreservesFactoryLoadDiagnostic"]
+rationale = "Extensions load one after another: loadExtensionsInternal (:688-725) awaits loadExtension for each path in order, collecting an error string per failed extension instead of throwing, so one failing extension never stops the next and the result order is the path order. loadExtension (:646-672) awaits loadExtensionModule (the jiti loader and virtual-module promises are cached so concurrent loads share one import, :50-63, then `jiti.import(canonicalizePath(extensionPath), { default: true })`, :593) and initializeExtension (:625-645), which awaits the extension factory(load.api) with the runtime stubs installed: action methods called during loading throw `Extension runtime not initialized...`, and when the factory throws (or rejects) the extension's registrations are rolled back, its API is marked inactive (`Extension \"path\" failed to load and its API is no longer active.`) and the error is returned as that extension's load error. loadExtensionsCached shares one in-flight load per cache key. Delta at Pi c23b9ec1: the module path is canonicalized (symlinks resolved) before jiti.import, a synchronous change with no new await. Go coding/extension/factoryload.LoadExtensionFromFactory loads one factory per call, blocking until the factory returns (a failed or panicking factory discards its runtime changes, disables its API and is reported as that extension's error, while a provider loaded concurrently is kept) and the Node-side loader in coding/extension/host/subprocess (runtime-node/jiti-loader.mjs and runtime.mjs): action stubs throw during the factory, a factory failure outranks the process exit, and reload diagnostics keep the factory error. The cited tests pin those behaviours."
 
 [[files]]
 path = "packages/coding-agent/src/core/extensions/runner.ts"
@@ -1806,10 +1806,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`interna
 
 [[files]]
 path = "packages/coding-agent/src/core/model-config.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:internal/codingagent/model_refresh_regressions_upstream_test.go#TestModelsJSONHotReloadUpstream6999", "test:internal/codingagent/settings_file_diagnostics_test.go#TestModelsJSONParseErrorsMatchPi", "test:internal/codingagent/reload_trust_models_test.go#TestModelsJSONErrorIsShown", "test:internal/codingagent/model_config_prompt_cache_oracle_test.go#TestModelsJSONPromptCacheSchemaMatchesPi"]
+rationale = "ModelConfig.load (:169-205) is one awaited readFile of models.json followed by synchronous parsing and schema validation: a missing path or an ENOENT file returns an empty config, any other read failure, a JSON parse error and a schema error return a config carrying an error string (`Failed to load/parse models.json...`, `Invalid models.json schema:...`) instead of rejecting, so the caller always gets a value and shows the error; the caller waits for the file read and there is no concurrency, timer or cancellation. Go internal/codingagent/model_registry.go loads and validates the file synchronously with the same three error messages and the same empty config for a missing file; the tests pin the parse-error text, the error being shown by the reload, the schema, and the hot reload of the file."
 
 [[files]]
 path = "packages/coding-agent/src/core/model-registry.ts"
@@ -1890,10 +1890,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/
 
 [[files]]
 path = "packages/coding-agent/src/core/runtime-credentials.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "detached-owned"]
+evidence = ["test:ai/runtime_credentials_upstream_test.go#TestRuntimeCredentialsForwardsOperationSignalsUpstream", "test:ai/runtime_credentials_upstream_test.go#TestRuntimeCredentialsKeepsOverrideWhenDeletionCancelledUpstream", "test:ai/runtime_credentials_upstream_test.go#TestRuntimeCredentialsDeleteClearsOverrideAndStoredUpstream", "test:ai/runtime_credentials_upstream_test.go#TestRuntimeCredentialsOverridesMaskStoredWithoutPersistingUpstream", "test:ai/runtime_credentials_cancellation_test.go#TestRuntimeCredentialsPreservesCancellationCause", "test:ai/runtime_credentials_settled_test.go#TestRuntimeCredentialsSettledWaitsUntilPendingModificationsAreWritten", "test:ai/runtime_credentials_settled_test.go#TestRuntimeCredentialsSettledResolvesAfterAPendingModificationFails", "test:ai/runtime_credentials_settled_test.go#TestRuntimeCredentialsSettledIgnoresLaterModificationsAndHonoursCancellation"]
+rationale = "A credential store overlay with runtime API-key overrides. read, list and delete check the operation signal (`throwIfAborted`) before the store call, and list also after it, so a cancelled caller gets the abort reason and delete leaves the override when it was cancelled; delete awaits store.delete and only then drops the override. modify(providerId, fn, options) (:42-55) returns the store's own Promise to the caller unchanged and also tracks it: `pending` is the modification with both outcomes mapped to undefined, added to pendingModifications and removed by an intentionally unawaited `void pending.finally(...)`, so a rejected modification never becomes an unhandled rejection of the tracker. Delta at Pi c23b9ec1 (b2cb62923): settled() (:61-63) awaits Promise.all of the pending set, resolving once every modification started so far is written or failed (later ones are not waited for), so an exit does not lose an OAuth refresh that already spent the single-use refresh token. Go ai/runtime_credentials.go keeps `pending` as a channel per Modify that has not returned, closed on completion whatever the outcome, Settled(ctx) waits for the channels present when it was called and fails only with ctx's cancellation cause, and the operation contexts are checked at the same points. The tests pin the forwarded signals, the cancellation cause, the override kept when a delete is cancelled, and that Settled waits for pending writes, ignores later ones, survives a failed modification and honours cancellation."
 
 [[files]]
 path = "packages/coding-agent/src/core/sdk.ts"
@@ -1918,10 +1918,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`interna
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/bash.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "detached-owned"]
+evidence = ["test:internal/codingagent/tools/bash_test.go#TestBashKillsProcessGroupOnCancel", "test:internal/codingagent/tools/bash_test.go#TestBashAbortReturnsBufferedOutput", "test:internal/codingagent/tools/bash_test.go#TestBashTimeoutMessage", "test:internal/codingagent/tools/bash_test.go#TestBashTimeoutKeepsTheOutputWrittenBeforeTheKill", "test:internal/codingagent/tools/bash_test.go#TestBashStreamsLiveOutput", "test:internal/codingagent/tools/bash_test.go#TestBashRejectsOverlargeTimeout", "test:internal/codingagent/tools/bash_timeout_shell_exit_unix_test.go#TestBashTimeoutAfterShellExit11613", "test:internal/codingagent/tools/bash_late_output_test.go#TestFinishedShellOutputDoesNotRetainLateChunks", "test:internal/codingagent/tools/shell_tracked_test.go#TestKillTrackedDetachedChildrenKillsARunningBashCall", "test:internal/codingagent/tools/bash_background_test.go#TestBashTool_BackgroundChildKeepsResult", "test:internal/codingagent/tools/powershell_test.go#TestShellToolTimeoutAndAbortStatus"]
+rationale = "The local shell operation exec (:112-195) is awaited by the tool: it rejects at once with `aborted` if the signal is already aborted, checks the working directory (fsAccess) before spawning, tracks the detached child pid, arms a timeout timer and an abort listener that kill the process tree, awaits waitForChildProcess (which does not hang on inherited stdio held by detached descendants), and in finally untracks the pid, clears the timer and removes the listener; after the wait an aborted signal throws `aborted`, a timeout throws ShellTimeoutError, otherwise the exit code is returned, a signal-killed shell mapped to 128+signal. The tool's execute (:289-430) streams output through an accumulator with a throttled update timer (a setTimeout, cleared in finish), awaits ops.exec, then awaits finishOutput (closing the temp file) in every path, so the output captured before an abort or timeout is part of the error: `Command aborted`, `Command timed out after N seconds` and `Command terminated without an exit code` are appended to the text; the caller waits for the process and the cancellation is the signal into exec. Delta at Pi c23b9ec1: ShellTimeoutError (:100-107) now carries the shell's real exit code and the seconds after which it exited when the shell exited before the deadline but background processes kept writing until the timeout (#11613), and the status text appends `The shell exited with code N after S seconds, but background processes it started kept writing output until the timeout.`; the timeout path still ends the call with the same awaited finishOutput. Go internal/codingagent/tools/bash.go and bash_operations.go run the shell on a goroutine the call owns, kill the process group on context cancel or timeout, return the buffered output with the status line, track detached children for kill at exit, and the output holder stops retaining late chunks after the shell finished. The tests pin kill-on-cancel of the process group, buffered output returned on abort and kept across a timeout kill, the timeout message including the shell-exit-before-deadline case, live streaming, the timeout bound, background children, late output, and tracked detached children."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/edit-diff.ts"
@@ -1932,10 +1932,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`interna
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/edit.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:internal/codingagent/tools/mutation_queue_upstream_test.go#TestFileMutationQueueUpstream", "test:internal/codingagent/tools/mutation_queue_upstream_test.go#TestEditAbortAfterAccessDoesNotRead", "test:internal/codingagent/tools/file_tools_upstream_test.go#TestFileToolsAbort", "test:internal/codingagent/tools/mutation_queue_fifo_test.go#TestFileMutationQueue_FIFOAdmissionOrder", "test:internal/codingagent/tools/with_file_mutation_queue_test.go#TestWithFileMutationQueueSerializesSameFile", "test:internal/codingagent/tools/with_file_mutation_queue_test.go#TestWithFileMutationQueueRunsDifferentFilesInParallel", "test:internal/codingagent/tools/with_file_mutation_queue_test.go#TestWithFileMutationQueueSharesTheQueueWithEditAndWriteTools", "test:internal/codingagent/tools/process_mutation_queue_test.go#TestSeparatelyCreatedEditAndWriteToolsShareOneMutationQueue", "test:internal/codingagent/tools/edit_tool_oracle_test.go"]
+rationale = "execute (:154-215) returns withFileMutationQueue(absolutePath, async () => ...): edits of one file run one after another in admission order, different files in parallel, and the edit and write tools share one queue. Inside it every step is awaited in order with an abort check around each (`throwIfAborted` before access, after the access failure is classified, after access, after readFile, after the in-memory edit and after writeFile, :163-202): ops.access, ops.readFile, the edit applied in memory, ops.writeFile, then the diff; an abort throws `Operation aborted` at the next checkpoint (a write already started is not interrupted), and the queue slot is released in finally, so the next edit starts only after this one settled, with its result or its failure. Go internal/codingagent/tools/edit.go runs the same sequence with blocking operations and the same checkpoints inside the process-wide mutation queue (mutation_queue.go, FIFO admission, symlink aliases share a slot, a panicking callback still drains); TestEditAbortAfterAccessDoesNotRead pins that an abort after access never reads, TestFileToolsAbort the abort result, and the queue tests pin FIFO admission, same-file serialization, different-file parallelism and the shared queue of edit and write."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/file-mutation-queue.ts"
@@ -1946,24 +1946,24 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`interna
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/find.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:internal/codingagent/tools/find_operations_port_test.go#TestFindOperationsCancellationAndErrors", "test:internal/codingagent/tools/file_tools_upstream_test.go#TestFileToolsAbort", "test:internal/codingagent/tools/find_upstream_test.go", "test:internal/codingagent/tools/find_tool_oracle_test.go"]
+rationale = "execute (:80-330) wraps its work in `new Promise(...)` with an abort listener: an already-aborted signal rejects with `Operation aborted` before anything runs, and a later abort rejects at once (settle) while the async IIFE (:108) that does the work stops at its next checkpoint (`if (signal?.aborted)` after exists, glob and ensureTool(\"fd\"), before the final result, and in the catch). The work is awaited sequentially: ops.exists, then either the custom ops.glob or the fd search (ensureTool, the .git probes, the spawned fd whose output is collected) and the result text; the settle guard makes the first of result, error or abort win. The caller waits for the Promise, and the listener is removed in the cleanup. Go internal/codingagent/tools/find.go runs the search on the call's goroutine, checks the context at the same points and returns the cancellation error immediately; TestFindOperationsCancellationAndErrors pins cancellation and the error paths of the pluggable operations and TestFileToolsAbort the abort result."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/grep.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:internal/codingagent/tools/grep_upstream_test.go#TestGrep_PathNotFoundAndAbort", "test:internal/codingagent/tools/file_tools_upstream_test.go#TestFileToolsAbort", "test:internal/codingagent/tools/grep_operations_test.go", "test:internal/codingagent/tools/grep_event_test.go", "test:internal/codingagent/tools/grep_head_test.go"]
+rationale = "execute (:89-330) is a `new Promise` with an abort listener: an aborted signal rejects with `Operation aborted` before ensureTool(\"rg\") and the stat of the search path (`ops.isDirectory`), and a later abort (:194-198) sets `aborted`, kills the ripgrep child and settles with the rejection; ripgrep's --json events are parsed as they arrive and the result is formed when the child closes. Delta at Pi c23b9ec1: the ops.readFile operation and the async getFileLines/formatBlock helpers are gone, so the `close` handler (:272-321) is no longer async and no longer reads files after ripgrep exits to build context blocks: context lines now come from ripgrep's own output, so nothing is awaited between the child's close and the settle. The caller waits for the Promise; cancellation is the signal; the child is killed on abort and its output discarded. Go internal/codingagent/tools/grep.go, grep_event.go and grep_head.go run rg on a process the call owns, scan the --json events without allocating per event, and kill it on context cancel; the tests pin the path-not-found and abort cases, the pluggable operations and the event scanner and head-first join."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/ls.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:internal/codingagent/tools/ls_abort_timing_test.go#TestLsAbortIsHonouredBeforeAndDuringTheRead", "test:internal/codingagent/tools/file_tools_upstream_test.go#TestFileToolsAbort", "test:internal/codingagent/tools/find_ls_limit_test.go"]
+rationale = "execute (:64-170) is a `new Promise` with an abort listener that rejects with `Operation aborted` at once; an aborted signal rejects before any work. The IIFE awaits ops.exists, ops.stat of the directory, ops.readdir and then ops.stat of each entry in order (a failed entry stat is skipped), sorts and formats; the listener is removed on both the success and failure exits. The caller waits for the Promise. Go internal/codingagent/tools/ls.go reads the directory and stats the entries sequentially on the call's goroutine, checking the context before and during the read (TestLsAbortIsHonouredBeforeAndDuringTheRead) and returning the cancellation error."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/output-accumulator.ts"
@@ -1981,10 +1981,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`interna
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/read.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:internal/codingagent/tools/read_streaming_test.go#TestReadStreamingGivesTheSameOutputAsTheWholeFileAlgorithm", "test:internal/codingagent/tools/read_streaming_test.go#TestReadStreamingStopsConsumingTheStreamWhenAborted", "test:internal/codingagent/tools/read_streaming_test.go#TestReadStreamingReadsLocalFilesThroughTheDefaultStream", "test:internal/codingagent/tools/read_streaming_test.go#TestReadStreamingUsesReadFileWithoutCreateReadStreamAndForFractionalOrNegativeRanges", "test:internal/codingagent/tools/read_streaming_test.go#TestReadStreamingKeepsMemoryBoundedForA200MBLine", "test:internal/codingagent/tools/file_tools_upstream_test.go#TestFileToolsAbort", "test:internal/codingagent/tools/read_path_variants_pi_test.go#TestResolveReadPathTriesTheMacOSVariantsInPiOrder"]
+rationale = "execute (:244-354) is a `new Promise` with an abort listener that sets `aborted` and rejects with `Operation aborted` at once; the IIFE awaits resolveReadPathAsync, ops.access, the optional image detection and then either the image path (ops.readFile and processImage) or the text path, checking `if (aborted) return` after each await, and removes the listener on both exits. Delta at Pi c23b9ec1: the text path no longer reads the whole file: when the operations offer createReadStream (the default local operations do, readLocalFileChunks :75-83 opens a handle, stats it, yields handle.createReadStream({ end, signal, autoClose: false }) and closes the handle in finally), selectLinesFromStream (:141-240) consumes the async iterable with `for await`, throws `Operation aborted` when the signal aborted between chunks and so stops consuming the stream, and returns the selected lines plus the total line count without holding the file; operations without createReadStream, and fractional or negative ranges, use selectLinesFromBuffer(await ops.readFile(...)). The caller waits for the Promise and an offset beyond the end rejects with the total line count. Go internal/codingagent/tools/read.go and read_stream.go decode one chunk at a time on the call's goroutine, stop at once when the context is cancelled, and fall back to ReadFile for custom operations; the tests pin the same output as the whole-file algorithm, the stream stopping on abort, the default local stream, the fallback cases and bounded memory for a huge line."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/renderers/edit.ts"
@@ -1995,17 +1995,17 @@ rationale = "PORT_MAP marks this file 🟡 partial: `partial: tui/tool_execution
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/tool-definition-wrapper.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:coding/extension_bridge_test.go#TestBridgeToolForwardsTheAgentsUpdateCallbackAndReturnsTheDefinitionsResult", "test:coding/extension_bridge_test.go#TestBridgeTool_ExecutePropagatesError", "test:coding/extension_bridge_test.go#TestBridgeTool_Execute_RoundTripResult", "test:coding/extension_bridge_test.go#TestWrapRegisteredToolsGiveEachCallTheRunnersToolContext"]
+rationale = "wrapToolDefinition (:24-50) returns an AgentTool whose execute is `(toolCallId, params, signal, onUpdate, ctx?) => definition.execute(toolCallId, params, signal, onUpdate, ctx ?? ctxFactory?.(toolCallId, signal))`: the call is returned as the definition's own Promise, so the caller waits for exactly what the definition waits for and gets its rejection unchanged, the signal and the onUpdate callback are forwarded untouched, and the extension context is built synchronously per call from the factory when the caller did not supply one. The agent-only variant (:75) forwards without a context. There is no concurrency, timer or ordering of its own. Go coding/extension_bridge.go and session_tool_registry.go wrap a definition into an agent tool the same way: Execute(ctx, id, params, onUpdate) returns the definition's (result, error) with ctx as the signal. The evidence is the definition conversion and bridge tests; the abort and ordering behaviour is that of the wrapped definitions (see the built-in tool rows)."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/write.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:internal/codingagent/tools/file_tools_upstream_test.go#TestFileToolsAbort", "test:internal/codingagent/tools/mutation_queue_upstream_test.go#TestFileMutationQueueUpstream", "test:internal/codingagent/tools/mutation_queue_fifo_test.go#TestFileMutationQueue_FIFOAdmissionOrder", "test:internal/codingagent/tools/process_mutation_queue_test.go#TestSeparatelyCreatedEditAndWriteToolsShareOneMutationQueue", "test:internal/codingagent/tools/zz_review_fifo_test.go#TestReviewWriteQueueErrorVisible"]
+rationale = "execute (:57-90) runs inside withFileMutationQueue(absolutePath, ...): throwIfAborted, await ops.mkdir(dir) (recursive), throwIfAborted, await ops.writeFile, throwIfAborted, then returns the success text; the caller waits for the write and gets its failure, an abort throws `Operation aborted` at the next checkpoint and never interrupts a write that started, and the queue slot is released only when the call settled so a later write or edit of the same file cannot interleave. Go internal/codingagent/tools/write.go does the same with blocking operations inside the shared mutation queue; the tests pin the abort result, FIFO admission, the queue shared with edit, and that a write failure inside the queue is visible to its caller."
 
 [[files]]
 path = "packages/coding-agent/src/core/trust-manager.ts"
