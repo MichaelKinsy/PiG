@@ -1318,6 +1318,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-d80425c](#bf-d80425c) | fix(train): gate repairs after merging train 3 and the ordering stack | PiG's own defect | All platforms | Unreleased |
 | [BF-d80c1cd](#bf-d80c1cd) | Where Pi calls `new URL(value)`, Pig now parses a `ws:`, `wss:`, `ftp:` or `file:` URL, and a bracketed IPv6… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d8357e2](#bf-d8357e2) | Cache warmer pure functions against live Pi: new `TestCacheWarmerPureFunctionsMatchPi`… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-d856f4a](#bf-d856f4a) | `host.Registry` with a short `ReadyTimeout` no longer fails "did not become live" when the machine delays the… | PiG's own defect | All platforms | Unreleased |
 | [BF-d87b70c](#bf-d87b70c) | A second `ctx.ui.custom` component opened while one is shown now opens over it at once, as in Pi, whether it… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d88dca7](#bf-d88dca7) | `harness.ToolTaskInput.Kind` and `ToolTaskResult.Kind` are the named string type `harness.ToolTaskKind` with… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d8bed22](#bf-d8bed22) | `auth.json` keeps every provider's entry as written, as Pi does | PiG's own defect | All platforms | 0.5.0 |
@@ -19602,6 +19603,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Commit that wrote the release note (the fix commit is not identified):** `d8357e2802` (2026-10-11)
 - **Tests:** `internal/codingagent/cache_warmer_format_oracle_test.go::TestCacheWarmerPureFunctionsMatchPi`
 - **Release note:** Cache warmer pure functions against live Pi: new `TestCacheWarmerPureFunctionsMatchPi` (`internal/codingagent/cache_warmer_format_oracle_test.go`; `getCacheWarmingDelayMs`, `getPromptCacheTtlMs`, `isReplayable`, `formatCacheWarmingStatus`, `formatCacheWarmingUsage`; 6,000 inputs under three process `PI_CACHE_RETENTION` values; TTLs around the 10 s margin, tier values 0/fractional, empty request env falling through to the process one, adaptive vs budget thinking, every status state with rounding-boundary probabilities and dollars). No bug (formatCacheWarmingStatus was previously only reached through the /session oracle). 19 mutations red; 5 equivalent: empty-API guard in `IsReplayable`, `Phase`/`Action` closed-union comparisons, the `seconds > 0` clause when no larger unit printed (`nextWarmAt > now` forces at least 1 s), and the `none` retention check (a model's `promptCache` holds only short/long). Not compared: NaN/infinite TTLs.
+
+### BF-d856f4a
+
+**`host.Registry` with a short `ReadyTimeout` no longer fails "did not become live" when the machine delays the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `host.Registry` with a short `ReadyTimeout` no longer fails "did not become live" when the machine delays the waiting goroutine past the deadline: in Pi the wait's publication, lookup and first usable check run before any timer, so the deadline reports why the registry cannot be read (`contract_mismatch` for a version the provider cannot serve, `unavailable/undeclared` for a registry nobody serves).
+- **Root cause:** host.Registry armed its deadline, then left the wait to a goroutine: the publication, the value lookup and the first usable() check. In Pi those are microtasks that run before any timer, so a deadline can only report the last reason the registry was unusable. In Go a loaded machine could run the deadline's section before the goroutine looked, and the wait failed "did not become live" instead of contract_mismatch or unavailable/undeclared (main's TestOlderReadersWithoutAValueMapping... failed that way on CI).
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d856f4a399` (2026-11-09)
+- **Tests:** `chord/next/host/host_registry_readers_test.go::TestReadersAHostRegistryWhoseDeadlineElapsedBeforeItsFirstLookReportsWhyTheRegistryIsNotUsable`
+- **Release note:** `host.Registry` with a short `ReadyTimeout` no longer fails "did not become live" when the machine delays the waiting goroutine past the deadline: in Pi the wait's publication, lookup and first usable check run before any timer, so the deadline reports why the registry cannot be read (`contract_mismatch` for a version the provider cannot serve, `unavailable/undeclared` for a registry nobody serves). A deadline that finds the host published and the first check not yet made now lets that check run first.
 
 ### BF-d87b70c
 
