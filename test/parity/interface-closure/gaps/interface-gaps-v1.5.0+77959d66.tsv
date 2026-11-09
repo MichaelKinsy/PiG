@@ -7,10 +7,6 @@ pkg:ai/.#evaluateCacheWarming	ai	no-go-symbol
 pkg:ai/.#evaluateCacheWarming::call:0	ai	child-gap	
 pkg:ai/.#isCacheWarmingReplayable	ai	no-go-symbol	
 pkg:ai/.#isCacheWarmingReplayable::call:0	ai	child-gap	
-pkg:ai/api/strict-tool-limits#hasExceededStrictToolLimits	ai	no-go-symbol	
-pkg:ai/api/strict-tool-limits#hasExceededStrictToolLimits::call:0	ai	child-gap	
-pkg:ai/api/strict-tool-limits#markStrictToolLimitsExceeded	ai	no-go-symbol	
-pkg:ai/api/strict-tool-limits#markStrictToolLimitsExceeded::call:0	ai	child-gap	
 pkg:ai/compat#CACHE_WARMING_IDLE_CONTINUATION_PROBABILITY	ai	no-go-symbol	
 pkg:ai/compat#CACHE_WARMING_MAX_AGE_MS	ai	no-go-symbol	
 pkg:ai/compat#CACHE_WARMING_MAX_IDLE_AGE_MS	ai	no-go-symbol	
@@ -33,17 +29,3 @@ pkg:coding-agent/.#OAuthSelectorComponent	coding-agent	child-gap	tui/oauth_selec
 pkg:coding-agent/.#OAuthSelectorComponent::construct:0	coding-agent	signature-mismatch	tui/oauth_selector.go#NewOAuthSelectorComponent
 pkg:coding-agent/.#OAuthSelectorComponent::property:dispose	coding-agent	member-missing	tui/oauth_selector.go#OAuthSelectorComponent
 pkg:coding-agent/.#OAuthSelectorComponent::property:dispose::call:0	coding-agent	member-missing	tui/oauth_selector.go#OAuthSelectorComponent
-pkg:durable/storage/jsonl#JsonlStorageOptions	durable	type-mismatch	durable/storage/jsonl/storage.go#JsonlStorageOptions
-pkg:durable/storage/jsonl#JsonlStorageReadOnlyError	durable	no-go-symbol	
-pkg:durable/storage/jsonl#JsonlStorageReadOnlyError::construct:0	durable	child-gap	
-pkg:durable/storage/jsonl#JsonlStorageReadOnlyError::property:cause	durable	child-gap	
-pkg:durable/storage/jsonl#JsonlStorageReadOnlyError::property:message	durable	child-gap	
-pkg:durable/storage/jsonl#JsonlStorageReadOnlyError::property:name	durable	child-gap	
-pkg:durable/storage/jsonl#JsonlStorageReadOnlyError::property:stack	durable	child-gap	
-pkg:durable/storage/jsonl/node#JsonlStorageOptions	durable	type-mismatch	durable/storage/jsonl/storage.go#JsonlStorageOptions
-pkg:durable/storage/jsonl/node#JsonlStorageReadOnlyError	durable	no-go-symbol	
-pkg:durable/storage/jsonl/node#JsonlStorageReadOnlyError::construct:0	durable	child-gap	
-pkg:durable/storage/jsonl/node#JsonlStorageReadOnlyError::property:cause	durable	child-gap	
-pkg:durable/storage/jsonl/node#JsonlStorageReadOnlyError::property:message	durable	child-gap	
-pkg:durable/storage/jsonl/node#JsonlStorageReadOnlyError::property:name	durable	child-gap	
-pkg:durable/storage/jsonl/node#JsonlStorageReadOnlyError::property:stack	durable	child-gap	

@@ -4576,8 +4576,12 @@
     },
     {
       "path": "packages/codemode/test/sandbox.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:a76f2e0f3688286fcb15de79a675cc05bae699117e5f740b12dd26dbb0090931"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:a76f2e0f3688286fcb15de79a675cc05bae699117e5f740b12dd26dbb0090931",
+      "evidence": [
+        "codemode/sandbox_test.go#TestPrintsNonFiniteNumbersInConsoleOutputAndThrownValuesLikeText"
+      ],
+      "rationale": "codemode/sandbox_test.go ports sandbox.test.ts with its original scripts and expectations; its behavior tests run on the worker, inline and remote backends as upstream's describe.each does. The case added by Pi 33cd7e507 (#11945) 'prints non-finite numbers in console output and thrown values like text()' is TestPrintsNonFiniteNumbersInConsoleOutputAndThrownValuesLikeText on all three backends, with Pi's inputs and expectations."
     },
     {
       "path": "packages/codemode/test/source.test.ts",

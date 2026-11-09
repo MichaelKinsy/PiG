@@ -2340,8 +2340,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -6471,8 +6471,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -9325,8 +9325,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -10252,8 +10252,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -12377,9 +12377,9 @@
         "call:ai/session_resources.go#CleanupSessionResources"
       ],
       "evidence": [
-        "test:ai/session_resources_upstream_test.go#TestSessionResourceCleanupCallsHooksInOrderAndUnregisters",
-        "test:ai/session_resources_upstream_test.go#TestSessionResourceCleanupRunsEveryHookAndAggregatesFailures",
-        "test:ai/session_resources_hooks_test.go#TestCleanupSessionResourcesRunsEveryRegisteredHookUntilItIsUnregistered"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/providers/bedrock/bedrock_strict_tool_fallback_upstream_test.go#TestBedrockStrictToolLimitForgottenAfterSessionCleanup",
+        "test:ai/session_resources_upstream_test.go#TestSessionResourceCleanupCallsHooksInOrderAndUnregisters"
       ]
     },
     {
@@ -12399,9 +12399,9 @@
         "call:ai/session_resources.go#CleanupSessionResources"
       ],
       "evidence": [
-        "test:ai/session_resources_upstream_test.go#TestSessionResourceCleanupCallsHooksInOrderAndUnregisters",
-        "test:ai/session_resources_upstream_test.go#TestSessionResourceCleanupRunsEveryHookAndAggregatesFailures",
-        "test:ai/session_resources_hooks_test.go#TestCleanupSessionResourcesRunsEveryRegisteredHookUntilItIsUnregistered"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/providers/bedrock/bedrock_strict_tool_fallback_upstream_test.go#TestBedrockStrictToolLimitForgottenAfterSessionCleanup",
+        "test:ai/session_resources_upstream_test.go#TestSessionResourceCleanupCallsHooksInOrderAndUnregisters"
       ]
     },
     {
@@ -17211,8 +17211,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -17808,8 +17808,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -20566,8 +20566,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -26534,8 +26534,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -28098,8 +28098,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -29003,8 +29003,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -30054,8 +30054,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -32883,8 +32883,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -33636,8 +33636,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -36424,8 +36424,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -37221,8 +37221,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -38038,8 +38038,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -38863,8 +38863,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -40929,8 +40929,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -42366,8 +42366,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -43703,8 +43703,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -44516,8 +44516,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -45664,8 +45664,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -47131,8 +47131,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -47950,8 +47950,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -48707,13 +48707,43 @@
     },
     {
       "id": "pkg:ai/api/strict-tool-limits#hasExceededStrictToolLimits",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:990e6fe03c7e6e9832799f63da821618844c44605d7c65c4396ec9cdb3158a28"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:990e6fe03c7e6e9832799f63da821618844c44605d7c65c4396ec9cdb3158a28",
+      "rationale": "Derived by the interface gap detector: hasExceededStrictToolLimits is Go ai/provider_kit.go#HasExceededStrictToolLimits (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/provider_kit.go#HasExceededStrictToolLimits"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/provider_kit.go#HasExceededStrictToolLimits"
+      ],
+      "evidence": [
+        "reach:ai/provider_kit.go#HasExceededStrictToolLimits"
+      ]
     },
     {
       "id": "pkg:ai/api/strict-tool-limits#hasExceededStrictToolLimits::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:fd8d9697bb46c00ed14b9e57f0a18aa33cfb62f07f52e3cf5c2a9fa2c1e2ac32"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:fd8d9697bb46c00ed14b9e57f0a18aa33cfb62f07f52e3cf5c2a9fa2c1e2ac32",
+      "rationale": "Derived by the interface gap detector: hasExceededStrictToolLimits::call:0 is Go ai/provider_kit.go#HasExceededStrictToolLimits (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/provider_kit.go#HasExceededStrictToolLimits"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/provider_kit.go#HasExceededStrictToolLimits"
+      ],
+      "evidence": [
+        "reach:ai/provider_kit.go#HasExceededStrictToolLimits"
+      ]
     },
     {
       "id": "pkg:ai/api/strict-tool-limits#isStrictToolLimitErrorMessage",
@@ -48757,13 +48787,43 @@
     },
     {
       "id": "pkg:ai/api/strict-tool-limits#markStrictToolLimitsExceeded",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:7c9f24d8f7bf7eb90d3e8888712aec6315912f000fcfaeae09a0e597bc804d43"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:7c9f24d8f7bf7eb90d3e8888712aec6315912f000fcfaeae09a0e597bc804d43",
+      "rationale": "Derived by the interface gap detector: markStrictToolLimitsExceeded is Go ai/provider_kit.go#MarkStrictToolLimitsExceeded (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/provider_kit.go#MarkStrictToolLimitsExceeded"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/provider_kit.go#MarkStrictToolLimitsExceeded"
+      ],
+      "evidence": [
+        "reach:ai/provider_kit.go#MarkStrictToolLimitsExceeded"
+      ]
     },
     {
       "id": "pkg:ai/api/strict-tool-limits#markStrictToolLimitsExceeded::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9fddbcb3e9fedc340df6b43d736c3e821a4af5642dd72e1023db0887bcde18dd"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9fddbcb3e9fedc340df6b43d736c3e821a4af5642dd72e1023db0887bcde18dd",
+      "rationale": "Derived by the interface gap detector: markStrictToolLimitsExceeded::call:0 is Go ai/provider_kit.go#MarkStrictToolLimitsExceeded (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/provider_kit.go#MarkStrictToolLimitsExceeded"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/provider_kit.go#MarkStrictToolLimitsExceeded"
+      ],
+      "evidence": [
+        "reach:ai/provider_kit.go#MarkStrictToolLimitsExceeded"
+      ]
     },
     {
       "id": "pkg:ai/api/system-one-shared#classifySystemOne",
@@ -50587,8 +50647,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -53685,8 +53745,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -54656,8 +54716,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -56810,9 +56870,9 @@
         "call:ai/session_resources.go#CleanupSessionResources"
       ],
       "evidence": [
-        "test:ai/session_resources_upstream_test.go#TestSessionResourceCleanupCallsHooksInOrderAndUnregisters",
-        "test:ai/session_resources_upstream_test.go#TestSessionResourceCleanupRunsEveryHookAndAggregatesFailures",
-        "test:ai/session_resources_hooks_test.go#TestCleanupSessionResourcesRunsEveryRegisteredHookUntilItIsUnregistered"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/providers/bedrock/bedrock_strict_tool_fallback_upstream_test.go#TestBedrockStrictToolLimitForgottenAfterSessionCleanup",
+        "test:ai/session_resources_upstream_test.go#TestSessionResourceCleanupCallsHooksInOrderAndUnregisters"
       ]
     },
     {
@@ -56832,9 +56892,9 @@
         "call:ai/session_resources.go#CleanupSessionResources"
       ],
       "evidence": [
-        "test:ai/session_resources_upstream_test.go#TestSessionResourceCleanupCallsHooksInOrderAndUnregisters",
-        "test:ai/session_resources_upstream_test.go#TestSessionResourceCleanupRunsEveryHookAndAggregatesFailures",
-        "test:ai/session_resources_hooks_test.go#TestCleanupSessionResourcesRunsEveryRegisteredHookUntilItIsUnregistered"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/providers/bedrock/bedrock_strict_tool_fallback_upstream_test.go#TestBedrockStrictToolLimitForgottenAfterSessionCleanup",
+        "test:ai/session_resources_upstream_test.go#TestSessionResourceCleanupCallsHooksInOrderAndUnregisters"
       ]
     },
     {
@@ -62382,8 +62442,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -63023,8 +63083,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -65962,8 +66022,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -72010,8 +72070,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -73618,8 +73678,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -74567,8 +74627,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -75662,8 +75722,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -78775,8 +78835,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -79924,8 +79984,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -236516,7 +236576,7 @@
       "evidence": [
         "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
         "test:durable/storage/jsonl/closed_before_poison_test.go#TestJsonlClosedErrorWinsOverThePoison",
-        "test:durable/storage/jsonl/jsonl_storage_test.go#TestJsonlStorageBatches"
+        "test:durable/storage/jsonl/jsonl_storage_read_only_test.go#TestJsonlStorageReadOnlyOpen"
       ]
     },
     {
@@ -253708,7 +253768,7 @@
       "evidence": [
         "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
         "test:durable/storage/jsonl/node/open_node_storage_upstream_test.go#TestOpenNodeJsonlStorageResolvesAgainstTheOpenTimeWorkingDirectoryAndPersists",
-        "test:durable/storage/jsonl/jsonl_storage_reads_test.go#TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose"
+        "test:durable/storage/jsonl/jsonl_storage_read_only_test.go#TestJsonlStorageReadOnlyOpen"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -253731,7 +253791,7 @@
       "evidence": [
         "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
         "test:durable/storage/jsonl/node/open_node_storage_upstream_test.go#TestOpenNodeJsonlStorageResolvesAgainstTheOpenTimeWorkingDirectoryAndPersists",
-        "test:durable/storage/jsonl/jsonl_storage_reads_test.go#TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose"
+        "test:durable/storage/jsonl/jsonl_storage_read_only_test.go#TestJsonlStorageReadOnlyOpen"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -254358,38 +254418,126 @@
     },
     {
       "id": "pkg:durable/storage/jsonl/node#JsonlStorageOptions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:76ef5c9b2125bc90201c25769b3cf96abaa705c9c7eea66b832b63e77cf38b09"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:76ef5c9b2125bc90201c25769b3cf96abaa705c9c7eea66b832b63e77cf38b09",
+      "rationale": "Derived by the interface gap detector: JsonlStorageOptions is Go durable/storage/jsonl/storage.go#JsonlStorageOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/jsonl/storage.go#JsonlStorageOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/jsonl/node/node.go#OpenNodeJsonlStorage"
+      ],
+      "evidence": [
+        "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
+        "test:durable/storage/jsonl/node/open_node_storage_upstream_test.go#TestOpenNodeJsonlStorageResolvesAgainstTheOpenTimeWorkingDirectoryAndPersists",
+        "test:durable/examples/chat_examples_test.go#TestExample16CodingTools"
+      ]
     },
     {
       "id": "pkg:durable/storage/jsonl/node#JsonlStorageReadOnlyError",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:12ac04a65152daeb1d209890694276fe82e846e9ef57d16a3fb7f11c9aaac301"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:12ac04a65152daeb1d209890694276fe82e846e9ef57d16a3fb7f11c9aaac301",
+      "rationale": "Derived by the interface gap detector: JsonlStorageReadOnlyError is Go durable/storage/jsonl/storage.go#JsonlStorageReadOnlyError (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/jsonl/storage.go#JsonlStorageReadOnlyError"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/jsonl/storage.go#JsonlStorage.Commit"
+      ],
+      "evidence": [
+        "test:durable/storage/jsonl/jsonl_storage_read_only_test.go#TestJsonlStorageReadOnlyOpen",
+        "test:durable/storage/jsonl_pi_oracle_test.go#TestJsonlStorageMatchesPiOnSeededPrograms",
+        "test:durable/storage/jsonl_recovery_pi_oracle_test.go#TestJsonlRecoveryMatchesPiOnDamagedDirectories"
+      ]
     },
     {
       "id": "pkg:durable/storage/jsonl/node#JsonlStorageReadOnlyError::construct:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e82186acb1e6cd6e9a3be8e06933491ab3b6639d7fcba6a7ddbeb9f654f8eb21"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e82186acb1e6cd6e9a3be8e06933491ab3b6639d7fcba6a7ddbeb9f654f8eb21",
+      "rationale": "Derived by the interface gap detector: JsonlStorageReadOnlyError::construct:0 is Go durable/storage/jsonl/storage.go#NewJsonlStorageReadOnlyError (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/jsonl/storage.go#NewJsonlStorageReadOnlyError"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/jsonl/storage.go#NewJsonlStorageReadOnlyError"
+      ],
+      "evidence": [
+        "reach:durable/storage/jsonl/storage.go#NewJsonlStorageReadOnlyError"
+      ]
     },
     {
       "id": "pkg:durable/storage/jsonl/node#JsonlStorageReadOnlyError::property:cause",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0ded3a5da484c0bd945c74e50b05b90f5fca69d849d99b4d1caa17e429415054"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:0ded3a5da484c0bd945c74e50b05b90f5fca69d849d99b4d1caa17e429415054",
+      "rationale": "Error.cause is unset: no constructor of the class passes ErrorOptions, so Pi's .cause is always undefined (Pi 1.5.0+77959d66) and no Pi reader sees a value; the Go error wraps nothing, and callers match the error by its Go type with errors.As. Designed out as reason class a of the design-out audit (no Pi reader, proven by a probe of the 1.5.0+77959d66 source); D103 maps a cause that a Go error does carry to Unwrap().",
+      "pigTargets": [
+        "durable/storage/jsonl/storage.go#JsonlStorageReadOnlyError"
+      ]
     },
     {
       "id": "pkg:durable/storage/jsonl/node#JsonlStorageReadOnlyError::property:message",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:5bd47aec3aecfce7ba3ec63891a63e2d3d8ca86ae60ed8cb239a7b77a8e612ec"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:5bd47aec3aecfce7ba3ec63891a63e2d3d8ca86ae60ed8cb239a7b77a8e612ec",
+      "rationale": "Derived by the interface gap detector: JsonlStorageReadOnlyError::property:message is Go durable/storage/jsonl/storage.go#JsonlStorageReadOnlyError.Message (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/jsonl/storage.go#JsonlStorageReadOnlyError.Message"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/jsonl/storage.go#JsonlStorageReadOnlyError.Error"
+      ],
+      "evidence": [
+        "reach:durable/storage/jsonl/storage.go#JsonlStorageReadOnlyError.Error"
+      ]
     },
     {
       "id": "pkg:durable/storage/jsonl/node#JsonlStorageReadOnlyError::property:name",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:801e53f1d388232eae4e330db41edb2aab932c0909e2849026eeebfd0e76ec51"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:801e53f1d388232eae4e330db41edb2aab932c0909e2849026eeebfd0e76ec51",
+      "rationale": "Derived by the interface gap detector: JsonlStorageReadOnlyError::property:name is Go durable/storage/jsonl/storage.go#JsonlStorageReadOnlyError.Name (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/jsonl/storage.go#JsonlStorageReadOnlyError.Name"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/jsonl/storage.go#JsonlStorageReadOnlyError.Name"
+      ],
+      "evidence": [
+        "test:durable/storage/jsonl_pi_oracle_test.go#TestJsonlStorageMatchesPiOnSeededPrograms",
+        "test:durable/storage/jsonl_recovery_pi_oracle_test.go#TestJsonlRecoveryMatchesPiOnDamagedDirectories"
+      ]
     },
     {
       "id": "pkg:durable/storage/jsonl/node#JsonlStorageReadOnlyError::property:stack",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:6a90573a6dc1303048aed8fb94dcc54bd7b496721ad2983fdcfebd7133feef8c"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:6a90573a6dc1303048aed8fb94dcc54bd7b496721ad2983fdcfebd7133feef8c",
+      "rationale": "Error.stack is a JavaScript runtime capture; a Go error carries no stack and callers match the error by its Go type with errors.As. Designed out under D103 (JS Error.stack is not modelled; SCRUTINIZED:approved, owner decision of 2026-10-06).",
+      "pigTargets": [
+        "durable/storage/jsonl/storage.go#JsonlStorageReadOnlyError"
+      ]
     },
     {
       "id": "pkg:durable/storage/jsonl/node#openNodeJsonlStorage",
@@ -254688,7 +254836,7 @@
       "evidence": [
         "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
         "test:durable/storage/jsonl/node/open_node_storage_upstream_test.go#TestOpenNodeJsonlStorageResolvesAgainstTheOpenTimeWorkingDirectoryAndPersists",
-        "test:durable/storage/jsonl/jsonl_storage_reads_test.go#TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose"
+        "test:durable/storage/jsonl/jsonl_storage_read_only_test.go#TestJsonlStorageReadOnlyOpen"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -254711,7 +254859,7 @@
       "evidence": [
         "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
         "test:durable/storage/jsonl/node/open_node_storage_upstream_test.go#TestOpenNodeJsonlStorageResolvesAgainstTheOpenTimeWorkingDirectoryAndPersists",
-        "test:durable/storage/jsonl/jsonl_storage_reads_test.go#TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose"
+        "test:durable/storage/jsonl/jsonl_storage_read_only_test.go#TestJsonlStorageReadOnlyOpen"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -255338,8 +255486,25 @@
     },
     {
       "id": "pkg:durable/storage/jsonl#JsonlStorageOptions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:76ef5c9b2125bc90201c25769b3cf96abaa705c9c7eea66b832b63e77cf38b09"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:76ef5c9b2125bc90201c25769b3cf96abaa705c9c7eea66b832b63e77cf38b09",
+      "rationale": "Derived by the interface gap detector: JsonlStorageOptions is Go durable/storage/jsonl/storage.go#JsonlStorageOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/jsonl/storage.go#JsonlStorageOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/jsonl/node/node.go#OpenNodeJsonlStorage"
+      ],
+      "evidence": [
+        "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
+        "test:durable/storage/jsonl/node/open_node_storage_upstream_test.go#TestOpenNodeJsonlStorageResolvesAgainstTheOpenTimeWorkingDirectoryAndPersists",
+        "test:durable/examples/chat_examples_test.go#TestExample16CodingTools"
+      ]
     },
     {
       "id": "pkg:durable/storage/jsonl#JsonlStoragePoisonedError",
@@ -255458,33 +255623,104 @@
     },
     {
       "id": "pkg:durable/storage/jsonl#JsonlStorageReadOnlyError",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:12ac04a65152daeb1d209890694276fe82e846e9ef57d16a3fb7f11c9aaac301"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:12ac04a65152daeb1d209890694276fe82e846e9ef57d16a3fb7f11c9aaac301",
+      "rationale": "Derived by the interface gap detector: JsonlStorageReadOnlyError is Go durable/storage/jsonl/storage.go#JsonlStorageReadOnlyError (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/jsonl/storage.go#JsonlStorageReadOnlyError"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/jsonl/storage.go#JsonlStorage.Commit"
+      ],
+      "evidence": [
+        "test:durable/storage/jsonl/jsonl_storage_read_only_test.go#TestJsonlStorageReadOnlyOpen",
+        "test:durable/storage/jsonl_pi_oracle_test.go#TestJsonlStorageMatchesPiOnSeededPrograms",
+        "test:durable/storage/jsonl_recovery_pi_oracle_test.go#TestJsonlRecoveryMatchesPiOnDamagedDirectories"
+      ]
     },
     {
       "id": "pkg:durable/storage/jsonl#JsonlStorageReadOnlyError::construct:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e82186acb1e6cd6e9a3be8e06933491ab3b6639d7fcba6a7ddbeb9f654f8eb21"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e82186acb1e6cd6e9a3be8e06933491ab3b6639d7fcba6a7ddbeb9f654f8eb21",
+      "rationale": "Derived by the interface gap detector: JsonlStorageReadOnlyError::construct:0 is Go durable/storage/jsonl/storage.go#NewJsonlStorageReadOnlyError (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/jsonl/storage.go#NewJsonlStorageReadOnlyError"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/jsonl/storage.go#NewJsonlStorageReadOnlyError"
+      ],
+      "evidence": [
+        "reach:durable/storage/jsonl/storage.go#NewJsonlStorageReadOnlyError"
+      ]
     },
     {
       "id": "pkg:durable/storage/jsonl#JsonlStorageReadOnlyError::property:cause",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0ded3a5da484c0bd945c74e50b05b90f5fca69d849d99b4d1caa17e429415054"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:0ded3a5da484c0bd945c74e50b05b90f5fca69d849d99b4d1caa17e429415054",
+      "rationale": "Error.cause is unset: no constructor of the class passes ErrorOptions, so Pi's .cause is always undefined (Pi 1.5.0+77959d66) and no Pi reader sees a value; the Go error wraps nothing, and callers match the error by its Go type with errors.As. Designed out as reason class a of the design-out audit (no Pi reader, proven by a probe of the 1.5.0+77959d66 source); D103 maps a cause that a Go error does carry to Unwrap().",
+      "pigTargets": [
+        "durable/storage/jsonl/storage.go#JsonlStorageReadOnlyError"
+      ]
     },
     {
       "id": "pkg:durable/storage/jsonl#JsonlStorageReadOnlyError::property:message",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:5bd47aec3aecfce7ba3ec63891a63e2d3d8ca86ae60ed8cb239a7b77a8e612ec"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:5bd47aec3aecfce7ba3ec63891a63e2d3d8ca86ae60ed8cb239a7b77a8e612ec",
+      "rationale": "Derived by the interface gap detector: JsonlStorageReadOnlyError::property:message is Go durable/storage/jsonl/storage.go#JsonlStorageReadOnlyError.Message (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/jsonl/storage.go#JsonlStorageReadOnlyError.Message"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/jsonl/storage.go#JsonlStorageReadOnlyError.Error"
+      ],
+      "evidence": [
+        "reach:durable/storage/jsonl/storage.go#JsonlStorageReadOnlyError.Error"
+      ]
     },
     {
       "id": "pkg:durable/storage/jsonl#JsonlStorageReadOnlyError::property:name",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:801e53f1d388232eae4e330db41edb2aab932c0909e2849026eeebfd0e76ec51"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:801e53f1d388232eae4e330db41edb2aab932c0909e2849026eeebfd0e76ec51",
+      "rationale": "Derived by the interface gap detector: JsonlStorageReadOnlyError::property:name is Go durable/storage/jsonl/storage.go#JsonlStorageReadOnlyError.Name (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/jsonl/storage.go#JsonlStorageReadOnlyError.Name"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/jsonl/storage.go#JsonlStorageReadOnlyError.Name"
+      ],
+      "evidence": [
+        "test:durable/storage/jsonl_pi_oracle_test.go#TestJsonlStorageMatchesPiOnSeededPrograms",
+        "test:durable/storage/jsonl_recovery_pi_oracle_test.go#TestJsonlRecoveryMatchesPiOnDamagedDirectories"
+      ]
     },
     {
       "id": "pkg:durable/storage/jsonl#JsonlStorageReadOnlyError::property:stack",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:6a90573a6dc1303048aed8fb94dcc54bd7b496721ad2983fdcfebd7133feef8c"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:6a90573a6dc1303048aed8fb94dcc54bd7b496721ad2983fdcfebd7133feef8c",
+      "rationale": "Error.stack is a JavaScript runtime capture; a Go error carries no stack and callers match the error by its Go type with errors.As. Designed out under D103 (JS Error.stack is not modelled; SCRUTINIZED:approved, owner decision of 2026-10-06).",
+      "pigTargets": [
+        "durable/storage/jsonl/storage.go#JsonlStorageReadOnlyError"
+      ]
     },
     {
       "id": "pkg:durable/storage/memory#MemoryStorage",
