@@ -219,6 +219,7 @@ func hasCode(err error, code data.ChordErrorCode) bool {
 	return ok
 }
 
+// Ports ctx.test.ts › ctx.trace (packages/chord/test/host/ctx.test.ts:267, `ctx.trace("app.step", ...)`).
 func TestCtxTraceRunsFnInAChildSpanOfTheHandlersWithAChildCtxTheSamePrincipalSignalAndReferences(t *testing.T) {
 	recorder := telemetry.NewInMemoryTelemetryContext()
 	var outer, inner Ctx
@@ -439,7 +440,7 @@ func TestNativeSpansMarkACloseThatFailedFailed(t *testing.T) {
 // --- who a span was for (principalAttributes) ---------------------------------------------------------------------------
 
 // whoMethodSpan is the attributes of the chord.method span of a call to a host acting as u1, recording on recorder.
-func whoMethodSpan(t *testing.T, recorder *telemetry.InMemoryTelemetryContext, hook func(data.Principal) telemetry.SpanAttributes) telemetry.RecordedTelemetrySpan {
+func whoMethodSpan(t *testing.T, recorder *telemetry.InMemoryTelemetryContext, hook PrincipalAttributes) telemetry.RecordedTelemetrySpan {
 	t.Helper()
 	host := newHost(t, HostOptions{
 		Principal: delta.JsonObjectOf("kind", "user", "id", "u1", "name", "Ada"), Telemetry: recorder,

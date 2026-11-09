@@ -18,7 +18,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 )
 
-// Ports the `cycles across hosts (Q5)` and the two released-reference GC cases of packages/chord/test/next/host/object.test.ts:
+// Ports the `cycles across hosts (Q5)` and the two released-reference GC cases of packages/chord/test/host/object.test.ts:
 // a tab, a server and its workers over trusted route links (relay), and raw workers that hold the server's types by hand.
 
 func nVariant() []contracts.VariantEntry {

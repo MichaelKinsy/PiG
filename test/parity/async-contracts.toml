@@ -16,10 +16,10 @@ rationale = "Prompt claim, first-event dispatch, concurrent-run rejection and re
 
 [[files]]
 path = "packages/agent/src/proxy.ts"
-disposition = "pending"
+disposition = "designed-out"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "`(not needed: no TS proxy)`. Delta at Pi d0aa218c: f715a15c1 moves the tool-call stream state off the content block into the provider's own state; no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged. Re-audited at Pi c23b9ec1: the async skeleton of packages/agent/src/proxy.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/agent/src/types.ts"
@@ -553,10 +553,10 @@ rationale = "thin blocking views over the slots and `Documents.Tx`. Moved from p
 
 [[files]]
 path = "packages/chord/src/documents/keyed-slot.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "concurrent-joined", "cancellable", "detached-owned"]
+evidence = ["test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTwoReadersShareOneLoadACancelledWaiterRejectsAlone", "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotAStillValidWaiterSharingThatLoad", "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotKeysComeFromTheStoreInCodePointOrderAPagePerLineJob", "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotAStoppedWatchUnpinsItsKey"]
+rationale = "a cold load is one goroutine per key (the shared promise) whose error every waiter reads; a waiter's ctx ends only its own wait; the key iterator takes one line job per page; a watch's release runs from a goroutine waiting on the watch's `Closed()` (detached, owned by the watch). Delta at Pi 6d4b7443: no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged. Re-audited at Pi c23b9ec1: the async skeleton of packages/chord/src/documents/keyed-slot.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to packages/chord/src/next/documents/keyed-slot.ts at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/chord/src/documents/line.ts"
@@ -567,24 +567,24 @@ rationale = "`Acquire` takes its place under a mutex at the call and blocks unti
 
 [[files]]
 path = "packages/chord/src/documents/persistence.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/next/documents/persistence_test.go#TestFindALiveRecordWithoutLoadingItAndListKeysInCodePointOrderByPages"]
+rationale = "`Read`/`Find`/`Keys` block on one guarded `store.Read` each (ctx as the store's). Re-audited at Pi c23b9ec1: the async skeleton of packages/chord/src/documents/persistence.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to packages/chord/src/next/documents/persistence.ts at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/chord/src/documents/slot.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/next/documents/slot_test.go#TestPersistedSingletonsLoadOncePerObjectAtActivationNotAgainOnARetryAndSurviveTheHost"]
+rationale = "`SingletonSlot.Load` blocks on one store read outside the section, then decodes inside one; a loaded slot never reads again. Re-audited at Pi c23b9ec1: the async skeleton of packages/chord/src/documents/slot.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to packages/chord/src/next/documents/slot.ts at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/chord/src/documents/transaction.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "concurrent-joined"]
+evidence = ["test:chord/next/documents/transaction_test.go#TestTablesInATransactionACommitQueuedBehindAnotherOwnersStep", "test:chord/next/documents/transaction_test.go#TestPersistedDocumentsInATransactionACommitCutAtTheSealWhileItWaitsInTheStoresQueue", "test:chord/next/documents/transaction_test.go#TestPersistedDocumentsInATransactionAHostClosingWhileAnAdmittedCommitIsInTheSQL"]
+rationale = "the store's step runs on a goroutine and is raced (`select`) against the `queued` channel `Cut` writes (Pi's `Promise.race`); once queued the caller's abort no longer counts (`WithoutAbortSignal`); `Draft` of a cold document and `Retire`'s find count as pending while they block (rule 3). Delta at Pi 6d4b7443: no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged. Re-audited at Pi c23b9ec1: the async skeleton of packages/chord/src/documents/transaction.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to packages/chord/src/next/documents/transaction.ts at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/chord/src/host/attempt.ts"
@@ -602,10 +602,10 @@ rationale = ""
 
 [[files]]
 path = "packages/chord/src/host/follow.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "microtask-ordering"]
+evidence = ["test:chord/next/host/host_follow_test.go#TestHostFollowCallsBeforeTheAttachmentResolvedAppliedInOrderOnItsValue", "test:chord/next/host/host_follow_test.go#TestHostFollowCallsOutsideAnyBatchQueuedAndAppliedInOneBatchOnTheNextMicrotask"]
+rationale = "follow.ts attach, #schedule (batch.soon): attach blocks outside a section (called from the object's activation task); calls outside a batch are queued and applied by `Batch.Soon` (a `Loop.Queue` microtask). Delta at Pi 6d4b7443: no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged. Re-audited at Pi c23b9ec1: the async skeleton of packages/chord/src/host/follow.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to packages/chord/src/next/host/follow.ts at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/chord/src/host/host.ts"
@@ -651,17 +651,17 @@ rationale = ""
 
 [[files]]
 path = "packages/chord/src/host/ref-state.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/next/host/host_ref_state_test.go#TestRefStateAWatchInsideACommitIsRefused", "test:chord/next/host/host_ref_state_test.go#TestRefStateIsWatchedFromItsCurrentStateAndReleaseEndsIt", "test:chord/next/host/host_ref_state_test.go#TestRefStateAWatchEndsAbortedWithItsContext", "test:chord/next/host/host_ref_state_test.go#TestRefStateMarksTheDerivesReadingIt"]
+rationale = "ref-state.ts async watch(context): Go: blocking-free `Watch(ctx) (handle, error)`; the rejection is the returned error. Deliveries run on the batch's `DeliveryScheduler`, a constructor parameter of `newReferenceState` (the host owns both; `state.Batch.deliveries` is unexported), the Go form of the host's microtask queue for watches. Every state in order, one call each, in the context the watch was taken in (TestRefStateEachWatchGetsEveryNewStateInItsOwnContext). | ref-state.ts watch.observeAbort(signal): `NativeWatch.ObserveAbort(ctx)`; the watch ends `aborted` and removes itself from the watches (locked: it ends from the context's goroutine). | ref-state.ts released (batch.within(...end)): Within runs inline in a commit, as a commit of its own outside one; the end is the notification (`EndWith(ended)`), pending frames are dropped by it as in Pi (the test delivers before releasing, as the awaits of Pi's test do). Re-audited at Pi c23b9ec1: the async skeleton of packages/chord/src/host/ref-state.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to packages/chord/src/next/host/ref-state.ts at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/chord/src/host/reference-keys.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "detached-owned", "microtask-ordering"]
+evidence = ["test:chord/next/host/host_reference_keys_test.go#TestReferenceKeysAConsumerReleasedWhileTheObjectReactivatesLeavesNoHoldBehindNothingIsKeptForIt", "test:chord/next/host/host_reference_keys_test.go#TestReferenceKeysKeysAcrossARestartAndAFailedRePinACommitAdmittedToAWatchedKeyLandingAfterARestartsDrainIsInTheKeysLastValue", "test:chord/next/host/host_reference_keys_test.go#TestReferenceKeysAHoldWhosePinTheKeyLeftForANewInstanceWaitsForThePinOnTheNewInstance", "test:chord/next/host/host_reference_keys_test.go#TestReferenceKeysAHoldWhosePinTheKeyLeftForANewInstanceReturnsItsSourceOnceThePinOnTheNewInstanceFailedToLoad", "test:chord/next/host/host_reference_keys_test.go#TestReferenceKeysAHoldWhosePinTheKeyLeftForANewInstanceDoesNotWaitForAPinOnTheNewInstanceThatReadsTheStore", "test:chord/next/host/host_reference_keys_test.go#TestReferenceKeysAHoldWaitingForThePinOnTheNewInstanceEndsWithItsContext", "test:chord/next/host/host_reference_keys_store_test.go#TestReferenceKeysAKeyWhoseFirstPinStillLoadsTheObjectRebindsToAKeyInTheStoreOnlyTheConsumerIsRejectedNotReadyAsInPi"]
+rationale = "`hold` (`await awaitWithContext(#pin(entry), context)`): a blocking Go call outside a section, the caller's ctx ends only its own wait, a failed wait releases the hold once; `#pin` is a goroutine settling `loading` in a loop section. | `hold`, the pin it awaited left its instance (the object failed and went live again: `follow` pinned the key on the new instance, `entry.loading`): Pi's `hold` returns the source at once after the first pin. Its test (reference-keys.test.ts, 'the object fails and re-binds meanwhile') relies on the new pin, whose load has finished when the old pin settles, having landed by then. Goroutines have no such order, so `hold` waits for `entry.loading` to settle when the load of a pin of the key has finished (`KeyedSlot.InMemory` on the member's ultimate slot: Pi's has landed by then) and returns its source whichever way that pin settled; it does not wait for a new pin whose load has not finished when the old pin settles (Pi's `hold` has returned by then, and a read of the key is `not_ready`). The caller's context still ends the wait. Residual: the load's end and the key's loaded mark are a few steps apart; within that window PiG can fail where Pi succeeds (the load ended before the old pin settled, not yet marked) or succeed where Pi fails (the load ended after Pi's old pin settled, marked before the check). Re-audited at Pi c23b9ec1: the async skeleton of packages/chord/src/host/reference-keys.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to packages/chord/src/next/host/reference-keys.ts at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/chord/src/host/reference.ts"
@@ -679,10 +679,10 @@ rationale = ""
 
 [[files]]
 path = "packages/chord/src/host/root.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "concurrent-joined", "cancellable", "detached-owned", "ui-handoff", "microtask-ordering"]
+evidence = ["test:chord/next/host/host_root_test.go#TestHostRootHostCloseRejectsTheCallerAtOnceWhateverAnUncooperativeFnStillDoes", "test:chord/next/host/host_root_test.go#TestHostRootAnAbortedContextRejectsBeforeFnRunsASynchronousThrowIsARejection", "test:chord/next/host/host_root_test.go#TestHostRootAbortsTheScopesOwnSignalWhenFnSettlesAndAtHostCloseTheCallersContextHavingOne", "test:chord/next/host/host_root_test.go#TestHostRootLeavesNoListenerOnTheCallersSignalOnceHostCloseRejectedAnFnThatNeverSettles"]
+rationale = "root.ts RootScopes.run (async-like, awaited by host.root's caller): `Promise.race([running, open.closed.promise])` inside `awaitWithContext(.., context)` is one `select` over the result channel, the scope's `closed` channel and `ctx.Done()` (error: the fn's error, the host's close reason, `context.Cause(ctx)`). `throwIfAborted` first. | root.ts running = (async () => fn(ctx))() + running.then(settled, settled) (unawaited, outlives the caller's wait): fn runs on a task of its own through `tryPlugin` (a panic is the rejection, Pi's synchronous throw). The seal (`Run`) happens before the result is handed to the waiter, as Pi's `running.then(settled)` is registered before the race's. An uncooperative fn keeps its task (joined by `Loop.Wait`: the host's close must not wait for root fns; D5a). | root.ts scope.abortSignal.addEventListener(\"abort\", aborted) / removeEventListener: `context.AfterFunc(scope, ...)` whose goroutine does `loop.Run(seal(cause))`; seal stops it. | root.ts RootScopes.close (open.closed.reject(reason)): Inside a section: `seal(reason)`, then `closeReason` is stored and `closed` is closed once (a settled scope left the set at its seal, so it is never closed twice). Update (Pi 6d4b7443): `RootOptions.Anonymous` replaces the explicit `principal: undefined`; no linked signal, the scope's own cancel plus one AfterFunc on the caller. Re-audited at Pi c23b9ec1: the async skeleton of packages/chord/src/host/root.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to packages/chord/src/next/host/root.ts at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/chord/src/host/route.ts"
@@ -721,38 +721,38 @@ rationale = "persisted.ts load, findBlockedState (await ...read/keys/find): Bloc
 
 [[files]]
 path = "packages/chord/src/jobs/records.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "concurrent-joined", "detached-owned", "microtask-ordering"]
+evidence = ["test:chord/next/host/jobs_job_end_test.go#TestGCKeepsNothingOfACancelledWaitWhileItsRunStillRuns", "test:chord/next/host/jobs_run_test.go#TestARunGivesEveryWaiterTheOutcomeLateOnesTooAWaitersContextEndsOnlyItsWait", "test:chord/next/host/jobs_persisted_test.go#TestPersistedInvocationsAfterASealAbortJoinsTheResumedInvocationNotTheFirst", "test:chord/next/host/jobs_persisted_test.go#TestPersistedGCSettledRunsCancelledAbortWaitsAndAnEndedObjectWithAHeldChangeAndItsTimerAreCollected", "test:chord/next/host/jobs_persisted_test.go#TestPersistedLoadingAStateDocumentThatFailsToLoadFailsTheActivationTheRetryWithFixedCodeLoadsTheRun", "test:chord/next/host/jobs_persisted_test.go#TestPersistedLoadingALoadThatFailsLosesNothingTheRetryLoadsTheRunsAgainAndCountsTheCrashOnce", "test:chord/next/host/jobs_persisted_test.go#TestPersistedFinishFailuresAreCountedOnTheRecordAcrossACrash", "test:chord/next/host/jobs_persisted_test.go#TestPersistedTheCleanStopAndTheCloseWriterHostCloseWritesTheStoppedRunsBackTheNextStartResumesThemWithoutCounting", "test:chord/next/host/jobs_persisted_test.go#TestPersistedDeferredStateIsStoredByTheCloseWriterAtACleanStopAndAfterWithinMsByTheObjectsTimer", "test:chord/next/host/jobs_job_runs_test.go#TestRunCommitsChangesMadeAfterAnAbortWhileRunStopsAThrowThenEndsAbortedNotThrew", "test:chord/next/host/jobs_persisted_test.go#TestPersistedCrashesAbandonARunCutOffByACrashFinishesFailedAbortedRestartWithoutRun", "test:chord/next/host/jobs_job_test.go#TestJobStartStartsRunAfterTheCommitOutsideTheBatchOnceTheTransactionSettled"]
+rationale = "records.ts outcome / Waiters.wait: A wait registers in a section, then waits on its own channel and the caller's context; the cancelled wait deletes its registration (`Promise.withResolvers` + `removeEventListener`). | records.ts abort (await this.record, await run.over(context)): The mark is a blocking `record`; the join is `Invocation.over`, whose registration is removed when its context ends. | records.ts load (await persisted.load, await #restored, documents.tx(...)): Blocking reads outside sections; what is known of the store and the state documents is installed in sections; a failure drops everything of the load. | records.ts record, flushHeld, writeAtClose (await documents.tx / store.commit, errors swallowed): Blocking; the object's end is not an error of theirs (Pi's `catch {}`): they return nothing. | records.ts void this.#recordOutcome(...) (x4: settled, cut, dispatch aborted, dispatch abandoned): `Loop.Go` tasks joined by `Loop.Wait` at the host's close; the outcome is recorded behind the state changes admitted before it (line order). | records.ts queueMicrotask(() => this.#need(run)): `Loop.Queue`: the run is invoked after the commit, outside the batch, once the transaction settled. | records.ts Date.now() (held deadlines), run-states.ts Date.now() + withinMs, async load() {}: `Loop.Now()` milliseconds (int64); `Infinity` is `math.MaxInt64`; the no-op `load` returns nil. Update (Pi 6d4b7443): `retryBlocked`/`readBlockedState` are blocking methods, the store read outside a section and decode/create inside `loop.Run`; a read or decode failure leaves the runs blocked as Pi's catch. Re-audited at Pi c23b9ec1: the async skeleton of packages/chord/src/jobs/records.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to packages/chord/src/next/jobs/records.ts at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/chord/src/jobs/run-states.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["microtask-ordering"]
+evidence = ["test:chord/next/host/jobs_persisted_test.go#TestPersistedDeferredStateIsStoredByTheCloseWriterAtACleanStopAndAfterWithinMsByTheObjectsTimer"]
+rationale = "run-states.ts `Date.now() + withinMs`, `async load() {}`: microtask-ordering (clock): Loop.Now() milliseconds (int64); the no-op load returns at once. Delta at Pi 6d4b7443: no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged. Re-audited at Pi c23b9ec1: the async skeleton of packages/chord/src/jobs/run-states.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to packages/chord/src/next/jobs/run-states.ts at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/chord/src/jobs/run.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/next/host/jobs_run_test.go#TestARunGivesEveryWaiterTheOutcomeLateOnesTooAWaitersContextEndsOnlyItsWait"]
+rationale = "run.ts Waiters/Joins (Promise.withResolvers, signal.addEventListener(\"abort\")): Channels settled once under the loop; `context.Cause(ctx)` is `signal.reason`. Delta at Pi 6d4b7443: no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged. Re-audited at Pi c23b9ec1: the async skeleton of packages/chord/src/jobs/run.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to packages/chord/src/next/jobs/run.ts at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/chord/src/link/channel.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "microtask-ordering"]
+evidence = ["test:chord/next/link/channel_test.go#TestInOrderHandling", "test:chord/next/link/channel_test.go#TestTheHeartbeat"]
+rationale = "A message the handler handles asynchronously (message(): void | Promise<void>, #hold at channel.ts:176-179) holds every later message, ping included, until it settles; messages are handled in order and dropped when the link closes meanwhile; a rejection is a protocol error (reported, the link closes). Go: chord/next/link channel.go holds the queue by index and a *Handling settles the hold. The heartbeat Tick pings a silent open link once and closes a silent one; a ping is answered at once. Re-audited at Pi c23b9ec1: the async skeleton of packages/chord/src/link/channel.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to packages/chord/src/next/link/channel.ts at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/chord/src/link/part.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/next/link/part_test.go#TestTheAsynchronousInflate"]
+rationale = "inflateAsync (part.ts:142-154) awaits the stream-based inflate; AbortSignal is a context.Context in Go, a cancelled inflate leaves no outcome on the part and never more than the limit of output bytes is kept. chord/next/link/part.go InflateAsync is a blocking call that leaves the outcome on the part. Re-audited at Pi c23b9ec1: the async skeleton of packages/chord/src/link/part.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to packages/chord/src/next/link/part.ts at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/chord/src/node/app/app.ts"
@@ -917,31 +917,31 @@ rationale = "`write`/`pump` backpressure (`drain`, `res.once(\"close\")`): `Resp
 
 [[files]]
 path = "packages/chord/src/node/http/request.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/nextnode/http/request_test.go#TestBodiesAnswer413BeforeAChunkedUploadPastTheLimitHasEnded", "test:chord/nextnode/http/request_test.go#TestBodiesParseJSONWithinItsLimitMalformedIs400LargerIs413"]
+rationale = "`json` and the async-iterable `body(limit)`: blocking `JSON` and an `iter.Seq2` of chunks, the limit checked before the chunk is delivered. Re-audited at Pi c23b9ec1: the async skeleton of packages/chord/src/node/http/request.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to packages/chord/src/next-node/http/request.ts at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/chord/src/node/http/response.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/nextnode/http/response_test.go#TestBytesStopReadingWhenTheClientDisconnectsTheReadsContextIsAborted", "test:chord/nextnode/http/response_test.go#TestBytesDestroyTheConnectionOnAShortOrAThrowingReadReportedResponseFailed"]
+rationale = "`pulled` ReadableStream pull: `*PulledBody` pulls one piece per Read in a goroutine selected against the scope's Done; a late chunk is dropped. Re-audited at Pi c23b9ec1: the async skeleton of packages/chord/src/node/http/response.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to packages/chord/src/next-node/http/response.ts at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/chord/src/node/http/router.ts"
-disposition = "pending"
+disposition = "no-runtime-async"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "The Promise appears only in the types `HttpRoute`, `HttpWrap` and `HttpSocket`; no function in router.ts awaits, chains or schedules a promise. The Go forms (`RouteFunc`, `HttpWrap`) are blocking functions. Re-audited at Pi c23b9ec1: the async skeleton of packages/chord/src/node/http/router.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to packages/chord/src/next-node/http/router.ts at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/chord/src/node/http/upgrades.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "detached-owned", "cancellable"]
+evidence = ["test:chord/nextnode/http/upgrades_test.go#TestPluginSocketsAThrowingHandlerIsReportedSocketFailedAndClosesItsSocket1011", "test:chord/nextnode/http/upgrades_test.go#TestCloseTerminatesASocketThatNeverAcknowledgesItsCloseAtCloseTimeout", "test:chord/nextnode/http/upgrades_test.go#TestGCKeepsNothingOfAClosedPluginSocket"]
+rationale = "`socket` (`void host.root(...)`): an owned background task ending when the socket closes; `close(deadline)` awaited and bounded by a once-closed deadline channel. Re-audited at Pi c23b9ec1: the async skeleton of packages/chord/src/node/http/upgrades.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to packages/chord/src/next-node/http/upgrades.ts at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/chord/src/node/plugins/base-inputs.ts"
@@ -1092,17 +1092,17 @@ rationale = ""
 
 [[files]]
 path = "packages/chord/src/node/workers/main.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["detached-owned", "cancellable", "microtask-ordering"]
+evidence = ["test:chord/nextnode/workers/workers_main_test.go#TestTheWorkersSideSendsStartedWhenTheAppConnectsThenReadyWithItsLoadReportAndIdleState", "test:chord/nextnode/workers/workers_main_test.go#TestTheWorkersSideSendsFatalWithTheRedactedErrorAndExits1", "test:chord/nextnode/workers/workers_main_test.go#TestTheWorkersSideShutsDownDuringItsStartupAbortsItRunsTheClosersRegisteredSoFarInReverseOrderExits0", "test:chord/nextnode/workers/workers_signal_unix_test.go#TestTheWorkersSideShutsDownOnSIGTERM", "test:chord/nextnode/workers/workers_main_test.go#TestTheWorkersSideShutsDownOnTheParentsDisconnect", "test:chord/nextnode/workers/workers_workers_test.go#TestKeepAliveStopsAWorkerIdleSinceIdleMsAHoldKeepsOneRunningBusyKeepsItToo"]
+rationale = "main.ts #start (Promise.withResolvers): a one-slot channel filled by the first `start` main.ts void this.#run(fn).catch(...): one goroutine for the process's life; an error or panic is `fatal` unless stopping; shutdown ends the process (`exitProcess`) main.ts void this.#applyReloads(): an owned task per trigger, serialized by the `reloading` flag under the worker's mutex; the loop ends atomically with its last pop main.ts void this.#shutdown(), signals, disconnect: aborts the worker's context, runs the closers in reverse, forced exit after 3 s (`time.AfterFunc`), then `exitProcess(0)` main.ts #follow (watch.start(async () => flip())): the watch listener flips under the worker's mutex, sending `idle` in order of the flips main.ts #fatal (process.send(message, callback)): the channel's send callback runs once the message is written (or dropped with the channel), then `exitProcess(1)` Re-audited at Pi c23b9ec1: the async skeleton of packages/chord/src/node/workers/main.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to packages/chord/src/next-node/workers/main.ts at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/chord/src/node/workers/process.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["microtask-ordering", "detached-owned"]
+evidence = ["test:chord/nextnode/workers/workers_process_test.go#TestAWorkerProcessPipesItsOutputKeepsItsStderrTailQueuesAnEarlyFrameOnItsLinkTellsControlMessages", "test:chord/nextnode/workers/workers_workers_test.go#TestFixRound1AStopDuringTheWorkersStartupIsAStopItsClosersRunNothingFails", "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterTheGraceFailed", "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFailuresStayALinkLostWhileItsChildLivesABlockedWorkerPastTheHeartbeatIsKilledAfterTheGraceFailed"]
+rationale = "process.ts exited: Promise<Exit>: closed channel + `Exit()`; the `Exited` handler runs first, then the channel closes (Pi runs the `exit` listener before the promise's continuations) process.ts events (control, linkLost, linkClosed, exited): called from the goroutine that observes them (channel reader, waiter), in each source's order; the handler enters the component's loop process.ts output data listeners: one reader goroutine per stream, ends at the stream's end (every holder of its write end gone: the tree is killed at exit) Re-audited at Pi c23b9ec1: the async skeleton of packages/chord/src/node/workers/process.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to packages/chord/src/next-node/workers/process.ts at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/chord/src/node/workers/workers.ts"
@@ -1134,10 +1134,10 @@ rationale = ""
 
 [[files]]
 path = "packages/chord/src/remote/consumer.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "microtask-ordering"]
+evidence = ["test:chord/next/host/remote_consumer_test.go#TestConsumerReferencesOverALink", "test:chord/next/host/remote_consumer_test.go#TestConsumerCallWindow", "test:chord/next/host/remote_consumer_test.go#TestConsumerLimitsPerPart"]
+rationale = "consumer.ts call (Promise.withResolvers, signal.addEventListener(\"abort\", cancel, {once}), signal.throwIfAborted()): `parkedCallResult` (settled once); `context.AfterFunc(ctx, …)` whose callback enters `Loop.Run` and takes the call out of the window; an aborted context is rejected with `context.Cause` before anything is queued. | consumer.ts message(): void \\| Promise<void>, #reply: `(*link.Handling, error)`; a result with a deflated part is handled again after its inflate. Delta at Pi 6d4b7443: no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged. Re-audited at Pi c23b9ec1: the async skeleton of packages/chord/src/remote/consumer.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to packages/chord/src/next/remote/consumer.ts at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/chord/src/remote/hold.ts"
@@ -1148,10 +1148,10 @@ rationale = ""
 
 [[files]]
 path = "packages/chord/src/remote/host-link.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["detached-owned", "cancellable", "microtask-ordering"]
+evidence = ["test:chord/next/host/remote_consumer_test.go#TestConsumerLimitsPerPart", "test:chord/next/host/remote_host_link_test.go#TestHostLinkPartsCompressionAndLimits", "test:chord/next/host/remote_provider_test.go#TestProviderLimitsPerPart"]
+rationale = "host-link.ts async inflate (await inflateAsync per part; stops when the link closes): `inflate` runs on `Loop.Go` (joined by `Loop.Wait` in the host's close); `link.InflateAsync` gets the link's `closing` context; after each part the closing context is checked; `handle()` runs in `Loop.Run`; the returned `*link.Handling` holds the channel's later messages until it settles. A rejected `handle` rejects the Handling (a protocol error). | host-link.ts message(): void \\| Promise<void>: `(*link.Handling, error)`; the section that handled the message has ended when the Handling is returned. | host-link.ts #closing = new AbortController(): `context.WithCancel`, cancelled in `Closed`. Delta at Pi 6d4b7443: no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged. Re-audited at Pi c23b9ec1: the async skeleton of packages/chord/src/remote/host-link.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to packages/chord/src/next/remote/host-link.ts at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/chord/src/remote/provider.ts"
@@ -1190,10 +1190,10 @@ rationale = "applySqliteMigrations validates the table name and the version sequ
 
 [[files]]
 path = "packages/chord/src/sqlite/node.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/sqlite/node/sqlite_driver_test.go#TestNodeSqliteDriver", "test:chord/sqlite/node/database_contract_test.go#TestSqliteDatabaseContractRollsBackAFailedTransactionAndClosesIdempotently"]
+rationale = "Pi 89e30958 deletes exclusive(), the awaited serialized operation that 48c8f322 added, and reformats the awaited transaction callback; the remaining async surface is transaction(): callbacks are awaited one at a time under the access queue, a later call queues behind an open transaction, and a failed rollback keeps the callback error. chord/sqlite/node/node.go drops Exclusive and IsTransaction with their tests and keeps the blocking transaction; TestNodeSqliteDriver covers the serialized transactions, queueing behind a transaction and the rollback-failure cases, and the contract test the rollback and idempotent close. Delta at Pi 8025c414 and db14038b: runCounted goes through runOperation like run, so it is serialized by the access queue (Go RunCounted uses the same runOperation bracket); the bounded statement cache of db14038b is synchronous state inside that bracket (statement() runs within one operation) and adds no async surface. Re-audited at Pi c23b9ec1: the async skeleton of packages/chord/src/sqlite/node.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/chord/src/state/native-source.ts"
@@ -1211,24 +1211,24 @@ rationale = "Watchable.watch (watchable.ts:82, 193) resolves with the Watch of a
 
 [[files]]
 path = "packages/chord/src/store/adapter.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/next/store/table_handle_test.go#TestTableHandle", "test:chord/next/store/table_migration_test.go#TestFreshTables", "test:chord/next/store/table_migration_test.go#TestEagerMigrations"]
+rationale = "`StoreOwnerTables` Prepare/Get/Select/Put are blocking calls that return once their database calls settled; Put runs inside the commit step. Re-audited at Pi c23b9ec1: the async skeleton of packages/chord/src/store/adapter.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to packages/chord/src/next/store/adapter.ts at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/chord/src/store/applier.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/next/store/applier_test.go#TestApplier"]
+rationale = "`applyWrite` is a blocking call returning `error`, statements in the step's order inside the transaction; no ctx (Pi takes none). Re-audited at Pi c23b9ec1: the async skeleton of packages/chord/src/store/applier.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to packages/chord/src/next/store/applier.ts at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/chord/src/store/apply-batch.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "microtask-ordering", "cancellable"]
+evidence = ["test:chord/next/store/apply_batch_test.go#TestApplyBatch"]
+rationale = "`ApplyBatch`/`Replay` block until applied or refused; the place in the commit queue is taken at the call (FIFO ticket), claims/divergence checked at the call and again at the turn, as Pi's queue order; where Pi left an unawaited promise queued, tests start the call on a goroutine (`startBatch`/`startQueued`). Commits are checked before the queue is touched. Re-audited at Pi c23b9ec1: the async skeleton of packages/chord/src/store/apply-batch.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to packages/chord/src/next/store/apply-batch.ts at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/chord/src/store/catalog.ts"
@@ -1246,17 +1246,17 @@ rationale = "Document reads/writes block on the step's transaction (or a guarded
 
 [[files]]
 path = "packages/chord/src/store/export.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["detached-owned", "cancellable", "microtask-ordering", "awaited"]
+evidence = ["test:chord/next/store/export_test.go#TestExportCommitQueue", "test:chord/next/store/export_test.go#TestExportParts", "test:chord/next/store/export_test.go#TestExportRevisions"]
+rationale = "`StoreExport.Next`/`Close` is a pull iterator over an explicit state machine, one page held at a time; it takes the commit queue at the first `Next` and holds it until the export ends; `context.AfterFunc` (detached, owned by the export and stopped when it ends) releases the queue at once when ctx aborts while suspended; store close ends it `released`; an abort while waiting for the queue returns `aborted` and the take's release is given back when it settles. Re-audited at Pi c23b9ec1: the async skeleton of packages/chord/src/store/export.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to packages/chord/src/next/store/export.ts at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/chord/src/store/import.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "detached-owned"]
+evidence = ["test:chord/next/store/import_test.go#TestImportRefusals", "test:chord/next/store/import_test.go#TestImportRoundTrips"]
+rationale = "`ImportStore` blocks until everything applied in one backend transaction; ctx is checked at the start and abandons a stalled source wait (each source `Next` runs on its own goroutine); the source is closed in the background, not awaited (detached-owned); the backend is closed on any failure. Re-audited at Pi c23b9ec1: the async skeleton of packages/chord/src/store/import.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to packages/chord/src/next/store/import.ts at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/chord/src/store/jsonl.ts"
@@ -1288,10 +1288,10 @@ rationale = "`applyStoreSchema` is a blocking call with Pi's statement order and
 
 [[files]]
 path = "packages/chord/src/store/step.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/next/store/catalog_test.go#TestCatalog", "test:chord/next/store/store_test.go#TestStore"]
+rationale = "`Step.Run/RunCounted/Get/All` block in call order inside the step's transaction on one goroutine, no lock. Re-audited at Pi c23b9ec1: the async skeleton of packages/chord/src/store/step.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to packages/chord/src/next/store/step.ts at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/chord/src/store/store.ts"
@@ -1309,10 +1309,10 @@ rationale = "`Get` does one guarded committed read then replays the overlay in m
 
 [[files]]
 path = "packages/chord/src/store/table-handle.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/next/store/table_handle_test.go#TestTableHandle"]
+rationale = "`Get/Page/Count` block on one guarded store read (`Read`), cancellable by ctx; `Rows` is a pull iterator fetching the next page only after the previous was consumed. Delta at Pi 6d4b7443: no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged. Re-audited at Pi c23b9ec1: the async skeleton of packages/chord/src/store/table-handle.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to packages/chord/src/next/store/table-handle.ts at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/chord/src/store/table-migration.ts"
@@ -1638,10 +1638,10 @@ rationale = ""
 
 [[files]]
 path = "packages/coding-agent/src/cli/config-selector.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/cli/config_command.go + tui/config_selector.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Re-audited at Pi c23b9ec1: the async skeleton of packages/coding-agent/src/cli/config-selector.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/coding-agent/src/cli/credential-print.ts"
@@ -1708,17 +1708,17 @@ rationale = ""
 
 [[files]]
 path = "packages/coding-agent/src/core/auth-storage.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/auth.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Re-audited at Pi c23b9ec1: the async skeleton of packages/coding-agent/src/core/auth-storage.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/coding-agent/src/core/bash-executor.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/tools/bash_executor.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Re-audited at Pi c23b9ec1: the async skeleton of packages/coding-agent/src/core/bash-executor.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/coding-agent/src/core/bug-report-upload.ts"
@@ -1736,10 +1736,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`interna
 
 [[files]]
 path = "packages/coding-agent/src/core/cache-warmer.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Re-audited at Pi c23b9ec1: the async skeleton of packages/coding-agent/src/core/cache-warmer.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/coding-agent/src/core/compaction/branch-summarization.ts"
@@ -1785,17 +1785,17 @@ rationale = ""
 
 [[files]]
 path = "packages/coding-agent/src/core/extensions/runner.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "deferred"
+contracts = ["awaited"]
+evidence = ["test:coding/extension/host/inproc/upstream_subscriptions_test.go", "test:coding/extension/host/inproc/ui_prompt_snapshot_test.go", "scenario:test/parity/scenarios/extensions-runtime/39-event-subscription-snapshots.toml", "test:coding/extension/host/inproc/upstream_user_bash_test.go", "test:test/extension-conformance/user_bash_test.go", "scenario:test/parity/scenarios/extensions-runtime/40-user-bash-result-validation.toml", "test:extensions/sdk/request_lifetime_race_test.go", "test:extensions/sdk-rs/src/request_lifetime_tests.rs", "test:extensions/sdk-py/tests/test_request_lifetime.py", "test:coding/extension/host/subprocess/retained_context_node_test.go", "scenario:test/parity/scenarios/extensions-runtime/48-retained-context-host-calls.toml"]
+rationale = "Partial review: each awaited emission captures all extensions' current handler lists before its first callback, then awaits callbacks in order. Removal and registration do not change that emission; nested emission gets a fresh snapshot. The queued UI-prompt path uses the same snapshot boundary without changing its existing admission or cancellation ownership. No new task is introduced. User-bash dispatch awaits each callback and validates its result before returning the first override; handler and validation errors reach both the listener and caller, so local execution does not follow a failed override. SDK result adapters preserve undefined property presence synchronously before responding. Retained Context host calls distinguish normal completion from cancellation: completion publishes before the response and retires the parent without retargeting the connection. Later calls use that same connection lifetime, while active cancellation and retired generations reject calls. Parent choice shares writer ordering with response publication; pending calls resolve or cancel. Whole-file async closure remains deferred because the remaining runner cases and cross-SDK subscription lifecycle are not yet ported. Re-audited at Pi c23b9ec1: the async skeleton of packages/coding-agent/src/core/extensions/runner.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/coding-agent/src/core/extensions/types.ts"
-disposition = "pending"
+disposition = "no-runtime-async"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "The runtime exports are synchronous: defineTool (types.ts:690) and the ToolCallEvent/ToolResultEvent type guards (isBashToolResult ... isToolCallEventType, :1343-1400) return without awaiting. Promise appears only in the declared handler, tool, UI-context and command signatures, which describe what the runner and wrappers await. Their ordering, cancellation and error contracts are recorded on the rows that implement them (core/extensions/runner.ts, wrapper.ts, loader.ts); the Go declarations are in coding/extension/*.go. Delta at Pi c1810bf7: ExtensionUIContext.custom gains an optional `blocked` option on the same Promise-returning declaration; the awaited contract is unchanged (extension-api-parity.md, ctx.ui.custom blocked row). Delta at Pi 2c8d1feb: no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged. Re-audited at Pi c23b9ec1: the async skeleton of packages/coding-agent/src/core/extensions/types.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/coding-agent/src/core/footer-data-provider.ts"
@@ -1820,10 +1820,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`interna
 
 [[files]]
 path = "packages/coding-agent/src/core/model-resolver.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "async/Promise source; PORT_MAP marks this file ported, but the per-file cross-language ordering/cancellation/error contract has not been reviewed for this pin, as for its sibling rows. Delta at Pi bd3c9b82: e5fe9777 changes the default GitHub Copilot model id; no added or removed line contains async, await, Promise or .then, so the delta adds no async contract to review. delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Delta at Pi 984cf6643: splitProviderPrefix matches known provider ids, longest first, instead of splitting at the first slash; it is a synchronous pure function of the catalog (Go internal/codingagent/model_pattern.go), no added or removed line contains async, await, Promise or .then, so the delta adds no async contract to review. Re-audited at Pi c23b9ec1: the async skeleton of packages/coding-agent/src/core/model-resolver.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/coding-agent/src/core/model-runtime.ts"
@@ -1925,10 +1925,10 @@ rationale = ""
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/edit-diff.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/tools/edit_diff.go + unified_patch.go (GenerateUnifiedPatch) + diff_string.go (GenerateDiffString)`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Re-audited at Pi c23b9ec1: the async skeleton of packages/coding-agent/src/core/tools/edit-diff.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/edit.ts"
@@ -2023,10 +2023,10 @@ rationale = "async/Promise source new in 0.99.1; PORT_MAP status 🟡 (coding/ex
 
 [[files]]
 path = "packages/coding-agent/src/extensions/codemode/execute.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:coding/extension/builtin/codemode/worker_admission_test.go#TestCodemodeWorkerAdmissionQueuesABurstInArrivalOrder", "test:coding/extension/builtin/codemode/worker_admission_test.go#TestCodemodeWorkerAdmissionDropsAbortedAndTimedOutWaiters", "test:coding/extension/builtin/codemode/worker_admission_test.go#TestWorkerReservationReleasesExactlyOnce", "test:codemode/worker_settled_launch_test.go#TestLaunchResumingAfterTheResultSettledTakesNoWorker", "test:coding/extension/builtin/codemode/worker_admission_test.go#TestExecuteStartsNoWorkerForALaunchThatResumesAfterItsResultSettled"]
+rationale = "Pi 885a564b (#11184): executeCodemode awaits reserveCodemodeWorker before it builds the sandbox. A script that finds every worker taken joins a FIFO of waiters (admitCodemodeWorkers grants free slots in arrival order whenever a slot is released or the limit is read), waits at most min(timeout_ms, 60 s), and settles as aborted (the signal's reason), timed out (while waiting for a free codemode worker) or no-worker-in-60-s without starting; the wait is subtracted from the script's own deadline. The reservation covers the one worker the script starts: acquireWorker hands it to the sandbox, which releases it when the worker actually exits, and a launch that resumes after the result settled finds it released and starts nothing; a script that never reached the sandbox releases it in finally, exactly once. PI_CODEMODE_MAX_WORKERS is read on every grant. Go keeps this in coding/extension/builtin/codemode/execute.go (reserve, admit, release, workerReserved) and codemode/workerlauncher.go (settled launches skip AcquireWorker). Re-audited at Pi c23b9ec1: the async skeleton of packages/coding-agent/src/extensions/codemode/execute.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/codemode/tool.ts"
@@ -2065,10 +2065,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`interna
 
 [[files]]
 path = "packages/coding-agent/src/extensions/llama/ui.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/llama/ui.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands. Re-audited at Pi c23b9ec1: the async skeleton of packages/coding-agent/src/extensions/llama/ui.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/mcp/cli.ts"
@@ -2079,10 +2079,10 @@ rationale = ""
 
 [[files]]
 path = "packages/coding-agent/src/extensions/mcp/index.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "detached-owned", "ui-handoff"]
+evidence = ["test:coding/mcpext/responsive_test.go#TestMcpCommandOpensTheManagerBeforeTheStartupConnectionsFinish", "test:coding/mcpext/responsive_test.go#TestMcpManagerEnablesAServerInTheBackground", "test:coding/mcpext/responsive_test.go#TestMcpDirectToolCallWaitsForItsServersReconnect", "test:coding/mcpext/responsive_test.go#TestMcpPreparedToolCallResolvesTheConnectionWhenItExecutes", "test:coding/mcpext/manager_test.go#TestMcpManagerReconnectRunsInTheBackgroundWithoutAStatusScreen", "test:coding/mcp_oauth_session_upstream_test.go#TestAgentSessionMCPOAuthCancelsASignInWaitingOnTheAuthorizationServerWhenTheSessionShutsDown", "test:coding/mcp_oauth_session_upstream_test.go#TestAgentSessionMCPOAuthClosesTheSessionWithoutRefreshingAnExpiringToken", "test:coding/mcpext/extension_test.go#TestAgentSessionMCPCodemodeScriptWaitsForTheServersItNames"]
+rationale = "The extension owns one AbortController per session (aborted on session_shutdown and before the first session_start); work captures its signal when it starts and drops late results once it aborted. startConnection waits for its `after` promise, starts only while its attempt token, the server's enabled state and the session still apply, and publishes server.ready; waitForServers loops until the latest attempts settle or the tool call aborts; reconnect chains behind server.ready and replaces it; disabling clears the attempt token and records a closing promise that a replacement awaits before opening a transport. `/mcp` opens the manager without awaiting the startup connections, and runInBackground runs connection actions off the menu, dropping a result whose attempt was replaced; sign-ins stop on Esc and on the session signal and are registered with track so session_shutdown awaits their cleanup. PiG maps the controller to a context owned by the Extension, the promises to channels closed by goroutines registered in backgroundTasks (drained by SessionShutdown, which also admits tasks started while it waits), the attempt token to a pointer compared under the extension mutex, and runInBackground to a goroutine whose synchronous part (config save, detaching the connection, installing the ready channel) runs before it starts, as the Promise's synchronous prefix does. Re-audited at Pi c23b9ec1: the async skeleton of packages/coding-agent/src/extensions/mcp/index.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/mcp/oauth.ts"
@@ -2100,10 +2100,10 @@ rationale = ""
 
 [[files]]
 path = "packages/coding-agent/src/extensions/mcp/runtime.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "async/Promise source new in 0.99.1; PORT_MAP status 🟡 (coding/mcpext/runtime.go (connection_test.go)); no per-file ordering, cancellation and error contract has been reviewed yet, and no evidence is claimed. Review with the owning family before marking translated. Re-audited at Pi c23b9ec1: the async skeleton of packages/coding-agent/src/extensions/mcp/runtime.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/mcp/tools.ts"
@@ -2121,10 +2121,10 @@ rationale = "async/Promise source new in 0.99.1; PORT_MAP status ⬜ ((not start
 
 [[files]]
 path = "packages/coding-agent/src/extensions/tool-search/tool.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "async/Promise source new in 0.99.1; PORT_MAP status ⬜ ((not started: tool-search runs Pi's own extension code in the Node extension runtime, D-B)); no per-file ordering, cancellation and error contract has been reviewed yet, and no evidence is claimed. Review with the owning family before marking translated. Delta at Pi 2c8d1feb: no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged. Re-audited at Pi c23b9ec1: the async skeleton of packages/coding-agent/src/extensions/tool-search/tool.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/coding-agent/src/main.ts"
@@ -2177,17 +2177,17 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`tui/tex
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/login-dialog.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "detached-owned", "ui-handoff"]
+evidence = ["test:tui/login_dialog_cancel_order_test.go#TestLoginDialogCancelAbortsBeforeEndingTheInput", "test:tui/login_dialog_test.go#TestLoginDialog_CancelClosesPendingInputChannel", "test:tui/login_dialog_gaps_test.go#TestLoginDialogComponentPromptFlow", "test:tui/login_dialog_device_code_test.go#TestDeviceCodeLoginOpensTheVerificationPageAndCopiesTheCodeOnceAfterConfirmation", "test:tui/login_dialog_device_code_test.go#TestDeviceCodeLoginKeepsManualLoginAvailableWhenBrowserAndClipboardAccessFail", "test:tui/login_dialog_device_code_test.go#TestDeviceCodeLoginCancelsWithoutOpeningABrowserOrChangingTheClipboard", "test:tui/login_dialog_oracle_test.go#TestLoginDialogInputMatchesPi"]
+rationale = "showPrompt and showManualInput return a Promise settled only by the input: Enter resolves it with the typed value, cancel (Escape) aborts the dialog's AbortController first, then rejects the pending Promise with 'Login cancelled' and calls onComplete(false, ...). Device-code confirmation consumes its action once and starts the browser open and the clipboard write without awaiting them: copyToClipboard runs under `void ... .then/.catch`, updating the status row only if the dialog is still focused, not aborted and still showing the hint, and an open or copy failure never interrupts the login. Go tui/login_dialog.go keeps the same order (TestLoginDialogCancelAbortsBeforeEndingTheInput, TestLoginDialog_CancelClosesPendingInputChannel), the prompt flow (TestLoginDialogComponentPromptFlow, TestLoginDialogInputMatchesPi against Pi's component), consumes the device-code action once and opens only web URLs without blocking on the clipboard, with failures leaving manual login available (the three device-code tests). Re-audited at Pi c23b9ec1: the async skeleton of packages/coding-agent/src/modes/interactive/components/login-dialog.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/model-selector.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`tui/model_select.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands. Re-audited at Pi c23b9ec1: the async skeleton of packages/coding-agent/src/modes/interactive/components/model-selector.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts"
@@ -2212,10 +2212,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ported+
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "detached-owned"]
+evidence = ["test:internal/codingagent/login_cancel_test.go#TestOAuthLoginCancellationDoesNotCompleteAuthentication", "test:internal/codingagent/interactive_flush_compaction_queue_order_test.go#TestFlushCompactionQueueAwaitsEachExtensionCommand", "test:internal/codingagent/startup_prompt_commands_test.go#TestInitialExtensionCommandsRunInOrder", "test:internal/codingagent/login_persistence_cancel_test.go#TestLoginCancelWhileCredentialStoreLocked", "test:internal/codingagent/interactive_post_login_discovery_test.go#TestPostLoginCompletesBeforeBackgroundRefresh", "test:internal/codingagent/signal_handler_lifetime_upstream_test.go#TestSignalShutdownDefersTerminalCleanupUntilDisposalCompletesUpstream", "test:internal/codingagent/upstream_signal_shutdown_test.go#TestSignalShutdownJoinsCleanupBeforeOwnerTeardown", "test:internal/codingagent/upstream_signal_shutdown_test.go#TestUpstreamSignalShutdownExtensionCleanup", "test:internal/codingagent/interactive_teardown_test.go#TestRequestShutdownDoesNotTearDownOffLoop", "test:internal/codingagent/shutdown_input_owner_test.go#TestInteractiveShutdownJoinsInputBeforeTerminalTeardown", "test:internal/codingagent/interactive_user_bash_lifetime_test.go#TestInteractiveUserBashShutdownCancelsAndDrainsHook", "test:internal/codingagent/interactive_prompt_routing_test.go#TestSettleActiveRunAbortsAndWaitsForTheRun", "test:internal/codingagent/interactive_prompt_routing_test.go#TestExtensionAbortSettlesTheRunAndTheNextPromptRuns", "test:internal/codingagent/interactive_agent_settled_aborted_test.go#TestInteractiveAgentSettledReportsEscapeAbort", "test:internal/codingagent/interactive_test.go#TestInteractiveMode_QueuedEnterSendsAfterCompactionEnd", "test:internal/codingagent/interactive_test.go#TestInteractiveMode_CompactionQueueFlushSkipsTurnWhenBusy", "test:internal/codingagent/interactive_test.go#TestCompactionFlushStartsTurnWhenIsIdleIsStaleFalse", "test:internal/codingagent/interactive_session_test.go#TestInteractiveMessageQueuedDuringEndOfTurnCompactionIsDelivered", "test:internal/codingagent/interactive_extension_delivery_test.go#TestDeliverUserMessageIsNotDroppedWhenTheUIQueueIsFull", "test:internal/codingagent/tmux_check_test.go#TestTmuxKeyboardQueriesStartConcurrently", "test:internal/codingagent/update_notice_test.go#TestStartupVersionCheckShowsTheReleaseItReports", "test:internal/codingagent/reload_notices_caller_test.go#TestExtensionReloadShowsTheReloadStatus"]
+rationale = "Async uses in interactive-mode.ts (read at the pin; the file is 7105 lines and its asynchrony falls in six groups). (1) Startup (:1090-1380): init awaits Promise.all for the fd lookup and the keyboard-protocol queries, then starts detached work that nobody awaits: the highlight-language preload, the catalog refresh with a 15 s abort timer (:1153), the new-release check, the package-update check, the tmux keyboard check (runTmuxShow spawns `tmux show -gv` with a 2 s kill timer, :1287-1305) and the anonymous install report; each .then only paints a notice when its result arrives. Go starts these as owned goroutines joined at shutdown, and the tmux queries run concurrently (TestTmuxKeyboardQueriesStartConcurrently), the release check paints the release it reports (TestStartupVersionCheckShowsTheReleaseItReports). (2) Input (getUserInput :4238-4252): a queued input is returned first, otherwise one resolver is parked and the next submit settles it; Go keeps the same single-resolver queue on the interactive loop, with the same order for deliveries that arrive while the UI queue is full (TestDeliverUserMessageIsNotDroppedWhenTheUIQueueIsFull). (3) Turn and abort: Escape and Ctrl-C call session.abort() unawaited (:4740-4750); Go settles the active run before the next prompt starts and reports the abort (TestSettleActiveRunAbortsAndWaitsForTheRun, TestExtensionAbortSettlesTheRunAndTheNextPromptRuns, TestInteractiveAgentSettledReportsEscapeAbort). (4) Compaction queue: flushCompactionQueue runs unawaited after compaction end (:2020, 3696, 5667); a message typed meanwhile joins the queue, is flushed after the end event, restarts the turn only when the agent is idle, and a retry keeps its follow-up mode: TestInteractiveMode_QueuedEnterSendsAfterCompactionEnd, TestInteractiveMode_CompactionQueueFlushSkipsTurnWhenBusy, TestCompactionFlushStartsTurnWhenIsIdleIsStaleFalse, TestInteractiveMessageQueuedDuringEndOfTurnCompactionIsDelivered. Each message of the flush is awaited in order, an extension command's handler returning before the next message is handled, and run() awaits each prompt the same way, so a command holds the prompt after it: TestFlushCompactionQueueAwaitsEachExtensionCommand, TestFlushCompactionQueueFirstPromptJoinsTheRunACommandStarted, TestInitialExtensionCommandsRunInOrder, TestTypedExtensionCommandHoldsTheNextPrompt. (5) Shutdown (:4258-4400): Ctrl-C twice within 500 ms, Ctrl-D and the signal handlers (SIGINT/SIGTERM/SIGHUP, prepended) each call `void this.shutdown()`, which stops the TUI before extension shutdown events so cleanup cannot repaint, then disposes and exits once. Go ShutdownFromSignal runs the same order and joins the input reader, the user-bash hook and the extension cleanup before the terminal teardown (TestSignalShutdownDefersTerminalCleanupUntilDisposalCompletesUpstream, TestSignalShutdownJoinsCleanupBeforeOwnerTeardown, TestUpstreamSignalShutdownExtensionCleanup, TestRequestShutdownDoesNotTearDownOffLoop, TestInteractiveShutdownJoinsInputBeforeTerminalTeardown, TestInteractiveUserBashShutdownCancelsAndDrainsHook). (6) Login and reload: the login prompt races the dialog's response against the prompt's AbortSignal and rejects `Login cancelled`, removing the listener in finally (:6280-6296), a cancelled provider login never completes authentication and leaves the old credential, also while the credential store is locked, and the post-login refresh runs in the background only after the login completed (TestOAuthLoginCancellationDoesNotCompleteAuthentication, TestLoginCancelWhileCredentialStoreLocked, TestPostLoginCompletesBeforeBackgroundRefresh); the reload box yields one process.nextTick so the box paints before the reload starts (:6457), which Go reproduces with the render turn before the reload goroutine (TestExtensionReloadShowsTheReloadStatus). Delta at Pi 7853186d and c1810bf7: setCustomEditorComponent stays synchronous and only skips the selector disposal, editor-slot swap and focus while an extension dialog is open (TestExtensionDialogsStayVisibleWhenTheEditorComponentIsReplaced, TestEditorComponentReplacementKeepsTheActiveSelectorWhileADialogIsOpen); showExtensionCustom still resolves when done runs and now passes options.blocked to pushExtensionDialog, a synchronous argument (TestExtensionDialogsReportBlockedStatusForAnInlineCustomComponentThatOptsIn). Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands. Delta at Pi 2c8d1feb: no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged. Re-audited at Pi c23b9ec1: the async skeleton of packages/coding-agent/src/modes/interactive/interactive-mode.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/model-catalog-refresh.ts"
@@ -2268,10 +2268,10 @@ rationale = ""
 
 [[files]]
 path = "packages/coding-agent/src/package-manager-cli.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "deferred"
+contracts = ["awaited"]
+evidence = ["test:coding/cli/package_cli_parity_test.go", "test:coding/cli/package_git_parity_test.go", "scenario:test/parity/scenarios/cli-utils/11-package-uninstall-alias.toml", "scenario:test/parity/scenarios/cli-utils/12-package-update-error.toml"]
+rationale = "Package aliases route before Session/model startup. Removal, installation and update complete before success output; thrown errors appear after inherited child diagnostics. Native self-update ownership remains D39; the complete upstream managed-update and configuration async family remains unreviewed, so this file is not async-closed. Pi fdce48eb only strips a BOM (stripBom) from the synchronously read managed-install marker; no async construct is added or changed, so the review above carries over. Pi 6dfb54678 prints the install failures of the awaited resolve() in the config command; PiG's config command does not resolve by installing, so no new async obligation. Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands. Update (Pi 6d4b7443): the configured self-update command is a selection before tier resolution; `RunConfiguredSelfUpdateCommand` runs it to completion and returns its exit before success output (coding/cli TestConfiguredSelfUpdate*). Re-audited at Pi c23b9ec1: the async skeleton of packages/coding-agent/src/package-manager-cli.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/coding-agent/src/utils/abort.ts"
@@ -2450,24 +2450,24 @@ rationale = "formatResult awaits truncate, which writes the full text to output.
 
 [[files]]
 path = "packages/durable/src/env/index.ts"
-disposition = "pending"
+disposition = "no-runtime-async"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "The runtime exports are synchronous (ok, err, getOrThrow, getOrUndefined, toError and the FileError and ExecutionError classes, env/index.ts:6-65); every Promise in the file is the return type of an interface method (TextLineReader, BinaryReader, DirReader, FileWatcher, Env file and shell operations, cleanup). The ordering and error contracts of those methods belong to the Env implementations (the node and in-memory envs) and to the callers that await them (tools/read.ts, harness); the Go declarations are in durable/env. Re-confirmed at Pi e7a0df27 (5f312dac renames FileWatcher.close to stop): still declarations only. Re-audited at Pi c23b9ec1: the async skeleton of packages/durable/src/env/index.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/durable/src/env/node-watch.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "detached-owned"]
+evidence = ["test:durable/env/node/watch_close_pi_test.go#TestFileWatcherStopIsIdempotentAndEndsReporting", "test:durable/env/node/watch_deliver_pi_test.go#TestWatcherDeliversOnlyWhileOpenAndSurvivesAThrowingCallback", "test:durable/env/node/conformance_test.go#TestNodeExecutionEnvWatchLimits", "test:durable/env/node/watch_unavailable_test.go#TestNodeFileWatcherReportsOverflowWhenNoNativeWatchCanBeCreated", "test:durable/env/node/watch_options_test.go#TestNodeWatchOptionsForceTheModeAndSetThePollInterval", "test:durable/env/node/watch_abort_pi_test.go#TestWatchAbortedWhileOpeningClosesTheWatcherAndFails", "test:durable/env/node/watch_close_pi_test.go#TestFileWatcherStopIsIdempotentAndEndsReporting", "test:durable/env/node/watch_close_waits_pi_test.go#TestFileWatcherStopWaitsForTheRescanInProgress"]
+rationale = "NodeFileWatcher.open (:168-195) awaits the first #sync before it schedules polling and stops the watcher when that sync fails; Go's openFileWatcher (durable/env/node/watch.go) blocks on the same sync and returns the same errors, and an event that arrives during it marks the opening sync as running, so the rescan it asks for runs after open as Pi's debounce timer would. #flush (:253-282) shares one running Promise: a flush that finds one running sets #dirty and returns it, and the running flush goes round again; Go's flush returns the running flush's done channel and loops on dirty the same way, on one owned goroutine per flush. Its failure delivers one FileError and stops the watcher in both. The poll timer runs `void this.#flush().finally(() => this.#schedulePoll())` (:228-234) and the debounce timer an unawaited #flush (:236-242); Go's time.AfterFunc callbacks wait for the flush and re-arm, and stop() cancels the timer and closes the native watchers, so every background task is owned by the watcher. #deliver (:219-226) swallows a throwing onChange; Go recovers its panic. close (:203-207) stops the watcher and awaits #running. Go's Close waits for the running flush too, except while a change is being delivered: a Close called from onChange cannot wait for the flush that is calling it, so it returns once the watcher is stopped, and Pi's close called there resolves only after that flush, which a synchronous onChange cannot observe. JavaScript cannot run close beside onChange otherwise; a Go Close from another goroutine during a delivery also returns at once, and no onChange starts after it. The macOS settle rescan (:244-251) has no counterpart because fsnotify's kqueue and inotify registrations are synchronous (watch.go header). close takes an unused context in both. Pi 5f312dac: Stop waits for the rescan in progress, is idempotent, no onChange after it returns. Re-audited at Pi c23b9ec1: the async skeleton of packages/durable/src/env/node-watch.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/durable/src/env/node.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:durable/env/node/watch_close_waits_pi_test.go#TestFileWatcherStopWaitsForTheRescanInProgress"]
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release. Pi 5f312dac: watcher.stop(context) after an aborted open waits for the rescan in progress. Re-audited at Pi c23b9ec1: the async skeleton of packages/durable/src/env/node.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/durable/src/harness/agent.ts"
@@ -2478,10 +2478,10 @@ rationale = ""
 
 [[files]]
 path = "packages/durable/src/harness/compaction.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "concurrent-joined", "detached-owned"]
+evidence = ["test:durable/harness/harness_compaction_test.go#TestManualCompaction", "test:durable/harness/harness_compaction_test.go#TestManualCompactionConcurrency", "test:durable/harness/harness_compaction_test.go#TestBackgroundThresholdCompaction", "test:durable/harness/harness_compaction_test.go#TestBlockingThresholdCompaction", "test:durable/harness/harness_compaction_test.go#TestCompactionOutcomes", "test:durable/harness/harness_compaction_test.go#TestCompactionRecovery", "test:durable/core/driver/compaction_failure_core_test.go#TestCoreACompactionFailureIsVisibleUntilASummaryIsProduced"]
+rationale = "The compaction task is a checkpointed phase machine (select, summarize, retry, abort): each phase awaits its reads (agent, context at the immutable tail, beforeCompact hooks one after another, the completeSimple call with runtime.signal) and ends in one awaited commit; after the model call it throws if the signal was aborted so the abort invocation or the reopened task owns the committed state; a retryable error is re-queued with a durable backoff; the abort phase removes the live status and ends terminal. Compactions run as ordinary background work and several may be in flight, the one that cuts furthest wins whatever finishes first. Go durable/harness/compaction.go keeps the phases and checkpoints. The cited tests pin the manual and concurrent cases (a compaction that cuts furthest wins, an older-selected summary that cuts later is placed, abort by Conversation.abort with an already queued summary surviving), the background and blocking threshold paths (stops through abortTask, aborted with its generation by Esc), hook decisions (first wins, a throw is reported), retry with the pinned request, and recovery after reopen. Delta at Pi b3a29f11: failCutOff(runtime, task, context) is one awaited runtime.commit that records the compaction failure in pi.live (failCompactionStatus) and ends the task terminal instead of parking it at restartLimit; the phases and checkpoints are unchanged. Go durable/harness/compaction.go failCompactionCutOff and the core's durable/core/turn/compaction.go failCutOff commit the same failure; TestCoreOtherTasksCutOffRestartLimitTimesInARow pins it on both engines. Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands. Re-audited at Pi c23b9ec1: the async skeleton of packages/durable/src/harness/compaction.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/durable/src/harness/context.ts"
@@ -2506,31 +2506,31 @@ rationale = ""
 
 [[files]]
 path = "packages/durable/src/harness/inbox.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:durable/harness/harness_inbox_test.go#TestInbox"]
+rationale = "prepareBoundary, applyBoundary, removeInboxItem and withdrawQueuedInputs run inside one transaction and await its operations one at a time: applyBoundary appends the queued writes first (stale ones are settled as unanswered/stale without an append) and then the selected steer and follow-up items in ID order, each append awaited before the next so the placed entry order is deterministic, and only then removes the used items. Go PrepareBoundary/ApplyBoundary/RemoveInboxItem/WithdrawQueuedInputs (durable/harness/inbox.go) take the same Tx and perform the same sequence synchronously, returning the first error. The subtests of TestInbox pin the order (writes before user items at the final boundary, one follow-up per run, every follow-up with followUpMode all, steers at postTools, a queued reset, stale head writes, positional removals, withdrawals and persistence across reopen). Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands. Re-audited at Pi c23b9ec1: the async skeleton of packages/durable/src/harness/inbox.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/durable/src/harness/live.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:durable/harness/harness_live_deltas_test.go#TestLiveDeltas", "test:durable/harness/tool_nested_records_test.go#TestARunningNestedCallSlotKeepsPiMemberOrder", "test:durable/harness/harness_run_failure_test.go"]
+rationale = "The live-state helpers are synchronous functions over a transaction's draft documents (ending a run, finding a slot by binary search, settling a task the scheduler wrote); their asynchronous callers await the commit that contains them, so the changes are published together in commit order. Delta at Pi 38ff9917: 6c2fd73b0 adds the PROGRESS_COMMIT constant; no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged. Delta at Pi f3255de7 and b3a29f11: runFailure, endFailedRun and startRun({ keepFailure }) are synchronous edits of the draft LiveDoc inside the commit of their async callers, which await that commit, so a failure and the entry conversions that go with it are published together in commit order; LIMITS_RESTARTS is a constant. The reviewed contract is unchanged; durable/harness/live.go has the same helpers over the Tx draft (TestRunFailure of harness_run_failure_test.go, TestDeferredGenerationPartials). Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands. Re-audited at Pi c23b9ec1: the async skeleton of packages/durable/src/harness/live.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/durable/src/harness/prompt.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:durable/harness/harness_prompt_test.go#TestSystemPromptPreparation", "test:durable/harness/prompt_pi_oracle_test.go#TestPromptPlanningMatchesPi"]
+rationale = "renderSections awaits each section's render in declaration order, so a later section never starts before an earlier one settles; a throwing section is reported and keeps its shown text, unless the context was aborted, in which case the error propagates and the remaining sections are not rendered. Go RenderSections (durable/harness/prompt.go:35) renders sequentially with the context, reports a failure and keeps the shown text, and returns the error at once when ctx.Err() is set. The subtests 'renders sections in order with tags, omissions, wrappers, and failures' and 'propagates section errors after cancellation' of TestSystemPromptPreparation pin the order, failure handling and the cancellation exception; the oracle test compares the planning with Pi's. Re-audited at Pi c23b9ec1: the async skeleton of packages/durable/src/harness/prompt.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/durable/src/harness/provider.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release. Re-audited at Pi c23b9ec1: the async skeleton of packages/durable/src/harness/provider.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/durable/src/harness/scheduler.ts"
@@ -2562,10 +2562,10 @@ rationale = ""
 
 [[files]]
 path = "packages/durable/src/harness/transcript.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "concurrent-joined"]
+evidence = ["test:durable/harness/conversation_transcript_test.go#TestConversationTranscript", "test:durable/harness/conversation_transcript_test.go#TestConversationTranscriptLoads", "test:durable/harness/conversation_transcript_test.go#TestConversationTranscriptOverAHarness"]
+rationale = "New in Pi f3255de7. merge, newest and resume are synchronous over in-memory state; loadEarlier and fillGap are the async methods. Both share one load between concurrent callers: loadEarlier keeps one #earlier promise, fillGap one promise per gap in a map keyed by the gap the call resolved to (a stale descriptor and the gap it shrank into share the load); the entry is removed when the load settles, so a load that rejected is retried by the next call. The loader runs in a later microtask (Promise.resolve().then), so even its synchronous throw settles a promise that is already shared and cleared. The load's result covers the range under the transcript's state at the time it settles (#cover), and a load that adds nothing returns the previous items. Go durable/harness/transcript.go keeps the same rules under one mutex: the first caller of LoadEarlier or FillGap registers a transcriptLoad (keyed by the gap's After:UpTo for FillGap), runs the loader on its own goroutine with its own context outside the lock, covers the range and clears the entry under the lock, then closes done; a concurrent caller waits on done and returns the same view or error, or returns the cause of its own context when that is cancelled first, which stops only its wait (Pi's later caller cannot stop the shared promise either, and the load runs with the first caller's context in both). A loader error is returned to every waiter and the entry is removed, so the next call loads again (the 'retries a load whose loader failed at once' and 'retries a load that rejected' subtests). Go has no microtask to defer the loader to: a returned error and a panic are both the first caller's, and the entry is registered before the loader runs, so no concurrent caller starts a second load. Re-audited at Pi c23b9ec1: the async skeleton of packages/durable/src/harness/transcript.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/durable/src/harness/types.ts"
@@ -2576,17 +2576,17 @@ rationale = ""
 
 [[files]]
 path = "packages/durable/src/harness/usage.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release. Re-audited at Pi c23b9ec1: the async skeleton of packages/durable/src/harness/usage.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/durable/src/harness/util.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "detached-owned"]
+evidence = ["test:durable/harness/harness_submissions_test.go#TestSubmissions", "test:durable/harness/context_extend_scaling_test.go"]
+rationale = "Waiters.add returns a Promise that settles once: resolve(key, value) resolves every waiter of the key, rejectAll rejects all pending ones, and an AbortSignal on the context rejects only that waiter with signal.reason (already-aborted: rejected at once) and detaches its abort listener when it settles; scanAll awaits the pages one after another in order. Go Waiters (durable/harness/util.go) keeps the same: Add fails an already-done context at once with its cause and otherwise registers an AfterFunc that removes only that waiter, Resolve and RejectAll close every waiter's done channel after storing the value or error, and ScanAll follows the cursor sequentially. TestSubmissions subtest 'cancels only a wait and rejects pending waits on close' drives two waits on one submission, cancels one with its cause (the other stays pending and the status stays placed) and then close rejects the other with 'Harness is closed'; ScanAll is exercised through its callers (durable/harness/context.go:536, scheduler.go:460 and :1463), e.g. by the context extension scaling test. Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands. Re-audited at Pi c23b9ec1: the async skeleton of packages/durable/src/harness/util.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/durable/src/harness/view.ts"
@@ -2632,10 +2632,10 @@ rationale = ""
 
 [[files]]
 path = "packages/durable/src/session/forks.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release. Re-audited at Pi c23b9ec1: the async skeleton of packages/durable/src/session/forks.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/durable/src/session/keys.ts"
@@ -2674,10 +2674,10 @@ rationale = ""
 
 [[files]]
 path = "packages/durable/src/storage/jsonl/node.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release. Re-audited at Pi c23b9ec1: the async skeleton of packages/durable/src/storage/jsonl/node.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/durable/src/storage/jsonl/storage.ts"
@@ -2751,10 +2751,10 @@ rationale = ""
 
 [[files]]
 path = "packages/durable/src/storage/store/queries.ts"
-disposition = "pending"
+disposition = "no-runtime-async"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "`byId`/`first`/`list` return the executor's promise unchanged and `records` is synchronous; there is no await, race or detached work of its own, only the SqliteExecutor Promise the caller awaits. Go: row-reading helpers in durable/storage/sqlite/rows.go are synchronous. D-store scope. Re-audited at Pi c23b9ec1: the async skeleton of packages/durable/src/storage/store/queries.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/durable/src/storage/store/storage.ts"
@@ -2779,10 +2779,10 @@ rationale = ""
 
 [[files]]
 path = "packages/durable/src/testing/env-conformance.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:durable/env/node/conformance_test.go"]
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release. Pi 5f312dac: 'watch stops reporting once stopped' asserts no report after stop returns. Re-audited at Pi c23b9ec1: the async skeleton of packages/durable/src/testing/env-conformance.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/durable/src/testing/runner.ts"
@@ -2835,10 +2835,10 @@ rationale = ""
 
 [[files]]
 path = "packages/durable/src/tools/file-mutation-queue.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release. Re-audited at Pi c23b9ec1: the async skeleton of packages/durable/src/tools/file-mutation-queue.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/durable/src/tools/image-processor.ts"
@@ -2856,10 +2856,10 @@ rationale = "Added to the accounting when every monorepo package was listed: the
 
 [[files]]
 path = "packages/durable/src/tools/path-utils.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "Added to the accounting when every monorepo package was listed: the Promise and async contract of this file is not yet reviewed. The durable lane records it as translated with evidence, or as no-runtime-async, before the release. Re-audited at Pi c23b9ec1: the async skeleton of packages/durable/src/tools/path-utils.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/durable/src/tools/read.ts"
@@ -2912,10 +2912,10 @@ rationale = ""
 
 [[files]]
 path = "packages/env/src/ssh.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "detached-owned"]
+evidence = ["test:env/ssh_timeout_test.go#TestRunSshTimeoutTerminatesTheChildAndFailsWithoutWaitingForItsOutputToClose", "test:env/ssh_known_hosts_semantics_test.go#TestConcurrentHostKeyChangesToOneFileAreAppliedOneAtATime", "test:env/ssh_error_test.go#TestSshErrorReportsExitCodeMessageAndStderr", "test:env/ssh_known_hosts_semantics_test.go#TestScanHostKeyReturnsTheRecordedKeyEvenWhenAuthenticationFails", "test:env/ssh_known_hosts_semantics_test.go#TestConnectSshHandsItsVerifiedDaemonToTheFirstStart", "test:env/ssh_fake_test.go#TestDetectPlatformOnScriptedHosts", "test:env/ssh_fake_test.go#TestDeployDaemonOnScriptedHosts"]
+rationale = "Every exported operation awaits its steps in order, and Go runs them as blocking calls that take a context. runSsh (:127-176) resolves on the child's close and rejects on a spawn error, a failed exit or its timer; the timer sends child.kill(), Node's SIGTERM, and rejects at once with the stderr read so far, without waiting for the close. Go's runSsh sends SIGTERM through the command's Cancel (a plain kill on Windows, as Node does) and returns at the timer with the stderr read so far; a goroutine reaps the child, and WaitDelay bounds that reaping when a descendant keeps the output open. The caller's context is Go's own cancellation: it stops the run the same way and returns the context's error. scanHostKey removes its temporary directory when it settles, after the scan connection and ssh-keygen have finished. changeKnownHosts chains the changes to one file (:224-250) so each reads what the previous one wrote, and a failed change does not stop the next; Go holds a mutex per file for the whole change, and keeps that mutex after the change where Pi drops its map entry, which only retains one mutex per known-hosts path. sshConnection's async command (:480-499) runs when the Connection starts the daemon, one start at a time; Go's CommandFunc runs on the Connection's start with its context, and a mutex guards the detected system that remote() reads meanwhile. Re-audited at Pi c23b9ec1: the async skeleton of packages/env/src/ssh.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/env/src/terminal.ts"
@@ -2926,10 +2926,10 @@ rationale = "openTerminal starts the pty request with its own AbortController an
 
 [[files]]
 path = "packages/env/src/watch.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "detached-owned", "cancellable"]
+evidence = ["test:env/watch_test.go#TestRemoteWatcherOpensAgainAfterALostConnectionAndReportsOverflow", "test:env/watch_test.go#TestRemoteWatcherStopWakesAPendingReconnect", "test:env/watch_semantics_test.go#TestRemoteWatcherReportsAFailedRequestBeforeAndAfterCoverage", "test:env/watch_semantics_test.go#TestRemoteWatcherStopsAfterAnErrorEventAndSurvivesAThrowingCallback", "test:env/regressions_test.go#TestRemoteWatcherOutlivesTheContextThatOpenedIt", "test:env/watch_events_test.go"]
+rationale = "RemoteWatcher.open awaits #start, which resolves on the daemon's ready event and rejects when the watch request fails before it (:80-131). Go's OpenRemoteWatcher blocks on the same ready or failure; its context aborts only the opening, as Pi's open takes no signal, and the watcher lives until Close. Events are delivered from the request's event callback as they arrive, and a throwing onChange is swallowed (Go recovers its panic). A failure after coverage starts the unawaited #reconnect loop (:123), which Go runs as an owned goroutine joined by Close: the delay doubles from 1 s to 30 s, close wakes it (:62-68, :133-142), the loop stops when the watcher is closed, a reopened watcher reports overflow, a lost connection retries and any other failure is delivered once and stops the watcher. Close marks the watcher closed, wakes the delay, aborts the current request and awaits its settlement; Go also waits for the loop, which then returns without opening another request. Pi 5f312dac: RemoteWatcher.Stop waits for the in-flight delivery, is idempotent, and no onChange follows it. Re-audited at Pi c23b9ec1: the async skeleton of packages/env/src/watch.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/evals/src/harness.ts"
@@ -3059,17 +3059,17 @@ rationale = "Promise appears only in the Transport interface declaration (start,
 
 [[files]]
 path = "packages/telemetry/src/index.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:telemetry/telemetry_upstream_test.go#TestTelemetryUpstream", "test:telemetry/telemetry_upstream_test.go#TestTypedSpanStarterRecordsStartAttributesAndNestsByCallbackSpan", "test:telemetry/conformance_upstream_test.go#TestConformanceUpstream", "test:telemetry/propagation_upstream_test.go#TestPropagationUpstream", "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream"]
+rationale = "TelemetryContext.startSpan and the typed starter (bindTypedSpanStarter, :325-340) admit the callback synchronously and return a Promise of its result. Go's TelemetryContext.StartSpan and the generic telemetry.StartSpan call the callback on the caller's goroutine and return its result or error when it settles, the awaited form; a callback that would await before settling blocks until it is done. The typed starter binds the child starter to the callback's span, so nesting follows the span the callback receives, not the goroutine. An unawaited startSpan has no Go form: a Go caller that wants spans to run concurrently calls StartSpan from its own goroutines, and each span then settles when its callback returns, as each Promise settles when its callback's Promise does. The Pi 1402973a additions (TelemetryPropagation.inject/extract, SpanLink, addLink, TelemetryMetrics) are synchronous and add no Promise; startSpan keeps its Promise, so the awaited form above also carries a span started under an extracted remote parent or with links (TestPropagationUpstream). Re-audited at Pi c23b9ec1: the async skeleton of packages/telemetry/src/index.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/telemetry/src/memory.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:telemetry/conformance_upstream_test.go#TestConformanceUpstream", "test:telemetry/memory_recording_test.go#TestInMemoryRecorderIdsAttributesSnapshotsAndSettledParents", "test:telemetry/memory_ids_detached_test.go#TestInMemoryTelemetryContextNumbersSpansAndSettlements", "test:telemetry/recorded_status_test.go#TestRecordedTelemetrySpanStatusFollowsDefaultExplicitAndAutomaticErrors", "test:telemetry/propagation_upstream_test.go#TestPropagationUpstream", "test:telemetry/memory_pi_oracle_test.go#TestInMemoryTelemetryMatchesPiOnRandomPrograms", "test:telemetry/store_upstream_test.go#TestInMemoryTelemetryStoreConformance"]
+rationale = "startInMemorySpan (:120-185) records the span, calls the callback synchronously, settles at once on a synchronous throw and otherwise settles when Promise.resolve(result) settles, taking the next end sequence then. Go's InMemoryTelemetryContext.start records the span under the recorder mutex, runs the callback on the caller's goroutine and settles it when the callback returns, fails or panics (the panic is re-raised after settling), so a span's end sequence follows its settlement order across goroutines as it follows Promise settlement order. A child started from a settled span, including from work the callback left running, goes to the no-op context, as :126 does. A sync-returning callback's span settles before StartSpan returns, where Pi settles it one microtask later; only code that reads getSpans before awaiting startSpan can see that, which a blocking Go call cannot express. Pi 1402973a adds the in-memory inject/extract carriers, span links and the measurement log, all synchronous; a span started from an extracted carrier settles in the same order contract, in this process or another (TestPropagationUpstream 'continues a parent in another Node process'), and TestInMemoryTelemetryMatchesPiOnRandomPrograms compares settlement order with Pi's memory.ts over random programs. Pi d9025a5f adds the TelemetryStore reads: FindTraces, GetTrace and FindMetrics block and return (value, error), with no cancellation, as upstream; a span that starts after its parent settled returns an inert span that keeps the recorder's capabilities. Re-audited at Pi c23b9ec1: the async skeleton of packages/telemetry/src/memory.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/telemetry/src/noop.ts"
@@ -3129,14 +3129,14 @@ rationale = "Input callbacks settle in order before later negotiation effects. T
 
 [[files]]
 path = "packages/tui/src/tui-alt-screen.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`tui/tui_alt_screen.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands. Re-audited at Pi c23b9ec1: the async skeleton of packages/tui/src/tui-alt-screen.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."
 
 [[files]]
 path = "packages/tui/src/tui.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
-evidence = []
-rationale = ""
+evidence = ["test:tui/terminal_colors_query_upstream_test.go", "test:internal/codingagent/terminal_colors_upstream_test.go", "test:internal/codingagent/terminal_color_query_integration_test.go", "scenario:test/parity/scenarios/tui-components/15-terminal-background-query-lifecycle.toml"]
+rationale = "Background queries register FIFO reply ownership before writing, settle once, retain timed-out reply slots without timers or resolvers, preserve their deadlines across Stop, and surface write errors. Bounded timer callbacks only settle query state; they never mutate UI or retain the renderer. Startup and interactive theme detection share the renderer queue, and replies precede autocomplete, terminal-input listeners and focus dispatch. Complete TuiBase async closure remains deferred for the other query and callback lifetimes; PORT_MAP is partial. Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands. Re-audited at Pi c23b9ec1: the async skeleton of packages/tui/src/tui.ts (every async, await, Promise, then/catch/finally, signal, abort, throw, timer and yield line, imports excluded) is identical to this file at v1.5.0, so the contract above carries unchanged."

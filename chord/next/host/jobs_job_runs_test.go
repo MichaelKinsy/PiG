@@ -20,7 +20,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/test/next/jobs/job.test.ts (runs, finishes, `running`, keep-alive, the object's end, GC); the
+// Ports packages/chord/test/jobs/job.test.ts (runs, finishes, `running`, keep-alive, the object's end, GC); the
 // start cases are in jobs_job_test.go. The Go forms are described there.
 
 func exitResult(code int) *delta.JsonObject { return jsonObject("exit", float64(code)) }

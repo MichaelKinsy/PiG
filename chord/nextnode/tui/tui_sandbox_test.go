@@ -100,7 +100,7 @@ func sandboxRun(t *testing.T, node, script string) [][2]string {
 		BridgeStart{Base: "test", Columns: 80, Rows: 24, Colors: "truecolor", Mode: "dark", Locales: []string{"en"}},
 		func(message SandboxMessage) {
 			mu.Lock()
-			lines = append(lines, [2]string{message.Kind, message.Data})
+			lines = append(lines, [2]string{string(message.Kind), message.Data})
 			mu.Unlock()
 			if message.Kind == "exit" {
 				select {

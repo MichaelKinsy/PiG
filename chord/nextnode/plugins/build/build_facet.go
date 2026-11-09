@@ -1,4 +1,4 @@
-package plugins
+package build
 
 import (
 	"context"
@@ -18,6 +18,8 @@ import (
 	"unicode/utf16"
 
 	"github.com/evanw/esbuild/pkg/api"
+
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // Ports packages/chord/src/next-node/plugins/build.ts (`buildFacet`, `ImportRules`, `freeGlobals`, `describe`) on esbuild's
@@ -29,109 +31,6 @@ import (
 // per-kind file only for its kind, the app's API only at a listed version the kind provides, one version per facet,
 // never Chord directly. The result is plain data, the same value a worker or a page evaluates where it runs; a failed
 // build is a result, never an error.
-
-// AppApi is the app's API (slice 12 §1): the package plugins import it as and the versions it provides, newest first
-// (`{ name: "@acme/app", versions: ["v3", "v2"] }`). Its modules are host packages (`@acme/app/v3`, `@acme/app/v3/web`).
-type AppApi struct {
-	Name     string
-	Versions []string
-}
-
-// Platform is where a built script runs: Node (a server, a worker, a TUI) or a browser (a page).
-type Platform string
-
-const (
-	// PlatformNode is a build for Node.
-	PlatformNode Platform = "node"
-	// PlatformBrowser is a build for a browser.
-	PlatformBrowser Platform = "browser"
-)
-
-// BuildOptions is what a build takes besides the plugin and the kind.
-type BuildOptions struct {
-	// HostPackages are the host packages' specifiers (`@acme/app/v3`, `@acme/app/v3/web`, `react`, `react/jsx-runtime`):
-	// external.
-	HostPackages []string
-	// Platform is where the script runs.
-	Platform Platform
-	// Api is the app's API: its imports checked by version and kind, Chord refused. Without one (nil), host packages as
-	// listed.
-	Api *AppApi
-	// Kinds are the app's facet kinds: a file named `<name>.<kind>.<ext>` is one of that kind, refused in a facet of another.
-	Kinds []string
-	// Plugins are the discovered plugins: a file of a directory plugin of the same root may be imported by relative path
-	// (a copy).
-	Plugins []Plugin
-	// PublicPath is where the app serves a browser build's assets: the URL prefix their imports evaluate to (nil: `/`).
-	PublicPath *string
-	// Node is how the Node subprocess that reads the mapping of a CSS module is started (NodeOptions.Command and ReadyTimeout;
-	// the Node is found as the plugin host's is): one per build that has a CSS module, unless the build is the component's,
-	// which shares one.
-	Node NodeOptions
-	// mappings is the component's evaluator of CSS module mappings (nil: the build starts its own).
-	mappings *mappingEvaluator
-}
-
-// BuildInput is a file a build read, with the hash of the bytes it handed its tool (the watcher's inputs).
-type BuildInput struct {
-	File string
-	Hash string
-}
-
-// CSS is a browser build's stylesheet.
-type CSS struct {
-	Name string
-	Text string
-}
-
-// Asset is a browser build's asset, by content-hashed file name.
-type Asset struct {
-	Name  string
-	Bytes []byte
-}
-
-// BuiltKind tags a BuiltFacet.
-type BuiltKind string
-
-const (
-	// BuiltFacetScript is a build that made a script.
-	BuiltFacetScript BuiltKind = "script"
-	// BuiltFacetFailed is a build that failed, with its errors.
-	BuiltFacetFailed BuiltKind = "failed"
-)
-
-// BuiltApi is the app's API a build checked against and the version the script imports (when it imports one): evaluation
-// refuses other versions and Chord to a computed `require` as the build did to imports.
-type BuiltApi struct {
-	Name string
-	// Version is the version the script imports; empty is upstream's `undefined` (it imports none).
-	Version string
-}
-
-// BuiltFacet is a built facet: its script and what it used, or the build's errors. Plain data. Plugin and Facet (the kind)
-// are set for both kinds; Source, Digest, Inputs, Copied, CSS, Assets and Api for BuiltFacetScript, Errors for
-// BuiltFacetFailed.
-type BuiltFacet struct {
-	Kind   BuiltKind
-	Plugin string
-	Facet  string
-	// Source is the script: the builder's output, whatever its Evaluator takes.
-	Source string
-	// Digest is a hash of Source: the same on every machine and checkout for the same files.
-	Digest string
-	// Inputs is every plugin file it read (its own and copied ones; not packages), absolute paths, with their hashes.
-	Inputs []BuildInput
-	// Copied is the files of other plugins inlined into it, absolute paths.
-	Copied []string
-	// CSS is a browser build's stylesheet, when it imports CSS.
-	CSS *CSS
-	// Assets is a browser build's assets, by content-hashed file name.
-	Assets []Asset
-	// Api is the app's API the build checked against, when the build had one (nil otherwise).
-	Api *BuiltApi
-	// Errors is why the build failed, each naming its file and line where there is one.
-	Errors []string
-}
 
 // pluginsSpecifier is the one specifier of this component a script imports (`pluginFile`): external always, answered per
 // facet (evaluate.ts's PLUGINS_SPECIFIER).
@@ -147,31 +46,27 @@ var globalMarkers = map[string]string{"__dirname": "__chord_plugin_dirname", "__
 // line. A computed `import(x)` becomes a call of the script's `require`. It returns an error only when ctx is aborted
 // before the build (its cause, as `throwIfAborted`), when the facet file's real path cannot be read (upstream's `realpath`
 // rejects), or when the script's own source map cannot be read.
-func BuildFacet(plugin Plugin, kind string, options BuildOptions, ctx context.Context) (BuiltFacet, error) {
-	failed := func(errors []string) BuiltFacet {
-		return BuiltFacet{Kind: BuiltFacetFailed, Plugin: plugin.Name, Facet: kind, Errors: errors}
+func BuildFacet(plugin model.Plugin, kind string, options model.BuildOptions, ctx context.Context) (model.BuiltFacet, error) {
+	failed := func(errors []string) model.BuiltFacet {
+		return model.BuiltFacet{Kind: model.BuiltFacetFailed, Plugin: plugin.Name, Facet: kind, Errors: errors}
 	}
 	named, ok := plugin.Facets[kind]
 	if !ok {
 		return failed([]string{`plugin "` + plugin.Name + `" has no ` + kind + ` facet`}), nil
 	}
 	if ctx.Err() != nil {
-		return BuiltFacet{}, context.Cause(ctx)
+		return model.BuiltFacet{}, context.Cause(ctx)
 	}
 	// A facet file may be a link: its real file must be the plugin's, and of no other kind.
 	entry, err := filepath.EvalSymlinks(named)
 	if err != nil {
-		return BuiltFacet{}, err
+		return model.BuiltFacet{}, err
 	}
 	rules := newImportRules(plugin, kind, entry, options, ctx)
-	if options.mappings == nil {
-		rules.mappings = newMappingEvaluator(options.Node)
-		defer rules.mappings.close()
-	}
 	if wrongEntry := rules.checkEntry(named, entry); wrongEntry != "" {
 		return failed([]string{wrongEntry}), nil
 	}
-	browser := options.Platform == PlatformBrowser
+	browser := options.Platform == model.PlatformBrowser
 	publicPath := "/"
 	if options.PublicPath != nil {
 		publicPath = *options.PublicPath
@@ -222,7 +117,7 @@ func BuildFacet(plugin Plugin, kind string, options BuildOptions, ctx context.Co
 	result := api.Build(buildOptions)
 	// A CSS module whose mapping could not be read because ctx ended is an abort, not a failed build.
 	if rules.aborted.Load() {
-		return BuiltFacet{}, context.Cause(ctx)
+		return model.BuiltFacet{}, context.Cause(ctx)
 	}
 	if len(result.Errors) > 0 {
 		errors := make([]string, len(result.Errors))
@@ -245,7 +140,7 @@ func BuildFacet(plugin Plugin, kind string, options BuildOptions, ctx context.Co
 	source := string(script.Contents)
 	globals, err := freeGlobals(source)
 	if err != nil {
-		return BuiltFacet{}, err
+		return model.BuiltFacet{}, err
 	}
 	if len(globals) > 0 {
 		return failed(globals), nil
@@ -254,32 +149,32 @@ func BuildFacet(plugin Plugin, kind string, options BuildOptions, ctx context.Co
 		return failed([]string{mixed}), nil
 	}
 	digest := sha256.Sum256([]byte(source))
-	built := BuiltFacet{
-		Kind:   BuiltFacetScript,
+	built := model.BuiltFacet{
+		Kind:   model.BuiltFacetScript,
 		Plugin: plugin.Name,
 		Facet:  kind,
 		Source: source,
 		Digest: hex.EncodeToString(digest[:]),
 		Inputs: rules.inputs(),
 		Copied: rules.copied(),
-		Assets: []Asset{},
+		Assets: []model.Asset{},
 	}
 	if css != nil {
-		built.CSS = &CSS{Name: filepath.Base(css.Path), Text: string(css.Contents)}
+		built.CSS = &model.CSS{Name: filepath.Base(css.Path), Text: string(css.Contents)}
 	}
 	for i := range result.OutputFiles {
 		file := &result.OutputFiles[i]
 		if file == script || file == css {
 			continue
 		}
-		name, err := relative(plugin.Dir, file.Path)
+		name, err := model.Relative(plugin.Dir, file.Path)
 		if err != nil {
-			return BuiltFacet{}, err
+			return model.BuiltFacet{}, err
 		}
-		built.Assets = append(built.Assets, Asset{Name: name, Bytes: file.Contents})
+		built.Assets = append(built.Assets, model.Asset{Name: name, Bytes: file.Contents})
 	}
 	if options.Api != nil {
-		built.Api = &BuiltApi{Name: options.Api.Name, Version: rules.version()}
+		built.Api = &model.BuiltApi{Name: options.Api.Name, Version: rules.version()}
 	}
 	return built, nil
 }
@@ -343,7 +238,7 @@ const (
 type place struct {
 	kind placeKind
 	// plugin is the other plugin of a placeCopied or placeOtherRoot (identity: the same pointer is the same plugin).
-	plugin *Plugin
+	plugin *model.Plugin
 }
 
 // browserOnly is what only a browser build imports: stylesheets and wasm assets.
@@ -428,15 +323,15 @@ type importedVersion struct {
 // esbuild runs its callbacks on several goroutines; mu guards what they record.
 type importRules struct {
 	plugin api.Plugin
-	own    *Plugin
+	own    *model.Plugin
 	kind   string
 	// entry is the facet file's real path.
 	entry string
 	// modules is the plugin's own packages' directory: every package file inlined lies in it.
 	modules string
 	// others are the other directory plugins: a single-file plugin's files are no one's to import.
-	others       []Plugin
-	options      BuildOptions
+	others       []model.Plugin
+	options      model.BuildOptions
 	hostPackages map[string]bool
 	ctx          context.Context
 	// manifests is what a directory of a package's `package.json` is, by directory.
@@ -449,8 +344,8 @@ type importRules struct {
 	readCopied map[string]bool
 	// scoped is the scoped stylesheet of every CSS module read, by its file.
 	scoped map[string]string
-	// mappings reads the mapping of each CSS module (one Node subprocess, started by the first).
-	mappings *mappingEvaluator
+	// mappings reads the mapping of each CSS module (the caller's Node subprocess).
+	mappings model.MappingEvaluator
 	// aborted is set when ctx ended a read of a mapping: the build is aborted, not failed.
 	aborted atomic.Bool
 	// importers is the first importer of every file resolved, by file.
@@ -459,7 +354,7 @@ type importRules struct {
 	versions []importedVersion
 }
 
-func newImportRules(own Plugin, kind, entry string, options BuildOptions, ctx context.Context) *importRules {
+func newImportRules(own model.Plugin, kind, entry string, options model.BuildOptions, ctx context.Context) *importRules {
 	rules := &importRules{
 		own:          &own,
 		kind:         kind,
@@ -471,11 +366,11 @@ func newImportRules(own Plugin, kind, entry string, options BuildOptions, ctx co
 		readInputs:   map[string]string{},
 		readCopied:   map[string]bool{},
 		scoped:       map[string]string{},
-		mappings:     options.mappings,
+		mappings:     options.Mappings,
 		importers:    map[string]string{},
 	}
 	for _, each := range options.Plugins {
-		if each.Dir != own.Dir && each.Layout == LayoutDirectory {
+		if each.Dir != own.Dir && each.Layout == model.LayoutDirectory {
 			rules.others = append(rules.others, each)
 		}
 	}
@@ -562,7 +457,7 @@ func (rules *importRules) setup(builder api.PluginBuild) {
 		if refused := rules.checkKind(found.Path, args.Path, ""); refused != "" {
 			return api.OnResolveResult{Errors: []api.Message{{Text: refused}}}, nil
 		}
-		if rules.options.Platform == PlatformNode && browserOnly[extname(found.Path)] {
+		if rules.options.Platform == model.PlatformNode && browserOnly[model.Extname(found.Path)] {
 			return api.OnResolveResult{Errors: []api.Message{{Text: `"` + args.Path + `": stylesheets and assets are for browser builds`}}}, nil
 		}
 		if checked := rules.checkFile(found.Path, args.Importer, args.Path); checked != "" {
@@ -585,7 +480,7 @@ func (rules *importRules) setup(builder api.PluginBuild) {
 		if args.Namespace != "file" {
 			return api.OnLoadResult{}, nil
 		}
-		loader, known := loaders[extname(args.Path)]
+		loader, known := loaders[model.Extname(args.Path)]
 		if args.PluginData == any(assetData{}) {
 			loader, known = api.LoaderFile, true
 		}
@@ -604,7 +499,7 @@ func (rules *importRules) setup(builder api.PluginBuild) {
 		rules.mu.Unlock()
 		if args.PluginData != any(assetData{}) && strings.HasSuffix(args.Path, ".module.css") {
 			// build.ts: `scopeCssModule(…, new TextDecoder().decode(contents))`.
-			return rules.cssModule(args.Path, decodeUTF8(contents))
+			return rules.cssModule(args.Path, DecodeUTF8(contents))
 		}
 		text := string(contents)
 		return api.OnLoadResult{Contents: &text, Loader: loader, ResolveDir: filepath.Dir(args.Path)}, nil
@@ -614,7 +509,7 @@ func (rules *importRules) setup(builder api.PluginBuild) {
 // cssModule is the CSS module file with contents as the facet imports it: a module whose default export is the class
 // mapping, importing the scoped stylesheet (ScopeCSSModule), which the build collects with the facet's other CSS.
 func (rules *importRules) cssModule(file, contents string) (api.OnLoadResult, error) {
-	scoped, err := scopeCSSModule(rules.own.Name, rules.own.Dir, file, contents, rules.mappings, rules.ctx)
+	scoped, err := ScopeCSSModule(rules.own.Name, rules.own.Dir, file, contents, rules.mappings, rules.ctx)
 	if err != nil {
 		if failure, ok := errors.AsType[*cssModuleError](err); ok {
 			return api.OnLoadResult{Errors: failure.messages}, nil
@@ -646,14 +541,14 @@ func nodeReadError(err error, path string) string {
 }
 
 // inputs is every plugin file read, sorted by path.
-func (rules *importRules) inputs() []BuildInput {
+func (rules *importRules) inputs() []model.BuildInput {
 	rules.mu.Lock()
 	defer rules.mu.Unlock()
-	inputs := make([]BuildInput, 0, len(rules.readInputs))
+	inputs := make([]model.BuildInput, 0, len(rules.readInputs))
 	for file, hash := range rules.readInputs {
-		inputs = append(inputs, BuildInput{File: file, Hash: hash})
+		inputs = append(inputs, model.BuildInput{File: file, Hash: hash})
 	}
-	slices.SortFunc(inputs, func(a, b BuildInput) int { return compareUTF16(a.File, b.File) })
+	slices.SortFunc(inputs, func(a, b model.BuildInput) int { return model.CompareUTF16(a.File, b.File) })
 	return inputs
 }
 
@@ -665,7 +560,7 @@ func (rules *importRules) copied() []string {
 	for file := range rules.readCopied {
 		copied = append(copied, file)
 	}
-	slices.SortFunc(copied, compareUTF16)
+	slices.SortFunc(copied, model.CompareUTF16)
 	return copied
 }
 
@@ -684,10 +579,10 @@ func (rules *importRules) version() string {
 // plugin's out of its root's top), or to a file of another kind; "" when it may.
 func (rules *importRules) checkEntry(named, entry string) string {
 	var own bool
-	if rules.own.Layout == LayoutFile {
+	if rules.own.Layout == model.LayoutFile {
 		own = filepath.Dir(entry) == rules.own.Dir
 	} else {
-		own = inside(rules.own.Dir, entry)
+		own = model.Inside(rules.own.Dir, entry)
 	}
 	if !own {
 		return filepath.Base(named) + ": the facet file links out of its plugin (" + entry + ")"
@@ -708,7 +603,7 @@ func (rules *importRules) mixedVersions() string {
 	}
 	name := rules.options.Api.Name
 	sorted := slices.Clone(rules.versions)
-	slices.SortFunc(sorted, func(a, b importedVersion) int { return compareUTF16(a.version, b.version) })
+	slices.SortFunc(sorted, func(a, b importedVersion) int { return model.CompareUTF16(a.version, b.version) })
 	seen := make([]string, len(sorted))
 	for i, each := range sorted {
 		seen[i] = name + "/" + each.version + " (" + rules.shown(each.importer) + ")"
@@ -736,7 +631,7 @@ type resolution struct {
 // resolve is what an import of specifier from importer becomes: external, refused, a package esbuild resolves (one of the
 // plugin's `dependencies`, or anything a package imports) or a path esbuild resolves and the rules check.
 func (rules *importRules) resolve(specifier, importer string, kind api.ResolveKind) resolution {
-	browser := rules.options.Platform == PlatformBrowser
+	browser := rules.options.Platform == model.PlatformBrowser
 	failure := func(text string) resolution { return resolution{kind: resolvedError, text: text} }
 	if kind == api.ResolveJSDynamicImport {
 		return failure(`import("` + specifier + `"): a plugin script has no dynamic import (` + pluginFileHint + `)`)
@@ -750,7 +645,7 @@ func (rules *importRules) resolve(specifier, importer string, kind api.ResolveKi
 	if rules.hostPackages[specifier] {
 		return resolution{kind: resolvedExternal}
 	}
-	if rules.own.Layout == LayoutFile {
+	if rules.own.Layout == model.LayoutFile {
 		directory := rules.own.Name + "/"
 		return failure(`"` + specifier + `": a single-file plugin imports only host packages (the app's API); make it a directory "` + directory + `" with a package.json`)
 	}
@@ -794,7 +689,7 @@ func (rules *importRules) resolve(specifier, importer string, kind api.ResolveKi
 
 // newestVersion is the app's newest API version as upstream interpolates `api.versions[0]`: `undefined` for an app that
 // lists no version.
-func newestVersion(app *AppApi) string {
+func newestVersion(app *model.AppApi) string {
 	if len(app.Versions) == 0 {
 		return "undefined"
 	}
@@ -862,8 +757,8 @@ func (rules *importRules) kindOf(path, packageTop string) (string, bool) {
 	dir := filepath.Dir(path)
 	top := packageTop != "" && dir == packageTop
 	if !top {
-		for _, each := range append([]Plugin{*rules.own}, rules.others...) {
-			if each.Layout == LayoutDirectory && dir == each.Dir {
+		for _, each := range append([]model.Plugin{*rules.own}, rules.others...) {
+			if each.Layout == model.LayoutDirectory && dir == each.Dir {
 				top = true
 				break
 			}
@@ -900,7 +795,7 @@ func (rules *importRules) chainOf(file string) []string {
 
 // shown is file as an error names it: relative to the plugin's directory.
 func (rules *importRules) shown(file string) string {
-	rest, err := relative(rules.own.Dir, file)
+	rest, err := model.Relative(rules.own.Dir, file)
 	if err != nil {
 		rest = file
 	}
@@ -925,7 +820,7 @@ func (rules *importRules) checkFile(path, importer, specifier string) string {
 	if from.kind == placeCopied {
 		return `"` + specifier + `": ` + copiedRule(*from.plugin)
 	}
-	if to.kind == placeOutside && inside(rules.own.Root, path) {
+	if to.kind == placeOutside && model.Inside(rules.own.Root, path) {
 		return `"` + specifier + `": not a file of a plugin in this root`
 	}
 	base := "a host package"
@@ -947,7 +842,7 @@ type pluginCodeOf struct {
 // returns nil for a library.
 func (rules *importRules) pluginCode(path string) (*pluginCodeOf, error) {
 	var nearest string
-	for dir := filepath.Dir(path); inside(rules.modules, dir); dir = filepath.Dir(dir) {
+	for dir := filepath.Dir(path); model.Inside(rules.modules, dir); dir = filepath.Dir(dir) {
 		manifest := rules.manifestIn(dir)
 		if manifest == manifestNone {
 			continue
@@ -980,8 +875,8 @@ func (rules *importRules) pluginCode(path string) (*pluginCodeOf, error) {
 // listedIn is the plugin folders the package in dir lists in `chord.plugins` (discovery's reading of it; once per build).
 func (rules *importRules) listedIn(dir string) listedPlugins {
 	return rules.listed.get(dir, func() listedPlugins {
-		at := RootContext{Root: dir, Required: false, Kinds: rules.options.Kinds}
-		discovery, err := DiscoverPackage(dir, at, rules.ctx)
+		at := model.RootContext{Root: dir, Required: false, Kinds: rules.options.Kinds}
+		discovery, err := model.DiscoverPackage(dir, at, rules.ctx)
 		if err != nil {
 			return listedPlugins{err: err}
 		}
@@ -1014,17 +909,17 @@ func (rules *importRules) manifestIn(dir string) manifestKind {
 
 // place is where path (a real path) lies; a package is one of the plugin's own `node_modules`, any other is outside.
 func (rules *importRules) place(path string) place {
-	if inside(rules.modules, path) {
+	if model.Inside(rules.modules, path) {
 		return place{kind: placePackage}
 	}
-	if inside(rules.own.Dir, path) {
+	if model.Inside(rules.own.Dir, path) {
 		return place{kind: placeOwn}
 	}
 	// Another plugin's own packages are no one's to import; a root may itself lie under a `node_modules` (an app installed
 	// from npm with its plugins), so only the part below a plugin's directory counts.
 	for i := range rules.others {
 		other := &rules.others[i]
-		if inside(other.Dir, path) && !inside(filepath.Join(other.Dir, "node_modules"), path) {
+		if model.Inside(other.Dir, path) && !model.Inside(filepath.Join(other.Dir, "node_modules"), path) {
 			if other.Root == rules.own.Root {
 				return place{kind: placeCopied, plugin: other}
 			}
@@ -1040,13 +935,13 @@ func sameKind(a, b string) bool {
 }
 
 // copiedRule is the rule a copied file broke.
-func copiedRule(plugin Plugin) string {
+func copiedRule(plugin model.Plugin) string {
 	return `a file copied from plugin "` + plugin.Name + `" may import only host packages and files of its own plugin`
 }
 
 // describe is one build error as `file:line:column: text`, its file relative to the plugin, with the hint where it
 // applies.
-func describe(plugin Plugin, message api.Message) string {
+func describe(plugin model.Plugin, message api.Message) string {
 	text := message.Text
 	if message.ID == "empty-import-meta" {
 		text = noModuleIdentity
@@ -1059,7 +954,7 @@ func describe(plugin Plugin, message api.Message) string {
 	}
 	file := location.File
 	if filepath.IsAbs(file) {
-		if rest, err := relative(plugin.Dir, file); err == nil {
+		if rest, err := model.Relative(plugin.Dir, file); err == nil {
 			file = rest
 		}
 	}
@@ -1074,24 +969,6 @@ func packageName(specifier string) string {
 		return strings.Join(parts[:min(2, len(parts))], "/")
 	}
 	return parts[0]
-}
-
-// resolvePath is Node's `path.resolve(dir, path)` for an absolute dir.
-func resolvePath(dir, path string) string {
-	if filepath.IsAbs(path) {
-		return filepath.Clean(path)
-	}
-	return filepath.Join(dir, path)
-}
-
-// extname is Node's `path.extname`: the last `.` of the base name on, empty when it is the name's first character.
-func extname(path string) string {
-	base := filepath.Base(path)
-	i := strings.LastIndex(base, ".")
-	if i <= 0 {
-		return ""
-	}
-	return base[i:]
 }
 
 // builtinModules are Node's builtin modules (`module.builtinModules` of Node 22), importable with or without `node:`.
@@ -1119,30 +996,3 @@ func isBuiltin(specifier string) bool {
 	}
 	return builtinModules[specifier]
 }
-
-// inside reports whether path lies inside directory dir (both absolute): not dir itself. Upstream's test is `relative(dir,
-// path)` not empty, not starting with `..` (a file named `..x` is outside) and not absolute.
-func inside(dir, path string) bool {
-	rest, err := relative(dir, path)
-	return err == nil && rest != "" && !hasDotDotPrefix(rest) && !filepath.IsAbs(rest)
-}
-
-// relative is Node's `path.relative(from, to)`: both resolved against the working directory first.
-func relative(from, to string) (string, error) {
-	absoluteFrom, err := filepath.Abs(from)
-	if err != nil {
-		return "", err
-	}
-	absoluteTo, err := filepath.Abs(to)
-	if err != nil {
-		return "", err
-	}
-	rest, err := filepath.Rel(absoluteFrom, absoluteTo)
-	if rest == "." {
-		// Node's is empty for the same path.
-		rest = ""
-	}
-	return rest, err
-}
-
-func hasDotDotPrefix(path string) bool { return strings.HasPrefix(path, "..") }

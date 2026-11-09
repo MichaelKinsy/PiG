@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// Ports packages/chord/test/next/documents/line.test.ts
+// Ports packages/chord/test/documents/line.test.ts
 // pi: packages/chord/src/next/documents/line.ts
 
 // waitingIs waits until the line shows n holders that asked and wait: Pi's holders take their place at the call, which

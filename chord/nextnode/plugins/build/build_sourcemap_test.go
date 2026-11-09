@@ -1,4 +1,4 @@
-package plugins
+package build
 
 import (
 	"encoding/base64"

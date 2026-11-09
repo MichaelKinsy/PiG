@@ -14,7 +14,7 @@ import (
 
 // pi: packages/chord/src/next/remote/replica.ts
 
-// Ports packages/chord/test/next/remote/replica.test.ts: replicas.
+// Ports packages/chord/test/remote/replica.test.ts: replicas.
 
 // replicaOfN is a replica of `{ n }` on a fresh batch, with a derive over it attached. The batch's watches deliver on
 // the returned scheduler, whose Wait is the barrier a test waits for deliveries with (upstream's `delivered()`).

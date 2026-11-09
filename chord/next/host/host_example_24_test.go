@@ -1,6 +1,6 @@
 package host
 
-// pi: packages/chord/test/next/examples/24-keyed-members.ts
+// pi: packages/chord/test/examples/24-keyed-members.ts
 
 import (
 	"context"

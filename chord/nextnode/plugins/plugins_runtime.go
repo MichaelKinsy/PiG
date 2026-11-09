@@ -12,6 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
@@ -27,8 +28,8 @@ import (
 
 // PluginScript is one plugin's facet of a kind as shipped to a host (plain data): its build and its plugin record.
 type PluginScript struct {
-	Plugin Plugin
-	Built  BuiltFacet
+	Plugin model.Plugin
+	Built  model.BuiltFacet
 }
 
 // HostPackages are the host packages a script's imports are answered with, by specifier: the file of the module (an absolute
@@ -43,6 +44,8 @@ type CoreFacet struct {
 	Module string
 }
 
+// pig divergence (D607): Pi's load takes a Host, core PluginFacets and module values; this takes the options of the subprocess host's start.
+//
 // RuntimeLoad is what PluginRuntime.Load takes.
 type RuntimeLoad struct {
 	Kind string
@@ -103,6 +106,9 @@ type RuntimeLoad struct {
 	// principal object it holds (as Pi's host does, and never memoized), when a revocation reaches it (NodeHost.Revoke, or a Go
 	// host's own `Revoke` over a route to this host). A returned error is Pi's throw. Nil: nothing revokes.
 	RevokedBy host.RevokedBy[delta.JsonValue]
+	// PrincipalAttributes is who a span was for (`createHost`'s `principalAttributes`): the subprocess host calls it synchronously
+	// (as PrincipalKey) for the principal of a span it records. Nil: the host's own (`chord.principal`).
+	PrincipalAttributes func(principal data.Principal) telemetry.SpanAttributes
 	// Bridged are the app's own facets that are loaded on a Go host and serve local types the plugins use: each is a facet
 	// of the plugins' closure on the subprocess host, a proxy that serves the same contracts and forwards to the Go host's
 	// own objects (BridgedFacet), so a plugin that needs such a type binds to it, and Pi's closure rule and reload rules
@@ -126,7 +132,12 @@ type PluginError struct {
 	// Failed is every plugin the load left out, required or not.
 	Failed []host.PluginFailure
 	// Problems is what discovery reported in required roots.
-	Problems []DiscoveryProblem
+	Problems []model.DiscoveryProblem
+}
+
+// NewPluginError is upstream's `new PluginError(required, failed, problems = [])`.
+func NewPluginError(required []host.PluginFailure, failed []host.PluginFailure, problems ...model.DiscoveryProblem) *PluginError {
+	return &PluginError{Required: required, Failed: failed, Problems: problems}
 }
 
 // Error is `required plugin failed at load: ` and the required plugins that failed, `"name": message`, and the problems,
@@ -142,6 +153,8 @@ func (e *PluginError) Error() string {
 	return "required plugin failed at load: " + strings.Join(named, "; ")
 }
 
+// pig divergence (D607): Pi's runtime is handed a Host and evaluates in its own process; this one starts the Node subprocess that does.
+//
 // PluginRuntime starts the Node subprocesses that host plugins, and loads and reloads them with complete sets of shipped
 // scripts. It is Pi's `createPluginRuntime()`.
 type PluginRuntime struct {
@@ -150,9 +163,14 @@ type PluginRuntime struct {
 	warm *warmState
 }
 
-// NewPluginRuntime is upstream's `createPluginRuntime()`: how its subprocesses are started.
-func NewPluginRuntime(node NodeOptions) *PluginRuntime {
-	return &PluginRuntime{node: node, warm: newWarmState()}
+// NewPluginRuntime is upstream's `createPluginRuntime()`: how its subprocesses are started is its optional argument (the Go
+// side starts them where Pi's runtime runs in the process: the zero NodeOptions without one).
+func NewPluginRuntime(node ...NodeOptions) *PluginRuntime {
+	runtime := &PluginRuntime{warm: newWarmState()}
+	if len(node) > 0 {
+		runtime.node = node[0]
+	}
+	return runtime
 }
 
 // loadRequest is the `load` control request of host.mjs.
@@ -200,26 +218,26 @@ type scriptWire struct {
 }
 
 type pluginWire struct {
-	Name         string            `json:"name"`
-	Dir          string            `json:"dir"`
-	Root         string            `json:"root"`
-	Required     bool              `json:"required"`
-	Layout       PluginLayout      `json:"layout"`
-	Facets       map[string]string `json:"facets"`
-	Dependencies []string          `json:"dependencies"`
-	External     []string          `json:"external"`
+	Name         string             `json:"name"`
+	Dir          string             `json:"dir"`
+	Root         string             `json:"root"`
+	Required     bool               `json:"required"`
+	Layout       model.PluginLayout `json:"layout"`
+	Facets       map[string]string  `json:"facets"`
+	Dependencies []string           `json:"dependencies"`
+	External     []string           `json:"external"`
 }
 
 // builtWire is a BuiltFacet as Pi's data has it: a script has its source and digest, a failed build its errors, an array
 // that is there when it is empty too (omitzero drops only the nil one: a failed build sets it, see scriptsWire).
 type builtWire struct {
-	Kind   BuiltKind `json:"kind"`
-	Plugin string    `json:"plugin"`
-	Facet  string    `json:"facet"`
-	Source string    `json:"source,omitempty"`
-	Digest string    `json:"digest,omitempty"`
-	Errors []string  `json:"errors,omitzero"`
-	Api    *apiWire  `json:"api,omitempty"`
+	Kind   model.BuiltKind `json:"kind"`
+	Plugin string          `json:"plugin"`
+	Facet  string          `json:"facet"`
+	Source string          `json:"source,omitempty"`
+	Digest string          `json:"digest,omitempty"`
+	Errors []string        `json:"errors,omitzero"`
+	Api    *apiWire        `json:"api,omitempty"`
 }
 
 // apiWire is a BuiltApi: the version is there when the script uses one (upstream's `undefined` is no key).
@@ -245,7 +263,7 @@ func scriptsWire(scripts []PluginScript) []scriptWire {
 		if api := script.Built.Api; api != nil {
 			wire[i].Built.Api = &apiWire{Name: api.Name, Version: api.Version}
 		}
-		if script.Built.Kind == BuiltFacetFailed {
+		if script.Built.Kind == model.BuiltFacetFailed {
 			wire[i].Built.Errors = nonNil(script.Built.Errors)
 		}
 	}
@@ -350,7 +368,7 @@ func (r *PluginRuntime) Load(options RuntimeLoad, ctx context.Context) (*NodeHos
 				if len(required) > 0 {
 					// The host's load settled (the others are loaded): the host is the caller's, as upstream's `host` is, to
 					// stop or keep.
-					return h, report, &PluginError{Required: required, Failed: report.Failed}
+					return h, report, NewPluginError(required, report.Failed)
 				}
 				return h, report, nil
 			}

@@ -48,7 +48,7 @@ type HostOptions struct {
 	Telemetry telemetry.TelemetryContext
 	// PrincipalAttributes are the span attributes recorded for a principal: synchronous and cheap; caching, if any, is
 	// the hook's own. Without it a span records `chord.principal`, the principal's key. The same function on every host.
-	PrincipalAttributes func(principal data.Principal) telemetry.SpanAttributes
+	PrincipalAttributes PrincipalAttributes
 	// OnError is everything that fails in the background; every app handles it.
 	OnError func(err HostError)
 	// CloseTimeout is how long a native's close, and an ending object's running calls, are waited for; 30 s by default.
@@ -92,6 +92,10 @@ type LinkOptions struct {
 	Codec     link.Codec
 	Limits    link.PartLimits
 }
+
+// PrincipalAttributes are the span attributes recorded for a principal (`HostOptions.principalAttributes`): none, its key,
+// or more.
+type PrincipalAttributes func(principal data.Principal) telemetry.SpanAttributes
 
 // HostFacet is a plugin's facet as `Load` and `Reload` take it: its name (its `package.json` name) and its facet. Pi's
 // `PluginFacet`.
@@ -170,6 +174,9 @@ type Host interface {
 	// Incarnation is this run of the host, sent in every handshake (R20): a link's peer sees it as its calls'
 	// `ctx.Incarnation()` (Pi's `readonly incarnation`).
 	Incarnation() string
+	// PrincipalAttributes are the attributes this host's spans record for principal: its PrincipalAttributes hook's, else
+	// `chord.principal`, its principal key; none without a principal (Pi's `principalAttributes(principal, context)`).
+	PrincipalAttributes(principal data.Principal, ctx context.Context) telemetry.SpanAttributes
 	// Load runs every facet's setup and publishes what they declared in one batch (the types and registries served, the
 	// registries composed once, the contributions); requests that waited for the publication are placed after that batch.
 	// Then activates every served type with empty params and returns when each has had its first outcome (the start
@@ -395,7 +402,7 @@ type chordHost struct {
 	// counting is the telemetry of this host's work under a context without a span (counted); nil without an adapter that
 	// records.
 	counting      telemetry.TelemetrySpan
-	principalHook func(principal data.Principal) telemetry.SpanAttributes
+	principalHook PrincipalAttributes
 	// incarnation is this run of the host, sent in every handshake (R20).
 	incarnation string
 	compression link.Compression
@@ -1610,9 +1617,9 @@ func (h *chordHost) newBindingFor(typ *contracts.Contract, dependent *chordObjec
 // own is this host as the maker of its own references: its principal and incarnation.
 func (h *chordHost) own() caller { return caller{principal: h.principal, incarnation: h.incarnation} }
 
-// principalAttributes are the attributes this host's spans record for principal: its PrincipalAttributes hook's, else
+// PrincipalAttributes implements Host: the attributes this host's spans record for principal: its PrincipalAttributes hook's, else
 // `chord.principal`, its principal key; none without a principal.
-func (h *chordHost) principalAttributes(principal data.Principal, ctx context.Context) telemetry.SpanAttributes {
+func (h *chordHost) PrincipalAttributes(principal data.Principal, ctx context.Context) telemetry.SpanAttributes {
 	if principal == nil {
 		return nil
 	}

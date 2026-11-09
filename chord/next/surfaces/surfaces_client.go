@@ -6,7 +6,6 @@ import (
 
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
-	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 	"github.com/MichaelKinsy/PiG/telemetry"
@@ -73,7 +72,7 @@ type ClientStyles interface {
 // ClientOptions is what StartClient takes.
 type ClientOptions struct {
 	// Scripts is the kind's scripts object (WebScripts, TuiScripts).
-	Scripts *contracts.Contract
+	Scripts ScriptsContract
 	// Base is the hash of the base bundle this client runs.
 	Base string
 	// Initial are the plugin scripts it started with (the combined file's), in any order.
@@ -110,12 +109,11 @@ type Client struct {
 	updates *updates
 }
 
-// StartClient starts a client: its host loaded with the initial scripts, its link kept, its plugins kept current. ctx is the
-// client's lifetime: it bounds the scripts object's hold and watch, the script fetches and the stylesheets' loads, so a ctx
-// cancelled while the client runs stops its plugin updates (the link stays up until Stop); Pi's client uses BACKGROUND_CONTEXT.
-// Pass a context that lives as long as the client.
-func StartClient(options ClientOptions, ctx context.Context) (*Client, error) {
-	ctx, cancel := context.WithCancel(ctx)
+// StartClient starts a client: its host loaded with the initial scripts, its link kept, its plugins kept current. As in Pi
+// the client's lifetime is BACKGROUND_CONTEXT (context.Background): it bounds the scripts object's hold and watch, the
+// script fetches and the stylesheets' loads, and Stop ends it.
+func StartClient(options ClientOptions) (*Client, error) {
+	ctx, cancel := context.WithCancel(context.Background())
 	var made host.Host
 	var madeMu sync.Mutex
 	hostOptions := host.HostOptions{OnError: func(err host.HostError) { options.OnError(ClientError{Kind: ClientHostError, Host: err}) }}
@@ -414,7 +412,10 @@ func (u *updates) work() {
 	}
 }
 
-// retryLater tries set again after the next pause (1 s doubling to 30 s).
+// retryLater tries set again after the next pause (1 s doubling to 30 s). The retry's cancel is in place before its timer
+// exists: Pi's `#retry = { cancel: after(…) }` is one step, and the two steps here must not leave a gap a newer set could land
+// in unseen (its watch call then finds nothing to cancel). A newer set that lands while the timer is being set cancels it the
+// moment it exists.
 func (u *updates) retryLater(set *ScriptSet) {
 	u.mu.Lock()
 	if u.pause == 0 {
@@ -423,8 +424,18 @@ func (u *updates) retryLater(set *ScriptSet) {
 		u.pause = min(u.pause*2, updateRetryMaxMs)
 	}
 	pause := u.pause
-	u.mu.Unlock()
 	var cancelled bool
+	var cancelTimer func()
+	u.retry = func() {
+		u.mu.Lock()
+		cancelled = true
+		cancel := cancelTimer
+		u.mu.Unlock()
+		if cancel != nil {
+			cancel()
+		}
+	}
+	u.mu.Unlock()
 	cancel := u.options.Environment.After(pause, func() {
 		u.mu.Lock()
 		if cancelled {
@@ -436,13 +447,12 @@ func (u *updates) retryLater(set *ScriptSet) {
 		u.enqueue(set)
 	})
 	u.mu.Lock()
-	u.retry = func() {
-		u.mu.Lock()
-		cancelled = true
-		u.mu.Unlock()
+	cancelTimer = cancel
+	replaced := cancelled
+	u.mu.Unlock()
+	if replaced {
 		cancel()
 	}
-	u.mu.Unlock()
 }
 
 // apply applies set: a new base calls Outdated; else the changed scripts fetched, their new stylesheets loaded, the host

@@ -3,6 +3,7 @@ package http
 import (
 	"fmt"
 	"net/netip"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -75,7 +76,7 @@ func (*Refused) admission()  {}
 // Admit admits request arriving on connection with the allowed hosts and contributed relays, or refuses it (403): no or
 // several `Host`s, a host neither loopback nor allowed, a loopback `Host` on another connection, forwarded headers no relay
 // verifies.
-func admit(request Incoming, connection Connection, hosts *StringSet, relays []*HttpRelay) Admission {
+func admit(request Incoming, connection Connection, hosts []string, relays []*HttpRelay) Admission {
 	value, ok := request.Header("host")
 	host := asciiLower(value)
 	// Several `Host` headers arrive joined with commas.
@@ -91,7 +92,7 @@ func admit(request Incoming, connection Connection, hosts *StringSet, relays []*
 		}
 		return relayed(request, relays)
 	}
-	if !hosts.Has(host) {
+	if !slices.Contains(hosts, host) {
 		return refusedAdmission
 	}
 	return &Admitted{

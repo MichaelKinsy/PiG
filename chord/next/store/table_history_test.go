@@ -7,17 +7,17 @@ import (
 )
 
 // pi: packages/chord/src/next/store/table-history.ts
-// Ports packages/chord/test/next/store/table-history.test.ts: a table's history (slice 6a §9): what an activation
+// Ports packages/chord/test/store/table-history.test.ts: a table's history (slice 6a §9): what an activation
 // does with the recorded version: create, use, migrate from there (resuming a `migrating` one), or refuse a version
 // the code cannot reach.
 
 func historyVersions(t *testing.T) (v1, v2, v3 *TableDefinition) {
 	t.Helper()
 	v1 = qDefine(t, "edits", TableOptions{Version: 1, Columns: []ColumnProp{Col("id", Str()), Col("at", Int())}, Key: []string{"id"}})
-	v2 = qEvolve(t, v1, func(e *TableEditor) *TableEditor {
+	v2 = qEvolve(t, v1, func(e *TableEditor) TableTailEditor {
 		return e.Add("dir", Str(contracts.Default(""))).Rows(func(Row) (any, error) { return Row{}, nil })
 	})
-	v3 = qEvolve(t, v2, func(e *TableEditor) *TableEditor { return e.Index("by_at", []string{"at"}) })
+	v3 = qEvolve(t, v2, func(e *TableEditor) TableTailEditor { return e.Index("by_at", []string{"at"}) })
 	return v1, v2, v3
 }
 
@@ -74,7 +74,7 @@ func TestPlanRefusals(t *testing.T) {
 		},
 		{
 			"a history edited in place",
-			qEvolve(t, V1, func(e *TableEditor) *TableEditor { return e.Add("dir", Str(contracts.Default("x"))) }),
+			qEvolve(t, V1, func(e *TableEditor) TableTailEditor { return e.Add("dir", Str(contracts.Default("x"))) }),
 			recordedAs(V2, StateReady), "recorded with another definition",
 		},
 		{

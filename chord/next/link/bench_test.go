@@ -10,7 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/nextnode"
 )
 
-// Ports the link-level half of packages/chord/test/next/bench/links.ts and compression.ts as Go benchmarks, run by
+// Ports the link-level half of packages/chord/test/bench/links.ts and compression.ts as Go benchmarks, run by
 // hand (`go test -run '^$' -bench . -benchmem ./chord/next/link`): per codec side by side, the wire bytes of a
 // message, the encode and decode time and allocations per message, for payloads modelled on p2 (a notes list, a
 // 500 KB conversation document, a reply streamed token by token, calls with and without bytes), and compression at

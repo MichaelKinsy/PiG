@@ -126,7 +126,7 @@ func TestOwnerTablePutStampsTheStepsSeqAndReadsDecode(t *testing.T) {
 	})
 	// Get is by key params, in key order; an absent row is nil.
 	row, err := Read(store, func(executor sqlite.SqliteExecutor) (DecodedRow, error) {
-		return table.Get(background, executor, []sqlite.SqliteValue{"c"})
+		return (*OwnerTable).Get(table, background, executor, []sqlite.SqliteValue{"c"})
 	}, background)
 	must(t, err)
 	qEqual(t, row, DecodedRow{"id": "c", "seq": int64(7)})

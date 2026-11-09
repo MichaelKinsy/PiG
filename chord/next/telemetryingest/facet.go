@@ -23,7 +23,9 @@ import (
 
 // IngestTarget is where ingested batches go: the server's store (`SqliteTelemetry`), which queues them; Ingest returns
 // how many spans it queued.
-type IngestTarget interface{ Ingest(batch Batch) int }
+type IngestTarget interface {
+	Ingest(batch TelemetryBatch) int
+}
 
 // IngestOptions is what the ingest facet takes.
 type IngestOptions struct {
@@ -59,7 +61,7 @@ func IngestFacet(options IngestOptions) host.Facet {
 						incarnation := ctx.(host.Ctx).Incarnation()
 						spans := args.(*delta.JsonObject).Value("spans").([]any)
 						accepted := pageSpans(spans, "browser:"+incarnation+":", who, budgets.of(incarnation, jsclock.DateNow()))
-						written := options.Target.Ingest(Batch{Spans: accepted})
+						written := options.Target.Ingest(TelemetryBatch{Spans: accepted})
 						return receiptOf(written, len(spans)-written), nil
 					},
 				},
@@ -81,7 +83,7 @@ func IngestFacet(options IngestOptions) host.Facet {
 							spans[i].Attributes = spans[i].Attributes.Set("chord.host", worker)
 						}
 						rows := batch.Value("metrics").([]any)
-						written := options.Target.Ingest(Batch{Spans: spans, Metrics: decodeMetrics(rows)})
+						written := options.Target.Ingest(TelemetryBatch{Spans: spans, Metrics: decodeMetrics(rows)})
 						return receiptOf(written, len(spans)-written), nil
 					},
 				},

@@ -1,6 +1,10 @@
 package plugins
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
+)
 
 // Not upstream's: `inside` is `relative(dir, path)` not empty, not starting with `..`, not absolute.
 func TestInsideIsAPathUnderADirectoryNotTheDirectoryItselfNorADotDotName(t *testing.T) {
@@ -17,7 +21,7 @@ func TestInsideIsAPathUnderADirectoryNotTheDirectoryItselfNorADotDotName(t *test
 		// A file named `..x` counts as outside, as in upstream.
 		{"/a/b", "/a/b/..x", false},
 	} {
-		if got := inside(each.dir, each.path); got != each.want {
+		if got := model.Inside(each.dir, each.path); got != each.want {
 			t.Errorf("inside(%q, %q) = %v, want %v", each.dir, each.path, got, each.want)
 		}
 	}

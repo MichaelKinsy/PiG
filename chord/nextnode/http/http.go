@@ -703,7 +703,7 @@ func (c *HttpComponent) upgradeSteps(w nethttp.ResponseWriter, r *nethttp.Reques
 	}
 	request, refusal := nodeIncomingOf(r)
 	if refusal != nil {
-		refuse(w, refusal.Status)
+		refuse(w, int(refusal.Status))
 		return
 	}
 	registrySet, err := c.registriesNow()
@@ -741,7 +741,7 @@ func (c *HttpComponent) upgradeSteps(w nethttp.ResponseWriter, r *nethttp.Reques
 	defer c.upgrades.settled(seen)
 	// The router now: a host, a relay or a socket removed while authenticating refuses the upgrade.
 	router := registrySet.routerNow()
-	if (admitted.Allowed != "" && !router.Hosts.Has(admitted.Allowed)) || (admitted.Relay != nil && !containsRelay(router.Relays, admitted.Relay)) {
+	if (admitted.Allowed != "" && !slices.Contains(router.Hosts, admitted.Allowed)) || (admitted.Relay != nil && !containsRelay(router.Relays, admitted.Relay)) {
 		refuse(w, 403)
 		return
 	}

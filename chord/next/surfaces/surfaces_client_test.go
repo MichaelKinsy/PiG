@@ -70,6 +70,17 @@ func script(plugin, digest, text string, failing ...int) RegisteredScript {
 		if _, err := require("@test/chord"); err != nil {
 			return err
 		}
+		if text == "routinefail" {
+			module.Exports = ModuleExports{Default: host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
+				return h.Serve(greeting, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
+					self.OnLive(func(host.Ctx) *host.Handled { return host.Threw(errors.New("the routine failed")) })
+					return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+						"text": host.Expose(state.NewConstant("live")),
+					}}}, nil
+				}, host.ServeOptions{})
+			})}
+			return nil
+		}
 		module.Exports = ModuleExports{Default: serving(greeting, text)}
 		return nil
 	}}
@@ -150,6 +161,8 @@ type more struct {
 	failing int
 	manual  *timers
 	styles  ClientStyles
+	// onTimer is called with the pause of each timer the manual environment lists, before its After returns.
+	onTimer func(ms int64)
 }
 
 // setup is a server serving WebScripts with initial, and a client started against it with available to fetch; failing fetches
@@ -180,6 +193,9 @@ func setup(t *testing.T, initial []RegisteredScript, available []RegisteredScrip
 				opt.manual.mu.Lock()
 				opt.manual.list = append(opt.manual.list, timer)
 				opt.manual.mu.Unlock()
+				if opt.onTimer != nil {
+					opt.onTimer(ms)
+				}
 				return func() {
 					opt.manual.mu.Lock()
 					defer opt.manual.mu.Unlock()
@@ -195,7 +211,7 @@ func setup(t *testing.T, initial []RegisteredScript, available []RegisteredScrip
 		OnWake: func(func()) func() { return func() {} },
 	}
 	client, err := StartClient(ClientOptions{
-		Scripts: WebScripts,
+		Scripts: ScriptsContract(WebScripts),
 		Base:    "B1",
 		Initial: initial,
 		Modules: ClientModules{"@test/chord": struct{}{}},
@@ -208,7 +224,11 @@ func setup(t *testing.T, initial []RegisteredScript, available []RegisteredScrip
 			s.mu.Lock()
 			s.sockets = append(s.sockets, socket{events, mine})
 			s.mu.Unlock()
-			go events.Opened()
+			// As Pi's setup queues the link's `opened()` as a microtask, which runs before the test body: the loop's outbox delivers
+			// this once connect returns, so the client's Connected state lands before StartClient does. A goroutine has no such
+			// order: a Connected landing after the test published makes `reconnected` apply the newest set again, so a set whose
+			// script failed to load is fetched a second time.
+			events.Opened()
 			return mine
 		},
 		FetchScript: func(_ context.Context, entry ScriptEntry) (RegisteredScript, error) {
@@ -235,7 +255,7 @@ func setup(t *testing.T, initial []RegisteredScript, available []RegisteredScrip
 		Styles:      opt.styles,
 		Environment: env,
 		OnError:     func(e ClientError) { s.mu.Lock(); s.errs = append(s.errs, e); s.mu.Unlock() },
-	}, ctx)
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -326,6 +346,45 @@ func TestLoadsTheInitialScriptsWithTheCoreFacets(t *testing.T) {
 		t.Fatalf("fetched = %v", f)
 	}
 	s.finish(t)
+}
+
+// client.ts startClient: a plugin whose initial script fails is reported once at the start (a plugins error naming it, with the error),
+// the client starts with the others (Pi: the first `load`'s failed list goes to `onError`).
+func TestStartClientReportsAnInitialScriptThatFailsAndStartsWithTheOthers(t *testing.T) {
+	good, broken := script("@test/b", "d1", "fine"), script("@test/a", "d1", "broken")
+	s := setup(t, []RegisteredScript{good, broken}, nil, more{})
+	kinds := s.errorKinds()
+	s.mu.Lock()
+	var plugins ClientError
+	for _, e := range s.errs {
+		if e.Kind == ClientPluginsError {
+			plugins = e
+		}
+	}
+	s.mu.Unlock()
+	if !slices.Equal(kinds, []ClientErrorKind{ClientPluginsError}) || len(plugins.Failed) != 1 || plugins.Failed[0].Plugin != "@test/a" || plugins.Failed[0].Error == nil {
+		t.Fatalf("errors = %v, failed = %+v; want one plugins error naming @test/a", kinds, plugins.Failed)
+	}
+	if got := valueOf(text(t, s.client.Host, greeting)); got != "fine" {
+		t.Fatalf("greeting = %q, want the good plugin's", got)
+	}
+	s.finish(t)
+}
+
+// A failure of the client's own host (a plugin's onLive routine that throws) reaches onError as a host error (Pi: `onError({ kind: "host", error })` of the host's `onError`).
+func TestStartClientReportsAHostFailureAsAHostError(t *testing.T) {
+	s := setup(t, []RegisteredScript{script("@test/a", "d1", "routinefail")}, nil, more{})
+	reference := text(t, s.client.Host, greeting)
+	defer reference.Release()
+	until(t, func() bool { return slices.Contains(s.errorKinds(), ClientHostError) })
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, e := range s.errs {
+		if e.Kind == ClientHostError && e.Host.Kind == host.ErrRoutineFailed {
+			return
+		}
+	}
+	t.Fatalf("no routine_failed host error among %+v", s.errs)
 }
 
 func TestFetchesOnlyChangedScriptsReloadsTheHostKeepsAnUnchangedPluginsFacet(t *testing.T) {
@@ -515,6 +574,44 @@ func TestDropsTheRetryOfASetANewerOneReplacedAndAppliesTheNewerOne(t *testing.T)
 	s.publish(t, setOf("B1", a3))
 	until(t, func() bool { return valueOf(g) == "hello at last" })
 	// The retry was cancelled with the newer set: nothing is left to fire.
+	if n := len(manual.withMs(1000)); n != 0 {
+		t.Fatalf("%d retries left", n)
+	}
+	if f := s.fetchedNow(); !slices.Equal(f, []string{"/@test/a.d2.js", "/@test/a.d3.js"}) {
+		t.Fatalf("fetched = %v", f)
+	}
+	s.finish(t)
+}
+
+// A retry is scheduled in two steps, its timer and then its handle, so a newer set that lands between them has no handle to
+// cancel the retry with (Pi's single thread has no between: its `#retry = { cancel: after(…) }` is one step). The retry must
+// still go with the newer set: a newer one replaced it.
+func TestDropsTheRetryOfASetANewerOneReplacedWhileItsTimerWasBeingSet(t *testing.T) {
+	a1, a2, a3 := script("@test/a", "d1", "hello"), script("@test/a", "d2", "hello again"), script("@test/a", "d3", "hello at last")
+	manual := &timers{}
+	setting, resume := make(chan struct{}, 1), make(chan struct{})
+	var once sync.Once
+	release := func() { once.Do(func() { close(resume) }) }
+	defer release()
+	s := setup(t, []RegisteredScript{a1}, []RegisteredScript{a2, a3}, more{failing: 1, manual: manual, onTimer: func(ms int64) {
+		if ms == 1000 {
+			setting <- struct{}{}
+			<-resume
+		}
+	}})
+	g := text(t, s.client.Host, greeting)
+	s.publish(t, setOf("B1", a2))
+	// The retry's timer is listed and its After has not returned: the client holds no handle for it yet.
+	select {
+	case <-setting:
+	case <-time.After(10 * time.Second):
+		t.Fatal("no retry timer in 10 s")
+	}
+	s.publish(t, setOf("B1", a3))
+	// The newer set has reached the client's watch while the retry's After has not returned.
+	until(t, func() bool { return s.client.NewestDigest("@test/a") == "d3" })
+	release()
+	until(t, func() bool { return valueOf(g) == "hello at last" })
 	if n := len(manual.withMs(1000)); n != 0 {
 		t.Fatalf("%d retries left", n)
 	}

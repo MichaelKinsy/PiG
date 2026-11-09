@@ -96,16 +96,25 @@ func (folder FolderInfo) JSON() *delta.JsonObject {
 	return delta.JsonObjectOf("space", folder.Space, "path", folder.Path, "created", float64(folder.Created))
 }
 
+// FolderEntryKind is what a FolderEntry holds.
+type FolderEntryKind string
+
+// The kinds of a folder entry.
+const (
+	FolderEntryFolder FolderEntryKind = "folder"
+	FolderEntryFile   FolderEntryKind = "file"
+)
+
 // FolderEntry is one entry of a folder's listing: a folder (Kind "folder"), or a file's newest version (Kind "file").
 type FolderEntry struct {
-	Kind   string
+	Kind   FolderEntryKind
 	Folder *FolderInfo
 	File   *FileInfo
 }
 
 // JSON is the entry as `EntrySchema` has it.
 func (entry FolderEntry) JSON() *delta.JsonObject {
-	if entry.Kind == "folder" {
+	if entry.Kind == FolderEntryFolder {
 		return delta.JsonObjectOf("kind", "folder", "folder", entry.Folder.JSON())
 	}
 	return delta.JsonObjectOf("kind", "file", "file", entry.File.JSON())
@@ -214,12 +223,25 @@ func checkpointAt50(_ *delta.JsonObject, _ []delta.Op, info documents.Checkpoint
 	return info.DeltasSinceBase >= 50
 }
 
+// SpaceSummary is what a space holds: its files (paths), their versions, their bytes (every version's) and the newest versions.
+type SpaceSummary struct {
+	Files    int64
+	Versions int64
+	Bytes    int64
+	Newest   []FileInfo
+}
+
+// JSON is the summary as its document.
+func (s SpaceSummary) JSON() *delta.JsonObject {
+	return delta.JsonObjectOf("files", float64(s.Files), "versions", float64(s.Versions), "bytes", float64(s.Bytes), "newest", infoList(s.Newest)) //portlint:allow numbers a count the index wrote: an integer
+}
+
 // summaries are the summary of each space, by space.
 var summaries = mustState("summary", documents.StateOptions{
 	Schema:  SummarySchema,
 	Version: 1,
 	Initial: func() *delta.JsonObject {
-		return delta.JsonObjectOf("files", float64(0), "versions", float64(0), "bytes", float64(0), "newest", []any{})
+		return SpaceSummary{}.JSON()
 	},
 	Keyed:          true,
 	Persist:        true,
@@ -261,10 +283,10 @@ type FilesIndex struct {
 	Summary *documents.Keyed
 	// Usage is the bytes of every blob on disk.
 	Usage   *documents.Singleton
-	files   *store.TableHandle
-	folders *store.TableHandle
-	blobs   *store.TableHandle
-	marks   *store.TableHandle
+	files   store.Table
+	folders store.Table
+	blobs   store.Table
+	marks   store.Table
 	self    host.StoreSelf
 }
 
@@ -403,7 +425,7 @@ func (index *FilesIndex) List(space, folder string, limit int64, after *string, 
 		}
 		for _, row := range page.Items {
 			info := folderOf(row)
-			entries = append(entries, FolderEntry{Kind: "folder", Folder: &info})
+			entries = append(entries, FolderEntry{Kind: FolderEntryFolder, Folder: &info})
 		}
 		if page.Next != nil {
 			return Page[FolderEntry]{Items: entries, Next: cursorText(map[string]any{"folders": *page.Next})}, nil
@@ -428,7 +450,7 @@ func (index *FilesIndex) List(space, folder string, limit int64, after *string, 
 	}
 	for _, row := range page.Items {
 		info := infoOf(row)
-		entries = append(entries, FolderEntry{Kind: "file", File: &info})
+		entries = append(entries, FolderEntry{Kind: FolderEntryFile, File: &info})
 	}
 	if page.Next == nil {
 		return Page[FolderEntry]{Items: entries}, nil
@@ -796,7 +818,7 @@ func under(column *store.ColumnRef, path string) store.Condition {
 }
 
 // rowsOf reads every row of q.
-func rowsOf(handle *store.TableHandle, q *store.Query, ctx context.Context) ([]store.Row, error) {
+func rowsOf(handle store.Table, q *store.Query, ctx context.Context) ([]store.Row, error) {
 	rows := handle.Rows(ctx, q)
 	defer rows.Close()
 	var all []store.Row

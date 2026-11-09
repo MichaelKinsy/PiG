@@ -53,15 +53,15 @@ func FuzzDecodeLogLine(f *testing.F) {
 		if err != nil {
 			t.Fatalf("EncodeLogLine of the commit of %q: %v", text, err)
 		}
-		if !bytes.HasSuffix(encoded, []byte("\n")) {
+		if !strings.HasSuffix(encoded, "\n") {
 			t.Fatalf("EncodeLogLine(%q) = %q, want a newline-terminated line", text, encoded)
 		}
-		again, err := DecodeLogLine(string(bytes.TrimSuffix(encoded, []byte("\n"))), number)
+		again, err := DecodeLogLine(strings.TrimSuffix(encoded, "\n"), number)
 		if err != nil {
 			t.Fatalf("the encoded line %q of %q does not decode: %v", encoded, text, err)
 		}
 		reencoded, err := EncodeLogLine(again)
-		if err != nil || !bytes.Equal(reencoded, encoded) {
+		if err != nil || reencoded != encoded {
 			t.Fatalf("encode(decode(encode(%q))) = %q, %v; want %q", text, reencoded, err, encoded)
 		}
 	})
@@ -107,7 +107,7 @@ func decodeAll(t *testing.T, body SyncBody) decoded {
 		if err != nil {
 			t.Fatalf("EncodeLogLine of a decoded commit: %v", err)
 		}
-		out.lines = append(out.lines, string(encoded))
+		out.lines = append(out.lines, encoded)
 		out.sizes = append(out.sizes, line.Bytes)
 	}
 }

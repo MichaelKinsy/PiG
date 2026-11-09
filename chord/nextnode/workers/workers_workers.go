@@ -16,6 +16,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/chord"
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
@@ -23,6 +24,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // Ports packages/chord/src/next-node/workers/workers.ts. The workers component (slice 10 §3, §4; decision "Slice 10's
@@ -70,6 +72,10 @@ type WorkersOptions struct {
 	// OnOutput is a worker's output; without it, mirrored to this process's own.
 	OnOutput func(address contracts.Address, stream string, chunk []byte)
 	OnError  func(err WorkersError)
+	// Forgotten is called, on the component's loop (it must not block), once an address has no worker, no operation and no failure
+	// left: the app's per-address bookkeeping made at Start ends there. Pi has no such hook (its app keeps the entries it made at start for
+	// the process's life); this is a Go addition that changes nothing observable.
+	Forgotten func(address contracts.Address)
 
 	// clock is the clock of the component's timers; the loop's own by default. Tests give one with virtual timers.
 	clock clock
@@ -150,7 +156,7 @@ func (BatchWorkersError) workersError()    {}
 type WorkersBuilt struct {
 	// Inputs is the file the base was built from with the hash of the bytes copied: the app's base code for its workers, an edit
 	// of it outdates the base. Nil when it failed.
-	Inputs plugins.BaseInputs
+	Inputs model.BaseInputs
 	// Err is why it did not build.
 	Err error
 }
@@ -169,7 +175,7 @@ func (c *Workers) Build() WorkersBuilt {
 			built.Err = err
 		} else {
 			c.entryPath = found
-			built.Inputs = plugins.BaseInputs{found: hash}
+			built.Inputs = model.BaseInputs{found: hash}
 		}
 		c.built.Store(&built)
 	})
@@ -425,7 +431,12 @@ func newWorkers(options WorkersOptions, ctx context.Context) *Workers {
 }
 
 // State is per address key its WorkerState; no entry when stopped or never started. A JSON watchable.
-func (c *Workers) State() state.SourceHandle { return c.state }
+func (c *Workers) State() chord.Watchable[delta.JsonValue] { return host.Expose(c.state) }
+
+// Inputs are the files its worker base was built from, with their bytes' hashes: the app's base code for its workers (Pi's
+// `inputs`, `base.inputs` of the base `createWorkers` built before it returned). Go builds the base lazily (Build): it is built
+// here when nothing did, and none when the build failed (Pi's `createWorkers` rejects then).
+func (c *Workers) Inputs() model.BaseInputs { return c.Build().Inputs }
 
 // isClosing reports whether `Close` was called.
 func (c *Workers) isClosing() bool { return c.closingCtx.Err() != nil }
@@ -643,6 +654,9 @@ func (c *Workers) forget(record *routed) {
 	if record.pending == 0 && record.child == nil && record.failure == nil {
 		delete(c.addresses, record.address.Key)
 		c.order = slices.DeleteFunc(c.order, func(key string) bool { return key == record.address.Key })
+		if c.options.Forgotten != nil {
+			c.options.Forgotten(record.address)
+		}
 	}
 }
 
@@ -1330,7 +1344,7 @@ func stateOf(component *Workers) delta.JsonValue {
 // scriptKey is one script's identity: its plugin and its digest.
 func scriptKey(script plugins.PluginScript) string {
 	digest := "failed"
-	if script.Built.Kind == plugins.BuiltFacetScript {
+	if script.Built.Kind == model.BuiltFacetScript {
 		digest = script.Built.Digest
 	}
 	return script.Plugin.Name + "@" + digest

@@ -51,20 +51,20 @@ func transported() {
 
 type collector struct {
 	mu      sync.Mutex
-	batches []telemetryingest.Batch
+	batches []telemetryingest.TelemetryBatch
 }
 
-func (c *collector) Ingest(batch telemetryingest.Batch) int {
+func (c *collector) Ingest(batch telemetryingest.TelemetryBatch) int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.batches = append(c.batches, batch)
 	return len(batch.Spans)
 }
 
-func (c *collector) taken() []telemetryingest.Batch {
+func (c *collector) taken() []telemetryingest.TelemetryBatch {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return append([]telemetryingest.Batch(nil), c.batches...)
+	return append([]telemetryingest.TelemetryBatch(nil), c.batches...)
 }
 
 func principalOf(kind string, more ...any) data.Principal {

@@ -11,7 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/store"
 )
 
-// Ports packages/chord/test/next/store/refusal.test.ts describe("Chord's owners"): "an int out of range fails only its
+// Ports packages/chord/test/store/refusal.test.ts describe("Chord's owners"): "an int out of range fails only its
 // transaction; the object stays live". The classification cases of that file are in chord/next/store/refusal_test.go.
 func TestRefusalAnIntOutOfRangeFailsOnlyItsTransactionAndTheObjectStaysLive(t *testing.T) {
 	counts, err := store.DefineTable("counts", store.TableOptions{Version: 1, Columns: []store.ColumnProp{store.Col("id", store.Str()), store.Col("n", store.Int())}, Key: []string{"id"}})
