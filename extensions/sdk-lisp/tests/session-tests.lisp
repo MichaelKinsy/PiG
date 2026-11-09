@@ -345,3 +345,30 @@
            (unless (equal lane (second entry))
              (check-equal (format nil "~A is on the wrong lane" (first entry)) (format nil "~A is on the ~A lane" (first entry) lane)))
            (hsend host "type" "call_result" "id" (pig:jget frame "id") "call_result" (pig:obj "result" :null))))))))
+
+(defun source-child-members ()
+  "The members child-session.lisp defines with def-child-member, as (op . async-p), read from the source forms: a member added there without a row in *member-lanes* is seen here, which a hand table alone never sees."
+  (let ((members '()) (*read-eval* nil) (*package* (find-package :pig)))
+    (with-open-file (in (repo-path "extensions/sdk-lisp/src/child-session.lisp"))
+      (loop for form = (read in nil :eof)
+            until (eq form :eof)
+            do (when (and (consp form) (symbolp (first form)) (string= (symbol-name (first form)) "DEF-CHILD-MEMBER"))
+                 (destructuring-bind (name params doc (op &optional args) convert &key async abort) (rest form)
+                   (declare (ignore name params doc args convert abort))
+                   (push (cons op (and async t)) members)))))
+    (nreverse members)))
+
+(deftest every-def-child-member-has-a-row-in-the-lane-table
+  ;; Pi 1.5.0 agent-session.ts declares eleven members `async`; the source's :async members are exactly those, and each source member has a row.
+  (let ((source (source-child-members)))
+    (check (> (length source) 50) "the scan found the def-child-member forms")
+    (dolist (member source)
+      (let ((row (assoc (car member) *member-lanes* :test #'equal)))
+        (unless row
+          (check-equal (format nil "~A has a row in *member-lanes*" (car member)) (format nil "def-child-member ~A has no row in *member-lanes*" (car member))))
+        (when row
+          (check-equal (second row) (if (cdr member) "opAsync" "op") (format nil "~A: the source's lane differs from the table's" (car member))))))
+    (dolist (row *member-lanes*)
+      (unless (assoc (first row) source :test #'equal)
+        (check-equal (format nil "~A is defined by a def-child-member" (first row)) (format nil "the row ~A has no def-child-member in the source" (first row)))))
+    (check-equal 11 (count-if #'cdr source) "the members the source declares async")))

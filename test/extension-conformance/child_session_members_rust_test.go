@@ -196,7 +196,7 @@ pub fn new_extension() -> Extension {
         };
         let started = std::time::Instant::now();
         let outcome = std::thread::scope(|scope| -> std::io::Result<Value> {
-            let running = scope.spawn(|| session.execute_bash("sleep 20", ExecuteBashOptions::default()));
+            let running = scope.spawn(|| session.execute_bash("sleep 25", ExecuteBashOptions::default()));
             let mut seen = false;
             while !running.is_finished() && started.elapsed() < std::time::Duration::from_secs(5) {
                 if session.is_bash_running()? {
@@ -207,7 +207,7 @@ pub fn new_extension() -> Extension {
             }
             session.abort_bash()?;
             let result = running.join().map_err(|_| std::io::Error::other("execute_bash thread panicked"))??;
-            Ok(json!({"running": seen, "cancelled": result["cancelled"], "fast": started.elapsed() < std::time::Duration::from_secs(10)}))
+            Ok(json!({"running": seen, "cancelled": result["cancelled"], "fast": started.elapsed() < std::time::Duration::from_secs(8)}))
         });
         session.dispose();
         match outcome {
@@ -262,7 +262,7 @@ func TestChildAgentSessionMembersRust(t *testing.T) {
 	}
 }
 
-// TestChildAgentSessionMembersRustAbortBash is the concurrency row: execute_bash("sleep 20") blocks one thread, abort_bash is called from another, and the command comes back cancelled within 10 s. It fails for an async member sent over childSession.op (the sync call), which the golden of child_members cannot see because the host still answers correctly.
+// TestChildAgentSessionMembersRustAbortBash is the concurrency row: execute_bash("sleep 25") blocks one thread, abort_bash is called from another, and the command comes back cancelled within 8 s (the Go, Python and Lisp rows use the same command and bound; Rust waits for is_bash_running instead of a fixed 0.7 s, which cannot abort too early). It fails for an async member sent over childSession.op (the sync call), which the golden of child_members cannot see because the host still answers correctly.
 func TestChildAgentSessionMembersRustAbortBash(t *testing.T) {
 	ext := loadChildMembersRust(t, "strict")
 	result, err := ext.Tools["child_abort_bash"].Definition.Execute(t.Context(), "call", json.RawMessage(`{}`), nil)
@@ -297,25 +297,27 @@ func (h heldChildMember) Op(ctx context.Context, op string, args json.RawMessage
 	return h.ChildSession.Op(ctx, op, args)
 }
 
-// TestChildAgentSessionMembersRustAbortNotHeld: with one awaited member held in the host for 3 s, an abort_bash called 0.4 s later from another thread returns at once. A member sent over the synchronous childSession.op holds it.
+// TestChildAgentSessionMembersRustAbortNotHeld: with one awaited member held in the host for 3 s, an abort_bash called 0.4 s later from another thread returns at once, isolated and packed with a sibling. A member sent over the synchronous childSession.op holds it.
 func TestChildAgentSessionMembersRustAbortNotHeld(t *testing.T) {
-	for _, member := range []string{"cycleModel", "executeBash", "setModel"} {
-		t.Run(member, func(t *testing.T) {
-			release := make(chan struct{})
-			ext := loadChildMembersRustWith(t, "strict", func(s subprocess.ChildSession) subprocess.ChildSession { return heldChildMember{s, member, release} })
-			time.AfterFunc(3*time.Second, func() { close(release) })
-			result, err := ext.Tools["child_order_probe"].Definition.Execute(t.Context(), "call", json.RawMessage(`{"first":"`+member+`"}`), nil)
-			if err != nil {
-				t.Fatal(err)
-			}
-			var got map[string]any
-			if err := json.Unmarshal([]byte(result.Text()), &got); err != nil {
-				t.Fatalf("%q: %v", result.Text(), err)
-			}
-			if took, ok := got["abortTook"].(float64); !ok || took > 1.5 {
-				t.Fatalf("abort_bash took %v s behind the held %s", got["abortTook"], member)
-			}
-		})
+	for _, isolation := range []string{"strict", "shared-ok"} {
+		for _, member := range []string{"cycleModel", "executeBash", "setModel"} {
+			t.Run(isolation+"/"+member, func(t *testing.T) {
+				release := make(chan struct{})
+				ext := loadChildMembersRustWith(t, isolation, func(s subprocess.ChildSession) subprocess.ChildSession { return heldChildMember{s, member, release} })
+				time.AfterFunc(3*time.Second, func() { close(release) })
+				result, err := ext.Tools["child_order_probe"].Definition.Execute(t.Context(), "call", json.RawMessage(`{"first":"`+member+`"}`), nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				var got map[string]any
+				if err := json.Unmarshal([]byte(result.Text()), &got); err != nil {
+					t.Fatalf("%q: %v", result.Text(), err)
+				}
+				if took, ok := got["abortTook"].(float64); !ok || took > 1.5 {
+					t.Fatalf("abort_bash took %v s behind the held %s (%s)", got["abortTook"], member, isolation)
+				}
+			})
+		}
 	}
 }
 

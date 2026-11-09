@@ -39,9 +39,23 @@ func (h lispHeldMember) Op(ctx context.Context, op string, args json.RawMessage)
 
 func loadChildAsyncLisp(t *testing.T, wrap func(subprocess.ChildSession) subprocess.ChildSession) (extension.Extension, *coding.AgentSessionServices) {
 	t.Helper()
+	return loadChildAsyncLispIn(t, "strict", wrap)
+}
+
+// loadChildAsyncLispIn loads the child-session fixture isolated ("strict") or packed with a sibling ("shared-ok").
+func loadChildAsyncLispIn(t *testing.T, isolation string, wrap func(subprocess.ChildSession) subprocess.ChildSession) (extension.Extension, *coding.AgentSessionServices) {
+	t.Helper()
 	host, services := newChildSessionHostWith(t, true, wrap)
-	loaded, failures := host.LoadAll(t.Context(), []subprocess.ExtConfig{lispFixtureConfig(t, "child-session-lisp", childsession.Name)})
-	if len(failures) != 0 || len(loaded) != 1 {
+	cfg := lispFixtureConfig(t, "child-session-lisp", childsession.Name)
+	cfg.Isolation = isolation
+	configs := []subprocess.ExtConfig{cfg}
+	if isolation == "shared-ok" {
+		peer := packedFlagFactory(t, findModuleRoot(t), "lisp", "child-session-peer", false)
+		peer.Isolation = isolation
+		configs = append(configs, peer)
+	}
+	loaded, failures := host.LoadAll(t.Context(), configs)
+	if len(failures) != 0 || len(loaded) != len(configs) {
 		t.Fatalf("load: %v", failures)
 	}
 	return loaded[0], services
@@ -64,18 +78,20 @@ func TestChildAgentSessionAbortEndsAwaitedMemberLisp(t *testing.T) {
 	}
 }
 
-// TestChildAgentSessionAbortNotHeldBehindAwaitedMemberLisp: with one awaited member held in the host for 3 s, an abort-bash sent 0.4 s later from another thread returns at once. Every member Pi declares `async` that reaches childSession.op and can be held without a run is listed.
+// TestChildAgentSessionAbortNotHeldBehindAwaitedMemberLisp: with one awaited member held in the host for 3 s, an abort-bash sent 0.4 s later from another thread returns at once, isolated and packed with a sibling. Every member Pi declares `async` that reaches childSession.op and can be held without a run is listed.
 func TestChildAgentSessionAbortNotHeldBehindAwaitedMemberLisp(t *testing.T) {
-	for _, member := range []string{"cycleModel", "executeBash", "setModel"} {
-		t.Run(member, func(t *testing.T) {
-			release := make(chan struct{})
-			ext, _ := loadChildAsyncLisp(t, func(s subprocess.ChildSession) subprocess.ChildSession { return lispHeldMember{s, member, release} })
-			time.AfterFunc(3*time.Second, func() { close(release) })
-			got := runChildAsyncLispProbe(t, ext, "child_order_probe", `{"first":"`+member+`"}`)
-			if took, _ := got["abortTook"].(float64); took > 1.5 {
-				t.Fatalf("abort-bash waited %.2f s behind the held %s", took, member)
-			}
-		})
+	for _, isolation := range []string{"strict", "shared-ok"} {
+		for _, member := range []string{"cycleModel", "executeBash", "setModel"} {
+			t.Run(isolation+"/"+member, func(t *testing.T) {
+				release := make(chan struct{})
+				ext, _ := loadChildAsyncLispIn(t, isolation, func(s subprocess.ChildSession) subprocess.ChildSession { return lispHeldMember{s, member, release} })
+				time.AfterFunc(3*time.Second, func() { close(release) })
+				got := runChildAsyncLispProbe(t, ext, "child_order_probe", `{"first":"`+member+`"}`)
+				if took, _ := got["abortTook"].(float64); took > 1.5 {
+					t.Fatalf("abort-bash waited %.2f s behind the held %s (%s)", took, member, isolation)
+				}
+			})
+		}
 	}
 }
 

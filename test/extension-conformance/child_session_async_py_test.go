@@ -101,17 +101,24 @@ func (h pyHeldMember) Op(ctx context.Context, op string, args json.RawMessage) (
 	return h.ChildSession.Op(ctx, op, args)
 }
 
-func loadChildAsyncPython(t *testing.T, wrap func(subprocess.ChildSession) subprocess.ChildSession) extension.Extension {
+func loadChildAsyncPython(t *testing.T, isolation string, wrap func(subprocess.ChildSession) subprocess.ChildSession) extension.Extension {
 	t.Helper()
 	host, _ := newChildSessionHostWith(t, true, wrap)
-	cfg := packedFlagFactory(t, findModuleRoot(t), "python", "child-session", false)
-	cfg.Isolation = "strict"
+	root := findModuleRoot(t)
+	cfg := packedFlagFactory(t, root, "python", "child-session", false)
+	cfg.Isolation = isolation
 	cfg.ContentHash = "python-child-async-" + fmt.Sprint(len(childAsyncPython))
 	if err := os.WriteFile(filepath.Join(cfg.Source, cfg.Package+".py"), []byte(childAsyncPython), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	loaded, failures := host.LoadAll(t.Context(), []subprocess.ExtConfig{cfg})
-	if len(failures) != 0 || len(loaded) != 1 {
+	configs := []subprocess.ExtConfig{cfg}
+	if isolation == "shared-ok" {
+		peer := packedFlagFactory(t, root, "python", "child-session-peer", false)
+		peer.Isolation = isolation
+		configs = append(configs, peer)
+	}
+	loaded, failures := host.LoadAll(t.Context(), configs)
+	if len(failures) != 0 || len(loaded) != len(configs) {
 		t.Fatalf("load: %v", failures)
 	}
 	return loaded[0]
@@ -132,7 +139,7 @@ func runChildAsyncPythonProbe(t *testing.T, ext extension.Extension, tool, args 
 
 // TestChildAgentSessionAbortEndsAwaitedMemberPython: execute_bash("sleep 25") in one thread, abort_bash from another after 0.7 s: the abort must not queue behind the awaited command, and the command comes back cancelled long before it would end.
 func TestChildAgentSessionAbortEndsAwaitedMemberPython(t *testing.T) {
-	got := runChildAsyncPythonProbe(t, loadChildAsyncPython(t, nil), "child_abort_probe", `{}`)
+	got := runChildAsyncPythonProbe(t, loadChildAsyncPython(t, "strict", nil), "child_abort_probe", `{}`)
 	if got["returned"] != true || got["cancelled"] != true {
 		t.Fatalf("an awaited member aborted from another thread did not return cancelled: %v", got)
 	}
@@ -141,17 +148,19 @@ func TestChildAgentSessionAbortEndsAwaitedMemberPython(t *testing.T) {
 	}
 }
 
-// TestChildAgentSessionAbortNotHeldBehindAwaitedMemberPython: with one awaited member held in the host for 3 s, an abort_bash sent 0.4 s later from another thread returns at once. Every member Pi declares `async` that reaches childSession.op and can be held without a run is listed (the rest are covered by the lane table in extensions/sdk-py/tests).
+// TestChildAgentSessionAbortNotHeldBehindAwaitedMemberPython: with one awaited member held in the host for 3 s, an abort_bash sent 0.4 s later from another thread returns at once, isolated and packed with a sibling. Every member Pi declares `async` that reaches childSession.op and can be held without a run is listed (the rest are covered by the lane table in extensions/sdk-py/tests).
 func TestChildAgentSessionAbortNotHeldBehindAwaitedMemberPython(t *testing.T) {
-	for _, member := range []string{"cycleModel", "executeBash", "setModel"} {
-		t.Run(member, func(t *testing.T) {
-			release := make(chan struct{})
-			ext := loadChildAsyncPython(t, func(s subprocess.ChildSession) subprocess.ChildSession { return pyHeldMember{s, member, release} })
-			time.AfterFunc(3*time.Second, func() { close(release) })
-			got := runChildAsyncPythonProbe(t, ext, "child_order_probe", `{"first":"`+member+`"}`)
-			if took, _ := got["abortTook"].(float64); took > 1.5 {
-				t.Fatalf("abort_bash waited %.2f s behind the held %s", took, member)
-			}
-		})
+	for _, isolation := range []string{"strict", "shared-ok"} {
+		for _, member := range []string{"cycleModel", "executeBash", "setModel"} {
+			t.Run(isolation+"/"+member, func(t *testing.T) {
+				release := make(chan struct{})
+				ext := loadChildAsyncPython(t, isolation, func(s subprocess.ChildSession) subprocess.ChildSession { return pyHeldMember{s, member, release} })
+				time.AfterFunc(3*time.Second, func() { close(release) })
+				got := runChildAsyncPythonProbe(t, ext, "child_order_probe", `{"first":"`+member+`"}`)
+				if took, _ := got["abortTook"].(float64); took > 1.5 {
+					t.Fatalf("abort_bash waited %.2f s behind the held %s (%s)", took, member, isolation)
+				}
+			})
+		}
 	}
 }
