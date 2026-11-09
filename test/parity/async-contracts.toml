@@ -2422,10 +2422,10 @@ rationale = "`(Go archive/zip, used by internal/codingagent/bug_report.go)`"
 
 [[files]]
 path = "packages/durable/src/codemode/codemode.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "detached-owned", "microtask-ordering"]
+evidence = ["test:durable/codemode/codemode_test.go#TestDurableCodeMode", "test:durable/codemode/call_test.go#TestAScriptsTimeoutLimitsItsRun", "test:durable/codemode/call_test.go#TestACallLaunchesOnlyOnceItsIssuedCountIsCommitted", "test:durable/codemode/call_test.go#TestTheFirstRunRecordsTheVMsFingerprint", "test:durable/codemode/call_test.go#TestALaunchedCallEntersBeforeTheNextOneIsLaunched", "test:durable/codemode/call_test.go#TestAReplayedCallEntersBeforeTheNextOneIsStarted", "test:durable/codemode/call_test.go#TestOnlyTheFirstDivergenceOrFailureOfACallDecidesItsEnd", "test:durable/codemode/call_test.go#TestAScriptsEndWaitsForTheReplayedCallsItIssued", "test:durable/codemode/call_replay_pi_test.go#TestResumeAtTheDeadlineEndsTheCallAndOneMillisecondBeforeDoesNot", "test:durable/codemode/call_restart_scenarios_pi_test.go#TestAResumedScriptThatEndsInItsFirstRunDivergesOnlyWhereTheLiveRunWentOn", "test:durable/codemode/call_restart_scenarios_pi_test.go#TestAResumedScriptThatEndsAfterAResultDivergesOnlyWhereALaterEntryAnswersACallItNeverMade", "test:durable/codemode/call_restart_scenarios_pi_test.go#TestANestedCallThatFailsBecauseTheHostClosedLeavesTheScriptToALaterAttempt"]
+rationale = "CodemodeCall.execute (:372-520) is one awaited tool call: it awaits api.agent(context), then one api.commit that either returns the stored result of a finished run (`done`) or records the run start (version, seed, deadline, tools, namespaces, globals, the conversation store) and reads the journal, so a restart resumes the same run; it ends the call early with decide() (a committed error result, then the sandbox aborted) for a version mismatch or a deadline that passed while interrupted. It then starts the sandbox and awaits `run.result`, with the call's abort signal forwarded to the sandbox controller (`onAbort`, removed in finally) and the sandbox's own callbacks owned by the call: onCall launches each tool call the script makes (executeTool, awaited by the script, with the journal entry committed before the next call is launched, a replayed call entering before the next is started), onIdle commits the issued-count watermark (a call is launched only once its issued count is committed), onStarted checks the VM fingerprint (`void this.checkFingerprint`, intentionally unawaited, a failure ends the call through `this.failure`/decide). A sandbox that ends aborted without the call being aborted (the host closed it while shutting down) stores nothing, waits for the invocation's own abort and throws, so a later attempt replays the script; a replay that ends where the live run went on is a divergence reported as an error result. complete() commits the formatted result and the store in one commit. Go durable/codemode/tool.go (createCodemodeTool), call.go (CodemodeCall) and docs.go keep this structure: the call blocks on the sandbox run, the call's ctx is linked to the sandbox's controller, onCall/onIdle run on the sandbox's goroutines with the same entry-before-launch ordering, and each commit is the same one api.Commit. The tests pin the whole run, the timeout limit, issued-count commit before launch, the fingerprint record, call launch/replay entry order, which divergence decides a call's end, that the script's end waits for the replayed calls it issued, deadline resume at the boundary, divergence only where the live run went on, and a host close leaving the script to a later attempt."
 
 [[files]]
 path = "packages/durable/src/codemode/describe.ts"
@@ -2436,10 +2436,10 @@ rationale = "The module builds the code mode tool description and the `codemode`
 
 [[files]]
 path = "packages/durable/src/codemode/models.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:durable/codemode/models_test.go#TestCodeModeModels", "test:durable/codemode/tool_declarations_pi_oracle_test.go", "test:durable/codemode/codemode_helpers_pi_oracle_test.go"]
+rationale = "The catalog and model globals are awaited calls: catalogCall (:96-120) validates type/provider synchronously (the throws before any await), then awaits models.getAvailableOfType with the call's abort signal; classify (:261-270) and generateImages (:277-290) validate their arguments synchronously and await api.models.classify/generateImages with `signal: context.abortSignal`, so the script that called the global waits for the model and an abort of the call reaches the provider request; rejections are the global's rejection to the script. No concurrency or detached work is created here. Go durable/codemode/models.go validates the same arguments with the same messages and calls the models API with the call's ctx, blocking until it returns. TestCodeModeModels exercises the catalog, classify and image globals through a script, and the declaration/oracle tests check the argument validation messages against Pi."
 
 [[files]]
 path = "packages/durable/src/codemode/output.ts"
@@ -2471,10 +2471,10 @@ rationale = "Added to the accounting when every monorepo package was listed: the
 
 [[files]]
 path = "packages/durable/src/harness/agent.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:durable/harness/agent_model_tools_test.go#TestAddToolsExtendsToolsAndModelTools", "test:durable/harness/agent_regression_test.go#TestAddToolsEditsTheStoredToolFilter", "test:durable/harness/agent_regression_test.go#TestConfigureStoresTheArrayAndObjectFormsOfExtensions", "test:durable/harness/harness_conversations_test.go#TestHarnessAgent", "test:durable/harness/agent_resolve_pi_oracle_test.go#TestResolveAgentMatchesPi"]
+rationale = "The async functions are the transactional document updates: configure and addTools await tx.doc(AgentDoc, conversationId) and then edit the draft in place, and createAgent returns for a forked conversation, otherwise awaits the new conversation's own agent document, then (for a task-owned conversation) the owner conversation's document and copies it over; they are part of the creating commit, so the reads happen in that order inside the transaction. Go durable/harness/agent.go Configure, AddTools and CreateAgent (called from the creating commit, harness.go:400) take the same Tx and perform the same reads and writes in order. The cited tests pin the stored tool filters after addTools, the array and object forms of configure, the three document outcomes of a created conversation (empty, owner copy, fork as-of copy) in TestHarnessAgent, and Pi's resolveAgent against the oracle. Delta at Pi 38ff9917: 6c2fd73b0 adds persistWithinMs to the progress policy and its resolver; no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged. Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands. Delta at Pi c23b9ec1: compactionFields (:183-190) throws a synchronous RangeError (`compaction.<field> must be an integer 0 or more, got ...`) for a token count in a compaction policy or model override that is not an integer 0 or more, before the awaited tx.doc read of configure, so the validation failure rejects configure's Promise without a document read or write; no other async line changed. Go validates in follow/durable-7 (durable/harness/agent.go compactionSettings/compactionFields, returned as an error before the transaction read, with durable/compaction_overrides_test.go); this branch's base predates that port, so the validation is carried by the durable-7 merge."
 
 [[files]]
 path = "packages/durable/src/harness/compaction.ts"
@@ -2485,24 +2485,24 @@ rationale = "The compaction task is a checkpointed phase machine (select, summar
 
 [[files]]
 path = "packages/durable/src/harness/context.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:durable/harness/harness_context_test.go#TestConversationContext", "test:durable/harness/harness_context_at_test.go#TestConversationContextAtReadsTheContextAsAForkAtThatEntryStarts", "test:durable/harness/context_range_test.go#TestContextRangeMatchesDeriveContextWhileAConversationGrows", "test:durable/harness/context_range_test.go#TestContextRangeViewsAreNotWrittenAfterTheyAreHandedOut", "test:durable/harness/context_detach_test.go#TestContextViewReturnedToACallerIsDetachedFromWhatLaterReadsSee", "test:durable/harness/harness_context_ranges_test.go#TestTaskContextRanges", "test:durable/session/session_line_admission_test.go#TestReadOnLineCtxReportsLineAdmissionBeforeEarlierCommitsFinish"]
+rationale = "Every async function here is a read chain whose callers wait: captureContextBounds (:25-45) awaits session.latestEntryId or, for an explicit `at`, storage.entry (throwing `Entry N is not visible from conversation M` when absent) and then session.latestHeadMarker; readContext/readContextFrom (:84-140) run that capture on the Session line through session.readOnLine, then deriveContext/scanRange (:150-160, :323-340) page the visible entries through storage.scanEntries one page after another at SCAN_PAGE_SIZE, each page awaited before the next cursor is asked for, off the line (entries at or below the captured tail are immutable). There is no Promise.all, no timer and no detached work; the first rejection (a storage error, the visibility error) is the caller's rejection and nothing after it runs. The `context` argument only carries the caller's abort signal into the storage and session reads; this file never checks it itself, so cancellation is whatever the awaited read does. Go durable/harness/context.go CaptureContextBounds, ReadContext/readContext, readContextFrom, DeriveContext and scanEntries are blocking calls taking ctx and returning (view, error): the capture runs through lineReader.ReadOnLine(ctx, ...), scanEntries loops ScanAll pages in order (or one VisibleEntryRange for storages that retain decoded entries) and returns the first error. Evidence: TestConversationContext and the At test pin the capture order and the not-visible error against a fork started at the same entry; the ContextRange tests pin that a view handed to a caller is detached from later reads while a conversation grows (the Go-only incremental range does not change which reads happen first); TestReadOnLineCtx... pins that a read on the line reports the caller's ctx admission before earlier commits finish."
 
 [[files]]
 path = "packages/durable/src/harness/generation.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "microtask-ordering"]
+evidence = ["test:durable/harness/harness_generation_test.go", "test:durable/harness/harness_generation_recovery_test.go#TestGenerationRecovery", "test:durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredGenerationPartials", "test:durable/harness/harness_deferred_progress_upstream_test.go#TestAHeldDeferredPollIsResumedAfterACrash", "test:durable/harness/scheduler_wake_clock_test.go#TestGenerationRetryWaitSettlesWhenWakeRecomputedAfterBackoffCameDue", "test:durable/harness/hook_runner_test.go#TestHookRunnerEachPropagatesTheErrorOnceTheInvocationIsSignalled", "test:durable/harness/harness_run_failure_test.go", "test:durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryReportsHookFailuresOnThePhaseAndClockFailuresWithoutAPhaseContext"]
+rationale = "The generation task is a checkpointed phase machine (prepare, request, retry, poll, tools, finish, drain, abort; :182-421), each phase a Promise-returning function the scheduler awaits as one invocation. Within a phase every read is awaited in order (runtime.agent, runtime.context at the cutoff entry, the beforeRequest hooks one after another through runtime.hooks.each, the model call streamResponse(…, runtime.signal) and classify) and the phase ends in exactly one awaited runtime.commit whose callback returns the next checkpoint, so a crash replays the last committed phase rather than a half-run one. Cancellation is the invocation signal: runtime.signal goes to the model call and to fetchDeferred, an error thrown while the signal is aborted is rethrown rather than classified (:216, :169-style guard in tools), and abort/interrupted phases settle the open tool calls and live status in one commit. Provider errors are classified into retry (durable backoff wait the scheduler wakes), model_error (failModelError commit), or interrupted; hook errors are reported and the next hook still runs (hook_runner). Go durable/harness/generation.go has the same phases as step functions taking ctx and returning the next checkpoint or error; the scheduler owns the invocation context. The tests drive whole runs through the phases (generation, recovery after a crash at each checkpoint, deferred poll resume, retry wake after the backoff came due, run failure endings) and the hook runner pins that an error after the invocation was signalled propagates instead of being swallowed. Delta at Pi c23b9ec1: the only changed async line is prepare's compaction threshold, `compactionPolicy(settings, ref, (await runtime.agent(context)).compaction)` (:221): the per-conversation policy is read from the awaited agent already resolved for the phase, so the phase gains no new await boundary beyond the cached runtime.agent. Go reads the per-conversation compaction policy in follow/durable-7 (generation.go, harness_compaction_test.go); this branch's base still uses the Harness-wide policy, so that delta is carried by the durable-7 merge, not by this row's evidence."
 
 [[files]]
 path = "packages/durable/src/harness/harness.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:durable/harness/harness_lifecycle_test.go#TestHarnessOpen", "test:durable/harness/harness_lifecycle_test.go#TestHarnessClose", "test:durable/harness/harness_conversations_test.go#TestHarnessRootAndConversations", "test:durable/harness/harness_conversations_test.go#TestHarnessAgent", "test:durable/harness/harness_conversations_test.go#TestHarnessLifecycleHandles", "test:durable/harness/harness_structured_test.go#TestConversationAbortAndBoundaries", "test:durable/harness/harness_structured_test.go#TestWaiting", "test:durable/harness/wait_deliveries_test.go#TestACancelledContextEndsAHarnessWaitForTheListenersAtOnce", "test:durable/harness/harness_observers_test.go#TestObserveConversationAndObserveTaskGraph", "test:durable/harness/harness_tasks_recovery_test.go#TestTaskRecoveryHarnessOpen", "test:durable/harness/goroutines_test.go#TestHarnessLeavesNoGoroutineBehindWhenItClosesAroundARunningTask"]
+rationale = "The Harness and Conversation methods are thin awaited wrappers: each calls tasks.resume() and then returns the scheduler/submissions/views Promise (waitForTask, waitForIdle(conversationId?), abortConversation, submit, watch, observe*), so the caller waits for exactly what the delegate waits for and gets its rejection unchanged. Harness.open (:589-610) throws if the context is already aborted or the registry lacks a built-in task, builds the HarnessImpl and awaits openTasks(context); if that fails it closes the harness with withoutAbortSignal(context) (the open error may be the caller's cancellation) and rethrows the open error, swallowing only a failing close. createConversation/#create (:429-460) run in one commitWith that creates the record, configures the agent and runs options.init(tx, id) before the commit settles; conversationCreated awaits the four document creations in order. The handle given to a task's phase (:545-580) binds every call to the invocation: binding.check() first, then the caller's context is merged with the invocation signal (withAbortSignal), a tx-form submit checks binding.signal.throwIfAborted() because the caller's commit carries its own context, and the submission handle's status/wait/abort are bound the same way. Go durable/harness/harness.go keeps the structure with blocking methods: OpenHarness (ctx.Err first, missing built-ins, tasks.Open, Close(context.WithoutCancel(ctx)) on failure), create (one commit), boundConversation.{Submit,SubmitIn,Abort,WaitForIdle} and boundSubmission with withSignal(ctx, binding.Signal) and binding.Check. The cited tests cover open (and a failing open that still closes), the lifecycle handles and their invocation binding, the abort/boundary ordering, a cancelled context ending a wait at once, task recovery on open, and that no goroutine outlives Close."
 
 [[files]]
 path = "packages/durable/src/harness/inbox.ts"
@@ -2534,31 +2534,31 @@ rationale = "Added to the accounting when every monorepo package was listed: the
 
 [[files]]
 path = "packages/durable/src/harness/scheduler.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "concurrent-joined", "detached-owned", "cancellable", "microtask-ordering"]
+evidence = ["test:durable/harness/harness_tasks_scheduling_test.go#TestTaskRuntime", "test:durable/harness/harness_tasks_scheduling_test.go#TestTaskScheduling", "test:durable/harness/harness_tasks_scheduling_test.go#TestTaskAbort", "test:durable/harness/harness_tasks_scheduling_test.go#TestTaskClose", "test:durable/harness/harness_tasks_scheduling_test.go#TestTaskCloseSignalsHandlersOnlyAfterEveryCloseListenerRan", "test:durable/harness/harness_tasks_test.go#TestTaskPhases", "test:durable/harness/harness_tasks_recovery_test.go#TestTaskRecovery", "test:durable/harness/harness_tasks_recovery_test.go#TestTaskCrashRecovery", "test:durable/harness/harness_cancellation_barrier_test.go#TestWorkBelowACancelledOwner", "test:durable/harness/harness_cancellation_barrier_test.go#TestACascadeTakesItsReasonFromTheNearestCancellingOwner", "test:durable/harness/task_abort_owned_test.go#TestTaskRuntimeAbortOwned", "test:durable/harness/await_context_regression_test.go#TestTaskRuntimeAgentRejectsAnAlreadyCancelledCallerAfterResolution", "test:durable/harness/waiter_cancel_test.go#TestACancelledWaitOfAContinuationDoesNotHoldLaterPublications", "test:durable/harness/harness_idle_scopes_test.go#TestIdleWaitersByScope", "test:durable/harness/harness_idle_scopes_test.go#TestIncrementalIdleStateEqualsAFullRecomputeAfterEveryStepOfRandomNestedWork", "test:durable/harness/scheduler_wake_clock_test.go#TestWakeRecomputedAfterSleepCameDueArmsItsTimer", "test:durable/harness/goroutines_test.go#TestHarnessLeavesNoGoroutineBehindWhenItClosesAroundARunningTask", "test:durable/harness/harness_delivery_contract_test.go#TestAListenerThatBlocksOnAChannelStallsHarnessWaitForTaskUntilItCallsDeliveryEntered", "test:durable/harness/scheduler_storage_failure_test.go#TestASchedulerChainReadThatFailsTheSessionEndsIt"]
+rationale = "The scheduler is the executor of every task: each invocation is its own detached async IIFE (`void (async () => {...})()` at :2180) with an AbortController and a `done` promise; the scheduler owns it (the #background set, invocation.controller, join()). open (:439) awaits one commitWith that scans task records by status and marks cut-off work. #drain (:1880) is queued with queueMicrotask(() => void this.#drain()) after a publication, awaits #reserve (one commitInternal that marks restarts and plans reservations under #region), then starts each reservation without awaiting it; a failure is reported, never thrown at the caller. #run steps awaited commits (#step -> commitInternal) around each phase: erased(task).phases[checkpoint.phase](task, runtime, invocation.context) with the phase's result committed as the next checkpoint, so an invocation's state advances only through awaited commits. abort (:599) marks the record in one commitWith (terminating orphaned work) and then awaits Promise.race([run.done, session.failed]) through awaitWithContext, so the caller leaves on its own context without cancelling the task; abortConversation awaits the marking commit, then waitForTask for every reached task (background) and waitForIdle; waitForTask/waitForIdle register on the line (readOnLine) so no settling publication falls between the check and the registration. queueMicrotask(() => invocation.controller.abort()) (:809) aborts a running invocation after the mark commit published, not inside it; join() aborts every running invocation and awaits Promise.allSettled of their done promises before the close-time writes. The task runtime handed to a phase (:2610-2960) rejects with endedError once the invocation ended, links every abortOwned/waitForTask/readOnLine call to the invocation signal (withAbortSignal) and awaits awaitWithContext so an already-aborted caller rejects even if the value resolved. Go durable/harness/scheduler.go implements the same on goroutines: the run loop and one goroutine per invocation (TaskScheduler.background WaitGroup), context.AfterFunc/linkedChild for withAbortSignal, the microtask-ordered drain (TestTaskScheduling, TestWakeRecomputed...), Close/Join aborting and waiting for every invocation, and waiters registered on the Session line (waiter_cancel). Evidence covers phase order and checkpointing, abort marks and cascades below a cancelled owner, owned-task abort joined before the caller proceeds, the already-cancelled caller rule, idle waiter scoping, wake timers after sleep, scheduler faults ending the Session, delivery order of waiters, and that no goroutine outlives Close. Delta at Pi c23b9ec1: the only changed async-skeleton lines are the new withAbortSignal and withoutAbortSignal imports (used at :2166 and :2406, already ported); the invocation context and the abortion-free step commit are unchanged."
 
 [[files]]
 path = "packages/durable/src/harness/submissions.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:durable/harness/harness_submissions_test.go#TestSubmissions", "test:durable/harness/submissions_pi_oracle_test.go#TestAdmitSubmissionMatchesPiOnSeededPrograms", "test:durable/harness/harness_submit_in_commit_test.go#TestSubmitInsideTheCallersCommit", "test:durable/harness/harness_submit_in_commit_test.go#TestWhenIdleReject", "test:durable/harness/conversation_busy_dedupe_order_test.go#TestConversationBusyIsCheckedAfterTheRequestIDLookup", "test:durable/harness/conversation_busy_policy_test.go#TestConversationBusyRejectsOnlyInputWithWhenBusyReject", "test:durable/harness/settled_submission_record_upstream_test.go#TestSettledSubmissionRecordWaitsOutAPlacedInputUpstream", "test:durable/harness/waiter_cancel_test.go#TestACancelledWaitOfAContinuationDoesNotHoldLaterPublications", "test:durable/harness/harness_telemetry_admission_test.go#TestDurableTelemetryKeepsAPublicWriteAdmissionOpenThroughCommitAsAChildOfItsCaller"]
+rationale = "submit (:65-72) awaits one commitWith that runs admitSubmission inside a `pi.durable.submit` span (#traced awaits the admission, records the status, and rethrows after setting an error status), so the submission exists (or the call rejects) before the handle returns; admit(tx, …) (:79-92) runs the same admission inside the caller's commit and throws ReadAfterWrite after a table write, the admission being stored or lost with that commit. admitSubmission (:223-320) awaits its transaction reads and writes strictly one after another (request-ID lookup before the busy check, boundary preparation before the createSubmission, applyBoundary/startRun last), so ordering is the source order. wait (:133-146) checks and registers on the Session line in one readOnLine job (a settled record resolves at once, otherwise a waiter is added; close rejects registered waiters with the closed error), so no settling publication falls between check and registration; the waiter observes the caller's context. abort (:148-160) is one commit that settles a queued submission and removes its inbox item and reports already_placed/settled otherwise. Go durable/harness/submissions.go Submit/Admit/Get/Status/Wait/Abort are blocking methods with ctx returning errors; AdmitSubmission performs the same reads/writes in order inside the Tx; Wait registers on the line and returns on the settled record, ctx end or close. The tests cover admission outcomes and busy/idle policy order, the oracle-compared seeded programs, submit inside the caller's commit (including ReadAfterWrite), waiting for a placed input upstream, and a cancelled wait leaving later publications unblocked."
 
 [[files]]
 path = "packages/durable/src/harness/task-graph.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "detached-owned", "ui-handoff"]
+evidence = ["test:durable/harness/harness_task_graph_test.go#TestTaskGraphView", "test:durable/harness/harness_task_graph_test.go#TestTaskGraphViewAdvancesWithTheConversationViewAtThePublicationOfTheOneCommitThatChangesBoth", "test:durable/harness/task_graph_pi_oracle_test.go#TestTaskGraphViewMatchesPiOnSeededPrograms", "test:durable/harness/harness_observers_test.go#TestObserveConversationAndObserveTaskGraph", "test:durable/harness/wire_member_order_test.go#TestTaskGraphStateKeepsPiMemberOrder"]
+rationale = "observe (:121-135) and watch (:136-150) await #attach, which builds or reuses the mount in one readOnLine job (the task scan pages are awaited in order, scanAll over storage.scanTasks), checks closed and context.abortSignal?.throwIfAborted() before registering, and only then registers the observer/watch: an already-aborted context aborts the observer/watch and rejects with the signal's reason (:127-131, :141-145); a later abort of a watch's context ends the watch (observer.observeAbort). Observer callbacks run from the graph's publication (the observer's own delivery queue), never from the caller's stack, and the frames handed to them are detached from the caller's signal (withoutAbortSignal at :271). The registry-change refresh #refreshBlocked (:173-193) is intentionally unawaited: it queues one readOnLine job that re-derives each node's blocked reason and publishes the changed ones under BACKGROUND_CONTEXT, with  because the job rejects only once the Session is closing or failed; nothing waits for it and no caller error exists for it. Go durable/harness/task_graph.go (WatchTaskGraph, ObserveTaskGraph) takes ctx, builds the mount on the Session line, checks ctx/closed before registering and ends the watch on ctx; observers receive frames from the publication; the refresh is a ReadOnLine job published under context.Background (portlint-allowed as no caller started it) whose error is dropped as upstream's catch does, and the Session line owns its lifetime. The tests compare the view against Pi on seeded programs, check that the task graph advances with the conversation view at the one publication that changes both, and observe/watch lifecycle."
 
 [[files]]
 path = "packages/durable/src/harness/tool.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "concurrent-joined", "detached-owned", "cancellable", "microtask-ordering"]
+evidence = ["test:durable/harness/harness_tools_test.go", "test:durable/harness/harness_tools_recovery_test.go", "test:durable/harness/harness_tools_progress_test.go#TestToolProgressAndLifetime", "test:durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredToolOutput", "test:durable/harness/tool_hooks_test.go#TestBeforeToolFailureBlocks", "test:durable/harness/harness_tool_hooks_test.go#TestAfterToolOnResultsTheCallPhaseDecides", "test:durable/harness/harness_tool_hooks_test.go#TestAfterToolOnResultsRebuiltFromTheSlot", "test:durable/harness/harness_tool_hooks_test.go#TestCallsToToolsTheRequestDidNotOffer", "test:durable/harness/tool_nested_test.go#TestACallerThatReturnsAbortsTheNestedCallsItLeftRunning", "test:durable/harness/tool_nested_test.go#TestNestedCallsAreAbortedWithTheirCaller", "test:durable/harness/tool_nested_test.go#TestARunningNestedCallIsAbortedWhenItsCallerThrows", "test:durable/harness/tool_nested_test.go#TestCancellingTheWaitForANestedCallStopsOnlyTheWait", "test:durable/harness/tool_nested_test.go#TestConcurrentCallsWithOneKeyAdmitOneNestedCall", "test:durable/harness/tool_nested_test.go#TestEveryNestedCallLeftRunningIsAbortedBeforeAnyIsWaitedFor", "test:durable/harness/tool_nested_test.go#TestNestedCallsOfNestedCallsEndChildrenFirst", "test:durable/harness/tool_nested_records_test.go#TestANestedCallWhoseAdmissionWasCommittingWhenItsCallerReturnedIsAborted", "test:durable/harness/tool_nested_restart_test.go#TestANestedCallAnEarlierAttemptLeftRunningAndTheRerunNeverMadeAgainIsAborted", "test:durable/harness/hook_runner_test.go#TestHookRunnerEachRejectsAfterTheInvocationEnds", "test:durable/harness/harness_tool_memo_test.go#TestToolExecutionApiMemoReadsAbsentThenTheFirstCandidateWins"]
+rationale = "A tool call is a task with three phases the scheduler awaits (call :149-200, execute :202-228, abort :229-250): reads are awaited in order (readCall, resolveTool, then the beforeTool hooks one after another through runtime.hooks.each; a hook error blocks the call unless the signal is already aborted, which rethrows), the intent is committed once (runtime.commit), and then run() executes the tool. run (:415-670) gives the tool an API whose commit/createTask/executeTool/details are awaited commits or awaited waits tied to the invocation, serializes the slot progress writer, and tracks nested admissions in `admissions`; after tool.execute returns or throws it awaits Promise.allSettled(admissions), stops the progress writer (waiters rejected with the error when the signal aborted), computes the final result through the afterTool hooks, and settles in one commit. A nested executeTool (:520-545) admits the child once under a memoized MADE_NESTED_CALLS flag, awaits runtime.waitForTask(id, callContext), and reads the child's result document: cancelling the call's own context stops only that wait, not the child. settle (:810-870) aborts every still-running nested task the caller owns with Promise.all(nestedIds.map(abortOwned)) before it commits the result, so children end before the caller's result entry, and a nested caller that settles aborted rejects later nested calls. Go durable/harness/tool.go and tool_nested.go keep the three phases as step functions with ctx, run the tool body synchronously on the invocation goroutine, sync.WaitGroup-join the nested admissions before the result commit, and abort owned nested children concurrently and wait for all (settle). The nested tests pin the abort-with-caller, child-before-parent ordering, the cancelled wait not aborting the child, one admission per concurrent key, the commit-in-flight admission that is aborted, and restart reconciliation; the hook tests pin before/after hook order and error handling; the progress/deferred tests pin the streamed output writer's lifetime."
 
 [[files]]
 path = "packages/durable/src/harness/transcript.ts"
@@ -2569,10 +2569,10 @@ rationale = "New in Pi f3255de7. merge, newest and resume are synchronous over i
 
 [[files]]
 path = "packages/durable/src/harness/types.ts"
-disposition = "pending"
+disposition = "no-runtime-async"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "Type declarations only: every Promise here (Conversation/Harness/TaskRuntime/Submission methods, hook results `void | Promise<void>`, Observer/Watch frames, ToolExecutionApi) is the signature of behaviour implemented and reviewed in harness.ts, submissions.ts, scheduler.ts, tool.ts, generation.ts, view.ts and task-graph.ts (see those rows); the file runs no async code itself. In Go the same operations are the methods of the interfaces in durable/harness/types.go, durable/harness_types.go and durable/tasks.go, each taking a context.Context (Pi's Context.abortSignal) and returning (value, error), and the `T | Promise<T>` hook and callback unions are plain functions the host awaits by calling them synchronously. Evidence for the interface shapes is the compile of every harness test plus TestCheckpointPhasesAreTheClosedPiUnions and TestHarnessTaskWireTypesUsePiKeys."
 
 [[files]]
 path = "packages/durable/src/harness/usage.ts"
@@ -2590,10 +2590,10 @@ rationale = "Waiters.add returns a Promise that settles once: resolve(key, value
 
 [[files]]
 path = "packages/durable/src/harness/view.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "ui-handoff"]
+evidence = ["test:durable/harness/harness_view_test.go#TestConversationView", "test:durable/harness/harness_view_test.go#TestConversationViewWindow", "test:durable/harness/view_pi_oracle_test.go#TestConversationViewsMatchPi", "test:durable/harness/harness_view_run_test.go#TestARunAsTheConversationViewShowsIt", "test:durable/harness/harness_observers_test.go#TestObserveConversationAndObserveTaskGraph", "test:durable/harness/harness_task_graph_test.go#TestTaskGraphViewAdvancesWithTheConversationViewAtThePublicationOfTheOneCommitThatChangesBoth", "test:durable/harness/document_retention_test.go#TestTheViewsAreTheSameWithDocumentsEvictedRightAfterUseAsWithDocumentsKept"]
+rationale = "observe (:175-198) and watch (:200-220) await attach(), which builds or reuses the conversation's mount in one readOnLine job (storage.conversation, the conversation document, then loadWindow's entry scan awaited in order), checks closed and context.abortSignal?.throwIfAborted() before the observer is registered, and returns a handle whose observation ends when the context aborts; an already-aborted context aborts the observer and rejects with the signal's reason (:191-195, :211-215). View frames are delivered to observers from the publication that changed the conversation, not from the caller's stack; a watch exposes them through its own channel. Go durable/harness/view.go (ObserveConversation, Watch) takes ctx, builds the mount on the Session line, checks ctx and closed before registering, and ends the watch when ctx ends. The tests compare views with Pi on seeded programs, show a run as the view does, pin the window bounds, observation delivery, and that the views are identical when documents are evicted right after use."
 
 [[files]]
 path = "packages/durable/src/images/index.ts"
@@ -2618,17 +2618,17 @@ rationale = "createNodePhotonImages resolves with a processor; with worker: fals
 
 [[files]]
 path = "packages/durable/src/session/cached-storage.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "concurrent-joined"]
+evidence = ["test:durable/session/cached_storage_test.go#TestCachedStorageServesWrittenRecordWithoutReadAndFollowsLaterWrites", "test:durable/session/cached_storage_test.go#TestCachedStorageDropsReadOverlappedByPublicationAndKeepsVersionsOnlyForReadsInFlight", "test:durable/session/cached_storage_test.go#TestCachedStorageAppliesBatchStoredWithCommitWhenPublishedNotAtReceipt", "test:durable/session/cached_storage_test.go#TestCachedStorageReadFromSeveralGoroutinesWhileCommitsPublish", "test:durable/session/cached_storage_test.go#TestCachedStorageKeepsEndedTasksATaskWaitsOnUntilItMovedOnFromItsWait"]
+rationale = "A decorator over the Session's Storage: a hit returns an already-resolved Promise (`Promise.resolve(cached)`, :118, :165, :185), a miss awaits the backend read inside #keep (:307-325) and caches the result only when no published commit overlapped the read. Reads that overlap a commit's publication are therefore dropped rather than cached (the per-record version counter kept only while a read is in flight), and the write-through applies a batch when it is published, not when the commit call receives its sequence. close(context) forwards to the backend. No caller is detached and no error is swallowed: the first read error is the caller's rejection and nothing is cached for it. Several reads can be in flight at once (the line and off-line readers), each resolving independently. Go durable/session/cached_storage.go has blocking read methods returning (record, error); one mutex guards the cache and is never held across a backend read, with the same overlap versions, so concurrent goroutines see the interleavings the Promise continuations give upstream. The cited tests pin write-through, the overlap rule, batch application at publication, goroutine-concurrent reads while commits publish, and the ended-task retention a waiter needs."
 
 [[files]]
 path = "packages/durable/src/session/conversation-tails.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:durable/session/conversation_tails_test.go#TestConversationTailsReadsOnceThenFollowsCommits", "test:durable/session/conversation_tails_test.go#TestConversationTailsAnswersCutoffFromNewestMarkerOnlyAtOrAfterIt", "test:durable/session/conversation_tails_test.go#TestConversationTailsReadErrorsAreReturnedAndNothingIsKept", "test:durable/session/conversation_tails_test.go#TestConversationTailsPeekIsThreeStated"]
+rationale = "latest() and marker() (:29-60) await the caller's read callback once per cache miss and record the result only if no commit changed the conversation while the read was out (a commit applied meanwhile wins, because Apply keeps the tails current); the read's rejection is returned and nothing is kept. The interleaving that matters is a commit's Apply landing while `await read()` is suspended; there is no timer or detached work. Go durable/session/conversation_tails.go takes the read as a blocking callback returning (value, error), and the interleavings are those of goroutines calling Apply while a read is out; no lock is held across the read (stated in the file header). The tests pin read-once-then-follow-commits, the cutoff answered from the newest marker, and that a failed read is returned and keeps nothing."
 
 [[files]]
 path = "packages/durable/src/session/forks.ts"
@@ -2639,38 +2639,38 @@ rationale = "Added to the accounting when every monorepo package was listed: the
 
 [[files]]
 path = "packages/durable/src/session/keys.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "microtask-ordering"]
+evidence = ["test:durable/session/keys_test.go#TestGatedStorageReadsTouchTheirKeysFirst", "test:durable/session/keys_test.go#TestGatedStorageFailedTouchSkipsTheRead", "test:durable/session/session_line_api_test.go#TestTouchGatesAKeyUntilItsWriterIsPublished", "test:durable/session/session_failure_test.go#TestAFailedStorageCallFailsTheSession"]
+rationale = "GatedStorage (:130-262) wraps every Storage read: `#after(key, read)` returns `gate === undefined ? read() : gate.then(read)` (:266-273), so a read of a key that has an unpublished writer waits for that writer's publication (or the Session's failure, which also opens every gate) and then runs; a read of an untouched key runs synchronously in the caller's turn, which is the microtask boundary the line relies on (a read can never overtake an earlier unpublished write of the same record). entry reads wait on the conversation's entries key (#afterEntries); commit/mintId/close are passed straight through. A failed touch (the Session failed) rejects the read without calling storage. Go durable/session/keys.go makes touch a blocking call (Session.Touch returns a channel closed at publication or failure; the wait is not cancellable, as upstream's) and then runs the read, so the read order against publication is the same. The tests pin that gated reads touch their keys first, that a failed touch skips the read, that a key is gated until its writer is published, and that a failing storage call fails the Session."
 
 [[files]]
 path = "packages/durable/src/session/session.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "concurrent-joined", "detached-owned", "cancellable", "microtask-ordering"]
+evidence = ["test:durable/session/session_group_commit_test.go#TestGroupCommitBatching", "test:durable/session/session_group_commit_test.go#TestGroupCommitGates", "test:durable/session/session_group_commit_test.go#TestGroupCommitOutcomes", "test:durable/session/session_group_commit_test.go#TestGroupCommitFailuresPerPart", "test:durable/session/session_group_commit_test.go#TestGroupCommitPublication", "test:durable/session/session_group_commit_test.go#TestGroupCommitRandomizedInterleavings", "test:durable/session/session_resumption_test.go#TestAContinuationThatWaitsForTheLineHasEntered", "test:durable/session/session_resumption_test.go#TestAnAbandonedWaitOfAContinuationIsAcknowledgedAtOnce", "test:durable/session/session_resumption_test.go#TestOrderingHoldsAboveAHundredAndTwentyEightGoroutines", "test:durable/session/line_ticket_test.go#TestLineTicketKeepsItsPositionAheadOfLaterCommits", "test:durable/session/session_line_admission_test.go#TestCommitReportsLineAdmissionBeforeEarlierCommitsFinish", "test:durable/session/session_line_admission_test.go#TestReadOnLineCtxReportsLineAdmissionBeforeEarlierCommitsFinish", "test:durable/session/session_close_race_test.go#TestSessionAdmissionIsAtomicWithClose", "test:durable/session/session_close_race_test.go#TestSessionCloseRunsListenersBeforeBeforeClose", "test:durable/session/session_close_race_test.go#TestSessionCloseWithCancelledContextRejects", "test:durable/session/session_failure_test.go#TestAFailedStorageCallFailsTheSession", "test:durable/session/session_failure_test.go#TestListenersOfAFailingPublication", "test:durable/session/snapshot_admission_test.go#TestSnapshotQueuedBehindACommitThatPoisonsTheSessionRejectsWithoutReadingStorage", "test:durable/session/watch_doc_admission_test.go#TestWatchDocCancelledWhileQueuedRejectsBeforeReadingStorage", "test:durable/session/session_deferred_commits_upstream_test.go#TestHoldingADeferredCommit", "test:durable/session/session_deferred_commits_upstream_test.go#TestStoringHeldChanges", "test:durable/session/session_defer_until_published_race_test.go#TestDeferUntilPublishedFromAnotherGoroutineWhilePublicationsRun"]
+rationale = "The Session is the executor of every durable mutation: one serialized line (`#tail`, `#enqueue`, `#maintain`, :1596-1685) onto which commit, commitInternal, readOnLine, snapshot, snapshotAsOf, watchDoc/observeDoc and the close/maintenance jobs queue in call order; each job runs after the previous one ended, a commit's change callback is awaited, its writes are handed to the writer (a Part with `outcome`), and the commit resolves only after the part is stored and published (`result.after`), with a fence so jobs behind a poisoned commit reject with SessionFailed without reading storage. Cancellation is checked when a job starts, not while it runs (:1087 `context.abortSignal?.throwIfAborted()`; #attachDocument re-checks `cancelled` after each await, :1421-1437); close(context) detaches its cleanup from the abort (withoutAbortSignal) and awaits beforeClose, the drain, the held-document stores and the storage close in order. Background work is intentionally unawaited and owned by the Session: the idle-hold flush (:1024, :1314-1319 `#maintain(...).catch(() => {})`), the close after a failure (:456 `this.close(BACKGROUND_CONTEXT).catch(() => {})`), `queueMicrotask(run)` (:1032) and `SETTLED.then` (:1403) dispatches; listener results that return a Promise are caught and reported (:1753, :1805). Go durable/session/session.go keeps the line as a slot queue (takeSlotLocked, onLine, runFenced, enqueue/maintain) with the same order and fences, SessionImpl.Commit/CommitWith/CommitInternal/ReadOnLine(Ctx)/Snapshot/WatchDoc/Close as blocking calls taking ctx, a LineTicket for the reserved place of a call that must keep its position, goroutines (deliverLoop, the writer's flush goroutine, the idle store) owned by the Session and joined by Close, and the resumption mechanism (resumption.go) that models the order in which JavaScript continuations of resolved Promises resume. The tests pin batching and publication order, gates, outcomes and per-part failures with randomized interleavings, FIFO ordering above 128 goroutines, line admission reporting before earlier commits finish, close racing admission and a cancelled close context, failure poisoning without reading storage, a cancelled queued watch rejecting before reading storage, and held deferred commits being stored."
 
 [[files]]
 path = "packages/durable/src/session/transaction.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "concurrent-joined"]
+evidence = ["test:durable/session/session_tables_test.go#TestSessionTransactionTables", "test:durable/session/session_documents_test.go#TestSessionDocumentTransactions", "test:durable/session/session_tx_scan_tasks_test.go#TestSessionTransactionScanTasksFiltersPagesAndFailsAfterAWrite", "test:durable/session/session_tx_submission_reads_test.go#TestSessionTransactionLatestHeadMarkerSubmissionByRequestAndPlaceSubmission", "test:durable/session/session_tx_place_submission_test.go#TestSessionTransactionPlaceSubmissionIsATableWriteAndRefusedAfterSettling", "test:durable/session/read_after_write_methods_upstream_test.go#TestEveryTableReadFailsWithItsOwnNameAfterATableWrite", "test:durable/session/settle_submission_order_test.go#TestSettleSubmissionChecksOpenAndMarksTheWriteBeforeCopying", "test:durable/session/transaction_context_release_internal_test.go"]
+rationale = "A Transaction is the object a commit callback uses; its table operations return Promises the callback awaits, in the callback's order. Reads (#read, :1140-1148) reject with ReadAfterWrite once a table write happened; writes (#write, :1150-1158) are staged and reject after the transaction settled (`Transaction has settled`); every operation is tracked in #pendingOperations (#track, :1131-1137), so the Session, once the callback returned or threw, awaits Promise.allSettled(pendingOperations) before it assembles the writes (settleSuccess :777-795, settleFailure :766-775) and fails with `Session commit callback settled before its pending Tx operations` if one is still running: an operation a callback left unawaited is therefore joined, not detached, and its failure rejects the commit. doc()/retireDoc() memoize the draft Promise (`draftPromise`) so concurrent calls for one document share one load (:611-636); fork copies are awaited from storage (#acquireForkCopy). The context is the commit's, released when the transaction ends. Go durable/session/transaction.go makes each operation a blocking call returning (value, error); a callback that starts goroutines is joined at settle (the pending-operation set), the same ReadAfterWrite rule applies to every table read, and the Tx is refused after settling. The tests pin the table, document and task/submission operations, the read-after-write names, ordering of settleSubmission checks, and the context release."
 
 [[files]]
 path = "packages/durable/src/session/writer.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "detached-owned", "microtask-ordering"]
+evidence = ["test:durable/session/session_group_commit_test.go#TestGroupCommitBatching", "test:durable/session/session_group_commit_test.go#TestGroupCommitOutcomes", "test:durable/session/session_group_commit_test.go#TestGroupCommitFailuresPerPart", "test:durable/session/session_group_commit_test.go#TestGroupCommitAFailureBetweenTwoPublications", "test:durable/session/session_group_commit_test.go#TestGroupCommitBackpressureAndBounds", "test:durable/session/session_group_commit_test.go#TestGroupCommitTheHopWaitsForTheSynchronousPartOfAListener", "test:durable/session/wait_delivery_test.go#TestGroupCommitAListenerThatClosesTheSessionDoesNotStallTheHop", "test:durable/session/session_group_commit_internal_test.go#TestGroupCommitLeavesThePartsAfterOneWhoseAdoptionFailsUnpublished", "test:durable/session/session_group_commit_internal_test.go#TestGroupCommitFailsTheSessionForADeferredCommitMemoryCannotAdopt"]
+rationale = "The writer batches the parts the line admitted: admit() returns a Part immediately (its `outcome` promise, with a `.catch(() => {})` so an unobserved rejection is not unhandled, :98-99, and a `gate` per key), and one flush loop (#flush :150-160, an intentionally unawaited async chain owned by the writer) sends the queued parts to storage in one awaited host.commit with the abort signal removed (withoutAbortSignal, :173-178, so a caller's cancellation cannot half-cancel a stored batch), then #publish (:201-260) publishes the parts in line order, awaiting the storage's publishing scope and, between two parts, a macrotask hop (`hop()`, :351-358, setImmediate) so the continuations of the commits one part resolved start before the next part is published. A failure in storage fails every part from the failing one on; parts before it stay published. drained() resolves when nothing is queued or in flight. Go durable/session/writer.go runs the flush as one goroutine the writer owns (Wait joins it at close), Part.Wait/OnSettled are the outcome promise, Gate a channel closed at publication or failure, and WriterHost.Hop returns once the goroutines the earlier publication woke have resumed, the Go form of the macrotask hop (file header). The tests pin batching, per-part failures and a failure between two publications, backpressure bounds, that the hop waits for a listener's synchronous part and not for one that closes the Session, and that a failed adoption leaves later parts unpublished."
 
 [[files]]
 path = "packages/durable/src/storage/indexeddb.ts"
-disposition = "pending"
+disposition = "designed-out"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "Browser-only Storage backed by window IndexedDB: every method wraps IDBRequest/IDBTransaction events in Promises (requestResult, transactionResult, :160-186) and drives IDBDatabase, which exist only in a browser; PiG is a Go process with no IndexedDB, so the file has no Go counterpart (docs/parity/PORT_MAP.md marks it browser-only and designed-out). The async contract the file implements is the Storage contract every other backend is held to (one awaited commit per call, awaited reads, request errors as StorageRequestError), which the Go backends prove in TestMemoryStorageConformance, TestSqliteStorageConformance, TestStoreStorageConformance and the JSONL storage tests (see storage/memory.ts, storage/sqlite/storage.ts, storage/store/storage.ts and storage/jsonl/storage.ts rows)."
 
 [[files]]
 path = "packages/durable/src/storage/jsonl/node.ts"
@@ -2681,17 +2681,17 @@ rationale = "Added to the accounting when every monorepo package was listed: the
 
 [[files]]
 path = "packages/durable/src/storage/jsonl/storage.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "concurrent-joined", "microtask-ordering"]
+evidence = ["test:durable/storage/jsonl/jsonl_storage_test.go#TestPicoJsonlStoragePublicationAndRecovery", "test:durable/storage/jsonl/jsonl_storage_test.go#TestJsonlStoragePoisonsWhenAnAppendFailsAfterItsBatchesApplied", "test:durable/storage/jsonl/poisoned_storage_test.go#TestJsonlStoragePoisonsWithOneCausedErrorForEveryLaterCall", "test:durable/storage/jsonl/closed_before_poison_test.go#TestJsonlClosedErrorWinsOverThePoison", "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage", "test:durable/storage/jsonl/open_close_semantics_test.go#TestJsonlOpenResolvesCreatesAndReportsEachFailingStep", "test:durable/storage/jsonl/publication_failure_messages_pi_test.go#TestJsonlPublicationFailuresNameTheFailedStep", "test:durable/storage/jsonl/recovery_validation_pi_test.go#TestJsonlRecoveryTruncatesFromTheFirstUnconfirmedSidecarRecord", "test:durable/storage/jsonl/jsonl_storage_reads_test.go#TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose"]
+rationale = "commit (:288-336) applies each batch to the in-memory MemoryStorage first (prepareCommit/apply, synchronously, receipts remembered) and only then awaits append(encoded): sidecar files are appended (the path resolutions run concurrently under Promise.all and are joined, :343-350), flushed when fsync is on, and the main-file commit markers appended last, so a crash recovers a shorter complete prefix. `this.writing` is a promise the commit resolves in `finally`; every read goes through `readable()` (`while (this.writing !== undefined) await this.writing`, :894), so a read issued while an append is in flight waits for the append and never returns what is not stored; once any batch has applied, any failure poisons the storage with one JsonlStoragePoisonedError before those reads resume, and every later call rejects with it (a closed storage reports the closed error first). The receipts run after the markers are durable, then reclaimSidecars is awaited, and the CommitResult says how many batches were stored and the first refusal. open and recover await the file-system capability one call after another with the caller's context. Go durable/storage/jsonl/storage.go is a blocking Commit under commitMu that does the same order (memory first, append, markers, receipts, reclaim) with `writing` a channel closed in the commit's defer that reads wait on, poison keeping the first failure, and open/recover calling the env.FileSystem synchronously. The tests pin publication then recovery, the poison-on-append-failure rule for reads waiting on an append, the single poisoned error for every later call, closed-before-poison, the named failing step of each publication failure and of open, and that recovery truncates from the first unconfirmed sidecar record."
 
 [[files]]
 path = "packages/durable/src/storage/memory.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "microtask-ordering"]
+evidence = ["test:durable/storage/memory_storage_test.go#TestMemoryStorageConformance", "test:durable/storage/memory_storage_test.go#TestMemoryStorageDoesNotExposeRetainedStateThroughAPreparedCommit", "test:durable/storage/memory_storage_test.go#TestMemoryStorageDeliversTheReceiptsOfTheBatchesAppliedBeforeOneWhoseApplyThrowsThenRejects", "test:durable/storage/prepared_commit_apply_test.go#TestPreparedMemoryCommitAppliesOnceAndStaysInvisibleUntilApplied", "test:durable/storage/memory_read_api_pi_test.go", "test:durable/storage/storage_request_error_test.go#TestMemoryStorageReadsRejectInvalidRequestsWithStorageRequestError", "test:durable/storage/storage_runtime_boundary_test.go#TestDurableStorageRuntimeBoundaries"]
+rationale = "MemoryStorage is the reference Storage: its methods are `async` but contain no await, so each runs to completion synchronously when called and settles one microtask later; the interleaving a caller can observe is exactly call order, never a suspended half-done commit. commit (:270-360) checks and applies each batch in order, calls receive(index, seq) for a stored batch, and on a failing batch delivers the receipts of the batches already applied and then rejects (the first refusal is returned in the result when the failure is a Durable check, otherwise the error propagates); document-copy sources are resolved before any effect. Reads reject with StorageRequestError for an invalid cursor or an unknown conversation. Go durable/storage/memory.go has blocking methods returning (value, error) with one mutex, so a call is atomic with respect to the others as the synchronous body is, and the receipts/refusal rules are the same. The tests pin the conformance suite, that a prepared commit is invisible until applied, that the receipts of earlier batches are delivered before a failing batch rejects, request errors, and the runtime boundary (what a caller can mutate)."
 
 [[files]]
 path = "packages/durable/src/storage/sqlite/cloudflare.ts"
@@ -2702,10 +2702,10 @@ rationale = "openDurableObjectSqliteStorage returns the Promise of SqliteStorage
 
 [[files]]
 path = "packages/durable/src/storage/sqlite/commit.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:durable/storage/sqlite/sqlite_storage_test.go#TestSqliteStorageBatches", "test:durable/storage/sqlite/sqlite_storage_test.go#TestSqliteStorageConformance", "test:durable/storage/sqlite/sqlite_copy_rejection_test.go#TestSqliteStorageRejectsAnUnresolvableDocumentCopyBeforeAnyEffect", "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction"]
+rationale = "New in Pi c23b9ec1: one SqliteStorage.commit call in a few statements whatever its number of batches. CommitState.read (:147-206) awaits the check state of every batch (record IDs, documents, versions, current incarnations) up front in sequential readRows calls, each batch is then checked in memory against what the batches before it left (the throws at :81-100, :253-291 become the call's Durable refusal or its error), and the accepted batches are flushed per table with awaited insertRows/runForEach (:421-471, statements.ts :9-81: statements issued one after another, chunked, never concurrently). All of it runs inside the caller's `db.transaction(async (tx) => ...)`, so a throw rolls the whole call back and no partial batch exists; callers wait for the full call and receive its CommitResult or its error. There is no concurrency, timer or detached work. Go: this branch's base does the same work in durable/storage/sqlite/storage.go (db.Transaction at :410/:1086, one transaction per Commit, statements issued in order, rollback on error), covered by TestSqliteStorageBatches and the conformance suite; follow/durable-7 (e28da0b6e) splits that code into durable/storage/sqlite/commit.go (commitState, pendingWrites, ports commit.ts and rows.ts) and statements.go and adds sqlite_commit_test.go (TestSqliteStorageBatchCommitsAgainstMemoryReference, TestSqliteStorageBatchCommitStatements, TestSqliteStorageBatchCommitRegressions), which pin the statement count and that every outcome equals the in-memory reference. The async contract (one transaction, strictly ordered awaited statements, rollback on error) is the same before and after that port."
 
 [[files]]
 path = "packages/durable/src/storage/sqlite/migrations.ts"
@@ -2723,31 +2723,31 @@ rationale = "openNodeSqliteStorage validates a given prefix before it awaits any
 
 [[files]]
 path = "packages/durable/src/storage/sqlite/statements.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction", "test:durable/storage/sqlite/sqlite_storage_test.go#TestSqliteStorageBatches"]
+rationale = "New in Pi c23b9ec1: three statement helpers over a SqliteExecutor. readRows (:9-20) awaits executor.all for each parameter chunk in order and concatenates; runForEach (:22-24) awaits one executor.run per value in order; insertRows/insertBound (:35-82) await the small rows one at a time and the large ones in bound multi-row statements chunk by chunk. Nothing runs concurrently (a SQLite executor serializes anyway) and the first rejection propagates, aborting the surrounding transaction. In Go the executor is synchronous: SqliteExecutor.Exec/Run/Get/All return (result, error) and the helpers loop in the same order; this branch's base issues the same statements from durable/storage/sqlite/storage.go and follow/durable-7 moves them into durable/storage/sqlite/statements.go. Evidence is the executor test over a database and a transaction and the batch commit tests that drive the helpers."
 
 [[files]]
 path = "packages/durable/src/storage/sqlite/storage.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "microtask-ordering"]
+evidence = ["test:durable/storage/sqlite/sqlite_storage_test.go#TestSqliteStorageConformance", "test:durable/storage/sqlite/sqlite_storage_test.go#TestPicoSqliteStorage", "test:durable/storage/sqlite/sqlite_storage_test.go#TestSqliteStorageBatches", "test:durable/storage/sqlite/sqlite_storage_test.go#TestSqliteStorageKeepsRecordKeyOrder", "test:durable/storage/sqlite/sqlite_storage_methods_test.go#TestSqliteStorageLookupsAndScansReadCommittedRecords", "test:durable/storage/sqlite/storage_request_error_test.go#TestBuiltinStoragesRejectInvalidReadsWithStorageRequestError", "test:durable/storage/sqlite/working_set_test.go#TestWorkingSetFollowsCommits", "test:durable/storage/sqlite/working_set_test.go#TestWorkingSetIgnoresAFailedCommit", "test:durable/storage/sqlite/working_set_test.go#TestWorkingSetSeesAnotherConnectionsWrites", "test:durable/storage/sqlite/sqlite_migrations_test.go"]
+rationale = "open (:133-150) awaits the schema migrations and the metadata row and closes the database before rethrowing if either fails; commit (:161-197) runs inside one `db.transaction(async (tx) => ...)`: read metadata, read the commit state, check, flush, write metadata; a throw rolls back, the receipts run after the transaction committed; `mintId` and the point reads (conversation, task, submission, entry, scans) are single awaited statements, chains of them (entry visibility walks parent conversations, :319-460) are awaited one hop at a time; invalid cursors and unknown conversations throw StorageRequestError; the `watched` wrapper (:99-105) rethrows after recording that the failure belongs to the database call, so a Durable refusal is not mistaken for a SQLite failure. close (:122 `closing`) is awaited once and shared by later callers. Delta at Pi c23b9ec1: the commit body moved into commit.ts/statements.ts (see those rows); the skeleton change is that move and the new awaits of CommitState.read, with no new concurrency. Go durable/storage/sqlite/storage.go has blocking methods over SqliteDatabase with one transaction per Commit; working_set.go keeps the entry window the line reads from and follows published commits. The cited tests pin conformance with the reference, batches, key order, point and scan reads, request errors, and that the working set follows commits, ignores a failed one, and sees another connection's writes."
 
 [[files]]
 path = "packages/durable/src/storage/store/commit.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:durable/storage/store/store_storage_test.go#TestStoreStorageCommits", "test:durable/storage/store/store_storage_test.go#TestStoreStorageReviewRegressions", "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageOneTransactionPerCall", "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageRefusals", "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageFailures"]
+rationale = "Commit is the check/apply pair the store's commit queue runs for one Durable commit call: check(step) (:110-119) awaits #checkIds, #checkDocuments and #resolveCopies one after another (ID claims, document existence/retirement/version rules, fork-copy source reads; a Durable refusal is thrown and becomes CommitResult.refused, a document-copy failure is wrapped as `Document copy N was rejected`), then apply(step) (:152-170) awaits the table puts, claims and document changes in write order inside the same store step, so all of a call's effects commit together or not at all. Everything is sequential inside the step; nothing is detached. Go durable/storage/store/commit.go does the same checks and applies as blocking calls inside the store's commit step. The tests pin the commit semantics, the one-transaction-per-call rule, refusals as results rather than errors, failure paths that leave nothing written, and review regressions on the ordering of checks."
 
 [[files]]
 path = "packages/durable/src/storage/store/documents.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:durable/storage/store/store_storage_test.go#TestStoreStorageSemantics", "test:durable/storage/store/store_storage_test.go#TestStoreStorageArchives", "test:durable/storage/store/store_storage_test.go#TestStoreStorageReads"]
+rationale = "readAt (:122-140) reads a document's entry (readDocumentEntry) and then loads its content at the requested point (loadContent), two awaited statements in order on the one executor of the caller's read transaction, and returns the document or rejects with the executor's error; no concurrency, timer or detached work. Go durable/storage/store/documents.go (ReadAt) runs the same two reads in order on the read transaction's executor and returns (document, error). The store tests read documents at current and historical points (archives) through the same path."
 
 [[files]]
 path = "packages/durable/src/storage/store/queries.ts"
@@ -2758,10 +2758,10 @@ rationale = "`byId`/`first`/`list` return the executor's promise unchanged and `
 
 [[files]]
 path = "packages/durable/src/storage/store/storage.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:durable/storage/store/store_storage_test.go#TestStoreStorageConformance", "test:durable/storage/store/store_storage_test.go#TestStoreStorageClaimsAndClose", "test:durable/storage/store/store_storage_test.go#TestStoreStorageSemantics", "test:durable/storage/store/store_storage_test.go#TestStoreStorageReads", "test:durable/storage/store/store_storage_test.go#TestStoreStorageCommits", "test:durable/storage/store/store_storage_test.go#TestStoreStorageHeadMarkers", "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageOneTransactionPerCall", "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageDurability", "test:durable/storage/store/store_storage_host_test.go#TestStoreStorageCommitsInsideTheHostsBatch", "test:durable/storage/store/store_storage_host_test.go#TestStoreStorageClosedStorageIsCollected", "test:durable/storage/store/store_storage_section_test.go#TestStoreStoragePublishesInASectionOfTheHost"]
+rationale = "StoreStorage is Durable's Storage on Chord's store. open (:118-146) awaits the owner claim, declared.prepare(context) and the id-allocator read, and rethrows after releasing what it claimed. commit (:157-186) is one series of the store's commit queue: the call waits for its series to be durable and every receipt to run (in order, synchronously, after COMMIT and before the store's next step); a refusal of Durable's own checks is a result, any other failure the call's rejection. Each read (#read/#reading, :394-409) is one guarded read of the store: several queries at one state inside a read transaction, given the caller's context, which only the store's guarded read consults (this file never checks it), and a request error is told after the guarded read (`.then(told)`), never inside it. #call (:380-390) rejects a call after close; close (:364-378) refuses new calls, waits for the commits underway and releases the claims; the store itself stays open. Go durable/storage/store/storage.go states the same contract in its header (Commit blocks until durable and every receipt ran; reads block until their guarded read settled; request errors returned after it; Close waits for commits underway) and implements it with the store's blocking read/commit entry points. The tests pin conformance with the reference, claims and close, one transaction per call, refusals as results, failures that write nothing, the batch of a host that commits inside the host's own step, publication inside a section of the host, and a closed storage being collectable (no goroutine left behind)."
 
 [[files]]
 path = "packages/durable/src/testing/assertions.ts"
@@ -2772,10 +2772,10 @@ rationale = "Added to the accounting when every monorepo package was listed: the
 
 [[files]]
 path = "packages/durable/src/testing/commit-writes.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:durable/durabletest/conformance_meta_test.go#TestStorageConformanceCasesPassForMemoryStorageAndFailForBrokenStorage"]
+rationale = "commitWrites (:7-18) awaits one storage.commit with a receive callback that records the batch's sequence, and throws the refusal when nothing was stored (`result.stored === 0`), so a test helper turns a Durable refusal into a rejection and otherwise returns the stored sequence only after the commit settled. Go durable/durabletest/commit_writes.go CommitWrites(ctx, storage, writes) blocks on Storage.Commit and returns (seq, refusal-or-error) the same way; the conformance cases and the benchmark seeding call it for every write."
 
 [[files]]
 path = "packages/durable/src/testing/env-conformance.ts"
@@ -2793,17 +2793,17 @@ rationale = "Added to the accounting when every monorepo package was listed: the
 
 [[files]]
 path = "packages/durable/src/testing/storage-benchmark.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "concurrent-joined"]
+evidence = ["test:durable/durabletest/conformance_meta_test.go", "test:durable/storage/storage_benchmark_scenarios_test.go", "test:durable/storage/storage_write_benchmark_test.go"]
+rationale = "seedStorageBenchmark (:89-270) awaits every seeding commit in a fixed order (the root, entries, tasks, documents, the replay-tail documents and their deltas count by count, the history seeds, the fork chain) so the dataset ids and sequence numbers are the same on every run. Its two Promise.all calls (:138-143, :250) join only mintId calls, not commits: each mintId body runs synchronously in call order, so the ids are the consecutive allocation order whether the calls are joined or sequential; every commit that follows is awaited alone. The read benchmarks (:289-380) each await one storage read with BACKGROUND_CONTEXT and return a value for the harness to check. Go durable/durabletest/storage_benchmark.go SeedStorageBenchmark runs the same sequence with blocking calls and mints in the same order (an id minted for the replay documents is the next consecutive id, as the Promise.all of synchronous bodies gives upstream), and storageReadBenchmarks returns the same read set; the scenario and write-benchmark tests in durable/storage run them against memory, SQLite and the store."
 
 [[files]]
 path = "packages/durable/src/testing/storage-conformance.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "concurrent-joined"]
+evidence = ["test:durable/durabletest/storage_conformance_cases_test.go#TestCreateStorageConformanceCasesMatchUpstream", "test:durable/durabletest/storage_conformance_options_test.go#TestStorageConformanceOptionsSupplyAssertionsAndFreshStoragePerCase", "test:durable/durabletest/storage_conformance_options_test.go#TestRegisterStorageConformanceUsesTheProviderOncePerCase", "test:durable/durabletest/conformance_meta_test.go#TestStorageConformanceCasesPassForMemoryStorageAndFailForBrokenStorage", "test:durable/storage/memory_storage_test.go#TestMemoryStorageConformance", "test:durable/storage/sqlite/sqlite_storage_test.go#TestSqliteStorageConformance", "test:durable/storage/store/store_storage_test.go#TestStoreStorageConformance"]
+rationale = "createStorageConformance returns runner-independent cases; each case runs inside options.withStorage, which must await its callback exactly once, over a Proxy whose commit is checkReceipts (:97-124): every receive comes with the next index and an increasing sequence, none after the call settled, and the number received equals result.stored. The case \"receives a durable commit once before resolving, and never a refused one\" (:144-182) starts `read = storage.entry(...)` inside the receive callback without awaiting it and awaits it only after the commit resolved, proving a batch is durable and readable when it is received and that the events are exactly [receive, resolve]; a refused batch is never received. The remaining cases await one storage call after another (mixed table writes roll back atomically, retained writes and returned records are detached, scans, cursors, document history). Go durable/durabletest/storage_conformance.go keeps the case list (checked against upstream by TestCreateStorageConformanceCasesMatchUpstream), checks receipts the same way, and runs the read started inside receive on its own goroutine joined through a channel after Commit returns (the portlint-allowed asyncorder: a synchronous read inside receive would deadlock on the storage lock). The meta tests prove the cases pass for memory storage and fail for a broken one; the memory, SQLite and store conformance tests run every case against each backend."
 
 [[files]]
 path = "packages/durable/src/testing/types.ts"
@@ -2814,24 +2814,24 @@ rationale = "Added to the accounting when every monorepo package was listed: the
 
 [[files]]
 path = "packages/durable/src/tool-search/tool-search.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:durable/toolsearch/toolsearch_test.go#TestFindsAToolByAParameterDescriptionBehindALocalReferenceAndNotByUnreferencedDefinitions", "test:durable/toolsearch/toolsearch_test.go#TestFindsNothingForAnUnrelatedQueryAndLoadsNothing", "test:durable/toolsearch/toolsearch_test.go#TestToolSearchToolDeclarationMatchesPi", "test:durable/toolsearch/toolsearch_pi_oracle_test.go", "test:durable/toolsearch/toolsearch_carried_test.go#TestToolSearchRanksAToolByItsName", "test:durable/toolsearch/toolsearch_carried_test.go#TestToolSearchMatchesPiTheLatestCarriedRanking"]
+rationale = "The tool's execute (:76-110) validates synchronously first (empty query and a non-positive limit throw before any await), then awaits api.agent(context) once for the deferred tool list and ranks it in memory; there is no concurrency, timer or detached work, a rejection of the agent read is the call's rejection, and the context only goes to that read. Go durable/toolsearch/toolsearch.go Execute checks the arguments, calls api.Agent(ctx) once and ranks the candidates synchronously, returning (result, error). The tests pin the ranking against Pi's oracle (name, parameter description behind a local reference, nothing found for an unrelated query) and that the declaration matches."
 
 [[files]]
 path = "packages/durable/src/tools/bash.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:durable/tools/tools_test.go#TestBashAnswersANonzeroExitWithAnErrorResultAndTimeoutsThrow", "test:durable/tools/tools_test.go#TestBashPrepareErrorFailsTheCall", "test:durable/tools/tools_test.go#TestBashPreparesCommandCwdAndAnExplicitEnvironmentWithTheCallsApi", "test:durable/tools/tools_test.go#TestBashStreamsCombinedStdoutAndStderrReturnsNoOutputOfItsOwnAndRepeatsItWithTheExitCode", "test:durable/tools/tools_test.go#TestBashReportsTheSpillOfACommandThatTimesOut", "test:durable/tools/powershell_upstream_test.go#TestPowerShellPrepareChangesTheScriptAndItsErrorFailsTheCall", "test:durable/tools/powershell_upstream_test.go#TestPowerShellAnswersANonzeroExitWithAnErrorResultAfterStreamingTheOutput", "test:durable/tools/coding_tools_run_pi_oracle_test.go#TestCodingToolsRunLikePi"]
+rationale = "execute awaits prepareExecution (:76-95), which validates the timeout synchronously and then awaits the optional `prepare` hook (BashPrepare may return a Promise: it is awaited, receives the call's context, and a thrown error fails the call before any command runs), and then awaits runCommand (:97-135): one env.exec with the call's abort signal and the streaming callbacks, whose result decides the outcome: a result error with code aborted while the call's own signal is aborted is rethrown as is, code timeout throws `Command timed out after N seconds`, an aborted result without the call being aborted throws `Command aborted`, any other error is rethrown; a non-zero exit is an error result after the output was streamed. The caller waits for the process, the cancellation is the call's signal into exec, and nothing is detached. PowerShell (:171-200) is the same flow with the shell wrapper. Go durable/tools/bash.go runs the same steps with blocking calls: prepare is a function returning an error and receiving the call's ctx, env.Exec(ctx, ...) streams and returns, and the error mapping is the same switch (bash.go:182-199). The tests pin the exit-code and timeout mapping, a prepare error failing the call, prepare receiving the call's API and context and changing cwd/env/command, output streaming and spill, and the PowerShell variants."
 
 [[files]]
 path = "packages/durable/src/tools/edit.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:durable/tools/tools_test.go#TestEditKeepsTheMutationQueueLockedUntilAnAbortedEditWriteSettles", "test:durable/tools/tools_test.go#TestEditSerializesConcurrentEditsThroughCanonicalAndSymlinkPaths", "test:durable/tools/tools_test.go#TestEditSerializesEditsOfOneFileAcrossEnvironmentObjectsOfOneFileSystem", "test:durable/tools/tools_test.go#TestEditDoesNotSerializeTheSamePathOnDifferentFileSystems", "test:durable/tools/tools_test.go#TestEditAppliesDisjointEditsAndReturnsBothDiffFormats", "test:durable/tools/tools_test.go#TestEditRejectsMissingAndDuplicateTargetText", "test:durable/tools/file_mutation_queue_chain_pi_test.go#TestWithFileMutationQueueKeepsALaterCallersTailAndLeavesNoneBehind"]
+rationale = "execute (:103-140) resolves the path, then runs the whole read-modify-write inside withFileMutationQueue(path, ...): the queue chains later edits of the same canonical file behind this one, so concurrent edits of one file run one after another in call order while edits of different files run concurrently. Inside the queue every step is awaited in order (fileInfo, readTextFile, the in-memory edit, writeFile) and the call's signal is checked before the read result is used and before and after the write (`if (context.abortSignal?.aborted) throw new Error(\"Operation aborted\")`, :111, :120, :126, :131); an abort during the write does not release the queue until the write settled, so the next edit cannot interleave with a half-written file. A failed file-system result is rethrown as an edit access error. Go durable/tools/edit.go and file_mutation_queue.go run the same sequence with blocking env calls inside the queue (errOperationAborted at the same four checkpoints) and the queue keeps the lock until the write returns. The tests pin that an aborted write keeps the queue locked until it settles, serialization through canonical and symlinked paths and across environment objects of one file system (and none across different file systems), the queue tail rule, and the edit semantics."
 
 [[files]]
 path = "packages/durable/src/tools/file-mutation-queue.ts"
@@ -2863,24 +2863,24 @@ rationale = "Added to the accounting when every monorepo package was listed: the
 
 [[files]]
 path = "packages/durable/src/tools/read.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:durable/tools/tools_test.go#TestReadReadsTextWithOffsetsAndLimitsAndReportsContinuationAsADiagnostic", "test:durable/tools/tools_test.go#TestReadReturnsImagesByContentAsOneImageBlock", "test:durable/tools/tools_test.go#TestReadRejectsOffsetsBeyondTheFile", "test:durable/tools/read_agent_order_test.go#TestReadAsksForTheAgentOnlyForAnImage", "test:durable/tools/read_retry_pi_test.go#TestReadReadsAChangedFileAgainOnceAndThenFails", "test:durable/tools/powershell_upstream_test.go#TestReadReadsALogThatGrowsWhileItIsRead"]
+rationale = "execute (:108-150) awaits, in order: resolveReadToolPath, env.openBinaryReader, reader.info, the image-signature detection (reads through the reader), then either readText (:236-290: scanLines, optional second scan for the slice end, a BOM probe and readHead) or readImage (:151-212: reader.read of the whole file, `await imageModel(api, context)`, which awaits api.agent(context) only for an image, then processor.prepare); after the read it takes reader.info again and, if the file changed while it was read, reads again once and fails on the second change (`attempt === 1`, :137); reader.close(context) is awaited in the finally. Every reader call receives the call's context, and the first rejection is the call's, after the close. Go durable/tools/read.go runs the same sequence with blocking reader calls and a deferred Close, asks for the agent only for an image, and retries once on a changed file. The tests pin text reading with offsets/limits and continuation diagnostics, image reading as one block, that the agent is asked only for images, and the retry-once-then-fail rule including a growing log."
 
 [[files]]
 path = "packages/durable/src/tools/write.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:durable/tools/tools_test.go#TestWriteKeepsTheMutationQueueLockedUntilAnAbortedWriteSettles", "test:durable/tools/tools_test.go#TestWriteWritesFilesAndCreatesParentDirectories", "test:durable/tools/file_mutation_queue_chain_pi_test.go#TestWithFileMutationQueueKeepsALaterCallersTailAndLeavesNoneBehind"]
+rationale = "execute (:25-40) resolves the path and runs one awaited env.writeFile inside withFileMutationQueue, with the call's signal checked before and after the write (`Operation aborted`, :33, :35): a write already started is not interrupted by the check, the abort is reported after it settled, and the queue stays locked until it did, so a later write of the same file cannot interleave. The caller waits for the write and gets its failure (getOrThrow). Go durable/tools/write.go does the same with a blocking env.WriteFile and the same two checks (write.go:45,:51) inside the queue. TestWriteKeepsTheMutationQueueLockedUntilAnAbortedWriteSettles pins the abort-during-write rule and the queue test the tail rule."
 
 [[files]]
 path = "packages/durable/src/types.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:durable/session/session_tx_submission_reads_test.go#TestSessionTransactionLatestHeadMarkerSubmissionByRequestAndPlaceSubmission", "test:durable/session/keys_test.go#TestGatedStorageReadsTouchTheirKeysFirst", "test:durable/storage/sqlite/sqlite_storage_methods_test.go#TestSqliteStorageLookupsAndScansReadCommittedRecords", "test:durable/storage/storage_read_contract_test.go"]
+rationale = "Type declarations: the Storage interface (every read takes a Context and returns a Promise; commit takes a receive callback and resolves with the CommitResult once the batch is durable and received), the Tx interface (table operations return Promises the commit callback awaits) and the Session/Harness records. The runtime behaviour of each is reviewed in the rows of the implementing files (session/session.ts, session/transaction.ts, storage/*). Go declares the same contract in durable/types.go as blocking methods taking ctx and returning (value, error); the Storage read contract test runs every read against every backend. Delta at Pi c23b9ec1: the Tx interface gains `submission(id): Promise<SubmissionRecord | undefined>` (:1011), a transactional point read awaited by the commit callback like the other Tx reads (it rejects with ReadAfterWrite after a table write); Go has Transaction.Submission in durable/session/transaction.go, covered by TestSessionTransactionLatestHeadMarkerSubmissionByRequestAndPlaceSubmission and the read-after-write test, and follow/durable-7 adds the method to the durable.Tx interface declaration in durable/types.go."
 
 [[files]]
 path = "packages/env/src/connection.ts"
