@@ -25919,6 +25919,32 @@
       ]
     },
     {
+      "id": "BF-7eb7d29",
+      "title": "The model picker (`/model`) now shows a catalog-refresh timeout or failure as soon as it happens",
+      "symptom": "The model picker (`/model`) now shows a catalog-refresh timeout or failure as soon as it happens.",
+      "rootCause": "Pi's Container.render calls child.render(width) for every child on every frame, so a Pi component cannot be stale because of its parent. Pig's per-child cache and the D91 settled scan asked a child that embeds a Container only for its own flag, so a change beneath it that did not call its Invalidate was never drawn: ModelSelectorComponent.SetError and SetStatus (after a catalog-refresh timeout the screen kept \"Refreshing model catalogs...\"), SettingsList.UpdateValue and FilterableList.SetCursor.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The model picker (`/model`) now shows a catalog-refresh timeout or failure as soon as it happens. It kept showing `Refreshing model catalogs...` until the next key press, because the screen reused the picker's last drawing; `SettingsList` value updates and `FilterableList` cursor moves had the same hole. A component that embeds a container now tells its parent about a change anywhere beneath it, so the per-child render cache can no longer show a child that Pi would redraw.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7eb7d29c3f",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "tui/child_cache_contract_test.go::TestAParentContainerShowsWhatAnyExportedMutatorChanged",
+        "tui/child_cache_contract_test.go::TestEveryExportedComponentTypeIsInTheCacheContract",
+        "tui/child_cache_contract_test.go::TestModelSelectorRefreshTimeoutShowsInTheNextFrame",
+        "tui/child_cache_contract_test.go::TestModelSelectorSetErrorReachesAParentContainersRender",
+        "tui/child_cache_contract_test.go::TestSettingsListUpdateValueReachesAParentContainersRender"
+      ]
+    },
+    {
       "id": "BF-7f2c05b",
       "title": "A `ChordError` of code `invalid` from a failed args, result, state or input check carries TypeBox's whole…",
       "symptom": "A `ChordError` of code `invalid` from a failed args, result, state or input check carries TypeBox's whole error objects as `details` (keyword, schemaPath, instancePath, params and message), as Pi's does; it carried only instancePath and message.",
