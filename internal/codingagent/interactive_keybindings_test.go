@@ -29,9 +29,9 @@ func newCustomEditorDispatchMode(t *testing.T) (*InteractiveMode, context.Contex
 }
 
 // remoteEventQueue.post queues an editor event and starts a goroutine that hands the drain to the owner loop's uiTaskCh; when the queue does not take it (the
-// loop has stopped) the goroutine drops every queued event. A mode with no uiTaskCh never takes it, so a test that then ran the queue by hand with runPostedTasks
-// found the event only when its own drain ran before that goroutine did: TestSetRemoteEditorBackToTheDefaultKeepsCollapsedPasteContent failed in all 24 processes
-// of 150 -race runs on 3 CPUs. NewInteractiveMode, the only constructor outside tests, always makes the queue; so must the mode these tests build.
+// loop has stopped) the goroutine drops every queued event. A mode with no uiTaskCh never takes it, so a test that runs the queue by hand with runPostedTasks
+// would find the event only if its own drain ran before that goroutine did. NewInteractiveMode, the only constructor outside tests, always makes the queue;
+// so must the mode these tests build.
 func TestCustomEditorDispatchModeKeepsAPostedEditorEventForTheTestToRun(t *testing.T) {
 	mode, _ := newCustomEditorDispatchMode(t)
 	ran := false
