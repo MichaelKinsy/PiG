@@ -112,7 +112,7 @@ func finishEncoding(buffer *[]byte, encoded []byte, err error) (string, error) {
 		}
 		return "", err
 	}
-	return string(encoded), nil
+	return text, nil
 }
 
 func parseJSON[T any](text string) (T, error) {
@@ -166,11 +166,8 @@ func parseOps(text string) ([]durable.Op, error) {
 // their JSON escapes survive. The text is JSON.stringify's (storage.ts encodeIndexedString), since a query matches the
 // stored column byte for byte and either implementation may have written it.
 func encodeIndexedString(value string) string {
-	encoded, err := jsstring.MarshalJSON(value)
-	if err != nil {
-		panic(fmt.Sprintf("durable sqlite: string is not JSON encodable: %v", err))
-	}
-	return string(encoded)
+	var scratch [64]byte
+	return string(jsstring.AppendString(scratch[:0], value))
 }
 
 func cursorId(cursor durable.Cursor) (int64, bool, error) {

@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"unicode/utf8"
+	"unsafe"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
@@ -21,56 +22,119 @@ import (
 // cell is a value of a stored cell, as Durable's rows hold them: nil, int64 or string.
 type cell = SqliteValue
 
-// jsonText is JSON.stringify of a cell, or of an array of cells.
-func jsonText(value any) string {
+// appendCell appends JSON.stringify of a cell, or of an array of cells, to dst.
+func appendCell(dst []byte, value any) []byte {
 	switch typed := value.(type) {
 	case nil:
-		return "null"
+		return append(dst, "null"...)
 	case int64:
-		return strconv.FormatInt(typed, 10)
+		return strconv.AppendInt(dst, typed, 10)
 	case int:
-		return strconv.Itoa(typed)
+		return strconv.AppendInt(dst, int64(typed), 10)
 	case string:
-		return encodeIndexedString(typed)
+		return jsstring.AppendString(dst, typed)
 	case []cell:
-		var out strings.Builder
-		out.WriteByte('[')
+		dst = append(dst, '[')
 		for index, item := range typed {
 			if index > 0 {
-				out.WriteByte(',')
+				dst = append(dst, ',')
 			}
-			out.WriteString(jsonText(item))
+			dst = appendCell(dst, item)
 		}
-		out.WriteByte(']')
-		return out.String()
+		return append(dst, ']')
 	}
 	panic("durable sqlite: a cell is nil, an integer, a string or an array of them")
 }
 
-// utf16Length is a string's JavaScript length.
-func utf16Length(text string) int {
+// jsonTextLength is the JavaScript length of JSON text appendCell wrote: valid UTF-8, a UTF-16 unit for each character below
+// U+10000 and two for each above.
+func jsonTextLength(text []byte) int {
 	units := 0
-	for rest := text; rest != ""; {
-		r, size := jsstring.DecodeCodePoint(rest)
-		units++
-		if r >= 0x10000 {
+	for _, b := range text {
+		if b&0xC0 != 0x80 {
 			units++
+			if b >= 0xF0 {
+				units++
+			}
 		}
-		//portlint:allow utf16units advances by the byte size of the code point just decoded; the count is UTF-16 units
-		rest = rest[size:]
 	}
 	return units
+}
+
+// maxArrayCharacters: Durable Objects refuse a string over 2 MB, a bound parameter too; 512 Ki characters are at most
+// 1.5 MB of UTF-8.
+const maxArrayCharacters = 512 * 1024
+
+// jsonArrayBuilder writes values as JSON arrays of at most maxArrayCharacters each (a longer value alone), in order: the
+// texts of the values are appended to the array being written, with no string of their own.
+type jsonArrayBuilder struct {
+	arrays []string
+	// array is the array being written: its opening bracket, then its parts with a comma between each.
+	array []byte
+	parts int
+	// length is the JavaScript length of the array so far, its brackets and commas counted.
+	length int
+}
+
+// newJSONArrayBuilder starts a builder whose first array has room for capacity bytes.
+func newJSONArrayBuilder(capacity int) jsonArrayBuilder {
+	array := make([]byte, 1, 2+min(capacity, 2*maxArrayCharacters))
+	array[0] = '['
+	return jsonArrayBuilder{array: array, length: 2}
+}
+
+// add appends a part, the text of value, to the array being written. It stays in this array unless that would take the
+// array over the bound, and then it opens the next one.
+func (builder *jsonArrayBuilder) add(value any) {
+	if builder.parts > 0 {
+		builder.array = append(builder.array, ',')
+	}
+	start := len(builder.array)
+	builder.array = appendCell(builder.array, value)
+	units := jsonTextLength(builder.array[start:])
+	if builder.parts > 0 && builder.length+1+units > maxArrayCharacters {
+		next := make([]byte, 1, 2+min(len(builder.array)-start, 2*maxArrayCharacters))
+		next[0] = '['
+		next = append(next, builder.array[start:]...)
+		// The comma before the part becomes the closing bracket.
+		builder.array[start-1] = ']'
+		builder.arrays = append(builder.arrays, bytesString(builder.array[:start]))
+		builder.array, builder.parts, builder.length = next, 0, 2
+	} else if builder.parts > 0 {
+		builder.length++
+	}
+	builder.length += units
+	builder.parts++
+}
+
+// finish returns the arrays written. The builder is not used after it.
+func (builder *jsonArrayBuilder) finish() []string {
+	if builder.parts > 0 {
+		builder.arrays = append(builder.arrays, bytesString(append(builder.array, ']')))
+	}
+	builder.array = nil
+	return builder.arrays
+}
+
+// bytesString is the string over bytes that are not written again.
+func bytesString(bytes []byte) string {
+	return unsafe.String(unsafe.SliceData(bytes), len(bytes)) //nolint:gosec // G103: the bytes are not written again, and the string keeps them alive
+}
+
+// cellArrays is values as JSON arrays of at most maxArrayCharacters each.
+func cellArrays(values []cell) []string {
+	builder := newJSONArrayBuilder(16 * len(values))
+	for _, value := range values {
+		builder.add(value)
+	}
+	return builder.finish()
 }
 
 // readRows reads the rows sql gives for values, given as its one JSON array parameter (json_each(?)): one statement per
 // chunk.
 func readRows(executor SqliteExecutor, sql string, values []cell) ([]SqliteRow, error) {
 	var rows []SqliteRow
-	parts := make([]string, len(values))
-	for index, value := range values {
-		parts[index] = jsonText(value)
-	}
-	for _, array := range jsonArrays(parts) {
+	for _, array := range cellArrays(values) {
 		chunk, err := executor.All(sql, array)
 		if err != nil {
 			return nil, err
@@ -82,11 +146,7 @@ func readRows(executor SqliteExecutor, sql string, values []cell) ([]SqliteRow, 
 
 // runForEach runs sql (a deletion) for values, given as its one JSON array parameter: one statement per chunk.
 func runForEach(executor SqliteExecutor, sql string, values []cell) error {
-	parts := make([]string, len(values))
-	for index, value := range values {
-		parts[index] = jsonText(value)
-	}
-	for _, array := range jsonArrays(parts) {
+	for _, array := range cellArrays(values) {
 		if err := executor.Run(sql, array); err != nil {
 			return err
 		}
@@ -255,33 +315,4 @@ func maximalSubpart(text string, i int) int {
 		}
 	}
 	return n
-}
-
-// maxArrayCharacters: Durable Objects refuse a string over 2 MB, a bound parameter too; 512 Ki characters are at most
-// 1.5 MB of UTF-8.
-const maxArrayCharacters = 512 * 1024
-
-// jsonArrays is the JSON values parts, in order, as JSON arrays of at most maxArrayCharacters each (a longer value alone).
-func jsonArrays(parts []string) []string {
-	var arrays []string
-	var chunk []string
-	// The array's text: its brackets, its parts and the commas between them.
-	length := 2
-	for _, part := range parts {
-		units := utf16Length(part)
-		if len(chunk) > 0 && length+1+units > maxArrayCharacters {
-			arrays = append(arrays, "["+strings.Join(chunk, ",")+"]")
-			chunk = nil
-			length = 2
-		}
-		if len(chunk) > 0 {
-			length++
-		}
-		length += units
-		chunk = append(chunk, part)
-	}
-	if len(chunk) > 0 {
-		arrays = append(arrays, "["+strings.Join(chunk, ",")+"]")
-	}
-	return arrays
 }
