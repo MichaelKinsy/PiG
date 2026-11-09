@@ -285,9 +285,13 @@ pub use context::{
 };
 pub use events::*;
 mod child_session;
+mod child_session_members;
 pub use child_session::{
     AgentSession, CreateAgentSessionOptions, PromptOptions, ResourceOptions, SessionStartEvent,
     SessionSubscription,
+};
+pub use child_session_members::{
+    ExecuteBashOptions, ForkMessage, ModelMutationOptions, QueuedMessages, SendUserMessageOptions,
 };
 mod create_provider;
 pub use create_provider::{
