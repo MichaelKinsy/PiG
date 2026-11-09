@@ -31,11 +31,6 @@ sdks = ["node", "go", "rust", "python", "lisp"]
 reason = "The wire has no host-invoked streaming BashOperations executor callback. Returning a completed result works; operations requires callback/stream ownership."
 
 [[exception]]
-key = "tool render context.lastComponent"
-sdks = ["go", "rust", "python", "lisp"]
-reason = "Native renderers return lines rather than Components (D56), so no previous component is returned. Card state persists separately in context.state/State."
-
-[[exception]]
 key = "provider.streamSimple"
 sdks = ["node", "go", "rust", "python", "lisp"]
 reason = "The host cannot invoke an extension-served provider EventStream. Requires provider callback and streaming transport, not the existing host-served modelStream direction."
@@ -77,11 +72,6 @@ reason = "Members of the type-only root re-export have no runtime receiver. Both
 key = "pi-tui: StdinBuffer.[Symbol.captureRejectionSymbol]"
 sdks = ["node"]
 reason = "Inherited optional Node EventEmitter rejection hook. Pi's StdinBuffer does not install it; this declaration is not an implemented method in the Pi oracle either."
-
-[[exception]]
-key = "tool render context.durationMs"
-sdks = ["node"]
-reason = "New in Pi 1.1.0: the tool render context carries this member. Go, Rust and Python publish it; the Node runtime does not yet. Closed by porting the member through the Node runtime with a conformance row."
 
 
 # The component kit (D107): Node has no kit event object: Pi's callbacks are
