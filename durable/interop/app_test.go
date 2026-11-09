@@ -18,6 +18,7 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/storage/jsonl"
 	jsonlnode "github.com/MichaelKinsy/PiG/durable/storage/jsonl/node"
 	sqlitenode "github.com/MichaelKinsy/PiG/durable/storage/sqlite/node"
+	_ "modernc.org/sqlite"
 )
 
 const clock = 1_700_000_000_000

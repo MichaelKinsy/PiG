@@ -42,6 +42,7 @@ var chordHelpers = []string{
 	"schema",                    // pi-schema, the schema builders and validators of contracts and frames
 	"schema/internal/ecmaregex", // pi-schema's ECMAScript regular expressions
 	"telemetry",                 // pi-telemetry, the dependency of Context.telemetry (chord/context)
+	"third_party/sqlite",        // the vendored modernc.org/sqlite driver layer (multi-thread mode), opened by chord/sqlite/node
 }
 
 // The dependencies differ by platform (the Windows channels link internal/chord/winpipe), so each shipped platform is listed, not only the host's.
