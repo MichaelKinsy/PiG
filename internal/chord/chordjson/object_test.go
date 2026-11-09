@@ -83,3 +83,16 @@ func TestObjectWritesLoneSurrogatesAsJSONStringifyDoes(t *testing.T) {
 		t.Fatalf("got %s, want %s", encoded, want)
 	}
 }
+
+// upstream: JSON.stringify({"\ud83d\ude00": "a\ud83d\ude00b\ud83d"}) is {"😀":"a😀b\ud83d"} (Node). Two halves a Go
+// concatenation left apart as WTF-8 are one character in a JavaScript string, and the object writes that character.
+func TestObjectWritesAdjacentSurrogateHalvesAsTheirCharacter(t *testing.T) {
+	object := ObjectOf("\xed\xa0\xbd\xed\xb8\x80", "a\xed\xa0\xbd\xed\xb8\x80b\xed\xa0\xbd")
+	encoded, err := json.Marshal(object)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := `{"😀":"a😀b\ud83d"}`; string(encoded) != want {
+		t.Fatalf("got %s, want %s", encoded, want)
+	}
+}

@@ -43,6 +43,8 @@ type entryGenerator struct {
 	// noPairs keeps a low surrogate from following a high one: a *delta.JsonObject writes the two halves of a pair as two
 	// escapes where JSON.stringify writes the character they make.
 	noPairs bool
+	// splitPairs lets a tree hold them anyway.
+	splitPairs bool
 }
 
 // text is a random string; with surrogates off it holds none of the lone-surrogate pieces.
@@ -131,7 +133,7 @@ func (g entryGenerator) scalar() (any, any) {
 
 // tree is a Data value: the Go value a durable decode holds (*delta.JsonObject, []any, float64, string) and its description.
 func (g entryGenerator) tree(depth int) (any, any) {
-	g.noPairs = true
+	g.noPairs = !g.splitPairs
 	if depth >= 3 || g.random.IntN(3) == 0 {
 		return g.scalar()
 	}

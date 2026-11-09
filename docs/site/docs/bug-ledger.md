@@ -894,6 +894,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-75426aa](#bf-75426aa) | The `/login` and `/logout` provider picker and the `/tree` selector show the terminal cursor in their search… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-75426aa-2](#bf-75426aa-2) | A Node extension's `tool_call` handler can edit `event.input` in place and the tool runs with the edit, as in… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-756cac8](#bf-756cac8) | A streaming run no longer hangs, rarely and mostly under load, when a response turn resumes just as the drain… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-7570ee8](#bf-7570ee8) | A Durable entry record is written and read as Pi's JSON.stringify and JSON.parse do for every UTF-16 string | PiG's own defect | All platforms | Unreleased |
 | [BF-75c6ccb](#bf-75c6ccb) | fix(codingagent): context edits leave system messages unchanged | PiG's own defect | All platforms | Unreleased |
 | [BF-75dd64c](#bf-75dd64c) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-760ab0d](#bf-760ab0d) | Two tool calls of one parallel batch that took the file mutation queue after different numbers of host calls… | PiG's own defect | All platforms | Unreleased |
@@ -14034,6 +14035,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `756cac8180` (2026-10-14), `a07977e2b9` (2026-10-14)
 - **Tests:** `ai/continuation_settle_drain_test.go::TestContinuationSettleDoesNotResurrectEndedDrain`, `ai/continuation_settle_drain_test.go::TestContinuationSettleDoesNotRunSecondLoopForTurnGrantedFromSettle`, `ai/google_vertex_stream_oracle_test.go::TestGoogleVertexProviderStreamMatchesPi`
 - **Release note:** A streaming run no longer hangs, rarely and mostly under load, when a response turn resumes just as the drain that granted it ends: a pausing coroutine put back a drain flag the ending drain had already cleared, which left every goroutine asleep with a reaction still queued.
+
+### BF-7570ee8
+
+**A Durable entry record is written and read as Pi's JSON.stringify and JSON.parse do for every UTF-16 string**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Durable entry record is written and read as Pi's JSON.stringify and JSON.parse do for every UTF-16 string.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `7570ee804d` (2026-11-08)
+- **Tests:** `durable/entry_utf16_test.go::TestEntryRecordJSONMatchesNodeOnEveryUTF16String`, `durable/storage/sqlite/entry_surrogates_test.go::TestSqliteEntryTextKeepsLoneSurrogatesAtBothSidesOfTheBoundOfLargeRows`, `internal/chord/chordjson/object_test.go::TestObjectWritesAdjacentSurrogateHalvesAsTheirCharacter`
+- **Release note:** A Durable entry record is written and read as Pi's JSON.stringify and JSON.parse do for every UTF-16 string. A lone surrogate in an entry's kind or in a data value that is not an object was written as U+FFFD by `EntryRecord.MarshalJSON` (Pi keeps the escape `\ud83d`); a lone surrogate in a message, kind or data string read back as U+FFFD (Pi reads the unit); a surrogate pair held as two adjacent lone halves was written as two escapes by the Chord `Object` (Pi writes the character). `MarshalJSON` and `AppendStringify` now write the same text, which a Node differential test over random UTF-16 strings (lone, paired and reversed surrogates in the kind, the messages, the edits and every data string and key) compares with JSON.stringify and JSON.parse; SQLite stores the escape, so rows of up to and above 8 Ki characters hold the same text.
 
 ### BF-75c6ccb
 
