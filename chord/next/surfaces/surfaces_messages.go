@@ -1,6 +1,7 @@
 package surfaces
 
 import (
+	"context"
 	"fmt"
 	"maps"
 	"reflect"
@@ -157,6 +158,10 @@ type Translator struct {
 func (m *Messages) In(language *Language) *Translator {
 	return &Translator{messages: m, language: language}
 }
+
+// InScope is `t` in the current language of ctx (Pi's `t` outside `in`: the language of the render under way, the first
+// catalog outside one).
+func (m *Messages) InScope(ctx context.Context) *Translator { return m.In(CurrentLanguage(ctx)) }
 
 // T renders the message key with its arguments: down the language's chain, at each locale the host's contributed
 // catalog, then the plugin's own; else the first catalog. A key the first catalog lacks is an error.
