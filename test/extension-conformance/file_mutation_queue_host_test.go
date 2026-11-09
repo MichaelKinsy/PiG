@@ -75,12 +75,20 @@ func startQueueProbe(t *testing.T, h *harness, settleMs int, tasks ...map[string
 // whether it runs at once. A mutation that had to wait runs later, once the holder is done, and changes nothing.
 func hostQueueBusy(t *testing.T, file string) bool {
 	t.Helper()
+	return hostQueueBusyVia(file, tools.ReserveFileMutation)
+}
+
+// hostQueueBusyVia is hostQueueBusy with the registration in the host's queue passed in, so a test can model a slow one.
+func hostQueueBusyVia(file string, reserve func(string) (*tools.MutationTicket, error)) bool {
 	ran := make(chan struct{})
 	go func() {
-		_, _ = tools.WithFileMutationQueue(file, func() (struct{}, error) {
-			close(ran)
-			return struct{}{}, nil
-		})
+		ticket, err := reserve(file)
+		if err != nil {
+			return
+		}
+		ticket.Wait()
+		close(ran)
+		ticket.Release()
 	}()
 	select {
 	case <-ran:
