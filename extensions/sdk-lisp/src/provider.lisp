@@ -289,7 +289,7 @@ extension drops the functions it held for it."
     (with-prov (ps) (push stream (ps-forwarding ps)))
     (unwind-protect
          (model-stream-forward stream (lambda (event) (notify-host ext "tool_update" (obj "request_id" id "result" event)))
-                               :stopped (lambda () (ps-stopped ps)))
+                               :stopped (lambda () (ps-stopped ps)) :wire t)
       (with-prov (ps) (setf (ps-forwarding ps) (remove stream (ps-forwarding ps)))))))
 
 (def-stop-hook "providers" (ext)
@@ -401,7 +401,7 @@ extension drops the functions it held for it."
            (unsubscribe (abort-signal-subscribe signal (lambda () (model-stream-end stream nil)))))
       (unwind-protect
            (progn
-             (loop (multiple-value-bind (event more) (model-stream-next stream)
+             (loop (multiple-value-bind (event more) (model-stream-next stream :wire t)
                      (unless more (return))
                      (when (abort-signal-set-p signal) (error "provider stream aborted"))
                      (notify-host ext "provider_stream_event" (obj "request_id" (ctx-request-id ctx) "result" event))))

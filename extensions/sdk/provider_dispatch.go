@@ -238,7 +238,7 @@ func (e *Extension) dispatchProviderObject(ctx Context, req *requestMsg) (any, e
 			return nil, err
 		}
 		err = stream.forward(e.runCtx, func(event any) error {
-			return e.conn.notify("tool_update", map[string]any{"request_id": ctx.requestID, "result": event})
+			return e.conn.notifyResult("tool_update", ctx.requestID, event)
 		})
 		return nil, err
 	default:

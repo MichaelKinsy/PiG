@@ -1465,7 +1465,7 @@ func (s *ModelEventStream) markStarted(err error) {
 func (s *ModelEventStream) push(event map[string]any) { s.enqueue(event, false) }
 
 // enqueue queues event in source order; a done or error event ends the stream. An event an author pushed is encoded here, on the author's goroutine, so the host receives it as it
-// was at the push: the forwarder runs on another goroutine and must not read a map the author may still be changing.
+// was at the push: the forwarder runs on another goroutine and must not read a map the author may still be changing. Events yields item.event, the author's own map.
 func (s *ModelEventStream) enqueue(event map[string]any, pushedByAuthor bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -1475,25 +1475,31 @@ func (s *ModelEventStream) enqueue(event map[string]any, pushedByAuthor bool) {
 	item := modelStreamItem{event: event}
 	eventType, _ := event["type"].(string)
 	var final map[string]any
+	var finalKey string
 	switch eventType {
 	case "done":
-		final, _ = event["message"].(map[string]any)
+		finalKey = "message"
 	case "error":
-		final, _ = event["error"].(map[string]any)
+		finalKey = "error"
+	}
+	if finalKey != "" {
+		final, _ = event[finalKey].(map[string]any)
 	}
 	ends := eventType == "done" || eventType == "error"
 	if ends {
 		s.timeMessage(final)
 	}
+	var finalWire json.RawMessage
 	if pushedByAuthor {
-		item.wire, item.err = json.MarshalJS(event)
+		// pig divergence (D613): the host receives the event as it was at the push, where Pi's consumer reads the shared message at its own turn.
+		item.wire, finalWire, item.err = snapshotEvent(event, finalKey, final)
 	}
 	s.queue = append(s.queue, item)
 	if ends {
 		s.terminal = true
 		s.result = final
 		if pushedByAuthor {
-			s.resultWire, s.resultErr = snapshotMessage(final)
+			s.resultWire, s.resultErr = finalWire, item.err
 		}
 		close(s.done)
 	}
@@ -1507,6 +1513,25 @@ func snapshotMessage(message map[string]any) (json.RawMessage, error) {
 		return nil, nil
 	}
 	return json.MarshalJS(message)
+}
+
+// snapshotEvent encodes an event the author pushed, and final, the message a terminal event carries under finalKey (nil for any other event). The message is encoded once: the event embeds
+// those bytes, and the stream's result is the same bytes. The error is that of encoding either.
+func snapshotEvent(event map[string]any, finalKey string, final map[string]any) (wire, finalWire json.RawMessage, err error) {
+	if final == nil {
+		wire, err = json.MarshalJS(event)
+		return wire, nil, err
+	}
+	if finalWire, err = json.MarshalJS(final); err != nil {
+		return nil, nil, err
+	}
+	shown := make(map[string]any, len(event))
+	for key, value := range event {
+		shown[key] = value
+	}
+	shown[finalKey] = finalWire
+	wire, err = json.MarshalJS(shown)
+	return wire, finalWire, err
 }
 
 // Events returns model events in host order until terminal or cancellation.
