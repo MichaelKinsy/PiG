@@ -190,13 +190,16 @@ type impactRule struct {
 	label string
 }
 
+// allocationCost matches wording about what a run allocates: allocations as a noun, allocs/op, fewer objects, or a verb that counts or compares what is allocated ("allocates two fewer objects", "allocated as many", "no longer allocates"). A verb that only says a value was given an identity ("allocated a new ID") is not a cost.
+var allocationCost = regexp.MustCompile(`(?i)\ballocations\b|\ballocation (cost|count|rate)\b|allocs/op|fewer objects|no longer allocat|\ballocat(es|ed|e|ing) (as many|two|one|\d+|fewer|more|less|no|zero|extra|an extra|a (slice|buffer|map|string|copy)|new (slices?|buffers?|maps?|strings?|copies))\b`)
+
 // impactRules classify a release note by what it says went wrong. The first rule that matches decides. The classes describe the wording of the note, not a measured severity.
 var impactRules = []impactRule{
 	{regexp.MustCompile(`(?i)credential|secret|permission|owner-only|world-readable|injection|sandbox escape|unauthori[sz]ed`), "Credential or permission exposure"},
 	{regexp.MustCompile(`(?i)crash|panic|\bhang|hung\b|freez|deadlock|never (returns|ends|exits|finishes)|without bound|unbounded|out of memory|exits? (1|0)\b|outlives|exited 1`), "Crash, hang or runaway process"},
 	{regexp.MustCompile(`(?i)\blost\b|loses|corrupt|overwr[io]te|silently dropped|data loss|dropped (the|a|every|members)|discarded`), "Lost or altered data"},
 	{regexp.MustCompile(`(?i)\bfail(s|ed|ure)?\b|\berror(s|ed)?\b|rejected|refus|EPERM|cannot|could not|\binvalid\b|no longer (works|runs|loads)|did not (load|start|run)`), "An operation failed or was rejected"},
-	{regexp.MustCompile(`(?i)allocat(e|es|ed|ion|ions)\b|allocs/op|fewer objects`), "Extra allocation or slower run"},
+	{allocationCost, "Extra allocation or slower run"},
 	{regexp.MustCompile(`(?i)render|\bdraw|colou?r|highlight|display|repaint|cursor|layout|padded|spinner|glyph`), "Wrong display"},
 	{regexp.MustCompile(`(?i)\bsorted|order|escaped|wrong|incorrect|instead of`), "Wrong output or ordering"},
 }
