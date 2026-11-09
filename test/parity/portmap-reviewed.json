@@ -303,8 +303,8 @@
  "packages/chord/src/output.ts": {
   "reason": "utf8ByteLength is chord/output/output.go Utf8ByteLength; the interface gap detector binds the name to the same-named helper in durable/truncate.go (name rule N1), which is the Durable package copy.",
   "members": {
-   "pkg:chord/.#utf8ByteLength": "chord/output/output.go#Utf8ByteLength",
-   "pkg:chord/.#utf8ByteLength::call:0": "chord/output/output.go#Utf8ByteLength"
+   "pkg:chord/output#utf8ByteLength": "chord/output/output.go#Utf8ByteLength",
+   "pkg:chord/output#utf8ByteLength::call:0": "chord/output/output.go#Utf8ByteLength"
   }
  }
 }
