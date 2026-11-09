@@ -1935,6 +1935,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-fe625bb](#bf-fe625bb) | Mistral request bodies list their members in Pi's order (`model`, `stream`, `messages`, ..., then the renamed… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-fe625bb-2](#bf-fe625bb-2) | When an extension's `before_provider_request` handler returns a replacement body for OpenAI Completions… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ff225d2](#bf-ff225d2) | The Cloudflare host's report spans record the reason, extension and task of a `task_interrupted` report, as… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-ff6b95e](#bf-ff6b95e) | Chord's terminal launcher no longer ends the session when a stop and continue (Ctrl+Z, then `fg`) interrupts… | PiG's own defect | macOS | Unreleased |
 | [BF-ffcd800](#bf-ffcd800) | Text after an empty heading follows the same space-token rule as after any other block: blank lines or spaces… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ffeb469](#bf-ffeb469) | A long session keeps less memory for each turn it has compacted away | PiG's own defect | All platforms | 0.5.0 |
 | [BF-fffc16a](#bf-fffc16a) | fix: follow minimatch 11.0.3 (Pi) | PiG's own defect | All platforms | Unreleased |
@@ -28518,6 +28519,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `ff225d26a5` (2026-10-27)
 - **Tests:** None recorded.
 - **Release note:** The Cloudflare host's report spans record the reason, extension and task of a `task_interrupted` report, as Pi b3a29f11's telemetry does (`task_parked` no longer exists).
+
+### BF-ff6b95e
+
+**Chord's terminal launcher no longer ends the session when a stop and continue (Ctrl+Z, then `fg`) interrupts…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Chord's terminal launcher no longer ends the session when a stop and continue (Ctrl+Z, then `fg`) interrupts the termios ioctl of raw mode: macOS reports that as EINTR, and Node's `setRawMode` retries it, but the launcher's `SetRaw` called `x/term` directly and failed with `interrupted system call`.
+- **Root cause:** ProcessTerminal.SetRaw called x/term MakeRaw and Restore directly. A stop and continue (Ctrl+Z, fg) resumes inside the termios ioctl, which macOS reports as EINTR, where Node's setRawMode retries it (libuv uv_tty_set_mode). tui.TestTerminalSyscallsThatCanSleepRetryEINTR flagged both calls. Chord may not link the Pi tui package, so raw mode now has its own copy: unix ioctls in retry loops (platform request constants split by OS) and the Windows console-mode form.
+- **User impact:** An operation failed or was rejected
+- **Platform:** macOS
+- **Fixed in:** Unreleased
+- **Fix commits:** `aadacbc03e` (2026-11-09), `ff6b95eb25` (2026-11-09)
+- **Tests:** `tui/terminal_syscall_eintr_audit_test.go::TestEINTRAuditCoversTheWholeRepository`, `tui/terminal_syscall_eintr_audit_test.go::TestTerminalSyscallsThatCanSleepRetryEINTR`
+- **Release note:** Chord's terminal launcher no longer ends the session when a stop and continue (Ctrl+Z, then `fg`) interrupts the termios ioctl of raw mode: macOS reports that as EINTR, and Node's `setRawMode` retries it, but the launcher's `SetRaw` called `x/term` directly and failed with `interrupted system call`. Entering and leaving raw mode now retries the ioctls on EINTR.
 
 ### BF-ffcd800
 
