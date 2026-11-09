@@ -71,7 +71,8 @@ func deferPublication(store *publishingStorage, holdKind, afterKind string) {
 	afterDone := false
 	store.setScope(func(_ context.Context, publish func()) {
 		writes := store.commitAt(store.commitCount() - 1)
-		if taskEnded(writes, holdKind, 0) {
+		// A commit that ends both is published as it is: nothing is left to release it.
+		if taskEnded(writes, holdKind, 0) && !taskEnded(writes, afterKind, 0) {
 			mu.Lock()
 			if afterDone {
 				mu.Unlock()
@@ -139,9 +140,9 @@ func taskStatusOf(t *testing.T, harness Harness, id durable.TaskId) durable.Task
 // asks for must stay for the next pass.
 func TestFinalizePassKeepsAHolderCheckPublishedWhilePlanning(t *testing.T) {
 	for run := range 25 {
-		gate := deferred()
-		heldChild := tkGated("test.held-child", gate)
-		otherChild := tkGated("test.other-child", gate)
+		heldGate, otherGate := deferred(), deferred()
+		heldChild := tkGated("test.held-child", heldGate)
+		otherChild := tkGated("test.other-child", otherGate)
 		held := holdsChildTask("test.held", heldChild)
 		other := holdsChildTask("test.other", otherChild)
 		store := newPublishingStorage()
@@ -153,10 +154,19 @@ func TestFinalizePassKeepsAHolderCheckPublishedWhilePlanning(t *testing.T) {
 			return taskStatusOf(t, opened.harness, otherId) == durable.TaskCompleting && taskStatusOf(t, opened.harness, heldId) == durable.TaskCompleting
 		})
 		flush()
-		// Both children end together. The held child's publication is held until the other child's is published, which asks
-		// for a finalize pass over its holder alone; the held child's terminal record is published as that pass plans.
+		// Both children end. The held child's publication is held until the other child's is published, which asks for a
+		// finalize pass over its holder alone; the held child's terminal record is published as that pass plans.
 		deferPublication(store, "test.held-child", "test.other-child")
-		gate.resolve()
+		heldGate.resolve()
+		eventually(t, func() bool {
+			for index := range store.commitCount() {
+				if taskEnded(store.commitAt(index), "test.held-child", 0) {
+					return true
+				}
+			}
+			return false
+		})
+		otherGate.resolve()
 		eventually(t, func() bool { return taskStatusOf(t, opened.harness, heldId) == durable.TaskTerminal })
 		if status := taskStatusOf(t, opened.harness, otherId); status != durable.TaskTerminal {
 			t.Fatalf("run %d: other = %s, want terminal", run, status)
