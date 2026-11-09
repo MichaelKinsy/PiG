@@ -2,6 +2,7 @@ package subprocess
 
 import (
 	"encoding/json"
+	"maps"
 	"net"
 	"slices"
 	"testing"
@@ -78,9 +79,7 @@ func TestTwoDeclarationsOfANameMergeLaterDefinedFieldsOverEarlier(t *testing.T) 
 		if err := json.Unmarshal(raw, &fields); err != nil {
 			t.Fatal(err)
 		}
-		for k, v := range fields {
-			merged[k] = v
-		}
+		maps.Copy(merged, fields)
 	}
 	if merged["baseUrl"] != "https://two.test" {
 		t.Fatalf("baseUrl = %v, want the later https://two.test", merged["baseUrl"])

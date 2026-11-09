@@ -306,9 +306,9 @@ var contractStrings = []string{"", "a", "off", "changed text", "\x1b[B", "\r"}
 func contractArgs(t reflect.Type) []reflect.Value {
 	zero := func() []reflect.Value { return []reflect.Value{reflect.Zero(t)} }
 	switch {
-	case t == reflect.TypeOf((*Component)(nil)).Elem():
+	case t == reflect.TypeFor[Component]():
 		return []reflect.Value{reflect.ValueOf(Component(NewText("probe")))}
-	case t == reflect.TypeOf(time.Duration(0)):
+	case t == reflect.TypeFor[time.Duration]():
 		return []reflect.Value{reflect.ValueOf(time.Duration(0)), reflect.ValueOf(1500 * time.Millisecond)}
 	}
 	switch t.Kind() {
@@ -365,8 +365,8 @@ type contractInvocation struct {
 func contractCalls(x Component, extras []contractCall) []contractInvocation {
 	rt := reflect.TypeOf(x)
 	var out []contractInvocation
-	for i := range rt.NumMethod() {
-		m := rt.Method(i)
+	for m := range rt.Methods() {
+		m := m
 		if contractSkipped(m.Name) || m.Type.IsVariadic() {
 			continue
 		}
