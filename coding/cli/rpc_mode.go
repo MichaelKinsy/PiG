@@ -495,7 +495,7 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 	}
 	//portlint:allow ctxmapping Pi's shutdown awaits runtimeHost.dispose() with no signal (rpc-mode.ts:726-744), and it runs after the mode's ctx ends, so it cannot derive from it
 	shutdownContext := handleryield.With(invocation.WithAcknowledgment(context.Background(), func() { close(shutdownInvoked) }), release)
-	// bound closes when the first bind has ended, or the mode returns before it: the dispose waits for it (rpcShutdown.bound).
+	// bound closes when the first bind has filled the extension runner (just before session_start dispatches), or the mode returns before that: the dispose waits for it (rpcShutdown.bound).
 	bound := make(chan struct{})
 	var boundOnce sync.Once
 	markBound := func() { boundOnce.Do(func() { close(bound) }) }
@@ -585,6 +585,7 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 		func(code int) { exitRPC.run(code, !transport.processOwned || code != 128+int(syscall.SIGTERM), false) },
 	)
 	shutdown.bound = bound
+	host.bound = markBound
 	shutdown.abort = func(code int) { exitRPC.run(code, false, true) }
 	host.drain = shutdown.drained
 	// pig additive (D19): the host waits in-process for the commands Pi answers before it reads stdin's end, because their runtimes are other processes whose frames race the shutdown's own writes.
@@ -602,11 +603,11 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 		return ctx.Err() == nil
 	}
 	defer shutdown.finish()
-	// Runs before finish on every return, so a mode that ends before its first bind does not leave the dispose waiting.
-	defer markBound()
 	// checkShutdownRequested is rpc-mode.ts checkShutdownRequested. The gate runs it as a macrotask of the stdin executor, so the command that is running answers first; shutdown itself runs apart from the executor.
 	var shutdownTasks sync.WaitGroup
 	defer shutdownTasks.Wait()
+	// Registered after the Wait: it runs before it and before finish, on every return and on a panic, so a mode that ends before its first bind does not leave a parked shutdown task waiting.
+	defer markBound()
 	shutdownGate.bind(
 		func(fn func()) { shutdownTasks.Go(fn) },
 		responses.Macrotask,

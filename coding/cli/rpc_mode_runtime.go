@@ -117,6 +117,8 @@ type rpcHost struct {
 	loop  rpcLoopChain
 	// drain is the process-owner callback for a Node event-loop drain after input end.
 	drain func()
+	// bound is called once every binding of a first bind has run, just before session_start is dispatched: from then on the runner is no longer being filled (rpcShutdown.bound). It may be nil.
+	bound func()
 	// stdoutWait waits for the raw-stdout tail, the barrier of Pi's waitForRawStdoutBackpressure.
 	stdoutWait func(context.Context)
 
@@ -245,6 +247,10 @@ func (h *rpcHost) bind(ctx context.Context, session *coding.Session, event exten
 	session.SetRetryContinuationScheduler(h.responses.Microtask)
 	// The forwarder subscribes before session_start, which keeps its order among the Session's listeners, but writes only after it: rpc-mode.ts rebindSession subscribes after `await session.bindExtensions()`, so an event a session_start listener emits, such as a message it sends, is not written.
 	writing := h.forward(session)
+	// The runner is filled; the dispose may run beside the session_start handlers, as Pi's shutdown() does (a handler that never returns must not hold it).
+	if h.bound != nil {
+		h.bound()
+	}
 	if err := h.announce(ctx, session, st, event); err != nil {
 		return err
 	}
