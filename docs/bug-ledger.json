@@ -32903,6 +32903,26 @@
       ]
     },
     {
+      "id": "BF-9e72f22",
+      "title": "A terminal client's device pairing ended its wait between polls at a cancel; it now settles when the poll…",
+      "symptom": "A terminal client's device pairing ended its wait between polls at a cancel; it now settles when the poll interval ends (at most 2 s later) with the cancellation's cause and no further poll, as Pi's bare timeout does.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A terminal client's device pairing ended its wait between polls at a cancel; it now settles when the poll interval ends (at most 2 s later) with the cancellation's cause and no further poll, as Pi's bare timeout does.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "9e72f22abd",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-9eda512",
       "title": "The Go Durable SDK's scheduler no longer resolves the Harness settings for the context a run itself reads…",
       "symptom": "The Go Durable SDK's scheduler no longer resolves the Harness settings for the context a run itself reads: `contextRetentionMs` is read only when the conversation is idle, as Pi's `runtime.context` does, which removes four settings resolutions from every round of one generation with a tool call.",
