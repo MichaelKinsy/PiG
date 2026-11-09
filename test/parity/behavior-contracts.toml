@@ -5760,7 +5760,7 @@ id = "coding-agent/interactive/render-current-session-state"
 upstream_id = "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderCurrentSessionState"
 family = "interactive-input"
 kind = "state-reset-repaint"
-claim = "a Session replacement clears the loaded resources, the transcript and the pending messages, drops the compaction queue, forgets the streaming assistant component and the pending tool cards, and repaints the current Session through renderInitialMessages (entries, then the trust warning and the compaction count); the repaint fills the editor history from the rendered user messages and reports the compaction count"
+claim = "a Session replacement clears the loaded resources, the transcript and the pending messages, drops the compaction queue and the pending bash components, forgets the streaming assistant component and the pending tool cards, and repaints the current Session through renderInitialMessages (entries, then the trust warning and the compaction count); the repaint fills the editor history from the rendered user messages and reports the compaction count"
 status = "ported"
 pig_targets = [
   "internal/codingagent/interactive_rebind.go#renderCurrentSessionState",
