@@ -383,5 +383,9 @@ def take_helper_socket(path: str) -> Any:
     with _path_lock(path):
         with _State.lock:
             _State.owners.pop(path, None)
-            _State.path_locks.pop(path, None)
-            return _State.dialled.pop(path, None)
+            sock = _State.dialled.pop(path, None)
+    # Forgotten once released: a lock removed while held would let a thread waiting on it and a later caller use two locks for one path. A path has one member and
+    # its factory calls run one after another, so no thread is left waiting on it once the connection is taken.
+    with _State.lock:
+        _State.path_locks.pop(path, None)
+    return sock

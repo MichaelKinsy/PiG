@@ -38,20 +38,26 @@ the lock of its own PATH and never *HELPER-LOCK*, which guards the tables for a 
         conn)))
 
 (defun helper-undial (path)
-  "Forget the connection dialled to PATH and its lock, and return it (NIL when no call dialled one). The caller holds PATH's lock."
+  "Forget the connection dialled to PATH and return it (NIL when no call dialled one). The caller holds PATH's lock."
   (sb-thread:with-recursive-lock (*helper-lock*)
     (let ((entry (assoc path *helper-dialled* :test #'string=)))
-      (setf *helper-path-locks* (remove path *helper-path-locks* :key #'car :test #'string=))
       (when entry
         (setf *helper-dialled* (remove entry *helper-dialled*))
         (cdr entry)))))
 
+(defun helper-forget-path-lock (path)
+  "Forget PATH's lock. The caller has released it: a lock removed while held would let a thread waiting on it and a later caller use two locks for one path. A path
+has one member and its factory calls run one after another, so no thread is left waiting on it once the connection is taken or dropped."
+  (sb-thread:with-recursive-lock (*helper-lock*)
+    (setf *helper-path-locks* (remove path *helper-path-locks* :key #'car :test #'string=))))
+
 (defun helper-take-conn (path)
   "The connection the factory's calls dialled to PATH (a new one when it made none), for SERVE. A call still running on that connection finishes first."
-  (sb-thread:with-recursive-lock ((helper-path-lock path))
-    (let ((conn (or (helper-undial path) (connect-unix path))))
-      (sb-thread:with-recursive-lock (*helper-lock*) (push (cons conn path) *helper-taken*))
-      conn)))
+  (prog1 (sb-thread:with-recursive-lock ((helper-path-lock path))
+           (let ((conn (or (helper-undial path) (connect-unix path))))
+             (sb-thread:with-recursive-lock (*helper-lock*) (push (cons conn path) *helper-taken*))
+             conn))
+    (helper-forget-path-lock path)))
 
 (defun helper-take-shutdown (conn)
   "True when a factory-time call read the host's shutdown frame on CONN."
@@ -62,11 +68,12 @@ the lock of its own PATH and never *HELPER-LOCK*, which guards the tables for a 
 
 (defun helper-drop-conn (path)
   "Close the connection dialled to PATH; true when there was one."
-  (sb-thread:with-recursive-lock ((helper-path-lock path))
-    (let ((conn (helper-undial path)))
-      (when conn
-        (ignore-errors (conn-close conn))
-        t))))
+  (prog1 (sb-thread:with-recursive-lock ((helper-path-lock path))
+           (let ((conn (helper-undial path)))
+             (when conn
+               (ignore-errors (conn-close conn))
+               t)))
+    (helper-forget-path-lock path)))
 
 (defvar *helper-owners* '() "(path . ext): the extension whose factory-time bus calls dialled PATH, which owns the listeners the host dispatches on it.")
 (defvar *helper-results* (make-hash-table :test 'equal :synchronized t) "id -> call_result of a factory-time call whose answer arrived while an inner call waited.")
