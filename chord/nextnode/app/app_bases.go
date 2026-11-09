@@ -88,7 +88,7 @@ func (a *App) reportLate(kind AppErrorKind, err any, base string) {
 func (a *App) startBases(bases []baseBuild) {
 	built, watched := a.basesBuilt, a.baseWatched
 	//portlint:allow golifetime the bases' builds cannot be cancelled (esbuild) and the close does not wait for them: what they finish after it is dropped, as upstream's
-	go func() {
+	go func() { //portlint:allow asyncorder owner decision "A": the bases build at once after the listen, off the caller (Pi's startServer awaits only the server scan, app.ts:368); the builds join inside (builds.Wait, then close(built)) and each request that needs a base waits for built
 		defer close(watched)
 		compared := &comparisons{}
 		var builds sync.WaitGroup

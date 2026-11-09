@@ -6015,24 +6015,6 @@ snippet = "statement, err := conn.PrepareContext(context.Background(), sqlText)"
 
 [[hit]]
 check = "ctxbackground"
-file = "chord/sqlite/node/node.go"
-func = "StatementSync.Run"
-snippet = "_, err := statement.statement.ExecContext(context.Background(), params...)"
-
-[[hit]]
-check = "ctxbackground"
-file = "chord/sqlite/node/node.go"
-func = "StatementSync.EachText"
-snippet = "rows, err := statement.statement.QueryContext(context.Background(), params...)"
-
-[[hit]]
-check = "ctxbackground"
-file = "chord/sqlite/node/node.go"
-func = "StatementSync.query"
-snippet = "rows, err := statement.statement.QueryContext(context.Background(), params...)"
-
-[[hit]]
-check = "ctxbackground"
 file = "env/connection.go"
 func = "NewConnection"
 snippet = "lifetime, cancel := context.WithCancel(context.Background())"

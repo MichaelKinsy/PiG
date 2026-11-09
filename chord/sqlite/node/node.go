@@ -243,7 +243,7 @@ func (statement *StatementSync) Run(params ...any) error {
 	if err != nil {
 		return err
 	}
-	_, err = prepared.ExecContext(context.Background(), params...)
+	_, err = prepared.ExecContext(context.Background(), params...) //portlint:allow ctxbackground node:sqlite StatementSync.run (node.ts:105) is synchronous and takes no signal; no caller context exists, as in RunCounted
 	return err
 }
 
@@ -266,7 +266,7 @@ func (statement *StatementSync) EachText(params []any, fn func(text []byte) erro
 	if err != nil {
 		return err
 	}
-	rows, err := prepared.QueryContext(context.Background(), params...)
+	rows, err := prepared.QueryContext(context.Background(), params...) //portlint:allow ctxbackground node:sqlite StatementSync.all (node.ts:118) is synchronous and takes no signal; EachText reads the same rows without building them
 	if err != nil {
 		return err
 	}
@@ -302,7 +302,7 @@ func (statement *StatementSync) query(params []any, limit int) (result []map[str
 	if err != nil {
 		return nil, err
 	}
-	rows, err := prepared.QueryContext(context.Background(), params...)
+	rows, err := prepared.QueryContext(context.Background(), params...) //portlint:allow ctxbackground node:sqlite StatementSync.get and .all (node.ts:114, :118) are synchronous and take no signal; no caller context exists
 	if err != nil {
 		return nil, err
 	}

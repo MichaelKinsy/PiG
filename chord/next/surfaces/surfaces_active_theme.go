@@ -94,6 +94,7 @@ func FollowActiveTheme(h host.Host, mode string, changed func(Theme), ctx contex
 		return nil, err
 	}
 	addStop(choice.Release)
+	//portlint:allow asyncorder active-theme.ts:44 `choice.pick.watch(ctx).then(start, () => {})` is not awaited: the pick follows once its hold binds, and the stop gate (gate, stopped) orders it against Stop
 	go func() {
 		watch, err := choice.Member("pick").Watch(ctx)
 		if err != nil {

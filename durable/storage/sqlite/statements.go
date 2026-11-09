@@ -225,38 +225,26 @@ func wellFormed(text string, bound bool) string {
 	}
 	out := make([]byte, 0, len(text)+8)
 	for i := 0; i < len(text); {
-		r, size := utf8.DecodeRuneInString(text[i:])
-		if r != utf8.RuneError || size != 1 {
-			out = append(out, text[i:i+size]...)
-			i += size
+		// DecodeRuneInString reads a high surrogate directly followed by a low one as the one character they spell (size 6) and a lone
+		// surrogate as its own unit (size 3).
+		r, size := jsstring.DecodeRuneInString(text[i:])
+		switch {
+		case r == utf8.RuneError && size == 1:
+			out = append(out, "\ufffd"...)
+			i += maximalSubpart(text, i)
 			continue
-		}
-		if high, ok := wtf8Surrogate(text[i:]); ok {
-			if low, ok := wtf8Surrogate(text[i+3:]); ok && high < 0xdc00 && low >= 0xdc00 {
-				out = utf8.AppendRune(out, 0x10000+(high-0xd800)<<10+low-0xdc00)
-				i += 6
-				continue
-			}
+		case size == 3 && r >= 0xd800 && r <= 0xdfff:
 			if bound {
 				out = append(out, "\ufffd"...)
 			} else {
-				out = append(out, text[i:i+3]...)
+				out = jsstring.AppendCodePoint(out, r)
 			}
-			i += 3
-			continue
+		default:
+			out = utf8.AppendRune(out, r)
 		}
-		out = append(out, "\ufffd"...)
-		i += maximalSubpart(text, i)
+		i += size
 	}
 	return string(out)
-}
-
-// wtf8Surrogate is the UTF-16 surrogate unit the three WTF-8 bytes at the start of text spell.
-func wtf8Surrogate(text string) (rune, bool) {
-	if len(text) < 3 || text[0] != 0xed || text[1] < 0xa0 || text[1] > 0xbf || text[2] < 0x80 || text[2] > 0xbf {
-		return 0, false
-	}
-	return rune(text[0]&15)<<12 | rune(text[1]&63)<<6 | rune(text[2]&63), true
 }
 
 // maximalSubpart is the length of the ill-formed sequence at text[i] that a WHATWG UTF-8 decoder (Node's Buffer and
