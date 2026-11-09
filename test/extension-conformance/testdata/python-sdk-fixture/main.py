@@ -2548,16 +2548,32 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("event_payload_probe", "Subscribe and report the payload of the event named by the argument", event_payload_probe)
     def event_isolation_probe(ctx, args):
-        # Two handlers: the first reports the nested marker it received, writes a sentinel into it and changes it again from a timer thread after returning; the
-        # second reports what it received (TestConformance_EventHandlersDoNotShareTheirPayload).
+        # Two handlers: the first reports the marker it received, writes a sentinel into its container and changes it again from a timer thread after returning; the
+        # second reports what it received (TestConformance_EventHandlersDoNotShareTheirPayload). For a boundary event the marker is the first context entry's
+        # sourceEntry id and the container that source entry; for a context or context_with_system event it is the length of data["messages"] and the container
+        # that list.
         name = args.strip()
+        conversation = name in ("context", "context_with_system")
 
         def source(data):
             entries = (data.get("context") or {}).get("contextEntries") or []
             return entries[0]["sourceEntry"] if entries else None
 
+        def marker(data):
+            return len(data.get("messages") or []) if conversation else source(data)["id"]
+
+        def scribble(data, value):
+            if conversation:
+                data["messages"].append({"role": "user", "content": value, "timestamp": 0})
+            else:
+                source(data)["id"] = value
+
         def messages(data):
-            # The first context message, the first llm message and the first message of the first context entry: one text in three places of the payload.
+            # A boundary event: the first context message, the first llm message and the first message of the first context entry: one text in three places of the
+            # payload. A conversation event: its first three messages.
+            if conversation:
+                lst = data.get("messages") or []
+                return [lst[i] if i < len(lst) else None for i in range(3)]
             context = data.get("context") or {}
             found = []
             for lst in (context.get("contextMessages"), context.get("llmMessages")):
@@ -2568,9 +2584,8 @@ def new_extension() -> pig_sdk.Extension:
             return found
 
         def first(hctx, data):
-            container = source(data)
-            hctx.notify("event_isolation:A:%s:end" % container["id"], "info")
-            container["id"] = "SENTINEL-HANDLER-A"
+            hctx.notify("event_isolation:A:%s:end" % marker(data), "info")
+            scribble(data, "SENTINEL-HANDLER-A")
             found = messages(data)
             hctx.notify("event_isolation_msgs:A:%s" % "|".join(str(m["content"]) if m else "None" for m in found), "info")
             for m in found:
@@ -2578,7 +2593,7 @@ def new_extension() -> pig_sdk.Extension:
                     m["content"] = "SENTINEL-HANDLER-A"
 
             def late():
-                container["id"] = "SENTINEL-LATE-WRITER"
+                scribble(data, "SENTINEL-LATE-WRITER")
                 for m in found:
                     if m is not None:
                         m["content"] = "SENTINEL-LATE-WRITER"
@@ -2586,7 +2601,7 @@ def new_extension() -> pig_sdk.Extension:
             threading.Timer(0.1, late).start()
 
         def second(hctx, data):
-            hctx.notify("event_isolation:B:%s:end" % source(data)["id"], "info")
+            hctx.notify("event_isolation:B:%s:end" % marker(data), "info")
             hctx.notify("event_isolation_msgs:B:%s" % "|".join(str(m["content"]) if m else "None" for m in messages(data)), "info")
 
         ext.on_event(name, first)

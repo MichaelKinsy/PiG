@@ -11,10 +11,13 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
-// Encodings keeps, from one boundary dispatch of a session to the next, the encodings of the messages and entry records of the session's latest preview, so a dispatch encodes only what is new to its preview. A preview's messages are the session's own objects (Cache.Shared), which nothing changes, so an object's encoding stays its encoding. Each pass keeps only what it used. A key holds the objects it names, so it names no other while kept.
+// Encodings keeps, from one boundary dispatch of a session to the next, the encodings of the messages and entry records of the session's latest preview, so a dispatch encodes only what is new to its preview. A preview's messages are the session's own objects (Cache.Shared), which nothing changes except agent.ReplaceMessageInPlace (the message_end replacement), so an object's encoding stays its encoding until a call of that function, which drops every kept message encoding (Use). Each pass keeps only what it used. A key holds the objects it names, so it names no other while kept.
+//
+// Retention: an Encodings holds one extra copy of the latest pass's encodings, O(history) bytes (the JSON of every message of the latest request's conversation, plus the records of the latest boundary preview), for the life of the Session that owns it. A pass that uses fewer messages (a compaction, a fork, a shorter branch) shrinks it at that pass, not before: after the last request, or when the last subscriber is gone, it stays until the Session is unreachable. A session holds three, one for the boundary events and one for each of context and context_with_system, so a conversation that has a subscriber of every one of them keeps three copies.
 type Encodings struct {
 	mu       sync.Mutex
 	pass     uint64
+	edits    uint64
 	messages map[MessageKey]keptMessage
 	records  map[recordKey]keptRecord
 }
@@ -64,10 +67,14 @@ type Pass struct {
 	encodings *Encodings
 }
 
-// Use runs encode as one pass and then forgets every encoding the pass did not use. Passes do not overlap.
+// Use runs encode as one pass and then forgets every encoding the pass did not use. Passes do not overlap. A call of agent.ReplaceMessageInPlace since the last pass changed a message that keeps its address, so the message encodings are dropped before the pass (the entry records are the session log's bytes, which no such edit reaches).
 func (e *Encodings) Use(encode func(*Pass) error) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
+	if edits := agent.MessageEdits(); edits != e.edits {
+		clear(e.messages)
+		e.edits = edits
+	}
 	e.pass++
 	err := encode(&Pass{encodings: e})
 	for key, kept := range e.messages {

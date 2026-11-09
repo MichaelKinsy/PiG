@@ -1563,10 +1563,14 @@ func Extension() *sdk.Extension {
 		return nil
 	})
 	// event_isolation_probe subscribes two handlers to the event named by the argument (TestConformance_EventHandlersDoNotShareTheirPayload). The first
-	// reports the marker it received, writes a sentinel into data["context"]["contextEntries"][0]["sourceEntry"]["id"], keeps that container and changes it again from
-	// another goroutine after the handler returned; the second handler of the same dispatch reports what it received. Each handler owns its payload, so no report carries a sentinel.
+	// reports the marker it received, writes a sentinel into the payload's container, keeps that container and changes it again from another goroutine
+	// after the handler returned; the second handler of the same dispatch reports what it received. Each handler owns its payload, so no report carries a sentinel.
+	// For a boundary event the marker is data["context"]["contextEntries"][0]["sourceEntry"]["id"], the container that one and the first message in each of
+	// the three places its text lives; for a context or context_with_system event it is the length of data["messages"], the container that list, and the
+	// first three messages.
 	ext.Command("event_isolation_probe", "Subscribe two handlers that report the nested marker they received and then write sentinels into it", func(ctx sdk.Context, args string) error {
 		name := strings.TrimSpace(args)
+		conversation := name == "context" || name == "context_with_system"
 		source := func(data map[string]any) map[string]any {
 			context, _ := data["context"].(map[string]any)
 			entries, _ := context["contextEntries"].([]any)
@@ -1577,38 +1581,69 @@ func Extension() *sdk.Extension {
 			container, _ := entry["sourceEntry"].(map[string]any)
 			return container
 		}
-		// messages are the first context message, the first llm message and the first message of the first context entry: the same text lives in three places of the payload, and a decode that shared one value between them or between handlers would show a sentinel written into one in another.
-		messages := func(data map[string]any) (message, llm, entry map[string]any) {
+		marker := func(data map[string]any) any {
+			if conversation {
+				list, _ := data["messages"].([]any)
+				return len(list)
+			}
+			return source(data)["id"]
+		}
+		// scribble writes value into the payload's container: a sentinel id into the source entry, or a message appended to the list.
+		scribble := func(data map[string]any, value string) {
+			if conversation {
+				list, _ := data["messages"].([]any)
+				data["messages"] = append(list, map[string]any{"role": "user", "content": value, "timestamp": float64(0)})
+				return
+			}
+			source(data)["id"] = value
+		}
+		// messages are, for a boundary event, the first context message, the first llm message and the first message of the first context entry: the same text lives in three places of the payload, and a decode that shared one value between them or between handlers would show a sentinel written into one in another. For a conversation event they are the first three messages.
+		messages := func(data map[string]any) (found [3]map[string]any) {
+			if conversation {
+				list, _ := data["messages"].([]any)
+				for i := range found {
+					if i < len(list) {
+						found[i], _ = list[i].(map[string]any)
+					}
+				}
+				return found
+			}
 			context, _ := data["context"].(map[string]any)
 			if list, _ := context["contextMessages"].([]any); len(list) > 0 {
-				message, _ = list[0].(map[string]any)
+				found[0], _ = list[0].(map[string]any)
 			}
 			if list, _ := context["llmMessages"].([]any); len(list) > 0 {
-				llm, _ = list[0].(map[string]any)
+				found[1], _ = list[0].(map[string]any)
 			}
 			if entries, _ := context["contextEntries"].([]any); len(entries) > 0 {
 				first, _ := entries[0].(map[string]any)
 				if list, _ := first["messages"].([]any); len(list) > 0 {
-					entry, _ = list[0].(map[string]any)
+					found[2], _ = list[0].(map[string]any)
 				}
 			}
-			return message, llm, entry
+			return found
+		}
+		report := func(found [3]map[string]any) string {
+			parts := make([]string, len(found))
+			for i, object := range found {
+				parts[i] = fmt.Sprint(object["content"])
+			}
+			return strings.Join(parts, "|")
 		}
 		ext.OnEvent(name, func(hctx sdk.Context, data map[string]any) (any, error) {
-			container := source(data)
-			hctx.Notify(fmt.Sprintf("event_isolation:A:%v:end", container["id"]), "info")
-			container["id"] = "SENTINEL-HANDLER-A"
-			message, llm, entry := messages(data)
-			hctx.Notify(fmt.Sprintf("event_isolation_msgs:A:%v|%v|%v", message["content"], llm["content"], entry["content"]), "info")
-			for _, object := range []map[string]any{message, llm, entry} {
+			hctx.Notify(fmt.Sprintf("event_isolation:A:%v:end", marker(data)), "info")
+			scribble(data, "SENTINEL-HANDLER-A")
+			found := messages(data)
+			hctx.Notify("event_isolation_msgs:A:"+report(found), "info")
+			for _, object := range found {
 				if object != nil {
 					object["content"] = "SENTINEL-HANDLER-A"
 				}
 			}
 			go func() {
 				time.Sleep(100 * time.Millisecond)
-				container["id"] = "SENTINEL-LATE-WRITER"
-				for _, object := range []map[string]any{message, llm, entry} {
+				scribble(data, "SENTINEL-LATE-WRITER")
+				for _, object := range found {
 					if object != nil {
 						object["content"] = "SENTINEL-LATE-WRITER"
 					}
@@ -1617,9 +1652,8 @@ func Extension() *sdk.Extension {
 			return nil, nil
 		})
 		ext.OnEvent(name, func(hctx sdk.Context, data map[string]any) (any, error) {
-			hctx.Notify(fmt.Sprintf("event_isolation:B:%v:end", source(data)["id"]), "info")
-			message, llm, entry := messages(data)
-			hctx.Notify(fmt.Sprintf("event_isolation_msgs:B:%v|%v|%v", message["content"], llm["content"], entry["content"]), "info")
+			hctx.Notify(fmt.Sprintf("event_isolation:B:%v:end", marker(data)), "info")
+			hctx.Notify("event_isolation_msgs:B:"+report(messages(data)), "info")
 			return nil, nil
 		})
 		return nil

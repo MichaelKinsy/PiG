@@ -12,6 +12,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	json "github.com/MichaelKinsy/PiG/extensions/sdk/json"
@@ -1031,11 +1032,20 @@ func unmarshalAgentContent(data []byte) ([]ai.ContentBlock, error) {
 	return content, nil
 }
 
+// messageEdits counts the calls of ReplaceMessageInPlace. See MessageEdits.
+var messageEdits atomic.Uint64
+
+// MessageEdits returns how many times ReplaceMessageInPlace has been called in this process. A cache of anything derived from a message's fields (internal/boundarywire.Encodings) compares it before it serves an entry: an in-place edit changes a message that keeps its address, so the address no longer names the same content.
+func MessageEdits() uint64 {
+	return messageEdits.Load()
+}
+
 // ReplaceMessageInPlace overwrites target with replacement through the
 // pointers the agent's transcript, the event and persistence share
 // (agent-session.ts _replaceMessageInPlace). A replacement of another shape is
 // ignored.
 func ReplaceMessageInPlace(target, replacement AgentMessage) {
+	messageEdits.Add(1)
 	switch {
 	case target.System != nil && replacement.System != nil:
 		*target.System = *replacement.System

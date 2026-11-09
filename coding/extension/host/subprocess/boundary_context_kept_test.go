@@ -152,3 +152,29 @@ func BenchmarkContextEventEncoding(b *testing.B) {
 		}
 	})
 }
+
+// A message the session edits in place (agent.ReplaceMessageInPlace, the message_end replacement) keeps its address and changes its content. The next request encodes what the message now holds, not what an earlier request saw.
+func TestKeptContextWireEncodesAMessageEditedInPlace(t *testing.T) {
+	var encodings boundarywire.Encodings
+	messages := keptContextMessages(3)
+	if _, err := marshalKeptContextWire(&encodings, "context", messages); err != nil {
+		t.Fatal(err)
+	}
+	agent.ReplaceMessageInPlace(messages[0], extension.AgentMessage{User: &agent.UserMessage{Role: "user", Content: ai.UserText("edited after the first request"), Timestamp: 7}})
+	agent.ReplaceMessageInPlace(messages[2], extension.AgentMessage{ToolResult: &agent.ToolResultMessage{Role: "toolResult", ToolCallID: "call-0", ToolName: "read", Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "edited result"}}}})
+
+	want, err := marshalContextWire("context", messages)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := marshalKeptContextWire(&encodings, "context", messages)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, want) {
+		t.Fatalf("the request after an in-place edit served a stale encoding\n got %.300s\nwant %.300s", got, want)
+	}
+	if !strings.Contains(string(got), "edited after the first request") {
+		t.Fatalf("the edited message is missing from %.300s", got)
+	}
+}
