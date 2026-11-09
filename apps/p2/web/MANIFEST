@@ -1,4 +1,4 @@
-# Pi 0cc83734 apps/p2, verbatim. sha256  path (relative to apps/p2)
+# Pi 43472ddb apps/p2, verbatim. sha256  path (relative to apps/p2)
 e2fd3323e4d00968757d5cc6d2e8fc3fc764bd899c76428953d8b932d088963e  src/api/v1/index.ts
 fdb6e2fc6a80b60a9ae355a0bcfb1922ebcbecdc6b0fcc8154f68f1606543467  src/runtime/access.ts
 f016015a958bf43a5dab143e39eae54ecbd305574d5a145e7b6b27ea8904e0d7  src/runtime/chord.ts
@@ -474,8 +474,8 @@ a04e27ce11ea5099ec97d0ac36180c28f414428cf6f49f0e3be7cd7db257e77b  src/web/OwnerN
 b7ad5f86e608363d91897ca1e16cd567abc0f31f75cbf3971f35a17d40c637c1  src/web/SidePanel.tsx
 b038b251d333d8cf3a10dcce7b50560ad5df5d49be714d4f27bd5d1e6ba0bb39  src/web/Time.tsx
 2536c4fabe89154ed4d7193cdf6049cef40446e9a3aec87d096ef352ed09aeeb  src/web/Viewer.tsx
-27d6fd6ed648cd38a4fab5064957ff2cc6241d9153cc02b93b3789bb8fc8f50a  src/web/activity/ActivityRow.tsx
-54fd50cddf1c67d67bd3413732f2728f999bb387cf54210bb759ceb584033b3b  src/web/activity/ActivitySheet.tsx
+558342797ac9150d51312752428ad8a57808ba58072d70973f11bc3977e087e9  src/web/activity/ActivityRow.tsx
+1bc78b6a691190d9c2edb4a751a7d27335213442d26ef78c41e3611d988b1fde  src/web/activity/ActivitySheet.tsx
 bb0e81800b4c97f43ca2375c48767d3778094a4d2fc9efebad78e9d90c17fa6e  src/web/activity/Detail.tsx
 5509b1366cda0efdb950147ed2b0798bec2db814e08a4a7ea2045d157225eb86  src/web/activity/Label.tsx
 c97f1caa2fbf0620bb9251831a5e3687b9eed56afa65dd323be335431cb3ea56  src/web/activity/Results.tsx
