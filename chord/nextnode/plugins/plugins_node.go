@@ -265,6 +265,7 @@ func extractNode(cacheDir string) (string, error) {
 	sum.Write(manifest)
 	sum.Write(driver)
 	hash := hex.EncodeToString(sum.Sum(nil))
+	//portlint:allow utf16units hash is a hex digest, ASCII only, so its byte offsets are its UTF-16 code-unit offsets
 	dir := filepath.Join(cacheDir, "chord-plugins-node-"+hash[:16])
 	if nodeTreeComplete(dir, hash) {
 		return dir, nil

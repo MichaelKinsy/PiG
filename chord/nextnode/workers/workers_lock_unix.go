@@ -36,6 +36,7 @@ const maxSocketPathBytes = 103
 // in a private per-user directory under /tmp that only its owner can reach.
 func socketPath(file string) (string, error) {
 	preferred := filepath.Join(os.TempDir(), file)
+	//portlint:allow utf16units lock.ts measures the same unit: Buffer.byteLength(preferred) <= MAX_SOCKET_PATH_BYTES, the sun_path limit is in bytes
 	if len(preferred) <= maxSocketPathBytes {
 		return preferred, nil
 	}

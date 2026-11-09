@@ -186,6 +186,7 @@ func isArrayIndexKey(key string) bool {
 	if key == "0" {
 		return true
 	}
+	//portlint:allow utf16units a key longer than 10 bytes cannot be an array index: more than 10 ASCII digits exceeds 2^32-2, and any non-ASCII byte makes the digit loop below reject it, so the byte length changes no answer
 	if key == "" || key[0] == '0' || len(key) > 10 {
 		return false
 	}
@@ -194,6 +195,7 @@ func isArrayIndexKey(key string) bool {
 			return false
 		}
 	}
+	//portlint:allow numbers key is 1-10 ASCII digits without a leading zero here (the loop above rejected anything else), so ParseUint accepts exactly what JS's canonical array-index test does
 	number, err := strconv.ParseUint(key, 10, 64)
 	return err == nil && number <= 1<<32-2
 }

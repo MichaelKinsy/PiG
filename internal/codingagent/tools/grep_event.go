@@ -99,6 +99,7 @@ func parseLineNumber(text []byte) (int, bool) {
 			return n, true
 		}
 	}
+	//portlint:allow numbers text is a JSON number token the scanner already delimited (skipNumber), whose grammar ParseFloat accepts and rounds to the same double JSON.parse does
 	number, err := strconv.ParseFloat(string(text), 64)
 	if err != nil {
 		return 0, false
