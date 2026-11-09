@@ -837,8 +837,12 @@ func TestBundlePythonArchiveNeedsAgents(t *testing.T) {
 }
 
 // The committed install pair of a release pin is the one publishedAgentPins names (the image checks the installed agent
-// with k8sbench's own pins: TestImageInstallsThePinnedReferences).
+// with k8sbench's own pins: TestImageInstallsThePinnedReferences). A commit pin installs from the frozen closure
+// (pinnedProject), not from this pair, which pin-sync takes from the commit's tarball and pin-check keeps in step.
 func TestPiAgentPins(t *testing.T) {
+	if !committedPiPin().isRelease() {
+		return
+	}
 	if err := checkPinnedPair(filepath.Join("..", "..", "image")); err != nil {
 		t.Error(err)
 	}
