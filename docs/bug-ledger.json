@@ -8611,6 +8611,30 @@
       "tests": []
     },
     {
+      "id": "BF-336d0dc",
+      "title": "Chord's plugin watcher kept no watch on a directory of the app's base code that was removed and made again…",
+      "symptom": "Chord's plugin watcher kept no watch on a directory of the app's base code that was removed and made again while an event of one of its ancestors was handled, on a file system that gives the new directory the inode and birth time of the old one (ext4): an edit in it never marked `base`, so the app did not restart its hosts.",
+      "rootCause": "Chord's plugin watcher kept no watch on a directory of the app's base code that was removed and made again while an event of one of its ancestors was handled, on a file system that gives the new directory the inode and birth time of the old one (ext4): an edit in it never marked `base`, so the app did not restart its hosts.",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord's plugin watcher kept no watch on a directory of the app's base code that was removed and made again while an event of one of its ancestors was handled, on a file system that gives the new directory the inode and birth time of the old one (ext4): an edit in it never marked `base`, so the app did not restart its hosts. A watch the watcher cannot put back now leaves no record of the directory's identity, so the directory is watched again when it returns.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "336d0dc96f",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_watcher_base_test.go::TestTheBaseMarkRenewsTheWatchOfAnAncestorRemovedAndMadeAgainWhileTheRecordedDirectoryIsMissing",
+        "chord/nextnode/plugins/plugins_watcher_identity_test.go::TestTheBaseMarkWatchesADirectoryBackWhoseWatchCouldNotBePutBackWhileItWasAway",
+        "chord/nextnode/plugins/plugins_watcher_identity_test.go::TestTheBaseMarkWatchesTheTreeOfABaseDirectoryBackWhoseWatchesCouldNotBePutBackWhileItWasAway"
+      ]
+    },
+    {
       "id": "BF-33dc8a0",
       "title": "fix(ai): keep a custom client identity's slash in Bedrock's user agent, as the JavaScript SDK does",
       "symptom": "fix(ai): keep a custom client identity's slash in Bedrock's user agent, as the JavaScript SDK does",

@@ -321,6 +321,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-334bb4b](#bf-334bb4b) | A Gemini or Mistral stream chunk with a member of an unexpected type no longer sorts the members of a tool… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3351167](#bf-3351167) | The OAuth callback server reads an absolute-form request target with a scheme other than http or https, a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-33558f6](#bf-33558f6) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
+| [BF-336d0dc](#bf-336d0dc) | Chord's plugin watcher kept no watch on a directory of the app's base code that was removed and made again… | PiG's own defect | All platforms | Unreleased |
 | [BF-33dc8a0](#bf-33dc8a0) | fix(ai): keep a custom client identity's slash in Bedrock's user agent, as the JavaScript SDK does | PiG's own defect | All platforms | Unreleased |
 | [BF-33ea9e4](#bf-33ea9e4) | fix(sdk): name the Go ModelRegistry.Find change in the upgrade rules; Node adoption survives an unbound leaf… | PiG's own defect | All platforms | Unreleased |
 | [BF-33efd9f](#bf-33efd9f) | `pi.exec` with a `maxBuffer` could keep a child's stderr bytes ahead of its stdout bytes under heavy CPU… | PiG's own defect | All platforms | 0.7.0 |
@@ -6125,6 +6126,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `33558f62b7` (2026-10-30)
 - **Tests:** None recorded.
+
+### BF-336d0dc
+
+**Chord's plugin watcher kept no watch on a directory of the app's base code that was removed and made again…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Chord's plugin watcher kept no watch on a directory of the app's base code that was removed and made again while an event of one of its ancestors was handled, on a file system that gives the new directory the inode and birth time of the old one (ext4): an edit in it never marked `base`, so the app did not restart its hosts.
+- **Root cause:** Chord's plugin watcher kept no watch on a directory of the app's base code that was removed and made again while an event of one of its ancestors was handled, on a file system that gives the new directory the inode and birth time of the old one (ext4): an edit in it never marked `base`, so the app did not restart its hosts.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `336d0dc96f` (2026-11-09)
+- **Tests:** `chord/nextnode/plugins/plugins_watcher_base_test.go::TestTheBaseMarkRenewsTheWatchOfAnAncestorRemovedAndMadeAgainWhileTheRecordedDirectoryIsMissing`, `chord/nextnode/plugins/plugins_watcher_identity_test.go::TestTheBaseMarkWatchesADirectoryBackWhoseWatchCouldNotBePutBackWhileItWasAway`, `chord/nextnode/plugins/plugins_watcher_identity_test.go::TestTheBaseMarkWatchesTheTreeOfABaseDirectoryBackWhoseWatchesCouldNotBePutBackWhileItWasAway`
+- **Release note:** Chord's plugin watcher kept no watch on a directory of the app's base code that was removed and made again while an event of one of its ancestors was handled, on a file system that gives the new directory the inode and birth time of the old one (ext4): an edit in it never marked `base`, so the app did not restart its hosts. A watch the watcher cannot put back now leaves no record of the directory's identity, so the directory is watched again when it returns.
 
 ### BF-33dc8a0
 
