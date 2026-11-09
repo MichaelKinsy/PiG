@@ -346,6 +346,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3602f48](#bf-3602f48) | fix(durable/core): scheduler microtasks of the commit observer run behind the host listeners' dispatch; a… | PiG's own defect | All platforms | Unreleased |
 | [BF-364cc57](#bf-364cc57) | RPC model objects of built-in models match Pi's: each keeps its catalog entry's own member order and spelling… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3651a90](#bf-3651a90) | A provider stream that keeps sending keepalive comments or pings but no event now ends with an error after… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
+| [BF-3666142](#bf-3666142) | A provider config's `refreshModels` now reaches the extension with the members of its context in the order… | PiG's own defect | All platforms | Unreleased |
 | [BF-366ae8e](#bf-366ae8e) | An extension provider's model that another provider also catalogs, such as `gpt-6-astra` under `azure`, no… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-369b1e1](#bf-369b1e1) | `grep` with `context` no longer loads each matched file into memory | PiG's own defect | All platforms | 0.5.0 |
 | [BF-36e192b](#bf-36e192b) | fix(lint): port Kitty chunking in UTF-16 units; clear the codemode, terminal image and exit-restore lint hits | PiG's own defect | All platforms | Unreleased |
@@ -6469,6 +6470,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `00c8373052` (2026-10-10), `3651a9096a` (2026-10-10), `4b6ef3e320` (2026-10-10), `64461c2028` (2026-10-10), `b9e2b3fb9b` (2026-10-10)
 - **Tests:** `ai/sse_event_idle_test.go::TestSSEIdleTrackerRecognizesReasoningEvents`, `ai/sse_event_idle_test.go::TestSSEKeepalivesAfterANonReasoningEventStillEndTheStream`, `ai/sse_event_idle_test.go::TestSSEKeepalivesAfterAReasoningEventDoNotEndTheStream`, `ai/sse_event_idle_test.go::TestSSEStreamWithOnlyKeepalivesEndsAfterTheIdleTimeout`, `ai/sse_event_idle_test.go::TestSSEStreamWithSlowEventsIsNotCutOff`
 - **Release note:** A provider stream that keeps sending keepalive comments or pings but no event now ends with an error after `httpIdleTimeoutMs` instead of hanging for ever; the timeout restarts on each event, and on keepalives while the model is reasoning (D131, pi-mono #10761, #10762).
+
+### BF-3666142
+
+**A provider config's `refreshModels` now reaches the extension with the members of its context in the order…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A provider config's `refreshModels` now reaches the extension with the members of its context in the order Pi's `RefreshModelsContext` is built in (the stored login, the catalog snapshot, `allowNetwork`, `force`, then `baseUrl`), as Pi's `JSON.stringify` keeps them, instead of sorted by name (`allowNetwork`, `baseUrl`, then the rest) with the request itself written as `{context, kind}`; Go, Rust, Python and Lisp extensions that list the members of the context they receive, and a provider object's `refreshModels`, see Pi's order.
+- **Root cause:** The refreshModels provider operation was encoded from Go maps, so the host sent {context, kind} with the context members sorted (allowNetwork, baseUrl, credential, force, stored). Pi builds {credential, stored, publish, allowNetwork, force, signal, baseUrl} (packages/ai/src/models.ts:554-562) and JSON.stringify keeps that order, which the Go, Rust, Python and Lisp SDKs see. The request, its context and the publication-update request are now structs written in that order.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3666142a0a` (2026-11-09)
+- **Tests:** `coding/extension/host/subprocess/provider_operations_wire_test.go::TestModifyModelsEndsWithTheConnection`, `coding/extension/host/subprocess/provider_operations_wire_test.go::TestRefreshModelsRequestKeepsPisMemberOrder`, `coding/extension/host/subprocess/provider_operations_wire_test.go::TestRefreshModelsRequestWithoutOptionalMembers`, `coding/extension/host/subprocess/provider_operations_wire_test.go::TestRefreshModelsSignalCancelsTheRequest`, `coding/extension/host/subprocess/provider_operations_wire_test.go::TestRefreshModelsWithoutSignalEndsWithTheConnection`
+- **Release note:** A provider config's `refreshModels` now reaches the extension with the members of its context in the order Pi's `RefreshModelsContext` is built in (the stored login, the catalog snapshot, `allowNetwork`, `force`, then `baseUrl`), as Pi's `JSON.stringify` keeps them, instead of sorted by name (`allowNetwork`, `baseUrl`, then the rest) with the request itself written as `{context, kind}`; Go, Rust, Python and Lisp extensions that list the members of the context they receive, and a provider object's `refreshModels`, see Pi's order. A refresh context with no signal and `oauth.modifyModels`, which has no signal in Pi, now run under the extension connection's lifetime instead of a root context, so both stop with the connection.
 
 ### BF-366ae8e
 
