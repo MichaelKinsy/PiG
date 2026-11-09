@@ -9,5 +9,5 @@
 ### Fixed
 
 - Searching a long session in `/tree` allocates as many objects as in 0.7.0 again, 30% fewer than with the regression: lowercasing text with non-ASCII characters (the search text of every row, model ids and names, and other callers of `jsstring.ToLower`) made a second copy of each text, which raised `BenchmarkTreeRecompute` by 43%. <!-- fix: 87d4c01443 -->
-- `/fork` of a session that is not file-backed builds the clone's entries from the source's decoded messages again instead of decoding every record a second time, which doubled the allocations of that clone. <!-- fix: a0eeb24909 -->
-- Every frame the renderer paints allocates two fewer objects: the cursor's hide and show copied their escape sequence into a new slice, where they had copied it into a pooled buffer before dead-terminal handling routed them through `WriteToTerminal`. <!-- fix: 72999669a8 -->
+- `/fork` of a session that is not file-backed builds the clone's entries from the source's decoded messages again instead of decoding every record a second time, which doubled the allocations of that clone. <!-- fix: c60d6af727 -->
+- Every frame the renderer paints allocates two fewer objects: the cursor's hide and show copied their escape sequence into a new slice, where they had copied it into a pooled buffer before dead-terminal handling routed them through `WriteToTerminal`. <!-- fix: c60d6af727 -->

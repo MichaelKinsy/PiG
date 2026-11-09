@@ -489,6 +489,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-5f22b85](#bf-5f22b85) | fix(coding): shut down the extension host of a DefaultResourceLoader an extension constructed when its last… | PiG's own defect | All platforms | Unreleased |
 | [BF-5f4a0b2](#bf-5f4a0b2) | fix(durable/core): a Session's reports reach its report(error, info) | PiG's own defect | All platforms | Unreleased |
 | [BF-6018935](#bf-6018935) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
+| [BF-606a74f](#bf-606a74f) | `TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits` no longer counts the probe's own module as a write on… | PiG's own defect | All platforms | Unreleased |
 | [BF-609d2bd](#bf-609d2bd) | fix(photonimage): decode DDS (DXT1, DXT3, DXT5) as Photon does | PiG's own defect | All platforms | Unreleased |
 | [BF-60c4c6f](#bf-60c4c6f) | A tool call whose finished arguments are not a valid JSON object no longer runs with the parsed prefix: its… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-612955a](#bf-612955a) | The Rust and Go SDKs keep an unpaired surrogate through `prepareBranchEntries`… | PiG's own defect | All platforms | 0.5.0 |
@@ -1428,6 +1429,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-e55895a](#bf-e55895a) | Durable: opening a store that pi-durable 1.3.0 wrote no longer leaves you unable to go back to it | PiG's own defect | All platforms | 0.5.2 |
 | [BF-e55cdc2](#bf-e55cdc2) | The Codex catalog entry for GPT-6.1 Sol reports the 500K context window the Codex models endpoint returns… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e57444c](#bf-e57444c) | fix(extension/host): the Node runtime holds the frames read after a run beginning until the immediates queued… | PiG's own defect | All platforms | Unreleased |
+| [BF-e57eef0](#bf-e57eef0) | The RPC usage probe that checks Pi's stdout ordering no longer dies on an unhandled `write EPIPE` when the… | PiG's own defect | All platforms | Unreleased |
 | [BF-e59f3f6](#bf-e59f3f6) | Fixed tool-call arguments losing a field and every field after it when the model wrote an invalid `\u` escape… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e5a345e](#bf-e5a345e) | An Anthropic request holds a mid-conversation system update until an assistant message that is actually sent… | A fix Pi shipped that PiG ported | All platforms | 0.5.3 |
 | [BF-e5aae63](#bf-e5aae63) | The editor now enters bash mode (bash border color, Escape clears it) when the text starts with `!` after any… | PiG's own defect | All platforms | 0.5.0 |
@@ -8086,6 +8088,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `601893581e` (2026-11-03)
 - **Tests:** None recorded.
+
+### BF-606a74f
+
+**`TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits` no longer counts the probe's own module as a write on…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits` no longer counts the probe's own module as a write on the exit path: the host replies to a load before it writes the load's cache entries, so the test now waits for that write with one more request, and its probe loads 300 modules so a count that did not wait fails on every run.
+- **Root cause:** #426 Linux test-fast (job 129105350415): TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits, "the compile cache has 16 entries before the process exited and 17 after". A count taken right after Load, on a loaded machine, precedes that write and reads it as an exit-path write. (a cherry-pick of) lacked pi-main's barrier.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `606a74fefd` (2026-11-09)
+- **Tests:** `chord/nextnode/plugins/plugins_node_test.go::TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits`
+- **Release note:** `TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits` no longer counts the probe's own module as a write on the exit path: the host replies to a load before it writes the load's cache entries, so the test now waits for that write with one more request, and its probe loads 300 modules so a count that did not wait fails on every run. The host's comment states what its exit can still write (modules a plugin's call compiled after the last load or reload).
 
 ### BF-609d2bd
 
@@ -21121,6 +21137,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `e57444c856` (2026-10-26)
 - **Tests:** `coding/cli/print_prompt_end_binary_test.go::TestPrintInputCallbackRunsDuringTheRun`, `coding/extension/host/subprocess/runtime_node_run_beginning_test.go::TestNodeRunBeginningRunsTheInputsImmediateBeforeTheFramesReadWithIt`
+
+### BF-e57eef0
+
+**The RPC usage probe that checks Pi's stdout ordering no longer dies on an unhandled `write EPIPE` when the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The RPC usage probe that checks Pi's stdout ordering no longer dies on an unhandled `write EPIPE` when the CLI under test stops reading its stdin before the probe sends the prompt; it reports that the CLI wrote no frame, and any other failure to write the prompt still fails it.
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `e57eef0e6d` (2026-11-09)
+- **Tests:** `coding/cli/stdout_backpressure_test.go::TestRPCUsageProbeFailsWhenTheCLIWritesNoFrame`
+- **Release note:** The RPC usage probe that checks Pi's stdout ordering no longer dies on an unhandled `write EPIPE` when the CLI under test stops reading its stdin before the probe sends the prompt; it reports that the CLI wrote no frame, and any other failure to write the prompt still fails it.
 
 ### BF-e59f3f6
 
