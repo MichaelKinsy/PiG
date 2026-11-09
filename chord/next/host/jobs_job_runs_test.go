@@ -1123,6 +1123,9 @@ func TestPhaseSpansTraceTheIntentUnderTheStarterTheRunAndTheFinishUnderTheIntent
 	eventually(t, "the finish's backoff timer", func() bool { return loop.fake.TimerCount() == 1 })
 	loop.fake.Advance(1_000)
 	runOutcome(t, run)
+	// The outcome is recorded by the finish's transaction; the phase's span ends on the finish task after it (Pi: the continuation
+	// after `await documents.tx`), so the outcome does not order the span's `outcome` attribute: wait for the spans to end.
+	scopeEventually(t, "the phase spans to settle", func() bool { return allSettled(recorder, "chord.job") })
 	request := spanWhere(t, recorder, "request", nil)
 	jobs := spansNamed(recorder, "chord.job")
 	if len(jobs) != 3 {
