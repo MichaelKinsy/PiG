@@ -6843,6 +6843,26 @@
       ]
     },
     {
+      "id": "BF-29d1d60",
+      "title": "p2's MCP plugin no longer restarts a server process it just started when two sessions lease locations close…",
+      "symptom": "P2's MCP plugin no longer restarts a server process it just started when two sessions lease locations close together: a late watch delivery used to reconcile an older placement over a newer one, closing an instance only the newer placement needs and starting it again.",
+      "rootCause": "The manager reconciles its instances in two places: the methods that change leases (reconcileIn, the current placement) and a watch on the derived inputs (the placement of the value the watch delivered). The host delivers watch values on goroutines of its own, so a delivery can run after a later method's reconcile (Pi's delivery is a microtask that runs before that method resumes). The older placement then closed an instance only the newer one needs (files at the second session's location, or an unshared HTTP connection) and the next delivery started it again: a bounced process, `h.starts()` 4 where 3 are wanted (TestUnsharedServersRun...: manager_test.go:164), 3 MCP sessions where 2…",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "p2's MCP plugin no longer restarts a server process it just started when two sessions lease locations close together: a late watch delivery used to reconcile an older placement over a newer one, closing an instance only the newer placement needs and starting it again.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "29d1d606c9",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-2a055a7",
       "title": "An extension dialog (`select`, `confirm`, `input`, `editor`) opened while a focused `ctx.ui.custom` component…",
       "symptom": "A subprocess extension's dialog waited until the custom component closed.",

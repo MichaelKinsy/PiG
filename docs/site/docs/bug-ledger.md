@@ -259,6 +259,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-28b8425](#bf-28b8425) | Blank-key detection for compat API keys, the Vertex API key and the Vertex custom base URL trim whitespace… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-28f8b3b](#bf-28f8b3b) | fix(tui): editor wrap of a one-grapheme segment wider than the width no longer overflows the stack (D158) | PiG's own defect | All platforms | Unreleased |
 | [BF-2921bea](#bf-2921bea) | fix(delta-nonchord): cite the platform-default test for keybindings.ts, test the microsecond rounding of span… | PiG's own defect | All platforms | Unreleased |
+| [BF-29d1d60](#bf-29d1d60) | p2's MCP plugin no longer restarts a server process it just started when two sessions lease locations close… | PiG's own defect | All platforms | Unreleased |
 | [BF-2a055a7](#bf-2a055a7) | An extension dialog (`select`, `confirm`, `input`, `editor`) opened while a focused `ctx.ui.custom` component… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2a0b22d](#bf-2a0b22d) | LaTeX math that holds a lone UTF-16 surrogate (`$x\ud83d$`, a script, fraction, root, accent, `\text{}`… | PiG's own defect | All platforms | Unreleased |
 | [BF-2a0fb96](#bf-2a0fb96) | `/cost` lists its tools in a stable order: `formatCostSummary` ranged over `snap.ToolTotals`, so the `Tools:`… | PiG's own defect | All platforms | 0.5.0 |
@@ -5326,6 +5327,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `2921bea59c` (2026-11-08)
 - **Tests:** `internal/codingagent/custom_editor_oracle_test.go::TestCustomEditorMatchesPi`, `internal/codingagent/kitty_unbound_test.go::TestKittyEncodedAppKeysFollowEachPlatformColumn`, `internal/codingagent/remote_editor_hooks_oracle_test.go::TestDelegatedEditorHooksMatchPi`, `telemetry/telemetry_now_test.go::TestInMemoryRoundsEventAndEndTimesToTheMicrosecond`
+
+### BF-29d1d60
+
+**p2's MCP plugin no longer restarts a server process it just started when two sessions lease locations close…**
+
+- **Source:** PiG's own defect
+- **Symptom:** P2's MCP plugin no longer restarts a server process it just started when two sessions lease locations close together: a late watch delivery used to reconcile an older placement over a newer one, closing an instance only the newer placement needs and starting it again.
+- **Root cause:** The manager reconciles its instances in two places: the methods that change leases (reconcileIn, the current placement) and a watch on the derived inputs (the placement of the value the watch delivered). The host delivers watch values on goroutines of its own, so a delivery can run after a later method's reconcile (Pi's delivery is a microtask that runs before that method resumes). The older placement then closed an instance only the newer one needs (files at the second session's location, or an unshared HTTP connection) and the next delivery started it again: a bounced process, `h.starts()` 4 where 3 are wanted (TestUnsharedServersRun...: manager_test.go:164), 3 MCP sessions where 2…
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `29d1d606c9` (2026-11-08)
+- **Tests:** None recorded.
+- **Release note:** p2's MCP plugin no longer restarts a server process it just started when two sessions lease locations close together: a late watch delivery used to reconcile an older placement over a newer one, closing an instance only the newer placement needs and starting it again.
 
 ### BF-2a055a7
 
