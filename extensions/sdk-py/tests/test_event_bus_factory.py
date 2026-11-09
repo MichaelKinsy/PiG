@@ -316,6 +316,41 @@ def test_a_path_lock_is_not_dropped_while_a_thread_holds_or_waits_for_it(monkeyp
     assert host_helpers._State.path_locks == {}, "a path's lock stays in the table after its last user left"
 
 
+def test_a_caller_that_raises_inside_a_path_lock_leaves_the_count_right(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A thread that leaves ``_path_lock`` by an exception is no longer a user of the lock, and the lock is released: the count is right while another use of
+    the same thread is inside, and the table is empty when nobody is."""
+    path = "/nonexistent/pig-path-lock-raise.sock"
+    monkeypatch.setattr(host_helpers._State, "path_locks", {})
+
+    def users() -> int | None:
+        entry = host_helpers._State.path_locks.get(path)
+        return None if entry is None else entry[1]
+
+    with pytest.raises(RuntimeError):
+        with host_helpers._path_lock(path):
+            assert users() == 1
+            raise RuntimeError("leaving by an exception")
+    assert users() is None, "an exception left the lock: no user, no entry"
+    with host_helpers._path_lock(path):
+        with pytest.raises(RuntimeError):
+            with host_helpers._path_lock(path):
+                assert users() == 2, "the nested use counts too"
+                raise RuntimeError("the nested use leaves by an exception")
+        assert users() == 1, "the outer use is still counted"
+    assert users() is None, "both uses left: no entry"
+    took: list[bool] = []
+
+    def take() -> None:
+        with host_helpers._path_lock(path):
+            took.append(True)
+
+    thread = threading.Thread(target=take, daemon=True)
+    thread.start()
+    thread.join(timeout=10)
+    assert took == [True], "another thread did not take the lock the exceptions released"
+    assert host_helpers._State.path_locks == {}
+
+
 def test_a_listener_failure_fails_only_its_dispatch(host) -> None:
     ext = pig_sdk.Extension("bus")
     fake = host(None, None, None)

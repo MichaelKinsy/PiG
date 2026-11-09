@@ -552,6 +552,28 @@
                 pig::*helper-taken* (remove path pig::*helper-taken* :key #'cdr :test #'equal))
           (check (null (assoc path pig::*helper-path-locks* :test #'string=)) "a path's lock stays in the table after its last user left"))))))
 
+;; A thread that leaves with-helper-path-lock by an error, a return-from or a throw is no longer a user of the lock, and the lock is released: the count is right
+;; while another user is inside, and the table is empty when nobody is.
+(deftest a-thread-that-leaves-a-path-lock-non-locally-leaves-the-count-right
+  (let ((path (format nil "/nonexistent/pig-path-lock-exit-~D-~D.sock" (sb-posix:getpid) (random 1000000))))
+    (flet ((users () (let ((entry (assoc path pig::*helper-path-locks* :test #'string=))) (and entry (third entry)))))
+      (handler-case (pig::with-helper-path-lock (path)
+                      (check-equal 1 (users) "one user inside")
+                      (error "leaving by an error"))
+        (error () nil))
+      (check (null (users)) "an error left the lock: no user, no entry")
+      (block out (pig::with-helper-path-lock (path) (return-from out)))
+      (check (null (users)) "a return-from left the lock: no user, no entry")
+      (catch 'out (pig::with-helper-path-lock (path) (throw 'out nil)))
+      (check (null (users)) "a throw left the lock: no user, no entry")
+      (pig::with-helper-path-lock (path)
+        (block inner (pig::with-helper-path-lock (path) (check-equal 2 (users) "the nested use counts too") (return-from inner)))
+        (check-equal 1 (users) "the nested use left by a return-from; the outer one is still counted"))
+      (check (null (users)) "both uses left: no entry")
+      (check (eq :took-it (sb-thread:join-thread (sb-thread:make-thread (lambda () (pig::with-helper-path-lock (path) :took-it)) :name "test-after-exit")
+                                                 :default :none-within-10s :timeout 10))
+             "another thread takes the lock the non-local exits released"))))
+
 (deftest events-on-validates-its-arguments
   (let ((bus (pig:extension-events (pig:make-extension "rt-bus-args"))))
     (check-error simple-error (pig:events-on bus 3 #'identity))
