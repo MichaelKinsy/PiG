@@ -1159,6 +1159,11 @@ func Extension() *sdk.Extension {
 		return ctx.SendUserMessage(content, "followUp")
 	})
 
+	ext.Command("send_user_message_expand", "Send a user message with expandPromptTemplates set to the argument", func(ctx sdk.Context, args string) error {
+		expand := args == "true"
+		return ctx.SendUserMessageWith("expand-user", sdk.SendUserMessageOptions{DeliverAs: "followUp", ExpandPromptTemplates: &expand})
+	})
+
 	ext.Command("set_session_name", "Set the session name", func(ctx sdk.Context, args string) error {
 		return ctx.SetSessionName("conformance-session")
 	})

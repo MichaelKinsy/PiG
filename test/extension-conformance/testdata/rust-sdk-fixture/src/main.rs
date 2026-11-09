@@ -3651,6 +3651,14 @@ fn main() {
         }
     });
     ext.command(
+        "send_user_message_expand",
+        "Send a user message with expandPromptTemplates set to the argument",
+        |ctx, args| match ctx.send_user_message_with("expand-user", "followUp", Some(args == "true")) {
+            Ok(_) => CommandResult::Ok,
+            Err(err) => CommandResult::Error(err.to_string()),
+        },
+    );
+    ext.command(
         "settings_probe",
         "Report the effective settings",
         |ctx, _args| match ctx.get_settings() {

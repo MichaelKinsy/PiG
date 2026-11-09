@@ -918,6 +918,7 @@ export class ThemeShim {
     this.modifiers = true;
     // The host resolves the appearance and the concrete colors with the palette (they depend on the terminal's reported colors, which this process cannot see). Before a palette there is none.
     this.appearance = undefined;
+    this.sourceInfo = undefined;
     this.colors = Object.freeze({});
   }
   setPalette(palette = {}) {
@@ -926,6 +927,8 @@ export class ThemeShim {
     this.modifiers = palette.modifiers !== false;
     this.name = typeof palette.name === "string" ? palette.name : undefined;
     this.sourcePath = typeof palette.sourcePath === "string" && palette.sourcePath !== "" ? palette.sourcePath : undefined;
+    // Theme.sourceInfo (theme.ts:188): where the resource loader found the theme, absent for a theme it did not load.
+    this.sourceInfo = palette.sourceInfo && typeof palette.sourceInfo === "object" ? palette.sourceInfo : undefined;
     this.mode = palette.mode === "256color" ? "256color" : "truecolor";
     this.appearance = palette.appearance === "light" || palette.appearance === "dark" ? palette.appearance : undefined;
     this.colors = wireColors(palette.colors);
