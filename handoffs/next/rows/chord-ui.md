@@ -81,5 +81,5 @@ Owner decision: owner sign-off pending.
 
 ## T10 app kit (nextnode/app) D records: D460-D462 are now docs/parity/divergences/D460-D462.md (approved 2026-11-08); renumbered from drafts D470-D475, which collided with p2's approved D470-D477)
 
-Reassessed for a faithful fix first. Dropped: the old D474 (principalAttributes, reloadDrainTimeout, web/tui, worker translations are pending ports; installPlugin is ported: plugins_install.go, app_changes_test.go, listed in app.go's header and gap-chord-ui.md, not divergences) and the old D475 (`links.opened` is Pi main's feature, ported as `LinksOptions.Opened`: its Go form is a func returning the cleanup, not an observable difference).
+Reassessed for a faithful fix first. Dropped: the old D474 (principalAttributes, reloadDrainTimeout, web/tui, worker translations are pending ports; installPlugin is ported: plugins_install.go, app_changes_test.go; the rest are listed in app.go's header and gap-chord-ui.md, not divergences) and the old D475 (`links.opened` is Pi main's feature, ported as `LinksOptions.Opened`: its Go form is a func returning the cleanup, not an observable difference).
 

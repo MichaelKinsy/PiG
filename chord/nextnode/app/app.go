@@ -221,8 +221,9 @@ type AppOptions struct {
 	// facet. Each is named; its name must not be one of the kit's (`chord.…`).
 	Facets []host.HostFacet
 	// GoPackages are host packages the server's plugins import as Go functions and JSON values (plugins.GoPackage): a plugin
-	// that lists the specifier in its `chord.external` `require`s or imports it and calls the Go function. They are offered to the
-	// server host's plugins only, and a specifier must not also be a key of an API module or a kind's Packages.
+	// that is a directory and lists the specifier in its `chord.external` `require`s or imports it and calls the Go function; a
+	// single-file plugin has no `chord.external`, and web builds refuse it (`chord.external` is for Node builds). They are offered to
+	// the server host's plugins only, and a specifier must not also be a key of an API module or a kind's Packages.
 	GoPackages []plugins.GoPackage
 	// Telemetry is the app's telemetry store; nil: none.
 	Telemetry AppTelemetry
