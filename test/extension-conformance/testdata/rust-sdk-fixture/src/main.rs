@@ -171,6 +171,15 @@ fn subscribe(
     subscriber.on_event(name, handler)
 }
 
+// isolation_text is the text of a JSON value the isolation probe reports: a string as is, another value as its JSON, a missing one as "None".
+fn isolation_text(value: Option<&Value>) -> String {
+    match value {
+        Some(Value::String(text)) => text.clone(),
+        Some(other) => other.to_string(),
+        None => "None".to_string(),
+    }
+}
+
 fn conformance_login_definition() -> LoginDefinition {
     LoginDefinition {
         brand: vec!["A".repeat(41); 5],
@@ -4351,6 +4360,74 @@ fn main() {
                 .lock()
                 .unwrap()
                 .push(subscription);
+            CommandResult::Ok
+        },
+    );
+    // event_isolation_probe: two handlers; the first reports the marker it received and writes a sentinel into its container, the second reports what it
+    // received (TestConformance_EventHandlersDoNotShareTheirPayload). A handler's data is a &mut Value that cannot outlive the call, so there is no late writer.
+    // A boundary event's marker is the first context entry's sourceEntry id (the container is that source entry); a context or context_with_system event's is
+    // the length of messages (the container is that list).
+    let event_isolation_subscriber = ext.event_subscriber();
+    let event_isolation_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
+        Arc::new(Mutex::new(Vec::new()));
+    ext.command(
+        "event_isolation_probe",
+        "Subscribe two handlers that report the nested marker they received and then write sentinels into it",
+        move |_ctx, args| {
+            let name = args.trim().to_string();
+            let conversation = name == "context" || name == "context_with_system";
+            let paths: [&'static str; 3] = if conversation {
+                ["/messages/0/content", "/messages/1/content", "/messages/2/content"]
+            } else {
+                [
+                    "/context/contextMessages/0/content",
+                    "/context/llmMessages/0/content",
+                    "/context/contextEntries/0/messages/0/content",
+                ]
+            };
+            let marker = move |data: &Value| -> String {
+                if conversation {
+                    data.get("messages")
+                        .and_then(Value::as_array)
+                        .map_or(0, Vec::len)
+                        .to_string()
+                } else {
+                    isolation_text(data.pointer("/context/contextEntries/0/sourceEntry/id"))
+                }
+            };
+            let report = move |data: &Value| -> String {
+                paths
+                    .iter()
+                    .map(|path| isolation_text(data.pointer(path)))
+                    .collect::<Vec<_>>()
+                    .join("|")
+            };
+            let first_report = report;
+            let first = subscribe(&event_isolation_subscriber, &name, move |ctx, data| {
+                ctx.notify(&format!("event_isolation:A:{}:end", marker(data)), "info");
+                if conversation {
+                    if let Some(list) = data.get_mut("messages").and_then(Value::as_array_mut) {
+                        list.push(json!({"role": "user", "content": "SENTINEL-HANDLER-A", "timestamp": 0}));
+                    }
+                } else if let Some(id) = data.pointer_mut("/context/contextEntries/0/sourceEntry/id") {
+                    *id = json!("SENTINEL-HANDLER-A");
+                }
+                ctx.notify(&format!("event_isolation_msgs:A:{}", first_report(data)), "info");
+                for path in paths {
+                    if let Some(content) = data.pointer_mut(path) {
+                        *content = json!("SENTINEL-HANDLER-A");
+                    }
+                }
+                Ok(None)
+            });
+            let second = subscribe(&event_isolation_subscriber, &name, move |ctx, data| {
+                ctx.notify(&format!("event_isolation:B:{}:end", marker(data)), "info");
+                ctx.notify(&format!("event_isolation_msgs:B:{}", report(data)), "info");
+                Ok(None)
+            });
+            let mut held = event_isolation_subscriptions.lock().unwrap();
+            held.push(first);
+            held.push(second);
             CommandResult::Ok
         },
     );

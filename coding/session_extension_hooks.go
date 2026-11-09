@@ -14,6 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
+	"github.com/MichaelKinsy/PiG/internal/boundarywire"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 )
@@ -169,7 +170,7 @@ func (s *Session) contextWithSystemPhase(ctx context.Context, runner *inproc.Run
 	if !runner.HasHandlers(icodingagent.EventContextWithSystem) {
 		return messages, nil
 	}
-	return runner.EmitContextWithSystem(ctx, messages)
+	return runner.EmitContextWithSystem(boundarywire.WithContextEncodings(ctx, &s.contextWithSystemEncodings), messages)
 }
 
 func (s *Session) contextPhase(ctx context.Context, runner *inproc.Runner, messages []agent.AgentMessage) ([]agent.AgentMessage, error) {
@@ -185,7 +186,7 @@ func (s *Session) contextPhase(ctx context.Context, runner *inproc.Runner, messa
 		}
 		visible = append(visible, message)
 	}
-	returned, replaced, err := runner.EmitContextTracked(ctx, visible)
+	returned, replaced, err := runner.EmitContextTracked(boundarywire.WithContextEncodings(ctx, &s.contextEncodings), visible)
 	if err != nil {
 		return nil, err
 	}

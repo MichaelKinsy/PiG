@@ -130,6 +130,8 @@ type Session struct {
 	lastAssistantMessage      *agent.AssistantMessage
 	// boundaryEncodings keeps the encodings of the latest boundary preview's messages for the next dispatch.
 	boundaryEncodings boundarywire.Encodings
+	// contextEncodings and contextWithSystemEncodings keep the encodings of the conversation's messages from one model request to the next, for the context and the context_with_system dispatch.
+	contextEncodings, contextWithSystemEncodings boundarywire.Encodings
 
 	mu sync.Mutex // protects Session state
 

@@ -55,7 +55,8 @@ func appendCompact(dst, src []byte, escape bool) ([]byte, error) {
 	scan := newScanner()
 	defer freeScanner(scan)
 	start := 0
-	for i, c := range src {
+	for i := 0; i < len(src); i++ {
+		c := src[i]
 		if escape && (c == '<' || c == '>' || c == '&') {
 			if start < i {
 				dst = append(dst, src[start:i]...)
@@ -80,6 +81,9 @@ func appendCompact(dst, src []byte, escape bool) ([]byte, error) {
 				dst = append(dst, src[start:i]...)
 			}
 			start = i + 1
+		} else if c == '"' && v == scanBeginLiteral {
+			// A string begins: the scanner stays inside it for every byte that needs no escape here and every valid escape, so those need no step.
+			i = skipStringBody(src, i+1, escape) - 1
 		}
 	}
 	if scan.eof() == scanError {
@@ -89,6 +93,27 @@ func appendCompact(dst, src []byte, escape bool) ([]byte, error) {
 		dst = append(dst, src[start:]...)
 	}
 	return dst, nil
+}
+
+// skipStringBody returns the index of the first byte at or after i, inside a string, that the compaction must look at: the closing quote, a byte below 0x20, a byte from 0x80, with html '<', '>' and '&', or a backslash that does not start a valid escape. The bytes before it, and the valid escapes among them (a \uXXXX is the escape the encoder writes for <, > and &), leave the scanner in the string's state.
+func skipStringBody(src []byte, i int, html bool) int {
+	for {
+		i = stringStopIndex(src, i, html)
+		if i+1 >= len(src) || src[i] != '\\' {
+			return i
+		}
+		switch src[i+1] {
+		case 'b', 'f', 'n', 'r', 't', '\\', '/', '"':
+			i += 2
+		case 'u':
+			if i+6 > len(src) || !isHex(src[i+2]) || !isHex(src[i+3]) || !isHex(src[i+4]) || !isHex(src[i+5]) {
+				return i
+			}
+			i += 6
+		default:
+			return i
+		}
+	}
 }
 
 // appendCompactJS is appendCompact without HTML escaping for the JSON.stringify mode. It also rewrites what JSON.stringify would not write

@@ -176,3 +176,31 @@ func TestOnlyFusedConnectionsShareDecodes(t *testing.T) {
 type fakePartsConn struct{ net.Conn }
 
 func (fakePartsConn) ReadFrameParts() ([]byte, []byte, error) { return nil, nil, io.EOF }
+
+// A memo that decodes its payloads as trusted host output gives the value and the member order the validating decode gives, for every valid object.
+func TestTrustedEventArgsMemoMatchesTheValidatingDecode(t *testing.T) {
+	for _, args := range []string{
+		`{"a":1,"b":[],"c":{},"d":null,"e":"x y","f":[1,"2",{"g":[[]]}],"h":true}`,
+		`{"context":{"contextEntries":[{"sourceEntry":{"type":"message","content":[],"z":1,"a":2}}]}}`,
+		`{}`, `null`, `{"emoji":"😀","lone":"\udc00","big":1e300,"esc":"a\n\"b\\<>&\u2028"}`,
+	} {
+		validating, trusted := &eventArgsMemo{}, &eventArgsMemo{trusted: true}
+		wantData, wantMaster, wantOrder, releaseWant := validating.decodeWithMaster([]byte(args))
+		gotData, gotMaster, gotOrder, releaseGot := trusted.decodeWithMaster([]byte(args))
+		if !reflect.DeepEqual(gotData, wantData) || !reflect.DeepEqual(gotMaster, wantMaster) {
+			t.Fatalf("args %s: trusted %#v, validating %#v", args, gotData, wantData)
+		}
+		if (gotOrder == nil) != (wantOrder == nil) {
+			t.Fatalf("args %s: trusted order %v, validating order %v", args, gotOrder, wantOrder)
+		}
+		if gotOrder != nil {
+			wantKeys, _ := wantOrder.KeysOf(wantData)
+			gotKeys, _ := gotOrder.KeysOf(gotData)
+			if !reflect.DeepEqual(gotKeys, wantKeys) {
+				t.Fatalf("args %s: trusted key order %v, validating %v", args, gotKeys, wantKeys)
+			}
+		}
+		releaseWant()
+		releaseGot()
+	}
+}
