@@ -510,11 +510,15 @@ func TestSurfacePollsEveryIsDirtyOverride(t *testing.T) {
 		"codingagent.CustomEntryComponent":      true, // SurfaceLive
 		"codingagent.SessionSelectorComponent":  true, // SurfaceLive
 		"codingagent.SettingsSelectorComponent": true, // SurfaceLive
-		"tui.ToolExecutionComponent":            true, // the surface tracks its result component
-		"tui.StaticText":                        true, // never dirty, embeds no invalidatable
-		"subprocess.toolRenderProxy":            true, // embeds no invalidatable
-		"subprocess.renderProxyComponent":       true, // embeds no invalidatable
-		"codingagent.specialLinesComponent":     true, // embeds no invalidatable
+		// The surface never calls IsDirty; it reads invalidations and polls what SurfaceLive reports. These three override IsDirty and need neither:
+		"tui.AssistantMessageComponent":     true, // own flag only; its nodes are built from its segments and error state, which every mutator changes through updateContent -> Invalidate, so the surface receives each change
+		"tui.UserMessageComponent":          true, // own flag only; its MarkdownText node is its content and images, which every mutator changes and Invalidates (the inner Markdown's transform never reaches a node)
+		"tui.Container":                     true, // the scan of its children is for a parent container's cache; the surface walks a Container into its children, claims its own flag for structure changes, and polls a Container that is a tool card's result
+		"tui.ToolExecutionComponent":        true, // the surface tracks its result component
+		"tui.StaticText":                    true, // never dirty, embeds no invalidatable
+		"subprocess.toolRenderProxy":        true, // embeds no invalidatable
+		"subprocess.renderProxyComponent":   true, // embeds no invalidatable
+		"codingagent.specialLinesComponent": true, // embeds no invalidatable
 	}
 	root, err := filepath.Abs("..")
 	if err != nil {
@@ -565,6 +569,24 @@ func TestSurfacePollsEveryIsDirtyOverride(t *testing.T) {
 	}
 	if _, ok := Component(NewBashExecutionComponent("x", nil, false, 1)).(surfacePolled); !ok {
 		t.Error("BashExecutionComponent is not polled")
+	}
+	// The three types below override IsDirty with a scan or a narrower read, and the surface polls none of them: it receives their
+	// invalidations instead (see the known entries), so each must be a claimed, not-live component of a started surface.
+	user := NewUserMessageComponent("a question", nil, 1, nil, "", "")
+	block := NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")
+	chat := NewContainer(user, block)
+	surface, _ := startedSurface(t, NewContainer(chat), nil)
+	surface.Render()
+	for name, c := range map[string]Component{"UserMessageComponent": user, "AssistantMessageComponent": block} {
+		if state := surface.ids[c]; state == nil || state.inv == nil || state.live {
+			t.Errorf("%s: the surface must receive its invalidations and not poll it: state %+v", name, state)
+		}
+	}
+	if sc := surface.containers[chat]; sc == nil || sc.inv == nil {
+		t.Error("Container: the surface must walk it and receive its invalidations")
+	}
+	if _, ok := Component(chat).(surfacePolled); ok {
+		t.Error("Container is polled")
 	}
 }
 
