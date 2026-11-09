@@ -140,6 +140,8 @@ func TestIsolationCActionsNeedLocalConfirmationKActionsFireOnlyOnTheirKeyWorkerI
 		}
 		l.client.Do(func() { rt.ClearNotices() })
 	}
+	// The earlier consents' text is in what was written: clear it, or the wait below returns before this consent shows and the key is lost.
+	l.terminal.clear()
 	answer := l.grant("test.confirm", map[string]any{"text": "hello"})
 	poll(t, func() bool { return contains(l.terminal.written(), "hello") })
 	l.terminal.SendInput("\r")
@@ -151,6 +153,7 @@ func TestIsolationCActionsNeedLocalConfirmationKActionsFireOnlyOnTheirKeyWorkerI
 	}
 
 	// Navigation while the consent shows cancels the grant: confirming then runs nothing.
+	l.terminal.clear()
 	answer = l.grant("test.confirm", map[string]any{"text": "hello"})
 	poll(t, func() bool { return contains(l.terminal.written(), "Session: s1 #1") })
 	l.client.Do(func() { rt.Navigate("chat", "s2", true, nil); rt.Changed() })
