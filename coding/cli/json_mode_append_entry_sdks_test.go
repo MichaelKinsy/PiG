@@ -21,8 +21,9 @@ func TestJSONModePrintsEntryAppendedForEveryExtensionSDK(t *testing.T) {
 	}
 	fixtures := filepath.Join(root, "test", "parity", "testdata", "robust-notes")
 	binary := buildPigBinaryForSignalTest(t)
-	for _, sdk := range []string{"node", "go", "python", "rust"} {
+	for _, sdk := range []string{"node", "go", "python", "rust", "lisp"} {
 		t.Run(sdk, func(t *testing.T) {
+			requireSDKFixtureToolchain(t, sdk)
 			home := t.TempDir()
 			// The one-shot run loads the Go and Rust fixtures cold (Rust compiles its crate dependencies on first use, 130 s on the
 			// Windows runner), so the whole run is bounded by the cold-build budget the RPC sibling gives its session_start wait.

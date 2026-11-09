@@ -14,7 +14,7 @@ import (
 )
 
 // print-mode.ts:97-99 and rpc-mode.ts:341-343 bind the command context's reload to session.reload() (agent-session.ts:3575-3625 in 0.99.2), so
-// `await ctx.reload()` works in every mode. These tests run the real binary in print, JSON and RPC mode with a Node and a Go extension whose command
+// `await ctx.reload()` works in every mode. These tests run the real binary in print, JSON and RPC mode with a Node, Go, Python, Rust and Lisp extension whose command
 // rewrites the settings, a context file, a prompt template and a skill, then reloads. The extension's log shows the order Pi produces: the old instance gets session_shutdown
 // (reason "reload"), every factory runs again, and the new instance's session_start (reason "reload") reads the reloaded settings, system prompt,
 // active tools and command catalog.
@@ -118,6 +118,188 @@ func Extension() *sdk.Extension {
 }
 `
 
+const reloadProbePython = `import json
+import os
+
+import pig_sdk
+
+
+def log(line):
+    path = os.environ.get("RELOAD_PROBE_LOG")
+    if not path:
+        return  # the build that loads the module to find its factory has no log
+    with open(path, "a", encoding="utf-8") as file:
+        file.write(line + "\n")
+
+
+def new_extension() -> pig_sdk.Extension:
+    log("factory")
+    ext = pig_sdk.Extension("reloadprobe")
+
+    def session_start(ctx, event):
+        commands = sorted(info["name"] for info in ctx.get_commands() if "reloaded" in info["name"])
+        quiet = json.dumps(ctx.get_settings().get("quietStartup"))
+        marker = json.dumps("RELOAD_MARKER_CONTEXT" in ctx.get_system_prompt())
+        log(f"start:{event['reason']} quiet={quiet} marker={marker} tools={','.join(ctx.get_active_tools())} commands={','.join(commands)}")
+
+    def session_shutdown(ctx, event):
+        log("shutdown:" + event["reason"])
+
+    def reloadme(ctx, _args):
+        agent_dir = os.environ["PIG_CODING_AGENT_DIR"]
+        files = {
+            os.path.join(agent_dir, "settings.json"): '{"quietStartup":false,"defaultTools":["+grep"]}',
+            os.path.join(ctx.cwd, "AGENTS.md"): "RELOAD_MARKER_CONTEXT",
+            os.path.join(agent_dir, "prompts", "reloaded.md"): "---\ndescription: Added by the reload\n---\nreloaded template",
+            os.path.join(agent_dir, "skills", "reloaded-skill", "SKILL.md"): "---\nname: reloaded-skill\ndescription: Added by the reload\n---\nSkill body",
+        }
+        for path, content in files.items():
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "w", encoding="utf-8") as file:
+                file.write(content)
+        ctx.reload()
+        log("returned")
+
+    ext.on_event("session_start", session_start)
+    ext.on_event("session_shutdown", session_shutdown)
+    ext.command("reloadme", "Rewrite settings and a context file, then reload", reloadme)
+    return ext
+`
+
+const reloadProbeRustManifest = `[package]
+name = "reloadprobe"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+pig-sdk = "0.1.0"
+serde_json = "1"
+`
+
+const reloadProbeRust = `use pig_sdk::{CommandResult, Extension};
+use serde_json::Value;
+use std::io::Write;
+use std::path::Path;
+
+fn log_line(line: &str) {
+    let path = std::env::var("RELOAD_PROBE_LOG").unwrap_or_default();
+    if let Ok(mut file) = std::fs::OpenOptions::new().append(true).create(true).open(path) {
+        let _ = writeln!(file, "{line}");
+    }
+}
+
+pub fn new_extension() -> Extension {
+    log_line("factory");
+    let mut ext = Extension::new("reloadprobe");
+    ext.on_event("session_start", |ctx, event| {
+        let settings = ctx.get_settings().unwrap_or(Value::Null);
+        let prompt = ctx.get_system_prompt().unwrap_or_default();
+        let tools = ctx.get_active_tools().unwrap_or_default();
+        let mut commands: Vec<String> = ctx
+            .get_commands()
+            .unwrap_or_default()
+            .into_iter()
+            .map(|info| info.name)
+            .filter(|name| name.contains("reloaded"))
+            .collect();
+        commands.sort();
+        log_line(&format!(
+            "start:{} quiet={} marker={} tools={} commands={}",
+            event["reason"].as_str().unwrap_or(""),
+            settings["quietStartup"],
+            prompt.contains("RELOAD_MARKER_CONTEXT"),
+            tools.join(","),
+            commands.join(",")
+        ));
+        None
+    });
+    ext.on_event("session_shutdown", |_ctx, event| {
+        log_line(&format!("shutdown:{}", event["reason"].as_str().unwrap_or("")));
+        None
+    });
+    ext.command(
+        "reloadme",
+        "Rewrite settings and a context file, then reload",
+        |ctx, _args| {
+            let agent_dir = std::env::var("PIG_CODING_AGENT_DIR").unwrap_or_default();
+            let agent = Path::new(&agent_dir);
+            let files = [
+                (agent.join("settings.json"), "{\"quietStartup\":false,\"defaultTools\":[\"+grep\"]}"),
+                (Path::new(ctx.cwd()).join("AGENTS.md"), "RELOAD_MARKER_CONTEXT"),
+                (agent.join("prompts").join("reloaded.md"), "---\ndescription: Added by the reload\n---\nreloaded template"),
+                (agent.join("skills").join("reloaded-skill").join("SKILL.md"), "---\nname: reloaded-skill\ndescription: Added by the reload\n---\nSkill body"),
+            ];
+            for (path, content) in files {
+                if let Some(parent) = path.parent() {
+                    if let Err(err) = std::fs::create_dir_all(parent) {
+                        return CommandResult::Error(err.to_string());
+                    }
+                }
+                if let Err(err) = std::fs::write(&path, content) {
+                    return CommandResult::Error(err.to_string());
+                }
+            }
+            if let Err(err) = ctx.reload() {
+                return CommandResult::Error(err.to_string());
+            }
+            log_line("returned");
+            CommandResult::Ok
+        },
+    );
+    ext
+}
+`
+
+const reloadProbeLisp = `(defpackage "reload-probe" (:use "COMMON-LISP"))
+(in-package "reload-probe")
+
+(defun env (name) (sb-posix:getenv name))
+
+(defun log-line (line)
+  (with-open-file (out (sb-ext:parse-native-namestring (env "RELOAD_PROBE_LOG")) :direction :output :if-exists :append :if-does-not-exist :create :external-format :utf-8)
+    (write-line line out)))
+
+(defun write-file (path content)
+  (let ((path (sb-ext:parse-native-namestring path)))
+    (ensure-directories-exist path)
+    (with-open-file (out path :direction :output :if-exists :supersede :external-format :utf-8)
+      (write-string content out))))
+
+(defun bool-text (value) (cond ((eq value t) "true") ((eq value :false) "false") (t (princ-to-string value))))
+
+(defun new-extension ()
+  (log-line "factory")
+  (let ((ext (pig:make-extension "reload-probe")))
+    (pig:on ext "session_start"
+            (lambda (ctx event)
+              (let ((commands (sort (loop for info in (coerce (pig:ctx-get-commands ctx) 'list)
+                                          when (search "reloaded" (pig:jget info "name")) collect (pig:jget info "name"))
+                                    #'string<)))
+                (log-line (format nil "start:~A quiet=~A marker=~A tools=~{~A~^,~} commands=~{~A~^,~}"
+                                  (pig:jget event "reason")
+                                  (bool-text (pig:jget (pig:ctx-get-settings ctx) "quietStartup"))
+                                  (if (search "RELOAD_MARKER_CONTEXT" (pig:ctx-get-system-prompt ctx)) "true" "false")
+                                  (coerce (pig:ctx-get-active-tools ctx) 'list)
+                                  commands)))))
+    (pig:on ext "session_shutdown"
+            (lambda (ctx event)
+              (declare (ignore ctx))
+              (log-line (format nil "shutdown:~A" (pig:jget event "reason")))))
+    (pig:command ext "reloadme" "Rewrite settings and a context file, then reload"
+                 (lambda (ctx args)
+                   (declare (ignore args))
+                   (let ((agent-dir (env "PIG_CODING_AGENT_DIR")))
+                     (write-file (format nil "~A/settings.json" agent-dir) "{\"quietStartup\":false,\"defaultTools\":[\"+grep\"]}")
+                     (write-file (format nil "~A/AGENTS.md" (pig:ctx-cwd ctx)) "RELOAD_MARKER_CONTEXT")
+                     (write-file (format nil "~A/prompts/reloaded.md" agent-dir) (format nil "---~%description: Added by the reload~%---~%reloaded template"))
+                     (write-file (format nil "~A/skills/reloaded-skill/SKILL.md" agent-dir)
+                                 (format nil "---~%name: reloaded-skill~%description: Added by the reload~%---~%Skill body")))
+                   (pig:ctx-reload ctx)
+                   (log-line "returned")))
+    ext))
+`
+
 // wantReloadLog is the extension's log for one /reloadme and the quit that ends the run. grep joins the active tools because the settings the command wrote add it to defaultTools (agent-session.ts:3598-3609).
 var wantReloadLog = []string{
 	"factory",
@@ -153,6 +335,33 @@ func writeReloadProbe(t *testing.T, language string) string {
 			}
 		}
 		return root
+	case "python":
+		path := filepath.Join(dir, "reloadprobe.py")
+		if err := os.WriteFile(path, []byte(reloadProbePython), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		return path
+	case "rust":
+		root := filepath.Join(dir, "reloadprobe")
+		if err := os.MkdirAll(filepath.Join(root, "src"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		for name, content := range map[string]string{
+			"Cargo.toml": reloadProbeRustManifest,
+			"src/lib.rs": reloadProbeRust,
+		} {
+			if err := os.WriteFile(filepath.Join(root, filepath.FromSlash(name)), []byte(content), 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return root
+	case "lisp":
+		requireSDKFixtureToolchain(t, language)
+		path := filepath.Join(dir, "reload-probe.lisp")
+		if err := os.WriteFile(path, []byte(reloadProbeLisp), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		return path
 	}
 	t.Fatalf("unknown language %q", language)
 	return ""
@@ -172,7 +381,7 @@ func TestExtensionReloadIsWiredInEveryHeadlessMode(t *testing.T) {
 		t.Skip("builds the pig binary and extensions")
 	}
 	binary := buildPigBinaryForSignalTest(t)
-	for _, language := range []string{"node", "go"} {
+	for _, language := range []string{"node", "go", "python", "rust", "lisp"} {
 		for _, mode := range []string{"print", "json", "rpc"} {
 			t.Run(language+"/"+mode, func(t *testing.T) {
 				extension := writeReloadProbe(t, language)
