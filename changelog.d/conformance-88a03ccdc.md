@@ -1,3 +1,0 @@
-### Fixed
-
-- `TestModelEventPayloadsMatchAcrossSDKs/subprocess-rust` (and the three tests that built their harness the same way) no longer fails when the first use of the Rust fixture compiles it inside the test's 30 s emit window: the context now starts after the harness is built. On a cold Cargo target the build took 18 to 29 s on Windows runners and 31 s or more on the failing run; the expired context made `Emit` deliver nothing without an error, so the test waited out its 120 s budget. A package guard rejects a deadline context that starts before a harness or SDK fixture build. <!-- fix: 88a03ccdc -->
