@@ -9415,32 +9415,6 @@
       ]
     },
     {
-      "id": "BF-3666142",
-      "title": "A provider config's `refreshModels` now reaches the extension with the members of its context in the order…",
-      "symptom": "A provider config's `refreshModels` now reaches the extension with the members of its context in the order Pi's `RefreshModelsContext` is built in (the stored login, the catalog snapshot, `allowNetwork`, `force`, then `baseUrl`), as Pi's `JSON.stringify` keeps them, instead of sorted by name (`allowNetwork`, `baseUrl`, then the rest) with the request itself written as `{context, kind}`; Go, Rust, Python and Lisp extensions that list the members of the context they receive, and a provider object's `refreshModels`, see Pi's order.",
-      "rootCause": "The refreshModels provider operation was encoded from Go maps, so the host sent {context, kind} with the context members sorted (allowNetwork, baseUrl, credential, force, stored). Pi builds {credential, stored, publish, allowNetwork, force, signal, baseUrl} (packages/ai/src/models.ts:554-562) and JSON.stringify keeps that order, which the Go, Rust, Python and Lisp SDKs see. The request, its context and the publication-update request are now structs written in that order.",
-      "rootCauseSource": "commit",
-      "userImpact": "Wrong output or ordering",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "A provider config's `refreshModels` now reaches the extension with the members of its context in the order Pi's `RefreshModelsContext` is built in (the stored login, the catalog snapshot, `allowNetwork`, `force`, then `baseUrl`), as Pi's `JSON.stringify` keeps them, instead of sorted by name (`allowNetwork`, `baseUrl`, then the rest) with the request itself written as `{context, kind}`; Go, Rust, Python and Lisp extensions that list the members of the context they receive, and a provider object's `refreshModels`, see Pi's order. A refresh context with no signal and `oauth.modifyModels`, which has no signal in Pi, now run under the extension connection's lifetime instead of a root context, so both stop with the connection.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "3666142a0a",
-          "date": "2026-11-09"
-        }
-      ],
-      "tests": [
-        "coding/extension/host/subprocess/provider_operations_wire_test.go::TestModifyModelsEndsWithTheConnection",
-        "coding/extension/host/subprocess/provider_operations_wire_test.go::TestRefreshModelsRequestKeepsPisMemberOrder",
-        "coding/extension/host/subprocess/provider_operations_wire_test.go::TestRefreshModelsRequestWithoutOptionalMembers",
-        "coding/extension/host/subprocess/provider_operations_wire_test.go::TestRefreshModelsSignalCancelsTheRequest",
-        "coding/extension/host/subprocess/provider_operations_wire_test.go::TestRefreshModelsWithoutSignalEndsWithTheConnection"
-      ]
-    },
-    {
       "id": "BF-366ae8e",
       "title": "An extension provider's model that another provider also catalogs, such as `gpt-6-astra` under `azure`, no…",
       "symptom": "Such a model took the other provider's API and the turn failed (`LiteLLM model gpt-6-astra declares unsupported protocol \"azure-openai-responses\"`).",
@@ -17238,6 +17212,31 @@
       ],
       "tests": [
         "ai/anthropic_beta_override_test.go::TestAnthropicManagedEffortBodyFollowsTheBetasSent"
+      ]
+    },
+    {
+      "id": "BF-5e55e0d",
+      "title": "A Node extension's `refreshModels`, both as a provider config's callback and as a provider object's method…",
+      "symptom": "A Node extension's `refreshModels`, both as a provider config's callback and as a provider object's method, now receives the context object Pi builds (`packages/ai/src/models.ts`): its members in Pi's order (the login, the stored catalog, `publish`, `allowNetwork`, `force`, `signal`, `baseUrl`), every key present, and a member Pi has no value for (no login, no stored catalog, no `force`, no `baseUrl`) is `undefined`.",
+      "rootCause": "The Node runtime rebuilt the refreshModels context in its own order for both forms of the callback: the config form listed allowNetwork, baseUrl, credential, stored, force, signal, publish, and the provider object credential, stored, allowNetwork, force, baseUrl, signal, publish, with the unset members null (object) or missing (config). Pi hands the object of models.ts:554-562: credential, stored, publish, allowNetwork, force, signal, baseUrl, every key present and the members it has no value for undefined. Both forms now build that object (refreshModelsContext), and the host leaves unset credential, stored and force out of the request, as JSON.stringify drops them.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Node extension's `refreshModels`, both as a provider config's callback and as a provider object's method, now receives the context object Pi builds (`packages/ai/src/models.ts`): its members in Pi's order (the login, the stored catalog, `publish`, `allowNetwork`, `force`, `signal`, `baseUrl`), every key present, and a member Pi has no value for (no login, no stored catalog, no `force`, no `baseUrl`) is `undefined`. The config form listed `allowNetwork` and `baseUrl` first and `publish` last, and the provider object listed `publish` last with `null` for the unset members, so `Object.keys(context)` and an `=== undefined` check on an unset member answered differently from Pi.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5e55e0d13d",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/provider_operations_wire_test.go::TestModifyModelsHostCloseIsTheConnectionsError",
+        "coding/extension/host/subprocess/provider_operations_wire_test.go::TestProviderRequestsOnAConnectionNotYetStarted",
+        "coding/extension/host/subprocess/provider_operations_wire_test.go::TestRefreshModelsRequestWithoutOptionalMembers",
+        "test/extension-conformance/provider_refresh_context_node_test.go::TestRefreshModelsContextMembersNode"
       ]
     },
     {

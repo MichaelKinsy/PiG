@@ -1,3 +1,0 @@
-### Fixed
-
-- A provider config's `refreshModels` now reaches the extension with the members of its context in the order Pi's `RefreshModelsContext` is built in (the stored login, the catalog snapshot, `allowNetwork`, `force`, then `baseUrl`), as Pi's `JSON.stringify` keeps them, instead of sorted by name (`allowNetwork`, `baseUrl`, then the rest) with the request itself written as `{context, kind}`; Go, Rust, Python and Lisp extensions that list the members of the context they receive, and a provider object's `refreshModels`, see Pi's order. A refresh context with no signal and `oauth.modifyModels`, which has no signal in Pi, now run under the extension connection's lifetime instead of a root context, so both stop with the connection. <!-- fix: 3666142a0 -->
