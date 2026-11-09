@@ -638,8 +638,8 @@ classification = "upstream"
 rationale = "pi-chord packages/chord/src/node/app/info.ts AppInfoValues.version: the app's newest API version (the `version` member of the `chord.app.info` start data), a string the application declares; Pi owns the meaning and the port reads no Pig format from it."
 
 [[fields]]
-id = "chord/nextnode/plugins/plugins_build.go#BuiltApi.Version:go:-"
-path = "chord/nextnode/plugins/plugins_build.go"
+id = "chord/nextnode/plugins/model/model_built.go#BuiltApi.Version:go:-"
+path = "chord/nextnode/plugins/model/model_built.go"
 owner = "BuiltApi"
 field = "Version"
 wire_name = "-"
