@@ -37,8 +37,12 @@ class ParsedFrontmatter:
 
 
 class _State:
-    # Re-entrant: a listener the host dispatches while a factory-time call waits makes bus calls of its own on the same thread (``loading_call``).
+    # Guards the tables below for the moment each is read or changed, never across a read from the host: a factory-time call that waits for the host's answer holds
+    # only the lock of its own socket path (``_path_lock``), because every member's ``run`` takes this one.
     lock = threading.RLock()
+    # The lock of each socket path a factory-time call dialled, by path: held for the length of one call on that connection. Re-entrant: a listener the host dispatches
+    # while a factory-time call waits makes bus calls of its own on the same thread (``loading_call``).
+    path_locks: dict = {}
     # The extension whose factory-time bus calls dialled each socket, by path: the owner of the listeners the host dispatches on that connection before ``run``.
     owners: dict = {}
     # The call results a ``loading_call`` read for an outer call that is still waiting, by call id.
@@ -242,26 +246,41 @@ def _helper_call(method: str, args: Any) -> Any:
     return loading_call(method, args)
 
 
+def _path_lock(path: str) -> Any:
+    """The lock that serialises the factory-time calls on the connection dialled to ``path``. The host accepts a packed cell's members in order and serves a connection
+    only after the members before it have registered, so a call waits for the host's answer while an earlier member's ``run`` still has to take its own connection:
+    the wait holds the lock of its own path and never ``_State.lock``."""
+    with _State.lock:
+        lock = _State.path_locks.get(path)
+        if lock is None:
+            lock = _State.path_locks[path] = threading.RLock()
+        return lock
+
+
 def loading_call(method: str, args: Any, owner: Any = None) -> Any:
     """A host call made while a factory runs, over the connection this extension's first such call dials and ``run`` later takes. It never rides a running
     extension's connection: the host attributes what a call carries (a ``pi.events`` listener) to the extension of the connection it arrives on.
 
     While it waits for the result it answers what the host sends the connection: pings, and the ``events.dispatch`` requests of ``owner``'s listeners (the
     extension that made a bus call on this connection), as a Node runtime serves a dispatch during its factory. The wait is re-entrant: a listener that makes a
-    bus call of its own waits for its result on the same thread, and the result of an outer call that arrives meanwhile is kept for it."""
-    with _State.lock:
-        path = _socket_path()
-        if not path:
-            raise RuntimeError("not connected to the host: PIG_EXT_SOCKET is not set, so this extension was not launched by pig")
+    bus call of its own waits for its result on the same thread, and the result of an outer call that arrives meanwhile is kept for it. The wait holds the lock of this
+    path's connection and ``_State.lock`` only for the moment each table is read or changed."""
+    path = _socket_path()
+    if not path:
+        raise RuntimeError("not connected to the host: PIG_EXT_SOCKET is not set, so this extension was not launched by pig")
+    with _path_lock(path):
         sock = _State.dialled.get(path)
         if sock is None:
             from . import _connect_unix
 
-            sock = _State.dialled[path] = _connect_unix(path)
-        if owner is not None:
-            _State.owners[path] = owner
-        _State.call_seq += 1
-        call_id = f"h{_State.call_seq}"
+            sock = _connect_unix(path)
+            with _State.lock:
+                _State.dialled[path] = sock
+        with _State.lock:
+            if owner is not None:
+                _State.owners[path] = owner
+            _State.call_seq += 1
+            call_id = f"h{_State.call_seq}"
         _send_frame(sock, {"type": "call", "id": call_id, "call": {"method": method, "args": args}})
         while call_id not in _State.results:
             env = _read_frame(sock)
@@ -360,10 +379,16 @@ def take_shutdown(path: str) -> bool:
 
 
 def take_helper_socket(path: str) -> Any:
-    """The connection a helper opened to ``path``, for ``run`` to serve on; None when there is none."""
+    """The connection a helper opened to ``path``, for ``run`` to serve on; None when there is none. A call still running on that connection finishes first."""
+    with _path_lock(path):
+        with _State.lock:
+            _State.owners.pop(path, None)
+            sock = _State.dialled.pop(path, None)
+    # Forgotten once released: a lock removed while held would let a thread waiting on it and a later caller use two locks for one path. A path has one member and
+    # its factory calls run one after another, so no thread is left waiting on it once the connection is taken.
     with _State.lock:
-        _State.owners.pop(path, None)
-        return _State.dialled.pop(path, None)
+        _State.path_locks.pop(path, None)
+    return sock
 
 
 def report_load_failure(sock_path: str) -> None:
