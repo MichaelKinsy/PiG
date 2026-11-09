@@ -38,6 +38,13 @@ func TestExample32Startup(t *testing.T) {
 	var workersMu sync.Mutex
 	workerLoaded := make(chan struct{})
 	var workerLoadedOnce sync.Once
+	// loadGate holds every worker's `load` until the test has read the server's Bootstrap loading. In Pi the read after
+	// `await server.load(...)` and the worker's progress (the route's resolve, the memory link's deliveries, the worker's
+	// load) are all microtasks of one event loop, in an order that leaves Bootstrap loading at the read. Here the worker
+	// runs on its own goroutines, so a caller starved between `Load` returning and the read let the worker finish first
+	// (Agent live, then Bootstrap), and the gate is the order Pi's loop gives.
+	loadGate := make(chan struct{})
+	openLoadGate := sync.OnceFunc(func() { close(loadGate) })
 	startWorker := func(id string) started {
 		up, down := link.MemoryLinkPair()
 		address := Session.Address(jsonObject("id", id))
@@ -52,6 +59,11 @@ func TestExample32Startup(t *testing.T) {
 			}, ServeOptions{})
 		})
 		go func() {
+			select {
+			case <-loadGate:
+			case <-t.Context().Done():
+				return
+			}
 			_, _ = worker.Load([]HostFacet{{Name: "@example/agents", Facet: agents}}, background)
 			workerLoadedOnce.Do(func() { close(workerLoaded) })
 		}()
@@ -85,11 +97,13 @@ func TestExample32Startup(t *testing.T) {
 		}, ServeOptions{})
 	})
 	// 1. The server's load: publication (Catalog served), then Bootstrap starts and parks on the worker's Agent. A wait on
-	// another host is a first outcome, so `load` resolves without waiting for the worker.
+	// another host is a first outcome, so `load` resolves without waiting for the worker: the gate holds the worker's
+	// load until it has, so a `load` that waited for the worker would not return.
 	mustLoad(t)(server.Load([]HostFacet{{Name: "@example/core", Facet: core}}, background))
 	if got := exStateNow(t, exHold(t, server, bootstrap, jsonObject())); got != "loading" {
 		t.Fatalf("server loaded; Bootstrap is %s, want loading", got)
 	}
+	openLoadGate()
 	// 2. The worker's hold for Catalog bound on the published server; Agent went live, then Bootstrap.
 	reference := exGet(t, server, bootstrap, jsonObject())
 	exEqual(t, "Bootstrap sees models through the worker", exValue(t, reference, "agents"), float64(3))
