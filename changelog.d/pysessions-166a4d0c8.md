@@ -1,0 +1,7 @@
+### Added
+
+- Python extensions can now use the `AgentSession` members of Pi that a child session from `ctx.create_agent_session` lacked: the reads (`is_idle`, `is_streaming`, `is_compacting`, `session_id`, `session_file`, `session_name`, `model`, `thinking_level`, `system_prompt`, `steering_mode`, `get_all_tools()`, `get_context_usage()`, `get_session_stats()`, `get_last_assistant_text()` and the rest, Pi's getters as properties), the changes (`set_model`, `cycle_model`, `set_thinking_level`, `set_scoped_models`, `set_active_tools_by_name`, `set_steering_mode`, `set_auto_compaction_enabled`, `set_session_name`, `clear_queue` and the aborts) and the awaited members (`wait_for_idle`, `reload`, `compact`, `navigate_tree`, `execute_bash`, `send_user_message`, `send_custom_message`, `summarize_for_bug_report`, `export_to_jsonl`, `export_to_html`). Each one runs on the session the host owns, so it returns what the session holds now; a blocked `compact`, `navigate_tree` or `execute_bash` is aborted by `abort_compaction`, `abort_branch_summary` or `abort_bash` from another thread.
+
+### Upgrading
+
+- Python: `session.session_id`, `session_file`, `model`, `thinking_level`, `system_prompt` and `active_tools` of an `AgentSession`, which held the values at creation, are now properties that read the session's current values from the host.
