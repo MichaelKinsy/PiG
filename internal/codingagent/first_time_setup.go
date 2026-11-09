@@ -258,7 +258,7 @@ func ShowFirstTimeSetup(settings FirstTimeSetupSettings, opts StartupUIOptions) 
 }
 
 func showFirstTimeSetupWith(settings FirstTimeSetupSettings, opts StartupUIOptions, ui *tui.TuiMainScreen, terminal startupTerminal) (*FirstTimeSetupResult, error) {
-	configureStartupTheme(opts.Settings, opts.ThemePaths)
+	configureStartupTui(opts)
 	preview := tui.SystemThemeName
 	tui.SetThemeByName(preview)
 	var result *FirstTimeSetupResult
