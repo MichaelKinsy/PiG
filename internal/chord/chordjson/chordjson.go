@@ -3,6 +3,8 @@
 // A JSON value is nil, bool, float64, string, []any, or *Object, an object that keeps JavaScript's property order. Decode and Stored produce that representation. Copy also accepts Go values of other numeric kinds, normalized to float64, and a Go map[string]any, which has no property order: its keys are copied in OwnKeys order with the other keys ascending. JavaScript's undefined, sparse arrays, accessors, symbols, prototypes and class instances have no Go counterpart: a Go value either is one of those shapes or is not strict JSON.
 package chordjson
 
+// Ports packages/chord/src/json.ts
+
 import (
 	"cmp"
 	"encoding/json"

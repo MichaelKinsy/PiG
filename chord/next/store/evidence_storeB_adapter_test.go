@@ -10,7 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/sqlite"
 )
 
-// Tests of packages/chord/src/next/store/adapter.ts (the store for adapters, slice 6b §2.1). Pi has no test file of
+// Tests of packages/chord/src/store/adapter.ts (the store for adapters, slice 6b §2.1). Pi has no test file of
 // its own for it (Durable's StoreStorage drives it); these cases follow the source: the owner name is checked, a
 // declared table claims its SQL name `<owner>:<table>`, `Prepare` brings the declared tables to their definitions,
 // `Put` writes the encoded row in the step (`stamp` takes the step's seq, in the row and in the record), reads decode

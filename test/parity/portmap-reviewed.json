@@ -7,7 +7,7 @@
    "pkg:codemode/portable#InlineCodemodeSandboxOptions::property:wasm": "codemode/inline.go#InlineSandboxOptions"
   }
  },
- "packages/chord/src/next/link/part.ts": {
+ "packages/chord/src/link/part.ts": {
   "reason": "Compression is declared in part.ts and part.go aliases it (link.Compression = nextnode.Compression) so the link package speaks the interface; its Deflate/Inflate methods live on the nextnode implementation, and part.go is the code that calls them (OriginPart deflates, OpenPart and InflateAsync inflate).",
   "members": {
    "pkg:chord/next#Compression::property:deflate": "chord/next/link/part.go#Compression",
@@ -289,6 +289,33 @@
    "pkg:ai/api/constrained-sampling#resolveJsonSchemaStrictSampling::call:0": "ai/constrained_sampling.go#resolveJSONSchemaStrictSampling",
    "pkg:ai/api/constrained-sampling#isStrictToolLimitErrorMessage": "ai/constrained_sampling.go#isStrictToolLimitErrorMessage",
    "pkg:ai/api/constrained-sampling#isStrictToolLimitErrorMessage::call:0": "ai/constrained_sampling.go#isStrictToolLimitErrorMessage"
+  }
+ },
+ "packages/chord/src/contracts/schema.ts": {
+  "reason": "str, int, num and bool are the contract schema constructors (chord/next/contracts/schema.go: Str, Int, Num, Bool); the interface gap detector bound them to the column-schema wrappers of the same names in chord/next/store/columns.go by name rule N1, which wrap these.",
+  "members": {
+   "pkg:chord/.#str": "chord/next/contracts/schema.go#Str",
+   "pkg:chord/.#int": "chord/next/contracts/schema.go#Int",
+   "pkg:chord/.#num": "chord/next/contracts/schema.go#Num",
+   "pkg:chord/.#bool": "chord/next/contracts/schema.go#Bool"
+  }
+ },
+ "packages/chord/src/store/engine.ts": {
+  "reason": "DocumentPoint is declared in chord/src/store/engine.ts and ported as chord/next/store/engine.go DocumentPoint; the interface gap detector bound the name to durable/types.go, which ports packages/durable/src/types.ts.",
+  "members": {
+   "pkg:chord/.#DocumentPoint": "chord/next/store/engine.go#DocumentPoint"
+  }
+ },
+ "packages/chord/src/node/app/archive.ts": {
+  "reason": "ARCHIVE_FORMAT of node/app/archive.ts is chord/nextnode/app/archive.go ArchiveFormat; the detector bound the name to store/archive.go, which ports store/archive.ts.",
+  "members": {
+   "pkg:chord/app#ARCHIVE_FORMAT": "chord/nextnode/app/archive.go#ArchiveFormat"
+  }
+ },
+ "packages/chord/src/node/app/app.ts": {
+  "reason": "app.ts declares AppApi {name, versions, modules}, ported as chord/nextnode/app/app.go AppAPI; the detector bound the name to model_built.go, which holds build.ts two-field AppApi.",
+  "members": {
+   "pkg:chord/app#AppApi": "chord/nextnode/app/app.go#AppAPI"
   }
  }
 }

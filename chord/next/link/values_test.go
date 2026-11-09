@@ -11,7 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 )
 
-// pi: packages/chord/src/next/link/values.ts
+// pi: packages/chord/src/link/values.ts
 // Ports packages/chord/test/link/values.test.ts.
 
 func TestPartsAreJSONText(t *testing.T) {

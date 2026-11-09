@@ -10,7 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Ports packages/chord/src/next/store/catalog.ts
+// Ports packages/chord/src/store/catalog.ts
 //
 // The catalog (slice 6a §2, §5): the table definitions the store records (version, state, columns, key, fingerprint,
 // indexes), read once at open, changed only by `table`, `index`, `dropIndex` and `alter` writes inside a step, and in

@@ -1,6 +1,6 @@
 package store
 
-// Ports packages/chord/src/next/store/writes.ts
+// Ports packages/chord/src/store/writes.ts
 //
 // The store's write vocabulary (`StoreWrite`, slice 6a §7, §8; decision "Writes carry their versions"): one change of
 // the store each, as the outbox and archives record it.

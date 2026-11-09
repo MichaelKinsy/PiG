@@ -1,4 +1,4 @@
-// Package documents ports packages/chord/src/next/documents: definitions, the handles an object's attempts get, the
+// Package documents ports packages/chord/src/documents: definitions, the handles an object's attempts get, the
 // object's documents (in memory, or persisted in the host's store), keyed watches and `at(key)`, retirement, and
 // transactions over documents, tables and job runs.
 //

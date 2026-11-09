@@ -1,6 +1,6 @@
 package plugins
 
-// pi: packages/chord/src/next-node/plugins/discover.ts
+// pi: packages/chord/src/node/plugins/discover.ts
 
 import (
 	"encoding/json"

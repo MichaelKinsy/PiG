@@ -5,7 +5,7 @@ import (
 	"sync"
 )
 
-// Ports packages/chord/src/next/store/allocator.ts
+// Ports packages/chord/src/store/allocator.ts
 //
 // The store's id allocator (slice 6b D3, §1.2): one counter for every id in the store (Durable's `mintId`, Chord's
 // document ids), raised by explicit ids, saturating at Number.MAX_SAFE_INTEGER.

@@ -1,4 +1,4 @@
-// Package data ports packages/chord/src/next/data: Chord's errors and plugin errors, principals, per-call checks of
+// Package data ports packages/chord/src/data: Chord's errors and plugin errors, principals, per-call checks of
 // params and arguments, and how a plugin's open reports a broken configuration.
 package data
 
@@ -11,7 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Ports packages/chord/src/next/data/errors.ts.
+// Ports packages/chord/src/data/errors.ts.
 
 // ProtocolVersion is the version of the error table below on links; adding or moving a code or reason bumps it.
 const ProtocolVersion = 1

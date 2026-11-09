@@ -8,7 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// pi: packages/chord/src/next/remote/path.ts
+// pi: packages/chord/src/remote/path.ts
 
 // Ports packages/chord/test/remote/path.test.ts.
 

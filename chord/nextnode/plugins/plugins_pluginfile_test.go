@@ -1,6 +1,6 @@
 package plugins
 
-// pi: packages/chord/src/next-node/plugins/evaluate.ts
+// pi: packages/chord/src/node/plugins/evaluate.ts
 
 import (
 	"testing"

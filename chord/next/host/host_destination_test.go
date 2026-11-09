@@ -14,7 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 )
 
-// pi: packages/chord/src/next/host/destination.ts
+// pi: packages/chord/src/host/destination.ts
 // Own tests of host_destination.go. Pi has no test file for destination.ts: its cases are covered through hosts
 // (route.test.ts, presence.test.ts, the remote tests). These tests mirror the rules of the doc comments of Pi's
 // `Destination.reference`, `hold` and `misplaced` over a real host, its routes, its parent path and its links.

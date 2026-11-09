@@ -15,7 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/src/next/data/principal.ts: the app's caller identities, and the keys Chord derives from them.
+// Ports packages/chord/src/data/principal.ts: the app's caller identities, and the keys Chord derives from them.
 
 // Principal is an app's principal: plain JSON with a `kind`. Chord never persists it. It is a pointer so that a
 // principal has the identity upstream's per-object cache is keyed by.

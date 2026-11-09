@@ -16,7 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 )
 
-// pi: packages/chord/src/next/state/batch.ts
+// pi: packages/chord/src/state/batch.ts
 
 // Ports packages/chord/test/state/batch.test.ts: the cases that run on a host with served objects, documents and
 // references: "reentrancy" (every Chord call a derive compute may not make is refused with invalid/reentrant, in a

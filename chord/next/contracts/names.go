@@ -1,6 +1,6 @@
 package contracts
 
-// Ports packages/chord/src/next/contracts/names.ts.
+// Ports packages/chord/src/contracts/names.ts.
 
 // Names that become SQL names or stored identities in the store (decision "Restricted names"): object types, host
 // kinds, tables, state definitions and jobs use npm package-name characters, lowercase, so `<host kind>:<object

@@ -13,7 +13,7 @@ import (
 // Ports packages/chord/test/jobs/run.test.ts: one run's record: its `running` entry per phase, and its handle's
 // wait for the outcome.
 //
-// pi: packages/chord/src/next/jobs/run.ts
+// pi: packages/chord/src/jobs/run.ts
 
 func entryOf(loop *Loop, run *jobRun, state *delta.JsonObject, args delta.JsonValue) *delta.JsonObject {
 	var entry *delta.JsonObject

@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Ports packages/chord/src/next/contracts/snapshot.ts (schema snapshots: one schema-aware walk checks an app schema
+// Ports packages/chord/src/contracts/snapshot.ts (schema snapshots: one schema-aware walk checks an app schema
 // against Chord's vocabulary and produces a Chord-owned copy and its normal form, the fingerprint input).
 //
 // Go form of the refusal of symbol keys and accessors: a Go value has neither, so the values a schema cannot carry that

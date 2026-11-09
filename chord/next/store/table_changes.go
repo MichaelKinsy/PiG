@@ -7,7 +7,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 )
 
-// Ports packages/chord/src/next/store/table-changes.ts
+// Ports packages/chord/src/store/table-changes.ts
 //
 // A transaction's writes to one table (slice 6a §6, §7; W10): checked and staged synchronously like a draft's ops (no
 // I/O, a bad row returns its error at its own call), kept in staging order for the commit step, and overlaid on

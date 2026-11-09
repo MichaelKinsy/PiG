@@ -14,7 +14,7 @@ import (
 // declares them, and releases them at its end"): the two cases of that file on a bare Claims are in
 // chord/next/store/claims_test.go.
 //
-// pi: packages/chord/src/next/store/claims.ts
+// pi: packages/chord/src/store/claims.ts
 
 func TestClaimsAnObjectClaimsItsTablesAndDocumentsWhenItDeclaresThemAndReleasesThemAtItsEnd(t *testing.T) {
 	chordStore := memoryStore(t)

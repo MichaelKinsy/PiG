@@ -2,6 +2,8 @@
 
 package workers
 
+// Ports packages/chord/src/node/workers/lock.ts
+
 import (
 	"context"
 	"errors"

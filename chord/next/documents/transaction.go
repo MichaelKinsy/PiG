@@ -10,7 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/store"
 )
 
-// Ports packages/chord/src/next/documents/transaction.ts
+// Ports packages/chord/src/documents/transaction.ts
 //
 // Transactions (§9, R12, R13): drafts of an object's documents, prepared and adopted in one batch, with Chord's own
 // staged changes (job runs, §15), fenced by the token they run under; they run on the object's line (line.go).

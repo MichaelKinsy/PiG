@@ -6,7 +6,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord"
 )
 
-// Ports packages/chord/src/next/state/writable.ts (Writable, WritableOwner, WritableSource). Writables (slice 8 §2, design
+// Ports packages/chord/src/state/writable.ts (Writable, WritableOwner, WritableSource). Writables (slice 8 §2, design
 // §17): self.writable(initial), an in-process value its attempt sets, identity compared; a contribution, a derive source
 // and an `on` source, never a state member.
 

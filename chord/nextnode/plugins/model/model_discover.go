@@ -17,7 +17,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
-// Ports packages/chord/src/next-node/plugins/discover.ts. Discovery (slice 7c §1, slice 12 §2, §4): the plugins under the
+// Ports packages/chord/src/node/plugins/discover.ts. Discovery (slice 7c §1, slice 12 §2, §4): the plugins under the
 // app's roots, found by listing each root and reading only `package.json` files. Each directory at a root's top is a
 // package: the plugins its `chord.plugins` manifest lists (decision "`chord.plugins` is a package's manifest of plugins"),
 // else by convention itself when its top has facet files, else its subfolders with a `package.json` (a checkout of

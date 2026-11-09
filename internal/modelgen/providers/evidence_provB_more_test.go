@@ -15,6 +15,7 @@ package providers
 // pi: packages/ai/catalog/providers/xiaomi-token-plan-sgp.ts
 // pi: packages/ai/catalog/providers/zai.ts
 // pi: packages/ai/catalog/providers/zai-coding-cn.ts
+// pi: packages/ai/catalog/providers/qwen-token-plan-individual-cn.ts
 
 // Behavioral evidence, second half: see evidence_provB_test.go.
 

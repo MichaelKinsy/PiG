@@ -1,4 +1,4 @@
-// Package registries ports packages/chord/src/next/registries: an extension point between plugins (design §17). The
+// Package registries ports packages/chord/src/registries: an extension point between plugins (design §17). The
 // defining plugin shares a token (DefineRegistry) and serves it with Compose; facets and host-lifetime objects
 // contribute; readers follow the composed value (RegistryValue). The record, contribution and value types are what
 // Chord's layers (host, attempts) build registries from.
@@ -27,7 +27,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// Ports packages/chord/src/next/registries/registry.ts (tokens, tables, provider, value) and index.ts (designed out).
+// Ports packages/chord/src/registries/registry.ts (tokens, tables, provider, value) and index.ts (designed out).
 
 // Registry is a registry token: its name (as type names, `[a-z0-9@/._~-]`), the version the bundling plugin was built
 // against, the contribution type C and the composed value type V. Shared: every contributor and reader bundles its own

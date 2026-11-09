@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 )
 
-// Ports packages/chord/src/next/state/derive.ts (Derive, DeriveSource, DeriveInput, mapShared). Derives (§12): values
+// Ports packages/chord/src/state/derive.ts (Derive, DeriveSource, DeriveInput, mapShared). Derives (§12): values
 // computed from watchables, pulled when read and marked dirty by commits; and mapShared, which keeps unchanged elements
 // identical so a derive's diff stays cheap.
 

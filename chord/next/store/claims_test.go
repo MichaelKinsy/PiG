@@ -12,7 +12,7 @@ import (
 // The third case ("an object claims its tables and documents when it declares them, and releases them at its end")
 // runs a Chord host, which is outside this package: it is chord/next/host/host_store_claims_test.go.
 //
-// pi: packages/chord/src/next/store/claims.ts
+// pi: packages/chord/src/store/claims.ts
 
 func claimFails(t *testing.T, err error, want string) {
 	t.Helper()

@@ -16,7 +16,7 @@ import (
 // `tx.update`, `tx.delete`, `tx.updateWhere`, `tx.deleteWhere` and the `tx.get` overlay of them.
 //
 // Pi tests these writes where they are staged, on TableChanges (store/table-changes.test.ts, store/table-writes.test.ts:
-// `tx.update` is `this.#changes(table).update(key, set)`, packages/chord/src/next/documents/transaction.ts:280-287),
+// `tx.update` is `this.#changes(table).update(key, set)`, packages/chord/src/documents/transaction.ts:280-287),
 // and uses `tx.update` and `tx.updateWhere` through `self.tx` in the example test/next/examples/20-tables.ts; it has no
 // test that calls `tx.delete` or `tx.deleteWhere` itself. Each test below runs Pi's case, with its inputs and expected
 // results, on a transaction of the harness object (transaction_test.go) instead of a bare TableChanges.

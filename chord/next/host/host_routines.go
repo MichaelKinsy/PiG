@@ -13,7 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/src/next/host/routines.ts. Routines (§14): the standing behaviour an object or a facet declares,
+// Ports packages/chord/src/host/routines.ts. Routines (§14): the standing behaviour an object or a facet declares,
 // `self.on(source, fn)` and `self.onLive(fn)`. They start once their owner went live and stop when it ends (their ctx
 // aborted, the drain waits for running calls); each call gets its own ctx; a call that throws is reported and called
 // again after a backoff.

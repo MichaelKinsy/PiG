@@ -2,7 +2,7 @@ package link
 
 import "sync"
 
-// Ports packages/chord/src/next/link/ipc.ts. IPC links (§3): a link over a Node IPC channel, a forked child (`fork`
+// Ports packages/chord/src/link/ipc.ts. IPC links (§3): a link over a Node IPC channel, a forked child (`fork`
 // with `serialization: "advanced"`) or `process` in the child, typed structurally so Chord imports nothing from Node.
 
 // IpcPort is the part of a Node IPC channel a link uses: a `ChildProcess` or the child's `process`. Send returning

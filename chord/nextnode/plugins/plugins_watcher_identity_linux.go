@@ -2,6 +2,8 @@
 
 package plugins
 
+// Ports packages/chord/src/node/plugins/watcher.ts
+
 import (
 	"errors"
 

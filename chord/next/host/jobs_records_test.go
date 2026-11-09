@@ -21,7 +21,7 @@ import (
 // across attempts, cut off by an attempt's seal, finished on the next live attempt, and the keep-alive of runs waiting
 // for one. Go forms: jobs_job_test.go.
 //
-// pi: packages/chord/src/next/jobs/records.ts
+// pi: packages/chord/src/jobs/records.ts
 
 var jobWork = mustDefineJob(DefineJob("app.work", JobOptions{
 	Version: 1, Args: contracts.Obj(contracts.Prop("text", contracts.Str())), Result: contracts.Str(), State: jobProgress,

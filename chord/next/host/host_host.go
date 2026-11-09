@@ -24,7 +24,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/src/next/host/host.ts: hosts (§3). `createHost`, loading facets and the start barrier, links to
+// Ports packages/chord/src/host/host.ts: hosts (§3). `createHost`, loading facets and the start barrier, links to
 // children, the parent (connected again after a drop) and routes, the origins it relays holds for, getting and holding
 // references as a principal, the heartbeat of every link, revocation (§4), presence (§19) and keep-alive counts, registries
 // and root scopes (slice 8), closing; one batch per host, the backoff map and the endings new instances wait for.

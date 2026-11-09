@@ -24,7 +24,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/src/next/host/attempt.ts. Attempts (§6, §13, §14, §15): one activation of an object, a fresh
+// Ports packages/chord/src/host/attempt.ts. Attempts (§6, §13, §14, §15): one activation of an object, a fresh
 // instance each time. It is the `self` its factory declares with (handles to the object's documents and jobs, under its
 // seal token); it runs the activation steps, each failing with its own kind; it takes the live object's calls and starts
 // its routines and jobs; and it ends with its seal (slice 6a §1.3), the drain and the closes of its natives. A reload's

@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/src/next/store/archive.ts
+// Ports packages/chord/src/store/archive.ts
 //
 // Archives and recorded commits as they cross a trust boundary (slice 6a §13, slice 6b §1.6; decisions "Export
 // archives are operations", "Writes carry their versions; archives are lossless"): the parts an export yields and an

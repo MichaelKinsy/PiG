@@ -1,4 +1,4 @@
-// Package link ports packages/chord/src/next/link: Chord v2's links for its layers (a host's end of a link with its
+// Package link ports packages/chord/src/link: Chord v2's links for its layers (a host's end of a link with its
 // handshake, codec, checks, heartbeat and in-order handling), the message types, parts with their limits and
 // compression, errors in messages, and the in-memory, IPC and WebSocket links.
 //

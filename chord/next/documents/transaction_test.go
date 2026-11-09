@@ -24,7 +24,7 @@ import (
 )
 
 // Ports packages/chord/test/documents/transaction.test.ts
-// pi: packages/chord/src/next/documents/transaction.ts
+// pi: packages/chord/src/documents/transaction.ts
 //
 // Pi runs these on a `createHost` host: objects served with `h.serve`, reached through `host.get` references, and
 // `self.tx`. The Go form runs them on the harness object of support_test.go (a DocumentsOwner with its attempts): an

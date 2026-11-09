@@ -1,4 +1,4 @@
-// Package contracts ports packages/chord/src/next/contracts: the contracts of Chord's layers. An app declares remote
+// Package contracts ports packages/chord/src/contracts: the contracts of Chord's layers. An app declares remote
 // and local object types as contracts (Remote, Local), evolves them version by version (Evolve), lists the older
 // versions a provider still serves (CheckAccepts), names its hosts by kind and address (NewHostKind, Address), and
 // describes state, arguments and results with schema constructors (Str, Obj, NewMethod, ...).

@@ -1,5 +1,7 @@
 package tools
 
+// Ports packages/coding-agent/src/core/tools/grep.ts
+
 import (
 	"bytes"
 	"encoding/base64"

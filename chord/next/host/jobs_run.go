@@ -9,7 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/documents"
 )
 
-// Ports packages/chord/src/next/jobs/run.ts
+// Ports packages/chord/src/jobs/run.ts
 //
 // One run of a job (§15, slice 6b §4.1): its record (id, version, key, args, phase, restarts, finish failures, abort
 // mark, outcome), its current invocation (the fence of its seal token, its abort signal, the end an abort joins: one

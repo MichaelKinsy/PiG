@@ -16,7 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/src/next-node/plugins/runtime.ts. The plugin runtime (slice 10 §3, D11): loading and reloading hosts
+// Ports packages/chord/src/node/plugins/runtime.ts. The plugin runtime (slice 10 §3, D11): loading and reloading hosts
 // with shipped scripts, without building (no esbuild, no watcher), so a worker evaluates what the server built. Pi's runtime
 // itself runs, unchanged, in the Node subprocess of the host that loads the plugins (docs/plan/chord-plugins-node-evaluator.md):
 // per host it keeps the facet loaded for every plugin and passes the host its complete set at each reload (unchanged plugins,

@@ -11,7 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
-// Ports packages/chord/src/next/link/values.ts. Values in messages (§3 values, §22): JSON text, and for payloads
+// Ports packages/chord/src/link/values.ts. Values in messages (§3 values, §22): JSON text, and for payloads
 // marked as carrying bytes raw byte segments, a `[]byte` leaf written as `{"$bytes": i}` and read back as a view of
 // the received message (no copy, never base64); a part as the text codec splices it. Shared by the codecs.
 //

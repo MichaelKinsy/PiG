@@ -4,11 +4,11 @@ Generated from `1135` PORT_MAP entries and `876` parity scenarios.
 
 ## Status
 
-- **Porting:** 999 / 1021 intended-portable entries ✅ (97.8%).
-- **Behavior verification:** 814 / 999 ported entries (81.5%); 0 weak-only, 185 untested.
+- **Porting:** 990 / 1021 intended-portable entries ✅ (97.0%).
+- **Behavior verification:** 813 / 990 ported entries (82.1%); 0 weak-only, 177 untested.
 - **Upstream test porting:** 974 ported / 0 partial / 0 pending (7 other dispositions; [file mapping](interfaces/test-mapping-v1.5.0+c23b9ec1.json)). Of the partial/pending files, 0 deferred to 0.3.x by the [release policy](interfaces/test-porting-policy-v1.5.0+c23b9ec1.json) (`deferred-0.3.x`).
 
-Raw PORT_MAP rows: 1135. Breakdown: 114 n/a (designed out) · 20 🟡 partial · 2 ⬜ not started. See docs/parity/DIVERGENCES.md for the documented exceptions.
+Raw PORT_MAP rows: 1135. Breakdown: 114 n/a (designed out) · 29 🟡 partial · 2 ⬜ not started. See docs/parity/DIVERGENCES.md for the documented exceptions.
 
 ## Packages
 
@@ -16,20 +16,20 @@ Raw PORT_MAP rows: 1135. Breakdown: 114 n/a (designed out) · 20 🟡 partial ·
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | `agent` | 6 | 1 | 5 | 5 | 0 | 0 | 100.0% | 100.0% |
 | `ai` | 270 | 22 | 248 | 246 | 0 | 2 | 99.2% | 97.6% |
-| `chord` | 323 | 39 | 284 | 277 | 7 | 0 | 97.5% | 58.5% |
+| `chord` | 323 | 39 | 284 | 273 | 11 | 0 | 96.1% | 59.0% |
 | `codemode` | 17 | 4 | 13 | 13 | 0 | 0 | 100.0% | 100.0% |
-| `coding-agent` | 263 | 27 | 236 | 235 | 1 | 0 | 99.6% | 96.6% |
-| `durable` | 100 | 10 | 90 | 79 | 11 | 0 | 87.8% | 94.9% |
-| `env` | 25 | 3 | 22 | 21 | 1 | 0 | 95.5% | 90.5% |
+| `coding-agent` | 263 | 27 | 236 | 232 | 4 | 0 | 98.3% | 97.8% |
+| `durable` | 100 | 10 | 90 | 78 | 12 | 0 | 86.7% | 96.2% |
+| `env` | 25 | 3 | 22 | 20 | 2 | 0 | 90.9% | 95.0% |
 | `evals` | 6 | 0 | 6 | 6 | 0 | 0 | 100.0% | 100.0% |
 | `mcp` | 28 | 3 | 25 | 25 | 0 | 0 | 100.0% | 60.0% |
 | `schema` | 43 | 3 | 40 | 40 | 0 | 0 | 100.0% | 0.0% |
 | `telemetry` | 8 | 1 | 7 | 7 | 0 | 0 | 100.0% | 100.0% |
 | `tui` | 46 | 1 | 45 | 45 | 0 | 0 | 100.0% | 100.0% |
 
-- **Four core packages (agent, ai, coding-agent, tui):** 531 / 534 intended-portable files ✅ (99.4%) from 585 rows; 517 behavioral (97.4%), 0 weak-only, 14 untested.
-- **Shipped surface (agent, ai, codemode, coding-agent, mcp, schema, telemetry, tui; coding-agent without ):** 616 / 619 intended-portable files ✅ (99.5%) from 681 rows; 552 behavioral (89.6%), 0 weak-only, 64 untested.
-- **Whole monorepo (12 packages):** 999 / 1021 intended-portable files ✅ (97.8%) from 1135 rows; 814 behavioral (81.5%), 0 weak-only, 185 untested.
+- **Four core packages (agent, ai, coding-agent, tui):** 528 / 534 intended-portable files ✅ (98.9%) from 585 rows; 517 behavioral (97.9%), 0 weak-only, 11 untested.
+- **Shipped surface (agent, ai, codemode, coding-agent, mcp, schema, telemetry, tui; coding-agent without ):** 613 / 619 intended-portable files ✅ (99.0%) from 681 rows; 552 behavioral (90.0%), 0 weak-only, 61 untested.
+- **Whole monorepo (12 packages):** 990 / 1021 intended-portable files ✅ (97.0%) from 1135 rows; 813 behavioral (82.1%), 0 weak-only, 177 untested.
 - **Interface closure:** 15003 of 15012 semantic interface IDs closed (519 designed-out, 9 pending, 14484 ported). A file-level ✅ does not close an interface ID.
 
 Behavioral evidence includes paired scenarios and reviewed mutation-proven Go unit tests. Unit tests are listed separately; last run refers only to paired scenarios, not unit execution or exhaustive parity.
@@ -511,11 +511,11 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/coding-agent/src/cli/auth-command.ts` | ✅ | 0 | 3 (unit:./coding/cli:TestAuthCommandExitCodesAndErrors, unit:./coding/cli:TestAuthCommandPrintsSecretsOnlyInTheRequestedForm, unit:./coding/cli:TestParseAuthCommandLargeMinimumExpiry) | not run | ./coding/cli:TestAuthCommandExitCodesAndErrors, ./coding/cli:TestAuthCommandPrintsSecretsOnlyInTheRequestedForm, ./coding/cli:TestParseAuthCommandLargeMinimumExpiry |
 | `packages/coding-agent/src/cli/auth-login.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/coding-agent/src/cli/auth-logout.ts` | ✅ | **0 (untested)** | **0** | not run |  |
-| `packages/coding-agent/src/cli/auth-terminal.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/coding-agent/src/cli/auth-terminal.ts` | 🟡 | 0 | 0 | not run |  |
 | `packages/coding-agent/src/core/provider-matching.ts` | ✅ | **0 (untested)** | **0** | not run |  |
-| `packages/coding-agent/src/core/radius-mcp.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/coding-agent/src/core/radius-mcp.ts` | 🟡 | 0 | 0 | not run |  |
 | `packages/coding-agent/src/utils/terminal-question.ts` | ✅ | **0 (untested)** | **0** | not run |  |
-| `packages/coding-agent/src/utils/web-url.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/coding-agent/src/utils/web-url.ts` | 🟡 | 0 | 0 | not run |  |
 | `packages/coding-agent/src/cli/setup.ts` | ✅ | 2 (32-extension-load-failure-message, 34-extension-process-identity) | 3 (32-extension-load-failure-message, 34-extension-process-identity, unit:./coding/cli:TestSetupCliSetsInheritedProcessMarkers) | not run | ./coding/cli:TestSetupCliSetsInheritedProcessMarkers |
 | `packages/coding-agent/src/core/bug-report-upload.ts` | n/a | 0 | 0 | not run |  |
 | `packages/coding-agent/src/core/bug-report.ts` | ✅ | 0 | 1 (unit:./internal/codingagent:TestRedactBugReportJSONKeepsTokenCounts) | not run | ./internal/codingagent:TestRedactBugReportJSONKeepsTokenCounts |
@@ -733,7 +733,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/chord/src/link/part.ts` | ✅ | 0 | 3 (unit:./chord/next/link:TestLimitsPerPart, unit:./chord/next/link:TestOpeningAPart, unit:./chord/next/link:TestTheAsynchronousInflate) | not run | ./chord/next/link:TestLimitsPerPart, ./chord/next/link:TestOpeningAPart, ./chord/next/link:TestTheAsynchronousInflate |
 | `packages/chord/src/link/text.ts` | ✅ | 0 | 1 (unit:./chord/next/link:TestTheTextCodec) | not run | ./chord/next/link:TestTheTextCodec |
 | `packages/chord/src/link/values.ts` | ✅ | 0 | 1 (unit:./chord/next/link:TestPayloads) | not run | ./chord/next/link:TestPayloads |
-| `packages/chord/src/link/websocket.ts` | ✅ | 0 | 1 (unit:./chord/next/link:TestWebSocketLinksOverAFakeSocket) | not run | ./chord/next/link:TestWebSocketLinksOverAFakeSocket |
+| `packages/chord/src/link/websocket.ts` | 🟡 | 0 | 1 (unit:./chord/next/link:TestWebSocketLinksOverAFakeSocket) | not run | ./chord/next/link:TestWebSocketLinksOverAFakeSocket |
 | `packages/chord/src/store/table-writes.ts` | ✅ | 0 | 2 (unit:./chord/next/store:TestEvidenceStoreAClearedJSONRecordsNoVersion, unit:./chord/next/store:TestEvidenceStoreADropIndexRecord) | not run | ./chord/next/store:TestEvidenceStoreAClearedJSONRecordsNoVersion, ./chord/next/store:TestEvidenceStoreADropIndexRecord |
 | `packages/chord/src/store/table-changes.ts` | ✅ | 0 | 1 (unit:./chord/next/store:TestTableChanges) | not run | ./chord/next/store:TestTableChanges |
 | `packages/chord/src/store/table-handle.ts` | ✅ | 0 | 2 (unit:./chord/next/store:TestTableHandle, unit:./chord/next/store:TestTableHandle) | not run | ./chord/next/store:TestTableHandle, ./chord/next/store:TestTableHandle |
@@ -924,7 +924,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/chord/src/node/surfaces/bundle.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/surfaces/current.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/surfaces/index.ts` | n/a | 0 | 0 | not run |  |
-| `packages/chord/src/node/surfaces/published.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/node/surfaces/published.ts` | 🟡 | 0 | 0 | not run |  |
 | `packages/chord/src/node/surfaces/served.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/surfaces/tui.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/surfaces/web.ts` | ✅ | **0 (untested)** | **0** | not run |  |
@@ -945,7 +945,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/chord/src/surfaces/active-theme.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/surfaces/client.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/surfaces/connection.ts` | ✅ | **0 (untested)** | **0** | not run |  |
-| `packages/chord/src/surfaces/format.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/surfaces/format.ts` | 🟡 | 0 | 0 | not run |  |
 | `packages/chord/src/surfaces/index.ts` | n/a | 0 | 0 | not run |  |
 | `packages/chord/src/surfaces/language.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/surfaces/loaded.ts` | ✅ | **0 (untested)** | **0** | not run |  |
@@ -980,7 +980,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/chord/src/tui/index.ts` | n/a | 0 | 0 | not run |  |
 | `packages/chord/src/tui/runtime.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/tui/scope.ts` | ✅ | **0 (untested)** | **0** | not run |  |
-| `packages/chord/src/tui/terminal.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/tui/terminal.ts` | 🟡 | 0 | 0 | not run |  |
 | `packages/chord/src/tui/theme.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/web/environment.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/web/index.ts` | n/a | 0 | 0 | not run |  |
@@ -1047,7 +1047,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/durable/src/storage/sqlite/node.ts` | ✅ | 0 | 4 (unit:./durable/storage/sqlite/node:TestNewNodeSqliteDatabaseAdaptsADatabaseSync, unit:./durable/storage/sqlite/node:TestPortableSQLiteFacadeSettlement, unit:./durable/storage/sqlite/node:TestPortableSQLiteFacadeSettlement, unit:./durable/storage/sqlite:TestDurableSQLiteMigrations) | not run | ./durable/storage/sqlite/node:TestNewNodeSqliteDatabaseAdaptsADatabaseSync, ./durable/storage/sqlite/node:TestPortableSQLiteFacadeSettlement, ./durable/storage/sqlite/node:TestPortableSQLiteFacadeSettlement, ./durable/storage/sqlite:TestDurableSQLiteMigrations |
 | `packages/durable/src/storage/sqlite/storage.ts` | ✅ | 0 | 11 (unit:./durable/storage/sqlite/node:TestPortableSQLiteFacadeSettlement, unit:./durable/storage/sqlite:TestPicoSqliteStorage, unit:./durable/storage/sqlite:TestSqliteStorageBatchCommitsAgainstMemoryReference, unit:./durable/storage/sqlite:TestSqliteStorageConformance, unit:./durable/storage/sqlite:TestSqliteStorageConformance, unit:./durable/storage/sqlite:TestSqliteStorageConformance, unit:./durable/storage/sqlite:TestSqliteStorageLookupsAndScansReadCommittedRecords, unit:./durable/storage/sqlite:TestSqliteStorageReadApiMirrorsPisStorageContract, unit:./durable/storage/sqlite:TestSqliteStorageReadApiMirrorsPisStorageContract, unit:./durable/storage/sqlite:TestSqliteStorageReadApiMirrorsPisStorageContract, unit:./durable/storage:TestStorageBenchmarkExpectations) | not run | ./durable/storage/sqlite/node:TestPortableSQLiteFacadeSettlement, ./durable/storage/sqlite:TestPicoSqliteStorage, ./durable/storage/sqlite:TestSqliteStorageBatchCommitsAgainstMemoryReference, ./durable/storage/sqlite:TestSqliteStorageConformance, ./durable/storage/sqlite:TestSqliteStorageConformance, ./durable/storage/sqlite:TestSqliteStorageConformance, ./durable/storage/sqlite:TestSqliteStorageLookupsAndScansReadCommittedRecords, ./durable/storage/sqlite:TestSqliteStorageReadApiMirrorsPisStorageContract, ./durable/storage/sqlite:TestSqliteStorageReadApiMirrorsPisStorageContract, ./durable/storage/sqlite:TestSqliteStorageReadApiMirrorsPisStorageContract, ./durable/storage:TestStorageBenchmarkExpectations |
 | `packages/durable/src/storage/sqlite/commit.ts` | ✅ | **0 (untested)** | **0** | not run |  |
-| `packages/durable/src/storage/sqlite/rows.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/durable/src/storage/sqlite/rows.ts` | 🟡 | 0 | 0 | not run |  |
 | `packages/durable/src/storage/sqlite/statements.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/durable/src/storage/sqlite/cloudflare.ts` | ✅ | 0 | 4 (unit:./durable/storage/sqlite/cloudflare:TestDurableObjectSqliteAdapter, unit:./durable/storage/sqlite/cloudflare:TestDurableObjectSqliteAdapter, unit:./durable/storage/sqlite/cloudflare:TestDurableObjectStorageConformance, unit:./durable/storage/sqlite/cloudflare:TestDurableObjectStorageConformance) | not run | ./durable/storage/sqlite/cloudflare:TestDurableObjectSqliteAdapter, ./durable/storage/sqlite/cloudflare:TestDurableObjectSqliteAdapter, ./durable/storage/sqlite/cloudflare:TestDurableObjectStorageConformance, ./durable/storage/sqlite/cloudflare:TestDurableObjectStorageConformance |
 | `packages/durable/src/storage/store/commit.ts` | 🟡 | 0 | 0 | not run |  |
@@ -1107,7 +1107,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/env/daemon/src/main.rs` | ✅ | 0 | 12 (unit:./env:TestDaemonAnswersAFrameWhoseJSONDoesNotParseLikePisDaemon, unit:./env:TestDaemonAnswersAFrameWhoseJSONDoesNotParseLikePisDaemon, unit:./env:TestDaemonCancelRightBehindItsRequestMatchesPisDaemon, unit:./env:TestDaemonFileOperationsMatchPisDaemon, unit:./env:TestDaemonFileOperationsMatchPisDaemon, unit:./env:TestDaemonFileOperationsMatchPisDaemon, unit:./env:TestDaemonFileOperationsMatchPisDaemon, unit:./env:TestDaemonFileOperationsMatchPisDaemon, unit:./env:TestDaemonHandlesAreLimitedLikePisDaemon, unit:./env:TestDaemonHelloMatchesPisDaemon, unit:./env:TestDaemonHelloMatchesPisDaemon, unit:./env:TestDaemonPoisonsAWriteHandleAfterAFailedChunkLikePisDaemon) | not run | ./env:TestDaemonAnswersAFrameWhoseJSONDoesNotParseLikePisDaemon, ./env:TestDaemonAnswersAFrameWhoseJSONDoesNotParseLikePisDaemon, ./env:TestDaemonCancelRightBehindItsRequestMatchesPisDaemon, ./env:TestDaemonFileOperationsMatchPisDaemon, ./env:TestDaemonFileOperationsMatchPisDaemon, ./env:TestDaemonFileOperationsMatchPisDaemon, ./env:TestDaemonFileOperationsMatchPisDaemon, ./env:TestDaemonFileOperationsMatchPisDaemon, ./env:TestDaemonHandlesAreLimitedLikePisDaemon, ./env:TestDaemonHelloMatchesPisDaemon, ./env:TestDaemonHelloMatchesPisDaemon, ./env:TestDaemonPoisonsAWriteHandleAfterAFailedChunkLikePisDaemon |
 | `packages/env/daemon/src/output.rs` | ✅ | 0 | 3 (unit:./env:TestDaemonExecMatchesPisDaemon, unit:./env:TestDaemonRepliesBeforeBulkOutputLikePisDaemon, unit:./env:TestDaemonRepliesBeforeBulkOutputLikePisDaemon) | not run | ./env:TestDaemonExecMatchesPisDaemon, ./env:TestDaemonRepliesBeforeBulkOutputLikePisDaemon, ./env:TestDaemonRepliesBeforeBulkOutputLikePisDaemon |
 | `packages/env/daemon/src/pty.rs` | ✅ | 0 | 22 (unit:./env:TestNewRemoteTerminalKeepsWhatItIsGivenAndWriteTakesBytesOrText, unit:./env:TestOpenTerminalDeliversRawBytesNotDecodedText, unit:./env:TestOpenTerminalEndsWhenTheProgramExitsThoughABackgroundJobHoldsTheTerminal, unit:./env:TestOpenTerminalEndsWhenTheProgramExitsThoughABackgroundJobHoldsTheTerminal, unit:./env:TestOpenTerminalKeepsInputInOrder, unit:./env:TestOpenTerminalKillsEverythingInTheSessionOnCloseAndOnALostConnection, unit:./env:TestOpenTerminalOverTheLocalDaemonOfThePackagedLayout, unit:./env:TestOpenTerminalReportsTheJobInTheForegroundNotTheShellAtItsPrompt, unit:./env:TestOpenTerminalReportsTheJobInTheForegroundNotTheShellAtItsPrompt, unit:./env:TestOpenTerminalRunsAProgramInATerminalWithInputResizingAndItsExitCode, unit:./env:TestOpenTerminalRunsAProgramInATerminalWithInputResizingAndItsExitCode, unit:./env:TestOpenTerminalRunsTheUsersShellAsALoginShellByDefault, unit:./env:TestOpenTerminalRunsTheUsersShellAsALoginShellByDefault, unit:./env:TestOpenTerminalWriteOfMoreThanAFrameArrivesWholeAndInOrder, unit:./env:TestTerminalEnvironmentIsOrderedByName, unit:./env:TestTerminalEnvironmentIsTheDaemonsOwnWhenTheRequestChangesNothing, unit:./env:TestTerminalEnvironmentIsTheDaemonsOwnWhenTheRequestChangesNothing, unit:./env:TestTerminalForegroundOfANameCutInsideACharacterHasNoName, unit:./env:TestTerminalProgramGetsAnEmptySignalMaskWhenTheDaemonStartedWithSignalsBlocked, unit:./env:TestTerminalProgramGetsDefaultSignalsWhenTheDaemonStartedIgnoringThem, unit:./env:TestTerminalThatCannotStartFailsWithTheSystemsWords, unit:./env:TestTerminalThatCannotStartFailsWithTheSystemsWords) | not run | ./env:TestNewRemoteTerminalKeepsWhatItIsGivenAndWriteTakesBytesOrText, ./env:TestOpenTerminalDeliversRawBytesNotDecodedText, ./env:TestOpenTerminalEndsWhenTheProgramExitsThoughABackgroundJobHoldsTheTerminal, ./env:TestOpenTerminalEndsWhenTheProgramExitsThoughABackgroundJobHoldsTheTerminal, ./env:TestOpenTerminalKeepsInputInOrder, ./env:TestOpenTerminalKillsEverythingInTheSessionOnCloseAndOnALostConnection, ./env:TestOpenTerminalOverTheLocalDaemonOfThePackagedLayout, ./env:TestOpenTerminalReportsTheJobInTheForegroundNotTheShellAtItsPrompt, ./env:TestOpenTerminalReportsTheJobInTheForegroundNotTheShellAtItsPrompt, ./env:TestOpenTerminalRunsAProgramInATerminalWithInputResizingAndItsExitCode, ./env:TestOpenTerminalRunsAProgramInATerminalWithInputResizingAndItsExitCode, ./env:TestOpenTerminalRunsTheUsersShellAsALoginShellByDefault, ./env:TestOpenTerminalRunsTheUsersShellAsALoginShellByDefault, ./env:TestOpenTerminalWriteOfMoreThanAFrameArrivesWholeAndInOrder, ./env:TestTerminalEnvironmentIsOrderedByName, ./env:TestTerminalEnvironmentIsTheDaemonsOwnWhenTheRequestChangesNothing, ./env:TestTerminalEnvironmentIsTheDaemonsOwnWhenTheRequestChangesNothing, ./env:TestTerminalForegroundOfANameCutInsideACharacterHasNoName, ./env:TestTerminalProgramGetsAnEmptySignalMaskWhenTheDaemonStartedWithSignalsBlocked, ./env:TestTerminalProgramGetsDefaultSignalsWhenTheDaemonStartedIgnoringThem, ./env:TestTerminalThatCannotStartFailsWithTheSystemsWords, ./env:TestTerminalThatCannotStartFailsWithTheSystemsWords |
-| `packages/env/daemon/src/process.rs` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/env/daemon/src/process.rs` | 🟡 | 0 | 0 | not run |  |
 | `packages/env/daemon/src/scan.rs` | ✅ | 0 | 3 (unit:./env/daemon:TestScanLocatesAndMeasuresLinesLikeWholeFileDecoding, unit:./env/daemon:TestScanLocatesAndMeasuresLinesLikeWholeFileDecoding, unit:./env/daemon:TestScanLocatesAndMeasuresLinesLikeWholeFileDecoding) | not run | ./env/daemon:TestScanLocatesAndMeasuresLinesLikeWholeFileDecoding, ./env/daemon:TestScanLocatesAndMeasuresLinesLikeWholeFileDecoding, ./env/daemon:TestScanLocatesAndMeasuresLinesLikeWholeFileDecoding |
 | `packages/env/daemon/src/sys/mod.rs` | n/a | 0 | 0 | not run |  |
 | `packages/env/daemon/src/sys/unix.rs` | ✅ | 0 | 11 (unit:./durable/env/node:TestShellCommandRunsAsTheLeaderOfANewSession, unit:./env:TestDaemonExecMatchesPisDaemon, unit:./env:TestDaemonFileOperationsMatchPisDaemon, unit:./env:TestDaemonFileOperationsMatchPisDaemon, unit:./env:TestDaemonFileOperationsMatchPisDaemon, unit:./env:TestDaemonHelloMatchesPisDaemon, unit:./env:TestDaemonHelloMatchesPisDaemon, unit:./env:TestDaemonHelloMatchesPisDaemon, unit:./env:TestDaemonHelloMatchesPisDaemon, unit:./env:TestDaemonOpensASocketLikePisDaemon, unit:./env:TestDaemonStatReportsTheFilesIdentityLikePisDaemon) | not run | ./durable/env/node:TestShellCommandRunsAsTheLeaderOfANewSession, ./env:TestDaemonExecMatchesPisDaemon, ./env:TestDaemonFileOperationsMatchPisDaemon, ./env:TestDaemonFileOperationsMatchPisDaemon, ./env:TestDaemonFileOperationsMatchPisDaemon, ./env:TestDaemonHelloMatchesPisDaemon, ./env:TestDaemonHelloMatchesPisDaemon, ./env:TestDaemonHelloMatchesPisDaemon, ./env:TestDaemonHelloMatchesPisDaemon, ./env:TestDaemonOpensASocketLikePisDaemon, ./env:TestDaemonStatReportsTheFilesIdentityLikePisDaemon |

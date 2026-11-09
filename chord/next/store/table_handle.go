@@ -8,7 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/sqlite"
 )
 
-// Ports packages/chord/src/next/store/table-handle.ts
+// Ports packages/chord/src/store/table-handle.ts
 //
 // Table handles (slice 6a §6; decision "Query runner"): what `self.table(Def)` returns, one per attempt and table:
 // reads of committed rows (`Page`, `Rows`, `Get`, `Count`) through the store's guarded reads, and what a transaction's

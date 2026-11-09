@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-// pi: packages/chord/src/next/store/table-migration.ts
+// pi: packages/chord/src/store/table-migration.ts
 // Ports packages/chord/test/store/table-migration.test.ts describe("the chunk yield"): a migration over many
 // chunks yields between chunks, so that a competing task runs between them ("yields between chunks without Node's
 // setImmediate" on 3 * MIGRATION_CHUNK rows; "yields between chunks without a timer ... while timers due run in

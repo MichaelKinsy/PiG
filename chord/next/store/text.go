@@ -8,7 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Ports packages/chord/src/next/store/text.ts
+// Ports packages/chord/src/store/text.ts
 //
 // Text in the store (decision "Text is plain UTF-8, in code point order"): Chord compares strings by code point, as
 // SQLite's BINARY collation compares their UTF-8 bytes; every stored string is well-formed and free of NUL, and a

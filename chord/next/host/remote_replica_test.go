@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// pi: packages/chord/src/next/remote/replica.ts
+// pi: packages/chord/src/remote/replica.ts
 
 // Ports packages/chord/test/remote/replica.test.ts: replicas.
 

@@ -1,5 +1,7 @@
 package telemetryingest_test
 
+// pi: packages/chord/src/telemetry-ingest/recorder.ts
+
 import (
 	"slices"
 	"testing"

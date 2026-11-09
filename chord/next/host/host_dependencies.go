@@ -6,7 +6,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// Ports packages/chord/src/next/host/dependencies.ts. Parked attempts (dependency model §3, §7): the dependency check, what
+// Ports packages/chord/src/host/dependencies.ts. Parked attempts (dependency model §3, §7): the dependency check, what
 // an attempt's declared dependencies (`self.get` references and `self.registry` values) say at one moment: all live, or what
 // the parked attempt shows while one is not (`loading`, `failed { waiting }` naming the nearest blocker and the root cause,
 // or `broken` for a cycle, authority or an ended dependency), whether this host's first pass can count it (no blocker here

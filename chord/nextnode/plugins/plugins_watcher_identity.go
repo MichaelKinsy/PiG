@@ -1,5 +1,7 @@
 package plugins
 
+// Ports packages/chord/src/node/plugins/watcher.ts
+
 // Ports `identityOf` of packages/chord/src/node/plugins/watcher.ts: the identity of a directory is its inode and its birth time
 // (an inode is reused at once by a directory made again; its birth time is new), never following a link. An event for an entry
 // on the way to base code renews the watches under it only when its identity is not the one it had when it was watched: a

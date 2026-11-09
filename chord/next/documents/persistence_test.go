@@ -1,7 +1,7 @@
 package documents
 
 // Ports packages/chord/test/documents/persistence.test.ts
-// pi: packages/chord/src/next/documents/persistence.ts
+// pi: packages/chord/src/documents/persistence.ts
 //
 // Persisted documents' store side (slice 6a §8, §10): loads with the version and fingerprint checks and `migrate`,
 // finds, keys, and the writes one commit stages (creation, base or delta by `checkpointWhen`, retirement).

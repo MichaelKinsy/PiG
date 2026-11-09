@@ -8,7 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// Ports packages/chord/src/next/host/activity.ts. Keep-alive counts (§3, R26): `host.activity`, a JSON watchable of the
+// Ports packages/chord/src/host/activity.ts. Keep-alive counts (§3, R26): `host.activity`, a JSON watchable of the
 // work keeping a host busy, for the app's supervisor. Counters are kept where the work happens; their changes in one
 // microtask turn are one publication.
 

@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Ports packages/chord/src/next/store/sql.ts
+// Ports packages/chord/src/store/sql.ts
 //
 // SQL of declared tables (slice 6a §5, §6, §7): the DDL a table definition renders, and the statements of its reads
 // and writes, generated from the compiled vocabulary with every value bound and every identifier quoted. Names were

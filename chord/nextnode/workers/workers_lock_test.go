@@ -15,7 +15,7 @@ import (
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 )
 
-// pi: packages/chord/src/next-node/workers/lock.ts
+// pi: packages/chord/src/node/workers/lock.ts
 // Ports packages/chord/test/node/workers/lock.test.ts: one holder at a time, a waiter taking the lock when the
 // holder releases it (told by its connection's close, no polling), a waiter's abort; socket file locks.
 

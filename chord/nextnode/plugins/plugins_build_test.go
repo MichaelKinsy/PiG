@@ -1,6 +1,6 @@
 package plugins
 
-// pi: packages/chord/src/next-node/plugins/build.ts
+// pi: packages/chord/src/node/plugins/build.ts
 
 import (
 	"bytes"

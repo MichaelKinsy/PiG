@@ -1,6 +1,6 @@
 package plugins
 
-// pi: packages/chord/src/next-node/plugins/stack.ts
+// pi: packages/chord/src/node/plugins/stack.ts
 
 import (
 	"regexp"

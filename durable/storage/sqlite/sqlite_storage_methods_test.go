@@ -1,5 +1,7 @@
 package sqlite_test
 
+// pi: packages/durable/src/storage/sqlite/rows.ts
+
 import (
 	"strings"
 	"testing"

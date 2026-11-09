@@ -22,7 +22,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
-// Ports packages/chord/src/next-node/plugins/build.ts (`buildFacet`, `ImportRules`, `freeGlobals`, `describe`) on esbuild's
+// Ports packages/chord/src/node/plugins/build.ts (`buildFacet`, `ImportRules`, `freeGlobals`, `describe`) on esbuild's
 // Go API (`github.com/evanw/esbuild/pkg/api`, Pi's pin 0.28.2). Building (slice 7c §2, slice 12 §1-§4): one facet of one
 // plugin as one script, by esbuild from cold. Its own files, files of other plugins of its root imported by relative
 // path (copies; decision "Contracts come from where the plugin's code came from") and its npm `dependencies` (through

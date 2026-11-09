@@ -20,7 +20,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/src/next/host/object.ts. Objects (§6): one per identity, from its first attempt to its end. Its state
+// Ports packages/chord/src/host/object.ts. Objects (§6): one per identity, from its first attempt to its end. Its state
 // across attempts (its documents, line and job runs), the instance its references follow (`followed`: decision "References
 // are the only indirection"), its holders, retries after failures (backoff, `ref.retry()`, passed on while parked), what it
 // shows while its attempt is parked on dependencies (dependency model §3), its first outcome (the start barrier, decision

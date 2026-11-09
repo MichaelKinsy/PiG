@@ -9,7 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 )
 
-// Ports packages/chord/src/next/data/params.ts: the checked params of a get, their key, and the in-process identity of
+// Ports packages/chord/src/data/params.ts: the checked params of a get, their key, and the in-process identity of
 // an object.
 
 // CheckedParams is the result of CheckParams: the caller's own params object, and its key.

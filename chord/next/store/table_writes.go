@@ -8,7 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Ports packages/chord/src/next/store/table-writes.ts
+// Ports packages/chord/src/store/table-writes.ts
 //
 // Table writes (slice 6a §5, §7, §9; S17; decisions "Writes carry their versions", "Index definitions are recorded"):
 // the recorded form of every table write, the staged writes a transaction or an activation hands the commit step

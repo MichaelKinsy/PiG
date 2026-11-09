@@ -23,7 +23,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// pi: packages/chord/src/next/remote/provider.ts
+// pi: packages/chord/src/remote/provider.ts
 
 // Ports packages/chord/test/remote/provider.test.ts: the provider side of a link, driven by a raw consumer peer.
 

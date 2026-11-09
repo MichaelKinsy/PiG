@@ -15,7 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// pi: packages/chord/src/next/store/rows.ts
+// pi: packages/chord/src/store/rows.ts
 // Ports packages/chord/test/store/rows.test.ts: rows (slice 6a §5, §9): `put` rows and keys checked and encoded,
 // stored rows decoded.
 //

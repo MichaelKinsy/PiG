@@ -1,5 +1,7 @@
 package sync
 
+// pi: packages/chord/src/sync/files.ts
+
 import (
 	"bytes"
 	"context"

@@ -16,7 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/store"
 )
 
-// Ports packages/chord/src/next/host/staging.ts. Staging (slice 7b §2, per plugin since slice 7c): one plugin's setup run and
+// Ports packages/chord/src/host/staging.ts. Staging (slice 7b §2, per plugin since slice 7c): one plugin's setup run and
 // checked (`stagePlugin`), staged plugins merged into one table (`addStaged`), and a recording `self` that runs an object's
 // new factory with every declaration check an attempt makes and no effect (`recordFactory`).
 //

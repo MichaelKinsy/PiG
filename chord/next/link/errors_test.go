@@ -10,7 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 )
 
-// pi: packages/chord/src/next/link/errors.ts
+// pi: packages/chord/src/link/errors.ts
 // Ports packages/chord/test/link/errors.test.ts. `wireError("plain")` (a thrown non-Error) has no Go form: Go
 // errors are error values; the plugin code `internal` case is covered by a plain error.
 

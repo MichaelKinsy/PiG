@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-// pi: packages/chord/src/next-node/workers/process.ts
+// pi: packages/chord/src/node/workers/process.ts
 // Ports packages/chord/test/node/workers/process.test.ts: a worker process is started with its output piped (the
 // stderr tail kept), the link made at the fork (an early frame queued), control messages told, and the whole tree killed.
 

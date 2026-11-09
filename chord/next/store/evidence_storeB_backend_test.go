@@ -6,7 +6,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/sqlite/node"
 )
 
-// Tests of packages/chord/src/next/store/backend.ts: `sqliteBackend(db)` is the backend over exactly the given
+// Tests of packages/chord/src/store/backend.ts: `sqliteBackend(db)` is the backend over exactly the given
 // database (the one OpenStore runs its SQL on). Pi has no test file of its own for it.
 func TestSqliteBackendRunsOnTheGivenDatabase(t *testing.T) {
 	database, err := node.OpenNodeSqliteDatabase(":memory:", node.NodeSqliteDatabaseOptions{})
