@@ -145,9 +145,13 @@ func TestExample63OptimisticAnswers(t *testing.T) {
 		}
 	}
 	flush()
+	eventually(t, "the two states that fill the server's window reached the stalled client", func() bool { return len(slow.seen()) >= 2 })
+	requireStrings(t, slow.seen(), []string{"state", "state"})
 
 	// The user renames S1: the worker renames, pushes the title to the index (whose change waits in the server's window too)
-	// and answers. The server sends its waiting state before it forwards the answer, past its window.
+	// and answers. The server sends its waiting state before it forwards the answer, past its window. The call runs on a
+	// goroutine, so what reaches the stalled link is awaited: the answer is its last message (the five messages Pi's example
+	// logs once the client resumes: the two states, the worker's title state, the waiting state, the answer).
 	settled := make(chan any, 1)
 	go func() {
 		_, err := session.Call("rename", "Renamed", background)
@@ -157,8 +161,14 @@ func TestExample63OptimisticAnswers(t *testing.T) {
 		}
 		settled <- titleOf("S1")
 	}()
+	eventually(t, "the answer reached the stalled client", func() bool { return slices.Contains(slow.seen(), "result") })
 	flush()
-	requireStrings(t, slow.seen(), []string{"state", "state"})
+	requireStrings(t, slow.seen(), []string{"state", "state", "state", "state", "result"})
+	select {
+	case got := <-settled:
+		t.Fatalf("the call settled (%v) while the client held its answer", got)
+	default:
+	}
 	if got := titleOf("S1"); got != "Draft" {
 		t.Fatalf("while the call is pending the index shows %v, want Draft", got)
 	}
