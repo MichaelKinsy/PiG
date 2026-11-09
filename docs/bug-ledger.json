@@ -22983,6 +22983,32 @@
       ]
     },
     {
+      "id": "BF-6d3043e",
+      "title": "The startup prompts (the project-trust and extension selectors, the extension text input and first-time…",
+      "symptom": "The startup prompts (the project-trust and extension selectors, the extension text input and first-time setup) now load the `keybindings.json` of the agent directory, as Pi's startup UI does.",
+      "rootCause": "Pi's createStartupTui calls setKeybindings(KeybindingsManager.create()) for each startup prompt (cli/startup-ui.ts:91). configureStartupTheme only set the theme, so the selector, input and first-time-setup prompts took whatever keybindings the process held: a tui.select.confirm remapped earlier left a prompt Enter could not confirm, and runStartupComponentWith waited for a key that never came. The user's keybindings.json was ignored by those prompts too.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The startup prompts (the project-trust and extension selectors, the extension text input and first-time setup) now load the `keybindings.json` of the agent directory, as Pi's startup UI does. They took whatever keybindings the process held before, so a remapped `tui.select.confirm` or `tui.select.cancel` was ignored by them.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6d3043e50b",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/startup_ui_theme_test.go::TestStartupPromptAppliesColorsThatArriveAfterTheTimeout",
+        "internal/codingagent/startup_ui_theme_test.go::TestStartupPromptAppliesTerminalColorsAndKeepsRepliesOutOfInput",
+        "internal/codingagent/startup_ui_theme_test.go::TestStartupPromptWithFixedThemeQueriesAndKeepsTheTheme",
+        "internal/codingagent/theme_selection_presence_test.go::TestStartupPromptExplicitEmptyThemeFallsBackToSystem",
+        "internal/codingagent/theme_selection_presence_test.go::TestStartupPromptMalformedThemeUsesSystemTheme"
+      ]
+    },
+    {
       "id": "BF-6d3cfc8",
       "title": "A user_bash `operations` object from an extension is no longer released while a command is running through it",
       "symptom": "A user_bash `operations` object from an extension is no longer released while a command is running through it.",
