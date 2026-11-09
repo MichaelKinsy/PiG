@@ -121135,9 +121135,9 @@
         "call:chord/next/host/host_host.go#chordHost.Load"
       ],
       "evidence": [
+        "test:chord/next/host/host_example_32_test.go#TestExample32Startup",
         "test:chord/next/host/host_host_test.go#TestHostALoadWhoseSetupThrowsLeavesThatPluginOutAndReportsItTheOthersPublishTheHostAndItsLinksStayOpen",
-        "test:chord/next/host/host_host_test.go#TestHostLoadLeavesOutAndReportsInvalidAndDuplicatePluginNamesAndDoubleServesTheLaterRefusesASecondLoad",
-        "test:chord/next/host/host_host_test.go#TestHostPrincipalsAHostWithoutAnAddressServesNoRemoteType"
+        "test:chord/next/host/host_host_test.go#TestHostLoadLeavesOutAndReportsInvalidAndDuplicatePluginNamesAndDoubleServesTheLaterRefusesASecondLoad"
       ]
     },
     {
