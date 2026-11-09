@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -138,9 +139,8 @@ func TestPairingWaitsTheWholeIntervalAfterEachPollWasAnswered(t *testing.T) {
 }
 
 // Pi's wait is a bare setTimeout the signal does not cut short, then `signal.throwIfAborted()` before the next poll: an abort during
-// the wait sends no poll, and rejects with the signal's reason. Go's wait ends at the abort (Pi's ends at the end of the interval, at
-// most POLL_MS later: the timing of that settle is the whole difference, nothing observable follows from it: Pi's own launcher
-// never aborts its signal). An abort during a poll's request ends the request.
+// the wait sends no poll, and rejects with the signal's reason (when the interval ends: TestAnAbortDuringThePairingWaitSettlesWhenTheIntervalEnds).
+// An abort during a poll's request ends the request.
 func TestAnAbortedPairingSendsNoMorePollsAndEndsWithTheCause(t *testing.T) {
 	setPollInterval(t, 300*time.Millisecond)
 	hold := make(chan struct{})
@@ -170,5 +170,34 @@ func TestAnAbortedPairingSendsNoMorePollsAndEndsWithTheCause(t *testing.T) {
 	}()
 	if _, err := TokenOf(ctx, TerminalCredentials{Kind: CredentialsPairing, Label: "t"}, server.base, func(string) {}, nil); err == nil || !errors.Is(err, context.Canceled) && !errors.Is(err, stop) {
 		t.Fatalf("an abort during a poll: %v, want the abort", err)
+	}
+}
+
+// Pi's wait is a bare setTimeout the signal does not cut short (`credentials.ts` 52), then `signal.throwIfAborted()`: an abort during
+// the wait settles `tokenOf` when the interval ends, not at the abort, with the signal's reason and no poll. (An abort during a poll's
+// request ends the request at once: fetch takes the signal; TestAnAbortedPairingSendsNoMorePollsAndEndsWithTheCause.)
+func TestAnAbortDuringThePairingWaitSettlesWhenTheIntervalEnds(t *testing.T) {
+	setPollInterval(t, 400*time.Millisecond)
+	server := newPollingServer(t, time.Hour, nil)
+	stop := errors.New("the caller left")
+	ctx, cancel := context.WithCancelCause(context.Background())
+	var shown atomic.Int64
+	go func() {
+		for shown.Load() == 0 {
+			time.Sleep(time.Millisecond)
+		}
+		time.Sleep(50 * time.Millisecond)
+		cancel(stop)
+	}()
+	_, err := TokenOf(ctx, TerminalCredentials{Kind: CredentialsPairing, Label: "t"}, server.base, func(string) { shown.Store(time.Now().UnixNano()) }, nil)
+	settled := time.Now()
+	if !errors.Is(err, stop) {
+		t.Fatalf("TokenOf = %v, want the cancellation's cause", err)
+	}
+	if wait := settled.Sub(time.Unix(0, shown.Load())); wait < 390*time.Millisecond {
+		t.Fatalf("settled %v after the code was shown, want the whole 400ms interval (an abort at 50ms does not cut Pi's wait short)", wait)
+	}
+	if n := len(server.polls()); n != 0 {
+		t.Fatalf("%d polls, want none", n)
 	}
 }
