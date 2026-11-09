@@ -260,6 +260,33 @@ func TestPluginSocketsAnOversizedFrameClosesOnlyThatSocket1009NeverTheServer(t *
 	other.Close(0, "")
 }
 
+// Pi 7e713da2: ws already sends the protocol close code (1009) when a frame is oversized; terminating the socket then can discard
+// that frame, so the socket is left to finish its close handshake and reports 1009, not the 1006 of a terminated one.
+func TestPluginSocketsAnOversizedFrameIsNotTerminatedAndTheSocketReportsItsProtocolCloseCode(t *testing.T) {
+	stateAtError := make(chan int, 1)
+	serverClose := make(chan CloseEvent, 1)
+	watched := &HttpSocket{Handle: func(socket *WebSocketHandle, _ HttpRequest, _ host.Ctx) error {
+		socket.OnError(func(error) {
+			// Pi's listener runs after `ws` sent its close frame: the socket is CLOSING, which `keep` leaves alone.
+			stateAtError <- socket.ReadyState()
+		})
+		socket.OnceClose(func(event CloseEvent) { serverClose <- event })
+		return nil
+	}}
+	server := serving(t, []plugin{{"@app/watched", contributing(HttpContribution{Sockets: []HttpSocketEntry{SocketFunc("/watched", watched)}, MaxPayload: 64})}}, servedOptions{})
+	socket := mustSocketTo(t, server.port, "/watched", owner)
+	socket.Send([]byte(strings.Repeat("x", 100)), false, nil)
+	if event := receive(t, socket.closed, "the client's close"); event.Code != 1009 {
+		t.Fatalf("client close code = %d, want 1009", event.Code)
+	}
+	if state := receive(t, stateAtError, "the error"); state != WebSocketClosing {
+		t.Fatalf("ready state at the error = %d, want %d (closing)", state, WebSocketClosing)
+	}
+	if event := receive(t, serverClose, "the server's close"); event.Code != 1009 {
+		t.Fatalf("server close code = %d, want 1009", event.Code)
+	}
+}
+
 func TestPluginSocketsAThrowingHandlerIsReportedSocketFailedAndClosesItsSocket1011(t *testing.T) {
 	server := serving(t, []plugin{{"@app/bad", contributing(HttpContribution{Sockets: []HttpSocketEntry{{
 		Pattern: "/bad", Socket: HttpSocketOptions{Handler: &HttpSocket{Handle: func(*WebSocketHandle, HttpRequest, host.Ctx) error { return errors.New("handler") }}},
