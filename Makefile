@@ -145,8 +145,9 @@ help-parity: ## List the parity and porting targets (automation/make/parity.mk)
 ##@ Release maintenance
 
 .PHONY: set-version module-publication module-size
-set-version: ## Update the release identity; preserve dependencies unless SET_VERSION_ARGS=--release-modules
-	@./automation/ci/with-isolated-pig-home.sh go run ./automation/release/set-version -version "$(VERSION)" $(SET_VERSION_ARGS)
+set-version: ## Update the release identity, then regenerate the SDK bundles that carry the version (not on a dry run); preserve dependencies unless SET_VERSION_ARGS=--release-modules
+	@PIG_CACHE_HOME="$(PIG_CACHE_HOME)" ./automation/ci/with-isolated-pig-home.sh go run ./automation/release/set-version -version "$(VERSION)" $(SET_VERSION_ARGS)
+	@$(if $(findstring --dry-run,$(SET_VERSION_ARGS)),:,$(MAKE) sdk-bundles)
 
 module-publication: ## Verify nested Go dependency tags and checksums against their public source
 	@./automation/ci/with-isolated-pig-home.sh python3 -B -m unittest automation/ci/test_module_publication.py

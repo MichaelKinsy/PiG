@@ -177,8 +177,24 @@ func prepare(root string, opt options) (*plan, error) {
 	if err == nil {
 		p.before["CHANGELOG.md.zst"] = old
 	}
-	p.after["CHANGELOG.md.zst"] = zstdblob.Reuse(old, p.after["CHANGELOG.md"]) // embed.go embeds the compressed changelog
+	// embed.go embeds the compressed changelog.
+	frame, err := changelogFrame(old, p.after["CHANGELOG.md"])
+	if err != nil {
+		return nil, err
+	}
+	p.after["CHANGELOG.md.zst"] = frame
 	return p, nil
+}
+
+// changelogFrame returns the frame of CHANGELOG.md.zst for changelog: existing when it already holds the text, else the text written by the pinned zstd. zstdblob.Encode panics when that command is missing, so the command is looked up first and its absence is an error that names PIG_ZSTD and the provisioner.
+func changelogFrame(existing, changelog []byte) ([]byte, error) {
+	if decoded, err := zstdblob.Decode(existing); err == nil && bytes.Equal(decoded, changelog) {
+		return existing, nil
+	}
+	if _, err := zstdblob.PinnedCLI(); err != nil {
+		return nil, fmt.Errorf("cannot re-encode CHANGELOG.md.zst: %w", err)
+	}
+	return zstdblob.Encode(changelog), nil
 }
 
 // readmeVersionExample is the README sentence that shows the composite version of the help banner and the startup line. Its Pi half is the pin's, which
