@@ -150,3 +150,44 @@ func TestNavigateTreeHonoursAHandlerResultReturnedAfterTheAbort(t *testing.T) {
 		}
 	})
 }
+
+// upstream: agent-session.ts:4221-4230 awaits runner.emit({ type: "session_tree" }) after the leaf moved; the emit takes no signal, so a navigation whose context was cancelled while it ran still delivers the event to every handler with a live context.
+func TestNavigateTreeEmitsSessionTreeToEveryExtensionAfterTheCallerContextEnded(t *testing.T) {
+	sess := newTreeTestSession(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var delivered []string
+	var live []bool
+	first := extension.Extension{Path: "first", Handlers: map[string][]extension.HandlerFn{
+		"session_before_tree": {func(...any) (any, error) {
+			cancel()
+			return nil, nil
+		}},
+		"session_tree": {func(args ...any) (any, error) {
+			delivered = append(delivered, "first")
+			live = append(live, args[1].(context.Context).Err() == nil)
+			return nil, nil
+		}},
+	}}
+	second := extension.Extension{Path: "second", Handlers: map[string][]extension.HandlerFn{
+		"session_tree": {func(args ...any) (any, error) {
+			delivered = append(delivered, "second")
+			live = append(live, args[1].(context.Context).Err() == nil)
+			return nil, nil
+		}},
+	}}
+	sess.ReplaceRunner(inproc.NewRunner([]extension.Extension{first, second}, t.TempDir()))
+	target := appendTreeUser(t, sess, "first")
+	appendUpstreamTreeAssistant(t, sess, "reply")
+	appendTreeUser(t, sess, "second")
+
+	if _, err := sess.NavigateTree(ctx, target, NavigateTreeOptions{}); err != nil {
+		t.Fatalf("NavigateTree: %v", err)
+	}
+	if len(delivered) != 2 || delivered[0] != "first" || delivered[1] != "second" {
+		t.Fatalf("session_tree delivered to %v, want first then second", delivered)
+	}
+	if len(live) != 2 || !live[0] || !live[1] {
+		t.Fatalf("a session_tree handler's dispatch context was cancelled with the navigation's: live = %v", live)
+	}
+}
