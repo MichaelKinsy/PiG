@@ -48,7 +48,7 @@ pub struct ToolRenderContext {
 #[derive(Debug, Clone, PartialEq)]
 pub enum ToolRenderComponent {
     Lines(Vec<String>),
-    View(View),
+    View(Box<View>),
 }
 
 impl ToolRenderContext {
@@ -307,11 +307,16 @@ impl CardState {
     }
 
     /// Keeps the card's state and the phase's output for the next run: no component after an error.
-    fn finish(&mut self, result_phase: bool, state: Map<String, Value>, rendered: &Result<Rendered, String>) {
+    fn finish(
+        &mut self,
+        result_phase: bool,
+        state: Map<String, Value>,
+        rendered: &Result<Rendered, String>,
+    ) {
         self.state = state;
         let last = rendered.as_ref().ok().map(|rendered| match rendered {
             Rendered::Lines(lines) => ToolRenderComponent::Lines(lines.clone()),
-            Rendered::View(view) => ToolRenderComponent::View((**view).clone()),
+            Rendered::View(view) => ToolRenderComponent::View(view.clone()),
         });
         if result_phase {
             self.result = last;
@@ -557,17 +562,28 @@ mod tests {
         assert_eq!(card.begin(false), None, "after a failed run");
         card.finish(false, Map::new(), &lines("run3"));
         card.finish(false, Map::new(), &Err("boom".to_string()));
-        assert_eq!(card.begin(false), None, "an error result keeps no component");
+        assert_eq!(
+            card.begin(false),
+            None,
+            "an error result keeps no component"
+        );
     }
 
     #[test]
     fn the_phases_have_slots_of_their_own_and_a_view_stands_in_for_the_component() {
         let mut card = CardState::default();
         card.finish(false, Map::new(), &lines("call"));
-        assert_eq!(card.begin(true), None, "the result slot is not the call slot");
+        assert_eq!(
+            card.begin(true),
+            None,
+            "the result slot is not the call slot"
+        );
         let view = View::new(crate::kit::Container::new());
         card.finish(true, Map::new(), &Ok(Rendered::view(view.clone())));
-        assert_eq!(card.begin(true), Some(ToolRenderComponent::View(view)));
+        assert_eq!(
+            card.begin(true),
+            Some(ToolRenderComponent::View(Box::new(view)))
+        );
         assert_eq!(
             card.begin(false),
             Some(ToolRenderComponent::Lines(vec!["call".to_string()]))

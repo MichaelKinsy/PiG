@@ -8101,7 +8101,9 @@ fn register_tui_alt_reentry_probe(ext: &mut Extension) {
 /// `ToolRenderContext::last_component` carries (the render_probe rows of the conformance suite bind to it).
 fn last_render_line(render: &pig_sdk::ToolRenderContext) -> String {
     match &render.last_component {
-        Some(pig_sdk::ToolRenderComponent::Lines(lines)) => lines.first().cloned().unwrap_or_else(|| "none".to_string()),
+        Some(pig_sdk::ToolRenderComponent::Lines(lines)) => {
+            lines.first().cloned().unwrap_or_else(|| "none".to_string())
+        }
         _ => "none".to_string(),
     }
 }

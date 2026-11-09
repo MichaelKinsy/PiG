@@ -67,7 +67,7 @@ func TestRPCBindCallsBoundAfterBindCoreAndBeforeSessionStartHandlers(t *testing.
 	defer h.ui.Close()
 	h.bound = func() {
 		st := &state{coreBound: true}
-		for _, command := range runner.Runtime().ExtensionActions.GetCommands() {
+		for _, command := range runner.Runtime().GetCommands() {
 			if command.Name == sentinel {
 				st.coreBound = false
 			}

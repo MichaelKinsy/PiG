@@ -615,7 +615,9 @@ func TestConformance_ComponentKitResolverDrawsCallAndResultViews(t *testing.T) {
 }
 
 // trimmedRows is a component whose rows lose the padding a view's renderer adds up to the width.
-type trimmedRows struct{ component interface{ Render(int) []string } }
+type trimmedRows struct {
+	component interface{ Render(int) []string }
+}
 
 func (r trimmedRows) Render(width int) []string {
 	rows := r.component.Render(width)
