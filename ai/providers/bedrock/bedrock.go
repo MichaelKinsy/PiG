@@ -208,9 +208,10 @@ func (p *BedrockProvider) Stream(ctx context.Context, transcript ai.TranscriptCo
 		checkBedrockRequest(ctx, input)
 		return input, hasPreferredStrictTools, nil
 	}
-	// upstream: bedrock-converse-stream.ts:stream (let disablePreferredStrictTools = hasExceededStrictToolLimits(options.sessionId))
-	disablePreferredStrictTools := ai.HasExceededStrictToolLimits(opts.SessionID)
-	input, hasPreferredStrictTools, err := buildInput(disablePreferredStrictTools)
+	// upstream: bedrock-converse-stream.ts:stream (let disablePreferredStrictTools = hasExceededStrictToolLimits(options.sessionId)): a session whose
+	// strict tools were rejected sends its preferred tools non-strict from the first request, so that request reports no preferred strict tools
+	// and the fallback below, which runs at most once, is not taken again.
+	input, hasPreferredStrictTools, err := buildInput(ai.HasExceededStrictToolLimits(opts.SessionID))
 	if err != nil {
 		return nil, err
 	}
@@ -271,6 +272,7 @@ func (p *BedrockProvider) streamResponse(ctx, requestContext context.Context, co
 		})
 		return tap, resp, err
 	}
+	disablePreferredStrictTools := false
 	var (
 		tap  *bedrockBodyTap
 		resp *bedrockruntime.ConverseStreamOutput
