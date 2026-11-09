@@ -22,6 +22,7 @@ import (
 	// The plugins the desktop app's server loads (cmd/p2-desktop/plugins.go), registered in this test binary, which is also
 	// the session worker.
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/chat"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/devices"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/drafts"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/envs"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/models"
@@ -102,8 +103,9 @@ func (r *running) window(t *testing.T) *fakeshell.Window {
 func TestLaunchShowsTheServerAndQuitsCleanly(t *testing.T) {
 	r := start(t, nil)
 	win := r.window(t)
-	if want := r.app.Origin() + "/"; win.CurrentURL() != want {
-		t.Fatalf("window shows %q, want %q", win.CurrentURL(), want)
+	// Loopback alone is nobody: the web view's first page is a one-time owner link, which signs it in.
+	if want := r.app.Origin() + "/owner#"; !strings.HasPrefix(win.CurrentURL(), want) || len(win.CurrentURL()) != len(want)+64 {
+		t.Fatalf("window shows %q, want an owner link of %q", win.CurrentURL(), r.app.Origin())
 	}
 	if !strings.HasPrefix(r.app.Origin(), "http://127.0.0.1:") {
 		t.Fatalf("origin %q is not loopback", r.app.Origin())
@@ -118,15 +120,17 @@ func TestLaunchShowsTheServerAndQuitsCleanly(t *testing.T) {
 	if resp.StatusCode != 200 || !strings.Contains(string(body), `"name":"p2"`) {
 		t.Fatalf("/health: %d %s", resp.StatusCode, body)
 	}
-	// And serves p2's UI at the page the window shows.
-	page, err := http.Get(win.CurrentURL())
+	// And serves p2's UI to the local owner at the page the window lands on.
+	owner := p2test.SignInLocalOwner(t, r.port, r.data)
+	page, err := p2test.HTTP(r.port, "/", p2test.HTTPOptions{Headers: owner.OwnerHeaders(nil)})
 	if err != nil {
 		t.Fatal(err)
 	}
-	html, _ := io.ReadAll(page.Body)
-	_ = page.Body.Close()
-	if page.StatusCode != 200 || !strings.Contains(string(html), "<title>") {
-		t.Fatalf("GET %s: %d %.200s", win.CurrentURL(), page.StatusCode, html)
+	if page.Status != 200 || !strings.Contains(page.Body, "<title>") {
+		t.Fatalf("GET /: %d %.200s", page.Status, page.Body)
+	}
+	if signIn, err := p2test.HTTP(r.port, "/", p2test.HTTPOptions{}); err != nil || signIn.Status != 401 {
+		t.Fatalf("GET / without the owner's session: %+v %v", signIn, err)
 	}
 	// Binds the loopback interface only.
 	if conn, err := net.DialTimeout("tcp", net.JoinHostPort(outboundIP(), strconv.Itoa(r.port)), 300*time.Millisecond); err == nil {
@@ -154,7 +158,7 @@ func outboundIP() string {
 func TestChatRoundTripAndNotification(t *testing.T) {
 	r := start(t, nil)
 	win := r.window(t)
-	conn, err := p2test.Dial(r.port, nil)
+	conn, err := p2test.Dial(r.port, p2test.SignInLocalOwner(t, r.port, r.data).OwnerHeaders(nil))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -222,7 +226,7 @@ func TestChatRoundTripAndNotification(t *testing.T) {
 func TestFocusedWindowGetsNoNotification(t *testing.T) {
 	r := start(t, nil)
 	r.window(t).SetFocused(true)
-	conn, err := p2test.Dial(r.port, nil)
+	conn, err := p2test.Dial(r.port, p2test.SignInLocalOwner(t, r.port, r.data).OwnerHeaders(nil))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -296,6 +300,7 @@ func TestMacWindowReopensOnActivate(t *testing.T) {
 	first.Close()
 	r.shell.Handlers.Activate()
 	second := r.window(t)
+	// The web view signed in with the first window's link: later pages load directly.
 	if second == first || second.CurrentURL() != r.app.Origin()+"/" {
 		t.Fatalf("activate did not open a window on the server: %v", second.CurrentURL())
 	}
