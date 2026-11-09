@@ -115,6 +115,8 @@ func TestPiMessagesStreamsTextAndToolCalls(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// The consumer attaches after the provider has read the whole response: the only order a loaded runner could produce by descheduling this goroutine between Stream and Events, made deterministic.
+	stream.Result()
 	var events []AssistantMessageEvent
 	var initialStopReason StopReason
 	for event := range stream.Events(t.Context()) {
