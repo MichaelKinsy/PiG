@@ -31,7 +31,7 @@ type radiusLoginMenu struct {
 // newRadiusLoginMenu starts the animation ticker, which requests a render every frame while the option is selected.
 // Dispose stops it.
 func newRadiusLoginMenu(selector *tui.ExtensionSelectorComponent, label, text string, requestRender func()) *radiusLoginMenu {
-	menu := &radiusLoginMenu{ExtensionSelectorComponent: selector, label: label, text: text, start: time.Now(), now: time.Now}
+	menu := &radiusLoginMenu{ExtensionSelectorComponent: selector, label: label, text: text, start: time.Now(), now: time.Now} //portlint:allow clock radius-login-selector.ts reads performance.now() for the animation start; the now seam is the test clock
 	menu.stopAnimation = tui.StartBrandAnimation(requestRender, menu.animating.Load)
 	return menu
 }

@@ -460,12 +460,6 @@ snippet = "creds.Expires = time.Now().Add(time.Hour).UnixMilli()"
 
 [[hit]]
 check = "clock"
-file = "internal/codingagent/radius_login_selector.go"
-func = "newRadiusLoginMenu"
-snippet = "menu := &radiusLoginMenu{ExtensionSelectorComponent: selector, label: label, text: text, start: time.Now(), now: time.Now, stop: make(chan struct{})}"
-
-[[hit]]
-check = "clock"
 file = "internal/codingagent/radius_models.go"
 func = "ModelRegistry.resolveRefreshCredential"
 snippet = "if float64(time.Now().UnixMilli()) < stored.ExpiresMillis() {"
@@ -3682,12 +3676,6 @@ check = "numbers"
 file = "internal/codingagent/pig_logo_animation.go"
 func = "logoPack"
 snippet = "return int(jsnumber.Round(color[0]))<<16 | int(jsnumber.Round(color[1]))<<8 | int(jsnumber.Round(color[2]))"
-
-[[hit]]
-check = "numbers"
-file = "internal/codingagent/radius_login_selector.go"
-func = "radiusShimmer"
-snippet = "band := int(math.Floor(position / radiusCharsPerColor))"
 
 [[hit]]
 check = "numbers"

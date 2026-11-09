@@ -20,6 +20,29 @@ func TestLoginProviderOptionsListPreferredPartnersFirstThenTheRestAlphabetically
 	assertPartnersFirst(t, "login", options)
 }
 
+// Port of oauth-selector.test.ts "lists preferred partners first, then the rest alphabetically": Pi's five providers in its
+// fixture order, as getLoginProviderOptions concatenates them (a provider's account option, then its API key option),
+// sorted by the shared comparator.
+func TestSortAuthProvidersMatchesPisPartnersFirstFixture(t *testing.T) {
+	providers := []tui.OAuthProvider{
+		{ID: "anthropic", Name: "Anthropic", AuthType: "api_key"},
+		{ID: "openrouter", Name: "OpenRouter", AuthType: "oauth"},
+		{ID: "openrouter", Name: "OpenRouter", AuthType: "api_key"},
+		{ID: "zai", Name: "Z.AI", AuthType: "api_key"},
+		{ID: "radius", Name: "Radius", AuthType: "oauth"},
+		{ID: "google", Name: "Google", AuthType: "api_key"},
+	}
+	sortAuthProviders(providers)
+	var got []string
+	for _, provider := range providers {
+		got = append(got, provider.ID+":"+provider.AuthType)
+	}
+	want := []string{"radius:oauth", "openrouter:oauth", "openrouter:api_key", "anthropic:api_key", "google:api_key", "zai:api_key"}
+	if !slices.Equal(got, want) {
+		t.Errorf("sorted login options = %v, want %v", got, want)
+	}
+}
+
 func assertPartnersFirst(t *testing.T, label string, options []tui.OAuthProvider) {
 	t.Helper()
 	partners := len(ai.PreferredProviderIDs)

@@ -121,14 +121,14 @@ func NewOAuthSelectorComponentAnimated(requestRender func(), mode string, provid
 
 func newOAuthSelectorComponent(requestRender func(), mode string, providers []OAuthProvider, onSelect func(providerID, authType string), onCancel func(), initialSearch ...string) *OAuthSelectorComponent {
 	sel := &OAuthSelectorComponent{
-		animationStart: time.Now(),
+		animationStart: time.Now(), //portlint:allow clock oauth-selector.ts startBrandAnimation reads performance.now() for the animation start; the now seam is the test clock
 		now:            time.Now,
-		onSelect:  onSelect,
-		onCancel:  onCancel,
-		mode:      mode,
-		providers: append([]OAuthProvider(nil), providers...),
-		filtered:  append([]OAuthProvider(nil), providers...),
-		search:    NewInput(InputOptions{}),
+		onSelect:       onSelect,
+		onCancel:       onCancel,
+		mode:           mode,
+		providers:      append([]OAuthProvider(nil), providers...),
+		filtered:       append([]OAuthProvider(nil), providers...),
+		search:         NewInput(InputOptions{}),
 
 		listContainer: NewContainer(),
 	}

@@ -41,7 +41,7 @@ type cacheWarmerOracleOutput struct {
 	Usage  string   `json:"usage"`
 }
 
-// TestCacheWarmerPureFunctionsMatchPi runs core/cache-warmer.ts getCacheWarmingDelayMs, getPromptCacheTtlMs, isReplayable, formatCacheWarmingStatus and
+// TestCacheWarmerPureFunctionsMatchPi runs pi-ai cache-warming.ts getCacheWarmingDelayMs, getPromptCacheTtlMs, isCacheWarmingReplayable, formatCacheWarmingStatus and
 // formatCacheWarmingUsage and PiG's GetCacheWarmingDelayMs, GetPromptCacheTtlMs, IsReplayable, FormatCacheWarmingStatus and FormatCacheWarmingUsage over 6,000 seeded inputs under three
 // process PI_CACHE_RETENTION values (unset, "long", "short"): TTLs around the ten-second margin, model prompt-cache tiers (absent, zero, fractional), request retention and
 // request env (an empty request value falls through to the process one), Anthropic models with and without adaptive thinking, and every status state with decisions at
@@ -99,7 +99,8 @@ func TestCacheWarmerPureFunctionsMatchPi(t *testing.T) {
 	}
 
 	const body = `
-const { getCacheWarmingDelayMs, getPromptCacheTtlMs, isReplayable, formatCacheWarmingStatus, formatCacheWarmingUsage } = await load("pi-coding-agent/core/cache-warmer.js");
+const { getCacheWarmingDelayMs, getPromptCacheTtlMs, isCacheWarmingReplayable } = await load("pi-ai/cache-warming.js");
+const { formatCacheWarmingStatus, formatCacheWarmingUsage } = await load("pi-coding-agent/core/cache-warmer.js");
 const out = [];
 for (const c of input) {
 	const model = { api: c.api, ...(c.promptCache ? { promptCache: c.promptCache } : {}), ...(c.force === null ? {} : { compat: { forceAdaptiveThinking: c.force } }) };
@@ -109,7 +110,7 @@ for (const c of input) {
 	out.push({
 		delay: getCacheWarmingDelayMs(c.ttl) ?? null,
 		ttlMs: getPromptCacheTtlMs(model, options) ?? null,
-		replay: isReplayable(model, options),
+		replay: isCacheWarmingReplayable(model, options),
 		status: formatCacheWarmingStatus(status, c.now),
 		usage: formatCacheWarmingUsage(c.usageCost, c.usageNote || undefined),
 	});

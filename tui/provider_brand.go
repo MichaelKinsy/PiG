@@ -24,7 +24,7 @@ func GetProviderBrandStyle(providerID string) ProviderBrandStyle {
 		return func(text string, elapsed time.Duration) string {
 			return RadiusShimmer(text, elapsed, ActiveTheme().GetColorMode())
 		}
-	case "openrouter":
+	case "openrouter": //portlint:allow providerliteral provider-brand.ts getProviderBrandStyle `if (providerId === "openrouter")` names the same partner
 		return openRouterGlow
 	}
 	return nil
@@ -54,7 +54,7 @@ const (
 func RadiusShimmer(text string, elapsed time.Duration, mode TerminalColorMode) string {
 	colors := radiusColors()
 	cycle := float64(len(colors) * radiusCharsPerColor)
-	offset := elapsed.Seconds() * radiusCharsPerSecond
+	offset := float64(elapsed.Seconds() * radiusCharsPerSecond)
 	var result strings.Builder
 	index := 0
 	for _, char := range text {
