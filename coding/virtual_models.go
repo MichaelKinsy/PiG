@@ -447,10 +447,11 @@ func (s *Session) modelForMessage(message *agent.AssistantMessage) *ai.Model {
 //
 // upstream: agent-session.ts _recordSelection
 func (s *Session) recordSelection() {
-	if s.inner.Load() == nil {
+	in := s.inner.Load()
+	if in == nil {
 		return
 	}
-	branch := s.inner.Load().GetContextBranch()
+	branch := in.GetContextBranch()
 	if s.modelRuntime != nil {
 		s.recordModelSelection(branch)
 	}
