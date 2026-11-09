@@ -3969,8 +3969,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -8146,8 +8146,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -10960,8 +10960,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -11887,8 +11887,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -16923,8 +16923,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -17520,8 +17520,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -19796,8 +19796,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -25678,8 +25678,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -27242,8 +27242,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -28147,8 +28147,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -29068,8 +29068,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -31601,8 +31601,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -32222,8 +32222,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -34500,9 +34500,9 @@
         "call:ai/session_resources.go#CleanupSessionResources"
       ],
       "evidence": [
-        "test:ai/session_resources_upstream_test.go#TestSessionResourceCleanupCallsHooksInOrderAndUnregisters",
-        "test:ai/session_resources_upstream_test.go#TestSessionResourceCleanupRunsEveryHookAndAggregatesFailures",
-        "test:ai/session_resources_hooks_test.go#TestCleanupSessionResourcesRunsEveryRegisteredHookUntilItIsUnregistered"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/providers/bedrock/bedrock_strict_tool_fallback_upstream_test.go#TestBedrockStrictToolLimitForgottenAfterSessionCleanup",
+        "test:ai/session_resources_upstream_test.go#TestSessionResourceCleanupCallsHooksInOrderAndUnregisters"
       ]
     },
     {
@@ -34522,9 +34522,9 @@
         "call:ai/session_resources.go#CleanupSessionResources"
       ],
       "evidence": [
-        "test:ai/session_resources_upstream_test.go#TestSessionResourceCleanupCallsHooksInOrderAndUnregisters",
-        "test:ai/session_resources_upstream_test.go#TestSessionResourceCleanupRunsEveryHookAndAggregatesFailures",
-        "test:ai/session_resources_hooks_test.go#TestCleanupSessionResourcesRunsEveryRegisteredHookUntilItIsUnregistered"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/providers/bedrock/bedrock_strict_tool_fallback_upstream_test.go#TestBedrockStrictToolLimitForgottenAfterSessionCleanup",
+        "test:ai/session_resources_upstream_test.go#TestSessionResourceCleanupCallsHooksInOrderAndUnregisters"
       ]
     },
     {
@@ -37678,8 +37678,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -38519,8 +38519,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -39292,8 +39292,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -40087,8 +40087,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -42223,8 +42223,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -43660,8 +43660,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -44997,8 +44997,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -45728,8 +45728,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -46914,8 +46914,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -47857,8 +47857,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -49244,8 +49244,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -51821,8 +51821,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -54835,8 +54835,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -55762,8 +55762,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -60827,8 +60827,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -61424,8 +61424,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -63837,8 +63837,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -69755,8 +69755,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -71319,8 +71319,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -72224,8 +72224,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -73145,8 +73145,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -75678,8 +75678,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -76299,8 +76299,8 @@
       ],
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_ForwardsSessionIDToStreamOptions",
-        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream",
-        "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/azure_openai_completions_upstream_test.go#TestAzureOpenaiCompletionsUpstream"
       ]
     },
     {
@@ -78709,9 +78709,9 @@
         "call:ai/session_resources.go#CleanupSessionResources"
       ],
       "evidence": [
-        "test:ai/session_resources_upstream_test.go#TestSessionResourceCleanupCallsHooksInOrderAndUnregisters",
-        "test:ai/session_resources_upstream_test.go#TestSessionResourceCleanupRunsEveryHookAndAggregatesFailures",
-        "test:ai/session_resources_hooks_test.go#TestCleanupSessionResourcesRunsEveryRegisteredHookUntilItIsUnregistered"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/providers/bedrock/bedrock_strict_tool_fallback_upstream_test.go#TestBedrockStrictToolLimitForgottenAfterSessionCleanup",
+        "test:ai/session_resources_upstream_test.go#TestSessionResourceCleanupCallsHooksInOrderAndUnregisters"
       ]
     },
     {
@@ -78731,9 +78731,9 @@
         "call:ai/session_resources.go#CleanupSessionResources"
       ],
       "evidence": [
-        "test:ai/session_resources_upstream_test.go#TestSessionResourceCleanupCallsHooksInOrderAndUnregisters",
-        "test:ai/session_resources_upstream_test.go#TestSessionResourceCleanupRunsEveryHookAndAggregatesFailures",
-        "test:ai/session_resources_hooks_test.go#TestCleanupSessionResourcesRunsEveryRegisteredHookUntilItIsUnregistered"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
+        "test:ai/providers/bedrock/bedrock_strict_tool_fallback_upstream_test.go#TestBedrockStrictToolLimitForgottenAfterSessionCleanup",
+        "test:ai/session_resources_upstream_test.go#TestSessionResourceCleanupCallsHooksInOrderAndUnregisters"
       ]
     },
     {

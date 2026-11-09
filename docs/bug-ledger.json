@@ -31891,6 +31891,52 @@
       ]
     },
     {
+      "id": "BF-9624fc4",
+      "title": "Azure OpenAI models now keep OpenAI's long-context price tier, so requests above 272K input tokens are costed…",
+      "symptom": "Azure OpenAI models now keep OpenAI's long-context price tier, so requests above 272K input tokens are costed at Azure's long-context rates (Pi #11948).",
+      "rootCause": "Azure models were built by copying the OpenAI provider models with a cost rebuilt from the four base rates only, which dropped OpenAI long-context tier.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Azure OpenAI models now keep OpenAI's long-context price tier, so requests above 272K input tokens are costed at Azure's long-context rates (Pi #11948).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "9624fc4542",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "internal/modelgen/providers/azure_test.go::TestAzureKeepsOpenAILongContextPriceTier"
+      ]
+    },
+    {
+      "id": "BF-9624fc4-2",
+      "title": "Anthropic and Bedrock no longer send `strict: \"prefer\"` tools strict again on every request after Claude…",
+      "symptom": "Anthropic and Bedrock no longer send `strict: \"prefer\"` tools strict again on every request after Claude rejected them for exceeding its strict tool limits, which cost a rejected request (400) per turn.",
+      "rootCause": "Each request started with strict prefer tools again and only the retry inside that request sent them non-strict, so every turn of a rejected session cost one 400.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Anthropic and Bedrock no longer send `strict: \"prefer\"` tools strict again on every request after Claude rejected them for exceeding its strict tool limits, which cost a rejected request (400) per turn. Later requests with the same session id now send those tools non-strict right away, until `CleanupSessionResources(sessionID)` (Pi #11626).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "9624fc4542",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "ai/anthropic_strict_tool_fallback_upstream_test.go::TestAnthropicPreferredStrictToolFallbackUpstream",
+        "ai/providers/bedrock/bedrock_strict_tool_fallback_upstream_test.go::TestBedrockStrictToolLimitRememberedPerSession",
+        "ai/strict_tool_limit_upstream_test.go::TestStrictToolLimitSessionsRememberedUntilCleanup"
+      ]
+    },
+    {
       "id": "BF-967def6",
       "title": "Tool arguments for a `bigint` or `undefined` parameter are converted, not rejected: a JSON `\"42\"` or `42` for…",
       "symptom": "Tool arguments for a `bigint` or `undefined` parameter are converted, not rejected: a JSON `\"42\"` or `42` for a bigint parameter and `null` for an undefined one validate, as TypeBox converted them.",
