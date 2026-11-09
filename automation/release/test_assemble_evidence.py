@@ -13,8 +13,8 @@ spec.loader.exec_module(assembler)
 class ReleaseEvidenceTests(unittest.TestCase):
     def fixture(self, root):
         expected = {}
-        for target in assembler.TARGETS:
-            name = f'pig-0.2.0-{target}'
+        for product, target in [('pig', t) for t in assembler.TARGETS] + [('pig-acp', t) for t in assembler.ACP_TARGETS]:
+            name = f'{product}-0.2.0-{target}'
             prefix = 'source' if target == 'source' else 'sbom'
             archive = name + ('.zip' if target.startswith('windows-') else '.tar.gz')
             names = [archive, archive + '.sigstore.json'] + ['evidence/' + suffix for suffix in
@@ -39,8 +39,11 @@ class ReleaseEvidenceTests(unittest.TestCase):
             expected = self.fixture(root / 'candidates')
             assembler.assemble(root / 'candidates', root / 'release', '0.2.0')
             # Each target keeps its archive, its signing bundle and five evidence files.
-            self.assertEqual(len(expected), 7 * len(assembler.TARGETS))
+            self.assertEqual(len(expected), 7 * (len(assembler.TARGETS) + len(assembler.ACP_TARGETS)))
             self.assertIn('pig-0.2.0-android-arm64.tar.gz', expected)
+            self.assertIn('pig-acp-0.2.0-linux-arm64.tar.gz', expected)
+            self.assertIn('pig-acp-0.2.0-windows-arm64.zip', expected)
+            self.assertNotIn('pig-acp-0.2.0-android-arm64.tar.gz', expected)
             actual = {p.name: p.read_bytes() for p in (root / 'release').iterdir() if p.name != 'EVIDENCE-SHA256SUMS'}
             self.assertEqual(actual, expected)
             manifest = (root / 'release/EVIDENCE-SHA256SUMS').read_text().splitlines()
@@ -55,6 +58,15 @@ class ReleaseEvidenceTests(unittest.TestCase):
             self.fixture(root / 'candidates')
             (root / 'candidates/pig-0.2.0-linux-amd64/pig-0.2.0-linux-amd64.tar.gz').write_bytes(b'changed')
             with self.assertRaisesRegex(ValueError, 'Build checksum mismatch'):
+                assembler.assemble(root / 'candidates', root / 'release', '0.2.0')
+            self.assertFalse((root / 'release').exists())
+
+    def test_missing_acp_archive_refuses_release(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.fixture(root / 'candidates')
+            (root / 'candidates/pig-acp-0.2.0-darwin-arm64/pig-acp-0.2.0-darwin-arm64.tar.gz').unlink()
+            with self.assertRaisesRegex(ValueError, 'Missing or invalid'):
                 assembler.assemble(root / 'candidates', root / 'release', '0.2.0')
             self.assertFalse((root / 'release').exists())
 
