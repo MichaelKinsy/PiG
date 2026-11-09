@@ -12,8 +12,12 @@ type recordingSender struct {
 	stops int
 }
 
-func (s *recordingSender) Send(partial bool) { s.mu.Lock(); s.calls = append(s.calls, partial); s.mu.Unlock() }
-func (s *recordingSender) Stop()             { s.mu.Lock(); s.stops++; s.mu.Unlock() }
+func (s *recordingSender) Send(partial bool) {
+	s.mu.Lock()
+	s.calls = append(s.calls, partial)
+	s.mu.Unlock()
+}
+func (s *recordingSender) Stop() { s.mu.Lock(); s.stops++; s.mu.Unlock() }
 
 // Pi worker.ts: the close is Promise.race([send(true), sleep(1 s)]); the final send queues behind a periodic send in flight and the
 // one bound covers both.
