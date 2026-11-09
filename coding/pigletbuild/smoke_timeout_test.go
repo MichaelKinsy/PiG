@@ -54,8 +54,10 @@ func setSmokeBudget(t *testing.T, budget time.Duration) {
 }
 
 // A hung artifact fails the smoke verification with a message that names the deadline, not the killed process's exit
-// status, which on Windows is a bare "exit status 1", says the process had started and not exited, and shows what it
-// printed, so a log tells a hang from a slow start.
+// status, which on Windows is a bare "exit status 1", and says the process had started and not exited. Where the
+// artifact is a shell script it also shows what the process printed, so a log tells a hang from a slow start; on Windows
+// the program is built here and may not have run its first line within the short budget of this test, so the output is
+// not required.
 func TestSmokeArtifactReportsItsDeadline(t *testing.T) {
 	path := writeHungArtifact(t, "pig-test-banner")
 	setSmokeBudget(t, 200*time.Millisecond)
@@ -63,7 +65,11 @@ func TestSmokeArtifactReportsItsDeadline(t *testing.T) {
 	if err == nil {
 		t.Fatal("smokeArtifact accepted an artifact that never exits")
 	}
-	for _, want := range []string{"timed out after 200ms running " + path + " --version", "had not exited", "pig-test-banner"} {
+	wants := []string{"timed out after 200ms running " + path + " --version", "had not exited"}
+	if runtime.GOOS != "windows" {
+		wants = append(wants, "pig-test-banner")
+	}
+	for _, want := range wants {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("smokeArtifact error = %v, want %q", err, want)
 		}
