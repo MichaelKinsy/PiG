@@ -47,6 +47,39 @@ func TestActiveGoroutinesCountsAGoroutineThatNeverParks(t *testing.T) {
 	}
 }
 
+func TestActiveGoroutineClassifiesDumpStates(t *testing.T) {
+	const self = 7
+	for _, test := range []struct {
+		name  string
+		block string
+		want  bool
+	}{
+		{"running", "goroutine 8 [running]:\nmain.f()\n\t/x.go:1 +0x1", true},
+		{"runnable", "goroutine 8 [runnable]:\nmain.f()\n\t/x.go:1 +0x1", true},
+		{"system call", "goroutine 8 [syscall, 2 minutes]:\nsyscall.read()\n\t/x.go:1 +0x1", true},
+		{"preempted", "goroutine 8 [preempted]:\nmain.f()\n\t/x.go:1 +0x1", true},
+		{"world lock of a collection", "goroutine 8 [semacquire]:\nmain.allocate()\n\t/x.go:1 +0x1", true},
+		{"assist credit of a collection", "goroutine 8 [GC assist wait]:\nmain.allocate()\n\t/x.go:1 +0x1", true},
+		{"assist work of a collection", "goroutine 8 [GC assist marking]:\nmain.allocate()\n\t/x.go:1 +0x1", true},
+		{"stop of the world", "goroutine 8 [stopping the world]:\nruntime.GC()\n\t/x.go:1 +0x1", true},
+		{"wait for a collection", "goroutine 8 [wait for GC cycle]:\nruntime.GC()\n\t/x.go:1 +0x1", true},
+		{"file descriptor lock", "goroutine 8 [semacquire]:\ninternal/poll.runtime_Semacquire(0x1)\n\t/x.go:1 +0x1\ninternal/poll.(*fdMutex).rwlock(0x1)\n\t/y.go:2 +0x2", false},
+		{"channel", "goroutine 8 [chan receive]:\nmain.f()\n\t/x.go:1 +0x1", false},
+		{"select", "goroutine 8 [select, 3 minutes]:\nmain.f()\n\t/x.go:1 +0x1", false},
+		{"sleep", "goroutine 8 [sleep]:\ntime.Sleep(0x1)\n\t/x.go:1 +0x1", false},
+		{"mutex", "goroutine 8 [sync.Mutex.Lock]:\nsync.(*Mutex).Lock(0x1)\n\t/x.go:1 +0x1", false},
+		{"wait group", "goroutine 8 [sync.WaitGroup.Wait]:\nsync.(*WaitGroup).Wait(0x1)\n\t/x.go:1 +0x1", false},
+		{"IO wait", "goroutine 8 [IO wait]:\ninternal/poll.(*pollDesc).wait(0x1)\n\t/x.go:1 +0x1", false},
+		{"idle collector worker", "goroutine 8 [GC worker (idle)]:\nruntime.gcBgMarkWorker()\n\t/x.go:1 +0x1", false},
+		{"the caller", "goroutine 7 [running]:\nmain.f()\n\t/x.go:1 +0x1", false},
+		{"not a goroutine", "main.f()\n\t/x.go:1 +0x1", false},
+	} {
+		if got := activeGoroutine(self, []byte(test.block)); got != test.want {
+			t.Errorf("%s: active = %v, want %v", test.name, got, test.want)
+		}
+	}
+}
+
 // The barrier still returns while goroutines are parked in the waits of the program, among them one that waits for a file
 // descriptor another goroutine reads ("semacquire", as the collection's world lock is, told apart by its internal/poll frames).
 func TestAwaitQuiescentReturnsWithGoroutinesParkedInTheProgramsWaits(t *testing.T) {
