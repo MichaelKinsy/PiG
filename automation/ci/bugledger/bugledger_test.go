@@ -96,6 +96,8 @@ func TestImpactAndPlatformComeFromTheWording(t *testing.T) {
 		{"A credential file was world-readable on Linux.", "Credential or permission exposure", "Linux"},
 		{"The update fails with EPERM.", "An operation failed or was rejected", "Windows"},
 		{"The block is drawn in the wrong colors.", "Wrong display", "All platforms"},
+		{"Every frame the renderer paints allocates two fewer objects.", "Extra allocation or slower run", "All platforms"},
+		{"`/fork` builds the entries from the decoded messages again instead of decoding every record twice, which doubled the allocations.", "Extra allocation or slower run", "All platforms"},
 		{"A value is kept.", "Behavior differed from Pi", "All platforms"},
 	}
 	for _, c := range cases {

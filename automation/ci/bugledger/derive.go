@@ -196,6 +196,7 @@ var impactRules = []impactRule{
 	{regexp.MustCompile(`(?i)crash|panic|\bhang|hung\b|freez|deadlock|never (returns|ends|exits|finishes)|without bound|unbounded|out of memory|exits? (1|0)\b|outlives|exited 1`), "Crash, hang or runaway process"},
 	{regexp.MustCompile(`(?i)\blost\b|loses|corrupt|overwr[io]te|silently dropped|data loss|dropped (the|a|every|members)|discarded`), "Lost or altered data"},
 	{regexp.MustCompile(`(?i)\bfail(s|ed|ure)?\b|\berror(s|ed)?\b|rejected|refus|EPERM|cannot|could not|\binvalid\b|no longer (works|runs|loads)|did not (load|start|run)`), "An operation failed or was rejected"},
+	{regexp.MustCompile(`(?i)allocat(e|es|ed|ion|ions)\b|allocs/op|fewer objects`), "Extra allocation or slower run"},
 	{regexp.MustCompile(`(?i)render|\bdraw|colou?r|highlight|display|repaint|cursor|layout|padded|spinner|glyph`), "Wrong display"},
 	{regexp.MustCompile(`(?i)\bsorted|order|escaped|wrong|incorrect|instead of`), "Wrong output or ordering"},
 }

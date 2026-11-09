@@ -200,6 +200,8 @@ type Session struct {
 	path       string
 	sessionDir string
 	leafID     *string
+	// leafStore is what leafID points to while a file is indexed (setLeafInPlace), so a line does not allocate its leaf; the load detaches leafID from it.
+	leafStore string
 	// flushed reports whether the session file on disk holds the
 	// header + buffered entries. Mirrors upstream SessionManager.flushed:
 	// a fresh session is not written to disk until it holds a user or

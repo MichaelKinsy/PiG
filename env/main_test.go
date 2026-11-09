@@ -3,7 +3,9 @@ package env
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/env/daemon"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
@@ -21,7 +23,12 @@ func TestMain(m *testing.M) {
 		os.Exit(runOldDaemon(os.Stdin, os.Stdout, os.Args[4]))
 	}
 	if len(os.Args) >= 4 && os.Args[1] == "serve" && os.Args[2] == "--token" {
-		if err := daemon.Serve(os.Stdin, os.Stdout, os.Args[3], daemon.Options{Version: "test"}); err != nil {
+		options := daemon.Options{Version: "test"}
+		// A test of the silence exit sets how long the daemon waits for a silent client; pings follow quickly so it is noticed.
+		if limit, err := strconv.Atoi(os.Getenv("PI_ENV_TEST_SILENCE_MS")); err == nil {
+			options.PingInterval, options.SilenceLimit = 20*time.Millisecond, time.Duration(limit)*time.Millisecond
+		}
+		if err := daemon.Serve(os.Stdin, os.Stdout, os.Args[3], options); err != nil {
 			os.Exit(1)
 		}
 		os.Exit(0)

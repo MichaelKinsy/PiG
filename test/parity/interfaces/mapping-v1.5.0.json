@@ -245413,8 +245413,8 @@
       ],
       "evidence": [
         "test:durable/env/node/env_members_test.go#TestShellExecutesInTheCwdOption",
-        "test:durable/env/node/filesystem_pi_test.go#TestWatchTargetExcludeAndShellCwdMirrorPi",
-        "test:durable/env/node/node_regressions_test.go#TestShellTimesOutATimeoutBelowOneMillisecond"
+        "test:durable/env/node/exec_session_leader_test.go#TestShellCommandRunsAsTheLeaderOfANewSession",
+        "test:durable/env/node/filesystem_pi_test.go#TestWatchTargetExcludeAndShellCwdMirrorPi"
       ]
     },
     {
@@ -245456,9 +245456,9 @@
         "call:durable/env/node/exec.go#shellRun.start"
       ],
       "evidence": [
+        "test:durable/env/node/exec_session_leader_test.go#TestShellCommandRunsAsTheLeaderOfANewSession",
         "test:durable/env/node/shell_test.go#TestShellAppliesStringShellEnvironmentOverrides",
-        "test:durable/env/node/shell_test.go#TestShellCanReplaceRatherThanInheritTheDefaultShellEnvironment",
-        "test:durable/env/node/shell_test.go#TestShellExecutesCommandsInCwdWithEnvOverrides"
+        "test:durable/env/node/shell_test.go#TestShellCanReplaceRatherThanInheritTheDefaultShellEnvironment"
       ]
     },
     {
