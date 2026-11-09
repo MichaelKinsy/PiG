@@ -1,7 +1,7 @@
 {
-	"version": "33611a641d16097f12f0c5b5dd33d97237cca14064393e61db8f0432bff972de",
-	"script": "app-LMPB4YUJ.js",
-	"style": "app-SJUYU33S.css",
+	"version": "5bef3686512c648d4c523b8edf53a4b1108264227da7bce3e1d62f7a8df62537",
+	"script": "app-NR7H54IC.js",
+	"style": "app-BNZFOQLQ.css",
 	"plugins": [
 		"agent",
 		"artifacts",
@@ -61,28 +61,28 @@
 			"sha256": "29b1a5c95c8fa5920b2acc54501ac56800757cfee07cb9ab46c08e512ff75426"
 		},
 		{
-			"name": "app-LMPB4YUJ.js",
-			"type": "text/javascript; charset=utf-8",
-			"size": 1320688,
-			"sha256": "cb536bb5881140986b645e19ce1cdd055b24253051f7b62cf05c43b47aad0326"
-		},
-		{
-			"name": "app-LMPB4YUJ.js.map",
-			"type": "application/json",
-			"size": 6184194,
-			"sha256": "c8fafc4122a31633254904bee60f23f2e0bdc5ba2b8c3f7837540140edd3de6e"
-		},
-		{
-			"name": "app-SJUYU33S.css",
+			"name": "app-BNZFOQLQ.css",
 			"type": "text/css; charset=utf-8",
-			"size": 349517,
-			"sha256": "76ce051cf286793852dc7af337aaefbf258d6ca2f059431b2e9c2ca72104bbb0"
+			"size": 349884,
+			"sha256": "127f2a86b9380cb185d918d86fc0c0df3c8f40913ff117c60bdfb44c9046c605"
 		},
 		{
-			"name": "app-SJUYU33S.css.map",
+			"name": "app-BNZFOQLQ.css.map",
 			"type": "application/json",
-			"size": 631242,
-			"sha256": "875e483b35856fc602e96fdc4af535d0fad415eef7fe00c1fc7694af4d8b3243"
+			"size": 632704,
+			"sha256": "01133aec1bf433419bf784bdaaaa3a95181a49d203cf6d29263d2533dbde2ced"
+		},
+		{
+			"name": "app-NR7H54IC.js",
+			"type": "text/javascript; charset=utf-8",
+			"size": 1322311,
+			"sha256": "da45aff68df1fb7775de6714bcb42cd63a71f1fd8bf9a43c23e73554929623cc"
+		},
+		{
+			"name": "app-NR7H54IC.js.map",
+			"type": "application/json",
+			"size": 6193792,
+			"sha256": "26a80ea650e1f1848efe3887dc9a42ec6d650af164f39c777d151a104649cea9"
 		},
 		{
 			"name": "ghostty-vt-BNEKZYKQ.wasm",
@@ -97,7 +97,7 @@
 			"light": "#ffffff",
 			"dark": "#101c1a"
 		},
-		"upstreamVersion": "1ce9684636941f5d7de5d4cae34f6e74d77ca1d88cd4a8b991e37191a172b8fb",
+		"upstreamVersion": "edb3dd56b3d76b9e824e7c3542e738dfab8932c056314cee32ff6f2ba4eaffd2",
 		"public": [
 			"icons/apple-touch-icon.png",
 			"icons/favicon.svg",
