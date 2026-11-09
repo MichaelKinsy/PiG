@@ -215,5 +215,6 @@ func CreateAssistantMessageEventStream() *ModelEventStream {
 	return stream
 }
 
-// Push publishes an event in source order. A terminal event completes Result and closes Events.
-func (s *ModelEventStream) Push(event map[string]any) { s.push(event) }
+// Push publishes an event in source order. A terminal event completes Result and closes Events. The host receives the event as it is when Push returns: the SDK encodes it here,
+// so the author may go on changing the message it shows (Pi's consumer encodes an event before its provider's next await).
+func (s *ModelEventStream) Push(event map[string]any) { s.enqueue(event, true) }

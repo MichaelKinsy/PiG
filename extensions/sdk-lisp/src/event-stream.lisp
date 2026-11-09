@@ -9,6 +9,8 @@
   (queue (sb-thread:make-waitqueue))
   (head '()) (tail nil)
   (terminal nil) (result nil)
+  ;; the result as it was when the author ended the stream, which the host receives (NIL for a stream the SDK itself fills: RESULT is then what the host receives)
+  (result-wire nil)
   (started nil) (start-error nil)
   (id nil)
   ;; a stream made by create-assistant-message-event-stream times its response (see ms-time-message)
@@ -38,29 +40,53 @@ its timestamp predates the stream."
                                (/ internal-time-units-per-second 2))
                             internal-time-units-per-second)))))))
 
-(defun model-stream-push (stream event)
-  "Append EVENT; a done or error event ends the stream, and anything pushed after the end is dropped."
+(defun json-snapshot (value)
+  "A copy of the JSON value VALUE that shares nothing mutable with it: objects and arrays are copied (an object keeps its member order) and a lazy member is forced."
+  (let ((value (force-lazy value)))
+    (typecase value
+      (hash-table (let ((copy (make-hash-table :test (hash-table-test value) :size (max 1 (hash-table-count value)))))
+                    (maphash (lambda (key member) (setf (gethash key copy) (json-snapshot member))) value)
+                    copy))
+      (string (if (simple-string-p value) value (coerce value 'simple-string)))
+      (vector (map 'simple-vector #'json-snapshot value))
+      (cons (mapcar #'json-snapshot value))
+      (t value))))
+
+(defun model-stream-enqueue (stream event &key snapshot)
+  "Append EVENT; a done or error event ends the stream, and anything pushed after the end is dropped. SNAPSHOT queues a copy of EVENT, for an event an author built and may go on changing."
   (sb-thread:with-mutex ((model-event-stream-lock stream))
     (unless (model-event-stream-terminal stream)
-      (let ((cell (list event)))
-        (if (model-event-stream-head stream)
-            (setf (cdr (model-event-stream-tail stream)) cell)
-            (setf (model-event-stream-head stream) cell))
-        (setf (model-event-stream-tail stream) cell))
-      (let ((type (jget event "type")))
-        (when (member type '("done" "error") :test #'equal)
-          (let ((final (jget event (if (equal type "done") "message" "error"))))
-            (ms-time-message stream final)
-            (setf (model-event-stream-terminal stream) t (model-event-stream-result stream) final))))
+      (let* ((type (jget event "type"))
+             (ends (member type '("done" "error") :test #'equal))
+             (key (if (equal type "done") "message" "error"))
+             (final (and ends (jget event key))))
+        (when ends (ms-time-message stream final))
+        (let* ((queued (if snapshot (json-snapshot event) event))
+               (cell (list queued)))
+          (if (model-event-stream-head stream)
+              (setf (cdr (model-event-stream-tail stream)) cell)
+              (setf (model-event-stream-head stream) cell))
+          (setf (model-event-stream-tail stream) cell)
+          (when ends
+            (setf (model-event-stream-terminal stream) t
+                  (model-event-stream-result stream) final
+                  (model-event-stream-result-wire stream) (and snapshot (jget queued key))))))
       (sb-thread:condition-broadcast (model-event-stream-queue stream))))
   stream)
 
+(defun model-stream-push (stream event)
+  "Append EVENT; a done or error event ends the stream, and anything pushed after the end is dropped. The host receives the event as it is when this returns: a copy is queued, so
+the author may go on changing the message it shows (Pi's consumer encodes an event before its provider's next await, and the forwarding thread must not read a table the author may
+still be changing)."
+  (model-stream-enqueue stream event :snapshot t))
+
 (defun model-stream-end (stream &optional result)
-  "End the stream with RESULT (a message hash-table or NIL) without a terminal event."
+  "End the stream with RESULT (a message hash-table or NIL) without a terminal event. The result is the message as it is now."
   (sb-thread:with-mutex ((model-event-stream-lock stream))
     (unless (model-event-stream-terminal stream)
       (ms-time-message stream result)
-      (setf (model-event-stream-terminal stream) t (model-event-stream-result stream) result)
+      (setf (model-event-stream-terminal stream) t (model-event-stream-result stream) result
+            (model-event-stream-result-wire stream) (json-snapshot result))
       (sb-thread:condition-broadcast (model-event-stream-queue stream))))
   stream)
 
@@ -101,6 +127,13 @@ that tells whether the transport shut down: then this signals an error instead (
     (loop until (model-event-stream-terminal stream)
           do (sb-thread:condition-wait (model-event-stream-queue stream) (model-event-stream-lock stream)))
     (model-event-stream-result stream)))
+
+(defun model-stream-wire-result (stream)
+  "The final message as the host receives it: as it was when the author ended the stream. Blocks until the stream ended."
+  (sb-thread:with-mutex ((model-event-stream-lock stream))
+    (loop until (model-event-stream-terminal stream)
+          do (sb-thread:condition-wait (model-event-stream-queue stream) (model-event-stream-lock stream)))
+    (or (model-event-stream-result-wire stream) (model-event-stream-result stream))))
 
 (defun model-stream-mark-started (stream &optional error)
   "The producer began (a string or a condition says it failed to). Only the first mark counts."

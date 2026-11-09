@@ -1378,17 +1378,36 @@ func (c Context) GetModelAuth(providerID, modelID string) (json.RawMessage, erro
 	return result.Result, nil
 }
 
+// modelStreamItem is one event of a ModelEventStream.
+type modelStreamItem struct {
+	event map[string]any
+	// wire is event as it was when the author pushed it, with the error of encoding it; the SDK writes it to the host. It is nil for an event the SDK built or decoded itself.
+	wire json.RawMessage
+	err  error
+}
+
+// payload is the event as the host receives it.
+func (q modelStreamItem) payload() any {
+	if q.wire != nil {
+		return q.wire
+	}
+	return q.event
+}
+
 // ModelEventStream is the SDK-side pull stream for host model operations.
 type ModelEventStream struct {
 	mu        sync.Mutex
 	delivery  sync.Mutex
-	queue     []map[string]any
+	queue     []modelStreamItem
 	changed   chan struct{}
 	done      chan struct{}
 	terminal  bool
 	result    map[string]any
 	startOnce sync.Once
 	started   chan error
+	// resultWire is the result as it was when the author ended the stream, with the error of encoding it (see modelStreamItem.wire).
+	resultWire json.RawMessage
+	resultErr  error
 	// A stream made by CreateAssistantMessageEventStream times its response as pi-ai's AssistantMessageEventStream does (see timeMessage); one the SDK makes for a host
 	// operation does not, because the host already timed that response.
 	timed       bool
@@ -1434,7 +1453,7 @@ func jsNumberValue(value any) (float64, bool) {
 	return 0, false
 }
 
-// End completes iteration and resolves the final provider result.
+// End completes iteration and resolves the final provider result. The host receives the result as it is now.
 func (s *ModelEventStream) End(result map[string]any) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -1444,6 +1463,7 @@ func (s *ModelEventStream) End(result map[string]any) {
 	s.timeMessage(result)
 	s.terminal = true
 	s.result = result
+	s.resultWire, s.resultErr = snapshotMessage(result)
 	close(s.done)
 	close(s.changed)
 	s.changed = make(chan struct{})
@@ -1457,32 +1477,52 @@ func (s *ModelEventStream) markStarted(err error) {
 	s.startOnce.Do(func() { s.started <- err; close(s.started) })
 }
 
-func (s *ModelEventStream) push(event map[string]any) {
+// push queues an event the SDK built or decoded itself: nobody else holds its map, so it is queued as it is.
+func (s *ModelEventStream) push(event map[string]any) { s.enqueue(event, false) }
+
+// enqueue queues event in source order; a done or error event ends the stream. An event an author pushed is encoded here, on the author's goroutine, so the host receives it as it
+// was at the push: the forwarder runs on another goroutine and must not read a map the author may still be changing.
+func (s *ModelEventStream) enqueue(event map[string]any, pushedByAuthor bool) {
 	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.terminal {
-		s.mu.Unlock()
 		return
 	}
-	s.queue = append(s.queue, event)
-	if eventType, _ := event["type"].(string); eventType == "done" || eventType == "error" {
-		if eventType == "done" {
-			message, _ := event["message"].(map[string]any)
-			s.timeMessage(message)
-		} else {
-			message, _ := event["error"].(map[string]any)
-			s.timeMessage(message)
-		}
+	item := modelStreamItem{event: event}
+	eventType, _ := event["type"].(string)
+	var final map[string]any
+	switch eventType {
+	case "done":
+		final, _ = event["message"].(map[string]any)
+	case "error":
+		final, _ = event["error"].(map[string]any)
+	}
+	ends := eventType == "done" || eventType == "error"
+	if ends {
+		s.timeMessage(final)
+	}
+	if pushedByAuthor {
+		item.wire, item.err = json.MarshalJS(event)
+	}
+	s.queue = append(s.queue, item)
+	if ends {
 		s.terminal = true
-		if eventType == "done" {
-			s.result, _ = event["message"].(map[string]any)
-		} else {
-			s.result, _ = event["error"].(map[string]any)
+		s.result = final
+		if pushedByAuthor {
+			s.resultWire, s.resultErr = snapshotMessage(final)
 		}
 		close(s.done)
 	}
 	close(s.changed)
 	s.changed = make(chan struct{})
-	s.mu.Unlock()
+}
+
+// snapshotMessage encodes a message the author handed over, or returns nil for no message.
+func snapshotMessage(message map[string]any) (json.RawMessage, error) {
+	if message == nil {
+		return nil, nil
+	}
+	return json.MarshalJS(message)
 }
 
 // Events returns model events in host order until terminal or cancellation.
@@ -1490,49 +1530,60 @@ func (s *ModelEventStream) Events(ctx context.Context) <-chan map[string]any {
 	out := make(chan map[string]any)
 	go func() {
 		defer close(out)
-		for {
+		s.drain(ctx, func(item modelStreamItem) bool {
 			select {
+			case out <- item.event:
+				return true
 			case <-ctx.Done():
-				return
-			default:
+				return false
 			}
-			s.delivery.Lock()
-			s.mu.Lock()
-			if len(s.queue) > 0 {
-				event := s.queue[0]
-				s.mu.Unlock()
-				select {
-				case out <- event:
-					s.mu.Lock()
-					s.queue[0] = nil
-					s.queue = s.queue[1:]
-					if len(s.queue) == 0 {
-						s.queue = nil
-					}
-					s.mu.Unlock()
-					s.delivery.Unlock()
-				case <-ctx.Done():
-					s.delivery.Unlock()
-					return
-				}
-				continue
-			}
-			if s.terminal {
-				s.mu.Unlock()
+		})
+	}()
+	return out
+}
+
+// drain hands the queued events to emit in source order until the stream is terminal and empty or ctx is done. An event is consumed once emit returns true; when emit returns
+// false drain stops and the event stays queued.
+func (s *ModelEventStream) drain(ctx context.Context, emit func(modelStreamItem) bool) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+		s.delivery.Lock()
+		s.mu.Lock()
+		if len(s.queue) > 0 {
+			item := s.queue[0]
+			s.mu.Unlock()
+			if !emit(item) {
 				s.delivery.Unlock()
 				return
 			}
-			changed := s.changed
+			s.mu.Lock()
+			s.queue[0] = modelStreamItem{}
+			s.queue = s.queue[1:]
+			if len(s.queue) == 0 {
+				s.queue = nil
+			}
 			s.mu.Unlock()
 			s.delivery.Unlock()
-			select {
-			case <-changed:
-			case <-ctx.Done():
-				return
-			}
+			continue
 		}
-	}()
-	return out
+		if s.terminal {
+			s.mu.Unlock()
+			s.delivery.Unlock()
+			return
+		}
+		changed := s.changed
+		s.mu.Unlock()
+		s.delivery.Unlock()
+		select {
+		case <-changed:
+		case <-ctx.Done():
+			return
+		}
+	}
 }
 
 // Result waits for and returns the decoded terminal assistant message.
@@ -1541,6 +1592,33 @@ func (s *ModelEventStream) Result() map[string]any {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.result
+}
+
+// resultPayload waits for the terminal message and returns what the host receives as the stream's result: the message as it was when the author ended the stream.
+func (s *ModelEventStream) resultPayload() (any, error) {
+	<-s.done
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.resultErr != nil {
+		return nil, s.resultErr
+	}
+	if s.resultWire != nil {
+		return s.resultWire, nil
+	}
+	return s.result, nil
+}
+
+// forward writes the stream's events to the host through send in source order until the stream ends or ctx is done. It stops at the first event the author pushed that cannot be
+// encoded, or the first error of send, and returns that error.
+func (s *ModelEventStream) forward(ctx context.Context, send func(payload any) error) error {
+	var failure error
+	s.drain(ctx, func(item modelStreamItem) bool {
+		if failure = item.err; failure == nil {
+			failure = send(item.payload())
+		}
+		return failure == nil
+	})
+	return failure
 }
 
 func modelStreamErrorEvent(err error, model map[string]any) map[string]any {
