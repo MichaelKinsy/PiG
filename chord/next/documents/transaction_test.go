@@ -782,6 +782,31 @@ func TestTheSealFenceDiscardsTheTransactionHoldingTheLineAtTheSealTheLineIsFreeI
 	txRequireValue(t, s.o, s.handles[1], obj("n", float64(2)))
 }
 
+// Pi's overlay proxy throws a TypeError once its change settled (tracker.ts "Cannot use a settled overlay"), and a throw inside
+// the callback rejects the transaction. A draft of a transaction cut at the seal panics here (delta.ErrRevoked): the
+// transaction returns that as its error, so a callback that runs on a task of the host (p2's keepMemento, a handler's blocking
+// work) fails its handler when its object ends under it and does not crash the process.
+func TestTheSealFenceRevokesTheCutTransactionsDraftsAWriteAfterItRejectsTheTransactionWithTheRevokedOverlayNotAPanic(t *testing.T) {
+	s := newSealable(t)
+	gate := make(chan struct{})
+	entered := make(chan struct{})
+	first := goTx(s.attempts[0], func(tx Tx) (any, error) {
+		draft, err := tx.Draft(s.handles[0])
+		if err != nil {
+			return nil, err
+		}
+		close(entered)
+		<-gate
+		return nil, draft.Set("n", float64(1))
+	}, background)
+	<-entered
+	s.restart(t)
+	close(gate)
+	if err := awaitTx(t, first).err; !errors.Is(err, delta.ErrRevoked) {
+		t.Fatalf("error = %v, want the revoked overlay's (%v)", err, delta.ErrRevoked)
+	}
+}
+
 func TestTheSealFenceRefusesASealedAttemptsTransactionsWaitingForTheLineAndEveryNewOneItsHandlesStillRead(t *testing.T) {
 	s := newSealable(t)
 	gate := make(chan struct{})
@@ -1450,3 +1475,28 @@ func TestPersistedDocumentsInATransactionAHostClosingWhileAnAdmittedCommitIsInTh
 // stays usable" needs the host's `serve` of a method handler, `closeTimeout` and its `drain_timeout` report
 // (`errors.map(kind)`), and the host's release of a handler's stuck call at the object's end. The documents'
 // half of it (an admitted commit holds the line past the seal and adopts) is the previous test.
+
+// Only the revoked overlay is the transaction's error: any other panic of the callback is the caller's own and goes on, an
+// error value or a runtime error among them, and the line is free after it.
+func TestATransactionReturnsOnlyTheRevokedOverlayPanicOfItsCallbackAnyOtherPanicGoesOn(t *testing.T) {
+	s := newSealable(t)
+	var nilMap map[string]int
+	for name, throw := range map[string]func(){
+		"an error":        func() { panic(errors.New("a bug")) },
+		"a runtime error": func() { nilMap["k"] = 1 },
+		"a string":        func() { panic("boom") },
+	} {
+		func() {
+			defer func() {
+				if recover() == nil {
+					t.Errorf("%s: the panic did not go on", name)
+				}
+			}()
+			_, err := s.attempts[0].Tx(func(Tx) (any, error) { throw(); return nil, nil }, background)
+			t.Errorf("%s: Tx returned %v", name, err)
+		}()
+		if _, err := s.attempts[0].Tx(func(Tx) (any, error) { return nil, nil }, background); err != nil {
+			t.Fatalf("%s: the line is not free after the panic: %v", name, err)
+		}
+	}
+}
