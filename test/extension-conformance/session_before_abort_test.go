@@ -28,6 +28,10 @@ func awaitMarker(t *testing.T, path string, returned <-chan struct{}) {
 	for readMarker(path) == "" {
 		select {
 		case <-returned:
+			// The operation awaits every handler, so the marker of a handler it ran is on disk when it returns, possibly written since the loop last read it.
+			if readMarker(path) != "" {
+				return
+			}
 			t.Fatalf("the operation returned before %s was written", filepath.Base(path))
 		case <-deadline:
 			t.Fatalf("%s was never written", filepath.Base(path))
