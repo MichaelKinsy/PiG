@@ -80,6 +80,7 @@ func sessionOracleFixtures() (small, big, all []sessionOracleInfo) {
 // owns its keys, up/down/page/confirm/cancel drive the list, and every other key edits the search whose query refilters.
 func TestSessionSelectorInputMatchesPi(t *testing.T) {
 	restoreStartupTheme(t)
+	restoreTUIKeybindings(t)
 	small, big, all := sessionOracleFixtures()
 	scripts := [][]string{
 		{},

@@ -653,5 +653,6 @@ func treeRemapCases() []treeContractCase {
 
 func TestTreeListRemappedKeysMatchPi(t *testing.T) {
 	restoreStartupTheme(t)
+	restoreTUIKeybindings(t)
 	runTreeContracts(t, treeRemapCases())
 }

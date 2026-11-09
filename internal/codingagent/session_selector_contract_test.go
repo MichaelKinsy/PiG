@@ -632,6 +632,7 @@ func TestSessionSelectorComponentHandleInputContractsMatchPi(t *testing.T) {
 // the manager passed to the component, every other action from the process-wide manager that the hints also read.
 func TestSessionSelectorKeybindingSourcesMatchPi(t *testing.T) {
 	restoreStartupTheme(t)
+	restoreTUIKeybindings(t)
 	type action struct {
 		id, defaultKey string
 		acted          func(t *testing.T, tr sessionContractTrace)

@@ -49,6 +49,7 @@ type scopedOracleResult struct {
 // onChange payload), the save payload, cancellation and every frame's text must agree.
 func TestScopedModelsSelectorMatchesPi(t *testing.T) {
 	restoreStartupTheme(t)
+	restoreTUIKeybindings(t)
 	models := []scopedOracleModel{
 		{"claude-sonnet", "Claude Sonnet", "anthropic"}, {"claude-haiku", "Claude Haiku", "anthropic"},
 		{"gpt-5", "GPT 5", "openai"}, {"gpt-5-mini", "GPT 5 Mini", "openai"}, {"o4", "O4", "openai"},
