@@ -31,7 +31,7 @@
     (when stream
       (if (eq (jget args "started") t)
           (model-stream-mark-started stream)
-          (model-stream-push stream (or (jget args "event") (obj)))))))
+          (model-stream-enqueue stream (or (jget args "event") (obj)))))))
 
 ;;; ---------------------------------------------------------------- base64 and bodies
 
@@ -184,8 +184,8 @@ or a function that returns the next chunk (a string or octets) and NIL at the en
        (handler-case
            (progn (ctx-call-host ctx "modelStream" call)
                   ;; the host sent every event before it answered the call: a stream with no terminal event failed
-                  (model-stream-push stream (model-stream-error-event "model stream ended without a terminal event" model)))
-         (error (e) (model-stream-push stream (model-stream-error-event e model))))
+                  (model-stream-enqueue stream (model-stream-error-event "model stream ended without a terminal event" model)))
+         (error (e) (model-stream-enqueue stream (model-stream-error-event e model))))
     (model-stream-unregister (ctx-extension ctx) id)
     (when transport (ms-transport-dispose transport))))
 

@@ -1505,12 +1505,27 @@ def _forward_model_stream(stream, stopped, emit):
         _model_stream_transport.reset(token)
 
 
+def _json_snapshot(value: Any) -> Any:
+    """A copy of value that shares no dict or list with it. The plain JSON containers are copied here, because ``copy.deepcopy`` costs ten times as much on a message; any other
+    object (a dataclass, a tuple of them) is deep-copied."""
+    kind = type(value)
+    if kind is dict:
+        return {key: _json_snapshot(member) for key, member in value.items()}
+    if kind is list:
+        return [_json_snapshot(member) for member in value]
+    if value is None or kind is str or kind is int or kind is float or kind is bool:
+        return value
+    return copy.deepcopy(value)
+
+
 class ModelEventStream:
     def __init__(self) -> None:
         self._condition = threading.Condition()
         self._events: deque[dict[str, Any]] = deque()
         self._terminal = False
         self._result: dict[str, Any] | None = None
+        # The result as it was when the author ended the stream, which is what the host receives; _result is the author's own message.
+        self._result_wire: dict[str, Any] | None = None
         self._started = threading.Event()
         self._start_error = None
         # A stream made by create_assistant_message_event_stream times its response as pi-ai's AssistantMessageEventStream does (see _time_message); one the SDK makes for a
@@ -1537,23 +1552,37 @@ class ModelEventStream:
                 self._started.set()
 
     def push(self, event: dict[str, Any]) -> None:
+        """Publish an event in source order. The host receives the event as it is when push returns: it is copied here, so the author may go on changing the message it shows
+        (Pi's consumer encodes an event before its provider's next await, and the forwarder thread must not read a dict the author may still be changing)."""
+        self._enqueue(event, True)
+
+    def _enqueue(self, event: dict[str, Any], by_author: bool) -> None:
+        """Queue event; a done or error event ends the stream. The SDK's own events (by_author false) are queued as they are, because nobody else holds them."""
         with self._condition:
             if self._terminal:
                 return
-            self._events.append(event)
-            if event.get("type") in {"done", "error"}:
-                self._time_message(event.get("message") if event.get("type") == "done" else event.get("error"))
+            kind = event.get("type")
+            ends = kind in {"done", "error"}
+            final = (event.get("message") if kind == "done" else event.get("error")) if ends else None
+            if ends:
+                self._time_message(final)
+            queued = _json_snapshot(event) if by_author else event
+            self._events.append(queued)
+            if ends:
                 self._terminal = True
-                self._result = event.get("message") if event.get("type") == "done" else event.get("error")
+                self._result = final
+                self._result_wire = (queued.get("message") if kind == "done" else queued.get("error")) if by_author else final
             self._condition.notify_all()
 
     def end(self, result: dict[str, Any] | None) -> None:
+        """Complete iteration and resolve the final provider result, as it is now."""
         with self._condition:
             if self._terminal:
                 return
             self._time_message(result)
             self._terminal = True
             self._result = result
+            self._result_wire = _json_snapshot(result)
             self._condition.notify_all()
 
     def events(self):
@@ -1593,6 +1622,13 @@ class ModelEventStream:
             while not self._terminal:
                 self._condition.wait()
             return self._result
+
+    def _wire_result(self) -> dict[str, Any] | None:
+        """The final message as the host receives it: as it was when the author ended the stream."""
+        with self._condition:
+            while not self._terminal:
+                self._condition.wait()
+            return self._result_wire
 
 
 def create_assistant_message_event_stream() -> ModelEventStream:
@@ -1840,7 +1876,7 @@ class ModelRegistry:
                 call.update({name: True for name in callbacks})
                 self._context._call("modelStream", call)
             except Exception as exc:  # noqa: BLE001 - transport failure becomes terminal model error
-                stream.push(_model_stream_error_event(exc, model))
+                stream._enqueue(_model_stream_error_event(exc, model), False)
             finally:
                 with extension._model_stream_lock:
                     extension._model_streams.pop(stream_id, None)
@@ -5369,7 +5405,7 @@ class Extension:
                 if args.get("started"):
                     stream.mark_started()
                 else:
-                    stream.push(args.get("event") or {})
+                    stream._enqueue(args.get("event") or {}, False)
             return
         if _editor_component.editor_notify(self, method, args):
             return
@@ -5629,7 +5665,7 @@ class Extension:
                         self._notify("provider_stream_event", {"request_id": req_id, "result": event})
                     if cancel.is_set():
                         raise RuntimeError("provider stream aborted")
-                    self._respond(req_id, stream.result(), None)
+                    self._respond(req_id, stream._wire_result() if isinstance(stream, ModelEventStream) else stream.result(), None)
                 finally:
                     with self._state_lock:
                         self._provider_active.pop(req_id, None)

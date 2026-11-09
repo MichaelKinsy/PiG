@@ -406,7 +406,7 @@ extension drops the functions it held for it."
                      (when (abort-signal-set-p signal) (error "provider stream aborted"))
                      (notify-host ext "provider_stream_event" (obj "request_id" (ctx-request-id ctx) "result" event))))
              (when (abort-signal-set-p signal) (error "provider stream aborted"))
-             (model-stream-result stream))
+             (model-stream-wire-result stream))
         (funcall unsubscribe)))))
 
 ;;; ---------------------------------------------------------------- Providers other extensions registered
@@ -463,7 +463,7 @@ and SIGNAL, once set, cancels the call (the cancel is sent after the call, so th
                                 (setf condition (make-condition 'simple-error :format-control "Provider stream ended without a terminal event")))
              (error (e) (setf condition e)))
            (model-stream-mark-started stream condition)
-           (model-stream-push stream (model-stream-error-event condition model))
+           (model-stream-enqueue stream (model-stream-error-event condition model))
            (model-stream-unregister ext id))))
       (model-stream-wait-started stream)
       stream)))

@@ -34,16 +34,17 @@ func (e *Extension) dispatchProviderStream(ctx Context, id string, request *requ
 		_ = e.conn.respond(id, nil, fmt.Errorf("provider returned nil stream"))
 		return
 	}
-	for event := range stream.Events(ctx.ctx) {
-		if err := e.conn.notify("provider_stream_event", map[string]any{"request_id": id, "result": event}); err != nil {
-			_ = e.conn.respond(id, nil, err)
-			return
-		}
+	if err := stream.forward(ctx.ctx, func(event any) error {
+		return e.conn.notify("provider_stream_event", map[string]any{"request_id": id, "result": event})
+	}); err != nil {
+		_ = e.conn.respond(id, nil, err)
+		return
 	}
 	select {
 	case <-ctx.Done():
 		_ = e.conn.respond(id, nil, ctx.ctx.Err())
 	case <-stream.done:
-		_ = e.conn.respond(id, stream.Result(), nil)
+		result, err := stream.resultPayload()
+		_ = e.conn.respond(id, result, err)
 	}
 }
