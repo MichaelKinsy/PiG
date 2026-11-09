@@ -1255,7 +1255,7 @@ jobs:
           automation/release/android-binary.sh build -trimpath -o "$RUNNER_TEMP/pig-android" ./cmd/pig
           automation/release/android-binary.sh check "$RUNNER_TEMP/pig-android"
       - name: Vet the Android packages
-        run: CGO_ENABLED=0 GOOS=android GOARCH=arm64 go vet ./...
+        run: CGO_ENABLED=0 GOOS=android GOARCH=arm64 automation/ci/go-vet.sh
 
   cache-prune:
     name: Prune superseded caches

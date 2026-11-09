@@ -1,6 +1,6 @@
 // Package node adapts a native SQLite connection to the portable Chord SQLite facade. It is the Go counterpart of
-// Pi's node:sqlite driver and the only Chord SQLite package that links a SQLite driver (modernc.org/sqlite, pure Go,
-// CGO-free).
+// Pi's node:sqlite driver and the only Chord SQLite package that links a SQLite driver (modernc.org/sqlite's driver
+// layer, vendored in third_party/sqlite, over its pure Go, CGO-free SQLite library).
 package node
 
 // Ports packages/chord/src/sqlite/node.ts
@@ -20,11 +20,10 @@ import (
 	"sync/atomic"
 	"unsafe"
 
+	chordsqlite "github.com/MichaelKinsy/PiG/chord/sqlite"
 	// The pure-Go SQLite driver. The connection is opened through its driver.Connector and driven directly: one
 	// dedicated connection needs none of database/sql's pooling, argument conversion or row scanning.
-	"modernc.org/sqlite"
-
-	chordsqlite "github.com/MichaelKinsy/PiG/chord/sqlite"
+	"github.com/MichaelKinsy/PiG/third_party/sqlite"
 )
 
 // DatabaseSyncOptions configures one native SQLite connection.
@@ -39,6 +38,12 @@ var errDatabaseNotOpen = errors.New("database is not open")
 
 // DatabaseSync is one native SQLite connection whose operations run on the caller's goroutine, the Go counterpart of
 // node:sqlite's DatabaseSync.
+//
+// The connection is opened in SQLite's multi-thread mode (see dataSourceName): a DatabaseSync, and every StatementSync
+// and row set taken from it, must be used by one goroutine at a time, and a goroutine hand-off needs a happens-before
+// edge (a channel, a mutex). Two goroutines inside the connection at once corrupt the driver's memory instead of waiting
+// for each other. NodeSqliteDatabase is the safe way to share a connection: its serial queue holds every operation, a
+// transaction as a whole, and Close.
 type DatabaseSync struct {
 	mu   sync.Mutex
 	conn driver.Conn
@@ -55,13 +60,17 @@ func (database *DatabaseSync) ObservePrepare(observe func(sqlText string)) {
 	database.prepared = observe
 }
 
+// newConnector opens the driver's connector for a data source name; tests replace it to see the name NewDatabaseSync
+// builds.
+var newConnector = sqlite.NewConnector
+
 // NewDatabaseSync opens path (or ":memory:") as one dedicated connection.
 func NewDatabaseSync(path string, options DatabaseSyncOptions) (*DatabaseSync, error) {
-	connector, err := sqlite.NewConnector(dataSourceName(path, options.ReadOnly))
+	connector, err := newConnector(dataSourceName(path, options.ReadOnly))
 	if err != nil {
 		return nil, err
 	}
-	conn, err := connector.Connect(context.Background())
+	conn, err := connector.Connect(context.Background()) //portlint:allow ctxbackground node:sqlite DatabaseSync opens its connection synchronously and takes no signal
 	if err != nil {
 		return nil, err
 	}
@@ -73,15 +82,24 @@ func NewDatabaseSync(path string, options DatabaseSyncOptions) (*DatabaseSync, e
 	return database, nil
 }
 
-// dataSourceName keeps a plain path unchanged and uses a file: URI only when the path would otherwise be read as
-// driver query parameters or when read-only mode is requested.
+// threadingMode is the driver's DSN parameter that opens a connection in SQLite's multi-thread mode
+// (SQLITE_OPEN_NOMUTEX).
+const threadingMode = "_threading_mode=multi-thread"
+
+// dataSourceName keeps a plain path and uses a file: URI only when the path would otherwise be read as driver query
+// parameters or when read-only mode is requested. Every connection opens in multi-thread mode: a DatabaseSync is used
+// by one goroutine at a time (NodeSqliteDatabase's serial queue holds every operation, Close included; the driver's
+// context interrupt only sets an atomic flag and calls sqlite3_interrupt), so SQLite's per-connection mutex would only
+// cost time on every call into SQLite.
+// modernc DSN nomutex PR (owner to post); draft: ~/PiG-launch-newer/handoffs/next/modernc-dsn-nomutex-pr.md
 func dataSourceName(path string, readOnly bool) string {
 	if !readOnly && !strings.ContainsAny(path, "?#") {
-		return path
+		return path + "?" + threadingMode
 	}
 	location := url.URL{Scheme: "file", Opaque: (&url.URL{Path: filepath.ToSlash(path)}).EscapedPath()}
+	location.RawQuery = threadingMode
 	if readOnly {
-		location.RawQuery = "mode=ro"
+		location.RawQuery = "mode=ro&" + threadingMode
 	}
 	return location.String()
 }
@@ -101,7 +119,7 @@ func (database *DatabaseSync) Exec(sqlText string) error {
 	if err != nil {
 		return err
 	}
-	_, err = conn.(driver.ExecerContext).ExecContext(context.Background(), sqlText, nil)
+	_, err = conn.(driver.ExecerContext).ExecContext(context.Background(), sqlText, nil) //portlint:allow ctxbackground node:sqlite DatabaseSync.exec is synchronous and takes no signal
 	return err
 }
 
@@ -117,7 +135,7 @@ func (database *DatabaseSync) Prepare(sqlText string) (*StatementSync, error) {
 	if observe != nil {
 		observe(sqlText)
 	}
-	statement, err := conn.(driver.ConnPrepareContext).PrepareContext(context.Background(), sqlText)
+	statement, err := conn.(driver.ConnPrepareContext).PrepareContext(context.Background(), sqlText) //portlint:allow ctxbackground node:sqlite DatabaseSync.prepare is synchronous and takes no signal
 	if err != nil {
 		return nil, err
 	}
@@ -641,7 +659,10 @@ func (adapter *NodeSqliteDatabase) run(operation func() error) error {
 }
 
 // Transaction runs callback inside BEGIN IMMEDIATE ... COMMIT (BEGIN for a read-only connection) and rolls back when it
-// fails or panics.
+// fails or panics. The transaction handle runs its operations directly on the connection: it is for the goroutine
+// that runs callback (or goroutines it hands the handle to one at a time), and not past the callback's return, because
+// the connection is in SQLite's multi-thread mode and another goroutine's operation, queued behind this transaction,
+// starts the moment it settles.
 func (adapter *NodeSqliteDatabase) Transaction(
 	callback func(transaction chordsqlite.SqliteExecutor) error,
 ) (err error) {
