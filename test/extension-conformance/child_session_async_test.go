@@ -1,7 +1,6 @@
 package extensionconformance
 
 import (
-	"context"
 	"encoding/json"
 	"path/filepath"
 	"testing"
@@ -66,36 +65,16 @@ func TestChildAgentSessionAwaitedMemberCancelledByCtx(t *testing.T) {
 	}
 }
 
-// heldMember is a child session whose host holds one member until released, as a member awaiting a slow auth check or model_select handler.
-type heldMember struct {
-	subprocess.ChildSession
-	member  string
-	release chan struct{}
-}
-
-func (h heldMember) Op(ctx context.Context, op string, args json.RawMessage) (json.RawMessage, error) {
-	if op == h.member {
-		select {
-		case <-h.release:
-		case <-time.After(10 * time.Second):
-		}
-		return nil, nil
-	}
-	return h.ChildSession.Op(ctx, op, args)
-}
-
-// TestChildAgentSessionAbortNotHeldBehindAwaitedMember: with one awaited member held in the host for 3 s, an AbortBash sent 0.4 s later from another goroutine returns at once. Every member Pi declares `async` that reaches childSession.op is listed (steer, followUp and prompt have calls of their own).
+// TestChildAgentSessionAbortNotHeldBehindAwaitedMember: with one awaited member held in the host for 3 s, an AbortBash sent 0.4 s later from another goroutine is served by the host before the member is released (heldProbe, child_session_held_test.go). Every member Pi declares `async` that reaches childSession.op is listed (steer, followUp and prompt have calls of their own).
 func TestChildAgentSessionAbortNotHeldBehindAwaitedMember(t *testing.T) {
 	for _, placement := range []string{"fused", "isolated"} {
 		for _, member := range []string{"cycleModel", "executeBash", "setModel"} {
 			t.Run(placement+"/"+member, func(t *testing.T) {
-				release := make(chan struct{})
-				ext := loadChildProbeHost(t, placement, func(s subprocess.ChildSession) subprocess.ChildSession { return heldMember{s, member, release} })
-				time.AfterFunc(3*time.Second, func() { close(release) })
-				got := runChildProbe(t, ext, "child_order_probe", `{"first":"`+member+`"}`)
-				if took, _ := got["abortTook"].(float64); took > 1.5 {
-					t.Fatalf("AbortBash waited %.2f s behind the held %s", took, member)
-				}
+				probe := newHeldProbe(member)
+				ext := loadChildProbeHost(t, placement, probe.wrap)
+				probe.start(3 * time.Second)
+				runChildProbe(t, ext, "child_order_probe", `{"first":"`+member+`"}`)
+				probe.check(t, "abortBash")
 			})
 		}
 	}

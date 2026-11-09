@@ -1,7 +1,6 @@
 package extensionconformance
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -83,24 +82,6 @@ def new_extension():
     return ext
 `
 
-// pyHeldMember is a child session whose host holds one member until released, as a member awaiting a slow auth check or model_select handler.
-type pyHeldMember struct {
-	subprocess.ChildSession
-	member  string
-	release chan struct{}
-}
-
-func (h pyHeldMember) Op(ctx context.Context, op string, args json.RawMessage) (json.RawMessage, error) {
-	if op == h.member {
-		select {
-		case <-h.release:
-		case <-time.After(10 * time.Second):
-		}
-		return nil, nil
-	}
-	return h.ChildSession.Op(ctx, op, args)
-}
-
 func loadChildAsyncPython(t *testing.T, isolation string, wrap func(subprocess.ChildSession) subprocess.ChildSession) extension.Extension {
 	t.Helper()
 	host, _ := newChildSessionHostWith(t, true, wrap)
@@ -148,18 +129,16 @@ func TestChildAgentSessionAbortEndsAwaitedMemberPython(t *testing.T) {
 	}
 }
 
-// TestChildAgentSessionAbortNotHeldBehindAwaitedMemberPython: with one awaited member held in the host for 3 s, an abort_bash sent 0.4 s later from another thread returns at once, isolated and packed with a sibling. Every member Pi declares `async` that reaches childSession.op and can be held without a run is listed (the rest are covered by the lane table in extensions/sdk-py/tests).
+// TestChildAgentSessionAbortNotHeldBehindAwaitedMemberPython: with one awaited member held in the host for 3 s, an abort_bash sent 0.4 s later from another thread is served by the host before the member is released (heldProbe, child_session_held_test.go), isolated and packed with a sibling. Every member Pi declares `async` that reaches childSession.op and can be held without a run is listed (the rest are covered by the lane table in extensions/sdk-py/tests).
 func TestChildAgentSessionAbortNotHeldBehindAwaitedMemberPython(t *testing.T) {
 	for _, isolation := range []string{"strict", "shared-ok"} {
 		for _, member := range []string{"cycleModel", "executeBash", "setModel"} {
 			t.Run(isolation+"/"+member, func(t *testing.T) {
-				release := make(chan struct{})
-				ext := loadChildAsyncPython(t, isolation, func(s subprocess.ChildSession) subprocess.ChildSession { return pyHeldMember{s, member, release} })
-				time.AfterFunc(3*time.Second, func() { close(release) })
-				got := runChildAsyncPythonProbe(t, ext, "child_order_probe", `{"first":"`+member+`"}`)
-				if took, _ := got["abortTook"].(float64); took > 1.5 {
-					t.Fatalf("abort_bash waited %.2f s behind the held %s (%s)", took, member, isolation)
-				}
+				probe := newHeldProbe(member)
+				ext := loadChildAsyncPython(t, isolation, probe.wrap)
+				probe.start(3 * time.Second)
+				runChildAsyncPythonProbe(t, ext, "child_order_probe", `{"first":"`+member+`"}`)
+				probe.check(t, "abortBash")
 			})
 		}
 	}

@@ -1,7 +1,6 @@
 package extensionconformance
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -279,43 +278,18 @@ func TestChildAgentSessionMembersRustAbortBash(t *testing.T) {
 	}
 }
 
-// heldChildMember is a child session whose host holds one member until released, as a member awaiting a slow auth check or model_select handler.
-type heldChildMember struct {
-	subprocess.ChildSession
-	member  string
-	release chan struct{}
-}
-
-func (h heldChildMember) Op(ctx context.Context, op string, args json.RawMessage) (json.RawMessage, error) {
-	if op == h.member {
-		select {
-		case <-h.release:
-		case <-time.After(10 * time.Second):
-		}
-		return nil, nil
-	}
-	return h.ChildSession.Op(ctx, op, args)
-}
-
-// TestChildAgentSessionMembersRustAbortNotHeld: with one awaited member held in the host for 3 s, an abort_bash called 0.4 s later from another thread returns at once, isolated and packed with a sibling. A member sent over the synchronous childSession.op holds it.
+// TestChildAgentSessionMembersRustAbortNotHeld: with one awaited member held in the host for 3 s, an abort_bash called 0.4 s later from another thread is served by the host before the member is released (heldProbe, child_session_held_test.go), isolated and packed with a sibling. A member sent over the synchronous childSession.op holds it.
 func TestChildAgentSessionMembersRustAbortNotHeld(t *testing.T) {
 	for _, isolation := range []string{"strict", "shared-ok"} {
 		for _, member := range []string{"cycleModel", "executeBash", "setModel"} {
 			t.Run(isolation+"/"+member, func(t *testing.T) {
-				release := make(chan struct{})
-				ext := loadChildMembersRustWith(t, isolation, func(s subprocess.ChildSession) subprocess.ChildSession { return heldChildMember{s, member, release} })
-				time.AfterFunc(3*time.Second, func() { close(release) })
-				result, err := ext.Tools["child_order_probe"].Definition.Execute(t.Context(), "call", json.RawMessage(`{"first":"`+member+`"}`), nil)
-				if err != nil {
+				probe := newHeldProbe(member)
+				ext := loadChildMembersRustWith(t, isolation, probe.wrap)
+				probe.start(3 * time.Second)
+				if _, err := ext.Tools["child_order_probe"].Definition.Execute(t.Context(), "call", json.RawMessage(`{"first":"`+member+`"}`), nil); err != nil {
 					t.Fatal(err)
 				}
-				var got map[string]any
-				if err := json.Unmarshal([]byte(result.Text()), &got); err != nil {
-					t.Fatalf("%q: %v", result.Text(), err)
-				}
-				if took, ok := got["abortTook"].(float64); !ok || took > 1.5 {
-					t.Fatalf("abort_bash took %v s behind the held %s (%s)", got["abortTook"], member, isolation)
-				}
+				probe.check(t, "abortBash")
 			})
 		}
 	}

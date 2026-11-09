@@ -19,24 +19,6 @@ import (
 
 // The async contract of the AgentSession members for the Lisp SDK: the child_abort_probe and child_order_probe tools of the Go fixture (testfixture/childsession/async_probes.go) as a Lisp extension (testdata/child-session-lisp). A member Pi declares `async` rides childSession.opAsync and never holds a later call; the abort of a running execute-bash is abort-bash from another thread or a cancelled :ctx.
 
-// lispHeldMember is a child session whose host holds one member until released, as a member awaiting a slow auth check or model_select handler.
-type lispHeldMember struct {
-	subprocess.ChildSession
-	member  string
-	release chan struct{}
-}
-
-func (h lispHeldMember) Op(ctx context.Context, op string, args json.RawMessage) (json.RawMessage, error) {
-	if op == h.member {
-		select {
-		case <-h.release:
-		case <-time.After(10 * time.Second):
-		}
-		return nil, nil
-	}
-	return h.ChildSession.Op(ctx, op, args)
-}
-
 func loadChildAsyncLisp(t *testing.T, wrap func(subprocess.ChildSession) subprocess.ChildSession) (extension.Extension, *coding.AgentSessionServices) {
 	t.Helper()
 	return loadChildAsyncLispIn(t, "strict", wrap)
@@ -78,18 +60,16 @@ func TestChildAgentSessionAbortEndsAwaitedMemberLisp(t *testing.T) {
 	}
 }
 
-// TestChildAgentSessionAbortNotHeldBehindAwaitedMemberLisp: with one awaited member held in the host for 3 s, an abort-bash sent 0.4 s later from another thread returns at once, isolated and packed with a sibling. Every member Pi declares `async` that reaches childSession.op and can be held without a run is listed.
+// TestChildAgentSessionAbortNotHeldBehindAwaitedMemberLisp: with one awaited member held in the host for 3 s, an abort-bash sent 0.4 s later from another thread is served by the host before the member is released (heldProbe, child_session_held_test.go), isolated and packed with a sibling. Every member Pi declares `async` that reaches childSession.op and can be held without a run is listed.
 func TestChildAgentSessionAbortNotHeldBehindAwaitedMemberLisp(t *testing.T) {
 	for _, isolation := range []string{"strict", "shared-ok"} {
 		for _, member := range []string{"cycleModel", "executeBash", "setModel"} {
 			t.Run(isolation+"/"+member, func(t *testing.T) {
-				release := make(chan struct{})
-				ext, _ := loadChildAsyncLispIn(t, isolation, func(s subprocess.ChildSession) subprocess.ChildSession { return lispHeldMember{s, member, release} })
-				time.AfterFunc(3*time.Second, func() { close(release) })
-				got := runChildAsyncLispProbe(t, ext, "child_order_probe", `{"first":"`+member+`"}`)
-				if took, _ := got["abortTook"].(float64); took > 1.5 {
-					t.Fatalf("abort-bash waited %.2f s behind the held %s (%s)", took, member, isolation)
-				}
+				probe := newHeldProbe(member)
+				ext, _ := loadChildAsyncLispIn(t, isolation, probe.wrap)
+				probe.start(3 * time.Second)
+				runChildAsyncLispProbe(t, ext, "child_order_probe", `{"first":"`+member+`"}`)
+				probe.check(t, "abortBash")
 			})
 		}
 	}
