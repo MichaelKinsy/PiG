@@ -51,3 +51,34 @@ func TestRepositoryModulesPinTheRootSDKVersion(t *testing.T) {
 		t.Error(problem)
 	}
 }
+
+func TestCheckTemplatesFlagsAGoModWrittenWithAnotherVersion(t *testing.T) {
+	root := t.TempDir()
+	write := func(name, body string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(root, name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("verb_test.go", "package x\n\nvar a = \"require github.com/MichaelKinsy/PiG/extensions/sdk v%s\\n\"\n")
+	write("literal_test.go", "package x\n\nvar b = \"require github.com/MichaelKinsy/PiG v0.7.0\\n\"\n")
+	write("release_test.go", "package x\n\nvar c = fmt.Sprintf(\"module m\\nrequire (\\n github.com/MichaelKinsy/PiG %s\\n)\\n\",\n\tpigversion.PigVersion)\n")
+	write("placeholder_test.go", "package x\n\nvar d = \"require github.com/MichaelKinsy/PiG/extensions/sdk v0.0.0\\n\"\n")
+	write("helper_test.go", "package x\n\nvar e = fmt.Sprintf(\"require github.com/MichaelKinsy/PiG/extensions/sdk %s\\n\", version)\n")
+	write("unrelated_test.go", "package x\n\nvar f = pigversion.PigVersion\n")
+	problems, err := checkTemplates(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := strings.Join(problems, "\n")
+	for _, flagged := range []string{"verb_test.go:3", "release_test.go:4"} {
+		if !strings.Contains(got, flagged) {
+			t.Errorf("problems %q do not flag %s", got, flagged)
+		}
+	}
+	for _, clean := range []string{"literal_test.go", "placeholder_test.go", "helper_test.go", "unrelated_test.go"} {
+		if strings.Contains(got, clean) {
+			t.Errorf("problems %q flag %s", got, clean)
+		}
+	}
+}

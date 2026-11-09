@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-// Command modulepins fails when an in-tree Go module that replaces the PiG root module or the extension SDK module with local source requires either at a version other than the one the root go.mod requires for the SDK. A stale pin makes the generated packed-cell go.mod select an older SDK than the replaced root needs, and `go build` stops with "updates to go.mod needed" in every strict and packed Go cell of the conformance suite. `make set-version SET_VERSION_ARGS=--release-modules` pins them at a release; between releases, bumping the root's SDK pseudo-version means bumping these too (go mod edit -require=<module>@<version> <go.mod>).
+// Command modulepins fails when an in-tree Go module that replaces the PiG root module or the extension SDK module with local source requires either at a version other than the one the root go.mod requires for the SDK. A stale pin makes the generated packed-cell go.mod select an older SDK than the replaced root needs, and `go build` stops with "updates to go.mod needed" in every strict and packed Go cell of the conformance suite. `make set-version SET_VERSION_ARGS=--release-modules` pins them at a release; between releases, bumping the root's SDK pseudo-version means bumping these too (go mod edit -require=<module>@<version> <go.mod>). It also fails on a Go source that writes such a requirement at run time with pigversion.PigVersion or a literal version instead of internal/testenv.RootSDKRequirement (templates.go).
 package main
 
 import (
@@ -100,6 +100,11 @@ func check(root string) ([]string, error) {
 		}
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
+	templates, err := checkTemplates(root)
+	problems = append(problems, templates...)
 	sort.Strings(problems)
 	return problems, err
 }
