@@ -76,8 +76,7 @@ type Session struct {
 	modelRuntime     *ModelRuntime
 	modelRegistry    *ModelRegistry
 	sessionDir       string
-	// noSession is whether the installed log has no file. ReplaceInner stores it under mu, while /new, /fork and Clone read it from the caller's goroutine without mu.
-	noSession        atomic.Bool
+	noSession        atomic.Bool // whether the installed log has no file: ReplaceInner stores it under mu, /new, /fork and Clone read it without mu
 	scopedModels     sessionScopedModels
 	runnerMu         sync.RWMutex
 	runner           *inproc.Runner // extension runner for event dispatch
