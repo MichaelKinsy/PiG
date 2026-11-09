@@ -225,7 +225,9 @@ func TestNestedToolCallRunnerSumsTheUsageOfNestedResultsAtEveryDepth(t *testing.
 //
 // The parallel tool holds each call until all three are inside it, so the check needs no timing luck: a fixed 5 ms sleep let the first
 // call finish before the third had started on a loaded host (portmap's evidence run read parallel:2). A runner that serialized
-// parallel calls never gets the third call in; the hold gives up after a bound and maxActive reports it.
+// parallel calls never gets the third call in; the hold gives up after a bound and maxActive reports it. The sequential tool keeps the
+// 5 ms sleep: that side proves an absence (no two calls overlap), so a slow host can only make it miss a runner that stopped serializing,
+// never fail a correct one.
 func TestNestedToolCallRunnerSerializesConcurrentCallsToSequentialTools(t *testing.T) {
 	var active atomic.Int32
 	var mu sync.Mutex
