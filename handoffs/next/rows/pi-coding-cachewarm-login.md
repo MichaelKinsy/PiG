@@ -18,3 +18,11 @@ Upstream file -> disposition | Go target | covering tests | evidence
 - packages/coding-agent/src/modes/interactive/components/radius-login-selector.ts -> ported (shimmer and timer moved to provider-brand) | internal/codingagent/radius_login_selector.go | login_radius_menu_test.go, radius_login_oracle_test.go (unchanged)
 - packages/coding-agent/src/modes/interactive/interactive-mode.ts (getLoginProviderCompletionOptions, getLoginProviderOptions, getLogoutProviderOptions, selector construction with this.ui and dispose) -> ported | internal/codingagent/interactive_login.go (sortAuthProviders -> ai.CompareProviders), interactive_commands.go (SelectAuthProvider) | internal/codingagent/preferred_providers_order_test.go (login, logout, /login completions)
 - packages/coding-agent/CHANGELOG.md -> changelog.d/cwl-5b3661d297.md
+
+## c9552c7d8 coding-agent side (shared cache-warming policy)
+- packages/ai/src/cache-warming.ts -> ported (cherry-pick -x of dp follow/p2-next 6b589db94, cleared in reviews/p2-next.md section 3; the one ai commit brought in) | ai/cache_warming.go | internal/codingagent/cache_warmer_test.go, cache_warmer_oracle_test.go, cache_warmer_format_oracle_test.go, cache_warming_mode_union_test.go
+- packages/ai/src/index.ts `export * from "./cache-warming.ts"` -> the ai package exports the helpers (Go: package-level identifiers in ai/cache_warming.go)
+- packages/coding-agent/src/core/cache-warmer.ts (-116 lines, uses the ai helpers) -> ported | internal/codingagent/cache_warmer.go (GetCacheWarmingDelayMs, GetPromptCacheTtlMs, IsReplayable removed; type aliases for CacheWarmingAction/Decision), coding/extension/cache_warming.go
+- packages/coding-agent/test/cache-warmer.test.ts -> ported (imports move to ai; isReplayable -> isCacheWarmingReplayable) | internal/codingagent/cache_warmer_test.go
+- packages/ai/CHANGELOG.md -> changelog.d/cwl-d696203940.md (first bullet of p2-next-6b589db94f.md; the p2 plugin bullet stays with follow/p2-next, so merging p2-next later repeats the ai bullet: drop one)
+- The p2 plugin, p2 settings and p2 tests of c9552c7d8 are not in this lane (follow/p2-next).
