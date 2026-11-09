@@ -583,6 +583,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-578c1a3](#bf-578c1a3) | The "Applied use cases" page in the manual that ships inside PiG now links the Security page on the website | PiG's own defect | All platforms | 0.5.0 |
 | [BF-57a1687](#bf-57a1687) | fix(ai,agent): return a projection's blocks apart from its scalars so the caller's buffer stays on its stack | PiG's own defect | All platforms | Unreleased |
 | [BF-57ee33b](#bf-57ee33b) | A model an extension registers with `registerProvider` reaches `ctx.modelRegistry`, `ctx.model` and RPC as… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-57f113b](#bf-57f113b) | fix(sdk): a provider stream event reaches the host as the author pushed it | PiG's own defect | All platforms | Unreleased |
 | [BF-58f6697](#bf-58f6697) | Text typed and followed at once by Enter no longer skips the autocomplete menu Pi opens: `/model provider/id`… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-59456ae](#bf-59456ae) | Pressing a key in a subprocess extension's overlay no longer freezes interactive mode when the key reaches… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-59693cd](#bf-59693cd) | Interactive mode: after choosing an entry in `/tree` the chat first redrew at the old position and, about a… | PiG's own defect | All platforms | Unreleased |
@@ -1074,6 +1075,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-91e912a](#bf-91e912a) | Two PiG versions that share a config root (two installed versions, or PiG beside a Piglet Binary) no longer… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-91f9946](#bf-91f9946) | OpenRouter image generation reads the chat completions body as Pi does, checked against the pinned Pi in a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-9208423](#bf-9208423) | fix(imageprocessing): an image with no pixels is not encoded as PNG | PiG's own defect | All platforms | Unreleased |
+| [BF-924fe28](#bf-924fe28) | A provider written with the Go, Python or Lisp extension SDK now reaches the host with each stream event… | PiG's own defect | All platforms | Unreleased |
 | [BF-928e15c](#bf-928e15c) | A listener that fails while agent_start is dispatched now ends the run as in Pi (failure messages, no… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-928e15c-10](#bf-928e15c-10) | Constrained-sampling errors quote tool and property names as Pi does (raw text between double quotes, not… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-928e15c-11](#bf-928e15c-11) | GitHub Copilot model-catalog fetches now report a failed response as Pi does (`<status> <reason>: <untrimmed… | PiG's own defect | All platforms | 0.5.0 |
@@ -9737,6 +9739,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `coding/cli/model_registry_refresh_test.go::TestSubprocessModelRegistryPublishesExtensionReplacementAndRestoration`, `coding/cli/model_registry_refresh_test.go::TestSubprocessModelRegistryPublishesProviderOnlyOverlayRefresh`, `coding/cli/model_registry_refresh_test.go::TestSubprocessModelRegistryPublishesProviderRegistrationAndRemoval`, `coding/cli/model_registry_refresh_test.go::TestSubprocessModelRegistryRefreshesConnectedNode`, `coding/cli/port_wave_10_package_command_paths_test.go::TestPortWave10ModelRuntimeCreation`, `coding/cli/shipped_piglet_inventory_test.go::TestShippedPigletInventory`, `coding/cli/strip_leak_gate_test.go::TestStripLeakGate`, `coding/model_availability_auth_view_test.go::TestAvailabilityPassAuthViewMatchesPiUpstream` and 1 more in docs/bug-ledger.json
 - **Release note:** A model an extension registers with `registerProvider` reaches `ctx.modelRegistry`, `ctx.model` and RPC as Pi's object: the definition's members in the order the extension wrote them, then `api`, `provider` and `baseUrl`, and its `input` as written. PiG sent the members in its own order and filled in `input: ["text"]` when the definition left it out.
 
+### BF-57f113b
+
+**fix(sdk): a provider stream event reaches the host as the author pushed it**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(sdk): a provider stream event reaches the host as the author pushed it
+- **Root cause:** The Go, Python and Lisp SDKs queued the event the author pushed and a forwarding goroutine or thread encoded it later, while the author's code could still append to the shared partial message: the host then received later text (every text_delta showing the finished message under load) and, in Go, the forwarder's read of the author's map raced the author's writes. Push and End now take the event, and the result, at the call: the Go SDK encodes the event on the author's goroutine and the forwarder writes those bytes, the Python and Lisp SDKs queue a copy. The result the author reads is still its own message. Events the SDK builds or decodes itself are queued as they are. The Rust SDK takes…
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `57f113ba40` (2026-11-09)
+- **Tests:** None recorded.
+
 ### BF-58f6697
 
 **Text typed and followed at once by Enter no longer skips the autocomplete menu Pi opens: `/model provider/id`…**
@@ -16544,6 +16559,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `9208423356` (2026-10-29)
 - **Tests:** None recorded.
+
+### BF-924fe28
+
+**A provider written with the Go, Python or Lisp extension SDK now reaches the host with each stream event…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A provider written with the Go, Python or Lisp extension SDK now reaches the host with each stream event showing the partial message as it was when the provider pushed the event, and with the stream's result as it was when the provider ended it.
+- **Root cause:** The Go, Python and Lisp SDKs queued the event the author pushed and a forwarding goroutine or thread encoded it later, while the author's code could still append to the shared partial message: the host then received later text (every text_delta showing the finished message under load) and, in Go, the forwarder's read of the author's map raced the author's writes. Push and End now take the event, and the result, at the call: the Go SDK encodes the event on the author's goroutine and the forwarder writes those bytes, the Python and Lisp SDKs queue a copy. The result the author reads is still its own message. Events the SDK builds or decodes itself are queued as they are. The Rust SDK takes…
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `924fe2818c` (2026-11-09)
+- **Tests:** None recorded.
+- **Release note:** A provider written with the Go, Python or Lisp extension SDK now reaches the host with each stream event showing the partial message as it was when the provider pushed the event, and with the stream's result as it was when the provider ended it. The SDK queued the event the provider pushed and a goroutine or thread encoded it later, so a provider that appended to its shared partial message right after a `Push` could have the host receive the later text (under load every `text_delta` showed the finished message), and in the Go SDK the encoder's read of the provider's map was a data race with the provider's writes. `Push` and `End` now take the event, and the result, at the call (the Go SDK encodes the event on the provider's goroutine; the Python and Lisp SDKs queue a copy), so the host sees each event as it was at the push, which is stronger than Pi's own guarantee (D615): Pi's consumer reads the shared message at its own turn, so after a synchronous burst of pushes or between microtask awaits it shows later changes. The event and the message the provider reads back (`Events()`, `result()`) are still its own objects, and a value of a kind JSON has no copy of (a lock, a cycle) ends the request instead of raising in the provider's `Push`. The Rust SDK takes the event by value and is unchanged.
 
 ### BF-928e15c
 
@@ -28943,6 +28972,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D605 | The server's two hosts serve one union: `Host.Delegate` one way, the Node host's destination the other | [BF-D605](#bf-d605) |
 | D607 | The plugins component loads hosts through a Node subprocess it starts: Pi's `evaluate`, `stack` and runtime… | deliberate difference |
 | D608 | A client surface is built after the server's listen: `NewWebSurface`/`NewTuiSurface` return at once and… | deliberate difference |
+| D615 | The Go, Python and Lisp SDKs show the host each provider stream event as it was when the provider pushed it… | deliberate difference |
 
 ## Fix-titled commits that are not bugs in a release
 

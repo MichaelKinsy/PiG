@@ -4160,3 +4160,25 @@ Evidence: `chord/nextnode/surfaces/surfaces_build_test.go`, `chord/nextnode/app/
 Parity allowance: none beyond the forms above.
 
 Remove when: a Go facet can publish from its own setup (the first set before the host is served).
+
+## D615 The Go, Python and Lisp SDKs show the host each provider stream event as it was when the provider pushed it, which is stronger than Pi's consumer guarantees
+
+What: an extension provider that builds its stream with `CreateAssistantMessageEventStream` (Go `sdk.CreateAssistantMessageEventStream`, Python `create_assistant_message_event_stream`, Lisp `create-assistant-message-event-stream`) and pushes an event that shows a message it goes on changing (the shared `partial`) is forwarded to the host with the message as it was when `Push` returned. The result the host receives is the message as it was when the provider ended the stream (the `done`/`error` event's message, or the value passed to `End`). The Go SDK encodes the event on the provider's goroutine at `Push`; the Python and Lisp SDKs queue a deep copy. In-process iteration (`Events`, `events()`, `model-stream-next`) still yields the pushed object itself, and `Result` returns the provider's own message. A value that cannot be copied or encoded (a cycle, a lock, a dotted list) fails the request that forwards the stream; it does not raise in `Push`. The Rust SDK takes the event by value, so it already shows the host the event as pushed.
+
+Pi: `packages/ai/src/utils/event-stream.ts:43-54` hands the consumer the same event object at `push`, and the Node SDK serializes it in its `for await` body, at the consumer's turn. The host therefore sees the message at the consumer's turn, which is the message at the push only when real I/O (a macrotask) separates the provider's pushes. After a synchronous burst of pushes, or with only microtask awaits between them (`await Promise.resolve()`, an `await` over an already buffered async generator), Pi's consumer sees the later edits: in a probe of 100 one-character deltas a synchronous burst showed the finished text in every event, an `await` over buffered chunks lagged one push, and microtask awaits lagged further, while an `await setImmediate` between pushes showed exactly the text at each push.
+
+Why: a threaded SDK cannot reproduce the microtask scheduling of one JavaScript thread, and a forwarder that reads the provider's map on another goroutine or thread while the provider writes it is a data race (Go `-race` reports it) and shows the host arbitrary later text. Capturing at the push is the one deterministic and race-free choice, and it equals Pi exactly in the I/O-separated case, which is the case a provider that streams from a network response is in. The Node SDK keeps Pi's behavior.
+
+Scope: `ModelEventStream.Push`/`End` (Go), `ModelEventStream.push`/`end` (Python), `model-stream-push`/`model-stream-end` (Lisp), and the provider stream request that forwards them (`provider_stream`, `provider_stream_simple`, and a provider object's stream). Not affected: events the SDK builds or decodes itself, the Rust and Node SDKs.
+
+Owner decision: approved by owner Michael Kinsy on 2026-11-09 (copy at push in the Go, Python and Lisp SDKs; keep Node as Pi does; record the burst-case difference).
+
+SCRUTINIZED:approved
+
+Remove when: Pi's provider stream consumer captures each event at its push (or the Go, Python and Lisp SDKs gain a synchronization point that makes the forwarder see the provider's state at the consumer's turn). Then the three call-site markers and this record go.
+
+Call-site markers: `extensions/sdk/context.go` (`ModelEventStream.enqueue`), `extensions/sdk-py/pig_sdk/__init__.py` (`ModelEventStream._enqueue`), `extensions/sdk-lisp/src/event-stream.lisp` (`model-stream-enqueue`).
+
+Evidence: `TestProviderStreamEventsShowThePartialAsPushed` in `test/extension-conformance` (the row: 11 cases, every SDK isolated and packed; red for the Go, Python and Lisp cases at e0d2778cf, Go also under `-race`), `provider_stream_snapshot_test.go` (Go SDK), `tests/test_provider_stream_snapshot.py` (Python SDK), `model-tests.lisp` (Lisp SDK).
+
+Parity allowance: Pi 1.5.0 has no test of when its consumer reads the partial; the row's expected values are the message at each push.
