@@ -11,6 +11,7 @@ import (
 	sessionscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/sessions/contract"
 	"github.com/MichaelKinsy/PiG/apps/p2/tui/host"
 	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/chat-mode"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/conversations"
@@ -83,10 +84,11 @@ func (l *launcher) waitScreen(limit time.Duration, text string) {
 // openNewestSession is the keys of the tests: the newest session is first after "+ New session".
 func (l *launcher) openNewestSession() {
 	l.t.Helper()
-	l.waitScreen(15*time.Second, "New session")
+	// The waits only bound a hang: the server's start and the session worker's start are many seconds under -race on a loaded machine.
+	l.waitScreen(testbudget.Wait(l.t), "New session")
 	l.terminal.SendInput(keyDown)
 	l.terminal.SendInput(keyEnter)
-	l.until(10*time.Second, "the conversation connected", func() bool {
+	l.until(testbudget.Wait(l.t), "the conversation connected", func() bool {
 		screen := l.terminal.screen()
 		return !strings.Contains(screen, "Connecting conversation") && strings.Contains(screen, "•")
 	})

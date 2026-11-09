@@ -6,17 +6,27 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/apps/p2/tui/host"
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
 func TestKittyKeyboardTheLaunchersNegotiatedProtocolReachesTheRuntimeWhichDecodesKeysAccordingly(t *testing.T) {
 	typeInto := func(kitty bool) (draft, screen string) {
 		l := startReal(t, launcherOptions{kitty: &kitty})
 		l.openNewestSession()
-		pollFor(t, 10*time.Second, func() bool { return l.client.Snapshot().Screen == "chat" })
+		pollFor(t, testbudget.Wait(t), func() bool { return l.client.Snapshot().Screen == "chat" })
 		l.terminal.SendInput("a")
 		l.terminal.SendInput("\x1b\r")
 		l.terminal.SendInput("b")
-		time.Sleep(time.Second)
+		// Each protocol ends in an observable state: Kitty's newline leaves "a\nb" in the draft, legacy's alt+enter sends "a" and the fake provider echoes it. The wait only bounds a hang; a state that never comes is reported by the assertions below.
+		settled := func() bool {
+			if kitty {
+				return l.draft() == "a\nb"
+			}
+			return contains(l.terminal.screen(), "Echo: a")
+		}
+		for deadline := time.Now().Add(testbudget.Wait(t)); !settled() && time.Now().Before(deadline); {
+			time.Sleep(5 * time.Millisecond)
+		}
 		return l.draft(), l.terminal.screen()
 	}
 	// Kitty: ESC CR is Kitty's shift+enter mapping, a newline. Legacy: it is alt+enter, the follow-up that sends "a".
