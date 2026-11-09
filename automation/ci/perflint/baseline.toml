@@ -5588,14 +5588,6 @@ count = 1
 class = "hot-kept:source of an SDK copy; the nested module cannot import internal/sortx"
 
 [[hit]]
-file = "tui/keybindings.go"
-func = "TUIKeybindingsManager.rebuild"
-pattern = "sort-instance"
-detail = "slices.SortFunc"
-count = 1
-class = "hot-kept:source of an SDK copy; the nested module cannot import internal/sortx"
-
-[[hit]]
 file = "tui/login_dialog.go"
 func = "LoginDialogComponent.redactLocked"
 pattern = "sort-instance"
