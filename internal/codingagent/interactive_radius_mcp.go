@@ -31,7 +31,9 @@ func (m *InteractiveMode) offerRadiusMcpServer(providerID, providerName string) 
 	}
 	plan, err := PlanRadiusMcpServer(providerID, m.opts.AgentDir, m.opts.CWD)
 	if err != nil {
-		onMain(func() { m.showError(fmt.Sprintf("Could not update %s: %v", filepath.Join(m.opts.AgentDir, "mcp.json"), err)) })
+		onMain(func() {
+			m.showError(fmt.Sprintf("Could not update %s: %v", filepath.Join(m.opts.AgentDir, "mcp.json"), err))
+		})
 		return
 	}
 	if plan == nil {
