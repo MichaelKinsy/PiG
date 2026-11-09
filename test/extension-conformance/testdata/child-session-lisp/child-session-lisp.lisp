@@ -286,6 +286,17 @@
                   (error-text (lambda () (pig:agent-session-export-to-html session :output-path (concatenate 'string dir "/export.html")))))
              (pig:agent-session-reload session)
              (put "afterReload" (flag (equal (pig:agent-session-session-id session) id)))
+             ;; A file-backed session: its sessionFile is a real path (the in-memory one above is empty, so a reader that returned the fallback would still pass there).
+             (let* ((persisted (pig:ctx-create-agent-session
+                                ctx :cwd dir :agent-dir (concatenate 'string dir "/agent") :model sentinel
+                                    :settings (no-compaction) :resources (quiet-resources)))
+                    (persisted-id (pig:agent-session-session-id persisted))
+                    (persisted-file (or (pig:agent-session-session-file persisted) "")))
+               (pig:agent-session-dispose persisted)
+               (put "fileBackedSessionFile"
+                    (flag (and (eql 0 (search dir persisted-file))
+                               (>= (length persisted-file) 6) (string= ".jsonl" persisted-file :start2 (- (length persisted-file) 6))
+                               (plusp (length persisted-id)) (search persisted-id persisted-file)))))
              (pig:agent-session-abort-bash session)
              (pig:agent-session-abort-branch-summary session)
              (pig:agent-session-abort-compaction session)
@@ -303,6 +314,7 @@
                 (follow (let ((text (error-text (lambda () (pig:agent-session-follow-up session "nothing is running"))))) (if (equal text "") "resolved" text)))
                 (usage (pig:agent-session-get-context-usage session)))
            (pig:to-json (pig:obj "steer" steer "followUp" follow "usage" (or usage :null)
+                                 "isAgentSession" (flag (typep session 'pig:agent-session))
                                  "queued" (pig:agent-session-pending-message-count session))))
       (pig:agent-session-dispose session))))
 

@@ -4,4 +4,5 @@
 
 ### Upgrading
 
-- Lisp: `agent-session-session-id`, `-session-file`, `-model`, `-thinking-level`, `-system-prompt` and `-active-tools`, which held the values at creation, now ask the host for the session's current values.
+- Lisp: `agent-session-session-id`, `-session-file`, `-model`, `-thinking-level` and `-system-prompt`, which held the values at creation, now ask the host for the session's current values.
+- Lisp: `agent-session-active-tools` is removed, because Pi's `AgentSession` has no `activeTools` property. Use `agent-session-get-active-tool-names`.

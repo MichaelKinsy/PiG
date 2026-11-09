@@ -254,7 +254,7 @@
    #:agent-session-bind-extensions #:agent-session-state #:agent-session-messages #:agent-session-refresh-context
    #:agent-session-session-manager #:agent-session-subscribe #:agent-session-dispose
    #:agent-session-session-id #:agent-session-session-file #:agent-session-model #:agent-session-thinking-level
-   #:agent-session-active-tools #:agent-session-system-prompt #:agent-session-model-fallback-message #:agent-session-extension-errors
+   #:agent-session-system-prompt #:agent-session-model-fallback-message #:agent-session-extension-errors
     #:agent-session-streaming-p #:agent-session-idle-p #:agent-session-compacting-p #:agent-session-retrying-p #:agent-session-bash-running-p
     #:agent-session-has-pending-bash-messages-p #:agent-session-retry-attempt #:agent-session-pending-message-count #:agent-session-session-name
     #:agent-session-routed-model #:agent-session-scoped-models #:agent-session-steering-mode #:agent-session-follow-up-mode

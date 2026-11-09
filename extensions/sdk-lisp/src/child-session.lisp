@@ -289,7 +289,7 @@ function unsubscribes it, the session is disposed or the connection ends."
 ;;; Each member is the host's own AgentSession member (childSession.op): the value is read from, or the change made on, the session the host
 ;;; owns, so a call returns what the session holds now. Pi's undefined is NIL, a bool is T or NIL, a list is a vector, an object a hash-table.
 ;;; A member Pi declares `async` (agent-session-wait-for-idle, -reload, -compact, -navigate-tree, -execute-bash, -export-to-html,
-;;; -summarize-for-bug-report, -set-model, -send-custom-message, -send-user-message) blocks until its Promise settles and signals host-call-error
+;;; -summarize-for-bug-report, -set-model, -cycle-model, -send-custom-message, -send-user-message) blocks until its Promise settles and signals host-call-error
 ;;; on rejection; it starts in call order and a later call from another thread (an abort) never waits for it. Given :CTX, a cancelled ctx runs Pi's
 ;;; abort for agent-session-compact, -navigate-tree and -execute-bash (abortCompaction, abortBranchSummary, abortBash); the other awaited members have
 ;;; no abort in Pi. Scope: a tool definition carries data, not its execute function or hooks; bash output chunks reach subscribers, not a callback.
@@ -370,8 +370,6 @@ function unsubscribes it, the session is disposed or the connection ends."
   ("getAvailableThinkingLevels") child-vector)
 (def-child-member agent-session-get-last-assistant-text () "`session.getLastAssistantText()`; NIL when the session has none."
   ("getLastAssistantText") child-maybe-string)
-(def-child-member agent-session-active-tools () "`session.getActiveToolNames()` (the readers of the creation snapshot, now live)."
-  ("getActiveToolNames") child-vector)
 (def-child-member agent-session-get-active-tool-names () "`session.getActiveToolNames()`." ("getActiveToolNames") child-vector)
 (def-child-member agent-session-get-callable-tool-names () "`session.getCallableToolNames()`." ("getCallableToolNames") child-vector)
 (def-child-member agent-session-get-steering-messages () "`session.getSteeringMessages()`: the steering messages not yet delivered."

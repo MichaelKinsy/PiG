@@ -287,7 +287,6 @@
     ("supportsThinking" "op" (lambda (s) (pig:agent-session-supports-thinking-p s)))
     ("getAvailableThinkingLevels" "op" (lambda (s) (pig:agent-session-get-available-thinking-levels s)))
     ("getLastAssistantText" "op" (lambda (s) (pig:agent-session-get-last-assistant-text s)))
-    ("getActiveToolNames" "op" (lambda (s) (pig:agent-session-active-tools s)))
     ("getActiveToolNames" "op" (lambda (s) (pig:agent-session-get-active-tool-names s)))
     ("getCallableToolNames" "op" (lambda (s) (pig:agent-session-get-callable-tool-names s)))
     ("getSteeringMessages" "op" (lambda (s) (pig:agent-session-get-steering-messages s)))

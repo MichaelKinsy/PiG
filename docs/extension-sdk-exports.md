@@ -10,7 +10,7 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 
 | Module | Rows | type-only (identity by kind) | Node served | Go gaps | Rust gaps | Python gaps | Lisp gaps |
 |---|---|---|---|---|---|---|---|
-| `pi-coding-agent` | 928 | 310 | 918 | 257 | 325 | 325 | 258 |
+| `pi-coding-agent` | 928 | 310 | 918 | 257 | 325 | 325 | 257 |
 | `pi-tui` | 370 | 85 | 369 | 102 | 102 | 102 | 102 |
 | `pi-ai` | 105 | 197 | 105 | 73 | 73 | 73 | 73 |
 | `pi-ai/compat` | 165 | 204 | 165 | 130 | 130 | 130 | 130 |
@@ -21,7 +21,7 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | Lane | Owner | Opened | Gap cells | Closing row |
 |---|---|---|---|---|
 | C2AgentLoop | C2Sessions lane follow-up (pi-agent-core Agent loop in the SDKs) | 0.5.2 | 172 | The pi-agent-core Agent class and its loop functions (agentLoop, runAgentLoop, runToolCall, streamProxy, setDefaultStreamFn) as an in-process loop in each SDK over the host's model streaming, with a conformance row per SDK that runs a turn through the hooks |
-| C2Sessions | C2Sessions lane (createAgentSession family, E1/E6) | 0.5.2 | 137 | Conformance rows for createAgentSession, createAgentSessionRuntime and the pi-agent-core Agent loop in all four SDKs (branch feat/sdk-child-agent-sessions) |
+| C2Sessions | C2Sessions lane (createAgentSession family, E1/E6) | 0.5.2 | 136 | Conformance rows for createAgentSession, createAgentSessionRuntime and the pi-agent-core Agent loop in all four SDKs (branch feat/sdk-child-agent-sessions) |
 | C2SessionsEmbedder | C2Sessions lane (createAgentSession family, E1/E6), designed out pending an owner divergence | 0.5.2 | 8 | AgentSession.agent returns pi-agent-core's Agent, the object whose beforeToolCall, afterToolCall, convertToLlm, transformContext, getApiKey and streamFunction hooks are in-process functions of the embedder that drive the model loop; and createReplacedSessionContext returns an object of closures over the replaced session. Neither value has a wire form (a function does not cross the extension socket, and the host owns the loop), so they are not ported to any SDK. Closing row: an owner-approved numbered divergence for these two members, after which the cells become divergence:D<n> |
 | C2SessionsGraph | C2Sessions lane follow-up (session graph objects of a child session) | 0.5.2 | 16 | AgentSession.extensionRunner, settingsManager, resourceLoader and modelRuntime as session graph handles of the child's own objects (the way AgentSession.sessionManager is one, CallChildSessionSessionManager), for each SDK, with a conformance row that reads the child's value through the handle |
 | SdkExportsLedger | SdkExportsLedger lane (Pi application internals no extension scan imports) | 0.5.2 | 1576 | Owner decision per export, listed with usage counts in handoffs/0.5.2/sdk-exports-internals.md: a numbered divergence in docs/parity/DIVERGENCES.md (cells become divergence:D<n>), or a real lane with a port and a conformance row |
@@ -45,7 +45,7 @@ None.
 
 | Export | uses | Node | Go | Rust | Python | Lisp |
 |---|---|---|---|---|---|---|
-| `AgentSession` | 4 | served | native:AgentSession | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession` | 4 | served | native:AgentSession | gap:C2Sessions | gap:C2Sessions | native:pig:agent-session |
 | `AgentSession.abort` | 0 | served | native:AgentSession.Abort | native:AgentSession::abort | native:AgentSession.abort | native:pig:agent-session-abort |
 | `AgentSession.abortBash` | 0 | served | native:AgentSession.AbortBash | gap:C2Sessions | gap:C2Sessions | native:pig:agent-session-abort-bash |
 | `AgentSession.abortBranchSummary` | 0 | served | native:AgentSession.AbortBranchSummary | gap:C2Sessions | gap:C2Sessions | native:pig:agent-session-abort-branch-summary |
