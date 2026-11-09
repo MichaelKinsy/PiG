@@ -215,7 +215,7 @@ Add the keyword `pig-package` and a description to `package.json`, then run `npm
 
 ## Editors and ACP: pig-acp
 
-`pig install npm:@pi-in-go/pigpen-acp` installs the Package, whose `/acp` command prints the editor settings. It does not install the `pig-acp` executable. An editor that speaks the Agent Client Protocol (Zed, JetBrains) starts `pig-acp`, and `pig-acp` starts `pig --mode rpc` for each session. No prebuilt `pig-acp` download exists yet, so one command builds it from the source the Package ships. It has no dependencies and needs Go 1.26 or later (`pig setup go` installs one).
+`pig install npm:@pi-in-go/pigpen-acp` installs the Package, whose `/acp` command prints the editor settings. It does not install the `pig-acp` executable. An editor that speaks the Agent Client Protocol (Zed, JetBrains) starts `pig-acp`, and `pig-acp` starts `pig --mode rpc` for each session. From PiG 0.8.0 on, each PiG release attaches prebuilt `pig-acp` archives, one per target: `pig-acp-<version>-<os>-<arch>.tar.gz` (`.zip` on Windows) for `linux`, `darwin` and `windows` on `amd64` and `arm64`, each with the `pig` of the same release beside `pig-acp`. Extract an archive into a directory of your choosing; it has no top-level folder. To build `pig-acp` yourself from the source the Package ships (for an earlier PiG, or any other target), one command does it; it has no dependencies and needs Go 1.26 or later (`pig setup go` installs one).
 
 ```sh
 pig install npm:@pi-in-go/pigpen-acp
