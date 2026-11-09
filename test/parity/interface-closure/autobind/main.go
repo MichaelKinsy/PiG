@@ -382,7 +382,7 @@ var libraryEntries = map[string][]string{
 	"durable:./storage/sqlite/node":       {"./durable/storage/sqlite/node"},
 	"durable:./storage/sqlite/cloudflare": {"./durable/storage/sqlite/cloudflare"},
 	"durable:./storage/store":             {"./durable/storage/store"},
-	"chord:.":                             {"./chord", "./chord/context", "./chord/delta", "./chord/next/contracts", "./chord/next/data", "./chord/next/documents", "./chord/next/host", "./chord/next/link", "./chord/next/registries", "./chord/next/state", "./chord/next/store", "./chord/next/surfaces", "./chord/next/telemetry", "./durable", "./durable/core/internal/delta"},
+	"chord:.":                             {"./chord", "./chord/context", "./chord/delta", "./chord/next/contracts", "./chord/next/data", "./chord/next/documents", "./chord/next/host", "./chord/next/link", "./chord/next/registries", "./chord/next/state", "./chord/next/store", "./chord/next/surfaces", "./chord/next/telemetry", "./chord/nextnode", "./durable", "./durable/core/internal/delta"},
 	"chord:./app":                         {"./chord/nextnode", "./chord/nextnode/app"},
 	"chord:./app/files":                   {"./chord/nextnode/app"},
 	"chord:./context":                     {"./chord/context", "./chord/next/host"},
