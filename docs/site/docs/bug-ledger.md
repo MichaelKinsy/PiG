@@ -51,6 +51,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-053d96d](#bf-053d96d) | RPC mode: when an extension command calls `pi.sendUserMessage()` or `pi.sendMessage(..., { triggerTurn: true… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-056bbfb](#bf-056bbfb) | Key matching follows Pi for three terminal inputs | PiG's own defect | All platforms | 0.5.0 |
 | [BF-058e7a0](#bf-058e7a0) | The Go, Rust and Python SDKs export Pi's compaction helpers `calculateContextTokens`, `shouldCompact`… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-05b3416](#bf-05b3416) | Aborting a compaction or a session-tree move while extensions were handling `session_before_compact` or… | PiG's own defect | All platforms | Unreleased |
 | [BF-05c7426](#bf-05c7426) | CI: the nightly `-race` run no longer fails on the nested modules that only build inside a Go workspace… | PiG's own defect | All platforms | Unreleased |
 | [BF-0630078](#bf-0630078) | MCP tool calls no longer fail with "Invalid MCP tools/call structured content" when the server returns… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-0631c73](#bf-0631c73) | Go, Python and Rust extensions now draw an overlay component (`ctx.custom` with `overlay: true`) at the… | PiG's own defect | All platforms | 0.5.0 |
@@ -2397,6 +2398,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `058e7a0e4b` (2026-10-11)
 - **Tests:** `test/extension-conformance/compaction_usage_test.go::TestConformance_CompactionUsageHelpersAgreeAcrossSDKs`
 - **Release note:** The Go, Rust and Python SDKs export Pi's compaction helpers `calculateContextTokens`, `shouldCompact`, `getLastAssistantUsage`, `estimateTokens`, `findCutPoint`, `findTurnStartIndex` and `DEFAULT_COMPACTION_SETTINGS`; the Rust SDK also exports `UsageInfo`.
+
+### BF-05b3416
+
+**Aborting a compaction or a session-tree move while extensions were handling `session_before_compact` or…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Aborting a compaction or a session-tree move while extensions were handling `session_before_compact` or `session_before_tree` no longer drops the handler's reply and keeps every later extension from hearing about it.
+- **Root cause:** Pi awaits every handler of both events with event.signal aborted and keeps their results (runner.ts emit; agent-session.ts:2878-2890, 3206-3218, 4107-4135); navigateTree checks no abort after the emit, so a late cancel or summary is honoured. PiG dispatched them with the abortable context: the running subprocess handler was cancelled and its reply dropped, and every later handler was never delivered, silently.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `05b3416ad9` (2026-11-09)
+- **Tests:** None recorded.
+- **Release note:** Aborting a compaction or a session-tree move while extensions were handling `session_before_compact` or `session_before_tree` no longer drops the handler's reply and keeps every later extension from hearing about it. As in Pi, each handler now receives the event in order, `event.signal` aborts for the one that is running, and a handler dispatched after the abort starts with the signal already aborted. A `{ cancel: true }`, summary, instructions or label returned after a tree move was aborted is honoured.
 
 ### BF-05c7426
 

@@ -153563,8 +153563,8 @@
       ],
       "evidence": [
         "test:coding/session_branch_summary_upstream_test.go#TestBranchSummaryAgentStreamCancellation",
-        "test:coding/session_test.go#TestCompactAbortsTreeNavigationThenCompactsOriginalLeaf",
-        "test:coding/session_tree_test.go#TestNavigateTreeAbortDuringSummarization"
+        "test:test/extension-conformance/session_before_abort_test.go#TestNodeSessionBeforeTreeHonoursAResultReturnedAfterTheAbort",
+        "test:coding/session_before_abort_dispatch_test.go#TestNavigateTreeHonoursAHandlerResultReturnedAfterTheAbort"
       ]
     },
     {
@@ -153585,8 +153585,8 @@
       ],
       "evidence": [
         "test:coding/session_branch_summary_upstream_test.go#TestBranchSummaryAgentStreamCancellation",
-        "test:coding/session_test.go#TestCompactAbortsTreeNavigationThenCompactsOriginalLeaf",
-        "test:coding/session_tree_test.go#TestNavigateTreeAbortDuringSummarization"
+        "test:test/extension-conformance/session_before_abort_test.go#TestNodeSessionBeforeTreeHonoursAResultReturnedAfterTheAbort",
+        "test:coding/session_before_abort_dispatch_test.go#TestNavigateTreeHonoursAHandlerResultReturnedAfterTheAbort"
       ]
     },
     {
@@ -153608,7 +153608,7 @@
       "evidence": [
         "test:coding/session_compaction_cancellation_upstream_test.go#TestAutomaticCompactionCancellationUpstream",
         "test:coding/session_compaction_retry_upstream_test.go#TestCompactionRetriesTransientStreamDropUpstream",
-        "test:coding/session_compaction_event_order_test.go#TestCompactionFailureWaitsForEndListeners"
+        "test:test/extension-conformance/session_before_abort_test.go#TestNodeSessionBeforeCompactReachesTheNextExtensionWhenAbortedDuringDispatch"
       ]
     },
     {
@@ -153630,7 +153630,7 @@
       "evidence": [
         "test:coding/session_compaction_cancellation_upstream_test.go#TestAutomaticCompactionCancellationUpstream",
         "test:coding/session_compaction_retry_upstream_test.go#TestCompactionRetriesTransientStreamDropUpstream",
-        "test:coding/session_compaction_event_order_test.go#TestCompactionFailureWaitsForEndListeners"
+        "test:test/extension-conformance/session_before_abort_test.go#TestNodeSessionBeforeCompactReachesTheNextExtensionWhenAbortedDuringDispatch"
       ]
     },
     {
@@ -204425,7 +204425,7 @@
       "evidence": [
         "test:coding/session_compaction_extensions_upstream_test.go#TestCompactionExtensionsUpstream",
         "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
-        "test:coding/session_test.go#TestCompact_ExtensionOverrideAndLifecycle"
+        "test:test/extension-conformance/session_before_signal_test.go#TestSessionBeforeSignalReachesEverySDKWhenAbortedDuringDispatch"
       ]
     },
     {
@@ -204933,8 +204933,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
-        "test:coding/extension_command_actions_options_test.go#TestSessionCommandActionsForwardTheirOptions",
-        "test:coding/session_navigate_tree_handle_test.go#TestSessionNavigateTreeHandleForwardsEveryOption"
+        "test:test/extension-conformance/session_before_signal_test.go#TestSessionBeforeSignalReachesEverySDKWhenAbortedDuringDispatch",
+        "test:coding/extension_command_actions_options_test.go#TestSessionCommandActionsForwardTheirOptions"
       ]
     },
     {
@@ -205102,8 +205102,8 @@
       ],
       "evidence": [
         "test:coding/extension_object_member_order_test.go#TestExtensionTreeSummaryKeepsDetailsMemberOrder",
-        "test:coding/session_tree_test.go#TestNavigateTreeEmitsSessionTree",
-        "test:coding/session_tree_test.go#TestNavigateTreeExtensionSummary"
+        "test:coding/session_before_abort_dispatch_test.go#TestNavigateTreeHonoursAHandlerResultReturnedAfterTheAbort",
+        "test:coding/session_tree_test.go#TestNavigateTreeEmitsSessionTree"
       ]
     },
     {

@@ -851,6 +851,26 @@
       ]
     },
     {
+      "id": "BF-05b3416",
+      "title": "Aborting a compaction or a session-tree move while extensions were handling `session_before_compact` or…",
+      "symptom": "Aborting a compaction or a session-tree move while extensions were handling `session_before_compact` or `session_before_tree` no longer drops the handler's reply and keeps every later extension from hearing about it.",
+      "rootCause": "Pi awaits every handler of both events with event.signal aborted and keeps their results (runner.ts emit; agent-session.ts:2878-2890, 3206-3218, 4107-4135); navigateTree checks no abort after the emit, so a late cancel or summary is honoured. PiG dispatched them with the abortable context: the running subprocess handler was cancelled and its reply dropped, and every later handler was never delivered, silently.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Aborting a compaction or a session-tree move while extensions were handling `session_before_compact` or `session_before_tree` no longer drops the handler's reply and keeps every later extension from hearing about it. As in Pi, each handler now receives the event in order, `event.signal` aborts for the one that is running, and a handler dispatched after the abort starts with the signal already aborted. A `{ cancel: true }`, summary, instructions or label returned after a tree move was aborted is honoured.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "05b3416ad9",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-05c7426",
       "title": "CI: the nightly `-race` run no longer fails on the nested modules that only build inside a Go workspace…",
       "symptom": "CI: the nightly `-race` run no longer fails on the nested modules that only build inside a Go workspace (`apps/p2`, `apps/p2desktop`; `piglets/porter/extensions/pig-porter` builds and tests with `GOWORK=off` against its released dependencies and stays as it was): their entries in `automation/ci/race-packages.txt` carry `workspace`, and `test-race-nightly.sh` runs them without `GOWORK=off`.",
