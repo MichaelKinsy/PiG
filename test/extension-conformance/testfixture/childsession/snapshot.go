@@ -8,6 +8,19 @@ import (
 	sdk "github.com/MichaelKinsy/PiG/extensions/sdk"
 )
 
+type snapshotFields struct {
+	id, file, prompt, thinking string
+	model                      map[string]any
+	tools                      []string
+}
+
+// readSnapshot reads the deprecated creation-time fields, which is the point of the scenario.
+//
+//nolint:staticcheck // SA1019: these fields are deprecated and this scenario proves they still hold the creation values.
+func readSnapshot(s *sdk.AgentSession) snapshotFields {
+	return snapshotFields{s.SessionID, s.SessionFile, s.SystemPrompt, s.ThinkingLevel, s.Model, s.ActiveTools}
+}
+
 // registerSnapshot is the child_snapshot scenario: the deprecated creation-time fields of an AgentSession beside the live Current* methods. The session is file-backed with one active tool; the fields hold what it had when CreateAgentSession returned, the methods read what it holds now, and the observations differ after the active tools change (a snapshot that followed the session, or a method that returned the creation values, fails).
 func registerSnapshot(e *sdk.Extension) {
 	e.RegisterTool(sdk.ToolDefinition{
@@ -35,13 +48,7 @@ func registerSnapshot(e *sdk.Extension) {
 				return value
 			}
 			out := map[string]any{}
-			// The deprecated fields, read once the session exists.
-			//nolint:staticcheck // the deprecated snapshot fields are what this scenario proves.
-			snapshot := struct {
-				id, file, prompt, thinking string
-				model                      map[string]any
-				tools                      []string
-			}{session.SessionID, session.SessionFile, session.SystemPrompt, session.ThinkingLevel, session.Model, session.ActiveTools}
+			snapshot := readSnapshot(session)
 			liveID, liveFile := ok(session.CurrentSessionID()).(string), ok(session.CurrentSessionFile()).(string)
 			out["snapshotId"] = snapshot.id != "" && snapshot.id == liveID
 			out["snapshotFile"] = strings.HasPrefix(snapshot.file, dir) && strings.HasSuffix(snapshot.file, ".jsonl") && strings.Contains(snapshot.file, snapshot.id) && snapshot.file == liveFile
@@ -57,9 +64,9 @@ func registerSnapshot(e *sdk.Extension) {
 			ok(nil, session.SetActiveToolsByName([]string{}))
 			livePrompt := ok(session.CurrentSystemPrompt()).(string)
 			out["afterChange"] = map[string]any{
-				"liveTools": ok(session.GetActiveToolNames()), "snapshotTools": session.ActiveTools,
+				"liveTools": ok(session.GetActiveToolNames()), "snapshotTools": readSnapshot(session).tools,
 				"livePromptDropsTool": livePrompt != snapshot.prompt && !strings.Contains(livePrompt, "sentinel-snippet"),
-				"snapshotPrompt":      session.SystemPrompt == snapshot.prompt,
+				"snapshotPrompt":      readSnapshot(session).prompt == snapshot.prompt,
 			}
 			if failure != nil {
 				return nil, failure

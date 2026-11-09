@@ -235,7 +235,9 @@ func (s *AgentSession) SessionName() (string, error) {
 }
 
 // CurrentSystemPrompt is `session.systemPrompt`.
-func (s *AgentSession) CurrentSystemPrompt() (string, error) { return member[string](s, "systemPrompt", nil) }
+func (s *AgentSession) CurrentSystemPrompt() (string, error) {
+	return member[string](s, "systemPrompt", nil)
+}
 
 // CurrentThinkingLevel is `session.thinkingLevel`.
 func (s *AgentSession) CurrentThinkingLevel() (string, error) {

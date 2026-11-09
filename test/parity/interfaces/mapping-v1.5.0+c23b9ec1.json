@@ -30580,8 +30580,8 @@
       ],
       "evidence": [
         "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream",
-        "test:ai/openrouter_user_models_signal_test.go#TestPersonalizeOpenRouterCatalogAbortsTheRequestWhenTheRefreshSignalIsAborted",
-        "test:ai/openrouter_user_models_test.go#TestPersonalizeOpenRouterCatalogKeepsOnlyTheKeysChatModelsWithTheKeysLimitsAndPrices"
+        "test:test/extension-conformance/provider_oauth_refresh_test.go#TestProviderRefreshModelsAcrossSDKs",
+        "test:ai/openrouter_user_models_signal_test.go#TestPersonalizeOpenRouterCatalogAbortsTheRequestWhenTheRefreshSignalIsAborted"
       ]
     },
     {
@@ -74657,8 +74657,8 @@
       ],
       "evidence": [
         "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream",
-        "test:ai/openrouter_user_models_signal_test.go#TestPersonalizeOpenRouterCatalogAbortsTheRequestWhenTheRefreshSignalIsAborted",
-        "test:ai/openrouter_user_models_test.go#TestPersonalizeOpenRouterCatalogKeepsOnlyTheKeysChatModelsWithTheKeysLimitsAndPrices"
+        "test:test/extension-conformance/provider_oauth_refresh_test.go#TestProviderRefreshModelsAcrossSDKs",
+        "test:ai/openrouter_user_models_signal_test.go#TestPersonalizeOpenRouterCatalogAbortsTheRequestWhenTheRefreshSignalIsAborted"
       ]
     },
     {
@@ -87337,8 +87337,8 @@
       ],
       "evidence": [
         "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream",
-        "test:ai/openrouter_user_models_signal_test.go#TestPersonalizeOpenRouterCatalogAbortsTheRequestWhenTheRefreshSignalIsAborted",
-        "test:ai/openrouter_user_models_test.go#TestPersonalizeOpenRouterCatalogKeepsOnlyTheKeysChatModelsWithTheKeysLimitsAndPrices"
+        "test:test/extension-conformance/provider_oauth_refresh_test.go#TestProviderRefreshModelsAcrossSDKs",
+        "test:ai/openrouter_user_models_signal_test.go#TestPersonalizeOpenRouterCatalogAbortsTheRequestWhenTheRefreshSignalIsAborted"
       ]
     },
     {
@@ -153424,7 +153424,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/child_sessions.go#childSession.Abort"
+        "call:coding/cli/child_session_ops.go#childSession.Op"
       ],
       "evidence": [
         "test:coding/bash_execution_llm_text_upstream_test.go#TestRecordedBashResultReachesModelContextUpstream",
@@ -161689,7 +161689,7 @@
       "evidence": [
         "test:coding/session_boundaries_drafts_upstream_test.go#TestUpstreamSessionBoundariesDrafts",
         "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder",
-        "test:test/extension-conformance/outbound_frames_test.go#TestOutboundFramesAreTheEncodersBytes"
+        "test:test/extension-conformance/event_isolation_test.go#TestConformance_EventHandlersDoNotShareTheirPayload"
       ]
     },
     {
@@ -161710,8 +161710,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder",
-        "test:test/extension-conformance/outbound_frames_test.go#TestOutboundFramesAreTheEncodersBytes",
-        "test:test/extension-conformance/turn_boundary_test.go#TestTurnBoundaryMetadataMutationAndPreviewAcrossSDKs"
+        "test:test/extension-conformance/event_isolation_test.go#TestConformance_EventHandlersDoNotShareTheirPayload",
+        "test:test/extension-conformance/outbound_frames_test.go#TestOutboundFramesAreTheEncodersBytes"
       ]
     },
     {
@@ -162219,7 +162219,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/bash_execution.go#BashExecutionComponent.IsDirty"
+        "call:tui/assistant_message_block.go#AssistantMessageComponent.IsDirty"
       ],
       "evidence": [
         "test:tui/collapsible_message_upstream_test.go#TestCollapsibleMessageClicksThroughTerminal",
@@ -164752,7 +164752,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/bash_execution.go#BashExecutionComponent.IsDirty"
+        "call:tui/assistant_message_block.go#AssistantMessageComponent.IsDirty"
       ],
       "evidence": [
         "test:tui/collapsible_message_upstream_test.go#TestCollapsibleMessageClicksThroughTerminal",
@@ -170875,7 +170875,7 @@
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
         "test:tui/show_images_selector_component_upstream_test.go#TestShowImagesSelectorComponentStructureAndSelectionUpstream",
-        "test:internal/codingagent/settings_live_effects_test.go#TestOnSettingAppliedClearsIdleStatusAfterDisablingClearOnShrink"
+        "test:tui/box_semantics_test.go#TestBoxChangesMarkItDirty"
       ]
     },
     {
@@ -191346,7 +191346,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/rpc_mode.go#serveRPCMode"
+        "call:coding/cli/child_session_ops.go#childSession.Op"
       ],
       "evidence": [
         "test:coding/session_model_extension_upstream_test.go#TestSessionModelExtensionCyclesUpstream",
@@ -191368,7 +191368,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/rpc_mode.go#serveRPCMode"
+        "call:coding/cli/child_session_ops.go#childSession.Op"
       ],
       "evidence": [
         "test:coding/session_model_extension_order_test.go#TestBeginModelCycleSplitsMutationFromNotification",
@@ -198883,7 +198883,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/cli_resource_loader.go#cliResourceLoader.ExtendResources"
+        "call:coding/cli/child_session_ops.go#childSession.Op"
       ],
       "evidence": [
         "test:coding/cli/extension_api_get_commands_upstream_test.go#TestExtensionAPIGetCommandsReadsTheBoundSession",
@@ -199040,9 +199040,9 @@
         "call:coding/extension/factoryload/api.go#api.RegisterProvider"
       ],
       "evidence": [
+        "test:test/extension-conformance/provider_oauth_refresh_test.go#TestProviderRefreshModelsAcrossSDKs",
         "test:coding/custom_provider_stream_upstream_test.go#TestRegisteredProviderCallbackPanicIsRequestError",
-        "test:coding/custom_provider_stream_upstream_test.go#TestRegisteredProviderCallbackServesOnlyItsAPI",
-        "test:coding/custom_provider_stream_upstream_test.go#TestRegisteredProviderCustomStreamUpstream"
+        "test:coding/custom_provider_stream_upstream_test.go#TestRegisteredProviderCallbackServesOnlyItsAPI"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -199256,12 +199256,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/model_registry.go#providerConfigFromRegistration"
+        "call:coding/extension/host/subprocess/provider_operations.go#Host.attachProviderOperations"
       ],
       "evidence": [
-        "test:coding/extension/host/subprocess/provider_runtime_integration_test.go#TestHostProviderQueueBindsToRunnerRegistry",
-        "test:coding/extension/provider_oauth_callback_test.go#TestProviderConfigOAuthKeepsUsesCallbackServer",
-        "test:coding/model_registration_snapshot_test.go#TestProviderRegistrationProvisionalAvailabilityUpstream"
+        "test:test/extension-conformance/provider_oauth_refresh_test.go#TestProviderOAuthModifyModelsAcrossSDKs",
+        "test:test/extension-conformance/provider_oauth_refresh_test.go#TestProviderOAuthModifyModelsNonIterableNode",
+        "test:test/extension-conformance/provider_oauth_refresh_test.go#TestProviderOAuthUsesCallbackServerAcrossSDKs"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -199279,12 +199279,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/model_registry.go#providerConfigFromRegistration"
+        "call:coding/extension/host/subprocess/provider_operations.go#Host.attachProviderOperations"
       ],
       "evidence": [
-        "test:coding/provider_config_refresh_models_test.go#TestRegisterProviderConfigRefreshModelsReplacesTheModels",
-        "test:coding/provider_insecure_wiring_test.go#TestRegisteredProviderInsecureReachesTheRequestWithRefreshModels",
-        "test:coding/provider_refresh_insecure_test.go#TestRefreshModelsRegistrationKeepsInsecure"
+        "test:test/extension-conformance/provider_oauth_refresh_test.go#TestProviderRefreshModelsAcrossSDKs",
+        "test:coding/extension/host/subprocess/provider_refresh_entries_test.go#TestConfigRefreshEntryIsFreedWhenTheRequestSettles",
+        "test:coding/provider_config_refresh_models_test.go#TestRegisterProviderConfigRefreshModelsReplacesTheModels"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -199324,7 +199324,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/services.go#registerHarnessTestFaux"
+        "call:coding/extension/host/subprocess/provider_operations.go#Host.providerRefreshModels"
       ],
       "evidence": [
         "test:coding/custom_provider_stream_upstream_test.go#TestRegisteredProviderCallbackPanicIsRequestError",
@@ -206227,7 +206227,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/child_sessions.go#childSession.State"
+        "call:coding/cli/child_session_ops.go#childSession.Op"
       ],
       "evidence": [
         "test:coding/branch_summary_ambient_auth_upstream_test.go#TestBranchSummaryAmbientAuthWithoutAPIKeyUpstream",
@@ -218573,7 +218573,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/bash_execution.go#BashExecutionComponent.IsDirty"
+        "call:tui/assistant_message_block.go#AssistantMessageComponent.IsDirty"
       ],
       "evidence": [
         "test:tui/collapsible_message_upstream_test.go#TestCollapsibleMessageClicksThroughTerminal",
@@ -292601,7 +292601,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/bash_execution.go#BashExecutionComponent.IsDirty"
+        "call:tui/assistant_message_block.go#AssistantMessageComponent.IsDirty"
       ],
       "evidence": [
         "test:tui/message_components_oracle_test.go#TestSummaryAndSkillMessageComponentsMatchPi",
@@ -293015,7 +293015,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/bash_execution.go#BashExecutionComponent.IsDirty"
+        "call:tui/assistant_message_block.go#AssistantMessageComponent.IsDirty"
       ],
       "evidence": [
         "test:tui/bordered_loader_input_oracle_test.go#TestBorderedLoaderHandleInputMatchesPi",
@@ -296602,7 +296602,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/bash_execution.go#BashExecutionComponent.IsDirty"
+        "call:tui/assistant_message_block.go#AssistantMessageComponent.IsDirty"
       ],
       "evidence": [
         "test:tui/image_transcoder_upstream_test.go#TestUpstreamImageTranscoding",
@@ -299258,7 +299258,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/bash_execution.go#BashExecutionComponent.IsDirty"
+        "call:tui/assistant_message_block.go#AssistantMessageComponent.IsDirty"
       ],
       "evidence": [
         "test:internal/codingagent/interactive_tui_custom_status_upstream_test.go#TestCustomEditorDoesNotInheritDefaultStatusOptIn",
@@ -305935,6 +305935,7 @@
         "call:tui/settings_list.go#SettingsList.UpdateValue"
       ],
       "evidence": [
+        "test:tui/child_cache_contract_test.go#TestSettingsListUpdateValueReachesAParentContainersRender",
         "test:tui/tui_surface_native_test.go#TestNativeSetValueCyclesASetting"
       ]
     },
@@ -305955,6 +305956,7 @@
         "call:tui/settings_list.go#SettingsList.UpdateValue"
       ],
       "evidence": [
+        "test:tui/child_cache_contract_test.go#TestSettingsListUpdateValueReachesAParentContainersRender",
         "test:tui/tui_surface_native_test.go#TestNativeSetValueCyclesASetting"
       ]
     },
@@ -306416,7 +306418,7 @@
       "evidence": [
         "test:internal/codingagent/interactive_startup_input_upstream_test.go#TestUpstreamInteractiveStartupInput",
         "test:internal/codingagent/interactive_resume_message_roles_test.go#TestResumedSessionRendersCustomAndSummaryMessageRoles",
-        "test:tui/components_parity_test.go#TestSpacer_SetLines"
+        "test:tui/child_cache_contract_test.go#TestAParentContainerShowsWhatAnyExportedMutatorChanged"
       ]
     },
     {
@@ -306438,7 +306440,7 @@
       "evidence": [
         "test:internal/codingagent/interactive_startup_input_upstream_test.go#TestUpstreamInteractiveStartupInput",
         "test:internal/codingagent/interactive_resume_message_roles_test.go#TestResumedSessionRendersCustomAndSummaryMessageRoles",
-        "test:tui/components_parity_test.go#TestSpacer_SetLines"
+        "test:tui/child_cache_contract_test.go#TestAParentContainerShowsWhatAnyExportedMutatorChanged"
       ]
     },
     {
@@ -309785,7 +309787,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/auth_url.go#authURLHint.Render"
+        "call:tui/assistant_message_block.go#AssistantMessageComponent.IsDirty"
       ],
       "evidence": [
         "test:internal/codingagent/custom_focus_upstream_test.go#TestRemoteOverlayReclaimsInputAfterEditorReplacementUpstream",
