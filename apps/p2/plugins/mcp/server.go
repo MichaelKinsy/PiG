@@ -369,38 +369,6 @@ func managerFactory(connector EnvConnector) func(*delta.JsonObject, host.Self) (
 		inputs := self.Derive([]any{configured, leased, envs.Member("configs"), work, locks.Member("locks")}, func(values []any) (delta.JsonValue, error) {
 			return delta.JsonObjectOf("config", values[0], "leases", values[1], "envs", values[2], "work", values[3], "locks", values[4]), nil
 		})
-		self.On(inputs, func(call chord.WatchCall[delta.JsonValue], _ host.Ctx) *host.Handled {
-			value := objectOf(call.Value)
-			running, err := instances.Value()
-			if err != nil {
-				return host.Threw(err)
-			}
-			placement, err := places.place(value.Value("config"), value.Value("leases"), value.Value("envs"), value.Value("work"), value.Value("locks"))
-			if err != nil {
-				return host.Threw(err)
-			}
-			running.(*Instances).Reconcile(placement)
-			return nil
-		})
-		leases := self.Derive([]any{inputs}, func(values []any) (delta.JsonValue, error) {
-			value := objectOf(values[0])
-			placement, err := places.place(value.Value("config"), value.Value("leases"), value.Value("envs"), value.Value("work"), value.Value("locks"))
-			if err != nil {
-				return nil, err
-			}
-			out := make([]any, len(placement.Leases))
-			for i, each := range placement.Leases {
-				used := []string{}
-				for _, use := range each.Servers {
-					if !containsString(used, use.ID) {
-						used = append(used, use.ID)
-					}
-				}
-				out[i] = delta.JsonObjectOf("session", each.Lease.Session, "location", toJSON(formOf(each.Lease.Location)),
-					"instances", stringsJSON(used), "errors", stringsJSON(each.Errors))
-			}
-			return out, nil
-		})
 		running := func() (*Instances, error) {
 			value, err := instances.Value()
 			if err != nil {
@@ -426,6 +394,35 @@ func managerFactory(connector EnvConnector) func(*delta.JsonObject, host.Self) (
 			}
 			return err
 		}
+		// A change of any input reconciles the placement as it is now, not the placement of the value the watch delivers: the host
+		// delivers on goroutines of its own, so a delivery can run after a later method's reconcile, and the older placement would
+		// close the instances only the newer one needs, to start them again with the next delivery (Pi's delivery is a microtask
+		// that runs before that method resumes). Every reconcile reads the current inputs, so they agree in whatever order they run.
+		self.On(inputs, func(_ chord.WatchCall[delta.JsonValue], ctx host.Ctx) *host.Handled {
+			if err := reconcileIn(ctx); err != nil {
+				return host.Threw(err)
+			}
+			return nil
+		})
+		leases := self.Derive([]any{inputs}, func(values []any) (delta.JsonValue, error) {
+			value := objectOf(values[0])
+			placement, err := places.place(value.Value("config"), value.Value("leases"), value.Value("envs"), value.Value("work"), value.Value("locks"))
+			if err != nil {
+				return nil, err
+			}
+			out := make([]any, len(placement.Leases))
+			for i, each := range placement.Leases {
+				used := []string{}
+				for _, use := range each.Servers {
+					if !containsString(used, use.ID) {
+						used = append(used, use.ID)
+					}
+				}
+				out[i] = delta.JsonObjectOf("session", each.Lease.Session, "location", toJSON(formOf(each.Lease.Location)),
+					"instances", stringsJSON(used), "errors", stringsJSON(each.Errors))
+			}
+			return out, nil
+		})
 		methods := managerMethods(leased, running, placement, reconcileIn)
 		for name, method := range signInMethods(configured, func() (*SignIns, error) {
 			value, err := signIns.Value()
