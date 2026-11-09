@@ -2,7 +2,6 @@ package extensionconformance
 
 import (
 	"context"
-	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -15,23 +14,30 @@ import (
 //
 // Every SDK registers the provider "dyn" (testfixture/modeltypes/dynamic.go, testdata/model-types.mjs, testdata/modeltypes-rust, the Python fixture in model_types_test.go, testdata/lisp-sdk-fixture/probes-model.lisp) and the callbacks compute values no fallback can: modifyModels drops the id "drop", reverses the order and appends the credential's access token to each name; refreshModels reports every context field it received and whether its publish calls were accepted and ran its update. An SDK that never sets has_modify_models, never forwards the flag, never sends a publish callback or ignores the context fails a row.
 
-// dynamicProviderConfig returns the registration of "dyn" that carries both refreshModels and the OAuth descriptor: every SDK registers one config for the provider, because the host keeps the last registration of a name.
+// dynamicProviderConfig returns the config of "dyn" the registry holds after the extension's registrations: every SDK declares the provider twice while its factory runs (the models and refreshModels in one declaration, the OAuth capability in the other; Node merges its root itself), Pi queues both and the registry merges the defined values (loader.ts:218-219, runner.ts:463-480, model-runtime.ts:919-940), so one config carries both. A host that kept only the last declaration of a name fails every row that reads it.
 func dynamicProviderConfig(t *testing.T, r *modelTypesRig) extension.ProviderConfig {
 	t.Helper()
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	var seen []string
+	var config extension.ProviderConfig
+	var haveRefresh, haveOAuth bool
+	count := 0
 	for _, registration := range r.registrations {
 		if registration.Name != "dyn" {
 			continue
 		}
-		if registration.Config.RefreshModels != nil && registration.Config.OAuth != nil {
-			return registration.Config
+		count++
+		if registration.Config.RefreshModels != nil && !haveRefresh {
+			config.RefreshModels, haveRefresh = registration.Config.RefreshModels, true
 		}
-		seen = append(seen, fmt.Sprintf("refreshModels:%v oauth:%v", registration.Config.RefreshModels != nil, registration.Config.OAuth != nil))
+		if registration.Config.OAuth != nil && !haveOAuth {
+			config.OAuth, haveOAuth = registration.Config.OAuth, true
+		}
 	}
-	t.Fatalf("no registration of provider dyn carries refreshModels and oauth (dyn registrations: %v)", seen)
-	return extension.ProviderConfig{}
+	if !haveRefresh || !haveOAuth {
+		t.Fatalf("the registry received %d registrations of provider dyn; refreshModels kept = %v, oauth kept = %v", count, haveRefresh, haveOAuth)
+	}
+	return config
 }
 
 func dynamicChatModel(id, name string) *ai.Model {
@@ -155,6 +161,21 @@ func TestProviderRefreshModelsAcrossSDKs(t *testing.T) {
 		cancel()
 		if _, err := config.RefreshModels(ai.RefreshModelsContext{Signal: cancelled, Publish: func(ai.ModelsPublication) (bool, error) { return true, nil }}); err == nil {
 			t.Fatal("a refresh with a cancelled signal returned no error")
+		}
+	})
+}
+
+// provider-composer.ts:564-569 spreads modifyModels' result into the model list, so a result that is not iterable is the TypeError of that spread. The Node runtime runs the same spread and reports V8's text; the typed SDKs cannot return a non-iterable value.
+func TestProviderOAuthModifyModelsNonIterableNode(t *testing.T) {
+	t.Parallel()
+	eachModelTypesPlacementOf(t, []string{"node"}, func(t *testing.T, r *modelTypesRig) {
+		config := dynamicProviderConfig(t, r)
+		if config.OAuth.ModifyModels == nil {
+			t.Fatalf("oauth.modifyModels was not registered: %+v", config.OAuth)
+		}
+		_, err := config.OAuth.ModifyModels([]*ai.Model{dynamicChatModel("a", "A")}, ai.OAuthCredentials{Access: "nonarray"})
+		if err == nil || !strings.Contains(err.Error(), "is not iterable") || strings.Contains(err.Error(), "must return an array") {
+			t.Fatalf("a non-iterable modifyModels result = %v, want Pi's TypeError (\"... is not iterable\")", err)
 		}
 	})
 }

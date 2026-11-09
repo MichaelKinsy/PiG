@@ -289,7 +289,7 @@ type Host struct {
 	providerConfigRefs map[string]providerConfigRef
 	// configRefreshes holds the publish callback of each running config-form refreshModels request (providerRefreshModels), keyed by connection and request.
 	configRefreshes sync.Map
-	eventBus           hostEventBus
+	eventBus        hostEventBus
 	// loopTurns holds each forwarded loop turn until every recipient took it (forwardLoopTurned).
 	loopTurns loopTurns
 	// childSessions holds the child agent sessions each connection created (child_session.go).
@@ -3775,8 +3775,11 @@ func validateRegisterPayload(expectedName string, reg *RegisterPayload) error {
 	if reg.Flags, err = lastRegistrationWins("flag", reg.Flags, func(f FlagDecl) string { return f.Name }); err != nil {
 		return err
 	}
-	if reg.Providers, err = lastRegistrationWins("provider", reg.Providers, func(p ProviderDecl) string { return p.Name }); err != nil {
-		return err
+	// Pi queues every registerProvider call of the load in an array (loader.ts:218-219; unregisterProvider filters the name's entries out, :224-225) and applies each in order through the registry, which merges defined values over the earlier registration (runner.ts:463-480, model-runtime.ts:919-940), so every declaration of a name is kept here and queued in order; only an empty name is refused. Tools, commands, shortcuts, flags and renderers are Maps in Pi's loader, hence lastRegistrationWins above and below.
+	for _, provider := range reg.Providers {
+		if provider.Name == "" {
+			return errors.New("provider name is required")
+		}
 	}
 	for _, provider := range reg.Providers {
 		if provider.Native != nil && provider.Native.ID != provider.Name {

@@ -151,9 +151,13 @@ export default function (pi) {
       getApiKey: (credentials) => credentials.access,
       modifyModels: (models, credentials) => {
         if (credentials.access === "boom") throw new Error("modify boom");
+        if (credentials.access === "nonarray") return undefined;
         return models.filter((model) => model.id !== "drop").reverse().map((model) => ({ ...model, name: `${model.name}+${credentials.access}` }));
       },
     },
+  });
+  // The same provider declared a second time while the factory runs: Pi queues both and the registry merges them, so refreshModels joins the first declaration's models and oauth.
+  pi.registerProvider("dyn", {
     refreshModels: async (context) => {
       if (context.credential?.access === "boom") throw new Error("refresh boom");
       await context.publish({ persist: { models: [], checkedAt: 99 } });

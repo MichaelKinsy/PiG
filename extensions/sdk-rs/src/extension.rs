@@ -1471,8 +1471,6 @@ impl Extension {
     /// Register a model provider that also contributes an OAuth capability.
     /// The provider's closures are stored for oauth_* dispatch and the config
     /// gains a serializable "oauth" capability descriptor (never closures).
-    ///
-    /// A name is one registration (the host keeps the last registration of a name), so a provider already queued under `name` with [`Extension::register_provider_operations`] keeps its operations (`refresh_models`, `stream_simple`, images, classifiers) and its config keys: the OAuth capability joins that declaration, and the keys of `config` replace those of the same name.
     pub fn register_oauth_provider(
         &mut self,
         name: impl Into<String>,
@@ -1486,29 +1484,15 @@ impl Extension {
         };
         let flags = ProviderOAuthConfig::from_provider(&name, &provider);
         config["oauth"] = serde_json::to_value(flags).unwrap_or_default();
-        match self
-            .providers
-            .iter_mut()
-            .find(|queued| queued.name == name && queued.native.is_none())
-        {
-            Some(queued) => {
-                if !queued.config.is_object() {
-                    queued.config = Value::Object(Default::default());
-                }
-                if let (Some(into), Value::Object(from)) = (queued.config.as_object_mut(), config) {
-                    into.extend(from);
-                }
-            }
-            None => self.providers.push(ProviderDef {
-                name: name.clone(),
-                config,
-                native: None,
-                stream_simple: false,
-                image_apis: Vec::new(),
-                classifier_apis: Vec::new(),
-                refresh_models: false,
-            }),
-        }
+        self.providers.push(ProviderDef {
+            name: name.clone(),
+            config,
+            native: None,
+            stream_simple: false,
+            image_apis: Vec::new(),
+            classifier_apis: Vec::new(),
+            refresh_models: false,
+        });
         self.oauth_fns.insert(name, provider);
     }
 
@@ -2626,8 +2610,7 @@ impl Extension {
                 let models = args["models"].as_array().cloned().unwrap_or_default();
                 match modify(models, decode_creds(&Some(args["credentials"].clone()))) {
                     Ok(models) => {
-                        let _ =
-                            conn.respond(id, Some(serde_json::json!({ "models": models })), None);
+                        let _ = conn.respond(id, Some(serde_json::json!({ "models": models })), None);
                     }
                     Err(e) => {
                         let _ = conn.respond(id, None, Some(err(e)));
@@ -4226,9 +4209,9 @@ mod tests {
     }
 
     #[test]
-    fn oauth_registration_joins_the_provider_queued_under_the_name() {
+    fn oauth_registration_flags_modify_models_and_uses_callback_server_beside_refresh_models() {
         use crate::oauth::{OAuthCredentials, OAuthProvider};
-        let mut ext = Extension::new("joined");
+        let mut ext = Extension::new("flags");
         ext.register_provider_operations(
             "dyn",
             serde_json::json!({"baseUrl": "https://dyn.test", "apiKey": "key"}),
@@ -4236,20 +4219,18 @@ mod tests {
         );
         ext.register_oauth_provider(
             "dyn",
-            serde_json::json!({"apiKey": "replaced"}),
+            serde_json::json!({}),
             OAuthProvider {
                 modify_models: Some(Box::new(|models, _| Ok(models))),
                 uses_callback_server: true,
                 ..OAuthProvider::new("Dyn", |_| Ok(OAuthCredentials::default()))
             },
         );
-        assert_eq!(ext.providers.len(), 1, "a name is one registration");
-        let joined = &ext.providers[0];
-        assert!(joined.refresh_models, "the queued operations survive");
-        assert_eq!(joined.config["baseUrl"], "https://dyn.test");
-        assert_eq!(joined.config["apiKey"], "replaced");
-        assert_eq!(joined.config["oauth"]["has_modify_models"], true);
-        assert_eq!(joined.config["oauth"]["usesCallbackServer"], true);
+        assert_eq!(ext.providers.len(), 2, "a name's declarations stay separate, the registry merges them");
+        assert!(ext.providers[0].refresh_models);
+        assert_eq!(ext.providers[0].config["baseUrl"], "https://dyn.test");
+        assert_eq!(ext.providers[1].config["oauth"]["has_modify_models"], true);
+        assert_eq!(ext.providers[1].config["oauth"]["usesCallbackServer"], true);
         assert!(ext.oauth_fns.contains_key("dyn"));
     }
 

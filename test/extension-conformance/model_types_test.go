@@ -725,11 +725,13 @@ def dynamic_refresh_models(context):
 
 def register_dynamic_provider(ext):
     # The provider "dyn": usesCallbackServer, oauth.modifyModels and refreshModels (types.ts:1930, 2026, 2034); the Go, Node, Rust and Lisp fixtures register the same provider.
-    ext.register_oauth_provider("dyn", {
+    # Declared twice while the factory runs, as Pi queues every registerProvider call and the registry merges them: the models and refreshModels first, the OAuth capability second.
+    ext.register_provider("dyn", {
         "api": "dyn-api", "baseUrl": "https://dyn.test/v1", "apiKey": "dyn-key",
         "models": [{"id": "a", "name": "A", "reasoning": False, "input": ["text"], "cost": ZERO, "contextWindow": 1000, "maxTokens": 100}],
         "refreshModels": dynamic_refresh_models,
-    }, pig_sdk.OAuthProvider(
+    })
+    ext.register_oauth_provider("dyn", {}, pig_sdk.OAuthProvider(
         name="Dynamic OAuth", login=lambda callbacks: pig_sdk.OAuthCredentials(access="login"),
         refresh_token=lambda creds: creds, get_api_key=lambda creds: creds.access,
         modify_models=dynamic_modify_models, uses_callback_server=True,

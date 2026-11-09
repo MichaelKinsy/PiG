@@ -359,12 +359,14 @@
 
 (defun mp-register-dynamic-provider (ext)
   "The provider \"dyn\": its oauth.usesCallbackServer is set, its oauth.modifyModels projects the models by the stored credential and its refreshModels reads the context and publishes (types.ts:1930, 2026, 2034). The other SDKs' fixtures register the same provider."
-  (pig:register-oauth-provider
+  (pig:register-provider
    ext "dyn"
    (pig:obj "api" "dyn-api" "baseUrl" "https://dyn.test/v1" "apiKey" "dyn-key"
             "models" (pig:arr (pig:obj "id" "a" "name" "A" "reasoning" :false "input" (pig:arr "text") "cost" (mp-zero-rates)
                                        "contextWindow" 1000 "maxTokens" 100))
-            "refreshModels" #'mp-refresh-models)
+            "refreshModels" #'mp-refresh-models))
+  (pig:register-oauth-provider
+   ext "dyn" (pig:obj)
    (pig:make-oauth-provider
     :name "Dynamic OAuth"
     :login (lambda (callbacks) (declare (ignore callbacks)) (pig:oauth-credentials :access "login"))

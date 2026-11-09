@@ -5153,11 +5153,8 @@ class Extension:
 
         The provider's callables are stored for oauth_* dispatch and the config
         gains a serializable "oauth" capability descriptor (never callables).
-        The config is a provider config like register_provider's, so it may carry
-        the callables of the same registration (streamSimple, images, classifiers,
-        refreshModels): a name is one registration, and the last registration of a
-        name wins on the host.
         """
+        config = dict(config or {})
         oauth: dict[str, Any] = {
             "name": provider.name or name,
             "isSubscription": provider.is_subscription is True,
@@ -5171,25 +5168,21 @@ class Extension:
             oauth["has_modify_models"] = True
         if provider.credential_store is not None:
             oauth["has_credential_store"] = True
+        config["oauth"] = oauth
+        _ensure_jsonable(config, f"provider config for {name}")
         with self._tool_registration_lock:
             if not self._tools_live:
-                declaration = self._take_provider_declaration(name, dict(config or {}))
-                declaration["config"]["oauth"] = oauth
-                self._providers.append(declaration)
+                self._providers.append({"name": name, "config": config})
                 self._oauth_providers[name] = provider
                 return
-        # After run the registration takes effect at once, as Pi's pi.registerProvider does with an oauth config (types.ts:1766-1803); a refused one keeps the OAuth provider and the callables held before.
+        # After run the registration takes effect at once, as Pi's pi.registerProvider does with an oauth config (types.ts:1766-1803); a refused one keeps the OAuth provider held before.
         with self._provider_lock:
-            kept = self._held_provider_callbacks(name)
             previous = self._oauth_providers.get(name)
-            declaration = self._take_provider_declaration(name, dict(config or {}))
-            declaration["config"]["oauth"] = oauth
             self._oauth_providers[name] = provider
         try:
-            self._call("registerProvider", declaration)
+            self._call("registerProvider", {"name": name, "config": config})
         except BaseException:
             with self._provider_lock:
-                self._restore_provider_callbacks(name, kept)
                 if previous is None:
                     self._oauth_providers.pop(name, None)
                 else:

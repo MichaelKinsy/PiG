@@ -278,8 +278,8 @@ def test_provider_config_implementations_are_declared_and_run_in_the_extension()
         host.close()
 
 
-def test_oauth_provider_registration_carries_the_provider_config_and_runs_modify_models() -> None:
-    """types.ts:1930, 2026, 2034: one registration of a name carries refreshModels and the OAuth capability; modifyModels runs in the extension on the host's oauth_modify_models request and an exception is the request's error."""
+def test_oauth_provider_registration_carries_modify_models_and_uses_callback_server() -> None:
+    """types.ts:1930, 2026, 2034: the OAuth declaration flags modifyModels and usesCallbackServer, the model declaration of the same name carries refreshModels; modifyModels runs in the extension on the host's oauth_modify_models request and an exception is the request's error."""
 
     def modify(models: list[dict[str, Any]], credentials: pig_sdk.OAuthCredentials) -> list[dict[str, Any]]:
         if credentials.access == "boom":
@@ -287,19 +287,20 @@ def test_oauth_provider_registration_carries_the_provider_config_and_runs_modify
         return [{**model, "name": f"{model['name']}+{credentials.access}"} for model in reversed(models) if model["id"] != "drop"]
 
     ext = pig_sdk.Extension("py-oauth-models")
+    ext.register_provider("dyn", {"baseUrl": "https://dyn.test/v1", "refreshModels": lambda context: None})
     ext.register_oauth_provider(
         "dyn",
-        {"baseUrl": "https://dyn.test/v1", "refreshModels": lambda context: None},
+        {},
         pig_sdk.OAuthProvider(name="Dyn", login=lambda callbacks: pig_sdk.OAuthCredentials(access="login"), modify_models=modify, uses_callback_server=True),
     )
     host = _host(ext)
     try:
         providers = host.register["providers"]
-        assert len(providers) == 1, providers
-        provider = providers[0]
-        assert provider["refresh_models"] is True and "refreshModels" not in provider["config"], provider
-        assert provider["config"]["baseUrl"] == "https://dyn.test/v1"
-        assert provider["config"]["oauth"]["has_modify_models"] is True and provider["config"]["oauth"]["usesCallbackServer"] is True
+        assert len(providers) == 2, providers
+        assert providers[0]["refresh_models"] is True and "refreshModels" not in providers[0]["config"], providers[0]
+        assert providers[0]["config"]["baseUrl"] == "https://dyn.test/v1"
+        oauth = providers[1]["config"]["oauth"]
+        assert oauth["has_modify_models"] is True and oauth["usesCallbackServer"] is True, oauth
 
         models = [{"id": "a", "name": "A"}, {"id": "drop", "name": "Drop"}, {"id": "b", "name": "B"}]
         _, response = _drive(host, "mm-1", {"method": "oauth_modify_models", "tool": "dyn", "args": {"models": models, "credentials": {"access": "tok", "refresh": "", "expires": 0}}})

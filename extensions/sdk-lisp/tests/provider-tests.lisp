@@ -598,8 +598,9 @@ once the response arrives. A responder that returns (values nil message) answers
 
 (defun pt-modify-models-ext ()
   (let ((ext (pt-ext)))
+    (pig:register-provider ext "mm" (pig:obj "baseUrl" "https://mm.test/v1" "refreshModels" (lambda (refresh) (declare (ignore refresh)) nil)))
     (pig:register-oauth-provider
-     ext "mm" (pig:obj "baseUrl" "https://mm.test/v1" "refreshModels" (lambda (refresh) (declare (ignore refresh)) nil))
+     ext "mm" (pig:obj)
      (pig:make-oauth-provider
       :name "MM" :login (lambda (callbacks) (declare (ignore callbacks)) (pig:oauth-credentials :access "login"))
       :uses-callback-server t
@@ -610,13 +611,13 @@ once the response arrives. A responder that returns (values nil message) answers
                                collect (pig:obj "id" (pig:jget model "id") "name" (format nil "~A+~A" (pig:jget model "name") (pig:jget credentials "access")))))))
     ext))
 
-(deftest an-oauth-registration-carries-refresh-models-and-runs-modify-models
+(deftest an-oauth-registration-flags-modify-models-and-uses-callback-server-beside-refresh-models
   (with-host (host (pt-modify-models-ext) register)
-    (let* ((providers (pig:jref register "register" "providers")) (entry (aref providers 0)) (oauth (pig:jref entry "config" "oauth")))
-      (check-equal 1 (length providers))
-      (check-equal t (pig:jget entry "refresh_models"))
-      (check (null (nth-value 1 (gethash "refreshModels" (pig:jget entry "config")))))
-      (check-equal "https://mm.test/v1" (pig:jref entry "config" "baseUrl"))
+    (let* ((providers (pig:jref register "register" "providers")) (models-entry (aref providers 0)) (oauth-entry (aref providers 1)) (oauth (pig:jref oauth-entry "config" "oauth")))
+      (check-equal 2 (length providers))
+      (check-equal t (pig:jget models-entry "refresh_models"))
+      (check (null (nth-value 1 (gethash "refreshModels" (pig:jget models-entry "config")))))
+      (check-equal "https://mm.test/v1" (pig:jref models-entry "config" "baseUrl"))
       (check-equal t (pig:jget oauth "has_modify_models"))
       (check-equal t (pig:jget oauth "usesCallbackServer")))
     (let* ((models (pig:arr (pig:obj "id" "a" "name" "A") (pig:obj "id" "drop" "name" "Drop") (pig:obj "id" "b" "name" "B")))

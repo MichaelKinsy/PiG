@@ -17,9 +17,11 @@ func dynamicConfig() sdk.ProviderConfig {
 		"oauth": &sdk.OAuthProvider{
 			Name:               "Dynamic OAuth",
 			UsesCallbackServer: true,
-			Login:              func(*sdk.OAuthLoginCallbacks) (sdk.OAuthCredentials, error) { return sdk.OAuthCredentials{Access: "login"}, nil },
-			RefreshToken:       func(creds sdk.OAuthCredentials) (sdk.OAuthCredentials, error) { return creds, nil },
-			GetAPIKey:          func(creds sdk.OAuthCredentials) string { return creds.Access },
+			Login: func(*sdk.OAuthLoginCallbacks) (sdk.OAuthCredentials, error) {
+				return sdk.OAuthCredentials{Access: "login"}, nil
+			},
+			RefreshToken: func(creds sdk.OAuthCredentials) (sdk.OAuthCredentials, error) { return creds, nil },
+			GetAPIKey:    func(creds sdk.OAuthCredentials) string { return creds.Access },
 			// The models without the "drop" id, in reverse order, each named after the credential's access token.
 			ModifyModels: func(models []map[string]any, creds sdk.OAuthCredentials) ([]map[string]any, error) {
 				if creds.Access == "boom" {
@@ -77,5 +79,10 @@ func dynamicConfig() sdk.ProviderConfig {
 
 // registerDynamicProvider registers the provider while the factory runs.
 func registerDynamicProvider(e *sdk.Extension) {
-	e.RegisterProvider("dyn", dynamicConfig())
+	// One provider declared twice while the factory runs (loader.ts queues each call, the registry merges them): the models and refreshModels first, the OAuth capability second.
+	config := dynamicConfig()
+	oauth := config["oauth"]
+	delete(config, "oauth")
+	e.RegisterProvider("dyn", config)
+	e.RegisterProvider("dyn", sdk.ProviderConfig{"oauth": oauth})
 }

@@ -5096,8 +5096,8 @@ export class Runtime {
       case "oauth_modify_models": {
         // types.ts:2034: the legacy synchronous projection of the registered models by the stored credential; the host sends the chat models and the stored credential.
         if (typeof provider.modifyModels !== "function") throw new Error("provider does not support modifyModels");
-        const models = provider.modifyModels(request.args?.models ?? [], oauthCredsFromWire(request.args?.credentials));
-        if (!Array.isArray(models)) throw new Error("oauth.modifyModels must return an array of models");
+        // provider-composer.ts:564-569 spreads the result into the model list, so a result that is not iterable is the TypeError of that spread, V8's own text.
+        const models = [...provider.modifyModels(request.args?.models ?? [], oauthCredsFromWire(request.args?.credentials))];
         await this.respond(id, { models });
         return;
       }
