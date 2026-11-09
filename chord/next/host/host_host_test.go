@@ -2659,6 +2659,9 @@ func TestHostReloadAcrossHostsInTheAppsOrderServerThenWorkerThenTabAnOldTabIsMap
 		scopeEventually(t, "the old tab reads one", titleIs(old, "one"))
 		stored, _ := r.Workers.Load("session|S1")
 		worker := stored.(Host)
+		// The worker's `host.load` is not awaited by the relay, and `reload` runs after load: the old tab reading one does
+		// not mean the worker's load returned.
+		r.WorkerLoaded(t, "session|S1")
 		// The server installs first: nothing of Title changes there.
 		_, err := r.Server.Reload([]HostFacet{{Name: "@test/server", Facet: emptyFacet()}}, background, ReloadOptions{})
 		must(t, err)

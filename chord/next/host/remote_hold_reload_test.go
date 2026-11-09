@@ -438,6 +438,9 @@ func TestHoldsAcrossAReload(t *testing.T) {
 		rel := relay(t, relayedOptions{})
 		notes := refGet(t, rel.Tab, PlacedNotes, jsonObject("session", "S1"))
 		worker := rel.Worker("session|S1")
+		// The relay does not await the worker's `host.load` (`void host.load(...)`), and `reload` runs after load: the
+		// hold's bound may reach the tab before the worker's load returns, so the first reload waits for it.
+		rel.WorkerLoaded(t, "session|S1")
 		watch, err := refStateWatch(notes, background)
 		must(t, err)
 		states := statesOf(t, watch)
