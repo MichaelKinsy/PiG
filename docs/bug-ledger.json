@@ -42555,6 +42555,28 @@
       ]
     },
     {
+      "id": "BF-edd520d",
+      "title": "`pig piglet build` on Windows no longer fails a healthy Binary with \"basic artifact verification timed out…",
+      "symptom": "`pig piglet build` on Windows no longer fails a healthy Binary with \"basic artifact verification timed out after 1m0s\": the 60 s budget of the `--version` run was spent while Windows scanned the freshly signed executable before starting it, and now counts only from the moment the process exists.",
+      "rootCause": "smokeArtifact ran the artifact under a 60 s context created before the start, so a first start that blocked in the OS (Windows scans a freshly written, here freshly signed, executable before it runs it) spent the budget before the artifact ran, and a healthy binary failed with \"basic artifact verification timed out after 1m0s\" (Windows native-4 of run 42620406642, TestKeepModePigletBuildsASignedBinary: the step ran 65 s after the 30 s compile and link).",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig piglet build` on Windows no longer fails a healthy Binary with \"basic artifact verification timed out after 1m0s\": the 60 s budget of the `--version` run was spent while Windows scanned the freshly signed executable before starting it, and now counts only from the moment the process exists. A hung artifact still fails after 60 s, naming how long the start took and what the process printed, and a canceled build reports its cancellation.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "edd520d314",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "coding/pigletbuild/keep_mode_test.go::TestKeepModePigletBuildsASignedBinary"
+      ]
+    },
+    {
       "id": "BF-ededef9",
       "title": "`pig update` now warns when an npm package update leaves the installed version unchanged: shortly after a…",
       "symptom": "`pig update` now warns when an npm package update leaves the installed version unchanged: shortly after a publish `npm view` can report the new version while `npm install` still resolves the old one, and `Updated packages` was printed with nothing updated.",
