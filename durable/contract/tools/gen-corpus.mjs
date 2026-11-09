@@ -156,6 +156,8 @@ const REAL_TIME = {
 		"# 4 CPUs all ended at 10-11 s, alone it passes. The gate therefore runs the row alone, and because that no longer lets a slowdown show as a missed",
 		"# budget, the row records a bound on the candidate's time for the test over the reference's: 5x (cost_max_ratio), 1.3 times the largest ratio",
 		"# measured in 20 paired runs at 8 CPUs (2.1-3.9, median 2.9; durable/contract/README.md, Exclusive rows). The gate reads it in costOf (gate.mjs).",
+		"# Pi's own 5 s budget has about 3x margin for the native candidate (a pipe round trip per core call; the shipped Go path has no such hop), so the row",
+		"# can still miss that budget alone at a host load above about 100: recorded here, not excused by the gate.",
 		`exclusive = true`,
 		`cost_test = "scheduler retention forgets ended subagent chains"`,
 		`cost_max_ratio = 5`,

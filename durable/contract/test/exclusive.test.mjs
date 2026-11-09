@@ -126,7 +126,7 @@ test("costOf: the reference's time is the smaller of its two samples, so a stall
 	assert.equal(costOf(costRow, timed("suite slow one", 450), timed("suite slow one", 1700), timed("suite slow one", 1700)).over, undefined, "a stalled second sample does not raise the reference")
 })
 
-test("runVitestRow: an exclusive row with a cost bound runs the reference's test a second time, after the candidate, and uses the smaller time", async () => {
+test("runVitestRow: an exclusive row with a cost bound runs the test a second time on each side, alone, after the candidate's first run, and uses the smaller time of each", async () => {
 	const name = "suite slow one"
 	const log = []
 	const refTimes = [1700, 450]
@@ -137,6 +137,26 @@ test("runVitestRow: an exclusive row with a cost bound runs the reference's test
 	}
 	const result = await runVitestRow(row("twice", { exclusive: true, ...costRow }), { name: "cand-twice", vitest: true, candidateDir: "x", env: {} }, { out: "x", run }, corpus)
 	assert.equal(result.status, "fail", JSON.stringify(result))
-	assert.deepEqual(log, ["ref", "cand-twice", "ref only suite slow"])
+	assert.deepEqual(log, ["ref", "cand-twice", "ref only suite slow", "cand-twice only suite slow"])
 	assert.match(result.detail.problem, /the smaller of 1700 and 450/)
+})
+
+test("costOf: the candidate's time is the smaller of its two samples too, so a stalled candidate run does not fail a candidate within the bound", () => {
+	const stalled = timed("suite slow one", 3000)
+	const ok = costOf(costRow, timed("suite slow one", 500), stalled, undefined, timed("suite slow one", 1600))
+	assert.equal(ok.over, undefined)
+	assert.match(ok.text, /1600 ms \(the smaller of 3000 and 1600\) against the reference's 500 ms \(3\.20x/)
+	assert.equal(costOf(costRow, timed("suite slow one", 500), stalled).over.bound, 4, "one sample alone: 6x")
+	assert.equal(costOf(costRow, timed("suite slow one", 500), stalled, undefined, timed("suite slow one", 2400)).over.bound, 4, "both samples slow: still over")
+})
+
+test("costOf: a second run in which the test did not pass is ignored, on either side", () => {
+	const failedEarly = name => ({ tests: new Map([[name, "failed"]]), durations: new Map([[name, 3]]) })
+	const n = "suite slow one"
+	const caught = costOf(costRow, timed(n, 500), timed(n, 2500), failedEarly(n))
+	assert.equal(caught.over.bound, 4, "a reference that failed in 3 ms does not lower the reference")
+	assert.match(caught.text, /against the reference's 500 ms \(5\.00x/)
+	const fine = costOf(costRow, timed(n, 500), timed(n, 1500), undefined, failedEarly(n))
+	assert.equal(fine.over, undefined)
+	assert.match(fine.text, /1500 ms against/, "a candidate that failed in 3 ms does not lower the candidate")
 })
