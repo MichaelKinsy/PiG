@@ -188,6 +188,8 @@
        (sess-answer host "sessionGraph.call" :null)
        (let ((emit (sess-answer host "childSession.emit" (pig:obj "emitted" t "result" (pig:obj "cancel" t)))))
          (check-equal (pig:obj "type" "session_before_fork" "entryId" "e1" "position" "at") (pig:jget emit "event")))
+       ;; dispose settles the session's run before it emits session_shutdown
+       (sess-answer host "childSession.abort")
        (check-equal (pig:obj "type" "session_shutdown" "reason" "quit")
                     (pig:jget (sess-answer host "childSession.emit" (pig:obj "emitted" :false)) "event"))
        (sess-answer host "childSession.dispose")))
