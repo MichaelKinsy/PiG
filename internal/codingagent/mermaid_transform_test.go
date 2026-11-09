@@ -74,7 +74,7 @@ func TestMermaidTransformMatchesUpstream(t *testing.T) {
 // the bold title, classDef over the theme, hyperlinks only on node text and
 // only on terminals with hyperlinks, the themed warning) against Pi's own
 // createMermaidMarkdownTransformer driven with a {getFgAnsi, fg} theme built
-// from Go's ActiveTheme palette (truecolor and 256) and the terminal's
+// from the built-in dark theme's palette (truecolor and 256) and the terminal's
 // hyperlink capability. The goldens carry the palette they were generated
 // with; a theme change that moves it needs a regeneration.
 func TestMermaidThemedTransformMatchesUpstream(t *testing.T) {
@@ -106,6 +106,14 @@ func checkMermaidThemedGoldens(t *testing.T) {
 	}
 	defer func() { _ = f.Close() }()
 	t.Cleanup(tui.ResetCapabilitiesCache)
+	// The goldens carry the built-in dark theme's palette, so it is loaded by name: the active theme is process-global and whichever test ran last leaves its own selected (the light theme, the system theme, or the dark theme in the color depth the environment reports).
+	// LoadBuiltinTheme resolves in the color depth of the capabilities and runs terminal detection when none are set, so they are set first; the mode each golden names is applied per case.
+	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true})
+	dark, err := tui.LoadBuiltinTheme("dark")
+	if err != nil {
+		t.Fatalf("load the built-in dark theme: %v", err)
+	}
+	dark256 := dark.WithColorMode(tui.TerminalColorMode256)
 
 	var total, styled, linked int
 	sc := bufio.NewScanner(f)
@@ -134,10 +142,9 @@ func checkMermaidThemedGoldens(t *testing.T) {
 			t.Fatalf("bad golden %q: %v", sc.Bytes(), err)
 		}
 		total++
-		// The active theme is created in the color depth the environment reports (COLORTERM) when an earlier test selects a theme by name, so the mode the golden names is set here and not assumed.
-		theme := tui.ActiveTheme().WithColorMode(tui.TerminalColorModeTrueColor)
+		theme := dark
 		if g.Input.Theme.ColorMode == "256" {
-			theme = theme.WithColorMode(tui.TerminalColorMode256)
+			theme = dark256
 		}
 		for color, want := range g.Input.Theme.Palette {
 			if got := theme.GetFgAnsi(color); got != want {
