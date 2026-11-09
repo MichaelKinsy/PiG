@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 
+	_ "modernc.org/sqlite"
+
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
@@ -18,7 +20,6 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/storage/jsonl"
 	jsonlnode "github.com/MichaelKinsy/PiG/durable/storage/jsonl/node"
 	sqlitenode "github.com/MichaelKinsy/PiG/durable/storage/sqlite/node"
-	_ "modernc.org/sqlite"
 )
 
 const clock = 1_700_000_000_000

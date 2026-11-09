@@ -97,11 +97,11 @@ func leadingRole(data []byte) (string, bool) {
 // DecodeUserContent decodes user message content held as a JSON value: a string or an array of text and image
 // blocks.
 func DecodeUserContent(value JsonValue) (ai.UserContent, error) {
-	//perf:ok value is an untyped JSON tree (any) from the queued inbox record with no typed route to ai.UserContent; one pass per queued user submission at a turn boundary, not per token or event
 	raw, err := jsstring.MarshalKeepingSurrogates(value)
 	if err != nil {
 		return nil, err
 	}
+	//perf:ok value is an untyped JSON tree (any) from the queued inbox record with no typed route to ai.UserContent; one pass per queued user submission at a turn boundary, not per token or event
 	return decodeUserContent(raw)
 }
 
