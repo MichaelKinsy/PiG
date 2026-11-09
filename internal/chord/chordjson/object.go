@@ -337,6 +337,13 @@ func encodeLoneSurrogates(out *bytes.Buffer, text string) {
 	for at := loneSurrogateAt(text, 0); at >= 0; at = loneSurrogateAt(text, start) {
 		writeStringBody(out, text[start:at])
 		unit := 0xD000 | rune(text[at+1]&0x3F)<<6 | rune(text[at+2]&0x3F)
+		if low := at + 3; unit < 0xDC00 && low+2 < len(text) && text[low] == 0xED && text[low+1] >= 0xB0 && text[low+1] <= 0xBF && text[low+2] >= 0x80 && text[low+2] <= 0xBF {
+			// A high unit directly followed by a low unit is one character in a JavaScript string, which JSON.stringify writes as itself.
+			pair := 0x10000 + (unit-0xD800)<<10 + (0xD000 | rune(text[low+1]&0x3F)<<6 | rune(text[low+2]&0x3F)) - 0xDC00
+			writeStringBody(out, string(pair))
+			start = at + 6
+			continue
+		}
 		fmt.Fprintf(out, "\\u%04x", unit)
 		start = at + 3
 	}

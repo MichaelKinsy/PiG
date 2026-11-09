@@ -4,7 +4,7 @@ package chord
 // or on files outside Chord. The Go form: every module package that chord/... links is Chord itself, telemetry
 // (pi-telemetry: a leaf without dependencies, needed for Context.telemetry), schema (pi-schema, for schemas: decision "A
 // schema package beneath pi-ai and Chord") or a product-neutral helper (JSON, numbers, strings, paths and the JSON Schema
-// validator), never another Pi port.
+// validator), or a vendored third-party library under third_party/, never another Pi port.
 
 import (
 	"os"
@@ -28,6 +28,7 @@ var chordHelpers = []string{
 	"internal/goroutineid",
 	"internal/jsclock", // Date.now() and performance.now() with a replaceable source, read by the telemetry recorders
 	"internal/jsnumber",
+	"internal/jsonopts",  // the one encoding/json/v2 option set that reads JSON as JSON.parse does, read by the telemetry store (chord/telemetrysqlite); stdlib-only
 	"internal/jsonparse", // JSON.parse's SyntaxError text, read by the store's outbox (chord/next/store)
 	"internal/jsparity",
 	"internal/jsstring",
@@ -41,6 +42,7 @@ var chordHelpers = []string{
 	"schema",                    // pi-schema, the schema builders and validators of contracts and frames
 	"schema/internal/ecmaregex", // pi-schema's ECMAScript regular expressions
 	"telemetry",                 // pi-telemetry, the dependency of Context.telemetry (chord/context)
+	"third_party/sqlite",        // the vendored modernc.org/sqlite driver layer (multi-thread mode), opened by chord/sqlite/node
 }
 
 // The dependencies differ by platform (the Windows channels link internal/chord/winpipe), so each shipped platform is listed, not only the host's.

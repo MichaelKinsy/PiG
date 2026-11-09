@@ -24641,6 +24641,30 @@
       ]
     },
     {
+      "id": "BF-7570ee8",
+      "title": "A Durable entry record is written and read as Pi's JSON.stringify and JSON.parse do for every UTF-16 string",
+      "symptom": "A Durable entry record is written and read as Pi's JSON.stringify and JSON.parse do for every UTF-16 string.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Durable entry record is written and read as Pi's JSON.stringify and JSON.parse do for every UTF-16 string. A lone surrogate in an entry's kind or in a data value that is not an object was written as U+FFFD by `EntryRecord.MarshalJSON` (Pi keeps the escape `\\ud83d`); a lone surrogate in a message, kind or data string read back as U+FFFD (Pi reads the unit); a surrogate pair held as two adjacent lone halves was written as two escapes by the Chord `Object` (Pi writes the character). `MarshalJSON` and `AppendStringify` now write the same text, which a Node differential test over random UTF-16 strings (lone, paired and reversed surrogates in the kind, the messages, the edits and every data string and key) compares with JSON.stringify and JSON.parse; the general encoder path (`json.Marshal` of an entry) writes a float -0 as 0, as JSON.stringify does; SQLite stores the escape, so rows of up to and above 8 Ki characters hold the same text.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7570ee804d",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "durable/entry_utf16_test.go::TestEntryRecordJSONMatchesNodeOnEveryUTF16String",
+        "durable/storage/sqlite/entry_surrogates_test.go::TestSqliteEntryTextKeepsLoneSurrogatesAtBothSidesOfTheBoundOfLargeRows",
+        "internal/chord/chordjson/object_test.go::TestObjectWritesAdjacentSurrogateHalvesAsTheirCharacter"
+      ]
+    },
+    {
       "id": "BF-75c6ccb",
       "title": "fix(codingagent): context edits leave system messages unchanged",
       "symptom": "fix(codingagent): context edits leave system messages unchanged",
@@ -26922,6 +26946,28 @@
       ]
     },
     {
+      "id": "BF-8303e4c",
+      "title": "fix(entered): Classify takes the tracer and heap dump stops, the exact fd lock frames and the whole header…",
+      "symptom": "fix(entered): Classify takes the tracer and heap dump stops, the exact fd lock frames and the whole header state",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "8303e4c989",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "durable/harness/quiescence_test.go::TestAwaitQuiescentReturnsWithGoroutinesParkedInTheProgramsWaits",
+        "internal/entered/entered_test.go::TestParkedKeepsAFileDescriptorLockAsALock"
+      ]
+    },
+    {
       "id": "BF-83d5488",
       "title": "`pig install \u003cdir\u003e` of a local directory with no package manifest and no `extensions/`, `skills/`, `prompts/`…",
       "symptom": "Previously Pig recorded the Package and loaded nothing from it.",
@@ -27114,6 +27160,27 @@
         "coding/cli/readonly_config_root_binary_test.go::TestReadOnlyConfigRootStartsQuietlyAndNamesOnlyDocsThatExist",
         "coding/cli/strip_app_features_test.go::TestStripExportHTMLBuildOmitsExportPackage",
         "internal/codingagent/auth_guidance_test.go::TestNoTextNamesADocsBundleStartupCouldNotWrite"
+      ]
+    },
+    {
+      "id": "BF-852c46b",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "The async-contract ledger rows (parity: async-contract rows, and earlier) made 49 more upstream files microtask-ordering, so asyncorder now reads their Go ports. The other findings are fixed at the source:",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "852c46b3c1",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "ai/anthropic_thread_normalize_test.go::TestNormalizeThreadMessageKeepsMemberOrder"
       ]
     },
     {
@@ -34308,7 +34375,7 @@
     },
     {
       "id": "BF-D465",
-      "title": "FormatTime takes a time.Time, not `Date | number | string`",
+      "title": "FormatTime takes a time.Time, not `Date`, `number` or `string`",
       "symptom": "Not a Pi bug.",
       "rootCause": "",
       "rootCauseSource": "divergence record",
@@ -36745,6 +36812,30 @@
         "internal/codingagent/fullscreen_search_test.go::TestFullscreenTuiOptionsSearchStylesFollowChalkLevel",
         "test/parity/scenarios/interactive-rendering/62-chalk-level-zero-modifiers.toml",
         "tui/chalk_modifiers_test.go::TestChalkModifiersOffDrawNoMarkdownStyles"
+      ]
+    },
+    {
+      "id": "BF-ad24cdf",
+      "title": "fix(entered): a wait the Go runtime ends is not a wait the goroutine has entered",
+      "symptom": "fix(entered): a wait the Go runtime ends is not a wait the goroutine has entered",
+      "rootCause": "entered.Parked read the state of the goroutine it is asked about from a goroutine dump and took every state but \"running\", \"runnable\", \"syscall\", \"copystack\" and \"preempted\" for a wait, except the sync.Mutex, sync.RWMutex and semaphore waits, which are locks (parked only for AwaitBlocked, whose caller may hold the lock). A goroutine that allocates while a collection starts waits on the world lock, which the dump shows as \"semacquire\", and one that allocates while a collection marks waits for assist credit, \"GC assist wait\". The runtime ends both on its own, so the goroutine is still on its way to the wait the program gave it; Parked took \"GC assist wait\" for parked, and \"semacquire\" for…",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "ad24cdf7f0",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "durable/harness/harness_idle_scopes_test.go::TestIncrementalIdleStateEqualsAFullRecomputeAfterEveryStepOfRandomNestedWork",
+        "internal/entered/entered_test.go::TestClassifySeparatesTheRuntimesWaitsFromTheProgramsOwn",
+        "internal/entered/entered_test.go::TestParkedKeepsAFileDescriptorLockAsALock",
+        "internal/entered/entered_test.go::TestParkedNeverReportsAGoroutineThatAllocatesWithoutPause"
       ]
     },
     {
@@ -48263,25 +48354,6 @@
       "tests": []
     },
     {
-      "id": "BF-e163ba8",
-      "title": "fix(chord): a native watch ends as a section of its host",
-      "symptom": "fix(chord): a native watch ends as a section of its host",
-      "rootCause": "",
-      "rootCauseSource": "",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "origin": "commit",
-      "commits": [
-        {
-          "hash": "e163ba898d",
-          "date": "2026-11-07"
-        }
-      ],
-      "tests": []
-    },
-    {
       "id": "BF-e16cbba",
       "title": "Tool search ranks a tool first when the query is its name, with `-` and other non-identifier characters read…",
       "symptom": "BM25 length normalization could rank a tool with a short description sharing the name's words above it.",
@@ -54976,25 +55048,6 @@
       ]
     },
     {
-      "id": "BF-fcccc8b",
-      "title": "fix(telemetry): a stored span keeps each event's own time",
-      "symptom": "fix(telemetry): a stored span keeps each event's own time",
-      "rootCause": "",
-      "rootCauseSource": "",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "origin": "commit",
-      "commits": [
-        {
-          "hash": "fcccc8bc97",
-          "date": "2026-11-07"
-        }
-      ],
-      "tests": []
-    },
-    {
       "id": "BF-fce99d3",
       "title": "The \"Your first ten minutes\" and Quickstart pages now describe the first-time setup screen (theme, sprite and…",
       "symptom": "They said PiG had no setup screen.",
@@ -55480,6 +55533,33 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-ff6b95e",
+      "title": "Chord's terminal launcher no longer ends the session when a stop and continue (Ctrl+Z, then `fg`) interrupts…",
+      "symptom": "Chord's terminal launcher no longer ends the session when a stop and continue (Ctrl+Z, then `fg`) interrupts the termios ioctl of raw mode: macOS reports that as EINTR, and Node's `setRawMode` retries it, but the launcher's `SetRaw` called `x/term` directly and failed with `interrupted system call`.",
+      "rootCause": "ProcessTerminal.SetRaw called x/term MakeRaw and Restore directly. A stop and continue (Ctrl+Z, fg) resumes inside the termios ioctl, which macOS reports as EINTR, where Node's setRawMode retries it (libuv uv_tty_set_mode). tui.TestTerminalSyscallsThatCanSleepRetryEINTR flagged both calls. Chord may not link the Pi tui package, so raw mode now has its own copy: unix ioctls in retry loops (platform request constants split by OS) and the Windows console-mode form.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "macOS",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord's terminal launcher no longer ends the session when a stop and continue (Ctrl+Z, then `fg`) interrupts the termios ioctl of raw mode: macOS reports that as EINTR, and Node's `setRawMode` retries it, but the launcher's `SetRaw` called `x/term` directly and failed with `interrupted system call`. Entering and leaving raw mode now retries the ioctls on EINTR.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "aadacbc03e",
+          "date": "2026-11-09"
+        },
+        {
+          "hash": "ff6b95eb25",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "tui/terminal_syscall_eintr_audit_test.go::TestEINTRAuditCoversTheWholeRepository",
+        "tui/terminal_syscall_eintr_audit_test.go::TestTerminalSyscallsThatCanSleepRetryEINTR"
+      ]
     },
     {
       "id": "BF-ffcd800",
@@ -56102,7 +56182,7 @@
     },
     {
       "id": "D465",
-      "title": "FormatTime takes a time.Time, not `Date | number | string`",
+      "title": "FormatTime takes a time.Time, not `Date`, `number` or `string`",
       "entry": "BF-D465"
     },
     {

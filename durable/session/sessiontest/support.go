@@ -6,6 +6,7 @@ package sessiontest
 
 import (
 	"context"
+	"runtime"
 	"slices"
 	"sync"
 	"sync/atomic"
@@ -369,3 +370,40 @@ func CreateConversation(t testing.TB, kernel *session.SessionImpl) durable.Conve
 
 // Flush waits until every scheduled watch and state delivery drained, as upstream's flush waits one macrotask.
 func Flush(kernel *session.SessionImpl) { kernel.WaitDeliveries() }
+
+// Frame is a function of a goroutine's stack: where a test stood when it took the frame with Here.
+type Frame string
+
+// Here is the frame of the function that calls it.
+func Here() Frame {
+	var pc [1]uintptr
+	runtime.Callers(2, pc[:])
+	frame, _ := runtime.CallersFrames(pc[:]).Next()
+	return Frame(frame.Function)
+}
+
+// OnStack reports whether the calling goroutine's stack holds a frame of f. A callback a call made from f ran on that call's
+// own stack (inline) has it, whichever goroutine order the scheduler gave the rest; a callback a delivery goroutine ran
+// does not, however early that goroutine started it. A test that checks "never inline" with a flag the caller sets after
+// the call returns misreads a delivery that starts before the caller does: this check does not.
+func (f Frame) OnStack() bool {
+	pcs := make([]uintptr, 64)
+	for {
+		n := runtime.Callers(2, pcs)
+		if n < len(pcs) {
+			pcs = pcs[:n]
+			break
+		}
+		pcs = make([]uintptr, 2*len(pcs))
+	}
+	frames := runtime.CallersFrames(pcs)
+	for {
+		frame, more := frames.Next()
+		if frame.Function == string(f) {
+			return true
+		}
+		if !more {
+			return false
+		}
+	}
+}

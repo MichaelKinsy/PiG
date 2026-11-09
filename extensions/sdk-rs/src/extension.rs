@@ -1845,9 +1845,11 @@ impl Extension {
                 entry_renderers: self.entry_renderers.clone(),
                 markdown_transformer: self.markdown_transformer.is_some(),
                 markdown_message_types: self.markdown_transformer.is_some().then(|| {
-                    self.markdown_message_types
-                        .clone()
-                        .unwrap_or_else(|| ["user", "assistant", "assistant-thinking"].map(String::from).to_vec())
+                    self.markdown_message_types.clone().unwrap_or_else(|| {
+                        ["user", "assistant", "assistant-thinking"]
+                            .map(String::from)
+                            .to_vec()
+                    })
                 }),
                 owns_thinking_runs: self.owns_thinking_runs,
                 tool_renderers: self.tool_renderers.resolvers.len(),

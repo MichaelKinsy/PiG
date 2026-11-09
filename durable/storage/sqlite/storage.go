@@ -74,7 +74,37 @@ type scopeColumns struct {
 
 // encodeJSON serializes a stored value as JSON.stringify does (storage.ts encodeJson): lone UTF-16 surrogates survive, and <, >, & and U+2028/U+2029 stay literal.
 func encodeJSON(value any) (string, error) {
-	encoded, err := jsstring.MarshalJSON(value)
+	buffer := encodeBuffers.Get().(*[]byte)
+	encoded, err := jsstring.AppendMarshalJSON((*buffer)[:0], value)
+	return finishEncoding(buffer, encoded, err)
+}
+
+// encodeEntryJSON is encodeJSON of an entry record without boxing it: the record writes its own text.
+func encodeEntryJSON(entry durable.EntryRecord) (string, error) {
+	buffer := encodeBuffers.Get().(*[]byte)
+	encoded, err := entry.AppendStringify((*buffer)[:0])
+	return finishEncoding(buffer, encoded, err)
+}
+
+// encodeBuffers holds the buffers stored values are encoded into. The text leaves as a string copy, so one buffer serves
+// every row a commit encodes.
+var encodeBuffers = sync.Pool{New: func() any { return new([]byte) }}
+
+// maxPooledEncodeBuffer bounds the buffer kept between calls (golang/go#23199): a larger one is left to the collector.
+const maxPooledEncodeBuffer = 64 << 10
+
+// finishEncoding returns buffer to the pool and the encoded text as a string, or the error encodeJSON reports.
+func finishEncoding(buffer *[]byte, encoded []byte, err error) (string, error) {
+	var text string
+	if err == nil {
+		text = string(encoded)
+	}
+	if cap(encoded) <= maxPooledEncodeBuffer {
+		*buffer = encoded[:0]
+	} else {
+		*buffer = nil
+	}
+	encodeBuffers.Put(buffer)
 	if err != nil {
 		var unsupported *json.UnsupportedValueError
 		if errors.As(err, &unsupported) && strings.Contains(unsupported.Str, "cycle") {
@@ -82,17 +112,24 @@ func encodeJSON(value any) (string, error) {
 		}
 		return "", err
 	}
-	return string(encoded), nil
+	return text, nil
 }
 
 func parseJSON[T any](text string) (T, error) {
 	var value T
-	if err := json.Unmarshal([]byte(text), &value); err != nil {
+	if entry, ok := any(&value).(*durable.EntryRecord); ok {
+		// EntryRecord's decoder validates the text itself, so the generic decoder's extra scan is skipped.
+		if err := entry.UnmarshalJSON(stringBytes(text)); err != nil {
+			return value, err
+		}
+		return value, nil
+	}
+	if err := json.Unmarshal(stringBytes(text), &value); err != nil {
 		return value, err
 	}
 	if ordered.HasDynamic(reflect.TypeFor[T]()) {
 		// A JsonValue member holds the stored text's objects in order, as JSON.parse gives Pi.
-		tree, err := chordjson.DecodeUnquoting([]byte(text), unquoteJS)
+		tree, err := chordjson.DecodeUnquoting(stringBytes(text), unquoteJS)
 		if err != nil {
 			return value, err
 		}
@@ -129,11 +166,8 @@ func parseOps(text string) ([]durable.Op, error) {
 // their JSON escapes survive. The text is JSON.stringify's (storage.ts encodeIndexedString), since a query matches the
 // stored column byte for byte and either implementation may have written it.
 func encodeIndexedString(value string) string {
-	encoded, err := jsstring.MarshalJSON(value)
-	if err != nil {
-		panic(fmt.Sprintf("durable sqlite: string is not JSON encodable: %v", err))
-	}
-	return string(encoded)
+	var scratch [64]byte
+	return string(jsstring.AppendString(scratch[:0], value))
 }
 
 func cursorId(cursor durable.Cursor) (int64, bool, error) {
@@ -558,38 +592,54 @@ func (storage *SqliteStorage) Conversation(
 	return getRecord[durable.ConversationRecord](storage.db, "SELECT record FROM "+storage.schema.Tables.Conversations+" WHERE id = ?", id)
 }
 
-func getRecord[T any](executor SqliteExecutor, sqlText string, params ...SqliteValue) (*T, error) {
-	row, err := executor.Get(sqlText, params...)
-	if err != nil || row == nil {
-		return nil, err
-	}
-	text, err := rowText(row, "record")
-	if err != nil {
-		return nil, err
-	}
-	record, err := parseJSON[T](text)
-	if err != nil {
-		return nil, err
-	}
-	return &record, nil
-}
+// recordColumn names the one column of the record queries, for an executor that builds rows as maps.
+var recordColumn = []string{"record"}
 
-func allRecords[T any](executor SqliteExecutor, sqlText string, params ...SqliteValue) ([]T, error) {
-	rows, err := executor.All(sqlText, params...)
-	if err != nil {
-		return nil, err
-	}
-	records := make([]T, 0, len(rows))
-	for _, row := range rows {
-		text, err := rowText(row, "record")
+// entryColumns and revisionColumns name the columns of the queries that read them by position.
+var (
+	entryColumns    = []string{"record", "commit_seq"}
+	revisionColumns = []string{"seq", "kind", "version", "content"}
+)
+
+// errFirstRow ends a read after the first row it wanted.
+var errFirstRow = errors.New("first row read")
+
+func getRecord[T any](executor SqliteExecutor, sqlText string, params ...SqliteValue) (*T, error) {
+	var found *T
+	err := eachRow(executor, true, sqlText, params, recordColumn, func(values []SqliteValue) error {
+		text, err := valueText(values[0], "record")
 		if err != nil {
-			return nil, err
+			return err
 		}
 		record, err := parseJSON[T](text)
 		if err != nil {
-			return nil, err
+			return err
+		}
+		found = &record
+		return errFirstRow
+	})
+	if err != nil && !errors.Is(err, errFirstRow) {
+		return nil, err
+	}
+	return found, nil
+}
+
+func allRecords[T any](executor SqliteExecutor, sqlText string, params ...SqliteValue) ([]T, error) {
+	records := []T{}
+	err := eachRow(executor, false, sqlText, params, recordColumn, func(values []SqliteValue) error {
+		text, err := valueText(values[0], "record")
+		if err != nil {
+			return err
+		}
+		record, err := parseJSON[T](text)
+		if err != nil {
+			return err
 		}
 		records = append(records, record)
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	return records, nil
 }
@@ -695,21 +745,29 @@ func (storage *SqliteStorage) readEntry(
 			return nil, durable.NewStorageRequestError(fmt.Sprintf("Unknown conversation: %d", *conversationId))
 		}
 	}
-	row, err := storage.db.Get("SELECT record, commit_seq FROM "+storage.schema.Tables.Entries+" WHERE id = ?", int64(id))
-	if err != nil || row == nil {
+	var entry durable.EntryRecord
+	var commitSeq int64
+	found := false
+	err := eachRow(storage.db, true, "SELECT record, commit_seq FROM "+storage.schema.Tables.Entries+" WHERE id = ?", []SqliteValue{int64(id)}, entryColumns,
+		func(values []SqliteValue) (err error) {
+			text, err := valueText(values[0], "record")
+			if err != nil {
+				return err
+			}
+			if entry, err = parseJSON[durable.EntryRecord](text); err != nil {
+				return err
+			}
+			if commitSeq, err = valueInt(values[1], "commit_seq"); err != nil {
+				return err
+			}
+			found = true
+			return errFirstRow
+		})
+	if err != nil && !errors.Is(err, errFirstRow) {
 		return nil, err
 	}
-	text, err := rowText(row, "record")
-	if err != nil {
-		return nil, err
-	}
-	entry, err := parseJSON[durable.EntryRecord](text)
-	if err != nil {
-		return nil, err
-	}
-	commitSeq, err := rowInt(row, "commit_seq")
-	if err != nil {
-		return nil, err
+	if !found {
+		return nil, nil
 	}
 	if conversation != nil {
 		upperEntryId := int64(math.MaxInt64)
@@ -1208,57 +1266,62 @@ func (storage *SqliteStorage) materializeDocument(
 	if !at.Current {
 		upper = int64(at.Seq)
 	}
-	base, err := executor.Get(`SELECT seq, kind, version, content FROM `+storage.schema.Tables.DocumentRevisions+`
-				WHERE document_id = ? AND kind = 'base' AND seq <= ? ORDER BY seq DESC LIMIT 1`, int64(id), upper)
-	if err != nil {
+	var baseSeq, baseVersion int64
+	var value any
+	found := false
+	err = eachRow(executor, true, `SELECT seq, kind, version, content FROM `+storage.schema.Tables.DocumentRevisions+`
+				WHERE document_id = ? AND kind = 'base' AND seq <= ? ORDER BY seq DESC LIMIT 1`, []SqliteValue{int64(id), upper}, revisionColumns,
+		func(values []SqliteValue) (err error) {
+			if baseSeq, err = valueInt(values[0], "seq"); err != nil {
+				return err
+			}
+			if baseVersion, err = valueInt(values[2], "version"); err != nil {
+				return err
+			}
+			content, err := valueText(values[3], "content")
+			if err != nil {
+				return err
+			}
+			if value, err = chordjson.DecodeUnquoting(stringBytes(content), unquoteJS); err != nil {
+				return err
+			}
+			found = true
+			return errFirstRow
+		})
+	if err != nil && !errors.Is(err, errFirstRow) {
 		return nil, err
 	}
-	if base == nil {
+	if !found {
 		return nil, fmt.Errorf("Document %d is missing a required base", id)
 	}
-	baseSeq, err := rowInt(base, "seq")
+	batches := [][]durable.Op{}
+	err = eachRow(executor, false, `SELECT seq, kind, version, content FROM `+storage.schema.Tables.DocumentRevisions+`
+				WHERE document_id = ? AND seq > ? AND seq <= ? ORDER BY seq`, []SqliteValue{int64(id), baseSeq, upper}, revisionColumns,
+		func(values []SqliteValue) error {
+			kind, err := valueText(values[1], "kind")
+			if err != nil {
+				return err
+			}
+			version, err := valueInt(values[2], "version")
+			if err != nil {
+				return err
+			}
+			if kind != string(durable.ContentDelta) || version != baseVersion {
+				return fmt.Errorf("Document %d crosses a stored version boundary without a base", id)
+			}
+			content, err := valueText(values[3], "content")
+			if err != nil {
+				return err
+			}
+			batch, err := parseOps(content)
+			if err != nil {
+				return err
+			}
+			batches = append(batches, batch)
+			return nil
+		})
 	if err != nil {
 		return nil, err
-	}
-	baseVersion, err := rowInt(base, "version")
-	if err != nil {
-		return nil, err
-	}
-	baseContent, err := rowText(base, "content")
-	if err != nil {
-		return nil, err
-	}
-	value, err := chordjson.DecodeUnquoting([]byte(baseContent), unquoteJS)
-	if err != nil {
-		return nil, err
-	}
-	tail, err := executor.All(`SELECT seq, kind, version, content FROM `+storage.schema.Tables.DocumentRevisions+`
-				WHERE document_id = ? AND seq > ? AND seq <= ? ORDER BY seq`, int64(id), baseSeq, upper)
-	if err != nil {
-		return nil, err
-	}
-	batches := make([][]durable.Op, 0, len(tail))
-	for _, revision := range tail {
-		kind, err := rowText(revision, "kind")
-		if err != nil {
-			return nil, err
-		}
-		version, err := rowInt(revision, "version")
-		if err != nil {
-			return nil, err
-		}
-		if kind != string(durable.ContentDelta) || version != baseVersion {
-			return nil, fmt.Errorf("Document %d crosses a stored version boundary without a base", id)
-		}
-		content, err := rowText(revision, "content")
-		if err != nil {
-			return nil, err
-		}
-		batch, err := parseOps(content)
-		if err != nil {
-			return nil, err
-		}
-		batches = append(batches, batch)
 	}
 	if value, err = ops.ApplyBatches(value, batches); err != nil {
 		return nil, err
@@ -1268,7 +1331,7 @@ func (storage *SqliteStorage) materializeDocument(
 		return nil, fmt.Errorf("Document %d does not materialize to an object", id)
 	}
 	return &durable.StoredDocument{
-		Record: *record, Version: int(baseVersion), Value: object, DeltasSinceBase: len(tail),
+		Record: *record, Version: int(baseVersion), Value: object, DeltasSinceBase: len(batches),
 	}, nil
 }
 

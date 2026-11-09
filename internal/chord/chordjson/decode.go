@@ -99,12 +99,14 @@ func (parser *decoder) object(depth int) (any, bool) {
 		parser.at++
 		return object, true
 	}
+	// Most objects have a few keys: room for them up front, so the first inserts do not each grow the slice.
+	object.entries = make([]member, 0, 4)
 	for {
 		parser.space()
 		if parser.at >= len(parser.data) || parser.data[parser.at] != '"' {
 			return nil, false
 		}
-		key, ok := parser.string()
+		key, ok := parser.stringText()
 		if !ok {
 			return nil, false
 		}
@@ -118,7 +120,7 @@ func (parser *decoder) object(depth int) (any, bool) {
 		if !ok {
 			return nil, false
 		}
-		object.Set(key.(string), value)
+		object.Set(key, value)
 		parser.space()
 		if parser.at >= len(parser.data) {
 			return nil, false
@@ -137,12 +139,12 @@ func (parser *decoder) object(depth int) (any, bool) {
 
 func (parser *decoder) array(depth int) (any, bool) {
 	parser.at++
-	items := []any{}
 	parser.space()
 	if parser.at < len(parser.data) && parser.data[parser.at] == ']' {
 		parser.at++
-		return items, true
+		return []any{}, true
 	}
+	items := make([]any, 0, 4)
 	for {
 		parser.space()
 		item, ok := parser.value(depth)
@@ -166,8 +168,17 @@ func (parser *decoder) array(depth int) (any, bool) {
 	}
 }
 
-// string decodes a quoted string. Text without escapes or invalid UTF-8 is copied directly; other text goes through encoding/json, which replaces invalid UTF-8 as before.
+// string decodes a quoted string as a value.
 func (parser *decoder) string() (any, bool) {
+	text, ok := parser.stringText()
+	if !ok {
+		return nil, false
+	}
+	return text, true
+}
+
+// stringText decodes a quoted string. Text without escapes or invalid UTF-8 is copied directly; other text goes through encoding/json, which replaces invalid UTF-8 as before.
+func (parser *decoder) stringText() (string, bool) {
 	start := parser.at
 	parser.at++
 	plain := true
@@ -181,19 +192,19 @@ func (parser *decoder) string() (any, bool) {
 			}
 			var text string
 			if parser.unquote(raw, &text) != nil {
-				return nil, false
+				return "", false
 			}
 			return text, true
 		case character == '\\':
 			plain = false
 			parser.at += 2
 		case character < 0x20:
-			return nil, false
+			return "", false
 		default:
 			parser.at++
 		}
 	}
-	return nil, false
+	return "", false
 }
 
 func (parser *decoder) digits() int {

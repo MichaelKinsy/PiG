@@ -310,8 +310,8 @@ pub use agent_session_runtime::{
 pub use extension::report_load_failure;
 pub use extension::{
     CommandResult, EventSubscriber, EventSubscription, Extension, Factory, FlagOptions, FlagType,
-    MarkdownTransformContext, MarkdownTransformerOptions, ProjectTrustDecision, ProjectTrustResult, ToolDefinition,
-    ToolHandler, ToolPrepareArguments, ToolResult, context_unchanged,
+    MarkdownTransformContext, MarkdownTransformerOptions, ProjectTrustDecision, ProjectTrustResult,
+    ToolDefinition, ToolHandler, ToolPrepareArguments, ToolResult, context_unchanged,
 };
 pub use host_subscriptions::HostSubscription;
 pub use login::{LoginDefinition, SpriteDefinition};

@@ -799,6 +799,7 @@ func NewSession(svcs *AgentSessionServices, opts SessionOptions) (*Session, erro
 	sess.initSystemPrompt(opts)
 	sess.refreshContext()
 	sess.installCacheWarmer(inner, opts.CacheWarmer)
+	//portlint:allow asyncorder forwardAgentEvents is the Session's event executor: rawEvents is a FIFO and the ordering point, as agent.subscribe(_handleAgentEvent) (agent-session.ts:546, 1164) runs its listeners in emission order; it ends by closing events once the Session closes
 	go sess.forwardAgentEvents()
 	return sess, nil
 }

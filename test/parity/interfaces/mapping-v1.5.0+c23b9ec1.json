@@ -33033,7 +33033,7 @@
       "evidence": [
         "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
         "test:coding/thinking_budgets_settings_test.go#TestSessionThinkingBudgetsKeepConfiguredZeroFromSettings",
-        "test:durable/harness/harness_generation_test.go#TestGeneration"
+        "test:durable/core/driver/stream_options_core_test.go#TestCoreStreamSettingsReachTheModelCall"
       ]
     },
     {
@@ -77110,7 +77110,7 @@
       "evidence": [
         "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
         "test:coding/thinking_budgets_settings_test.go#TestSessionThinkingBudgetsKeepConfiguredZeroFromSettings",
-        "test:durable/harness/harness_generation_test.go#TestGeneration"
+        "test:durable/core/driver/stream_options_core_test.go#TestCoreStreamSettingsReachTheModelCall"
       ]
     },
     {
@@ -130155,7 +130155,7 @@
       "evidence": [
         "test:chord/nextnode/plugins/plugins_examples_testplugin_test.go#TestExample52TestPlugin",
         "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginLoadsThePluginBuiltAgainstTheAPIBesideAStubCollectsItsContributionsAndListsWhatItWaitsFor",
-        "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginCollectsUntilNoNewRegistryAppearsAnObjectLiveAfterTheFirstCollectionContributesTooSol"
+        "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginServesARegistryContributedAtAHighVersionWithoutAnAdapterPerOlderVersionSol"
       ]
     },
     {
@@ -137602,9 +137602,9 @@
         "call:chord/nextnode/tui/tui_launcher.go#Launcher.handle"
       ],
       "evidence": [
-        "test:chord/nextnode/tui/tui_launcher_hazards_test.go#TestALinkSocketClosedAfterItsDialFinishedButBeforeTheLoopTookItIsClosedAndNeverOpened",
-        "test:chord/nextnode/tui/tui_launcher_hazards_test.go#TestALinkSocketClosedDuringItsDialStaysClosedAndASendOnItIsDropped",
-        "test:chord/nextnode/tui/tui_launcher_hazards_test.go#TestASandboxEndingOnAPostTheLoopMakesWithTheQueueFullDoesNotBlockTheLoop"
+        "test:chord/nextnode/tui/tui_launcher_finish_order_test.go#TestFramesAroundTheSandboxsExitFollowPisOrder",
+        "test:chord/nextnode/tui/tui_launcher_finish_order_test.go#TestFramesHeldWhileAPromptIsOpenAreWrittenAfterTheTerminalWasGivenBack",
+        "test:chord/nextnode/tui/tui_launcher_hazards_test.go#TestALinkSocketClosedAfterItsDialFinishedButBeforeTheLoopTookItIsClosedAndNeverOpened"
       ]
     },
     {
@@ -138298,9 +138298,9 @@
         "call:chord/nextnode/tui/tui_launcher.go#Launcher.reply"
       ],
       "evidence": [
-        "test:chord/nextnode/tui/tui_launcher_hazards_test.go#TestATerminalIsNotLeftRawWhenTheSandboxEndsWhileTheLauncherStarts",
-        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientAnswersEightRequestsAtOnceRefusesMoreAndIgnoresSIGUSR1OpusE10E8",
-        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientDrawsItsPromptInItsOwnColoursAndIgnoresKeysTypedBeforeItAppearedOpusE4"
+        "test:chord/nextnode/tui/tui_launcher_finish_order_test.go#TestFramesAroundTheSandboxsExitFollowPisOrder",
+        "test:chord/nextnode/tui/tui_launcher_finish_order_test.go#TestFramesHeldWhileAPromptIsOpenAreWrittenAfterTheTerminalWasGivenBack",
+        "test:chord/nextnode/tui/tui_launcher_hazards_test.go#TestATerminalIsNotLeftRawWhenTheSandboxEndsWhileTheLauncherStarts"
       ]
     },
     {
@@ -246237,7 +246237,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/codecs.go#EntryRecord.UnmarshalJSON"
+        "call:durable/codecs.go#EntryRecord.MarshalJSON"
       ],
       "evidence": [
         "test:durable/harness/harness_deferred_progress_upstream_test.go#TestAHeldDeferredPollIsResumedAfterACrash",
@@ -257898,7 +257898,7 @@
       "evidence": [
         "test:durable/storage/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectSqliteAdapter",
         "test:durable/storage/sqlite/document_text_test.go#TestSqliteDocumentTextKeepsKeyOrderAndLoneSurrogates",
-        "test:durable/storage/sqlite/node/sqlite_facade_test.go#TestNewNodeSqliteDatabaseAdaptsADatabaseSync"
+        "test:durable/storage/sqlite/entry_surrogates_test.go#TestSqliteEntryTextKeepsLoneSurrogatesAtBothSidesOfTheBoundOfLargeRows"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -257921,7 +257921,7 @@
       "evidence": [
         "test:durable/storage/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectSqliteAdapter",
         "test:durable/storage/sqlite/document_text_test.go#TestSqliteDocumentTextKeepsKeyOrderAndLoneSurrogates",
-        "test:durable/storage/sqlite/node/sqlite_facade_test.go#TestPortableSQLiteFacadeSettlement"
+        "test:durable/storage/sqlite/entry_surrogates_test.go#TestSqliteEntryTextKeepsLoneSurrogatesAtBothSidesOfTheBoundOfLargeRows"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -257944,7 +257944,7 @@
       "evidence": [
         "test:durable/storage/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectSqliteAdapter",
         "test:durable/storage/sqlite/document_text_test.go#TestSqliteDocumentTextKeepsKeyOrderAndLoneSurrogates",
-        "test:durable/storage/sqlite/node/sqlite_facade_test.go#TestPortableSQLiteFacadeSettlement"
+        "test:durable/storage/sqlite/entry_surrogates_test.go#TestSqliteEntryTextKeepsLoneSurrogatesAtBothSidesOfTheBoundOfLargeRows"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -258104,8 +258104,8 @@
       ],
       "evidence": [
         "test:durable/storage/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectSqliteAdapter",
-        "test:durable/storage/sqlite/node/sqlite_facade_test.go#TestPortableSQLiteFacadeSettlement",
-        "test:durable/storage/sqlite/read_api_pi_test.go#TestSqliteStorageReadApiMirrorsPisStorageContract"
+        "test:durable/storage/sqlite/entry_surrogates_test.go#TestSqliteEntryTextKeepsLoneSurrogatesAtBothSidesOfTheBoundOfLargeRows",
+        "test:durable/storage/sqlite/node/sqlite_facade_test.go#TestPortableSQLiteFacadeSettlement"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -258127,8 +258127,8 @@
       ],
       "evidence": [
         "test:durable/storage/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectSqliteAdapter",
-        "test:durable/storage/sqlite/node/sqlite_facade_test.go#TestPortableSQLiteFacadeSettlement",
-        "test:durable/storage/sqlite/read_api_pi_test.go#TestSqliteStorageReadApiMirrorsPisStorageContract"
+        "test:durable/storage/sqlite/entry_surrogates_test.go#TestSqliteEntryTextKeepsLoneSurrogatesAtBothSidesOfTheBoundOfLargeRows",
+        "test:durable/storage/sqlite/node/sqlite_facade_test.go#TestPortableSQLiteFacadeSettlement"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -258264,8 +258264,8 @@
       ],
       "evidence": [
         "test:durable/storage/sqlite/document_text_test.go#TestSqliteDocumentTextKeepsKeyOrderAndLoneSurrogates",
-        "test:durable/storage/backend_reads_test.go#TestBackendReadsAgreeWithMemory",
-        "test:durable/storage/sqlite/node/kill_test.go#TestKilledDurableWriterLeavesWholeCalls"
+        "test:durable/storage/sqlite/entry_surrogates_test.go#TestSqliteEntryTextKeepsLoneSurrogatesAtBothSidesOfTheBoundOfLargeRows",
+        "test:durable/storage/backend_reads_test.go#TestBackendReadsAgreeWithMemory"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -258287,8 +258287,8 @@
       ],
       "evidence": [
         "test:durable/storage/sqlite/document_text_test.go#TestSqliteDocumentTextKeepsKeyOrderAndLoneSurrogates",
-        "test:durable/storage/backend_reads_test.go#TestBackendReadsAgreeWithMemory",
-        "test:durable/storage/sqlite/node/kill_test.go#TestKilledDurableWriterLeavesWholeCalls"
+        "test:durable/storage/sqlite/entry_surrogates_test.go#TestSqliteEntryTextKeepsLoneSurrogatesAtBothSidesOfTheBoundOfLargeRows",
+        "test:durable/storage/backend_reads_test.go#TestBackendReadsAgreeWithMemory"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -258695,7 +258695,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/storage/sqlite/statements.go#insertRows"
+        "call:durable/storage/sqlite/rows.go#eachRow"
       ],
       "evidence": [
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack"
@@ -259597,8 +259597,8 @@
       ],
       "evidence": [
         "test:durable/harness/harness_generation_recovery_test.go#TestGenerationRecovery",
-        "test:durable/storage/sqlite/node/kill_test.go#TestKilledDurableWriterLeavesWholeCalls",
-        "test:durable/storage/sqlite/node/sqlite_facade_test.go#TestDurableReExportsTheChordDriver"
+        "test:durable/storage/sqlite/entry_surrogates_test.go#TestSqliteEntryTextKeepsLoneSurrogatesAtBothSidesOfTheBoundOfLargeRows",
+        "test:durable/storage/sqlite/node/kill_test.go#TestKilledDurableWriterLeavesWholeCalls"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -259620,8 +259620,8 @@
       ],
       "evidence": [
         "test:durable/harness/harness_generation_recovery_test.go#TestGenerationRecovery",
-        "test:durable/storage/sqlite/node/kill_test.go#TestKilledDurableWriterLeavesWholeCalls",
-        "test:durable/storage/sqlite/node/sqlite_facade_test.go#TestDurableReExportsTheChordDriver"
+        "test:durable/storage/sqlite/entry_surrogates_test.go#TestSqliteEntryTextKeepsLoneSurrogatesAtBothSidesOfTheBoundOfLargeRows",
+        "test:durable/storage/sqlite/node/kill_test.go#TestKilledDurableWriterLeavesWholeCalls"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },

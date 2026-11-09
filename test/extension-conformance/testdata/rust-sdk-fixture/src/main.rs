@@ -2525,36 +2525,50 @@ fn main() {
         click_state(&options.state, &event);
         Ok(())
     });
-    ext.markdown_transformer_with_options(|markdown, context| {
-        // "trace:<dir>:<name>" records the body's entry in <dir>/trace; the body named "first" returns only once <dir>/release exists.
-        if let Some(rest) = markdown.strip_prefix("trace:") {
-            // The name is the last field: a Windows <dir> contains a drive colon.
-            if let Some((dir, name)) = rest.rsplit_once(':') {
-                let append = |line: &str| {
-                    use std::io::Write;
-                    let mut file = std::fs::OpenOptions::new()
-                        .create(true)
-                        .append(true)
-                        .open(format!("{dir}/trace"))
-                        .unwrap();
-                    writeln!(file, "{line}").unwrap();
-                };
-                append(&format!("entered {name}"));
-                if name == "first" {
-                    while !std::path::Path::new(&format!("{dir}/release")).exists() {
-                        thread::sleep(Duration::from_millis(10));
+    ext.markdown_transformer_with_options(
+        |markdown, context| {
+            // "trace:<dir>:<name>" records the body's entry in <dir>/trace; the body named "first" returns only once <dir>/release exists.
+            if let Some(rest) = markdown.strip_prefix("trace:") {
+                // The name is the last field: a Windows <dir> contains a drive colon.
+                if let Some((dir, name)) = rest.rsplit_once(':') {
+                    let append = |line: &str| {
+                        use std::io::Write;
+                        let mut file = std::fs::OpenOptions::new()
+                            .create(true)
+                            .append(true)
+                            .open(format!("{dir}/trace"))
+                            .unwrap();
+                        writeln!(file, "{line}").unwrap();
+                    };
+                    append(&format!("entered {name}"));
+                    if name == "first" {
+                        while !std::path::Path::new(&format!("{dir}/release")).exists() {
+                            thread::sleep(Duration::from_millis(10));
+                        }
+                        append("returned first");
                     }
-                    append("returned first");
                 }
             }
-        }
-        Some(format!(
-            "md:{markdown}:{}:streaming={}:width={}",
-            context.message_type, context.is_streaming, context.available_width
-        ))
-    }, pig_sdk::MarkdownTransformerOptions {
-        message_types: Some(["user", "assistant", "assistant-thinking", "custom", "summary", "changelog"].map(String::from).to_vec()),
-    });
+            Some(format!(
+                "md:{markdown}:{}:streaming={}:width={}",
+                context.message_type, context.is_streaming, context.available_width
+            ))
+        },
+        pig_sdk::MarkdownTransformerOptions {
+            message_types: Some(
+                [
+                    "user",
+                    "assistant",
+                    "assistant-thinking",
+                    "custom",
+                    "summary",
+                    "changelog",
+                ]
+                .map(String::from)
+                .to_vec(),
+            ),
+        },
+    );
     fn resolved_line(prefix: &'static str, tool: &str) -> pig_sdk::ToolRendererSet {
         let tool = tool.to_string();
         pig_sdk::ToolRendererSet::with_call(move |_ctx, args, _render, _width| {

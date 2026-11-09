@@ -3880,7 +3880,7 @@ Parity allowance: none needed beyond the evidence above.
 
 SCRUTINIZED:approved 2026-11-08
 
-## D465 FormatTime takes a time.Time, not `Date | number | string`
+## D465 FormatTime takes a time.Time, not `Date`, `number` or `string`
 
 What: Pi's `new Date(at)` accepts a `Date`, epoch milliseconds or an ISO/date string (`new Date(string)`'s parser, with its engine-defined formats). Go takes a `time.Time`; a caller converts milliseconds (`time.UnixMilli`) or parses its own string. The zone is `time.Local` (the process's TZ, as a `Date`'s default is), whatever location `at` carries. An invalid `Date` (a RangeError in Pi) cannot be expressed, and an instant outside the JS Date range (±8.64e15 ms), a RangeError in Pi, is formatted. Zone data: Go reads the system zoneinfo (or the embedded `time/tzdata`), Node uses ICU's bundled tz data with backzone history. Instants before 1970 in zones that tzdata links to another (Europe/Amsterdam before 1937: Go prints Brussels' LMT, Node Amsterdam's) and a host whose tzdata release differs from Node's bundled one can print different clock times (RevChordIntl P3-5: 0 mismatches in 19 other zones around every 2025-2027 transition).
 

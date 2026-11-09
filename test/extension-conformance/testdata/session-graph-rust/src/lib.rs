@@ -2248,7 +2248,8 @@ fn settle_pending_probe(rt: &ModelRuntime, auth: &str) -> io::Result<Value> {
         let start = std::time::Instant::now();
         rt.settle_credential_writes()?;
         let waited = start.elapsed() >= std::time::Duration::from_secs(1);
-        let stored: Value = serde_json::from_str(&std::fs::read_to_string(auth)?).map_err(io::Error::other)?;
+        let stored: Value =
+            serde_json::from_str(&std::fs::read_to_string(auth)?).map_err(io::Error::other)?;
         let key = stored["openai"]["key"].clone();
         let logged_in = login.join().unwrap_or(false);
         rt.logout("openai")?;

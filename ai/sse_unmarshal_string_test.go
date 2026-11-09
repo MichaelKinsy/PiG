@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// The SSE data lines are decoded in place (jsonwire.Unmarshal) where json.Unmarshal([]byte(line)) copied each one first. These tests hold the
+// The SSE data lines are decoded in place (json.Unmarshal(jsonwire.Bytes(line), ...)) where json.Unmarshal([]byte(line)) copied each one first. These tests hold the
 // results to what the copying decode gave, the error text included.
 
 // referenceAnthropicDelta is decodeAnthropicDeltaEventReflect as it was written with the copy.

@@ -17,9 +17,10 @@ const COLLECTOR = "chord.test-plugin-collector";
 
 /**
  * Every older version's contributions and readers as they are: made per version looked up, not per version below (testing.ts's
- * `olderAs`; the kernel only looks adapters up by version, `accepts[version]`).
+ * `olderAs`; the kernel only looks adapters up by version, `accepts[version]`). Exported for plugins_testing_test.go, which
+ * holds that it keeps no adapter per older version (a registry contributed at version 2000000 must not cost 2000000 of them).
  */
-function olderAs(token) {
+export function olderAs(token) {
 	const asItIs = { contribution: (old) => old, value: (table) => table };
 	return new Proxy(
 		{},
