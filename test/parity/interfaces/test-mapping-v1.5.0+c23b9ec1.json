@@ -2300,15 +2300,15 @@
     {
       "path": "packages/chord/test/contracts/snapshot.test.ts",
       "disposition": "ported",
-      "protects": "The snapshot vocabulary refuses values it cannot carry and names the offending path. A Go test for the symbol-keys case is impossible: Go has no symbol keys, accessors or undefined, and the cycle case is covered by the ported cycle cases, so the designed-out case protects nothing a Go caller can reach.",
-      "pigTest": "A Go test of the refused-key case was considered; the ported cycle and vocabulary cases cover what a Go value can express.",
-      "whyNot": "Go has no symbol keys, accessors or undefined, so the case has no Go form.",
+      "protects": "The snapshot vocabulary refuses values it cannot carry and names the offending path: cycles, unsupported types, and, in Go, the values that stand where Pi has symbol keys and accessors.",
+      "pigTest": "chord/next/contracts/snapshot_test.go TestSnapshotVocabulary 'refuses keys that are no strings and computed values, naming the path' (a map keyed by anything but strings, a func, a chan, an unsafe pointer, each naming its path, nested in data too) beside 'refuses cycles, naming the path'.",
+      "whyNot": "Go has no symbol key and no accessor, so those two inputs cannot be written; the values a schema cannot carry that Go does have (a map with non-string keys, a func computed on read, a chan, an unsafe pointer) are refused with the same path naming, and that is the Go form of the case.",
       "upstreamTestHash": "sha256:a708093d51b16658f44fe0993b4d3d83b65857b3d87ca348d817da8d00cc3e38",
       "evidence": [
         "chord/next/contracts/snapshot_test.go",
         "chord/nextnode/plugins/plugins_vendored_pi_test.go"
       ],
-      "rationale": "14 of 15 upstream cases run in snapshot_test.go. The fifteenth, \"vocabulary › refuses symbol keys, accessors and cycles, naming the path\", runs in two halves. Intention check: a schema a plugin declares in JavaScript is read once into a plain copy, and what cannot be copied (a Symbol key, a getter, a cycle, a non-vocabulary type) is refused naming where it sits. Go's schema is JSON data, so its half is the cycles and unsupported-type assertions (snapshot_test.go); the Symbol-key and accessor assertions are about a TypeScript plugin's schema objects, which the Node host reads through the vendored snapshot.ts (node/pi, verbatim from Pi), so Pi's case runs there as TestNodeHostSnapshotSchemaRefusesSymbolKeysAccessorsAndCyclesNamingThePath, over the extracted tree the subprocess runs. Not designed out."
+      "rationale": "All 15 upstream cases run in snapshot_test.go. \"vocabulary › refuses symbol keys, accessors and cycles, naming the path\" runs in its Go form: the cycle and unsupported-type assertions with Pi's inputs and messages, and the symbol-key and accessor assertions as the refusal of what Go has in their place, in SnapshotSchema (uncarriable: non-string map keys, func, chan, unsafe.Pointer, at a schema, a keyword value, or inside data, naming the path). The Node host also runs Pi's own case over the vendored snapshot.ts (TestNodeHostSnapshotSchemaRefusesSymbolKeysAccessorsAndCyclesNamingThePath). Not designed out."
     },
     {
       "path": "packages/chord/test/data/args.test.ts",
@@ -3098,9 +3098,9 @@
     {
       "path": "packages/chord/test/node/app/app.test.ts",
       "disposition": "ported",
-      "protects": "The app's base-code comparison and its tolerance of a failing import scan. A Go-shaped test was considered; it is impossible for the 3 designed-out cases because the Go server is one executable with no import graph to scan, so there is no scan to fail or entry to compare.",
-      "pigTest": "A Go test of the entry comparison was considered.",
-      "whyNot": "The Go server is one executable with no import graph to scan, so the 3 designed-out cases have nothing to scan or compare.",
+      "protects": "The app's base-code comparison and its tolerance of a missing optional input and of a failing scan of its own code.",
+      "pigTest": "chord/nextnode/app/app_executable_test.go: TestAppComparesTheServersOwnCodeFromItsExecutableWithNoBaseGivenMarkedAndCleared (edit then revert: marked, then cleared), TestAppStartsWithAnOptionalBasePathMissingTheMissingOneLeftOutTheRestCompared (a missing Base path: no report, the executable still compared), TestAppStartsWhenItsExecutableCannotBeReadReportedNotCompared (server_scan, not compared).",
+      "whyNot": "Pi scans the static import graph of a start script; the Go server's own code is its executable plus the files of its Base option (D603), so the entry, the start script and the import are the executable and the Base paths in each case. Each case keeps Pi's expected result.",
       "upstreamTestHash": "sha256:f37461c6de1d420c72b433c29f3012ffa117b441ed39bbc44c5cedec6c43cc28",
       "evidence": [
         "chord/nextnode/app/app_test.go",
@@ -3108,7 +3108,7 @@
         "chord/nextnode/app/app_export_test.go",
         "chord/nextnode/app/app_executable_test.go"
       ],
-      "rationale": "All 23 upstream cases run in the evidence files or in PiG form. \"base code › compares the server's own code from its entry, the start script and what it imports, with no `base` given\" is app_executable_test.go:TestAppComparesTheServersOwnCodeFromItsExecutableWithNoBaseGivenMarkedAndCleared (D603: the Go server's own code is its executable) and \"... starts when the scan of its entry fails (a lazy import of a file it cannot parse): reported, not compared\" is TestAppStartsWhenItsExecutableCannotBeReadReportedNotCompared (the scan is the read of the executable). \"... starts with an entry whose inactive optional import is missing: the import is left out, the rest compared\" protects that a missing file an import graph names never stops the server from starting. The server's own code has no import graph (a Go executable), so D603 keeps the case off the executable; the Node-hosted code of the app is its plugins, and their graph is what a build read (BuildFacet's inputs, compared by the plugins' watcher, never scanned). The intention is tested there: TestAppStartsWhenAnOptionalPluginsFacetImportsAFileThatIsNotThereItsBuildFailsAndTheRestRuns (a plugin of the user's root whose facet imports a file that is not there has a failed build naming file, line and import, and the app starts with its own plugins running; only a required root stops a start). Killed mutant (host run): the user's plugins root made required in StartServer."
+      "rationale": "All 23 upstream cases run in the evidence files or in PiG form (D603: the Go server's own code is its executable and its Base files). \"base code › compares the server's own code from its entry, the start script and what it imports, with no `base` given\" is app_executable_test.go:TestAppComparesTheServersOwnCodeFromItsExecutableWithNoBaseGivenMarkedAndCleared (edit: marked; revert: cleared; no error reported). \"... starts with an entry whose inactive optional import is missing: the import is left out, the rest compared\" is TestAppStartsWithAnOptionalBasePathMissingTheMissingOneLeftOutTheRestCompared (a Base path that is not there: the app starts with no error reported, nothing is marked by it, and an edit of the executable beside it still marks base). \"... starts when the scan of its entry fails (a lazy import of a file it cannot parse): reported, not compared\" is TestAppStartsWhenItsExecutableCannotBeReadReportedNotCompared (the scan is the read of the executable: server_scan reported, base not marked). The plugins' own import graph is compared by the plugins' watcher; TestAppStartsWhenAnOptionalPluginsFacetImportsAFileThatIsNotThereItsBuildFailsAndTheRestRuns covers it."
     },
     {
       "path": "packages/chord/test/node/app/archive.test.ts",
@@ -4229,8 +4229,8 @@
       "path": "packages/chord/test/store/store.test.ts",
       "disposition": "ported",
       "protects": "A metrics adapter that throws after COMMIT stops the store: memory keeps the committed group, no seq repeats, later commits reject storage_failed.",
-      "pigTest": "Landed in group_commit_test.go: 'stops the store when a metrics adapter panics after a group's COMMIT: memory takes the whole group, no seq repeats' and '... after a lone commit's COMMIT too' drive a panicking telemetry counter (panickingMetrics) and assert the same property: memory keeps the committed group, no seq repeats, later commits reject.",
-      "whyNot": "Go callbacks do not throw, so the two upstream cases cannot run as written: a panic stops the store and goes on in the caller that ran the turn, where Pi rejects that commit's promise. The two panic cases above are the Go form of the same property. The two upstream cases stay in designedOutCases, drafted for owner review as the rationale says.",
+      "pigTest": "chord/next/store/group_commit_test.go: 'stops the store when a metrics adapter panics after a group's COMMIT: memory takes the whole group, no seq repeats' and '... after a lone commit's COMMIT too' (panickingMetrics), with Pi's commits (a, then b and c queued behind it, then d), expected rejections and lastSeq.",
+      "whyNot": "An adapter that throws is a counter whose Add panics in Go (its instruments return nothing); the cases keep Pi's inputs and expected results (every commit of the group rejects storage_failed, lastSeq 3, a later commit and a read reject storage_failed) and run against the store's recovery at the commit boundary.",
       "upstreamTestHash": "sha256:65a12ac4b523b6c94be83390ef602104946e059715d4c43ed548ed373e6d6124",
       "evidence": [
         "chord/next/store/store_test.go",
@@ -4297,9 +4297,9 @@
     {
       "path": "packages/chord/test/store/table.test.ts",
       "disposition": "ported",
-      "protects": "An int() key column is typed as a number and a str() one as a string. A Go test was considered and is worthless: Go key columns carry their static Go type, so a JS number-versus-string runtime distinction cannot occur.",
-      "pigTest": "A Go test of key-column typing was considered.",
-      "whyNot": "Go key columns carry their static Go type; the JS number-versus-string runtime distinction cannot occur.",
+      "protects": "An int() key column takes a number and a str() one a string: refused at the trust boundary when the key's type is the other.",
+      "pigTest": "chord/next/store/table_key_types_test.go#TestKeyColumnsTakeTheirColumnTypeAnIntANumberAndAStrAString: RowCodec.Key accepts {id: 7} and {id: \"a\", at: 1} and refuses the other types.",
+      "whyNot": "Pi's case (table.test.ts:69-74) assigns {id: 7} to KeyOf<{id: int(), text: str()}, [\"id\"]> and {id: \"a\", at: 1} to KeyOf<typeof columns, [\"id\", \"at\"]>, then expects them to equal themselves at run time: the only assertion is the compile-time typing of KeyOf, which has no run-time input to port. A Go key is a Row (map[string]any), so its typing is checked where a key enters the store; the test runs Pi's two keys through RowCodec.Key and refuses the swapped types.",
       "upstreamTestHash": "sha256:a5c2f09931f05e2e160cf332bd2a1408cdab703fbfa606cd1a55467563119a2a",
       "evidence": [
         "chord/next/store/table_test.go",
@@ -4364,9 +4364,9 @@
     {
       "path": "packages/chord/test/surfaces/language.test.ts",
       "disposition": "ported",
-      "protects": "The render scope is current only while a render runs and a nested render restores the outer. A Go test was considered and is impossible: Go has no goroutine-local render scope, and a message function receives its language explicitly, so there is no ambient scope to leak.",
-      "pigTest": "A Go test of a goroutine-local render scope was considered.",
-      "whyNot": "Go has no goroutine-local render scope; a message function receives its language explicitly.",
+      "protects": "The render scope is current only while a render runs and a nested render restores the outer.",
+      "pigTest": "chord/next/surfaces/surfaces_language_test.go TestTheRenderScopeIsCurrentOnlyWhileARenderRunsAndANestedRenderRestoresTheOuter (Pi's inputs: de, fr, outer restored, a failing render) and TestMessagesInAScopeRenderInTheCurrentLanguage.",
+      "whyNot": "Pi's scope is a module variable; Go's is the context the render is given (InLanguage, CurrentLanguage, Messages.InScope), so 'restores' is that the outer context is unchanged when the nested render returns or panics. A message function also receives its language as its first parameter (D450).",
       "upstreamTestHash": "sha256:30d6d83b3c2fef27e9512e79ebad8edfff7d23067426cde4917bd4da581c915c",
       "evidence": [
         "chord/next/surfaces/surfaces_active_language_test.go",
@@ -4374,7 +4374,7 @@
         "chord/next/surfaces/surfaces_messages_test.go",
         "chord/nextnode/plugins/plugins_vendored_pi_test.go"
       ],
-      "rationale": "All 5 upstream cases run. 4 run in surfaces_active_language_test.go and surfaces_language_test.go. The fifth, \"the render scope › is current only while a render runs, and a nested render restores the outer\", runs in two halves. Intention check: a render in one language that renders another in a second one leaves the first in its own, whether the nested render returns or throws, and nothing outlives them. A TypeScript plugin's render uses Pi's module-wide scope through the vendored language.ts (node/pi, verbatim), so Pi's case runs there as TestNodeHostRenderScopeIsCurrentOnlyWhileARenderRunsAndANestedRenderRestoresTheOuter. In Go the scope is the explicit lang argument (D450, surfaces/doc.go), so the same guard is TestANestedRenderInAnotherLanguageLeavesTheOuterRenderInItsOwnEvenWhenTheNestedOneFailsOrPanics: the nested renders (returning, returning an error, panicking) never change what the outer message function's own lang formats."
+      "rationale": "All 5 upstream cases run. 4 run in surfaces_active_language_test.go and surfaces_language_test.go. \"the render scope › is current only while a render runs, and a nested render restores the outer\" is TestTheRenderScopeIsCurrentOnlyWhileARenderRunsAndANestedRenderRestoresTheOuter with Pi's inputs and expected results: no current language outside a render, InLanguage(de) seeing [de, fr, de] across a nested InLanguage(fr), none after, and none after a render that fails (a panic). The scope is the context (InLanguage, CurrentLanguage; Messages.InScope is Pi's `t` outside `in`), where Pi's is a module variable. A TypeScript plugin's render also runs Pi's case over the vendored language.ts (TestNodeHostRenderScopeIsCurrentOnlyWhileARenderRunsAndANestedRenderRestoresTheOuter), and TestANestedRenderInAnotherLanguageLeavesTheOuterRenderInItsOwnEvenWhenTheNestedOneFailsOrPanics guards that nesting a render in another language never changes what the outer function's own `lang` formats."
     },
     {
       "path": "packages/chord/test/surfaces/locale-choice.test.ts",
