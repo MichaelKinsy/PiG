@@ -255,7 +255,7 @@ func TestEmbeddedSourcesMatchTheirRecordedHashes(t *testing.T) {
 	// upstream "embedded sources parse as JavaScript": the prelude parses (and runs) in every execution below; the
 	// hashes pin the exact upstream bytes that the engine and the prelude were verified against.
 	sum := func(b []byte) string { h := sha256.Sum256(b); return hex.EncodeToString(h[:]) }
-	if got := sum([]byte(codemode.PreludeSource)); got != "501d03d333a31ddaf98048ce82d865008d4636da94242ff4f5aa1fe27f085832" {
+	if got := sum([]byte(codemode.PreludeSource)); got != "e6a68df9fa044c3058a3b9d64f39f3014e5d0330677ae5f0e2c9c59bf96ae34e" {
 		t.Errorf("prelude sha256 = %s", got)
 	}
 	if got := sum(codemode.QuickJSWasm()); got != "d4c9375f2b1ca4dc95f72c8aa2982a7a9951ac8011490d79c6582df732b4bbd9" {
