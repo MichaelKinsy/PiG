@@ -48243,25 +48243,6 @@
       "tests": []
     },
     {
-      "id": "BF-e163ba8",
-      "title": "fix(chord): a native watch ends as a section of its host",
-      "symptom": "fix(chord): a native watch ends as a section of its host",
-      "rootCause": "",
-      "rootCauseSource": "",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "origin": "commit",
-      "commits": [
-        {
-          "hash": "e163ba898d",
-          "date": "2026-11-07"
-        }
-      ],
-      "tests": []
-    },
-    {
       "id": "BF-e16cbba",
       "title": "Tool search ranks a tool first when the query is its name, with `-` and other non-identifier characters read…",
       "symptom": "BM25 length normalization could rank a tool with a short description sharing the name's words above it.",
@@ -54954,25 +54935,6 @@
         "coding/session_tree_wire_oracle_test.go::TestNavigateTreeEveryPointSendsValidToolFlow",
         "internal/jsstring/unescape_stringify_test.go::TestUnescapeForStringifyRewritesOnlyRealEscapes"
       ]
-    },
-    {
-      "id": "BF-fcccc8b",
-      "title": "fix(telemetry): a stored span keeps each event's own time",
-      "symptom": "fix(telemetry): a stored span keeps each event's own time",
-      "rootCause": "",
-      "rootCauseSource": "",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "origin": "commit",
-      "commits": [
-        {
-          "hash": "fcccc8bc97",
-          "date": "2026-11-07"
-        }
-      ],
-      "tests": []
     },
     {
       "id": "BF-fce99d3",
