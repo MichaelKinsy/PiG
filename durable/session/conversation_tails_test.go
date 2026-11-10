@@ -1,6 +1,7 @@
 package session_test
 
 // pi: packages/durable/test/session-conversation-tails.test.ts
+// pi: packages/durable/src/session/conversation-tails.ts
 
 import (
 	"errors"

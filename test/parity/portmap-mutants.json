@@ -2366,11 +2366,67 @@
    "new": "return matches[a].covered < matches[c].covered"
   }
  ],
+ "packages/durable/src/session/cached-storage.ts": [
+  {
+   "file": "durable/session/cached_storage.go",
+   "old": "\t\t\tcached.keepTask(&record)\n\t\tcase durable.SubmissionWrite",
+   "new": "\t\tcase durable.SubmissionWrite"
+  },
+  {
+   "file": "durable/session/cached_storage.go",
+   "old": "conversationCapacity = 4096",
+   "new": "conversationCapacity = 4097"
+  },
+  {
+   "file": "durable/session/cached_storage.go",
+   "old": "\tif scope := ScopeOf(cached.storage); scope != nil {",
+   "new": "\tif scope := ScopeOf(cached.storage); scope != nil && false {"
+  },
+  {
+   "file": "durable/session/cached_storage.go",
+   "old": "\treturn cached.storage.MintId()",
+   "new": "\treturn 0, nil"
+  }
+ ],
+ "packages/durable/src/session/conversation-tails.ts": [
+  {
+   "file": "durable/session/conversation_tails.go",
+   "old": "\t\t\tcopied := detach.Entry(*found)\n\t\t\tkept = &copied",
+   "new": "\t\t\tkept = found"
+  },
+  {
+   "file": "durable/session/conversation_tails.go",
+   "old": "latest.id <= *atOrBefore)) {",
+   "new": "latest.id < *atOrBefore)) {"
+  },
+  {
+   "file": "durable/session/conversation_tails.go",
+   "old": "\tknown, ok := tails.latest.peek(conversationId)\n\tswitch {",
+   "new": "\tknown, ok := tails.latest.get(conversationId)\n\tswitch {"
+  }
+ ],
  "packages/durable/src/session/forks.ts": [
   {
    "file": "durable/session/forks.go",
    "old": "source.Fork != policy",
    "new": "source.Fork == policy"
+  }
+ ],
+ "packages/durable/src/session/keys.ts": [
+  {
+   "file": "durable/session/keys.go",
+   "old": "ConversationKey(id)); err != nil {",
+   "new": "AllKeys); err != nil {"
+  },
+  {
+   "file": "durable/session/keys.go",
+   "old": "gated.storage.Task(ctx, id)",
+   "new": "gated.storage.Task(ctx, id+1)"
+  },
+  {
+   "file": "durable/session/keys.go",
+   "old": "SubmissionKey(id)); err != nil {",
+   "new": "AllKeys); err != nil {"
   }
  ],
  "packages/durable/src/session/transaction.ts": [
