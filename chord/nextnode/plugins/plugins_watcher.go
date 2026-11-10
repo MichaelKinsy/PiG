@@ -1049,7 +1049,7 @@ func (w *pluginWatcher) keepWatches(path string) {
 	for _, dir := range lostTree {
 		w.watchDirs(dir)
 	}
-	// RED: renewPartialWatch not called
+	w.renewPartialWatch(path, held)
 }
 
 // renewPartialWatch adds the watch of path again when the watcher watches it, the notifier still holds one (held: before the

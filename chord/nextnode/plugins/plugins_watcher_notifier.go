@@ -1,7 +1,5 @@
 package plugins
 
-// Ports packages/chord/src/node/plugins/watcher.ts
-
 import "github.com/fsnotify/fsnotify"
 
 // notifier is the system's file watcher as the plugin watcher uses it: fsnotify's `Watcher`, one watch per directory, or a
