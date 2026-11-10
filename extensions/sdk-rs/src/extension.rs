@@ -2147,6 +2147,7 @@ impl Extension {
                                     let error = ErrorInfo {
                                         code: Some("handler_panic".to_string()),
                                         message,
+                                        shell_exit: None,
                                     };
                                     let respond = || {
                                         let _ = conn.respond(&id, None, Some(error));
@@ -2181,6 +2182,7 @@ impl Extension {
                                 Some(ErrorInfo {
                                     code: Some("handler_start".to_string()),
                                     message: format!("start extension handler: {err}"),
+                                    shell_exit: None,
                                 }),
                             );
                         }
@@ -2550,6 +2552,7 @@ impl Extension {
                 Some(ErrorInfo {
                     code: None,
                     message: format!("unknown oauth provider: {}", name),
+                    shell_exit: None,
                 }),
             );
             return;
@@ -2557,6 +2560,7 @@ impl Extension {
         let err = |msg: String| ErrorInfo {
             code: None,
             message: msg,
+            shell_exit: None,
         };
         match req.method.as_str() {
             "oauth_login" => {
@@ -2714,6 +2718,7 @@ impl Extension {
                 Some(ErrorInfo {
                     code: None,
                     message,
+                    shell_exit: None,
                 }),
             );
             return;
@@ -2731,6 +2736,7 @@ impl Extension {
                         Some(ErrorInfo {
                             code: None,
                             message: err.to_string(),
+                            shell_exit: None,
                         }),
                     ),
                 };
@@ -2750,6 +2756,7 @@ impl Extension {
                         Some(ErrorInfo {
                             code: None,
                             message,
+                            shell_exit: None,
                         }),
                     ),
                 };
@@ -2767,6 +2774,7 @@ impl Extension {
                         Some(ErrorInfo {
                             code: None,
                             message,
+                            shell_exit: None,
                         }),
                     ),
                 };
@@ -2789,6 +2797,7 @@ impl Extension {
                         Some(ErrorInfo {
                             code: None,
                             message,
+                            shell_exit: None,
                         }),
                     ),
                 };
@@ -2809,6 +2818,7 @@ impl Extension {
                             Some(ErrorInfo {
                                 code: None,
                                 message,
+                                shell_exit: None,
                             }),
                         );
                     }
@@ -2828,6 +2838,7 @@ impl Extension {
                             Some(ErrorInfo {
                                 code: None,
                                 message,
+                                shell_exit: None,
                             }),
                         );
                     }
@@ -2852,17 +2863,19 @@ impl Extension {
                         },
                     )
                 })
-                .unwrap_or_else(|_| Err("bash operations panicked".to_string()));
+                .unwrap_or_else(|_| Err("bash operations panicked".into()));
                 match result {
                     Ok(value) => {
                         let _ = conn.respond(id, Some(value), None);
                     }
-                    Err(message) => {
+                    Err(error) => {
+                        let (message, shell_exit) = error.into_parts();
                         let _ = conn.respond(
                             id,
                             None,
                             Some(ErrorInfo {
                                 code: None,
+                                shell_exit,
                                 message,
                             }),
                         );
@@ -2929,6 +2942,7 @@ impl Extension {
                             Some(ErrorInfo {
                                 code: None,
                                 message,
+                                shell_exit: None,
                             }),
                         );
                     }
@@ -2966,6 +2980,7 @@ impl Extension {
                 let error = failure.map(|message| ErrorInfo {
                     code: None,
                     message,
+                    shell_exit: None,
                 });
                 let _ = conn.respond(id, None, error);
             }
@@ -3000,6 +3015,7 @@ impl Extension {
                             Some(ErrorInfo {
                                 code: None,
                                 message,
+                                shell_exit: None,
                             }),
                         );
                     }
@@ -3042,6 +3058,7 @@ impl Extension {
                             Some(ErrorInfo {
                                 code: None,
                                 message,
+                                shell_exit: None,
                             }),
                         );
                     }
@@ -3079,6 +3096,7 @@ impl Extension {
                             Some(ErrorInfo {
                                 code: None,
                                 message,
+                                shell_exit: None,
                             }),
                         );
                     }
@@ -3120,6 +3138,7 @@ impl Extension {
                             Some(ErrorInfo {
                                 code: None,
                                 message,
+                                shell_exit: None,
                             }),
                         );
                     }
@@ -3134,6 +3153,7 @@ impl Extension {
                     .map(|message| ErrorInfo {
                         code: None,
                         message,
+                        shell_exit: None,
                     });
                 let _ = conn.respond(id, None, error);
             }
@@ -3185,6 +3205,7 @@ impl Extension {
                             Some(ErrorInfo {
                                 code: None,
                                 message,
+                                shell_exit: None,
                             }),
                         );
                     }
@@ -3292,6 +3313,7 @@ impl Extension {
                                 Some(ErrorInfo {
                                     code: None,
                                     message: s,
+                                    shell_exit: None,
                                 }),
                             );
                         }
@@ -3308,6 +3330,7 @@ impl Extension {
                         Some(ErrorInfo {
                             code: None,
                             message: format!("unknown tool: {}", tool_name),
+                            shell_exit: None,
                         }),
                     );
                 }
@@ -3321,6 +3344,7 @@ impl Extension {
                         Some(ErrorInfo {
                             code: None,
                             message,
+                            shell_exit: None,
                         }),
                     ),
                 };
@@ -3356,6 +3380,7 @@ impl Extension {
                                 Some(ErrorInfo {
                                     code: None,
                                     message: s,
+                                    shell_exit: None,
                                 }),
                             );
                         }
@@ -3367,6 +3392,7 @@ impl Extension {
                         Some(ErrorInfo {
                             code: None,
                             message: format!("unknown command: {}", cmd_name),
+                            shell_exit: None,
                         }),
                     );
                 }
@@ -3379,6 +3405,7 @@ impl Extension {
                         Some(ErrorInfo {
                             code: None,
                             message: message.clone(),
+                            shell_exit: None,
                         }),
                     );
                     return;
@@ -3457,6 +3484,7 @@ impl Extension {
                         Some(ErrorInfo {
                             code: None,
                             message,
+                            shell_exit: None,
                         }),
                     ),
                 };
@@ -3545,6 +3573,7 @@ impl Extension {
                                 Some(ErrorInfo {
                                     code: None,
                                     message: s,
+                                    shell_exit: None,
                                 }),
                             );
                         }
@@ -3556,6 +3585,7 @@ impl Extension {
                         Some(ErrorInfo {
                             code: None,
                             message: format!("unknown shortcut: {}", shortcut_key),
+                            shell_exit: None,
                         }),
                     );
                 }
@@ -3604,6 +3634,7 @@ impl Extension {
                                 Some(ErrorInfo {
                                     code: None,
                                     message,
+                                    shell_exit: None,
                                 }),
                             );
                         }
@@ -3615,6 +3646,7 @@ impl Extension {
                         Some(ErrorInfo {
                             code: None,
                             message: format!("unknown renderer: {}", custom_type),
+                            shell_exit: None,
                         }),
                     );
                 }
@@ -3633,6 +3665,7 @@ impl Extension {
                         Some(ErrorInfo {
                             code: None,
                             message: format!("command {} has no getArgumentCompletions", cmd_name),
+                            shell_exit: None,
                         }),
                     );
                 }
@@ -3652,6 +3685,7 @@ impl Extension {
                             Some(ErrorInfo {
                                 code: None,
                                 message: "tool renderer resolver panicked".to_string(),
+                                shell_exit: None,
                             }),
                         );
                     }
@@ -3675,6 +3709,7 @@ impl Extension {
                             Some(ErrorInfo {
                                 code: None,
                                 message,
+                                shell_exit: None,
                             }),
                         );
                     }
@@ -3745,6 +3780,7 @@ impl Extension {
                                 Some(ErrorInfo {
                                     code: None,
                                     message,
+                                    shell_exit: None,
                                 }),
                             );
                         }
@@ -3756,6 +3792,7 @@ impl Extension {
                         Some(ErrorInfo {
                             code: None,
                             message: format!("unknown entry renderer: {}", custom_type),
+                            shell_exit: None,
                         }),
                     );
                 }
@@ -3767,6 +3804,7 @@ impl Extension {
                     Some(ErrorInfo {
                         code: None,
                         message: format!("unknown method: {}", req.method),
+                        shell_exit: None,
                     }),
                 );
             }
@@ -4904,6 +4942,7 @@ mod tests {
                             error: Some(crate::protocol::ErrorInfo {
                                 code: None,
                                 message: "Entry missing-entry not found".to_string(),
+                                shell_exit: None,
                             }),
                         }),
                         ..Default::default()

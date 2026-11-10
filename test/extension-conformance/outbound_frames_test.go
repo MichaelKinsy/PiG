@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -27,6 +28,9 @@ type frameCheck struct {
 	deltas     map[string]int
 	deepDeltas map[string]int
 	failures   []string
+	// keep names the events whose request frames are kept as written, by extension: kept[extName+"\x00"+event].
+	keep map[string]bool
+	kept map[string][][]byte
 }
 
 // checkOutboundFrames fails t when a frame the host writes to an extension, in any load mode, is not the bytes json.Marshal writes for the envelope it carries: every member in the encoder's order, every raw member compact and escaped as the encoder escapes it (<, >, &, U+2028, U+2029). Each realization of an extension then receives the bytes it received before the host shared or spliced encodings.
@@ -62,6 +66,13 @@ func (c *frameCheck) observe(extName string, frame []byte) {
 			c.events = map[string]int{}
 		}
 		c.events[env.Request.Event]++
+		if c.keep[env.Request.Event] {
+			if c.kept == nil {
+				c.kept = map[string][][]byte{}
+			}
+			key := extName + "\x00" + env.Request.Event
+			c.kept[key] = append(c.kept[key], bytes.Clone(frame))
+		}
 		if stream := env.Request.Stream; stream != nil && len(stream.Ops) > 0 && len(env.Request.Args) == 0 {
 			if c.deltas == nil {
 				c.deltas, c.deepDeltas = map[string]int{}, map[string]int{}
@@ -89,6 +100,28 @@ func (c *frameCheck) deepDeltaFrames() map[string]int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return maps.Clone(c.deepDeltas)
+}
+
+// keepEventFrames keeps, from now on, every request frame of the event the host writes, for keptEventFrames.
+func (c *frameCheck) keepEventFrames(event string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.keep == nil {
+		c.keep = map[string]bool{}
+	}
+	c.keep[event] = true
+	for key := range c.kept {
+		if strings.HasSuffix(key, "\x00"+event) {
+			delete(c.kept, key)
+		}
+	}
+}
+
+// keptEventFrames returns the request frames of the event the host wrote to the extension since keepEventFrames, in the order written.
+func (c *frameCheck) keptEventFrames(extName, event string) [][]byte {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return slices.Clone(c.kept[extName+"\x00"+event])
 }
 
 func clip(b []byte) string {

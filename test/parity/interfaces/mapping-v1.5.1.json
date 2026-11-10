@@ -106906,7 +106906,7 @@
       "evidence": [
         "test:agent/agent_class_pi_oracle_test.go#TestAgentClassMatchesPi",
         "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi",
-        "test:chord/next/host/host_ctx_test.go#TestLinkedAbortSignalsAbortWithTheCallersSignalOrTheCallsTheCallersReasonFirst"
+        "test:chord/next/host/host_ctx_test.go#TestCtxGetRejectsWithTheAcquireErrorWhileItsHandlerRuns"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -106929,7 +106929,7 @@
       "evidence": [
         "test:chord/next/host/host_routines_test.go#TestOnTypesTheirHandlerByTheSourcesKindOpsAndRetiredForAJSONWatchableTheValueAloneForANativeOne",
         "test:chord/next/host/jobs_job_runs_test.go#TestPhaseSpansKeepARunsCtxAJobsUnderCtxTraceItsIdAndStateRecordedOrNot",
-        "test:chord/next/host/host_attempt_test.go#TestAttemptTheDrainAHandlerStuckPastItNoLongerCountsAsACallNorHoldsItsCtxGetReferences"
+        "test:chord/next/host/host_ctx_test.go#TestCtxGetRejectsWithTheAcquireErrorWhileItsHandlerRuns"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -108607,7 +108607,7 @@
       "id": "pkg:chord/.#formatNumber::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:e7e5581fb3f867aeb6f38fe3ae155c58f200003090c0c3b547af0cfdd656a4da",
-      "rationale": "Pi packages/chord/src/surfaces/format.ts (Pi 1.5.1) formatNumber(value, options?) is `Intl.NumberFormat` with the current language's locale (the platform's default outside a render). Go FormatNumber(lang *Language, value float64, options *NumberOptions) (string, error): the language is the first parameter, nil outside a render (D450); the options are the closed NumberOptions over tables generated from the pinned Node's Intl (D464), with no per-language formatter cache (D466); the errors Intl throws are the returned ErrOption/ErrLocale. Every output is diffed against a live Node by TestNumbersMatchNode (a seeded corpus of locales, values and options) and the three upstream cases of packages/chord/test/surfaces/format.test.ts run in surfaces_format_test.go; mutating the nil-language platform default, the language's locale, or the fraction-digit options fails these tests. The public library API has no PiG call site: its callers are the tests. The Go function is the port (surfaces_format.go, intl_time.go) and carries the language first (D450), one parameter more than Pi's two, which no shape rule of the closure engine matches to Pi's signature; the row is designed out for that signature alone and the port is proven by its evidence tests (portmapcheck derives the format.ts row from them).",
+      "rationale": "Pi packages/chord/src/surfaces/format.ts (Pi 1.5.1) formatNumber(value, options?) is `Intl.NumberFormat` with the current language's locale (the platform's default outside a render). Go FormatNumber(lang *Language, value float64, options *NumberOptions) (string, error): the language is the first parameter, nil outside a render (language mechanics); the options are the closed NumberOptions over tables generated from the pinned Node's Intl (D464), with no per-language formatter cache (D466); the errors Intl throws are the returned ErrOption/ErrLocale. Every output is diffed against a live Node by TestNumbersMatchNode (a seeded corpus of locales, values and options) and the three upstream cases of packages/chord/test/surfaces/format.test.ts run in surfaces_format_test.go; mutating the nil-language platform default, the language's locale, or the fraction-digit options fails these tests. The public library API has no PiG call site: its callers are the tests. The Go function is the port (surfaces_format.go, intl_time.go) and carries the language first (language mechanics), one parameter more than Pi's two, which no shape rule of the closure engine matches to Pi's signature; the row is designed out for that signature alone and the port is proven by its evidence tests (portmapcheck derives the format.ts row from them).",
       "pigTargets": [
         "chord/next/surfaces/surfaces_format.go#FormatNumber"
       ],
@@ -108645,7 +108645,7 @@
       "id": "pkg:chord/.#formatTime::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:d722554fc8dc2d98f7686bb0c6bc325734287ef82b54fab924fb9912e8ec8c21",
-      "rationale": "Pi packages/chord/src/surfaces/format.ts (Pi 1.5.1) formatTime(at, options?) is `Intl.DateTimeFormat` with the current language's locale (the platform's default outside a render), `{timeStyle: \"short\"}` by default, of `new Date(at)`. Go FormatTime(lang *Language, at time.Time, options *TimeOptions) (string, error): the language is the first parameter (D450); `Date | number | string` is a time.Time (D465); the options are the closed TimeOptions over tables generated from the pinned Node's Intl (D464); the zone is the process's, as a Date's is. TestTimesMatchNode diffs every output against a live Node and TestFormatTimeShowsTheInstantInTheProcessZone pins the zone; mutating the process zone to UTC or the default style to medium fails the tests. The public library API has no PiG call site: its callers are the tests. The Go function is the port (surfaces_format.go, intl_time.go) and carries the language first (D450), one parameter more than Pi's two, which no shape rule of the closure engine matches to Pi's signature; the row is designed out for that signature alone and the port is proven by its evidence tests (portmapcheck derives the format.ts row from them).",
+      "rationale": "Pi packages/chord/src/surfaces/format.ts (Pi 1.5.1) formatTime(at, options?) is `Intl.DateTimeFormat` with the current language's locale (the platform's default outside a render), `{timeStyle: \"short\"}` by default, of `new Date(at)`. Go FormatTime(lang *Language, at time.Time, options *TimeOptions) (string, error): the language is the first parameter (language mechanics); `Date | number | string` is a time.Time (D465); the options are the closed TimeOptions over tables generated from the pinned Node's Intl (D464); the zone is the process's, as a Date's is. TestTimesMatchNode diffs every output against a live Node and TestFormatTimeShowsTheInstantInTheProcessZone pins the zone; mutating the process zone to UTC or the default style to medium fails the tests. The public library API has no PiG call site: its callers are the tests. The Go function is the port (surfaces_format.go, intl_time.go) and carries the language first (language mechanics), one parameter more than Pi's two, which no shape rule of the closure engine matches to Pi's signature; the row is designed out for that signature alone and the port is proven by its evidence tests (portmapcheck derives the format.ts row from them).",
       "pigTargets": [
         "chord/next/surfaces/surfaces_format.go#FormatTime",
         "chord/next/surfaces/intl_time.go#FormatTime"
@@ -112775,7 +112775,7 @@
       "id": "pkg:chord/.#Messages::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:b1c2d9c0876357818689bcb0f4f99b6f2c0ad74b6b7ed85f16dfa4985531dc29",
-      "rationale": "Pi packages/chord/src/surfaces/messages.ts:67 Messages::call:0 (Pi 1.5.1): `t(key, ...args)` renders the message `key` with its arguments: a call of the Messages value itself. Go has no callable struct, so it is the method Messages.T(key string, args ...any) (string, error) (and Translator.T for one language), returning the error a JavaScript message would throw (its arguments do not fit) beside the text (surfaces_messages.go; D450 for the current language). Designed out as a callable object. Intention: `t(key, ...args)` renders the key with its arguments in the first catalog (a key the catalog lacks is the error of calling `undefined`). Exercised by TestRendersTheFirstCatalogOutsideALanguage (chord/next/surfaces/surfaces_messages_test.go), whose `t.T(\"count\", 2)` and unknown-key cases are Pi's \"renders the first catalog outside a language\". Intention check (messages.ts:65-77 read): `Messages` is a TypeScript type, an intersection of the callable Translator with namespace, translations, message and in; the call is the translator closure defineMessages builds, which Go's Messages.T stands for.",
+      "rationale": "Pi packages/chord/src/surfaces/messages.ts:67 Messages::call:0 (Pi 1.5.1): `t(key, ...args)` renders the message `key` with its arguments: a call of the Messages value itself. Go has no callable struct, so it is the method Messages.T(key string, args ...any) (string, error) (and Translator.T for one language), returning the error a JavaScript message would throw (its arguments do not fit) beside the text (surfaces_messages.go; language mechanics for the current language). Designed out as a callable object. Intention: `t(key, ...args)` renders the key with its arguments in the first catalog (a key the catalog lacks is the error of calling `undefined`). Exercised by TestRendersTheFirstCatalogOutsideALanguage (chord/next/surfaces/surfaces_messages_test.go), whose `t.T(\"count\", 2)` and unknown-key cases are Pi's \"renders the first catalog outside a language\". Intention check (messages.ts:65-77 read): `Messages` is a TypeScript type, an intersection of the callable Translator with namespace, translations, message and in; the call is the translator closure defineMessages builds, which Go's Messages.T stands for.",
       "pigTargets": [
         "chord/next/surfaces/surfaces_messages.go#Messages.T"
       ]
@@ -113011,7 +113011,7 @@
       "evidence": [
         "test:chord/next/host/host_attempt_test.go#TestActivationSpansATransientFailureAndItsRetryIsARootOfTheHostsAdapterLinkedToItsFirstTriggerARetrysLinksToTheAttemptBefore",
         "test:chord/next/host/host_attempt_test.go#TestAttemptAnAttemptNotLiveWithinReadyTimeoutIsAbandonedAndFailsTransientTheOpenersContextAbortedWhatOpenedClosed",
-        "test:chord/next/host/host_native_test.go#TestNativeACloseInTimeReportsNothingAndLeavesNoTimer"
+        "test:chord/next/host/host_native_test.go#TestNativeACloseInTimeLeavesItsContextUnabortedAfterItReturns"
       ]
     },
     {
@@ -123161,7 +123161,7 @@
       "id": "pkg:chord/app#ephemeralLoginFacet::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:03df8c3d899eb11265f2af82f7bde7170b11dcc2a9bb3c09b7808cafd204beca",
-      "rationale": "Pi 1.5.1 packages/chord/src/node/app/ephemeral.ts:20 ephemeralLoginFacet<P>(..._fits: EphemeralUser extends P ? [] : [\"the app's principal type must hold { kind: 'user', id, name }\"]) has one rest parameter that exists only at the type level: it is the empty tuple when the app's principal type holds EphemeralUser, and a type error otherwise, so a call passes nothing at run time. Go's principal is a JSON object (the generic parameter is designed out, D457), so there is nothing to check and no argument; app.EphemeralLoginFacet() takes none. Designed out as a TypeScript type-level mechanic. Intention check: the type-level parameter guards that the app's principal type can hold the principal the login issues; PiG ports the intention as the runtime shape it guarantees, TestEphemeralUserIsAUserPrincipal (chord/nextnode/app/files_index_summary_test.go): the issued principal is { kind: \"user\", id, name }."
+      "rationale": "Pi 1.5.1 packages/chord/src/node/app/ephemeral.ts:20 ephemeralLoginFacet<P>(..._fits: EphemeralUser extends P ? [] : [\"the app's principal type must hold { kind: 'user', id, name }\"]) has one rest parameter that exists only at the type level: it is the empty tuple when the app's principal type holds EphemeralUser, and a type error otherwise, so a call passes nothing at run time. Go's principal is a JSON object (the generic parameter is designed out: language mechanics), so there is nothing to check and no argument; app.EphemeralLoginFacet() takes none. Designed out as a TypeScript type-level mechanic. Intention check: the type-level parameter guards that the app's principal type can hold the principal the login issues; PiG ports the intention as the runtime shape it guarantees, TestEphemeralUserIsAUserPrincipal (chord/nextnode/app/files_index_summary_test.go): the issued principal is { kind: \"user\", id, name }."
     },
     {
       "id": "pkg:chord/app#EphemeralUser",
@@ -137830,8 +137830,8 @@
       ],
       "evidence": [
         "test:chord/next/tui/tui_scope_release_test.go#TestAHoldersOwnReleaseBeforeTheScopesWatchStartsEndsQuietly",
-        "test:chord/next/tui/tui_scope_test.go#TestOptimisticAddReturnsTheResultOfItsCall",
-        "test:chord/next/tui/tui_scope_test.go#TestOptimisticAppliesAReducerOverEveryActionInFlightInOrderAndSaysWhetherACallIsPending"
+        "test:chord/next/tui/tui_scope_test.go#TestAChangedThatDisposesItsOwnScopeReturnsAndNothingFollows",
+        "test:chord/next/tui/tui_scope_test.go#TestADeliveryInFlightWhenDisposeRunsEndsBeforeDisposeReturns"
       ]
     },
     {
@@ -137852,8 +137852,8 @@
       ],
       "evidence": [
         "test:chord/next/tui/tui_scope_release_test.go#TestAHoldersOwnReleaseBeforeTheScopesWatchStartsEndsQuietly",
-        "test:chord/next/tui/tui_scope_test.go#TestOptimisticAddReturnsTheResultOfItsCall",
-        "test:chord/next/tui/tui_scope_test.go#TestOptimisticAppliesAReducerOverEveryActionInFlightInOrderAndSaysWhetherACallIsPending"
+        "test:chord/next/tui/tui_scope_test.go#TestAChangedThatDisposesItsOwnScopeReturnsAndNothingFollows",
+        "test:chord/next/tui/tui_scope_test.go#TestADeliveryInFlightWhenDisposeRunsEndsBeforeDisposeReturns"
       ]
     },
     {
@@ -137874,8 +137874,8 @@
       ],
       "evidence": [
         "test:chord/next/tui/tui_scope_release_test.go#TestAHoldersOwnReleaseBeforeTheScopesWatchStartsEndsQuietly",
-        "test:chord/next/tui/tui_scope_test.go#TestOptimisticAddReturnsTheResultOfItsCall",
-        "test:chord/next/tui/tui_scope_test.go#TestOptimisticAppliesAReducerOverEveryActionInFlightInOrderAndSaysWhetherACallIsPending"
+        "test:chord/next/tui/tui_scope_test.go#TestAChangedThatDisposesItsOwnScopeReturnsAndNothingFollows",
+        "test:chord/next/tui/tui_scope_test.go#TestADeliveryInFlightWhenDisposeRunsEndsBeforeDisposeReturns"
       ]
     },
     {
@@ -195743,7 +195743,9 @@
         "call:internal/codingagent/native_model_runtime.go#ModelRegistry.GetProvider"
       ],
       "evidence": [
-        "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream"
+        "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream",
+        "test:internal/codingagent/model_catalog_data_radius_first_test.go#TestGetProviderModelDataDoesNotBuildTheBundledCatalogOfARadiusProvider",
+        "test:internal/codingagent/model_catalog_data_radius_first_test.go#TestGetProviderModelDataListsTheSameModelsWithTheRadiusBranchFirst"
       ]
     },
     {
@@ -195763,7 +195765,9 @@
         "call:internal/codingagent/native_model_runtime.go#ModelRegistry.GetProvider"
       ],
       "evidence": [
-        "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream"
+        "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream",
+        "test:internal/codingagent/model_catalog_data_radius_first_test.go#TestGetProviderModelDataDoesNotBuildTheBundledCatalogOfARadiusProvider",
+        "test:internal/codingagent/model_catalog_data_radius_first_test.go#TestGetProviderModelDataListsTheSameModelsWithTheRadiusBranchFirst"
       ]
     },
     {
@@ -227535,7 +227539,7 @@
       "evidence": [
         "test:test/extension-conformance/api_on_events_test.go#TestConformanceAPIOnVoidEventsReachTheTypedHandlers",
         "test:test/extension-conformance/conformance_test.go#TestModelEventPayloadsMatchAcrossSDKs",
-        "test:test/extension-conformance/deep_event_delta_test.go#TestDeepEventStreamDeltasReachEverySDK"
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
       ]
     },
     {
@@ -232660,9 +232664,9 @@
         "call:durable/codecs.go#editsOf"
       ],
       "evidence": [
+        "test:durable/surrogate_pi_oracle_test.go#TestLoneSurrogatesDecodeAsJSONParseDoes",
         "test:durable/harness/context_pi_oracle_test.go#TestContextDerivationMatchesPi",
-        "test:durable/types_upstream_test.go#TestTypesUpstream",
-        "test:durable/types_upstream_test.go#TestTypesUpstreamExclusivityLiteralsEncodeAsPiObjects"
+        "test:durable/types_upstream_test.go#TestTypesUpstream"
       ]
     },
     {
@@ -235055,7 +235059,7 @@
       "evidence": [
         "test:durable/session/codemode_checkpoints_upstream_test.go#TestBuiltInDocumentCheckpointPolicies",
         "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
-        "test:durable/harness/harness_compaction_test.go#TestPiLiveMigrations"
+        "test:durable/surrogate_pi_oracle_test.go#TestAddressIdKeepsDifferentLoneSurrogatesApart"
       ]
     },
     {
@@ -235097,9 +235101,9 @@
         "call:durable/session/held.go#SessionImpl.storeHolds"
       ],
       "evidence": [
+        "test:durable/surrogate_pi_oracle_test.go#TestLoneSurrogatesDecodeAsJSONParseDoes",
         "test:durable/session/codemode_checkpoints_upstream_test.go#TestBuiltInDocumentCheckpointPolicies",
-        "test:durable/session/session_deferred_commits_upstream_test.go#TestBasesAndOverflowOfHeldChanges",
-        "test:durable/session/session_deferred_commits_upstream_test.go#TestPublicationsOfDeferredCommits"
+        "test:durable/session/session_deferred_commits_upstream_test.go#TestBasesAndOverflowOfHeldChanges"
       ]
     },
     {
@@ -235609,9 +235613,9 @@
         "call:durable/entries.go#Entry.Draft"
       ],
       "evidence": [
+        "test:durable/surrogate_pi_oracle_test.go#TestLoneSurrogatesDecodeAsJSONParseDoes",
         "test:durable/harness/context_pi_oracle_test.go#TestContextDerivationMatchesPi",
-        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestReadingPiLiveInACommitStoresTheHeldPartial",
-        "test:durable/harness/view_pi_oracle_test.go#TestConversationViewsMatchPi"
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestReadingPiLiveInACommitStoresTheHeldPartial"
       ]
     },
     {
@@ -242490,8 +242494,8 @@
       ],
       "evidence": [
         "test:durable/harness/types_upstream_test.go#TestMissingPhaseHandlerFaultsTheTaskAsAThrowingHandlerDoes",
-        "test:durable/types_upstream_test.go#TestTypesUpstreamExclusivityLiteralsEncodeAsPiObjects",
-        "test:durable/core/driver/harness_blocked_core_test.go#TestBlockedTasks"
+        "test:durable/surrogate_pi_oracle_test.go#TestLoneSurrogatesDecodeAsJSONParseDoes",
+        "test:durable/types_upstream_test.go#TestTypesUpstreamExclusivityLiteralsEncodeAsPiObjects"
       ]
     },
     {
@@ -243250,7 +243254,7 @@
       "evidence": [
         "test:durable/core/driver/task_owned_tasks_core_test.go#TestCoreOwnedTasksRejectsOnceItsInvocationHasEnded",
         "test:durable/harness/scheduler_owned_tasks_test.go#TestOwnedTasksRejectsOnceItsInvocationHasEnded",
-        "test:durable/core/driver/task_owned_tasks_core_test.go#TestCoreOwnedTasksListsTheLiveTasksATaskOwnsDirectlyInIdOrderAlsoAfterAReopen"
+        "test:durable/harness/surrogate_observable_test.go#TestOwnedTasksKeepsALoneSurrogateInTheRecordsItReturns"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -243273,7 +243277,7 @@
       "evidence": [
         "test:durable/core/driver/task_owned_tasks_core_test.go#TestCoreOwnedTasksRejectsOnceItsInvocationHasEnded",
         "test:durable/harness/scheduler_owned_tasks_test.go#TestOwnedTasksRejectsOnceItsInvocationHasEnded",
-        "test:durable/core/driver/task_owned_tasks_core_test.go#TestCoreOwnedTasksListsTheLiveTasksATaskOwnsDirectlyInIdOrderAlsoAfterAReopen"
+        "test:durable/harness/surrogate_observable_test.go#TestOwnedTasksKeepsALoneSurrogateInTheRecordsItReturns"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -243974,7 +243978,7 @@
       "evidence": [
         "test:durable/toolsearch/toolsearch_pi_oracle_test.go#TestToolSearchMatchesPiOnSeededDeferredTools",
         "test:durable/core/driver/harness_inbox_core_test.go#TestInboxHandoff",
-        "test:durable/examples/agent_examples_test.go#TestExample26PlanMode"
+        "test:durable/surrogate_pi_oracle_test.go#TestLoneSurrogatesEncodeAsPiDoes"
       ]
     },
     {
@@ -245429,9 +245433,9 @@
         "call:durable/harness/tool.go#toolAbort"
       ],
       "evidence": [
+        "test:durable/harness/tool_checkpoint_order_test.go#TestAToolCheckpointKeepsALoneSurrogateInItsArguments",
         "test:durable/harness/tool_checkpoint_order_test.go#TestAToolCheckpointKeepsItsArgumentsInTheirStoredOrderWhenDecoded",
-        "test:durable/harness/tool_checkpoint_order_test.go#TestAToolCheckpointWithoutArgumentsShowsAnEmptyObject",
-        "test:durable/harness/agent_regression_test.go#TestCheckpointPhasesAreTheClosedPiUnions"
+        "test:durable/harness/tool_checkpoint_order_test.go#TestAToolCheckpointWithoutArgumentsShowsAnEmptyObject"
       ]
     },
     {
@@ -286024,7 +286028,7 @@
       "id": "pkg:schema/.#CoercingValidator::construct:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:f88eacd057705de17759d989769b674dd0cf9a1c37bba88fe22c07fcf5bc7e77",
-      "rationale": "Pi packages/schema/src/validator.ts:70 CoercingValidator::construct:0 (Pi 1.5.1, unchanged from 1.4.0+b556cfe5): CoercingValidator is a class that inherits Validator's constructor `new CoercingValidator(schema, options, check)`, which compile() alone calls when `options.coerce === true` (validator.ts:24-26); Go has no constructor on a struct type with unexported fields: CompileCoercing(schema, options) (*CoercingValidator, error) builds it (schema/validator.go:86-92) and returns the compile throw as the error, so there is no NewCoercingValidator and no second way to make one. Designed out as a Go language mechanic. Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go). Owner approved 2026-11-02 (Pi 1.5.1 packages/schema/src/validator.ts:14-26, unchanged from 1.4.0+b556cfe5; CompileCoercing is a separate type, CoercingValidator, where Pi overloads compile by the coerce option). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go) and TestCoerceMatchesPi (schema/coerce_oracle_test.go).",
+      "rationale": "Pi packages/schema/src/validator.ts:70 CoercingValidator::construct:0 (Pi 1.5.1, unchanged from 1.4.0+b556cfe5): CoercingValidator is a class that inherits Validator's constructor `new CoercingValidator(schema, options, check)`, which compile() alone calls when `options.coerce === true` (validator.ts:24-26); Go has no constructor on a struct type with unexported fields: CompileCoercing(schema, options) (*CoercingValidator, error) builds it (schema/validator.go:86-92) and returns the compile throw as the error, so there is no NewCoercingValidator and no second way to make one. Designed out as a Go language mechanic. Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go). Owner approved 2026-11-02 (Pi 1.5.1 packages/schema/src/validator.ts:14-26, unchanged from 1.4.0+b556cfe5; CompileCoercing is a separate type, CoercingValidator, where Pi overloads compile by the coerce option). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go) and TestCoerceMatchesPi (schema/coerce_oracle_test.go). The probe grepped Pi's schema package for `new CoercingValidator(` and found only compile() (validator.ts:25), so no Pi caller constructs one any other way.",
       "pigTargets": [
         "schema/validator.go#CompileCoercing"
       ]
@@ -286324,7 +286328,7 @@
       "id": "pkg:schema/.#CompileOptions::property:coerce",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:3af09d79b0c8ee00ffdb590b413c2e47c852f10b7e5f0d294c2c496f12e5d120",
-      "rationale": "Pi packages/schema/src/types.ts:24 CompileOptions::property:coerce (Pi 1.5.1, unchanged from 1.4.0+b556cfe5): `coerce?: boolean` is a run-time flag that adds `coerce()` and `parse()` to the validator compile() returns; its static effect, the CoercingValidator return type of the overload (validator.ts:14-17), cannot follow a field's value in Go, and an option that changed what Compile returns at run time would make Coerce and Parse methods that can be missing. The Go form is the distinct type: CompileCoercing(schema, options) returns *CoercingValidator (schema/validator.go:86), CompileOptions has no Coerce field (schema/types.go:29-38), and Compile never coerces. Designed out as a Go language mechanic (owner 2026-10-29/30). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go). Owner approved 2026-11-02 (Pi 1.5.1 packages/schema/src/validator.ts:14-26, unchanged from 1.4.0+b556cfe5; CompileCoercing is a separate type, CoercingValidator, where Pi overloads compile by the coerce option). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go) and TestCoerceMatchesPi (schema/coerce_oracle_test.go).",
+      "rationale": "Pi packages/schema/src/types.ts:24 CompileOptions::property:coerce (Pi 1.5.1, unchanged from 1.4.0+b556cfe5): `coerce?: boolean` is a run-time flag that adds `coerce()` and `parse()` to the validator compile() returns; its static effect, the CoercingValidator return type of the overload (validator.ts:14-17), cannot follow a field's value in Go, and an option that changed what Compile returns at run time would make Coerce and Parse methods that can be missing. The Go form is the distinct type: CompileCoercing(schema, options) returns *CoercingValidator (schema/validator.go:86), CompileOptions has no Coerce field (schema/types.go:29-38), and Compile never coerces. Designed out as a Go language mechanic (owner 2026-10-29/30). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go). Owner approved 2026-11-02 (Pi 1.5.1 packages/schema/src/validator.ts:14-26, unchanged from 1.4.0+b556cfe5; CompileCoercing is a separate type, CoercingValidator, where Pi overloads compile by the coerce option). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go) and TestCoerceMatchesPi (schema/coerce_oracle_test.go). The probe read every use of `options.coerce` in Pi's schema package and found only compile()'s test (validator.ts:24), which picks the class.",
       "pigTargets": [
         "schema/validator.go#CompileCoercing",
         "schema/types.go#CompileOptions"
@@ -286924,7 +286928,7 @@
       "id": "pkg:schema/.#ParseResult",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:bba05fa9efb31f2588fa52fb40297b1946ab4ef3613864f27fa35617df4aa8e9",
-      "rationale": "Pi packages/schema/src/types.ts:34 ParseResult (Pi 1.5.1): ParseResult<T> = { ok: true; value: T } | { ok: false; errors: ValidationError[] } is a discriminated union whose members differ by the literal type of `ok` and the generic T; Go has neither, so ParseResult is one struct { OK bool; Value any; Errors []ValidationError } (schema/types.go:61-65), as Value is the coerced value when OK and Errors the errors of the coerced value otherwise (the other member is zero). Designed out as a Go language mechanic (discriminated union as a struct; T is the JSON value, any). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go: \"parse\").",
+      "rationale": "Pi packages/schema/src/types.ts:34 ParseResult (Pi 1.5.1): ParseResult<T> = { ok: true; value: T } | { ok: false; errors: ValidationError[] } is a discriminated union whose members differ by the literal type of `ok` and the generic T; Go has neither, so ParseResult is one struct { OK bool; Value any; Errors []ValidationError } (schema/types.go:61-65), as Value is the coerced value when OK and Errors the errors of the coerced value otherwise (the other member is zero). Designed out as a Go language mechanic (discriminated union as a struct; T is the JSON value, any). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go: \"parse\"). ParseResult is a TypeScript type alias (types.ts:34-36) that tsc erases: the probe found no emitted value, member or call for it.",
       "pigTargets": [
         "schema/types.go#ParseResult"
       ]
@@ -286933,7 +286937,7 @@
       "id": "pkg:schema/.#Properties",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:d5b5365aa47c294dfc461d3f0da41a6524d5d517cbd2e829f018657c6d754470",
-      "rationale": "Pi packages/schema/src/builders.ts:202 Properties (Pi 1.5.1): Properties = { readonly [name: string]: Schema | Optional } is an object whose own-key order is observable (the order of `properties`, `required` and of reported errors); Go has no insertion-ordered map, so schema.Properties is the ordered []Property of Prop and Opt entries (schema/builders.go:273-288) that Obj orders as JavaScript's own keys are ordered (array-index names ascending first, then declaration order). Designed out as a Go language mechanic (owner 2026-10-29/30). Exercised by TestObjUsesOwnKeyOrder and TestBuildersProduceEveryLeaf (schema/builders_upstream_test.go).",
+      "rationale": "Pi packages/schema/src/builders.ts:202 Properties (Pi 1.5.1): Properties = { readonly [name: string]: Schema | Optional } is an object whose own-key order is observable (the order of `properties`, `required` and of reported errors); Go has no insertion-ordered map, so schema.Properties is the ordered []Property of Prop and Opt entries (schema/builders.go:273-288) that Obj orders as JavaScript's own keys are ordered (array-index names ascending first, then declaration order). Designed out as a Go language mechanic (owner 2026-10-29/30). Exercised by TestObjUsesOwnKeyOrder and TestBuildersProduceEveryLeaf (schema/builders_upstream_test.go). Properties is a TypeScript type alias (builders.ts:202) that tsc erases: the probe found no emitted value or call for it; the key order is observable only through obj() (builders.ts:219), which the Go Obj reproduces.",
       "pigTargets": [
         "schema/builders.go#Properties"
       ]
@@ -287282,7 +287286,7 @@
       "id": "pkg:schema/.#Validator::construct:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:80d350d9fe873a423b4b332572354a05be33d03dba4d401acb8bbef202452c07",
-      "rationale": "Pi packages/schema/src/validator.ts:39 Validator::construct:0 (Pi 1.5.1): `new Validator(schema, options, check)` is the class constructor that compile() alone calls with the compiled check; Go has no constructor on a struct type with unexported fields: Compile(schema, options) (*Validator, error) builds the Validator (schema/validator.go:11-24) and returns the compile throw as the error, so there is no NewValidator and no second way to make one. Exercised by TestErrors (schema/validator_upstream_test.go).",
+      "rationale": "Pi packages/schema/src/validator.ts:39 Validator::construct:0 (Pi 1.5.1): `new Validator(schema, options, check)` is the class constructor that compile() alone calls with the compiled check; Go has no constructor on a struct type with unexported fields: Compile(schema, options) (*Validator, error) builds the Validator (schema/validator.go:11-24) and returns the compile throw as the error, so there is no NewValidator and no second way to make one. Exercised by TestErrors (schema/validator_upstream_test.go). The probe grepped Pi's schema package for `new Validator(` and found only compile() (validator.ts:26), so no Pi caller constructs one any other way.",
       "pigTargets": [
         "schema/validator.go#Compile"
       ]

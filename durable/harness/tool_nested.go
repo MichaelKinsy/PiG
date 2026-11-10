@@ -281,7 +281,7 @@ func (api *toolApi) ExecuteTool(ctx context.Context, name string, args map[strin
 // path segments of the call ID, so IDs of different nested calls never collide, and default keys are positive integers.
 func checkNestedKey(key string) error {
 	if key == "" || strings.Contains(key, "/") || key == "__proto__" || isPositiveInteger(key) {
-		encoded, _ := json.Marshal(key)
+		encoded, _ := jsstring.MarshalJSON(key)
 		return fmt.Errorf(`Nested call key %s must be non-empty, without "/", not "__proto__", and not a positive integer`, encoded)
 	}
 	return nil

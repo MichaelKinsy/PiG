@@ -117,6 +117,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-0e360a0](#bf-0e360a0) | The `tui` package's default keybindings no longer depend on the platform: undo is `ctrl+-` and the alt-screen… | PiG's own defect | Windows, WSL | 0.5.0 |
 | [BF-0e8761b](#bf-0e8761b) | A system message with an empty sections object is stored as `"sections": {}`, as Pi stores it after a reset | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-0f8bc0f](#bf-0f8bc0f) | `ctx.reload()` in print and RPC mode, and `Session.Reload` for SDK callers, now fail with `Wait for the… | PiG's own defect | All platforms | Unreleased |
+| [BF-0ff9f4a](#bf-0ff9f4a) | A Provider object registered from an extension process ignored `refreshModelsAuth`: its network refresh… | PiG's own defect | All platforms | Unreleased |
 | [BF-0ffb06a](#bf-0ffb06a) | fix(tui): diff rows with a CR are wrapped like Pi's Text | PiG's own defect | All platforms | Unreleased |
 | [BF-1003d2e](#bf-1003d2e) | fix(cli): the login secret prompt enters and leaves raw mode through tui.MakeRaw and tui.RestoreCooked (Pi) | PiG's own defect | All platforms | Unreleased |
 | [BF-1016b78](#bf-1016b78) | fix(delta-nonchord-core): test the aborted Models dispatch and fetchDeferred paths, the persisted tool result… | PiG's own defect | All platforms | Unreleased |
@@ -129,6 +130,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-11b199d](#bf-11b199d) | Session lines (and every other JSON.stringify-mode encode) now write ill-formed UTF-8 the way Pi does: one… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-11d48a2](#bf-11d48a2) | fix(chord/nextnode/workers): Close(ctx) stops waiting when ctx ends, as Pi's close does on abort | PiG's own defect | All platforms | Unreleased |
 | [BF-121ba35](#bf-121ba35) | The Durable core's conversation view follows Pi f3255de7's mount: a second observer of a conversation only… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-123827b](#bf-123827b) | Go, Rust, Python and Lisp extensions: a bash tool built on `createLocalBashOperations()` now says `The shell… | PiG's own defect | All platforms | Unreleased |
 | [BF-1239dac](#bf-1239dac) | fix(chord/nextnode/plugins): the Node host resolves pi-schema, and example 37's shapes file imports it as… | PiG's own defect | All platforms | Unreleased |
 | [BF-1268115](#bf-1268115) | fix(model runtime): a cancelled request to a caller-owned provider the runtime does not know is aborted, not… | PiG's own defect | All platforms | Unreleased |
 | [BF-12d5c56](#bf-12d5c56) | A Chord HTTP request or upgrade no longer reads the router and the authenticators from its own goroutine… | PiG's own defect | All platforms | 0.7.0 |
@@ -157,6 +159,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-1724c9e](#bf-1724c9e) | Two pig processes that reach the same `auth.json` through different paths, such as an agent directory whose… | PiG's own defect | Windows | Unreleased |
 | [BF-173060b](#bf-173060b) | fix(chord/next/store): decodeStoreWrite never panics (2500 malformed writes); no recover in the outbox; D3… | PiG's own defect | All platforms | Unreleased |
 | [BF-176542a](#bf-176542a) | fix: the chord boundary allows internal/sortx, a stdlib-only helper that jsstring and ecmaregex link… | PiG's own defect | All platforms | Unreleased |
+| [BF-17d97b4](#bf-17d97b4) | On Windows, attaching a file in a terminal prompt no longer reads a different file when a parent directory is… | PiG's own defect | Windows | Unreleased |
+| [BF-17d97b4-2](#bf-17d97b4-2) | A plugin install that finds no `package.json` (or another problem) names the directory it was going to… | PiG's own defect | Windows | Unreleased |
 | [BF-1827831](#bf-1827831) | The MCP extension's `tool_call` handler passes a tool's `reachesTools` the call's input in the member order… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1848633](#bf-1848633) | Extension widgets share one key namespace across extensions, as in Pi: an extension that sets a widget key… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-184ed40](#bf-184ed40) | fix(hljs): a language's reach does not depend on the first text it highlights; red cases for resumeLimit | PiG's own defect | All platforms | Unreleased |
@@ -409,7 +413,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3fa6e63](#bf-3fa6e63) | MCP servers with resources registered no tools until every resource was listed, so a slow listing (a large… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3fbdfd2](#bf-3fbdfd2) | A configured number in settings text prints as JavaScript's `String(number)`: `-0` is `0`, and a magnitude of… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3fd2500](#bf-3fd2500) | `pi update` no longer stops with `git clean -fdx failed with code 1` when a Git package has files that cannot… | PiG's own defect | Windows | 0.7.0 |
-| [BF-3fe717a](#bf-3fe717a) | A bash or PowerShell command that timed out after its shell had already exited, because a background process… | A Pi defect that PiG fixed first | Windows | Unreleased |
+| [BF-3fe717a](#bf-3fe717a) | A bash or PowerShell command that timed out after its shell had already exited, because a background process… | PiG's own defect | Windows | Unreleased |
 | [BF-4027b34](#bf-4027b34) | A finished code-mode execution no longer keeps its closed VM reachable through its stopped halt-grace timer… | PiG's own defect | Linux | 0.5.0 |
 | [BF-402f61c](#bf-402f61c) | A custom message keeps the member order of its `content` blocks everywhere the host holds it | PiG's own defect | All platforms | Unreleased |
 | [BF-4058f34](#bf-4058f34) | The /fork message picker checks its keys in Pi's order (up, down, confirm, cancel) when bindings overlap | PiG's own defect | All platforms | 0.5.0 |
@@ -1293,6 +1297,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a156ef3](#bf-a156ef3) | On Linux, clipboard reads accept every `DISPLAY` spelling Pi's `xcb_connect` accepts: white space or a sign… | PiG's own defect | Linux | 0.5.0 |
 | [BF-a16d8b4](#bf-a16d8b4) | The Go, Rust, Python and Lisp SDKs asked the host on every read of the model object, the session id, the… | PiG's own defect | All platforms | Unreleased |
 | [BF-a178939](#bf-a178939) | The Go and Python `serializeConversation` keep an unpaired UTF-16 surrogate in a message, a tool-call name or… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-a17e2a1](#bf-a17e2a1) | A runtime API key (`--api-key`, `SetRuntimeAPIKey`) for a Radius provider now counts as its auth, as it does… | PiG's own defect | All platforms | Unreleased |
 | [BF-a18da32](#bf-a18da32) | fix(schema): resolve relative references against file and custom-scheme bases as a URL parser does | PiG's own defect | All platforms | Unreleased |
 | [BF-a1be545](#bf-a1be545) | The `@` file search of a tui editor that has a file-search provider but no task owner (an embedder's; no pig… | PiG's own defect | All platforms | Unreleased |
 | [BF-a1da44d](#bf-a1da44d) | The durable turn classifier retries on a status code (429, 500, 502, 503, 504, 520, 524) only when it stands… | PiG's own defect | All platforms | 0.5.2 |
@@ -1452,6 +1457,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-bb888ae](#bf-bb888ae) | The `/model` picker now keeps its model list when the catalog refresh times out, as in Pi | PiG's own defect | All platforms | 0.5.0 |
 | [BF-bb9e9d8](#bf-bb9e9d8) | fix(extensions): parallel Node runtime linking reports the walk-order first failure under every schedule | PiG's own defect | All platforms | Unreleased |
 | [BF-bba3679](#bf-bba3679) | Images in the formats Photon decodes beyond PNG, JPEG, GIF, WebP, BMP and TIFF are now decoded the way Pi… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-bbccefd](#bf-bbccefd) | A Durable value that holds a lone UTF-16 surrogate is stored as Pi stores it | PiG's own defect | All platforms | Unreleased |
 | [BF-bc24321](#bf-bc24321) | fix(mem M3): arm the idle collection at run end and run it after 500 ms | PiG's own defect | All platforms | Unreleased |
 | [BF-bc4cd62](#bf-bc4cd62) | `toPrecision` rounds a value just below a power of ten (1e-11 to 16 digits, 9.999999999999998e9 to 16 digits)… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-bc8d37f](#bf-bc8d37f) | `FileModelsStore` roots and index keys: new live-Pi oracle… | PiG's own defect | All platforms | 0.5.0 |
@@ -3339,6 +3345,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `coding/cli/headless_reload_test.go::TestRefusedReloadDuringARunningToolKeepsTheExtensionHostLive`, `coding/session_reload_busy_test.go::TestSessionReloadRejectedWhileRunningOrCompacting`
 - **Release note:** `ctx.reload()` in print and RPC mode, and `Session.Reload` for SDK callers, now fail with `Wait for the current response to finish before reloading.` while a response is running, and with `Wait for compaction to finish before reloading.` during compaction or tree navigation, instead of shutting the extensions down under a running tool, which then failed with a stale-context error. A refused reload leaves the extensions and the running tool's context untouched, and the extension sees the error in every SDK.
 
+### BF-0ff9f4a
+
+**A Provider object registered from an extension process ignored `refreshModelsAuth`: its network refresh…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Provider object registered from an extension process ignored `refreshModelsAuth`: its network refresh always resolved (and so refreshed) the stored credential.
+- **Root cause:** Not recorded.
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0ff9f4a443` (2026-11-09)
+- **Tests:** `internal/codingagent/native_provider_refresh_auth_test.go::TestSubprocessCarrierHonoursRefreshModelsAuth`, `test/extension-conformance/provider_object_test.go::TestProviderObjectRefreshModelsAuthAcrossSDKs`
+- **Release note:** A Provider object registered from an extension process ignored `refreshModelsAuth`: its network refresh always resolved (and so refreshed) the stored credential.
+
 ### BF-0ffb06a
 
 **fix(tui): diff rows with a CR are wrapped like Pi's Text**
@@ -3500,6 +3520,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `121ba35041` (2026-10-27)
 - **Tests:** `durable/core/view_test.go::TestResolveWindow`
 - **Release note:** The Durable core's conversation view follows Pi f3255de7's mount: a second observer of a conversation only loads its own window and takes the one `docs` object of the mount, so attaching to a mounted view spends Pi's microtask passes and the observers of one conversation share their documents; a window the core rejects (a bound that is not an integer, `max` below `min`) reaches the host as the `RangeError` Pi throws.
+
+### BF-123827b
+
+**Go, Rust, Python and Lisp extensions: a bash tool built on `createLocalBashOperations()` now says `The shell…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Go, Rust, Python and Lisp extensions: a bash tool built on `createLocalBashOperations()` now says `The shell exited with code C after S seconds, but background processes it started kept writing output until the timeout.` when a command timed out after its shell had already exited, as Pi 1.5.1 does.
+- **Root cause:** The Go, Rust, Python and Lisp SDKs reach the local shell over builtinTool.localExec, whose error reply carried only 'timeout:N'.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `01d8d08b31` (2026-11-09), `123827b998` (2026-11-09)
+- **Tests:** `coding/extension/host/subprocess/shell_exit_wire_test.go::TestLocalShellTimeoutReadsAFusedSDKsError`, `coding/extension/host/subprocess/shell_exit_wire_test.go::TestShellExitCrossesTheWireAsErrorInfoShellExit`, `test/extension-conformance/builtin_tool_delegate_test.go::TestConformance_BuiltinToolDelegationAcrossSDKs`
+- **Release note:** Go, Rust, Python and Lisp extensions: a bash tool built on `createLocalBashOperations()` now says `The shell exited with code C after S seconds, but background processes it started kept writing output until the timeout.` when a command timed out after its shell had already exited, as Pi 1.5.1 does. The local operations of these SDKs reach the host over `builtinTool.localExec`, whose error reply carried only `timeout:N`; it now carries Pi's `shellExit` (the shell's exit code and run time), which the SDK passes on when its exec returns that error unchanged. An error wrapped around it, or a new error with its message, gives the plain `Command timed out after N seconds`, as in Pi.
 
 ### BF-1239dac
 
@@ -3879,6 +3913,34 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `176542ac65` (2026-11-08)
 - **Tests:** None recorded.
+
+### BF-17d97b4
+
+**On Windows, attaching a file in a terminal prompt no longer reads a different file when a parent directory is…**
+
+- **Source:** PiG's own defect
+- **Symptom:** On Windows, attaching a file in a terminal prompt no longer reads a different file when a parent directory is swapped for a link after the first yes: the identity of the confirmed file is read from an open handle, not looked up again by path when it is compared.
+- **Root cause:** An install problem names the target also when the root is reached by a link or a Windows short name: discovery reports the staged directory by its real path, so that is the prefix the target replaces.
+- **User impact:** Behavior differed from Pi
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `17d97b46d4` (2026-11-09)
+- **Tests:** `chord/nextnode/plugins/plugins_install_test.go::TestInstallPluginNamesTheTargetInAProblemWhenTheRootIsReachedByALink`, `chord/nextnode/plugins/plugins_watcher_base_test.go::TestTheBaseMarkWatchesABaseDirectoryRemovedAndRecreatedAndComparesItsFiles`, `chord/nextnode/plugins/plugins_watcher_windows_test.go::TestWindowsRefusesToRenameAWatchedTreeUntilTheWatcherCloses`, `internal/testenv/cellcache_test.go::TestSharedCellCacheDirIsKeyedByTheContentsOfItsInputs`
+- **Release note:** On Windows, attaching a file in a terminal prompt no longer reads a different file when a parent directory is swapped for a link after the first yes: the identity of the confirmed file is read from an open handle, not looked up again by path when it is compared.
+
+### BF-17d97b4-2
+
+**A plugin install that finds no `package.json` (or another problem) names the directory it was going to…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A plugin install that finds no `package.json` (or another problem) names the directory it was going to install into when the plugins root is reached through a link or a Windows short name, not the staging directory.
+- **Root cause:** An install problem names the target also when the root is reached by a link or a Windows short name: discovery reports the staged directory by its real path, so that is the prefix the target replaces.
+- **User impact:** Behavior differed from Pi
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `17d97b46d4` (2026-11-09)
+- **Tests:** `chord/nextnode/plugins/plugins_install_test.go::TestInstallPluginNamesTheTargetInAProblemWhenTheRootIsReachedByALink`, `chord/nextnode/plugins/plugins_watcher_base_test.go::TestTheBaseMarkWatchesABaseDirectoryRemovedAndRecreatedAndComparesItsFiles`, `chord/nextnode/plugins/plugins_watcher_windows_test.go::TestWindowsRefusesToRenameAWatchedTreeUntilTheWatcherCloses`, `internal/testenv/cellcache_test.go::TestSharedCellCacheDirIsKeyedByTheContentsOfItsInputs`
+- **Release note:** A plugin install that finds no `package.json` (or another problem) names the directory it was going to install into when the plugins root is reached through a link or a Windows short name, not the staging directory.
 
 ### BF-1827831
 
@@ -7362,15 +7424,13 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 **A bash or PowerShell command that timed out after its shell had already exited, because a background process…**
 
-- **Source:** A Pi defect that PiG fixed first (divergence D243)
+- **Source:** PiG's own defect
 - **Symptom:** A bash or PowerShell command that timed out after its shell had already exited, because a background process it started kept writing to the shared output, now reports the shell's exit code as well: `Command timed out after N seconds. The shell exited with code C after S seconds, but background processes it started kept writing output until the timeout.` The model no longer reads a failed command as a slow one and retries with a longer timeout.
 - **Root cause:** A bash or PowerShell command that timed out after its shell had already exited, because a background process it started kept writing to the shared output, now reports the shell's exit code as well: `Command timed out after N seconds. The shell exited with code C after S seconds, but background processes it started kept writing output until the timeout.` The model no longer reads a failed command as a slow one and retries with a longer timeout.
 - **User impact:** An operation failed or was rejected
 - **Platform:** Windows
 - **Fixed in:** Unreleased
-- **Pi issue:** none recorded
-- **Removed when Pi fixes it:** the pinned Pi release contains 06aa6563e. Then the call-site markers and this record go.
-- **Fix commits:** `3cf1ce8466` (2026-11-05), `3fe717aa8a` (2026-11-05)
+- **Fix commits:** `3fe717aa8a` (2026-11-05)
 - **Tests:** `internal/codingagent/tools/bash_timeout_shell_exit_unix_test.go::TestBashTimeoutAfterShellExit11613`
 - **Release note:** A bash or PowerShell command that timed out after its shell had already exited, because a background process it started kept writing to the shared output, now reports the shell's exit code as well: `Command timed out after N seconds. The shell exited with code C after S seconds, but background processes it started kept writing output until the timeout.` The model no longer reads a failed command as a slow one and retries with a longer timeout. A shell still running at the deadline keeps the plain timeout message, and custom operations that fail with `timeout:N` are unchanged (D243).
 
@@ -19639,6 +19699,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `extensions/sdk-py/tests/test_compaction_estimate.py`, `extensions/sdk-py/tests/test_serialize_conversation_surrogates.py`, `extensions/sdk/compaction_estimate_test.go::TestEstimateTokensCountsUTF16UnitsAndJSONStringifyLength`, `extensions/sdk/compaction_estimate_test.go::TestJSNumberStringMatchesNumberToString`, `extensions/sdk/serialize_conversation_surrogate_test.go::TestSerializeConversationKeepsUnpairedSurrogates`, `test/extension-conformance/compaction_usage_test.go::TestConformance_CompactionUsageHelpersAgreeAcrossSDKs`, `test/extension-conformance/host_parser_helpers_test.go::TestConformance_HostParserHelpersAgreeAcrossSDKs`, `test/extension-conformance/message_conversion_test.go::TestConformance_MessageConversionAgreesAcrossSDKs` and 2 more in docs/bug-ledger.json
 - **Release note:** The Go and Python `serializeConversation` keep an unpaired UTF-16 surrogate in a message, a tool-call name or argument, and when the 2,000-unit cut splits a surrogate pair, as Pi does; the conformance test now compares those cases against Pi's own code.
 
+### BF-a17e2a1
+
+**A runtime API key (`--api-key`, `SetRuntimeAPIKey`) for a Radius provider now counts as its auth, as it does…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Requests used the key but the Radius catalog was not listed.
+- **Root cause:** An earlier change's message and report said the mid-session test step covered a runtime key; it did not: its runtime-key step failed (HasConfiguredAuth false), and replaced it with stored credentials. TestGetAvailableModelDataListsARadiusCatalogExactlyWhenItsProviderHasAuth now has the runtime-key steps (appears, leaves, returns), an OAuth step and a models.json Radius provider (acme, custom base URL, one defined model), counting that provider's models too; TestRadiusRuntimeKeyIsRadiusAuthEverywhere pins the other questions.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a17e2a163e` (2026-11-10)
+- **Tests:** `internal/codingagent/model_registry_available_radius_test.go::TestGetAvailableModelDataListsARadiusCatalogExactlyWhenItsProviderHasAuth`, `internal/codingagent/model_registry_available_radius_test.go::TestRadiusRuntimeKeyIsRadiusAuthEverywhere`
+- **Release note:** A runtime API key (`--api-key`, `SetRuntimeAPIKey`) for a Radius provider now counts as its auth, as it does in Pi: the provider has configured auth, its models are in the available list and it counts as an available provider. Before, requests used the key but the Radius catalog was not listed.
+
 ### BF-a18da32
 
 **fix(schema): resolve relative references against file and custom-scheme bases as a URL parser does**
@@ -21831,6 +21905,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `bba3679802` (2026-10-29)
 - **Tests:** `internal/photonimage/icodecode_test.go::TestDecodeICOBitmapPixelsAndMask`, `internal/photonimage/icodecode_test.go::TestDecodeICOPNGEntry`, `internal/photonimage/icodecode_test.go::TestDecodeICOPalettesAndRLE`, `internal/photonimage/icodecode_test.go::TestDecodeICOPicksTheBestEntry`, `internal/photonimage/icodecode_test.go::TestDecodeICORefuses`, `internal/photonimage/icodecode_test.go::TestDecodeRoutesICO`
 - **Release note:** Images in the formats Photon decodes beyond PNG, JPEG, GIF, WebP, BMP and TIFF are now decoded the way Pi decodes them, pixel for pixel and error for error on every file of the oracle corpus: ICO (a bitmap or PNG entry, with its AND mask), PNM (PBM, PGM and PPM in plain and raw form, and PAM), DDS (DXT1, DXT3 and DXT5, also through the DX10 header), Radiance HDR and farbfeld. A clipboard target such as `image/x-icon`, an image the model is sent under any declared type, an attachment, and a file handed to the terminal image conversion or to the durable `read` tool are converted to PNG or resized as Pi does, to the same bytes in every case measured against Pi's own code, where PiG used to say it could not convert them. Files Photon refuses are refused, an image of more than 512 MiB decoded is refused, and an image with no pixels is no longer encoded (Pi's PNG encoder throws on it). TGA, AVIF, OpenEXR and QOI stay unsupported, as in Pi (TGA has no signature, the others are not built into Photon).
+
+### BF-bbccefd
+
+**A Durable value that holds a lone UTF-16 surrogate is stored as Pi stores it**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Durable value that holds a lone UTF-16 surrogate is stored as Pi stores it.
+- **Root cause:** TaskState and TaskOutcome (checkpoint, result, error message, reason), EntryDraft, ContextEdit, DocumentContent, ToolControl, the compaction modelOverrides keys, a tool checkpoint's arguments and AddressId encoded through encoding/json, which writes a lone surrogate as U+FFFD where Pi's JSON.stringify writes the escape. Two different units gave one AddressId, and a stored task record or document differed from Pi's. They go through jsstring.MarshalKeepingSurrogates now; the readers (EntryDraft, ContextEdit, DocumentContent, modelOverrides keys, a tool checkpoint's arguments, SqliteStorage's parseJSON and unquoteJS) go through UnmarshalKeepingSurrogates, so the escape reads back as the unit.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `7c3789482b` (2026-11-09), `a639c9afb2` (2026-11-09), `adad5282ac` (2026-11-09), `bbccefdf7f` (2026-11-09), `d7367de408` (2026-11-09), `e37b86562b` (2026-11-09)
+- **Tests:** `durable/harness/surrogate_observable_test.go::TestANestedKeyErrorQuotesTheKeyAsPiDoes`, `durable/harness/surrogate_observable_test.go::TestOwnedTasksKeepsALoneSurrogateInTheRecordsItReturns`, `durable/harness/tool_checkpoint_order_test.go::TestAToolCheckpointKeepsALoneSurrogateInItsArguments`, `durable/harness/tool_checkpoint_order_test.go::TestHarnessJSONKeepsALoneSurrogateInSelectionsAndViewDocs`, `durable/storage/sqlite/rows_pi_oracle_test.go::TestRowsMatchPi`, `durable/storage/sqlite/rows_test.go::TestParseJSONReadsALoneSurrogateEscapeAsTheUnit`, `durable/surrogate_pi_oracle_test.go::TestAddressIdKeepsDifferentLoneSurrogatesApart`, `durable/surrogate_pi_oracle_test.go::TestLoneSurrogatesDecodeAsJSONParseDoes` and 1 more in docs/bug-ledger.json
+- **Release note:** A Durable value that holds a lone UTF-16 surrogate is stored as Pi stores it. Task states and outcomes (checkpoint, result, error message, reason), entry drafts, context edits, document contents, tool controls, compaction `modelOverrides` keys, a tool call's checkpoint arguments, extension and tool selections and view documents went through Go's `encoding/json`, which writes the unit as U+FFFD where `JSON.stringify` writes `\ud800`, and read the escape back as U+FFFD. Two document kinds that differ only in such a unit also got one `AddressId`. SqliteStorage read a stored record's escape as U+FFFD as well. `ownedTasks` returned a task's kind, input and checkpoint with U+FFFD for such a unit, and a nested call key's error quoted the key with Go's escaping (`\u003c` for `<`, U+FFFD for the unit) where Pi's `JSON.stringify` does not. Pi's own `JSON.stringify`, `documents.ts` `addressId` and `tool.ts` `checkKey` answer for the encoders in the new tests.
 
 ### BF-bc24321
 
@@ -29263,7 +29351,6 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D228 | Terminal.app: plain Up dequeues a queued message, and Up recall elsewhere says once that the text is a copy | [BF-2359a0a](#bf-2359a0a) |
 | D230 | `pig config` lists declared Package members that are missing from disk, marked `missing` | [BF-825b4ab](#bf-825b4ab) |
 | D235 | A session-graph client's two live runs with no "no run" read between them are one context | [BF-D235](#bf-d235) |
-| D243 | The SDK local bash operations lose the shell's exit code on a timeout after the shell exited | [BF-3fe717a](#bf-3fe717a) |
 | D266 | An image block with an empty `mimeType` is named `image/unknown` in tool cards, where Pi names it with the… | [BF-D266](#bf-d266) |
 | D267 | The plugins' `npm install` ends with its command, not with the processes that hold the command's output pipes | [BF-D267](#bf-d267) |
 | D268 | The extension SDKs read tool arguments of any depth the host can send; Pi's runtime fails at a depth set by… | [BF-c551a63](#bf-c551a63) |

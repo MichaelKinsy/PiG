@@ -11,7 +11,7 @@ import (
 // Ports packages/chord/src/node/workers/base.ts `nodeBaseInputs`. The files an entry's code is made of, each with the hash of its
 // bytes as read: what an edit of the server's own code outdates its bases by (the app hands them to `Plugins.WatchBase`).
 //
-// Forced Go differences (D600). Pi scans the import graph of a Node entry with esbuild: the entry and every file it imports under the
+// Forced Go differences (language mechanics: a Go worker is a program, not Node modules). Pi scans the import graph of a Node entry with esbuild: the entry and every file it imports under the
 // given resolution `conditions`, installed packages and an import that does not resolve left out. A Go program's code is its
 // executable, one file with no module graph, so the entry is that file and `conditions` (Node's `--conditions`) resolve nothing:
 // they are accepted as Pi's signature has them and read by nothing. What Pi's scan guards holds here as it does there: the entry's own

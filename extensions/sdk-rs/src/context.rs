@@ -6586,6 +6586,7 @@ mod login_call_tests {
                         code: Some("invalid_sprite".to_string()),
                         message: "invalid sprite definition mascot: must contain exactly 14 rows"
                             .to_string(),
+                        shell_exit: None,
                     }),
                 }),
                 ..Default::default()
@@ -6823,6 +6824,7 @@ mod sdk_surface_call_tests {
                 error: Some(ErrorInfo {
                     code: None,
                     message: "yield failed".to_string(),
+                    shell_exit: None,
                 }),
             },
         );
@@ -6865,6 +6867,7 @@ mod sdk_surface_call_tests {
                 error: Some(ErrorInfo {
                     code: None,
                     message: "yield failed".to_string(),
+                    shell_exit: None,
                 }),
             },
         );
@@ -7107,6 +7110,7 @@ mod sdk_surface_call_tests {
             error: Some(ErrorInfo {
                 code: None,
                 message: "Nothing to compact".to_string(),
+                shell_exit: None,
             }),
         });
         assert_eq!(call.parent_request_id, None);
@@ -7124,6 +7128,7 @@ mod sdk_surface_call_tests {
                 error: Some(ErrorInfo {
                     code: None,
                     message: "spawn EINVAL".to_string(),
+                    shell_exit: None,
                 }),
             }
         }
@@ -7150,6 +7155,7 @@ mod sdk_surface_call_tests {
             error: Some(ErrorInfo {
                 code: Some("host_failed".to_string()),
                 message: "boom".to_string(),
+                shell_exit: None,
             }),
         }
     }

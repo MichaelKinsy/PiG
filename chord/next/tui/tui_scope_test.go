@@ -182,10 +182,88 @@ func TestScopeHoldsFollowsAndCallsChangedOnEveryChangeReleasingEverythingAtDispo
 		t.Errorf("state after dispose = %s, want ended", kind)
 	}
 	after := changes.Load()
-	// A change arriving after Dispose reports nothing (a delivery already past the check may still land: D452).
+	// A change arriving after Dispose reports nothing.
 	scope.redraw()
 	if got := changes.Load(); got != after {
 		t.Errorf("changed called after dispose: %d -> %d", after, got)
+	}
+}
+
+// A change being delivered when Dispose runs is not left landing after Dispose returned: Dispose waits for the delivery in flight
+// (Pi's scope is one thread, so a `changed` never runs while, or after, `dispose` does).
+func TestADeliveryInFlightWhenDisposeRunsEndsBeforeDisposeReturns(t *testing.T) {
+	entered := make(chan struct{})
+	gate := make(chan struct{})
+	var landed atomic.Bool
+	scope := scopeOn(newHost(t), func() {
+		close(entered)
+		<-gate
+		landed.Store(true)
+	})
+	go scope.redraw()
+	<-entered
+	disposed := make(chan struct{})
+	go func() {
+		scope.Dispose()
+		close(disposed)
+	}()
+	select {
+	case <-disposed:
+		t.Fatal("Dispose returned while a change was still being delivered")
+	case <-time.After(100 * time.Millisecond):
+	}
+	close(gate)
+	<-disposed
+	if !landed.Load() {
+		t.Error("Dispose returned before the delivery in flight ended")
+	}
+}
+
+// A `changed` that disposes its own scope returns normally, as Pi's does (sync JS: `dispose` inside the callback only stops later
+// deliveries), and nothing is delivered afterwards; two scopes' callbacks that dispose their scopes from other goroutines at once
+// wait for no one.
+func TestAChangedThatDisposesItsOwnScopeReturnsAndNothingFollows(t *testing.T) {
+	var scope *TuiScope
+	var calls atomic.Int64
+	scope = scopeOn(newHost(t), func() {
+		calls.Add(1)
+		scope.Dispose()
+	})
+	done := make(chan struct{})
+	go func() {
+		scope.redraw()
+		scope.redraw()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("a changed that disposes its own scope never returned")
+	}
+	if got := calls.Load(); got != 1 {
+		t.Errorf("changed ran %d times, want once (nothing after the dispose)", got)
+	}
+}
+
+func TestChangedsThatDisposeTheirScopeFromOtherGoroutinesAtOnceWaitForNoOne(t *testing.T) {
+	var scope *TuiScope
+	var inside sync.WaitGroup
+	inside.Add(2)
+	scope = scopeOn(newHost(t), func() {
+		inside.Done()
+		inside.Wait()
+		scope.Dispose()
+	})
+	done := make(chan struct{}, 2)
+	for range 2 {
+		go func() { scope.redraw(); done <- struct{}{} }()
+	}
+	for range 2 {
+		select {
+		case <-done:
+		case <-time.After(5 * time.Second):
+			t.Fatal("two changed that dispose their scope waited for each other")
+		}
 	}
 }
 

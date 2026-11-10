@@ -6,7 +6,7 @@ package telemetryingest
 // server's telemetry object. Its carriers name a span by id and trace id; every recorder of a process reads every
 // other's (one carrier format).
 //
-// Forced Go differences (D454): `startSpan` awaits its callback by blocking, and settles the span when the callback
+// Forced Go differences (language mechanics): `startSpan` awaits its callback by blocking, and settles the span when the callback
 // returns, fails or panics (the panic continues). The identities WeakMap of upstream is the `identified` interface every
 // span and extracted parent of a Recorder implements (Go has no weak map over interface values). A span's id counter and
 // queue bounds are guarded by one mutex; take/release/ingest/stop are safe from any goroutine.

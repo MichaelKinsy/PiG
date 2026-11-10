@@ -155017,7 +155017,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "86 normalized-name Pig candidates are ambiguous."
+        "87 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -155091,6 +155091,7 @@
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/export#exportCardSeq.Store",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/prompts#pigletDocsTopic.Store",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#decodedParameters.Store",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#stdioGraceTimer.Store",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#toolProbeCache.Store",
         "go:github.com/MichaelKinsy/PiG/tui#activeTheme.Store",
         "go:github.com/MichaelKinsy/PiG/tui#activeThemeWatcher.Store",

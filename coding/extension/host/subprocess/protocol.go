@@ -3,12 +3,14 @@ package subprocess
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 	"github.com/MichaelKinsy/PiG/internal/sessionentry"
 )
@@ -301,6 +303,8 @@ type NativeProviderDeclaration struct {
 	BaseURL *string                         `json:"baseUrl,omitempty"`
 	Models  []extension.ProviderModelConfig `json:"models"`
 	OAuth   *ProviderOAuthConfig            `json:"oauth,omitempty"`
+	// RefreshModelsAuth is the Provider object's refreshModelsAuth (ai/src/models.ts:204): "credential" (the default when absent) or "configured". Pi types the member and never validates it, so the host carries it unchanged and anything but "configured" refreshes with the credential.
+	RefreshModelsAuth ai.RefreshModelsAuthMode `json:"refreshModelsAuth,omitempty"`
 }
 
 type ProviderObjectAuthDeclaration struct {
@@ -803,11 +807,35 @@ type ErrorInfo struct {
 	// one (a JavaScript `err.stack`). Hosts report it as upstream reports
 	// `ExtensionError.stack`.
 	Stack string `json:"stack,omitempty"`
+	// ShellExit is set on the error of a local shell command (Pi's createLocalBashOperations().exec) that timed out after its shell had already exited, so the
+	// tool was only still waiting for background processes that held the output pipes (Pi's ShellTimeoutError.shellExit). The host sets it on the error reply of
+	// builtinTool.localExec, and an SDK sets it on the error response of user_bash_exec when the error its exec raised is the one its local operations returned,
+	// unchanged. Message is then "timeout:<seconds>". It is omitted otherwise.
+	ShellExit *ShellExitInfo `json:"shellExit,omitempty"`
+}
+
+// ShellExitInfo is Pi's `shellExit`: the shell's own exit code and the seconds it ran, rounded to a tenth as Pi rounds them (Math.round(ms / 100) / 10).
+type ShellExitInfo struct {
+	ExitCode     int     `json:"exitCode"`
+	AfterSeconds float64 `json:"afterSeconds"`
+}
+
+// errorInfoOf is the wire error of err: its message, and the shell's exit when err is the local shell backend's timeout after the shell had exited.
+func errorInfoOf(err error) *ErrorInfo {
+	info := &ErrorInfo{Message: err.Error()}
+	if timeout, ok := err.(*tools.ShellTimeoutError); ok && timeout.ShellExit != nil {
+		info.ShellExit = &ShellExitInfo{ExitCode: timeout.ShellExit.ExitCode, AfterSeconds: timeout.ShellExit.AfterSeconds}
+	}
+	return info
 }
 
 func (e *ErrorInfo) ToError() error {
 	if e == nil {
 		return nil
+	}
+	if timeout, ok := strings.CutPrefix(e.Message, "timeout:"); ok && e.Code == "" && e.ShellExit != nil {
+		// Pi's bash tool tells the error of its local backend by class, and the error an extension's exec rethrows unchanged is that error.
+		return &tools.ShellTimeoutError{Timeout: timeout, ShellExit: &tools.ShellExit{ExitCode: e.ShellExit.ExitCode, AfterSeconds: e.ShellExit.AfterSeconds}}
 	}
 	message := e.Message
 	if e.Code != "" {

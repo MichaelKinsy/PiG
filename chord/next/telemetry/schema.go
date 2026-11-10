@@ -7,7 +7,7 @@ import (
 // Ports packages/chord/src/telemetry.ts (Pi main c23b9ec1), the schema part: every span, event and metric Chord records,
 // with their attributes. Ids (objects, holds, calls, address keys) are span attributes only.
 //
-// Forced Go difference (D453): upstream's typed spans (`ChordSpan<N>`, `SchemaTelemetrySpan`) and typed metrics generics
+// Forced Go difference (language mechanics): upstream's typed spans (`ChordSpan<N>`, `SchemaTelemetrySpan`) and typed metrics generics
 // have no Go form; a span is a pitelemetry.TelemetrySpan and an attribute is a pitelemetry.Attr. The schema is the same data.
 
 type (

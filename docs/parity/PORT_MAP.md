@@ -856,21 +856,21 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/host/deadline.ts` | `chord/next/host/host_deadline.go` | ✅ |
 | `packages/chord/src/host/sleep.ts` | `chord/next/host/host_sleep.go` | ✅ |
 | `packages/chord/src/host/uuid.ts` | `chord/next/host/host_uuid.go` | ✅ |
-| `packages/chord/src/host/activity.ts` | `chord/next/host/host_activity.go` | 🟡 |
-| `packages/chord/src/host/revocation.ts` | `chord/next/host/host_revocation.go` | 🟡 |
+| `packages/chord/src/host/activity.ts` | `chord/next/host/host_activity.go` Tests: activity.test.ts: chord/next/host/host_activity_test.go | ✅ |
+| `packages/chord/src/host/revocation.ts` | `chord/next/host/host_revocation.go` Tests: revocation.test.ts: chord/next/host/host_revocation_test.go | ✅ |
 | `packages/chord/src/host/unbound.ts` | `chord/next/host/host_unbound.go` | ✅ |
 | `packages/chord/src/host/retry-on.ts` | `chord/next/host/host_retry_on.go` | ✅ |
 | `packages/chord/src/host/ref-state.ts` | `chord/next/host/host_ref_state.go` | ✅ |
 | `packages/chord/src/host/dependencies.ts` | `chord/next/host/host_dependencies.go` | ✅ |
-| `packages/chord/src/host/parked.ts` | `chord/next/host/host_parked.go` | 🟡 |
-| `packages/chord/src/host/native.ts` | `chord/next/host/host_native.go` | 🟡 |
+| `packages/chord/src/host/parked.ts` | `chord/next/host/host_parked.go` Tests: parked.test.ts: chord/next/host/host_parked_test.go | ✅ |
+| `packages/chord/src/host/native.ts` | `chord/next/host/host_native.go` Tests: native.test.ts: chord/next/host/host_native_test.go, host_facet_test.go, host_spans_test.go | ✅ |
 | `packages/chord/src/host/follow.ts` | `chord/next/host/host_follow.go` | ✅ |
 | `packages/chord/src/host/members.ts` | `chord/next/host/host_members.go` | ✅ |
-| `packages/chord/src/host/ctx.ts` | `chord/next/host/host_ctx.go` | 🟡 |
+| `packages/chord/src/host/ctx.ts` | `chord/next/host/host_ctx.go`, `chord/next/host/host_ctx_trace.go` (tests: host_ctx_test.go, host_spans_test.go) Missing: `binding.release()` in `Get` for a get that finished in its handler's settling turn (Pi race 11, host_ctx.go:176) is pinned only nondeterministically, by TestCtxAGetFinishingAfterItsHandlerSettledIsReleasedAtOnceRace11, which kills its deletion in most runs but not every one (it depends on timing), so no test pins that release deterministically; none observes `settle` clearing `c.references` (host_ctx.go:193) after the releases; every other statement and branch mutant of host_ctx.go is killed, does not compile or is equivalent | 🟡 |
 | `packages/chord/src/host/root.ts` | `chord/next/host/host_root.go` | ✅ |
 | `packages/chord/src/host/routines.ts` | `chord/next/host/host_routines.go` | ✅ |
 | `packages/chord/src/host/facet.ts` | `chord/next/host/host_facet.go` | ✅ |
-| `packages/chord/src/host/presence.ts` | `chord/next/host/host_presence.go` | 🟡 |
+| `packages/chord/src/host/presence.ts` | `chord/next/host/host_presence.go` Tests: presence.test.ts: chord/next/host/host_presence_test.go | ✅ |
 | `packages/chord/src/host/route.ts` | `chord/next/host/host_route.go` | ✅ |
 | `packages/chord/src/host/destination.ts` | `chord/next/host/host_destination.go` | ✅ |
 | `packages/chord/src/host/index.ts` | `(barrel: Go imports the package (DESIGN-go-layout.md section 2); what it exports is exported by the files above (Ctx, Facet, FacetHost, Host..., Sleep, UntilAborted, Presence, RefState, RevokedBy, RootOptions, RouteOptions, RoutineDeclarations, Native*, Follow*, GetOptions, HostError, Position; Host, HostOptions, LinkOptions, createHost, Factory, Self, StoreSelf, Held, Reference, RefIn are D5a's))` | n/a |
@@ -1007,8 +1007,8 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/node/tui/launcher.ts` | `chord/nextnode/tui/tui_launcher.go`, `chord/nextnode/tui/tui_terminal.go` (the launcher's process terminal: TerminalOptions input and output, raw mode and resize; chord/nextnode/tui/tui_terminal_test.go, tui_terminal_pty_linux_test.go) | ✅ |
 | `packages/chord/src/node/tui/pipe.ts` | `chord/nextnode/tui/tui_pipe.go` | ✅ |
 | `packages/chord/src/node/tui/sandbox.ts` | `chord/nextnode/tui/tui_sandbox.go` | ✅ |
-| `packages/chord/src/node/workers/base.ts` | `(designed out, D600 draft: a Go worker is the program's own executable; no esbuild worker base; rows/chord-reload-workers.md)` | n/a |
-| `packages/chord/src/node/workers/child.ts` | `(designed out, D600 draft: a Go worker is the program's own executable; no esbuild worker base; rows/chord-reload-workers.md)` | n/a |
+| `packages/chord/src/node/workers/base.ts` | `(language mechanics: Pi bundles the worker's JavaScript with esbuild and writes the ES modules with their source maps beside them (linked, 602b8d1cb9); a Go worker is the program's own executable, copied by chord/nextnode/workers Build, with no JavaScript bundle, source map or Node flag)` | n/a |
+| `packages/chord/src/node/workers/child.ts` | `(language mechanics: the worker side of a Node fork, importable without esbuild; a Go worker is the program's own executable, whose WorkerMain is chord/nextnode/workers, and links no esbuild: chord/nextnode/workers TestTheWorkersPackageLinksNoEsbuild)` | n/a |
 | `packages/chord/src/react/hooks.ts` | `chord/nextnode/surfaces/client/pi/chord/src/react/hooks.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/react/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
 | `packages/chord/src/react/stores.ts` | `chord/nextnode/surfaces/client/pi/chord/src/react/stores.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |

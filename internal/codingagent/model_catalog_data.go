@@ -17,35 +17,36 @@ func (r *ModelRegistry) GetProviderModelData(id string) []*ai.Model {
 	if r.GetProvider(id) != nil {
 		return r.GetNativeModels(id)
 	}
-	generatedModels := builtinChatCatalogListed(id)
-	var baseline []*ai.Model
-	if len(generatedModels) > 0 {
-		baseline = make([]*ai.Model, 0, len(generatedModels))
-	}
-	for _, generated := range generatedModels {
-		baseline = append(baseline, generated.ToModel())
-	}
-	// The remote catalog overlay adds models to, and replaces same-id models of, the bundled catalog (remote-catalog-provider.ts:getModels).
-	// A personalized catalog (the user's own list) replaces the bundled one instead (remote-catalog-provider.ts:withPersonalizedCatalog getModels).
-	if overlay := r.remoteOverlayModels(id); len(overlay) > 0 {
-		chatOverlay := slices.DeleteFunc(overlay, func(model ai.AnyModel) bool { return !ai.IsModelType(model, ai.ModelTypeChat) })
-		merged := mergeRemoteCatalogModels(ai.AnyModels(baseline), chatOverlay)
-		if r.remoteOverlayReplaces(id) {
-			// pig divergence (D199): the saved list replaces the bundled one, so OpenRouter's routing variants are derived from it, as they are from the bundled models.
-			merged = ai.WithOpenRouterRoutingVariantModels(chatOverlay)
-		}
-		baseline = baseline[:0:0]
-		for _, model := range merged {
-			baseline = append(baseline, model.(*ai.Model))
-		}
-	}
 	r.mu.RLock()
 	radius := r.radiusProviderLocked(id)
 	r.mu.RUnlock()
+	var baseline []*ai.Model
 	if radius != nil {
-		baseline = nil
+		// A Radius provider's catalog is its own (radius.ts getModels), so neither the bundled catalog nor a remote overlay is built to be replaced.
 		for _, model := range radius.GetModels() {
 			baseline = append(baseline, nativeModelFromEntry(radiusModelEntry(model)))
+		}
+	} else {
+		generatedModels := builtinChatCatalogListed(id)
+		if len(generatedModels) > 0 {
+			baseline = make([]*ai.Model, 0, len(generatedModels))
+		}
+		for _, generated := range generatedModels {
+			baseline = append(baseline, generated.ToModel())
+		}
+		// The remote catalog overlay adds models to, and replaces same-id models of, the bundled catalog (remote-catalog-provider.ts:getModels).
+		// A personalized catalog (the user's own list) replaces the bundled one instead (remote-catalog-provider.ts:withPersonalizedCatalog getModels).
+		if overlay := r.remoteOverlayModels(id); len(overlay) > 0 {
+			chatOverlay := slices.DeleteFunc(overlay, func(model ai.AnyModel) bool { return !ai.IsModelType(model, ai.ModelTypeChat) })
+			merged := mergeRemoteCatalogModels(ai.AnyModels(baseline), chatOverlay)
+			if r.remoteOverlayReplaces(id) {
+				// pig divergence (D199): the saved list replaces the bundled one, so OpenRouter's routing variants are derived from it, as they are from the bundled models.
+				merged = ai.WithOpenRouterRoutingVariantModels(chatOverlay)
+			}
+			baseline = baseline[:0:0]
+			for _, model := range merged {
+				baseline = append(baseline, model.(*ai.Model))
+			}
 		}
 	}
 	r.mu.RLock()

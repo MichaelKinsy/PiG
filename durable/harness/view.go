@@ -4,7 +4,6 @@ package harness
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"iter"
 	"slices"
@@ -15,6 +14,8 @@ import (
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/internal/detach"
 	"github.com/MichaelKinsy/PiG/durable/session"
+	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // ConversationView is the structural view of one conversation: a window over its transcript and its built-in documents (spec §9.3).
@@ -108,14 +109,22 @@ func (docs ViewDocs) MarshalJSON() ([]byte, error) {
 	if docs.object == nil {
 		return []byte("{}"), nil
 	}
-	return json.Marshal(docs.object)
+	return jsstring.MarshalKeepingSurrogates(docs.object)
 }
 
 // UnmarshalJSON reads a JSON object of JSON objects, keeping the text's key order.
 func (docs *ViewDocs) UnmarshalJSON(data []byte) error {
 	object := delta.NewJsonObject(0)
-	if err := json.Unmarshal(data, object); err != nil {
+	if err := jsstring.UnmarshalKeepingSurrogates(data, object); err != nil {
 		return err
+	}
+	if jsstring.HasSurrogateEscape(data) {
+		// Chord's object decoder reads the escape of a lone surrogate as U+FFFD; the text is read again as JSON.parse reads it.
+		value, err := chordjson.DecodeUnquoting(data, func(raw []byte, text *string) error { return jsstring.UnmarshalKeepingSurrogates(raw, text) })
+		if err != nil {
+			return err
+		}
+		object = value.(*delta.JsonObject)
 	}
 	for kind, value := range object.All() {
 		if _, isObject := value.(durable.JsonObject); !isObject {

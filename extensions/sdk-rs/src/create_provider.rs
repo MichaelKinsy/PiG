@@ -231,6 +231,7 @@ pub fn create_provider(options: CreateProviderOptions) -> Result<Provider, Strin
         name: options.name.unwrap_or_else(|| id.clone()),
         base_url: options.base_url,
         headers: options.headers,
+        refresh_models_auth: None,
         auth: options.auth,
         get_models,
         filter_models: options.filter_models,

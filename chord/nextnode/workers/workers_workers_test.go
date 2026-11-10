@@ -768,7 +768,7 @@ func TestGC1000FailedAndRetriedAddressesLeaveNoStateNoRecordAndNoSuspension(t *t
 
 // Pi's `describe('the worker base (decision "Workers start from the base code the server booted with")')`: Pi's base is a bundle of the
 // entry's imported source, built in memory and written at the first fork. A Go worker's is a private copy of the entry executable,
-// made by Build (a program cannot be held in memory), which every worker forks and Close removes (docs/parity/DIVERGENCES.md D600).
+// made by Build (a program cannot be held in memory), which every worker forks and Close removes.
 
 // copiedEntry is a copy of the fixture's worker program in a new directory: its path.
 func copiedEntry(t *testing.T) string {
@@ -798,7 +798,7 @@ func forkedFrom(f *fleet) string {
 // TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeTheBaseWasBuiltWith runs `it("a worker started after an
 // edit of the entry's imported source runs the code the base was built with")`. `inputs` (packages/chord/src/node/workers/workers.ts:256,
 // workers.test.ts:75) lists the files the base was built from, so that an edit of any of them is detected: here, with a Go worker's base
-// being one copy of its executable (D600), the entry with its bytes' hash.
+// being one copy of its executable (a Go worker is a program, not a Node bundle), the entry with its bytes' hash.
 func TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeTheBaseWasBuiltWith(t *testing.T) {
 	entry := copiedEntry(t)
 	f := newFleet(t, fleetOptions{entry: entry, env: map[string]string{fixtureReportExecutable: "1"}})
@@ -907,8 +907,9 @@ func TestTheWorkerBaseInANamedDirectoryEmptiedFirstWrittenAgainThereRemovedByClo
 	if names := listDir(t, named); len(names) != 1 || filepath.Join(named, names[0]) != copied {
 		t.Fatalf("the directory = %v, want only %s", names, copied)
 	}
-	if info, err := os.Stat(named); err != nil || info.Mode().Perm() != 0o700 {
-		t.Fatalf("the directory = %v, %v, want mode 0700", info, err)
+	// Windows reports every directory as 0777 whatever its access list says, so only another system shows the mode.
+	if info, err := os.Stat(named); err != nil || !info.IsDir() || (runtime.GOOS != "windows" && info.Mode().Perm() != 0o700) {
+		t.Fatalf("the directory = %v, %v, want a directory of mode 0700", info, err)
 	}
 	// A cleaner of temporary files removed it: written again (the entry has the bytes the base was built with).
 	if err := os.Remove(copied); err != nil {

@@ -2659,6 +2659,29 @@
       ]
     },
     {
+      "id": "BF-0ff9f4a",
+      "title": "A Provider object registered from an extension process ignored `refreshModelsAuth`: its network refresh…",
+      "symptom": "A Provider object registered from an extension process ignored `refreshModelsAuth`: its network refresh always resolved (and so refreshed) the stored credential.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Provider object registered from an extension process ignored `refreshModelsAuth`: its network refresh always resolved (and so refreshed) the stored credential.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0ff9f4a443",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/native_provider_refresh_auth_test.go::TestSubprocessCarrierHonoursRefreshModelsAuth",
+        "test/extension-conformance/provider_object_test.go::TestProviderObjectRefreshModelsAuthAcrossSDKs"
+      ]
+    },
+    {
       "id": "BF-0ffb06a",
       "title": "fix(tui): diff rows with a CR are wrapped like Pi's Text",
       "symptom": "fix(tui): diff rows with a CR are wrapped like Pi's Text",
@@ -2952,6 +2975,34 @@
       ],
       "tests": [
         "durable/core/view_test.go::TestResolveWindow"
+      ]
+    },
+    {
+      "id": "BF-123827b",
+      "title": "Go, Rust, Python and Lisp extensions: a bash tool built on `createLocalBashOperations()` now says `The shell…",
+      "symptom": "Go, Rust, Python and Lisp extensions: a bash tool built on `createLocalBashOperations()` now says `The shell exited with code C after S seconds, but background processes it started kept writing output until the timeout.` when a command timed out after its shell had already exited, as Pi 1.5.1 does.",
+      "rootCause": "The Go, Rust, Python and Lisp SDKs reach the local shell over builtinTool.localExec, whose error reply carried only 'timeout:N'.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Go, Rust, Python and Lisp extensions: a bash tool built on `createLocalBashOperations()` now says `The shell exited with code C after S seconds, but background processes it started kept writing output until the timeout.` when a command timed out after its shell had already exited, as Pi 1.5.1 does. The local operations of these SDKs reach the host over `builtinTool.localExec`, whose error reply carried only `timeout:N`; it now carries Pi's `shellExit` (the shell's exit code and run time), which the SDK passes on when its exec returns that error unchanged. An error wrapped around it, or a new error with its message, gives the plain `Command timed out after N seconds`, as in Pi.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "01d8d08b31",
+          "date": "2026-11-09"
+        },
+        {
+          "hash": "123827b998",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/shell_exit_wire_test.go::TestLocalShellTimeoutReadsAFusedSDKsError",
+        "coding/extension/host/subprocess/shell_exit_wire_test.go::TestShellExitCrossesTheWireAsErrorInfoShellExit",
+        "test/extension-conformance/builtin_tool_delegate_test.go::TestConformance_BuiltinToolDelegationAcrossSDKs"
       ]
     },
     {
@@ -3946,6 +3997,56 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-17d97b4",
+      "title": "On Windows, attaching a file in a terminal prompt no longer reads a different file when a parent directory is…",
+      "symptom": "On Windows, attaching a file in a terminal prompt no longer reads a different file when a parent directory is swapped for a link after the first yes: the identity of the confirmed file is read from an open handle, not looked up again by path when it is compared.",
+      "rootCause": "An install problem names the target also when the root is reached by a link or a Windows short name: discovery reports the staged directory by its real path, so that is the prefix the target replaces.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "On Windows, attaching a file in a terminal prompt no longer reads a different file when a parent directory is swapped for a link after the first yes: the identity of the confirmed file is read from an open handle, not looked up again by path when it is compared.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "17d97b46d4",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_install_test.go::TestInstallPluginNamesTheTargetInAProblemWhenTheRootIsReachedByALink",
+        "chord/nextnode/plugins/plugins_watcher_base_test.go::TestTheBaseMarkWatchesABaseDirectoryRemovedAndRecreatedAndComparesItsFiles",
+        "chord/nextnode/plugins/plugins_watcher_windows_test.go::TestWindowsRefusesToRenameAWatchedTreeUntilTheWatcherCloses",
+        "internal/testenv/cellcache_test.go::TestSharedCellCacheDirIsKeyedByTheContentsOfItsInputs"
+      ]
+    },
+    {
+      "id": "BF-17d97b4-2",
+      "title": "A plugin install that finds no `package.json` (or another problem) names the directory it was going to…",
+      "symptom": "A plugin install that finds no `package.json` (or another problem) names the directory it was going to install into when the plugins root is reached through a link or a Windows short name, not the staging directory.",
+      "rootCause": "An install problem names the target also when the root is reached by a link or a Windows short name: discovery reports the staged directory by its real path, so that is the prefix the target replaces.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A plugin install that finds no `package.json` (or another problem) names the directory it was going to install into when the plugins root is reached through a link or a Windows short name, not the staging directory.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "17d97b46d4",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_install_test.go::TestInstallPluginNamesTheTargetInAProblemWhenTheRootIsReachedByALink",
+        "chord/nextnode/plugins/plugins_watcher_base_test.go::TestTheBaseMarkWatchesABaseDirectoryRemovedAndRecreatedAndComparesItsFiles",
+        "chord/nextnode/plugins/plugins_watcher_windows_test.go::TestWindowsRefusesToRenameAWatchedTreeUntilTheWatcherCloses",
+        "internal/testenv/cellcache_test.go::TestSharedCellCacheDirIsKeyedByTheContentsOfItsInputs"
+      ]
     },
     {
       "id": "BF-1827831",
@@ -11111,17 +11212,11 @@
       "rootCauseSource": "release note",
       "userImpact": "An operation failed or was rejected",
       "platform": "Windows",
-      "class": "ahead-of-pi",
-      "divergence": "D243",
-      "removeWhen": "the pinned Pi release contains 06aa6563e. Then the call-site markers and this record go.",
+      "class": "own",
       "fixedIn": "Unreleased",
       "releaseNote": "A bash or PowerShell command that timed out after its shell had already exited, because a background process it started kept writing to the shared output, now reports the shell's exit code as well: `Command timed out after N seconds. The shell exited with code C after S seconds, but background processes it started kept writing output until the timeout.` The model no longer reads a failed command as a slow one and retries with a longer timeout. A shell still running at the deadline keeps the plain timeout message, and custom operations that fail with `timeout:N` are unchanged (D243).",
       "origin": "release note",
       "commits": [
-        {
-          "hash": "3cf1ce8466",
-          "date": "2026-11-05"
-        },
         {
           "hash": "3fe717aa8a",
           "date": "2026-11-05"
@@ -35512,6 +35607,29 @@
       ]
     },
     {
+      "id": "BF-a17e2a1",
+      "title": "A runtime API key (`--api-key`, `SetRuntimeAPIKey`) for a Radius provider now counts as its auth, as it does…",
+      "symptom": "Requests used the key but the Radius catalog was not listed.",
+      "rootCause": "An earlier change's message and report said the mid-session test step covered a runtime key; it did not: its runtime-key step failed (HasConfiguredAuth false), and replaced it with stored credentials. TestGetAvailableModelDataListsARadiusCatalogExactlyWhenItsProviderHasAuth now has the runtime-key steps (appears, leaves, returns), an OAuth step and a models.json Radius provider (acme, custom base URL, one defined model), counting that provider's models too; TestRadiusRuntimeKeyIsRadiusAuthEverywhere pins the other questions.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A runtime API key (`--api-key`, `SetRuntimeAPIKey`) for a Radius provider now counts as its auth, as it does in Pi: the provider has configured auth, its models are in the available list and it counts as an available provider. Before, requests used the key but the Radius catalog was not listed.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a17e2a163e",
+          "date": "2026-11-10"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/model_registry_available_radius_test.go::TestGetAvailableModelDataListsARadiusCatalogExactlyWhenItsProviderHasAuth",
+        "internal/codingagent/model_registry_available_radius_test.go::TestRadiusRuntimeKeyIsRadiusAuthEverywhere"
+      ]
+    },
+    {
       "id": "BF-a18da32",
       "title": "fix(schema): resolve relative references against file and custom-scheme bases as a URL parser does",
       "symptom": "fix(schema): resolve relative references against file and custom-scheme bases as a URL parser does",
@@ -40155,6 +40273,56 @@
         "internal/photonimage/icodecode_test.go::TestDecodeICOPicksTheBestEntry",
         "internal/photonimage/icodecode_test.go::TestDecodeICORefuses",
         "internal/photonimage/icodecode_test.go::TestDecodeRoutesICO"
+      ]
+    },
+    {
+      "id": "BF-bbccefd",
+      "title": "A Durable value that holds a lone UTF-16 surrogate is stored as Pi stores it",
+      "symptom": "A Durable value that holds a lone UTF-16 surrogate is stored as Pi stores it.",
+      "rootCause": "TaskState and TaskOutcome (checkpoint, result, error message, reason), EntryDraft, ContextEdit, DocumentContent, ToolControl, the compaction modelOverrides keys, a tool checkpoint's arguments and AddressId encoded through encoding/json, which writes a lone surrogate as U+FFFD where Pi's JSON.stringify writes the escape. Two different units gave one AddressId, and a stored task record or document differed from Pi's. They go through jsstring.MarshalKeepingSurrogates now; the readers (EntryDraft, ContextEdit, DocumentContent, modelOverrides keys, a tool checkpoint's arguments, SqliteStorage's parseJSON and unquoteJS) go through UnmarshalKeepingSurrogates, so the escape reads back as the unit.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Durable value that holds a lone UTF-16 surrogate is stored as Pi stores it. Task states and outcomes (checkpoint, result, error message, reason), entry drafts, context edits, document contents, tool controls, compaction `modelOverrides` keys, a tool call's checkpoint arguments, extension and tool selections and view documents went through Go's `encoding/json`, which writes the unit as U+FFFD where `JSON.stringify` writes `\\ud800`, and read the escape back as U+FFFD. Two document kinds that differ only in such a unit also got one `AddressId`. SqliteStorage read a stored record's escape as U+FFFD as well. `ownedTasks` returned a task's kind, input and checkpoint with U+FFFD for such a unit, and a nested call key's error quoted the key with Go's escaping (`\\u003c` for `\u003c`, U+FFFD for the unit) where Pi's `JSON.stringify` does not. Pi's own `JSON.stringify`, `documents.ts` `addressId` and `tool.ts` `checkKey` answer for the encoders in the new tests.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7c3789482b",
+          "date": "2026-11-09"
+        },
+        {
+          "hash": "a639c9afb2",
+          "date": "2026-11-09"
+        },
+        {
+          "hash": "adad5282ac",
+          "date": "2026-11-09"
+        },
+        {
+          "hash": "bbccefdf7f",
+          "date": "2026-11-09"
+        },
+        {
+          "hash": "d7367de408",
+          "date": "2026-11-09"
+        },
+        {
+          "hash": "e37b86562b",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "durable/harness/surrogate_observable_test.go::TestANestedKeyErrorQuotesTheKeyAsPiDoes",
+        "durable/harness/surrogate_observable_test.go::TestOwnedTasksKeepsALoneSurrogateInTheRecordsItReturns",
+        "durable/harness/tool_checkpoint_order_test.go::TestAToolCheckpointKeepsALoneSurrogateInItsArguments",
+        "durable/harness/tool_checkpoint_order_test.go::TestHarnessJSONKeepsALoneSurrogateInSelectionsAndViewDocs",
+        "durable/storage/sqlite/rows_pi_oracle_test.go::TestRowsMatchPi",
+        "durable/storage/sqlite/rows_test.go::TestParseJSONReadsALoneSurrogateEscapeAsTheUnit",
+        "durable/surrogate_pi_oracle_test.go::TestAddressIdKeepsDifferentLoneSurrogatesApart",
+        "durable/surrogate_pi_oracle_test.go::TestLoneSurrogatesDecodeAsJSONParseDoes",
+        "durable/surrogate_pi_oracle_test.go::TestLoneSurrogatesEncodeAsPiDoes"
       ]
     },
     {
@@ -56896,11 +57064,6 @@
       "id": "D235",
       "title": "A session-graph client's two live runs with no \"no run\" read between them are one context",
       "entry": "BF-D235"
-    },
-    {
-      "id": "D243",
-      "title": "The SDK local bash operations lose the shell's exit code on a timeout after the shell exited",
-      "entry": "BF-3fe717a"
     },
     {
       "id": "D266",
