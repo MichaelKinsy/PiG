@@ -798,7 +798,6 @@ func (m *InteractiveMode) enqueueIfTurnActive(enqueue func()) bool {
 
 // queuedUserMessage is the user message the mode queues on the Agent. A Session builds it so its images are marked for normalization
 // when the message is delivered.
-// pig divergence (D249): Pi main 4cf69332c resizes queued images; Pi 1.5.0 queues them unprocessed.
 func (m *InteractiveMode) queuedUserMessage(text string, images []ai.ImageContent) agent.AgentMessage {
 	if m.opts.SessionHandle != nil {
 		return m.opts.SessionHandle.QueuedUserMessage(text, images)

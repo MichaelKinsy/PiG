@@ -1893,9 +1893,6 @@ func (s *Session) QueueFollowUp(text string, images []ai.ImageContent) {
 // QueuedUserMessage is the user message QueueSteer and QueueFollowUp admit. A message with images is marked, and its images are
 // normalized when it is delivered ([Session.normalizeDeliveredImages]). A mode that queues on the Agent itself (the interactive
 // mode, which shows the pending messages from the Agent's queues) builds its message here so its images are normalized too.
-//
-// pig divergence (D249): Pi 1.5.0 queues the images unprocessed, so they reach the model and the session file at full size; Pi main
-// 4cf69332c (#11782) resizes them at delivery like an idle prompt's.
 func (s *Session) QueuedUserMessage(text string, images []ai.ImageContent) agent.AgentMessage {
 	message := &agent.UserMessage{
 		Role:      agent.RoleUser,
@@ -1908,7 +1905,6 @@ func (s *Session) QueuedUserMessage(text string, images []ai.ImageContent) agent
 	return agent.AgentMessage{User: message}
 }
 
-// pig divergence (D249): see QueuedUserMessage.
 // normalizeDeliveredImages replaces the images of a delivered queued message with normalized ones in place, appending the resize hints
 // to its text (agent-session.ts _normalizeQueuedMessageImages). The Agent's message_start carries a copy of the message that shares its
 // content array, so the transcript's message and the event both change, before listeners and persistence see either. It runs after the
