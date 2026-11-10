@@ -1,3 +1,7 @@
 ### Added
 
 - Chord: documents and table rows can belong to a host, as in Pi 1.5.2. `defineState` takes a host kind as `keyed` (its handles take and list addresses of the kind), `keyed(schema, kind)` declares such a contract member, and `host(kind)` is a table column holding an address. The store keeps the host as an indexed column (store schema 3), `Host.ExportHostData`, `ImportHostData` (refuse, replace or copy under another address, older table versions migrated through their owner's history) and `DeleteHostData` work on one address's data in one commit coordinated with the live owners, and the app kit's `ExportData`, `ImportData` (with `existing: "replace"`) and `DeleteData` carry the server's part (archive format 2, `server.archive`, and the Go host's `kit-server.archive`, D462).
+
+### Changed
+
+- Chord: `App.Close` no longer waits for the bases' and surfaces' builds or the scan of the server's own code, as Pi's `#close` does (what they finish after the close is dropped; the lock is released at Close return); `App.Wait` joins them for owners that need to (Go lifetime ownership, no Pi counterpart).
