@@ -5950,6 +5950,12 @@
       "scenario": "test/parity/scenarios/oauth/17-login-method-search.toml",
       "transforms": [
         {
+          "kind": "normalize_replace",
+          "pattern": "\\x1b\\[38;2;\\d+;\\d+;\\d+m(OpenRouter)",
+          "with": "<openrouter-glow>${1}",
+          "reason": "The glow phase is the selector age, which differs per process; the colour is the only masked part of the row."
+        },
+        {
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "Select provider to configure:",
@@ -6058,6 +6064,12 @@
       "scenario": "test/parity/scenarios/oauth/23-login-cross-type-environment.toml",
       "transforms": [
         {
+          "kind": "normalize_replace",
+          "pattern": "\\x1b\\[38;2;\\d+;\\d+;\\d+m(OpenRouter)",
+          "with": "<openrouter-glow>${1}",
+          "reason": "The glow phase is the selector age, which differs per process; the colour is the only masked part of the row."
+        },
+        {
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "Select provider to configure:",
@@ -6093,6 +6105,12 @@
     {
       "scenario": "test/parity/scenarios/oauth/26-login-cancel-returns-to-provider-list.toml",
       "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "\\x1b\\[38;2;\\d+;\\d+;\\d+m(R)\\x1b\\[38;2;\\d+;\\d+;\\d+m(a)\\x1b\\[38;2;\\d+;\\d+;\\d+m(d)\\x1b\\[38;2;\\d+;\\d+;\\d+m(i)\\x1b\\[38;2;\\d+;\\d+;\\d+m(u)\\x1b\\[38;2;\\d+;\\d+;\\d+m(s)",
+          "with": "<radius-shimmer>${1}${2}${3}${4}${5}${6}",
+          "reason": "The shimmer phase is the selector age, which differs per process; the colours are the only masked part of the row."
+        },
         {
           "kind": "terminal_crop",
           "configuration": {
@@ -6148,10 +6166,16 @@
       "scenario": "test/parity/scenarios/oauth/29-logout-radius-account-label.toml",
       "transforms": [
         {
+          "kind": "normalize_replace",
+          "pattern": "\\x1b\\[38;2;\\d+;\\d+;\\d+m(R)\\x1b\\[38;2;\\d+;\\d+;\\d+m(a)\\x1b\\[38;2;\\d+;\\d+;\\d+m(d)\\x1b\\[38;2;\\d+;\\d+;\\d+m(i)\\x1b\\[38;2;\\d+;\\d+;\\d+m(u)\\x1b\\[38;2;\\d+;\\d+;\\d+m(s)",
+          "with": "<radius-shimmer>${1}${2}${3}${4}${5}${6}",
+          "reason": "The shimmer phase is the selector age, which differs per process; the colours are the only masked part of the row."
+        },
+        {
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "Select provider to logout:",
-            "capture_end_regex": "Radius[^\\n]*configured"
+            "capture_end_regex": "OpenAI[^\\n]*configured"
           },
           "reason": "Owned visible surface: Logout labels a non-subscription OAuth sign-in as an account",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
@@ -8966,6 +8990,12 @@
     {
       "scenario": "test/parity/scenarios/selectors/10-login-subscription-providers.toml",
       "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "\\x1b\\[38;2;\\d+;\\d+;\\d+m(R)\\x1b\\[38;2;\\d+;\\d+;\\d+m(a)\\x1b\\[38;2;\\d+;\\d+;\\d+m(d)\\x1b\\[38;2;\\d+;\\d+;\\d+m(i)\\x1b\\[38;2;\\d+;\\d+;\\d+m(u)\\x1b\\[38;2;\\d+;\\d+;\\d+m(s)",
+          "with": "<radius-shimmer>${1}${2}${3}${4}${5}${6}",
+          "reason": "The shimmer phase is the selector age, which differs per process; the colours are the only masked part of the row."
+        },
         {
           "kind": "terminal_crop",
           "configuration": {
