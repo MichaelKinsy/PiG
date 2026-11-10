@@ -1,7 +1,9 @@
 package host
 
 import (
+	"context"
 	"slices"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -18,7 +20,8 @@ import (
 
 // Ports packages/chord/test/host/presence.test.ts: presence (§19): `host.references(Type)`, its entries and
 // incarnations, its batches (a link drop as a departure, one discovered while a commit sends lands in the next batch),
-// derives over it, its cost and GC. Every case runs on whole hosts, as upstream does.
+// derives over it, its cost and GC. The TestHostReferences cases run on whole hosts, as upstream does; the TestReferences
+// cases are own tests of the list's bookkeeping (what each change records for the next fold) on a batch, without a host.
 
 func presenceServe(h FacetHost) error {
 	_, err := serveNotes(h, nil)
@@ -482,4 +485,278 @@ func TestHostReferencesKeepsNoReleasedReferenceGC(t *testing.T) {
 	nexttest.RequireJSONEqual(t, presenceList(t, server, Notes), []any{})
 	expectCollectedEventually(t, refs...)
 	nexttest.RequireJSONEqual(t, presenceList(t, server, Notes), []any{})
+}
+
+// referenceHolder is a holder that is only a caller: what `references` reads of one (the rest of holder is never called).
+type referenceHolder struct {
+	holder
+	from caller
+}
+
+func (h *referenceHolder) caller() caller { return h.from }
+
+// referencesHarness is a `references` of one remote type on a batch whose watches deliver on a scheduler of their own: the
+// cases of presence.ts that are about the list itself (its bookkeeping per change), without a host.
+type referencesHarness struct {
+	t         *testing.T
+	scheduler *chord.DeliveryScheduler
+	refs      *references
+	object    *chordObject
+}
+
+func newReferencesHarness(t *testing.T, contract *contracts.Contract) *referencesHarness {
+	t.Helper()
+	h := &referencesHarness{t: t, scheduler: chord.NewDeliveryScheduler()}
+	batch := state.NewBatch(func(err state.BatchError) { t.Errorf("batch reported %s: %v", err.Kind, err.Error) }, nil).UseScheduler(h.scheduler)
+	h.refs = newReferences(batch)
+	h.object = &chordObject{params: jsonObject("session", "S1"), served: &served{contract: contract}}
+	return h
+}
+
+func (h *referencesHarness) holder(session string) *referenceHolder {
+	return &referenceHolder{from: caller{principal: guestPrincipal(session), incarnation: "inc-" + session}}
+}
+
+func (h *referencesHarness) watch() *nexttest.Collector[nexttest.Frame[delta.JsonValue]] {
+	h.t.Helper()
+	watch, err := h.refs.Watch(background)
+	must(h.t, err)
+	return nexttest.FramesOf(watch)
+}
+
+func (h *referencesHarness) list() []any {
+	h.t.Helper()
+	value, err := h.refs.Value()
+	must(h.t, err)
+	return value.([]any)
+}
+
+// presence.ts `remove`: `if (entry === undefined) continue`. A holder that has no entry (it was never listed, or already
+// gone) changes nothing, and does not stop the walk over the holders after it.
+func TestReferencesRemoveSkipsAHolderWithNoEntryAndGoesOnWithTheRest(t *testing.T) {
+	h := newReferencesHarness(t, Notes)
+	frames := h.watch()
+	h.scheduler.Wait()
+	first, second, stranger := h.holder("S1"), h.holder("S2"), h.holder("S9")
+	h.refs.add(h.object, first, background)
+	h.refs.add(h.object, second, background)
+	h.scheduler.Wait()
+	before := len(frames.Items())
+	h.refs.remove([]holder{stranger}, background)
+	h.scheduler.Wait()
+	if got := len(frames.Items()); got != before {
+		t.Fatalf("removing a holder with no entry published %d frames, want none", got-before)
+	}
+	nexttest.RequireJSONEqual(t, h.list(), []any{
+		presenceEntry("S1", guestPrincipal("S1"), "inc-S1"),
+		presenceEntry("S1", guestPrincipal("S2"), "inc-S2"),
+	})
+	h.refs.remove([]holder{stranger, first}, background)
+	h.scheduler.Wait()
+	nexttest.RequireJSONEqual(t, opsOf(frames.Items()[before:]), []any{[]any{[]any{"p", []any{}, 0, 1, []any{}}}})
+	nexttest.RequireJSONEqual(t, h.list(), []any{presenceEntry("S1", guestPrincipal("S2"), "inc-S2")})
+}
+
+// presence.ts `remove`: an entry added in the same batch is spliced out of the pending additions, so the batch publishes
+// neither its addition nor its removal.
+func TestReferencesAnEntryAddedAndRemovedInOneBatchIsNeverPublished(t *testing.T) {
+	h := newReferencesHarness(t, Notes)
+	frames := h.watch()
+	h.scheduler.Wait()
+	stays, gone := h.holder("S1"), h.holder("S2")
+	h.refs.add(h.object, stays, background)
+	h.scheduler.Wait()
+	before := len(frames.Items())
+	must(t, h.refs.Batch().Within(func() error {
+		h.refs.add(h.object, gone, background)
+		h.refs.remove([]holder{gone}, background)
+		return nil
+	}, background))
+	h.scheduler.Wait()
+	if got := len(frames.Items()); got != before {
+		t.Fatalf("an entry added and removed in one batch published %d frames, want none", got-before)
+	}
+	nexttest.RequireJSONEqual(t, h.list(), []any{presenceEntry("S1", guestPrincipal("S1"), "inc-S1")})
+	// Two entries added in one batch, the first removed in it: one splice of the one that is left.
+	first, second := h.holder("S3"), h.holder("S4")
+	must(t, h.refs.Batch().Within(func() error {
+		h.refs.add(h.object, first, background)
+		h.refs.add(h.object, second, background)
+		h.refs.remove([]holder{first}, background)
+		return nil
+	}, background))
+	h.scheduler.Wait()
+	nexttest.RequireJSONEqual(t, opsOf(frames.Items()[before:]), []any{
+		[]any{[]any{"p", []any{}, 1, 0, []any{presenceEntry("S1", guestPrincipal("S4"), "inc-S4")}}},
+	})
+}
+
+// presence.ts `record`: a `Map.set` of a holder that is listed already keeps its place and takes the new entry.
+func TestReferencesRecordingAHolderAgainKeepsItsPlaceWithTheNewEntry(t *testing.T) {
+	h := newReferencesHarness(t, Notes)
+	first, second := h.holder("S1"), h.holder("S2")
+	h.refs.add(h.object, first, background)
+	h.refs.add(h.object, second, background)
+	first.from = caller{principal: guestPrincipal("S1"), incarnation: "moved"}
+	h.refs.add(h.object, first, background)
+	nexttest.RequireJSONEqual(t, h.list(), []any{
+		presenceEntry("S1", guestPrincipal("S1"), "moved"),
+		presenceEntry("S1", guestPrincipal("S2"), "inc-S2"),
+	})
+}
+
+// presence.ts `#follows`: while nobody watches, a change is not folded: the list is dropped, nothing is kept of the change,
+// and the next read builds the list from the entries.
+func TestReferencesChangesWhileNobodyWatchesKeepNothingToFold(t *testing.T) {
+	h := newReferencesHarness(t, Notes)
+	first, second := h.holder("S1"), h.holder("S2")
+	h.refs.add(h.object, first, background)
+	h.refs.add(h.object, second, background)
+	h.refs.remove([]holder{first}, background)
+	h.scheduler.Wait()
+	if len(h.refs.added) != 0 || len(h.refs.removed) != 0 || h.refs.hasList {
+		t.Fatalf("unwatched changes left added=%d removed=%d hasList=%v, want nothing to fold and no list", len(h.refs.added), len(h.refs.removed), h.refs.hasList)
+	}
+	nexttest.RequireJSONEqual(t, h.list(), []any{presenceEntry("S1", guestPrincipal("S2"), "inc-S2")})
+}
+
+// presence.ts `record`: an entry has the principal only for a remote type; a local type's has none.
+func TestReferencesAnEntryOfALocalTypeHasNoPrincipal(t *testing.T) {
+	h := newReferencesHarness(t, NoteStore)
+	h.refs.add(h.object, h.holder("S1"), background)
+	nexttest.RequireJSONEqual(t, h.list(), []any{presenceEntry("S1", nil, "inc-S1")})
+}
+
+// presence.ts `deliver`: a frame of the list is a value, never a retirement of the source.
+func TestReferencesFramesAreNotRetirements(t *testing.T) {
+	h := newReferencesHarness(t, Notes)
+	watch, err := h.refs.Watch(background)
+	must(t, err)
+	var retired []bool
+	var mu sync.Mutex
+	watch.Start(func(_ context.Context, call chord.WatchCall[delta.JsonValue]) error {
+		mu.Lock()
+		defer mu.Unlock()
+		retired = append(retired, call.Retired)
+		return nil
+	})
+	first := h.holder("S1")
+	h.refs.add(h.object, first, background)
+	h.scheduler.Wait()
+	h.refs.remove([]holder{first}, background)
+	h.scheduler.Wait()
+	mu.Lock()
+	defer mu.Unlock()
+	if len(retired) < 2 {
+		t.Fatalf("the watch got %d frames, want one per change", len(retired))
+	}
+	for i, each := range retired {
+		if each {
+			t.Fatalf("frame %d retired the list", i)
+		}
+	}
+}
+
+// presence.ts `#follows`: a list that was read (built) while nobody watches is dropped by the next change, and the change
+// is not recorded for a fold; and a fold clears what it folded, a removal's entries included.
+func TestReferencesALatelyReadListIsDroppedByTheNextChangeWhileNobodyWatches(t *testing.T) {
+	h := newReferencesHarness(t, Notes)
+	first := h.holder("S1")
+	h.refs.add(h.object, first, background)
+	h.list()
+	if !h.refs.hasList {
+		t.Fatal("reading the list kept no list")
+	}
+	h.refs.add(h.object, h.holder("S2"), background)
+	if h.refs.hasList || len(h.refs.added) != 0 {
+		t.Fatalf("a change with nobody watching left hasList=%v added=%d, want the list dropped and nothing recorded", h.refs.hasList, len(h.refs.added))
+	}
+	nexttest.RequireJSONEqual(t, h.list(), []any{
+		presenceEntry("S1", guestPrincipal("S1"), "inc-S1"),
+		presenceEntry("S1", guestPrincipal("S2"), "inc-S2"),
+	})
+	// Watched: a removal folds into the list and its entry is cleared from the removals.
+	frames := h.watch()
+	h.scheduler.Wait()
+	h.refs.remove([]holder{first}, background)
+	h.scheduler.Wait()
+	if len(h.refs.removed) != 0 || len(h.refs.added) != 0 {
+		t.Fatalf("a delivered batch left removed=%d added=%d, want both folded away", len(h.refs.removed), len(h.refs.added))
+	}
+	nexttest.RequireJSONEqual(t, frames.Items()[len(frames.Items())-1].Value, []any{presenceEntry("S1", guestPrincipal("S2"), "inc-S2")})
+}
+
+// presence.ts `#fold`: a list made from the entries starts clean: what an earlier watched change left pending (additions,
+// removals, ops) is not folded again. A watch that stops in the middle of a batch leaves such changes, and the next change
+// drops the list, which the batch's delivery builds again from the entries.
+func TestReferencesAListBuiltFromTheEntriesForgetsTheChangesPendingForTheOldOne(t *testing.T) {
+	h := newReferencesHarness(t, Notes)
+	gone, stays, later, last := h.holder("S0"), h.holder("S1"), h.holder("S2"), h.holder("S3")
+	h.refs.add(h.object, gone, background)
+	old, err := h.refs.Watch(background)
+	must(t, err)
+	must(t, h.refs.Batch().Within(func() error {
+		h.refs.remove([]holder{gone}, background)
+		h.refs.add(h.object, stays, background)
+		// Read in the middle of the batch: its changes are folded into the list and its ops.
+		h.list()
+		if len(h.refs.ops) == 0 {
+			t.Error("reading the list in a batch left no ops to publish")
+		}
+		// Changes after the read are pending for the next fold.
+		h.refs.add(h.object, later, background)
+		h.refs.remove([]holder{stays}, background)
+		if len(h.refs.added) != 1 || len(h.refs.removed) != 1 {
+			t.Errorf("pending changes: added=%d removed=%d, want 1 and 1", len(h.refs.added), len(h.refs.removed))
+		}
+		// Nobody watches now: the next change drops the list.
+		if _, err := old.Stop(); err != nil {
+			t.Errorf("Stop: %v", err)
+		}
+		h.refs.add(h.object, last, background)
+		if h.refs.hasList {
+			t.Error("a change with nobody watching kept the list")
+		}
+		return nil
+	}, background))
+	h.scheduler.Wait()
+	if len(h.refs.added) != 0 || len(h.refs.removed) != 0 || len(h.refs.ops) != 0 || !h.refs.hasList {
+		t.Fatalf("the list built from the entries kept added=%d removed=%d ops=%d (hasList %v), want none and a list", len(h.refs.added), len(h.refs.removed), len(h.refs.ops), h.refs.hasList)
+	}
+	nexttest.RequireJSONEqual(t, h.list(), []any{
+		presenceEntry("S1", guestPrincipal("S2"), "inc-S2"),
+		presenceEntry("S1", guestPrincipal("S3"), "inc-S3"),
+	})
+}
+
+// presence.ts `#fold` with no list: the list is built from the entries and what was pending for the list that is gone
+// (additions, removals, ops) is dropped with it, in the one fold that builds it.
+func TestReferencesFoldingWithNoListBuildsItFromTheEntriesAndDropsWhatWasPending(t *testing.T) {
+	h := newReferencesHarness(t, Notes)
+	h.refs.add(h.object, h.holder("S1"), background)
+	stale := presenceEntry("S9", guestPrincipal("S9"), "inc-S9")
+	h.refs.hasList, h.refs.list = false, nil
+	h.refs.added = []*delta.JsonObject{stale}
+	h.refs.removed[stale] = struct{}{}
+	h.refs.ops = []delta.Op{{"p", []any{}, 0, 0, []any{stale}}}
+	value, err := h.refs.Value()
+	must(t, err)
+	nexttest.RequireJSONEqual(t, value, []any{presenceEntry("S1", guestPrincipal("S1"), "inc-S1")})
+	if len(h.refs.added) != 0 || len(h.refs.removed) != 0 || len(h.refs.ops) != 0 {
+		t.Fatalf("the fold that built the list kept added=%d removed=%d ops=%d, want none", len(h.refs.added), len(h.refs.removed), len(h.refs.ops))
+	}
+}
+
+// presence.ts `remove`: holders that end while nobody watches are all removed from the entries, not only the first.
+func TestReferencesRemovingSeveralHoldersWhileNobodyWatchesRemovesEachOfThem(t *testing.T) {
+	h := newReferencesHarness(t, Notes)
+	first, second, third := h.holder("S1"), h.holder("S2"), h.holder("S3")
+	for _, each := range []*referenceHolder{first, second, third} {
+		h.refs.add(h.object, each, background)
+	}
+	h.refs.remove([]holder{first, second}, background)
+	nexttest.RequireJSONEqual(t, h.list(), []any{presenceEntry("S1", guestPrincipal("S3"), "inc-S3")})
+	if len(h.refs.byHolder) != 1 {
+		t.Fatalf("holders left in the entries = %d, want 1", len(h.refs.byHolder))
+	}
 }

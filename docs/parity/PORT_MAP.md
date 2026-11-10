@@ -856,21 +856,21 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/host/deadline.ts` | `chord/next/host/host_deadline.go` | ✅ |
 | `packages/chord/src/host/sleep.ts` | `chord/next/host/host_sleep.go` | ✅ |
 | `packages/chord/src/host/uuid.ts` | `chord/next/host/host_uuid.go` | ✅ |
-| `packages/chord/src/host/activity.ts` | `chord/next/host/host_activity.go` | 🟡 |
-| `packages/chord/src/host/revocation.ts` | `chord/next/host/host_revocation.go` | 🟡 |
+| `packages/chord/src/host/activity.ts` | `chord/next/host/host_activity.go` Tests: activity.test.ts: chord/next/host/host_activity_test.go | ✅ |
+| `packages/chord/src/host/revocation.ts` | `chord/next/host/host_revocation.go` Tests: revocation.test.ts: chord/next/host/host_revocation_test.go | ✅ |
 | `packages/chord/src/host/unbound.ts` | `chord/next/host/host_unbound.go` | ✅ |
 | `packages/chord/src/host/retry-on.ts` | `chord/next/host/host_retry_on.go` | ✅ |
 | `packages/chord/src/host/ref-state.ts` | `chord/next/host/host_ref_state.go` | ✅ |
 | `packages/chord/src/host/dependencies.ts` | `chord/next/host/host_dependencies.go` | ✅ |
-| `packages/chord/src/host/parked.ts` | `chord/next/host/host_parked.go` | 🟡 |
-| `packages/chord/src/host/native.ts` | `chord/next/host/host_native.go` | 🟡 |
+| `packages/chord/src/host/parked.ts` | `chord/next/host/host_parked.go` Tests: parked.test.ts: chord/next/host/host_parked_test.go | ✅ |
+| `packages/chord/src/host/native.ts` | `chord/next/host/host_native.go` Tests: native.test.ts: chord/next/host/host_native_test.go, host_facet_test.go, host_spans_test.go | ✅ |
 | `packages/chord/src/host/follow.ts` | `chord/next/host/host_follow.go` | ✅ |
 | `packages/chord/src/host/members.ts` | `chord/next/host/host_members.go` | ✅ |
-| `packages/chord/src/host/ctx.ts` | `chord/next/host/host_ctx.go` | 🟡 |
+| `packages/chord/src/host/ctx.ts` | `chord/next/host/host_ctx.go`, `chord/next/host/host_ctx_trace.go` (tests: host_ctx_test.go, host_spans_test.go) Missing: no Go test observes the chain-node answer of `chained.Value` (host_ctx.go:120): flipping its key test, its attempt check or the `&&` survives the mutation run, so a getter made through Get keeping the call's chain node (old work during a reload) is not pinned; none observes `settle` clearing `c.references` (host_ctx.go:193) after the releases; every other statement and branch mutant of host_ctx.go is killed or does not compile | 🟡 |
 | `packages/chord/src/host/root.ts` | `chord/next/host/host_root.go` | ✅ |
 | `packages/chord/src/host/routines.ts` | `chord/next/host/host_routines.go` | ✅ |
 | `packages/chord/src/host/facet.ts` | `chord/next/host/host_facet.go` | ✅ |
-| `packages/chord/src/host/presence.ts` | `chord/next/host/host_presence.go` | 🟡 |
+| `packages/chord/src/host/presence.ts` | `chord/next/host/host_presence.go` Tests: presence.test.ts: chord/next/host/host_presence_test.go | ✅ |
 | `packages/chord/src/host/route.ts` | `chord/next/host/host_route.go` | ✅ |
 | `packages/chord/src/host/destination.ts` | `chord/next/host/host_destination.go` | ✅ |
 | `packages/chord/src/host/index.ts` | `(barrel: Go imports the package (DESIGN-go-layout.md section 2); what it exports is exported by the files above (Ctx, Facet, FacetHost, Host..., Sleep, UntilAborted, Presence, RefState, RevokedBy, RootOptions, RouteOptions, RoutineDeclarations, Native*, Follow*, GetOptions, HostError, Position; Host, HostOptions, LinkOptions, createHost, Factory, Self, StoreSelf, Held, Reference, RefIn are D5a's))` | n/a |
