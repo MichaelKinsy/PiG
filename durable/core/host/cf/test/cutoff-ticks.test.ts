@@ -206,8 +206,8 @@ test("a tool call cut off restartLimit times ends with an error result in Pi's p
     opened.harness.resume()
   }
   const result = await counts("tool", { path: copyStore(path, path + ".crash"), taskId, setup: () => setupOf(piApi) }, (api, next) => { const made = make(api); Object.assign(next, { settings: made.settings, registry: made.registry, faux: made.faux, models: made.models }) })
-  // Pi c23b9ec1 spends 258 passes to the cut-off tool's end (241 at b556cfe5, 184 at e7a0df27, 173 at b3a29f11: afterTool now runs on every tool task result, 87eff524), measured by this test's own `passes tool:` line; the core spends the same, and Harness.open 82.
-  assertPassesEqualPi(result, 258)
+  // Pi v1.5.1 spends 260 passes to the cut-off tool's end (258 at c23b9ec1, 241 at b556cfe5, 184 at e7a0df27, 173 at b3a29f11: afterTool now runs on every tool task result, 87eff524), measured by this test's own `passes tool:` line; the core spends the same, and Harness.open 82.
+  assertPassesEqualPi(result, 260)
 })
 
 // A compaction cut off restartLimit times fails into compactionFailure (compaction.ts).
