@@ -154,6 +154,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-1724c9e](#bf-1724c9e) | Two pig processes that reach the same `auth.json` through different paths, such as an agent directory whose… | A Pi defect that PiG fixed first | Windows | Unreleased |
 | [BF-173060b](#bf-173060b) | fix(chord/next/store): decodeStoreWrite never panics (2500 malformed writes); no recover in the outbox; D3… | PiG's own defect | All platforms | Unreleased |
 | [BF-176542a](#bf-176542a) | fix: the chord boundary allows internal/sortx, a stdlib-only helper that jsstring and ecmaregex link… | PiG's own defect | All platforms | Unreleased |
+| [BF-17d97b4](#bf-17d97b4) | On Windows, attaching a file in a terminal prompt no longer reads a different file when a parent directory is… | PiG's own defect | Windows | Unreleased |
+| [BF-17d97b4-2](#bf-17d97b4-2) | A plugin install that finds no `package.json` (or another problem) names the directory it was going to… | PiG's own defect | Windows | Unreleased |
 | [BF-1827831](#bf-1827831) | The MCP extension's `tool_call` handler passes a tool's `reachesTools` the call's input in the member order… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1848633](#bf-1848633) | Extension widgets share one key namespace across extensions, as in Pi: an extension that sets a widget key… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-184ed40](#bf-184ed40) | fix(hljs): a language's reach does not depend on the first text it highlights; red cases for resumeLimit | PiG's own defect | All platforms | Unreleased |
@@ -3822,6 +3824,34 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `176542ac65` (2026-11-08)
 - **Tests:** None recorded.
+
+### BF-17d97b4
+
+**On Windows, attaching a file in a terminal prompt no longer reads a different file when a parent directory is…**
+
+- **Source:** PiG's own defect
+- **Symptom:** On Windows, attaching a file in a terminal prompt no longer reads a different file when a parent directory is swapped for a link after the first yes: the identity of the confirmed file is read from an open handle, not looked up again by path when it is compared.
+- **Root cause:** An install problem names the target also when the root is reached by a link or a Windows short name: discovery reports the staged directory by its real path, so that is the prefix the target replaces.
+- **User impact:** Behavior differed from Pi
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `17d97b46d4` (2026-11-09)
+- **Tests:** `chord/nextnode/plugins/plugins_install_test.go::TestInstallPluginNamesTheTargetInAProblemWhenTheRootIsReachedByALink`, `chord/nextnode/plugins/plugins_watcher_base_test.go::TestTheBaseMarkWatchesABaseDirectoryRemovedAndRecreatedAndComparesItsFiles`, `chord/nextnode/plugins/plugins_watcher_windows_test.go::TestWindowsRefusesToRenameAWatchedTreeUntilTheWatcherCloses`, `internal/testenv/cellcache_test.go::TestSharedCellCacheDirIsKeyedByTheContentsOfItsInputs`
+- **Release note:** On Windows, attaching a file in a terminal prompt no longer reads a different file when a parent directory is swapped for a link after the first yes: the identity of the confirmed file is read from an open handle, not looked up again by path when it is compared.
+
+### BF-17d97b4-2
+
+**A plugin install that finds no `package.json` (or another problem) names the directory it was going to…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A plugin install that finds no `package.json` (or another problem) names the directory it was going to install into when the plugins root is reached through a link or a Windows short name, not the staging directory.
+- **Root cause:** An install problem names the target also when the root is reached by a link or a Windows short name: discovery reports the staged directory by its real path, so that is the prefix the target replaces.
+- **User impact:** Behavior differed from Pi
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `17d97b46d4` (2026-11-09)
+- **Tests:** `chord/nextnode/plugins/plugins_install_test.go::TestInstallPluginNamesTheTargetInAProblemWhenTheRootIsReachedByALink`, `chord/nextnode/plugins/plugins_watcher_base_test.go::TestTheBaseMarkWatchesABaseDirectoryRemovedAndRecreatedAndComparesItsFiles`, `chord/nextnode/plugins/plugins_watcher_windows_test.go::TestWindowsRefusesToRenameAWatchedTreeUntilTheWatcherCloses`, `internal/testenv/cellcache_test.go::TestSharedCellCacheDirIsKeyedByTheContentsOfItsInputs`
+- **Release note:** A plugin install that finds no `package.json` (or another problem) names the directory it was going to install into when the plugins root is reached through a link or a Windows short name, not the staging directory.
 
 ### BF-1827831
 
