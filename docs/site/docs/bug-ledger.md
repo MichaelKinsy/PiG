@@ -657,6 +657,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6996de6](#bf-6996de6) | fix(durable/core): keep the reservation decision in a scheduler field, not two closure variables (TinyGo heap… | PiG's own defect | All platforms | Unreleased |
 | [BF-69b9811](#bf-69b9811) | Two PiG builds that share a config root (two installed versions, or stock PiG beside a Piglet Binary) no… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-69c175b](#bf-69c175b) | fix(models): models.json entries keep exposed limits and cost; bound thinking-only messages in summaries; pin… | PiG's own defect | All platforms | Unreleased |
+| [BF-69c667b](#bf-69c667b) | Changing the output padding now applies at once to the branch-summary, compaction-summary and… | PiG's own defect | All platforms | Unreleased |
 | [BF-69cd9d2](#bf-69cd9d2) | PageUp and PageDown (`tui.select.pageUp` and `tui.select.pageDown`) move the selection by one page in the… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-69f6341](#bf-69f6341) | The Radius relay WebSocket URL is built with the WHATWG URL parser, as Pi's `new URL` does: gateway hosts are… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6a46bc7](#bf-6a46bc7) | The Chord delivery scheduler no longer reads goroutine stacks or depends on how many goroutines the process… | PiG's own defect | All platforms | 0.7.0 |
@@ -759,6 +760,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-78f1007](#bf-78f1007) | The Durable core conformance gate runs `U-codemode` and `U-harness-tools` alone, their reference run before… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-78f2d55](#bf-78f2d55) | `pig mcp login --help` described `--timeout` as only the wait for the browser; it limits the whole sign-in… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-7901dbc](#bf-7901dbc) | fix: cover the Lisp SDK in the blocked custom component row; regenerate the Node runtime pack and the bug… | PiG's own defect | All platforms | Unreleased |
+| [BF-79194eb](#bf-79194eb) | Aborting a compaction while extensions were being told it finished no longer keeps the extensions after the… | PiG's own defect | All platforms | Unreleased |
 | [BF-79eadcf](#bf-79eadcf) | Long sessions no longer slow down each streamed frame in the main screen: a frame redraws from the first line… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-79f9a9e](#bf-79f9a9e) | fix(agent): convert a live partial with one clone and keep events at an unchanged publication (TU-T7 rest) | PiG's own defect | All platforms | Unreleased |
 | [BF-7a4a8e8](#bf-7a4a8e8) | fix duplicate jsstring import in tui/assistant_message_block.go | PiG's own defect | All platforms | Unreleased |
@@ -1165,6 +1167,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-b96952c](#bf-b96952c) | fix(chord/nextnode/workers): Kill never uses a closed job handle; a worker that cannot be placed in a job… | PiG's own defect | All platforms | Unreleased |
 | [BF-b99457f](#bf-b99457f) | `tool_search` and codemode tool search match Chinese, Japanese and Korean queries: each such character is a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b9db06c](#bf-b9db06c) | fix(subprocess): keep a user_bash operations object alive while its exec runs | PiG's own defect | All platforms | Unreleased |
+| [BF-b9de6a2](#bf-b9de6a2) | The provider bridge (`pig` `--provider-bridge`), the Durable core's `model_context` effect and an extension… | PiG's own defect | All platforms | Unreleased |
 | [BF-ba80002](#bf-ba80002) | fix(chord/nextnode/plugins): a process the Go side killed ends with SIGKILL on Windows too | PiG's own defect | Windows | Unreleased |
 | [BF-ba8b6b7](#bf-ba8b6b7) | `/logout` reads stored credentials with Pi's 15-second signal, so an unreadable `auth.json` reports "Could… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ba9c37b](#bf-ba9c37b) | Starting `pig` no longer waits for the daily cleanup of the extension cache | PiG's own defect | All platforms | 0.5.0 |
@@ -10435,6 +10438,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `69c175bf60` (2026-10-09)
 - **Tests:** `coding/model_default_provider_race_test.go::TestExtensionProviderIsConfiguredWhenTheDefaultModelIsResolved`
 
+### BF-69c667b
+
+**Changing the output padding now applies at once to the branch-summary, compaction-summary and…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Changing the output padding now applies at once to the branch-summary, compaction-summary and skill-invocation cards already in the transcript.
+- **Root cause:** Settings > output padding calls SetOutputPad on every chat child; the branch-summary, compaction-summary and skill-invocation cards implement it as SetPaddingX on their embedded Box. A card is served from its container's per-child cache by its dirty flag, and SetPaddingX only dropped the Box's own render cache, so the chat kept drawing those cards at the old padding until the card changed for another reason. Pi's Container.render renders every child on every frame, so Pi shows the new padding at once. SetPaddingX and SetBgFn now set the Box's dirty flag.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `69c667b1ea` (2026-11-09)
+- **Tests:** `internal/codingagent/output_pad_test.go::TestApplyOutputPadReachesTheCardsTheChatContainerCaches`, `tui/box_dirty_test.go::TestBoxBackgroundThatDrawsNothingIsNotNoBackground`, `tui/box_dirty_test.go::TestBoxSetBgFnAndSetPaddingXReportTheChange`
+- **Release note:** Changing the output padding now applies at once to the branch-summary, compaction-summary and skill-invocation cards already in the transcript. Their padding change reached the card's box without telling the transcript, which kept showing the card at the old padding until the card changed for another reason.
+
 ### BF-69cd9d2
 
 **PageUp and PageDown (`tui.select.pageUp` and `tui.select.pageDown`) move the selection by one page in the…**
@@ -11847,6 +11864,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `7901dbc959` (2026-10-27)
 - **Tests:** None recorded.
+
+### BF-79194eb
+
+**Aborting a compaction while extensions were being told it finished no longer keeps the extensions after the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Aborting a compaction while extensions were being told it finished no longer keeps the extensions after the first from hearing about it.
+- **Root cause:** Pi awaits runner.emit({ type: "session_compact" }) after the compaction entry is saved, and emit() takes no signal: an abort raised while the handlers run neither skips an extension nor fails the compaction. PiG passed the abortable compaction context to the dispatch, so AbortCompaction during the first handler cancelled that handler's request and every later subprocess extension's, which never received the event. Dispatch now detaches from the cancellation, as emitSessionCompactFailed already does.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `79194ebd9f` (2026-11-09)
+- **Tests:** `coding/session_compact_abort_dispatch_test.go::TestSessionCompactReachesEveryExtensionWhenAbortedDuringDispatch`, `test/extension-conformance/session_compact_abort_test.go::TestNodeSessionCompactReachesTheNextExtensionWhenAbortedDuringDispatch`, `test/extension-conformance/session_compact_abort_test.go::TestSessionCompactIsDeliveredToEverySDKWhenAbortedDuringDispatch`
+- **Release note:** Aborting a compaction while extensions were being told it finished no longer keeps the extensions after the first from hearing about it. `session_compact` now reaches every extension, in order, as in Pi, whichever of them calls `abortCompaction()` or has the compaction aborted while its handler runs; the saved compaction still completes.
 
 ### BF-79eadcf
 
@@ -17486,6 +17517,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `b9db06c809` (2026-10-21)
 - **Tests:** None recorded.
+
+### BF-b9de6a2
+
+**The provider bridge (`pig` `--provider-bridge`), the Durable core's `model_context` effect and an extension…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The provider bridge (`pig` `--provider-bridge`), the Durable core's `model_context` effect and an extension host's `modelStream` call now send a `start` event whose partial is the pending, empty message the provider built, as Pi does (the durable generation task reads the same pending partial but skips content-less partials before its observer, so it publishes no start partial): Pi attaches its consumer before any response I/O can complete.
+- **Root cause:** Four consumers create a provider stream and read it from an ordinary goroutine: the provider bridge, the model_context driver, the durable generation, and the extension host modelStream call. Pi creates the stream and attaches its for-await in one synchronous prefix, so the start event it reads holds the partial the provider built; a goroutine that attaches after the provider finished reads the finished message there, because the partial is the shared reference each event carries.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `b9de6a2def` (2026-11-09), `cbbb5ed7cb` (2026-11-09)
+- **Tests:** `coding/cli/provider_bridge_test.go::TestProviderBridgeStartIsSerializedBeforeTheResponseFillsItsPartial`, `coding/extension/host/subprocess/model_stream_attach_test.go::TestModelStreamForwardsStartBeforeTheResponseFillsItsPartial`, `durable/core/driver/model_test.go::TestModelContextSendsStartBeforeTheResponseFillsItsPartial`, `durable/harness/observe_response_test.go::TestObserveResponseSkipsTheStartEventWhoseProviderPartialHasNoContentYet`
+- **Release note:** The provider bridge (`pig` `--provider-bridge`), the Durable core's `model_context` effect and an extension host's `modelStream` call now send a `start` event whose partial is the pending, empty message the provider built, as Pi does (the durable generation task reads the same pending partial but skips content-less partials before its observer, so it publishes no start partial): Pi attaches its consumer before any response I/O can complete. Each created the provider's stream and read it from an ordinary goroutine, so under load the goroutine could start reading after the provider had filled the shared partial, and a `start` event reached the wire carrying the finished message (`toolUse`, the whole content and the final usage) where Pi sends `stopReason: "pending"` and no content. Each now creates the stream and reads it inside one stream continuation, as the Agent does; event content, order, cancellation and errors are unchanged.
 
 ### BF-ba80002
 

@@ -16,6 +16,7 @@ import (
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/internal/streamattachhook"
 )
 
 // GenerationInput is the input of the built-in generation task, Pi's Record<string, never> (generation.ts:49): an object
@@ -947,19 +948,9 @@ func streamResponse(ctx context.Context, runtime generationRuntime, model *ai.Mo
 	if !frozen {
 		messages = append([]ai.Message{}, messages...)
 	}
-	stream := runtime.Models().StreamSimple(signal, model, ai.Context{Messages: messages, Frozen: frozen}, options)
-	for event := range stream.Events(signal) {
-		switch event.(type) {
-		case ai.DoneEvent, *ai.DoneEvent, ai.ErrorEvent, *ai.ErrorEvent:
-			continue
-		}
-		// A partial without content, such as pi-ai's opening start event, shows nothing; a deferred response never
-		// gets past it, so it never leaves a partial.
-		partial := partialOf(event)
-		if partial == nil || len(partial.Content) == 0 {
-			continue
-		}
-		throttle.observe(event, partial)
+	stream, err := observeResponse(signal, runtime.Models(), model, ai.Context{Messages: messages, Frozen: frozen}, options, throttle.observe)
+	if err != nil {
+		return ai.AssistantMessage{}, err
 	}
 	result, err := stream.ResultContext(signal)
 	if err != nil {
@@ -969,6 +960,36 @@ func streamResponse(ctx context.Context, runtime generationRuntime, model *ai.Mo
 		return ai.AssistantMessage{}, errors.New("stream ended without a result")
 	}
 	return *result, nil
+}
+
+// observeResponse creates the response's stream and calls observe with every partial that shows content (generation.ts:740-746). Pi calls
+// streamSimple and `for await`s it in one synchronous prefix, before any response I/O can complete, so the start event's partial is the
+// pending, empty one the provider built. A goroutine that attached after the stream was returned
+// could run after the provider had published the whole response and observe a start event holding the finished message. The creation and
+// the iteration run in one stream continuation, as the Agent does (agent/agent_loop.go requestStream).
+func observeResponse(signal context.Context, models durable.Models, model *ai.Model, request ai.Context, options ai.StreamOptions, observe func(ai.AssistantMessageEvent, *ai.AssistantMessage)) (*ai.AssistantMessageEventStream, error) {
+	streamCtx := ai.WithStreamContinuations(signal)
+	var stream *ai.AssistantMessageEventStream
+	err := ai.RunStreamContinuation(streamCtx, func(observation *ai.StreamObservation) error {
+		stream = models.StreamSimple(streamCtx, model, request, options)
+		eventsCtx := observation.Context(signal)
+		streamattachhook.Attach(eventsCtx, stream)
+		for event := range stream.Events(eventsCtx) {
+			switch event.(type) {
+			case ai.DoneEvent, *ai.DoneEvent, ai.ErrorEvent, *ai.ErrorEvent:
+				continue
+			}
+			// A partial without content, such as pi-ai's opening start event, shows nothing; a deferred response never
+			// gets past it, so it never leaves a partial.
+			partial := partialOf(event)
+			if partial == nil || len(partial.Content) == 0 {
+				continue
+			}
+			observe(event, partial)
+		}
+		return nil
+	})
+	return stream, err
 }
 
 func partialOf(event ai.AssistantMessageEvent) *ai.AssistantMessage {

@@ -18233,6 +18233,30 @@
       ]
     },
     {
+      "id": "BF-69c667b",
+      "title": "Changing the output padding now applies at once to the branch-summary, compaction-summary and…",
+      "symptom": "Changing the output padding now applies at once to the branch-summary, compaction-summary and skill-invocation cards already in the transcript.",
+      "rootCause": "Settings \u003e output padding calls SetOutputPad on every chat child; the branch-summary, compaction-summary and skill-invocation cards implement it as SetPaddingX on their embedded Box. A card is served from its container's per-child cache by its dirty flag, and SetPaddingX only dropped the Box's own render cache, so the chat kept drawing those cards at the old padding until the card changed for another reason. Pi's Container.render renders every child on every frame, so Pi shows the new padding at once. SetPaddingX and SetBgFn now set the Box's dirty flag.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Changing the output padding now applies at once to the branch-summary, compaction-summary and skill-invocation cards already in the transcript. Their padding change reached the card's box without telling the transcript, which kept showing the card at the old padding until the card changed for another reason.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "69c667b1ea",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/output_pad_test.go::TestApplyOutputPadReachesTheCardsTheChatContainerCaches",
+        "tui/box_dirty_test.go::TestBoxBackgroundThatDrawsNothingIsNotNoBackground",
+        "tui/box_dirty_test.go::TestBoxSetBgFnAndSetPaddingXReportTheChange"
+      ]
+    },
+    {
       "id": "BF-69cd9d2",
       "title": "PageUp and PageDown (`tui.select.pageUp` and `tui.select.pageDown`) move the selection by one page in the…",
       "symptom": "PageUp and PageDown (`tui.select.pageUp` and `tui.select.pageDown`) move the selection by one page in the select list, settings list, editor autocomplete, and the model, OAuth, scoped-models, user-message and settings-submenu selectors.",
@@ -21081,6 +21105,30 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-79194eb",
+      "title": "Aborting a compaction while extensions were being told it finished no longer keeps the extensions after the…",
+      "symptom": "Aborting a compaction while extensions were being told it finished no longer keeps the extensions after the first from hearing about it.",
+      "rootCause": "Pi awaits runner.emit({ type: \"session_compact\" }) after the compaction entry is saved, and emit() takes no signal: an abort raised while the handlers run neither skips an extension nor fails the compaction. PiG passed the abortable compaction context to the dispatch, so AbortCompaction during the first handler cancelled that handler's request and every later subprocess extension's, which never received the event. Dispatch now detaches from the cancellation, as emitSessionCompactFailed already does.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Aborting a compaction while extensions were being told it finished no longer keeps the extensions after the first from hearing about it. `session_compact` now reaches every extension, in order, as in Pi, whichever of them calls `abortCompaction()` or has the compaction aborted while its handler runs; the saved compaction still completes.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "79194ebd9f",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "coding/session_compact_abort_dispatch_test.go::TestSessionCompactReachesEveryExtensionWhenAbortedDuringDispatch",
+        "test/extension-conformance/session_compact_abort_test.go::TestNodeSessionCompactReachesTheNextExtensionWhenAbortedDuringDispatch",
+        "test/extension-conformance/session_compact_abort_test.go::TestSessionCompactIsDeliveredToEverySDKWhenAbortedDuringDispatch"
+      ]
     },
     {
       "id": "BF-79eadcf",
@@ -32531,6 +32579,35 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-b9de6a2",
+      "title": "The provider bridge (`pig` `--provider-bridge`), the Durable core's `model_context` effect and an extension…",
+      "symptom": "The provider bridge (`pig` `--provider-bridge`), the Durable core's `model_context` effect and an extension host's `modelStream` call now send a `start` event whose partial is the pending, empty message the provider built, as Pi does (the durable generation task reads the same pending partial but skips content-less partials before its observer, so it publishes no start partial): Pi attaches its consumer before any response I/O can complete.",
+      "rootCause": "Four consumers create a provider stream and read it from an ordinary goroutine: the provider bridge, the model_context driver, the durable generation, and the extension host modelStream call. Pi creates the stream and attaches its for-await in one synchronous prefix, so the start event it reads holds the partial the provider built; a goroutine that attaches after the provider finished reads the finished message there, because the partial is the shared reference each event carries.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The provider bridge (`pig` `--provider-bridge`), the Durable core's `model_context` effect and an extension host's `modelStream` call now send a `start` event whose partial is the pending, empty message the provider built, as Pi does (the durable generation task reads the same pending partial but skips content-less partials before its observer, so it publishes no start partial): Pi attaches its consumer before any response I/O can complete. Each created the provider's stream and read it from an ordinary goroutine, so under load the goroutine could start reading after the provider had filled the shared partial, and a `start` event reached the wire carrying the finished message (`toolUse`, the whole content and the final usage) where Pi sends `stopReason: \"pending\"` and no content. Each now creates the stream and reads it inside one stream continuation, as the Agent does; event content, order, cancellation and errors are unchanged.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b9de6a2def",
+          "date": "2026-11-09"
+        },
+        {
+          "hash": "cbbb5ed7cb",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "coding/cli/provider_bridge_test.go::TestProviderBridgeStartIsSerializedBeforeTheResponseFillsItsPartial",
+        "coding/extension/host/subprocess/model_stream_attach_test.go::TestModelStreamForwardsStartBeforeTheResponseFillsItsPartial",
+        "durable/core/driver/model_test.go::TestModelContextSendsStartBeforeTheResponseFillsItsPartial",
+        "durable/harness/observe_response_test.go::TestObserveResponseSkipsTheStartEventWhoseProviderPartialHasNoContentYet"
+      ]
     },
     {
       "id": "BF-ba80002",
