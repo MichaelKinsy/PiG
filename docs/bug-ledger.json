@@ -21779,6 +21779,28 @@
       ]
     },
     {
+      "id": "BF-667d493",
+      "title": "On Windows, an edit or write waits for an earlier edit or write of the same file reached through a hard link…",
+      "symptom": "On Windows, an edit or write waits for an earlier edit or write of the same file reached through a hard link even when the queued file was replaced meanwhile (an atomic write): the queue keeps the identity of the file as it was when the mutation queued, not the one the path names when a later mutation is compared.",
+      "rootCause": "Both stats are pinned with SameFile(info, info) when taken, as coding/cli lstatPinned does; a file whose identity cannot be read counts as missing. Pi has no identity rule (its key is realpath only), so the recorded divergence is unchanged.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "On Windows, an edit or write waits for an earlier edit or write of the same file reached through a hard link even when the queued file was replaced meanwhile (an atomic write): the queue keeps the identity of the file as it was when the mutation queued, not the one the path names when a later mutation is compared.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "667d4938ce",
+          "date": "2026-11-10"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/tools/mutation_queue_identity_test.go::TestMutationQueueKeepsTheIdentityOfAFileReplacedWhileItsMutationIsQueued"
+      ]
+    },
+    {
       "id": "BF-668b3fa",
       "title": "Fix the shared attribute-order store case: advance the clock before flush and compare metric row names only",
       "symptom": "Fix the shared attribute-order store case: advance the clock before flush and compare metric row names only",

@@ -324353,6 +324353,17 @@
       "shapeHash": "sha256:765c997946b7017de59763a161d822521556146ad65763db578efe08a088ed70"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#pinned",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "pinned",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(info os.FileInfo) os.FileInfo"
+      },
+      "shapeHash": "sha256:ffede6e2ddb123953c87963a4f1ed1ea639e4a37f9446c5dfeff5804c6a24ba7"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#powerShellArgumentSchema",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
       "name": "powerShellArgumentSchema",
