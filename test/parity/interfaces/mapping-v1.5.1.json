@@ -108472,23 +108472,99 @@
     },
     {
       "id": "pkg:chord/.#formatNumber",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2b31f5d7bf92e344dccb3d5deaee1b643c3eadbecdcdfb428666ff262c337c40"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:2b31f5d7bf92e344dccb3d5deaee1b643c3eadbecdcdfb428666ff262c337c40",
+      "rationale": "Pi packages/chord/src/surfaces/format.ts formatNumber(value, options?) is `Intl.NumberFormat` with the current language's locale (the platform's default outside a render). Go FormatNumber(lang *Language, value float64, options *NumberOptions) (string, error): the language is the first parameter, nil outside a render (D450); the options are the closed NumberOptions over tables generated from the pinned Node's Intl (D464), with no per-language formatter cache (D466); the errors Intl throws are the returned ErrOption/ErrLocale. Every output is diffed against a live Node by TestNumbersMatchNode (a seeded corpus of locales, values and options) and the three upstream cases of packages/chord/test/surfaces/format.test.ts run in surfaces_format_test.go; mutating the nil-language platform default, the language's locale, or the fraction-digit options fails these tests. The public library API has no PiG call site: its callers are the tests.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_format.go#FormatNumber"
+      ],
+      "layers": {
+        "shape": "complete",
+        "production": "public-api-tested",
+        "behavior": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_format.go#FormatNumber"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_format_test.go#TestFormatsNumbersInTheRendersLocale",
+        "test:chord/next/surfaces/surfaces_format_test.go#TestFormatsNumbersInThePlatformsDefaultLocaleOutsideARender",
+        "test:chord/next/surfaces/surfaces_format_test.go#TestFormatNumberFractionDigits",
+        "test:chord/next/surfaces/surfaces_format_test.go#TestFormatsRefuseLocalesIntlRefuses",
+        "test:chord/next/surfaces/intl_drift_test.go#TestNumbersMatchNode"
+      ]
     },
     {
       "id": "pkg:chord/.#formatNumber::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e7e5581fb3f867aeb6f38fe3ae155c58f200003090c0c3b547af0cfdd656a4da"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e7e5581fb3f867aeb6f38fe3ae155c58f200003090c0c3b547af0cfdd656a4da",
+      "rationale": "Pi packages/chord/src/surfaces/format.ts formatNumber(value, options?) is `Intl.NumberFormat` with the current language's locale (the platform's default outside a render). Go FormatNumber(lang *Language, value float64, options *NumberOptions) (string, error): the language is the first parameter, nil outside a render (D450); the options are the closed NumberOptions over tables generated from the pinned Node's Intl (D464), with no per-language formatter cache (D466); the errors Intl throws are the returned ErrOption/ErrLocale. Every output is diffed against a live Node by TestNumbersMatchNode (a seeded corpus of locales, values and options) and the three upstream cases of packages/chord/test/surfaces/format.test.ts run in surfaces_format_test.go; mutating the nil-language platform default, the language's locale, or the fraction-digit options fails these tests. The public library API has no PiG call site: its callers are the tests.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_format.go#FormatNumber"
+      ],
+      "layers": {
+        "shape": "complete",
+        "production": "public-api-tested",
+        "behavior": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/surfaces_format.go#FormatNumber"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_format_test.go#TestFormatsNumbersInTheRendersLocale",
+        "test:chord/next/surfaces/surfaces_format_test.go#TestFormatsNumbersInThePlatformsDefaultLocaleOutsideARender",
+        "test:chord/next/surfaces/surfaces_format_test.go#TestFormatNumberFractionDigits",
+        "test:chord/next/surfaces/surfaces_format_test.go#TestFormatsRefuseLocalesIntlRefuses",
+        "test:chord/next/surfaces/intl_drift_test.go#TestNumbersMatchNode"
+      ]
     },
     {
       "id": "pkg:chord/.#formatTime",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9055cd64b295fb3fd5dad4a9abf478ce2da81497df40f152bba3f9ee6f966271"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9055cd64b295fb3fd5dad4a9abf478ce2da81497df40f152bba3f9ee6f966271",
+      "rationale": "Pi packages/chord/src/surfaces/format.ts formatTime(at, options?) is `Intl.DateTimeFormat` with the current language's locale (the platform's default outside a render), `{timeStyle: \"short\"}` by default, of `new Date(at)`. Go FormatTime(lang *Language, at time.Time, options *TimeOptions) (string, error): the language is the first parameter (D450); `Date | number | string` is a time.Time (D465); the options are the closed TimeOptions over tables generated from the pinned Node's Intl (D464); the zone is the process's, as a Date's is. TestTimesMatchNode diffs every output against a live Node and TestFormatTimeShowsTheInstantInTheProcessZone pins the zone; mutating the process zone to UTC or the default style to medium fails the tests. The public library API has no PiG call site: its callers are the tests.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_format.go#FormatTime",
+        "chord/next/surfaces/intl_time.go#FormatTime"
+      ],
+      "layers": {
+        "shape": "complete",
+        "production": "public-api-tested",
+        "behavior": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/intl_time.go#FormatTime"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_format_test.go#TestFormatsTimesInTheRendersLocale",
+        "test:chord/next/surfaces/surfaces_format_test.go#TestFormatTimeRefusesOptionsOutsideTheClosedType",
+        "test:chord/next/surfaces/intl_root_test.go#TestFormatTimeShowsTheInstantInTheProcessZone",
+        "test:chord/next/surfaces/intl_drift_test.go#TestTimesMatchNode"
+      ]
     },
     {
       "id": "pkg:chord/.#formatTime::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d722554fc8dc2d98f7686bb0c6bc325734287ef82b54fab924fb9912e8ec8c21"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:d722554fc8dc2d98f7686bb0c6bc325734287ef82b54fab924fb9912e8ec8c21",
+      "rationale": "Pi packages/chord/src/surfaces/format.ts formatTime(at, options?) is `Intl.DateTimeFormat` with the current language's locale (the platform's default outside a render), `{timeStyle: \"short\"}` by default, of `new Date(at)`. Go FormatTime(lang *Language, at time.Time, options *TimeOptions) (string, error): the language is the first parameter (D450); `Date | number | string` is a time.Time (D465); the options are the closed TimeOptions over tables generated from the pinned Node's Intl (D464); the zone is the process's, as a Date's is. TestTimesMatchNode diffs every output against a live Node and TestFormatTimeShowsTheInstantInTheProcessZone pins the zone; mutating the process zone to UTC or the default style to medium fails the tests. The public library API has no PiG call site: its callers are the tests.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_format.go#FormatTime",
+        "chord/next/surfaces/intl_time.go#FormatTime"
+      ],
+      "layers": {
+        "shape": "complete",
+        "production": "public-api-tested",
+        "behavior": "complete"
+      },
+      "production": [
+        "public-api:chord/next/surfaces/intl_time.go#FormatTime"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_format_test.go#TestFormatsTimesInTheRendersLocale",
+        "test:chord/next/surfaces/surfaces_format_test.go#TestFormatTimeRefusesOptionsOutsideTheClosedType",
+        "test:chord/next/surfaces/intl_root_test.go#TestFormatTimeShowsTheInstantInTheProcessZone",
+        "test:chord/next/surfaces/intl_drift_test.go#TestTimesMatchNode"
+      ]
     },
     {
       "id": "pkg:chord/.#GetOptions",
@@ -121442,18 +121518,66 @@
     },
     {
       "id": "pkg:chord/.#WebSocketLike::property:close",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:390ce9a16559f22ff3624a68f5096f1f31e9f637e726d9c0c42528aac152a2c1"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:390ce9a16559f22ff3624a68f5096f1f31e9f637e726d9c0c42528aac152a2c1",
+      "rationale": "Pi packages/chord/src/link/websocket.ts:13 WebSocketLike::property:close (Pi 1.5.1): WebSocketLike.close() closes the socket; Go WebSocketLike.Close() (websocket.go:25) is what the link's own Close calls after it has stopped listening, and what a thrown send calls (TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend: the link closes, then the socket, and later sends are dropped; a mutation that closes the socket before ending the link fails it).",
+      "pigTargets": [
+        "chord/next/link/websocket.go#WebSocketLike.Close"
+      ],
+      "layers": {
+        "shape": "complete",
+        "production": "complete",
+        "behavior": "complete"
+      },
+      "production": [
+        "call:chord/next/link/websocket.go#webSocketLink.Close"
+      ],
+      "evidence": [
+        "test:chord/next/link/websocket_test.go#TestWebSocketLinksOverAFakeSocket",
+        "test:chord/next/link/websocket_test.go#TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend"
+      ]
     },
     {
       "id": "pkg:chord/.#WebSocketLike::property:close::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9ca6a314a982a3e688c5c5ffde6bd32f25f07554352674c9e2234fc7f4b40b92"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9ca6a314a982a3e688c5c5ffde6bd32f25f07554352674c9e2234fc7f4b40b92",
+      "rationale": "Pi packages/chord/src/link/websocket.ts:13 WebSocketLike::property:close (Pi 1.5.1): WebSocketLike.close() closes the socket; Go WebSocketLike.Close() (websocket.go:25) is what the link's own Close calls after it has stopped listening, and what a thrown send calls (TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend: the link closes, then the socket, and later sends are dropped; a mutation that closes the socket before ending the link fails it).",
+      "pigTargets": [
+        "chord/next/link/websocket.go#WebSocketLike.Close"
+      ],
+      "layers": {
+        "shape": "complete",
+        "production": "complete",
+        "behavior": "complete"
+      },
+      "production": [
+        "call:chord/next/link/websocket.go#webSocketLink.Close"
+      ],
+      "evidence": [
+        "test:chord/next/link/websocket_test.go#TestWebSocketLinksOverAFakeSocket",
+        "test:chord/next/link/websocket_test.go#TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend"
+      ]
     },
     {
       "id": "pkg:chord/.#WebSocketLike::property:readyState",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:63e2d6224ae33c95dad22c0be553b090f7da9e7b897ee1af4e97c7da428fe034"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:63e2d6224ae33c95dad22c0be553b090f7da9e7b897ee1af4e97c7da428fe034",
+      "rationale": "Pi packages/chord/src/link/websocket.ts:9 WebSocketLike::property:readyState (Pi 1.5.1): WebSocketLike.readyState is the DOM WebSocket's read-only state (0 connecting, 1 open, 2 closing, 3 closed) that WebSocketLink reads once at construction and again to decide whether to buffer or send; Go has no property on an interface, so it is the method WebSocketLike.ReadyState() int (websocket.go:22), with the same four values.",
+      "pigTargets": [
+        "chord/next/link/websocket.go#WebSocketLike.ReadyState"
+      ],
+      "layers": {
+        "shape": "complete",
+        "production": "complete",
+        "behavior": "complete"
+      },
+      "production": [
+        "call:chord/next/link/websocket.go#WebSocketLink"
+      ],
+      "evidence": [
+        "test:chord/next/link/websocket_test.go#TestWebSocketLinksOverAFakeSocket",
+        "test:chord/next/link/websocket_test.go#TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend"
+      ]
     },
     {
       "id": "pkg:chord/.#WebSocketLike::property:removeEventListener",
@@ -121484,13 +121608,45 @@
     },
     {
       "id": "pkg:chord/.#WebSocketLike::property:send",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:ffc9eb6ccd6912e3e718d4276f4b30a9a118cbeefb6b7cf30193ed3ead84759d"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:ffc9eb6ccd6912e3e718d4276f4b30a9a118cbeefb6b7cf30193ed3ead84759d",
+      "rationale": "Pi packages/chord/src/link/websocket.ts:12 WebSocketLike::property:send (Pi 1.5.1): WebSocketLike.send(data: Uint8Array) sends one binary frame and may throw; Go WebSocketLike.Send(data []byte) error (websocket.go:24): a thrown send is the returned error, which closes the link as in Pi. TestWebSocketLinksOverAFakeSocket (messages sent while connecting are buffered and sent on open as binary frames) and TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend (each message to an open socket at once, in order; a throw closes) cover it; mutating the buffering or the close-on-error fails them.",
+      "pigTargets": [
+        "chord/next/link/websocket.go#WebSocketLike.Send"
+      ],
+      "layers": {
+        "shape": "complete",
+        "production": "complete",
+        "behavior": "complete"
+      },
+      "production": [
+        "call:chord/next/link/websocket.go#webSocketLink.Send"
+      ],
+      "evidence": [
+        "test:chord/next/link/websocket_test.go#TestWebSocketLinksOverAFakeSocket",
+        "test:chord/next/link/websocket_test.go#TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend"
+      ]
     },
     {
       "id": "pkg:chord/.#WebSocketLike::property:send::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:3532bc262b6d7094b069cb3d5fcc1c669bb96c212e967c205e7813d67fedf735"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:3532bc262b6d7094b069cb3d5fcc1c669bb96c212e967c205e7813d67fedf735",
+      "rationale": "Pi packages/chord/src/link/websocket.ts:12 WebSocketLike::property:send (Pi 1.5.1): WebSocketLike.send(data: Uint8Array) sends one binary frame and may throw; Go WebSocketLike.Send(data []byte) error (websocket.go:24): a thrown send is the returned error, which closes the link as in Pi. TestWebSocketLinksOverAFakeSocket (messages sent while connecting are buffered and sent on open as binary frames) and TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend (each message to an open socket at once, in order; a throw closes) cover it; mutating the buffering or the close-on-error fails them.",
+      "pigTargets": [
+        "chord/next/link/websocket.go#WebSocketLike.Send"
+      ],
+      "layers": {
+        "shape": "complete",
+        "production": "complete",
+        "behavior": "complete"
+      },
+      "production": [
+        "call:chord/next/link/websocket.go#webSocketLink.Send"
+      ],
+      "evidence": [
+        "test:chord/next/link/websocket_test.go#TestWebSocketLinksOverAFakeSocket",
+        "test:chord/next/link/websocket_test.go#TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend"
+      ]
     },
     {
       "id": "pkg:chord/.#webSocketLink",

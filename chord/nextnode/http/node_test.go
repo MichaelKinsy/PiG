@@ -3,11 +3,15 @@ package http
 // pi: packages/chord/src/node/http/node.ts
 
 import (
+	"bufio"
 	"context"
+	"encoding/json"
 	"io"
 	"net"
 	nethttp "net/http"
 	"net/http/httptest"
+	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -320,5 +324,64 @@ func TestMountedRequestContextEndsWhenTheClientGoesAndNotBefore(t *testing.T) {
 	cancel()
 	if !<-ended {
 		t.Fatal("the request's context did not end when the client went")
+	}
+}
+
+// malformedEscape is a `%` not followed by two hexadecimal digits.
+var malformedEscape = regexp.MustCompile(`%($|[^0-9A-Fa-f]|[0-9A-Fa-f]($|[^0-9A-Fa-f]))`)
+
+// rawHead is rawExchange's status line and the whole head.
+func rawHead(t testing.TB, port int, text string) (status, head string) {
+	t.Helper()
+	conn, err := net.Dial("tcp", "127.0.0.1:"+strconv.Itoa(port))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = conn.Close() }()
+	if _, err := conn.Write([]byte(text)); err != nil {
+		t.Fatal(err)
+	}
+	_ = conn.SetReadDeadline(time.Now().Add(within))
+	out, _ := io.ReadAll(conn)
+	head, _, _ = strings.Cut(string(out), "\r\n\r\n")
+	status, _, _ = strings.Cut(head, "\r\n")
+	return status, head
+}
+
+// testdata/target_corpus.jsonl is what testdata/target_probe.cjs recorded from the pinned Node: for each request target (Latin-1
+// characters, one byte each), whether Node's parser let the request reach its handler (false: it answered 400 itself). Node
+// takes the printable ASCII bytes only; the corpus has every byte in the path, the query and the fragment.
+func TestTargetsReachTheComponentOnlyWhereNodesParserTakesThem(t *testing.T) {
+	file, err := os.Open("testdata/target_corpus.jsonl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+	server := serving(t, []plugin{echoPlugin}, servedOptions{})
+	host := "Host: 127.0.0.1:" + strconv.Itoa(server.port)
+	scanner := bufio.NewScanner(file)
+	rows := 0
+	for scanner.Scan() {
+		var row [2]any
+		if err := json.Unmarshal(scanner.Bytes(), &row); err != nil {
+			t.Fatal(err)
+		}
+		target, nodeReached := latin1Bytes(row[0].(string)), row[1].(bool)
+		status, head := rawHead(t, server.port, "GET "+target+" HTTP/1.1\r\n"+host+"\r\nConnection: close\r\n\r\n")
+		rows++
+		// A request the parser refuses is answered without the component's default headers; the component's own answers
+		// (a 400 for a malformed percent-escape in a path, 403, 404) carry them.
+		reached := strings.Contains(head, "X-Content-Type-Options: nosniff")
+		if nodeReached && !reached && status == "HTTP/1.1 400 Bad Request" && malformedEscape.MatchString(target) {
+			// Forced difference (D218, node.go): net/http refuses a malformed percent-escape in the target itself, 400, where the
+			// component answers it 400 with its default headers.
+			continue
+		}
+		if reached != nodeReached {
+			t.Errorf("GET %q: %q, node's parser let it through: %v", row[0], status, nodeReached)
+		}
+	}
+	if rows < 1000 {
+		t.Fatalf("only %d corpus rows", rows)
 	}
 }
