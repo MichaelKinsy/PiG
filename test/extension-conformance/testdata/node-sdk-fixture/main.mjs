@@ -13,11 +13,17 @@ const { Container } = piTui;
 // CPU-bound gap between lines can outrun on a loaded host (the command then ends normally instead of at its deadline). The shell-exit cases need the writer to hold the
 // pipes until the deadline, so that one timer, set by Pi's armIdleTimer, never fires, as the host's own grace never elapses in the same cases (Pi's #5303 test uses
 // virtual time for it). Every other timer is untouched.
+// stdioGraceHolds counts the timers held, so a shell-exit case that holds none (a pin that renames armIdleTimer, changes the delay or loses the frame name) fails
+// loudly instead of going back to racing the wall clock.
+let stdioGraceHolds = 0;
 {
   const wallClockSetTimeout = globalThis.setTimeout;
   const longest = 2 ** 31 - 1;
   globalThis.setTimeout = function setTimeout(callback, delay, ...rest) {
-    if (delay === 100 && typeof callback === "function" && new Error().stack.includes("armIdleTimer")) return wallClockSetTimeout(callback, longest, ...rest);
+    if (delay === 100 && typeof callback === "function" && new Error().stack.includes("armIdleTimer")) {
+      stdioGraceHolds++;
+      return wallClockSetTimeout(callback, longest, ...rest);
+    }
     return wallClockSetTimeout(callback, delay, ...rest);
   };
 }
@@ -1287,10 +1293,15 @@ export default function (pi) {
     const updates = [];
     const onUpdate = c.updates || c.abortOnOutput ? (partial) => { const text = partial.content.filter((b) => b.type === "text").map((b) => b.text).join("\n"); updates.push(text); if (c.abortOnOutput && text !== "") controller.abort(); } : undefined;
     const report = {};
+    const holdsBefore = stdioGraceHolds;
     try {
       const result = c.noContext ? await createTool(c.factoryCwd, options).execute("probe-call", c.params ?? {}, controller.signal, onUpdate) : await createDefinition(c.factoryCwd, options).execute("probe-call", c.params ?? {}, controller.signal, onUpdate, ctx);
       report.result = builtinReport(result);
     } catch (error) { report.error = error.message; }
+    // The shell-exit cases (local operations over a shell that exits while a writer holds the pipes) must have held Pi's post-exit grace timer at least once.
+    if (["local", "localWrapped", "localThread"].includes(c.ops) && stdioGraceHolds === holdsBefore) {
+      report.error = "the fixture held no post-exit stdio grace timer: Pi's waitForChildProcess no longer sets a 100 ms timer from armIdleTimer, so the shell-exit cases would race the wall clock";
+    }
     if (c.updates) report.updates = updates;
     report.calls = log;
     emit(report);
