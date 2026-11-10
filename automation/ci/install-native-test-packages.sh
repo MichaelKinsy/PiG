@@ -10,4 +10,7 @@ set -euo pipefail
 # a job with its own list lost xclip once and the clipboard tests failed there with "xclip: executable file not found".
 # Extra arguments name further packages for one job.
 
-exec "$(dirname "${BASH_SOURCE[0]}")/install-apt-packages.sh" tmux fd-find ripgrep build-essential xvfb xclip pkg-config libxcb1-dev "$@"
+here="$(dirname "${BASH_SOURCE[0]}")"
+"${here}/install-apt-packages.sh" tmux fd-find ripgrep build-essential xvfb xclip pkg-config libxcb1-dev xcb-proto python3-xcbgen libxau-dev libxdmcp-dev python3 "$@"
+
+pkg-config --atleast-version=1.16 xcb || "${here}/build-libxcb.sh"
