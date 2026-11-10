@@ -1018,9 +1018,11 @@ func (a *App) workerLock(address contracts.Address, ctx context.Context) (*worke
 // Close closes the HTTP component, the workers (in the options' order), the host, the store, the plugins' watcher and the data
 // directory's lock: in that order (HTTP first: it drains requests the host's close would seal). As Pi's `#close`, the first step that
 // fails ends the close there (the later steps do not run) and is what Close returns, to every caller: the first caller runs the
-// steps, the later ones wait for it. Last, whatever the steps ended with, it waits for the bases' builds and the surfaces' (drainBuilds)
-// until ctx ends: Pi's `#close` does not wait for them, a forced Go lifetime difference. A step's failure is what Close returns
-// before ctx's error is.
+// steps, the later ones wait for it and get its result (a later Close with a longer ctx does not resume what the first ended).
+// Pi's `#close` does not wait for the bases' builds and the surfaces' (a forced Go lifetime difference): the Go close waits for them
+// (drainBuilds) between the plugins' watcher and the lock's release, until ctx ends, so the lock is held while a build runs and only
+// a build abandoned at ctx's end runs without it. The lock is released when the drain ends, whatever it ended with; after a failed
+// step the drain still runs and the lock stays held, as after Pi's rejected chain.
 func (a *App) Close(ctx context.Context) error {
 	if !a.closing.Swap(true) {
 		close(a.ended)
@@ -1029,19 +1031,25 @@ func (a *App) Close(ctx context.Context) error {
 	return a.closed
 }
 
-// closeSteps is Pi's `#close`: each step awaited, the first failure returned; then the builds are joined (drainBuilds).
+// closeSteps is Pi's `#close`: each step awaited, the first failure returned; the builds are joined (drainBuilds) before the lock's
+// release.
 func (a *App) closeSteps(ctx context.Context) error {
-	err := a.closeResources(ctx)
-	if drained := a.drainBuilds(ctx); err == nil {
-		err = drained
+	if err := a.closeResources(ctx); err != nil {
+		_ = a.drainBuilds(ctx)
+		return err
 	}
-	return err
+	drained := a.drainBuilds(ctx)
+	if released := a.lock.Release(); released != nil {
+		return errors.Join(drained, released)
+	}
+	return drained
 }
 
 // drainBuilds waits for the goroutines the app started after the listen: each surface's build (one not started never starts), then
 // the bases' (startBases: it builds each base and records the base code), until ctx ends (its error then; the goroutines are left
-// to finish, what they do after the close began being dropped). It runs after the close's steps: a build that finishes meanwhile
-// finds the host closed (its publication fails) and the watcher closed (a record arriving after the close watches nothing).
+// to finish, what they do after the close began being dropped). It runs after the close's steps, the data directory's lock still held:
+// a build that finishes meanwhile finds the host closed (its publication fails) and the watcher closed (a record arriving after the
+// close watches nothing).
 func (a *App) drainBuilds(ctx context.Context) error {
 	if a.options.draining != nil {
 		a.options.draining()
@@ -1067,7 +1075,7 @@ func (a *App) drainBuilds(ctx context.Context) error {
 	}
 }
 
-// closeResources is the steps of Pi's `#close`: the first failure ends them there.
+// closeResources is the steps of Pi's `#close` but the lock's release: the first failure ends them there.
 func (a *App) closeResources(ctx context.Context) error {
 	if a.HTTP != nil {
 		a.HTTP.Close(ctx)
@@ -1096,5 +1104,5 @@ func (a *App) closeResources(ctx context.Context) error {
 	if a.Plugins.Component != nil {
 		a.Plugins.Component.Close()
 	}
-	return a.lock.Release()
+	return nil
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -218,4 +219,83 @@ func TestAppARecordOfTheServersCodeEditedSinceTheStartMarksBaseWhileTheAppIsOpen
 	if !s.app.Plugins.Component.Marks().Base {
 		t.Fatal("base is not marked for an executable edited since the start")
 	}
+}
+
+// refusedWhileLocked fails the test unless a second server on the data directory is refused: the first one still holds its lock.
+func (s *stalledScan) refusedWhileLocked(t *testing.T) {
+	t.Helper()
+	second, err := StartServer(optionsFor(t, s.dataDir, s.root), background)
+	if err == nil {
+		_ = second.Close(background)
+		t.Fatal("a second server started on the data directory: the close released its lock while it waited for the scan")
+	}
+	if !strings.Contains(err.Error(), "another server runs on "+s.dataDir) {
+		t.Fatalf("a second server on the data directory: %v, want it refused (the lock is held)", err)
+	}
+}
+
+// startsAgain fails the test unless a second server starts on the data directory (the lock was released); it closes it.
+func (s *stalledScan) startsAgain(t *testing.T) {
+	t.Helper()
+	second, err := StartServer(optionsFor(t, s.dataDir, s.root), background)
+	if err != nil {
+		t.Fatalf("a second server on the data directory after the close: %v, want it started (the lock was released)", err)
+	}
+	if err := second.Close(background); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// What a build that outlives the close could still write is written under the data directory's lock: the lock is held while the
+// close waits for the scan, and released once it ended.
+func TestAppCloseHoldsTheDataDirectorysLockWhileItWaitsForABuildAndReleasesItOnceItEnded(t *testing.T) {
+	scan := startWithAStalledScan(t)
+	<-scan.entered
+	closed := scan.closeIn(background)
+	scan.untilDraining(t, closed)
+	scan.refusedWhileLocked(t)
+	close(scan.release)
+	if err := <-closed; err != nil {
+		t.Fatal(err)
+	}
+	scan.startsAgain(t)
+}
+
+// A close whose context ended while it waited still releases the lock (only the abandoned build runs without it).
+func TestAppCloseReleasesTheDataDirectorysLockWhenItsContextEndsWhileItWaitsForABuild(t *testing.T) {
+	scan := startWithAStalledScan(t)
+	<-scan.entered
+	ctx, cancel := context.WithCancel(background)
+	defer cancel()
+	closed := scan.closeIn(ctx)
+	scan.untilDraining(t, closed)
+	scan.refusedWhileLocked(t)
+	cancel()
+	if err := <-closed; !errors.Is(err, context.Canceled) {
+		t.Fatalf("close = %v, want the context's error", err)
+	}
+	scan.startsAgain(t)
+	close(scan.release)
+	<-scan.app.BaseWatched()
+}
+
+// A repeated Close returns the first call's result (Pi's one memoised promise): a later Close with a longer context does not resume
+// the drain the first one's context ended.
+func TestAppACloseAfterOneWhoseContextEndedReturnsItsResultAndDoesNotWaitAgain(t *testing.T) {
+	scan := startWithAStalledScan(t)
+	<-scan.entered
+	ctx, cancel := context.WithCancel(background)
+	defer cancel()
+	closed := scan.closeIn(ctx)
+	scan.untilDraining(t, closed)
+	cancel()
+	if err := <-closed; !errors.Is(err, context.Canceled) {
+		t.Fatalf("close = %v, want the context's error", err)
+	}
+	// The scan is still held: a Close that waited again would not return.
+	if err := scan.app.Close(background); !errors.Is(err, context.Canceled) {
+		t.Fatalf("second close = %v, want the first one's result", err)
+	}
+	close(scan.release)
+	<-scan.app.BaseWatched()
 }
