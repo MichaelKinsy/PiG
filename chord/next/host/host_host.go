@@ -820,6 +820,10 @@ func (h *chordHost) Registry(ctx context.Context, r registries.Registry[any, any
 		timer    Timer
 		stopWake func() bool
 		last     error
+		// looked is whether the wait has checked the registry's value once, since the publication; overdue is a deadline that
+		// elapsed after the publication and before that look (both set and read in sections).
+		looked, overdue bool
+		expireNow       func()
 	)
 	timeout := durationOr(options.ReadyTimeout, h.timeouts.ready)
 	h.enter(func() {
@@ -831,12 +835,22 @@ func (h *chordHost) Registry(ctx context.Context, r registries.Registry[any, any
 		}
 		expired, expire := chordctx.WithCancel(chordctx.Background())
 		waiting = withLinkedAbortSignal(expired, ctx)
-		timer = h.events.AfterFunc(timeout, func() {
+		expireNow = func() {
 			if last != nil {
 				expire(last)
 				return
 			}
 			expire(notLive("registry "+r.Name, timeout))
+		}
+		timer = h.events.AfterFunc(timeout, func() {
+			// In Pi the continuation of `await publication`, the lookup and the first `usable()` are microtasks, run before
+			// any timer: a deadline that finds the host published and the look not yet made is later than the look, not
+			// earlier, however long the goroutine of the wait was kept from running (a loaded machine, a 5 ms deadline).
+			if !looked && h.publishedOnce {
+				overdue = true
+				return
+			}
+			expireNow()
 		})
 		// The host's close ends the wait at once, `released/closed` (its timer with it).
 		stopWake = context.AfterFunc(h.routing, func() { expire(h.closedError()) })
@@ -877,7 +891,13 @@ func (h *chordHost) Registry(ctx context.Context, r registries.Registry[any, any
 		return false
 	}
 	var ready bool
-	h.enter(func() { ready = usable() })
+	h.enter(func() {
+		ready = usable()
+		looked = true
+		if overdue && !ready {
+			expireNow()
+		}
+	})
 	if !ready {
 		if err := untilUsable(h.events, value, usable, waiting.context); err != nil {
 			return nil, err

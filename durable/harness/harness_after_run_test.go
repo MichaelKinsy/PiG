@@ -7,6 +7,9 @@
 // with them. "not-a-list" (`{ tasks: "x" }` from an afterRun hook) is not expressible: RunEndTasks.Tasks is a slice of
 // RunEndTask, so the Go type system rejects what TypeScript's cast smuggles in; the rest of "reports broken requests
 // and hooks and creates the rest" runs unchanged.
+// A report a task raises once its commit call returned (task_interrupted of a generation cut off at the limit) is read through
+// eventually: Pi reads it after the awaits of its wait and its snapshots, which let the continuation of that commit run first,
+// and a returned wait or a cached snapshot of Go gives the goroutine that committed no turn.
 
 package harness
 
@@ -1097,6 +1100,9 @@ func TestAfterRun(t *testing.T) {
 		if inbox := must(durable.Snapshot(testContext, opened.harness, InboxDoc, opened.root.Id())); len(inbox.Items) != 1 {
 			t.Fatalf("inbox = %+v, want one item", inbox.Items)
 		}
+		// The task raises its report once its commit call returned, which is after the commit was published and the conversation
+		// went idle: eventually's turns end only when every other goroutine is parked, so the report has landed by then.
+		eventually(t, func() bool { return len(arInfosOf(setup, durable.ReportTaskInterrupted)) > 0 })
 		interrupted := arInfosOf(setup, durable.ReportTaskInterrupted)
 		if len(interrupted) == 0 || interrupted[0].Reason != "restart_limit" {
 			t.Fatalf("task_interrupted reports = %+v, want restart_limit", interrupted)
