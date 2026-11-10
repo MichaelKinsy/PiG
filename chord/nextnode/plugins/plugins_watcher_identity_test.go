@@ -100,10 +100,21 @@ func TestTheBaseMarkIsNotSetByADirectoryMovedAwayAndBackAndItsWatchesGoOn(t *tes
 	f.baseIs(true)
 }
 
+// skipWhereAWatchedTreeCannotMove skips a case that renames a directory with a watched directory inside it, which Windows refuses
+// with ERROR_ACCESS_DENIED while any handle is open on something inside (Node's `fs.watch`, one watch per directory as here,
+// holds such handles too). TestWindowsRefusesToRenameAWatchedTreeUntilTheWatcherCloses runs that fact on Windows.
+func skipWhereAWatchedTreeCannotMove(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows refuses to rename a directory with a watched directory inside it")
+	}
+}
+
 // A base directory (a tree watch, not one held alone) moved away and back in one burst keeps every watch of its tree: kqueue
 // drops the watch of a renamed directory, and `keepWatches` puts back the ones of the tree. An edit of a file in the directory
 // itself and one in its subdirectory are seen afterwards, and so is a new file (the directory's own watch).
 func TestTheBaseMarkKeepsTheTreeWatchesOfABaseDirectoryMovedAwayAndBackInOneBurst(t *testing.T) {
+	skipWhereAWatchedTreeCannotMove(t)
 	parent := realOf(t, tempRoot(t))
 	base := filepath.Join(parent, "app")
 	writeFiles(t, base, map[string]string{"core.ts": "v1", "sub/inner.ts": "inner"})
@@ -180,6 +191,9 @@ func (f *watcherFixture) loseWatch(dir string) {
 // for certain. It is then no other directory than the one watched, and with a record of its identity and no watch, nothing
 // renews it: the files under it are never watched again.
 func TestTheBaseMarkWatchesADirectoryBackWhoseWatchCouldNotBePutBackWhileItWasAway(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("a watch ended by the move of its directory (inotify's, kqueue's) does not exist there: the watch of ReadDirectoryChangesW stays on the moved directory, and fsnotify's Remove finds a watch by the path it has now")
+	}
 	_, f := based(t, nil)
 	top := realOf(t, tempRoot(t))
 	dir := filepath.Join(top, "d")
@@ -216,6 +230,7 @@ func TestTheBaseMarkWatchesADirectoryBackWhoseWatchCouldNotBePutBackWhileItWasAw
 // The same for a base directory, a tree: the watches of its directories that ended while it was away cannot be put back, and
 // are put back when it is back, whatever its identity then.
 func TestTheBaseMarkWatchesTheTreeOfABaseDirectoryBackWhoseWatchesCouldNotBePutBackWhileItWasAway(t *testing.T) {
+	skipWhereAWatchedTreeCannotMove(t)
 	parent := realOf(t, tempRoot(t))
 	base := filepath.Join(parent, "app")
 	writeFiles(t, base, map[string]string{"core.ts": "v1", "sub/inner.ts": "inner"})
