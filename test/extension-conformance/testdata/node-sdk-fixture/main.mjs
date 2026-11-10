@@ -925,14 +925,11 @@ export default function (pi) {
   pi.registerCommand("event_result_probe", { description: "Subscribe to an event with a handler that returns the given JSON", handler: async (args) => { const [name, ...rest] = String(args).trim().split(" "); const result = JSON.parse(rest.join(" ")); pi.on(name, async () => result); } });
   pi.registerCommand("event_signal_probe", { description: "Subscribe to session_before_compact or session_before_tree with a handler that returns the state of its event signal", handler: async (args) => { const name = String(args).trim(); pi.on(name, async (event, ctx) => {
     const mode = (name === "session_before_tree" ? event.preparation : event).customInstructions;
-    let aborted = event.signal.aborted;
-    if (mode === "wait") {
-      ctx.ui.notify(`event_signal:${name}:entered`, "info");
-      await new Promise((resolve) => { const timer = setTimeout(resolve, 8000); event.signal.aborted ? resolve() : event.signal.addEventListener("abort", () => { clearTimeout(timer); resolve(); }, { once: true }); });
-      aborted = event.signal.aborted;
-    }
-    if (mode === "first") ctx.ui.notify(`event_signal:${name}:notified`, "info");
-    const state = `event_signal:${mode}:${aborted}`;
+    const before = event.signal.aborted;
+    // Pi's handler awaits ordinary host calls with the signal aborted or aborting (custom-compaction.ts notifies first): the call returns the user's answer.
+    let answer;
+    try { answer = await ctx.ui.input(`event_signal:${name}:${mode}:pending`, "p"); } catch (error) { answer = `failed: ${error?.message ?? error}`; }
+    const state = `event_signal:${mode}:${before}:${event.signal.aborted}:${answer}`;
     return name === "session_before_compact" ? { compaction: { summary: state, firstKeptEntryId: "k", tokensBefore: 1 } } : { label: state };
   }); } });
   pi.registerCommand("event_ordered_result_probe", { description: "Subscribe to an event with a handler that returns the given JSON, members in written order", handler: async (args) => { const [name, ...rest] = String(args).trim().split(" "); const result = JSON.parse(rest.join(" ")); pi.on(name, async () => result); } });

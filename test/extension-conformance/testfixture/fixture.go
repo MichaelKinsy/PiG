@@ -1515,7 +1515,7 @@ func Extension() *sdk.Extension {
 		ext.OnEvent(name, func(sdk.Context, map[string]any) (any, error) { return result, nil })
 		return nil
 	})
-	// event_signal_probe subscribes to session_before_compact or session_before_tree with a handler that reports, in the result it returns, whether the event's signal (the handler request's cancellation) is aborted: on its first line for the mode "first", after it waited for the abort for the mode "wait" (the mode is the event's customInstructions). TestSessionBeforeSignalReachesEverySDKWhenAbortedDuringDispatch.
+	// event_signal_probe subscribes to session_before_compact or session_before_tree with a handler that reports, in the result it returns, the state of the event's signal (the handler request's cancellation) on its first line and after a dialog it opened answered, and the dialog's answer (the mode is the event's customInstructions): the signal aborts while the dialog is pending (mode "wait") or before the handler runs (mode "first"), and Pi's in-process host call still returns its answer. The answer is no SDK's fallback: a cancelled call yields an error. TestSessionBeforeSignalReachesEverySDKWhenAbortedDuringDispatch.
 	ext.Command("event_signal_probe", "Subscribe to session_before_compact or session_before_tree with a handler that returns the state of its event signal", func(ctx sdk.Context, args string) error {
 		name := strings.TrimSpace(args)
 		ext.OnEvent(name, func(hctx sdk.Context, data map[string]any) (any, error) {
@@ -1524,20 +1524,13 @@ func Extension() *sdk.Extension {
 				source, _ = data["preparation"].(map[string]any)
 			}
 			mode, _ := source["customInstructions"].(string)
-			aborted := hctx.Err() != nil
-			if mode == "wait" {
-				hctx.Notify("event_signal:"+name+":entered", "info")
-				select {
-				case <-hctx.Done():
-				case <-time.After(8 * time.Second):
-				}
-				aborted = hctx.Err() != nil
+			before := hctx.Err() != nil
+			// Pi's handler runs ordinary host calls with the signal aborted or aborting (custom-compaction.ts notifies first): the call returns the user's answer.
+			answer, _, err := hctx.Input("event_signal:"+name+":"+mode+":pending", "p")
+			if err != nil {
+				answer = "failed: " + err.Error()
 			}
-			if mode == "first" {
-				// Pi's handler runs ordinary host calls after the abort (custom-compaction.ts notifies first): the notification must reach the host.
-				hctx.Notify("event_signal:"+name+":notified", "info")
-			}
-			state := fmt.Sprintf("event_signal:%s:%t", mode, aborted)
+			state := fmt.Sprintf("event_signal:%s:%t:%t:%s", mode, before, hctx.Err() != nil, answer)
 			if name == "session_before_compact" {
 				return map[string]any{"compaction": map[string]any{"summary": state, "firstKeptEntryId": "k", "tokensBefore": 1}}, nil
 			}

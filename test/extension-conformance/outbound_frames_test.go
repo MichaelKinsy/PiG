@@ -26,7 +26,9 @@ type frameCheck struct {
 	// serde_json's 128 levels, by event.
 	deltas     map[string]int
 	deepDeltas map[string]int
-	failures   []string
+	// cancels counts the cancel frames the host wrote.
+	cancels  int
+	failures []string
 }
 
 // checkOutboundFrames fails t when a frame the host writes to an extension, in any load mode, is not the bytes json.Marshal writes for the envelope it carries: every member in the encoder's order, every raw member compact and escaped as the encoder escapes it (<, >, &, U+2028, U+2029). Each realization of an extension then receives the bytes it received before the host shared or spliced encodings.
@@ -57,6 +59,9 @@ func (c *frameCheck) observe(extName string, frame []byte) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.frames++
+	if env.Type == subprocess.MsgCancel {
+		c.cancels++
+	}
 	if env.Request != nil && env.Request.Method == "event" {
 		if c.events == nil {
 			c.events = map[string]int{}
@@ -75,6 +80,13 @@ func (c *frameCheck) observe(extName string, frame []byte) {
 	if failure != "" && len(c.failures) < 5 {
 		c.failures = append(c.failures, failure)
 	}
+}
+
+// cancelFrames returns how many cancel frames the host wrote, counted by the write loop before it writes each, so a frame the loop writes after the count follows that cancel on the wire.
+func (c *frameCheck) cancelFrames() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.cancels
 }
 
 // eventFrames returns how many event requests of each kind the host wrote.

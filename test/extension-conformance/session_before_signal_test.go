@@ -6,16 +6,15 @@ import (
 	"fmt"
 	"slices"
 	"testing"
-	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
-// Pi awaits every handler of session_before_compact and session_before_tree with event.signal aborted and keeps their results (runner.ts emit; agent-session.ts:2878-2890, 3206-3218, 4107-4135; navigateTree checks no abort after the emit). Every SDK's handler therefore sees
-//   - mode "wait": the abort reaching it while it runs (event.signal aborts, the handler's request is cancelled) and its reply, returned after the abort, reaches the host;
-//   - mode "first": a handler dispatched after the abort starts with the signal already aborted, on its first line.
+// Pi awaits every handler of session_before_compact and session_before_tree with event.signal aborted and keeps their results (runner.ts emit; agent-session.ts:2867-2870, 2878-2890, 3206-3218, 4107-4135; navigateTree checks no abort after the emit). The abort fires event.signal and nothing else: the handler's host calls are in-process and never fail with it. Every SDK's handler therefore sees
+//   - mode "wait": the abort reaching it while a host call of its own is pending (a dialog the host UI holds): event.signal aborts, the pending call is not cancelled and returns the user's answer, and the handler's reply, returned after the abort, reaches the host;
+//   - mode "first": a handler dispatched after the abort starts with the signal already aborted, on its first line, and its host call runs and returns the answer.
 //
-// The probe returns the state it read in its result, which no SDK's fallback produces: a handler that never ran, a reply the host dropped and a signal that was not aborted all give another value. The row runs in every SDK, isolated, packed and (Go) fused, with the dispatch context detached from the abort as the Session emits the events.
+// The probe returns the state it read in its result (the signal on its first line, the signal after the call, the call's answer), which no SDK's fallback produces: a handler that never ran, a reply the host dropped, a call cancelled with the request and a signal that was not aborted all give another value. The row is deterministic: the host UI holds the call until the host has queued the cancel frame, so the cancel precedes the call's answer on the wire and every runtime must apply it before it routes the answer. It runs in every SDK, isolated, packed and (Go) fused, with the dispatch context detached from the abort as the Session emits the events.
 func TestSessionBeforeSignalReachesEverySDKWhenAbortedDuringDispatch(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
@@ -52,6 +51,7 @@ func TestSessionBeforeSignalReachesEverySDKWhenAbortedDuringDispatch(t *testing.
 					h.host.Shutdown("test done")
 				}
 			})
+			h.ui.dialogs = newDialogGate()
 			for _, event := range events {
 				t.Run(event.name, func(t *testing.T) {
 					runConformanceCommandArgs(t, h, "event_signal_probe", event.name)
@@ -69,19 +69,23 @@ func TestSessionBeforeSignalReachesEverySDKWhenAbortedDuringDispatch(t *testing.
 								result, err := h.runner.Emit(context.WithoutCancel(signal), event.emit(mode, signal))
 								emitted <- outcome{result, err}
 							}
+							pending := "event_signal:" + event.name + ":" + mode + ":pending"
+							held := func() bool { return slices.Contains(h.ui.dialogs.openTitles(), pending) }
+							wantBefore := false
 							if mode == "first" {
 								abort()
-								emit()
+								wantBefore = true
+								go emit()
+								pollUntilConformance(t, "the handler dispatched after the abort never reached its host call", held)
 							} else {
 								go emit()
-								entered := "event_signal:" + event.name + ":entered:info"
-								pollUntilConformance(t, "the handler never entered its wait", func() bool {
-									return slices.Contains(h.ui.Recorded(), entered)
-								})
-								// The host records the notification when the call reaches it and answers at once; an abort that arrives before the SDK read the answer cancels the call with the request, which Pi's in-process notify never suffers. The abort follows the answer.
-								time.Sleep(250 * time.Millisecond)
+								pollUntilConformance(t, "the handler never reached its host call", held)
+								// The abort reaches the handler while its call is pending: the host holds the call until it has queued the cancel frame, which then precedes the answer on the wire.
+								cancels := h.wire.frames.cancelFrames()
 								abort()
+								pollUntilConformance(t, "the host never sent the cancel frame", func() bool { return h.wire.frames.cancelFrames() > cancels })
 							}
+							h.ui.dialogs.answer(t, pending, "answered")
 							got := <-emitted
 							if got.err != nil {
 								t.Fatalf("Emit: %v", got.err)
@@ -92,15 +96,8 @@ func TestSessionBeforeSignalReachesEverySDKWhenAbortedDuringDispatch(t *testing.
 							}
 							var decoded map[string]any
 							_ = json.Unmarshal(encoded, &decoded)
-							if want := fmt.Sprintf("event_signal:%s:true", mode); event.state(decoded) != want {
+							if want := fmt.Sprintf("event_signal:%s:%t:true:answered", mode, wantBefore); event.state(decoded) != want {
 								t.Fatalf("%s handler reported %q (result %s), want %q", mode, event.state(decoded), encoded, want)
-							}
-							if mode == "first" {
-								// Pi's handler dispatched after the abort runs ordinary host calls (examples/extensions/custom-compaction.ts notifies on its first line): the abort reaches it as event.signal, and its notification reaches the host.
-								notified := "event_signal:" + event.name + ":notified:info"
-								pollUntilConformance(t, "the handler's notification, sent after the abort, never reached the host", func() bool {
-									return slices.Contains(h.ui.Recorded(), notified)
-								})
 							}
 						})
 					}
