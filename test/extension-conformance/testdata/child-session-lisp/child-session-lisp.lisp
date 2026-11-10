@@ -175,6 +175,10 @@
 (defun error-text (thunk)
   (handler-case (progn (funcall thunk) "") (error (e) (princ-to-string e))))
 
+(defun same-path-p (a b)
+  "Whether A and B name one path whatever their separators: the host answers as Node's path.resolve does, with backslashes on Windows, for a path built here with a slash."
+  (equal (substitute #\/ #\\ a) (substitute #\/ #\\ b)))
+
 (defun file-text (path)
   (with-open-file (in path :external-format :utf-8)
     (let ((text (make-string (file-length in))))
@@ -268,7 +272,7 @@
                    (put "navigate" (pig:obj "cancelled" (flag (eq (pig:jget nav "cancelled") t)) "editorText" (or (pig:jget nav "editorText") ""))))))
              (let* ((jsonl (concatenate 'string dir "/export.jsonl"))
                     (path (pig:agent-session-export-to-jsonl session jsonl)))
-               (put "exportedJsonl" (flag (equal path jsonl)))
+               (put "exportedJsonl" (flag (same-path-p path jsonl)))
                (put "jsonlHasSession" (flag (search id (file-text jsonl)))))
              (put "bugReport" (flag (let ((report (pig:agent-session-summarize-for-bug-report session :hint "member-hint")))
                                       (and (>= (length report) 20) (string= "sentinel-model:echo:" report :end2 20)))))

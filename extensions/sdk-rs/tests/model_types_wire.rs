@@ -583,6 +583,7 @@ fn provider_object_declares_and_runs_generate_images_and_classify() {
         name: "Pixels".into(),
         base_url: None,
         headers: None,
+        refresh_models_auth: None,
         auth: ProviderAuth {
             api_key: Some(APIKeyAuth { name: "Pixels key".into(), check: None, resolve: std::sync::Arc::new(|_| Ok(Some(AuthResult { auth: json!({}), env: None, source: None }))), login: None }),
             oauth: None,

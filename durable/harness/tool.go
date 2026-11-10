@@ -22,6 +22,7 @@ import (
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/env"
 	"github.com/MichaelKinsy/PiG/durable/session"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
@@ -169,7 +170,7 @@ func (checkpoint *ToolTaskCheckpoint) UnmarshalJSON(data []byte) error {
 		var object struct {
 			Arguments map[string]any `json:"arguments"`
 		}
-		if err := json.Unmarshal(data, &object); err != nil {
+		if err := jsstring.UnmarshalKeepingSurrogates(data, &object); err != nil {
 			return err
 		}
 		decoded.Arguments = object.Arguments
@@ -187,7 +188,7 @@ func (checkpoint ToolTaskCheckpoint) argumentsText() (json.RawMessage, error) {
 	if checkpoint.Arguments == nil {
 		return json.RawMessage("{}"), nil
 	}
-	return json.Marshal(checkpoint.Arguments)
+	return jsstring.MarshalKeepingSurrogates(checkpoint.Arguments)
 }
 
 type toolRuntime = durable.TaskRuntime[ToolTaskInput, ToolTaskCheckpoint, ToolTaskResult, *ToolHooks]
@@ -550,8 +551,8 @@ func prepareArguments(tool *durable.ToolRegistration, args map[string]any) (map[
 	// Tool arguments are pi-ai values, which Go keeps as ai.JsonObject maps.
 	var object map[string]any
 	if encoded, isObject := copied.(*delta.JsonObject); isObject {
-		text, _ := json.Marshal(encoded)
-		_ = json.Unmarshal(text, &object)
+		text, _ := jsstring.MarshalKeepingSurrogates(encoded)
+		_ = jsstring.UnmarshalKeepingSurrogates(text, &object)
 	}
 	return object, ""
 }

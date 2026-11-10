@@ -16,7 +16,7 @@ export function nativeDeclaration(provider, key) {
     };
   }
   return {
-    id: provider.id, key, name: provider.name, baseUrl: provider.baseUrl, headers: provider.headers, auth, methods,
+    id: provider.id, key, name: provider.name, baseUrl: provider.baseUrl, headers: provider.headers, refreshModelsAuth: provider.refreshModelsAuth, auth, methods,
     models: provider.getAllModels?.() ?? provider.getModels(),
     oauth: provider.auth.oauth ? {
       name: provider.auth.oauth.name, isSubscription: provider.auth.oauth.isSubscription,

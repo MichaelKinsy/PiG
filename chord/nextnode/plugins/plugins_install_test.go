@@ -487,6 +487,23 @@ func TestInstallPluginRemovesWhatArrivedWhenItHoldsNoPlugin(t *testing.T) {
 	}
 }
 
+// Not upstream's: a problem names the directory the package was going to be installed into, at the root as the caller spelled it,
+// though discovery reports the staged directory by its real path (the root is reached through a link here; on Windows it is
+// the 8.3 short name of a temporary directory).
+func TestInstallPluginNamesTheTargetInAProblemWhenTheRootIsReachedByALink(t *testing.T) {
+	repository := gitRepository(t, "empty", map[string]string{"readme.md": ""}, "v1", nil)
+	real := realOf(t, tempRoot(t))
+	root := filepath.Join(tempRoot(t), "linked")
+	testenv.RequireDirectoryLink(t, real, root)
+	_, err := InstallPlugin(PluginSource{Git: repository.url, Ref: "v1"}, root, background, InstallPluginOptions{})
+	if want := "installPlugin: " + filepath.Join(root, "empty") + ": no package.json"; err == nil || err.Error() != want {
+		t.Fatalf("error = %v, want %s", err, want)
+	}
+	if names := listing(t, real); len(names) != 0 {
+		t.Fatalf("root = %v", names)
+	}
+}
+
 // Not upstream's: an abort of ctx during a clone kills git and returns the abort's reason, and what the install created is
 // removed (`run`'s `signal: context.abortSignal` and the catch that removes the claim).
 func TestInstallPluginReturnsTheAbortsReasonAndRemovesWhatItCreated(t *testing.T) {

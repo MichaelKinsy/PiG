@@ -17,11 +17,11 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// Ports packages/chord/test/host/activity.test.ts for the part that needs no host. Every case of upstream's file runs
-// on a host (createHost, linked server and client hosts, serveNotes, defineFacet, host.get/hold): they belong to the host
-// core and the remote lane. These are own tests of `activity` on a batch and a fake loop with the behavior the cases that
-// are about the source itself assert, each naming its case: the one publication per microtask turn, the newest counts for a
-// slow watcher, nothing scheduled while nobody follows it, derives over it, no jobs.
+// Ports packages/chord/test/host/activity.test.ts: the TestHostActivity... cases are the upstream cases on whole hosts
+// (createHost, linked server and client hosts, serveNotes, defineFacet, host.get/hold); the TestActivity... cases are
+// own tests of `activity` on a batch and a fake loop, each naming the case whose behavior of the source itself it
+// asserts: the one publication per microtask turn, the newest counts for a slow watcher, nothing scheduled while nobody
+// follows it, derives over it, no jobs, the value frames it publishes.
 
 // countingLoop is a fakeLoop that counts the microtasks queued (`vi.spyOn(globalThis, "queueMicrotask")`).
 type countingLoop struct {
@@ -574,5 +574,25 @@ func TestHostActivityCountsNoJobsOnAHost(t *testing.T) {
 	defer closeHosts(t, host)
 	if got := activityOf(host).Jobs; got != 0 {
 		t.Fatalf("jobs = %d, want 0", got)
+	}
+}
+
+// activity.ts `deliver`: a publication is a value frame of the counts, never a retirement of the source.
+func TestActivityPublicationsAreNotRetirements(t *testing.T) {
+	h := newActivityHarness(t)
+	var mu sync.Mutex
+	var retired []bool
+	h.watch().Start(func(_ context.Context, call chord.WatchCall[delta.JsonValue]) error {
+		mu.Lock()
+		defer mu.Unlock()
+		retired = append(retired, call.Retired)
+		return nil
+	})
+	h.activity.count(activityCalls, 1)
+	h.turn()
+	mu.Lock()
+	defer mu.Unlock()
+	if len(retired) != 1 || retired[0] {
+		t.Fatalf("retired flags of the publications = %v, want one, false", retired)
 	}
 }

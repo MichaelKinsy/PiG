@@ -72662,6 +72662,17 @@
       "shapeHash": "sha256:f1627669917a681a2d0de09c82296a20744a3daf51f53956333b1e782e2400d3"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.isRadiusCatalog",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "ModelRegistry.isRadiusCatalog",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(id string) bool"
+      },
+      "shapeHash": "sha256:f1627669917a681a2d0de09c82296a20744a3daf51f53956333b1e782e2400d3"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.isRadiusProvider",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "ModelRegistry.isRadiusProvider",
@@ -73199,6 +73210,17 @@
         "type": "func(providerID string, prov github.com/MichaelKinsy/PiG/internal/codingagent.providerConfig, md github.com/MichaelKinsy/PiG/internal/codingagent.modelDefinition) github.com/MichaelKinsy/PiG/internal/codingagent.ModelEntry"
       },
       "shapeHash": "sha256:89bfcf8d330e9c2233655b0e63c738e13f4d7d40fefd618c080495334d6b1be6"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.resolveNetworkRefresh",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "ModelRegistry.resolveNetworkRefresh",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, p *github.com/MichaelKinsy/PiG/coding/extension.NativeProvider, credentials *github.com/MichaelKinsy/PiG/ai.RuntimeCredentials, stored *github.com/MichaelKinsy/PiG/ai.Credential) (*github.com/MichaelKinsy/PiG/ai.Credential, bool, error)"
+      },
+      "shapeHash": "sha256:9edb4762f01f81c41c9590f117f7660dc2e3ac4badff6be07863e9a695eaff23"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.resolveProviderDefaults",
@@ -263545,6 +263567,17 @@
       "shapeHash": "sha256:f1627669917a681a2d0de09c82296a20744a3daf51f53956333b1e782e2400d3"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelRegistry.isRadiusCatalog",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "ModelRegistry.isRadiusCatalog",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(id string) bool"
+      },
+      "shapeHash": "sha256:f1627669917a681a2d0de09c82296a20744a3daf51f53956333b1e782e2400d3"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelRegistry.isRadiusProvider",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "ModelRegistry.isRadiusProvider",
@@ -264082,6 +264115,17 @@
         "type": "func(providerID string, prov providerConfig, md modelDefinition) ModelEntry"
       },
       "shapeHash": "sha256:311813bfe8f345f208250349f005cf4a1a0c36ce866355a5335f6c1132c1c948"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelRegistry.resolveNetworkRefresh",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "ModelRegistry.resolveNetworkRefresh",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, p *github.com/MichaelKinsy/PiG/coding/extension.NativeProvider, credentials *github.com/MichaelKinsy/PiG/ai.RuntimeCredentials, stored *github.com/MichaelKinsy/PiG/ai.Credential) (*github.com/MichaelKinsy/PiG/ai.Credential, bool, error)"
+      },
+      "shapeHash": "sha256:9edb4762f01f81c41c9590f117f7660dc2e3ac4badff6be07863e9a695eaff23"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelRegistry.resolveProviderDefaults",

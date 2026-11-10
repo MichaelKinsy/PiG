@@ -12,6 +12,7 @@ function displayUrl(value) {
 	return webUrl(value) ?? replaceControlCharacters(value);
 }
 
+process.stdin.setEncoding("utf8");
 let input = "";
 for await (const chunk of process.stdin) input += chunk;
 const values = JSON.parse(input);

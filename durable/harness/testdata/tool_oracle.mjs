@@ -1,5 +1,5 @@
 // Run Pi's tool result helpers (packages/durable/src/harness/tool.ts, imported as-is with types stripped; a load hook appends an export of its private helpers) over ops from stdin.
-// Op: {op: "bound", content, limits} | {op: "truncated", lines, bytes, retain?} | {op: "fromSlot", slot?, code, message} | {op: "append", call, result, timestamp, durationMs?}
+// Op: {op: "checkKey", key} | {op: "bound", content, limits} | {op: "truncated", lines, bytes, retain?} | {op: "fromSlot", slot?, code, message} | {op: "append", call, result, timestamp, durationMs?}
 // stdout: per op {ok} or {err}; an append answers the stored entry's {model, data}.
 // usage: node tool_oracle.mjs <packages dir>   (PI_INTEROP_DIR: a directory whose node_modules holds @earendil-works/pi-ai and typebox)
 import module from "node:module";
@@ -16,11 +16,11 @@ module.registerHooks({
 	load(url, context, next) {
 		const loaded = next(url, context);
 		if (!url.endsWith("/durable/src/harness/tool.ts")) return loaded;
-		return { ...loaded, source: `${loaded.source.toString()}\nexport { boundContent, fromSlot, truncated };\n` };
+		return { ...loaded, source: `${loaded.source.toString()}\nexport { boundContent, fromSlot, truncated, checkKey };\n` };
 	},
 });
 const load = (path) => import(pathToFileURL(`${packages}${path}`).href);
-const { boundContent, fromSlot, truncated, appendToolResult } = await load("durable/src/harness/tool.ts");
+const { boundContent, fromSlot, truncated, checkKey, appendToolResult } = await load("durable/src/harness/tool.ts");
 const { MemoryStorage } = await load("durable/src/storage/memory.ts");
 const { createSession } = await load("durable/src/session/session.ts");
 const { BACKGROUND_CONTEXT } = await load("chord/src/context/index.ts");
@@ -37,6 +37,10 @@ for (const op of JSON.parse(input)) {
 				break;
 			case "truncated":
 				out.push({ ok: truncated({ droppedLines: op.lines, droppedBytes: op.bytes }, op.retain) });
+				break;
+			case "checkKey":
+				checkKey(op.key);
+				out.push({ ok: null });
 				break;
 			case "fromSlot":
 				out.push({ ok: fromSlot(op.slot, op.code, op.message) });

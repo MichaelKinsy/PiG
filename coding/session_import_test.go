@@ -175,6 +175,7 @@ func TestImportFromJsonlReportsMissingSource(t *testing.T) {
 // source's own name. Pi's "leaves no copy behind when an import fails on a
 // missing session cwd" (#11060).
 func TestImportFromJsonlMissingCwdNeedsOverride(t *testing.T) {
+	recordRuntimeOriginal(t, 218)
 	sessionDir := t.TempDir()
 	sess, err := NewSession(newTestServices(t), SessionOptions{Model: fakeModel(), SessionDir: sessionDir})
 	if err != nil {

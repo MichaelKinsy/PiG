@@ -11,13 +11,16 @@ import (
 
 // Provider is Pi's callable provider object. The ModelRegistry resolves credentials and normalizes transcripts separately from these methods.
 type Provider struct {
-	handle    string
-	ID        string
-	Name      string
-	BaseURL   *string
-	Headers   map[string]string
-	Auth      ProviderAuth
-	GetModels func() ([]map[string]any, error)
+	handle  string
+	ID      string
+	Name    string
+	BaseURL *string
+	Headers map[string]string
+	// RefreshModelsAuth is Pi's Provider.refreshModelsAuth: "credential" (the default, also for empty) or "configured". With "configured" the network phase of a catalog refresh runs without the credential and no OAuth refresh happens first.
+	// upstream: packages/ai/src/models.ts Provider.refreshModelsAuth
+	RefreshModelsAuth string
+	Auth              ProviderAuth
+	GetModels         func() ([]map[string]any, error)
 	// GetAllModels lists the models of every type; without it GetModels does.
 	// upstream: packages/ai/src/models.ts Provider.getAllModels
 	GetAllModels func() ([]map[string]any, error)
@@ -125,17 +128,18 @@ type providerObjectAuth struct {
 	OAuth  *providerObjectAuthMethod `json:"oauth,omitempty"`
 }
 type providerObjectDeclaration struct {
-	lease   *providerLease
-	ID      string               `json:"id"`
-	Key     string               `json:"key"`
-	Handle  string               `json:"handle,omitempty"`
-	Name    string               `json:"name"`
-	BaseURL *string              `json:"baseUrl,omitempty"`
-	Headers *map[string]string   `json:"headers,omitempty"`
-	Auth    providerObjectAuth   `json:"auth"`
-	Models  []map[string]any     `json:"models"`
-	Methods []string             `json:"methods"`
-	OAuth   *providerOAuthConfig `json:"oauth,omitempty"`
+	lease             *providerLease
+	ID                string               `json:"id"`
+	Key               string               `json:"key"`
+	Handle            string               `json:"handle,omitempty"`
+	Name              string               `json:"name"`
+	BaseURL           *string              `json:"baseUrl,omitempty"`
+	Headers           *map[string]string   `json:"headers,omitempty"`
+	RefreshModelsAuth string               `json:"refreshModelsAuth,omitempty"`
+	Auth              providerObjectAuth   `json:"auth"`
+	Models            []map[string]any     `json:"models"`
+	Methods           []string             `json:"methods"`
+	OAuth             *providerOAuthConfig `json:"oauth,omitempty"`
 }
 
 func providerDeclaration(provider *Provider, key string) (providerObjectDeclaration, error) {
@@ -145,7 +149,7 @@ func providerDeclaration(provider *Provider, key string) (providerObjectDeclarat
 	if provider.GetModels == nil || provider.Stream == nil || provider.StreamSimple == nil {
 		return providerObjectDeclaration{}, errors.New("Provider requires getModels, stream and streamSimple")
 	}
-	decl := providerObjectDeclaration{ID: provider.ID, Key: key, Name: provider.Name, BaseURL: provider.BaseURL, Methods: []string{"getModels", "stream", "streamSimple"}}
+	decl := providerObjectDeclaration{ID: provider.ID, Key: key, Name: provider.Name, BaseURL: provider.BaseURL, Methods: []string{"getModels", "stream", "streamSimple"}, RefreshModelsAuth: provider.RefreshModelsAuth}
 	if provider.Headers != nil {
 		decl.Headers = &provider.Headers
 	}

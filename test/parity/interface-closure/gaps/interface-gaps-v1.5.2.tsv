@@ -52,29 +52,9 @@ pkg:chord/app#App::property:deleteData::call:0	chord	member-missing	chord/nextno
 pkg:chord/app#App::property:importData	chord	child-gap	chord/nextnode/app/app.go#App.ImportData
 pkg:chord/app#App::property:importData::call:0	chord	signature-mismatch	chord/nextnode/app/app.go#App.ImportData
 pkg:chord/app#DataImportOptions	chord	no-go-symbol	
-pkg:chord/react#HostProvider	chord	no-go-symbol	
-pkg:chord/react#HostProvider::call:0	chord	child-gap	
 pkg:chord/workers#WorkersBuilt	chord	type-mismatch	chord/nextnode/workers/workers_workers.go#WorkersBuilt
 pkg:chord/workers#WorkersOptions	chord	type-mismatch	chord/nextnode/workers/workers_workers.go#WorkersOptions
 pkg:coding-agent/.#GrepOperations	coding-agent	child-gap	internal/codingagent/tools/grep.go#GrepOperations
 pkg:coding-agent/.#GrepOperations::property:readFile	coding-agent	not-exercised	internal/codingagent/tools/grep.go#GrepOperations.ReadFile
 pkg:coding-agent/.#OAuthSelectorComponent	coding-agent	child-gap	tui/oauth_selector.go#OAuthSelectorComponent
 pkg:coding-agent/.#OAuthSelectorComponent::construct:0	coding-agent	signature-mismatch	tui/oauth_selector.go#NewOAuthSelectorComponent
-pkg:durable/.#NativeWatchCall	durable	undecidable	
-pkg:durable/.#WatchCall	durable	undecidable	
-pkg:durable/.#WatchEnd	durable	undecidable	
-pkg:durable/.#WatchHandle	durable	undecidable	
-pkg:durable/.#section	durable	child-gap	durable/harness/define.go#Section
-pkg:durable/.#section::call:0	durable	signature-mismatch	durable/harness/define.go#Section
-pkg:durable/storage/sqlite#CURRENT_SQLITE_SCHEMA_VERSION	durable	undecidable	durable/storage/sqlite/migrations.go#CurrentSqliteSchemaVersion
-pkg:durable/storage/sqlite#SqliteDatabase	durable	undecidable	
-pkg:durable/storage/sqlite#SqliteExecutor	durable	undecidable	
-pkg:durable/storage/sqlite#SqliteMigration	durable	undecidable	
-pkg:durable/storage/sqlite#SqliteValue	durable	undecidable	
-pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase	durable	undecidable	
-pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteStorage	durable	undecidable	
-pkg:durable/storage/sqlite/node#NodeSqliteDatabase	durable	undecidable	
-pkg:durable/storage/sqlite/node#NodeSqliteDatabaseOptions	durable	undecidable	
-pkg:durable/storage/sqlite/node#openNodeSqliteDatabase	durable	undecidable	
-pkg:durable/storage/sqlite/node#openNodeSqliteStorage	durable	child-gap	durable/storage/sqlite/node/node.go#OpenNodeSqliteStorage
-pkg:durable/storage/sqlite/node#openNodeSqliteStorage::call:0	durable	undecidable	durable/storage/sqlite/node/node.go#OpenNodeSqliteStorage
