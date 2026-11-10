@@ -975,6 +975,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-7dc9b09](#bf-7dc9b09) | `-e <local Package>` now contributes its prompts, skills and themes, loaded before the project, user and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7dc9b09-2](#bf-7dc9b09-2) | `--prompt-template` and `--theme` paths are now merged after the project, user and Package resources, as in… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7dd0dc1](#bf-7dd0dc1) | fix(ai): prompt cache key mode and no empty tools array on openai-completions | PiG's own defect | All platforms | Unreleased |
+| [BF-7ddb7c1](#bf-7ddb7c1) | `chord/next/surfaces`: a locale tag is canonical as Node's `Intl.getCanonicalLocales` has it for the time… | PiG's own defect | All platforms | Unreleased |
+| [BF-7ddb7c1-2](#bf-7ddb7c1-2) | `chord/nextnode/plugins`: the copy of a Go core facet's keyed member a plugin reads (`Files.summary`) is… | PiG's own defect | All platforms | Unreleased |
 | [BF-7e09ec0](#bf-7e09ec0) | fix(codingagent): the idle collection runs one forced GC cycle (D172) | PiG's own defect | All platforms | Unreleased |
 | [BF-7e16053](#bf-7e16053) | `pig install /abs/path` (and `~/path` or a `file://` URL) records the path as you typed it in `packages[]` | A Pi defect that PiG fixed first | All platforms | 0.7.0 |
 | [BF-7e16053-2](#bf-7e16053-2) | A configured local Package whose directory does not exist is now a startup warning in the session, and an… | PiG's own defect | All platforms | 0.7.0 |
@@ -15192,6 +15194,34 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `7dd0dc1be1` (2026-11-07)
 - **Tests:** `ai/openai_prompt_cache_upstream_test.go::TestOpenAICompletionsPromptCacheUpstream`, `ai/openai_responses_prompt_cache_upstream_test.go::TestOpenAIResponsesPromptCacheKeyPolicyUpstream`, `ai/openai_test.go::TestOpenAICompletionsEmptyTools`
+
+### BF-7ddb7c1
+
+**`chord/next/surfaces`: a locale tag is canonical as Node's `Intl.getCanonicalLocales` has it for the time…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `chord/next/surfaces`: a locale tag is canonical as Node's `Intl.getCanonicalLocales` has it for the time zone aliases of six letters and more (`tz-hongkong` is `tz-hkhkg`, `tz-usnavajo` is `tz-usden`, `tz-factory` is `tz-unk`), for the languages Node aliases only when they are not written all in lower case or are the source language of a `-t-` extension (`TW` and `en-t-tw` are `ak`, `BH` is `bho`; `tw` alone stays `tw`), and for a lone `true` or `yes` in a private use or another extension (`en-x-true` is `en-x`).
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `7ddb7c1a27` (2026-11-10)
+- **Tests:** `chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberIsReadAgainAfterTheGoFacetReloads`, `chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberKeepsACommitMadeWhileTheObjectOpens`
+- **Release note:** `chord/next/surfaces`: a locale tag is canonical as Node's `Intl.getCanonicalLocales` has it for the time zone aliases of six letters and more (`tz-hongkong` is `tz-hkhkg`, `tz-usnavajo` is `tz-usden`, `tz-factory` is `tz-unk`), for the languages Node aliases only when they are not written all in lower case or are the source language of a `-t-` extension (`TW` and `en-t-tw` are `ak`, `BH` is `bho`; `tw` alone stays `tw`), and for a lone `true` or `yes` in a private use or another extension (`en-x-true` is `en-x`). The generator asks Node for the zones' names and for every six letters that begin with a region, and fails when a `-t-` source language is neither an alias nor in its table. `TestLocaleTablesMatchIntl` covers these classes.
+
+### BF-7ddb7c1-2
+
+**`chord/nextnode/plugins`: the copy of a Go core facet's keyed member a plugin reads (`Files.summary`) is…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `chord/nextnode/plugins`: the copy of a Go core facet's keyed member a plugin reads (`Files.summary`) is applied in the order the Go host committed.
+- **Root cause:** The documents are the first frame the Go side sends, the commits made while they were read follow them (before, a commit that reached the Node host in the same chunk as the documents was applied first and then retired or overwritten by them), a slot that ends while it is read is read again, and a document change refused because the object ended is not reported as a fatal error of the Node host.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `7ddb7c1a27` (2026-11-10)
+- **Tests:** `chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberIsReadAgainAfterTheGoFacetReloads`, `chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberKeepsACommitMadeWhileTheObjectOpens`
+- **Release note:** `chord/nextnode/plugins`: the copy of a Go core facet's keyed member a plugin reads (`Files.summary`) is applied in the order the Go host committed. The documents are the first frame the Go side sends, the commits made while they were read follow them (before, a commit that reached the Node host in the same chunk as the documents was applied first and then retired or overwritten by them), a slot that ends while it is read is read again, and a document change refused because the object ended is not reported as a fatal error of the Node host.
 
 ### BF-7e09ec0
 
