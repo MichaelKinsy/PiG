@@ -56,9 +56,6 @@ func TestLanguageFromPathMatchesPi(t *testing.T) {
 	failures := 0
 	for i, path := range paths {
 		got := LanguageFromPath(path)
-		if d260Extension(path) {
-			continue // pig divergence (D260): Pi main c13f6acfb maps these; the pinned Pi 1.5.0 does not
-		}
 		var want string
 		if expected[i] != nil {
 			want = *expected[i]
@@ -74,15 +71,4 @@ func TestLanguageFromPathMatchesPi(t *testing.T) {
 		t.Errorf("%d of %d paths differ from Pi", failures, len(paths))
 	}
 	_ = reflect.DeepEqual
-}
-
-// d260Extension reports whether path ends in an extension Pi main c13f6acfb maps and the pinned Pi 1.5.0 does not (D260).
-func d260Extension(path string) bool {
-	lower := strings.ToLower(path)
-	for _, ext := range []string{"dart", "nix", "groovy", "gradle"} {
-		if lower == ext || strings.HasSuffix(lower, "."+ext) { // a path without a dot is read whole as the extension
-			return true
-		}
-	}
-	return false
 }

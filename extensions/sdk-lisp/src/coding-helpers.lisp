@@ -43,7 +43,7 @@
   (let ((table (make-hash-table :test 'equal)))
     (loop for (language . extensions)
             in '(("typescript" "ts" "tsx") ("javascript" "js" "jsx" "mjs" "cjs") ("python" "py") ("ruby" "rb") ("rust" "rs") ("go" "go")
-                 ("java" "java") ("kotlin" "kt") ("swift" "swift") ("c" "c" "h") ("cpp" "cpp" "cc" "cxx" "hpp") ("csharp" "cs") ("php" "php")
+                 ("java" "java") ("kotlin" "kt") ("swift" "swift") ("dart" "dart") ("groovy" "groovy" "gradle") ("nix" "nix") ("c" "c" "h") ("cpp" "cpp" "cc" "cxx" "hpp") ("csharp" "cs") ("php" "php")
                  ("bash" "sh" "bash" "zsh") ("fish" "fish") ("powershell" "ps1") ("sql" "sql") ("html" "html" "htm") ("css" "css")
                  ("scss" "scss") ("sass" "sass") ("less" "less") ("json" "json") ("yaml" "yaml" "yml") ("toml" "toml") ("xml" "xml")
                  ("markdown" "md" "markdown") ("dockerfile" "dockerfile") ("makefile" "makefile") ("cmake" "cmake") ("lua" "lua")
