@@ -132137,8 +132137,25 @@
     },
     {
       "id": "pkg:chord/surfaces#SurfaceBuilt",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:34bdd375acedab7847cbb59aada79e41a588b2e626f2c410aa7a35a2d3fe1ce9"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:34bdd375acedab7847cbb59aada79e41a588b2e626f2c410aa7a35a2d3fe1ce9",
+      "rationale": "Derived by the interface gap detector: SurfaceBuilt is Go chord/nextnode/surfaces/surfaces_build.go#SurfaceBuilt (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/surfaces_build.go#SurfaceBuilt"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/surfaces/surfaces_build.go#publicOutcome"
+      ],
+      "evidence": [
+        "test:chord/nextnode/surfaces/surfaces_build_linux_test.go#TestARolloutStepDuringTheBuildStopsWaitingAtItsContextsAbortBeforeTheBuildEndsTheBuildGoesOn",
+        "test:chord/nextnode/surfaces/surfaces_build_linux_test.go#TestTheServersCloseFailsTheBuildInFlightItsWaitersAnswer503",
+        "test:chord/nextnode/surfaces/surfaces_build_test.go#TestAFailedBuildAnswers503ForTheSurfacesFilesAndFailsItsStepsHost"
+      ]
     },
     {
       "id": "pkg:chord/surfaces#TUI_PREFIX",
