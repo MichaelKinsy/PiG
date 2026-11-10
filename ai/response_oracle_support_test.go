@@ -347,6 +347,10 @@ func comparableRequest(request map[string]any, keepUserAgent bool) map[string]an
 	if keepUserAgent && kept["originator"] == "pi" {
 		kept["originator"] = pigidentity.CodexOriginator
 	}
+	// pig divergence (D235): PiG names Claude Code 2.1.322 on an OAuth request, as Pi main a05e3a0 does, where Pi 1.5.0 names 2.1.280.
+	if keepUserAgent && kept["user-agent"] == "claude-cli/2.1.280" {
+		kept["user-agent"] = "claude-cli/2.1.322"
+	}
 	return map[string]any{"path": request["path"], "method": request["method"], "headers": kept}
 }
 

@@ -20,7 +20,8 @@ import (
 
 // claudeCodeVersion is the Claude Code release named in the user-agent of
 // OAuth-token requests.
-const claudeCodeVersion = "2.1.280"
+// pig divergence (D235): Pi main a05e3a0's release; Pi 1.5.0 sends 2.1.280, which Anthropic refuses for newer models.
+const claudeCodeVersion = "2.1.322"
 
 // claudeCodeSystemPrompt is the first system block of every OAuth-token request.
 const claudeCodeSystemPrompt = "You are Claude Code, Anthropic's official CLI for Claude."
