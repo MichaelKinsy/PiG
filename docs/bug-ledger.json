@@ -26777,15 +26777,16 @@
     },
     {
       "id": "BF-7ecacae",
-      "title": "fix(coding-agent,ai): offer fork when a session cwd no longer exists; Claude Code 2.1.322",
-      "symptom": "fix(coding-agent,ai): offer fork when a session cwd no longer exists; Claude Code 2.1.322",
+      "title": "When a session's working directory no longer exists, interactive mode now offers Continue, Fork or Cancel (Pi…",
+      "symptom": "When a session's working directory no longer exists, interactive mode now offers Continue, Fork or Cancel (Pi 1.5.2): Continue runs the session in the current directory without storing the choice, Fork copies it into the current directory as a new session so the next resume no longer asks.",
       "rootCause": "Ports Pi (#11975): the missing-session-cwd prompt offers Continue, Fork or Cancel at startup, for /resume and ctx.switchSession (Resumed session in \u003ccwd\u003e, Forked into new session \u003cid\u003e in \u003ccwd\u003e) and for /import; a failed import removes its copy. Ports: claudeCodeVersion 2.1.322.",
       "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
+      "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "pi-port",
       "fixedIn": "Unreleased",
-      "origin": "commit",
+      "releaseNote": "When a session's working directory no longer exists, interactive mode now offers Continue, Fork or Cancel (Pi 1.5.2): Continue runs the session in the current directory without storing the choice, Fork copies it into the current directory as a new session so the next resume no longer asks. This applies at startup (`--session`, `--resume`), to `/resume`, to `ctx.switchSession()` from extensions and to `/import`; a failed `/import` removes the copy it made, and Anthropic OAuth requests report Claude Code 2.1.322.",
+      "origin": "release note",
       "commits": [
         {
           "hash": "7ecacae312",
