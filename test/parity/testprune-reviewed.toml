@@ -1794,3 +1794,10 @@ commit = "e35933ead2dcc727a9391208cf7ed688f9e0ce70"
 class = "CITE"
 cite = "packages/chord/src/node/http/upgrades.ts:157"
 reason = "Pi's error listener (upgrades.ts:156-157) leaves a socket that is already CLOSING alone, because ws has sent the protocol close code (1009 for an oversized frame); the Go test therefore expects the peer to see 1009 and, as its comment says, the server's own close event to report 1006. That 1006 is ws's behaviour, not a Pi line: Pi's pinned ws 8.21.0 (packages/chord/package.json:169; archive integrity as in the Pi package-lock.json entry node_modules/ws, sha512-Vsp28b7D...zCH+g==, checked against the registry tarball) starts every WebSocket with _closeCode = 1006 (lib/websocket.js:58), receiverOnError (lib/websocket.js:1201-1212) removes the socket's 'data' listener and calls websocket.close(1009), so the peer's close frame is never read, and only receiverOnConclude copies a received close frame's code into _closeCode (lib/websocket.js:1173); the 'close' event then emits 1006 (lib/websocket.js:269, 279). The commit's other expected value, the test and symbol rename, tracks the same behaviour. Pi's own test asserts only the client's 1009 (test/node/http/upgrades.test.ts:206)."
+
+[[entry]]
+path = "ai/radius_published_view_test.go"
+commit = "a94dde31ede8ff7cf29ae7ba2d7c5b0b392b2c55"
+class = "CITE"
+cite = "packages/ai/src/providers/radius.ts:28"
+reason = "Pi's radius.ts builds the baseline model list once (radius.ts:28-30) and getModels returns it, so PiG's baseline is a view of the catalog and the isolation guarantee is pinned where a caller sees it: writing through every collection of the models GetModels returns changes neither the generated catalog nor the next call. The test is renamed and its reference comparison clones the views first (commit 315fa0fd9, squashed into this commit with the rest of fix/pin8-drift)."
