@@ -2772,7 +2772,7 @@ Owner decision: 2026-11-01, owner approved recording the net/http differences as
 
 Call-site marker: `chord/nextnode/http/node.go` (the "Forced Go differences" block).
 
-Evidence: `TestTargetsRefuseAnAbsoluteFormTargetTwoHostHeadersAndNone` and the other tests of `chord/nextnode/http/node_test.go` state both answers; the review tests in `review_test.go` pin the cancellation reason `http: the client disconnected`.
+Evidence: `TestTargetsRefuseAnAbsoluteFormTargetTwoHostHeadersAndNone`, `TestTargetsReachTheComponentOnlyWhereNodesParserTakesThem` (the target bytes and the malformed percent-escape against Node's recorded parser), `TestARequestLineWithTwoSpacesIsRefusedByNetHTTPBeforeTheComponent` and the other tests of `chord/nextnode/http/node_test.go` state both answers; the review tests in `review_test.go` pin the cancellation reason `http: the client disconnected`.
 
 Parity allowance: none needed; the Pi side has no oracle that sends these requests to a Go listener.
 
