@@ -183,6 +183,7 @@ func (c *Workers) startBuild() {
 		//portlint:allow golifetime the build is shared by every waiter and ends with the copy of the entry, which cannot be cancelled (a read of a program on a slow or stalled file system); Close does not wait for it and what it finishes after the close is dropped, as upstream's
 		go func() { //portlint:allow asyncorder Pi's `#built()` is one shared Promise: its ordering point is buildDone, closed once the outcome is stored, which Build and awaitBuild wait on
 			built := WorkersBuilt{}
+			// A component that closed copies nothing; a named directory's staged leftovers of an earlier process go first.
 			found, staged, err := c.stageBase("")
 			if err == nil {
 				err = c.commitBase(staged)
@@ -208,7 +209,8 @@ func (c *Workers) awaitBuild() (WorkersBuilt, bool) {
 	c.startBuild()
 	select {
 	case <-c.buildDone:
-		return *c.built.Load(), true
+		// Pi's closing re-check after the await: both ready at once is a close.
+		return *c.built.Load(), !c.isClosing()
 	case <-c.closingCtx.Done():
 		return WorkersBuilt{}, false
 	}
@@ -224,6 +226,9 @@ type stagedBase struct {
 // Options.BaseDir when there is one (the same file system: the commit is a rename), else a new temporary directory, which is the
 // base's own. It takes no lock and touches nothing that is not its own new directory. It returns the resolved entry.
 func (c *Workers) stageBase(resolved string) (found string, staged stagedBase, err error) {
+	if c.isClosing() {
+		return "", stagedBase{}, closed()
+	}
 	found = resolved
 	if found == "" {
 		if found, err = exec.LookPath(c.options.Entry); err == nil {
@@ -232,6 +237,9 @@ func (c *Workers) stageBase(resolved string) (found string, staged stagedBase, e
 		if err != nil {
 			return "", stagedBase{}, fmt.Errorf("workers: the worker entry cannot be started: %w", err)
 		}
+	}
+	if resolved == "" {
+		removeStaleStages(c.options.BaseDir)
 	}
 	staged, err = stageWorkerBase(found, c.options.BaseDir)
 	if err != nil {
@@ -306,6 +314,22 @@ func (c *Workers) removeBase() {
 		_ = os.RemoveAll(c.baseDir)
 	}
 	c.baseDir, c.baseCopy = "", ""
+}
+
+// removeStaleStages removes the staged directories (`.<base>-build-*`) an earlier start left beside the named base directory: a
+// build that outlived its component's close and the process ended before it dropped its copy. The first build of a component does
+// it, once the app holds the data directory's lock (nothing else writes there). Nothing without a named directory.
+func removeStaleStages(base string) {
+	if base == "" {
+		return
+	}
+	stale, err := filepath.Glob(filepath.Join(filepath.Dir(base), "."+filepath.Base(base)+"-build-*"))
+	if err != nil {
+		return
+	}
+	for _, each := range stale {
+		_ = os.RemoveAll(each)
+	}
 }
 
 // stageWorkerBase copies the executable at path into a new private directory (mode 0700, the copy 0700): beside base when it is
@@ -485,6 +509,10 @@ type Workers struct {
 }
 
 func newWorkers(options WorkersOptions, ctx context.Context) *Workers {
+	// One spelling of the named directory: its staging directory is made beside it (`Dir`, `Base`) and the commit replaces it.
+	if options.BaseDir != "" {
+		options.BaseDir = filepath.Clean(options.BaseDir)
+	}
 	c := &Workers{options: options, loop: host.NewLoop(), addresses: map[string]*routed{}, buildDone: make(chan struct{})}
 	c.clock = options.clock
 	if c.clock == nil {
