@@ -79,6 +79,7 @@ func (*ProcessTerminal) OnResize(handler func()) func() {
 	stopped := make(chan struct{})
 	var once sync.Once
 	//portlint:allow golifetime ends when the returned stop function runs
+	//portlint:allow asyncorder Node's output.on("resize", handler) calls the handler from the signal itself, in no promise continuation, so no microtask order is ported
 	go func() {
 		for {
 			select {
