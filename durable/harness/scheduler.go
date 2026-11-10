@@ -5,7 +5,6 @@ package harness
 import (
 	"cmp"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
@@ -3376,12 +3375,12 @@ func (runtime *taskRuntime) OwnedTasks(ctx context.Context) ([]anyTaskRecord, er
 		slices.SortFunc(owned, func(a, b anyTaskRecord) int { return cmp.Compare(a.Id, b.Id) })
 		copies := make([]anyTaskRecord, 0, len(owned))
 		for _, record := range owned {
-			encoded, err := json.Marshal(record)
+			encoded, err := jsstring.MarshalKeepingSurrogates(record)
 			if err != nil {
 				return nil, err
 			}
 			var copied anyTaskRecord
-			if err := json.Unmarshal(encoded, &copied); err != nil { //perf:ok once per owned task per OwnedTasks call (a script asking for its tasks); the copy must not alias scheduler state
+			if err := jsstring.UnmarshalKeepingSurrogates(encoded, &copied); err != nil { //perf:ok once per owned task per OwnedTasks call (a script asking for its tasks); the copy must not alias scheduler state
 				return nil, err
 			}
 			copies = append(copies, copied)

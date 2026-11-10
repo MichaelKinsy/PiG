@@ -50,3 +50,54 @@ func TestAToolCheckpointWithoutArgumentsShowsAnEmptyObject(t *testing.T) {
 		}
 	}
 }
+
+// A tool call's arguments are model output, and a Pi string in them can hold a lone UTF-16 surrogate: JSON.stringify writes the unit as
+// the escape and JSON.parse reads it back. A Go string holds it as WTF-8, which encoding/json turned into U+FFFD on both sides.
+func TestAToolCheckpointKeepsALoneSurrogateInItsArguments(t *testing.T) {
+	const unit = "\xed\xa0\x80"
+	const stored = `{"phase":"execute","arguments":{"a":"\ud800"},"replay":"safe"}`
+	encoded, err := ToolTaskCheckpoint{Phase: toolPhaseExecute, Arguments: map[string]any{"a": unit}, Replay: durable.ReplaySafe}.MarshalJSON()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(encoded) != stored {
+		t.Errorf("encoded %s, want %s", encoded, stored)
+	}
+	var checkpoint ToolTaskCheckpoint
+	if err := checkpoint.UnmarshalJSON([]byte(stored)); err != nil {
+		t.Fatal(err)
+	}
+	if checkpoint.Arguments["a"] != unit {
+		t.Errorf("decoded arguments %q, want the unit %q", checkpoint.Arguments["a"], unit)
+	}
+}
+
+// The other texts the harness stores for a conversation or a tool call (extension and tool selections, a view's documents, a
+// nested call's arguments) read and write a lone surrogate as JSON.parse and JSON.stringify do.
+func TestHarnessJSONKeepsALoneSurrogateInSelectionsAndViewDocs(t *testing.T) {
+	const unit = "\xed\xa0\x80"
+	encoded, err := ExtensionSelection{Exact: true, Names: []string{unit}}.MarshalJSON()
+	if err != nil || string(encoded) != `["\ud800"]` {
+		t.Errorf("extension selection = %s, %v, want [\"\\ud800\"]", encoded, err)
+	}
+	var selection ExtensionSelection
+	if err := selection.UnmarshalJSON([]byte(`{"add":["\ud800"]}`)); err != nil || selection.Add[0] != unit {
+		t.Errorf("extension edit = %q, %v, want the unit kept", selection.Add, err)
+	}
+	var tools ToolSelection
+	if err := tools.UnmarshalJSON([]byte(`["\ud800"]`)); err != nil || tools.Names[0] != unit {
+		t.Errorf("tool selection = %q, %v, want the unit kept", tools.Names, err)
+	}
+	encoded, err = tools.MarshalJSON()
+	if err != nil || string(encoded) != `["\ud800"]` {
+		t.Errorf("tool selection = %s, %v, want [\"\\ud800\"]", encoded, err)
+	}
+	var docs ViewDocs
+	if err := docs.UnmarshalJSON([]byte(`{"k\ud800":{"a":"\udc00"}}`)); err != nil {
+		t.Fatal(err)
+	}
+	encoded, err = docs.MarshalJSON()
+	if err != nil || string(encoded) != `{"k\ud800":{"a":"\udc00"}}` {
+		t.Errorf("view documents = %s, %v, want the escapes kept", encoded, err)
+	}
+}
