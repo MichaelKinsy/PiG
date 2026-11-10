@@ -288,7 +288,13 @@ func checkPackage(staged, target, root string, ctx context.Context, options Inst
 	}
 	if len(discovery.Problems) > 0 {
 		problem := discovery.Problems[0]
-		return errors.New("installPlugin: " + strings.Replace(problem.Path, staged, target, 1) + ": " + problem.Error)
+		// Discovery reports paths under the staged directory's real path (a root reached through a link, or by a Windows
+		// short name, spells it otherwise), so that is the prefix the target replaces.
+		real, err := model.Realpath(staged)
+		if err != nil {
+			return err
+		}
+		return errors.New("installPlugin: " + strings.Replace(problem.Path, real, target, 1) + ": " + problem.Error)
 	}
 	if len(discovery.Plugins) == 0 {
 		return errors.New("installPlugin: " + target + " holds no plugin")
@@ -432,7 +438,8 @@ func unpack(name, version, dir string, ctx context.Context, options InstallOptio
 	if err := os.Mkdir(dir, 0o777); err != nil {
 		return err
 	}
-	file := filepath.Join(packed, nodeBasename(filename))
+	// pig divergence (D616): the archive is named relative to the pack directory (tar's cwd), where Pi passes join(packed, basename); GNU tar reads `C:\...` as host `C` and fails.
+	file := "./" + nodeBasename(filename)
 	_, err = run("tar", []string{"-xzf", file, "--strip-components=1", "-C", dir}, packed, ctx, "extracting "+name)
 	return err
 }

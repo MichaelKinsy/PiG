@@ -112,6 +112,7 @@ func (q *FileMutationQueue) Reserve(filePath string) (*MutationTicket, error) {
 		q.mu.Unlock()
 		return nil, err
 	}
+	info = pinned(info)
 	var prev []<-chan struct{}
 	for path, pending := range q.chains {
 		observed := q.files[path]
@@ -119,6 +120,7 @@ func (q *FileMutationQueue) Reserve(filePath string) (*MutationTicket, error) {
 			// A queued write may have created a file that was missing at registration.
 			//perf:ok only for a queued call whose file was missing when it queued, and only while a call for an existing file is queued behind it
 			observed, _ = os.Stat(path)
+			observed = pinned(observed)
 		}
 		// pig divergence (D190): a mutation also waits for earlier mutations of the same existing file reached by another canonical path (a hard link, or a case alias on a case-insensitive filesystem); Pi keys only by realpath, so it runs them at once and one overwrites the other.
 		if path == key || (info != nil && observed != nil && os.SameFile(info, observed)) {
@@ -178,6 +180,17 @@ func (t *MutationTicket) Release() {
 		delete(t.q.files, t.key)
 	}
 	t.q.mu.Unlock()
+}
+
+// pinned is info with its file identity read now, or nil when info is nil or the identity cannot be read (a file that is gone, as a
+// missing one). The queue keeps a file's info while its mutation is queued and compares it with later ones: on Windows the file ID
+// of an os.Stat result loads by path inside os.SameFile, so an info left unpinned would name whatever the path names when it is
+// compared (a file written by rename over it, or none), and SameFile(info, info) loads the ID now (coding/cli's lstatPinned).
+func pinned(info os.FileInfo) os.FileInfo {
+	if info == nil || !os.SameFile(info, info) {
+		return nil
+	}
+	return info
 }
 
 // canonicalKey returns an absolute, symlink-resolved path for use as a map

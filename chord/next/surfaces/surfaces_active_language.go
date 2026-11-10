@@ -112,10 +112,10 @@ func FollowActiveLanguage(h host.Host, preferred []string, changed func(*Languag
 		return fail(err)
 	}
 	addStop(choice.Release)
-	// The pick follows once its hold binds; the hold ending (the follower stopped) before its first value is no error.
-	//portlint:allow asyncorder active-language.ts:58 `choice.pick.watch(ctx).then(start, () => {})` is not awaited: the pick follows once its hold binds, and the stop gate (gate, stopped) orders it against Stop
-	go func() {
-		watch, err := choice.Member("pick").Watch(ctx)
+	// The pick follows once its hold binds, from the microtask that opens its watch in the turn that binds the hold (Pi:
+	// `choice.pick.watch(ctx).then(start, () => {})`, not awaited): a change of the pick after the bind is a frame of the
+	// watch. The hold ending (the follower stopped) before its first value is no error.
+	choice.Member("pick").WatchThen(ctx, func(watch chord.WatchHandle[delta.JsonValue], err error) {
 		if err != nil {
 			return
 		}
@@ -124,7 +124,7 @@ func FollowActiveLanguage(h host.Host, preferred []string, changed func(*Languag
 		gate.Lock()
 		defer gate.Unlock()
 		if stopped.Load() {
-			_, _ = watch.Stop()
+			// Nothing here may block (it is a microtask of the host's loop): Stop's cancel() aborts this watch, and the hold's release ends it.
 			return
 		}
 		addStop(func() { _, _ = watch.Stop() })
@@ -145,7 +145,7 @@ func FollowActiveLanguage(h host.Host, preferred []string, changed func(*Languag
 				return nil
 			})
 		})
-	}()
+	})
 	return &LanguageFollower{
 		SetDevice: func(next []string) {
 			mu.Lock()

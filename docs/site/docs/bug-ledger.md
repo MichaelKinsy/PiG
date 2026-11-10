@@ -76,6 +76,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-0920a00](#bf-0920a00) | `/llama` pointed at llama-swap no longer ends in a bare "llama.cpp returned HTTP 404" when you load or unload… | A Pi defect that PiG fixed first | All platforms | 0.7.0 |
 | [BF-093cf5c](#bf-093cf5c) | Provider error text is written the way Pi writes it | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0950d13](#bf-0950d13) | Chord: `FormatNumber` and `FormatTime` format in ICU's root locale when neither the tag nor the platform… | PiG's own defect | All platforms | Unreleased |
+| [BF-09587d2](#bf-09587d2) | Chord: `App.Close` no longer returns while the surfaces' and bases' build goroutines still run | PiG's own defect | All platforms | Unreleased |
 | [BF-098e33d](#bf-098e33d) | Extension `ctx.ui.theme.fg`, `bg` and `getBgAnsi` throw `Unknown theme color: <token>` in every SDK for a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0a0d27d](#bf-0a0d27d) | The training run's socket was in the build's work directory, whose path under a deep agent directory can… | PiG's own defect | All platforms | Unreleased |
 | [BF-0a3094a](#bf-0a3094a) | fix(codingagent): hold the exit record's owner with a channel, not a replaceable write function | PiG's own defect | All platforms | Unreleased |
@@ -105,6 +106,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-0ce459e](#bf-0ce459e) | `/login` offers a provider object's own login methods (Pi's `registerNativeProvider`, the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0d0a3ef](#bf-0d0a3ef) | A turn through OpenRouter (Chat Completions or Anthropic Messages) now reports the cost OpenRouter billed… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0d13b01](#bf-0d13b01) | `SettingsManager.getTransport` and fifteen sibling getters (settings-manager.ts: getSteeringMode… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-0d13d8e](#bf-0d13d8e) | Windows: a missing Anthropic identity token file reports Pi's message, "Failed to read identity token file at… | PiG's own defect | Windows | Unreleased |
 | [BF-0d1c973](#bf-0d1c973) | `tui.Box` no longer invalidates its children when a child is added or removed or the box is cleared | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0d55b30](#bf-0d55b30) | A panicking notify while MCP reports startup problems is shown as "MCP failed to load" instead of ending the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0d55b30-2](#bf-0d55b30-2) | The Python SDK reports a component whose `set_invalidate(None)` raises during cleanup in the extension log… | PiG's own defect | All platforms | 0.5.0 |
@@ -155,6 +157,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-1724c9e](#bf-1724c9e) | Two pig processes that reach the same `auth.json` through different paths, such as an agent directory whose… | PiG's own defect | Windows | Unreleased |
 | [BF-173060b](#bf-173060b) | fix(chord/next/store): decodeStoreWrite never panics (2500 malformed writes); no recover in the outbox; D3… | PiG's own defect | All platforms | Unreleased |
 | [BF-176542a](#bf-176542a) | fix: the chord boundary allows internal/sortx, a stdlib-only helper that jsstring and ecmaregex link… | PiG's own defect | All platforms | Unreleased |
+| [BF-17d97b4](#bf-17d97b4) | On Windows, attaching a file in a terminal prompt no longer reads a different file when a parent directory is… | PiG's own defect | Windows | Unreleased |
+| [BF-17d97b4-2](#bf-17d97b4-2) | A plugin install that finds no `package.json` (or another problem) names the directory it was going to… | PiG's own defect | Windows | Unreleased |
 | [BF-1827831](#bf-1827831) | The MCP extension's `tool_call` handler passes a tool's `reachesTools` the call's input in the member order… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1848633](#bf-1848633) | Extension widgets share one key namespace across extensions, as in Pi: an extension that sets a widget key… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-184ed40](#bf-184ed40) | fix(hljs): a language's reach does not depend on the first text it highlights; red cases for resumeLimit | PiG's own defect | All platforms | Unreleased |
@@ -290,9 +294,13 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-2d99958](#bf-2d99958) | A terminal's reply to the startup color query now applies the colors and ends the startup wait before the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2deefc0](#bf-2deefc0) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-2e8dcc1](#bf-2e8dcc1) | A Node extension loaded in a TUI could lose `ctx.ui` (every widget, status and footer call became a no-op)… | PiG's own defect | All platforms | Unreleased |
+| [BF-2e95347](#bf-2e95347) | Chord's active-language and active-theme followers could miss the user's pick for good: the pick's watch was… | PiG's own defect | All platforms | Unreleased |
 | [BF-2ea8ad2](#bf-2ea8ad2) | The openai-completions, openai-responses and openrouter-images requests build their URL as the openai SDK… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2f7f692](#bf-2f7f692) | Chord's surfaces: a language or theme follower stopped before its pick watch bound no longer crashes the… | PiG's own defect | All platforms | Unreleased |
 | [BF-2f7f692-2](#bf-2f7f692-2) | Chord's `TuiScope`: a holder that releases its own `Hold`en reference before the scope's watch of its state… | PiG's own defect | All platforms | Unreleased |
+| [BF-2f8638b](#bf-2f8638b) | Chord: the rollout Step of a published script set now lists removed plugins in UTF-16 code unit order, as Pi… | PiG's own defect | All platforms | Unreleased |
+| [BF-2f8638b-2](#bf-2f8638b-2) | Chord: the HTTP listener now parses the Host header and the request target with the WHATWG URL algorithm, as… | PiG's own defect | All platforms | Unreleased |
+| [BF-2f8638b-3](#bf-2f8638b-3) | Chord: the HTTP listener answers 400 for a request target that contains bytes Node refuses, where it used to… | PiG's own defect | All platforms | Unreleased |
 | [BF-2f881ba](#bf-2f881ba) | "Your first extension" now says that `pig install --validate-only` exits 1 when the extension does not build | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2fb2917](#bf-2fb2917) | fix(interactive): label skill diagnostics [Skill warnings] and show the model scope in the fullscreen header | PiG's own defect | All platforms | Unreleased |
 | [BF-2fc2307](#bf-2fc2307) | A scalar that names a collection tag (`!!map 1`, `!!seq true`) inside a complex mapping key stays plain in… | PiG's own defect | All platforms | 0.5.0 |
@@ -440,6 +448,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-439c708](#bf-439c708) | Device-code logins (GitHub Copilot, Kimi Code, Meta, Radius) use the `verification_uri` a server sends only… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-439c708-2](#bf-439c708-2) | A pi-messages event whose `contentIndex` is not an integer naming the next block (for a `_start` event) or an… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-43a2293](#bf-43a2293) | Key order of non-index keys stays byte order (a Go map has no insertion order): question Q-state-order filed | PiG's own defect | All platforms | Unreleased |
+| [BF-43b8df7](#bf-43b8df7) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-43c46f5](#bf-43c46f5) | Chord host timers (reload vote, gate and retire deadlines, link pings, service linger, host manager grace… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-43d2597](#bf-43d2597) | `@` file autocomplete finds paths for queries that hold regex metacharacters such as `[` or `(`, for a query… | A fix Pi shipped that PiG ported | All platforms | 0.5.2 |
 | [BF-43d2597-2](#bf-43d2597-2) | `/compact <instructions>` applies the instructions to the summary of the start of a turn that compaction… | A fix Pi shipped that PiG ported | All platforms | 0.5.2 |
@@ -535,6 +544,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-4ff1a44](#bf-4ff1a44) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-4ffcd59](#bf-4ffcd59) | An extension autocomplete provider that watches its abort signal no longer sees it fire when the user types a… | PiG's own defect | All platforms | Unreleased |
 | [BF-50233fd](#bf-50233fd) | An `env` SSH command that runs past its timeout now receives SIGTERM, as in Pi, instead of SIGKILL, and the… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-5043738](#bf-5043738) | Windows: installing a plugin from npm extracts the packed tarball with a relative archive name, so the `tar`… | A Pi defect that PiG fixed first | Windows | Unreleased |
 | [BF-504869b](#bf-504869b) | The MCP client uses JavaScript's `trim()` and `\s` where Pi does: in stdio and Streamable HTTP blank-line and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-504869b-2](#bf-504869b-2) | MCP response headers are read as Node's `fetch` returns them, one Latin-1 character per byte | PiG's own defect | All platforms | 0.5.0 |
 | [BF-504869b-3](#bf-504869b-3) | A JSON-RPC number id is a JavaScript number | PiG's own defect | All platforms | 0.5.0 |
@@ -791,6 +801,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6646adc](#bf-6646adc) | A durable transaction that settles a submission with a detail that is not strict JSON now counts as having… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-666acff](#bf-666acff) | Package filters, manifest `!`/`+`/`-` overrides, settings resource patterns and built-in extension overrides… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-666acff-2](#bf-666acff-2) | A pattern that Pi cannot compile now fails where Pi fails: a local Package keeps only the resource kinds… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-667d493](#bf-667d493) | On Windows, an edit or write waits for an earlier edit or write of the same file reached through a hard link… | PiG's own defect | Windows | Unreleased |
 | [BF-668b3fa](#bf-668b3fa) | Fix the shared attribute-order store case: advance the clock before flush and compare metric row names only | PiG's own defect | All platforms | Unreleased |
 | [BF-66b0fc0](#bf-66b0fc0) | The Anthropic workload-identity token endpoint check parses the base URL with the WHATWG parser, as the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-66beda3](#bf-66beda3) | `pig mcp login -l` and `pig mcp logout -l` no longer fail with `Unknown option --local.`, as `pig mcp add`… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
@@ -1284,6 +1295,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a156ef3](#bf-a156ef3) | On Linux, clipboard reads accept every `DISPLAY` spelling Pi's `xcb_connect` accepts: white space or a sign… | PiG's own defect | Linux | 0.5.0 |
 | [BF-a16d8b4](#bf-a16d8b4) | The Go, Rust, Python and Lisp SDKs asked the host on every read of the model object, the session id, the… | PiG's own defect | All platforms | Unreleased |
 | [BF-a178939](#bf-a178939) | The Go and Python `serializeConversation` keep an unpaired UTF-16 surrogate in a message, a tool-call name or… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-a17e2a1](#bf-a17e2a1) | A runtime API key (`--api-key`, `SetRuntimeAPIKey`) for a Radius provider now counts as its auth, as it does… | PiG's own defect | All platforms | Unreleased |
 | [BF-a18da32](#bf-a18da32) | fix(schema): resolve relative references against file and custom-scheme bases as a URL parser does | PiG's own defect | All platforms | Unreleased |
 | [BF-a1be545](#bf-a1be545) | The `@` file search of a tui editor that has a file-search provider but no task owner (an embedder's; no pig… | PiG's own defect | All platforms | Unreleased |
 | [BF-a1da44d](#bf-a1da44d) | The durable turn classifier retries on a status code (429, 500, 502, 503, 504, 520, 524) only when it stands… | PiG's own defect | All platforms | 0.5.2 |
@@ -1772,6 +1784,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-e79c70e](#bf-e79c70e) | fix(ai): Codex WebSocket, OpenRouter images, pi-messages and replaced Anthropic bodies write JSON.stringify… | PiG's own defect | All platforms | Unreleased |
 | [BF-e7b494a](#bf-e7b494a) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-e8489d4](#bf-e8489d4) | A key hint for an app action the user unbound shows no key, as in Pi, instead of the action's default key | PiG's own defect | All platforms | 0.5.0 |
+| [BF-e88f858](#bf-e88f858) | Windows: a connection reset before the response headers, or a response body reset, is reported as Pi reports… | PiG's own defect | Windows | Unreleased |
 | [BF-e8a5d2e](#bf-e8a5d2e) | The model catalog generator gives OpenCode Zen and Go Claude 5.5 models, Opus 5 and Fable 5.1 per-message… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-e90ac19](#bf-e90ac19) | Very long streamed answers no longer slow down with their length: each streamed frame renders only the last… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e90f6c8](#bf-e90f6c8) | Windows paths are compared case-insensitively | A fix Pi shipped that PiG ported | Windows | 0.7.0 |
@@ -2763,6 +2776,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `automation/release/set-version/main_test.go::TestSetVersionRejectsAREADMEWithoutTheVersionExample`, `automation/release/set-version/main_test.go::TestSetVersionWritesTheREADMEVersionExample`, `chord/next/surfaces/intl_parse_fuzz_test.go::FuzzParseTag`, `chord/next/surfaces/intl_platform_test.go::TestPlatformLocaleIsThatOfTheFirstSetVariable`, `chord/next/surfaces/intl_root_test.go::TestAnUnavailableTagTakesThePlatformLocaleWhenItHasData`, `chord/next/surfaces/intl_root_test.go::TestCompoundLegacyAliasesAreCanonicalizedBeforeTheLookup`, `chord/next/surfaces/intl_root_test.go::TestFormatTimeShowsTheInstantInTheProcessZone`, `chord/next/surfaces/intl_root_test.go::TestFormatsAllocateOnlyTheResultForCanonicalTags` and 32 more in docs/bug-ledger.json
 - **Release note:** Chord: `FormatNumber` and `FormatTime` format in ICU's root locale when neither the tag nor the platform locale has data, as Node does (a `LANG=xx_YY` prints `14:05`, `xx_US` `2:05 PM`, a variable set to the empty string is the locale `und`), and apply CLDR's compound legacy aliases (`hy-arevmda` is `hyw`, `zh-hakka` is `hak`, `zh-xiang` is `hsn`) before the lookup.
 
+### BF-09587d2
+
+**Chord: `App.Close` no longer returns while the surfaces' and bases' build goroutines still run**
+
+- **Source:** PiG's own defect
+- **Symptom:** Chord: `App.Close` no longer returns while the surfaces' and bases' build goroutines still run.
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `09587d2718` (2026-11-09)
+- **Tests:** `chord/nextnode/app/app_bases_linux_test.go::TestAppCloseAbandonsABaseBuildStalledOnAReadWhenItsContextEndsAndReturnsTheContextsError`, `chord/nextnode/app/app_bases_linux_test.go::TestAppCloseWaitsForABaseBuildStalledOnAReadAndReturnsOnceItEndsItsLateResultIsDropped`, `chord/nextnode/app/app_bases_scan_test.go::TestAppARecordOfTheServersCodeArrivingAfterTheClosedWatcherWatchesNothingAndMarksNothing`, `chord/nextnode/app/app_bases_scan_test.go::TestAppARecordOfTheServersCodeEditedSinceTheStartMarksBaseWhileTheAppIsOpen`, `chord/nextnode/app/app_bases_scan_test.go::TestAppCloseAbandonsAScanStalledOnAReadWhenItsContextEndsAndReturnsTheContextsError`, `chord/nextnode/app/app_bases_scan_test.go::TestAppCloseWaitsForAScanOfItsOwnCodeStalledOnAReadAndReturnsOnceItEndsItsLateResultIsDropped`, `chord/nextnode/surfaces/surfaces_build_linux_test.go::TestClosingASurfaceAbandonsItsBuildInFlightWhenTheContextEnds`, `chord/nextnode/surfaces/surfaces_build_linux_test.go::TestClosingASurfaceWaitsForItsBuildInFlight` and 1 more in docs/bug-ledger.json
+- **Release note:** Chord: `App.Close` no longer returns while the surfaces' and bases' build goroutines still run. It joins them after its steps, bounded by its context, and returns the context's error when that ends first (the builds finish on their own and what they finish after the close is dropped); a surface whose build had not started never starts it. Pi's `#close` does not wait for these builds; the Go goroutines are owned, so Close drains them.
+
 ### BF-098e33d
 
 **Extension `ctx.ui.theme.fg`, `bg` and `getBgAnsi` throw `Unknown theme color: <token>` in every SDK for a…**
@@ -3160,6 +3187,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Commit that wrote the release note (the fix commit is not identified):** `0d13b01176` (2026-10-10)
 - **Tests:** `internal/codingagent/settings_getters_oracle_test.go::TestSettingsManagerGettersMatchPi`
 - **Release note:** `SettingsManager.getTransport` and fifteen sibling getters (settings-manager.ts: getSteeringMode, getFollowUpMode, getDefaultThinkingLevel, getTheme, getDefaultProvider, getDefaultModel, getHideThinkingBlock, getCompactionEnabled, getImageAutoResize, getBlockImages, getShowImages, getEditorPaddingX, getAutocompleteMaxVisible, getCodeBlockIndent, getEnableSkillCommands): new live-Pi oracle `TestSettingsManagerGettersMatchPi` (`internal/codingagent/settings_getters_oracle_test.go`, 1,500 global/project file pairs setting, omitting or conflicting on each key, nested objects merged one level) compares every getter's value, defaults included, with Pi's. No bug found. 8 mutations red (transport/steering/follow-up defaults, showImages default, compaction/blockImages/hideThinking inversions, editorPaddingX). Not compared: environment-reading getters (hardware cursor, clear on shrink), wrong-typed values and fractional numbers (Settings is typed), and a codeBlockIndent of "" (Go's string cannot tell "" from absent, so GetCodeBlockIndent returns the default where Pi keeps ""). Closes the flip:c2cc995c row (`SettingsManager.GetTransport`) at v1.1.0.
+
+### BF-0d13d8e
+
+**Windows: a missing Anthropic identity token file reports Pi's message, "Failed to read identity token file at…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Windows: a missing Anthropic identity token file reports Pi's message, "Failed to read identity token file at <path>: Error: ENOENT: no such file or directory, open '<path>'", without Windows' own wording ("The system cannot find the file specified.") appended after it.
+- **Root cause:** Pi interpolates the fs error into the message ("Failed to read identity token file at <path>: Error: ENOENT: ..., open <path>") and an fs error has no cause, so withCauseDetail appends nothing. The Go walk descended into the error behind nodeerrno.FSError and appended its platform text: on Linux "no such file or directory" is already in Node's message and was dropped, on Windows "The system cannot find the file specified." is not, and TestAnthropicFederationExchangeErrors failed on every Windows run.
+- **User impact:** An operation failed or was rejected
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `0d13d8e6cb` (2026-11-09)
+- **Tests:** `ai/anthropic_federation_sdk_upstream_test.go::TestAnthropicFederationExchangeErrors`, `ai/error_cause_fserror_test.go::TestWithCauseDetailEndsAtANodeFSError`
+- **Release note:** Windows: a missing Anthropic identity token file reports Pi's message, "Failed to read identity token file at <path>: Error: ENOENT: no such file or directory, open '<path>'", without Windows' own wording ("The system cannot find the file specified.") appended after it.
 
 ### BF-0d1c973
 
@@ -3842,6 +3883,34 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `176542ac65` (2026-11-08)
 - **Tests:** None recorded.
+
+### BF-17d97b4
+
+**On Windows, attaching a file in a terminal prompt no longer reads a different file when a parent directory is…**
+
+- **Source:** PiG's own defect
+- **Symptom:** On Windows, attaching a file in a terminal prompt no longer reads a different file when a parent directory is swapped for a link after the first yes: the identity of the confirmed file is read from an open handle, not looked up again by path when it is compared.
+- **Root cause:** An install problem names the target also when the root is reached by a link or a Windows short name: discovery reports the staged directory by its real path, so that is the prefix the target replaces.
+- **User impact:** Behavior differed from Pi
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `17d97b46d4` (2026-11-09)
+- **Tests:** `chord/nextnode/plugins/plugins_install_test.go::TestInstallPluginNamesTheTargetInAProblemWhenTheRootIsReachedByALink`, `chord/nextnode/plugins/plugins_watcher_base_test.go::TestTheBaseMarkWatchesABaseDirectoryRemovedAndRecreatedAndComparesItsFiles`, `chord/nextnode/plugins/plugins_watcher_windows_test.go::TestWindowsRefusesToRenameAWatchedTreeUntilTheWatcherCloses`, `internal/testenv/cellcache_test.go::TestSharedCellCacheDirIsKeyedByTheContentsOfItsInputs`
+- **Release note:** On Windows, attaching a file in a terminal prompt no longer reads a different file when a parent directory is swapped for a link after the first yes: the identity of the confirmed file is read from an open handle, not looked up again by path when it is compared.
+
+### BF-17d97b4-2
+
+**A plugin install that finds no `package.json` (or another problem) names the directory it was going to…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A plugin install that finds no `package.json` (or another problem) names the directory it was going to install into when the plugins root is reached through a link or a Windows short name, not the staging directory.
+- **Root cause:** An install problem names the target also when the root is reached by a link or a Windows short name: discovery reports the staged directory by its real path, so that is the prefix the target replaces.
+- **User impact:** Behavior differed from Pi
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `17d97b46d4` (2026-11-09)
+- **Tests:** `chord/nextnode/plugins/plugins_install_test.go::TestInstallPluginNamesTheTargetInAProblemWhenTheRootIsReachedByALink`, `chord/nextnode/plugins/plugins_watcher_base_test.go::TestTheBaseMarkWatchesABaseDirectoryRemovedAndRecreatedAndComparesItsFiles`, `chord/nextnode/plugins/plugins_watcher_windows_test.go::TestWindowsRefusesToRenameAWatchedTreeUntilTheWatcherCloses`, `internal/testenv/cellcache_test.go::TestSharedCellCacheDirIsKeyedByTheContentsOfItsInputs`
+- **Release note:** A plugin install that finds no `package.json` (or another problem) names the directory it was going to install into when the plugins root is reached through a link or a Windows short name, not the staging directory.
 
 ### BF-1827831
 
@@ -5707,6 +5776,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `test/extension-conformance/host_surface_test.go::TestSetWidgetRendererAcrossSDKs`
 - **Release note:** A Node extension loaded in a TUI could lose `ctx.ui` (every widget, status and footer call became a no-op) when the host's state update reached it while it was handling the ready frame, because the update applied before the older state of the ready frame, which then replaced it. The queued update is now applied only after the ready state.
 
+### BF-2e95347
+
+**Chord's active-language and active-theme followers could miss the user's pick for good: the pick's watch was…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Chord's active-language and active-theme followers could miss the user's pick for good: the pick's watch was opened from a goroutine after the hold bound, so a pick chosen in between (a language picked right after the page loaded) was folded into the watch's first value, which the follower never reads, and the page kept the device's language until the next change.
+- **Root cause:** Pi's `async watch(member, ctx)` waits for `firstValues` and opens the watch in the microtask that resumes after it, so the watch is open in the turn that binds the reference and every later change of the member is a frame of it. The Go `Watch` opened it from the caller's goroutine, through three sections of its own: a frame a link delivered between the bind and the open (the principal's pick, chosen right after the hold bound) was folded into the watch's value, which a follower that only listens never reads. The language follower then never saw "fr" after choose("fr") (portmap-8 CI, ~1 in 6400 under load).
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2e95347143` (2026-11-09)
+- **Tests:** `chord/next/host/host_reference_watch_then_test.go::TestAMemberWatchOfAReferenceNotBoundYetIsOpenInTheTurnThatBindsIt`, `chord/next/host/host_reference_watch_then_test.go::TestAMemberWatchThenOfAReferenceEndedBeforeItsFirstValueGetsTheError`
+- **Release note:** Chord's active-language and active-theme followers could miss the user's pick for good: the pick's watch was opened from a goroutine after the hold bound, so a pick chosen in between (a language picked right after the page loaded) was folded into the watch's first value, which the follower never reads, and the page kept the device's language until the next change. A watch of a member that never had a value is now opened in the turn that binds its reference, as in Pi, and the followers start the pick watch from it.
+
 ### BF-2ea8ad2
 
 **The openai-completions, openai-responses and openrouter-images requests build their URL as the openai SDK…**
@@ -5748,6 +5831,48 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `0a547c7879` (2026-11-07), `2f7f6929c0` (2026-11-07), `6ed0a7ce4a` (2026-11-07)
 - **Tests:** `chord/next/surfaces/surfaces_follower_stop_test.go::TestAFollowersCallbackMayStopItAndChangeTheDevice`, `chord/next/surfaces/surfaces_follower_stop_test.go::TestAThemeFollowersCallbackMayStopItAndSetTheMode`, `chord/next/surfaces/surfaces_follower_stop_test.go::TestStoppingAFollowerBeforeItsPickWatchBindsEndsQuietly`, `chord/next/surfaces/surfaces_follower_stop_test.go::TestStoppingAThemeFollowerBeforeItsPickWatchBindsEndsQuietly`, `chord/next/tui/tui_scope_release_test.go::TestAHoldersOwnReleaseBeforeTheScopesWatchStartsEndsQuietly`, `chord/next/tui/tui_scope_test.go::TestOptimisticAppliesAReducerOverEveryActionInFlightInOrderAndSaysWhetherACallIsPending`, `chord/next/tui/tui_scope_test.go::TestOptimisticNeverCallsChangedAfterDispose`, `chord/next/tui/tui_scope_test.go::TestOptimisticShowsTheLastValueUntilEveryCallSettledAFailedCallDropsItAsASucceededOneDoes` and 7 more in docs/bug-ledger.json
 - **Release note:** Chord's `TuiScope`: a holder that releases its own `Hold`en reference before the scope's watch of its state started no longer crashes the process.
+
+### BF-2f8638b
+
+**Chord: the rollout Step of a published script set now lists removed plugins in UTF-16 code unit order, as Pi…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Chord: the rollout Step of a published script set now lists removed plugins in UTF-16 code unit order, as Pi does, instead of UTF-8 byte order; names outside the Basic Multilingual Plane no longer sort differently.
+- **Root cause:** Not recorded.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2f8638b949` (2026-11-09)
+- **Tests:** `chord/next/link/websocket_test.go::TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend`, `chord/nextnode/http/node_test.go::TestTargetsReachTheComponentOnlyWhereNodesParserTakesThem`, `chord/nextnode/http/url_test.go::TestTheWireURLIsWhatTheURLParserMakesOfTheHostAndTarget`, `chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsAFilePublishedInAnEarlierSetStaysServedWhileALaterSetStillHasIt`, `chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsAPluginWhoseNextBuildFailsKeepsItsDigestTextStylesheetAndAssets`, `chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsAStylesheetChangeAloneKeepsTheScriptsDigestAndChangesItsName`, `chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsFilesNameEachScriptStylesheetAndAssetByContentAndCombineWithoutSourceMaps`, `chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsStartPublishesTheKindsFirstSet` and 12 more in docs/bug-ledger.json
+- **Release note:** Chord: the rollout Step of a published script set now lists removed plugins in UTF-16 code unit order, as Pi does, instead of UTF-8 byte order; names outside the Basic Multilingual Plane no longer sort differently.
+
+### BF-2f8638b-2
+
+**Chord: the HTTP listener now parses the Host header and the request target with the WHATWG URL algorithm, as…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Chord: the HTTP listener now parses the Host header and the request target with the WHATWG URL algorithm, as Node does, instead of an approximation.
+- **Root cause:** Not recorded.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2f8638b949` (2026-11-09)
+- **Tests:** `chord/next/link/websocket_test.go::TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend`, `chord/nextnode/http/node_test.go::TestTargetsReachTheComponentOnlyWhereNodesParserTakesThem`, `chord/nextnode/http/url_test.go::TestTheWireURLIsWhatTheURLParserMakesOfTheHostAndTarget`, `chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsAFilePublishedInAnEarlierSetStaysServedWhileALaterSetStillHasIt`, `chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsAPluginWhoseNextBuildFailsKeepsItsDigestTextStylesheetAndAssets`, `chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsAStylesheetChangeAloneKeepsTheScriptsDigestAndChangesItsName`, `chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsFilesNameEachScriptStylesheetAndAssetByContentAndCombineWithoutSourceMaps`, `chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsStartPublishesTheKindsFirstSet` and 12 more in docs/bug-ledger.json
+- **Release note:** Chord: the HTTP listener now parses the Host header and the request target with the WHATWG URL algorithm, as Node does, instead of an approximation.
+
+### BF-2f8638b-3
+
+**Chord: the HTTP listener answers 400 for a request target that contains bytes Node refuses, where it used to…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Chord: the HTTP listener answers 400 for a request target that contains bytes Node refuses, where it used to pass the request to the component.
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2f8638b949` (2026-11-09)
+- **Tests:** `chord/next/link/websocket_test.go::TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend`, `chord/nextnode/http/node_test.go::TestTargetsReachTheComponentOnlyWhereNodesParserTakesThem`, `chord/nextnode/http/url_test.go::TestTheWireURLIsWhatTheURLParserMakesOfTheHostAndTarget`, `chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsAFilePublishedInAnEarlierSetStaysServedWhileALaterSetStillHasIt`, `chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsAPluginWhoseNextBuildFailsKeepsItsDigestTextStylesheetAndAssets`, `chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsAStylesheetChangeAloneKeepsTheScriptsDigestAndChangesItsName`, `chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsFilesNameEachScriptStylesheetAndAssetByContentAndCombineWithoutSourceMaps`, `chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsStartPublishesTheKindsFirstSet` and 12 more in docs/bug-ledger.json
+- **Release note:** Chord: the HTTP listener answers 400 for a request target that contains bytes Node refuses, where it used to pass the request to the component.
 
 ### BF-2f881ba
 
@@ -7777,6 +7902,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `43a22934f1` (2026-10-11)
 - **Tests:** `ai/llama_cpp_render_oracle_test.go::TestLlamaCppRenderDocsDump`, `ai/llama_cpp_render_oracle_test.go::TestLlamaCppRenderDocsParity`, `ai/llama_cpp_render_oracle_test.go::TestLlamaCppRenderQuestionMatchesPi`, `internal/jsstring/stringify_test.go::TestMarshalJSONOrdersArrayIndexKeysLikeJSONStringify`, `test/parity/scenarios/providers-registry/07-llama-classify-render-question.toml`
 
+### BF-43b8df7
+
+**Fix in shipped code**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fix in shipped code
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `43b8df78b5` (2026-11-09)
+- **Tests:** `ai/auth_create_through_link_eloop_test.go::TestAuthStorageCreateThroughSymlinkChainFollowsTheKernelsLimit`, `coding/cli/port_wave_10_package_command_paths_test.go::TestPortWave10PackageCommandPaths`
+
 ### BF-43c46f5
 
 **Chord host timers (reload vote, gate and retire deadlines, link pings, service linger, host manager grace…**
@@ -9086,6 +9224,22 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `d4e4a82ed9` (2026-10-08), `50233fd0d4` (2026-10-10)
 - **Tests:** `coding/cli/session_replacement_interactive_test.go::TestInteractiveExtensionNewSessionKeepsTheCallerAliveUntilItReturns`, `coding/cli/session_resume_ui_test.go::TestInteractiveResumeIntoAnUntrustedProjectPromptsForTrust`, `coding/cli/session_resume_ui_test.go::TestInteractiveResumeWithAMissingCWDShowsPisStatuses`, `env/ssh_known_hosts_semantics_test.go::TestConcurrentHostKeyChangesToOneFileAreAppliedOneAtATime`, `env/ssh_timeout_test.go::TestRunSshTimeoutTerminatesTheChildAndFailsWithoutWaitingForItsOutputToClose`, `internal/codingagent/interactive_runtime_host_test.go::TestNewInteractiveModeRoutesSessionWorkThroughItsRuntimeHost`, `internal/codingagent/interactive_runtime_host_test.go::TestNewInteractiveModeWithoutRuntimeHostCannotImport`
 - **Release note:** An `env` SSH command that runs past its timeout now receives SIGTERM, as in Pi, instead of SIGKILL, and the operation fails as soon as the timeout expires, even when a process started by `ssh` keeps its output open.
+
+### BF-5043738
+
+**Windows: installing a plugin from npm extracts the packed tarball with a relative archive name, so the `tar`…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D616)
+- **Symptom:** Windows: installing a plugin from npm extracts the packed tarball with a relative archive name, so the `tar` of Git for Windows (which reads `C:\...` as a file on host `C`) no longer fails with "Cannot connect to C: resolve failed".
+- **Root cause:** Pi (packages/chord/src/node/plugins/install.ts:248-249) passes tar the absolute archive path join(packed, basename). GNU tar reads "C:\..." as the file "..." on a host "C" ("Cannot connect to C: resolve failed"), so InstallPlugin of an npm package failed on Windows whenever Git for Windows' tar preceded System32 bsdtar in PATH (TestInstallPluginInstallsAnNpmPackageHereALocalTarballIntoRootName, red in the dispatched runs 42551386817, 42570233321, 42621762307 and 42725996591). unpack already runs tar in the pack directory; it now names the archive ./<basename>.
+- **User impact:** An operation failed or was rejected
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** Pi's install names the archive relative to the pack directory.
+- **Fix commits:** `3467950fd9` (2026-11-09), `5043738f10` (2026-11-09)
+- **Tests:** `chord/nextnode/plugins/plugins_install_tar_test.go::TestInstallPluginNamesTheTarballToTarRelativeToThePackDirectory`, `chord/nextnode/plugins/plugins_install_test.go::TestInstallPluginInstallsAnNpmPackageHereALocalTarballIntoRootName`
+- **Release note:** Windows: installing a plugin from npm extracts the packed tarball with a relative archive name, so the `tar` of Git for Windows (which reads `C:\...` as a file on host `C`) no longer fails with "Cannot connect to C: resolve failed". Pi passes the absolute path and fails there (D616, owner approved 2026-11-10).
 
 ### BF-504869b
 
@@ -12637,6 +12791,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `311609427b` (2026-10-07), `49798a80d2` (2026-10-07), `630f56def0` (2026-10-07), `66bb7180b3` (2026-10-07), `947d0669ee` (2026-10-07), `965ef796b1` (2026-10-07), `a79de03e7f` (2026-10-07), `a7b6786111` (2026-10-07), `f235c0bcc5` (2026-10-07), `1cbb6b6fb2` (2026-10-09), `4401fa4630` (2026-10-09), `4cc5ef904b` (2026-10-09), `6584435bb6` (2026-10-09), `6e6b9132c2` (2026-10-09), `926f5d2e63` (2026-10-09), `9fa02166f5` (2026-10-09), `aff3d7266f` (2026-10-09), `d586d71f85` (2026-10-09), `ef007a4e5e` (2026-10-09), `6410ef49f6` (2026-10-10), `666acff687` (2026-10-10), `6edaafdfe2` (2026-10-10), `6f8d83861a` (2026-10-10), `c1055c449e` (2026-10-10), `fce99d43d7` (2026-10-10)
 - **Tests:** `ai/simple_options_test.go::TestBuildBaseOptions`, `coding/cli/cli_package_glob_test.go::TestCLIGitSourceRefreshesOncePerLoad`, `coding/cli/cli_package_glob_test.go::TestCLIPackageSourceGlobThrowFirstSourceWins`, `coding/cli/cli_package_glob_test.go::TestCLIPackageSourceGlobThrowFollowsPi`, `coding/cli/cli_package_glob_test.go::TestReloadSnapshotReportsCLIPackageGlobThrow`, `coding/cli/cli_package_glob_test.go::TestStartupStopsAtACLIPackageGlobThrow`, `coding/cli/resource_loader_gaps_upstream_test.go::TestPrintModeInvalidDiscoveredFileURLFailsBind`, `coding/cli/settings_file_url_upstream_test.go::TestNpmPackageManifestGlobThrowRejectsResolution` and 64 more in docs/bug-ledger.json
 - **Release note:** A pattern that Pi cannot compile now fails where Pi fails: a local Package keeps only the resource kinds collected before it, an npm or git Package (configured or `-e`) stops startup and `/reload` with the JavaScript error, and so does a settings pattern or an override on auto-discovered resources.
+
+### BF-667d493
+
+**On Windows, an edit or write waits for an earlier edit or write of the same file reached through a hard link…**
+
+- **Source:** PiG's own defect
+- **Symptom:** On Windows, an edit or write waits for an earlier edit or write of the same file reached through a hard link even when the queued file was replaced meanwhile (an atomic write): the queue keeps the identity of the file as it was when the mutation queued, not the one the path names when a later mutation is compared.
+- **Root cause:** Both stats are pinned with SameFile(info, info) when taken, as coding/cli lstatPinned does; a file whose identity cannot be read counts as missing. Pi has no identity rule (its key is realpath only), so the recorded divergence is unchanged.
+- **User impact:** Behavior differed from Pi
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `667d4938ce` (2026-11-10)
+- **Tests:** `internal/codingagent/tools/mutation_queue_identity_test.go::TestMutationQueueKeepsTheIdentityOfAFileReplacedWhileItsMutationIsQueued`
+- **Release note:** On Windows, an edit or write waits for an earlier edit or write of the same file reached through a hard link even when the queued file was replaced meanwhile (an atomic write): the queue keeps the identity of the file as it was when the mutation queued, not the one the path names when a later mutation is compared.
 
 ### BF-668b3fa
 
@@ -19503,6 +19671,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `extensions/sdk-py/tests/test_compaction_estimate.py`, `extensions/sdk-py/tests/test_serialize_conversation_surrogates.py`, `extensions/sdk/compaction_estimate_test.go::TestEstimateTokensCountsUTF16UnitsAndJSONStringifyLength`, `extensions/sdk/compaction_estimate_test.go::TestJSNumberStringMatchesNumberToString`, `extensions/sdk/serialize_conversation_surrogate_test.go::TestSerializeConversationKeepsUnpairedSurrogates`, `test/extension-conformance/compaction_usage_test.go::TestConformance_CompactionUsageHelpersAgreeAcrossSDKs`, `test/extension-conformance/host_parser_helpers_test.go::TestConformance_HostParserHelpersAgreeAcrossSDKs`, `test/extension-conformance/message_conversion_test.go::TestConformance_MessageConversionAgreesAcrossSDKs` and 2 more in docs/bug-ledger.json
 - **Release note:** The Go and Python `serializeConversation` keep an unpaired UTF-16 surrogate in a message, a tool-call name or argument, and when the 2,000-unit cut splits a surrogate pair, as Pi does; the conformance test now compares those cases against Pi's own code.
 
+### BF-a17e2a1
+
+**A runtime API key (`--api-key`, `SetRuntimeAPIKey`) for a Radius provider now counts as its auth, as it does…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Requests used the key but the Radius catalog was not listed.
+- **Root cause:** An earlier change's message and report said the mid-session test step covered a runtime key; it did not: its runtime-key step failed (HasConfiguredAuth false), and replaced it with stored credentials. TestGetAvailableModelDataListsARadiusCatalogExactlyWhenItsProviderHasAuth now has the runtime-key steps (appears, leaves, returns), an OAuth step and a models.json Radius provider (acme, custom base URL, one defined model), counting that provider's models too; TestRadiusRuntimeKeyIsRadiusAuthEverywhere pins the other questions.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a17e2a163e` (2026-11-10)
+- **Tests:** `internal/codingagent/model_registry_available_radius_test.go::TestGetAvailableModelDataListsARadiusCatalogExactlyWhenItsProviderHasAuth`, `internal/codingagent/model_registry_available_radius_test.go::TestRadiusRuntimeKeyIsRadiusAuthEverywhere`
+- **Release note:** A runtime API key (`--api-key`, `SetRuntimeAPIKey`) for a Radius provider now counts as its auth, as it does in Pi: the provider has configured auth, its models are in the available list and it counts as an available provider. Before, requests used the key but the Radius catalog was not listed.
+
 ### BF-a18da32
 
 **fix(schema): resolve relative references against file and custom-scheme bases as a URL parser does**
@@ -26246,6 +26428,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `internal/codingagent/extension_editor_test.go::TestExtensionEditorHandleInputMatchesPi`
 - **Release note:** A key hint for an app action the user unbound shows no key, as in Pi, instead of the action's default key. For example, the extension editor dialog showed `ctrl+g external editor` after `app.editor.external` was bound to `[]`; it now shows ` external editor` (`tui/keybinding_hints.go` AppKeyText, keybinding-hints.ts keyText; probe in `TestExtensionEditorHandleInputMatchesPi`, red before).
 
+### BF-e88f858
+
+**Windows: a connection reset before the response headers, or a response body reset, is reported as Pi reports…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Windows: a connection reset before the response headers, or a response body reset, is reported as Pi reports it ("Connection error.: read ECONNRESET", "terminated: other side closed (UND_ERR_SOCKET)") instead of a bare "Connection error." or "terminated".
+- **Root cause:** nodeConnectionFailure and nodeBodyFailure matched a reset with errors.Is against syscall.ECONNRESET and syscall.EPIPE. On Windows those are values Go invents; the socket's error is WSAECONNRESET (or ERROR_NETNAME_DELETED, WSAESHUTDOWN), which libuv names ECONNRESET (EPIPE). Pi's message is "Connection error.: read ECONNRESET" there too; PiG gave a bare "Connection error." and a body reset lost its "other side closed". Match by nodeerrno.ErrorCode, which carries the per-OS table.
+- **User impact:** An operation failed or was rejected
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `e88f858c17` (2026-11-09)
+- **Tests:** `ai/transport_reset_windows_test.go::TestWindowsSocketErrorsAreNamedAsNodeNamesThem`
+- **Release note:** Windows: a connection reset before the response headers, or a response body reset, is reported as Pi reports it ("Connection error.: read ECONNRESET", "terminated: other side closed (UND_ERR_SOCKET)") instead of a bare "Connection error." or "terminated".
+
 ### BF-e8a5d2e
 
 **The model catalog generator gives OpenCode Zen and Go Claude 5.5 models, Opus 5 and Fable 5.1 per-message…**
@@ -29153,6 +29349,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D601 | The browser page's and the terminal sandbox's client runtimes, and the React bindings, are Pi's TypeScript… | [BF-D601](#bf-d601) |
 | D605 | The server's two hosts serve one union: `Host.Delegate` one way, the Node host's destination the other | [BF-D605](#bf-d605) |
 | D607 | The plugins component loads hosts through a Node subprocess it starts: Pi's `evaluate`, `stack` and runtime… | deliberate difference |
+| D616 | An npm tarball is extracted with `tar` told the archive relative to the pack directory, where Pi passes its… | [BF-5043738](#bf-5043738) |
 
 ## Fix-titled commits that are not bugs in a release
 

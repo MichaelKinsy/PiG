@@ -15,6 +15,7 @@ func createNewFollowingLinks(path string, create func(string) (*os.File, error))
 		return file, err
 	}
 	// The kernel has resolved the chain: a stat that fails with anything but ENOENT (ELOOP for a cycle or a chain past its limit) is the error Node's open(O_CREAT) reports, and creates nothing.
+	//perf:ok cold path: once per auth-file create, after the exclusive create reported a dangling link; the stat error decides the ELOOP text
 	if _, statErr := os.Stat(path); !errors.Is(statErr, fs.ErrNotExist) {
 		if errno, ok := errors.AsType[syscall.Errno](statErr); ok {
 			return nil, &fs.PathError{Op: "open", Path: path, Err: errno}

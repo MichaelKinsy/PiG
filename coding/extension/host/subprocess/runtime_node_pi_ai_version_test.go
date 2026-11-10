@@ -3,6 +3,7 @@
 package subprocess
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -17,20 +18,45 @@ import (
 // of the constant (the bundle of Pi's built output, which the sdk entry point exports), so each copy is checked.
 func TestVendoredPiAiExportsThePinnedPackageVersion(t *testing.T) {
 	root := filepath.Join("runtime-node", "shims", "pi-dist", "pi-ai")
-	for _, copyOfConstant := range []struct{ file, pattern string }{
-		{filepath.Join("utils", "version.js"), `(?m)^export const PI_AI_VERSION = "([^"]+)";$`},
-		{filepath.Join("sdk-bundle", "chunk-DQ3IPTWT.js"), `(?m)^var PI_AI_VERSION = "([^"]+)";$`},
-	} {
-		body, err := os.ReadFile(filepath.Join(root, copyOfConstant.file))
+	body, err := os.ReadFile(filepath.Join(root, "utils", "version.js"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	checkPiAiVersion(t, "utils/version.js", regexp.MustCompile(`(?m)^export const PI_AI_VERSION = "([^"]+)";$`), body)
+
+	// The bundle's chunk file names are content hashes that change on every regeneration, so locate the chunk by the
+	// constant it defines rather than by name.
+	chunks, err := filepath.Glob(filepath.Join(root, "sdk-bundle", "chunk-*.js"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	bundlePattern := regexp.MustCompile(`(?m)^var PI_AI_VERSION = "([^"]+)";$`)
+	found := 0
+	for _, chunk := range chunks {
+		body, err := os.ReadFile(chunk)
 		if err != nil {
 			t.Fatal(err)
 		}
-		match := regexp.MustCompile(copyOfConstant.pattern).FindSubmatch(body)
-		if match == nil {
-			t.Fatalf("%s does not define PI_AI_VERSION as a string literal", copyOfConstant.file)
+		if !bytes.Contains(body, []byte("PI_AI_VERSION")) {
+			continue
 		}
-		if got := string(match[1]); got != pigversion.UpstreamPackageVersion {
-			t.Errorf("%s defines PI_AI_VERSION %q, pinned Pi package version is %q", copyOfConstant.file, got, pigversion.UpstreamPackageVersion)
+		if bundlePattern.Match(body) {
+			found++
 		}
+		checkPiAiVersion(t, filepath.ToSlash(chunk), bundlePattern, body)
+	}
+	if found != 1 {
+		t.Fatalf("sdk-bundle has %d chunks defining PI_AI_VERSION as a string literal, want 1", found)
+	}
+}
+
+func checkPiAiVersion(t *testing.T, name string, pattern *regexp.Regexp, body []byte) {
+	t.Helper()
+	match := pattern.FindSubmatch(body)
+	if match == nil {
+		t.Fatalf("%s does not define PI_AI_VERSION as a string literal", name)
+	}
+	if got := string(match[1]); got != pigversion.UpstreamPackageVersion {
+		t.Errorf("%s defines PI_AI_VERSION %q, pinned Pi package version is %q", name, got, pigversion.UpstreamPackageVersion)
 	}
 }

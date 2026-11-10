@@ -907,8 +907,9 @@ func TestTheWorkerBaseInANamedDirectoryEmptiedFirstWrittenAgainThereRemovedByClo
 	if names := listDir(t, named); len(names) != 1 || filepath.Join(named, names[0]) != copied {
 		t.Fatalf("the directory = %v, want only %s", names, copied)
 	}
-	if info, err := os.Stat(named); err != nil || info.Mode().Perm() != 0o700 {
-		t.Fatalf("the directory = %v, %v, want mode 0700", info, err)
+	// Windows reports every directory as 0777 whatever its access list says, so only another system shows the mode.
+	if info, err := os.Stat(named); err != nil || !info.IsDir() || (runtime.GOOS != "windows" && info.Mode().Perm() != 0o700) {
+		t.Fatalf("the directory = %v, %v, want a directory of mode 0700", info, err)
 	}
 	// A cleaner of temporary files removed it: written again (the entry has the bytes the base was built with).
 	if err := os.Remove(copied); err != nil {

@@ -1,6 +1,8 @@
 package app
 
 import (
+	"context"
+
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	chordhttp "github.com/MichaelKinsy/PiG/chord/nextnode/http"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
@@ -47,6 +49,8 @@ type surface struct {
 	step   func(name string) plugins.RolloutStep
 	build  func() nodesurfaces.SurfaceBuilt
 	built  func() *nodesurfaces.SurfaceBuilt
+	// close ends the surface's build: one not started never starts, one in flight is waited for until ctx ends.
+	close func(ctx context.Context) error
 }
 
 // surfacesOf is the app's client surfaces, in order: the web's, the terminal's (their base bundles built after the listen).
@@ -57,13 +61,13 @@ func surfacesOf(h host.Host, options AppOptions, p *plugins.Plugins) []surface {
 			Plugins: p, Entry: options.Web.Entry, Page: options.Web.Page, Paths: options.Web.Paths, Public: options.Web.Public,
 			Conditions: options.Web.Conditions,
 		})
-		surfaces = append(surfaces, surface{"web", []host.HostFacet{{Name: "chord.web", Facet: web.Facet}, {Name: "chord.web.scripts", Facet: web.Scripts}}, web.Step, web.Build, web.Built})
+		surfaces = append(surfaces, surface{"web", []host.HostFacet{{Name: "chord.web", Facet: web.Facet}, {Name: "chord.web.scripts", Facet: web.Scripts}}, web.Step, web.Build, web.Built, web.Close})
 	}
 	if options.Tui != nil {
 		tui := nodesurfaces.NewTuiSurface(h, nodesurfaces.TuiSurfaceOptions{
 			Plugins: p, Entry: options.Tui.Entry, Conditions: options.Tui.Conditions,
 		})
-		surfaces = append(surfaces, surface{"tui", []host.HostFacet{{Name: "chord.tui", Facet: tui.Facet}, {Name: "chord.tui.scripts", Facet: tui.Scripts}}, tui.Step, tui.Build, tui.Built})
+		surfaces = append(surfaces, surface{"tui", []host.HostFacet{{Name: "chord.tui", Facet: tui.Facet}, {Name: "chord.tui.scripts", Facet: tui.Scripts}}, tui.Step, tui.Build, tui.Built, tui.Close})
 	}
 	return surfaces
 }

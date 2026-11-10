@@ -804,7 +804,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/link/part.ts` | `chord/next/link/part.go`, `chord/nextnode/compression.go` | ✅ |
 | `packages/chord/src/link/text.ts` | `chord/next/link/text.go` | ✅ |
 | `packages/chord/src/link/values.ts` | `chord/next/link/values.go` | ✅ |
-| `packages/chord/src/link/websocket.ts` | `chord/next/link/websocket.go` Missing: the interface ledger lists WebSocketLike::property:close, close::call:0, readyState, send and send::call:0 as pending, not ported or designed out; chord/next/link/websocket.go implements them, but no ledger disposition records it | 🟡 |
+| `packages/chord/src/link/websocket.ts` | `chord/next/link/websocket.go` (WebSocketLink and WebSocketLike: readyState is ReadyState(), send is Send, close is Close; the packages/chord/test/link/websocket.test.ts cases in chord/next/link/websocket_test.go) | ✅ |
 | `packages/chord/src/store/table-writes.ts` | `chord/next/store/table_writes.go` | ✅ |
 | `packages/chord/src/store/table-changes.ts` | `chord/next/store/table_changes.go` | ✅ |
 | `packages/chord/src/store/table-handle.ts` | `chord/next/store/table_handle.go` | ✅ |
@@ -856,21 +856,21 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/host/deadline.ts` | `chord/next/host/host_deadline.go` | ✅ |
 | `packages/chord/src/host/sleep.ts` | `chord/next/host/host_sleep.go` | ✅ |
 | `packages/chord/src/host/uuid.ts` | `chord/next/host/host_uuid.go` | ✅ |
-| `packages/chord/src/host/activity.ts` | `chord/next/host/host_activity.go` | 🟡 |
-| `packages/chord/src/host/revocation.ts` | `chord/next/host/host_revocation.go` | 🟡 |
+| `packages/chord/src/host/activity.ts` | `chord/next/host/host_activity.go` Tests: activity.test.ts: chord/next/host/host_activity_test.go | ✅ |
+| `packages/chord/src/host/revocation.ts` | `chord/next/host/host_revocation.go` Tests: revocation.test.ts: chord/next/host/host_revocation_test.go | ✅ |
 | `packages/chord/src/host/unbound.ts` | `chord/next/host/host_unbound.go` | ✅ |
 | `packages/chord/src/host/retry-on.ts` | `chord/next/host/host_retry_on.go` | ✅ |
 | `packages/chord/src/host/ref-state.ts` | `chord/next/host/host_ref_state.go` | ✅ |
 | `packages/chord/src/host/dependencies.ts` | `chord/next/host/host_dependencies.go` | ✅ |
-| `packages/chord/src/host/parked.ts` | `chord/next/host/host_parked.go` | 🟡 |
-| `packages/chord/src/host/native.ts` | `chord/next/host/host_native.go` | 🟡 |
+| `packages/chord/src/host/parked.ts` | `chord/next/host/host_parked.go` Tests: parked.test.ts: chord/next/host/host_parked_test.go | ✅ |
+| `packages/chord/src/host/native.ts` | `chord/next/host/host_native.go` Tests: native.test.ts: chord/next/host/host_native_test.go, host_facet_test.go, host_spans_test.go | ✅ |
 | `packages/chord/src/host/follow.ts` | `chord/next/host/host_follow.go` | ✅ |
 | `packages/chord/src/host/members.ts` | `chord/next/host/host_members.go` | ✅ |
-| `packages/chord/src/host/ctx.ts` | `chord/next/host/host_ctx.go` | 🟡 |
+| `packages/chord/src/host/ctx.ts` | `chord/next/host/host_ctx.go`, `chord/next/host/host_ctx_trace.go` (tests: host_ctx_test.go, host_spans_test.go) Missing: `binding.release()` in `Get` for a get that finished in its handler's settling turn (Pi race 11, host_ctx.go:176) is pinned only nondeterministically, by TestCtxAGetFinishingAfterItsHandlerSettledIsReleasedAtOnceRace11, which kills its deletion in most runs but not every one (it depends on timing), so no test pins that release deterministically; none observes `settle` clearing `c.references` (host_ctx.go:193) after the releases; every other statement and branch mutant of host_ctx.go is killed, does not compile or is equivalent | 🟡 |
 | `packages/chord/src/host/root.ts` | `chord/next/host/host_root.go` | ✅ |
 | `packages/chord/src/host/routines.ts` | `chord/next/host/host_routines.go` | ✅ |
 | `packages/chord/src/host/facet.ts` | `chord/next/host/host_facet.go` | ✅ |
-| `packages/chord/src/host/presence.ts` | `chord/next/host/host_presence.go` | 🟡 |
+| `packages/chord/src/host/presence.ts` | `chord/next/host/host_presence.go` Tests: presence.test.ts: chord/next/host/host_presence_test.go | ✅ |
 | `packages/chord/src/host/route.ts` | `chord/next/host/host_route.go` | ✅ |
 | `packages/chord/src/host/destination.ts` | `chord/next/host/host_destination.go` | ✅ |
 | `packages/chord/src/host/index.ts` | `(barrel: Go imports the package (DESIGN-go-layout.md section 2); what it exports is exported by the files above (Ctx, Facet, FacetHost, Host..., Sleep, UntilAborted, Presence, RefState, RevokedBy, RootOptions, RouteOptions, RoutineDeclarations, Native*, Follow*, GetOptions, HostError, Position; Host, HostOptions, LinkOptions, createHost, Factory, Self, StoreSelf, Held, Reference, RefIn are D5a's))` | n/a |
@@ -938,7 +938,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/node/http/http.ts` | `chord/nextnode/http/http.go` | ✅ |
 | `packages/chord/src/node/http/incoming.ts` | `chord/nextnode/http/incoming.go` | ✅ |
 | `packages/chord/src/node/http/index.ts` | `(barrel: Go imports the package; exported names are those of Pi's index.ts, the rest is unexported)` | n/a |
-| `packages/chord/src/node/http/node.ts` | `chord/nextnode/http/node.go, chord/nextnode/http/url.go` | 🟡 |
+| `packages/chord/src/node/http/node.ts` | `chord/nextnode/http/node.go`, `chord/nextnode/http/url.go` (the listener; the wire URL Node's parser makes of Host and target in url.go, ported with Node's own parsing probed into chord/nextnode/http/testdata corpora; the packages/chord/test/node/http/node.test.ts cases in chord/nextnode/http/node_test.go, url_test.go; D218 records the net/http differences) | ✅ |
 | `packages/chord/src/node/http/request.ts` | `chord/nextnode/http/request.go` | ✅ |
 | `packages/chord/src/node/http/response.ts` | `chord/nextnode/http/response.go` | ✅ |
 | `packages/chord/src/node/http/router.ts` | `chord/nextnode/http/router.go`, `chord/nextnode/http/websocket.go` (WebSocketHandle) | ✅ |
@@ -996,7 +996,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/node/surfaces/current.ts` | `chord/nextnode/surfaces/surfaces_current.go` | ✅ |
 | `packages/chord/src/node/surfaces/surface-build.ts` | `chord/nextnode/surfaces/surfaces_build.go` | ✅ |
 | `packages/chord/src/node/surfaces/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
-| `packages/chord/src/node/surfaces/published.ts` | `chord/nextnode/surfaces/surfaces_published.go` Missing: no Go test of PublishedScripts of its own (only the incidental run of TestTheTerminalSurfaceServesASignedInLauncher... covers 22 of 48 statements): the retention of the last few sets (served files of recent sets stay), a plugin whose next build fails keeping its digest, text and stylesheet, source-map comment, asset collection and the file(path) lookup, the rollout Step ordering | 🟡 |
+| `packages/chord/src/node/surfaces/published.ts` | `chord/nextnode/surfaces/surfaces_published.go` (PublishedScripts: set retention, build-failure carry-over, digests, source maps, assets and the rollout Step; chord/nextnode/surfaces/surfaces_published_test.go) | ✅ |
 | `packages/chord/src/node/surfaces/served.ts` | `chord/nextnode/surfaces/surfaces_served.go` | ✅ |
 | `packages/chord/src/node/surfaces/tui.ts` | `chord/nextnode/surfaces/surfaces_tui.go` | ✅ |
 | `packages/chord/src/node/surfaces/web.ts` | `chord/nextnode/surfaces/surfaces_web.go` | ✅ |
@@ -1004,7 +1004,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/node/tui/credentials.ts` | `chord/nextnode/tui/tui_credentials.go` | ✅ |
 | `packages/chord/src/node/tui/filter.ts` | `chord/nextnode/tui/tui_filter.go` | ✅ |
 | `packages/chord/src/node/tui/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
-| `packages/chord/src/node/tui/launcher.ts` | `chord/nextnode/tui/tui_launcher.go` | ✅ |
+| `packages/chord/src/node/tui/launcher.ts` | `chord/nextnode/tui/tui_launcher.go`, `chord/nextnode/tui/tui_terminal.go` (the launcher's process terminal: TerminalOptions input and output, raw mode and resize; chord/nextnode/tui/tui_terminal_test.go, tui_terminal_pty_linux_test.go) | ✅ |
 | `packages/chord/src/node/tui/pipe.ts` | `chord/nextnode/tui/tui_pipe.go` | ✅ |
 | `packages/chord/src/node/tui/sandbox.ts` | `chord/nextnode/tui/tui_sandbox.go` | ✅ |
 | `packages/chord/src/node/workers/base.ts` | `(designed out, D600 draft: a Go worker is the program's own executable; no esbuild worker base; rows/chord-reload-workers.md)` | n/a |
@@ -1017,7 +1017,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/surfaces/active-theme.ts` | `chord/next/surfaces/surfaces_active_theme.go` | ✅ |
 | `packages/chord/src/surfaces/client.ts` | `chord/next/surfaces/surfaces_client.go` | ✅ |
 | `packages/chord/src/surfaces/connection.ts` | `chord/next/surfaces/surfaces_connection.go` | ✅ |
-| `packages/chord/src/surfaces/format.ts` | `chord/next/surfaces/surfaces_format.go` Missing: the interface ledger lists formatNumber, formatNumber::call:0, formatTime and formatTime::call:0 as pending, not ported; surfaces_format.go and the generated Intl tables port them (D464, D466) with tests, but no closure review has recorded their ledger disposition | 🟡 |
+| `packages/chord/src/surfaces/format.ts` | `chord/next/surfaces/surfaces_format.go` (FormatNumber; FormatTime in chord/next/surfaces/intl_time.go over the generated Intl tables, D464, D465, D466; packages/chord/test/surfaces/format.test.ts in surfaces_format_test.go, differential tests intl_drift_test.go) | ✅ |
 | `packages/chord/src/surfaces/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
 | `packages/chord/src/surfaces/language.ts` | `chord/next/surfaces/surfaces_language.go` | ✅ |
 | `packages/chord/src/surfaces/loaded.ts` | `chord/next/surfaces/surfaces_loaded.go`, `chord/nextnode/surfaces/client/pi/chord/src/surfaces/loaded.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
@@ -1052,7 +1052,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/tui/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
 | `packages/chord/src/tui/runtime.ts` | `chord/nextnode/surfaces/client/pi/chord/src/tui/runtime.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go), `chord/nextnode/tui/tui_actions.go` | ✅ |
 | `packages/chord/src/tui/scope.ts` | `chord/next/tui/tui_scope.go` | ✅ |
-| `packages/chord/src/tui/terminal.ts` | `chord/nextnode/tui/tui_terminal.go`, `chord/nextnode/surfaces/client/pi/chord/src/tui/terminal.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) Missing: chord/nextnode/tui/tui_terminal.go (ProcessTerminal: Input, Output, Columns, Rows, IsTTY, SetRaw, OnResize; the streams terminal) has no Go test that names it; the vendored client copy is only byte-pinned | 🟡 |
+| `packages/chord/src/tui/terminal.ts` | `(BridgeTerminal is designed out: it runs in the browser client, vendored byte-for-byte at chord/nextnode/surfaces/client/pi/chord/src/tui/terminal.ts, D601; the launcher's process terminal is in the launcher.ts row)` | n/a |
 | `packages/chord/src/tui/theme.ts` | `chord/nextnode/surfaces/client/pi/chord/src/tui/theme.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go), `chord/next/tui/tui_theme.go` | ✅ |
 | `packages/chord/src/web/environment.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/environment.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/web/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |

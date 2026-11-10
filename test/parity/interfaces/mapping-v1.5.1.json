@@ -99421,7 +99421,9 @@
         "call:ai/errors.go#WithCauseDetail"
       ],
       "evidence": [
-        "test:ai/error_body_cause_upstream_test.go#TestConnectionErrorCauseDetailUpstream"
+        "test:ai/error_body_cause_upstream_test.go#TestConnectionErrorCauseDetailUpstream",
+        "test:ai/error_cause_fserror_test.go#TestWithCauseDetailEndsAtANodeFSError",
+        "test:ai/error_cause_fserror_test.go#TestWithCauseDetailOfAWindowsPathErrorReadsAsNode"
       ]
     },
     {
@@ -99441,7 +99443,9 @@
         "call:ai/errors.go#WithCauseDetail"
       ],
       "evidence": [
-        "test:ai/error_body_cause_upstream_test.go#TestConnectionErrorCauseDetailUpstream"
+        "test:ai/error_body_cause_upstream_test.go#TestConnectionErrorCauseDetailUpstream",
+        "test:ai/error_cause_fserror_test.go#TestWithCauseDetailEndsAtANodeFSError",
+        "test:ai/error_cause_fserror_test.go#TestWithCauseDetailOfAWindowsPathErrorReadsAsNode"
       ]
     },
     {
@@ -106813,8 +106817,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_host_test.go#TestHostStoreBelongsToOneOpenHostAtATime",
-        "test:chord/next/surfaces/surfaces_translations_test.go#TestTranslationsFacetServesTheRegistryComposingItsPluginsContributions",
-        "test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointAcceptsALinkAsTheAuthenticatedPrincipalWithTheOptionsLinksOptionsGaveThatSocket"
+        "test:chord/next/surfaces/surfaces_page_state_test.go#TestPageStateIsCollectedWithItsHost",
+        "test:chord/next/surfaces/surfaces_translations_test.go#TestTranslationsFacetServesTheRegistryComposingItsPluginsContributions"
       ]
     },
     {
@@ -106835,8 +106839,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_host_test.go#TestHostStoreBelongsToOneOpenHostAtATime",
-        "test:chord/next/surfaces/surfaces_translations_test.go#TestTranslationsFacetServesTheRegistryComposingItsPluginsContributions",
-        "test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointAcceptsALinkAsTheAuthenticatedPrincipalWithTheOptionsLinksOptionsGaveThatSocket"
+        "test:chord/next/surfaces/surfaces_page_state_test.go#TestPageStateIsCollectedWithItsHost",
+        "test:chord/next/surfaces/surfaces_translations_test.go#TestTranslationsFacetServesTheRegistryComposingItsPluginsContributions"
       ]
     },
     {
@@ -106902,7 +106906,7 @@
       "evidence": [
         "test:agent/agent_class_pi_oracle_test.go#TestAgentClassMatchesPi",
         "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi",
-        "test:chord/next/host/host_ctx_test.go#TestLinkedAbortSignalsAbortWithTheCallersSignalOrTheCallsTheCallersReasonFirst"
+        "test:chord/next/host/host_ctx_test.go#TestCtxGetRejectsWithTheAcquireErrorWhileItsHandlerRuns"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -106925,7 +106929,7 @@
       "evidence": [
         "test:chord/next/host/host_routines_test.go#TestOnTypesTheirHandlerByTheSourcesKindOpsAndRetiredForAJSONWatchableTheValueAloneForANativeOne",
         "test:chord/next/host/jobs_job_runs_test.go#TestPhaseSpansKeepARunsCtxAJobsUnderCtxTraceItsIdAndStateRecordedOrNot",
-        "test:chord/next/host/host_attempt_test.go#TestAttemptTheDrainAHandlerStuckPastItNoLongerCountsAsACallNorHoldsItsCtxGetReferences"
+        "test:chord/next/host/host_ctx_test.go#TestCtxGetRejectsWithTheAcquireErrorWhileItsHandlerRuns"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -108579,23 +108583,79 @@
     },
     {
       "id": "pkg:chord/.#formatNumber",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2b31f5d7bf92e344dccb3d5deaee1b643c3eadbecdcdfb428666ff262c337c40"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:2b31f5d7bf92e344dccb3d5deaee1b643c3eadbecdcdfb428666ff262c337c40",
+      "rationale": "Derived by the interface gap detector: formatNumber is Go chord/next/surfaces/surfaces_format.go#FormatNumber (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_format.go#FormatNumber"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/surfaces/surfaces_format.go#FormatNumber"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/intl_drift_test.go#TestNumbersMatchNode",
+        "test:chord/next/surfaces/intl_root_test.go#TestAnUnavailableTagTakesThePlatformLocaleWhenItHasData",
+        "test:chord/next/surfaces/intl_root_test.go#TestCompoundLegacyAliasesAreCanonicalizedBeforeTheLookup"
+      ]
     },
     {
       "id": "pkg:chord/.#formatNumber::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e7e5581fb3f867aeb6f38fe3ae155c58f200003090c0c3b547af0cfdd656a4da"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:e7e5581fb3f867aeb6f38fe3ae155c58f200003090c0c3b547af0cfdd656a4da",
+      "rationale": "Pi packages/chord/src/surfaces/format.ts (Pi 1.5.1) formatNumber(value, options?) is `Intl.NumberFormat` with the current language's locale (the platform's default outside a render). Go FormatNumber(lang *Language, value float64, options *NumberOptions) (string, error): the language is the first parameter, nil outside a render (D450); the options are the closed NumberOptions over tables generated from the pinned Node's Intl (D464), with no per-language formatter cache (D466); the errors Intl throws are the returned ErrOption/ErrLocale. Every output is diffed against a live Node by TestNumbersMatchNode (a seeded corpus of locales, values and options) and the three upstream cases of packages/chord/test/surfaces/format.test.ts run in surfaces_format_test.go; mutating the nil-language platform default, the language's locale, or the fraction-digit options fails these tests. The public library API has no PiG call site: its callers are the tests. The Go function is the port (surfaces_format.go, intl_time.go) and carries the language first (D450), one parameter more than Pi's two, which no shape rule of the closure engine matches to Pi's signature; the row is designed out for that signature alone and the port is proven by its evidence tests (portmapcheck derives the format.ts row from them).",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_format.go#FormatNumber"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_format_test.go#TestFormatsNumbersInTheRendersLocale",
+        "test:chord/next/surfaces/surfaces_format_test.go#TestFormatsNumbersInThePlatformsDefaultLocaleOutsideARender",
+        "test:chord/next/surfaces/surfaces_format_test.go#TestFormatNumberFractionDigits",
+        "test:chord/next/surfaces/surfaces_format_test.go#TestFormatsRefuseLocalesIntlRefuses",
+        "test:chord/next/surfaces/intl_drift_test.go#TestNumbersMatchNode"
+      ]
     },
     {
       "id": "pkg:chord/.#formatTime",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9055cd64b295fb3fd5dad4a9abf478ce2da81497df40f152bba3f9ee6f966271"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9055cd64b295fb3fd5dad4a9abf478ce2da81497df40f152bba3f9ee6f966271",
+      "rationale": "Derived by the interface gap detector: formatTime is Go chord/next/surfaces/intl_time.go#FormatTime (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/surfaces/intl_time.go#FormatTime"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/surfaces/intl_time.go#FormatTime"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/intl_root_test.go#TestAnUnavailableTagTakesThePlatformLocaleWhenItHasData",
+        "test:chord/next/surfaces/intl_root_test.go#TestCompoundLegacyAliasesAreCanonicalizedBeforeTheLookup",
+        "test:chord/next/surfaces/intl_root_test.go#TestFormatTimeShowsTheInstantInTheProcessZone"
+      ]
     },
     {
       "id": "pkg:chord/.#formatTime::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d722554fc8dc2d98f7686bb0c6bc325734287ef82b54fab924fb9912e8ec8c21"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:d722554fc8dc2d98f7686bb0c6bc325734287ef82b54fab924fb9912e8ec8c21",
+      "rationale": "Pi packages/chord/src/surfaces/format.ts (Pi 1.5.1) formatTime(at, options?) is `Intl.DateTimeFormat` with the current language's locale (the platform's default outside a render), `{timeStyle: \"short\"}` by default, of `new Date(at)`. Go FormatTime(lang *Language, at time.Time, options *TimeOptions) (string, error): the language is the first parameter (D450); `Date | number | string` is a time.Time (D465); the options are the closed TimeOptions over tables generated from the pinned Node's Intl (D464); the zone is the process's, as a Date's is. TestTimesMatchNode diffs every output against a live Node and TestFormatTimeShowsTheInstantInTheProcessZone pins the zone; mutating the process zone to UTC or the default style to medium fails the tests. The public library API has no PiG call site: its callers are the tests. The Go function is the port (surfaces_format.go, intl_time.go) and carries the language first (D450), one parameter more than Pi's two, which no shape rule of the closure engine matches to Pi's signature; the row is designed out for that signature alone and the port is proven by its evidence tests (portmapcheck derives the format.ts row from them).",
+      "pigTargets": [
+        "chord/next/surfaces/surfaces_format.go#FormatTime",
+        "chord/next/surfaces/intl_time.go#FormatTime"
+      ],
+      "evidence": [
+        "test:chord/next/surfaces/surfaces_format_test.go#TestFormatsTimesInTheRendersLocale",
+        "test:chord/next/surfaces/surfaces_format_test.go#TestFormatTimeRefusesOptionsOutsideTheClosedType",
+        "test:chord/next/surfaces/intl_root_test.go#TestFormatTimeShowsTheInstantInTheProcessZone",
+        "test:chord/next/surfaces/intl_drift_test.go#TestTimesMatchNode"
+      ]
     },
     {
       "id": "pkg:chord/.#GetOptions",
@@ -111524,7 +111584,7 @@
       "evidence": [
         "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort",
         "test:chord/next/link/ipc_test.go#TestIPCLinksToAChild",
-        "test:chord/next/link/websocket_test.go#TestWebSocketLinksOverAFakeSocket"
+        "test:chord/next/link/websocket_test.go#TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend"
       ]
     },
     {
@@ -111546,7 +111606,7 @@
       "evidence": [
         "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort",
         "test:chord/next/link/ipc_test.go#TestIPCLinksToAChild",
-        "test:chord/next/link/websocket_test.go#TestWebSocketLinksOverAFakeSocket"
+        "test:chord/next/link/websocket_test.go#TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend"
       ]
     },
     {
@@ -111612,7 +111672,7 @@
       "evidence": [
         "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort",
         "test:chord/next/link/ipc_test.go#TestIPCLinksToAChild",
-        "test:chord/next/link/websocket_test.go#TestWebSocketLinksOverAFakeSocket"
+        "test:chord/next/link/websocket_test.go#TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend"
       ]
     },
     {
@@ -111634,7 +111694,7 @@
       "evidence": [
         "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort",
         "test:chord/next/link/ipc_test.go#TestIPCLinksToAChild",
-        "test:chord/next/link/websocket_test.go#TestWebSocketLinksOverAFakeSocket"
+        "test:chord/next/link/websocket_test.go#TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend"
       ]
     },
     {
@@ -112951,7 +113011,7 @@
       "evidence": [
         "test:chord/next/host/host_attempt_test.go#TestActivationSpansATransientFailureAndItsRetryIsARootOfTheHostsAdapterLinkedToItsFirstTriggerARetrysLinksToTheAttemptBefore",
         "test:chord/next/host/host_attempt_test.go#TestAttemptAnAttemptNotLiveWithinReadyTimeoutIsAbandonedAndFailsTransientTheOpenersContextAbortedWhatOpenedClosed",
-        "test:chord/next/host/host_native_test.go#TestNativeACloseInTimeReportsNothingAndLeavesNoTimer"
+        "test:chord/next/host/host_native_test.go#TestNativeACloseInTimeLeavesItsContextUnabortedAfterItReturns"
       ]
     },
     {
@@ -115268,7 +115328,9 @@
         "call:chord/next/surfaces/surfaces_registered.go#RegisteredSource"
       ],
       "evidence": [
-        "test:chord/next/surfaces/surfaces_registered_test.go#TestRegisteredScriptsRegisterTheirPluginDigestAndFunctionTheSourceMapCommentKeptInsideTheCall"
+        "test:chord/next/surfaces/surfaces_registered_test.go#TestRegisteredScriptsRegisterTheirPluginDigestAndFunctionTheSourceMapCommentKeptInsideTheCall",
+        "test:chord/nextnode/surfaces/surfaces_published_test.go#TestPublishedScriptsAPluginWhoseNextBuildFailsKeepsItsDigestTextStylesheetAndAssets",
+        "test:chord/nextnode/surfaces/surfaces_published_test.go#TestPublishedScriptsFilesNameEachScriptStylesheetAndAssetByContentAndCombineWithoutSourceMaps"
       ]
     },
     {
@@ -115288,7 +115350,9 @@
         "call:chord/next/surfaces/surfaces_registered.go#RegisteredSource"
       ],
       "evidence": [
-        "test:chord/next/surfaces/surfaces_registered_test.go#TestRegisteredScriptsRegisterTheirPluginDigestAndFunctionTheSourceMapCommentKeptInsideTheCall"
+        "test:chord/next/surfaces/surfaces_registered_test.go#TestRegisteredScriptsRegisterTheirPluginDigestAndFunctionTheSourceMapCommentKeptInsideTheCall",
+        "test:chord/nextnode/surfaces/surfaces_published_test.go#TestPublishedScriptsAPluginWhoseNextBuildFailsKeepsItsDigestTextStylesheetAndAssets",
+        "test:chord/nextnode/surfaces/surfaces_published_test.go#TestPublishedScriptsFilesNameEachScriptStylesheetAndAssetByContentAndCombineWithoutSourceMaps"
       ]
     },
     {
@@ -118060,7 +118124,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/app/app.go#App.closeSteps"
+        "call:chord/nextnode/app/app.go#App.closeResources"
       ],
       "evidence": [
         "test:chord/next/store/outbox_test.go#TestOutbox",
@@ -118083,7 +118147,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/app/app.go#App.closeSteps"
+        "call:chord/nextnode/app/app.go#App.closeResources"
       ],
       "evidence": [
         "test:chord/next/store/outbox_test.go#TestOutbox",
@@ -121550,18 +121614,66 @@
     },
     {
       "id": "pkg:chord/.#WebSocketLike::property:close",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:390ce9a16559f22ff3624a68f5096f1f31e9f637e726d9c0c42528aac152a2c1"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:390ce9a16559f22ff3624a68f5096f1f31e9f637e726d9c0c42528aac152a2c1",
+      "rationale": "Pi packages/chord/src/link/websocket.ts:13 WebSocketLike::property:close (Pi 1.5.1): WebSocketLike.close() closes the socket; Go WebSocketLike.Close() (websocket.go:25) is what the link's own Close calls after it has stopped listening, and what a thrown send calls (TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend: the link closes, then the socket, and later sends are dropped; a mutation that closes the socket before ending the link fails it).",
+      "pigTargets": [
+        "chord/next/link/websocket.go#WebSocketLike.Close"
+      ],
+      "layers": {
+        "shape": "complete",
+        "production": "complete",
+        "behavior": "complete"
+      },
+      "production": [
+        "call:chord/next/link/websocket.go#webSocketLink.Close"
+      ],
+      "evidence": [
+        "test:chord/next/link/websocket_test.go#TestWebSocketLinksOverAFakeSocket",
+        "test:chord/next/link/websocket_test.go#TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend"
+      ]
     },
     {
       "id": "pkg:chord/.#WebSocketLike::property:close::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9ca6a314a982a3e688c5c5ffde6bd32f25f07554352674c9e2234fc7f4b40b92"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9ca6a314a982a3e688c5c5ffde6bd32f25f07554352674c9e2234fc7f4b40b92",
+      "rationale": "Pi packages/chord/src/link/websocket.ts:13 WebSocketLike::property:close (Pi 1.5.1): WebSocketLike.close() closes the socket; Go WebSocketLike.Close() (websocket.go:25) is what the link's own Close calls after it has stopped listening, and what a thrown send calls (TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend: the link closes, then the socket, and later sends are dropped; a mutation that closes the socket before ending the link fails it).",
+      "pigTargets": [
+        "chord/next/link/websocket.go#WebSocketLike.Close"
+      ],
+      "layers": {
+        "shape": "complete",
+        "production": "complete",
+        "behavior": "complete"
+      },
+      "production": [
+        "call:chord/next/link/websocket.go#webSocketLink.Close"
+      ],
+      "evidence": [
+        "test:chord/next/link/websocket_test.go#TestWebSocketLinksOverAFakeSocket",
+        "test:chord/next/link/websocket_test.go#TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend"
+      ]
     },
     {
       "id": "pkg:chord/.#WebSocketLike::property:readyState",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:63e2d6224ae33c95dad22c0be553b090f7da9e7b897ee1af4e97c7da428fe034"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:63e2d6224ae33c95dad22c0be553b090f7da9e7b897ee1af4e97c7da428fe034",
+      "rationale": "Pi packages/chord/src/link/websocket.ts:9 WebSocketLike::property:readyState (Pi 1.5.1): WebSocketLike.readyState is the DOM WebSocket's read-only state (0 connecting, 1 open, 2 closing, 3 closed) that WebSocketLink reads once at construction and again to decide whether to buffer or send; Go has no property on an interface, so it is the method WebSocketLike.ReadyState() int (websocket.go:22), with the same four values.",
+      "pigTargets": [
+        "chord/next/link/websocket.go#WebSocketLike.ReadyState"
+      ],
+      "layers": {
+        "shape": "complete",
+        "production": "complete",
+        "behavior": "complete"
+      },
+      "production": [
+        "call:chord/next/link/websocket.go#WebSocketLink"
+      ],
+      "evidence": [
+        "test:chord/next/link/websocket_test.go#TestWebSocketLinksOverAFakeSocket",
+        "test:chord/next/link/websocket_test.go#TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend"
+      ]
     },
     {
       "id": "pkg:chord/.#WebSocketLike::property:removeEventListener",
@@ -121592,13 +121704,45 @@
     },
     {
       "id": "pkg:chord/.#WebSocketLike::property:send",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:ffc9eb6ccd6912e3e718d4276f4b30a9a118cbeefb6b7cf30193ed3ead84759d"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:ffc9eb6ccd6912e3e718d4276f4b30a9a118cbeefb6b7cf30193ed3ead84759d",
+      "rationale": "Pi packages/chord/src/link/websocket.ts:12 WebSocketLike::property:send (Pi 1.5.1): WebSocketLike.send(data: Uint8Array) sends one binary frame and may throw; Go WebSocketLike.Send(data []byte) error (websocket.go:24): a thrown send is the returned error, which closes the link as in Pi. TestWebSocketLinksOverAFakeSocket (messages sent while connecting are buffered and sent on open as binary frames) and TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend (each message to an open socket at once, in order; a throw closes) cover it; mutating the buffering or the close-on-error fails them.",
+      "pigTargets": [
+        "chord/next/link/websocket.go#WebSocketLike.Send"
+      ],
+      "layers": {
+        "shape": "complete",
+        "production": "complete",
+        "behavior": "complete"
+      },
+      "production": [
+        "call:chord/next/link/websocket.go#webSocketLink.Send"
+      ],
+      "evidence": [
+        "test:chord/next/link/websocket_test.go#TestWebSocketLinksOverAFakeSocket",
+        "test:chord/next/link/websocket_test.go#TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend"
+      ]
     },
     {
       "id": "pkg:chord/.#WebSocketLike::property:send::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:3532bc262b6d7094b069cb3d5fcc1c669bb96c212e967c205e7813d67fedf735"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:3532bc262b6d7094b069cb3d5fcc1c669bb96c212e967c205e7813d67fedf735",
+      "rationale": "Pi packages/chord/src/link/websocket.ts:12 WebSocketLike::property:send (Pi 1.5.1): WebSocketLike.send(data: Uint8Array) sends one binary frame and may throw; Go WebSocketLike.Send(data []byte) error (websocket.go:24): a thrown send is the returned error, which closes the link as in Pi. TestWebSocketLinksOverAFakeSocket (messages sent while connecting are buffered and sent on open as binary frames) and TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend (each message to an open socket at once, in order; a throw closes) cover it; mutating the buffering or the close-on-error fails them.",
+      "pigTargets": [
+        "chord/next/link/websocket.go#WebSocketLike.Send"
+      ],
+      "layers": {
+        "shape": "complete",
+        "production": "complete",
+        "behavior": "complete"
+      },
+      "production": [
+        "call:chord/next/link/websocket.go#webSocketLink.Send"
+      ],
+      "evidence": [
+        "test:chord/next/link/websocket_test.go#TestWebSocketLinksOverAFakeSocket",
+        "test:chord/next/link/websocket_test.go#TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend"
+      ]
     },
     {
       "id": "pkg:chord/.#webSocketLink",
@@ -121619,7 +121763,7 @@
       "evidence": [
         "test:chord/next/host/host_example_13_test.go#TestExample13Relay",
         "test:chord/next/host/remote_websocket_test.go#TestWebSocketLinksOverALoopbackServer",
-        "test:chord/next/link/websocket_test.go#TestWebSocketLinksOverAFakeSocket"
+        "test:chord/next/link/websocket_test.go#TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend"
       ]
     },
     {
@@ -121641,7 +121785,7 @@
       "evidence": [
         "test:chord/next/host/host_example_13_test.go#TestExample13Relay",
         "test:chord/next/host/remote_websocket_test.go#TestWebSocketLinksOverALoopbackServer",
-        "test:chord/next/link/websocket_test.go#TestWebSocketLinksOverAFakeSocket"
+        "test:chord/next/link/websocket_test.go#TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend"
       ]
     },
     {
@@ -122328,8 +122472,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/app/app_bases_linux_test.go#TestAppAnswersItsOwnerPageBeforeTheWebBaseIsBuiltAPageRequestWaitsForItsBase",
-        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppClosesWithoutWaitingForABaseBuildStalledOnAReadItsLateResultIsDropped",
-        "test:chord/nextnode/app/app_bases_scan_test.go#TestAppAnswersBeforeTheScanOfItsOwnCodeFinishedTheScanRunsAfterTheStart"
+        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppCloseAbandonsABaseBuildStalledOnAReadWhenItsContextEndsAndReturnsTheContextsError",
+        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppCloseWaitsForABaseBuildStalledOnAReadAndReturnsOnceItEndsItsLateResultIsDropped"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -122352,7 +122496,7 @@
       "evidence": [
         "test:chord/nextnode/app/app_bases_linux_test.go#TestAppAnAbortedApplyWaitingAtTheWebStepForTheInitialBuildStopsThereTheBuildGoesOn",
         "test:chord/nextnode/app/app_bases_linux_test.go#TestAppAnswersItsOwnerPageBeforeTheWebBaseIsBuiltAPageRequestWaitsForItsBase",
-        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppClosesWithoutWaitingForABaseBuildStalledOnAReadItsLateResultIsDropped"
+        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppCloseAbandonsABaseBuildStalledOnAReadWhenItsContextEndsAndReturnsTheContextsError"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -122374,8 +122518,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginEndsItsSessionsWithTheServer",
-        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppClosesWithoutWaitingForABaseBuildStalledOnAReadItsLateResultIsDropped",
-        "test:chord/nextnode/app/app_bases_scan_test.go#TestAppClosesWithoutWaitingForAScanOfItsOwnCodeStalledOnAReadItsLateResultIsDropped"
+        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppCloseAbandonsABaseBuildStalledOnAReadWhenItsContextEndsAndReturnsTheContextsError",
+        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppCloseWaitsForABaseBuildStalledOnAReadAndReturnsOnceItEndsItsLateResultIsDropped"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -122397,8 +122541,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginEndsItsSessionsWithTheServer",
-        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppClosesWithoutWaitingForABaseBuildStalledOnAReadItsLateResultIsDropped",
-        "test:chord/nextnode/app/app_bases_scan_test.go#TestAppClosesWithoutWaitingForAScanOfItsOwnCodeStalledOnAReadItsLateResultIsDropped"
+        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppCloseAbandonsABaseBuildStalledOnAReadWhenItsContextEndsAndReturnsTheContextsError",
+        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppCloseWaitsForABaseBuildStalledOnAReadAndReturnsOnceItEndsItsLateResultIsDropped"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -122482,7 +122626,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/app/app.go#App.closeSteps"
+        "call:chord/nextnode/app/app.go#App.closeResources"
       ],
       "evidence": [
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientPairsWithTheServerTheCodeShownApprovedByTheOwnerThenTheClientRuns",
@@ -122504,10 +122648,10 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/app/app.go#App.closeSteps"
+        "call:chord/nextnode/app/app.go#App.closeResources"
       ],
       "evidence": [
-        "reach:chord/nextnode/app/app.go#App.closeSteps"
+        "reach:chord/nextnode/app/app.go#App.closeResources"
       ]
     },
     {
@@ -122638,8 +122782,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
-        "test:chord/nextnode/app/app_bases_scan_test.go#TestAppClosesWithoutWaitingForAScanOfItsOwnCodeStalledOnAReadItsLateResultIsDropped",
-        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesBuildsTheDirtyPluginsAndRollsThemOutToTheServer"
+        "test:chord/nextnode/app/app_bases_scan_test.go#TestAppARecordOfTheServersCodeArrivingAfterTheClosedWatcherWatchesNothingAndMarksNothing",
+        "test:chord/nextnode/app/app_bases_scan_test.go#TestAppARecordOfTheServersCodeEditedSinceTheStartMarksBaseWhileTheAppIsOpen"
       ]
     },
     {
@@ -122681,8 +122825,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/app/app_bases_linux_test.go#TestAppAnswersItsOwnerPageBeforeTheWebBaseIsBuiltAPageRequestWaitsForItsBase",
-        "test:chord/nextnode/app/app_bases_test.go#TestAppReportsABaseThatFailsAfterTheListenAndRunsOnThePageAnswers503TheKindsWorkersFailTheirStart",
-        "test:chord/nextnode/app/app_surfaces_test.go#TestAppRunsTheWebAndTheTerminalSurfacesWithTheirOwnBaseBundles"
+        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppCloseWaitsForABaseBuildStalledOnAReadAndReturnsOnceItEndsItsLateResultIsDropped",
+        "test:chord/nextnode/app/app_bases_test.go#TestAppReportsABaseThatFailsAfterTheListenAndRunsOnThePageAnswers503TheKindsWorkersFailTheirStart"
       ]
     },
     {
@@ -122811,9 +122955,9 @@
         "call:chord/nextnode/app/app.go#App.ApplyChanges"
       ],
       "evidence": [
-        "test:chord/nextnode/app/app_bases_test.go#TestAppReportsABaseThatFailsAfterTheListenAndRunsOnThePageAnswers503TheKindsWorkersFailTheirStart",
-        "test:chord/nextnode/app/app_bases_workers_linux_test.go#TestAppAClosedStartsLateWorkerBaseBuildNeverTouchesTheNextStartsDirectoryItsBaseStaysAsItWas",
-        "test:chord/nextnode/app/app_bases_workers_linux_test.go#TestAppAnswersBeforeAWorkerKindsBaseIsBuiltAWorkerStartWaitsForItsBase"
+        "test:chord/nextnode/app/app_bases_scan_test.go#TestAppARecordOfTheServersCodeArrivingAfterTheClosedWatcherWatchesNothingAndMarksNothing",
+        "test:chord/nextnode/app/app_bases_scan_test.go#TestAppARecordOfTheServersCodeEditedSinceTheStartMarksBaseWhileTheAppIsOpen",
+        "test:chord/nextnode/app/app_bases_test.go#TestAppReportsABaseThatFailsAfterTheListenAndRunsOnThePageAnswers503TheKindsWorkersFailTheirStart"
       ]
     },
     {
@@ -122835,7 +122979,7 @@
       "evidence": [
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
         "test:chord/nextnode/app/app_changes_test.go#TestAppInstallsAPluginFromGitIntoTheUsersRootApplyingChangesLoadsIt",
-        "test:chord/nextnode/app/app_bases_scan_test.go#TestAppClosesWithoutWaitingForAScanOfItsOwnCodeStalledOnAReadItsLateResultIsDropped"
+        "test:chord/nextnode/app/app_bases_scan_test.go#TestAppARecordOfTheServersCodeArrivingAfterTheClosedWatcherWatchesNothingAndMarksNothing"
       ]
     },
     {
@@ -129031,9 +129175,9 @@
         "call:chord/nextnode/plugins/plugins_install.go#InstallPlugin"
       ],
       "evidence": [
+        "test:chord/nextnode/plugins/plugins_install_tar_test.go#TestInstallPluginNamesTheTarballToTarRelativeToThePackDirectory",
         "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClaimsItsDirectoryFirstOfTwoConcurrentInstallsOneWinsTheOtherRemovesNothingOfItSol",
-        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryOfSeveralPluginsItsSubdirectoriesPinnedToACommit",
-        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryWhoseTopIsAPluginIntoRootRepositoryAtATagAndInstallsItsDependencies"
+        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryOfSeveralPluginsItsSubdirectoriesPinnedToACommit"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -129054,9 +129198,9 @@
         "call:chord/nextnode/plugins/plugins_install.go#InstallPlugin"
       ],
       "evidence": [
+        "test:chord/nextnode/plugins/plugins_install_tar_test.go#TestInstallPluginNamesTheTarballToTarRelativeToThePackDirectory",
         "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClaimsItsDirectoryFirstOfTwoConcurrentInstallsOneWinsTheOtherRemovesNothingOfItSol",
-        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryOfSeveralPluginsItsSubdirectoriesPinnedToACommit",
-        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryWhoseTopIsAPluginIntoRootRepositoryAtATagAndInstallsItsDependencies"
+        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryOfSeveralPluginsItsSubdirectoriesPinnedToACommit"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -129077,9 +129221,9 @@
         "call:chord/nextnode/plugins/plugins_install.go#InstallPlugin"
       ],
       "evidence": [
+        "test:chord/nextnode/plugins/plugins_install_tar_test.go#TestInstallPluginNamesTheTarballToTarRelativeToThePackDirectory",
         "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClaimsItsDirectoryFirstOfTwoConcurrentInstallsOneWinsTheOtherRemovesNothingOfItSol",
-        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryOfSeveralPluginsItsSubdirectoriesPinnedToACommit",
-        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryWhoseTopIsAPluginIntoRootRepositoryAtATagAndInstallsItsDependencies"
+        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryOfSeveralPluginsItsSubdirectoriesPinnedToACommit"
       ]
     },
     {
@@ -129457,8 +129601,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
-        "test:chord/nextnode/app/app_bases_scan_test.go#TestAppClosesWithoutWaitingForAScanOfItsOwnCodeStalledOnAReadItsLateResultIsDropped",
-        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesBuildsTheDirtyPluginsAndRollsThemOutToTheServer"
+        "test:chord/nextnode/app/app_bases_scan_test.go#TestAppARecordOfTheServersCodeArrivingAfterTheClosedWatcherWatchesNothingAndMarksNothing",
+        "test:chord/nextnode/app/app_bases_scan_test.go#TestAppARecordOfTheServersCodeEditedSinceTheStartMarksBaseWhileTheAppIsOpen"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -130030,8 +130174,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/app/app_changes_test.go#TestAppInstallsAPluginFromGitIntoTheUsersRootApplyingChangesLoadsIt",
-        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClaimsItsDirectoryFirstOfTwoConcurrentInstallsOneWinsTheOtherRemovesNothingOfItSol",
-        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryOfSeveralPluginsItsSubdirectoriesPinnedToACommit"
+        "test:chord/nextnode/plugins/plugins_install_tar_test.go#TestInstallPluginNamesTheTarballToTarRelativeToThePackDirectory",
+        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClaimsItsDirectoryFirstOfTwoConcurrentInstallsOneWinsTheOtherRemovesNothingOfItSol"
       ]
     },
     {
@@ -132238,9 +132382,9 @@
         "call:chord/nextnode/surfaces/surfaces_bundle.go#BuildBase"
       ],
       "evidence": [
-        "test:chord/nextnode/surfaces/surfaces_bundle_test.go#TestConditionsKeepsABrowserBuildsModuleConditionAndBrowserFieldWithCustomConditions",
-        "test:chord/nextnode/surfaces/surfaces_bundle_test.go#TestConditionsResolvePackageExportsWithEachSpellingOfTheFlagTheDefaultWithNone",
-        "test:chord/nextnode/surfaces/surfaces_bundle_test.go#TestConditionsResolvesWithTheGivenConditionsTheSourceAsInputNotDistEachWithItsBytesHash"
+        "test:chord/nextnode/surfaces/surfaces_published_test.go#TestPublishedScriptsAPluginWhoseNextBuildFailsKeepsItsDigestTextStylesheetAndAssets",
+        "test:chord/nextnode/surfaces/surfaces_published_test.go#TestPublishedScriptsAStylesheetChangeAloneKeepsTheScriptsDigestAndChangesItsName",
+        "test:chord/nextnode/surfaces/surfaces_published_test.go#TestPublishedScriptsFilesNameEachScriptStylesheetAndAssetByContentAndCombineWithoutSourceMaps"
       ]
     },
     {
@@ -132260,9 +132404,9 @@
         "call:chord/nextnode/surfaces/surfaces_build.go#publicOutcome"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppCloseWaitsForABaseBuildStalledOnAReadAndReturnsOnceItEndsItsLateResultIsDropped",
         "test:chord/nextnode/surfaces/surfaces_build_linux_test.go#TestARolloutStepDuringTheBuildStopsWaitingAtItsContextsAbortBeforeTheBuildEndsTheBuildGoesOn",
-        "test:chord/nextnode/surfaces/surfaces_build_linux_test.go#TestTheServersCloseFailsTheBuildInFlightItsWaitersAnswer503",
-        "test:chord/nextnode/surfaces/surfaces_build_test.go#TestAFailedBuildAnswers503ForTheSurfacesFilesAndFailsItsStepsHost"
+        "test:chord/nextnode/surfaces/surfaces_build_linux_test.go#TestTheServersCloseFailsTheBuildInFlightItsWaitersAnswer503"
       ]
     },
     {
@@ -195599,7 +195743,9 @@
         "call:internal/codingagent/native_model_runtime.go#ModelRegistry.GetProvider"
       ],
       "evidence": [
-        "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream"
+        "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream",
+        "test:internal/codingagent/model_catalog_data_radius_first_test.go#TestGetProviderModelDataDoesNotBuildTheBundledCatalogOfARadiusProvider",
+        "test:internal/codingagent/model_catalog_data_radius_first_test.go#TestGetProviderModelDataListsTheSameModelsWithTheRadiusBranchFirst"
       ]
     },
     {
@@ -195619,7 +195765,9 @@
         "call:internal/codingagent/native_model_runtime.go#ModelRegistry.GetProvider"
       ],
       "evidence": [
-        "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream"
+        "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream",
+        "test:internal/codingagent/model_catalog_data_radius_first_test.go#TestGetProviderModelDataDoesNotBuildTheBundledCatalogOfARadiusProvider",
+        "test:internal/codingagent/model_catalog_data_radius_first_test.go#TestGetProviderModelDataListsTheSameModelsWithTheRadiusBranchFirst"
       ]
     },
     {
@@ -227393,7 +227541,7 @@
       "evidence": [
         "test:test/extension-conformance/api_on_events_test.go#TestConformanceAPIOnVoidEventsReachTheTypedHandlers",
         "test:test/extension-conformance/conformance_test.go#TestModelEventPayloadsMatchAcrossSDKs",
-        "test:test/extension-conformance/deep_event_delta_test.go#TestDeepEventStreamDeltasReachEverySDK"
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
       ]
     },
     {
@@ -285882,7 +286030,7 @@
       "id": "pkg:schema/.#CoercingValidator::construct:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:f88eacd057705de17759d989769b674dd0cf9a1c37bba88fe22c07fcf5bc7e77",
-      "rationale": "Pi packages/schema/src/validator.ts:70 CoercingValidator::construct:0 (Pi 1.5.1, unchanged from 1.4.0+b556cfe5): CoercingValidator is a class that inherits Validator's constructor `new CoercingValidator(schema, options, check)`, which compile() alone calls when `options.coerce === true` (validator.ts:24-26); Go has no constructor on a struct type with unexported fields: CompileCoercing(schema, options) (*CoercingValidator, error) builds it (schema/validator.go:86-92) and returns the compile throw as the error, so there is no NewCoercingValidator and no second way to make one. Designed out as a Go language mechanic. Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go). Owner approved 2026-11-02 (Pi 1.5.1 packages/schema/src/validator.ts:14-26, unchanged from 1.4.0+b556cfe5; CompileCoercing is a separate type, CoercingValidator, where Pi overloads compile by the coerce option). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go) and TestCoerceMatchesPi (schema/coerce_oracle_test.go).",
+      "rationale": "Pi packages/schema/src/validator.ts:70 CoercingValidator::construct:0 (Pi 1.5.1, unchanged from 1.4.0+b556cfe5): CoercingValidator is a class that inherits Validator's constructor `new CoercingValidator(schema, options, check)`, which compile() alone calls when `options.coerce === true` (validator.ts:24-26); Go has no constructor on a struct type with unexported fields: CompileCoercing(schema, options) (*CoercingValidator, error) builds it (schema/validator.go:86-92) and returns the compile throw as the error, so there is no NewCoercingValidator and no second way to make one. Designed out as a Go language mechanic. Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go). Owner approved 2026-11-02 (Pi 1.5.1 packages/schema/src/validator.ts:14-26, unchanged from 1.4.0+b556cfe5; CompileCoercing is a separate type, CoercingValidator, where Pi overloads compile by the coerce option). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go) and TestCoerceMatchesPi (schema/coerce_oracle_test.go). The probe grepped Pi's schema package for `new CoercingValidator(` and found only compile() (validator.ts:25), so no Pi caller constructs one any other way.",
       "pigTargets": [
         "schema/validator.go#CompileCoercing"
       ]
@@ -286182,7 +286330,7 @@
       "id": "pkg:schema/.#CompileOptions::property:coerce",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:3af09d79b0c8ee00ffdb590b413c2e47c852f10b7e5f0d294c2c496f12e5d120",
-      "rationale": "Pi packages/schema/src/types.ts:24 CompileOptions::property:coerce (Pi 1.5.1, unchanged from 1.4.0+b556cfe5): `coerce?: boolean` is a run-time flag that adds `coerce()` and `parse()` to the validator compile() returns; its static effect, the CoercingValidator return type of the overload (validator.ts:14-17), cannot follow a field's value in Go, and an option that changed what Compile returns at run time would make Coerce and Parse methods that can be missing. The Go form is the distinct type: CompileCoercing(schema, options) returns *CoercingValidator (schema/validator.go:86), CompileOptions has no Coerce field (schema/types.go:29-38), and Compile never coerces. Designed out as a Go language mechanic (owner 2026-10-29/30). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go). Owner approved 2026-11-02 (Pi 1.5.1 packages/schema/src/validator.ts:14-26, unchanged from 1.4.0+b556cfe5; CompileCoercing is a separate type, CoercingValidator, where Pi overloads compile by the coerce option). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go) and TestCoerceMatchesPi (schema/coerce_oracle_test.go).",
+      "rationale": "Pi packages/schema/src/types.ts:24 CompileOptions::property:coerce (Pi 1.5.1, unchanged from 1.4.0+b556cfe5): `coerce?: boolean` is a run-time flag that adds `coerce()` and `parse()` to the validator compile() returns; its static effect, the CoercingValidator return type of the overload (validator.ts:14-17), cannot follow a field's value in Go, and an option that changed what Compile returns at run time would make Coerce and Parse methods that can be missing. The Go form is the distinct type: CompileCoercing(schema, options) returns *CoercingValidator (schema/validator.go:86), CompileOptions has no Coerce field (schema/types.go:29-38), and Compile never coerces. Designed out as a Go language mechanic (owner 2026-10-29/30). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go). Owner approved 2026-11-02 (Pi 1.5.1 packages/schema/src/validator.ts:14-26, unchanged from 1.4.0+b556cfe5; CompileCoercing is a separate type, CoercingValidator, where Pi overloads compile by the coerce option). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go) and TestCoerceMatchesPi (schema/coerce_oracle_test.go). The probe read every use of `options.coerce` in Pi's schema package and found only compile()'s test (validator.ts:24), which picks the class.",
       "pigTargets": [
         "schema/validator.go#CompileCoercing",
         "schema/types.go#CompileOptions"
@@ -286782,7 +286930,7 @@
       "id": "pkg:schema/.#ParseResult",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:bba05fa9efb31f2588fa52fb40297b1946ab4ef3613864f27fa35617df4aa8e9",
-      "rationale": "Pi packages/schema/src/types.ts:34 ParseResult (Pi 1.5.1): ParseResult<T> = { ok: true; value: T } | { ok: false; errors: ValidationError[] } is a discriminated union whose members differ by the literal type of `ok` and the generic T; Go has neither, so ParseResult is one struct { OK bool; Value any; Errors []ValidationError } (schema/types.go:61-65), as Value is the coerced value when OK and Errors the errors of the coerced value otherwise (the other member is zero). Designed out as a Go language mechanic (discriminated union as a struct; T is the JSON value, any). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go: \"parse\").",
+      "rationale": "Pi packages/schema/src/types.ts:34 ParseResult (Pi 1.5.1): ParseResult<T> = { ok: true; value: T } | { ok: false; errors: ValidationError[] } is a discriminated union whose members differ by the literal type of `ok` and the generic T; Go has neither, so ParseResult is one struct { OK bool; Value any; Errors []ValidationError } (schema/types.go:61-65), as Value is the coerced value when OK and Errors the errors of the coerced value otherwise (the other member is zero). Designed out as a Go language mechanic (discriminated union as a struct; T is the JSON value, any). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go: \"parse\"). ParseResult is a TypeScript type alias (types.ts:34-36) that tsc erases: the probe found no emitted value, member or call for it.",
       "pigTargets": [
         "schema/types.go#ParseResult"
       ]
@@ -286791,7 +286939,7 @@
       "id": "pkg:schema/.#Properties",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:d5b5365aa47c294dfc461d3f0da41a6524d5d517cbd2e829f018657c6d754470",
-      "rationale": "Pi packages/schema/src/builders.ts:202 Properties (Pi 1.5.1): Properties = { readonly [name: string]: Schema | Optional } is an object whose own-key order is observable (the order of `properties`, `required` and of reported errors); Go has no insertion-ordered map, so schema.Properties is the ordered []Property of Prop and Opt entries (schema/builders.go:273-288) that Obj orders as JavaScript's own keys are ordered (array-index names ascending first, then declaration order). Designed out as a Go language mechanic (owner 2026-10-29/30). Exercised by TestObjUsesOwnKeyOrder and TestBuildersProduceEveryLeaf (schema/builders_upstream_test.go).",
+      "rationale": "Pi packages/schema/src/builders.ts:202 Properties (Pi 1.5.1): Properties = { readonly [name: string]: Schema | Optional } is an object whose own-key order is observable (the order of `properties`, `required` and of reported errors); Go has no insertion-ordered map, so schema.Properties is the ordered []Property of Prop and Opt entries (schema/builders.go:273-288) that Obj orders as JavaScript's own keys are ordered (array-index names ascending first, then declaration order). Designed out as a Go language mechanic (owner 2026-10-29/30). Exercised by TestObjUsesOwnKeyOrder and TestBuildersProduceEveryLeaf (schema/builders_upstream_test.go). Properties is a TypeScript type alias (builders.ts:202) that tsc erases: the probe found no emitted value or call for it; the key order is observable only through obj() (builders.ts:219), which the Go Obj reproduces.",
       "pigTargets": [
         "schema/builders.go#Properties"
       ]
@@ -287140,7 +287288,7 @@
       "id": "pkg:schema/.#Validator::construct:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:80d350d9fe873a423b4b332572354a05be33d03dba4d401acb8bbef202452c07",
-      "rationale": "Pi packages/schema/src/validator.ts:39 Validator::construct:0 (Pi 1.5.1): `new Validator(schema, options, check)` is the class constructor that compile() alone calls with the compiled check; Go has no constructor on a struct type with unexported fields: Compile(schema, options) (*Validator, error) builds the Validator (schema/validator.go:11-24) and returns the compile throw as the error, so there is no NewValidator and no second way to make one. Exercised by TestErrors (schema/validator_upstream_test.go).",
+      "rationale": "Pi packages/schema/src/validator.ts:39 Validator::construct:0 (Pi 1.5.1): `new Validator(schema, options, check)` is the class constructor that compile() alone calls with the compiled check; Go has no constructor on a struct type with unexported fields: Compile(schema, options) (*Validator, error) builds the Validator (schema/validator.go:11-24) and returns the compile throw as the error, so there is no NewValidator and no second way to make one. Exercised by TestErrors (schema/validator_upstream_test.go). The probe grepped Pi's schema package for `new Validator(` and found only compile() (validator.ts:26), so no Pi caller constructs one any other way.",
       "pigTargets": [
         "schema/validator.go#Compile"
       ]

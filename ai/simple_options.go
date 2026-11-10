@@ -191,7 +191,6 @@ const (
 // margin that leaves room for the input being counted higher than estimated,
 // never below one token. Mirrors upstream clampMaxTokensToContext, which
 // buildBaseOptions applies to every request.
-//
 func ClampMaxTokensToContext(model *Model, context TranscriptContext, maxTokens int) int {
 	contextWindow := model.Capabilities.ContextWindow
 	if contextWindow <= 0 {

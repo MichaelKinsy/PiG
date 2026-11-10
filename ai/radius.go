@@ -137,7 +137,7 @@ func newRadiusParts(options RadiusProviderOptions) *RadiusProvider {
 	return &RadiusProvider{provider: provider, gateway: gateway, oauth: oauth}
 }
 
-// publishedRadiusModels is RADIUS_MODELS (the generated radius shard) bound to id. cloneRadiusModel makes the one copy of each catalog entry.
+// publishedRadiusModels is RADIUS_MODELS (the generated radius shard) bound to id, as views of the catalog entries: radius.ts builds the baseline once and getModels returns it (radius.ts:28, 42). The views share the catalog's collections, so they stay inside the provider's closure and are only read by GetModels, which gives every caller its own deep copy (cloneRadiusModel).
 func publishedRadiusModels(id string) []*Model {
 	var models []*Model
 	for i := range GeneratedModels {
@@ -147,7 +147,7 @@ func publishedRadiusModels(id string) []*Model {
 		}
 		model := generated.catalogView()
 		model.ProviderMeta.ProviderID = id
-		models = append(models, cloneRadiusModel(model))
+		models = append(models, model)
 	}
 	return models
 }

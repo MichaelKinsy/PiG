@@ -31,6 +31,8 @@ import (
 //     answers 403), as is a `Host` with userinfo (server.go "malformed Host header": `@` is no host byte; Node's component
 //     answers 403) and a malformed `Host`; `Fetch` and `NodeRequestOf` still refuse them as Pi does for a server that hands
 //     the component the headers it read. No `http.Server` option reaches these checks.
+//   - net/http answers a target with a malformed percent-escape (`/%zz`) 400 itself, where the component answers it 400 with its
+//     default headers; and the request line `GET /  HTTP/1.1` (two spaces), which Node's parser reads as target `/`, is 400.
 //   - A Web `Request` is made only when something asks for it in Pi; Go's request exists already (incoming.go).
 //   - The reason phrase of the status line is Go's (the answers' own text is Node's table, statuscodes.go); header names are
 //     written in canonical case; an HTTP/1.0 request's answer has an `HTTP/1.0` status line (Node writes `HTTP/1.1`); an
@@ -142,6 +144,13 @@ func (l *NodeListener) Closed() {
 
 // serveNode is the server's handler: an upgrade, or one request served and its answer written.
 func serveNode(handler Handler, w nethttp.ResponseWriter, r *nethttp.Request) {
+	if !wireTarget(r.RequestURI) {
+		// Node's parser answers a request whose target has a byte it does not take with its own 400, the connection closed,
+		// before any `request` or `upgrade` event (like net/http's own refusals, D218: no default headers).
+		w.Header().Set("Connection", "close")
+		w.WriteHeader(nethttp.StatusBadRequest)
+		return
+	}
 	if isUpgrade(r) {
 		handler.Upgrade(w, r)
 		return
@@ -161,6 +170,17 @@ func serveNode(handler Handler, w nethttp.ResponseWriter, r *nethttp.Request) {
 		finished()
 	}
 	write(r, w, served)
+}
+
+// wireTarget is whether Node's HTTP parser takes target: the printable ASCII bytes 0x21 to 0x7e only (net/http itself refuses
+// the controls, DEL and a space, and takes the bytes from 0x80 up).
+func wireTarget(target string) bool {
+	for i := 0; i < len(target); i++ {
+		if target[i] < 0x21 || target[i] > 0x7e {
+			return false
+		}
+	}
+	return true
 }
 
 // isUpgrade is whether r asks for an upgrade (Node emits `upgrade` for a request with an `Upgrade` header and the

@@ -1590,6 +1590,36 @@
       ]
     },
     {
+      "id": "BF-09587d2",
+      "title": "Chord: `App.Close` no longer returns while the surfaces' and bases' build goroutines still run",
+      "symptom": "Chord: `App.Close` no longer returns while the surfaces' and bases' build goroutines still run.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord: `App.Close` no longer returns while the surfaces' and bases' build goroutines still run. It joins them after its steps, bounded by its context, and returns the context's error when that ends first (the builds finish on their own and what they finish after the close is dropped); a surface whose build had not started never starts it. Pi's `#close` does not wait for these builds; the Go goroutines are owned, so Close drains them.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "09587d2718",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/app/app_bases_linux_test.go::TestAppCloseAbandonsABaseBuildStalledOnAReadWhenItsContextEndsAndReturnsTheContextsError",
+        "chord/nextnode/app/app_bases_linux_test.go::TestAppCloseWaitsForABaseBuildStalledOnAReadAndReturnsOnceItEndsItsLateResultIsDropped",
+        "chord/nextnode/app/app_bases_scan_test.go::TestAppARecordOfTheServersCodeArrivingAfterTheClosedWatcherWatchesNothingAndMarksNothing",
+        "chord/nextnode/app/app_bases_scan_test.go::TestAppARecordOfTheServersCodeEditedSinceTheStartMarksBaseWhileTheAppIsOpen",
+        "chord/nextnode/app/app_bases_scan_test.go::TestAppCloseAbandonsAScanStalledOnAReadWhenItsContextEndsAndReturnsTheContextsError",
+        "chord/nextnode/app/app_bases_scan_test.go::TestAppCloseWaitsForAScanOfItsOwnCodeStalledOnAReadAndReturnsOnceItEndsItsLateResultIsDropped",
+        "chord/nextnode/surfaces/surfaces_build_linux_test.go::TestClosingASurfaceAbandonsItsBuildInFlightWhenTheContextEnds",
+        "chord/nextnode/surfaces/surfaces_build_linux_test.go::TestClosingASurfaceWaitsForItsBuildInFlight",
+        "chord/nextnode/surfaces/surfaces_build_test.go::TestASurfaceClosedBeforeItsBuildStartedNeverStartsOneItsWaitersAnswer503"
+      ]
+    },
+    {
       "id": "BF-098e33d",
       "title": "Extension `ctx.ui.theme.fg`, `bg` and `getBgAnsi` throw `Unknown theme color: \u003ctoken\u003e` in every SDK for a…",
       "symptom": "Extension `ctx.ui.theme.fg`, `bg` and `getBgAnsi` throw `Unknown theme color: \u003ctoken\u003e` in every SDK for a token the palette lacks, as Pi's theme does; a theme with no palette still leaves text unstyled.",
@@ -2326,6 +2356,29 @@
       "commitsFrom": "release note",
       "tests": [
         "internal/codingagent/settings_getters_oracle_test.go::TestSettingsManagerGettersMatchPi"
+      ]
+    },
+    {
+      "id": "BF-0d13d8e",
+      "title": "Windows: a missing Anthropic identity token file reports Pi's message, \"Failed to read identity token file at…",
+      "symptom": "Windows: a missing Anthropic identity token file reports Pi's message, \"Failed to read identity token file at \u003cpath\u003e: Error: ENOENT: no such file or directory, open '\u003cpath\u003e'\", without Windows' own wording (\"The system cannot find the file specified.\") appended after it.",
+      "rootCause": "Pi interpolates the fs error into the message (\"Failed to read identity token file at \u003cpath\u003e: Error: ENOENT: ..., open \u003cpath\u003e\") and an fs error has no cause, so withCauseDetail appends nothing. The Go walk descended into the error behind nodeerrno.FSError and appended its platform text: on Linux \"no such file or directory\" is already in Node's message and was dropped, on Windows \"The system cannot find the file specified.\" is not, and TestAnthropicFederationExchangeErrors failed on every Windows run.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Windows: a missing Anthropic identity token file reports Pi's message, \"Failed to read identity token file at \u003cpath\u003e: Error: ENOENT: no such file or directory, open '\u003cpath\u003e'\", without Windows' own wording (\"The system cannot find the file specified.\") appended after it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0d13d8e6cb",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "ai/anthropic_federation_sdk_upstream_test.go::TestAnthropicFederationExchangeErrors",
+        "ai/error_cause_fserror_test.go::TestWithCauseDetailEndsAtANodeFSError"
       ]
     },
     {
@@ -3893,6 +3946,56 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-17d97b4",
+      "title": "On Windows, attaching a file in a terminal prompt no longer reads a different file when a parent directory is…",
+      "symptom": "On Windows, attaching a file in a terminal prompt no longer reads a different file when a parent directory is swapped for a link after the first yes: the identity of the confirmed file is read from an open handle, not looked up again by path when it is compared.",
+      "rootCause": "An install problem names the target also when the root is reached by a link or a Windows short name: discovery reports the staged directory by its real path, so that is the prefix the target replaces.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "On Windows, attaching a file in a terminal prompt no longer reads a different file when a parent directory is swapped for a link after the first yes: the identity of the confirmed file is read from an open handle, not looked up again by path when it is compared.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "17d97b46d4",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_install_test.go::TestInstallPluginNamesTheTargetInAProblemWhenTheRootIsReachedByALink",
+        "chord/nextnode/plugins/plugins_watcher_base_test.go::TestTheBaseMarkWatchesABaseDirectoryRemovedAndRecreatedAndComparesItsFiles",
+        "chord/nextnode/plugins/plugins_watcher_windows_test.go::TestWindowsRefusesToRenameAWatchedTreeUntilTheWatcherCloses",
+        "internal/testenv/cellcache_test.go::TestSharedCellCacheDirIsKeyedByTheContentsOfItsInputs"
+      ]
+    },
+    {
+      "id": "BF-17d97b4-2",
+      "title": "A plugin install that finds no `package.json` (or another problem) names the directory it was going to…",
+      "symptom": "A plugin install that finds no `package.json` (or another problem) names the directory it was going to install into when the plugins root is reached through a link or a Windows short name, not the staging directory.",
+      "rootCause": "An install problem names the target also when the root is reached by a link or a Windows short name: discovery reports the staged directory by its real path, so that is the prefix the target replaces.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A plugin install that finds no `package.json` (or another problem) names the directory it was going to install into when the plugins root is reached through a link or a Windows short name, not the staging directory.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "17d97b46d4",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_install_test.go::TestInstallPluginNamesTheTargetInAProblemWhenTheRootIsReachedByALink",
+        "chord/nextnode/plugins/plugins_watcher_base_test.go::TestTheBaseMarkWatchesABaseDirectoryRemovedAndRecreatedAndComparesItsFiles",
+        "chord/nextnode/plugins/plugins_watcher_windows_test.go::TestWindowsRefusesToRenameAWatchedTreeUntilTheWatcherCloses",
+        "internal/testenv/cellcache_test.go::TestSharedCellCacheDirIsKeyedByTheContentsOfItsInputs"
+      ]
     },
     {
       "id": "BF-1827831",
@@ -7648,6 +7751,29 @@
       ]
     },
     {
+      "id": "BF-2e95347",
+      "title": "Chord's active-language and active-theme followers could miss the user's pick for good: the pick's watch was…",
+      "symptom": "Chord's active-language and active-theme followers could miss the user's pick for good: the pick's watch was opened from a goroutine after the hold bound, so a pick chosen in between (a language picked right after the page loaded) was folded into the watch's first value, which the follower never reads, and the page kept the device's language until the next change.",
+      "rootCause": "Pi's `async watch(member, ctx)` waits for `firstValues` and opens the watch in the microtask that resumes after it, so the watch is open in the turn that binds the reference and every later change of the member is a frame of it. The Go `Watch` opened it from the caller's goroutine, through three sections of its own: a frame a link delivered between the bind and the open (the principal's pick, chosen right after the hold bound) was folded into the watch's value, which a follower that only listens never reads. The language follower then never saw \"fr\" after choose(\"fr\") (portmap-8 CI, ~1 in 6400 under load).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord's active-language and active-theme followers could miss the user's pick for good: the pick's watch was opened from a goroutine after the hold bound, so a pick chosen in between (a language picked right after the page loaded) was folded into the watch's first value, which the follower never reads, and the page kept the device's language until the next change. A watch of a member that never had a value is now opened in the turn that binds its reference, as in Pi, and the followers start the pick watch from it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2e95347143",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "chord/next/host/host_reference_watch_then_test.go::TestAMemberWatchOfAReferenceNotBoundYetIsOpenInTheTurnThatBindsIt",
+        "chord/next/host/host_reference_watch_then_test.go::TestAMemberWatchThenOfAReferenceEndedBeforeItsFirstValueGetsTheError"
+      ]
+    },
+    {
       "id": "BF-2ea8ad2",
       "title": "The openai-completions, openai-responses and openrouter-images requests build their URL as the openai SDK…",
       "symptom": "The openai-completions, openai-responses and openrouter-images requests build their URL as the openai SDK does (base query rewritten through qs, one slash dropped, WHATWG normalisation) and a URL with credentials is refused as fetch refuses it (\"Connection error.\"), where Pig sent the credentials as Basic auth.",
@@ -7811,6 +7937,129 @@
         "chord/next/tui/tui_scope_test.go::TestScopePageStateIsTheHostsAScopeOpenedAfterAnotherWasDisposedFindsItsValue",
         "chord/next/tui/tui_scope_test.go::TestScopeReadsNothingFromAWatchableWithoutAValueNeverPanicking",
         "telemetry/render_upstream_test.go::TestRenderTraceKeepsALoneSurrogateBesideAnEscapedControlCharacter"
+      ]
+    },
+    {
+      "id": "BF-2f8638b",
+      "title": "Chord: the rollout Step of a published script set now lists removed plugins in UTF-16 code unit order, as Pi…",
+      "symptom": "Chord: the rollout Step of a published script set now lists removed plugins in UTF-16 code unit order, as Pi does, instead of UTF-8 byte order; names outside the Basic Multilingual Plane no longer sort differently.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord: the rollout Step of a published script set now lists removed plugins in UTF-16 code unit order, as Pi does, instead of UTF-8 byte order; names outside the Basic Multilingual Plane no longer sort differently.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2f8638b949",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "chord/next/link/websocket_test.go::TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend",
+        "chord/nextnode/http/node_test.go::TestTargetsReachTheComponentOnlyWhereNodesParserTakesThem",
+        "chord/nextnode/http/url_test.go::TestTheWireURLIsWhatTheURLParserMakesOfTheHostAndTarget",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsAFilePublishedInAnEarlierSetStaysServedWhileALaterSetStillHasIt",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsAPluginWhoseNextBuildFailsKeepsItsDigestTextStylesheetAndAssets",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsAStylesheetChangeAloneKeepsTheScriptsDigestAndChangesItsName",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsFilesNameEachScriptStylesheetAndAssetByContentAndCombineWithoutSourceMaps",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsStartPublishesTheKindsFirstSet",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsTheFilesOfTheLastFourSetsStayServed",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsTheRolloutStepReportsAddedChangedAndRemovedInPisOrderAndPublishesTheSet",
+        "chord/nextnode/tui/tui_terminal_pty_linux_test.go::TestTheProcessTerminalCallsTheResizeHandlerOnEachSIGWINCHUntilItIsRemoved",
+        "chord/nextnode/tui/tui_terminal_pty_linux_test.go::TestTheProcessTerminalOnAPseudoTerminalReportsItsSizeAndThatItIsATTY",
+        "chord/nextnode/tui/tui_terminal_pty_linux_test.go::TestTheProcessTerminalSetsRawModeOnStdinAndRestoresTheModeItSaved",
+        "chord/nextnode/tui/tui_terminal_pty_linux_test.go::TestTheProcessTerminalTakesItsSizeFromStdoutAndItsTTYAnswerFromStdin",
+        "chord/nextnode/tui/tui_terminal_pty_linux_test.go::TestTwoResizeHandlersEachGetTheSignalAndRemovingOneKeepsTheOther",
+        "chord/nextnode/tui/tui_terminal_test.go::TestAStreamsTerminalFillsAMissingInputOrOutputWithTheProcess",
+        "chord/nextnode/tui/tui_terminal_test.go::TestStreamsFindTheOptionalMembersOfTheirInputAndOutput",
+        "chord/nextnode/tui/tui_terminal_test.go::TestStreamsWithoutTheOptionalMembersHaveNoSizeNoRawModeAndNoResizes",
+        "chord/nextnode/tui/tui_terminal_test.go::TestTheProcessTerminalClearingRawModeWithoutHavingSetItIsANoOpAndSettingItOnAPipeFails",
+        "chord/nextnode/tui/tui_terminal_test.go::TestTheProcessTerminalIsStdinAndStdoutAndReportsNoSizeOrTTYForPipes"
+      ]
+    },
+    {
+      "id": "BF-2f8638b-2",
+      "title": "Chord: the HTTP listener now parses the Host header and the request target with the WHATWG URL algorithm, as…",
+      "symptom": "Chord: the HTTP listener now parses the Host header and the request target with the WHATWG URL algorithm, as Node does, instead of an approximation.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord: the HTTP listener now parses the Host header and the request target with the WHATWG URL algorithm, as Node does, instead of an approximation.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2f8638b949",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "chord/next/link/websocket_test.go::TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend",
+        "chord/nextnode/http/node_test.go::TestTargetsReachTheComponentOnlyWhereNodesParserTakesThem",
+        "chord/nextnode/http/url_test.go::TestTheWireURLIsWhatTheURLParserMakesOfTheHostAndTarget",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsAFilePublishedInAnEarlierSetStaysServedWhileALaterSetStillHasIt",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsAPluginWhoseNextBuildFailsKeepsItsDigestTextStylesheetAndAssets",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsAStylesheetChangeAloneKeepsTheScriptsDigestAndChangesItsName",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsFilesNameEachScriptStylesheetAndAssetByContentAndCombineWithoutSourceMaps",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsStartPublishesTheKindsFirstSet",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsTheFilesOfTheLastFourSetsStayServed",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsTheRolloutStepReportsAddedChangedAndRemovedInPisOrderAndPublishesTheSet",
+        "chord/nextnode/tui/tui_terminal_pty_linux_test.go::TestTheProcessTerminalCallsTheResizeHandlerOnEachSIGWINCHUntilItIsRemoved",
+        "chord/nextnode/tui/tui_terminal_pty_linux_test.go::TestTheProcessTerminalOnAPseudoTerminalReportsItsSizeAndThatItIsATTY",
+        "chord/nextnode/tui/tui_terminal_pty_linux_test.go::TestTheProcessTerminalSetsRawModeOnStdinAndRestoresTheModeItSaved",
+        "chord/nextnode/tui/tui_terminal_pty_linux_test.go::TestTheProcessTerminalTakesItsSizeFromStdoutAndItsTTYAnswerFromStdin",
+        "chord/nextnode/tui/tui_terminal_pty_linux_test.go::TestTwoResizeHandlersEachGetTheSignalAndRemovingOneKeepsTheOther",
+        "chord/nextnode/tui/tui_terminal_test.go::TestAStreamsTerminalFillsAMissingInputOrOutputWithTheProcess",
+        "chord/nextnode/tui/tui_terminal_test.go::TestStreamsFindTheOptionalMembersOfTheirInputAndOutput",
+        "chord/nextnode/tui/tui_terminal_test.go::TestStreamsWithoutTheOptionalMembersHaveNoSizeNoRawModeAndNoResizes",
+        "chord/nextnode/tui/tui_terminal_test.go::TestTheProcessTerminalClearingRawModeWithoutHavingSetItIsANoOpAndSettingItOnAPipeFails",
+        "chord/nextnode/tui/tui_terminal_test.go::TestTheProcessTerminalIsStdinAndStdoutAndReportsNoSizeOrTTYForPipes"
+      ]
+    },
+    {
+      "id": "BF-2f8638b-3",
+      "title": "Chord: the HTTP listener answers 400 for a request target that contains bytes Node refuses, where it used to…",
+      "symptom": "Chord: the HTTP listener answers 400 for a request target that contains bytes Node refuses, where it used to pass the request to the component.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord: the HTTP listener answers 400 for a request target that contains bytes Node refuses, where it used to pass the request to the component.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2f8638b949",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "chord/next/link/websocket_test.go::TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend",
+        "chord/nextnode/http/node_test.go::TestTargetsReachTheComponentOnlyWhereNodesParserTakesThem",
+        "chord/nextnode/http/url_test.go::TestTheWireURLIsWhatTheURLParserMakesOfTheHostAndTarget",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsAFilePublishedInAnEarlierSetStaysServedWhileALaterSetStillHasIt",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsAPluginWhoseNextBuildFailsKeepsItsDigestTextStylesheetAndAssets",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsAStylesheetChangeAloneKeepsTheScriptsDigestAndChangesItsName",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsFilesNameEachScriptStylesheetAndAssetByContentAndCombineWithoutSourceMaps",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsStartPublishesTheKindsFirstSet",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsTheFilesOfTheLastFourSetsStayServed",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsTheRolloutStepReportsAddedChangedAndRemovedInPisOrderAndPublishesTheSet",
+        "chord/nextnode/tui/tui_terminal_pty_linux_test.go::TestTheProcessTerminalCallsTheResizeHandlerOnEachSIGWINCHUntilItIsRemoved",
+        "chord/nextnode/tui/tui_terminal_pty_linux_test.go::TestTheProcessTerminalOnAPseudoTerminalReportsItsSizeAndThatItIsATTY",
+        "chord/nextnode/tui/tui_terminal_pty_linux_test.go::TestTheProcessTerminalSetsRawModeOnStdinAndRestoresTheModeItSaved",
+        "chord/nextnode/tui/tui_terminal_pty_linux_test.go::TestTheProcessTerminalTakesItsSizeFromStdoutAndItsTTYAnswerFromStdin",
+        "chord/nextnode/tui/tui_terminal_pty_linux_test.go::TestTwoResizeHandlersEachGetTheSignalAndRemovingOneKeepsTheOther",
+        "chord/nextnode/tui/tui_terminal_test.go::TestAStreamsTerminalFillsAMissingInputOrOutputWithTheProcess",
+        "chord/nextnode/tui/tui_terminal_test.go::TestStreamsFindTheOptionalMembersOfTheirInputAndOutput",
+        "chord/nextnode/tui/tui_terminal_test.go::TestStreamsWithoutTheOptionalMembersHaveNoSizeNoRawModeAndNoResizes",
+        "chord/nextnode/tui/tui_terminal_test.go::TestTheProcessTerminalClearingRawModeWithoutHavingSetItIsANoOpAndSettingItOnAPipeFails",
+        "chord/nextnode/tui/tui_terminal_test.go::TestTheProcessTerminalIsStdinAndStdoutAndReportsNoSizeOrTTYForPipes"
       ]
     },
     {
@@ -11979,6 +12228,28 @@
       ]
     },
     {
+      "id": "BF-43b8df7",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "43b8df78b5",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "ai/auth_create_through_link_eloop_test.go::TestAuthStorageCreateThroughSymlinkChainFollowsTheKernelsLimit",
+        "coding/cli/port_wave_10_package_command_paths_test.go::TestPortWave10PackageCommandPaths"
+      ]
+    },
+    {
       "id": "BF-43c46f5",
       "title": "Chord host timers (reload vote, gate and retire deadlines, link pings, service linger, host manager grace…",
       "symptom": "A deadline above the limit used to never fire and a zero one fired at once.",
@@ -14596,6 +14867,35 @@
         "env/ssh_timeout_test.go::TestRunSshTimeoutTerminatesTheChildAndFailsWithoutWaitingForItsOutputToClose",
         "internal/codingagent/interactive_runtime_host_test.go::TestNewInteractiveModeRoutesSessionWorkThroughItsRuntimeHost",
         "internal/codingagent/interactive_runtime_host_test.go::TestNewInteractiveModeWithoutRuntimeHostCannotImport"
+      ]
+    },
+    {
+      "id": "BF-5043738",
+      "title": "Windows: installing a plugin from npm extracts the packed tarball with a relative archive name, so the `tar`…",
+      "symptom": "Windows: installing a plugin from npm extracts the packed tarball with a relative archive name, so the `tar` of Git for Windows (which reads `C:\\...` as a file on host `C`) no longer fails with \"Cannot connect to C: resolve failed\".",
+      "rootCause": "Pi (packages/chord/src/node/plugins/install.ts:248-249) passes tar the absolute archive path join(packed, basename). GNU tar reads \"C:\\...\" as the file \"...\" on a host \"C\" (\"Cannot connect to C: resolve failed\"), so InstallPlugin of an npm package failed on Windows whenever Git for Windows' tar preceded System32 bsdtar in PATH (TestInstallPluginInstallsAnNpmPackageHereALocalTarballIntoRootName, red in the dispatched runs 42551386817, 42570233321, 42621762307 and 42725996591). unpack already runs tar in the pack directory; it now names the archive ./\u003cbasename\u003e.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "Windows",
+      "class": "ahead-of-pi",
+      "divergence": "D616",
+      "removeWhen": "Pi's install names the archive relative to the pack directory.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Windows: installing a plugin from npm extracts the packed tarball with a relative archive name, so the `tar` of Git for Windows (which reads `C:\\...` as a file on host `C`) no longer fails with \"Cannot connect to C: resolve failed\". Pi passes the absolute path and fails there (D616, owner approved 2026-11-10).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3467950fd9",
+          "date": "2026-11-09"
+        },
+        {
+          "hash": "5043738f10",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_install_tar_test.go::TestInstallPluginNamesTheTarballToTarRelativeToThePackDirectory",
+        "chord/nextnode/plugins/plugins_install_test.go::TestInstallPluginInstallsAnNpmPackageHereALocalTarballIntoRootName"
       ]
     },
     {
@@ -21578,6 +21878,28 @@
         "internal/packagemanager/package_manager_test.go::TestPackageManagerReportsProgressToTheInstalledCallback",
         "test/parity/scenarios/extensions-runtime/77-package-manifest-glob-syntax.toml",
         "test/parity/scenarios/rpc/54-rpc-resource-directory-order.toml"
+      ]
+    },
+    {
+      "id": "BF-667d493",
+      "title": "On Windows, an edit or write waits for an earlier edit or write of the same file reached through a hard link…",
+      "symptom": "On Windows, an edit or write waits for an earlier edit or write of the same file reached through a hard link even when the queued file was replaced meanwhile (an atomic write): the queue keeps the identity of the file as it was when the mutation queued, not the one the path names when a later mutation is compared.",
+      "rootCause": "Both stats are pinned with SameFile(info, info) when taken, as coding/cli lstatPinned does; a file whose identity cannot be read counts as missing. Pi has no identity rule (its key is realpath only), so the recorded divergence is unchanged.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "On Windows, an edit or write waits for an earlier edit or write of the same file reached through a hard link even when the queued file was replaced meanwhile (an atomic write): the queue keeps the identity of the file as it was when the mutation queued, not the one the path names when a later mutation is compared.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "667d4938ce",
+          "date": "2026-11-10"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/tools/mutation_queue_identity_test.go::TestMutationQueueKeepsTheIdentityOfAFileReplacedWhileItsMutationIsQueued"
       ]
     },
     {
@@ -35237,6 +35559,29 @@
         "test/extension-conformance/message_conversion_test.go::TestConformance_MessageConversionAgreesAcrossSDKs",
         "test/extension-conformance/serialize_conversation_test.go::TestConformance_SerializeConversationAgreesAcrossSDKs",
         "test/extension-conformance/session_skill_helpers_test.go::TestConformance_SessionAndSkillHelpersAgreeAcrossSDKs"
+      ]
+    },
+    {
+      "id": "BF-a17e2a1",
+      "title": "A runtime API key (`--api-key`, `SetRuntimeAPIKey`) for a Radius provider now counts as its auth, as it does…",
+      "symptom": "Requests used the key but the Radius catalog was not listed.",
+      "rootCause": "An earlier change's message and report said the mid-session test step covered a runtime key; it did not: its runtime-key step failed (HasConfiguredAuth false), and replaced it with stored credentials. TestGetAvailableModelDataListsARadiusCatalogExactlyWhenItsProviderHasAuth now has the runtime-key steps (appears, leaves, returns), an OAuth step and a models.json Radius provider (acme, custom base URL, one defined model), counting that provider's models too; TestRadiusRuntimeKeyIsRadiusAuthEverywhere pins the other questions.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A runtime API key (`--api-key`, `SetRuntimeAPIKey`) for a Radius provider now counts as its auth, as it does in Pi: the provider has configured auth, its models are in the available list and it counts as an available provider. Before, requests used the key but the Radius catalog was not listed.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a17e2a163e",
+          "date": "2026-11-10"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/model_registry_available_radius_test.go::TestGetAvailableModelDataListsARadiusCatalogExactlyWhenItsProviderHasAuth",
+        "internal/codingagent/model_registry_available_radius_test.go::TestRadiusRuntimeKeyIsRadiusAuthEverywhere"
       ]
     },
     {
@@ -50045,6 +50390,28 @@
       ]
     },
     {
+      "id": "BF-e88f858",
+      "title": "Windows: a connection reset before the response headers, or a response body reset, is reported as Pi reports…",
+      "symptom": "Windows: a connection reset before the response headers, or a response body reset, is reported as Pi reports it (\"Connection error.: read ECONNRESET\", \"terminated: other side closed (UND_ERR_SOCKET)\") instead of a bare \"Connection error.\" or \"terminated\".",
+      "rootCause": "nodeConnectionFailure and nodeBodyFailure matched a reset with errors.Is against syscall.ECONNRESET and syscall.EPIPE. On Windows those are values Go invents; the socket's error is WSAECONNRESET (or ERROR_NETNAME_DELETED, WSAESHUTDOWN), which libuv names ECONNRESET (EPIPE). Pi's message is \"Connection error.: read ECONNRESET\" there too; PiG gave a bare \"Connection error.\" and a body reset lost its \"other side closed\". Match by nodeerrno.ErrorCode, which carries the per-OS table.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Windows: a connection reset before the response headers, or a response body reset, is reported as Pi reports it (\"Connection error.: read ECONNRESET\", \"terminated: other side closed (UND_ERR_SOCKET)\") instead of a bare \"Connection error.\" or \"terminated\".",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e88f858c17",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "ai/transport_reset_windows_test.go::TestWindowsSocketErrorsAreNamedAsNodeNamesThem"
+      ]
+    },
+    {
       "id": "BF-e8a5d2e",
       "title": "The model catalog generator gives OpenCode Zen and Go Claude 5.5 models, Opus 5 and Fable 5.1 per-message…",
       "symptom": "The model catalog generator gives OpenCode Zen and Go Claude 5.5 models, Opus 5 and Fable 5.1 per-message effort (`supportsMidConvoEffort`), as Pi's generator does since 9ee7586a9 (#10954).",
@@ -56749,6 +57116,11 @@
     {
       "id": "D607",
       "title": "The plugins component loads hosts through a Node subprocess it starts: Pi's `evaluate`, `stack` and runtime…"
+    },
+    {
+      "id": "D616",
+      "title": "An npm tarball is extracted with `tar` told the archive relative to the pack directory, where Pi passes its…",
+      "entry": "BF-5043738"
     }
   ],
   "exemptCommits": {

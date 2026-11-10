@@ -1,6 +1,7 @@
 package surfaces
 
 import (
+	"context"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -67,6 +68,10 @@ func (s *WebSurface) Build() SurfaceBuilt { return s.building.build() }
 
 // Built is how the build ended, once it did (nil before).
 func (s *WebSurface) Built() *SurfaceBuilt { return s.building.built() }
+
+// Close ends the web surface's build: one not started never starts, one in flight is waited for until ctx ends (ctx's error then).
+// Pi's `#close` leaves the build unawaited; the Go goroutine is owned (a forced Go lifetime difference).
+func (s *WebSurface) Close(ctx context.Context) error { return s.building.close(ctx) }
 
 // WebPrefix is where the web surface's files live (Pi's `WEB_PREFIX`).
 const WebPrefix = "/_chord/web/"

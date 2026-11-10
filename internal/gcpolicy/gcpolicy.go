@@ -37,7 +37,10 @@ func Apply() (stop func()) {
 	}
 	debug.SetGCPercent(TargetPercent)
 	quit, done := make(chan struct{}), make(chan struct{})
-	go watchLiveHeap(quit, done)
+	go func() {
+		defer close(done)
+		watchLiveHeap(quit)
+	}()
 	var once sync.Once
 	return func() {
 		once.Do(func() { close(quit) })
@@ -53,8 +56,7 @@ func Apply() (stop func()) {
 // The wait doubles from minPoll to maxPoll while no collection has finished. An idle process then fires one timer a second, which
 // costs about 4 more voluntary context switches a second than a process without the watcher (273 against 39-46 in 60 s, 4-CPU
 // Linux container); a run that collects often reads every minPoll.
-func watchLiveHeap(quit <-chan struct{}, done chan<- struct{}) {
-	defer close(done)
+func watchLiveHeap(quit <-chan struct{}) {
 	sample := []metrics.Sample{{Name: "/gc/heap/live:bytes"}, {Name: "/gc/cycles/total:gc-cycles"}}
 	var cycles uint64
 	wait := minPoll
