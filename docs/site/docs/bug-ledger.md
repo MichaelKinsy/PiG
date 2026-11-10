@@ -964,6 +964,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-7f2c05b](#bf-7f2c05b) | A `ChordError` of code `invalid` from a failed args, result, state or input check carries TypeBox's whole… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-7f3a71c](#bf-7f3a71c) | fix(durable): the reference Harness wraps a plain Models once too | PiG's own defect | All platforms | Unreleased |
 | [BF-7f441d7](#bf-7f441d7) | MCP OAuth URLs are WHATWG URLs, as in Pi | PiG's own defect | All platforms | 0.5.0 |
+| [BF-7f5979c](#bf-7f5979c) | Ctrl-C at the secret prompt of `pig auth login` now drops the rest of its input chunk, so an Enter arriving… | PiG's own defect | All platforms | Unreleased |
 | [BF-7f9ca19](#bf-7f9ca19) | fix: relocate the transcript wire encoders' perf annotations; raise the headless default size ceilings for… | PiG's own defect | All platforms | Unreleased |
 | [BF-7fc4ef4](#bf-7fc4ef4) | fix(coding): shut down the extension host of a DefaultResourceLoader an extension constructed when its last… | PiG's own defect | All platforms | Unreleased |
 | [BF-7fc9ec3](#bf-7fc9ec3) | The pi-env daemon on macOS: a small reply (an `lstat`, a ping) could come after megabytes of queued command… | PiG's own defect | macOS | Unreleased |
@@ -15029,6 +15030,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `7f441d7364` (2026-10-10), `827b3cffa4` (2026-10-10), `ced3a9c4d4` (2026-10-10)
 - **Tests:** `coding/cli/rpc_model_type_binary_test.go::TestRPCModelObjectsCarryTheRegistryModelType`, `coding/cli/rpc_model_type_test.go::TestRPCBuiltinChatModelCarriesType`, `coding/cli/rpc_model_type_test.go::TestRPCModelProjectionCarriesModelType`, `internal/nodeurl/genericurl_oracle_test.go::TestParseURLMatchesNode`, `internal/testenv/spawn_test.go::TestCleanupStopsARunningChild`, `internal/testenv/spawn_test.go::TestOutputRefusesAStreamTheCallerSet`, `internal/testenv/spawn_test.go::TestStopEndsAChildThatIgnoresSIGTERM`, `internal/testenv/spawn_test.go::TestWaitDoesNotBlockOnStdoutHeldByADescendant` and 5 more in docs/bug-ledger.json
 - **Release note:** MCP OAuth URLs are WHATWG URLs, as in Pi. An empty fragment (`#`) or a malformed fragment escape now stays in the authorization URL that is shown and opened, and in the insecure-endpoint error. The authorization parameters replace repeated names, and an opaque authorization server URL fails with `Invalid URL`. The protected-resource check compares origins, which are `null` for custom schemes.
+
+### BF-7f5979c
+
+**Ctrl-C at the secret prompt of `pig auth login` now drops the rest of its input chunk, so an Enter arriving…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Ctrl-C at the secret prompt of `pig auth login` now drops the rest of its input chunk, so an Enter arriving in the same read can no longer submit the secret, as in Pi.
+- **Root cause:** Not recorded.
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `7f5979c130` (2026-11-09)
+- **Tests:** `coding/cli/auth_terminal_openurl_test.go::TestLoginTerminalOpenURLHandsTheURLToTheBrowserLauncher`, `coding/cli/auth_terminal_pty_linux_test.go::TestLoginTerminalInteractiveNeedsBothStdinAndStdoutToBeTerminals`, `coding/cli/auth_terminal_pty_linux_test.go::TestLoginTerminalSecretReadsStdinAndWritesTheNewlineToItsOutput`, `coding/cli/auth_terminal_pty_linux_test.go::TestReadSecretContextCancellationRestoresTheTerminalWithoutTheInterruptHandler`, `coding/cli/auth_terminal_pty_linux_test.go::TestReadSecretCtrlCDoesNotEndThePromptWhenTheHandlerLeavesItRunning`, `coding/cli/auth_terminal_pty_linux_test.go::TestReadSecretCtrlCRunsTheInterruptHandlerWhichEndsThePrompt`, `coding/cli/auth_terminal_pty_linux_test.go::TestReadSecretDropsAByteTypedAfterTheContextEnded`, `coding/cli/auth_terminal_pty_linux_test.go::TestReadSecretFailsWithoutRawModeWhenInputIsNotATerminal` and 37 more in docs/bug-ledger.json
+- **Release note:** Ctrl-C at the secret prompt of `pig auth login` now drops the rest of its input chunk, so an Enter arriving in the same read can no longer submit the secret, as in Pi.
 
 ### BF-7f9ca19
 
