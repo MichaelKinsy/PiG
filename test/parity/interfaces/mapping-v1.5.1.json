@@ -167276,9 +167276,9 @@
         "call:internal/codingagent/tools/powershell.go#NewLocalPowerShellOperations"
       ],
       "evidence": [
-        "test:internal/codingagent/tools/powershell_operations_test.go#TestLocalPowerShellOperationsResolveTheShellWithGetPowerShellConfig",
-        "test:internal/codingagent/tools/powershell_operations_test.go#TestLocalPowerShellOperationsWrapCommandsWithTheUTF8OutputSwitch",
-        "test:internal/codingagent/tools/shell_operations_gaps_test.go#TestLocalPowerShellOperationsResolvePowerShellWhenRun"
+        "test:internal/codingagent/tools/powershell_exit_codes_test.go#TestLocalPowerShellOperationsResolveTheShellFirst",
+        "test:internal/codingagent/tools/powershell_exit_codes_test.go#TestPowerShellExitCodes",
+        "test:internal/codingagent/tools/powershell_operations_test.go#TestLocalPowerShellOperationsResolveTheShellWithGetPowerShellConfig"
       ]
     },
     {
@@ -167298,9 +167298,9 @@
         "call:internal/codingagent/tools/powershell.go#NewLocalPowerShellOperations"
       ],
       "evidence": [
-        "test:internal/codingagent/tools/powershell_operations_test.go#TestLocalPowerShellOperationsResolveTheShellWithGetPowerShellConfig",
-        "test:internal/codingagent/tools/powershell_operations_test.go#TestLocalPowerShellOperationsWrapCommandsWithTheUTF8OutputSwitch",
-        "test:internal/codingagent/tools/shell_operations_gaps_test.go#TestLocalPowerShellOperationsResolvePowerShellWhenRun"
+        "test:internal/codingagent/tools/powershell_exit_codes_test.go#TestLocalPowerShellOperationsResolveTheShellFirst",
+        "test:internal/codingagent/tools/powershell_exit_codes_test.go#TestPowerShellExitCodes",
+        "test:internal/codingagent/tools/powershell_operations_test.go#TestLocalPowerShellOperationsResolveTheShellWithGetPowerShellConfig"
       ]
     },
     {
@@ -188771,8 +188771,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/tools/shell_operations_gaps_test.go#TestGrepDefaultOperationsReportDirectoriesFilesAndMissingPaths",
-        "test:internal/codingagent/tools/grep_operations_test.go#TestGrepOperationsIsDirectoryErrorIsPathNotFound",
-        "test:internal/codingagent/tools/grep_operations_test.go#TestGrepOperationsIsDirectoryReceivesTheResolvedPathAndItsAnswerPicksThePathForm"
+        "test:internal/codingagent/tools/grep_operations_readfile_test.go#TestGrepOperationsAcceptsADeprecatedReadFileHookWithoutCallingIt",
+        "test:internal/codingagent/tools/grep_operations_test.go#TestGrepOperationsIsDirectoryErrorIsPathNotFound"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -188794,8 +188794,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/tools/shell_operations_gaps_test.go#TestGrepDefaultOperationsReportDirectoriesFilesAndMissingPaths",
-        "test:internal/codingagent/tools/grep_operations_test.go#TestGrepOperationsIsDirectoryErrorIsPathNotFound",
-        "test:internal/codingagent/tools/grep_operations_test.go#TestGrepOperationsIsDirectoryReceivesTheResolvedPathAndItsAnswerPicksThePathForm"
+        "test:internal/codingagent/tools/grep_operations_readfile_test.go#TestGrepOperationsAcceptsADeprecatedReadFileHookWithoutCallingIt",
+        "test:internal/codingagent/tools/grep_operations_test.go#TestGrepOperationsIsDirectoryErrorIsPathNotFound"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
