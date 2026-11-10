@@ -267,7 +267,8 @@ SPDX-License-Identifier = "MIT AND PSF-2.0"
 # automation/gen/import-highlight-corpus.mjs, and Pi's output for them.
 [[annotations]]
 path = [
-  "tui/internal/hljs/grammars_*.json.gz",
+  "tui/internal/hljs/grammars_eager.json.gz",
+  "tui/internal/hljs/grammars_all.json.zst",
   "tui/internal/hljs/testdata/corpus.json",
   "tui/internal/hljs/testdata/oracle.json.gz",
 ]

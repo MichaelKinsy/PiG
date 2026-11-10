@@ -473,7 +473,7 @@ THIS SOFTWARE.
 
 The Node extension runtime highlights code for Pi 0.87.1's `highlightCode` and `getMarkdownTheme` with the same highlighter Pi 0.87.1 uses. `coding/extension/host/subprocess/runtime-node/shims/highlight.js/` holds the unmodified CommonJS build (`lib/`), `package.json` and `LICENSE` of the npm package `highlight.js@10.7.3` (integrity `sha512-tzcUFauisWKNHaRkN4Wjl/ZA07gENAjFl3J/c480dprkGTg5EQstgaNFqBfUqCq54kZRIEcreTsAgF/m2quD7A==`), copied by `automation/gen/vendor-pi-dist.sh`.
 
-`tui/internal/hljs/` ports the same highlighter to Go for PiG's own `highlightCode`: its `.go` files translate `lib/core.js` and the language callbacks, `grammars_eager.json.gz` and `grammars_all.json.gz` serialize the language definitions Pi 1.0.0 registers (`automation/gen/generate-highlight-grammars.mjs`), and `testdata/corpus.json` holds the test inputs of highlight.js's repository at tag 10.7.3 (`automation/gen/import-highlight-corpus.mjs`).
+`tui/internal/hljs/` ports the same highlighter to Go for PiG's own `highlightCode`: its `.go` files translate `lib/core.js` and the language callbacks, `grammars_eager.json.gz` and `grammars_all.json.zst` serialize the language definitions Pi 1.0.0 registers (`automation/gen/generate-highlight-grammars.mjs`), and `testdata/corpus.json` holds the test inputs of highlight.js's repository at tag 10.7.3 (`automation/gen/import-highlight-corpus.mjs`).
 
 ```text
 BSD 3-Clause License
