@@ -136,3 +136,26 @@ func TestTheWorkerBaseAStartWaitsForAHeldBuildAndForksOnceItEndedTheStartDataIsA
 		t.Fatalf("built = %+v", built)
 	}
 }
+
+// A closed component copies nothing: its entry is not opened (a pipe nobody writes would hold the open), and its build ends at once.
+func TestTheWorkerBaseAComponentThatClosedOpensNotItsEntry(t *testing.T) {
+	pipe := heldEntry(t)
+	f := newFleet(t, fleetOptions{entry: pipe, baseDir: filepath.Join(t.TempDir(), "bases", "worker")})
+	if err := f.workers.Close(background); err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan WorkersBuilt, 1)
+	go func() { done <- f.workers.Build() }()
+	select {
+	case built := <-done:
+		if built.Err == nil {
+			t.Fatal("a closed component built")
+		}
+	case <-time.After(3 * time.Second):
+		if w, err := os.OpenFile(pipe, os.O_WRONLY|syscall.O_NONBLOCK, 0); err == nil {
+			_ = w.Close()
+		}
+		<-done
+		t.Fatal("a closed component opened its entry to copy it")
+	}
+}
