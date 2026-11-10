@@ -214,13 +214,21 @@ func hexValue(b byte) byte {
 	return b - '0'
 }
 
-// domainProfile is UTS #46's ToASCII as the URL standard calls it: CheckHyphens false, CheckBidi and CheckJoiners true,
-// UseSTD3ASCIIRules false, Transitional_Processing false, VerifyDnsLength false.
+// domainProfile is UTS #46's ToASCII as the URL standard calls it: CheckHyphens false, CheckJoiners true, UseSTD3ASCIIRules false,
+// Transitional_Processing false, VerifyDnsLength false. It runs on one label at a time: the bidi rule is applied to a label alone, as
+// Node's parser (ada) applies it, not to every label of a domain that holds a right-to-left one.
 var domainProfile = idna.New(idna.MapForLookup(), idna.BidiRule(), idna.CheckHyphens(false), idna.CheckJoiners(true),
 	idna.StrictDomainName(false), idna.VerifyDNSLength(false), idna.Transitional(false))
 
+// labelMapper maps a label the way the profile does, without reading an `xn--` prefix as punycode.
+var labelMapper = idna.New(idna.MapForLookup(), idna.CheckHyphens(false), idna.StrictDomainName(false), idna.Transitional(false))
+
+// mappedDots turns the dots UTS #46 maps to "." into one, so the domain splits into the labels it has after mapping.
+var mappedDots = strings.NewReplacer("\u3002", ".", "\uff0e", ".", "\uff61", ".")
+
 // domainToASCII is the domain to ASCII algorithm as Node's parser (ada) runs it: an ASCII domain is only lowercased, whatever its
-// labels (no punycode decoding or validation of an `xn--` label), and any other domain goes through UTS #46.
+// labels (no punycode decoding or validation of an `xn--` label); any other domain is split into the labels it has after mapping,
+// and each label goes through UTS #46 on its own, with an `xn--` label that is empty or not ASCII after mapping refused.
 func domainToASCII(domain string) (string, bool) {
 	plain := true
 	for i := 0; i < len(domain); i++ {
@@ -232,33 +240,32 @@ func domainToASCII(domain string) (string, bool) {
 	if plain {
 		return strings.ToLower(domain), true
 	}
-	if badPunycodeLabel(domain) {
-		return "", false
-	}
-	ascii, err := domainProfile.ToASCII(domain)
-	if err != nil {
-		return "", false
-	}
-	return ascii, true
-}
-
-// badPunycodeLabel reports whether a non-ASCII domain has a label that starts with `xn--` and is empty after it or holds a non-ASCII
-// character: Node refuses the host, where x/net/idna drops the empty label or maps the characters.
-func badPunycodeLabel(domain string) bool {
-	for label := range strings.SplitSeq(domain, ".") {
-		if len(label) < 4 || !strings.EqualFold(label[:4], "xn--") {
+	labels := strings.Split(mappedDots.Replace(domain), ".")
+	for i, label := range labels {
+		if label == "" {
 			continue
 		}
-		if len(label) == 4 {
-			return true
+		mapped, _ := labelMapper.ToUnicode("-" + label)
+		mapped = strings.TrimPrefix(mapped, "-")
+		if strings.HasPrefix(mapped, "xn--") && (len(mapped) == 4 || !isASCII(mapped)) {
+			return "", false
 		}
-		for i := 4; i < len(label); i++ {
-			if label[i] >= 0x80 {
-				return true
-			}
+		ascii, err := domainProfile.ToASCII(label)
+		if err != nil {
+			return "", false
+		}
+		labels[i] = ascii
+	}
+	return strings.Join(labels, "."), true
+}
+
+func isASCII(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] >= 0x80 {
+			return false
 		}
 	}
-	return false
+	return true
 }
 
 // endsInANumber is the URL standard's check that a domain's last label is a number (decimal, octal or hexadecimal), which

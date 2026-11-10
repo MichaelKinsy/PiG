@@ -1052,7 +1052,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/tui/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
 | `packages/chord/src/tui/runtime.ts` | `chord/nextnode/surfaces/client/pi/chord/src/tui/runtime.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go), `chord/nextnode/tui/tui_actions.go` | ✅ |
 | `packages/chord/src/tui/scope.ts` | `chord/next/tui/tui_scope.go` | ✅ |
-| `packages/chord/src/tui/terminal.ts` | `(BridgeTerminal is designed out: it runs in the browser client, vendored byte-for-byte at chord/nextnode/surfaces/client/pi/chord/src/tui/terminal.ts, D601; the launcher's process terminal is chord/nextnode/tui/tui_terminal.go, row packages/chord/src/node/tui/launcher.ts)` | n/a |
+| `packages/chord/src/tui/terminal.ts` | `(BridgeTerminal is designed out: it runs in the browser client, vendored byte-for-byte at chord/nextnode/surfaces/client/pi/chord/src/tui/terminal.ts, D601; the launcher's process terminal is in the launcher.ts row)` | n/a |
 | `packages/chord/src/tui/theme.ts` | `chord/nextnode/surfaces/client/pi/chord/src/tui/theme.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go), `chord/next/tui/tui_theme.go` | ✅ |
 | `packages/chord/src/web/environment.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/environment.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/web/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |

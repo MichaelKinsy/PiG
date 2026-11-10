@@ -65,3 +65,44 @@ func TestTheWireURLIsWhatTheURLParserMakesOfTheHostAndTarget(t *testing.T) {
 	}
 	t.Logf("%d rows, %d diffs", rows, diffs)
 }
+
+// testdata/host_corpus.jsonl is what testdata/host_probe.cjs recorded from the pinned Node: [host, hostname or null] for a Host with no
+// port, userinfo or path, as Unicode strings (the characters a Latin-1 Host header cannot hold reach parseHost through percent-encoding).
+func TestTheHostIsWhatTheURLParserMakesOfItAsUnicode(t *testing.T) {
+	file, err := os.Open("testdata/host_corpus.jsonl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+	scanner := bufio.NewScanner(file)
+	scanner.Buffer(make([]byte, 1<<20), 1<<20)
+	rows, diffs := 0, 0
+	for scanner.Scan() {
+		var row [2]json.RawMessage
+		if err := json.Unmarshal(scanner.Bytes(), &row); err != nil {
+			t.Fatal(err)
+		}
+		var host string
+		var want *string
+		if json.Unmarshal(row[0], &host) != nil || json.Unmarshal(row[1], &want) != nil {
+			t.Fatalf("bad row %s", scanner.Bytes())
+		}
+		got, ok := parseHost(host)
+		rows++
+		if want == nil && ok || want != nil && (!ok || got != *want) {
+			diffs++
+			node := "refused"
+			if want != nil {
+				node = *want
+			}
+			t.Errorf("host %q: %q ok %v, node %s", host, got, ok, node)
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		t.Fatal(err)
+	}
+	if rows < 2000 {
+		t.Fatalf("only %d corpus rows", rows)
+	}
+	t.Logf("%d rows, %d diffs", rows, diffs)
+}

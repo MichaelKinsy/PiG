@@ -64,6 +64,9 @@ for (let i = 0; i < 1500; i++) record(walk(hostAlphabet, 1 + next(12)), "/" + wa
 
 // A non-ASCII domain goes through UTS #46, where an `xn--` label that is empty or not ASCII is refused.
 for (const host of ["xn--.\u00e4", "..xn--\u00e4xn--", "XN--.\u00e4", "\u00e4.xn--", "\u00e4.xn--a", "\u00e4.xn--\u00e4", "xn--\u00e4.a", "x\u00e4.xn--a--", "\u00e4.XN--A"]) record(host, "/p");
+// Hosts whose characters a Latin-1 Host header holds only percent-encoded: the labels are split and the `xn--` checks run after UTS #46
+// mapping (ideographic and halfwidth dots, fullwidth letters, a letter that maps to another), and the bidi rule runs on a label alone.
+for (const host of ["xn--bcher-kv\xaa.\xe4", "xn--bcher-kva%e3%80%82%c3%a4", "xn--%ef%bd%82cher-kva.%c3%a4", "%c3%a4%e3%80%82xn--", "%c3%a4%ef%bc%8exn--", "%c3%a4%ef%bd%a1xn--", "%ef%bd%98n--.%c3%a4", "1.%c3%a4.xn--mgbh0fb", "1.xn--mgbh0fb", "-.%d7%90", "xn--4ca%e3%80%82", "xn--mgbh0fb%ef%bd%a1", "%e3%80%82xn--", "1%ef%bd%a1%d8%a8%e3%80%82xn--4ca"]) record(host, "/p");
 // Hosts made of punycode-looking labels, after the walks above so those rows keep their seed.
 const labelAlphabet = ["xn--", "xn--", "XN--", "a", "b", "-", ".", ".", "0", "1", "X", "N", "%78", "%6e", "%2d", "\xe4", "c", "9", "_"];
 for (let i = 0; i < 400; i++) record(walk(labelAlphabet, 1 + next(7)), "/p");
