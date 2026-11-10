@@ -1060,6 +1060,7 @@ fn local_exec(shell: &'static str, shell_path: Option<String>) -> BashOperations
 /// to `on_data` in order and returns when the command ends, with Pi's `{ exitCode }`, or with the error Pi's exec rejects with (`"aborted"` when the signal was
 /// set, `"timeout:<seconds>"` when the timeout elapsed). It runs over the connection of the running extension, so it needs [`crate::Extension::run`] to have started.
 pub fn create_local_bash_operations(options: Option<LocalBashOperationsOptions>) -> BashOperations {
+    // pig divergence (D243): Pi 1.5.1's exec rejects with a ShellTimeoutError carrying the shell's exit code; builtinTool.localExec carries only the error text, so a timeout reaches the extension as plain timeout:<seconds>.
     local_exec("bash", options.and_then(|options| options.shell_path))
 }
 

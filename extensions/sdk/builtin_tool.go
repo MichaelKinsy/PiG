@@ -1003,6 +1003,7 @@ func CreateLocalBashOperations(options *LocalBashOperationsOptions) BashOperatio
 	if options != nil {
 		shellPath = options.ShellPath
 	}
+	// pig divergence (D243): Pi 1.5.1's exec rejects with a ShellTimeoutError carrying the shell's exit code; builtinTool.localExec carries only the error text, so a timeout reaches the extension as plain timeout:<seconds>.
 	return BashOperations{Exec: func(command, cwd string, o BashExecOptions) (BashExecResult, error) {
 		return localShellExec("bash", shellPath, command, cwd, o)
 	}}

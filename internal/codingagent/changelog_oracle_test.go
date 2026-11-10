@@ -71,6 +71,9 @@ emit(input.changelogs.map((_, i) => {
 			got, ok := GetNewEntries(entries, last)
 			if !ok {
 				got = nil // Pi's getNewEntries returns undefined, which the oracle emits as null
+				if want[i][k+1] != nil {
+					t.Errorf("changelog %d since %s: Go has no entries (unreadable last-seen), Pi %+v", i, last, want[i][k+1])
+				}
 			}
 			check("since "+last, got, want[i][k+1])
 		}

@@ -937,9 +937,9 @@ reason = "Pi sends the tool parameters of a strict sampling tool as getJsonSchem
 [[entry]]
 path = "mcp/review_regression_test.go"
 commit = "d4e641bde31d36a083dc85ef274e7d0854b45998"
-class = "DIVERGENCE"
-cite = "D233"
-reason = "D233 ports Pi main 4a8b60bc3 ahead of the 1.5.0 pin: an HTTP error body keeps its first 8192 bytes (MAX_ERROR_BODY_BYTES) instead of the whole decoded body, so the expected error text of the regression test is that excerpt. Pi main checks the same expectations in its readBodyText tests, ported in streamable_http_body_cap_pi_test.go."
+class = "CITE"
+cite = "packages/mcp/src/transports/streamable-http.ts:399"
+reason = "Pi 1.5.1 (4a8b60bc3) keeps the first 8192 bytes of an HTTP error body (MAX_ERROR_BODY_BYTES) instead of the whole decoded body, so the expected error text of the regression test is that excerpt. Pi checks the same expectations in its readBodyText tests, ported in streamable_http_body_cap_pi_test.go."
 
 [[entry]]
 path = "automation/ci/divsplit/divsplit_test.go"
