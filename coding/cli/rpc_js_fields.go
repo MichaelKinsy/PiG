@@ -11,6 +11,7 @@ import (
 	"math"
 	"strings"
 
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -32,7 +33,8 @@ func (v rpcJSValue) text() string {
 		return "undefined"
 	}
 	var decoded any
-	if err := json.Unmarshal(v.raw, &decoded); err != nil {
+	// JSON.parse keeps a lone UTF-16 surrogate in a string the template coerces.
+	if err := jsstring.UnmarshalKeepingSurrogates(v.raw, &decoded); err != nil {
 		return "undefined"
 	}
 	return rpcJSTemplate(decoded)
@@ -114,7 +116,7 @@ func rpcJSAdapt(env RPCCommandEnvelope) (RPCCommandEnvelope, string, bool) {
 		return rpcJSValue{raw: raw, present: ok}
 	}
 	rewrite := func(name string, value any) (RPCCommandEnvelope, string, bool) {
-		encoded, err := json.Marshal(value)
+		encoded, err := jsstring.MarshalKeepingSurrogates(value)
 		if err != nil {
 			return env, "", false
 		}
