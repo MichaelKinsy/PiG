@@ -203,6 +203,37 @@ func TestLinuxShardsRetainEveryCheck(t *testing.T) {
 			t.Errorf("cmd/pig shard %d runs in %d test-cli halves, want exactly one", shard, runs[shard])
 		}
 	}
+	// The two test-conformance halves run the conformance shard ranges that together are every shard SHARDED_SPEC declares, each once.
+	grouped, err := os.ReadFile(filepath.Join(repoRoot(t), "automation", "ci", "test-grouped.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	conformance := regexp.MustCompile(`(?m)^\s+\./test/extension-conformance:([0-9]+)$`).FindSubmatch(grouped)
+	if conformance == nil {
+		t.Fatal("test-grouped.sh does not declare the conformance shard count in SHARDED_SPEC")
+	}
+	conformanceShards, _ := strconv.Atoi(string(conformance[1]))
+	conformanceRuns := make([]int, conformanceShards+1)
+	conformanceRange := regexp.MustCompile(`(?m)^(test-conformance-[12]):[^\n]*\n\t@\./automation/ci/test-grouped\.sh conformance ([0-9]+) ([0-9]+)$`)
+	conformanceHalves := conformanceRange.FindAllStringSubmatch(readMakeSources(t, repoRoot(t)), -1)
+	if len(conformanceHalves) != 2 {
+		t.Fatalf("found %d test-conformance halves with a shard range, want test-conformance-1 and test-conformance-2", len(conformanceHalves))
+	}
+	for _, half := range conformanceHalves {
+		first, _ := strconv.Atoi(half[2])
+		last, _ := strconv.Atoi(half[3])
+		for shard := first; shard <= last; shard++ {
+			if shard < 1 || shard > conformanceShards {
+				t.Fatalf("%s runs conformance shard %d of %d", half[1], shard, conformanceShards)
+			}
+			conformanceRuns[shard]++
+		}
+	}
+	for shard := 1; shard <= conformanceShards; shard++ {
+		if conformanceRuns[shard] != 1 {
+			t.Errorf("conformance shard %d runs in %d test-conformance halves, want exactly one", shard, conformanceRuns[shard])
+		}
+	}
 }
 
 // portmapShards is the number of PORT_MAP evidence shards the Makefile plans for (PORTMAP_SHARDS).
@@ -274,10 +305,10 @@ func TestLinuxAggregateRejectsUnsuccessfulShards(t *testing.T) {
 	}
 }
 
-// fakeTests are the top-level tests the fixture's fake go test -list prints for every package; it also prints a benchmark, which -run does not select.
+// fakeTests are the top-level tests the fixture's fake go test -list prints for every package; it also prints a benchmark, which -run does not select. There are enough of them for no shard of the largest shard count (the conformance suite's twelve) to select none.
 var fakeTests = func() []string {
 	var names []string
-	for i := range 24 {
+	for i := range 96 {
 		names = append(names, fmt.Sprintf("TestFixture%02d", i))
 	}
 	return append(names, "ExampleFixture", "FuzzFixture")
