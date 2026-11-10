@@ -110,9 +110,9 @@ jobs:
   fuzz:
     name: Fuzz / every target 30s
     runs-on: ubuntu-24.04
-    # The targets run one after the other, 30 s of fuzzing and about 11 s of build and corpus work each (41 s measured): 47 targets are 32 minutes, so a 30 minute limit cancelled
-    # the run at the 41st on 11-05, 11-06 and 11-08. test/ci-images/nightly_fuzz_budget_test.go keeps the limit above the targets' sum as targets are added.
-    timeout-minutes: 60
+    # The targets run one after the other, 30 s of fuzzing and about 11 s of build and corpus work each (41 s measured): 47 targets were 32 minutes, so a 30 minute limit cancelled
+    # the run at the 41st on 11-05, 11-06 and 11-08; the Pi-pinned tree has 111 targets, 83 minutes with the setup, so the limit is 90. test/ci-images/nightly_fuzz_budget_test.go keeps the limit above the targets' sum as targets are added.
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
