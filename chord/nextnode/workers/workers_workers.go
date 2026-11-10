@@ -328,12 +328,16 @@ func removeStaleStages(base string) {
 	if base == "" {
 		return
 	}
-	stale, err := filepath.Glob(filepath.Join(filepath.Dir(base), stagePrefix(base)+"*"))
+	// The directory's entries, not a glob: the path can hold `[`, `*` and `?`.
+	parent, prefix := filepath.Dir(base), stagePrefix(base)
+	entries, err := os.ReadDir(parent)
 	if err != nil {
 		return
 	}
-	for _, each := range stale {
-		_ = os.RemoveAll(each)
+	for _, each := range entries {
+		if strings.HasPrefix(each.Name(), prefix) {
+			_ = os.RemoveAll(filepath.Join(parent, each.Name()))
+		}
 	}
 }
 
