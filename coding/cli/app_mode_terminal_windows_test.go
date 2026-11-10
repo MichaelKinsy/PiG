@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 	"unsafe"
@@ -31,6 +32,9 @@ type conPTYProcess struct {
 	input, output *os.File
 	console       windows.Handle
 	process       windows.Handle
+	// exited is closed when the process has exited; releaseConsole runs once.
+	exited         chan struct{}
+	releaseConsole sync.Once
 }
 
 // startOnConPTY starts commandLine (a complete Windows command line) with a
@@ -87,12 +91,29 @@ func startOnConPTY(t *testing.T, commandLine string, env []string, dir string) *
 		t.Fatalf("start %q on a pseudoconsole: %v", commandLine, err)
 	}
 	_ = windows.CloseHandle(info.Thread)
-	return &conPTYProcess{
+	p := &conPTYProcess{
 		input:   os.NewFile(uintptr(inputWrite), "conpty-input"),
 		output:  os.NewFile(uintptr(outputRead), "conpty-output"),
 		console: console,
 		process: info.Process,
+		exited:  make(chan struct{}),
 	}
+	go p.watchExit()
+	return p
+}
+
+// watchExit releases the pseudoconsole when the process exits. A pseudoconsole's output pipe stays open after its process exits until the host closes the
+// pseudoconsole, which then ends the pipe once the output left in it has been read. Without it a reader of the terminal blocks forever once pig has exited, so a
+// test waiting for pig's output would wait out its whole deadline instead of seeing that pig exited, as it does on a Unix pseudo-terminal.
+func (p *conPTYProcess) watchExit() {
+	_, _ = windows.WaitForSingleObject(p.process, windows.INFINITE)
+	close(p.exited)
+	p.closeConsole()
+}
+
+// closeConsole releases the pseudoconsole, once. Its output is read to the end meanwhile by the terminal's reader, or by close's drain.
+func (p *conPTYProcess) closeConsole() {
+	p.releaseConsole.Do(func() { windows.ClosePseudoConsole(p.console) })
 }
 
 // environmentBlock encodes env as the double-NUL-terminated UTF-16 block
@@ -127,52 +148,21 @@ func (p *conPTYProcess) wait(timeout time.Duration) (code int, exited bool, err 
 // output is drained while it closes.
 func (p *conPTYProcess) close() {
 	_ = windows.TerminateProcess(p.process, 1)
-	_, _ = windows.WaitForSingleObject(p.process, windows.INFINITE)
+	<-p.exited
 	_ = windows.CloseHandle(p.process)
 	go func() { _, _ = io.Copy(io.Discard, p.output) }()
-	windows.ClosePseudoConsole(p.console)
+	p.closeConsole()
 	_ = p.input.Close()
 	_ = p.output.Close()
 }
-
-// procPeekNamedPipe is kernel32's PeekNamedPipe, which golang.org/x/sys/windows does not wrap.
-var procPeekNamedPipe = windows.NewLazySystemDLL("kernel32.dll").NewProc("PeekNamedPipe")
-
-// conPTYQuietAfterExit is how long the terminal's output stays empty after the process has exited before Read reports the end of the terminal. ConPTY
-// renders the screen on its own schedule, so the last frame can reach the output pipe some time after the process exit.
-const conPTYQuietAfterExit = time.Second
 
 // conPTYTerminal reads the terminal's screen output and writes its keyboard
 // input.
 type conPTYTerminal struct{ *conPTYProcess }
 
-// Read returns the screen output, and io.EOF once the process has exited and its output has been drained, as a Unix pseudo-terminal's master does when
-// the process on its slave exits. A pseudoconsole's output pipe stays open after the process exits until the host closes the pseudoconsole, so a
-// plain read of it blocks forever once pig has exited, and a test waiting for pig's output would hang until its deadline instead of seeing pig exit.
-func (t conPTYTerminal) Read(p []byte) (int, error) {
-	var quietSince time.Time
-	for {
-		var available uint32
-		if ok, _, _ := procPeekNamedPipe.Call(t.output.Fd(), 0, 0, 0, uintptr(unsafe.Pointer(&available)), 0); ok == 0 { //nolint:gosec // G103: PeekNamedPipe fills the available count, and x/sys has no wrapper for it.
-			return 0, io.EOF
-		}
-		if available > 0 {
-			return t.output.Read(p)
-		}
-		_, exited, err := t.wait(0)
-		if err != nil {
-			return 0, io.EOF
-		}
-		if exited {
-			if quietSince.IsZero() {
-				quietSince = time.Now()
-			} else if time.Since(quietSince) >= conPTYQuietAfterExit {
-				return 0, io.EOF
-			}
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-}
+// Read returns the screen output. It ends with an error once the process has exited and its output has been read, as a Unix pseudo-terminal's master does
+// (watchExit releases the pseudoconsole at the process exit, which ends its output pipe).
+func (t conPTYTerminal) Read(p []byte) (int, error) { return t.output.Read(p) }
 
 func (t conPTYTerminal) Write(p []byte) (int, error) { return t.input.Write(p) }
 

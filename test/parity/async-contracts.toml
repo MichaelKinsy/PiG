@@ -1346,10 +1346,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/auth
 
 [[files]]
 path = "packages/coding-agent/src/core/bash-executor.ts"
-disposition = "deferred"
-contracts = []
-evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/tools/bash_executor.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:internal/codingagent/tools/bash_executor_oracle_test.go#TestExecuteBashWithOperationsMatchesPi", "test:internal/codingagent/tools/bash_executor_oracle_test.go#TestExecuteBashWithOperationsFileIsCompleteWhenItReturns", "test:internal/codingagent/tools/bash_executor_oracle_test.go#TestBashExecutorOracleReadsPiFileAfterItsStreamCloses"]
+rationale = "executeBashWithOperations awaits operations.exec, whose AbortSignal ends the run: an abort, whether the signal was aborted before the call, during the output or after it, returns the output so far with cancelled set and no exit code, and any other rejection is rethrown after the temp stream is ended (Go: ExecuteBashWithOperations, ctx cancellation, error return). The one unawaited Promise is the temp file stream: tempFileStream?.end() on the finished and on the aborted path (unchanged at Pi 1.5.0, 1.5.1 and 1.5.2) does not await the flush, so Pi returns while the file can still be written. PiG writes the file through a buffer and flushes and closes it before it returns, so the file is complete at return (TestExecuteBashWithOperationsFileIsCompleteWhenItReturns), which is an ordering difference only in that Pi's file can be incomplete at return and PiG's cannot. It is not a user-visible divergence: the file path reaches the user and the model only inside the returned result (BashExecutionMessage and RPC bash fullOutputPath, the read tool the model later calls on it), and nothing in the repository reads FullOutputPath before the result is delivered, so every reader opens the file after the result exists, by when Pi's stream has flushed as well (a flush of at most the few hundred KB of one command's output, against a model round trip or a user action). The Pi oracle test therefore reads Pi's file only after Pi's stream has closed (TestBashExecutorOracleReadsPiFileAfterItsStreamCloses runs it against a disk slowed to pause halfway through every write): a Windows CI run read a 6441-byte prefix of Pi's file by treating two equal sizes 10 ms apart as done, while PiG's file was complete at 55320 bytes."
 
 [[files]]
 path = "packages/coding-agent/src/core/bug-report-upload.ts"

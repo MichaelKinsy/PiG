@@ -164,6 +164,32 @@ func TestBashExecutorOracleReadsPiFileAfterItsStreamCloses(t *testing.T) {
 	}
 }
 
+// Pi's executor ends its output stream without awaiting it (bash-executor.ts tempFileStream?.end() on both the finished and the aborted path), so Pi returns while the file may still be flushing. PiG flushes and closes the file before it returns: a reader that opens FullOutputPath at once, with no wait, finds all of it, for a finished run and for one cancelled partway.
+func TestExecuteBashWithOperationsFileIsCompleteWhenItReturns(t *testing.T) {
+	text := strings.Repeat("x", 59999) + "\n"
+	var chunks []string
+	for rest := []byte(text); len(rest) > 0; rest = rest[min(20000, len(rest)):] {
+		chunks = append(chunks, hex.EncodeToString(rest[:min(20000, len(rest))]))
+	}
+	code := 0
+	for _, abortAfter := range []int{-2, len(chunks) - 1} {
+		ctx, cancel := context.WithCancel(t.Context())
+		result, err := ExecuteBashWithOperations(ctx, "cmd", "/cwd", scriptedBashOperations{bashExecScenario{Chunks: chunks, AbortAfter: abortAfter, UseSignal: true, ExitCode: &code}, cancel}, BashExecOptions{})
+		cancel()
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, readErr := os.ReadFile(result.FullOutputPath)
+		_ = os.Remove(result.FullOutputPath)
+		if readErr != nil {
+			t.Fatalf("abortAfter %d: %v", abortAfter, readErr)
+		}
+		if string(data) != text {
+			t.Errorf("abortAfter %d: file has %d bytes at return, want all %d", abortAfter, len(data), len(text))
+		}
+	}
+}
+
 // executeBashWithOperations (core/bash-executor.ts) against pinned Pi over 900 seeded scripted runs: chunk boundaries inside multi-byte characters and escape sequences, ANSI and OSC sequences, carriage returns, NUL and other control bytes, invalid UTF-8, a leading byte-order mark, outputs from empty to 260 KB (past the 50 KB spill to a file and the 100 KB rolling window), more than 2000 lines, aborts before, during and after the output, error throws, null and nonzero exit codes. Compared: every onChunk call, the result and the spilled file's content.
 func TestExecuteBashWithOperationsMatchesPi(t *testing.T) {
 	scenarios := bashExecScenarios()
