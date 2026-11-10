@@ -385,3 +385,20 @@ func TestTargetsReachTheComponentOnlyWhereNodesParserTakesThem(t *testing.T) {
 		t.Fatalf("only %d corpus rows", rows)
 	}
 }
+
+// Forced difference (D218, node.go): Node's parser reads `GET /  HTTP/1.1` (two spaces) as `GET /` and hands it to the component; net/http
+// refuses the request line itself, 400, before any handler, so none of the component's default headers are on the answer.
+func TestARequestLineWithTwoSpacesIsRefusedByNetHTTPBeforeTheComponent(t *testing.T) {
+	server := serving(t, []plugin{echoPlugin}, servedOptions{})
+	status, head := rawHead(t, server.port, "GET /  HTTP/1.1\r\nHost: 127.0.0.1:"+strconv.Itoa(server.port)+"\r\nConnection: close\r\n\r\n")
+	if status != "HTTP/1.1 400 Bad Request" {
+		t.Fatalf("status %q, want net/http's 400", status)
+	}
+	if strings.Contains(head, "X-Content-Type-Options: nosniff") {
+		t.Fatalf("the component answered a request line net/http refuses:\n%s", head)
+	}
+	status, head = rawHead(t, server.port, "GET / HTTP/1.1\r\nHost: 127.0.0.1:"+strconv.Itoa(server.port)+"\r\nConnection: close\r\n\r\n")
+	if !strings.Contains(head, "X-Content-Type-Options: nosniff") {
+		t.Fatalf("the one-space request line did not reach the component: %q\n%s", status, head)
+	}
+}

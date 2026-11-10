@@ -1,5 +1,8 @@
 package http
 
+// Ports packages/chord/src/node/http/node.ts: the URL Node's parser makes of `http://` + Host + target (NodeIncoming.of, node.ts:103-117),
+// a WHATWG basic URL parser for the special scheme `http`, checked against the pinned Node's own URL by testdata/url_corpus.jsonl.
+
 import (
 	"math"
 	nethttp "net/http"
@@ -216,7 +219,8 @@ func hexValue(b byte) byte {
 var domainProfile = idna.New(idna.MapForLookup(), idna.BidiRule(), idna.CheckHyphens(false), idna.CheckJoiners(true),
 	idna.StrictDomainName(false), idna.VerifyDNSLength(false), idna.Transitional(false))
 
-// domainToASCII is the domain to ASCII algorithm: an ASCII domain without a punycode label is only lowercased.
+// domainToASCII is the domain to ASCII algorithm as Node's parser (ada) runs it: an ASCII domain is only lowercased, whatever its
+// labels (no punycode decoding or validation of an `xn--` label), and any other domain goes through UTS #46.
 func domainToASCII(domain string) (string, bool) {
 	plain := true
 	for i := 0; i < len(domain); i++ {
@@ -225,7 +229,7 @@ func domainToASCII(domain string) (string, bool) {
 			break
 		}
 	}
-	if plain && !strings.Contains(strings.ToLower(domain), "xn--") {
+	if plain {
 		return strings.ToLower(domain), true
 	}
 	ascii, err := domainProfile.ToASCII(domain)

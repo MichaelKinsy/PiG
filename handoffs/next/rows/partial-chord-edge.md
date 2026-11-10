@@ -2,7 +2,7 @@
 
 Rows: chord link/websocket.ts, node/http/node.ts, node/surfaces/published.ts, surfaces/format.ts, tui/terminal.ts. Stopped at the request budget.
 
-Done (tests + mutation proof, run on xd6702 in tern-ci:v10):
+Done (tests + mutation proof, run on xd670 in tern-ci:v10 (xd6702 is integrator-only)):
 - websocket.ts: tests for send/close/readyState; ledger rows readyState, close(+call:0), send(+call:0) now `ported` in mapping-v1.5.1.json. Mutants WS1-WS5 killed.
 - published.ts: new surfaces_published_test.go (retention of 4 sets, failed-build carry-over, digests/names, source maps, assets, rollout Step). One production fix: the Step lists removed plugins in UTF-16 order (compareUTF16), as Pi's sorted set. Mutants PS1-PS14 killed.
 - node.ts: URL parser port in url.go checked against Node's URL by testdata/url_corpus.jsonl (url_probe.cjs, 3931 rows incl. IPv6 compression ties); wireTarget in node.go (Node's parser takes 0x21-0x7e only) checked by target_corpus.jsonl; D218 text extended. Mutants U1-U11 (U9 needed the IPv6 tie rows), N1 killed.

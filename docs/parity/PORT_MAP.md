@@ -938,7 +938,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/node/http/http.ts` | `chord/nextnode/http/http.go` | ✅ |
 | `packages/chord/src/node/http/incoming.ts` | `chord/nextnode/http/incoming.go` | ✅ |
 | `packages/chord/src/node/http/index.ts` | `(barrel: Go imports the package; exported names are those of Pi's index.ts, the rest is unexported)` | n/a |
-| `packages/chord/src/node/http/node.ts` | `chord/nextnode/http/node.go` (the listener; the wire URL Node's parser makes of Host and target is the URL parser file beside it, ported with Node's own parsing probed into chord/nextnode/http/testdata corpora; the packages/chord/test/node/http/node.test.ts cases in chord/nextnode/http/node_test.go, url_test.go; D218 records the net/http differences) | ✅ |
+| `packages/chord/src/node/http/node.ts` | `chord/nextnode/http/node.go`, `chord/nextnode/http/url.go` (the listener; the wire URL Node's parser makes of Host and target in url.go, ported with Node's own parsing probed into chord/nextnode/http/testdata corpora; the packages/chord/test/node/http/node.test.ts cases in chord/nextnode/http/node_test.go, url_test.go; D218 records the net/http differences) | ✅ |
 | `packages/chord/src/node/http/request.ts` | `chord/nextnode/http/request.go` | ✅ |
 | `packages/chord/src/node/http/response.ts` | `chord/nextnode/http/response.go` | ✅ |
 | `packages/chord/src/node/http/router.ts` | `chord/nextnode/http/router.go`, `chord/nextnode/http/websocket.go` (WebSocketHandle) | ✅ |
@@ -1004,7 +1004,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/node/tui/credentials.ts` | `chord/nextnode/tui/tui_credentials.go` | ✅ |
 | `packages/chord/src/node/tui/filter.ts` | `chord/nextnode/tui/tui_filter.go` | ✅ |
 | `packages/chord/src/node/tui/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
-| `packages/chord/src/node/tui/launcher.ts` | `chord/nextnode/tui/tui_launcher.go` | ✅ |
+| `packages/chord/src/node/tui/launcher.ts` | `chord/nextnode/tui/tui_launcher.go`, `chord/nextnode/tui/tui_terminal.go` (the launcher's process terminal: TerminalOptions input and output, raw mode and resize; chord/nextnode/tui/tui_terminal_test.go, tui_terminal_pty_linux_test.go) | ✅ |
 | `packages/chord/src/node/tui/pipe.ts` | `chord/nextnode/tui/tui_pipe.go` | ✅ |
 | `packages/chord/src/node/tui/sandbox.ts` | `chord/nextnode/tui/tui_sandbox.go` | ✅ |
 | `packages/chord/src/node/workers/base.ts` | `(designed out, D600 draft: a Go worker is the program's own executable; no esbuild worker base; rows/chord-reload-workers.md)` | n/a |
@@ -1052,7 +1052,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/tui/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
 | `packages/chord/src/tui/runtime.ts` | `chord/nextnode/surfaces/client/pi/chord/src/tui/runtime.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go), `chord/nextnode/tui/tui_actions.go` | ✅ |
 | `packages/chord/src/tui/scope.ts` | `chord/next/tui/tui_scope.go` | ✅ |
-| `packages/chord/src/tui/terminal.ts` | `chord/nextnode/tui/tui_terminal.go` (the launcher's Terminal: ProcessTerminal and the streams terminal; chord/nextnode/tui/tui_terminal_test.go, tui_terminal_pty_linux_test.go), `chord/nextnode/surfaces/client/pi/chord/src/tui/terminal.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) Missing: the ✅ tick is not derived: BridgeTerminal is designed out to the vendored runtime.ts, so the ledger maps no Go symbol and no ledger evidence test to this file; tui_terminal.go is the launcher process terminal, not a port of terminal.ts, and the owner has not decided whether it belongs to this row | 🟡 |
+| `packages/chord/src/tui/terminal.ts` | `(BridgeTerminal is designed out: it runs in the browser client, vendored byte-for-byte at chord/nextnode/surfaces/client/pi/chord/src/tui/terminal.ts, D601; the launcher's process terminal is chord/nextnode/tui/tui_terminal.go, row packages/chord/src/node/tui/launcher.ts)` | n/a |
 | `packages/chord/src/tui/theme.ts` | `chord/nextnode/surfaces/client/pi/chord/src/tui/theme.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go), `chord/next/tui/tui_theme.go` | ✅ |
 | `packages/chord/src/web/environment.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/environment.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/web/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
