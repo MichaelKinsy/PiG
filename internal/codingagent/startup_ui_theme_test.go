@@ -108,6 +108,7 @@ func whiteTerminalReplies() [][]byte {
 
 // upstream 0.99.1 startup-ui.ts startStartupTui and theme-controller.ts requestTerminalColors: the prompt renders at once, the replies record the terminal's colors, and none reaches the prompt as input.
 func TestStartupPromptAppliesTerminalColorsAndKeepsRepliesOutOfInput(t *testing.T) {
+	restoreTUIKeybindings(t)
 	restoreStartupTheme(t)
 	tui.SetThemeRegistry(tui.NewThemeRegistry())
 	configureStartupTui(StartupUIOptions{})
@@ -133,6 +134,7 @@ func TestStartupPromptAppliesTerminalColorsAndKeepsRepliesOutOfInput(t *testing.
 
 // upstream 0.99.1 theme-controller.ts requestTerminalColors passes onLateReply: colors that arrive after the timeout still apply.
 func TestStartupPromptAppliesColorsThatArriveAfterTheTimeout(t *testing.T) {
+	restoreTUIKeybindings(t)
 	restoreStartupTheme(t)
 	tui.SetThemeRegistry(tui.NewThemeRegistry())
 	configureStartupTui(StartupUIOptions{})
@@ -165,6 +167,7 @@ func TestStartupPromptAppliesColorsThatArriveAfterTheTimeout(t *testing.T) {
 
 // upstream 0.99.1 startup-ui.ts startStartupTui queries the terminal whatever the setting is, and re-resolves the setting with the reported appearance.
 func TestStartupPromptWithFixedThemeQueriesAndKeepsTheTheme(t *testing.T) {
+	restoreTUIKeybindings(t)
 	restoreStartupTheme(t)
 	tui.SetThemeRegistry(tui.NewThemeRegistry())
 	settings := Settings{Theme: "dark"}
