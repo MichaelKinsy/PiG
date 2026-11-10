@@ -316,14 +316,19 @@ func (c *Workers) removeBase() {
 	c.baseDir, c.baseCopy = "", ""
 }
 
-// removeStaleStages removes the staged directories (`.<base>-build-*`) an earlier start left beside the named base directory: a
+// stagePrefix is the name a staged directory beside base starts with: `.<base>+build-`. `+` is the separator no kind name has (names
+// are `[a-z0-9@/._~-]`, contracts.CheckName), so another kind's staging directory (`-` can be in a name: kind `a-build-x` beside
+// kind `a`) never looks like a leftover of this one.
+func stagePrefix(base string) string { return "." + filepath.Base(base) + "+build-" }
+
+// removeStaleStages removes the staged directories (`.<base>+build-*`) an earlier start left beside the named base directory: a
 // build that outlived its component's close and the process ended before it dropped its copy. The first build of a component does
 // it, once the app holds the data directory's lock (nothing else writes there). Nothing without a named directory.
 func removeStaleStages(base string) {
 	if base == "" {
 		return
 	}
-	stale, err := filepath.Glob(filepath.Join(filepath.Dir(base), "."+filepath.Base(base)+"-build-*"))
+	stale, err := filepath.Glob(filepath.Join(filepath.Dir(base), stagePrefix(base)+"*"))
 	if err != nil {
 		return
 	}
@@ -345,7 +350,7 @@ func stageWorkerBase(path, base string) (staged stagedBase, err error) {
 		dir, err = os.MkdirTemp("", "chord-workers-base-")
 	} else if parent := filepath.Dir(base); true {
 		if err = os.MkdirAll(parent, 0o700); err == nil {
-			dir, err = os.MkdirTemp(parent, "."+filepath.Base(base)+"-build-")
+			dir, err = os.MkdirTemp(parent, stagePrefix(base))
 		}
 	}
 	if err != nil {

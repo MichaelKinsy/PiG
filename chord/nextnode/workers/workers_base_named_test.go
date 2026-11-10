@@ -31,14 +31,14 @@ func TestTheWorkerBaseANamedDirectoryEndingInASeparatorBuildsTheSameBase(t *test
 // next build: the app holds the data directory's lock then, so nothing else writes there.
 func TestTheWorkerBaseABuildRemovesTheStagedDirectoriesAnEarlierProcessLeftBesideTheNamedOne(t *testing.T) {
 	named := filepath.Join(t.TempDir(), "bases", "worker")
-	stale := filepath.Join(filepath.Dir(named), ".worker-build-x")
+	stale := filepath.Join(filepath.Dir(named), ".worker+build-x")
 	if err := os.MkdirAll(stale, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(stale, "worker"), []byte("half"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	unrelated := filepath.Join(filepath.Dir(named), ".other-build-x")
+	unrelated := filepath.Join(filepath.Dir(named), ".other+build-x")
 	if err := os.MkdirAll(unrelated, 0o700); err != nil {
 		t.Fatal(err)
 	}
