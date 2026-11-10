@@ -1031,3 +1031,766 @@ commit = "f34cb22f47198d92a4f67c2b89301045cadeb067"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "The shared-cell Node tests are PiG-original (D232): Pi runs one extension process per session and has no counterpart, so no Pi line governs them. The commit's review round replaced the sleep-based drain observation with the runtime-level drain test and asserted equal non-zero pids for the two Hosts' members; the behavior it tests is the D232 cell registry's own."
+
+[[entry]]
+path = "chord/next/host/host_attempt_test.go"
+commit = "1e50b156ad050cbd53727f0864f07ab73633c989"
+class = "CITE"
+cite = "packages/chord/src/host/unbound-clock.ts:73"
+reason = "Pi 5bd014b1c reports a request that waits unbound for 5 s as unbound_long (unbound-clock.ts:73), once, besides parked_long: the parked-attempts test, which expected the single parked_long error, expects two errors in order, unbound_long for app.missing (unavailable, `app.missing is not served here`, since 0) and then parked_long; the test name drops `ParkedLongs`."
+
+[[entry]]
+path = "chord/next/host/host_dependencies_test.go"
+commit = "1e50b156ad050cbd53727f0864f07ab73633c989"
+class = "CITE"
+cite = "packages/chord/src/host/unbound-clock.ts:73"
+reason = "Pi 5bd014b1c reports the parked object's unbound reference too, 5 s after it started (unbound-clock.ts:73; dependencies.test.ts:178-179), so the parked-long test expects the error kinds parked_long then unbound_long instead of one error, advances 4000 ms first so parked_long's since is 4000 (dependencies.test.ts:317-324 advances 4000, 999, 1), and passes the new nil argument of NewRegistryRecord."
+
+[[entry]]
+path = "chord/next/host/host_host_test.go"
+commit = "1e50b156ad050cbd53727f0864f07ab73633c989"
+class = "CITE"
+cite = "packages/chord/src/host/host.ts:1770"
+reason = "Pi 5bd014b1c makes a request before the host's first load fail at once with not_ready (host.ts:1770, `the host has not loaded; call host.load first (a host with nothing to load calls load([]))`) and throws for an invalid plugin name from load and reload before anything changes (staging.ts:79): the cases that made a get or hold wait for load (before load, deadlines of gets, close while waiting, registry waiting at close, invalid params before load, a hold released before load) are removed as Pi removed them, `Bad Name` is no longer a failed entry of a load report but an error of load and reload, a new case asserts not_ready for get, hold, registry and a root's ctx.get, the load helper waits until the host left the new state, and one getter-timer count is taken relative to the unbound clock's already armed timer."
+
+[[entry]]
+path = "chord/next/host/host_reference_test.go"
+commit = "1e50b156ad050cbd53727f0864f07ab73633c989"
+class = "CITE"
+cite = "packages/chord/src/host/host.ts:308"
+reason = "Pi 5bd014b1c makes a hold taken after load wait unbound as failed { waiting } (host.ts:308) instead of loading before the publication: the reference GC test loads the host first and renamed to `released while it waits unbound`, and the held reference's expected state is failed, not loading."
+
+[[entry]]
+path = "chord/next/host/host_attempt_test.go"
+commit = "1e09c9c11cdd0a227f8ccd6692e39a44a4206601"
+class = "CITE"
+cite = "packages/chord/src/host/unbound-clock.ts:73"
+reason = "Pi 5bd014b1c reports a request that waits unbound for 5 s as unbound_long (unbound-clock.ts:73), once, besides parked_long: the parked-attempts test, which expected the single parked_long error, expects two errors in order, unbound_long for app.missing (unavailable, `app.missing is not served here`, since 0) and then parked_long; the test name drops `ParkedLongs`."
+
+[[entry]]
+path = "chord/next/host/host_dependencies_test.go"
+commit = "1e09c9c11cdd0a227f8ccd6692e39a44a4206601"
+class = "CITE"
+cite = "packages/chord/src/host/unbound-clock.ts:73"
+reason = "Pi 5bd014b1c reports the parked object's unbound reference too, 5 s after it started (unbound-clock.ts:73; dependencies.test.ts:178-179), so the parked-long test expects the error kinds parked_long then unbound_long instead of one error, advances 4000 ms first so parked_long's since is 4000 (dependencies.test.ts:317-324 advances 4000, 999, 1), and passes the new nil argument of NewRegistryRecord."
+
+[[entry]]
+path = "chord/next/host/host_host_test.go"
+commit = "1e09c9c11cdd0a227f8ccd6692e39a44a4206601"
+class = "CITE"
+cite = "packages/chord/src/host/host.ts:1770"
+reason = "Pi 5bd014b1c makes a request before the host's first load fail at once with not_ready (host.ts:1770, `the host has not loaded; call host.load first (a host with nothing to load calls load([]))`) and throws for an invalid plugin name from load and reload before anything changes (staging.ts:79): the cases that made a get or hold wait for load (before load, deadlines of gets, close while waiting, registry waiting at close, invalid params before load, a hold released before load) are removed as Pi removed them, `Bad Name` is no longer a failed entry of a load report but an error of load and reload, a new case asserts not_ready for get, hold, registry and a root's ctx.get, the load helper waits until the host left the new state, and one getter-timer count is taken relative to the unbound clock's already armed timer."
+
+[[entry]]
+path = "chord/next/host/host_reference_test.go"
+commit = "1e09c9c11cdd0a227f8ccd6692e39a44a4206601"
+class = "CITE"
+cite = "packages/chord/src/host/host.ts:308"
+reason = "Pi 5bd014b1c makes a hold taken after load wait unbound as failed { waiting } (host.ts:308) instead of loading before the publication: the reference GC test loads the host first and renamed to `released while it waits unbound`, and the held reference's expected state is failed, not loading."
+
+[[entry]]
+path = "chord/next/host/host_unbound_test.go"
+commit = "1e09c9c11cdd0a227f8ccd6692e39a44a4206601"
+class = "CITE"
+cite = "packages/chord/src/host/host.ts:308"
+reason = "Pi 5bd014b1c lists a request waiting for a type nobody serves as failed { waiting } after the publication (host.ts:308), and gives the unbound index a clock (unbound-clock.ts:73): the index tests construct it with an unbound clock and pass a nil third argument to add, the before-publication loading expectation becomes after-publication binds or failed waiting, and a new case lists the index's names sorted and the host's unserved names."
+
+[[entry]]
+path = "chord/next/host/host_attempt_test.go"
+commit = "a8655ddcd6fd6fdc54df0aab1bc93b4fcab8ed64"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "This commit undoes the merge of fix/chord-host-tests (it carried an older T2 reload that conflicts with follow/chord's final one; the two lanes land together after host-tests merges this branch), so it restores the values of before Pi 5bd014b1c's ports: the parked-attempts test expects the single parked_long error again, not unbound_long then parked_long. No Pi line is cited for that older state: the pin's Pi (unbound-clock.ts:73) reports unbound_long, and the follow/chord lane that re-applies it lands after."
+
+[[entry]]
+path = "chord/next/host/host_dependencies_test.go"
+commit = "a8655ddcd6fd6fdc54df0aab1bc93b4fcab8ed64"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "This commit undoes the merge of fix/chord-host-tests (it carried an older T2 reload that conflicts with follow/chord's final one; the two lanes land together after host-tests merges this branch), so it restores the values of before Pi 5bd014b1c's ports: the parked-long test expects one error, advances 5000 ms for the first step and parked_long's since 5000, and calls NewRegistryRecord without the extra argument. The older Pi state it restores is not the pin's (dependencies.test.ts:178-179 expects parked_long and unbound_long)."
+
+[[entry]]
+path = "chord/next/host/host_host_test.go"
+commit = "a8655ddcd6fd6fdc54df0aab1bc93b4fcab8ed64"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "This commit undoes the merge of fix/chord-host-tests (it carried an older T2 reload that conflicts with follow/chord's final one; the two lanes land together after host-tests merges this branch), so it restores the values of before Pi 5bd014b1c's ports: a get or hold before load waits (loading) and the removed wait-for-load cases return, an invalid plugin name is a failed entry of the load report again, and the not_ready-before-load case goes. The older Pi state it restores is not the pin's (host.ts:1770 throws not_ready); the merge lands again with the follow/chord lane."
+
+[[entry]]
+path = "chord/next/host/host_reference_test.go"
+commit = "a8655ddcd6fd6fdc54df0aab1bc93b4fcab8ed64"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "This commit undoes the merge of fix/chord-host-tests (it carried an older T2 reload that conflicts with follow/chord's final one; the two lanes land together after host-tests merges this branch), so it restores the values of before Pi 5bd014b1c's ports: a hold released before load keeps nothing and the held reference is loading until the host loads. The older Pi state it restores is not the pin's (host.ts:308)."
+
+[[entry]]
+path = "chord/next/host/host_unbound_test.go"
+commit = "a8655ddcd6fd6fdc54df0aab1bc93b4fcab8ed64"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "This commit undoes the merge of fix/chord-host-tests (it carried an older T2 reload that conflicts with follow/chord's final one; the two lanes land together after host-tests merges this branch), so it restores the values of before Pi 5bd014b1c's ports: the unbound index is built without a clock and add takes two arguments, a reference waiting before the publication is loading, and the sorted-names and unserved-names case goes. The older Pi state it restores is not the pin's (host.ts:308, unbound-clock.ts:73)."
+
+[[entry]]
+path = "chord/next/host/host_example_33_test.go"
+commit = "d892104fad8f9452b63f229aaf8a10dbc051e7f0"
+class = "CITE"
+cite = "packages/chord/src/host/object.ts:867"
+reason = "Pi a5d209afd restarts every live object of a changed plugin (object.ts:867-869, reloadFate: a live object restarts) and keeps the old attempt, which serves its running calls, open until they drained: example 33's pure-code reload reports ReloadRestarted, not ReloadSwapped, the reference shows `live` while the old attempt drains (object.ts:310-312, rule 5), the new engine is awaited with scopeEventually because the new attempt goes live after the old one ended, and the failing reload lists all three plugins."
+
+[[entry]]
+path = "chord/next/host/host_example_34_test.go"
+commit = "d892104fad8f9452b63f229aaf8a10dbc051e7f0"
+class = "CITE"
+cite = "packages/chord/src/jobs/records.ts:529"
+reason = "Pi a5d209afd turns a reload into a restart that cuts an in-memory job run at the old attempt's seal (records.ts:529: the run is recorded failed { aborted, reload }, records.ts:86): example 34 expects the finish on the v2 code to print `failed ... error aborted/reload` instead of the done result of a handed-over job, the tab's watch gets one mapped diff frame instead of the rebound snapshot plus the diff (the restart's fresh bound carries the same list), and the intermediate running listing is no longer asserted."
+
+[[entry]]
+path = "chord/next/host/host_host_test.go"
+commit = "d892104fad8f9452b63f229aaf8a10dbc051e7f0"
+class = "CITE"
+cite = "packages/chord/src/host/object.ts:867"
+reason = "Pi a5d209afd restarts the changed object (object.ts:867-869) and its new attempt goes live once the old one ended (host.test.ts:1428, abort after the commit; the report names what the commit applied): the reload API tests wait with scopeEventually for the new title instead of checking right after the report, the abort-in-commit tests use an added host-lifetime object (hostAborter) whose first attempt aborts, and the listener tests watch a removed type (a restart no longer changes the value in place), so they reload with an empty set and expect removed or added."
+
+[[entry]]
+path = "chord/next/host/host_object_reload_test.go"
+commit = "d892104fad8f9452b63f229aaf8a10dbc051e7f0"
+class = "CITE"
+cite = "packages/chord/src/host/object.ts:867"
+reason = "Pi a5d209afd restarts a live object instead of swapping it in place (object.ts:867-869) and holds the old attempt open for old work until it drained or reloadDrainTimeout cut it (host.ts:594, at most closeTimeout; old-work.ts): the fate tests expect ReloadRestarted with a new instance id, the reference live while the old attempt drains (object.ts:310-312), a version-raising reload migrating what the old call wrote after it drained (n 2, new call 3), the second of two reloads not waiting for the first one's old call, and new cases for readiness (readiness.ts), old work on old code and the reload drain bound."
+
+[[entry]]
+path = "chord/next/host/remote_hold_reload_test.go"
+commit = "d892104fad8f9452b63f229aaf8a10dbc051e7f0"
+class = "CITE"
+cite = "packages/chord/test/remote/hold.test.ts:1071"
+reason = "Pi a5d209afd restarts the object a hold is bound to: a restart sends each bound hold loading, then one fresh bound with the new instance's values (hold.test.ts:1071), where the swap sent one fresh bound and no state; the swap-keeps-holds case is removed, the held tab shows the new value once the new attempt is live (settled), the bump calls come from the server's own root because an answer over the link would send the waiting state first, and a new case covers a hold waiting for a window slot across the old attempt's seal."
+
+[[entry]]
+path = "chord/next/host/host_staging_test.go"
+commit = "f973318d3a2d97ac7cc2ca5d1928050a01914243"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Only the text of two t.Fatalf messages changed (`the swapped attempt` to `the restart's new attempt`, `notes swapped` to `notes restarted`); the compared values (factory runs 3, the report's objects) are unchanged, so no expected value moved and the lint finding is a false positive of a changed message string; the underlying restart model is the one of the d892104fad commit."
+
+[[entry]]
+path = "chord/nextnode/http/http_test.go"
+commit = "c1d8b18ff00db3d65b775da10a6825895e3e5c52"
+class = "CITE"
+cite = "packages/chord/src/node/http/http.ts:248"
+reason = "Pi 5bd014b1c answers a request before the host's load with 503 at once (http.ts:243-250; http.ts:93: its host.registry throws not_ready then, test http.test.ts:45): the startup test expects 503 before load immediately instead of an early request that waits for the publication and answers null, and the test that expected 503 only after the host's readyTimeout, with its option, is dropped."
+
+[[entry]]
+path = "chord/nextnode/http/http_test.go"
+commit = "27162d2834677b3bc8581207440b29678a4115d3"
+class = "CITE"
+cite = "packages/chord/src/node/http/http.ts:248"
+reason = "The http component answers 503 before the host's load at once (http.ts:243-250 answers 503 when the registries cannot be resolved; http.ts:93; Pi test http.test.ts:45): the startup test expects status 503 before load where it expected an early request to wait for the publication, the test that expected 503 after the host's readyTimeout is removed, and the close-before-load test's early request answers 503 without a wait."
+
+[[entry]]
+path = "chord/next/documents/documents_cost_test.go"
+commit = "d74d70c5874475ab6ff6a1050e3410c3eb4b9394"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "No Pi line governs the exact number: Pi counts reads of the AbortSignal `aborted` getter (documents.test.ts:160-171, one read by the cancelled change's report, none on the committed path), and Go counts context.Err calls. The test's `at least 1` becomes exactly 4 (cancelledReads: the commit's check and Cause, the report's check and Cause in documents.go), so the guard is a tightening of the Go count; the committed-path guard itself is unchanged. PiG-only counting, no additive record."
+
+[[entry]]
+path = "chord/nextnode/app/app_surfaces_test.go"
+commit = "7a5018711970c5fb23b4aa0b677fc8240bbae39b"
+class = "CITE"
+cite = "packages/chord/src/node/app/app.ts:233"
+reason = "Pi 284e63d9 builds the surfaces' base bundles after the listen: `web.base` and `tui.base` are the hash once built (basesBuilt) and undefined before or after a failed build (app.ts:233-238; a failed build is reported as base_build, app.ts:107-116, and the server runs on). The test reads the base hash through the accessor Base() instead of a field, and the test that expected StartServer to fail when a base bundle does not build is removed (the report-and-run-on case lives in app_bases_test.go). The Go accessor spelling of the same hash is an identifier change; no other expected value moved."
+
+[[entry]]
+path = "chord/next/host/remote_hold_kept_test.go"
+commit = "3b49d43239e19e31050b32c14659c6991485cab9"
+class = "CITE"
+cite = "packages/chord/test/remote/hold.test.ts:1885"
+reason = "Pi edc9c6989: a call that crossed a `failed` on the wire is answered with the cause its consumer was told, not not_ready (hold.ts:177; hold.test.ts:1885, 1945, 1957): the expected error of the call after a live failure is the failure's text (`it broke`), where it was not_ready, and new cases pin a call by an old variant's index crossing a fresh bound, a call crossing a removal's failed, and a call crossing a version refusal (contract_mismatch)."
+
+[[entry]]
+path = "chord/next/surfaces/surfaces_page_state_test.go"
+commit = "41b25ac70549f6f6aacbf24c6c05d7c65bcd21b4"
+class = "CITE"
+cite = "packages/chord/src/surfaces/page-state.ts:45"
+reason = "Pi's page state is kept per host in a WeakMap (page-state.ts:20) and a set of the same value by identity calls nobody (page-state.ts:45, `next === value`): the GC test now waits for host and value cleanups instead of weak pointers (a harness change: PageState is keyed by weak host identity), and a new case expects a nil initial interface to read nil and a struct holding a slice to count as a changed value on every set (one notification)."
+
+[[entry]]
+path = "chord/nextnode/app/reload_web_support_test.go"
+commit = "9d5db2b806a7743755bf220f234a07a47407a181"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Test support only: the page dump the Chromium reload tests print on failure (a JSON.stringify of connection, errors, loads, views, states) gains a `frames` member; it is a diagnostic string, no expected value of a test, so the lint finding is a false positive. The D606 retirement in the message changed no assertion here."
+
+[[entry]]
+path = "chord/nextnode/plugins/plugins_cssmodules_node_test.go"
+commit = "7e42a6a5f6e92256d71d93d6697c0561779c90c5"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "No Pi line governs it: Pi runs the css-modules mapping script in a vm context in-process (css-modules.ts:63) and PiG evaluates it in a Node subprocess (PORT_MAP css-modules.ts row); the changed expectations are the unexported mapping evaluator's process lifecycle, now shared by the component's builds: a ctx that ends before or during an evaluation is that evaluation's error and ends the process, a closed evaluator evaluates nothing and ends its process, and after a process was killed at ReadyTimeout the next evaluation starts another process (it used to fail). The behavior change is intentional (perf, one process for N builds; commit message) and no additive-features record covers this evaluator."
+
+[[entry]]
+path = "chord/nextnode/http/review_test.go"
+commit = "9d1c90665578cd40e042b18f7bb4c42f60ad6594"
+class = "CITE"
+cite = "packages/chord/src/node/http/cookies.ts:33"
+reason = "Pi's cookie helper takes sameSite as the union Strict or Lax and writes `SameSite=${options.sameSite ?? Strict}` (cookies.ts:15, 33; cookies.test.ts:14): SameSite becomes a string union here, so the closed-set test expects the empty value, Strict and Lax and, for values outside the union (`None; Secure`, `lax`) which Pi's types exclude, Strict as the safe default of the Go runtime guard. The other changed lines of the test follow the tagged NodeRequest (node.ts:146), HttpSocketOptions and slice-typed Hosts, accessor and type refactors with unchanged expectations."
+
+[[entry]]
+path = "chord/sync/limits_test.go"
+commit = "21649a0f12ffb51f3c98d09e64f9e9918976eb0b"
+class = "CITE"
+cite = "packages/chord/src/sync/client.ts:244"
+reason = "Pi sizes an outbox page in UTF-16 units: the next page's limit is floor(PAGE_BYTES / average of JSON.stringify(commit.writes).length + 64) (client.ts:243-250), so four commits of about 256 Ki units fit 3 to a page (it would be 1 by UTF-8 bytes), and a line decoded into a JS string counts its length in UTF-16 units (batch.ts:84, `rest += decode(chunk)`, so a character cut across chunks counts whole): the test reads the page after the table's own commit, expects the 4 big commits and limit 3, and a new case counts characters that chunks cut as whole ones."
+
+[[entry]]
+path = "chord/sync/limits_test.go"
+commit = "d23721752b69abaeef28827e79240db363dc2169"
+class = "CITE"
+cite = "packages/chord/src/sync/client.ts:244"
+reason = "Pi sizes an outbox page in UTF-16 units: the next page's limit is floor(PAGE_BYTES / average of JSON.stringify(commit.writes).length + 64) (client.ts:243-250), so four commits of about 256 Ki units fit 3 to a page (it would be 1 by UTF-8 bytes), and a line decoded into a JS string counts its length in UTF-16 units (batch.ts:84, `rest += decode(chunk)`, so a character cut across chunks counts whole): the test reads the page after the table's own commit, expects the 4 big commits and limit 3, and a new case counts characters that chunks cut as whole ones."
+
+[[entry]]
+path = "chord/next/store/group_commit_test.go"
+commit = "2701b1056e426b8ce0b71e242b2bd48412acea80"
+class = "CITE"
+cite = "packages/chord/test/store/store.test.ts:1016"
+reason = "Pi rejects a group's commits with what its turn throws after COMMIT and a grouped commit whose admission throws with that error, the queue goes on (store.test.ts:948 `toBe(thrown)`, :1016; store.ts:482-484): the Go test expects each commit to reject with the thrown error itself instead of storage_failed and a panic in the leader's caller, the other commits of the group to commit as seqs 1 and 2 with the next as 3, a lone commit whose admission throws to reject with it, and a value that is no error to ride in a ThrownError (the Go form of Pi's thrown value)."
+
+[[entry]]
+path = "chord/next/store/group_commit_test.go"
+commit = "f47aa996bc11e8603c116a3082fabb439ce74ac6"
+class = "CITE"
+cite = "packages/chord/test/store/store.test.ts:1016"
+reason = "Pi rejects a group's commits with what its turn throws after COMMIT and a grouped commit whose admission throws with that error, the queue goes on (store.test.ts:948 `toBe(thrown)`, :1016; store.ts:482-484): the Go test expects each commit to reject with the thrown error itself instead of storage_failed and a panic in the leader's caller, the other commits of the group to commit as seqs 1 and 2 with the next as 3, a lone commit whose admission throws to reject with it, and a value that is no error to ride in a ThrownError (the Go form of Pi's thrown value)."
+
+[[entry]]
+path = "examples/chord-todo/tutorial_test.go"
+commit = "d06b3d225b9340d334d4f04c5ba0a6be3dc6d871"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "No Pi line sets the number: the test of PiG's own tutorial book raises its minimum of quoted blocks from 6 to 40 because the remaining chapters were added (Pi's guard is more than 20 quotes, tutorial.test.ts:90, for Pi's book), and it checks the book's `<!-- output: tui -->` blocks when a Node for the terminal sandbox is there, as Pi's test does (tutorial.test.ts:103). The tutorial's examples are PiG-original in their API; no additive-features record covers the book."
+
+[[entry]]
+path = "mcp/deepjson_test.go"
+commit = "8154e9ebfcaeca117f33cc3998bbd53963b1d32a"
+class = "CITE"
+cite = "packages/mcp/src/transports/lines.ts:74"
+reason = "Pi parses a wire message with JSON.parse (lines.ts:74, streamable-http.ts:313), which rejects malformed text at any depth: the new `mismatched closer after a value` case, a value inside 12000 levels of nesting followed by a wrong closer, must be rejected by parseWireMessage and by ParseJSONRPCMessage alone; the differential fuzz test is renamed to the deepFallback function it now checks (an identifier change)."
+
+[[entry]]
+path = "coding/extension/host/subprocess/provider_operations_wire_test.go"
+commit = "5e55e0d13d14e1c6c14a15d5344488ff93dbb6d5"
+class = "CITE"
+cite = "packages/ai/src/models.ts:562"
+reason = "Pi calls provider.refreshModels with one object of credential, stored, publish, allowNetwork, force, signal, baseUrl, the members it has no value for undefined (models.ts:562-570): the request the Go host sends for a context with no credential, stored catalog, force or base URL leaves those members out, as JSON.stringify drops undefined (`{allowNetwork:false}`, and force false stays), where it sent null. The connection-lifetime cases added in the same file (NewConn creates the lifetime, a request on a not-yet-started connection waits) are the PiG-only subprocess connection of the extension host (D19) and have no Pi line."
+
+[[entry]]
+path = "coding/extension/host/subprocess/provider_operations_wire_test.go"
+commit = "0ae0976fff127b4f5cf6775397e631aef990b30c"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "No Pi line governs it: the connection between the Go extension host and a Node extension subprocess is PiG-only (additive-features D19, multi-language subprocess SDK bridges). The expected error of modifyModels and of a signal-less refreshModels after the host closes the connection stays `connection closed` (the remote error Close answers a pending request with) and not the lifetime's context.Canceled; the test is split into awaitPendingRequest and requireConnectionClosed helpers and a new case pins connectionEnded's returned error type. Pi's own `MCP connection closed` (jsonrpc.ts:58) is another transport. The behavior change is an intentional fix of that error value under the D19 record."
+
+[[entry]]
+path = "coding/extension/host/subprocess/runtime_node_event_message_identity_test.go"
+commit = "e99791bd8b2b36033e1a8bbaab4a0847b189b298"
+class = "CITE"
+cite = "packages/coding-agent/src/core/agent-session.ts:1351"
+reason = "Pi hands one message object to every handler and the session entry: message_end stores event.message with appendMessage (agent-session.ts:1230) and a handler's replacement overwrites that original object in place (_replaceMessageInPlace, agent-session.ts:1351-1358, called at 1416), so a handler that ran before the replacement holds the stored entry's message. The identity tests replace the by-value matching with per-session message numbers: the event message is the entry's message in either arrival order, across a replacement (a recorder before an editor, two runtimes of one process), in message_start, turn_end and agent_end, on a lazy file read and a session switch. What a Node process cannot share with Pi is the approved divergence D541."
+
+[[entry]]
+path = "internal/codingagent/tools/powershell_operations_test.go"
+commit = "8ac653e9b23848900f96bbd86c6d1809562f396e"
+class = "CITE"
+cite = "packages/coding-agent/src/core/tools/powershell.ts:47"
+reason = "Pi c9dd2c53 (#11964, #8842) gives createLocalPowerShellOperations the shell config before it wraps the command and appends the Windows PowerShell 5.1 exit-code suffix only when the shell's basename is powershell.exe and the command does not end in a backtick (powershell.ts:44-49), so WrapCommand takes the resolved shell. The changed expectation is the wrapped text for a pwsh.exe shell: it carries the UTF-8 prefix and the command unchanged, with no suffix."
+
+[[entry]]
+path = "internal/codingagent/tools/tool_probe_linux_test.go"
+commit = "39b6e4dbe3ffaf1da8422a4747cb25a9a428d18a"
+class = "CITE"
+cite = "packages/coding-agent/src/core/tools/find.ts:245"
+reason = "Pi spawns fd (find.ts:245) and rg (grep.ts:175) with stdio only and no detached option, so the search stays in the caller's session and process group and a terminal Ctrl+C in print mode reaches it with the agent. The test that expected fd to run in a new session (the script's leader marker) now runs find and grep over fake fd and rg binaries and expects both to report the shared session with stdin from /dev/null (shared, nullin twice). Only the @ autocomplete keeps its detached fd, which Pi has no counterpart for; it has its own test."
+
+[[entry]]
+path = "internal/codingagent/tools/read_streaming_fuzz_test.go"
+commit = "00d9a1f01b80b6962af09d0cfff665e0800f09e9"
+class = "CITE"
+cite = "packages/coding-agent/src/core/tools/read.ts:121"
+reason = "Pi's read keeps the whole-file path for a range that cannot stream (a fractional offset or limit, a negative limit), because the array slicing there defines what is selected (read.ts:118-125, selectLinesFromBuffer at :129). The fuzz changed its oracle and seeds, not a Pi value: it takes int32 offsets with a fraction and an optional limit, and compares the streamed read with the production whole-file path for every range, and with the reference implementation only when isStreamableRange holds, as the streamed path is only taken then. The commit's prod changes (a pooled chunk buffer, an aborted setup failure) move no expected value in this file."
+
+[[entry]]
+path = "internal/codingagent/tools/file_tools_upstream_test.go"
+commit = "04a8c5e9d3393831dca4188dd8b1278265d19d24"
+class = "CITE"
+cite = "packages/coding-agent/src/core/tools/ls.ts:84"
+reason = "Pi main 676af1d77 (#11747) reads ls's limit as max(1, floor(limit ?? default)) because a limit of 0 would list nothing and report an empty directory (ls.ts:83-84), and the pinned 1.5.1 has it. The test's limit 0 case moves from '(empty directory)' to the one first entry with the notice '[1 entries limit reached. Use limit=2 for more]'. D253, the divergence this commit recorded, is retired by the pin."
+
+[[entry]]
+path = "internal/codingagent/tools/find_operations_port_test.go"
+commit = "04a8c5e9d3393831dca4188dd8b1278265d19d24"
+class = "CITE"
+cite = "packages/coding-agent/src/core/tools/find.ts:113"
+reason = "Pi main 676af1d77 (#11747) reads find's limit as max(1, floor(limit ?? default)) (find.ts:112-113, fd treats 0 as unlimited), asks a custom glob and fd for one result more than the limit to tell exactly N from more than N (find.ts:126-129, 237), and reports the limit only when more results exist (find.ts:145). The changed expectations follow: the custom glob receives limit 1001 for the default 1000, zero and fractional limits read as 1 or floor(limit), the text and details name that effective limit (a zero limit gives '[1 results limit reached]' and resultLimitReached 1), and the fd test uses two matches so the limit is actually reached. D253 is retired by the pin."
+
+[[entry]]
+path = "tui/editor_file_search_noloop_test.go"
+commit = "37a8d53c8cea5e1c5590b11925cfd85d231298f6"
+class = "CITE"
+cite = "packages/tui/src/components/editor.ts:2422"
+reason = "Pi runs an @ file search as an async request and applies its answer on its one event loop after the await (editor.ts:2384-2422, applyAutocompleteSuggestions), never from another thread. An editor with no owner loop in Go has no such loop, so the commit makes the worker touch no editor state and leave its answer in a mailbox that the caller's goroutine publishes at the next key or render. The test's provider now answers one item (@keep.txt) after a delay and the expectation moves from 'the worker read no editor state' to 'the popup shows that answer once the caller publishes it', which is Pi's observable result (the popup holds the search's answer, applied by the owner of the editor)."
+
+[[entry]]
+path = "internal/jsstring/concat_test.go"
+commit = "bdf4bd145ff8d9592b0685d380306cf56ffe2ae0"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "internal/jsstring models a JavaScript string held in a Go string and is PiG-original, so no Pi line governs the test. The commit deletes JoinAdjacentSurrogates and has Markdown call the one Canonical, so the test is renamed TestCanonicalJoinsAdjacentSurrogateHalves and every case calls Canonical instead of JoinAdjacentSurrogates. The expected outputs of the remaining rows are unchanged; the two rows that fed a high surrogate followed by an incomplete low half (ED A0 BD ED B8, and the same with a trailing byte), which JoinAdjacentSurrogates returned as they were, are dropped from the table, as is the check that the two functions agree. No additive-features record exists for the helper."
+
+[[entry]]
+path = "tui/skill_invocation_expand_test.go"
+commit = "f78a59929292c22a3ab0be5bb6c94e86d8aed298"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts:21"
+reason = "The commit ports the constructor shape of Pi's message components: SkillInvocationMessageComponent takes (skillBlock, markdownTheme, outputPad, markdownTransformers, messageId, timestamp) (skill-invocation-message.ts:21-28). The four changed lines in this test only add the three trailing arguments (nil, \"\", \"\") to the constructor calls; no expected value moves, and the lint sees the changed call lines."
+
+[[entry]]
+path = "tui/child_cache_contract_test.go"
+commit = "ebaa4b5e2da687d9a96c5d01e5d3871c90d8ce48"
+class = "CITE"
+cite = "packages/tui/src/components/box.ts:76"
+reason = "The cache contract test is PiG-original (Go containers serve children from their own caches, which Pi's Container does not), but its changed oracle is Pi's invalidate: the walker now compares a parent's frame with the component invalidated down its tree and rendered with no cache in the way, which is what Pi's Box.invalidate does (it drops its cache and invalidates each child, box.ts:76-81), instead of the component's own, equally stale Render. The fixtures gained the branch, compaction and skill message cards, a hidden thinking block and terminal errors for the assistant message, a custom-message renderer that reads its options, and the default box; methods whose rebuild does not keep their change are named in ownRender with the reason. box.go's matching changes (Box keys its cache by whether a background exists, as box.ts keys undefined apart from an empty sample, and SetBgFn and SetPaddingX set the Go dirty flag) are what the new fixtures catch."
+
+[[entry]]
+path = "internal/codingagent/tree_selector_oracle_test.go"
+commit = "5b637b1097df57ccadb8f981c7feb4c7ec0df934"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/components/tree-selector.ts:1175"
+reason = "The oracle compares PiG's /tree search line with Pi's. Pi's SearchLine truncates the line to width-1 while focused and ends it with the cursor marker and a reverse-video cell (tree-selector.ts:1168-1176), and draws a trailing space for an empty query (:1172). The normalizer of the oracle test now truncates Pi's side to width-1 before comparing, trims the cursor cell and the empty query's space, and leaves uncompared only an empty-query line exactly width-1 wide, where the trailing space no longer fits. The test-only helper changed; the draw it compares is Pi's (D248 is retired by the pin)."
+
+[[entry]]
+path = "coding/model_registration_snapshot_test.go"
+commit = "d1785c847b3888c6889bc9d6f8aa3b18cfbc49da"
+class = "CITE"
+cite = "packages/coding-agent/src/core/agent-session.ts:404"
+reason = "Pi 5732bac06 (#11832) makes getNextCycleIndex return the first entry forward and the last backward when the active model is not in the list, and the only model of a one-entry list (agent-session.ts:403-406), which _cycleAvailableModel uses at :2733-2740. After the extension provider's models are unregistered the active model is outside the available list, so the cycle selects the one available model (baseID) instead of reporting no other model; the test gains that call and its old 'no other available model' check follows as the second cycle. D258 is retired by the pin."
+
+[[entry]]
+path = "internal/codingagent/changelog_test.go"
+commit = "3b696c8a7f1ed2590b8a164d0559b6cf5a64d761"
+class = "CITE"
+cite = "packages/coding-agent/src/utils/changelog.ts:188"
+reason = "Pi 9a1953961 (#11703) makes getNewEntries read only the leading major.minor.patch of the last seen version and return undefined when it has none (changelog.ts:182-189), so a prerelease or build suffix counts as its release and an unreadable value shows nothing. GetNewEntries returns (entries, ok) like that, the table now pins '0.1.5-20261020.7' and '0.1.5+build.3' as 0.1.5, '0.1.4-beta.1' as 0.1.4, and 'latest', '0.1', '' and 'bad' as unreadable (they used to count as 0.0.0, which the old 'bad' check expected to give three entries). D245 is retired by the pin."
+
+[[entry]]
+path = "examples/extensions/plan-mode/done_numbers_test.go"
+commit = "957f7ef5d4c55d84645d5410e57dea611ba582cd"
+class = "CITE"
+cite = "packages/coding-agent/examples/extensions/plan-mode/utils.ts:170"
+reason = "Pi ee962fb4's plan-mode extractDoneSteps collects every [DONE:n] marker as Number(match[1]) and returns [...new Set(steps)], so a repeated number is kept once and a number too large for a finite double stays as Infinity (utils.ts:156-171), and markCompletedSteps returns the number of items it newly marked completed (utils.ts:174-185). The test's expected list now holds each distinct number once and ends in +Inf where it held the repeated 2^63, and the returned count is the number of newly completed items (0 with no items, 1 for one matching item) and no longer the count of markers."
+
+[[entry]]
+path = "test/parity/runner/json_pig_only_test.go"
+commit = "9089b8bf18e1d1cde9ace817f169e125d1f9bc8a"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The parity runner is PiG-original test infrastructure, so no Pi line governs it. The commit makes a json_pig_only_records rule require before_type, so a dropped record must sit directly before a record of that type and a moved emission fails like a second occurrence does. The test's rule gains BeforeType message_start, its fixtures put agent_start, the dropped queue_update record and message_start in order, an extra otherRecord pins a record that differs, and the assertions run through EvaluateOutcome as the runner does, so the five changed expected values are the runner's verdicts for those fixtures. The divergence D250 whose records the rule drops is retired by the pin; the rule's own contract has no Pi counterpart."
+
+[[entry]]
+path = "automation/release/set-version/main_test.go"
+commit = "7434ca91aeba07f1fc35742a771f552b0ad600a8"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The set-version tool is PiG-original release automation, so no Pi line governs it. The commit makes `pig --version` print the bare upstream version as Pi does (main.ts:694), leaving the composite PiG+Pi version in the banner and startup line, so the README sentence that tool rewrites no longer talks about `pig --version`. The test follows that text: its fixture page reads 'The banner and the startup line print PiG's version as `<PiG release>+<Pi release>`' without the D63 marker, and the expected error for a README without the example reads 'expected one composite version example to update' instead of 'expected one `pig --version` example to update'. No expected version value changes."
+
+[[entry]]
+path = "coding/cli/strip_app_binary_test.go"
+commit = "c001170ca52a4bdeab593cc9a38d3ee04543a9b7"
+class = "CITE"
+cite = "packages/coding-agent/src/package-manager-cli.ts:1124"
+reason = "Pi 342514bdf (#11707) and 806cdd68e (#11711): `update` prints 'Skipped package updates (offline mode)' when offline mode is on and claims 'up to date' or 'Updated packages' only when the update checked (package-manager-cli.ts:1121-1124). The stripped-binary test runs `update --all` without a network and now expects stdout to contain 'Skipped package updates (offline mode)' where it contained 'Updated packages'; its self-update stderr is unchanged."
+
+[[entry]]
+path = "coding/extension/host/subprocess/state_presence_test.go"
+commit = "e4b9bd554e1fefbf547b7c78fab3b1ba58c2a3db"
+class = "CITE"
+cite = "packages/coding-agent/src/core/agent-session.ts:3608"
+reason = "Pi computes ctx.getContextUsage() live (runner.ts:956-958 calls the function agent-session.ts:3608 binds to this.getContextUsage()), so it follows the session with no state push. The Node runtime now asks the host on every read and StatePayload no longer carries contextUsage; the snapshot test expects the key absent where it expected null or the usage, and the runtime script sets the usage through the host call and expects a change to show with no applyState (asked six times), where it applied the usage with each push and expected a partial update to retain it."
+
+[[entry]]
+path = "coding/extension/mcp_servers_oracle_test.go"
+commit = "c407e0ca2326efc5721960c2fa751654469c6daf"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The commit moves Pi's MCP namespace and tool-name helpers into the shared mcp package (CreateMcpToolName, McpNamespace) and unexports the extension package's loopback-redirect check, so the two changed lines of this oracle test only rename the callee (IsLoopbackRedirectURI to isLoopbackRedirectURI, McpNamespace to mcp.McpNamespace) and its failure text. The expected values are Pi's own answers computed by running Pi's module in the test and are unchanged; no Pi line moves."
+
+[[entry]]
+path = "coding/extension/mcp_servers_test.go"
+commit = "c407e0ca2326efc5721960c2fa751654469c6daf"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "IsLoopbackRedirectURI is unexported by the commit (Pi's isLoopbackRedirectUri of packages/mcp/src/config.ts is not exported since 76c040a2a), so the test defines the helper locally, observed through the oauth.callbackUrl check of mcp.ValidateMcpServerConfig, and its two changed calls and failure texts use the lowercase name. The table of URIs and expected booleans is unchanged."
+
+[[entry]]
+path = "coding/mcpext/node_fetch_internal_test.go"
+commit = "c407e0ca2326efc5721960c2fa751654469c6daf"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The commit turns oauth.go into a thin caller of mcp/oauth, and orDefaultFetch(nil) becomes nodeFetch(). The test follows the rename (TestOrDefaultFetchIsNodeFetch to TestNodeFetchIsNodeFetch); the expectation is unchanged: the default fetch is *ai.NodeFetch."
+
+[[entry]]
+path = "coding/mcpext/oauth_cancel_test.go"
+commit = "c407e0ca2326efc5721960c2fa751654469c6daf"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "McpOAuthServerStore and McpSignInCancelledError move from coding/mcpext to mcp/oauth in this commit (Pi's sign-in lives in packages/mcp), so the three changed lines only qualify the types (mcpext. to oauth.) in the helper signatures, the errors.AsType check and the failure messages. No expected behavior changes: a cancelled sign-in still ends with McpSignInCancelledError at every step."
+
+[[entry]]
+path = "coding/mcpext/oauth_refresh_test.go"
+commit = "c407e0ca2326efc5721960c2fa751654469c6daf"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "McpOAuthSettings, McpOAuthServerStore and McpAuthProvider move from coding/mcpext to mcp/oauth in this commit, so the changed lines only qualify the types (mcpext. to oauth.) in the harness and in the failure text of the cancellation test. The refresh-once, wait-for-a-running-refresh and scope cases keep their expectations."
+
+[[entry]]
+path = "mcp/oauth/redirect_url_messages_test.go"
+commit = "c407e0ca2326efc5721960c2fa751654469c6daf"
+class = "CITE"
+cite = "packages/mcp/src/oauth/loopback.ts:122"
+reason = "The new test pins ResponseFromRedirectURL, the port of Pi's responseFromRedirectUrl (loopback.ts:114-140): unparsable input says 'Expected the full redirect URL from the browser address bar' (:122), an origin or path mismatch says 'The redirect URL does not match this sign-in's redirect URI' and wins over a provider error (:127), error_description then error is the message of a provider error (:129), a wrong or missing state says 'The redirect URL belongs to a different sign-in' (:132), a missing or empty code says 'The redirect URL does not contain an authorization code' (:134), and a code returns with its non-empty iss. The test asserts those messages and their order."
+
+[[entry]]
+path = "mcp/config_pi_test.go"
+commit = "23b826d770f0cdc1ed952f6dabbd5315fc5f124d"
+class = "CITE"
+cite = "packages/mcp/src/config.ts:104"
+reason = "Pi's McpServerConfigOptions.checkMetadataDocumentCallback takes callbackUrl: string | undefined and the validation passes undefined when oauth.callbackUrl is not a string (config.ts:104, 214-216). The Go option becomes func(*string) string to carry that undefined (nil), so the test records 'undefined' for the absent callback and the URL otherwise, instead of a (url, set) pair, and expects []string{\"undefined\", \"http://localhost/other\"}."
+
+[[entry]]
+path = "mcp/oauth/sign_in_pi_test.go"
+commit = "23b826d770f0cdc1ed952f6dabbd5315fc5f124d"
+class = "CITE"
+cite = "packages/mcp/src/oauth/sign-in.ts:54"
+reason = "Pi's McpSignInStart is { kind: \"authorized\" } | McpSignInRedirect, the redirect carrying kind: \"redirect\" (sign-in.ts:54, :138), and completeMcpSignIn takes one options object with the authorization and the response. The Go port follows: StartMcpSignIn returns a McpSignInStart with Kind, the browser step is checked by kind (not by an Authorized flag), the JSON of a start is {kind, authorizationUrl, redirectUrl, state} with {\"kind\":\"authorized\"} for the authorized one, and CompleteMcpSignIn takes McpCompleteSignInOptions. The changed lines are those new expectations and call shapes."
+
+[[entry]]
+path = "coding/extension/mcp_servers_oracle_test.go"
+commit = "f46b7b9ee875080407e8f3658a137bb4ea540332"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The lint pass moves the shared MCP namespace helper to internal/mcpshared, so the two changed lines only change the callee and failure text of the oracle test (mcp.McpNamespace to mcpshared.McpNamespace) and the import. The expected values are Pi's own namespaces computed by Pi's module in the test and are unchanged."
+
+[[entry]]
+path = "coding/cli/credential_print_test.go"
+commit = "4934c8242a1b0a672265c2d9be5900bed8c2aed9"
+class = "CITE"
+cite = "packages/coding-agent/src/cli/auth-command.ts:85"
+reason = "Pi's auth command now has login and logout subcommands, and its unknown-command error lists them first: `Unknown auth command \"x\". Use \"pi auth login\", \"pi auth logout\", \"pi auth print-api-key\", \"pi auth print-bearer-token\", or \"pi auth check\".` (auth-command.ts:85). Both expectations of the test (the parse error and the exit-code table row) take that text with pig."
+
+[[entry]]
+path = "coding/mcpext/cli_test.go"
+commit = "4934c8242a1b0a672265c2d9be5900bed8c2aed9"
+class = "CITE"
+cite = "packages/coding-agent/src/extensions/mcp/cli.ts:288"
+reason = "Pi's MCP command names the auth command that signs in to a provider-backed server: `MCP server \"radius\" uses the credentials of provider \"radius\". Run \"pi auth login radius\".` (extensions/mcp/cli.ts:288, the command being login or logout) where it said Run /login radius in pi. The two changed expectations follow."
+
+[[entry]]
+path = "internal/codingagent/ext_ui_dialog_stack_test.go"
+commit = "4934c8242a1b0a672265c2d9be5900bed8c2aed9"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/interactive-mode.ts:3147"
+reason = "Pi #11816 makes an extension overlay report the blocked status when it opts in: showExtensionCustom registers a blocking source per overlay, keeps it until the interaction ends and also while setHidden hides it (interactive-mode.ts:3084-3088, :3147), and the extension UI reset removes every extension overlay, which clears that status (interactive-mode.ts:2597); interactive-mode-extension-dialogs.test.ts has 'reports blocked status for each opted-in overlay until it is done, also while hidden' and 'clears overlay blocked status when the extension UI is reset'. The test that expected an overlay to ignore the blocked option (no blocked report) is replaced by those cases: the expectations are the blocked question of the first and the second overlay, nothing reported for an overlay that did not opt in, the first question still shown while its overlay is hidden, and none once every overlay is done or removed."
+
+[[entry]]
+path = "tui/model_select_refresh_test.go"
+commit = "4934c8242a1b0a672265c2d9be5900bed8c2aed9"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/components/model-selector.ts:212"
+reason = "Pi df0d88aac (#9109) keeps the browsed model selected when the catalog refresh lands: the selector remembers the selected model before reloading the snapshot and refilters with it, because the user may have moved and rows may shift (model-selector.ts:212-215); model-selector.test.ts 'when the catalog refresh lands' has the cases. The table's old row, which moved the selection back to the current model after a refresh, is renamed 'current reanchors when nothing was browsed' (no step down), and rows for the browsed model, a shift by new rows and a vanished selection fall back to the current model."
+
+[[entry]]
+path = "coding/mcpext/truncate_slice_test.go"
+commit = "a808864bf48f1a7b413f04721872352221b99f6f"
+class = "CITE"
+cite = "packages/coding-agent/src/extensions/mcp/index.ts:176"
+reason = "Pi 9e870f6f0 (#11757) cuts MCP text with sliceHead(text, max - 1).trimEnd() (extensions/mcp/index.ts:176) and the stderr tail with sliceTail (extensions/mcp/runtime.ts:403, :427), which never split a surrogate pair (core/tools/truncate.ts:279-296). The test that expected a cut to keep the high half of an astral character (the WTF-8 bytes ED A0 BD) before the ellipsis now expects the pair dropped ('aaaaaaaa…'), and a new case expects the stderr tail to start after a pair that the cut would split. D252 is retired by the pin."
+
+[[entry]]
+path = "internal/codingagent/compaction/serialization_oracle_test.go"
+commit = "a808864bf48f1a7b413f04721872352221b99f6f"
+class = "CITE"
+cite = "packages/coding-agent/src/core/compaction/utils.ts:104"
+reason = "Pi 9e870f6f0 (#11757) truncates a serialized tool result with sliceHead(text, maxChars) (compaction/utils.ts:104), which drops the whole character when the cut falls between the two halves of a surrogate pair (core/tools/truncate.ts:279-286). In the oracle test the 2000-unit cut falls inside an emoji, so the kept text now ends one unit earlier, with the low surrogate 0xDE00 of the whole pair before it (unit 1998), where it ended with the lone high surrogate 0xD83D at unit 1999, and the '[... 1 more characters truncated]' tail starts at unit 1999; the count still says 1. D252 is retired by the pin."
+
+[[entry]]
+path = "codemode/declarations_test.go"
+commit = "604e18084de44ef945b901e311602fcb5c2b1033"
+class = "CITE"
+cite = "packages/codemode/src/declarations.ts:166"
+reason = "Pi 6d3e342b2 (#11850, #11803) makes resolveSchemaRef catch the URIError of decodeURIComponent and return undefined, so a $ref segment with a malformed percent escape names nothing instead of failing the caller (declarations.ts:160-170), and every renderer shows the reference as unknown. The Go functions SchemaToType, RenderToolSignature, RenderToolSample, RenderDeclarations and RenderToolOutputType stop returning an error, the test helpers lose their error handling, and TestMalformedRefPercentEncodingIsAnError becomes ...RendersAsUnknown: it now expects '{ a?: unknown; }' from every renderer where it expected an error."
+
+[[entry]]
+path = "coding/extension/builtin/codemode/description_helpers_test.go"
+commit = "604e18084de44ef945b901e311602fcb5c2b1033"
+class = "CITE"
+cite = "packages/codemode/src/declarations.ts:168"
+reason = "Pi 6d3e342b2 (#11803): a $ref with a malformed percent escape in a tool's schema resolves to nothing instead of throwing (declarations.ts:166-169, 'Schemas come from tools and MCP servers: a malformed escape names nothing instead of failing the caller'). CreateDescription therefore returns the text with no error, and the test that expected an error and a thrown prepareLoadout now expects the description to contain 'bad(args: { a?: unknown; })'."
+
+[[entry]]
+path = "coding/extension/builtin/codemode/schema_uri_error_test.go"
+commit = "604e18084de44ef945b901e311602fcb5c2b1033"
+class = "CITE"
+cite = "packages/codemode/src/declarations.ts:168"
+reason = "Pi 6d3e342b2 (#11803): resolveSchemaRef returns undefined for a malformed percent escape in a $ref (declarations.ts:164-169), so renderToolSample no longer throws a URIError and a codemode call with such a tool in reach runs. The test that expected Execute to fail with 'URI malformed', and CreateDescription to return the URIError, now expects Execute to succeed; the URIError type is removed."
+
+[[entry]]
+path = "ai/transport_diagnostic_test.go"
+commit = "fd6dd558ba767a2947d8f6201febaed4dec93665"
+class = "CITE"
+cite = "packages/ai/src/utils/error-body.ts:79"
+reason = "Pi's withCauseDetail appends the deepest cause to a connection error's message and adds its code when the message lacks it (error-body.ts:68-83); error-body.test.ts:268-271 asserts 'Connection error.: other side closed (UND_ERR_SOCKET)' for a cause 'other side closed' with code UND_ERR_SOCKET. net/http's idle-closed error is a peer's close, which Node's undici reports that way, so the test that injected an EOF as a generic failure now expects ErrorMessage 'Connection error.: other side closed (UND_ERR_SOCKET)' (still retryable)."
+
+[[entry]]
+path = "ai/openai_sdk_transport_error_test.go"
+commit = "8f241ca2fd23a2afb95bdb545b71b7d53c5c8b0e"
+class = "CITE"
+cite = "packages/ai/src/utils/error-body.ts:82"
+reason = "Pi appends the deepest cause of a connection error to its message (withCauseDetail, error-body.ts:68-83). Probing the pinned pi-ai with Node-hosted servers shows undici's cause by when the peer acts (a reset after the request is read: read ECONNRESET; a close: other side closed (UND_ERR_SOCKET); a reset on accept: connect ECONNRESET <addr>, write ECONNRESET or both, by timing), the cause text being Node's and not a Pi line. nodeConnectionFailure now names the write or read reset and the close, so the test of a peer that resets on accept accepts the connect, the write (ECONNRESET or EPIPE) or the read reset, each with the 'Connection error.: ' prefix, where it expected only the connect form."
+
+[[entry]]
+path = "ai/transport_diagnostic_test.go"
+commit = "8f241ca2fd23a2afb95bdb545b71b7d53c5c8b0e"
+class = "CITE"
+cite = "packages/ai/src/utils/error-body.ts:82"
+reason = "Pi appends the deepest cause to a connection error's message (error-body.ts:68-83). For a handler that resets the connection after it read the request, undici's cause is read ECONNRESET on all three APIs and the SDK in the pinned pi-ai, so the transport-diagnostic test expects 'Connection error.: read ECONNRESET' where it expected the bare 'Connection error.'."
+
+[[entry]]
+path = "ai/openai_sdk_transport_error_test.go"
+commit = "aa18c0edd68e9c955e480bc5609be2a3d685dd58"
+class = "CITE"
+cite = "packages/ai/src/utils/error-body.ts:82"
+reason = "Pi 4c992154d keeps the cause of a connection error (error-body.ts:68-83). For a server that resets every connection on accept the pinned pi-ai reports 'Connection error.: connect ECONNRESET 127.0.0.1:<port>' through openai-completions, openai-responses and anthropic-messages. Go's dial returned before the reset, so the detail was lost; nodeFetchTransport now records the remote address of a connection the request opened and wraps its ECONNRESET or EPIPE as that connect reset. TestOpenAISDKTransportErrorConnectionReset again expects the exact text with the listener's address, where it accepted a bare 'Connection error.' or the prefix by timing."
+
+[[entry]]
+path = "ai/openai_sdk_transport_error_test.go"
+commit = "eb74fe4dc691c969d88901c9f9f7395ae7517553"
+class = "CITE"
+cite = "packages/ai/src/utils/error-body.ts:82"
+reason = "Pi 4c992154d appends the deepest cause to a connection error's message (error-body.ts:68-83), so a closed port reads 'Connection error.: connect ECONNREFUSED <addr>' on openai-completions, openai-responses and anthropic-messages (and google, as Pi), measured against the pinned pi-ai. The test of the refused connection expects that text with the address where it expected the bare 'Connection error.'."
+
+[[entry]]
+path = "ai/transport_error_test.go"
+commit = "eb74fe4dc691c969d88901c9f9f7395ae7517553"
+class = "CITE"
+cite = "packages/ai/src/utils/error-body.ts:79"
+reason = "Pi 4c992154d: undici reports every body-stream failure as TypeError('terminated') with the real failure in its cause, and withCauseDetail keeps the cause and its code in the message (error-body.ts:68-83, test error-body.test.ts:268-271), so a dropped body reads 'terminated: other side closed (UND_ERR_SOCKET)', measured against the pinned pi-ai. The mid-stream failure test expects that exact text where it expected PiG's own 'terminated (cause: ...unexpected EOF)' form. The divergence PiG held for Pi's dropped cause (#10697) is gone."
+
+[[entry]]
+path = "ai/xai_responses_upstream_test.go"
+commit = "bf094afb3e8ffd3987113e3bd7f9863db75992ba"
+class = "CITE"
+cite = "packages/ai/src/api/openai-responses.ts:320"
+reason = "Pi c5d397835: the Responses path sends the header session-id (not session_id) with the default openai session-affinity format, and x-client-request-id (openai-responses.ts:315-323; compat-schema.ts:387 describes the format as session-id and x-client-request-id). The xAI Responses request test now expects session-id to equal the session and session_id to be absent where it expected session_id. The Completions path keeps session_id."
+
+[[entry]]
+path = "internal/codingagent/login_provider_list_test.go"
+commit = "c3a48aa340d1f3e393d7a30bc110c131bb156878"
+class = "CITE"
+cite = "packages/ai/src/providers/openai-codex.ts:10"
+reason = "Pi 36142c1c names the OpenAI Codex provider 'OpenAI Codex' without the legacy marker (providers/openai-codex.ts:10). The account-provider list test expects 'OpenAI Codex' where it expected 'OpenAI Codex (legacy)'."
+
+[[entry]]
+path = "internal/codingagent/llama/client_test.go"
+commit = "fa4a558a1b25931b25177d959f984397f7b0000e"
+class = "CITE"
+cite = "packages/coding-agent/src/extensions/llama/client.ts:183"
+reason = "Pi ea0f49a36 (#11745) makes the llama.cpp client's fetchServer throw `Could not reach llama.cpp server at <serverUrl>: <cause>` for a network failure, and rethrow the original error when the request's signal is aborted (extensions/llama/client.ts:177-186; llama-extension.test.ts:71). The test expects the error text with the closed server's URL and the transport cause (Go's 'dial tcp 127.0.0.1:<port>: connect: connection refused' where Node's is 'connect ECONNREFUSED 127.0.0.1:<port>', the one deliberate text difference, D256), still wrapping the fetch error, no longer 'fetch failed', and a cancelled request keeps its own error."
+
+[[entry]]
+path = "internal/codingagent/llama/index_test.go"
+commit = "fa4a558a1b25931b25177d959f984397f7b0000e"
+class = "CITE"
+cite = "packages/coding-agent/src/extensions/llama/client.ts:183"
+reason = "Pi ea0f49a36 (#11745): an unreachable llama.cpp server error reads `Could not reach llama.cpp server at <url>: <cause>` (extensions/llama/client.ts:183) and no longer the connection-error text, so the retry screen of the /llama command shows that text. The expected retry message moves from 'Could not connect to the server.' to the named text, with Go's dial cause (D256)."
+
+[[entry]]
+path = "internal/codingagent/llama/native_provider_test.go"
+commit = "fa4a558a1b25931b25177d959f984397f7b0000e"
+class = "CITE"
+cite = "packages/coding-agent/src/extensions/llama/client.ts:183"
+reason = "Pi ea0f49a36 (#11745): a network failure of the llama.cpp client reads `Could not reach llama.cpp server at <url>: <cause>` (extensions/llama/client.ts:183), so the native provider's refresh error for a closed server expects that prefix with the server's URL where it expected 'fetch failed'."
+
+[[entry]]
+path = "codemode/wasm_load_test.go"
+commit = "35d55f34e1a5e11884933427c114a35235192236"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The embedded QuickJS module's storage format is PiG-only build size, so no Pi line governs it. The commit stores the module as assets/quickjs.wasm.gz instead of .zst so a strip-tag build links no zstd decoder (D92). The test is renamed TestEmbeddedQuickJSWasmGzipInflatesToTheAsset and its comment and failure message say gzip and inflated instead of zstd frame and expanded. The checked behaviour is unchanged: QuickJSWasm() must equal the bytes of assets/quickjs.wasm."
+
+[[entry]]
+path = "codemode/worker_config_upstream_test.go"
+commit = "35d55f34e1a5e11884933427c114a35235192236"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The embedded QuickJS module's storage format is PiG-only build size, so no Pi line governs it. The commit stores the module as gzip so a strip-tag build links no zstd decoder (D92). The test that checks codemode embeds its only module source now looks for the source text `//go:embed assets/quickjs.wasm.gz` and `var quickJSWasmGzip []byte` and its error names assets/quickjs.wasm.gz instead of .zst. The file-access and tool-source assertions are unchanged."
+
+[[entry]]
+path = "piglets/pig-bolt/extensions/boltruntime/extension_test.go"
+commit = "aacfa758370c5ae80561cb9ec23a46a18d503e9e"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "pig-bolt is a PiG-only piglet with no Pi counterpart, so no Pi line governs its image budget. The commit raises the default image budget from 1 GB to 2 GB (one compiled image is 240 to 270 MB). The two expected strings that print the default change from `1.0 GB` to `2.0 GB`: the `images: 0, 0 bytes of ...` status line and the `/bolt-runtime budget` message. Every other expected string is unchanged."
+
+[[entry]]
+path = "piglets/pig-bolt/extensions/boltruntime/images_test.go"
+commit = "aacfa758370c5ae80561cb9ec23a46a18d503e9e"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "pig-bolt is a PiG-only piglet with no Pi counterpart, so no Pi line governs its image budget. The commit raises the default image budget from 1 GB to 2 GB, so the test expects defaultCacheBudget == 2<<30. The configured-budget check now writes CacheMax 3GB and expects 3<<30, because 2GB would equal the new default and no longer prove the config overrides it. The env override check is unchanged."
+
+[[entry]]
+path = "coding/piglet/copies_test.go"
+commit = "48e7b43c9ed8cdbd9d463677a99dd05800391777"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Piglets and their copied-file records (<name>.files.json, `pig piglet remove --source`) are PiG-only, so no Pi line governs them. The commit changes what the record accepts: a record key with a backslash, a drive prefix, `~/` or `.git/` is no longer rejected on every platform (only Windows refuses a drive or separator name), so those rows leave the always-rejected table and a nested parent and a NUL name join it. claimKey, which lowercased spellings, is replaced by sameFilePath that asks the file system, so TestClaimKeyFoldsCaseWhereTheFileSystemDoes becomes TestSameFilePathAsksTheFileSystem. The remaining new tests add cases and change no earlier expectation."
+
+[[entry]]
+path = "coding/extension/host/subprocess/packed_native_recovery_test.go"
+commit = "6c9d6559f6df43ccf65cba6f9edf30baa4a17c73"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Blame of a crashed member of a packed native extension cell (D274) is PiG-only, since Pi has no packed native cells, so no Pi line governs it. The commit makes goTraceCulprit take the process exit status and read a Go panic section only for status 2 with no later fatal error and the goroutine header directly after the message, and makes lispTraceCulprit read a backtrace only when SBCL's quit line follows it. The existing Go table and traceCulprit call pass status 2 and the same expected culprit; the Lisp table's traces get the quit line appended and keep their culprits. The new tables expect no member blamed for a logged panic that did not end the process."
+
+[[entry]]
+path = "automation/release/set-version/main_test.go"
+commit = "9ec06e848e996bdffe0b37abd98d90a53e972d52"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The set-version tool is PiG-only release automation, so no Pi line governs it. The commit makes it write the exact release version into the PiG Standard manifest, not x.y.z-dev. The fixture manifest therefore starts at `version: 0.2.1` instead of `0.2.1-dev`, and the default-bump check expects `version: 0.3.0\\n` instead of `version: 0.3.0-dev`. No other expectation changes."
+
+[[entry]]
+path = "coding/extension/host/subprocess/ts_runtime_verified_linux_test.go"
+commit = "ced72da7051df2c4c84a091eb5c1020df9c42116"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The verified-handle launch of PiG's TypeScript extension runtime slot (aot executables, /proc/self/fd) is PiG-only, so no Pi line governs it. The commit names the process after the executable by running a symlink in a private directory that points to /proc/self/fd/N. The launch test's expectation changes from cmd.Path starting with /proc/self/fd/ to cmd.Path being a link named pig-ts-host whose target starts with /proc/self/fd/, and the link directory must be gone after releaseVerified. argv[0] stays the real executable. New tests check comm and the descriptor count, using a fake host copy of the test binary."
+
+[[entry]]
+path = "codemode/wasm_load_test.go"
+commit = "86773ad921a4dc945742ec3addf5df75f0e16ba6"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The QuickJS wasm embed and its asset codec are PiG-original (the module is built and embedded by PiG), so no Pi line governs the test. The commit stores assets/quickjs.wasm as one zstd frame (assets/quickjs.wasm.zst) to cut binary size, so the test is renamed TestEmbeddedQuickJSWasmFrameDecodesToTheAsset and its comment and failure message say decoded instead of inflated. The assertion is unchanged: QuickJSWasm() must equal the bytes of assets/quickjs.wasm."
+
+[[entry]]
+path = "codemode/worker_config_upstream_test.go"
+commit = "86773ad921a4dc945742ec3addf5df75f0e16ba6"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The test checks that PiG's codemode package embeds its only module source; how the wasm asset is embedded is PiG-original, so no Pi line governs it. The commit switches the asset from gzip to a zstd frame to shrink the binary, so the expected go:embed text changes from `assets/quickjs.wasm.gz` / quickJSWasmGzip to `assets/quickjs.wasm.zst` / quickJSWasmFrame, and the error message names the new file. The rule it enforces (codemode embeds exactly its one module and reads no file system) is unchanged."
+
+[[entry]]
+path = "extensions/sdk/callback_guard_test.go"
+commit = "0a9002fb19c03fa8e2e2c020210512999a407d21"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The Go extension SDK (extensions/sdk) is PiG-original, so no Pi line governs it; Pi's extensions run in-process. The commit guards each editor call in the SDK on its own and always sends ui.editor.inputDone, as PiG's Rust, Python and Lisp SDKs do. The old test TestEditorComponentPanicIsReportedAndTheSessionGoesOn, which expected the notice `editor call failed: panicked: component boom`, is replaced by TestEditorHandleInputPanicStillSendsInputDone, which expects `editor handleInput failed: component boom`, the inputDone frame after the panicking key, and the next key reaching the component."
+
+[[entry]]
+path = "coding/extension/host/subprocess/packed_native_recovery_host_test.go"
+commit = "28042f4fa68c71617e7d78154c1920561d6720c5"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The packed-cell subprocess host for native Go extensions is PiG-original (divergence D274 describes its blame rules), so no Pi line governs the test. The commit takes the blame for a crash from the panic that ended the process only, and blames no member when a trace names two or when the process ends with os.Exit. The test adds a `handled` command (a recovered sibling panic) and an `exit` command, factors the loader into crashCell, and its expected blame changes: the culprit is still blamed though the sibling's recovered panic came first, and os.Exit stops the whole cell."
+
+[[entry]]
+path = "internal/wordsegmenter/word_index_test.go"
+commit = "572a20d577272804591551ea040a7a30fd89118a"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "internal/wordsegmenter and its embedded dictionary index are PiG-original (Pi uses Intl.Segmenter), so no Pi line governs the test. The commit changes the index layout for speed (block-head search, uint24 block offsets, a 257-entry first-byte table for the Southeast Asian indexes). The layout expectations change with it: 3 bytes per block offset, a first-byte table of firstBytes*3 bytes for byte-keyed indexes, and before(i) equal to the sum of the earlier lengths; new tests check first() against a plain binary search and the table against the words. Words, weights, order and lookup results stay unchanged."
+
+[[entry]]
+path = "internal/testenv/cellcache_test.go"
+commit = "7124a7877bcfcf955da6b38c84cb8943ba15b8f9"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "internal/testenv is PiG-original test infrastructure, so no Pi line governs it. The commit names cell cache directories <pkg>-<checkout hash>-<content hash>, keeps each checkout's two newest others, drops a directory unused for 14 days, and removes a pruned directory by renaming it to .<name>.removing while holding .used. The prune test is renamed TestSharedCellCacheDirPrunesPerCheckout and its expected survivors and removals follow those rules (another checkout keeps its own two, a gone checkout's are removed, names not exactly <pkg>-<16 hex>-<16 hex> stay, no .removing leftovers)."
+
+[[entry]]
+path = "internal/zstdblob/zstdblob_test.go"
+commit = "9ff86cf23cd32d176fc544cb43e491ba7f89c82a"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "internal/zstdblob is PiG-original build tooling for the committed zstd frames, so no Pi line governs it. The commit finds the pinned zstd 1.5.5 through PIG_ZSTD or the provisioned cache prefix, never PATH, and the frame tests fail only where PIG_REQUIRE_ZSTD=1. The skip/fail condition and the version-test name change (TestPinnedCLIIsTheProvisionedVersion), a test pins that a zstd 1.5.7 on PATH is ignored, and the regenerate message names the provisioner. The frames' expected bytes are unchanged."
+
+[[entry]]
+path = "internal/sortx/sortx_test.go"
+commit = "d7b4f9235a8445c8fea80642914ac20e7a845e4d"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "internal/sortx is PiG-original (a binary-size sort helper), so no Pi line governs it. The commit sorts up to 12 elements (Func) and 20 (Stable) with a direct insertion sort. The test adds TestEveryShortLengthMatchesSlices (n=0..49 against package slices on tied data) and widens the zero-allocation check to 5, 12, 13, 20, 21 and 500 elements. The sorted results expected stay those of slices.SortFunc and SortStableFunc."
+
+[[entry]]
+path = "codemode/wasm_load_test.go"
+commit = "9151b81f0019226461290b2cb2b02e48b1337b8a"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The embedded QuickJS module is stored as assets/quickjs.wasm.zst (a zstd frame) instead of quickjs.wasm.gz: the test is renamed TestEmbeddedQuickJSWasmFrameExpandsToTheAsset and only its comment and failure message say expanded, not inflated, with the asset file. PiG-only size change of the embedded binary; the assertion that the embedded bytes equal assets/quickjs.wasm is unchanged and no Pi line governs how PiG packs a WebAssembly module."
+
+[[entry]]
+path = "codemode/worker_config_upstream_test.go"
+commit = "9151b81f0019226461290b2cb2b02e48b1337b8a"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The source-text check for the embed directive and its error message name assets/quickjs.wasm.zst and quickJSWasmFrame instead of assets/quickjs.wasm.gz and quickJSWasmGzip, because the module is embedded as a zstd frame (size work). The rule asserted, that codemode embeds its one module source and reads no file system, is unchanged; the embed directive is PiG packaging with no Pi counterpart."
+
+[[entry]]
+path = "internal/pigdocs/pigdocs_test.go"
+commit = "17707f2d2bde4f38968d13df3a042fe40f4b865e"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The bundled docs are now one zstd frame (pages.zst) with generated names, sizes and digest (pages_gen.go): the tests read the digest from the contentDigest constant instead of calling contentDigest(), the digest test hashes content/*.md from disk, and TestPackMatchesContent is new. The digest stays sha256 over name, size and contents of every page in List order, so marker files of earlier builds still match; the expected values are PiG's own embedded docs and no Pi source line governs how PiG packs them."
+
+[[entry]]
+path = "chord/sqlite/node/threading_test.go"
+commit = "2a30561266c5fd09652660c28c6536b30f252f66"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Tightens PiG's one-goroutine-per-connection tests of the vendored SQLite driver: the exclusive-connection wrapper is installed through the newConnector seam on the connections NewDatabaseSync and OpenNodeSqliteDatabase really open, refuses and counts an overlapping driver call (errOverlap) instead of forwarding it, adds a file-backed WAL writer and reader workload and a close-from-another-goroutine case. Expected values stay zero overlaps, calls at least goroutines*rounds, and _threading_mode=multi-thread exactly once in every opened dsn. How PiG serializes calls into its transpiled driver is PiG-only, so no Pi line governs it."
+
+[[entry]]
+path = "durable/storage/sqlite/sqlite_commit_test.go"
+commit = "61afcb519d74db568a8e71bd9b96c5087e671082"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Pins PiG's internal SQL: every durable insert binds its cells in multi-row VALUES of 1, 2, 4 ... rows within 100 parameters, so the expected parameters per insert become valuesChunks(150, width) and the json_each statement checks become checks that no insert reads a JSON array, where Pi sends the rows of little text as one JSON array through json_each (statements.ts:54). The stored rows are unchanged and are Pi's: the same bytes in the same storage classes, as insert_values_differential_test.go compares against Pi's json_each statement, and PORT_MAP records the SQL difference without a D. The eight statements per batch, the 150 stored entries and the 7,000-character data length are unchanged."
+
+[[entry]]
+path = "piglets/pig-bolt/extensions/boltruntime/stage_test.go"
+commit = "741f27c59bb765b3fa64bf036929664397c05d97"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Rename of the aot Piglet to pig-bolt (git rename of piglets/aot/extensions/aotruntime/stage_test.go): the package is aotruntime to boltruntime, and the host label string passed to writeEntry in two tests is pig-aot-host test to pig-bolt-host test. The label is an input, not an expectation, and every asserted value is unchanged. The test is PiG's own bolt-runtime staging; no Pi line governs it."
+
+[[entry]]
+path = "extensions/sdk/key_order_test.go"
+commit = "a02543e28246c21cbd27db66336563146f94ceb4"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Makes the freed-object test non-vacuous and adds TestAKeptContextReadsByteOrderAfterTheReply for PiG's SDK, which now records each decoded object's member order in its own map: the freed-object test builds 500 nested objects the handler drops and 2,000 fresh maps and asserts the same orders as before (host order z before y for decoded objects, y first for a fresh map {y, z}); the new test expects byte order a, z after the reply. PiG-only Go map ordering bookkeeping; no Pi line governs it and no expected key order changed."
+
+[[entry]]
+path = "durable/storage/sqlite/insert_values_differential_test.go"
+commit = "f2ccd8c81807eaa74d9a52754e399f5ff9b85fb4"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Strengthens PiG's differential test of the VALUES inserts: the random batches rise from 80 to 150 per table, and insertRows now takes *insertStatement (statements built lazily by shape), so calls drop &statement and the commit-path check compares text(shape) for every row-count shape instead of the texts slice. The expectation stays that the stored rows and errors equal those of Pi's json_each statement (statements.ts:54); no Pi behaviour changed."
+
+[[entry]]
+path = "chord/nextnode/http/upgrades_test.go"
+commit = "e35933ead2dcc727a9391208cf7ed688f9e0ce70"
+class = "CITE"
+cite = "packages/chord/src/node/http/upgrades.ts:157"
+reason = "Pi's error listener (upgrades.ts:156-157) leaves a socket that is already CLOSING alone, because ws has sent the protocol close code (1009 for an oversized frame); the Go test therefore expects the peer to see 1009 and, as its comment says, the server's own close event to report 1006. That 1006 is ws's behaviour, not a Pi line: Pi's pinned ws 8.21.0 (packages/chord/package.json:169; archive integrity as in the Pi package-lock.json entry node_modules/ws, sha512-Vsp28b7D...zCH+g==, checked against the registry tarball) starts every WebSocket with _closeCode = 1006 (lib/websocket.js:58), receiverOnError (lib/websocket.js:1201-1212) removes the socket's 'data' listener and calls websocket.close(1009), so the peer's close frame is never read, and only receiverOnConclude copies a received close frame's code into _closeCode (lib/websocket.js:1173); the 'close' event then emits 1006 (lib/websocket.js:269, 279). The commit's other expected value, the test and symbol rename, tracks the same behaviour. Pi's own test asserts only the client's 1009 (test/node/http/upgrades.test.ts:206)."
