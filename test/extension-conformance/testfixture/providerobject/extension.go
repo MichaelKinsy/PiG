@@ -274,7 +274,7 @@ func probe(ctx sdk.Context, path string) error {
 	for _, model := range models {
 		ids = append(ids, model["id"].(string))
 	}
-	data, err := json.Marshal(map[string]any{"headers": p.Headers, "check": check, "auth": auth, "apiLogin": apiLogin, "login": login, "rotated": rotated, "oauth": oauth, "order": order, "models": ids, "result": result["content"], "simple": simple.Result()["content"], "deferred": deferred.Result()["content"], "cancelled": cancelled["stopReason"]})
+	data, err := json.Marshal(map[string]any{"refreshModelsAuth": p.RefreshModelsAuth, "headers": p.Headers, "check": check, "auth": auth, "apiLogin": apiLogin, "login": login, "rotated": rotated, "oauth": oauth, "order": order, "models": ids, "result": result["content"], "simple": simple.Result()["content"], "deferred": deferred.Result()["content"], "cancelled": cancelled["stopReason"]})
 	if err != nil {
 		return err
 	}

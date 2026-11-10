@@ -71,6 +71,10 @@ func startProviderObjectPair(t *testing.T, root, role, language, placement, call
 	host.SetNativeProviderCallback(services.Registry().RegisterNativeProvider)
 	host.SetUIBridge(subprocess.NewUIBridge(nil))
 	owner := subprocess.ExtConfig{Name: "extension-provider-carrier-owner", Source: filepath.Join(root, "test/parity/scenarios/testdata/extension-provider-carrier-owner.mjs"), Enabled: true, Isolation: "strict"}
+	if os.Getenv("CARRIER_REFRESH_AUTH") != "" {
+		// TestProviderObjectReadBackRefreshModelsAuthAcrossSDKs: the Node owner registers its Provider with refreshModelsAuth too.
+		owner.Source = filepath.Join(root, "test/parity/scenarios/testdata/extension-provider-carrier-owner-configured.mjs")
+	}
 	reader := subprocess.ExtConfig{Name: "extension-provider-carrier-remote", Source: filepath.Join(root, "test/parity/scenarios/testdata/extension-provider-carrier-remote.mjs"), Enabled: true, Isolation: "strict"}
 	native := subprocess.ExtConfig{Name: "provider-object-" + language, Source: filepath.Join(root, "test/extension-conformance/testdata/provider-object-"+language), Enabled: true, Isolation: "strict", RuntimeKind: "subprocess", RuntimeLanguage: language, EntrypointKind: "factory"}
 	switch language {
@@ -304,6 +308,77 @@ func ids(models []*ai.Model) []string {
 		out = append(out, model.ID)
 	}
 	return out
+}
+
+// pi-mono coding-agent model-registry.ts getRegisteredNativeProvider returns the registered Provider object, so an extension reading another extension's
+// provider sees its refreshModelsAuth ("configured" here; undefined for the default). Every SDK registers the carrier with "configured" and reads the Node
+// owner's back, and the Node reader reads every SDK's: the read-back must say "configured", which no language's default reports.
+// mutation-checked: dropping the member from Node's remoteProvider (provider-object.mjs) or from a proxy (Go provider_proxy.go, Python provider.py, Rust proxy.rs, Lisp provider.lisp) fails that reader's subtests.
+func TestProviderObjectReadBackRefreshModelsAuthAcrossSDKs(t *testing.T) {
+	root, err := filepath.Abs("../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	readBack := func(t *testing.T, path string) {
+		t.Helper()
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(data), `"refreshModelsAuth":"configured"`) {
+			t.Fatalf("read-back of the configured Provider = %s, want refreshModelsAuth \"configured\"", data)
+		}
+	}
+	for _, language := range []string{"go", "python", "rust", "lisp"} {
+		placements := []string{"strict", "packed"}
+		if language == "go" {
+			placements = append(placements, "fused")
+		}
+		for _, placement := range placements {
+			for _, role := range []string{"owner", "reader"} {
+				t.Run(language+"-"+role+"-"+placement, func(t *testing.T) {
+					t.Setenv("CARRIER_ROLE", role)
+					t.Setenv("CARRIER_REFRESH_AUTH", "configured")
+					_, loaded, reader, dir := startProviderObjectPair(t, root, role, language, placement, "pi.registerProvider(provider)")
+					path := filepath.Join(dir, "read-back.json")
+					for _, item := range loaded {
+						if item.Name == reader.Name {
+							if err := item.Commands["remote-carrier-probe"].Handler(t.Context(), path); err != nil {
+								t.Fatal(err)
+							}
+						}
+					}
+					readBack(t, path)
+				})
+			}
+		}
+	}
+	t.Run("node-owner-node-reader", func(t *testing.T) {
+		dir := t.TempDir()
+		services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: dir, AgentDir: filepath.Join(dir, "agent")})
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(services.Close)
+		host := subprocess.NewHost(dir)
+		t.Cleanup(func() { host.Shutdown("done") })
+		host.SetProviderCallbacks(services.Registry().RegisterExtensionProvider, services.Registry().UnregisterProvider)
+		host.SetNativeProviderCallback(services.Registry().RegisterNativeProvider)
+		host.SetUIBridge(subprocess.NewUIBridge(nil))
+		var configs []subprocess.ExtConfig
+		for _, name := range []string{"extension-provider-carrier-owner-configured", "extension-provider-carrier-remote"} {
+			configs = append(configs, subprocess.ExtConfig{Name: name, Source: filepath.Join(root, "test/parity/scenarios/testdata", name+".mjs"), Enabled: true, Isolation: "strict"})
+		}
+		loaded, errs := host.LoadAll(t.Context(), configs)
+		if len(errs) != 0 || len(loaded) != 2 {
+			t.Fatalf("loaded %d of 2 extensions: %v", len(loaded), errs)
+		}
+		path := filepath.Join(dir, "read-back.json")
+		if err := loaded[1].Commands["remote-carrier-probe"].Handler(t.Context(), path); err != nil {
+			t.Fatal(err)
+		}
+		readBack(t, path)
+	})
 }
 
 // startNodeProviderObject loads the Node owner fixture (a TS extension calling pi.registerProvider(provider)) over production services.

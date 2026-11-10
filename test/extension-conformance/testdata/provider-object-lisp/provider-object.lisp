@@ -151,7 +151,7 @@
               (let ((cancelled (pig:model-stream-result waiting)))
                 (flet ((clean (&rest members) (let ((table (pig:obj))) (loop for (k v) on members by #'cddr do (when v (setf (gethash k table) v))) table)))
                   (write-file path (pig:to-json
-                                    (pig:obj "headers" (pig:provider-headers provider)
+                                    (pig:obj "refreshModelsAuth" (or (pig:provider-refresh-models-auth provider) :null) "headers" (pig:provider-headers provider)
                                              "check" (clean "type" (pig:auth-check-type check) "source" (pig:auth-check-source check))
                                              "auth" (clean "auth" (pig:auth-result-auth auth) "env" (pig:auth-result-env auth) "source" (pig:auth-result-source auth))
                                              "apiLogin" api-login "login" login "rotated" rotated "oauth" to-auth

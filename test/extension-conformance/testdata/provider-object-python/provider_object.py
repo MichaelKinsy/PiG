@@ -120,4 +120,4 @@ def probe(ctx, path):
     cancelled = waiting.result()
     clean = lambda value: {key: item for key, item in asdict(value).items() if item is not None}
     with open(path, "w", encoding="utf-8", newline="") as output:
-        json.dump({"headers": provider.headers, "check": clean(check), "auth": clean(auth), "apiLogin": api_login, "login": login, "rotated": rotated, "oauth": oauth, "order": order, "models": [model["id"] for model in provider.get_models()], "result": result["content"], "simple": simple["content"], "deferred": deferred["content"], "cancelled": cancelled["stopReason"]}, output, separators=(",", ":"))
+        json.dump({"refreshModelsAuth": provider.refresh_models_auth, "headers": provider.headers, "check": clean(check), "auth": clean(auth), "apiLogin": api_login, "login": login, "rotated": rotated, "oauth": oauth, "order": order, "models": [model["id"] for model in provider.get_models()], "result": result["content"], "simple": simple["content"], "deferred": deferred["content"], "cancelled": cancelled["stopReason"]}, output, separators=(",", ":"))

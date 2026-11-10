@@ -308,7 +308,7 @@ fn probe(ctx: &Context, path: &str) -> Result<(), String> {
         .iter()
         .map(|model| model["id"].clone())
         .collect::<Vec<_>>();
-    let output = json!({"headers":provider.headers,"check":check,"auth":auth,"apiLogin":api_login,"login":login,"rotated":rotated,"oauth":oauth_auth,"order":*order.lock().unwrap(),"models":ids,"result":result["content"],"simple":simple["content"],"deferred":deferred["content"],"cancelled":cancelled["stopReason"]});
+    let output = json!({"refreshModelsAuth":provider.refresh_models_auth,"headers":provider.headers,"check":check,"auth":auth,"apiLogin":api_login,"login":login,"rotated":rotated,"oauth":oauth_auth,"order":*order.lock().unwrap(),"models":ids,"result":result["content"],"simple":simple["content"],"deferred":deferred["content"],"cancelled":cancelled["stopReason"]});
     std::fs::write(
         path,
         serde_json::to_vec(&output).map_err(|e| e.to_string())?,

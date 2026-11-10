@@ -1,6 +1,6 @@
 ### Added
 
-- A Provider object an extension registers (`pi.registerProvider(provider)` in TypeScript, `Provider.RefreshModelsAuth` in Go, `refresh_models_auth` in Python and Rust, `provider-refresh-models-auth` in Lisp) now carries Pi's `refreshModelsAuth`. With `"configured"`, a catalog refresh of that provider runs its network phase without a credential and no longer refreshes an expired OAuth login first, so a stale login (`invalid_grant`) no longer fails the catalog refresh.
+- A Provider object an extension registers (`pi.registerProvider(provider)` in TypeScript, `Provider.RefreshModelsAuth` in Go, `refresh_models_auth` in Python and Rust, `provider-refresh-models-auth` in Lisp) now carries Pi's `refreshModelsAuth`. With `"configured"`, a catalog refresh of that provider runs its network phase without a credential and no longer refreshes an expired OAuth login first, so a stale login (`invalid_grant`) no longer fails the catalog refresh. An extension that reads another extension's Provider (`getRegisteredNativeProvider`) sees its `refreshModelsAuth` in every SDK and in Node.
 
 ### Fixed
 
