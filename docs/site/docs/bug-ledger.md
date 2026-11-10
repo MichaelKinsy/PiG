@@ -130,6 +130,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-11b199d](#bf-11b199d) | Session lines (and every other JSON.stringify-mode encode) now write ill-formed UTF-8 the way Pi does: one… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-11d48a2](#bf-11d48a2) | fix(chord/nextnode/workers): Close(ctx) stops waiting when ctx ends, as Pi's close does on abort | PiG's own defect | All platforms | Unreleased |
 | [BF-121ba35](#bf-121ba35) | The Durable core's conversation view follows Pi f3255de7's mount: a second observer of a conversation only… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-123827b](#bf-123827b) | Go, Rust, Python and Lisp extensions: a bash tool built on `createLocalBashOperations()` now says `The shell… | PiG's own defect | All platforms | Unreleased |
 | [BF-1239dac](#bf-1239dac) | fix(chord/nextnode/plugins): the Node host resolves pi-schema, and example 37's shapes file imports it as… | PiG's own defect | All platforms | Unreleased |
 | [BF-1268115](#bf-1268115) | fix(model runtime): a cancelled request to a caller-owned provider the runtime does not know is aborted, not… | PiG's own defect | All platforms | Unreleased |
 | [BF-12d5c56](#bf-12d5c56) | A Chord HTTP request or upgrade no longer reads the router and the authenticators from its own goroutine… | PiG's own defect | All platforms | 0.7.0 |
@@ -412,7 +413,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3fa6e63](#bf-3fa6e63) | MCP servers with resources registered no tools until every resource was listed, so a slow listing (a large… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3fbdfd2](#bf-3fbdfd2) | A configured number in settings text prints as JavaScript's `String(number)`: `-0` is `0`, and a magnitude of… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3fd2500](#bf-3fd2500) | `pi update` no longer stops with `git clean -fdx failed with code 1` when a Git package has files that cannot… | PiG's own defect | Windows | 0.7.0 |
-| [BF-3fe717a](#bf-3fe717a) | A bash or PowerShell command that timed out after its shell had already exited, because a background process… | A Pi defect that PiG fixed first | Windows | Unreleased |
+| [BF-3fe717a](#bf-3fe717a) | A bash or PowerShell command that timed out after its shell had already exited, because a background process… | PiG's own defect | Windows | Unreleased |
 | [BF-4027b34](#bf-4027b34) | A finished code-mode execution no longer keeps its closed VM reachable through its stopped halt-grace timer… | PiG's own defect | Linux | 0.5.0 |
 | [BF-402f61c](#bf-402f61c) | A custom message keeps the member order of its `content` blocks everywhere the host holds it | PiG's own defect | All platforms | Unreleased |
 | [BF-4058f34](#bf-4058f34) | The /fork message picker checks its keys in Pi's order (up, down, confirm, cancel) when bindings overlap | PiG's own defect | All platforms | 0.5.0 |
@@ -3519,6 +3520,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `121ba35041` (2026-10-27)
 - **Tests:** `durable/core/view_test.go::TestResolveWindow`
 - **Release note:** The Durable core's conversation view follows Pi f3255de7's mount: a second observer of a conversation only loads its own window and takes the one `docs` object of the mount, so attaching to a mounted view spends Pi's microtask passes and the observers of one conversation share their documents; a window the core rejects (a bound that is not an integer, `max` below `min`) reaches the host as the `RangeError` Pi throws.
+
+### BF-123827b
+
+**Go, Rust, Python and Lisp extensions: a bash tool built on `createLocalBashOperations()` now says `The shell…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Go, Rust, Python and Lisp extensions: a bash tool built on `createLocalBashOperations()` now says `The shell exited with code C after S seconds, but background processes it started kept writing output until the timeout.` when a command timed out after its shell had already exited, as Pi 1.5.1 does.
+- **Root cause:** The Go, Rust, Python and Lisp SDKs reach the local shell over builtinTool.localExec, whose error reply carried only 'timeout:N'.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `01d8d08b31` (2026-11-09), `123827b998` (2026-11-09)
+- **Tests:** `coding/extension/host/subprocess/shell_exit_wire_test.go::TestLocalShellTimeoutReadsAFusedSDKsError`, `coding/extension/host/subprocess/shell_exit_wire_test.go::TestShellExitCrossesTheWireAsErrorInfoShellExit`, `test/extension-conformance/builtin_tool_delegate_test.go::TestConformance_BuiltinToolDelegationAcrossSDKs`
+- **Release note:** Go, Rust, Python and Lisp extensions: a bash tool built on `createLocalBashOperations()` now says `The shell exited with code C after S seconds, but background processes it started kept writing output until the timeout.` when a command timed out after its shell had already exited, as Pi 1.5.1 does. The local operations of these SDKs reach the host over `builtinTool.localExec`, whose error reply carried only `timeout:N`; it now carries Pi's `shellExit` (the shell's exit code and run time), which the SDK passes on when its exec returns that error unchanged. An error wrapped around it, or a new error with its message, gives the plain `Command timed out after N seconds`, as in Pi.
 
 ### BF-1239dac
 
@@ -7409,15 +7424,13 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 **A bash or PowerShell command that timed out after its shell had already exited, because a background process…**
 
-- **Source:** A Pi defect that PiG fixed first (divergence D243)
+- **Source:** PiG's own defect
 - **Symptom:** A bash or PowerShell command that timed out after its shell had already exited, because a background process it started kept writing to the shared output, now reports the shell's exit code as well: `Command timed out after N seconds. The shell exited with code C after S seconds, but background processes it started kept writing output until the timeout.` The model no longer reads a failed command as a slow one and retries with a longer timeout.
 - **Root cause:** A bash or PowerShell command that timed out after its shell had already exited, because a background process it started kept writing to the shared output, now reports the shell's exit code as well: `Command timed out after N seconds. The shell exited with code C after S seconds, but background processes it started kept writing output until the timeout.` The model no longer reads a failed command as a slow one and retries with a longer timeout.
 - **User impact:** An operation failed or was rejected
 - **Platform:** Windows
 - **Fixed in:** Unreleased
-- **Pi issue:** none recorded
-- **Removed when Pi fixes it:** the pinned Pi release contains 06aa6563e. Then the call-site markers and this record go.
-- **Fix commits:** `3cf1ce8466` (2026-11-05), `3fe717aa8a` (2026-11-05)
+- **Fix commits:** `3fe717aa8a` (2026-11-05)
 - **Tests:** `internal/codingagent/tools/bash_timeout_shell_exit_unix_test.go::TestBashTimeoutAfterShellExit11613`
 - **Release note:** A bash or PowerShell command that timed out after its shell had already exited, because a background process it started kept writing to the shared output, now reports the shell's exit code as well: `Command timed out after N seconds. The shell exited with code C after S seconds, but background processes it started kept writing output until the timeout.` The model no longer reads a failed command as a slow one and retries with a longer timeout. A shell still running at the deadline keeps the plain timeout message, and custom operations that fail with `timeout:N` are unchanged (D243).
 
@@ -29338,7 +29351,6 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D228 | Terminal.app: plain Up dequeues a queued message, and Up recall elsewhere says once that the text is a copy | [BF-2359a0a](#bf-2359a0a) |
 | D230 | `pig config` lists declared Package members that are missing from disk, marked `missing` | [BF-825b4ab](#bf-825b4ab) |
 | D235 | A session-graph client's two live runs with no "no run" read between them are one context | [BF-D235](#bf-d235) |
-| D243 | The SDK local bash operations lose the shell's exit code on a timeout after the shell exited | [BF-3fe717a](#bf-3fe717a) |
 | D266 | An image block with an empty `mimeType` is named `image/unknown` in tool cards, where Pi names it with the… | [BF-D266](#bf-d266) |
 | D267 | The plugins' `npm install` ends with its command, not with the processes that hold the command's output pipes | [BF-D267](#bf-d267) |
 | D268 | The extension SDKs read tool arguments of any depth the host can send; Pi's runtime fails at a depth set by… | [BF-c551a63](#bf-c551a63) |

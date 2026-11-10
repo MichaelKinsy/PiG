@@ -766,6 +766,18 @@ pub struct ErrorInfo {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub code: Option<String>,
     pub message: String,
+    /// Pi's `ShellTimeoutError.shellExit`: on the error of a local shell command that timed out after its shell had exited.
+    #[serde(default, rename = "shellExit", skip_serializing_if = "Option::is_none")]
+    pub shell_exit: Option<ShellExit>,
+}
+
+/// The shell's own exit code and the seconds it ran, rounded to a tenth as Pi rounds them.
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq)]
+pub struct ShellExit {
+    #[serde(rename = "exitCode")]
+    pub exit_code: i64,
+    #[serde(rename = "afterSeconds")]
+    pub after_seconds: f64,
 }
 
 // ─── Connection ──────────────────────────────────────────────────────────────
@@ -1073,6 +1085,7 @@ impl Connection {
                                 code: None,
                                 message: "the extension has not registered with the host yet"
                                     .to_string(),
+                                shell_exit: None,
                             }),
                         );
                     }
@@ -1196,6 +1209,7 @@ impl Connection {
                         error: Some(ErrorInfo {
                             code: None,
                             message: err.to_string(),
+                            shell_exit: None,
                         }),
                     },
                 })

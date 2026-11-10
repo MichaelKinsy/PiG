@@ -121810,6 +121810,39 @@
       "shapeHash": "sha256:00a19e582a05037bbe4ca34cf918e1d6aaf649eeaa5df8b5b05e6b97cedd9341"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/fusepack#shellTimeoutAfterExit",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/fusepack",
+      "name": "shellTimeoutAfterExit",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "shellTimeoutAfterExit"
+      },
+      "shapeHash": "sha256:4bb6399dea82852588acb6cf6bce9beca332fc50c5e94e1c72c781bd3cc69b6e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/fusepack#shellTimeoutAfterExit.Error",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/fusepack",
+      "name": "shellTimeoutAfterExit.Error",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/fusepack#shellTimeoutAfterExit.ShellExitReport",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/fusepack",
+      "name": "shellTimeoutAfterExit.ShellExitReport",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() (exitCode int, afterSeconds float64, ok bool)"
+      },
+      "shapeHash": "sha256:e9ca7b629bda6c28f5c9b9444a9a9484736f8c29a9c546bd0c30b93bc053b7ba"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#BoundaryDispatchResult",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/inproc",
       "name": "BoundaryDispatchResult",
@@ -139278,6 +139311,17 @@
       "shapeHash": "sha256:96d3f44a89752170b7e7c14a4d3c0da44be7ad8b5c856515cad8bf3f2238073e"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ShellExitInfo",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "ShellExitInfo",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "ShellExitInfo"
+      },
+      "shapeHash": "sha256:3f769c96cc45e4f8d9ed3e99cda819d2aecb97380936ee59fc8c3bb63c30c239"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ShellInfo",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "ShellInfo",
@@ -146978,6 +147022,17 @@
       "shapeHash": "sha256:6320ac68bd22b44fdcc4619eb1bb6166e15ab5fc8e78dbf2401aeda8f9e49a1d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#errorInfoOf",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "errorInfoOf",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(err error) *ErrorInfo"
+      },
+      "shapeHash": "sha256:445dd915eab8815ec787c6d6a8a61e93ec2435ccc93d74541c37381f67d7ea59"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#eventBusRoutedEnv",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "eventBusRoutedEnv",
@@ -149561,6 +149616,17 @@
         "type": "func(method string) bool"
       },
       "shapeHash": "sha256:d60ece4b65b59f6c1c650107e0968b4f85db0c9923a48e6c67869ebcdc977bf9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#localShellTimeout",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "localShellTimeout",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(err error) error"
+      },
+      "shapeHash": "sha256:757366f347b77fab18c96d624ec5206676e19d18aa9ceb4a88a9343171f303d5"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#loopTurn",
@@ -222196,6 +222262,17 @@
       "shapeHash": "sha256:93ec0a95ca38427ca481caa7775ceb85ed2aac731ddef871d1a0e660bf4227ef"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#shellExitInfo",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "shellExitInfo",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "shellExitInfo"
+      },
+      "shapeHash": "sha256:62268f38dcac873fbc4a693ae86133529a0cc660f995f4f1908dab519cff4638"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#shellSpec",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "shellSpec",
@@ -222205,6 +222282,39 @@
         "type": "func(name string, cwd string, operations *BashOperations, hook BashSpawnHook, expose *bool) (builtinSpec, error)"
       },
       "shapeHash": "sha256:3357730459217fbd1e08bef8f23d4294c2e744edee203a7d14b22b9beee1c552"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#shellTimeoutError",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "shellTimeoutError",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "shellTimeoutError"
+      },
+      "shapeHash": "sha256:d9b0a363996e56a9a4acbe51bdb1f36f34d9c54503614e8e2ee68782be783ff4"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#shellTimeoutError.Error",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "shellTimeoutError.Error",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#shellTimeoutError.ShellExitReport",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "shellTimeoutError.ShellExitReport",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() (exitCode int, afterSeconds float64, ok bool)"
+      },
+      "shapeHash": "sha256:e9ca7b629bda6c28f5c9b9444a9a9484736f8c29a9c546bd0c30b93bc053b7ba"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#shortcutDef",
@@ -321581,6 +321691,17 @@
       "shapeHash": "sha256:37334cef172882b5b31dacd63d47fcb4dafd854f50dae194f4ee9733bbc3c725"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#SetStdioGraceTimerForTest",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "SetStdioGraceTimerForTest",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(timer func() github.com/MichaelKinsy/PiG/internal/childwait.IdleTimer) (restore func())"
+      },
+      "shapeHash": "sha256:6d97d4adf5bea409a9ed353b6bee1a3fe0563024484e61febd37495ae0e152b4"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#SettingsView",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
       "name": "SettingsView",
@@ -325354,6 +325475,61 @@
       "shapeHash": "sha256:0c5c6951bcf505254c992720315dc41d99fe0e45ed7d49be966bc6acd58f50a4"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#stdioGraceTimer",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "stdioGraceTimer",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "sync/atomic.Pointer[func() github.com/MichaelKinsy/PiG/internal/childwait.IdleTimer]"
+      },
+      "shapeHash": "sha256:a77a879f35b5fcc2bdda2d325061ed525ce022a7877ade08b0f4ae96018a8126"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#stdioGraceTimer.CompareAndSwap",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "stdioGraceTimer.CompareAndSwap",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(old *func() github.com/MichaelKinsy/PiG/internal/childwait.IdleTimer, new *func() github.com/MichaelKinsy/PiG/internal/childwait.IdleTimer) (swapped bool)"
+      },
+      "shapeHash": "sha256:f088f27a7e5d2c099b80eda274417bb32d46a8d6793fabf09739155d87e95d4e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#stdioGraceTimer.Load",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "stdioGraceTimer.Load",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() *func() github.com/MichaelKinsy/PiG/internal/childwait.IdleTimer"
+      },
+      "shapeHash": "sha256:404ec58e08d68a16758d3edf4f729c6df4fc651f7cfb370c349a4d11923e1f3c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#stdioGraceTimer.Store",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "stdioGraceTimer.Store",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(val *func() github.com/MichaelKinsy/PiG/internal/childwait.IdleTimer)"
+      },
+      "shapeHash": "sha256:ecfd661d20de696ce82fad08a634e953ef936843144e7736ce61a8629e5d5818"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#stdioGraceTimer.Swap",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "stdioGraceTimer.Swap",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(new *func() github.com/MichaelKinsy/PiG/internal/childwait.IdleTimer) (old *func() github.com/MichaelKinsy/PiG/internal/childwait.IdleTimer)"
+      },
+      "shapeHash": "sha256:a390c6f34e1342f77a35e5d62acf5cacb776c17a28eb7e7a87d0e2ebba6ba3c4"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#strictToolSampling",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
       "name": "strictToolSampling",
@@ -325484,17 +325660,6 @@
         "type": "func()"
       },
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#testHookStdioGraceTimer",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
-      "name": "testHookStdioGraceTimer",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "func() github.com/MichaelKinsy/PiG/internal/childwait.IdleTimer"
-      },
-      "shapeHash": "sha256:49b9df809dda982d7c290128bd579b3a412353257cdfcadea1fa2d6cd86f1b5e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#testHookTimeoutTimer",

@@ -60,8 +60,11 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
            (error 'host-call-error :message "extension shut down during host call"))
           ((and (hash-table-p result) (hash-table-p (jget result "error")))
            (let ((err (jget result "error")))
-             (error 'host-call-error :message (frame-error-message err)
-                                     :code (let ((code (jget err "code"))) (and (stringp code) code)))))
+             (if (hash-table-p (jget err "shellExit"))
+                 (error 'shell-timeout-error :message (frame-error-message err) :shell-exit (jget err "shellExit")
+                                             :code (let ((code (jget err "code"))) (and (stringp code) code)))
+                 (error 'host-call-error :message (frame-error-message err)
+                                         :code (let ((code (jget err "code"))) (and (stringp code) code))))))
           (t (let ((value (and (hash-table-p result) (jget result "result"))))
                (if (eq value :null) nil value))))))
 
@@ -94,8 +97,8 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
         (when reason (setf (gethash "reason" payload) reason))
         (send-frame-locked conn (obj "type" "request_state" "request_state" payload))))))
 
-(defun respond (ext request-id result error-message)
-  "Answer request REQUEST-ID: a result, or an error message."
+(defun respond (ext request-id result error-message &optional shell-exit)
+  "Answer request REQUEST-ID: a result, or an error message (with SHELL-EXIT, the wire object of Pi's shellExit, for a local shell command's timeout)."
   (let ((conn (extension-conn ext)))
     (sb-thread:with-mutex ((conn-write-lock conn))
       (sb-thread:with-mutex ((extension-state-lock ext))
@@ -111,7 +114,11 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
       (send-frame-locked conn (obj "type" "request_state" "request_state" (obj "request_id" request-id "state" "completed")))
       (send-frame-locked conn (obj "type" "response" "id" request-id
                                    "response" (obj "result" result
-                                                   "error" (if error-message (obj "message" error-message) nil)))))))
+                                                   "error" (if error-message
+                                                               (let ((error-object (obj "message" error-message)))
+                                                                 (when shell-exit (setf (gethash "shellExit" error-object) shell-exit))
+                                                                 error-object)
+                                                               nil)))))))
 
 ;;; ---------------------------------------------------------------- the context
 

@@ -283,6 +283,13 @@ type shutdownMsg struct {
 type errorInfo struct {
 	Code    string `json:"code,omitempty"`
 	Message string `json:"message"`
+	// ShellExit is Pi's ShellTimeoutError.shellExit: on the error of a local shell command that timed out after its shell had exited.
+	ShellExit *shellExitInfo `json:"shellExit,omitempty"`
+}
+
+type shellExitInfo struct {
+	ExitCode     int     `json:"exitCode"`
+	AfterSeconds float64 `json:"afterSeconds"`
 }
 
 // conn manages the socket connection with read/write goroutines and
@@ -812,6 +819,10 @@ func encodeResponse(id string, result any, respErr error) ([]byte, error) {
 	resp := &responseMsg{}
 	if respErr != nil {
 		resp.Error = &errorInfo{Message: respErr.Error()}
+		// Pi's bash tool tells the error of the local backend by class, so only that error, rethrown unchanged, keeps the shell's exit.
+		if timeout, ok := respErr.(*shellTimeoutError); ok {
+			resp.Error.ShellExit = &shellExitInfo{ExitCode: timeout.exitCode, AfterSeconds: timeout.afterSeconds}
+		}
 	}
 	if result != nil {
 		var data []byte

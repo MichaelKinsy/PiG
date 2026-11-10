@@ -117,6 +117,10 @@ func HostHelpers() *sdk.HostHelpers {
 			}
 			exitCode, err := subprocess.LocalExec(ctx, args, managedToolsDir(), onData)
 			if err != nil {
+				if timeout, ok := err.(*tools.ShellTimeoutError); ok && timeout.ShellExit != nil {
+					// The SDK cannot name the host's error type: it reads the shell's exit through a method of the error it is given.
+					return nil, shellTimeoutAfterExit{timeout}
+				}
 				return nil, err
 			}
 			return json.Marshal(subprocess.BuiltinToolLocalExecResult{ExitCode: exitCode})
@@ -132,6 +136,14 @@ func HostHelpers() *sdk.HostHelpers {
 			return err
 		},
 	}
+}
+
+// shellTimeoutAfterExit is the host's timeout of a command whose shell had exited before the deadline, as a fused extension's SDK reads it: the message of the
+// error, and the shell's exit through ShellExitReport.
+type shellTimeoutAfterExit struct{ *tools.ShellTimeoutError }
+
+func (e shellTimeoutAfterExit) ShellExitReport() (exitCode int, afterSeconds float64, ok bool) {
+	return e.ShellExit.ExitCode, e.ShellExit.AfterSeconds, true
 }
 
 // managedToolsDir is the directory a command's PATH starts with and the built-in tools resolve rg and fd in (Pi's process-wide getBinDir()): <agentDir>/bin of the

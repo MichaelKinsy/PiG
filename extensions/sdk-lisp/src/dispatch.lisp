@@ -353,7 +353,7 @@
            (respond ext id (funcall (gethash method *request-handlers*) ext ctx req) nil))
           (t (respond ext id nil (format nil "unknown method: ~A" method))))
       (serious-condition (c)
-        (handler-case (tool-start-respond (ctx-tool-start ctx) (lambda () (respond ext id nil (condition-message c))))
+        (handler-case (tool-start-respond (ctx-tool-start ctx) (lambda () (respond ext id nil (condition-message c) (and (typep c 'shell-timeout-error) (shell-timeout-error-shell-exit c)))))
           (error () nil))))
     (when request (ticket-begin (request-ticket request)))
     (tool-start-end (ctx-tool-start ctx))))

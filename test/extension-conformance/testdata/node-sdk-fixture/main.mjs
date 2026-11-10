@@ -8,6 +8,25 @@ import { join as joinPath } from "node:path";
 import * as piTui from "@earendil-works/pi-tui";
 import * as piCodingAgent from "@earendil-works/pi-coding-agent";
 const { Container } = piTui;
+
+// Pi's waitForChildProcess releases the pipes of a shell that exited once they have been quiet for EXIT_STDIO_GRACE_MS (100 ms), a wall-clock timer that a writer's
+// CPU-bound gap between lines can outrun on a loaded host (the command then ends normally instead of at its deadline). The shell-exit cases need the writer to hold the
+// pipes until the deadline, so that one timer, set by Pi's armIdleTimer, never fires, as the host's own grace never elapses in the same cases (Pi's #5303 test uses
+// virtual time for it). Every other timer is untouched.
+// stdioGraceHolds counts the timers held, so a shell-exit case that holds none (a pin that renames armIdleTimer, changes the delay or loses the frame name) fails
+// loudly instead of going back to racing the wall clock.
+let stdioGraceHolds = 0;
+{
+  const wallClockSetTimeout = globalThis.setTimeout;
+  const longest = 2 ** 31 - 1;
+  globalThis.setTimeout = function setTimeout(callback, delay, ...rest) {
+    if (delay === 100 && typeof callback === "function" && new Error().stack.includes("armIdleTimer")) {
+      stdioGraceHolds++;
+      return wallClockSetTimeout(callback, longest, ...rest);
+    }
+    return wallClockSetTimeout(callback, delay, ...rest);
+  };
+}
 import {
   createBashToolDefinition, createGrepToolDefinition, createLsToolDefinition, createReadToolDefinition, CONFIG_DIR_NAME, isToolCallEventType, CustomEditor, getAgentDir, getPackageDir, getShellConfig, generateDiffString, generateUnifiedPatch, sessionEntryToContextMessages, buildSessionContext, convertToPng, resizeImage, readStoredCredential, VERSION, formatSize, DEFAULT_MAX_LINES, DEFAULT_MAX_BYTES, truncateHead, truncateLine, truncateTail, withFileMutationQueue, isBashToolResult, isEditToolResult, isFindToolResult, isGrepToolResult, isLsToolResult, isPowerShellToolResult, isReadToolResult, isWriteToolResult,
   getMarkdownTheme, getSelectListTheme, getSettingsListTheme, renderDiff,
@@ -1212,7 +1231,18 @@ export default function (pi) {
       case "find": if (c.ops === "globlimit") return { operations: { exists: async (p) => { log.push(`exists:${p}`); return true; }, glob: async (pattern, cwd, o) => { log.push(`glob:${pattern}:limit=${o.limit}`); return ["a.txt", "b.txt", "c.txt"].slice(0, o.limit); } } };
         return { operations: custom ? { exists: async (p) => { log.push(`exists:${p}`); return false; }, glob: async (pattern) => { log.push(`glob:${pattern}`); return []; } } : undefined };
       case "powershell": return { exposeSessionEnvironment: c.exposeSessionEnvironment ?? undefined };
-      default: return { commandPrefix: c.commandPrefix || undefined, exposeSessionEnvironment: c.exposeSessionEnvironment ?? undefined, spawnHook: hook, operations: custom ? { exec: async (command, cwd, o) => { log.push(`exec:${command}|cwd=${cwd}`); o.onData(Buffer.from(`custom:${command}`)); return { exitCode: 0 }; } } : undefined };
+      default: if (c.ops === "localThread") {
+        // The local operations run on another thread (Node has one thread, so the nearest is another turn of the event loop) and their error comes back unchanged.
+        const local = piCodingAgent.createLocalBashOperations();
+        return { operations: { exec: (command, cwd, o) => new Promise((resolve, reject) => { setImmediate(() => { local.exec(command, cwd, o).then(resolve, reject); }); }) } };
+      }
+      if (c.ops === "local" || c.ops === "localWrapped") {
+        // The bash tool runs on the local operations. "local" rethrows their error unchanged; "localWrapped" throws a new Error with the same message, which is not the
+        // backend's class and keeps nothing of it (bash.ts matches the class).
+        const local = piCodingAgent.createLocalBashOperations();
+        return { operations: { exec: async (command, cwd, o) => { try { return await local.exec(command, cwd, o); } catch (error) { throw c.ops === "localWrapped" ? new Error(error.message) : error; } } } };
+      }
+      return { commandPrefix: c.commandPrefix || undefined, exposeSessionEnvironment: c.exposeSessionEnvironment ?? undefined, spawnHook: hook, operations: custom ? { exec: async (command, cwd, o) => { log.push(`exec:${command}|cwd=${cwd}`); o.onData(Buffer.from(`custom:${command}`)); return { exitCode: 0 }; } } : undefined };
     }
   };
   const builtinFactories = { read: [piCodingAgent.createReadToolDefinition, piCodingAgent.createReadTool], write: [piCodingAgent.createWriteToolDefinition, piCodingAgent.createWriteTool], edit: [piCodingAgent.createEditToolDefinition, piCodingAgent.createEditTool], bash: [piCodingAgent.createBashToolDefinition, piCodingAgent.createBashTool], grep: [piCodingAgent.createGrepToolDefinition, piCodingAgent.createGrepTool], find: [piCodingAgent.createFindToolDefinition, piCodingAgent.createFindTool], ls: [piCodingAgent.createLsToolDefinition, piCodingAgent.createLsTool], powershell: [piCodingAgent.createPowerShellToolDefinition, piCodingAgent.createPowerShellTool] };
@@ -1263,10 +1293,15 @@ export default function (pi) {
     const updates = [];
     const onUpdate = c.updates || c.abortOnOutput ? (partial) => { const text = partial.content.filter((b) => b.type === "text").map((b) => b.text).join("\n"); updates.push(text); if (c.abortOnOutput && text !== "") controller.abort(); } : undefined;
     const report = {};
+    const holdsBefore = stdioGraceHolds;
     try {
       const result = c.noContext ? await createTool(c.factoryCwd, options).execute("probe-call", c.params ?? {}, controller.signal, onUpdate) : await createDefinition(c.factoryCwd, options).execute("probe-call", c.params ?? {}, controller.signal, onUpdate, ctx);
       report.result = builtinReport(result);
     } catch (error) { report.error = error.message; }
+    // The shell-exit cases (local operations over a shell that exits while a writer holds the pipes) must have held Pi's post-exit grace timer at least once.
+    if (["local", "localWrapped", "localThread"].includes(c.ops) && stdioGraceHolds === holdsBefore) {
+      report.error = "the fixture held no post-exit stdio grace timer: Pi's waitForChildProcess no longer sets a 100 ms timer from armIdleTimer, so the shell-exit cases would race the wall clock";
+    }
     if (c.updates) report.updates = updates;
     report.calls = log;
     emit(report);
