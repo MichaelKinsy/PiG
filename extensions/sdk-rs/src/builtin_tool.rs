@@ -992,7 +992,7 @@ thread_local! {
     /// The error string the local operations of this thread last returned for a command that timed out after its shell had exited, by the address of its
     /// buffer, with the shell's exit. Pi's bash tool tells that error by class, so only that error, returned from an exec unchanged, keeps the shell's exit; a
     /// Rust error is a `String`, whose identity is its buffer, which a move keeps and a copy, a wrapper's `format!` or a new message does not.
-    static LOCAL_SHELL_TIMEOUT: std::cell::Cell<Option<(usize, usize, crate::protocol::ShellExit)>> = const { std::cell::Cell::new(None) };
+    static LOCAL_SHELL_TIMEOUT: std::cell::Cell<Option<(usize, usize, usize, crate::protocol::ShellExit)>> = const { std::cell::Cell::new(None) };
 }
 
 /// Forgets the timeout the local operations of this thread last returned: the exec that starts next is judged by its own.
@@ -1001,11 +1001,18 @@ pub(crate) fn forget_local_shell_timeout() {
 }
 
 /// The shell's exit of `error`, if it is the very error the local operations of this thread returned last, unchanged.
-pub(crate) fn local_shell_timeout_of(error: &str) -> Option<crate::protocol::ShellExit> {
+#[allow(clippy::ptr_arg)] // the buffer's capacity is part of the error's identity
+pub(crate) fn local_shell_timeout_of(error: &String) -> Option<crate::protocol::ShellExit> {
     LOCAL_SHELL_TIMEOUT.with(|slot| {
-        let (address, len, shell_exit) = slot.take()?;
-        (address == error.as_ptr() as usize && len == error.len()).then_some(shell_exit)
+        let (address, len, capacity, shell_exit) = slot.take()?;
+        (address == error.as_ptr() as usize && len == error.len() && capacity == error.capacity()).then_some(shell_exit)
     })
+}
+
+/// Names `message`, the error a local exec returns, as the one the shell's exit belongs to.
+#[allow(clippy::ptr_arg)] // the buffer's capacity is part of the error's identity
+fn remember_local_shell_timeout(message: &String, shell_exit: crate::protocol::ShellExit) {
+    LOCAL_SHELL_TIMEOUT.with(|slot| slot.set(Some((message.as_ptr() as usize, message.len(), message.capacity(), shell_exit))));
 }
 
 /// Runs one function of a call's options for the host's `builtin_tool_callback`. An `Err` is the callback's throw.
@@ -1042,6 +1049,8 @@ pub struct LocalBashOperationsOptions {
 fn local_exec(shell: &'static str, shell_path: Option<String>) -> BashOperations {
     BashOperations {
         exec: Arc::new(move |command, cwd, options| {
+            // The slot names the error of the last local exec of this thread only: whatever an earlier one left is not this exec's.
+            forget_local_shell_timeout();
             let conn = host_helpers::running_connection().map_err(|error| error.to_string())?;
             let execute_id = format!("x{}", conn.execute_seq.fetch_add(1, Ordering::Relaxed));
             // A throw in onData (a panic) ends the command with it, as Pi's would reject the exec.
@@ -1099,9 +1108,7 @@ fn local_exec(shell: &'static str, shell_path: Option<String>) -> BashOperations
                         .map(|timeout| timeout.shell_exit);
                     let message = error.to_string();
                     if let Some(shell_exit) = shell_exit {
-                        LOCAL_SHELL_TIMEOUT.with(|slot| {
-                            slot.set(Some((message.as_ptr() as usize, message.len(), shell_exit)));
-                        });
+                        remember_local_shell_timeout(&message, shell_exit);
                     }
                     return Err(message);
                 }
@@ -1263,6 +1270,18 @@ pub fn create_read_only_tools(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // A local exec judges its own error only: the exit an earlier exec on the thread left for its error is forgotten when the next one starts, so a later plain timeout
+    // that happens to reuse the freed buffer is not taken for it.
+    #[test]
+    fn a_local_exec_forgets_the_shell_exit_an_earlier_one_left() {
+        let first = String::from("timeout:2");
+        remember_local_shell_timeout(&first, crate::protocol::ShellExit { exit_code: 7, after_seconds: 0.5 });
+        let options = BashExecOptions { on_data: Arc::new(|_| {}), signal: crate::ProviderSignal::new(), timeout: Some(1.0), env: None };
+        // No extension is running in this test, so the exec fails at once: before it does anything else it must have forgotten the earlier error.
+        let _ = (create_local_bash_operations(None).exec)("true", "/", options);
+        assert_eq!(local_shell_timeout_of(&first), None);
+    }
 
     // The behavior of the tools is the shared conformance row TestConformance_BuiltinToolDelegationAcrossSDKs; these cases pin what the SDK does before and after
     // the host call: which options cross the wire, which functions stay, and the tool-result shape of a host result.
