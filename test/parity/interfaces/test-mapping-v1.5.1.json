@@ -6391,9 +6391,10 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:710ec48c3fbafb6a7025b8d1dfbda56a2654df0fa017f4c52215f42093691776",
       "evidence": [
-        "ai/preferred_providers_test.go"
+        "ai/preferred_providers_test.go",
+        "internal/codingagent/preferred_providers_order_test.go"
       ],
-      "rationale": "683a7a868: new test file ported to ai/preferred_providers_test.go with the same inputs."
+      "rationale": "683a7a868: new test file ported with the same inputs: isPreferredProvider in ai/preferred_providers_test.go, compareProviders in internal/codingagent/preferred_providers_order_test.go (the comparator lives beside the collation tables)."
     },
     {
       "path": "packages/coding-agent/test/print-mode.test.ts",
