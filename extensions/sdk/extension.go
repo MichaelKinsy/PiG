@@ -271,9 +271,9 @@ type Extension struct {
 	hasUI       bool
 	// frontend is set while a D91 frontend session draws (D107): views
 	// carry frontend-only annotations only then.
-	frontend      bool
+	frontend bool
 	// views is the D614 mount state: what the attached client draws and the intent handler.
-	views viewState
+	views         viewState
 	width         int
 	height        int
 	model         string
@@ -1992,7 +1992,7 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 				McpServers    json.RawMessage `json:"mcpServers"`
 				FooterData    *footerDataWire `json:"footerData"`
 				// UIAbilities (D614) is absent while no client is attached; every state is a full snapshot, so absent clears it.
-				UIAbilities   json.RawMessage `json:"uiAbilities"`
+				UIAbilities json.RawMessage `json:"uiAbilities"`
 			} `json:"state"`
 		}
 		if err := unmarshalFrameMember(env.Notify.Args, &payload); err != nil {

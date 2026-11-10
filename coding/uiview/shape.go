@@ -77,7 +77,7 @@ func (s Shape) Validate(raw json.RawMessage) error {
 	dec.UseNumber()
 	var v any
 	if err := dec.Decode(&v); err != nil {
-		return fmt.Errorf("not JSON: %v", err)
+		return fmt.Errorf("not JSON: %w", err)
 	}
 	if dec.More() {
 		return errors.New("trailing data")

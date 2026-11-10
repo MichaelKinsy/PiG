@@ -188,7 +188,7 @@ func DecodeMount(raw []byte) (MountArgs, *Error) {
 	if a.Target == nil && (a.Slot == SlotToolCard || a.Slot == SlotMessage || a.Slot == SlotEntry) {
 		return a, fail(CodeInvalid, "slot %q needs a target", a.Slot)
 	}
-	return a, a.Content.check()
+	return a, a.check()
 }
 
 func DecodeUpdate(raw []byte) (UpdateArgs, *Error) {
@@ -199,7 +199,7 @@ func DecodeUpdate(raw []byte) (UpdateArgs, *Error) {
 	if a.Mount.Key == "" {
 		return a, fail(CodeInvalid, "mount.key is required")
 	}
-	return a, a.Content.check()
+	return a, a.check()
 }
 
 func DecodeRef(raw []byte) (RefArgs, *Error) {
