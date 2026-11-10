@@ -177,6 +177,13 @@ func StartSandbox(node, source string, start BridgeStart, onMessage func(Sandbox
 	if err != nil {
 		return nil, err
 	}
+	// Node resolves its entry before reading it; a symlinked ancestor would need a broader file grant.
+	resolved, err := filepath.EvalSymlinks(directory)
+	if err != nil {
+		_ = os.RemoveAll(directory)
+		return nil, err
+	}
+	directory = resolved
 	script := filepath.Join(directory, BootstrapFile)
 	if err := os.WriteFile(script, []byte(text), 0o600); err != nil {
 		_ = os.RemoveAll(directory)

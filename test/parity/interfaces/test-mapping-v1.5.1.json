@@ -3126,8 +3126,13 @@
     },
     {
       "path": "packages/chord/test/node/app/files.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:afc485c141a288c43a49c803556e942b943cc717e810e7909dae479e784c9ae9"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:afc485c141a288c43a49c803556e942b943cc717e810e7909dae479e784c9ae9",
+      "evidence": [
+        "chord/nextnode/app/files_test.go",
+        "chord/nextnode/app/files_support_test.go"
+      ],
+      "rationale": "30 cases; new at Pi 1.5.1: TestMetadataQueriesOrderEqualCreationTimesByIDInPagesAndSummariesIncludingAfterRemoval."
     },
     {
       "path": "packages/chord/test/node/app/folder-views.test.ts",
@@ -3340,8 +3345,12 @@
     },
     {
       "path": "packages/chord/test/node/http/upgrades.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d1f3e8418288b32b48125780e8ae716dd49214093ecde7e7e2ab92d175d85fe8"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:d1f3e8418288b32b48125780e8ae716dd49214093ecde7e7e2ab92d175d85fe8",
+      "evidence": [
+        "chord/nextnode/http/upgrades_test.go"
+      ],
+      "rationale": "19 cases (Pi 1.5.1 changes are try/finally only); added Go test TestPluginSocketsAnOversizedFrameIsNotTerminatedAndTheSocketReportsItsProtocolCloseCode: the error listener leaves a CLOSING socket alone, the server-side close event reports 1006 as Pi's ws does, and the peer sees 1009."
     },
     {
       "path": "packages/chord/test/node/plugins/base-inputs.test.ts",
@@ -3392,8 +3401,17 @@
     },
     {
       "path": "packages/chord/test/node/plugins/plugins.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:b00546e1faa4fd0d109e111bff74edb7276c158a5d7c318d5e5cb1902d71693a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:b00546e1faa4fd0d109e111bff74edb7276c158a5d7c318d5e5cb1902d71693a",
+      "evidence": [
+        "chord/nextnode/plugins/plugins_endtoend_test.go",
+        "chord/nextnode/plugins/plugins_examples_test.go",
+        "chord/nextnode/plugins/plugins_node_bridged_test.go",
+        "chord/nextnode/plugins/plugins_node_test.go",
+        "chord/nextnode/plugins/plugins_plugins_test.go",
+        "chord/nextnode/plugins/plugins_runtime_test.go"
+      ],
+      "rationale": "All 25 upstream cases run in the evidence files, against the real esbuild Go API and the real Node subprocess running Pi's own sources where the case needs one; each test comment names its case and any process-boundary adaptation. Pi 1.5.1 changes are JS file-watcher/GC timing fixes (settleFileEvents, vi.waitFor, capture before release) with no Go counterpart."
     },
     {
       "path": "packages/chord/test/node/plugins/runtime.test.ts",
@@ -3424,8 +3442,14 @@
     },
     {
       "path": "packages/chord/test/node/plugins/watcher.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:152b42bd52b7ca26175a6b548e5c94cc34b199a9ddf36152b264939e7fbf6315"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:152b42bd52b7ca26175a6b548e5c94cc34b199a9ddf36152b264939e7fbf6315",
+      "evidence": [
+        "chord/nextnode/plugins/plugins_watcher_test.go",
+        "chord/nextnode/plugins/plugins_watcher_base_test.go",
+        "chord/nextnode/plugins/plugins_watcher_linux_test.go"
+      ],
+      "rationale": "All 23 upstream cases run in the evidence files, against the real esbuild Go API and the real Node subprocess running Pi's own sources where the case needs one; each test comment names its case and any process-boundary adaptation. Pi 1.5.1 changes are JS file-watcher/GC timing fixes (settleFileEvents, vi.waitFor, capture before release) with no Go counterpart."
     },
     {
       "path": "packages/chord/test/node/react/hooks.test.ts",
@@ -3539,8 +3563,12 @@
     },
     {
       "path": "packages/chord/test/node/surfaces/tui.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c4504c3907461a64a0723c44b88443e19c1ec8477210fd52384dc6579d6f5565"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c4504c3907461a64a0723c44b88443e19c1ec8477210fd52384dc6579d6f5565",
+      "evidence": [
+        "chord/nextnode/tui/tui_kit_upstream_test.go"
+      ],
+      "rationale": "All 1 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none). Pi 1.5.1 changes are JS file-watcher/GC timing fixes (settleFileEvents, vi.waitFor, capture before release) with no Go counterpart."
     },
     {
       "path": "packages/chord/test/node/surfaces/web.test.ts",
@@ -3598,8 +3626,13 @@
     },
     {
       "path": "packages/chord/test/node/tui/sandbox.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:7e74ad1d0c230a2ae660ee827937ff239984fd0ee6386d874749810217b34fcd"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:7e74ad1d0c230a2ae660ee827937ff239984fd0ee6386d874749810217b34fcd",
+      "evidence": [
+        "chord/nextnode/tui/tui_sandbox_test.go",
+        "chord/nextnode/tui/tui_kit_upstream_test.go"
+      ],
+      "rationale": "4 cases; new at Pi 1.5.1 (23303aed...): TestTheSandboxStartsWithASymlinkedTemporaryDirectoryWithoutExpandingFilePermissions. The sandbox directory is resolved with filepath.EvalSymlinks after os.MkdirTemp, as Pi's realpath, before file access is granted."
     },
     {
       "path": "packages/chord/test/node/web/language.test.ts",

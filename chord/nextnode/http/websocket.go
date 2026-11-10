@@ -338,9 +338,17 @@ func (s *WebSocket) readFailed(err error) {
 	case errors.As(err, &closeErr):
 		s.finish(CloseEvent{Code: closeErr.Code, Reason: closeErr.Text})
 	case errors.Is(err, websocket.ErrReadLimit):
-		// `ws` emits an `error` (its frame was above `maxPayload`); the close frame (1009) is out already.
+		// `ws` emits an `error` (its frame was above `maxPayload`); the close frame (1009) is out already, so the socket is
+		// CLOSING when its listeners run.
+		s.mu.Lock()
+		if s.state == WebSocketOpenState {
+			s.state = WebSocketClosing
+		}
+		s.mu.Unlock()
 		s.emit(link.WebSocketError, err)
-		s.finish(CloseEvent{Code: 1009})
+		// `ws` never reads the peer's close frame after a receiver error, so its `close` event keeps the default 1006 (the
+		// peer sees 1009).
+		s.finish(CloseEvent{Code: 1006})
 	default:
 		s.finish(CloseEvent{Code: 1006})
 	}

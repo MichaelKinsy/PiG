@@ -1335,6 +1335,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a9757c8](#bf-a9757c8) | A Cloudflare model built with `coding.BuildModel` and streamed through its own `Provider` resolves… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a97bb03](#bf-a97bb03) | Highlighted code in a markdown block or a tool card, and the label of a legacy bash entry in the session… | PiG's own defect | All platforms | Unreleased |
 | [BF-a9d41ed](#bf-a9d41ed) | `chord/nextnode/plugins`: a failed build's empty `errors` list reaches the Node host as `[]` as in Pi, and a… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-a9ff675](#bf-a9ff675) | The terminal sandbox failed to start when the temporary directory had a symlinked ancestor, such as macOS's… | PiG's own defect | macOS | Unreleased |
 | [BF-aa2003c](#bf-aa2003c) | The edit tool's prepared arguments keep the members in the order the model sent them | PiG's own defect | All platforms | 0.5.0 |
 | [BF-aa48a25](#bf-aa48a25) | A command that writes to both stdout and stderr no longer keeps a reader spinning while the other stream's… | PiG's own defect | Windows, macOS, Linux | Unreleased |
 | [BF-aa69959](#bf-aa69959) | Key matching follows Pi for more terminal inputs and key identifiers | PiG's own defect | All platforms | 0.5.0 |
@@ -1735,6 +1736,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-e2db931](#bf-e2db931) | On Windows, refreshing an MCP server's OAuth token no longer fails with `EPERM` when another `pig` process is… | PiG's own defect | Windows | 0.5.0 |
 | [BF-e32c60c](#bf-e32c60c) | A Piglet or Package installed under a symlinked agent directory keeps the origin integrity recorded in its… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e33dbb0](#bf-e33dbb0) | fix(chord/delta): textTails remembers buffers weakly so a released text costs nothing | PiG's own defect | All platforms | Unreleased |
+| [BF-e35933e](#bf-e35933e) | A WebSocket that receives an oversized frame is left closing while its handlers run, as Pi's is, so the peer… | PiG's own defect | All platforms | Unreleased |
 | [BF-e38ea7c](#bf-e38ea7c) | A code block that begins like an earlier streamed block and then differs, such as a file rewritten with its… | PiG's own defect | All platforms | Unreleased |
 | [BF-e3b5d44](#bf-e3b5d44) | fix(chord/nextnode/workers): a worker forks a private copy of the entry made at creation, removed on close | PiG's own defect | All platforms | Unreleased |
 | [BF-e3bc5f0](#bf-e3bc5f0) | A codemode script that makes a tool call at the moment its execution ends (an abort, a timeout… | PiG's own defect | All platforms | Unreleased |
@@ -20229,6 +20231,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeLifeContextEndsWithTheProcess`, `chord/nextnode/plugins/plugins_node_wire_test.go::TestBridgedProxyScriptWritesHTMLCharactersAsJSONStringifyDoes`, `chord/nextnode/plugins/plugins_node_wire_test.go::TestWireABuiltFacetHasErrorsOnlyWhenItFailedAndThenAlways`
 - **Release note:** `chord/nextnode/plugins`: a failed build's empty `errors` list reaches the Node host as `[]` as in Pi, and a proxy script for a Go core facet whose name has `<`, `>` or `&` is written as `JSON.stringify` writes it.
 
+### BF-a9ff675
+
+**The terminal sandbox failed to start when the temporary directory had a symlinked ancestor, such as macOS's…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The terminal sandbox failed to start when the temporary directory had a symlinked ancestor, such as macOS's default temporary directory.
+- **Root cause:** Node resolves its entry before reading it, so a temporary directory under a symlinked ancestor (macOS /var, or a TMPDIR that is a link) made the sandbox exit at start. The directory is now resolved, and the one-script read grant names the resolved path; the grant is not widened. Ports Pi.
+- **User impact:** An operation failed or was rejected
+- **Platform:** macOS
+- **Fixed in:** Unreleased
+- **Fix commits:** `a9ff67595c` (2026-11-09)
+- **Tests:** `chord/nextnode/tui/tui_sandbox_test.go::TestTheSandboxStartsWithASymlinkedTemporaryDirectoryWithoutExpandingFilePermissions`
+- **Release note:** The terminal sandbox failed to start when the temporary directory had a symlinked ancestor, such as macOS's default temporary directory. It resolves the directory before starting, as Pi does; the sandbox's read access stays the one script.
+
 ### BF-aa2003c
 
 **The edit tool's prepared arguments keep the members in the order the model sent them**
@@ -25768,6 +25784,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `e33dbb0ad0` (2026-11-01)
 - **Tests:** `chord/delta/append_text_retention_norace_test.go::TestTrackerAppendTextReleasesBuffersOfReleasedKeys`, `chord/delta/text_tails_test.go::TestTextTailsForgetCollectedBuffers`, `chord/delta/text_tails_test.go::TestTrackerAppendTextStreamKeepsEarlierRevisions`
+
+### BF-e35933e
+
+**A WebSocket that receives an oversized frame is left closing while its handlers run, as Pi's is, so the peer…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A WebSocket that receives an oversized frame is left closing while its handlers run, as Pi's is, so the peer receives its 1009 close frame; the server side reports close code 1006, as Pi does.
+- **Root cause:** ws never reads the peer after a receiver error, so the server socket's close event keeps 1006 while the peer sees 1009. The socket stays closing while its error listeners run, so keep leaves it alone. The sandbox test also points TMP and TEMP at the link, as Pi's does.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `e35933ead2` (2026-11-09)
+- **Tests:** `chord/nextnode/http/upgrades_test.go::TestPluginSocketsAnOversizedFrameLeavesTheSocketClosingTheServerReports1006AndThePeer1009`
+- **Release note:** A WebSocket that receives an oversized frame is left closing while its handlers run, as Pi's is, so the peer receives its 1009 close frame; the server side reports close code 1006, as Pi does.
 
 ### BF-e38ea7c
 

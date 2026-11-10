@@ -127039,9 +127039,9 @@
         "call:chord/nextnode/http/http.go#HttpComponent.upgradeSteps"
       ],
       "evidence": [
+        "test:chord/nextnode/http/http_example_66_test.go#TestExample66WebSocketLimits",
         "test:chord/nextnode/http/review_test.go#TestReviewAHostRemovedAndRestoredBetweenAnUpgradesCheckAndItsKeepEndsTheConnection",
-        "test:chord/nextnode/http/review_test.go#TestReviewARouterChangeBetweenAnUpgradesCheckAndItsKeepStillEndsTheConnection",
-        "test:chord/nextnode/http/review_test.go#TestReviewAStaleRevokeNeverEndsAConnectionTheNewestRouterAdmits"
+        "test:chord/nextnode/http/review_test.go#TestReviewARouterChangeBetweenAnUpgradesCheckAndItsKeepStillEndsTheConnection"
       ]
     },
     {
@@ -137003,6 +137003,7 @@
         "call:chord/nextnode/tui/tui_launcher.go#Launcher.startSandbox"
       ],
       "evidence": [
+        "test:chord/nextnode/tui/tui_sandbox_test.go#TestTheSandboxStartsWithASymlinkedTemporaryDirectoryWithoutExpandingFilePermissions",
         "test:chord/nextnode/tui/tui_sandbox_test.go#TestTheSandboxGivesRawDownloadedCodeNoBuiltinAndNoImportWhateverItPutsOnObjectPrototype"
       ]
     },

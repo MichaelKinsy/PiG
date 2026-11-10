@@ -353,10 +353,15 @@ func (u *Upgrades) snapshot() []*upgraded {
 	return open
 }
 
-// keep keeps connection until its socket closes; an error (an oversized frame) terminates only that socket.
+// keep keeps connection until its socket closes, letting a protocol error finish its close handshake.
 func (u *Upgrades) keep(connection *upgraded) {
 	socket := connection.socket
-	socket.OnError(func(error) { socket.Terminate() })
+	socket.OnError(func(error) {
+		// The socket already sent the protocol close code (such as 1009); terminating now can discard that frame.
+		if socket.ReadyState() != WebSocketClosing {
+			socket.Terminate()
+		}
+	})
 	u.mu.Lock()
 	u.open[connection] = struct{}{}
 	u.mu.Unlock()
