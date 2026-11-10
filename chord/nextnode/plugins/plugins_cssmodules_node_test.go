@@ -237,19 +237,31 @@ func TestMappingEvaluatorKillsAProcessThatDoesNotAnswer(t *testing.T) {
 // evaluation after it. Here the timer of a slow module fires, the kill is held back until the module has answered, and then
 // it is let go: the next module is evaluated on a live process.
 func TestMappingEvaluatorALateKillOfAnEvaluationDoesNotHitTheNextOne(t *testing.T) {
-	timeout := 50 * time.Millisecond
+	// ReadyTimeout also bounds finding Node: a loaded machine takes longer than 50 ms to find it, so the process is started under a
+	// minute and only then is the timer of the evaluation shortened.
+	timeout := time.Minute
 	evaluator := newMappingEvaluator(NodeOptions{ReadyTimeout: &timeout})
 	defer evaluator.close()
-	release, finished := make(chan struct{}), make(chan struct{})
+	if got, err := evaluator.Evaluate(context.Background(), `module.exports = { default: {} };`); err != nil || got != `{}` {
+		t.Fatalf("got %q, %v starting the process", got, err)
+	}
+	timeout = 50 * time.Millisecond
+	release, fired, finished := make(chan struct{}), make(chan struct{}), make(chan struct{})
 	evaluator.killThrough = func(kill func()) {
+		close(fired)
 		<-release
 		kill()
 		close(finished)
 	}
-	// The timer fires 50 ms in; the module answers after 150 ms, with the kill still held.
-	got, err := evaluator.Evaluate(context.Background(), `const t = Date.now(); while (Date.now() - t < 150) {} module.exports = { default: { a: "b" } };`)
+	// The timer fires 50 ms in; the module, on a process that is running, answers after a second, with the kill still held.
+	got, err := evaluator.Evaluate(context.Background(), `const t = Date.now(); while (Date.now() - t < 1000) {} module.exports = { default: { a: "b" } };`)
 	if err != nil || got != `{"a":"b"}` {
 		t.Fatalf("got %q, %v: the held kill ended the evaluation", got, err)
+	}
+	select {
+	case <-fired:
+	default:
+		t.Fatal("the timer of the evaluation did not fire while the module ran")
 	}
 	close(release)
 	<-finished
