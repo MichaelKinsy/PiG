@@ -4190,6 +4190,43 @@ fn main() {
             CommandResult::Ok
         },
     );
+    // event_signal_probe subscribes to session_before_compact or session_before_tree with a handler that returns the state of its event signal (the request's cancellation) on its first line and after a dialog it opened was answered, and the dialog's answer: the signal aborts while the dialog is pending (mode "wait") or before the handler runs (mode "first"), and Pi's in-process host call still returns its answer.
+    let event_signal_subscriber = ext.event_subscriber();
+    let event_signal_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
+        Arc::new(Mutex::new(Vec::new()));
+    ext.command(
+        "event_signal_probe",
+        "Subscribe to session_before_compact or session_before_tree with a handler that returns the state of its event signal",
+        move |_ctx, args| {
+            let name = args.trim().to_string();
+            let event = name.clone();
+            let subscription = subscribe(&event_signal_subscriber, &name, move |hctx, data| {
+                let source: &serde_json::Value = if event == "session_before_tree" {
+                    data.get("preparation").unwrap_or(&serde_json::Value::Null)
+                } else {
+                    &*data
+                };
+                let mode = source
+                    .get("customInstructions")
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or("")
+                    .to_string();
+                let before = hctx.is_cancelled();
+                let answer = match hctx.input(&format!("event_signal:{event}:{mode}:pending"), "p") {
+                    Ok((value, _)) => value.as_str().unwrap_or("").to_string(),
+                    Err(error) => format!("failed: {error}"),
+                };
+                let state = format!("event_signal:{mode}:{before}:{}:{answer}", hctx.is_cancelled());
+                if event == "session_before_compact" {
+                    Ok(Some(serde_json::json!({"compaction": {"summary": state, "firstKeptEntryId": "k", "tokensBefore": 1}})))
+                } else {
+                    Ok(Some(serde_json::json!({"label": state})))
+                }
+            });
+            event_signal_subscriptions.lock().unwrap().push(subscription);
+            CommandResult::Ok
+        },
+    );
     let event_ordered_result_subscriber = ext.event_subscriber();
     let event_ordered_result_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
         Arc::new(Mutex::new(Vec::new()));

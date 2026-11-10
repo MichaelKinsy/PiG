@@ -641,6 +641,8 @@ type RequestPayload struct {
 	MessageSeqs []uint64 `json:"message_seqs,omitempty"` //portlint:allow emptydrop a PiG-only frame field; absent means no message of the event is shared
 	// SignalTimeoutMS, on oauth_refresh, tells a runtime whose refresh callback receives an AbortSignal that the signal is AbortSignal.timeout(SignalTimeoutMS) alone: the caller's cancellation never reaches it, as in Pi's refreshStoredOAuthCredential (auth/resolve.ts). Absent, the signal follows the request's cancellation.
 	SignalTimeoutMS *float64 `json:"signal_timeout_ms,omitempty"`
+	// SignalAborted, on a session_before_compact or session_before_tree event, reports that the event's AbortSignal had already aborted when the host dispatched the handler: Pi's runner awaits every handler of those events with event.signal aborted (runner.ts emit), so a handler dispatched after the abort starts with event.signal.aborted true. When the signal ends while the handler runs, the host sends a signal-only cancel (CancelPayload.SignalOnly) and keeps waiting for the reply, as Pi keeps the handler's result.
+	SignalAborted bool `json:"signal_aborted,omitempty"`
 	// OwnSignal, on tool_call, reports a nested call that runs with the signal its caller passed in options.signal: the tool's signal parameter is that signal, not the run's.
 	OwnSignal bool `json:"own_signal,omitempty"`
 	// ExecuteID, with OwnSignal, names the executeTool call of the same connection that made this nested call, so its runtime can hand the tool the very signal object its caller passed.
@@ -1484,6 +1486,8 @@ type WidgetPushPayload struct {
 type CancelPayload struct {
 	RequestID string `json:"request_id,omitempty"`
 	Reason    string `json:"reason,omitempty"`
+	// SignalOnly reports that only the request's AbortSignal ended (session_before_compact, session_before_tree: Pi's abortCompaction aborts the AbortController, agent-session.ts:2867) and the request goes on: the runtime aborts the signal its handler holds and cancels no host call, as Pi's in-process calls never fail with the abort. The host keeps answering the handler's calls, before and after, and waits for its reply. An ordinary cancel, without it, ends the request and its host calls.
+	SignalOnly bool `json:"signal_only,omitempty"`
 }
 
 // ShutdownPayload signals the extension to exit gracefully.

@@ -32,7 +32,8 @@ func (s *Session) extensionCompaction(
 	}
 	branchEntries := make([]extension.SessionEntry, len(entries))
 	copy(branchEntries, entries)
-	result, err := runner.Emit(ctx, extension.SessionBeforeCompactEvent{
+	// runner.ts emit awaits every handler with event.signal aborted and keeps their results; the abort reaches a handler as that signal, not as the end of its dispatch.
+	result, err := runner.Emit(context.WithoutCancel(ctx), extension.SessionBeforeCompactEvent{
 		Type:               icodingagent.EventSessionBeforeCompact,
 		Preparation:        *preparation,
 		BranchEntries:      branchEntries,

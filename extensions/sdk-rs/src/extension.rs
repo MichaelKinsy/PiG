@@ -2081,6 +2081,10 @@ impl Extension {
                         event_replicas.apply(&mut req);
                         conn.request_state(&id, "started", None)?;
                         let cancel = RequestCancel::new();
+                        if req.signal_aborted {
+                            // session_before_compact / session_before_tree dispatched after the event's signal aborted: the request starts cancelled, as a cancel frame queued ahead of it would (runner.ts emit awaits the handler with event.signal aborted), so is_cancelled() is true on the handler's first line.
+                            cancel.cancel("context canceled".to_string());
+                        }
                         active_requests
                             .lock()
                             .unwrap()
@@ -2196,7 +2200,11 @@ impl Extension {
                         .filter(|id| !id.is_empty())
                         .or(env.id.as_deref())
                         .unwrap_or("");
-                    conn.cancel_pending_calls_for(request_id);
+                    // A signal-only cancel (session_before_compact / session_before_tree: Pi's abort fires event.signal and nothing else) aborts the signal the handler holds and cancels no host call: the handler's calls, pending and later, are answered and its reply is delivered. An ordinary cancel ends the request and its calls.
+                    let signal_only = env.cancel.as_ref().is_some_and(|c| c.signal_only);
+                    if !signal_only {
+                        conn.cancel_pending_calls_for(request_id);
+                    }
                     if let Some(cancel) = active_requests.lock().unwrap().get(request_id) {
                         let reason = env
                             .cancel
@@ -4111,6 +4119,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("r1".to_string()),
                 request: Some(RequestMsg {
+                    signal_aborted: false,
                     child_session: None,
                     terminal_input: None,
                     stream: None,
@@ -4198,6 +4207,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("req-1".to_string()),
                 request: Some(RequestMsg {
+                    signal_aborted: false,
                     child_session: None,
                     terminal_input: None,
                     stream: None,
@@ -4226,6 +4236,7 @@ mod tests {
                 cancel: Some(crate::protocol::CancelMsg {
                     request_id: "req-1".to_string(),
                     reason: "test cancel".to_string(),
+                    signal_only: false,
                 }),
                 ..Default::default()
             },
@@ -4400,6 +4411,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("login-1".to_string()),
                 request: Some(RequestMsg {
+                    signal_aborted: false,
                     child_session: None,
                     terminal_input: None,
                     stream: None,
@@ -4471,6 +4483,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("key-1".to_string()),
                 request: Some(RequestMsg {
+                    signal_aborted: false,
                     child_session: None,
                     terminal_input: None,
                     stream: None,
@@ -4500,6 +4513,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("ref-1".to_string()),
                 request: Some(RequestMsg {
+                    signal_aborted: false,
                     child_session: None,
                     terminal_input: None,
                     stream: None,
@@ -4530,6 +4544,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("store-1".to_string()),
                 request: Some(RequestMsg {
+                    signal_aborted: false,
                     child_session: None,
                     terminal_input: None,
                     stream: None,
@@ -4557,6 +4572,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("status-1".to_string()),
                 request: Some(RequestMsg {
+                    signal_aborted: false,
                     child_session: None,
                     terminal_input: None,
                     stream: None,
@@ -4654,6 +4670,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("req-state".to_string()),
                 request: Some(RequestMsg {
+                    signal_aborted: false,
                     child_session: None,
                     terminal_input: None,
                     stream: None,
@@ -4691,6 +4708,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("req-user".to_string()),
                 request: Some(RequestMsg {
+                    signal_aborted: false,
                     child_session: None,
                     terminal_input: None,
                     stream: None,
@@ -4764,6 +4782,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("req-title".to_string()),
                 request: Some(RequestMsg {
+                    signal_aborted: false,
                     child_session: None,
                     terminal_input: None,
                     stream: None,
@@ -4826,6 +4845,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("req-panic".to_string()),
                 request: Some(RequestMsg {
+                    signal_aborted: false,
                     child_session: None,
                     terminal_input: None,
                     stream: None,
@@ -4910,6 +4930,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("req-label".to_string()),
                 request: Some(RequestMsg {
+                    signal_aborted: false,
                     child_session: None,
                     terminal_input: None,
                     stream: None,
@@ -4978,6 +4999,7 @@ mod tests {
             msg_type: "request".to_string(),
             id: Some(id.to_string()),
             request: Some(RequestMsg {
+                signal_aborted: false,
                 child_session: None,
                 terminal_input: None,
                 stream: None,

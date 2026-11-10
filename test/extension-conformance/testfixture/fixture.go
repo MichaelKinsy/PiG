@@ -1515,6 +1515,29 @@ func Extension() *sdk.Extension {
 		ext.OnEvent(name, func(sdk.Context, map[string]any) (any, error) { return result, nil })
 		return nil
 	})
+	// event_signal_probe subscribes to session_before_compact or session_before_tree with a handler that reports, in the result it returns, the state of the event's signal (the handler request's cancellation) on its first line and after a dialog it opened answered, and the dialog's answer (the mode is the event's customInstructions): the signal aborts while the dialog is pending (mode "wait") or before the handler runs (mode "first"), and Pi's in-process host call still returns its answer. The answer is no SDK's fallback: a cancelled call yields an error. TestSessionBeforeSignalReachesEverySDKWhenAbortedDuringDispatch.
+	ext.Command("event_signal_probe", "Subscribe to session_before_compact or session_before_tree with a handler that returns the state of its event signal", func(ctx sdk.Context, args string) error {
+		name := strings.TrimSpace(args)
+		ext.OnEvent(name, func(hctx sdk.Context, data map[string]any) (any, error) {
+			source := data
+			if name == "session_before_tree" {
+				source, _ = data["preparation"].(map[string]any)
+			}
+			mode, _ := source["customInstructions"].(string)
+			before := hctx.Err() != nil
+			// Pi's handler runs ordinary host calls with the signal aborted or aborting (custom-compaction.ts notifies first): the call returns the user's answer.
+			answer, _, err := hctx.Input("event_signal:"+name+":"+mode+":pending", "p")
+			if err != nil {
+				answer = "failed: " + err.Error()
+			}
+			state := fmt.Sprintf("event_signal:%s:%t:%t:%s", mode, before, hctx.Err() != nil, answer)
+			if name == "session_before_compact" {
+				return map[string]any{"compaction": map[string]any{"summary": state, "firstKeptEntryId": "k", "tokensBefore": 1}}, nil
+			}
+			return map[string]any{"label": state}, nil
+		})
+		return nil
+	})
 	// event_ordered_result_probe is event_result_probe whose result keeps its members in the order they are written: a Go handler authors an object with
 	// member order as a json.RawMessage (TestConformance_HandedBackEventObjectsKeepTheirMemberOrder proposes a draft this way).
 	ext.Command("event_ordered_result_probe", "Subscribe to an event with a handler that returns the given JSON, members in written order", func(ctx sdk.Context, args string) error {

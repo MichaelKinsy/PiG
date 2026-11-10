@@ -5570,19 +5570,24 @@ class Extension:
                 self._apply_event_stream(env.get("request") or {})
                 self._start_request(env)
             elif env.get("type") == "cancel":
-                req_id = (env.get("cancel") or {}).get("request_id") or env.get("id")
-                reason = (env.get("cancel") or {}).get("reason")
+                cancel_frame = env.get("cancel") or {}
+                req_id = cancel_frame.get("request_id") or env.get("id")
+                reason = cancel_frame.get("reason")
                 with self._state_lock:
                     active = self._active.get(req_id)
                     if active:
                         self._active[req_id] = (active[0], reason)
-                        stream = self._provider_active.get(req_id)
-                        if stream is not None:
-                            stream.end(None)
-                    parent = self._request_parents.get(req_id)
-                    if parent is not None:
-                        parent.state = "cancelled"
-                    cancelled_calls = self._cancel_parent_calls_locked(req_id)
+                    cancelled_calls = []
+                    if not cancel_frame.get("signal_only"):
+                        # An ordinary cancel ends the request and its host calls. A signal-only cancel (session_before_compact / session_before_tree: Pi's abort fires event.signal and nothing else) only aborts the signal the handler holds: its host calls, pending and later, are answered and its reply is delivered.
+                        if active:
+                            stream = self._provider_active.get(req_id)
+                            if stream is not None:
+                                stream.end(None)
+                        parent = self._request_parents.get(req_id)
+                        if parent is not None:
+                            parent.state = "cancelled"
+                        cancelled_calls = self._cancel_parent_calls_locked(req_id)
                 if active:
                     active[0].set()
                 for event in cancelled_calls:
@@ -6049,6 +6054,12 @@ class Extension:
             self._request_parents[req_id] = parent
         ctx = Context(self, req.get("tool_call_id"), req_id, cancel, _parent=parent, _tool_context=req.get("method") == "tool_call", _tool_index=req.get("tool_call_index"), _tool_args=req.get("args") if req.get("method") == "tool_call" else None)
         ctx._reason_provider = lambda: self._active.get(req_id, (None, None))[1]
+        if req.get("signal_aborted"):
+            # session_before_compact / session_before_tree dispatched after the event's signal aborted: the handler starts with its signal aborted (runner.ts emit awaits it so), so is_cancelled() is true on its first line, but the request is not cancelled: its host calls run, as Pi's ctx.ui.notify never fails on abort.
+            reason = "context canceled"
+            with self._state_lock:
+                self._active[req_id] = (cancel, reason)
+            cancel.set()
         return ctx
 
     def _handle_request(self, env: dict[str, Any], ctx: Context | None = None) -> None:

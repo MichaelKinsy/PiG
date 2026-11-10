@@ -369,9 +369,13 @@
 
 (defun start-request (ext env)
   (let* ((id (jget env "id" "")) (req (or (jget env "request") (obj)))
-         (request (make-request id (make-abort-signal))))
+         (request (make-request id (make-abort-signal)))
+         ;; session_before_compact / session_before_tree dispatched after the event's signal aborted: the handler starts with its signal aborted, as a cancel frame queued ahead of it would leave it (runner.ts emit awaits the handler with event.signal aborted), but the request is not cancelled: its host calls run, as Pi's ctx.ui.notify never fails on abort
+         (aborted (eq (jget req "signal_aborted") t)))
     (sb-thread:with-mutex ((extension-state-lock ext))
+      (when aborted (setf (request-reason request) "context canceled"))
       (setf (gethash id (extension-active ext)) request))
+    (when aborted (signal-abort (request-signal request) "context canceled"))
     (let ((ctx (make-ctx ext request env)))
       (let ((batch (jget req "batch")))
         ;; only the calls of one parallel batch take part in the dialog and continuation orders
@@ -391,18 +395,21 @@
           (respond ext id nil (format nil "start extension handler: ~A" e)))))))
 
 (defun handle-cancel (ext env)
+  "An ordinary cancel ends the request and its host calls. A signal-only cancel (session_before_compact / session_before_tree: Pi's abort fires event.signal and nothing else) only aborts the signal the handler holds: its host calls, pending and later, are answered and its reply is delivered."
   (let* ((cancel (or (jget env "cancel") (obj)))
          (id (let ((r (jget cancel "request_id"))) (if (stringp r) r (jget env "id" ""))))
          (reason (let ((r (jget cancel "reason"))) (and (stringp r) r)))
+         (signal-only (eq (jget cancel "signal_only") t))
          (request nil) (cancelled '()))
     (sb-thread:with-mutex ((extension-state-lock ext))
       (setf request (gethash id (extension-active ext)))
       (when request
         (setf (request-reason request) reason)
-        (unless (request-finished request) (setf (request-state request) :cancelled)))
-      (maphash (lambda (call-id slot) (declare (ignore call-id))
-                 (when (equal (call-slot-parent-id slot) id) (push slot cancelled)))
-               (extension-pending ext)))
+        (unless (or signal-only (request-finished request)) (setf (request-state request) :cancelled)))
+      (unless signal-only
+        (maphash (lambda (call-id slot) (declare (ignore call-id))
+                   (when (equal (call-slot-parent-id slot) id) (push slot cancelled)))
+                 (extension-pending ext))))
     (when request (signal-abort (request-signal request) reason))
     (dolist (slot cancelled) (finish-slot slot nil :cancelled t))))
 

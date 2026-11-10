@@ -2553,6 +2553,27 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("event_result_probe", "Subscribe to an event with a handler that returns the given JSON", event_result_probe)
 
+    def event_signal_probe(ctx, args):
+        # Subscribe to session_before_compact or session_before_tree with a handler that returns the state of its event signal (the request's cancellation) on its first line and after a dialog it opened was answered, and the dialog's answer: the signal aborts while the dialog is pending (mode "wait") or before the handler runs (mode "first"), and Pi's in-process host call still returns its answer.
+        name = args.strip()
+
+        def handler(hctx, data):
+            source = data.get("preparation", {}) if name == "session_before_tree" else data
+            mode = source.get("customInstructions", "")
+            before = hctx.is_cancelled()
+            try:
+                answer = hctx.input("event_signal:%s:%s:pending" % (name, mode), "p")[0]
+            except Exception as error:
+                answer = "failed: %s" % error
+            state = "event_signal:%s:%s:%s:%s" % (mode, str(before).lower(), str(hctx.is_cancelled()).lower(), answer)
+            if name == "session_before_compact":
+                return {"compaction": {"summary": state, "firstKeptEntryId": "k", "tokensBefore": 1}}
+            return {"label": state}
+
+        ext.on_event(name, handler)
+
+    ext.command("event_signal_probe", "Subscribe to session_before_compact or session_before_tree with a handler that returns the state of its event signal", event_signal_probe)
+
     def event_ordered_result_probe(ctx, args):
         # A Python dict keeps its members in the order they were written, so this is event_result_probe.
         name, _, raw = args.strip().partition(" ")
