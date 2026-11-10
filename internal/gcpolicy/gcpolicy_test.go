@@ -23,6 +23,10 @@ func unsetGOGC(t *testing.T) {
 	if err := os.Unsetenv("GOGC"); err != nil {
 		t.Fatal(err)
 	}
+	// /gc/heap/live:bytes is the live heap of the last collection, which an earlier test of this process (-count above 1) may have
+	// left at its 80 MB: a watcher's first read would take that for a collection since Apply and fall back at once. A collection of
+	// the now small heap makes the first read describe the state the test starts from.
+	runtime.GC()
 }
 
 // D175: with GOGC unset the target holds over collections of a small heap, and the first collection that finds more than
@@ -72,18 +76,29 @@ func TestApplyFallsBackWithoutACleanup(t *testing.T) {
 	started, release := make(chan struct{}), make(chan struct{})
 	defer close(release)
 	type blocker struct{ _ [16]byte }
-	// One collection per cleanup: cleanups queued together share a block that one goroutine runs in turn, while each collection's
-	// cleanup finds the goroutines already blocked and makes the runtime start another, up to its limit.
+	// Production registers no cleanup (watchLiveHeap polls metrics), so this loop is scaffolding that occupies the runtime's cleanup
+	// goroutines, not a model of production. One collection per cleanup: cleanups queued together share a block that one goroutine runs
+	// in turn, so each collection's cleanup has to find the goroutines already blocked. The runtime starts one more goroutine only from
+	// a later runtime.AddCleanup, once a collection's wake-up found none asleep (runtime/mcleanup.go: wake raises needg, AddCleanup
+	// calls createGs), and that wake-up runs some time after runtime.GC returns. The runtime offers no signal for the goroutine
+	// starting, so until the blocking cleanup has started the loop registers a cleanup that returns at once, bounded by a deadline.
 	for range blocked {
 		runtime.AddCleanup(new(blocker), func(struct{}) {
 			started <- struct{}{}
 			<-release
 		}, struct{}{})
 		runtime.GC()
-		select {
-		case <-started:
-		case <-time.After(10 * time.Second):
-			t.Fatalf("a blocking cleanup did not run after a collection with %d cleanup goroutines to block", blocked)
+		deadline := time.Now().Add(10 * time.Second)
+		for ran := false; !ran; {
+			select {
+			case <-started:
+				ran = true
+			case <-time.After(time.Millisecond):
+				if time.Now().After(deadline) {
+					t.Fatalf("a blocking cleanup did not run after a collection with %d cleanup goroutines to block", blocked)
+				}
+				runtime.AddCleanup(new(blocker), func(struct{}) {}, struct{}{})
+			}
 		}
 	}
 	defer Apply()()
@@ -110,8 +125,14 @@ func TestStopWaitsForTheWatcher(t *testing.T) {
 	unsetGOGC(t)
 	defer debug.SetGCPercent(debug.SetGCPercent(DefaultPercent))
 	stop := Apply()
-	if !watcherRunning() {
-		t.Fatal("no watcher goroutine after Apply")
+	defer func() { stop() }() // A failed check must not leave the watcher for the tests after it.
+	// Apply starts the watcher goroutine; the scheduler may not have run it yet.
+	deadline := time.Now().Add(5 * time.Second)
+	for !watcherRunning() {
+		if time.Now().After(deadline) {
+			t.Fatal("no watcher goroutine after Apply")
+		}
+		time.Sleep(time.Millisecond)
 	}
 	stop()
 	if watcherRunning() {
@@ -122,7 +143,7 @@ func TestStopWaitsForTheWatcher(t *testing.T) {
 	stop = Apply()
 	live := make([]byte, FallbackLiveBytes+16<<20)
 	runtime.GC()
-	deadline := time.Now().Add(5 * time.Second)
+	deadline = time.Now().Add(5 * time.Second)
 	for watcherRunning() {
 		if time.Now().After(deadline) {
 			t.Fatal("the watcher did not end after the fallback fired")

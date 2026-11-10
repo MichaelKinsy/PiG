@@ -160,7 +160,7 @@ export function remoteProvider(runtime, declaration, EventStream) {
   };
   const authInput = input => ({ env: ({ name }) => input.ctx.env(name), fileExists: ({ path }) => input.ctx.fileExists(path) });
   const interaction = input => ({ prompt: ({ prompt }) => input.prompt({ ...prompt, signal: input.signal }), notify: ({ event }) => input.notify(event) });
-  const provider = { id: declaration.id, name: declaration.name, baseUrl: declaration.baseUrl, headers: declaration.headers, auth: {} };
+  const provider = { id: declaration.id, name: declaration.name, baseUrl: declaration.baseUrl, headers: declaration.headers, refreshModelsAuth: declaration.refreshModelsAuth, auth: {} };
   if (declaration.auth?.apiKey) provider.auth.apiKey = { ...declaration.auth.apiKey };
   if (declaration.auth?.oauth) provider.auth.oauth = { ...declaration.auth.oauth };
   const models = new Map();

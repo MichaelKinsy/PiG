@@ -74,7 +74,7 @@ func setupMissingCwd(t *testing.T, choice MissingSessionCwdChoice, switchCancell
 			case MissingSessionCwdFork:
 				return labels[1], true
 			}
-			return "", false
+			return labels[2], true // Cancel, as Pi's showExtensionSelector stub picks it
 		},
 	}
 	return f

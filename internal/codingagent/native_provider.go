@@ -226,26 +226,15 @@ func (r *ModelRegistry) refreshNativeProvider(parent context.Context, p *extensi
 		}
 		if network {
 			var refreshCredential *ai.Credential
-			// A refresh that started before exit must be saved; the cancellation of the catalog refresh ends only the wait for the lock.
-			_, err = ai.ModifyCredentialDetached(ctx, credentials, p.ID, func(current *ai.Credential) (*ai.Credential, error) {
-				// The transaction owns this overlay; reacquiring r.mu here inverts the registry-to-credential lock order used by catalog readers.
-				if key, ok := credentials.RuntimeAPIKey(p.ID); ok {
-					current = &ai.Credential{Type: ai.CredentialAPIKey, Key: key}
-				}
-				next, update, resolveErr := p.ResolveRefreshCredential(ctx, current)
-				refreshCredential = next
-				return update, resolveErr
-			})
-			if err != nil {
+			var ok bool
+			if refreshCredential, ok, err = r.resolveNetworkRefresh(ctx, p, credentials, credential); err != nil {
 				return err
 			}
-			if refreshCredential != nil {
-				credential = refreshCredential
-				stored, err = store.Read(ctx, p.ID)
-				if err != nil {
+			if ok {
+				if stored, err = store.Read(ctx, p.ID); err != nil {
 					return err
 				}
-				if err = refresh(credential, stored, true, force); err != nil {
+				if err = refresh(refreshCredential, stored, true, force); err != nil {
 					return err
 				}
 				if current, own := nativeProviderCurrentModels(ctx, p); current != nil {
@@ -294,6 +283,29 @@ func (r *ModelRegistry) refreshNativeProvider(parent context.Context, p *extensi
 	}
 	r.mu.Unlock()
 	return nil
+}
+
+// resolveNetworkRefresh is the credential for the network phase of a refresh and whether that phase runs: ok is false for a provider that is not configured or whose
+// credential cannot be resolved.
+// upstream: packages/ai/src/models.ts:resolveNetworkRefresh. With refreshModelsAuth "configured" the provider only has to be configured: no credential is resolved, so
+// an expired OAuth login is not refreshed first, and the network phase receives none. Otherwise the credential is resolved and refreshed first.
+func (r *ModelRegistry) resolveNetworkRefresh(ctx context.Context, p *extension.NativeProvider, credentials *ai.RuntimeCredentials, stored *ai.Credential) (*ai.Credential, bool, error) {
+	if p.RefreshModelsAuth == ai.RefreshModelsAuthConfigured {
+		check, err := p.CheckAuth(ctx, stored)
+		return nil, check != nil, err
+	}
+	var refreshCredential *ai.Credential
+	// A refresh that started before exit must be saved; the cancellation of the catalog refresh ends only the wait for the lock.
+	_, err := ai.ModifyCredentialDetached(ctx, credentials, p.ID, func(current *ai.Credential) (*ai.Credential, error) {
+		// The transaction owns this overlay; reacquiring r.mu here inverts the registry-to-credential lock order used by catalog readers.
+		if key, ok := credentials.RuntimeAPIKey(p.ID); ok {
+			current = &ai.Credential{Type: ai.CredentialAPIKey, Key: key}
+		}
+		next, update, resolveErr := p.ResolveRefreshCredential(ctx, current)
+		refreshCredential = next
+		return update, resolveErr
+	})
+	return refreshCredential, refreshCredential != nil, err
 }
 
 // nativeVisibleModels is the models of the list a credential can use. A provider's filterAllModels filters every model type; without it filterModels filters the chat models and every other model is kept.

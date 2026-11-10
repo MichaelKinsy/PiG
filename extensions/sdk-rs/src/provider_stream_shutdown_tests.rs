@@ -57,6 +57,7 @@ fn provider_transport_shutdown_does_not_settle_owned_stream() {
                     name: "Unsettled".into(),
                     base_url: None,
                     headers: None,
+                    refresh_models_auth: None,
                     auth: ProviderAuth::default(),
                     get_models: Arc::new(|| Ok(vec![])),
                     filter_models: None,

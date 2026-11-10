@@ -3361,7 +3361,7 @@
       "evidence": [
         "chord/nextnode/http/upgrades_test.go"
       ],
-      "rationale": "19 cases (Pi 1.5.1 changes are try/finally only); added Go test TestPluginSocketsAnOversizedFrameIsNotTerminatedAndTheSocketReportsItsProtocolCloseCode: the error listener leaves a CLOSING socket alone, the server-side close event reports 1006 as Pi's ws does, and the peer sees 1009."
+      "rationale": "19 cases (Pi 1.5.1 changes are try/finally only); added Go test TestPluginSocketsAnOversizedFrameLeavesTheSocketClosingTheServerReports1006AndThePeer1009: the error listener leaves a CLOSING socket alone, the server-side close event reports 1006 as Pi's ws does, and the peer sees 1009."
     },
     {
       "path": "packages/chord/test/node/plugins/base-inputs.test.ts",

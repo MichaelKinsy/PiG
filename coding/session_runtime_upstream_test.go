@@ -13,10 +13,10 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
-// packages/coding-agent/test/suite/agent-session-runtime.test.ts:125.
+// packages/coding-agent/test/suite/agent-session-runtime.test.ts:126.
 // Pi agent-session.ts:_handleAgentEvent applies message_end replacements before persisting them.
 func TestAgentSessionRuntimeOriginalAssistantReplacement(t *testing.T) {
-	recordRuntimeOriginal(t, 125)
+	recordRuntimeOriginal(t, 126)
 	h := newRuntimeTestHarness(t, runtimeTestOptions{extension: func() extension.Extension {
 		return extension.Extension{
 			Path: "/runtime-cost", Handlers: map[string][]extension.HandlerFn{
@@ -61,7 +61,7 @@ func TestAgentSessionRuntimeOriginalAssistantReplacement(t *testing.T) {
 		}
 	}
 	if os.Getenv("PIG_RUNTIME_ORIGINAL_PROBE") != "" {
-		data, err := json.Marshal([]any{"runtime", 125, []any{live.Role, live.Usage.Cost.Total, persisted.Role, persisted.Usage.Cost.Total}})
+		data, err := json.Marshal([]any{"runtime", 126, []any{live.Role, live.Usage.Cost.Total, persisted.Role, persisted.Usage.Cost.Total}})
 		if err != nil {
 			t.Fatal(err)
 		}
