@@ -12,6 +12,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"path/filepath"
 	"reflect"
 	"slices"
@@ -104,6 +105,83 @@ func seedRunningTask(t *testing.T, store durable.Storage) {
 }
 
 func isClosedError(err error) bool { return err != nil && strings.Contains(err.Error(), "closed") }
+
+// providerResources is providerResources() of harness-lifecycle.test.ts: the provider resources a faux request allocates for its
+// session ID, and a pi-ai session resource cleanup hook that frees them and records what it freed.
+type providerResources struct {
+	mu         sync.Mutex
+	live       map[string]struct{}
+	cleaned    []string
+	unregister func()
+}
+
+func newProviderResources(t *testing.T) *providerResources {
+	t.Helper()
+	resources := &providerResources{live: map[string]struct{}{}}
+	resources.unregister = ai.RegisterSessionResourceCleanup(func(sessionId string) {
+		resources.mu.Lock()
+		defer resources.mu.Unlock()
+		targets := []string{sessionId}
+		if sessionId == "" {
+			targets = slices.Sorted(maps.Keys(resources.live))
+		}
+		resources.cleaned = append(resources.cleaned, targets...)
+		for _, target := range targets {
+			delete(resources.live, target)
+		}
+	})
+	t.Cleanup(resources.unregister)
+	return resources
+}
+
+func (resources *providerResources) allocate(sessionId string) error {
+	if sessionId == "" {
+		return errors.New("Provider request has no session ID")
+	}
+	resources.mu.Lock()
+	defer resources.mu.Unlock()
+	resources.live[sessionId] = struct{}{}
+	return nil
+}
+
+// answer is a faux step that allocates a resource for the request's session ID and answers text.
+func (resources *providerResources) answer(text string) ai.FauxResponseStep {
+	return ai.FauxFactoryStep(func(_ ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.AssistantMessage, error) {
+		if err := resources.allocate(options.SessionID); err != nil {
+			return ai.AssistantMessage{}, err
+		}
+		return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText(text)}}.AssistantMessage(), nil
+	})
+}
+
+// liveIds are the session IDs whose resources are allocated, sorted.
+func (resources *providerResources) liveIds() []string {
+	resources.mu.Lock()
+	defer resources.mu.Unlock()
+	return slices.Sorted(maps.Keys(resources.live))
+}
+
+// cleanedIds are the session IDs the cleanup hook freed, in order.
+func (resources *providerResources) cleanedIds() []string {
+	resources.mu.Lock()
+	defer resources.mu.Unlock()
+	return slices.Clone(resources.cleaned)
+}
+
+// providerSessionId is the persisted provider session ID of a conversation (ProviderDoc).
+func providerSessionId(t *testing.T, harness Harness, conversation Conversation) string {
+	t.Helper()
+	state, err := durable.Snapshot[ProviderState](testContext, harness, ProviderDoc, conversation.Id())
+	if err != nil || state == nil {
+		t.Fatalf("provider state of conversation %d: %v, %v", conversation.Id(), state, err)
+	}
+	return state.SessionId
+}
+
+// sameIds reports whether got and want hold the same session IDs, in any order.
+func sameIds(got, want []string) bool {
+	return slices.Equal(slices.Sorted(slices.Values(got)), slices.Sorted(slices.Values(want)))
+}
 
 func TestHarnessOpen(t *testing.T) {
 	// harness-lifecycle.test.ts:85 it("closes without a cancelled caller context and rethrows the original error when open fails")
@@ -237,6 +315,129 @@ func TestHarnessClose(t *testing.T) {
 			if readAfterRelease == nil || !*readAfterRelease || storageOpen(store) {
 				t.Fatalf("%s: storage lifetime", where)
 			}
+		}
+	})
+
+	// harness-lifecycle.test.ts:233 it("cleans up provider session resources after running tasks join"), regression coverage for #11676.
+	t.Run("cleans up provider session resources after running tasks join", func(t *testing.T) {
+		resources := newProviderResources(t)
+		setup := chatSetup(t)
+		setup.Faux.SetResponses([]ai.FauxResponseStep{resources.answer("ok")})
+		reached, gate := deferred(), deferred()
+		stubborn := oneStep("test.provider-cleanup-order", func(context.Context) error {
+			reached.resolve()
+			_ = gate.wait(context.Background())
+			return nil
+		})
+		addTask(t, setup.Registry, stubborn.Erased())
+		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
+		sessionId := providerSessionId(t, harness, root)
+		if _, err := submitInput(t, root, "allocate").Wait(testContext); err != nil {
+			t.Fatal(err)
+		}
+		start(t, root, stubborn)
+		harness.Resume()
+		_ = reached.wait(testContext)
+		closing := asyncErr(func() error { return harness.Close(testContext) })
+		if settled(closing.done) {
+			t.Fatal("close did not wait for the running task")
+		}
+		if cleaned := resources.cleanedIds(); len(cleaned) != 0 {
+			t.Fatalf("cleaned before the task joined: %v", cleaned)
+		}
+		if live := resources.liveIds(); !reflect.DeepEqual(live, []string{sessionId}) {
+			t.Fatalf("live = %v, want [%s]", live, sessionId)
+		}
+		gate.resolve()
+		if _, err := closing.wait(); err != nil {
+			t.Fatal(err)
+		}
+		resources.unregister()
+		if cleaned := resources.cleanedIds(); !reflect.DeepEqual(cleaned, []string{sessionId}) {
+			t.Fatalf("cleaned = %v, want [%s]", cleaned, sessionId)
+		}
+		if live := resources.liveIds(); len(live) != 0 {
+			t.Fatalf("live = %v", live)
+		}
+	})
+
+	// harness-lifecycle.test.ts:262 it("cleans up provider session resources when the Harness fails")
+	t.Run("cleans up provider session resources when the Harness fails", func(t *testing.T) {
+		resources := newProviderResources(t)
+		setup := chatSetup(t)
+		setup.Faux.SetResponses([]ai.FauxResponseStep{resources.answer("ok")})
+		store := newControlledStorage()
+		harness, root := openChat(t, store, setup)
+		sessionId := providerSessionId(t, harness, root)
+		if _, err := submitInput(t, root, "allocate").Wait(testContext); err != nil {
+			t.Fatal(err)
+		}
+		failure := errors.New("disk gone")
+		store.failNextCommit(failure)
+		_, err := durable.Commit(testContext, root, func(tx durable.Tx) (durable.EntryRecord, error) {
+			return tx.AppendEntry(root.Id(), durable.EntryDraft{Kind: "note", Data: map[string]any{}})
+		})
+		if !errors.Is(err, failure) {
+			t.Fatalf("commit error = %v, want the storage failure", err)
+		}
+		<-harness.Closed()
+		resources.unregister()
+		if end := harness.End(); end.Kind != durable.SessionEndFailed || !errors.Is(end.Error, failure) {
+			t.Fatalf("end = %+v, want failed with the storage failure", end)
+		}
+		if cleaned := resources.cleanedIds(); !reflect.DeepEqual(cleaned, []string{sessionId}) {
+			t.Fatalf("cleaned = %v, want [%s]", cleaned, sessionId)
+		}
+		if live := resources.liveIds(); len(live) != 0 {
+			t.Fatalf("live = %v", live)
+		}
+	})
+
+	// harness-lifecycle.test.ts:280 it("does not clean up provider session resources owned by another Harness")
+	t.Run("does not clean up provider session resources owned by another Harness", func(t *testing.T) {
+		resources := newProviderResources(t)
+		firstSetup, secondSetup := chatSetup(t), chatSetup(t)
+		firstSetup.Faux.SetResponses([]ai.FauxResponseStep{resources.answer("first root"), resources.answer("first child")})
+		secondSetup.Faux.SetResponses([]ai.FauxResponseStep{resources.answer("second")})
+		firstHarness, firstRoot := openChat(t, storage.NewMemoryStorage(), firstSetup)
+		firstChild, err := firstHarness.CreateConversation(testContext, ConversationCreateOptions{
+			Ownership: ownerless,
+			Agent:     &AgentChange{Model: SetTo(durable.ModelRef{Provider: "faux", ModelId: "faux-1"})},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		secondHarness, secondRoot := openChat(t, storage.NewMemoryStorage(), secondSetup)
+		firstId := providerSessionId(t, firstHarness, firstRoot)
+		firstChildId := providerSessionId(t, firstHarness, firstChild)
+		secondId := providerSessionId(t, secondHarness, secondRoot)
+		for _, send := range []struct {
+			conversation Conversation
+			text         string
+		}{{firstRoot, "allocate first root"}, {firstChild, "allocate first child"}, {secondRoot, "allocate second"}} {
+			if _, err := submitInput(t, send.conversation, send.text).Wait(testContext); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if err := firstHarness.Close(testContext); err != nil {
+			t.Fatal(err)
+		}
+		cleanedAfterFirst, liveAfterFirst := resources.cleanedIds(), resources.liveIds()
+		if err := secondHarness.Close(testContext); err != nil {
+			t.Fatal(err)
+		}
+		resources.unregister()
+		if len(cleanedAfterFirst) != 2 || !sameIds(cleanedAfterFirst, []string{firstId, firstChildId}) {
+			t.Fatalf("cleaned after the first Harness = %v, want %v", cleanedAfterFirst, []string{firstId, firstChildId})
+		}
+		if !reflect.DeepEqual(liveAfterFirst, []string{secondId}) {
+			t.Fatalf("live after the first Harness = %v, want [%s]", liveAfterFirst, secondId)
+		}
+		if cleaned := resources.cleanedIds(); len(cleaned) != 3 || !sameIds(cleaned, []string{firstId, firstChildId, secondId}) {
+			t.Fatalf("cleaned = %v, want all three", cleaned)
+		}
+		if live := resources.liveIds(); len(live) != 0 {
+			t.Fatalf("live = %v", live)
 		}
 	})
 
