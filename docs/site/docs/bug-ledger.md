@@ -176,7 +176,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-1caec6e](#bf-1caec6e) | `pi.exec` reports `killed: true` for a command whose timeout fell due before the call settled, as Pi does… | PiG's own defect | All platforms | Unreleased |
 | [BF-1cc7519](#bf-1cc7519) | fix(sdk): a command, shortcut, flag or renderer registered after load reaches the host in every SDK | PiG's own defect | All platforms | Unreleased |
 | [BF-1ce00b0](#bf-1ce00b0) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
-| [BF-1cfaf26](#bf-1cfaf26) | Searching a long session in `/tree` allocates 30% less than in 0.7.0: lowercasing text with non-ASCII… | PiG's own defect | All platforms | Unreleased |
 | [BF-1d02c73](#bf-1d02c73) | Filters that Pi writes with `toLowerCase()` (select lists, the config selector, file autocomplete, `/model`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1d1c8aa](#bf-1d1c8aa) | RPC mode now ends by the signal when a termination signal arrives while a quit `session_shutdown` handler is… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1d5b272](#bf-1d5b272) | A text file passed as an `@file` argument that holds invalid UTF-8 now reaches the prompt as Pi sends it… | PiG's own defect | All platforms | 0.5.0 |
@@ -200,6 +199,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-20bdd2c](#bf-20bdd2c) | Markdown text that holds a lone UTF-16 surrogate (a paragraph, heading, emphasis, code span, link, table… | PiG's own defect | All platforms | Unreleased |
 | [BF-211af49](#bf-211af49) | `/hotkeys` lists extension shortcuts, and the extension shortcut listener tries them, in the order of Pi's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2123e97](#bf-2123e97) | fix(chord): the heartbeat report marker names the upstream file under the root layout | PiG's own defect | All platforms | Unreleased |
+| [BF-212fedd](#bf-212fedd) | `TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits` no longer counts the probe's own module as a write on… | PiG's own defect | All platforms | Unreleased |
+| [BF-212fedd-2](#bf-212fedd-2) | The RPC usage probe that checks Pi's stdout ordering no longer dies on an unhandled `write EPIPE` when the… | PiG's own defect | All platforms | Unreleased |
 | [BF-21649a0](#bf-21649a0) | fix(chord): sync bounds a log line at V8's string length in UTF-16 units and counts sizes in them; a closed… | PiG's own defect | All platforms | Unreleased |
 | [BF-2165463](#bf-2165463) | On Windows, saving credentials to `auth.json`, `models.json` or the MCP OAuth store no longer fails at once… | PiG's own defect | Windows | 0.5.0 |
 | [BF-2173cc1](#bf-2173cc1) | A Node extension's handler that wrote the session (`pi.setSessionName`, `pi.setLabel`, `pi.sendMessage`)… | PiG's own defect | All platforms | Unreleased |
@@ -1448,7 +1449,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-bd3e8ab](#bf-bd3e8ab) | On arm64 and other CPUs with a fused multiply-add, Kimi, Radius and xAI OAuth credentials store the `expires`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-bd3e8ab-2](#bf-bd3e8ab-2) | On arm64 and other CPUs with a fused multiply-add, the cache-warming expected savings (shown by `/session`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-bd8849d](#bf-bd8849d) | Quitting through `Runtime.Close` or the interactive quit during a tool call now waits for the interrupted run… | PiG's own defect | All platforms | Unreleased |
-| [BF-bd9ac3b](#bf-bd9ac3b) | Releasing a session's services no longer leaves the model selector's catalog refresh running | PiG's own defect | All platforms | Unreleased |
 | [BF-bdb7ad8](#bf-bdb7ad8) | A single server-sent-event line larger than 32 MiB (for example a base64 image chunk) no longer fails the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-be2920a](#bf-be2920a) | A tool with JSON-schema constrained sampling `strict: "require"` now fails an OpenAI Chat Completions request… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-be6803c](#bf-be6803c) | The /tree "Summarize branch?" selector and "Custom summarization instructions" editor, the /import… | PiG's own defect | All platforms | 0.5.2 |
@@ -1500,6 +1500,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-c5edfc4](#bf-c5edfc4) | The read tool streams a text file instead of loading it whole: only the lines it can show stay in memory, so… | PiG's own defect | All platforms | Unreleased |
 | [BF-c60a7b1](#bf-c60a7b1) | The regular-mode renderer no longer writes OSC 133 prompt markers to the terminal | PiG's own defect | All platforms | 0.7.0 |
 | [BF-c60a7b1-2](#bf-c60a7b1-2) | Bare URLs in Markdown now stop at CJK punctuation such as `，` and `。`, so Chinese, Japanese and Korean… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-c60d6af](#bf-c60d6af) | Searching a long session in `/tree` allocates as many objects as in 0.7.0 again, 30% fewer than with the… | PiG's own defect | All platforms | Unreleased |
 | [BF-c625bb4](#bf-c625bb4) | The durable `powershell` tool fails with "No command to run" when its program list is empty, instead of… | PiG's own defect | Windows | 0.5.0 |
 | [BF-c6c2cf3](#bf-c6c2cf3) | An `env` request whose context is already cancelled is now always sent to the daemon and then cancelled, as… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c6cad39](#bf-c6cad39) | fix(session): fork writes the header and entries through one file (Pi,) | PiG's own defect | All platforms | Unreleased |
@@ -1759,7 +1760,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-e63c61c](#bf-e63c61c) | fix(interactive): pump the owner loop while model selection awaits extensions (#208) (#209) | PiG's own defect | All platforms | Unreleased |
 | [BF-e64d2cf](#bf-e64d2cf) | fix(tui): a tool error result collapses like any other (Pi updateResult) | PiG's own defect | All platforms | Unreleased |
 | [BF-e65ade9](#bf-e65ade9) | `WaitForIdle` on the Harness or a Conversation no longer resumes before the `SubscribeCommits` listeners saw… | PiG's own defect | All platforms | 0.7.0 |
-| [BF-e676d48](#bf-e676d48) | `host.Registry` with a short `ReadyTimeout` no longer fails "did not become live" when the machine delays the… | PiG's own defect | All platforms | Unreleased |
 | [BF-e69d018](#bf-e69d018) | Closing an `env` connection, or losing it, now ends its daemon process with SIGTERM, as in Pi, instead of… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e73e536](#bf-e73e536) | Codemode scripts no longer fail immediately when both codemode workers are busy, for example with parallel… | A fix Pi shipped that PiG ported | All platforms | 0.5.2 |
 | [BF-e75a8b9](#bf-e75a8b9) | The external editor (`ctrl+g`) now edits `prompt.md` inside a private `pi-editor-*` directory under the… | PiG's own defect | All platforms | 0.5.0 |
@@ -4127,20 +4127,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `1ce00b0a53` (2026-10-13)
 - **Tests:** None recorded.
 
-### BF-1cfaf26
-
-**Searching a long session in `/tree` allocates 30% less than in 0.7.0: lowercasing text with non-ASCII…**
-
-- **Source:** PiG's own defect
-- **Symptom:** Searching a long session in `/tree` allocates 30% less than in 0.7.0: lowercasing text with non-ASCII characters (the search text of every row, model ids and names, and other callers of `jsstring.ToLower`) made a second copy of each text, which raised `BenchmarkTreeRecompute` by 43%.
-- **Root cause:** An earlier change kept lone surrogates in ToLower by decoding into a heap slice and converting a byte slice with string(...), two allocations more per non-ASCII text than []rune(s) on the stack and a strings.Builder. The lowercase memo of a /tree search lowercases every row once, so BenchmarkTreeRecompute rose from 11328 to 16254 allocs/op (bisected to that commit on the 0.7.1 line). UpperRune likewise built a byte slice for string(...). Same results, the old allocation counts, and a guard test for each.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `1cfaf26848` (2026-11-06)
-- **Tests:** `internal/jsstring/case_allocs_norace_test.go::TestToLowerOfLongNonASCIITextAllocatesTwice`, `internal/jsstring/case_allocs_norace_test.go::TestToLowerOfShortNonASCIITextAllocatesItsResultOnly`, `internal/jsstring/case_allocs_norace_test.go::TestUpperRuneOfAPlainCharacterAllocatesOnce`
-- **Release note:** Searching a long session in `/tree` allocates 30% less than in 0.7.0: lowercasing text with non-ASCII characters (the search text of every row, model ids and names, and other callers of `jsstring.ToLower`) made a second copy of each text, which raised `BenchmarkTreeRecompute` by 43%.
-
 ### BF-1d02c73
 
 **Filters that Pi writes with `toLowerCase()` (select lists, the config selector, file autocomplete, `/model`…**
@@ -4457,6 +4443,34 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `2123e97d81` (2026-11-07)
 - **Tests:** None recorded.
+
+### BF-212fedd
+
+**`TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits` no longer counts the probe's own module as a write on…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits` no longer counts the probe's own module as a write on the exit path: the host replies to a load before it writes the load's cache entries, so the test now waits for that write with one more request, and its probe loads 300 modules so a count that did not wait fails on every run.
+- **Root cause:** Main's changelog check failed after #420: two Fixed markers in changelog.d/nightly-.md named pre-squash commits. Both now name the #420 squash. The bug-ledger generator keeps each re-pointed bullet's own fix tests across the release fold, and no longer labels a duplicate-session bug as an allocation cost.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `212fedd23e` (2026-11-09, #426)
+- **Tests:** `automation/ci/bugledger/bugledger_test.go::TestAFoldedBulletRePointedAtASquashKeepsItsOwnFixsTests`, `automation/ci/bugledger/bugledger_test.go::TestAnIdentityAllocationIsNotAnAllocationCost`, `automation/ci/bugledger/bugledger_test.go::TestImpactAndPlatformComeFromTheWording`, `chord/nextnode/plugins/plugins_node_test.go::TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits`, `coding/cli/stdout_backpressure_test.go::TestRPCUsageProbeFailsWhenTheCLIWritesNoFrame`
+- **Release note:** `TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits` no longer counts the probe's own module as a write on the exit path: the host replies to a load before it writes the load's cache entries, so the test now waits for that write with one more request, and its probe loads 300 modules so a count that did not wait fails on every run. The host's comment states what its exit can still write (modules a plugin's call compiled after the last load or reload).
+
+### BF-212fedd-2
+
+**The RPC usage probe that checks Pi's stdout ordering no longer dies on an unhandled `write EPIPE` when the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The RPC usage probe that checks Pi's stdout ordering no longer dies on an unhandled `write EPIPE` when the CLI under test stops reading its stdin before the probe sends the prompt; it reports that the CLI wrote no frame, and any other failure to write the prompt still fails it.
+- **Root cause:** Main's changelog check failed after #420: two Fixed markers in changelog.d/nightly-.md named pre-squash commits. Both now name the #420 squash. The bug-ledger generator keeps each re-pointed bullet's own fix tests across the release fold, and no longer labels a duplicate-session bug as an allocation cost.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `212fedd23e` (2026-11-09, #426)
+- **Tests:** `automation/ci/bugledger/bugledger_test.go::TestAFoldedBulletRePointedAtASquashKeepsItsOwnFixsTests`, `automation/ci/bugledger/bugledger_test.go::TestAnIdentityAllocationIsNotAnAllocationCost`, `automation/ci/bugledger/bugledger_test.go::TestImpactAndPlatformComeFromTheWording`, `chord/nextnode/plugins/plugins_node_test.go::TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits`, `coding/cli/stdout_backpressure_test.go::TestRPCUsageProbeFailsWhenTheCLIWritesNoFrame`
+- **Release note:** The RPC usage probe that checks Pi's stdout ordering no longer dies on an unhandled `write EPIPE` when the CLI under test stops reading its stdin before the probe sends the prompt; it reports that the CLI wrote no frame, and any other failure to write the prompt still fails it.
 
 ### BF-21649a0
 
@@ -21787,20 +21801,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `coding/runtime_dispose_settlement_test.go::TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown`
 - **Release note:** Quitting through `Runtime.Close` or the interactive quit during a tool call now waits for the interrupted run to settle before `session_shutdown` and disposal, so the aborted tool result and the final assistant message are saved and extensions see `session_shutdown` after them. Print mode's termination-signal shutdown and RPC shutdown keep Pi 1.5.0's order (Pi #9124, D247).
 
-### BF-bd9ac3b
-
-**Releasing a session's services no longer leaves the model selector's catalog refresh running**
-
-- **Source:** PiG's own defect
-- **Symptom:** The refresh the selector starts and the shared catalog operation behind it were not joined by anything, so with a file-backed registry the operation could still write `auth.json` and `models-store.json` in the agent directory after the registry's model tasks were closed.
-- **Root cause:** - the registry runs the shared operation as a model task, so CloseModelTasks cancels and joins it, and a closed registry returns an aborted result; - the selector's refresh is a task of its runtime's ModelSelectorTaskOwner, which the interactive mode backs with its background tasks, so Run's teardown cancels and joins it, including the runtime call it raced with the selector's signal; Dispose still cancels from the constructor's return.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `bd9ac3b95a` (2026-11-09)
-- **Tests:** `internal/codingagent/model_selector_refresh_owned_test.go::TestAbandonedModelCatalogRefreshIsJoinedByRegistryClose`, `internal/codingagent/model_selector_refresh_owned_test.go::TestModelCatalogRefreshAfterRegistryCloseIsAborted`, `internal/codingagent/model_selector_refresh_owned_test.go::TestModelSelectorRefreshDoesNotOutliveShutdown`, `tui/model_selector_owner_test.go::TestModelSelectorDisposeBeforeTheOwnerStartsTheTask`, `tui/model_selector_owner_test.go::TestModelSelectorRefreshIsJoinedByItsTaskOwner`, `tui/model_selector_owner_test.go::TestModelSelectorWaitJoinsItsOwnRefresh`, `tui/model_selector_owner_test.go::TestModelSelectorWithAShutDownOwnerShowsNoRefreshStatus`
-- **Release note:** Releasing a session's services no longer leaves the model selector's catalog refresh running. Before, the refresh the selector starts and the shared catalog operation behind it were not joined by anything, so with a file-backed registry the operation could still write `auth.json` and `models-store.json` in the agent directory after the registry's model tasks were closed. The selector's refresh is now an owned task of the interactive mode, which cancels and joins it when the mode shuts down, and the operation behind it is a task of the model registry, which cancels and joins it when the session's services are released (for example on session replacement); at quit the process exits, as Pi's does. The refresh result and the picker are unchanged.
-
 ### BF-bdb7ad8
 
 **A single server-sent-event line larger than 32 MiB (for example a base64 image chunk) no longer fails the…**
@@ -22507,6 +22507,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `c60a7b14aa` (2026-10-29)
 - **Tests:** None recorded.
 - **Release note:** Bare URLs in Markdown now stop at CJK punctuation such as `，` and `。`, so Chinese, Japanese and Korean text after a URL is no longer part of the link. Explicit `[text](url)` links and `<url>` autolinks keep these characters.
+
+### BF-c60d6af
+
+**Searching a long session in `/tree` allocates as many objects as in 0.7.0 again, 30% fewer than with the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Searching a long session in `/tree` allocates as many objects as in 0.7.0 again, 30% fewer than with the regression: lowercasing text with non-ASCII characters (the search text of every row, model ids and names, and other callers of `jsstring.ToLower`) made a second copy of each text, which raised `BenchmarkTreeRecompute` by 43%.
+- **Root cause:** Not recorded.
+- **User impact:** Extra allocation or slower run
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c60d6af727` (2026-11-08, #420)
+- **Tests:** `ai/js_date_parse_stack_test.go::TestDateParseInStackBufferMatchesUTF16`, `chord/nextnode/plugins/plugins_node_test.go::TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits`, `chord/nextnode/workers/workers_lock_test.go::TestClearStaleLockAtKeepsAHeldLocksFileAndDoesNothingWithoutAFileOrForAbstractSocketsAndPipes`, `chord/nextnode/workers/workers_lock_test.go::TestClearStaleLockAtRemovesASocketFileNobodyAcceptsOnAndTheLockCanBeTakenAgain`, `chord/nextnode/workers/workers_lock_test.go::TestSocketFileLocksFailClosedOnAKilledHoldersSocketFileAndOnARegularFile`, `coding/extension/exec_timeout_unix_test.go::TestExecCommandReportsKilledWhenTheDeadlineIsDueAtSettle`, `env/daemon/pollable_unix_test.go::TestPollableLeavesOtherFilesAlone`, `env/daemon/pollable_unix_test.go::TestPollableMovesInheritedPipesIntoThePoller` and 15 more in docs/bug-ledger.json
+- **Release note:** Searching a long session in `/tree` allocates as many objects as in 0.7.0 again, 30% fewer than with the regression: lowercasing text with non-ASCII characters (the search text of every row, model ids and names, and other callers of `jsstring.ToLower`) made a second copy of each text, which raised `BenchmarkTreeRecompute` by 43%.
 
 ### BF-c625bb4
 
@@ -26094,20 +26108,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `e65ade9b1b` (2026-10-27)
 - **Tests:** `durable/harness/harness_tasks_test.go::TestPublicationAtAdoption`
 - **Release note:** `WaitForIdle` on the Harness or a Conversation no longer resumes before the `SubscribeCommits` listeners saw the commit that made the work idle. The idle settle that ends a reconcile pass, and the one the context expiry timer runs, could decide on a commit another goroutine had just adopted and resolve the waits ahead of its host listeners; Pi's continuation there cannot run between an adoption and its publication, and PiG's now leaves the decision to the settle queued behind the listeners.
-
-### BF-e676d48
-
-**`host.Registry` with a short `ReadyTimeout` no longer fails "did not become live" when the machine delays the…**
-
-- **Source:** PiG's own defect
-- **Symptom:** `host.Registry` with a short `ReadyTimeout` no longer fails "did not become live" when the machine delays the waiting goroutine past the deadline: in Pi the wait's publication, lookup and first usable check run before any timer, so the deadline reports why the registry cannot be read (`contract_mismatch` for a version the provider cannot serve, `unavailable/undeclared` for a registry nobody serves).
-- **Root cause:** host.Registry armed its deadline, then left the wait to a goroutine: the publication, the value lookup and the first usable() check. In Pi those are microtasks that run before any timer, so a deadline can only report the last reason the registry was unusable. In Go a loaded machine could run the deadline's section before the goroutine looked, and the wait failed "did not become live" instead of contract_mismatch or unavailable/undeclared (main's TestOlderReadersWithoutAValueMapping... failed that way on CI).
-- **User impact:** An operation failed or was rejected
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `e676d48779` (2026-11-09)
-- **Tests:** `chord/next/host/host_registry_readers_test.go::TestReadersAHostRegistryWhoseDeadlineElapsedBeforeItsFirstLookReportsWhyTheRegistryIsNotUsable`
-- **Release note:** `host.Registry` with a short `ReadyTimeout` no longer fails "did not become live" when the machine delays the waiting goroutine past the deadline: in Pi the wait's publication, lookup and first usable check run before any timer, so the deadline reports why the registry cannot be read (`contract_mismatch` for a version the provider cannot serve, `unavailable/undeclared` for a registry nobody serves). A deadline that finds the host published and the first check not yet made now lets that check run first.
 
 ### BF-e69d018
 

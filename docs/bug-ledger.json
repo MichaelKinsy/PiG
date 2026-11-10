@@ -4461,30 +4461,6 @@
       "tests": []
     },
     {
-      "id": "BF-1cfaf26",
-      "title": "Searching a long session in `/tree` allocates 30% less than in 0.7.0: lowercasing text with non-ASCII…",
-      "symptom": "Searching a long session in `/tree` allocates 30% less than in 0.7.0: lowercasing text with non-ASCII characters (the search text of every row, model ids and names, and other callers of `jsstring.ToLower`) made a second copy of each text, which raised `BenchmarkTreeRecompute` by 43%.",
-      "rootCause": "An earlier change kept lone surrogates in ToLower by decoding into a heap slice and converting a byte slice with string(...), two allocations more per non-ASCII text than []rune(s) on the stack and a strings.Builder. The lowercase memo of a /tree search lowercases every row once, so BenchmarkTreeRecompute rose from 11328 to 16254 allocs/op (bisected to that commit on the 0.7.1 line). UpperRune likewise built a byte slice for string(...). Same results, the old allocation counts, and a guard test for each.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "Searching a long session in `/tree` allocates 30% less than in 0.7.0: lowercasing text with non-ASCII characters (the search text of every row, model ids and names, and other callers of `jsstring.ToLower`) made a second copy of each text, which raised `BenchmarkTreeRecompute` by 43%.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "1cfaf26848",
-          "date": "2026-11-06"
-        }
-      ],
-      "tests": [
-        "internal/jsstring/case_allocs_norace_test.go::TestToLowerOfLongNonASCIITextAllocatesTwice",
-        "internal/jsstring/case_allocs_norace_test.go::TestToLowerOfShortNonASCIITextAllocatesItsResultOnly",
-        "internal/jsstring/case_allocs_norace_test.go::TestUpperRuneOfAPlainCharacterAllocatesOnce"
-      ]
-    },
-    {
       "id": "BF-1d02c73",
       "title": "Filters that Pi writes with `toLowerCase()` (select lists, the config selector, file autocomplete, `/model`…",
       "symptom": "Filters that Pi writes with `toLowerCase()` (select lists, the config selector, file autocomplete, `/model` search, minimatch `nocase`) lowercase as JavaScript does (`İ` becomes `i̇`, a final sigma `ς`), not as Go's `strings.ToLower`.",
@@ -5201,6 +5177,60 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-212fedd",
+      "title": "`TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits` no longer counts the probe's own module as a write on…",
+      "symptom": "`TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits` no longer counts the probe's own module as a write on the exit path: the host replies to a load before it writes the load's cache entries, so the test now waits for that write with one more request, and its probe loads 300 modules so a count that did not wait fails on every run.",
+      "rootCause": "Main's changelog check failed after #420: two Fixed markers in changelog.d/nightly-.md named pre-squash commits. Both now name the #420 squash. The bug-ledger generator keeps each re-pointed bullet's own fix tests across the release fold, and no longer labels a duplicate-session bug as an allocation cost.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits` no longer counts the probe's own module as a write on the exit path: the host replies to a load before it writes the load's cache entries, so the test now waits for that write with one more request, and its probe loads 300 modules so a count that did not wait fails on every run. The host's comment states what its exit can still write (modules a plugin's call compiled after the last load or reload).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "212fedd23e",
+          "date": "2026-11-09",
+          "pr": "426"
+        }
+      ],
+      "tests": [
+        "automation/ci/bugledger/bugledger_test.go::TestAFoldedBulletRePointedAtASquashKeepsItsOwnFixsTests",
+        "automation/ci/bugledger/bugledger_test.go::TestAnIdentityAllocationIsNotAnAllocationCost",
+        "automation/ci/bugledger/bugledger_test.go::TestImpactAndPlatformComeFromTheWording",
+        "chord/nextnode/plugins/plugins_node_test.go::TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits",
+        "coding/cli/stdout_backpressure_test.go::TestRPCUsageProbeFailsWhenTheCLIWritesNoFrame"
+      ]
+    },
+    {
+      "id": "BF-212fedd-2",
+      "title": "The RPC usage probe that checks Pi's stdout ordering no longer dies on an unhandled `write EPIPE` when the…",
+      "symptom": "The RPC usage probe that checks Pi's stdout ordering no longer dies on an unhandled `write EPIPE` when the CLI under test stops reading its stdin before the probe sends the prompt; it reports that the CLI wrote no frame, and any other failure to write the prompt still fails it.",
+      "rootCause": "Main's changelog check failed after #420: two Fixed markers in changelog.d/nightly-.md named pre-squash commits. Both now name the #420 squash. The bug-ledger generator keeps each re-pointed bullet's own fix tests across the release fold, and no longer labels a duplicate-session bug as an allocation cost.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The RPC usage probe that checks Pi's stdout ordering no longer dies on an unhandled `write EPIPE` when the CLI under test stops reading its stdin before the probe sends the prompt; it reports that the CLI wrote no frame, and any other failure to write the prompt still fails it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "212fedd23e",
+          "date": "2026-11-09",
+          "pr": "426"
+        }
+      ],
+      "tests": [
+        "automation/ci/bugledger/bugledger_test.go::TestAFoldedBulletRePointedAtASquashKeepsItsOwnFixsTests",
+        "automation/ci/bugledger/bugledger_test.go::TestAnIdentityAllocationIsNotAnAllocationCost",
+        "automation/ci/bugledger/bugledger_test.go::TestImpactAndPlatformComeFromTheWording",
+        "chord/nextnode/plugins/plugins_node_test.go::TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits",
+        "coding/cli/stdout_backpressure_test.go::TestRPCUsageProbeFailsWhenTheCLIWritesNoFrame"
+      ]
     },
     {
       "id": "BF-21649a0",
@@ -40142,34 +40172,6 @@
       ]
     },
     {
-      "id": "BF-bd9ac3b",
-      "title": "Releasing a session's services no longer leaves the model selector's catalog refresh running",
-      "symptom": "The refresh the selector starts and the shared catalog operation behind it were not joined by anything, so with a file-backed registry the operation could still write `auth.json` and `models-store.json` in the agent directory after the registry's model tasks were closed.",
-      "rootCause": "- the registry runs the shared operation as a model task, so CloseModelTasks cancels and joins it, and a closed registry returns an aborted result; - the selector's refresh is a task of its runtime's ModelSelectorTaskOwner, which the interactive mode backs with its background tasks, so Run's teardown cancels and joins it, including the runtime call it raced with the selector's signal; Dispose still cancels from the constructor's return.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "Releasing a session's services no longer leaves the model selector's catalog refresh running. Before, the refresh the selector starts and the shared catalog operation behind it were not joined by anything, so with a file-backed registry the operation could still write `auth.json` and `models-store.json` in the agent directory after the registry's model tasks were closed. The selector's refresh is now an owned task of the interactive mode, which cancels and joins it when the mode shuts down, and the operation behind it is a task of the model registry, which cancels and joins it when the session's services are released (for example on session replacement); at quit the process exits, as Pi's does. The refresh result and the picker are unchanged.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "bd9ac3b95a",
-          "date": "2026-11-09"
-        }
-      ],
-      "tests": [
-        "internal/codingagent/model_selector_refresh_owned_test.go::TestAbandonedModelCatalogRefreshIsJoinedByRegistryClose",
-        "internal/codingagent/model_selector_refresh_owned_test.go::TestModelCatalogRefreshAfterRegistryCloseIsAborted",
-        "internal/codingagent/model_selector_refresh_owned_test.go::TestModelSelectorRefreshDoesNotOutliveShutdown",
-        "tui/model_selector_owner_test.go::TestModelSelectorDisposeBeforeTheOwnerStartsTheTask",
-        "tui/model_selector_owner_test.go::TestModelSelectorRefreshIsJoinedByItsTaskOwner",
-        "tui/model_selector_owner_test.go::TestModelSelectorWaitJoinsItsOwnRefresh",
-        "tui/model_selector_owner_test.go::TestModelSelectorWithAShutDownOwnerShowsNoRefreshStatus"
-      ]
-    },
-    {
       "id": "BF-bdb7ad8",
       "title": "A single server-sent-event line larger than 32 MiB (for example a base64 image chunk) no longer fails the…",
       "symptom": "A single server-sent-event line larger than 32 MiB (for example a base64 image chunk) no longer fails the stream with `token too long` on the providers that use PiG's SSE decoder.",
@@ -41649,6 +41651,51 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-c60d6af",
+      "title": "Searching a long session in `/tree` allocates as many objects as in 0.7.0 again, 30% fewer than with the…",
+      "symptom": "Searching a long session in `/tree` allocates as many objects as in 0.7.0 again, 30% fewer than with the regression: lowercasing text with non-ASCII characters (the search text of every row, model ids and names, and other callers of `jsstring.ToLower`) made a second copy of each text, which raised `BenchmarkTreeRecompute` by 43%.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Extra allocation or slower run",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Searching a long session in `/tree` allocates as many objects as in 0.7.0 again, 30% fewer than with the regression: lowercasing text with non-ASCII characters (the search text of every row, model ids and names, and other callers of `jsstring.ToLower`) made a second copy of each text, which raised `BenchmarkTreeRecompute` by 43%.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c60d6af727",
+          "date": "2026-11-08",
+          "pr": "420"
+        }
+      ],
+      "tests": [
+        "ai/js_date_parse_stack_test.go::TestDateParseInStackBufferMatchesUTF16",
+        "chord/nextnode/plugins/plugins_node_test.go::TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits",
+        "chord/nextnode/workers/workers_lock_test.go::TestClearStaleLockAtKeepsAHeldLocksFileAndDoesNothingWithoutAFileOrForAbstractSocketsAndPipes",
+        "chord/nextnode/workers/workers_lock_test.go::TestClearStaleLockAtRemovesASocketFileNobodyAcceptsOnAndTheLockCanBeTakenAgain",
+        "chord/nextnode/workers/workers_lock_test.go::TestSocketFileLocksFailClosedOnAKilledHoldersSocketFileAndOnARegularFile",
+        "coding/extension/exec_timeout_unix_test.go::TestExecCommandReportsKilledWhenTheDeadlineIsDueAtSettle",
+        "env/daemon/pollable_unix_test.go::TestPollableLeavesOtherFilesAlone",
+        "env/daemon/pollable_unix_test.go::TestPollableMovesInheritedPipesIntoThePoller",
+        "env/daemon/pollable_unix_test.go::TestWriteStderrWaitsOnAFullPipe",
+        "env/daemon_stdio_mode_test.go::TestDaemonGivesBackBlockingStdioOnEveryExit",
+        "internal/codingagent/session_clone_memory_allocs_norace_test.go::TestCloneOfAnInMemorySessionReusesItsDecodedMessages",
+        "internal/codingagent/session_index_alloc_norace_test.go::TestIndexProbeSharesThePreviousID",
+        "internal/codingagent/session_index_alloc_test.go::TestDecodeJSONStringMatchesTheDecoder",
+        "internal/codingagent/session_index_alloc_test.go::TestIndexProbeAfterMatchesTheWalk",
+        "internal/jsstring/case_allocs_norace_test.go::TestToLowerOfLongNonASCIITextAllocatesTwice",
+        "internal/jsstring/case_allocs_norace_test.go::TestToLowerOfShortNonASCIITextAllocatesItsResultOnly",
+        "internal/jsstring/case_allocs_norace_test.go::TestUpperRuneOfAPlainCharacterAllocatesOnce",
+        "test/ci-images/nightly_fuzz_budget_test.go::TestNightlyFuzzJobTimeoutCoversEveryTarget",
+        "test/ci-images/nightly_oracle_install_test.go::TestNightlyPreparesTheOracleLikeCI",
+        "test/ci-images/nightly_oracle_install_test.go::TestNightlyRaceJobInstallsThePinnedSBCL",
+        "tui/markdown_wide_grapheme_oracle_test.go::TestMarkdownWideGraphemeAtOneColumnMatchesPi",
+        "tui/terminal_write_allocs_norace_test.go::TestWriteToTerminalOfAByteWriterDoesNotAllocate",
+        "tui/terminal_write_pool_test.go::TestWriteStringKeepsNoLargeCopyInThePool"
+      ]
     },
     {
       "id": "BF-c625bb4",
@@ -49850,28 +49897,6 @@
       ],
       "tests": [
         "durable/harness/harness_tasks_test.go::TestPublicationAtAdoption"
-      ]
-    },
-    {
-      "id": "BF-e676d48",
-      "title": "`host.Registry` with a short `ReadyTimeout` no longer fails \"did not become live\" when the machine delays the…",
-      "symptom": "`host.Registry` with a short `ReadyTimeout` no longer fails \"did not become live\" when the machine delays the waiting goroutine past the deadline: in Pi the wait's publication, lookup and first usable check run before any timer, so the deadline reports why the registry cannot be read (`contract_mismatch` for a version the provider cannot serve, `unavailable/undeclared` for a registry nobody serves).",
-      "rootCause": "host.Registry armed its deadline, then left the wait to a goroutine: the publication, the value lookup and the first usable() check. In Pi those are microtasks that run before any timer, so a deadline can only report the last reason the registry was unusable. In Go a loaded machine could run the deadline's section before the goroutine looked, and the wait failed \"did not become live\" instead of contract_mismatch or unavailable/undeclared (main's TestOlderReadersWithoutAValueMapping... failed that way on CI).",
-      "rootCauseSource": "commit",
-      "userImpact": "An operation failed or was rejected",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "`host.Registry` with a short `ReadyTimeout` no longer fails \"did not become live\" when the machine delays the waiting goroutine past the deadline: in Pi the wait's publication, lookup and first usable check run before any timer, so the deadline reports why the registry cannot be read (`contract_mismatch` for a version the provider cannot serve, `unavailable/undeclared` for a registry nobody serves). A deadline that finds the host published and the first check not yet made now lets that check run first.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "e676d48779",
-          "date": "2026-11-09"
-        }
-      ],
-      "tests": [
-        "chord/next/host/host_registry_readers_test.go::TestReadersAHostRegistryWhoseDeadlineElapsedBeforeItsFirstLookReportsWhyTheRegistryIsNotUsable"
       ]
     },
     {
