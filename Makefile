@@ -223,7 +223,7 @@ help-text: parity-deps ## Regenerate the pinned upstream CLI help with PiG's ide
 	@./automation/gen/gen-help.sh
 
 highlight-grammars: parity-deps ## Snapshot Pi's highlight.js grammars into tui/internal/hljs and re-record Pi's highlighting oracle
-	@node automation/gen/generate-highlight-grammars.mjs "$(PI_PACKAGE_ROOT)" tui/internal/hljs
+	@dir=$$(mktemp -d) && trap 'rm -rf "$$dir"' EXIT && node automation/gen/generate-highlight-grammars.mjs "$(PI_PACKAGE_ROOT)" tui/internal/hljs "$$dir/grammars_all.json" && go run ./automation/gen/zstdfile "$$dir/grammars_all.json" tui/internal/hljs/grammars_all.json.zst
 	@node automation/gen/generate-highlight-oracle.mjs "$(PI_PACKAGE_ROOT)" tui/internal/hljs/testdata/corpus.json tui/internal/hljs/testdata/oracle.json.gz
 
 zone-names: ## Regenerate the long time-zone names Node's ICU prints for date mapping keys (needs Node; output depends on Node's ICU, so it is not part of `make generate`)
