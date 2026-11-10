@@ -140239,9 +140239,9 @@
         "call:chord/nextnode/workers/workers_workers.go#Workers.Close"
       ],
       "evidence": [
+        "test:chord/nextnode/workers/workers_base_close_test.go#TestTheWorkerBaseAStartsWaitForTheBuildEndsClosedWhenTheBuildAndTheCloseAreBothDone",
         "test:chord/nextnode/workers/workers_base_close_test.go#TestTheWorkerBaseCloseKeepsTheBasesCopyUntilItsWorkersExitedACloserStillFindsItsProgram",
-        "test:chord/nextnode/workers/workers_base_held_linux_test.go#TestTheWorkerBaseACloseDoesNotWaitForTheBasesBuildAStartWaitingForItEndsAtTheCloseTheLateBuildWritesNothing",
-        "test:chord/nextnode/workers/workers_workers_test.go#TestCloseCancelsAStartWaitingInStartAddressNothingForksNewStartsRejectNoWorkerFailedAtShutdown"
+        "test:chord/nextnode/workers/workers_base_held_linux_test.go#TestTheWorkerBaseACloseDoesNotWaitForTheBasesBuildAStartWaitingForItEndsAtTheCloseTheLateBuildWritesNothing"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -140262,9 +140262,9 @@
         "call:chord/nextnode/workers/workers_workers.go#Workers.Close"
       ],
       "evidence": [
+        "test:chord/nextnode/workers/workers_base_close_test.go#TestTheWorkerBaseAStartsWaitForTheBuildEndsClosedWhenTheBuildAndTheCloseAreBothDone",
         "test:chord/nextnode/workers/workers_base_close_test.go#TestTheWorkerBaseCloseKeepsTheBasesCopyUntilItsWorkersExitedACloserStillFindsItsProgram",
-        "test:chord/nextnode/workers/workers_base_held_linux_test.go#TestTheWorkerBaseACloseDoesNotWaitForTheBasesBuildAStartWaitingForItEndsAtTheCloseTheLateBuildWritesNothing",
-        "test:chord/nextnode/workers/workers_workers_test.go#TestCloseCancelsAStartWaitingInStartAddressNothingForksNewStartsRejectNoWorkerFailedAtShutdown"
+        "test:chord/nextnode/workers/workers_base_held_linux_test.go#TestTheWorkerBaseACloseDoesNotWaitForTheBasesBuildAStartWaitingForItEndsAtTheCloseTheLateBuildWritesNothing"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -140465,7 +140465,7 @@
       "evidence": [
         "test:chord/nextnode/workers/workers_base_close_test.go#TestTheWorkerBaseCloseKeepsTheBasesCopyUntilItsWorkersExitedACloserStillFindsItsProgram",
         "test:chord/nextnode/workers/proof_chord_test.go#TestWorkerMainRunsTheForkedWorkerFromItsStartMessageToItsFirstServedCall",
-        "test:chord/nextnode/workers/workers_base_held_linux_test.go#TestTheWorkerBaseACloseDoesNotWaitForTheBasesBuildAStartWaitingForItEndsAtTheCloseTheLateBuildWritesNothing"
+        "test:chord/nextnode/workers/workers_base_close_test.go#TestTheWorkerBaseAStartsWaitForTheBuildEndsClosedWhenTheBuildAndTheCloseAreBothDone"
       ]
     },
     {
@@ -140486,8 +140486,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/workers/proof_chord_test.go#TestWorkerMainRunsTheForkedWorkerFromItsStartMessageToItsFirstServedCall",
-        "test:chord/nextnode/workers/workers_base_close_test.go#TestTheWorkerBaseCloseKeepsTheBasesCopyUntilItsWorkersExitedACloserStillFindsItsProgram",
-        "test:chord/nextnode/workers/workers_base_held_linux_test.go#TestTheWorkerBaseACloseDoesNotWaitForTheBasesBuildAStartWaitingForItEndsAtTheCloseTheLateBuildWritesNothing"
+        "test:chord/nextnode/workers/workers_base_close_test.go#TestTheWorkerBaseAStartsWaitForTheBuildEndsClosedWhenTheBuildAndTheCloseAreBothDone",
+        "test:chord/nextnode/workers/workers_base_close_test.go#TestTheWorkerBaseCloseKeepsTheBasesCopyUntilItsWorkersExitedACloserStillFindsItsProgram"
       ]
     },
     {
@@ -140508,8 +140508,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/workers/proof_chord_test.go#TestWorkerMainRunsTheForkedWorkerFromItsStartMessageToItsFirstServedCall",
-        "test:chord/nextnode/workers/workers_base_close_test.go#TestTheWorkerBaseCloseKeepsTheBasesCopyUntilItsWorkersExitedACloserStillFindsItsProgram",
-        "test:chord/nextnode/workers/workers_base_held_linux_test.go#TestTheWorkerBaseACloseDoesNotWaitForTheBasesBuildAStartWaitingForItEndsAtTheCloseTheLateBuildWritesNothing"
+        "test:chord/nextnode/workers/workers_base_close_test.go#TestTheWorkerBaseAStartsWaitForTheBuildEndsClosedWhenTheBuildAndTheCloseAreBothDone",
+        "test:chord/nextnode/workers/workers_base_close_test.go#TestTheWorkerBaseCloseKeepsTheBasesCopyUntilItsWorkersExitedACloserStillFindsItsProgram"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -140531,8 +140531,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/workers/proof_chord_test.go#TestWorkerMainRunsTheForkedWorkerFromItsStartMessageToItsFirstServedCall",
-        "test:chord/nextnode/workers/workers_base_close_test.go#TestTheWorkerBaseCloseKeepsTheBasesCopyUntilItsWorkersExitedACloserStillFindsItsProgram",
-        "test:chord/nextnode/workers/workers_base_held_linux_test.go#TestTheWorkerBaseACloseDoesNotWaitForTheBasesBuildAStartWaitingForItEndsAtTheCloseTheLateBuildWritesNothing"
+        "test:chord/nextnode/workers/workers_base_close_test.go#TestTheWorkerBaseAStartsWaitForTheBuildEndsClosedWhenTheBuildAndTheCloseAreBothDone",
+        "test:chord/nextnode/workers/workers_base_close_test.go#TestTheWorkerBaseCloseKeepsTheBasesCopyUntilItsWorkersExitedACloserStillFindsItsProgram"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
