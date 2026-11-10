@@ -39943,6 +39943,46 @@
       ]
     },
     {
+      "id": "BF-bbccefd",
+      "title": "A Durable value that holds a lone UTF-16 surrogate is stored as Pi stores it",
+      "symptom": "A Durable value that holds a lone UTF-16 surrogate is stored as Pi stores it.",
+      "rootCause": "TaskState and TaskOutcome (checkpoint, result, error message, reason), EntryDraft, ContextEdit, DocumentContent, ToolControl, the compaction modelOverrides keys, a tool checkpoint's arguments and AddressId encoded through encoding/json, which writes a lone surrogate as U+FFFD where Pi's JSON.stringify writes the escape. Two different units gave one AddressId, and a stored task record or document differed from Pi's. They go through jsstring.MarshalKeepingSurrogates now; the readers (EntryDraft, ContextEdit, DocumentContent, modelOverrides keys, a tool checkpoint's arguments, SqliteStorage's parseJSON and unquoteJS) go through UnmarshalKeepingSurrogates, so the escape reads back as the unit.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Durable value that holds a lone UTF-16 surrogate is stored as Pi stores it. Task states and outcomes (checkpoint, result, error message, reason), entry drafts, context edits, document contents, tool controls, compaction `modelOverrides` keys, a tool call's checkpoint arguments, extension and tool selections and view documents went through Go's `encoding/json`, which writes the unit as U+FFFD where `JSON.stringify` writes `\\ud800`, and read the escape back as U+FFFD. Two document kinds that differ only in such a unit also got one `AddressId`. SqliteStorage read a stored record's escape as U+FFFD as well. Pi's own `JSON.stringify` and `documents.ts` `addressId` answer for the encoders in the new tests.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7c3789482b",
+          "date": "2026-11-09"
+        },
+        {
+          "hash": "adad5282ac",
+          "date": "2026-11-09"
+        },
+        {
+          "hash": "bbccefdf7f",
+          "date": "2026-11-09"
+        },
+        {
+          "hash": "e37b86562b",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "durable/harness/tool_checkpoint_order_test.go::TestAToolCheckpointKeepsALoneSurrogateInItsArguments",
+        "durable/harness/tool_checkpoint_order_test.go::TestHarnessJSONKeepsALoneSurrogateInSelectionsAndViewDocs",
+        "durable/storage/sqlite/rows_pi_oracle_test.go::TestRowsMatchPi",
+        "durable/storage/sqlite/rows_test.go::TestParseJSONReadsALoneSurrogateEscapeAsTheUnit",
+        "durable/surrogate_pi_oracle_test.go::TestAddressIdKeepsDifferentLoneSurrogatesApart",
+        "durable/surrogate_pi_oracle_test.go::TestLoneSurrogatesDecodeAsJSONParseDoes",
+        "durable/surrogate_pi_oracle_test.go::TestLoneSurrogatesEncodeAsPiDoes"
+      ]
+    },
+    {
       "id": "BF-bc24321",
       "title": "fix(mem M3): arm the idle collection at run end and run it after 500 ms",
       "symptom": "fix(mem M3): arm the idle collection at run end and run it after 500 ms",

@@ -232335,9 +232335,9 @@
         "call:durable/codecs.go#editsOf"
       ],
       "evidence": [
+        "test:durable/surrogate_pi_oracle_test.go#TestLoneSurrogatesDecodeAsJSONParseDoes",
         "test:durable/harness/context_pi_oracle_test.go#TestContextDerivationMatchesPi",
-        "test:durable/types_upstream_test.go#TestTypesUpstream",
-        "test:durable/types_upstream_test.go#TestTypesUpstreamExclusivityLiteralsEncodeAsPiObjects"
+        "test:durable/types_upstream_test.go#TestTypesUpstream"
       ]
     },
     {
@@ -234730,7 +234730,7 @@
       "evidence": [
         "test:durable/session/codemode_checkpoints_upstream_test.go#TestBuiltInDocumentCheckpointPolicies",
         "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
-        "test:durable/harness/harness_compaction_test.go#TestPiLiveMigrations"
+        "test:durable/surrogate_pi_oracle_test.go#TestAddressIdKeepsDifferentLoneSurrogatesApart"
       ]
     },
     {
@@ -234772,9 +234772,9 @@
         "call:durable/session/held.go#SessionImpl.storeHolds"
       ],
       "evidence": [
+        "test:durable/surrogate_pi_oracle_test.go#TestLoneSurrogatesDecodeAsJSONParseDoes",
         "test:durable/session/codemode_checkpoints_upstream_test.go#TestBuiltInDocumentCheckpointPolicies",
-        "test:durable/session/session_deferred_commits_upstream_test.go#TestBasesAndOverflowOfHeldChanges",
-        "test:durable/session/session_deferred_commits_upstream_test.go#TestPublicationsOfDeferredCommits"
+        "test:durable/session/session_deferred_commits_upstream_test.go#TestBasesAndOverflowOfHeldChanges"
       ]
     },
     {
@@ -235284,9 +235284,9 @@
         "call:durable/entries.go#Entry.Draft"
       ],
       "evidence": [
+        "test:durable/surrogate_pi_oracle_test.go#TestLoneSurrogatesDecodeAsJSONParseDoes",
         "test:durable/harness/context_pi_oracle_test.go#TestContextDerivationMatchesPi",
-        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestReadingPiLiveInACommitStoresTheHeldPartial",
-        "test:durable/harness/view_pi_oracle_test.go#TestConversationViewsMatchPi"
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestReadingPiLiveInACommitStoresTheHeldPartial"
       ]
     },
     {
@@ -242165,8 +242165,8 @@
       ],
       "evidence": [
         "test:durable/harness/types_upstream_test.go#TestMissingPhaseHandlerFaultsTheTaskAsAThrowingHandlerDoes",
-        "test:durable/types_upstream_test.go#TestTypesUpstreamExclusivityLiteralsEncodeAsPiObjects",
-        "test:durable/core/driver/harness_blocked_core_test.go#TestBlockedTasks"
+        "test:durable/surrogate_pi_oracle_test.go#TestLoneSurrogatesDecodeAsJSONParseDoes",
+        "test:durable/types_upstream_test.go#TestTypesUpstreamExclusivityLiteralsEncodeAsPiObjects"
       ]
     },
     {
@@ -243649,7 +243649,7 @@
       "evidence": [
         "test:durable/toolsearch/toolsearch_pi_oracle_test.go#TestToolSearchMatchesPiOnSeededDeferredTools",
         "test:durable/core/driver/harness_inbox_core_test.go#TestInboxHandoff",
-        "test:durable/examples/agent_examples_test.go#TestExample26PlanMode"
+        "test:durable/surrogate_pi_oracle_test.go#TestLoneSurrogatesEncodeAsPiDoes"
       ]
     },
     {
@@ -245104,9 +245104,9 @@
         "call:durable/harness/tool.go#toolAbort"
       ],
       "evidence": [
+        "test:durable/harness/tool_checkpoint_order_test.go#TestAToolCheckpointKeepsALoneSurrogateInItsArguments",
         "test:durable/harness/tool_checkpoint_order_test.go#TestAToolCheckpointKeepsItsArgumentsInTheirStoredOrderWhenDecoded",
-        "test:durable/harness/tool_checkpoint_order_test.go#TestAToolCheckpointWithoutArgumentsShowsAnEmptyObject",
-        "test:durable/harness/agent_regression_test.go#TestCheckpointPhasesAreTheClosedPiUnions"
+        "test:durable/harness/tool_checkpoint_order_test.go#TestAToolCheckpointWithoutArgumentsShowsAnEmptyObject"
       ]
     },
     {
