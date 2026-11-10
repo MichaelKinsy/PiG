@@ -6,7 +6,7 @@ Pi 3b921e31, 7e713da2, cd5e3d2a, 23303aed. Red tests failed on 6231a1e77; green 
 | path | disposition | evidence | rationale |
 |---|---|---|---|
 | packages/chord/src/node/tui/sandbox.ts | ported | chord/nextnode/tui/tui_sandbox.go; chord/nextnode/tui/tui_sandbox_test.go | filepath.EvalSymlinks after os.MkdirTemp (Pi realpath); not a grant widening, a startup fix |
-| packages/chord/src/node/http/upgrades.ts | ported | chord/nextnode/http/upgrades.go; chord/nextnode/http/websocket.go; chord/nextnode/http/upgrades_test.go | error listener leaves a CLOSING socket alone; readFailed marks the socket Closing before `error` |
+| packages/chord/src/node/http/upgrades.ts | ported | chord/nextnode/http/upgrades.go; chord/nextnode/http/websocket.go; chord/nextnode/http/upgrades_test.go | error listener leaves a CLOSING socket alone; readFailed marks the socket Closing before `error`, and the server-side close event reports 1006 as Pi's ws does (the peer sees 1009) |
 
 ## test-mapping-v1.5.1.json
 | path | disposition | evidence | rationale |
