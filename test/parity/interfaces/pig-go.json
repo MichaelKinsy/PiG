@@ -240764,17 +240764,6 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#RuleGrepReadFile",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "RuleGrepReadFile",
-      "kind": "constant",
-      "exported": true,
-      "shape": {
-        "type": "untyped string"
-      },
-      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#RuleHostHighlightCode",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
       "name": "RuleHostHighlightCode",
@@ -241413,17 +241402,6 @@
       "shapeHash": "sha256:9f43e21e864aa2a8c4d5918bb33b0ed18078430157872fce215052d56c69eb01"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#filePlanner.isSDKStruct",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "filePlanner.isSDKStruct",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(literal *go/ast.CompositeLit, name string) bool"
-      },
-      "shapeHash": "sha256:e8628b926a8a8bd520d7296e8545ebe4979636c2be0ca12cd2a138f0f74cd90a"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#filePlanner.isUsageField",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
       "name": "filePlanner.isUsageField",
@@ -241501,17 +241479,6 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#filePlanner.planGrepReadFile",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "filePlanner.planGrepReadFile",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func()"
-      },
-      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#filePlanner.planHelper",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
       "name": "filePlanner.planHelper",
@@ -241565,17 +241532,6 @@
         "type": "func(rejected []go/types.Error, pos go/token.Pos) bool"
       },
       "shapeHash": "sha256:ccb87acf9d4db597389074e88eda067a1bc216020094594c1379d1bc64226c93"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#filePlanner.removeElement",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "filePlanner.removeElement",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(element go/ast.Expr, previous go/ast.Expr) edit"
-      },
-      "shapeHash": "sha256:ca9f9c6fe2f0ab0f7eced370b64589f6790f2c0f74033843686dda9b3e92077c"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#filePlanner.returnStatement",
@@ -241818,17 +241774,6 @@
         "type": "[]getter"
       },
       "shapeHash": "sha256:df826803bd88f0d7f995c596159f58cf058279594eb8e134d11acf70d42110e4"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#grepReadFileSymbol",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
-      "name": "grepReadFileSymbol",
-      "kind": "constant",
-      "exported": false,
-      "shape": {
-        "type": "untyped string"
-      },
-      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#helperDef",
@@ -320151,6 +320096,17 @@
       "shapeHash": "sha256:52b4b5e3c2f75fa4ba745cebd058fc28c6e0b7ef13573b702096921ca09c676f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#FindTool.insideGitRepo",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "FindTool.insideGitRepo",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(searchPath string) bool"
+      },
+      "shapeHash": "sha256:8be8d28d87658ba91bd63c72cdcd94b4945a2c306c8467b2b382682ae683ffcb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#FindToolOptions",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
       "name": "FindToolOptions",
@@ -322934,6 +322890,17 @@
       "shapeHash": "sha256:0fb6e6c1c7b9b2d75b58963aa780baf82c8aa0ad8e693b5adabd5055fcbd850c"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#findFdInvocation",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "findFdInvocation",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "findFdInvocation"
+      },
+      "shapeHash": "sha256:cf600243af33247cfa552d0a1ac9c92825ac0a43dada249a00390d0ccc492e4f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#findParams",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
       "name": "findParams",
@@ -322943,6 +322910,50 @@
         "type": "findParams"
       },
       "shapeHash": "sha256:64237e089919f3a5f525f414ab938a7074cecf510ecf5248f448ddf1ad8d7c27"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#findPathFilter",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "findPathFilter",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "findPathFilter"
+      },
+      "shapeHash": "sha256:4ccfdc6ce125758ffe98b2f49ae9a8ee1cef1d7ecf8841c08fc784ea7cfed212"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#findPathFilter.Write",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "findPathFilter.Write",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(p []byte) (int, error)"
+      },
+      "shapeHash": "sha256:48d6fec6945366db651b1d044218cf8f10dc179edbd193a495136aafd43ae933"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#findPathFilter.finish",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "findPathFilter.finish",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#findPathFilter.line",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "findPathFilter.line",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(raw []byte)"
+      },
+      "shapeHash": "sha256:f717b537b20b144fcd7c611be47619cccd4cf86f62457a632861da078e988a47"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#fixedShellPath",
@@ -323957,6 +323968,17 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#newFindFdInvocation",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "newFindFdInvocation",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(pattern string, searchPath string, effectiveLimit float64, windows bool, insideGit bool) (findFdInvocation, error)"
+      },
+      "shapeHash": "sha256:6c1dce36d5cc230362548858dd03933e7bb02b52c66c6f2270bb1a91e4371be3"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#newHeadJoin",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
       "name": "newHeadJoin",
@@ -324166,6 +324188,17 @@
       "shapeHash": "sha256:1283b5b49491d927bee1e368e459e20819304fb8f9370e314e4617594820437b"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#powerShellCommand",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "powerShellCommand",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(command string, shell ShellConfig) string"
+      },
+      "shapeHash": "sha256:0d23a861e138f51fade04b32d64f7ece261d4121bd70d9b1edee762ec0f40424"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#powerShellConfigFor",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
       "name": "powerShellConfigFor",
@@ -324180,6 +324213,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#powerShellUTF8OutputPrefix",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
       "name": "powerShellUTF8OutputPrefix",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#powerShellWindowsExitSuffix",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "powerShellWindowsExitSuffix",
       "kind": "constant",
       "exported": false,
       "shape": {

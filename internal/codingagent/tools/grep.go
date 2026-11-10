@@ -51,6 +51,10 @@ type GrepTool struct {
 type GrepOperations struct {
 	// IsDirectory reports whether the path is a directory and fails when it does not exist.
 	IsDirectory func(absolutePath string) (bool, error)
+	// ReadFile is upstream's optional readFile.
+	//
+	// Deprecated: Ignored. Context lines come directly from ripgrep, so the tool never calls it. Wrap the tool's Execute to search a remote system.
+	ReadFile func(absolutePath string) (string, error)
 }
 
 func (t *GrepTool) operations() GrepOperations {

@@ -106,7 +106,7 @@ func TestConformance_BuiltinToolDelegationAcrossSDKs(t *testing.T) {
 			{"kind": "delegate", "tool": "find", "factoryCwd": factoryCwd, "params": tcase{"pattern": "*.txt", "limit": 2}, "ops": "globlimit"},
 			// createReadStream (Pi's ReadOperations.createReadStream): the read tool reads a text file through the stream an extension opens, and never calls its readFile
 			{"kind": "delegate", "tool": "read", "factoryCwd": factoryCwd, "params": tcase{"path": "anything.txt"}, "ops": "stream"},
-			// grep never reads a matched file through an extension (Pi main 8da141c2a): isDirectory answers true and the Node reference's extension also passes a readFile, which stays uncalled
+			// grep never reads a matched file through an extension (Pi main 8da141c2a): isDirectory answers true and every SDK's extension also passes the deprecated readFile, which stays uncalled
 			{"kind": "delegate", "tool": "grep", "factoryCwd": factoryCwd, "params": tcase{"pattern": "needle-1", "path": "grepdir"}, "ops": "grepdir"},
 			// A truncated read's details, whose members Pi writes in an order a sorted map would lose
 			{"kind": "delegate", "tool": "read", "factoryCwd": factoryCwd, "params": tcase{"path": "big.txt"}},
@@ -241,8 +241,8 @@ func TestConformance_BuiltinToolDelegationAcrossSDKs(t *testing.T) {
 		}
 		return strings.Join(parts, "\n")
 	}
-	// calls lists what the tool called of the options' operations. Pi's grep calls isDirectory only: the reference's extension also passes a readFile (Pi main
-	// 8da141c2a removed it from GrepOperations), and no SDK has the member, so an equal list across SDKs shows the host never asks an extension for it.
+	// calls lists what the tool called of the options' operations. Pi's grep calls isDirectory only: every extension also passes the deprecated readFile
+	// (Pi's GrepOperations.readFile, ignored), so an equal list across SDKs shows the host never asks an extension for it.
 	calls := func(report map[string]any) string {
 		var encoded strings.Builder
 		encoder := json.NewEncoder(&encoded)

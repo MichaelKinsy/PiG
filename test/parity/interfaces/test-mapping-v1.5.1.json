@@ -5557,8 +5557,12 @@
     },
     {
       "path": "packages/coding-agent/test/find-abort-before-spawn.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f2925681665f816a98a8f6d4079eaa08e5ea8718c830410e7ac5072e4f9781d8"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:f2925681665f816a98a8f6d4079eaa08e5ea8718c830410e7ac5072e4f9781d8",
+      "evidence": [
+        "internal/codingagent/tools/find_pi151_test.go#TestFindDoesNotStartFdAfterAbortDuringGitLookup"
+      ],
+      "rationale": "Pi's single case aborts the signal while the git-ignore lookup runs and asserts fd is never spawned; the Go test aborts during the same lookup and asserts the fd launcher is not called (find.go checks ctx before starting fd). Dropping the post-lookup abort check compiles and fails the test."
     },
     {
       "path": "packages/coding-agent/test/first-time-setup-fork.test.ts",
@@ -5668,8 +5672,12 @@
     },
     {
       "path": "packages/coding-agent/test/grep-operations.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:1de83e88c03775b8adecafcd7278bf9bdbd9ddc3f5674cc756a1cb042e3e1c63"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:1de83e88c03775b8adecafcd7278bf9bdbd9ddc3f5674cc756a1cb042e3e1c63",
+      "evidence": [
+        "internal/codingagent/tools/grep_operations_readfile_test.go#TestGrepOperationsAcceptsADeprecatedReadFileHookWithoutCallingIt"
+      ],
+      "rationale": "Pi 1.5.1 keeps the deprecated GrepOperations.readFile hook accepted but never called; the Go GrepOperations row and the Go/Python/Rust/Lisp SDK builtin-tool bridges accept a ReadFile hook and the test asserts it is not invoked (Pi 244e5f5d). The SDK conformance grepdir case covers the cross-SDK shape."
     },
     {
       "path": "packages/coding-agent/test/http-dispatcher.test.ts",
@@ -6383,8 +6391,14 @@
     },
     {
       "path": "packages/coding-agent/test/powershell-tool.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:656774d3402cff510da1bf78679819c063adaaacb2084602aa03cbb75b3240cd"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:656774d3402cff510da1bf78679819c063adaaacb2084602aa03cbb75b3240cd",
+      "evidence": [
+        "internal/codingagent/tools/powershell_test.go#TestPowerShellArgsUseProcessLocalExecutionPolicyBypass",
+        "internal/codingagent/tools/powershell_exit_codes_test.go#TestPowerShellExitCodes",
+        "internal/codingagent/tools/powershell_exit_codes_test.go#TestPowerShellCommandAppendsTheExitSuffixForWindowsPowerShellOnly"
+      ],
+      "rationale": "Pi 1.5.1 (c9dd2c53) reports the native exit code in the powershell tool on Windows PowerShell 5.1 only; the Go tests pin the command suffix per shell flavour and the resulting exit codes. The exit-code cases execute only on Windows CI; the argument case is host independent."
     },
     {
       "path": "packages/coding-agent/test/preferred-providers.test.ts",
@@ -7513,8 +7527,16 @@
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/3302-find-path-glob.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:683a4c5570c743ef336d1441c30d10451ca8890b2cb5c6240aee6d878e8577cc"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:683a4c5570c743ef336d1441c30d10451ca8890b2cb5c6240aee6d878e8577cc",
+      "evidence": [
+        "test/parity/scenarios/tools/05-print-find-tool-exec.toml",
+        "docs/parity/pending-tests-triage.md",
+        "internal/codingagent/tools/find_regressions_test.go#TestFindPathGlobRegression",
+        "internal/codingagent/tools/find_pi151_test.go#TestFindPathPatternsPi151",
+        "internal/codingagent/tools/find_pi151_test.go#TestFindFdInvocationWindowsPathPattern"
+      ],
+      "rationale": "Audited all patterns and fixture paths in the Go test; removing --full-path compiles and fails the path-glob cases; the print-session scenario 05-print-find-tool-exec.toml enables find and echoes its actual result. Pi 1.5.1 adds src/direct.spec.ts, `src/*.spec.ts`, braces/classes, the limit and the Windows backslash cases (find_regressions_test.go, find_pi151_test.go)."
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/3303-find-nested-gitignore.test.ts",

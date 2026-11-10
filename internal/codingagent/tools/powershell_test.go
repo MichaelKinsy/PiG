@@ -158,7 +158,7 @@ func runShell(t *testing.T, ctx context.Context, cwd string, cfg shellToolConfig
 // context is resolved; the command prefix setting is bash-only.
 func TestShellToolWrapsCommandBeforeSpawn(t *testing.T) {
 	cfg := posixShellConfig(t, "powershell", "PowerShell")
-	cfg.operations.(*LocalShellOperations).WrapCommand = func(command string) string { return "echo wrapped\n" + command }
+	cfg.operations.(*LocalShellOperations).WrapCommand = func(command string, _ ShellConfig) string { return "echo wrapped\n" + command }
 	res := runShell(t, t.Context(), t.TempDir(), cfg, bashParams{Command: "echo body"})
 	if res.IsError || res.Text() != "wrapped\nbody\n" {
 		t.Fatalf("result = %+v, want wrapped output", res)
@@ -332,7 +332,7 @@ func TestPowerShellToolShellConfig(t *testing.T) {
 	if !ok || cfg.name != "powershell" || cfg.shellName != "PowerShell" || cfg.tempFilePrefix != "pi-powershell" || ops.ShellName != "PowerShell" || !cfg.exposeSessionEnvironment || cfg.binDir != "/agent/bin" {
 		t.Fatalf("config = %+v ops = %+v", cfg, ops)
 	}
-	if got, want := ops.WrapCommand("Get-Date"), "try { [Console]::OutputEncoding=[System.Text.Encoding]::UTF8 } catch {}\nGet-Date"; got != want {
+	if got, want := ops.WrapCommand("Get-Date", ShellConfig{Path: "pwsh.exe"}), "try { [Console]::OutputEncoding=[System.Text.Encoding]::UTF8 } catch {}\nGet-Date"; got != want {
 		t.Fatalf("wrapped command = %q, want %q", got, want)
 	}
 	if _, err := ops.ResolveShell(); (runtime.GOOS != "windows") != (err != nil) {

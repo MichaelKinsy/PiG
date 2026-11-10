@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
@@ -25,6 +26,23 @@ var PowerShellArgs = []string{"-NoProfile", "-NonInteractive", "-ExecutionPolicy
 // powerShellUTF8OutputPrefix mirrors upstream UTF8_OUTPUT_PREFIX: every
 // command first switches the console output encoding to UTF-8.
 const powerShellUTF8OutputPrefix = "try { [Console]::OutputEncoding=[System.Text.Encoding]::UTF8 } catch {}\n"
+
+// powerShellWindowsExitSuffix mirrors upstream WINDOWS_POWERSHELL_EXIT_SUFFIX. Windows PowerShell 5.1 turns redirected native stderr into error
+// records and sets $? to false, so `git push 2>&1 | Select-Object -Last 3` exits 1 although git exited 0 (#8842). PowerShell 7 does not. Exit 0
+// when the last failure is only such a record and the native command exited 0; otherwise keep the -Command rule: 0 when the last statement
+// succeeded, 1 when it failed. The lone `;` keeps an unfinished last statement, such as `Get-ChildItem |`, a parse error instead of continuing
+// into the suffix and running.
+const powerShellWindowsExitSuffix = "\n;\nif ($?) { exit 0 }\nif (($LASTEXITCODE -eq 0) -and (\"$($Error[0].FullyQualifiedErrorId)\" -like \"NativeCommandError*\")) { exit 0 }\nexit 1"
+
+// powerShellCommand is the text createLocalPowerShellOperations runs for command in shell: the UTF-8 output switch, the command, and for
+// powershell.exe the exit-code suffix. A final backtick would continue the user's last line into the suffix, so such a command is left unchanged.
+func powerShellCommand(command string, shell ShellConfig) string {
+	suffix := ""
+	if strings.ToLower(nodepath.Win32Basename(shell.Path)) == "powershell.exe" && !strings.HasSuffix(command, "`") {
+		suffix = powerShellWindowsExitSuffix
+	}
+	return powerShellUTF8OutputPrefix + command + suffix
+}
 
 // PowerShellPromptSnippet mirrors upstream
 // powershellToolSystemPromptContribution.snippet.
@@ -83,7 +101,7 @@ func powerShellConfigFor(goos string, lookPath func(string) (string, error), get
 // tools/powershell.ts: the shared shell tool definition with the PowerShell
 // config (name/label "powershell", shell name "PowerShell", prompt "PS>"),
 // local operations that resolve PowerShell through GetPowerShellConfig and
-// prefix each command with the UTF-8 output switch, and no command prefix or
+// prefix each command with the UTF-8 output switch (and, for Windows PowerShell 5.1, append the exit-code suffix), and no command prefix or
 // shell path setting (PowerShellToolOptions picks only operations,
 // exposeSessionEnvironment, and spawnHook from BashToolOptions).
 // PowerShellOperations is upstream PowerShellOperations: the same extension point as [BashOperations].
@@ -95,7 +113,7 @@ func NewLocalPowerShellOperations() *LocalShellOperations {
 	return &LocalShellOperations{
 		ShellName:    "PowerShell",
 		ResolveShell: GetPowerShellConfig,
-		WrapCommand:  func(command string) string { return powerShellUTF8OutputPrefix + command },
+		WrapCommand:  powerShellCommand,
 	}
 }
 

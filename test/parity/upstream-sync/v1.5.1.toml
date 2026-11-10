@@ -46,23 +46,23 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/core/tools/find.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/tools/find_pi151_test.go#TestFindFdInvocationWindowsPathPattern","test:internal/codingagent/tools/find_pi151_test.go#TestFindDoesNotStartFdAfterAbortDuringGitLookup"]
+rationale = "Pi 463b8f89 + a07f2512: Windows path patterns work with every fd version and fd is not started after an abort during the git lookup (find.go newFindFdInvocation, findPathFilter, internal/minimatch NoExt). Windows fd end to end only on Windows CI."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/grep.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/tools/grep_operations_readfile_test.go#TestGrepOperationsAcceptsADeprecatedReadFileHookWithoutCallingIt"]
+rationale = "Pi 244e5f5d restores the deprecated GrepOperations.readFile hook (GrepOperations.ReadFile in tools and the Go/Py/Rust/Lisp SDKs, conformance grepdir case)."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/powershell.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/tools/powershell_exit_codes_test.go#TestPowerShellCommandAppendsTheExitSuffixForWindowsPowerShellOnly","test:internal/codingagent/tools/powershell_exit_codes_test.go#TestPowerShellExitCodes"]
+rationale = "Pi c9dd2c53 reports native exit codes on Windows PowerShell 5.1 (powershell.go powerShellCommand). Exit-code cases run on Windows CI only."
 
 [[files]]
 path = "packages/coding-agent/src/package-manager-cli.ts"

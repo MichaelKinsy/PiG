@@ -15642,6 +15642,66 @@
       "tests": []
     },
     {
+      "id": "BF-55a5244",
+      "title": "The find tool on Windows returned no results for patterns with Windows separators such as `src\\**\\*.ts`, and…",
+      "symptom": "The find tool on Windows returned no results for patterns with Windows separators such as `src\\**\\*.ts`, and for every path pattern such as `src/**/*.ts` with fd 10.5.1.",
+      "rootCause": "Port of Pi (#11972, #9262) and (#11974). On Windows a backslash in the pattern is a separator, and a pattern with a slash is matched by a minimatch matcher (dot, noext, smart case, trailing /** as /**/*) over every entry fd lists; fd stops one match past the limit. The minimatch port gains the noext option. find returns before starting fd when the call was aborted during the .git lookup.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The find tool on Windows returned no results for patterns with Windows separators such as `src\\**\\*.ts`, and for every path pattern such as `src/**/*.ts` with fd 10.5.1. A Windows path pattern now matches the same way with every fd version: `src/**/*.ts` also finds files directly in `src/`, and `src/*.ts` no longer finds files in subdirectories.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "55a52447fc",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/tools/find_pi151_test.go::TestFindDoesNotStartFdAfterAbortDuringGitLookup",
+        "internal/codingagent/tools/find_pi151_test.go::TestFindFdInvocationFdGlobArguments",
+        "internal/codingagent/tools/find_pi151_test.go::TestFindFdInvocationWindowsPathPattern",
+        "internal/codingagent/tools/find_pi151_test.go::TestFindPathFilterKeepsAFinalLineWithoutANewline",
+        "internal/codingagent/tools/find_pi151_test.go::TestFindPathFilterStopsFdAtTheLimit",
+        "internal/codingagent/tools/find_pi151_test.go::TestFindPathPatternsPi151",
+        "internal/codingagent/tools/find_regressions_test.go::TestFindPathGlobRegression",
+        "internal/codingagent/tools/spawn_arguments_test.go::TestSearchAndShellToolsReportSpawnArgumentErrorsAsPiDoes",
+        "internal/minimatch/minimatch_noext_test.go::TestMatchNoExtKeepsExtglobsLiteral"
+      ]
+    },
+    {
+      "id": "BF-55a5244-2",
+      "title": "A find call aborted while the tool looked for a `.git` directory above the search path no longer starts fd",
+      "symptom": "A find call aborted while the tool looked for a `.git` directory above the search path no longer starts fd.",
+      "rootCause": "Port of Pi (#11972, #9262) and (#11974). On Windows a backslash in the pattern is a separator, and a pattern with a slash is matched by a minimatch matcher (dot, noext, smart case, trailing /** as /**/*) over every entry fd lists; fd stops one match past the limit. The minimatch port gains the noext option. find returns before starting fd when the call was aborted during the .git lookup.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A find call aborted while the tool looked for a `.git` directory above the search path no longer starts fd.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "55a52447fc",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/tools/find_pi151_test.go::TestFindDoesNotStartFdAfterAbortDuringGitLookup",
+        "internal/codingagent/tools/find_pi151_test.go::TestFindFdInvocationFdGlobArguments",
+        "internal/codingagent/tools/find_pi151_test.go::TestFindFdInvocationWindowsPathPattern",
+        "internal/codingagent/tools/find_pi151_test.go::TestFindPathFilterKeepsAFinalLineWithoutANewline",
+        "internal/codingagent/tools/find_pi151_test.go::TestFindPathFilterStopsFdAtTheLimit",
+        "internal/codingagent/tools/find_pi151_test.go::TestFindPathPatternsPi151",
+        "internal/codingagent/tools/find_regressions_test.go::TestFindPathGlobRegression",
+        "internal/codingagent/tools/spawn_arguments_test.go::TestSearchAndShellToolsReportSpawnArgumentErrorsAsPiDoes",
+        "internal/minimatch/minimatch_noext_test.go::TestMatchNoExtKeepsExtglobsLiteral"
+      ]
+    },
+    {
       "id": "BF-563f896",
       "title": "A model request that is cancelled while its setup runs, for example the request after an abort during a tool…",
       "symptom": "A model request that is cancelled while its setup runs, for example the request after an abort during a tool call, ends as aborted instead of as an error.",
@@ -17872,6 +17932,29 @@
         "mcp/oauth/behavior_test.go::TestOAuthErrorMessagesAreTheOnesErrorsTSBuilds",
         "mcp/oauth/error_constructors_upstream_test.go::TestOAuthErrorConstructorsMatchErrorsTs",
         "mcp/oauth/errors_class_test.go::TestOAuthErrorClassesCarryTheirNameAndMessage"
+      ]
+    },
+    {
+      "id": "BF-613d8aa",
+      "title": "fix(tools): restore the deprecated grep readFile hook in every SDK",
+      "symptom": "fix(tools): restore the deprecated grep readFile hook in every SDK",
+      "rootCause": "Port of Pi. GrepOperations.readFile is optional, accepted and never called, in the tools package and the Go, Python, Rust and Lisp SDKs. The upgrade rule that deleted the member is retired with its tests.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "613d8aa7cc",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "extensions/sdk/builtin_tool_test.go::TestBuiltinToolOperationsMissingAMemberAreRefused",
+        "internal/codingagent/tools/grep_operations_readfile_test.go::TestGrepOperationsAcceptsADeprecatedReadFileHookWithoutCallingIt",
+        "test/extension-conformance/builtin_tool_delegate_test.go::TestConformance_BuiltinToolDelegationAcrossSDKs"
       ]
     },
     {
@@ -28351,6 +28434,34 @@
         "coding/cli/rpc_resume_integration_test.go::TestRPCModeSessionReplacementAndExport",
         "coding/cli/rpc_set_model_pipeline_test.go::TestRPCPipelinedSetModelsApplyInInputOrder",
         "test/parity/scenarios/rpc/55-rpc-replacement-concurrent-get-state.toml"
+      ]
+    },
+    {
+      "id": "BF-8ac653e",
+      "title": "The powershell tool no longer reports `Command exited with code 1` under Windows PowerShell 5.1 when a native…",
+      "symptom": "The powershell tool no longer reports `Command exited with code 1` under Windows PowerShell 5.1 when a native command succeeded but its stderr was redirected, as in `git push 2\u003e\u00261 | Select-Object -Last 3`; such commands report the exit code PowerShell 7 reports.",
+      "rootCause": "Port of Pi (#11964, #8842). For powershell.exe the command gets Pi's exit-code suffix unless it ends in a backtick; the shell is resolved before the command is wrapped, as createLocalPowerShellOperations does.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The powershell tool no longer reports `Command exited with code 1` under Windows PowerShell 5.1 when a native command succeeded but its stderr was redirected, as in `git push 2\u003e\u00261 | Select-Object -Last 3`; such commands report the exit code PowerShell 7 reports.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8ac653e9b2",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/tools/powershell_exit_codes_test.go::TestLocalPowerShellOperationsResolveTheShellFirst",
+        "internal/codingagent/tools/powershell_exit_codes_test.go::TestPowerShellCommandAppendsTheExitSuffixForWindowsPowerShellOnly",
+        "internal/codingagent/tools/powershell_exit_codes_test.go::TestPowerShellExitCodes",
+        "internal/codingagent/tools/powershell_operations_test.go::TestLocalPowerShellOperationsWrapCommandsWithTheUTF8OutputSwitch",
+        "internal/codingagent/tools/powershell_test.go::TestPowerShellToolShellConfig",
+        "internal/codingagent/tools/powershell_test.go::TestShellToolWrapsCommandBeforeSpawn",
+        "internal/codingagent/tools/shell_operations_gaps_test.go::TestLocalShellOperationsWrapCommandBeforeTheShellRuns"
       ]
     },
     {

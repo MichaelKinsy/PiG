@@ -101,10 +101,13 @@ type EditToolOptions struct {
 	Operations *EditOperations
 }
 
-// GrepOperations is Pi's GrepOperations: IsDirectory is required and fails when the path does not exist. Pi main (8da141c2a) takes grep's context lines from ripgrep and
-// no longer has a readFile member, so there is none here.
+// GrepOperations is Pi's GrepOperations: IsDirectory is required and fails when the path does not exist.
 type GrepOperations struct {
 	IsDirectory func(absolutePath string) (bool, error)
+	// ReadFile is Pi's optional readFile.
+	//
+	// Deprecated: Ignored. Grep takes its context lines from ripgrep, so the host never calls it and it is not sent to the host. Wrap the tool's Execute to search a remote system.
+	ReadFile func(absolutePath string) (string, error)
 }
 
 // GrepToolOptions is Pi's GrepToolOptions.

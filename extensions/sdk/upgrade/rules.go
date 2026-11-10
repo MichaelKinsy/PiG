@@ -66,7 +66,6 @@ const (
 	RuleModelRegistryFind   = "model-registry-find-returns-error"
 	RuleDialogResults       = "dialog-results-are-json-values"
 	RuleHostHighlightCode   = "host-helpers-highlight-code-no-markdown"
-	RuleGrepReadFile        = "grep-operations-read-file-removed"
 	RuleMarkdownTransformer = "markdown-transformer-options"
 )
 
@@ -267,15 +266,6 @@ func Rules() []Rule {
 			Remedy:  "Delete the markdown parameter of the HighlightCode function you install with SetHostHelpers and answer with the lines of highlightCode: Pi's getMarkdownTheme().highlightCode is highlightCode, so one call serves both and the host call carries no markdown member.",
 			Changes: []Change{
 				{Symbol: "HostHelpers.HighlightCode", Old: "func(string, string, bool, []byte) ([]string, error)", New: "func(string, string, []byte) ([]string, error)", Since: "0.7.0"},
-			},
-		},
-		{
-			ID:       RuleGrepReadFile,
-			Summary:  "GrepOperations has no ReadFile",
-			Rewrites: true,
-			Remedy:   "Delete the member. Grep takes its context lines from ripgrep and never read a matched file, so nothing called it. The rewrite deletes the ReadFile entry of a GrepOperations literal; a call of ops.ReadFile has no replacement and goes with the code that made it.",
-			Changes: []Change{
-				{Symbol: grepReadFileSymbol, Old: "func(string) (string, error)", New: "removed", Since: "0.8.0"},
 			},
 		},
 		{
