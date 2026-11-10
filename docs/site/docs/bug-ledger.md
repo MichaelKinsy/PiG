@@ -1194,6 +1194,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-992f3cb](#bf-992f3cb) | A `before_provider_request` replacement that is not an object leaves Anthropic Messages as Pi's `{ ...value… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-99a06cf](#bf-99a06cf) | Interactive startup paints the editor and footer first and adds the startup header once the terminal reports… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-99d6e28](#bf-99d6e28) | Resizing an image no longer differs from Photon's by one in a channel of a rare pixel | PiG's own defect | All platforms | 0.7.0 |
+| [BF-9a9b153](#bf-9a9b153) | Aborting a compaction or a branch summary while an extension's `session_before_compact` or… | PiG's own defect | All platforms | Unreleased |
 | [BF-9a9dc99](#bf-9a9dc99) | `WaitForTask` on a task whose terminal commit was adopted no longer fails with "Harness is closed" when a… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-9abc6ac](#bf-9abc6ac) | Markdown bold and italic next to CJK punctuation render in HTML exports and in Markdown that Node extensions… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-9acb844](#bf-9acb844) | fix(chord/nextnode/plugins): the pipe to the Node subprocess buffers writes, so a process's last frame… | PiG's own defect | All platforms | Unreleased |
@@ -18222,6 +18223,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `99d6e28a33` (2026-10-29)
 - **Tests:** None recorded.
 - **Release note:** Resizing an image no longer differs from Photon's by one in a channel of a rare pixel. Photon computes the Lanczos weights with libm's single-precision `sinf`, which is not always the correctly rounded sine Go's `math.Sin` gives; PiG now runs the same `sinf`, so the resized pixels, and the PNG and JPEG written from them, are Photon's for every size measured (251 more pictures against Photon, 19 of which differed before).
+
+### BF-9a9b153
+
+**Aborting a compaction or a branch summary while an extension's `session_before_compact` or…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Aborting a compaction or a branch summary while an extension's `session_before_compact` or `session_before_tree` handler awaits a host call, such as a dialog, a notification or a session read, no longer fails that call in the Go, Node, Python, Rust and Lisp extension SDKs.
+- **Root cause:** Pi's abort only calls AbortController.abort() (agent-session.ts:2867-2870); the handler's in-process calls never fail with it. The host sent the ordinary cancel frame when the event's signal ended, which every SDK also took as the request's cancellation, so a host call pending at the abort, such as a dialog or a session read, failed in the handler.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `4139cda473` (2026-11-10), `9a9b153d6b` (2026-11-10)
+- **Tests:** `extensions/sdk/request_signal_only_test.go::TestCancelRequestSignalOnlyKeepsTheRequestAndOrdinaryCancelEndsIt`, `extensions/sdk/request_signal_only_test.go::TestSignalOnlyCancelAbortsTheSignalAndLeavesHostCallsRunning`, `test/extension-conformance/session_before_signal_test.go::TestSessionBeforeSignalReachesEverySDKWhenAbortedDuringDispatch`
+- **Release note:** Aborting a compaction or a branch summary while an extension's `session_before_compact` or `session_before_tree` handler awaits a host call, such as a dialog, a notification or a session read, no longer fails that call in the Go, Node, Python, Rust and Lisp extension SDKs. The abort aborts the handler's `event.signal` and nothing else, as in Pi: the pending call and later calls return their results, and the handler's reply is kept.
 
 ### BF-9a9dc99
 

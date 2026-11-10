@@ -32576,6 +32576,34 @@
       "tests": []
     },
     {
+      "id": "BF-9a9b153",
+      "title": "Aborting a compaction or a branch summary while an extension's `session_before_compact` or…",
+      "symptom": "Aborting a compaction or a branch summary while an extension's `session_before_compact` or `session_before_tree` handler awaits a host call, such as a dialog, a notification or a session read, no longer fails that call in the Go, Node, Python, Rust and Lisp extension SDKs.",
+      "rootCause": "Pi's abort only calls AbortController.abort() (agent-session.ts:2867-2870); the handler's in-process calls never fail with it. The host sent the ordinary cancel frame when the event's signal ended, which every SDK also took as the request's cancellation, so a host call pending at the abort, such as a dialog or a session read, failed in the handler.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Aborting a compaction or a branch summary while an extension's `session_before_compact` or `session_before_tree` handler awaits a host call, such as a dialog, a notification or a session read, no longer fails that call in the Go, Node, Python, Rust and Lisp extension SDKs. The abort aborts the handler's `event.signal` and nothing else, as in Pi: the pending call and later calls return their results, and the handler's reply is kept.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4139cda473",
+          "date": "2026-11-10"
+        },
+        {
+          "hash": "9a9b153d6b",
+          "date": "2026-11-10"
+        }
+      ],
+      "tests": [
+        "extensions/sdk/request_signal_only_test.go::TestCancelRequestSignalOnlyKeepsTheRequestAndOrdinaryCancelEndsIt",
+        "extensions/sdk/request_signal_only_test.go::TestSignalOnlyCancelAbortsTheSignalAndLeavesHostCallsRunning",
+        "test/extension-conformance/session_before_signal_test.go::TestSessionBeforeSignalReachesEverySDKWhenAbortedDuringDispatch"
+      ]
+    },
+    {
       "id": "BF-9a9dc99",
       "title": "`WaitForTask` on a task whose terminal commit was adopted no longer fails with \"Harness is closed\" when a…",
       "symptom": "`WaitForTask` on a task whose terminal commit was adopted no longer fails with \"Harness is closed\" when a close begins before the wait wakes: a host `SubscribeCommits` listener that closes the Harness on that commit, or a close that comes between the commit's adoption and its publication.",

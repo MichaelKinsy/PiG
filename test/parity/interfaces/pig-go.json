@@ -214089,6 +214089,17 @@
       "shapeHash": "sha256:528713effb4ff38475b43717cb1f279a65f214d55826a9b5fbd8a64bb82504ac"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#conn.signalParent",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "conn.signalParent",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(id string, cause error) bool"
+      },
+      "shapeHash": "sha256:25ad72d56ebdbfedaf16a171599c28d0d24ced80d973737b6cba0cbd45685409"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#conn.start",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "conn.start",
@@ -219796,6 +219807,17 @@
         "type": "untyped string"
       },
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#requestCancel",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "requestCancel",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "requestCancel"
+      },
+      "shapeHash": "sha256:43c3b91c15f76ae393463ac37c1e6b660a698a315f21702b177d94570c395e92"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#requestExecuteToolUpdate",
