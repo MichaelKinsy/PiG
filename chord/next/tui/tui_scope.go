@@ -16,7 +16,9 @@
 package tui
 
 import (
+	"bytes"
 	"context"
+	"runtime"
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/chord"
@@ -44,16 +46,22 @@ type TuiScope struct {
 	mu       sync.Mutex
 	releases []func()
 
-	// delivering is held for reading while `changed` runs and for writing by Dispose once the scope's context ended: Pi's
-	// scope is one thread, so `changed` never runs while or after `dispose` does; here Dispose waits for the delivery in
-	// flight. `changed` must not call Dispose of its own scope.
-	delivering sync.RWMutex
+	// Deliveries of `changed` in flight, by the goroutine running each (a count, as a `changed` may nest), and the goroutines
+	// in Dispose. Pi's scope is one thread, so `changed` never runs while or after `dispose` does, and a `changed` may call
+	// `dispose`, which stops later deliveries; here Dispose waits for the deliveries running on other goroutines and not for
+	// its own (a `changed` that disposes its own scope returns normally).
+	delivery  sync.Mutex
+	ended     *sync.Cond
+	active    map[uint64]int
+	disposing map[uint64]bool
 }
 
 // NewTuiScope is a scope on host whose every change calls changed, until Dispose or ctx ends.
 func NewTuiScope(ctx context.Context, h host.Host, changed func()) *TuiScope {
 	ctx, cancel := context.WithCancel(ctx)
-	return &TuiScope{host: h, changed: changed, ctx: ctx, cancel: cancel}
+	s := &TuiScope{host: h, changed: changed, ctx: ctx, cancel: cancel, active: map[uint64]int{}, disposing: map[uint64]bool{}}
+	s.ended = sync.NewCond(&s.delivery)
+	return s
 }
 
 // disposed says Dispose ran.
@@ -61,11 +69,38 @@ func (s *TuiScope) disposed() bool { return s.ctx.Err() != nil }
 
 // redraw calls changed unless the scope is disposed.
 func (s *TuiScope) redraw() {
-	s.delivering.RLock()
-	defer s.delivering.RUnlock()
-	if !s.disposed() {
-		s.changed()
+	id := goroutineID()
+	s.delivery.Lock()
+	if s.disposed() {
+		s.delivery.Unlock()
+		return
 	}
+	s.active[id]++
+	s.delivery.Unlock()
+	defer func() {
+		s.delivery.Lock()
+		if s.active[id]--; s.active[id] == 0 {
+			delete(s.active, id)
+		}
+		s.ended.Broadcast()
+		s.delivery.Unlock()
+	}()
+	s.changed()
+}
+
+// goroutineID is the running goroutine's number (the first line of its stack: "goroutine N [").
+func goroutineID() uint64 {
+	var buf [32]byte
+	line := buf[:runtime.Stack(buf[:], false)]
+	line = bytes.TrimPrefix(line, []byte("goroutine "))
+	var id uint64
+	for _, c := range line {
+		if c < '0' || c > '9' {
+			break
+		}
+		id = id*10 + uint64(c-'0')
+	}
+	return id
 }
 
 func (s *TuiScope) release(release func()) {
@@ -315,16 +350,33 @@ func (s *TuiScope) Messages(messages *surfaces.Messages) *BoundMessages {
 	return &BoundMessages{messages: messages, language: language}
 }
 
+// othersDelivering says a delivery runs on a goroutine other than id that is not itself in Dispose. It runs with delivery held.
+func (s *TuiScope) othersDelivering(id uint64) bool {
+	for other := range s.active {
+		if other != id && !s.disposing[other] {
+			return true
+		}
+	}
+	return false
+}
+
 // Dispose releases every reference and ends every watch; changed is not called after it.
 func (s *TuiScope) Dispose() {
 	s.cancel()
-	// A delivery already past the check ends before Dispose goes on; none starts after it.
-	s.delivering.Lock()
+	// A delivery on another goroutine, already past the check, ends before Dispose goes on; none starts after it. A goroutine
+	// in Dispose is not waited for (two `changed` that dispose their scope would wait for each other).
+	id := goroutineID()
+	s.delivery.Lock()
+	s.disposing[id] = true
+	for s.othersDelivering(id) {
+		s.ended.Wait()
+	}
+	delete(s.disposing, id)
+	s.delivery.Unlock()
 	s.mu.Lock()
 	releases := s.releases
 	s.releases = nil
 	s.mu.Unlock()
-	s.delivering.Unlock()
 	for _, release := range releases {
 		release()
 	}
