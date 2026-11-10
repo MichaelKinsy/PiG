@@ -1764,6 +1764,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-e79c70e](#bf-e79c70e) | fix(ai): Codex WebSocket, OpenRouter images, pi-messages and replaced Anthropic bodies write JSON.stringify… | PiG's own defect | All platforms | Unreleased |
 | [BF-e7b494a](#bf-e7b494a) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-e8489d4](#bf-e8489d4) | A key hint for an app action the user unbound shows no key, as in Pi, instead of the action's default key | PiG's own defect | All platforms | 0.5.0 |
+| [BF-e88f858](#bf-e88f858) | Windows: a connection reset before the response headers, or a response body reset, is reported as Pi reports… | PiG's own defect | Windows | Unreleased |
 | [BF-e8a5d2e](#bf-e8a5d2e) | The model catalog generator gives OpenCode Zen and Go Claude 5.5 models, Opus 5 and Fable 5.1 per-message… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-e90ac19](#bf-e90ac19) | Very long streamed answers no longer slow down with their length: each streamed frame renders only the last… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e90f6c8](#bf-e90f6c8) | Windows paths are compared case-insensitively | A fix Pi shipped that PiG ported | Windows | 0.7.0 |
@@ -26159,6 +26160,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `e8489d4003` (2026-10-11), `fac470319e` (2026-10-11)
 - **Tests:** `internal/codingagent/extension_editor_test.go::TestExtensionEditorHandleInputMatchesPi`
 - **Release note:** A key hint for an app action the user unbound shows no key, as in Pi, instead of the action's default key. For example, the extension editor dialog showed `ctrl+g external editor` after `app.editor.external` was bound to `[]`; it now shows ` external editor` (`tui/keybinding_hints.go` AppKeyText, keybinding-hints.ts keyText; probe in `TestExtensionEditorHandleInputMatchesPi`, red before).
+
+### BF-e88f858
+
+**Windows: a connection reset before the response headers, or a response body reset, is reported as Pi reports…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Windows: a connection reset before the response headers, or a response body reset, is reported as Pi reports it ("Connection error.: read ECONNRESET", "terminated: other side closed (UND_ERR_SOCKET)") instead of a bare "Connection error." or "terminated".
+- **Root cause:** nodeConnectionFailure and nodeBodyFailure matched a reset with errors.Is against syscall.ECONNRESET and syscall.EPIPE. On Windows those are values Go invents; the socket's error is WSAECONNRESET (or ERROR_NETNAME_DELETED, WSAESHUTDOWN), which libuv names ECONNRESET (EPIPE). Pi's message is "Connection error.: read ECONNRESET" there too; PiG gave a bare "Connection error." and a body reset lost its "other side closed". Match by nodeerrno.ErrorCode, which carries the per-OS table.
+- **User impact:** An operation failed or was rejected
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `e88f858c17` (2026-11-09)
+- **Tests:** `ai/transport_reset_windows_test.go::TestWindowsSocketErrorsAreNamedAsNodeNamesThem`
+- **Release note:** Windows: a connection reset before the response headers, or a response body reset, is reported as Pi reports it ("Connection error.: read ECONNRESET", "terminated: other side closed (UND_ERR_SOCKET)") instead of a bare "Connection error." or "terminated".
 
 ### BF-e8a5d2e
 
