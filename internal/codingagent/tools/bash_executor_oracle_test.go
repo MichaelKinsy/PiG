@@ -179,10 +179,6 @@ func TestExecuteBashWithOperationsMatchesPi(t *testing.T) {
 		if w.Chunks == nil {
 			w.Chunks = []string{}
 		}
-		// pig divergence (D244): Pi main 66c655677 reports a result whose head the window dropped as truncated; the pinned Pi does not.
-		if w.Thrown == nil && !w.Truncated && droppedFromWindow(w.Chunks) {
-			w.Truncated = true
-		}
 		switch {
 		case w.Thrown != nil:
 			thrown++
@@ -274,18 +270,4 @@ func describeBashDiff(got, want bashExecOutcome) string {
 		parts = append(parts, fmt.Sprintf("exit %v vs Pi %v", got.ExitCode, want.ExitCode))
 	}
 	return strings.Join(parts, "; ")
-}
-
-// droppedFromWindow reports whether the executor's rolling window, 2*DefaultMaxBytesUpstream UTF-16 units of the chunks it kept, discards one of these chunks.
-func droppedFromWindow(chunks []string) bool {
-	var sizes []int
-	total := 0
-	for _, chunk := range chunks {
-		size := jsLength(chunk)
-		sizes, total = append(sizes, size), total+size
-		if total > 2*DefaultMaxBytesUpstream && len(sizes) > 1 {
-			return true
-		}
-	}
-	return false
 }

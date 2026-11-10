@@ -41,7 +41,7 @@ func TestTruncateLineCountsUTF16Units(t *testing.T) {
 	}
 }
 
-// Values from Pi's truncate.ts run in Node (TruncateLine from Pi main 9e870f6f0, pig divergence (D252)). Pi never throws on a negative limit: Buffer.slice
+// Values from Pi's truncate.ts run in Node (TruncateLine from Pi 9e870f6f0). Pi never throws on a negative limit: Buffer.slice
 // past the end is empty and sliceHead keeps nothing of the line for a negative count.
 func TestTruncationNegativeLimitsMatchPi(t *testing.T) {
 	r := TruncateTail("abc\ndef", TruncationOptions{MaxBytes: new(-1)})

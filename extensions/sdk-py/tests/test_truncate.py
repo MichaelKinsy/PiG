@@ -22,7 +22,7 @@ def test_byte_length_counts_a_split_surrogate_pair_as_one_character():
 def test_negative_limits_match_pi():
     r = pig_sdk.truncate_tail("abc\ndef", max_bytes=-1)
     assert (r.content, r.output_lines, r.output_bytes, r.last_line_partial, r.truncated_by) == ("", 1, 0, True, "bytes")
-    # Pi main 9e870f6f0 (pig divergence (D252)): sliceHead keeps nothing for a negative count and never splits a surrogate pair.
+    # Pi 9e870f6f0: sliceHead keeps nothing for a negative count and never splits a surrogate pair.
     assert pig_sdk.truncate_line("abcdef", -2) == ("... [truncated]", True)
     assert pig_sdk.truncate_line("ab", -5) == ("... [truncated]", True)
     assert pig_sdk.truncate_line("😀😀", -1) == ("... [truncated]", True)
