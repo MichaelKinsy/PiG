@@ -121135,9 +121135,9 @@
         "call:chord/next/host/host_host.go#chordHost.Load"
       ],
       "evidence": [
+        "test:chord/next/host/host_example_32_test.go#TestExample32Startup",
         "test:chord/next/host/host_host_test.go#TestHostALoadWhoseSetupThrowsLeavesThatPluginOutAndReportsItTheOthersPublishTheHostAndItsLinksStayOpen",
-        "test:chord/next/host/host_host_test.go#TestHostLoadLeavesOutAndReportsInvalidAndDuplicatePluginNamesAndDoubleServesTheLaterRefusesASecondLoad",
-        "test:chord/next/host/host_host_test.go#TestHostPrincipalsAHostWithoutAnAddressServesNoRemoteType"
+        "test:chord/next/host/host_host_test.go#TestHostLoadLeavesOutAndReportsInvalidAndDuplicatePluginNamesAndDoubleServesTheLaterRefusesASecondLoad"
       ]
     },
     {
@@ -224166,7 +224166,7 @@
       "evidence": [
         "test:internal/codingagent/tools/mutation_queue_upstream_test.go#TestFileMutationQueueUpstream",
         "test:test/extension-conformance/file_mutation_queue_host_test.go#TestConformance_FileMutationQueueIsTheHostsQueue",
-        "test:coding/extension/host/subprocess/host_file_mutation_test.go#TestFileMutationEnterCancelledWhileWaitingTakesNoTurn"
+        "test:test/extension-conformance/file_mutation_queue_host_test.go#TestHostQueueBusySeesAHeldFile"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -224189,7 +224189,7 @@
       "evidence": [
         "test:internal/codingagent/tools/mutation_queue_upstream_test.go#TestFileMutationQueueUpstream",
         "test:test/extension-conformance/file_mutation_queue_host_test.go#TestConformance_FileMutationQueueIsTheHostsQueue",
-        "test:coding/extension/host/subprocess/host_file_mutation_test.go#TestFileMutationEnterCancelledWhileWaitingTakesNoTurn"
+        "test:test/extension-conformance/file_mutation_queue_host_test.go#TestHostQueueBusySeesAHeldFile"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },

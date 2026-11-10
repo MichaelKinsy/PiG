@@ -206,6 +206,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-2ab79ce-2](#bf-2ab79ce-2) | A provider registered with its own `streamSimple` runs that callback only for its models whose `api` is the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2ad6dd7](#bf-2ad6dd7) | fix(interactive): show extension package changelogs at startup | PiG's own defect | All platforms | Unreleased |
 | [BF-2ad7249](#bf-2ad7249) | fix(ledger): close the getJsonSchemaToolParameters and google convertTools rows | PiG's own defect | All platforms | Unreleased |
+| [BF-2b6e9a6](#bf-2b6e9a6) | Loading a packed Lisp cell no longer hangs when two of its extensions each make a host call, such as a… | PiG's own defect | All platforms | Unreleased |
 | [BF-2b8731a](#bf-2b8731a) | A `models.json` number that is not an integer and also below the minimum of an integer field (for example… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-2b97688](#bf-2b97688) | The `env` daemon reports a watch `change` whose path list would not fit in a frame (16 MiB less 64 KiB) as an… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-2bc49c1](#bf-2bc49c1) | Node extensions read live `ctx.isIdle()` state, so background callbacks detect when a run finishes or starts | PiG's own defect | All platforms | 0.7.0 |
@@ -803,6 +804,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8101d67](#bf-8101d67) | With the AWS client log mode for request signing on, the Bedrock signing debug log printed the signed… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-8153bc7](#bf-8153bc7) | A tool round whose results request `Handoff` no longer ends the run on the tool-calling answer: the handoff's… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-818ba64](#bf-818ba64) | fix(codingagent): mark the hangup grace as D102's | PiG's own defect | All platforms | Unreleased |
+| [BF-81a9b76](#bf-81a9b76) | Releasing a session's services no longer leaves the model selector's catalog refresh running | PiG's own defect | All platforms | Unreleased |
 | [BF-81e1a45](#bf-81e1a45) | Streaming a tool call's arguments allocates less per delta | PiG's own defect | All platforms | 0.7.0 |
 | [BF-81e584b](#bf-81e584b) | anthropic-messages payload now matches Pi for four cases found by the new live-Pi oracle… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-81e584b-2](#bf-81e584b-2) | Live-Pi oracle `TestMistralMessagesPayloadMatchesPi` (`ai/mistral_messages_payload_oracle_test.go`… | PiG's own defect | All platforms | 0.5.0 |
@@ -1187,6 +1189,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-be6803c](#bf-be6803c) | The /tree "Summarize branch?" selector and "Custom summarization instructions" editor, the /import… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-beeb36a](#bf-beeb36a) | Running with no home directory now fails the way Pi's package manager does, instead of reading the project's… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-bf45320](#bf-bf45320) | Go embedding hosts can bind extension appends through `coding.Session.AppendExtensionEntry`, retaining… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-bf67aae](#bf-bf67aae) | Loading a packed Python cell no longer hangs when its second extension's factory makes a host call before the… | PiG's own defect | All platforms | Unreleased |
 | [BF-bf73e77](#bf-bf73e77) | fix(durable/core): join split surrogates through jv.AppendConcat, not byte slices | PiG's own defect | All platforms | Unreleased |
 | [BF-bf89558](#bf-bf89558) | A run whose model answer holds a value that is not strict JSON, a function or a non-finite number (`NaN`… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-bf9911e](#bf-bf9911e) | Append ops from the Chord delta tracker and `DiffRevisions` own their text, as under Pi, instead of holding a… | PiG's own defect | All platforms | 0.7.0 |
@@ -1319,6 +1322,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-d80425c](#bf-d80425c) | fix(train): gate repairs after merging train 3 and the ordering stack | PiG's own defect | All platforms | Unreleased |
 | [BF-d80c1cd](#bf-d80c1cd) | Where Pi calls `new URL(value)`, Pig now parses a `ws:`, `wss:`, `ftp:` or `file:` URL, and a bracketed IPv6… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d8357e2](#bf-d8357e2) | Cache warmer pure functions against live Pi: new `TestCacheWarmerPureFunctionsMatchPi`… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-d856f4a](#bf-d856f4a) | `host.Registry` with a short `ReadyTimeout` no longer fails "did not become live" when the machine delays the… | PiG's own defect | All platforms | Unreleased |
 | [BF-d87b70c](#bf-d87b70c) | A second `ctx.ui.custom` component opened while one is shown now opens over it at once, as in Pi, whether it… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d88dca7](#bf-d88dca7) | `harness.ToolTaskInput.Kind` and `ToolTaskResult.Kind` are the named string type `harness.ToolTaskKind` with… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d8bed22](#bf-d8bed22) | `auth.json` keeps every provider's entry as written, as Pi does | PiG's own defect | All platforms | 0.5.0 |
@@ -4200,6 +4204,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `2ad72495fe` (2026-10-10)
 - **Tests:** `ai/google_convert_tools_upstream_test.go::TestGoogleSharedConvertToolsUpstream`
+
+### BF-2b6e9a6
+
+**Loading a packed Lisp cell no longer hangs when two of its extensions each make a host call, such as a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Loading a packed Lisp cell no longer hangs when two of its extensions each make a host call, such as a `pi.events` subscription, while their factories run.
+- **Root cause:** helper-loading-call held *helper-lock* across the whole wait for the host's answer. The host accepts a packed cell's members in order and serves a connection only after the members before it registered, so the second member's call waited for the first member's register, and the first member's run needed the same lock to take its connection: when the second member's factory reached its first call before the first member's run took its connection, the two deadlocked and the cell's load never ended.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2b6e9a6e21` (2026-11-09)
+- **Tests:** None recorded.
+- **Release note:** Loading a packed Lisp cell no longer hangs when two of its extensions each make a host call, such as a `pi.events` subscription, while their factories run. The host serves a cell's connections in order, so the second extension's first call waits for the first extension's register; the first extension's run needed the lock that call held to take its connection, and when the second factory reached its call before the first run took its connection, neither could continue and the load never ended. A factory-time call now holds only the lock of its own connection.
 
 ### BF-2b8731a
 
@@ -12454,6 +12472,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `818ba64253` (2026-11-03)
 - **Tests:** None recorded.
 
+### BF-81a9b76
+
+**Releasing a session's services no longer leaves the model selector's catalog refresh running**
+
+- **Source:** PiG's own defect
+- **Symptom:** The refresh the selector starts and the shared catalog operation behind it were not joined by anything, so with a file-backed registry the operation could still write `auth.json` and `models-store.json` in the agent directory after the registry's model tasks were closed.
+- **Root cause:** - the registry runs the shared operation as a model task, so CloseModelTasks cancels and joins it, and a closed registry returns an aborted result; - the selector's refresh is a task of its runtime's ModelSelectorTaskOwner, which the interactive mode backs with its background tasks, so Run's teardown cancels and joins it, including the runtime call it raced with the selector's signal; Dispose still cancels from the constructor's return.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `81a9b7614b` (2026-11-09)
+- **Tests:** `internal/codingagent/model_selector_refresh_owned_test.go::TestAbandonedModelCatalogRefreshIsJoinedByRegistryClose`, `internal/codingagent/model_selector_refresh_owned_test.go::TestModelCatalogRefreshAfterRegistryCloseIsAborted`, `internal/codingagent/model_selector_refresh_owned_test.go::TestModelSelectorRefreshDoesNotOutliveShutdown`, `tui/model_selector_owner_test.go::TestModelSelectorDisposeBeforeTheOwnerStartsTheTask`, `tui/model_selector_owner_test.go::TestModelSelectorRefreshIsJoinedByItsTaskOwner`, `tui/model_selector_owner_test.go::TestModelSelectorWaitJoinsItsOwnRefresh`, `tui/model_selector_owner_test.go::TestModelSelectorWithAShutDownOwnerShowsNoRefreshStatus`
+- **Release note:** Releasing a session's services no longer leaves the model selector's catalog refresh running. Before, the refresh the selector starts and the shared catalog operation behind it were not joined by anything, so with a file-backed registry the operation could still write `auth.json` and `models-store.json` in the agent directory after the registry's model tasks were closed. The selector's refresh is now an owned task of the interactive mode, which cancels and joins it when the mode shuts down, and the operation behind it is a task of the model registry, which cancels and joins it when the session's services are released (for example on session replacement); at quit the process exits, as Pi's does. The refresh result and the picker are unchanged.
+
 ### BF-81e1a45
 
 **Streaming a tool call's arguments allocates less per delta**
@@ -17789,6 +17821,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `coding/session_custom_entries_test.go::TestAppendExtensionEntryPreservesIdentityAndEventSemantics`, `coding/session_custom_entries_test.go::TestAppendExtensionEntryRejectsWithoutChangingTheLog`, `coding/session_custom_entries_test.go::TestAppendExtensionEntrySharesTheNativeAppendLock`, `coding/session_custom_entries_test.go::TestAppendExtensionEntryThroughNodeHost`
 - **Release note:** Go embedding hosts can bind extension appends through `coding.Session.AppendExtensionEntry`, retaining subprocess IDs and timestamps through the native Session writer and preserving `entry_appended` semantics. Previously, calling `AppendCustomEntry` allocated a new identity instead of retaining the subprocess ID and timestamp because the public Session API lacked a way to pass them through, leaving duplicate entries in the Node session mirror.
 
+### BF-bf67aae
+
+**Loading a packed Python cell no longer hangs when its second extension's factory makes a host call before the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The Python SDK had the same lock order as the Lisp SDK: a factory-time host call held the lock `run` takes while it waited for the host, so neither could continue.
+- **Root cause:** loading_call held _State.lock across the whole wait for the host's answer, and run_with_socket needs that lock to take its connection. The host serves a packed cell's members in order, so the second member's call waits for the first member's register: when the second member's factory reached its first call before the first member's run took its connection, the two deadlocked.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `bf67aaefc7` (2026-11-09)
+- **Tests:** None recorded.
+- **Release note:** Loading a packed Python cell no longer hangs when its second extension's factory makes a host call before the first extension's run has taken its connection. The Python SDK had the same lock order as the Lisp SDK: a factory-time host call held the lock `run` takes while it waited for the host, so neither could continue. A factory-time call now holds only the lock of its own connection.
+
 ### BF-bf73e77
 
 **fix(durable/core): join split surrogates through jv.AppendConcat, not byte slices**
@@ -19617,6 +19663,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Commit that wrote the release note (the fix commit is not identified):** `d8357e2802` (2026-10-11)
 - **Tests:** `internal/codingagent/cache_warmer_format_oracle_test.go::TestCacheWarmerPureFunctionsMatchPi`
 - **Release note:** Cache warmer pure functions against live Pi: new `TestCacheWarmerPureFunctionsMatchPi` (`internal/codingagent/cache_warmer_format_oracle_test.go`; `getCacheWarmingDelayMs`, `getPromptCacheTtlMs`, `isReplayable`, `formatCacheWarmingStatus`, `formatCacheWarmingUsage`; 6,000 inputs under three process `PI_CACHE_RETENTION` values; TTLs around the 10 s margin, tier values 0/fractional, empty request env falling through to the process one, adaptive vs budget thinking, every status state with rounding-boundary probabilities and dollars). No bug (formatCacheWarmingStatus was previously only reached through the /session oracle). 19 mutations red; 5 equivalent: empty-API guard in `IsReplayable`, `Phase`/`Action` closed-union comparisons, the `seconds > 0` clause when no larger unit printed (`nextWarmAt > now` forces at least 1 s), and the `none` retention check (a model's `promptCache` holds only short/long). Not compared: NaN/infinite TTLs.
+
+### BF-d856f4a
+
+**`host.Registry` with a short `ReadyTimeout` no longer fails "did not become live" when the machine delays the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `host.Registry` with a short `ReadyTimeout` no longer fails "did not become live" when the machine delays the waiting goroutine past the deadline: in Pi the wait's publication, lookup and first usable check run before any timer, so the deadline reports why the registry cannot be read (`contract_mismatch` for a version the provider cannot serve, `unavailable/undeclared` for a registry nobody serves).
+- **Root cause:** host.Registry armed its deadline, then left the wait to a goroutine: the publication, the value lookup and the first usable() check. In Pi those are microtasks that run before any timer, so a deadline can only report the last reason the registry was unusable. In Go a loaded machine could run the deadline's section before the goroutine looked, and the wait failed "did not become live" instead of contract_mismatch or unavailable/undeclared (main's TestOlderReadersWithoutAValueMapping... failed that way on CI).
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d856f4a399` (2026-11-09)
+- **Tests:** `chord/next/host/host_registry_readers_test.go::TestReadersAHostRegistryWhoseDeadlineElapsedBeforeItsFirstLookReportsWhyTheRegistryIsNotUsable`
+- **Release note:** `host.Registry` with a short `ReadyTimeout` no longer fails "did not become live" when the machine delays the waiting goroutine past the deadline: in Pi the wait's publication, lookup and first usable check run before any timer, so the deadline reports why the registry cannot be read (`contract_mismatch` for a version the provider cannot serve, `unavailable/undeclared` for a registry nobody serves). A deadline that finds the host published and the first check not yet made now lets that check run first.
 
 ### BF-d87b70c
 
