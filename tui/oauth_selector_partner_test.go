@@ -158,3 +158,25 @@ func TestStartBrandAnimationStopWaitsForAnInFlightRequestAndEndsTheLoop(t *testi
 		stop()
 	})
 }
+
+// provider-brand.ts startBrandAnimation requests a frame only while isAnimating() is true: nothing is requested for a
+// selector with no animated row, and requests start once the row animates.
+func TestStartBrandAnimationRequestsFramesOnlyWhileAnimating(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		var requests atomic.Int64
+		var animating atomic.Bool
+		stop := StartBrandAnimation(func() { requests.Add(1) }, animating.Load)
+		time.Sleep(10 * BrandAnimationFrame)
+		synctest.Wait()
+		if got := requests.Load(); got != 0 {
+			t.Errorf("%d render requests while nothing animates, want 0", got)
+		}
+		animating.Store(true)
+		time.Sleep(3 * BrandAnimationFrame)
+		synctest.Wait()
+		if requests.Load() == 0 {
+			t.Error("no render was requested while a row animates")
+		}
+		stop()
+	})
+}
