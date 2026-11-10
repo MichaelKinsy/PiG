@@ -63,3 +63,30 @@ func TestStartupPromptsApplyTheKeybindingsOfTheAgentDirectory(t *testing.T) {
 		t.Fatalf("input: done=%v cancelled=%v after ctrl+y", input.Done(), input.Cancelled())
 	}
 }
+
+// configureStartupTui installs the process-wide keybindings of the agent directory, so every test that opens a startup prompt has to restore them, or a later test that reads them depends on the order the tests run in (go test -shuffle).
+func TestStartupPromptTestsRestoreTheProcessKeybindings(t *testing.T) {
+	for name, run := range map[string]func(*testing.T){
+		"TestStartupPromptAppliesTerminalColorsAndKeepsRepliesOutOfInput": TestStartupPromptAppliesTerminalColorsAndKeepsRepliesOutOfInput,
+		"TestStartupPromptAppliesColorsThatArriveAfterTheTimeout":         TestStartupPromptAppliesColorsThatArriveAfterTheTimeout,
+		"TestStartupPromptWithFixedThemeQueriesAndKeepsTheTheme":          TestStartupPromptWithFixedThemeQueriesAndKeepsTheTheme,
+		"TestStartupPromptExplicitEmptyThemeFallsBackToSystem":            TestStartupPromptExplicitEmptyThemeFallsBackToSystem,
+		"TestStartupPromptMalformedThemeUsesSystemTheme":                  TestStartupPromptMalformedThemeUsesSystemTheme,
+		"TestStartupPromptComponentsAreBuiltUnderThePendingSystemTheme":   TestStartupPromptComponentsAreBuiltUnderThePendingSystemTheme,
+		"TestStartupPromptComponentsAreBuiltUnderTheCapabilityOverrides":  TestStartupPromptComponentsAreBuiltUnderTheCapabilityOverrides,
+		"TestShowFirstTimeSetupSavesTheChoiceBeforeTheTUI":                TestShowFirstTimeSetupSavesTheChoiceBeforeTheTUI,
+		"TestShowFirstTimeSetupSkipSavesNothing":                          TestShowFirstTimeSetupSkipSavesNothing,
+		"TestFirstTimeSetupCreateYourOwnShowsTheHintAndKeepsTheSprite":    TestFirstTimeSetupCreateYourOwnShowsTheHintAndKeepsTheSprite,
+		"TestShowFirstTimeSetupReportsNoSettingsWriteFailure":             TestShowFirstTimeSetupReportsNoSettingsWriteFailure,
+	} {
+		t.Run(name, func(t *testing.T) {
+			restoreTUIKeybindings(t)
+			marker := tui.NewTUIKeybindingsManager(nil)
+			tui.SetTUIKeybindings(marker)
+			t.Run("test", run)
+			if tui.GetTUIKeybindings() != marker {
+				t.Fatalf("%s left the process-wide TUI keybindings it installed; call restoreTUIKeybindings(t) in it", name)
+			}
+		})
+	}
+}
