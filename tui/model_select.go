@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/frontend"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
@@ -69,6 +70,8 @@ type ModelSelectorComponent struct {
 	// refreshCancel stops the catalog refresh the selector started; Dispose calls it once.
 	refreshCancel context.CancelFunc
 	closed        bool
+	// tasks joins the refresh of a picker whose runtime has no ModelSelectorTaskOwner.
+	tasks sync.WaitGroup
 
 	// saveHint is the action hint row, which a picker without a "set as default" action drops.
 	saveHint Component
@@ -369,6 +372,9 @@ func (m *ModelSelectorComponent) Dispose() {
 		m.refreshCancel()
 	}
 }
+
+// Wait blocks until the catalog refresh this picker owns has ended: Dispose cancels it, it stops at its timeout, or it settles. A picker whose runtime has a ModelSelectorTaskOwner leaves that join to the owner.
+func (m *ModelSelectorComponent) Wait() { m.tasks.Wait() }
 
 // modelSelectorPageSize is the visible rows and the rows a selection page key moves (MAX_VISIBLE of model-selector.ts).
 const modelSelectorPageSize = 10

@@ -228,6 +228,92 @@ func TestOlderReadersWithoutAValueMappingAndForAReaderNewerThanTheProviderParkRe
 	must(t, host.Close(background))
 }
 
+// overdueLoop is a loop whose timer of one delay is due the moment its section ends, before the goroutine that armed it
+// runs on: the deadline of a `host.registry` call that the machine let the waiter miss, as a loaded CI runner does with a
+// 5 ms one. Pi's single event loop cannot do that to its `await`: the microtasks after the arming section (the
+// publication's, the first `usable()`) run before any timer, so the reason the registry cannot be read is what the
+// deadline reports.
+type overdueLoop struct {
+	*Loop
+	delay time.Duration
+}
+
+var _ sectionLoop = (*overdueLoop)(nil)
+
+// AfterFunc is the real timer, except for the delay that is overdue: its job is queued as a microtask.
+func (l *overdueLoop) AfterFunc(d time.Duration, job func()) Timer {
+	if d != l.delay {
+		return l.Loop.AfterFunc(d, job)
+	}
+	timer := &overdueTimer{job: job}
+	l.Queue(func() {
+		if timer.state.CompareAndSwap(timerPending, timerFired) {
+			timer.job()
+		}
+	})
+	return timer
+}
+
+type overdueTimer struct {
+	state atomic.Int32
+	job   func()
+}
+
+// Stop implements Timer.
+func (t *overdueTimer) Stop() bool { return t.state.CompareAndSwap(timerPending, timerStopped) }
+
+func TestReadersAHostRegistryWhoseDeadlineElapsedBeforeItsFirstLookReportsWhyTheRegistryIsNotUsable(t *testing.T) {
+	const deadline = 5 * time.Millisecond
+	host, _ := rvPlugins(t, HostOptions{loop: &overdueLoop{Loop: NewLoop(), delay: deadline}}, rvPlugin("@app/sum", func(h FacetHost, _ FacetSelf) error {
+		return rvServeSum(h, rvTotalCompose, nil)
+	}))
+	for _, registry := range []registries.Registry[any, any]{rvSumV1, rvSumV3} {
+		_, err := host.Registry(background, registry, rvWithin(deadline))
+		if chordErr, ok := data.IsChordErrorCode(err, data.CodeContractMismatch); !ok {
+			t.Fatalf("host.registry(v%d) = %v, want contract_mismatch (%v)", registry.Version, err, chordErr)
+		}
+	}
+	_, err := host.Registry(background, rvRegistry(t, "app.nobody", 1), rvWithin(deadline))
+	if chordErr, ok := data.IsChordErrorCode(err, data.CodeUnavailable); !ok || chordErr.Reason != data.ReasonUndeclared {
+		t.Fatalf("host.registry(app.nobody) = %v, want unavailable/undeclared", err)
+	}
+	must(t, host.Close(background))
+}
+
+func TestReadersAHostRegistryWhoseDeadlineElapsedBeforeThePublicationStillSaysItDidNotBecomeLive(t *testing.T) {
+	const deadline = 5 * time.Millisecond
+	host := newHost(t, HostOptions{loop: &overdueLoop{Loop: NewLoop(), delay: deadline}})
+	done := make(chan error, 1)
+	go func() {
+		_, err := host.Registry(background, rvSumV1, rvWithin(deadline))
+		done <- err
+	}()
+	// A deadline before the publication ends the wait at once; one wrongly held back for a look the unpublished host
+	// cannot give never returns, which the bound reports (the cleanup's close ends that wait).
+	select {
+	case err := <-done:
+		if err == nil || err.Error() != "registry app.sum: did not become live within 5 ms" {
+			t.Fatalf("host.registry before the publication = %v, want %q", err, "registry app.sum: did not become live within 5 ms")
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("host.registry before the publication did not return after its 5 ms deadline")
+	}
+	must(t, host.Close(background))
+}
+
+func TestReadersAHostRegistryWhoseDeadlineElapsedBeforeItsFirstLookStillReturnsAValueItFindsThere(t *testing.T) {
+	const deadline = 5 * time.Millisecond
+	host, _ := rvPlugins(t, HostOptions{loop: &overdueLoop{Loop: NewLoop(), delay: deadline}}, rvPlugin("@app/sum", func(h FacetHost, _ FacetSelf) error {
+		return rvServeSum(h, rvTotalCompose, nil)
+	}))
+	value, err := host.Registry(background, rvSum, rvWithin(deadline))
+	must(t, err)
+	if got, thrown := rvRead(value); thrown != nil || got != (rvTotal{total: 0}) {
+		t.Fatalf("value = %v (%v), want {0}", got, thrown)
+	}
+	must(t, host.Close(background))
+}
+
 func TestOlderReadersDropAnOlderReadersLastGoodMappingAfterAContributorItWasBuiltFromFailedLive(t *testing.T) {
 	current := rvRegistry(t, "app.mapped", 2)
 	old := rvRegistry(t, "app.mapped", 1)
