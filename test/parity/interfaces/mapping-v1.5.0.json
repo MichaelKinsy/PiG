@@ -146230,7 +146230,7 @@
       "evidence": [
         "test:coding/session_compaction_cancellation_upstream_test.go#TestAutomaticCompactionCancellationUpstream",
         "test:coding/session_compaction_retry_upstream_test.go#TestCompactionRetriesTransientStreamDropUpstream",
-        "test:coding/session_compaction_event_order_test.go#TestCompactionFailureWaitsForEndListeners"
+        "test:test/extension-conformance/session_compact_abort_test.go#TestNodeSessionCompactReachesTheNextExtensionWhenAbortedDuringDispatch"
       ]
     },
     {
@@ -146252,7 +146252,7 @@
       "evidence": [
         "test:coding/session_compaction_cancellation_upstream_test.go#TestAutomaticCompactionCancellationUpstream",
         "test:coding/session_compaction_retry_upstream_test.go#TestCompactionRetriesTransientStreamDropUpstream",
-        "test:coding/session_compaction_event_order_test.go#TestCompactionFailureWaitsForEndListeners"
+        "test:test/extension-conformance/session_compact_abort_test.go#TestNodeSessionCompactReachesTheNextExtensionWhenAbortedDuringDispatch"
       ]
     },
     {
