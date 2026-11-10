@@ -795,6 +795,36 @@ func forkedFrom(f *fleet) string {
 	return from
 }
 
+// TestTheWorkerBaseForksWithoutEnableSourceMapsNodeParsesNoMapOfTheBaseWhoseMapsLieBesideItsFiles ports `it("forks without
+// --enable-source-maps: Node parses no map of the base, whose maps lie beside its files")` (workers.test.ts). Pi's workers fork
+// without the flag (an app passes it in `execArgv`); a Go worker never had it: it is an executable that has no source maps, and
+// its arguments are ExecArgv verbatim (workers.ts: `execArgv: this.#options.execArgv ?? []`). The worker is forked with none, then
+// with an app's flag among its arguments (which Pi passes on as given), and its arguments are read from the worker itself.
+func TestTheWorkerBaseForksWithoutEnableSourceMapsNodeParsesNoMapOfTheBaseWhoseMapsLieBesideItsFiles(t *testing.T) {
+	argsOf := func(execArgv []string) string {
+		f := newFleet(t, fleetOptions{execArgv: execArgv, env: map[string]string{fixtureReportArgs: "1"}})
+		notes := f.hold(fixtureNotes, "S1")
+		until(t, func() bool { return refKind(notes) == host.RefStateLive })
+		var args string
+		for _, line := range f.output.all() {
+			if got, ok := strings.CutPrefix(line, "session|S1 args "); ok {
+				args = got
+			}
+		}
+		notes.Release()
+		if err := f.workers.Close(background); err != nil {
+			t.Fatal(err)
+		}
+		return args
+	}
+	if got := argsOf(nil); got != "[]" {
+		t.Fatalf("a worker's arguments = %s, want none (no --enable-source-maps prefix)", got)
+	}
+	if got := argsOf([]string{"--enable-source-maps", "--other"}); got != `["--enable-source-maps" "--other"]` {
+		t.Fatalf("a worker's arguments = %s, want ExecArgv as given", got)
+	}
+}
+
 // TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeTheBaseWasBuiltWith runs `it("a worker started after an
 // edit of the entry's imported source runs the code the base was built with")`. `inputs` (packages/chord/src/node/workers/workers.ts:256,
 // workers.test.ts:75) lists the files the base was built from, so that an edit of any of them is detected: here, with a Go worker's base
