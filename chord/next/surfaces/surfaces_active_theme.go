@@ -2,7 +2,6 @@ package surfaces
 
 import (
 	"context"
-	"slices"
 	"sync"
 	"sync/atomic"
 
@@ -54,17 +53,14 @@ func FollowActiveTheme(h host.Host, mode string, changed func(Theme), ctx contex
 	var stopsMu sync.Mutex
 	var stops []func()
 	addStop := func(stop func()) { stopsMu.Lock(); stops = append(stops, stop); stopsMu.Unlock() }
-	// stopAll stops the follower, holding no lock while it runs the stops: a stop enters the host's loop, and the pick watch's
-	// start (a microtask of that loop) takes stopsMu to add its own.
 	stopAll := func() {
 		gate.Lock()
 		stopped.Store(true)
 		gate.Unlock()
 		cancel()
 		stopsMu.Lock()
-		running := slices.Clone(stops)
-		stopsMu.Unlock()
-		for _, stop := range running {
+		defer stopsMu.Unlock()
+		for _, stop := range stops {
 			stop()
 		}
 	}
@@ -108,7 +104,7 @@ func FollowActiveTheme(h host.Host, mode string, changed func(Theme), ctx contex
 		gate.Lock()
 		defer gate.Unlock()
 		if stopped.Load() {
-			_, _ = watch.Stop()
+			// Nothing here may block (it is a microtask of the host's loop): Stop's cancel() aborts this watch, and the hold's release ends it.
 			return
 		}
 		addStop(func() { _, _ = watch.Stop() })

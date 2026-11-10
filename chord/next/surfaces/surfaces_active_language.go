@@ -3,7 +3,6 @@ package surfaces
 import (
 	"context"
 	"fmt"
-	"slices"
 	"sync"
 	"sync/atomic"
 
@@ -75,19 +74,13 @@ func FollowActiveLanguage(h host.Host, preferred []string, changed func(*Languag
 	var stops []func()
 	var stopsMu sync.Mutex
 	addStop := func(stop func()) { stopsMu.Lock(); stops = append(stops, stop); stopsMu.Unlock() }
-	// stopAll runs the stops added so far, holding no lock: a stop enters the host's loop, and the pick watch's start (a
-	// microtask of that loop) takes stopsMu to add its own.
-	stopAll := func() {
-		stopsMu.Lock()
-		running := slices.Clone(stops)
-		stopsMu.Unlock()
-		for _, stop := range running {
-			stop()
-		}
-	}
 	fail := func(err error) (*LanguageFollower, error) {
 		cancel()
-		stopAll()
+		stopsMu.Lock()
+		for _, stop := range stops {
+			stop()
+		}
+		stopsMu.Unlock()
 		return nil, err
 	}
 
@@ -131,7 +124,7 @@ func FollowActiveLanguage(h host.Host, preferred []string, changed func(*Languag
 		gate.Lock()
 		defer gate.Unlock()
 		if stopped.Load() {
-			_, _ = watch.Stop()
+			// Nothing here may block (it is a microtask of the host's loop): Stop's cancel() aborts this watch, and the hold's release ends it.
 			return
 		}
 		addStop(func() { _, _ = watch.Stop() })
@@ -165,7 +158,11 @@ func FollowActiveLanguage(h host.Host, preferred []string, changed func(*Languag
 			stopped.Store(true)
 			gate.Unlock()
 			cancel()
-			stopAll()
+			stopsMu.Lock()
+			defer stopsMu.Unlock()
+			for _, stop := range stops {
+				stop()
+			}
 		},
 	}, nil
 }

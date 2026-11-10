@@ -1212,7 +1212,9 @@ func (m *ReferenceMember) Watch(ctx context.Context) (chord.WatchHandle[delta.Js
 // binds it, before any section a link's frame starts, so every change of the member after that bind reaches the watch's
 // listener: a goroutine that calls Watch and starts the result opens it after whatever section came first, whose change the
 // watch then holds as its value, which a follower that only listens never reads. then runs inside a section of the loop: it
-// must not block.
+// must not block, and nothing it calls may wait for the loop or for a watch to end. In particular it does not call the
+// watch's Stop: Stop waits for the watch to close, and a watch whose ctx was cancelled closes only after its abort entered the
+// loop, which the callback holds. A callback that must end the watch cancels its ctx or releases the reference instead.
 func (m *ReferenceMember) WatchThen(ctx context.Context, then func(watch chord.WatchHandle[delta.JsonValue], err error)) {
 	m.binding.loop.Run(func() {
 		m.binding.watchThen(m.member, ctx, func(watch *chord.Watch[delta.JsonValue], err error) {
