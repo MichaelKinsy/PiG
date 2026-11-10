@@ -2,7 +2,7 @@
 // languages in the app kit (decision "Messages and languages in the app kit"), the `Translations` registry, the user's
 // locale preference and the language a client follows.
 //
-// Forced Go differences from upstream, each also noted on the identifier (D450):
+// Forced Go differences from upstream, each also noted on the identifier (language mechanics):
 //   - Pi's render scope (`inLanguage`, `currentLanguage`) is a module-wide variable a synchronous render sets; Go's is
 //     the context a render is given: InLanguage runs a render with a language current in its context, CurrentLanguage
 //     reads it, Messages.InScope is Pi's `t` outside `in`. A message function receives its language as its first

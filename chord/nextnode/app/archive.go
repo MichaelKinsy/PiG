@@ -25,7 +25,7 @@ import (
 // files). A running worker packs its own open store; without one the server packs the directory under the worker's lock. Unpacking
 // makes a new directory for an address that has none, refusing every path that would leave it.
 //
-// Ports packages/chord/src/node/app/archive.ts (Pi main c23b9ec1). Forced Go differences (D455, as tar.go): streams are io.Readers
+// Ports packages/chord/src/node/app/archive.ts (Pi main c23b9ec1). Forced Go differences (language mechanics, as tar.go): streams are io.Readers
 // and the tar's entries a push; a context is a context.Context.
 
 const (

@@ -215,7 +215,7 @@ type AppOptions struct {
 	Limits AppLimits
 	// Install is how installs run npm.
 	Install plugins.InstallOptions
-	// Facets are facets the server host loads beside the kit's own (D456): the Go form of what Pi's app does with a facet that has
+	// Facets are facets the server host loads beside the kit's own (language mechanics): the Go form of what Pi's app does with a facet that has
 	// settings (`ephemeralLoginFacet()`, `inviteFacet()`, `defineUsers(...)`), which it re-exports through its API's server module
 	// and loads with a one-line plugin. A plugin directory is TypeScript the Node plugin host evaluates and cannot import a Go
 	// facet. Each is named; its name must not be one of the kit's (`chord.…`).
@@ -491,7 +491,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	}
 	httpOptions := chordhttp.HttpOptions{
 		Listen: listen,
-		Links: &chordhttp.LinksOptions{Path: "/chord", OptionsFunc: a.linksAfterTheBases, Opened: func(request chordhttp.HttpRequest, _ data.Principal) (func(), error) {
+		Links: &chordhttp.LinksOptions{Path: "/chord", Opened: func(request chordhttp.HttpRequest, _ data.Principal) (func(), error) {
 			return sessions.Opened(request), nil
 		}},
 		OnError: func(err chordhttp.HttpError) { a.report(AppErrorHTTP, err) },

@@ -29,7 +29,7 @@ import (
 // base: the scan runs after the bases are built; the close, which Pi's does not make wait for a build, waits for it (a forced Go
 // lifetime difference: app_bases_scan_test.go, app_bases_linux_test.go). Its `settles baseWatched only once the
 // base bundles' records were compared` is `TestRecordBaseSettlesOnceItsFirstComparisonsEnded` (the plugins' watcher) and
-// `TestAppMarksBaseForAChangeOfAWorkerKindsEntry…` (app_changes_test.go). A link's upgrade waiting for the bases is D604.
+// `TestAppMarksBaseForAChangeOfAWorkerKindsEntry…` (app_changes_test.go). A link's upgrade does not wait for the bases (Pi's connects at once): app_bases_linux_test.go.
 
 // plainPage is a page showing the base script's URL.
 func plainPage(_ chordhttp.HttpRequest, assets nodesurfaces.PageAssets) (string, error) {
