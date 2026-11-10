@@ -10,19 +10,21 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 
 | Module | Rows | type-only (identity by kind) | Node served | Go gaps | Rust gaps | Python gaps | Lisp gaps |
 |---|---|---|---|---|---|---|---|
-| `pi-coding-agent` | 929 | 310 | 919 | 325 | 325 | 325 | 325 |
+| `pi-coding-agent` | 929 | 310 | 919 | 258 | 258 | 258 | 258 |
 | `pi-tui` | 370 | 85 | 369 | 102 | 102 | 102 | 102 |
-| `pi-ai` | 114 | 200 | 114 | 73 | 73 | 73 | 73 |
-| `pi-ai/compat` | 174 | 207 | 174 | 130 | 130 | 130 | 130 |
+| `pi-ai` | 114 | 200 | 114 | 82 | 82 | 82 | 82 |
+| `pi-ai/compat` | 174 | 207 | 174 | 139 | 139 | 139 | 139 |
 | `pi-agent-core` | 45 | 35 | 45 | 45 | 45 | 45 | 45 |
 
 ## Lanes that own gaps
 
 | Lane | Owner | Opened | Gap cells | Closing row |
 |---|---|---|---|---|
-| C2Sessions | C2Sessions lane (createAgentSession family, E1/E6) | 0.5.2 | 468 | Conformance rows for createAgentSession, createAgentSessionRuntime and the pi-agent-core Agent loop in all four SDKs (branch feat/sdk-child-agent-sessions) |
-| SdkExportsLedger | SdkExportsLedger lane (Pi application internals no extension scan imports) | 0.5.2 | 1576 | Owner decision per export, listed with usage counts in handoffs/0.5.2/sdk-exports-internals.md: a numbered divergence in docs/parity/DIVERGENCES.md (cells become divergence:D<n>), or a real lane with a port and a conformance row |
-| SdkPiAiHelpers | SdkPiAiHelpers lane (pi-ai pure helpers, StringEnum, host getters, E17-E22) | 0.5.2 | 256 | Pure helpers with vector tests from Pi at the pin; host getters and the pi-ai compat calls with a conformance row per SDK |
+| C2AgentLoop | C2Sessions lane follow-up (pi-agent-core Agent loop in the SDKs) | 0.5.2 | 172 | The pi-agent-core Agent class and its loop functions (agentLoop, runAgentLoop, runToolCall, streamProxy, setDefaultStreamFn) as an in-process loop in each SDK over the host's model streaming, with a conformance row per SDK that runs a turn through the hooks |
+| C2SessionsEmbedder | C2Sessions lane (createAgentSession family, E1/E6), designed out pending an owner divergence | 0.5.2 | 8 | AgentSession.agent returns pi-agent-core's Agent, the object whose beforeToolCall, afterToolCall, convertToLlm, transformContext, getApiKey and streamFunction hooks are in-process functions of the embedder that drive the model loop; and createReplacedSessionContext returns an object of closures over the replaced session. Neither value has a wire form (a function does not cross the extension socket, and the host owns the loop), so they are not ported to any SDK. Closing row: an owner-approved numbered divergence for these two members, after which the cells become divergence:D<n> |
+| C2SessionsGraph | C2Sessions lane follow-up (session graph objects of a child session) | 0.5.2 | 16 | AgentSession.extensionRunner, settingsManager, resourceLoader and modelRuntime as session graph handles of the child's own objects (the way AgentSession.sessionManager is one, CallChildSessionSessionManager), for each SDK, with a conformance row that reads the child's value through the handle |
+| SdkExportsLedger | SdkExportsLedger lane (Pi application internals no extension scan imports) | 0.5.2 | 1580 | Owner decision per export, listed with usage counts in handoffs/0.5.2/sdk-exports-internals.md: a numbered divergence in docs/parity/DIVERGENCES.md (cells become divergence:D<n>), or a real lane with a port and a conformance row |
+| SdkPiAiHelpers | SdkPiAiHelpers lane (pi-ai pure helpers, StringEnum, host getters, E17-E22) | 0.5.2 | 328 | Pure helpers with vector tests from Pi at the pin; host getters and the pi-ai compat calls with a conformance row per SDK |
 | SdkSessionGraph | SdkSessionGraph lane (SessionManager/SettingsManager/ModelRuntime/resource loader, E2-E5) | 0.5.2 | 252 | Host calls for session open/list/inMemory, scoped settings, standalone model runtime, resource loader and package manager, with a conformance row per SDK |
 | SdkTuiHelpers | SdkTuiHelpers lane (pi-tui helpers, keys, keybindings, theme and rendering helpers, E8-E16) | 0.5.2 | 148 | Pure helpers ported per SDK with vector tests from Pi at the pin (test/parity/sdk-vectors), keybinding and theme helpers with a conformance row per SDK |
 
@@ -42,87 +44,87 @@ None.
 
 | Export | uses | Node | Go | Rust | Python | Lisp |
 |---|---|---|---|---|---|---|
-| `AgentSession` | 4 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession` | 4 | served | native:AgentSession | native:AgentSession | native:AgentSession | native:pig:agent-session |
 | `AgentSession.abort` | 0 | served | native:AgentSession.Abort | native:AgentSession::abort | native:AgentSession.abort | native:pig:agent-session-abort |
-| `AgentSession.abortBash` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.abortBranchSummary` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.abortCompaction` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.abortRetry` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.agent` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.autoCompactionEnabled` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.autoRetryEnabled` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.bindExtensions` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.cacheWarmingStatus` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.clearQueue` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.compact` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.createReplacedSessionContext` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.cycleModel` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.cycleThinkingLevel` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.abortBash` | 0 | served | native:AgentSession.AbortBash | native:AgentSession::abort_bash | native:AgentSession.abort_bash | native:pig:agent-session-abort-bash |
+| `AgentSession.abortBranchSummary` | 0 | served | native:AgentSession.AbortBranchSummary | native:AgentSession::abort_branch_summary | native:AgentSession.abort_branch_summary | native:pig:agent-session-abort-branch-summary |
+| `AgentSession.abortCompaction` | 0 | served | native:AgentSession.AbortCompaction | native:AgentSession::abort_compaction | native:AgentSession.abort_compaction | native:pig:agent-session-abort-compaction |
+| `AgentSession.abortRetry` | 0 | served | native:AgentSession.AbortRetry | native:AgentSession::abort_retry | native:AgentSession.abort_retry | native:pig:agent-session-abort-retry |
+| `AgentSession.agent` | 0 | served | gap:C2SessionsEmbedder | gap:C2SessionsEmbedder | gap:C2SessionsEmbedder | gap:C2SessionsEmbedder |
+| `AgentSession.autoCompactionEnabled` | 0 | served | native:AgentSession.AutoCompactionEnabled | native:AgentSession::auto_compaction_enabled | native:AgentSession.auto_compaction_enabled | native:pig:agent-session-auto-compaction-enabled-p |
+| `AgentSession.autoRetryEnabled` | 0 | served | native:AgentSession.AutoRetryEnabled | native:AgentSession::auto_retry_enabled | native:AgentSession.auto_retry_enabled | native:pig:agent-session-auto-retry-enabled-p |
+| `AgentSession.bindExtensions` | 0 | served | native:AgentSession.BindExtensions | native:AgentSession::bind_extensions | native:AgentSession.bind_extensions | native:pig:agent-session-bind-extensions |
+| `AgentSession.cacheWarmingStatus` | 0 | served | native:AgentSession.CacheWarmingStatus | native:AgentSession::cache_warming_status | native:AgentSession.cache_warming_status | native:pig:agent-session-cache-warming-status |
+| `AgentSession.clearQueue` | 0 | served | native:AgentSession.ClearQueue | native:AgentSession::clear_queue | native:AgentSession.clear_queue | native:pig:agent-session-clear-queue |
+| `AgentSession.compact` | 0 | served | native:AgentSession.Compact | native:AgentSession::compact | native:AgentSession.compact | native:pig:agent-session-compact |
+| `AgentSession.createReplacedSessionContext` | 0 | served | gap:C2SessionsEmbedder | gap:C2SessionsEmbedder | gap:C2SessionsEmbedder | gap:C2SessionsEmbedder |
+| `AgentSession.cycleModel` | 0 | served | native:AgentSession.CycleModel | native:AgentSession::cycle_model | native:AgentSession.cycle_model | native:pig:agent-session-cycle-model |
+| `AgentSession.cycleThinkingLevel` | 0 | served | native:AgentSession.CycleThinkingLevel | native:AgentSession::cycle_thinking_level | native:AgentSession.cycle_thinking_level | native:pig:agent-session-cycle-thinking-level |
 | `AgentSession.dispose` | 0 | served | native:AgentSession.Dispose | native:AgentSession::dispose | native:AgentSession.dispose | native:pig:agent-session-dispose |
-| `AgentSession.executeBash` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.exportToHtml` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.exportToJsonl` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.extensionRunner` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.followUp` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.followUpMode` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.getActiveToolNames` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.getAllTools` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.getAvailableThinkingLevels` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.getCallableToolNames` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.getContextUsage` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.getFollowUpMessages` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.getLastAssistantText` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.getSessionStats` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.getSteeringMessages` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.getToolDefinition` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.getUserMessagesForForking` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.hasExtensionHandlers` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.hasPendingBashMessages` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.isBashRunning` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.isCompacting` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.isIdle` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.isRetrying` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.isStreaming` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.executeBash` | 0 | served | native:AgentSession.ExecuteBash | native:AgentSession::execute_bash | native:AgentSession.execute_bash | native:pig:agent-session-execute-bash |
+| `AgentSession.exportToHtml` | 0 | served | native:AgentSession.ExportToHTML | native:AgentSession::export_to_html | native:AgentSession.export_to_html | native:pig:agent-session-export-to-html |
+| `AgentSession.exportToJsonl` | 0 | served | native:AgentSession.ExportToJsonl | native:AgentSession::export_to_jsonl | native:AgentSession.export_to_jsonl | native:pig:agent-session-export-to-jsonl |
+| `AgentSession.extensionRunner` | 0 | served | gap:C2SessionsGraph | gap:C2SessionsGraph | gap:C2SessionsGraph | gap:C2SessionsGraph |
+| `AgentSession.followUp` | 0 | served | native:AgentSession.FollowUp | native:AgentSession::follow_up | native:AgentSession.follow_up | native:pig:agent-session-follow-up |
+| `AgentSession.followUpMode` | 0 | served | native:AgentSession.FollowUpMode | native:AgentSession::follow_up_mode | native:AgentSession.follow_up_mode | native:pig:agent-session-follow-up-mode |
+| `AgentSession.getActiveToolNames` | 0 | served | native:AgentSession.GetActiveToolNames | native:AgentSession::get_active_tool_names | native:AgentSession.get_active_tool_names | native:pig:agent-session-get-active-tool-names |
+| `AgentSession.getAllTools` | 0 | served | native:AgentSession.GetAllTools | native:AgentSession::get_all_tools | native:AgentSession.get_all_tools | native:pig:agent-session-get-all-tools |
+| `AgentSession.getAvailableThinkingLevels` | 0 | served | native:AgentSession.GetAvailableThinkingLevels | native:AgentSession::get_available_thinking_levels | native:AgentSession.get_available_thinking_levels | native:pig:agent-session-get-available-thinking-levels |
+| `AgentSession.getCallableToolNames` | 0 | served | native:AgentSession.GetCallableToolNames | native:AgentSession::get_callable_tool_names | native:AgentSession.get_callable_tool_names | native:pig:agent-session-get-callable-tool-names |
+| `AgentSession.getContextUsage` | 0 | served | native:AgentSession.GetContextUsage | native:AgentSession::get_context_usage | native:AgentSession.get_context_usage | native:pig:agent-session-get-context-usage |
+| `AgentSession.getFollowUpMessages` | 0 | served | native:AgentSession.GetFollowUpMessages | native:AgentSession::get_follow_up_messages | native:AgentSession.get_follow_up_messages | native:pig:agent-session-get-follow-up-messages |
+| `AgentSession.getLastAssistantText` | 0 | served | native:AgentSession.GetLastAssistantText | native:AgentSession::get_last_assistant_text | native:AgentSession.get_last_assistant_text | native:pig:agent-session-get-last-assistant-text |
+| `AgentSession.getSessionStats` | 0 | served | native:AgentSession.GetSessionStats | native:AgentSession::get_session_stats | native:AgentSession.get_session_stats | native:pig:agent-session-get-session-stats |
+| `AgentSession.getSteeringMessages` | 0 | served | native:AgentSession.GetSteeringMessages | native:AgentSession::get_steering_messages | native:AgentSession.get_steering_messages | native:pig:agent-session-get-steering-messages |
+| `AgentSession.getToolDefinition` | 0 | served | native:AgentSession.GetToolDefinition | native:AgentSession::get_tool_definition | native:AgentSession.get_tool_definition | native:pig:agent-session-get-tool-definition |
+| `AgentSession.getUserMessagesForForking` | 0 | served | native:AgentSession.GetUserMessagesForForking | native:AgentSession::get_user_messages_for_forking | native:AgentSession.get_user_messages_for_forking | native:pig:agent-session-get-user-messages-for-forking |
+| `AgentSession.hasExtensionHandlers` | 0 | served | native:AgentSession.HasExtensionHandlers | native:AgentSession::has_extension_handlers | native:AgentSession.has_extension_handlers | native:pig:agent-session-has-extension-handlers-p |
+| `AgentSession.hasPendingBashMessages` | 0 | served | native:AgentSession.HasPendingBashMessages | native:AgentSession::has_pending_bash_messages | native:AgentSession.has_pending_bash_messages | native:pig:agent-session-has-pending-bash-messages-p |
+| `AgentSession.isBashRunning` | 0 | served | native:AgentSession.IsBashRunning | native:AgentSession::is_bash_running | native:AgentSession.is_bash_running | native:pig:agent-session-bash-running-p |
+| `AgentSession.isCompacting` | 0 | served | native:AgentSession.IsCompacting | native:AgentSession::is_compacting | native:AgentSession.is_compacting | native:pig:agent-session-compacting-p |
+| `AgentSession.isIdle` | 0 | served | native:AgentSession.IsIdle | native:AgentSession::is_idle | native:AgentSession.is_idle | native:pig:agent-session-idle-p |
+| `AgentSession.isRetrying` | 0 | served | native:AgentSession.IsRetrying | native:AgentSession::is_retrying | native:AgentSession.is_retrying | native:pig:agent-session-retrying-p |
+| `AgentSession.isStreaming` | 0 | served | native:AgentSession.IsStreaming | native:AgentSession::is_streaming | native:AgentSession.is_streaming | native:pig:agent-session-streaming-p |
 | `AgentSession.messages` | 0 | served | native:AgentSession.Messages | native:AgentSession::messages | native:AgentSession.messages | native:pig:agent-session-messages |
-| `AgentSession.model` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.modelRuntime` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.navigateTree` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.pendingMessageCount` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.model` | 0 | served | native:AgentSession.CurrentModel | native:AgentSession::current_model | native:AgentSession.current_model | native:pig:agent-session-current-model |
+| `AgentSession.modelRuntime` | 0 | served | gap:C2SessionsGraph | gap:C2SessionsGraph | gap:C2SessionsGraph | gap:C2SessionsGraph |
+| `AgentSession.navigateTree` | 0 | served | native:AgentSession.NavigateTree | native:AgentSession::navigate_tree | native:AgentSession.navigate_tree | native:pig:agent-session-navigate-tree |
+| `AgentSession.pendingMessageCount` | 0 | served | native:AgentSession.PendingMessageCount | native:AgentSession::pending_message_count | native:AgentSession.pending_message_count | native:pig:agent-session-pending-message-count |
 | `AgentSession.prompt` | 0 | served | native:AgentSession.Prompt | native:AgentSession::prompt | native:AgentSession.prompt | native:pig:agent-session-prompt |
-| `AgentSession.promptTemplates` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.recordBashResult` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.promptTemplates` | 0 | served | native:AgentSession.PromptTemplates | native:AgentSession::prompt_templates | native:AgentSession.prompt_templates | native:pig:agent-session-prompt-templates |
+| `AgentSession.recordBashResult` | 0 | served | native:AgentSession.RecordBashResult | native:AgentSession::record_bash_result | native:AgentSession.record_bash_result | native:pig:agent-session-record-bash-result |
 | `AgentSession.refreshContext` | 0 | served | native:AgentSession.RefreshContext | native:AgentSession::refresh_context | native:AgentSession.refresh_context | native:pig:agent-session-refresh-context |
-| `AgentSession.reload` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.resourceLoader` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.retryAttempt` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.routedModel` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.scopedModels` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.sendCustomMessage` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.sendUserMessage` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.sessionFile` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.sessionId` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.reload` | 0 | served | native:AgentSession.Reload | native:AgentSession::reload | native:AgentSession.reload | native:pig:agent-session-reload |
+| `AgentSession.resourceLoader` | 0 | served | gap:C2SessionsGraph | gap:C2SessionsGraph | gap:C2SessionsGraph | gap:C2SessionsGraph |
+| `AgentSession.retryAttempt` | 0 | served | native:AgentSession.RetryAttempt | native:AgentSession::retry_attempt | native:AgentSession.retry_attempt | native:pig:agent-session-retry-attempt |
+| `AgentSession.routedModel` | 0 | served | native:AgentSession.RoutedModel | native:AgentSession::routed_model | native:AgentSession.routed_model | native:pig:agent-session-routed-model |
+| `AgentSession.scopedModels` | 0 | served | native:AgentSession.ScopedModels | native:AgentSession::scoped_models | native:AgentSession.scoped_models | native:pig:agent-session-scoped-models |
+| `AgentSession.sendCustomMessage` | 0 | served | native:AgentSession.SendCustomMessage | native:AgentSession::send_custom_message | native:AgentSession.send_custom_message | native:pig:agent-session-send-custom-message |
+| `AgentSession.sendUserMessage` | 0 | served | native:AgentSession.SendUserMessage | native:AgentSession::send_user_message | native:AgentSession.send_user_message | native:pig:agent-session-send-user-message |
+| `AgentSession.sessionFile` | 0 | served | native:AgentSession.CurrentSessionFile | native:AgentSession::current_session_file | native:AgentSession.current_session_file | native:pig:agent-session-current-session-file |
+| `AgentSession.sessionId` | 0 | served | native:AgentSession.CurrentSessionID | native:AgentSession::current_session_id | native:AgentSession.current_session_id | native:pig:agent-session-current-session-id |
 | `AgentSession.sessionManager` | 0 | served | native:AgentSession.SessionManager | native:AgentSession::session_manager | native:AgentSession.session_manager | native:pig:agent-session-session-manager |
-| `AgentSession.sessionName` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.setActiveToolsByName` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.setAutoCompactionEnabled` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.setAutoRetryEnabled` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.setCacheWarmingMode` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.setFollowUpMode` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.setModel` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.setScopedModels` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.setSessionName` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.setSteeringMode` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.setThinkingLevel` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.settingsManager` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.state` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.steer` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.steeringMode` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.sessionName` | 0 | served | native:AgentSession.SessionName | native:AgentSession::session_name | native:AgentSession.session_name | native:pig:agent-session-session-name |
+| `AgentSession.setActiveToolsByName` | 0 | served | native:AgentSession.SetActiveToolsByName | native:AgentSession::set_active_tools_by_name | native:AgentSession.set_active_tools_by_name | native:pig:agent-session-set-active-tools-by-name |
+| `AgentSession.setAutoCompactionEnabled` | 0 | served | native:AgentSession.SetAutoCompactionEnabled | native:AgentSession::set_auto_compaction_enabled | native:AgentSession.set_auto_compaction_enabled | native:pig:agent-session-set-auto-compaction-enabled |
+| `AgentSession.setAutoRetryEnabled` | 0 | served | native:AgentSession.SetAutoRetryEnabled | native:AgentSession::set_auto_retry_enabled | native:AgentSession.set_auto_retry_enabled | native:pig:agent-session-set-auto-retry-enabled |
+| `AgentSession.setCacheWarmingMode` | 0 | served | native:AgentSession.SetCacheWarmingMode | native:AgentSession::set_cache_warming_mode | native:AgentSession.set_cache_warming_mode | native:pig:agent-session-set-cache-warming-mode |
+| `AgentSession.setFollowUpMode` | 0 | served | native:AgentSession.SetFollowUpMode | native:AgentSession::set_follow_up_mode | native:AgentSession.set_follow_up_mode | native:pig:agent-session-set-follow-up-mode |
+| `AgentSession.setModel` | 0 | served | native:AgentSession.SetModel | native:AgentSession::set_model | native:AgentSession.set_model | native:pig:agent-session-set-model |
+| `AgentSession.setScopedModels` | 0 | served | native:AgentSession.SetScopedModels | native:AgentSession::set_scoped_models | native:AgentSession.set_scoped_models | native:pig:agent-session-set-scoped-models |
+| `AgentSession.setSessionName` | 0 | served | native:AgentSession.SetSessionName | native:AgentSession::set_session_name | native:AgentSession.set_session_name | native:pig:agent-session-set-session-name |
+| `AgentSession.setSteeringMode` | 0 | served | native:AgentSession.SetSteeringMode | native:AgentSession::set_steering_mode | native:AgentSession.set_steering_mode | native:pig:agent-session-set-steering-mode |
+| `AgentSession.setThinkingLevel` | 0 | served | native:AgentSession.SetThinkingLevel | native:AgentSession::set_thinking_level | native:AgentSession.set_thinking_level | native:pig:agent-session-set-thinking-level |
+| `AgentSession.settingsManager` | 0 | served | gap:C2SessionsGraph | gap:C2SessionsGraph | gap:C2SessionsGraph | gap:C2SessionsGraph |
+| `AgentSession.state` | 0 | served | native:AgentSession.State | native:AgentSession::state | native:AgentSession.state | native:pig:agent-session-state |
+| `AgentSession.steer` | 0 | served | native:AgentSession.Steer | native:AgentSession::steer | native:AgentSession.steer | native:pig:agent-session-steer |
+| `AgentSession.steeringMode` | 0 | served | native:AgentSession.SteeringMode | native:AgentSession::steering_mode | native:AgentSession.steering_mode | native:pig:agent-session-steering-mode |
 | `AgentSession.subscribe` | 0 | served | native:AgentSession.Subscribe | native:AgentSession::subscribe | native:AgentSession.subscribe | native:pig:agent-session-subscribe |
-| `AgentSession.summarizeForBugReport` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.supportsThinking` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.systemPrompt` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.thinkingLevel` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.waitForIdle` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.summarizeForBugReport` | 0 | served | native:AgentSession.SummarizeForBugReport | native:AgentSession::summarize_for_bug_report | native:AgentSession.summarize_for_bug_report | native:pig:agent-session-summarize-for-bug-report |
+| `AgentSession.supportsThinking` | 0 | served | native:AgentSession.SupportsThinking | native:AgentSession::supports_thinking | native:AgentSession.supports_thinking | native:pig:agent-session-supports-thinking-p |
+| `AgentSession.systemPrompt` | 0 | served | native:AgentSession.CurrentSystemPrompt | native:AgentSession::current_system_prompt | native:AgentSession.current_system_prompt | native:pig:agent-session-current-system-prompt |
+| `AgentSession.thinkingLevel` | 0 | served | native:AgentSession.CurrentThinkingLevel | native:AgentSession::current_thinking_level | native:AgentSession.current_thinking_level | native:pig:agent-session-current-thinking-level |
+| `AgentSession.waitForIdle` | 0 | served | native:AgentSession.WaitForIdle | native:AgentSession::wait_for_idle | native:AgentSession.wait_for_idle | native:pig:agent-session-wait-for-idle |
 | `AgentSessionRuntime` | 1 | served | native:AgentSessionRuntime | native:AgentSessionRuntime | native:AgentSessionRuntime | native:pig:agent-session-runtime |
 | `AgentSessionRuntime.cwd` | 0 | served | native:AgentSessionRuntime.Cwd | native:AgentSessionRuntime::cwd | native:AgentSessionRuntime.cwd | native:pig:agent-session-runtime-cwd |
 | `AgentSessionRuntime.diagnostics` | 0 | served | native:AgentSessionRuntime.Diagnostics | native:AgentSessionRuntime::diagnostics | native:AgentSessionRuntime.diagnostics | native:pig:agent-session-runtime-diagnostics |
@@ -503,7 +505,7 @@ None.
 | `OAuthSelectorComponent.capturesViewportInput` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `OAuthSelectorComponent.children` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `OAuthSelectorComponent.clear` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `OAuthSelectorComponent.dispose` | 0 | served | unclassified | unclassified | unclassified | unclassified |
+| `OAuthSelectorComponent.dispose` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `OAuthSelectorComponent.focused` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `OAuthSelectorComponent.handleInput` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `OAuthSelectorComponent.handleMouse` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
@@ -1357,10 +1359,10 @@ None.
 | `AssistantMessageEventStream.end` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `AssistantMessageEventStream.push` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `AssistantMessageEventStream.result` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `CACHE_WARMING_IDLE_CONTINUATION_PROBABILITY` | 0 | served | unclassified | unclassified | unclassified | unclassified |
-| `CACHE_WARMING_MAX_AGE_MS` | 0 | served | unclassified | unclassified | unclassified | unclassified |
-| `CACHE_WARMING_MAX_IDLE_AGE_MS` | 0 | served | unclassified | unclassified | unclassified | unclassified |
-| `CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS` | 0 | served | unclassified | unclassified | unclassified | unclassified |
+| `CACHE_WARMING_IDLE_CONTINUATION_PROBABILITY` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `CACHE_WARMING_MAX_AGE_MS` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `CACHE_WARMING_MAX_IDLE_AGE_MS` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `DEFAULT_MAX_AGENT_RETRY_DELAY_MS` | 0 | served | native:DefaultMaxAgentRetryDelayMs | native:DEFAULT_MAX_AGENT_RETRY_DELAY_MS | native:DEFAULT_MAX_AGENT_RETRY_DELAY_MS | native:pig:+default-max-agent-retry-delay-ms+ |
 | `EventStream` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `EventStream.[Symbol.asyncIterator]` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
@@ -1409,7 +1411,7 @@ None.
 | `declarationsEqual` | 2 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `defaultProviderAuthContext` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
 | `envApiKeyAuth` | 4 | served | native:EnvAPIKeyAuth | native:env_api_key_auth | native:env_api_key_auth | native:pig:env-api-key-auth |
-| `evaluateCacheWarming` | 0 | served | unclassified | unclassified | unclassified | unclassified |
+| `evaluateCacheWarming` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `extractDiagnosticError` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `fauxAssistantMessage` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `fauxProvider` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
@@ -1419,8 +1421,8 @@ None.
 | `formatThrownValue` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `formatUserAgent` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `getAttributionHeaders` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `getCacheWarmingDelayMs` | 0 | served | unclassified | unclassified | unclassified | unclassified |
-| `getCacheWarmingRequestOptions` | 0 | served | unclassified | unclassified | unclassified | unclassified |
+| `getCacheWarmingDelayMs` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `getCacheWarmingRequestOptions` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `getClientVersion` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `getCurrentSystemMessage` | 6 | served | native:GetCurrentSystemMessage | native:get_current_system_message | native:get_current_system_message | native:pig:get-current-system-message |
 | `getCurrentSystemPrompt` | 5 | served | native:GetCurrentSystemPrompt | native:get_current_system_prompt | native:get_current_system_prompt | native:pig:get-current-system-prompt |
@@ -1431,14 +1433,14 @@ None.
 | `getModelType` | 1 | served | native:GetModelType | native:get_model_type | native:get_model_type | native:pig:get-model-type |
 | `getOpenCodeSessionHeaders` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `getOverflowPatterns` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `getPromptCacheTtlMs` | 0 | served | unclassified | unclassified | unclassified | unclassified |
+| `getPromptCacheTtlMs` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `getSupportedThinkingLevels` | 10 | served | native:GetSupportedThinkingLevels | native:get_supported_thinking_levels | native:get_supported_thinking_levels | native:pig:get-supported-thinking-levels |
 | `getSystemMessageText` | 2 | served | native:GetSystemMessageText | native:get_system_message_text | native:get_system_message_text | native:pig:get-system-message-text |
 | `getToolStateChanges` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `hasApi` | 1 | served | native:HasApi | native:has_api | native:has_api | native:pig:has-api-p |
 | `hasNonAdditiveToolChanges` | 0 | served | native:HasNonAdditiveToolChanges | native:has_non_additive_tool_changes | native:has_non_additive_tool_changes | native:pig:has-non-additive-tool-changes-p |
 | `hasToolRedefinitions` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `isCacheWarmingReplayable` | 0 | served | unclassified | unclassified | unclassified | unclassified |
+| `isCacheWarmingReplayable` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `isContextOverflow` | 3 | served | native:IsContextOverflow | native:is_context_overflow | native:is_context_overflow | native:pig:context-overflow-p |
 | `isModelType` | 2 | served | native:IsModelType | native:is_model_type | native:is_model_type | native:pig:model-type-p |
 | `isRecoverableLength` | 0 | served | native:IsRecoverableLength | native:is_recoverable_length | native:is_recoverable_length | native:pig:recoverable-length-p |
@@ -1484,10 +1486,10 @@ None.
 | `AssistantMessageEventStream.end` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `AssistantMessageEventStream.push` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `AssistantMessageEventStream.result` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `CACHE_WARMING_IDLE_CONTINUATION_PROBABILITY` | 0 | served | unclassified | unclassified | unclassified | unclassified |
-| `CACHE_WARMING_MAX_AGE_MS` | 0 | served | unclassified | unclassified | unclassified | unclassified |
-| `CACHE_WARMING_MAX_IDLE_AGE_MS` | 0 | served | unclassified | unclassified | unclassified | unclassified |
-| `CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS` | 0 | served | unclassified | unclassified | unclassified | unclassified |
+| `CACHE_WARMING_IDLE_CONTINUATION_PROBABILITY` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `CACHE_WARMING_MAX_AGE_MS` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `CACHE_WARMING_MAX_IDLE_AGE_MS` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `DEFAULT_MAX_AGENT_RETRY_DELAY_MS` | 0 | served | native:DefaultMaxAgentRetryDelayMs | native:DEFAULT_MAX_AGENT_RETRY_DELAY_MS | native:DEFAULT_MAX_AGENT_RETRY_DELAY_MS | native:pig:+default-max-agent-retry-delay-ms+ |
 | `EventStream` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `EventStream.[Symbol.asyncIterator]` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
@@ -1541,7 +1543,7 @@ None.
 | `declarationsEqual` | 2 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `defaultProviderAuthContext` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
 | `envApiKeyAuth` | 4 | served | native:EnvAPIKeyAuth | native:env_api_key_auth | native:env_api_key_auth | native:pig:env-api-key-auth |
-| `evaluateCacheWarming` | 0 | served | unclassified | unclassified | unclassified | unclassified |
+| `evaluateCacheWarming` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `extractDiagnosticError` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `fauxAssistantMessage` | 2 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `fauxProvider` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
@@ -1556,8 +1558,8 @@ None.
 | `getApiProvider` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `getApiProviders` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `getAttributionHeaders` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `getCacheWarmingDelayMs` | 0 | served | unclassified | unclassified | unclassified | unclassified |
-| `getCacheWarmingRequestOptions` | 0 | served | unclassified | unclassified | unclassified | unclassified |
+| `getCacheWarmingDelayMs` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `getCacheWarmingRequestOptions` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `getClientVersion` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `getCurrentSystemMessage` | 6 | served | native:GetCurrentSystemMessage | native:get_current_system_message | native:get_current_system_message | native:pig:get-current-system-message |
 | `getCurrentSystemPrompt` | 5 | served | native:GetCurrentSystemPrompt | native:get_current_system_prompt | native:get_current_system_prompt | native:pig:get-current-system-prompt |
@@ -1575,7 +1577,7 @@ None.
 | `getModels` | 2 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `getOpenCodeSessionHeaders` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `getOverflowPatterns` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `getPromptCacheTtlMs` | 0 | served | unclassified | unclassified | unclassified | unclassified |
+| `getPromptCacheTtlMs` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `getProviders` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `getSupportedThinkingLevels` | 12 | served | native:GetSupportedThinkingLevels | native:get_supported_thinking_levels | native:get_supported_thinking_levels | native:pig:get-supported-thinking-levels |
 | `getSystemMessageText` | 2 | served | native:GetSystemMessageText | native:get_system_message_text | native:get_system_message_text | native:pig:get-system-message-text |
@@ -1585,7 +1587,7 @@ None.
 | `hasApi` | 1 | served | native:HasApi | native:has_api | native:has_api | native:pig:has-api-p |
 | `hasNonAdditiveToolChanges` | 0 | served | native:HasNonAdditiveToolChanges | native:has_non_additive_tool_changes | native:has_non_additive_tool_changes | native:pig:has-non-additive-tool-changes-p |
 | `hasToolRedefinitions` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `isCacheWarmingReplayable` | 0 | served | unclassified | unclassified | unclassified | unclassified |
+| `isCacheWarmingReplayable` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `isContextOverflow` | 4 | served | native:IsContextOverflow | native:is_context_overflow | native:is_context_overflow | native:pig:context-overflow-p |
 | `isModelType` | 2 | served | native:IsModelType | native:is_model_type | native:is_model_type | native:pig:model-type-p |
 | `isRecoverableLength` | 1 | served | native:IsRecoverableLength | native:is_recoverable_length | native:is_recoverable_length | native:pig:recoverable-length-p |
@@ -1649,48 +1651,48 @@ None.
 
 | Export | uses | Node | Go | Rust | Python | Lisp |
 |---|---|---|---|---|---|---|
-| `Agent` | 4 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.abort` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.afterToolCall` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.beforeToolCall` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.clearAllQueues` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.clearFollowUpQueue` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.clearSteeringQueue` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.continue` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.convertToLlm` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.finishTurn` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.followUp` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.followUpMode` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.getApiKey` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.hasQueuedMessages` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `Agent` | 4 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.abort` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.afterToolCall` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.beforeToolCall` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.clearAllQueues` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.clearFollowUpQueue` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.clearSteeringQueue` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.continue` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.convertToLlm` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.finishTurn` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.followUp` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.followUpMode` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.getApiKey` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.hasQueuedMessages` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
 | `Agent.identity` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `Agent.maxRetryDelayMs` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.onPayload` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.onProviderStreamEvent` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.onResponse` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.peekQueuedMessages` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.prepareNextTurn` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.prepareNextTurnWithContext` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.prepareRequest` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.prompt` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.reset` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.sessionId` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.signal` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.state` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.steer` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.steeringMode` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.streamFunction` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.subscribe` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.thinkingBudgets` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.toolExecution` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.transformContext` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.transport` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.waitForIdle` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `Agent.maxRetryDelayMs` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.onPayload` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.onProviderStreamEvent` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.onResponse` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.peekQueuedMessages` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.prepareNextTurn` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.prepareNextTurnWithContext` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.prepareRequest` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.prompt` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.reset` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.sessionId` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.signal` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.state` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.steer` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.steeringMode` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.streamFunction` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.subscribe` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.thinkingBudgets` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.toolExecution` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.transformContext` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.transport` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `Agent.waitForIdle` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
 | `DEFAULT_AGENT_IDENTITY` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `agentLoop` | 2 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `agentLoopContinue` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `runAgentLoop` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `runAgentLoopContinue` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `runToolCall` | 2 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `setDefaultStreamFn` | 1 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `streamProxy` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `agentLoop` | 2 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `agentLoopContinue` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `runAgentLoop` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `runAgentLoopContinue` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `runToolCall` | 2 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `setDefaultStreamFn` | 1 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |
+| `streamProxy` | 0 | served | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop | gap:C2AgentLoop |

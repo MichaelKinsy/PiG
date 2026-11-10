@@ -1,6 +1,6 @@
 {
- "pin": "1.5.0+77959d66",
- "package": "pi-tui@1.5.0",
+ "pin": "1.5.1",
+ "package": "pi-tui@1.5.1",
  "module": "pi-tui",
  "export": "okhslColor",
  "cases": [

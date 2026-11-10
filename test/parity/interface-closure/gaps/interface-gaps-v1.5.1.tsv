@@ -1,25 +1,15 @@
-pkg:ai/.#CACHE_WARMING_IDLE_CONTINUATION_PROBABILITY	ai	no-go-symbol	
-pkg:ai/.#CACHE_WARMING_MAX_AGE_MS	ai	no-go-symbol	
-pkg:ai/.#CACHE_WARMING_MAX_IDLE_AGE_MS	ai	no-go-symbol	
-pkg:ai/.#CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS	ai	type-mismatch	internal/codingagent/cache_warmer.go#cacheWarmingMinimumExpectedSavings
-pkg:ai/.#CacheWarmingPhase	ai	no-go-symbol	
+pkg:ai/.#CACHE_WARMING_IDLE_CONTINUATION_PROBABILITY	ai	type-mismatch	ai/cache_warming.go#CacheWarmingIdleContinuationProbability
+pkg:ai/.#CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS	ai	type-mismatch	ai/cache_warming.go#CacheWarmingMinimumExpectedSavings
 pkg:ai/.#Provider	ai	child-gap	ai/models_runtime.go#ModelsProvider
 pkg:ai/.#Provider::property:refreshModelsAuth	ai	member-missing	ai/models_runtime.go#ModelsProvider
-pkg:ai/.#evaluateCacheWarming	ai	no-go-symbol	
-pkg:ai/.#evaluateCacheWarming::call:0	ai	child-gap	
-pkg:ai/.#isCacheWarmingReplayable	ai	no-go-symbol	
-pkg:ai/.#isCacheWarmingReplayable::call:0	ai	child-gap	
-pkg:ai/compat#CACHE_WARMING_IDLE_CONTINUATION_PROBABILITY	ai	no-go-symbol	
-pkg:ai/compat#CACHE_WARMING_MAX_AGE_MS	ai	no-go-symbol	
-pkg:ai/compat#CACHE_WARMING_MAX_IDLE_AGE_MS	ai	no-go-symbol	
-pkg:ai/compat#CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS	ai	type-mismatch	internal/codingagent/cache_warmer.go#cacheWarmingMinimumExpectedSavings
-pkg:ai/compat#CacheWarmingPhase	ai	no-go-symbol	
+pkg:ai/.#getCacheWarmingRequestOptions	ai	child-gap	ai/cache_warming.go#GetCacheWarmingRequestOptions
+pkg:ai/.#getCacheWarmingRequestOptions::call:0	ai	signature-mismatch	ai/cache_warming.go#GetCacheWarmingRequestOptions
+pkg:ai/compat#CACHE_WARMING_IDLE_CONTINUATION_PROBABILITY	ai	type-mismatch	ai/cache_warming.go#CacheWarmingIdleContinuationProbability
+pkg:ai/compat#CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS	ai	type-mismatch	ai/cache_warming.go#CacheWarmingMinimumExpectedSavings
 pkg:ai/compat#Provider	ai	child-gap	ai/models_runtime.go#ModelsProvider
 pkg:ai/compat#Provider::property:refreshModelsAuth	ai	member-missing	ai/models_runtime.go#ModelsProvider
-pkg:ai/compat#evaluateCacheWarming	ai	no-go-symbol	
-pkg:ai/compat#evaluateCacheWarming::call:0	ai	child-gap	
-pkg:ai/compat#isCacheWarmingReplayable	ai	no-go-symbol	
-pkg:ai/compat#isCacheWarmingReplayable::call:0	ai	child-gap	
+pkg:ai/compat#getCacheWarmingRequestOptions	ai	child-gap	ai/cache_warming.go#GetCacheWarmingRequestOptions
+pkg:ai/compat#getCacheWarmingRequestOptions::call:0	ai	signature-mismatch	ai/cache_warming.go#GetCacheWarmingRequestOptions
 pkg:ai/models#Provider	ai	child-gap	ai/models_runtime.go#ModelsProvider
 pkg:ai/models#Provider::property:refreshModelsAuth	ai	member-missing	ai/models_runtime.go#ModelsProvider
 pkg:chord/.#formatNumber	chord	child-gap	chord/next/surfaces/surfaces_format.go#FormatNumber
@@ -35,5 +25,3 @@ pkg:coding-agent/.#GrepOperations	coding-agent	child-gap	internal/codingagent/to
 pkg:coding-agent/.#GrepOperations::property:readFile	coding-agent	member-missing	internal/codingagent/tools/grep.go#GrepOperations
 pkg:coding-agent/.#OAuthSelectorComponent	coding-agent	child-gap	tui/oauth_selector.go#OAuthSelectorComponent
 pkg:coding-agent/.#OAuthSelectorComponent::construct:0	coding-agent	signature-mismatch	tui/oauth_selector.go#NewOAuthSelectorComponent
-pkg:coding-agent/.#OAuthSelectorComponent::property:dispose	coding-agent	member-missing	tui/oauth_selector.go#OAuthSelectorComponent
-pkg:coding-agent/.#OAuthSelectorComponent::property:dispose::call:0	coding-agent	member-missing	tui/oauth_selector.go#OAuthSelectorComponent
