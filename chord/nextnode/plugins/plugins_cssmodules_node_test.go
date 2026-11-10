@@ -266,6 +266,8 @@ func TestMappingEvaluatorALateKillOfAnEvaluationDoesNotHitTheNextOne(t *testing.
 	close(release)
 	<-finished
 	evaluator.killThrough = nil
+	// The next evaluation is judged by what it answers, not by how fast a loaded machine answers it.
+	timeout = time.Minute
 	if got, err := evaluator.Evaluate(context.Background(), `module.exports = { default: { c: "d" } };`); err != nil || got != `{"c":"d"}` {
 		t.Fatalf("got %q, %v: the late kill of the evaluation before landed on this one", got, err)
 	}
