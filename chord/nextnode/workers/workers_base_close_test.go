@@ -36,7 +36,7 @@ func TestTheWorkerBaseAStartsWaitForTheBuildEndsClosedWhenTheBuildAndTheCloseAre
 	if err := f.workers.Close(background); err != nil {
 		t.Fatal(err)
 	}
-	for i := 0; i < 200; i++ {
+	for i := range 200 {
 		if _, open := f.workers.awaitBuild(); open {
 			t.Fatalf("awaitBuild after Close reported open at try %d", i)
 		}
