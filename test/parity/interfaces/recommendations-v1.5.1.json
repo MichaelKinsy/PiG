@@ -15430,21 +15430,23 @@
     {
       "id": "pkg:ai/.#CACHE_WARMING_IDLE_CONTINUATION_PROBABILITY",
       "upstreamShapeHash": "sha256:939b6bf968da1e05d78ed82b85996253fd5433846463e78e8d261a16b4599137",
-      "recommendedDisposition": "pending",
+      "recommendedDisposition": "partial",
       "confidence": "low",
       "basis": [
-        "No normalized-name candidate exists in the scanned Pig production packages."
+        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
       ],
       "alternatives": [
         "ported",
-        "partial",
+        "pending",
         "deferred",
         "designed-out",
         "divergence"
       ],
-      "pigCandidates": [],
+      "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/ai#CacheWarmingIdleContinuationProbability"
+      ],
       "missingClosure": [
-        "pig-go-shape",
+        "shape-translation-review",
         "production-reachability",
         "required-layers",
         "behavioral-evidence"
@@ -15457,21 +15459,23 @@
     {
       "id": "pkg:ai/.#CACHE_WARMING_MAX_AGE_MS",
       "upstreamShapeHash": "sha256:ec4b71bd4dc0b3aac2fea721ba74a18eb456f2cabef62c687f94ab806c1ced11",
-      "recommendedDisposition": "pending",
+      "recommendedDisposition": "partial",
       "confidence": "low",
       "basis": [
-        "No normalized-name candidate exists in the scanned Pig production packages."
+        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
       ],
       "alternatives": [
         "ported",
-        "partial",
+        "pending",
         "deferred",
         "designed-out",
         "divergence"
       ],
-      "pigCandidates": [],
+      "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/ai#CacheWarmingMaxAgeMs"
+      ],
       "missingClosure": [
-        "pig-go-shape",
+        "shape-translation-review",
         "production-reachability",
         "required-layers",
         "behavioral-evidence"
@@ -15484,21 +15488,23 @@
     {
       "id": "pkg:ai/.#CACHE_WARMING_MAX_IDLE_AGE_MS",
       "upstreamShapeHash": "sha256:ec4b71bd4dc0b3aac2fea721ba74a18eb456f2cabef62c687f94ab806c1ced11",
-      "recommendedDisposition": "pending",
+      "recommendedDisposition": "partial",
       "confidence": "low",
       "basis": [
-        "No normalized-name candidate exists in the scanned Pig production packages."
+        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
       ],
       "alternatives": [
         "ported",
-        "partial",
+        "pending",
         "deferred",
         "designed-out",
         "divergence"
       ],
-      "pigCandidates": [],
+      "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/ai#CacheWarmingMaxIdleAgeMs"
+      ],
       "missingClosure": [
-        "pig-go-shape",
+        "shape-translation-review",
         "production-reachability",
         "required-layers",
         "behavioral-evidence"
@@ -15524,7 +15530,7 @@
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/internal/codingagent#cacheWarmingMinimumExpectedSavings"
+        "go:github.com/MichaelKinsy/PiG/ai#CacheWarmingMinimumExpectedSavings"
       ],
       "missingClosure": [
         "shape-translation-review",
@@ -15572,7 +15578,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -15582,6 +15588,7 @@
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/ai#CacheWarmingAction",
         "go:github.com/MichaelKinsy/PiG/coding/extension#CacheWarmingAction",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#CacheWarmingAction"
       ],
@@ -15600,22 +15607,24 @@
     {
       "id": "pkg:ai/.#CacheWarmingDecision",
       "upstreamShapeHash": "sha256:f6ef157616af7b8c4b19487c42b779e45dcbe13bddbf587ee04bf2e411a440e8",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/ai#CacheWarmingDecision",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#CacheWarmingDecision"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -15825,21 +15834,23 @@
     {
       "id": "pkg:ai/.#CacheWarmingPhase",
       "upstreamShapeHash": "sha256:3a25884e0ca854f9c514a428a08cebc23b8587841aab3c38f2fbb2b3082597d5",
-      "recommendedDisposition": "pending",
+      "recommendedDisposition": "partial",
       "confidence": "low",
       "basis": [
-        "No normalized-name candidate exists in the scanned Pig production packages."
+        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
       ],
       "alternatives": [
         "ported",
-        "partial",
+        "pending",
         "deferred",
         "designed-out",
         "divergence"
       ],
-      "pigCandidates": [],
+      "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/ai#CacheWarmingPhase"
+      ],
       "missingClosure": [
-        "pig-go-shape",
+        "shape-translation-review",
         "production-reachability",
         "required-layers",
         "behavioral-evidence"
@@ -45868,21 +45879,23 @@
     {
       "id": "pkg:ai/.#evaluateCacheWarming",
       "upstreamShapeHash": "sha256:1e71ebde0c7b9f7edef213f7d49ade0033983667095587b65c4d4bb47557185e",
-      "recommendedDisposition": "pending",
+      "recommendedDisposition": "partial",
       "confidence": "low",
       "basis": [
-        "No normalized-name candidate exists in the scanned Pig production packages."
+        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
       ],
       "alternatives": [
         "ported",
-        "partial",
+        "pending",
         "deferred",
         "designed-out",
         "divergence"
       ],
-      "pigCandidates": [],
+      "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/ai#EvaluateCacheWarming"
+      ],
       "missingClosure": [
-        "pig-go-shape",
+        "shape-translation-review",
         "production-reachability",
         "required-layers",
         "behavioral-evidence"
@@ -46447,7 +46460,7 @@
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/internal/codingagent#GetCacheWarmingDelayMs"
+        "go:github.com/MichaelKinsy/PiG/ai#GetCacheWarmingDelayMs"
       ],
       "missingClosure": [
         "shape-translation-review",
@@ -46491,21 +46504,23 @@
     {
       "id": "pkg:ai/.#getCacheWarmingRequestOptions",
       "upstreamShapeHash": "sha256:074fdb50b91090d88147095c9f2985649a218a66549350fbd55549e47ace1e5e",
-      "recommendedDisposition": "pending",
+      "recommendedDisposition": "partial",
       "confidence": "low",
       "basis": [
-        "No normalized-name candidate exists in the scanned Pig production packages."
+        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
       ],
       "alternatives": [
         "ported",
-        "partial",
+        "pending",
         "deferred",
         "designed-out",
         "divergence"
       ],
-      "pigCandidates": [],
+      "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/ai#GetCacheWarmingRequestOptions"
+      ],
       "missingClosure": [
-        "pig-go-shape",
+        "shape-translation-review",
         "production-reachability",
         "required-layers",
         "behavioral-evidence"
@@ -47141,7 +47156,7 @@
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/internal/codingagent#GetPromptCacheTtlMs"
+        "go:github.com/MichaelKinsy/PiG/ai#GetPromptCacheTtlMs"
       ],
       "missingClosure": [
         "shape-translation-review",
@@ -47535,21 +47550,23 @@
     {
       "id": "pkg:ai/.#isCacheWarmingReplayable",
       "upstreamShapeHash": "sha256:6f55b0ceb654d02bce22f654e03aa1f858fa33d4dde260062018e19d79125481",
-      "recommendedDisposition": "pending",
+      "recommendedDisposition": "partial",
       "confidence": "low",
       "basis": [
-        "No normalized-name candidate exists in the scanned Pig production packages."
+        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
       ],
       "alternatives": [
         "ported",
-        "partial",
+        "pending",
         "deferred",
         "designed-out",
         "divergence"
       ],
-      "pigCandidates": [],
+      "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/ai#IsCacheWarmingReplayable"
+      ],
       "missingClosure": [
-        "pig-go-shape",
+        "shape-translation-review",
         "production-reachability",
         "required-layers",
         "behavioral-evidence"
@@ -74376,21 +74393,23 @@
     {
       "id": "pkg:ai/compat#CACHE_WARMING_IDLE_CONTINUATION_PROBABILITY",
       "upstreamShapeHash": "sha256:939b6bf968da1e05d78ed82b85996253fd5433846463e78e8d261a16b4599137",
-      "recommendedDisposition": "pending",
+      "recommendedDisposition": "partial",
       "confidence": "low",
       "basis": [
-        "No normalized-name candidate exists in the scanned Pig production packages."
+        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
       ],
       "alternatives": [
         "ported",
-        "partial",
+        "pending",
         "deferred",
         "designed-out",
         "divergence"
       ],
-      "pigCandidates": [],
+      "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/ai#CacheWarmingIdleContinuationProbability"
+      ],
       "missingClosure": [
-        "pig-go-shape",
+        "shape-translation-review",
         "production-reachability",
         "required-layers",
         "behavioral-evidence"
@@ -74403,21 +74422,23 @@
     {
       "id": "pkg:ai/compat#CACHE_WARMING_MAX_AGE_MS",
       "upstreamShapeHash": "sha256:ec4b71bd4dc0b3aac2fea721ba74a18eb456f2cabef62c687f94ab806c1ced11",
-      "recommendedDisposition": "pending",
+      "recommendedDisposition": "partial",
       "confidence": "low",
       "basis": [
-        "No normalized-name candidate exists in the scanned Pig production packages."
+        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
       ],
       "alternatives": [
         "ported",
-        "partial",
+        "pending",
         "deferred",
         "designed-out",
         "divergence"
       ],
-      "pigCandidates": [],
+      "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/ai#CacheWarmingMaxAgeMs"
+      ],
       "missingClosure": [
-        "pig-go-shape",
+        "shape-translation-review",
         "production-reachability",
         "required-layers",
         "behavioral-evidence"
@@ -74430,21 +74451,23 @@
     {
       "id": "pkg:ai/compat#CACHE_WARMING_MAX_IDLE_AGE_MS",
       "upstreamShapeHash": "sha256:ec4b71bd4dc0b3aac2fea721ba74a18eb456f2cabef62c687f94ab806c1ced11",
-      "recommendedDisposition": "pending",
+      "recommendedDisposition": "partial",
       "confidence": "low",
       "basis": [
-        "No normalized-name candidate exists in the scanned Pig production packages."
+        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
       ],
       "alternatives": [
         "ported",
-        "partial",
+        "pending",
         "deferred",
         "designed-out",
         "divergence"
       ],
-      "pigCandidates": [],
+      "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/ai#CacheWarmingMaxIdleAgeMs"
+      ],
       "missingClosure": [
-        "pig-go-shape",
+        "shape-translation-review",
         "production-reachability",
         "required-layers",
         "behavioral-evidence"
@@ -74470,7 +74493,7 @@
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/internal/codingagent#cacheWarmingMinimumExpectedSavings"
+        "go:github.com/MichaelKinsy/PiG/ai#CacheWarmingMinimumExpectedSavings"
       ],
       "missingClosure": [
         "shape-translation-review",
@@ -74518,7 +74541,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -74528,6 +74551,7 @@
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/ai#CacheWarmingAction",
         "go:github.com/MichaelKinsy/PiG/coding/extension#CacheWarmingAction",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#CacheWarmingAction"
       ],
@@ -74546,22 +74570,24 @@
     {
       "id": "pkg:ai/compat#CacheWarmingDecision",
       "upstreamShapeHash": "sha256:f6ef157616af7b8c4b19487c42b779e45dcbe13bddbf587ee04bf2e411a440e8",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/ai#CacheWarmingDecision",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#CacheWarmingDecision"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -74771,21 +74797,23 @@
     {
       "id": "pkg:ai/compat#CacheWarmingPhase",
       "upstreamShapeHash": "sha256:3a25884e0ca854f9c514a428a08cebc23b8587841aab3c38f2fbb2b3082597d5",
-      "recommendedDisposition": "pending",
+      "recommendedDisposition": "partial",
       "confidence": "low",
       "basis": [
-        "No normalized-name candidate exists in the scanned Pig production packages."
+        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
       ],
       "alternatives": [
         "ported",
-        "partial",
+        "pending",
         "deferred",
         "designed-out",
         "divergence"
       ],
-      "pigCandidates": [],
+      "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/ai#CacheWarmingPhase"
+      ],
       "missingClosure": [
-        "pig-go-shape",
+        "shape-translation-review",
         "production-reachability",
         "required-layers",
         "behavioral-evidence"
@@ -105288,21 +105316,23 @@
     {
       "id": "pkg:ai/compat#evaluateCacheWarming",
       "upstreamShapeHash": "sha256:1e71ebde0c7b9f7edef213f7d49ade0033983667095587b65c4d4bb47557185e",
-      "recommendedDisposition": "pending",
+      "recommendedDisposition": "partial",
       "confidence": "low",
       "basis": [
-        "No normalized-name candidate exists in the scanned Pig production packages."
+        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
       ],
       "alternatives": [
         "ported",
-        "partial",
+        "pending",
         "deferred",
         "designed-out",
         "divergence"
       ],
-      "pigCandidates": [],
+      "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/ai#EvaluateCacheWarming"
+      ],
       "missingClosure": [
-        "pig-go-shape",
+        "shape-translation-review",
         "production-reachability",
         "required-layers",
         "behavioral-evidence"
@@ -106192,7 +106222,7 @@
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/internal/codingagent#GetCacheWarmingDelayMs"
+        "go:github.com/MichaelKinsy/PiG/ai#GetCacheWarmingDelayMs"
       ],
       "missingClosure": [
         "shape-translation-review",
@@ -106236,21 +106266,23 @@
     {
       "id": "pkg:ai/compat#getCacheWarmingRequestOptions",
       "upstreamShapeHash": "sha256:074fdb50b91090d88147095c9f2985649a218a66549350fbd55549e47ace1e5e",
-      "recommendedDisposition": "pending",
+      "recommendedDisposition": "partial",
       "confidence": "low",
       "basis": [
-        "No normalized-name candidate exists in the scanned Pig production packages."
+        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
       ],
       "alternatives": [
         "ported",
-        "partial",
+        "pending",
         "deferred",
         "designed-out",
         "divergence"
       ],
-      "pigCandidates": [],
+      "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/ai#GetCacheWarmingRequestOptions"
+      ],
       "missingClosure": [
-        "pig-go-shape",
+        "shape-translation-review",
         "production-reachability",
         "required-layers",
         "behavioral-evidence"
@@ -107339,7 +107371,7 @@
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/internal/codingagent#GetPromptCacheTtlMs"
+        "go:github.com/MichaelKinsy/PiG/ai#GetPromptCacheTtlMs"
       ],
       "missingClosure": [
         "shape-translation-review",
@@ -107909,21 +107941,23 @@
     {
       "id": "pkg:ai/compat#isCacheWarmingReplayable",
       "upstreamShapeHash": "sha256:6f55b0ceb654d02bce22f654e03aa1f858fa33d4dde260062018e19d79125481",
-      "recommendedDisposition": "pending",
+      "recommendedDisposition": "partial",
       "confidence": "low",
       "basis": [
-        "No normalized-name candidate exists in the scanned Pig production packages."
+        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
       ],
       "alternatives": [
         "ported",
-        "partial",
+        "pending",
         "deferred",
         "designed-out",
         "divergence"
       ],
-      "pigCandidates": [],
+      "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/ai#IsCacheWarmingReplayable"
+      ],
       "missingClosure": [
-        "pig-go-shape",
+        "shape-translation-review",
         "production-reachability",
         "required-layers",
         "behavioral-evidence"
@@ -220526,22 +220560,24 @@
     {
       "id": "pkg:coding-agent/.#CacheWarmingDecision",
       "upstreamShapeHash": "sha256:335e8412223d1b5033e7f6b15bd28246a82f1b19ad610a05620dcfa56b9cc838",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/ai#CacheWarmingDecision",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#CacheWarmingDecision"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",

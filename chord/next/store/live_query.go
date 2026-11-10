@@ -221,8 +221,6 @@ var noValue = &struct{}{}
 // whose stored columns changed and keeps the others the same objects, so its frame, the diff from the rows its watches had,
 // compares unchanged rows by identity (a window shifted by one row: one insert and one removal, not a comparison of every
 // row with every other).
-//
-// pig divergence (D431): Pi main 2439933cf, ahead of the v1.5.0 pin.
 type LiveQuery struct {
 	state.Source
 	handle    *TableHandle

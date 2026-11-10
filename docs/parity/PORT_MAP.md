@@ -1012,7 +1012,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/react/hooks.ts` | `chord/nextnode/surfaces/client/pi/chord/src/react/hooks.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/react/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
 | `packages/chord/src/react/stores.ts` | `chord/nextnode/surfaces/client/pi/chord/src/react/stores.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
-| `packages/chord/src/store/live-query.ts` | `chord/next/store/live_query.go (D431)` | ✅ |
+| `packages/chord/src/store/live-query.ts` | `chord/next/store/live_query.go` | ✅ |
 | `packages/chord/src/surfaces/active-language.ts` | `chord/next/surfaces/surfaces_active_language.go`, `chord/next/surfaces/surfaces_page_state.go` | ✅ |
 | `packages/chord/src/surfaces/active-theme.ts` | `chord/next/surfaces/surfaces_active_theme.go` | ✅ |
 | `packages/chord/src/surfaces/client.ts` | `chord/next/surfaces/surfaces_client.go` | ✅ |

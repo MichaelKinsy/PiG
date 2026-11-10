@@ -11522,7 +11522,7 @@
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "`docs/project/PROVENANCE.md` named an earlier release of Pi, not the pin, as the upstream pin. It now states the pin from `.upstream/pin` (`1.5.0+c23b9ec1`, with the full commit), and `make pin-sync` and `make pin-check` keep it current.",
+      "releaseNote": "`docs/project/PROVENANCE.md` named an earlier release of Pi, not the pin, as the upstream pin. It now states the pin from `.upstream/pin` (`1.5.1`, the release tag `v1.5.1`), and `make pin-sync` and `make pin-check` keep it current.",
       "origin": "release note",
       "commits": [
         {
@@ -34626,31 +34626,6 @@
       ]
     },
     {
-      "id": "BF-D431",
-      "title": "PiG follows Pi main 2439933cf ahead of the v1.5.0 pin: live queries over an object's own tables (self.Query)",
-      "symptom": "none.",
-      "rootCause": "owner decision of 2026-11-07 23:33Z, port all of Pi main.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D431",
-      "removeWhen": "the pin reaches a Pi release containing 2439933cf. Then this record goes.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "0d59519cff",
-          "date": "2026-11-07"
-        },
-        {
-          "hash": "930ef101d0",
-          "date": "2026-11-07"
-        }
-      ],
-      "tests": []
-    },
-    {
       "id": "BF-D460",
       "title": "The app kit's facets are Go core facets beside the plugins' Node host",
       "symptom": "Not a Pi bug.",
@@ -56773,11 +56748,6 @@
       "id": "D430",
       "title": "Go callers start a call and await it apart (Reference.Start, PendingCall) and run a handler's blocking…",
       "entry": "BF-D430"
-    },
-    {
-      "id": "D431",
-      "title": "PiG follows Pi main 2439933cf ahead of the v1.5.0 pin: live queries over an object's own tables (self.Query)",
-      "entry": "BF-D431"
     },
     {
       "id": "D460",

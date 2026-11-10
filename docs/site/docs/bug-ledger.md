@@ -1261,7 +1261,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D310](#bf-d310) | `/reload` and a session switch remove every extension overlay | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D311](#bf-d311) | `ctrl+o` applies to user bash output shown while the agent is working | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D430](#bf-d430) | Go callers start a call and await it apart (Reference.Start, PendingCall) and run a handler's blocking… | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-D431](#bf-d431) | PiG follows Pi main 2439933cf ahead of the v1.5.0 pin: live queries over an object's own tables (self.Query) | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D460](#bf-d460) | The app kit's facets are Go core facets beside the plugins' Node host | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D461](#bf-d461) | `Files` and `FilesFolder` are not reachable from TypeScript plugins | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D462](#bf-d462) | The server and each worker have two stores, not one | A Pi defect that PiG fixed first | All platforms | Unreleased |
@@ -7531,7 +7530,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `4219d7aa50` (2026-11-09)
 - **Tests:** None recorded.
-- **Release note:** `docs/project/PROVENANCE.md` named an earlier release of Pi, not the pin, as the upstream pin. It now states the pin from `.upstream/pin` (`1.5.0+c23b9ec1`, with the full commit), and `make pin-sync` and `make pin-check` keep it current.
+- **Release note:** `docs/project/PROVENANCE.md` named an earlier release of Pi, not the pin, as the upstream pin. It now states the pin from `.upstream/pin` (`1.5.1`, the release tag `v1.5.1`), and `make pin-sync` and `make pin-check` keep it current.
 
 ### BF-4259631
 
@@ -19190,21 +19189,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `0d59519cff` (2026-11-07), `930ef101d0` (2026-11-07)
 - **Tests:** `chord/nextnode/app/files_test.go::TestChunkedUploadsDropTheUploadsAPreviousRunLeft`, `chord/nextnode/app/files_test.go::TestChunkedUploadsFinishAnUploadOnlyOnceTheAppendsSentBeforeItLanded`, `chord/nextnode/app/files_test.go::TestChunkedUploadsWriteAppendsSentWithoutWaitingAtTheirOwnOffsetsByteForByte`
 
-### BF-D431
-
-**PiG follows Pi main 2439933cf ahead of the v1.5.0 pin: live queries over an object's own tables (self.Query)**
-
-- **Source:** A Pi defect that PiG fixed first (divergence D431)
-- **Symptom:** none.
-- **Root cause:** owner decision of 2026-11-07 23:33Z, port all of Pi main.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Pi issue:** none recorded
-- **Removed when Pi fixes it:** the pin reaches a Pi release containing 2439933cf. Then this record goes.
-- **Fix commits:** `0d59519cff` (2026-11-07), `930ef101d0` (2026-11-07)
-- **Tests:** None recorded.
-
 ### BF-D460
 
 **The app kit's facets are Go core facets beside the plugins' Node host**
@@ -29105,7 +29089,6 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D310 | `/reload` and a session switch remove every extension overlay | [BF-D310](#bf-d310) |
 | D311 | `ctrl+o` applies to user bash output shown while the agent is working | [BF-D311](#bf-d311) |
 | D430 | Go callers start a call and await it apart (Reference.Start, PendingCall) and run a handler's blocking… | [BF-D430](#bf-d430) |
-| D431 | PiG follows Pi main 2439933cf ahead of the v1.5.0 pin: live queries over an object's own tables (self.Query) | [BF-D431](#bf-d431) |
 | D460 | The app kit's facets are Go core facets beside the plugins' Node host | [BF-D460](#bf-d460) |
 | D461 | `Files` and `FilesFolder` are not reachable from TypeScript plugins | [BF-D461](#bf-d461) |
 | D462 | The server and each worker have two stores, not one | [BF-D462](#bf-d462) |

@@ -4107,7 +4107,7 @@
         "chord/next/host/host_live_query_test.go",
         "chord/next/store/live_query_test.go"
       ],
-      "rationale": "All 12 upstream cases run in the evidence files: eleven in host_live_query_test.go (the objects, the host and the reload), the refresh applied again in live_query_test.go. The reload case reports `swapped` where Pi main says `restarted` until Pi a5d209afd (the reload restart model) is ported (D431); the limit cases take an int64, so the fractional and absent limits Pi's type admits cannot be written."
+      "rationale": "All 12 upstream cases run in the evidence files: eleven in host_live_query_test.go (the objects, the host and the reload), the refresh applied again in live_query_test.go. The reload case reports the object `restarted`, as Pi does since a5d209afd; the limit cases take an int64, so the fractional and absent limits Pi's type admits cannot be written."
     },
     {
       "path": "packages/chord/test/store/outbox.test.ts",
@@ -4566,11 +4566,30 @@
     {
       "path": "packages/codemode/test/sandbox.test.ts",
       "disposition": "ported",
+      "protects": "The worker host loads the worker it is given (a path string works) and reports a missing worker file as a sandbox error with kind 'sandbox'; it ignores the dependency notifications Node --watch posts on the worker channel.",
+      "pigTest": "The first two cases are ported against PiG's analogue of the worker file, SandboxOptions.Wasm, the supplier of the QuickJS module that the worker backend (codemode.NewSandbox) runs: TestWorkerHostAcceptsAModuleFromAFilePath reads the module from a file path and returns 1, and TestWorkerHostReportsAMissingModuleFileAsASandboxError names a file that does not exist and expects a sandbox error. The failing-module case was already TestReportsAFailingWasmModuleAsASandboxError. For the --watch case a PiG test was considered over the vendored Pi TypeScript: it would run Pi's host.ts, not PiG's sandbox.",
+      "whyNot": "Only 'ignores Node --watch notifications from the worker' (#10725) stays designed out: the Go VM runs on a goroutine and reaches the host through the prelude's bridge function, so no Node --watch message can arrive and nothing in PiG's code could filter one. No PiG-shaped test of it is possible; Pi's own filter is tested by Pi's file.",
       "upstreamTestHash": "sha256:a76f2e0f3688286fcb15de79a675cc05bae699117e5f740b12dd26dbb0090931",
       "evidence": [
+        "codemode/sandbox_test.go#TestEmbeddedSourcesMatchTheirRecordedHashes",
+        "codemode/sandbox_test.go#behaviorTests",
+        "codemode/sandbox_test.go#TestSandboxBehaviorOnTheInlineBackend",
+        "codemode/sandbox_test.go#TestSandboxBehaviorOnTheRemoteBackend",
+        "codemode/sandbox_test.go#TestCollectsTextImageAndConsoleOutputInOrder",
+        "codemode/sandbox_test.go#TestRejectsInvalidTextAndImageArguments",
+        "codemode/sandbox_test.go#TestReservesTheStoreAndLoadNames",
+        "codemode/sandbox_test.go#TestRejectsInvalidAndReservedGlobalNames",
+        "codemode/sandbox_test.go#TestSandboxFailsAScriptWhoseOutputPassesTheLimitsEvenIfItCatchesTheError",
+        "codemode/sandbox_test.go#TestReportsAFailingWasmModuleAsASandboxError",
+        "codemode/bridge_test.go#TestReportsABrokenBridgeAsASandboxError",
+        "codemode/sandbox_test.go#TestWorkerHostAcceptsAModuleFromAFilePath",
+        "codemode/sandbox_test.go#TestWorkerHostReportsAMissingModuleFileAsASandboxError",
         "codemode/sandbox_test.go#TestPrintsNonFiniteNumbersInConsoleOutputAndThrownValuesLikeText"
       ],
-      "rationale": "codemode/sandbox_test.go ports sandbox.test.ts with its original scripts and expectations; its behavior tests run on the worker, inline and remote backends as upstream's describe.each does. The case added by Pi 33cd7e507 (#11945) 'prints non-finite numbers in console output and thrown values like text()' is TestPrintsNonFiniteNumbersInConsoleOutputAndThrownValuesLikeText on all three backends, with Pi's inputs and expectations."
+      "rationale": "54 inventory cases: 1 'embedded sources', 48 '%s backend' behavior cases and 5 'worker host' cases (the broken-bridge it.each counts once, 7 rows). 53 are ported and 1 is designed out. 'embedded sources › parse as JavaScript' is TestEmbeddedSourcesMatchTheirRecordedHashes: every execution runs the prelude, and the test pins assets/prelude.js, whose recorded upstream base hash (57c8dc8c…, codemode/assets/PROVENANCE.md) equals the hash of PRELUDE_SOURCE in the v1.2.0 tree. The 48 behavior cases are one Go test each in codemode/sandbox_test.go with Pi's scripts and expectations, run on the worker backend (codemode.NewSandbox) as top-level tests and on the inline (NewInlineSandbox) and remote (NewRemoteSandbox through a JSON-cloning Remote with ServeOptions.MaxInterruptBudget) backends through the behaviorTests table in TestSandboxBehaviorOnTheInlineBackend and TestSandboxBehaviorOnTheRemoteBackend, as 1.2.0's describe.each(BACKENDS) does. 1.0.4 to 1.1.0 adds `console: true` to console output items; TestCollectsTextImageAndConsoleOutputInOrder asserts it on the first and the last item. 1.1.0 to 1.2.0 moves the behavior cases into describe.each, so 'reserves the store and load names' and the globals cases build through newSandbox on every backend (Go: openSandbox); renames the image() errors from MCP blocks to image blocks, asserted with Pi's strings in TestRejectsInvalidTextAndImageArguments; and moves the worker-only cases into a 'worker host' describe. Of those, 'reports a failing wasm module as a sandbox error' is TestReportsAFailingWasmModuleAsASandboxError (with TestCorruptWasmModuleIsASandboxError), and 'reports a broken bridge as a sandbox error: %j' is TestReportsABrokenBridgeAsASandboxError in codemode/bridge_test.go, which sends all 7 of Pi's payloads (and 8 more) through a replacement prelude because there is no worker channel. 'accepts a worker path string' and 'reports a missing worker file as a sandbox error' are ported against SandboxOptions.Wasm, the PiG analogue of the worker file (TestWorkerHostAcceptsAModuleFromAFilePath and TestWorkerHostReportsAMissingModuleFileAsASandboxError; the owner's 2026-10-01 design-out of both is superseded by the AGENTS.md rule that tests what a case protects in PiG's own way). Designed out: 'ignores Node --watch notifications from the worker' (#10725), new in 1.2.0, tests host.ts's filter for the `watch:require`/`watch:import` messages Node 24/26 --watch posts on a worker_threads channel. The Go VM runs on a goroutine and reaches the host only through the prelude's bridge function, so no such message can arrive (runtime mechanic; the reviewed v1.2.0 upstream-sync row for packages/codemode/src/runtime/host.ts designs out the filter on the same ground). Input deviation: TestSandboxFailsAScriptWhoseOutputPassesTheLimitsEvenIfItCatchesTheError opens its sandbox with the default 300 s timeout where Pi's createSandbox() uses 10 s. The asserted result (RangeError 'script output exceeded' within the output bounds) is the same; with 10 s the remote backend under -race on a loaded host passes the deadline first (measured 16.8 s). The case added by Pi 33cd7e507 (#11945) 'prints non-finite numbers in console output and thrown values like text()' is TestPrintsNonFiniteNumbersInConsoleOutputAndThrownValuesLikeText on all three backends, with Pi's inputs and expectations.",
+      "designedOutCases": [
+        "worker host › ignores Node --watch notifications from the worker"
+      ]
     },
     {
       "path": "packages/codemode/test/source.test.ts",

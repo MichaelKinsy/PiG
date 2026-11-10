@@ -3768,28 +3768,6 @@ Evidence: `TestChunkedUploadsWriteAppendsSentWithoutWaitingAtTheirOwnOffsetsByte
 
 Parity allowance: none.
 
-## D431 PiG follows Pi main 2439933cf ahead of the v1.5.0 pin: live queries over an object's own tables (self.Query)
-
-What: PiG ports Pi main `2439933cf` (`self.query(table, q, limit)`), which is not in Pi 1.5.0: a watchable of up to `limit` rows over a table of the object itself, run at activation and in the commit step of every commit that writes the table, publishing the diff in that commit's batch; `query_failed` reports a failing run once per failure episode.
-
-Why: owner decision of 2026-11-07 23:33Z, port all of Pi main.
-
-Pi bug: none.
-
-Scope: `chord/next/store` (`live_query.go`), `chord/next/documents` (`Transaction` stages the refresh), `chord/next/host` (`StoreSelf.Query`, `HostError.Table`). A reload reports the object `restarted` (Pi a5d209afd's restart model).
-
-Owner decision: owner sign-off pending (draft; Pi main follow of 2026-11-07).
-
-SCRUTINIZED:approved
-
-Remove when: the pin reaches a Pi release containing 2439933cf. Then this record goes.
-
-Call-site markers: `chord/next/store/live_query.go`, `chord/next/host/host_attempt.go` (`Query`).
-
-Evidence: `TestLiveQuery*` (`chord/next/host/host_live_query_test.go`), `TestQueryRefreshAdoptsItsLastApplicationsRunsOnly...` (`chord/next/store/live_query_test.go`).
-
-Parity allowance: Go limits are int64: Pi's fractional and absent limits cannot be written.
-
 ## D460 The app kit's facets are Go core facets beside the plugins' Node host
 
 What: Pi loads the kit's facets and the plugins into one host. PiG's plugins run in a Node subprocess (`docs/plan/chord-plugins-node-evaluator.md`), so `StartServer`/`StartWorker` load the kit's facets (info, sessions, owner, pairing, files, themes, translations, telemetry ingest, the HTTP facet) as Go core facets on the server's Go host (a relay without an address on a worker); the plugins' `NodeHost` is a child link (`Accept` on the server, `WorkerPlugins.Load` on a worker). The local types plugins use (`AppInfo`, `Sessions`, `WorkerInfo`) reach the Go objects through `plugins.BridgedFacet`. `HostData` must be served at the worker's address, which the NodeHost serves, so it is a JavaScript core facet (`host_data.mjs`, written per start with the server's principal and a secret token) forwarding `exportTo` to the bridged Go local `chord.app.data.export`; plugins can see the bridged type but cannot call it without the token (in Pi they cannot reach the facet at all).

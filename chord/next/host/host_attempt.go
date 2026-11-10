@@ -460,8 +460,6 @@ func (o *attemptQueryOwner) Report(err error) {
 
 // Query implements StoreSelf: a live query is run before the object goes live (after its tables are prepared), again in
 // the commit step of every commit of the object that writes its table, and detached when its attempt ends.
-//
-// pig divergence (D431): Pi main 2439933cf, ahead of the v1.5.0 pin.
 func (a *attempt) Query(given store.Table, q *store.Query, limit int64) chord.Watchable[delta.JsonValue] {
 	a.assertDeclaring("query")
 	object := a.object
