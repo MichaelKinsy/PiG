@@ -3,6 +3,7 @@ package coding
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -147,6 +148,42 @@ func runtimeEventRecorder(events *[]any, cancelNew *string, cancelFork *bool) ex
 		}}
 	}
 	return ext
+}
+
+// packages/coding-agent/test/suite/agent-session-runtime.test.ts:218 (Pi #11060): "leaves no copy behind when an import fails on a missing
+// session cwd".
+func TestRuntimeOriginalImportMissingCwdLeavesNoCopy(t *testing.T) {
+	recordRuntimeOriginal(t, 218)
+	h := newRuntimeTestHarness(t, runtimeTestOptions{})
+	dir := h.runtime.Session().inner.Load().GetSessionDir()
+	importDir := filepath.Join(t.TempDir(), "import")
+	if err := os.MkdirAll(importDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	importPath := filepath.Join(importDir, "orphan.jsonl")
+	data, err := json.Marshal(icodingagent.SessionHeader{Type: "session", Version: 3, ID: "orphan", Timestamp: icodingagent.RFC3339NowNano(), CWD: filepath.Join(h.runtime.CWD(), "renamed-away")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(importPath, append(data, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err = h.runtime.ImportFromJsonl(t.Context(), importPath)
+	if _, ok := errors.AsType[*icodingagent.MissingSessionCwdError](err); !ok {
+		t.Fatalf("import error = %v, want MissingSessionCwdError", err)
+	}
+	if _, statErr := os.Stat(filepath.Join(dir, "orphan.jsonl")); !os.IsNotExist(statErr) {
+		t.Fatalf("the failed import left its copy behind: %v", statErr)
+	}
+	if _, err := h.runtime.ImportFromJsonl(t.Context(), importPath, h.runtime.CWD()); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := h.runtime.Session().Path(), filepath.Join(dir, "orphan.jsonl"); got != want {
+		t.Fatalf("session path = %q, want %q", got, want)
+	}
+	if _, statErr := os.Stat(filepath.Join(dir, "orphan-1.jsonl")); !os.IsNotExist(statErr) {
+		t.Fatalf("a second copy with the same id exists: %v", statErr)
+	}
 }
 
 // packages/coding-agent/test/suite/agent-session-runtime.test.ts:242.
