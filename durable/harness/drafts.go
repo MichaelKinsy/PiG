@@ -76,7 +76,7 @@ func numberAt(object *delta.Object, key string) float64 {
 func marshalPlain(value any) ([]byte, error) { return jsstring.MarshalKeepingSurrogates(value) }
 
 // decodeJSON decodes a plain JSON value into target through its JSON codec.
-func decodeJSON(value durable.JsonValue, target any) error {
+func decodeJSON[T any](value durable.JsonValue, target *T) error {
 	encoded, err := jsstring.MarshalKeepingSurrogates(value)
 	if err != nil {
 		return err

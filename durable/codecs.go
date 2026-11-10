@@ -3,6 +3,7 @@ package durable
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -279,8 +280,59 @@ func (content *DocumentContent) UnmarshalJSON(data []byte) error {
 	if err := jsstring.UnmarshalKeepingSurrogates(data, &wire); err != nil {
 		return err
 	}
+	if jsstring.HasSurrogateEscape(data) {
+		// Value and Ops decode themselves with Chord's decoder, which reads the escape of a lone surrogate as U+FFFD; their text is
+		// read again as JSON.parse reads it.
+		var raw struct {
+			Value json.RawMessage `json:"value"`
+			Ops   json.RawMessage `json:"ops"`
+		}
+		if err := jsstring.UnmarshalKeepingSurrogates(data, &raw); err != nil {
+			return err
+		}
+		var err error
+		if wire.Value, wire.Ops, err = decodeContentMembers(raw.Value, raw.Ops); err != nil {
+			return err
+		}
+	}
 	*content = DocumentContent{Version: wire.Version, Kind: wire.Kind, Value: wire.Value, Ops: wire.Ops}
 	return nil
+}
+
+// decodeContentMembers reads a document content's value and operations with the unit of each lone surrogate escape kept and the
+// key order of their text.
+func decodeContentMembers(value, ops json.RawMessage) (JsonObject, delta.Ops, error) {
+	var object JsonObject
+	if len(value) > 0 && string(value) != "null" {
+		decoded, err := decodeJsonText(value)
+		if err != nil {
+			return nil, nil, err
+		}
+		var ok bool
+		if object, ok = decoded.(JsonObject); !ok {
+			return nil, nil, &json.UnmarshalTypeError{Value: "non-object", Type: reflect.TypeFor[JsonObject]()}
+		}
+	}
+	var batch delta.Ops
+	if len(ops) > 0 && string(ops) != "null" {
+		decoded, err := decodeJsonText(ops)
+		if err != nil {
+			return nil, nil, err
+		}
+		items, ok := decoded.([]any)
+		if !ok {
+			return nil, nil, &json.UnmarshalTypeError{Value: "non-array", Type: reflect.TypeFor[delta.Ops]()}
+		}
+		batch = make(delta.Ops, len(items))
+		for index, item := range items {
+			op, isOp := item.([]any)
+			if !isOp {
+				return nil, nil, &json.UnmarshalTypeError{Value: "non-array", Type: reflect.TypeFor[Op]()}
+			}
+			batch[index] = op
+		}
+	}
+	return object, batch, nil
 }
 
 type taskStateWire[S, R any] struct {

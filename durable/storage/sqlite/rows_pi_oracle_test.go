@@ -127,7 +127,8 @@ func TestRowsMatchPi(t *testing.T) {
 	current, live := 0, 0
 	for index, record := range records {
 		want := pi.Records[index]
-		gotRecord, err := record.MarshalJSON()
+		// The storage writes the record through jsstring (encodeJson), which gives a Marshaler's text the form JSON.stringify writes.
+		gotRecord, err := jsstring.MarshalJSON(record)
 		if err != nil {
 			t.Fatal(err)
 		}
