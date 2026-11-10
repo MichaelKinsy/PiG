@@ -224,7 +224,25 @@ func (r *ModelRegistry) refreshNativeProvider(parent context.Context, p *extensi
 		if current, own := nativeProviderCurrentModels(ctx, p); current != nil {
 			models, listed = *current, own
 		}
-		if network {
+		if network && p.RefreshModelsAuth == ai.RefreshModelsAuthConfigured {
+			// upstream: models.ts resolveNetworkRefresh with refreshModelsAuth "configured": the provider only has to be configured. No credential is resolved, so an
+			// expired OAuth login is not refreshed first, and the network phase receives none.
+			var check *ai.AuthCheck
+			if check, err = p.CheckAuth(ctx, credential); err != nil {
+				return err
+			}
+			if check != nil {
+				if stored, err = store.Read(ctx, p.ID); err != nil {
+					return err
+				}
+				if err = refresh(nil, stored, true, force); err != nil {
+					return err
+				}
+				if current, own := nativeProviderCurrentModels(ctx, p); current != nil {
+					models, listed = *current, own
+				}
+			}
+		} else if network {
 			var refreshCredential *ai.Credential
 			// pig divergence (D237): a refresh that started before exit must be saved; the cancellation of the catalog refresh ends only the wait for the lock.
 			_, err = ai.ModifyCredentialDetached(ctx, credentials, p.ID, func(current *ai.Credential) (*ai.Credential, error) {

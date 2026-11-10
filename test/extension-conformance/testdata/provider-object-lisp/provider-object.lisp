@@ -44,6 +44,7 @@
     (flet ((get-models () (sb-thread:with-mutex (lock) (copy-list models)))
            (credential-key (credential) (and credential (pig:jget credential "key"))))
       (pig:make-provider
+       :refresh-models-auth (let ((auth (sb-ext:posix-getenv "CARRIER_REFRESH_AUTH"))) (and auth (plusp (length auth)) auth))
        :id "carrier-provider" :name "Carrier Provider" :base-url (pig:jget model "baseUrl") :headers (pig:obj "X-Carrier" "present")
        :auth (pig:make-provider-auth
               :api-key (pig:make-api-key-auth
@@ -92,7 +93,10 @@
                                      :update (lambda ()
                                                (sb-thread:with-mutex (lock)
                                                  (setf models (append models (list (carrier-model
-                                                                                    (format nil "refreshed:~A" (pig:refresh-models-context-base-url input))))))))))))
+                                                                                    (format nil "refreshed:~A~@[|credential=~A~]" (pig:refresh-models-context-base-url input)
+                                                                                                    (let ((auth (sb-ext:posix-getenv "CARRIER_REFRESH_AUTH")))
+                                                                                                      (and auth (plusp (length auth))
+                                                                                                           (if (pig:refresh-models-context-credential input) "true" "false"))))))))))))))
        :fetch-deferred (lambda (model handle options)
                          (carrier-stream model (pig:make-provider-stream-options
                                                 :values (pig:obj "metadata" (pig:obj "method" (pig:jget handle "id")))

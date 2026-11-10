@@ -301,6 +301,8 @@ type NativeProviderDeclaration struct {
 	BaseURL *string                         `json:"baseUrl,omitempty"`
 	Models  []extension.ProviderModelConfig `json:"models"`
 	OAuth   *ProviderOAuthConfig            `json:"oauth,omitempty"`
+	// RefreshModelsAuth is the Provider object's refreshModelsAuth (ai/src/models.ts:204): "credential" (the default when absent) or "configured". Pi types the member and never validates it, so the host carries it unchanged and anything but "configured" refreshes with the credential.
+	RefreshModelsAuth ai.RefreshModelsAuthMode `json:"refreshModelsAuth,omitempty"`
 }
 
 type ProviderObjectAuthDeclaration struct {

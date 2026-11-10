@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"maps"
 	"os"
 	"sync"
@@ -68,7 +69,7 @@ func makeProvider() *sdk.Provider {
 		}
 		return s, nil
 	}
-	return &sdk.Provider{ID: "carrier-provider", Name: "Carrier Provider", BaseURL: new(model["baseUrl"].(string)), Headers: map[string]string{"X-Carrier": "present"},
+	return &sdk.Provider{RefreshModelsAuth: os.Getenv("CARRIER_REFRESH_AUTH"), ID: "carrier-provider", Name: "Carrier Provider", BaseURL: new(model["baseUrl"].(string)), Headers: map[string]string{"X-Carrier": "present"},
 		Auth: sdk.ProviderAuth{
 			APIKey: &sdk.APIKeyAuth{Name: "Carrier API key",
 				Check: func(input sdk.APIKeyAuthInput) (*sdk.AuthCheck, error) {
@@ -154,6 +155,10 @@ func makeProvider() *sdk.Provider {
 				maps.Copy(extra, model)
 				// The refreshed model carries the base URL the refresh context gave: an SDK that drops RefreshModelsContext.baseUrl publishes "refreshed:".
 				extra["id"] = "refreshed:" + input.BaseURL
+				// TestProviderObjectRefreshModelsAuthAcrossSDKs: the refresh reports whether it received a credential.
+				if os.Getenv("CARRIER_REFRESH_AUTH") != "" {
+					extra["id"] = fmt.Sprintf("%s|credential=%t", extra["id"], input.Credential != nil)
+				}
 				models = append(models, extra)
 				return nil
 			}})

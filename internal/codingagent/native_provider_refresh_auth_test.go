@@ -110,3 +110,66 @@ func TestComposeProviderRefreshModelsAuth(t *testing.T) {
 		}
 	})
 }
+
+// pi-mono ai/src/models.ts Provider.refreshModelsAuth through the callback carrier a subprocess extension's Provider object registers as: with
+// "configured" the network phase runs without resolving a credential, so a stale OAuth login is not refreshed and the refresh receives none; the
+// default resolves (and refreshes) the credential first and hands it to the refresh.
+func TestSubprocessCarrierHonoursRefreshModelsAuth(t *testing.T) {
+	for _, tc := range []struct {
+		name                  string
+		mode                  ai.RefreshModelsAuthMode
+		wantResolutions       int
+		wantNetworkCredential bool
+	}{
+		{"configured", ai.RefreshModelsAuthConfigured, 0, false},
+		{"credential", ai.RefreshModelsAuthCredential, 1, true},
+		{"default", "", 1, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var resolutions int
+			var networkCredentials []*ai.Credential
+			provider := &extension.NativeProvider{
+				ID: "stale-carrier", Name: "Stale Carrier", BaseURL: "https://carrier.invalid", RefreshModelsAuth: tc.mode,
+				CheckAuth: func(context.Context, *ai.Credential) (*ai.AuthCheck, error) {
+					return &ai.AuthCheck{Type: ai.CredentialOAuth, Source: "OAuth"}, nil
+				},
+				Stream: func(context.Context, *ai.Model, ai.TranscriptContext, ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
+					return nil, nil
+				},
+				ResolveAuth: func(context.Context, ai.CredentialStore, ai.AuthResolutionOverrides) (*ai.AuthResult, error) {
+					return nil, nil
+				},
+				ResolveRefreshCredential: func(_ context.Context, current *ai.Credential) (*ai.Credential, *ai.Credential, error) {
+					resolutions++
+					return current, nil, nil
+				},
+				RefreshModels: func(refresh ai.RefreshModelsContext) error {
+					if refresh.AllowNetwork {
+						networkCredentials = append(networkCredentials, refresh.Credential)
+					}
+					return nil
+				},
+			}
+			registry := NewModelRegistry(t.TempDir())
+			registry.SetCredentialStore(ai.NewInMemoryAuthStorage(map[string]ai.Credential{"stale-carrier": {Type: ai.CredentialOAuth, Access: "expired", Refresh: "revoked"}}))
+			t.Cleanup(func() { registry.CloseModelTasks(); registry.NativeModels().Close() })
+			if err := registry.RegisterNativeProvider(t.Context(), provider); err != nil {
+				t.Fatal(err)
+			}
+			registry.YieldToRegistrationRefresh(t.Context())
+			networkCredentials, resolutions = nil, 0
+
+			result := registry.RefreshCatalogs(t.Context(), CatalogRefreshOptions{Providers: []string{"stale-carrier"}, AllowNetwork: true, Force: new(true)})
+
+			if result.Aborted || len(result.Errors) != 0 {
+				t.Fatalf("refresh = %+v", result)
+			}
+			if resolutions != tc.wantResolutions {
+				t.Fatalf("credential resolutions = %d, want %d", resolutions, tc.wantResolutions)
+			}
+			if len(networkCredentials) != 1 || (networkCredentials[0] != nil) != tc.wantNetworkCredential {
+				t.Fatalf("network refresh credentials = %v, want one, present = %v", networkCredentials, tc.wantNetworkCredential)
+			}
+		})
+	}
+}

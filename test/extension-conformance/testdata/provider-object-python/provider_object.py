@@ -58,7 +58,10 @@ def make_provider():
         def update():
             with lock:
                 # An SDK that drops RefreshModelsContext.baseUrl publishes "refreshed:None".
-                models.append({**model, "id": "refreshed:" + str(input.base_url)})
+                refreshed = "refreshed:" + str(input.base_url)
+                if os.environ.get("CARRIER_REFRESH_AUTH"):
+                    refreshed += "|credential=" + str(input.credential is not None).lower()
+                models.append({**model, "id": refreshed})
         input.publish(sdk.ModelsPublication(None, update))
     def cancel_deferred(model, handle, options):
         assert handle["id"] == "deferred"
@@ -78,7 +81,8 @@ def make_provider():
         filter_all_models=lambda models, credential: models if (credential or {}).get("key") == "all" else [],
         refresh_models=refresh,
         fetch_deferred=lambda model, handle, options: stream(model, {}, sdk.ProviderStreamOptions({"metadata": {"method": handle["id"]}}, options.signal)),
-        cancel_deferred=cancel_deferred)
+        cancel_deferred=cancel_deferred,
+        refresh_models_auth=os.environ.get("CARRIER_REFRESH_AUTH") or None)
 
 
 def probe(ctx, path):

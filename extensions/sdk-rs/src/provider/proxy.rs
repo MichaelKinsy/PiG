@@ -399,6 +399,7 @@ impl ProviderObjects {
             name: decl["name"].as_str().ok_or("missing Provider name")?.into(),
             base_url: decl["baseUrl"].as_str().map(str::to_owned),
             headers: optional(&decl["headers"]),
+            refresh_models_auth: decl["refreshModelsAuth"].as_str().map(str::to_owned),
             auth: ProviderAuth { api_key, oauth },
             get_models: {
                 let proxy = proxy.clone();

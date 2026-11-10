@@ -56,7 +56,8 @@ func TestProviderObjectsAcrossSDKs(t *testing.T) {
 	}
 }
 
-func testProviderObjectPair(t *testing.T, root, role, language, placement, call string) {
+// startProviderObjectPair loads the native fixture of language in placement with role, applies its queued registrations and returns the production services, the loaded extensions and the reader config.
+func startProviderObjectPair(t *testing.T, root, role, language, placement, call string) (*coding.AgentSessionServices, []extension.Extension, subprocess.ExtConfig, string) {
 	t.Helper()
 	dir := t.TempDir()
 	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: dir, AgentDir: filepath.Join(dir, "agent")})
@@ -148,6 +149,13 @@ func testProviderObjectPair(t *testing.T, root, role, language, placement, call 
 	if model == nil {
 		t.Fatalf("%s: native provider model missing from host runtime", call)
 	}
+	return services, loaded, reader, dir
+}
+
+func testProviderObjectPair(t *testing.T, root, role, language, placement, call string) {
+	t.Helper()
+	services, loaded, reader, dir := startProviderObjectPair(t, root, role, language, placement, call)
+	model := services.ModelRuntime().GetModel("carrier-provider", "carrier-model")
 	// Pi hands the caller's onPayload, onResponse and onProviderStreamEvent to Provider.stream (model-runtime.ts:671-689, sdk.ts:425-427); the Provider invokes each by name, and onPayload's replacement reaches the Provider.
 	var seen []string
 	var callbacksMu sync.Mutex
@@ -233,6 +241,97 @@ func testProviderObjectPair(t *testing.T, root, role, language, placement, call 
 			t.Errorf("missing %s in %s", want, data)
 		}
 	}
+}
+
+// pi-mono ai/src/models.ts:204 Provider.refreshModelsAuth, loader.ts:468-475 and model-runtime.ts:928: a Provider object registered with refreshModelsAuth "configured" keeps a stale OAuth login unrefreshed, and its catalog refresh runs without a credential. Every SDK registers the carrier with "configured" (CARRIER_REFRESH_AUTH); a declaration that drops the member falls back to credential mode, which runs the provider's OAuth refresh (rotating the stored login) and hands the refresh the credential.
+// mutation-checked: dropping the member from the host's NativeProviderDeclaration (protocol.go / native_provider.go), from Node's nativeDeclaration, or from any SDK's provider declaration fails that language's subtests.
+func TestProviderObjectRefreshModelsAuthAcrossSDKs(t *testing.T) {
+	root, err := filepath.Abs("../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, language := range []string{"go", "python", "rust", "lisp", "node"} {
+		placements := []string{"strict", "packed"}
+		if language == "go" {
+			placements = append(placements, "fused")
+		}
+		if language == "node" {
+			placements = []string{"strict"}
+		}
+		for _, placement := range placements {
+			t.Run(language+"-"+placement, func(t *testing.T) {
+				t.Setenv("CARRIER_ROLE", "owner")
+				t.Setenv("CARRIER_REFRESH_AUTH", "configured")
+				var services *coding.AgentSessionServices
+				if language == "node" {
+					services = startNodeProviderObject(t)
+				} else {
+					services, _, _, _ = startProviderObjectPair(t, root, "owner", language, placement, "pi.registerProvider(provider)")
+				}
+				stale := ai.Credential{Type: ai.CredentialOAuth, Access: "stale", Refresh: "revoked", Expires: 1}
+				if err := services.Auth().Set("carrier-provider", stale); err != nil {
+					t.Fatal(err)
+				}
+				services.Registry().YieldToRegistrationRefresh(t.Context())
+				result := services.ModelRuntime().Refresh(t.Context(), ai.ModelsRefreshOptions{Providers: []string{"carrier-provider"}, AllowNetwork: new(true), Force: new(true)})
+				if result.Aborted || len(result.Errors) != 0 {
+					t.Fatalf("refresh = %+v", result)
+				}
+				stored, _, err := services.Auth().GetRaw("carrier-provider")
+				if err != nil {
+					t.Fatal(err)
+				}
+				if stored.Access != "stale" {
+					t.Fatalf("stored OAuth access = %q, want the stale login untouched: the OAuth refresh ran", stored.Access)
+				}
+				var refreshed []string
+				for _, candidate := range services.ModelRuntime().GetModels("carrier-provider") {
+					if candidate.ProviderMeta.ProviderID == "carrier-provider" && strings.HasPrefix(candidate.ID, "refreshed") {
+						refreshed = append(refreshed, candidate.ID)
+					}
+				}
+				if len(refreshed) != 1 || !strings.HasSuffix(refreshed[0], "|credential=false") {
+					t.Fatalf("network refresh published %q, want one model from a refresh that received no credential (refresh %+v, catalog %v)", refreshed, result, ids(services.ModelRuntime().GetModels("carrier-provider")))
+				}
+			})
+		}
+	}
+}
+
+func ids(models []*ai.Model) []string {
+	var out []string
+	for _, model := range models {
+		out = append(out, model.ID)
+	}
+	return out
+}
+
+// startNodeProviderObject loads the Node owner fixture (a TS extension calling pi.registerProvider(provider)) over production services.
+func startNodeProviderObject(t *testing.T) *coding.AgentSessionServices {
+	t.Helper()
+	dir := t.TempDir()
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: dir, AgentDir: filepath.Join(dir, "agent")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(services.Close)
+	host := subprocess.NewHost(dir)
+	t.Cleanup(func() { host.Shutdown("done") })
+	host.SetProviderCallbacks(services.Registry().RegisterExtensionProvider, services.Registry().UnregisterProvider)
+	host.SetNativeProviderCallback(services.Registry().RegisterNativeProvider)
+	host.SetUIBridge(subprocess.NewUIBridge(nil))
+	source, err := filepath.Abs("../parity/scenarios/testdata/extension-provider-carrier-owner-configured.mjs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, errs := host.LoadAll(t.Context(), []subprocess.ExtConfig{{Name: "extension-provider-carrier-owner-configured", Source: source, Enabled: true, Isolation: "strict"}}); len(errs) != 0 {
+		t.Fatal(errs)
+	}
+	applyQueuedRegistrations(host)
+	if services.ModelRuntime().GetModel("carrier-provider", "carrier-model") == nil {
+		t.Fatal("native provider model missing from host runtime")
+	}
+	return services
 }
 
 func providerPeer(t *testing.T, root string, native subprocess.ExtConfig) subprocess.ExtConfig {

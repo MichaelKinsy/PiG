@@ -64,6 +64,7 @@ fn make_provider() -> Arc<Provider> {
         name: "Carrier Provider".into(),
         base_url: Some("http://127.0.0.1:9".into()),
         headers: Some(json!({"X-Carrier":"present"})),
+        refresh_models_auth: std::env::var("CARRIER_REFRESH_AUTH").ok().filter(|v| !v.is_empty()),
         auth: ProviderAuth {
             api_key: Some(APIKeyAuth {
                 name: "Carrier API key".into(),
@@ -157,10 +158,13 @@ fn make_provider() -> Arc<Provider> {
             let models = models.clone();
             let model = model.clone();
             // An SDK that drops RefreshModelsContext.baseUrl publishes "refreshed:None".
-            let refreshed_id = format!(
+            let mut refreshed_id = format!(
                 "refreshed:{}",
                 input.base_url.clone().unwrap_or_else(|| "None".to_string())
             );
+            if std::env::var("CARRIER_REFRESH_AUTH").is_ok_and(|v| !v.is_empty()) {
+                refreshed_id += &format!("|credential={}", input.credential.is_some());
+            }
             (input.publish)(ModelsPublication {
                 persist: Some(Value::Null),
                 update: Some(Arc::new(move || {
