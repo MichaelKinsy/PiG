@@ -76,6 +76,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-0920a00](#bf-0920a00) | `/llama` pointed at llama-swap no longer ends in a bare "llama.cpp returned HTTP 404" when you load or unload… | A Pi defect that PiG fixed first | All platforms | 0.7.0 |
 | [BF-093cf5c](#bf-093cf5c) | Provider error text is written the way Pi writes it | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0950d13](#bf-0950d13) | Chord: `FormatNumber` and `FormatTime` format in ICU's root locale when neither the tag nor the platform… | PiG's own defect | All platforms | Unreleased |
+| [BF-09587d2](#bf-09587d2) | Chord: `App.Close` no longer returns while the surfaces' and bases' build goroutines still run | PiG's own defect | All platforms | Unreleased |
 | [BF-098e33d](#bf-098e33d) | Extension `ctx.ui.theme.fg`, `bg` and `getBgAnsi` throw `Unknown theme color: <token>` in every SDK for a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0a0d27d](#bf-0a0d27d) | The training run's socket was in the build's work directory, whose path under a deep agent directory can… | PiG's own defect | All platforms | Unreleased |
 | [BF-0a3094a](#bf-0a3094a) | fix(codingagent): hold the exit record's owner with a channel, not a replaceable write function | PiG's own defect | All platforms | Unreleased |
@@ -2763,6 +2764,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `7434ca91ae` (2026-11-06), `0950d13d68` (2026-11-07), `54c4ee3645` (2026-11-07), `6075c6589e` (2026-11-07), `ad5fbb2fe5` (2026-11-07)
 - **Tests:** `automation/release/set-version/main_test.go::TestSetVersionRejectsAREADMEWithoutTheVersionExample`, `automation/release/set-version/main_test.go::TestSetVersionWritesTheREADMEVersionExample`, `chord/next/surfaces/intl_parse_fuzz_test.go::FuzzParseTag`, `chord/next/surfaces/intl_platform_test.go::TestPlatformLocaleIsThatOfTheFirstSetVariable`, `chord/next/surfaces/intl_root_test.go::TestAnUnavailableTagTakesThePlatformLocaleWhenItHasData`, `chord/next/surfaces/intl_root_test.go::TestCompoundLegacyAliasesAreCanonicalizedBeforeTheLookup`, `chord/next/surfaces/intl_root_test.go::TestFormatTimeShowsTheInstantInTheProcessZone`, `chord/next/surfaces/intl_root_test.go::TestFormatsAllocateOnlyTheResultForCanonicalTags` and 32 more in docs/bug-ledger.json
 - **Release note:** Chord: `FormatNumber` and `FormatTime` format in ICU's root locale when neither the tag nor the platform locale has data, as Node does (a `LANG=xx_YY` prints `14:05`, `xx_US` `2:05 PM`, a variable set to the empty string is the locale `und`), and apply CLDR's compound legacy aliases (`hy-arevmda` is `hyw`, `zh-hakka` is `hak`, `zh-xiang` is `hsn`) before the lookup.
+
+### BF-09587d2
+
+**Chord: `App.Close` no longer returns while the surfaces' and bases' build goroutines still run**
+
+- **Source:** PiG's own defect
+- **Symptom:** Chord: `App.Close` no longer returns while the surfaces' and bases' build goroutines still run.
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `09587d2718` (2026-11-09)
+- **Tests:** `chord/nextnode/app/app_bases_linux_test.go::TestAppCloseAbandonsABaseBuildStalledOnAReadWhenItsContextEndsAndReturnsTheContextsError`, `chord/nextnode/app/app_bases_linux_test.go::TestAppCloseWaitsForABaseBuildStalledOnAReadAndReturnsOnceItEndsItsLateResultIsDropped`, `chord/nextnode/app/app_bases_scan_test.go::TestAppARecordOfTheServersCodeArrivingAfterTheClosedWatcherWatchesNothingAndMarksNothing`, `chord/nextnode/app/app_bases_scan_test.go::TestAppARecordOfTheServersCodeEditedSinceTheStartMarksBaseWhileTheAppIsOpen`, `chord/nextnode/app/app_bases_scan_test.go::TestAppCloseAbandonsAScanStalledOnAReadWhenItsContextEndsAndReturnsTheContextsError`, `chord/nextnode/app/app_bases_scan_test.go::TestAppCloseWaitsForAScanOfItsOwnCodeStalledOnAReadAndReturnsOnceItEndsItsLateResultIsDropped`, `chord/nextnode/surfaces/surfaces_build_linux_test.go::TestClosingASurfaceAbandonsItsBuildInFlightWhenTheContextEnds`, `chord/nextnode/surfaces/surfaces_build_linux_test.go::TestClosingASurfaceWaitsForItsBuildInFlight` and 1 more in docs/bug-ledger.json
+- **Release note:** Chord: `App.Close` no longer returns while the surfaces' and bases' build goroutines still run. It joins them after its steps, bounded by its context, and returns the context's error when that ends first (the builds finish on their own and what they finish after the close is dropped); a surface whose build had not started never starts it. Pi's `#close` does not wait for these builds; the Go goroutines are owned, so Close drains them.
 
 ### BF-098e33d
 

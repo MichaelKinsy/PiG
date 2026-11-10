@@ -2,6 +2,7 @@ package surfaces
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -171,5 +172,25 @@ func TestAFailedBuildStaysFailedEveryLaterRequestAnswers503AndNothingRebuilds(t 
 		if got := f.building.built(); got == nil || got.Error == nil {
 			t.Fatalf("built = %+v, want the failed outcome", got)
 		}
+	}
+}
+
+// Forced Go difference (Pi's `#close` leaves the build's Promise unawaited): a surface that closed before its build started never
+// starts one; every waiter gets the failed outcome (503) at once, with no goroutine.
+func TestASurfaceClosedBeforeItsBuildStartedNeverStartsOneItsWaitersAnswer503(t *testing.T) {
+	f := newBuildFixture(t, entryIn(t, "globalThis.started = true;\n"))
+	if err := f.building.close(context.Background()); err != nil {
+		t.Fatalf("close = %v, want nil: no build was in flight", err)
+	}
+	outcome := f.building.build()
+	if outcome.Kind != SurfaceBuiltKindFailed || !errors.Is(outcome.Error, errClosed) {
+		t.Fatalf("build = %+v, want the closed surface's failure", outcome)
+	}
+	response, err := f.building.file(WebPrefix+"base.0.js", context.Background())
+	if err != nil || response.Kind != http.KindError || response.Status != 503 {
+		t.Fatalf("file = %+v, %v, want 503", response, err)
+	}
+	if err := f.building.close(context.Background()); err != nil {
+		t.Fatalf("second close = %v", err)
 	}
 }

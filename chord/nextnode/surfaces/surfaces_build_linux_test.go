@@ -113,3 +113,42 @@ func TestTheServersCloseFailsTheBuildInFlightItsWaitersAnswer503(t *testing.T) {
 		t.Fatal("a build the close ended reports built")
 	}
 }
+
+// Forced Go difference: the close joins a build in flight. It returns once the build ended, not before (Pi's `#close` does not
+// wait for the build's Promise).
+func TestClosingASurfaceWaitsForItsBuildInFlight(t *testing.T) {
+	entry, pipe := heldEntry(t)
+	f := newBuildFixture(t, entry)
+	f.building.start()
+	closed := make(chan error, 1)
+	go func() { closed <- f.building.close(context.Background()) }()
+	// The build's esbuild run reads the pipe: it ends only when the pipe is written, after the close began waiting for it.
+	release(t, pipe)
+	if err := <-closed; err != nil {
+		t.Fatalf("close = %v, want nil once the build ended", err)
+	}
+	if f.building.built() == nil {
+		t.Fatal("close returned before the build ended")
+	}
+}
+
+// A close whose context ended abandons the build in flight: it returns the context's error, the goroutine finishes on its own.
+func TestClosingASurfaceAbandonsItsBuildInFlightWhenTheContextEnds(t *testing.T) {
+	entry, pipe := heldEntry(t)
+	f := newBuildFixture(t, entry)
+	f.building.start()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	// The pipe is not written: the build cannot have ended.
+	if err := f.building.close(ctx); !errors.Is(err, context.Canceled) {
+		t.Fatalf("close = %v, want the context's error", err)
+	}
+	if f.building.built() != nil {
+		t.Fatal("the build ended while its pipe was held")
+	}
+	release(t, pipe)
+	<-f.building.done
+	if f.building.built() == nil {
+		t.Fatal("the abandoned build never ended")
+	}
+}
