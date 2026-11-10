@@ -1,0 +1,80 @@
+pkg:ai/.#CACHE_WARMING_IDLE_CONTINUATION_PROBABILITY	ai	type-mismatch	ai/cache_warming.go#CacheWarmingIdleContinuationProbability
+pkg:ai/.#CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS	ai	type-mismatch	ai/cache_warming.go#CacheWarmingMinimumExpectedSavings
+pkg:ai/.#getCacheWarmingRequestOptions	ai	child-gap	ai/cache_warming.go#GetCacheWarmingRequestOptions
+pkg:ai/.#getCacheWarmingRequestOptions::call:0	ai	signature-mismatch	ai/cache_warming.go#GetCacheWarmingRequestOptions
+pkg:ai/compat#CACHE_WARMING_IDLE_CONTINUATION_PROBABILITY	ai	type-mismatch	ai/cache_warming.go#CacheWarmingIdleContinuationProbability
+pkg:ai/compat#CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS	ai	type-mismatch	ai/cache_warming.go#CacheWarmingMinimumExpectedSavings
+pkg:ai/compat#getCacheWarmingRequestOptions	ai	child-gap	ai/cache_warming.go#GetCacheWarmingRequestOptions
+pkg:ai/compat#getCacheWarmingRequestOptions::call:0	ai	signature-mismatch	ai/cache_warming.go#GetCacheWarmingRequestOptions
+pkg:chord/.#DocumentRecord	chord	type-mismatch	chord/next/store/engine.go#DocumentRecord
+pkg:chord/.#Host	chord	child-gap	chord/next/host/host_host.go#Host
+pkg:chord/.#Host::property:deleteHostData	chord	member-missing	chord/next/host/host_host.go#Host
+pkg:chord/.#Host::property:deleteHostData::call:0	chord	member-missing	chord/next/host/host_host.go#Host
+pkg:chord/.#Host::property:exportHostData	chord	member-missing	chord/next/host/host_host.go#Host
+pkg:chord/.#Host::property:exportHostData::call:0	chord	member-missing	chord/next/host/host_host.go#Host
+pkg:chord/.#Host::property:importHostData	chord	member-missing	chord/next/host/host_host.go#Host
+pkg:chord/.#Host::property:importHostData::call:0	chord	member-missing	chord/next/host/host_host.go#Host
+pkg:chord/.#HostArchive	chord	no-go-symbol	
+pkg:chord/.#HostColumnSchema	chord	no-go-symbol	
+pkg:chord/.#HostColumnSchema::property:%5BSymbol.STATIC%5D	chord	child-gap	
+pkg:chord/.#HostColumnSchema::property:host	chord	child-gap	
+pkg:chord/.#HostDataCounts	chord	no-go-symbol	
+pkg:chord/.#HostImportOptions	chord	no-go-symbol	
+pkg:chord/.#KeyedBy	chord	no-go-symbol	
+pkg:chord/.#KeyedMember	chord	child-gap	chord/next/contracts/schema.go#KeyedMember
+pkg:chord/.#KeyedMember::construct:0	chord	no-go-symbol	chord/next/contracts/schema.go#KeyedMember
+pkg:chord/.#KeyedMember::property:key	chord	member-missing	chord/next/contracts/schema.go#KeyedMember
+pkg:chord/.#StateDefinition	chord	child-gap	chord/next/documents/definition.go#StateDefinition
+pkg:chord/.#StateDefinition::construct:0	chord	no-go-symbol	chord/next/documents/definition.go#StateDefinition
+pkg:chord/.#StateDefinition::property:host	chord	member-missing	chord/next/documents/definition.go#StateDefinition
+pkg:chord/.#Step	chord	child-gap	chord/next/store/step.go#Step
+pkg:chord/.#Step::property:records	chord	member-missing	chord/next/store/step.go#Step
+pkg:chord/.#Step::property:records::call:0	chord	member-missing	chord/next/store/step.go#Step
+pkg:chord/.#TableDefinition	chord	child-gap	chord/next/store/table.go#TableDefinition
+pkg:chord/.#TableDefinition::property:hostColumn	chord	member-missing	chord/next/store/table.go#TableDefinition
+pkg:chord/.#Tx	chord	child-gap	chord/next/documents/transaction.go#Tx
+pkg:chord/.#Tx::property:draft	chord	child-gap	chord/next/documents/transaction.go#Tx.Draft
+pkg:chord/.#Tx::property:draft::call:1	chord	signature-mismatch	chord/next/documents/transaction.go#Tx.Draft
+pkg:chord/.#Tx::property:retire	chord	child-gap	chord/next/documents/transaction.go#Tx.Retire
+pkg:chord/.#Tx::property:retire::call:1	chord	signature-mismatch	chord/next/documents/transaction.go#Tx.Retire
+pkg:chord/.#exportHostData	chord	no-go-symbol	
+pkg:chord/.#exportHostData::call:0	chord	child-gap	
+pkg:chord/.#host	chord	no-go-symbol	
+pkg:chord/.#host::call:0	chord	child-gap	
+pkg:chord/.#keyed	chord	child-gap	chord/next/contracts/schema.go#Keyed
+pkg:chord/.#keyed::call:1	chord	signature-mismatch	chord/next/contracts/schema.go#Keyed
+pkg:chord/.#readHostArchive	chord	no-go-symbol	
+pkg:chord/.#readHostArchive::call:0	chord	child-gap	
+pkg:chord/app#ARCHIVE_FORMAT	chord	type-mismatch	chord/next/store/archive.go#ArchiveFormat
+pkg:chord/app#App	chord	child-gap	chord/nextnode/app/app.go#App
+pkg:chord/app#App::property:deleteData	chord	member-missing	chord/nextnode/app/app.go#App
+pkg:chord/app#App::property:deleteData::call:0	chord	member-missing	chord/nextnode/app/app.go#App
+pkg:chord/app#App::property:importData	chord	child-gap	chord/nextnode/app/app.go#App.ImportData
+pkg:chord/app#App::property:importData::call:0	chord	signature-mismatch	chord/nextnode/app/app.go#App.ImportData
+pkg:chord/app#DataImportOptions	chord	no-go-symbol	
+pkg:chord/react#HostProvider	chord	no-go-symbol	
+pkg:chord/react#HostProvider::call:0	chord	child-gap	
+pkg:chord/workers#WorkersBuilt	chord	type-mismatch	chord/nextnode/workers/workers_workers.go#WorkersBuilt
+pkg:chord/workers#WorkersOptions	chord	type-mismatch	chord/nextnode/workers/workers_workers.go#WorkersOptions
+pkg:coding-agent/.#GrepOperations	coding-agent	child-gap	internal/codingagent/tools/grep.go#GrepOperations
+pkg:coding-agent/.#GrepOperations::property:readFile	coding-agent	not-exercised	internal/codingagent/tools/grep.go#GrepOperations.ReadFile
+pkg:coding-agent/.#OAuthSelectorComponent	coding-agent	child-gap	tui/oauth_selector.go#OAuthSelectorComponent
+pkg:coding-agent/.#OAuthSelectorComponent::construct:0	coding-agent	signature-mismatch	tui/oauth_selector.go#NewOAuthSelectorComponent
+pkg:durable/.#NativeWatchCall	durable	undecidable	
+pkg:durable/.#WatchCall	durable	undecidable	
+pkg:durable/.#WatchEnd	durable	undecidable	
+pkg:durable/.#WatchHandle	durable	undecidable	
+pkg:durable/.#section	durable	child-gap	durable/harness/define.go#Section
+pkg:durable/.#section::call:0	durable	signature-mismatch	durable/harness/define.go#Section
+pkg:durable/storage/sqlite#CURRENT_SQLITE_SCHEMA_VERSION	durable	undecidable	durable/storage/sqlite/migrations.go#CurrentSqliteSchemaVersion
+pkg:durable/storage/sqlite#SqliteDatabase	durable	undecidable	
+pkg:durable/storage/sqlite#SqliteExecutor	durable	undecidable	
+pkg:durable/storage/sqlite#SqliteMigration	durable	undecidable	
+pkg:durable/storage/sqlite#SqliteValue	durable	undecidable	
+pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase	durable	undecidable	
+pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteStorage	durable	undecidable	
+pkg:durable/storage/sqlite/node#NodeSqliteDatabase	durable	undecidable	
+pkg:durable/storage/sqlite/node#NodeSqliteDatabaseOptions	durable	undecidable	
+pkg:durable/storage/sqlite/node#openNodeSqliteDatabase	durable	undecidable	
+pkg:durable/storage/sqlite/node#openNodeSqliteStorage	durable	child-gap	durable/storage/sqlite/node/node.go#OpenNodeSqliteStorage
+pkg:durable/storage/sqlite/node#openNodeSqliteStorage::call:0	durable	undecidable	durable/storage/sqlite/node/node.go#OpenNodeSqliteStorage

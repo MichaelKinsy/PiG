@@ -63,7 +63,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/agent-session-runtime.js",
-      "sha256": "c9b75de712c73072fd6521f6b306cc49a28e04e6191bbd1200a02749c513c11d"
+      "sha256": "44beede45451cef172d7137077e7e84867b9aaa9f20575143fb9a93fcc00261a"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/agent-session-services.js",
@@ -303,7 +303,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/session-cwd.js",
-      "sha256": "d7d23660fffd1e6f22a12f0dbefa9fb1f5bfde7c1131b6176ec27ba57b6cfd16"
+      "sha256": "28cca49f725acb3babbd7d19975dc7c6ce1092f8131024d12eec6ae6ecc32123"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/session-export.js",
@@ -555,7 +555,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/main.js",
-      "sha256": "cc1e61b20db20ea6a414c92890e7eb2a84312556ccf55052d712d78b10df2662"
+      "sha256": "e45bd6aa320b2f687ac4a727d30f48060d293680d53b7c729601b1b8d2209999"
     },
     {
       "path": "pi-dist/pi-coding-agent/migrations.js",
@@ -775,7 +775,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/interactive-mode.js",
-      "sha256": "2476bdb7c22cd06d87058834298f2db51bb3a035f1bacfded3e38e6c95534d2d"
+      "sha256": "8e38ab5bd76ec6687bb7016a7b21bb9c16414c735d295da23febe56bdeb3f343"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/model-catalog-refresh.js",
