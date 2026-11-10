@@ -14827,11 +14827,17 @@
       "rootCauseSource": "commit",
       "userImpact": "An operation failed or was rejected",
       "platform": "Windows",
-      "class": "own",
+      "class": "ahead-of-pi",
+      "divergence": "D616",
+      "removeWhen": "Pi's install names the archive relative to the pack directory.",
       "fixedIn": "Unreleased",
       "releaseNote": "Windows: installing a plugin from npm extracts the packed tarball with a relative archive name, so the `tar` of Git for Windows (which reads `C:\\...` as a file on host `C`) no longer fails with \"Cannot connect to C: resolve failed\". Pi passes the absolute path and fails there (D616, owner approved 2026-11-10).",
       "origin": "release note",
       "commits": [
+        {
+          "hash": "3467950fd9",
+          "date": "2026-11-09"
+        },
         {
           "hash": "5043738f10",
           "date": "2026-11-09"
@@ -57017,6 +57023,11 @@
     {
       "id": "D607",
       "title": "The plugins component loads hosts through a Node subprocess it starts: Pi's `evaluate`, `stack` and runtime…"
+    },
+    {
+      "id": "D616",
+      "title": "An npm tarball is extracted with `tar` told the archive relative to the pack directory, where Pi passes its…",
+      "entry": "BF-5043738"
     }
   ],
   "exemptCommits": {
