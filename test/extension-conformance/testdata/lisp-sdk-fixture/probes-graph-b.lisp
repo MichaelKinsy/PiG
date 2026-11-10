@@ -91,12 +91,22 @@
                                (maphash (lambda (k v) (setf (gethash k env) v)) (pig:jget spawn "env"))
                                (setf (gethash "HOOK_VAR" env) "hook-env")
                                (pig:obj "command" "printf '%s|%s' \"$HOOK_VAR\" \"$PI_SESSION_ID\"" "cwd" (pig:jget spawn "cwd") "env" env))))
-          :operations (and (custom)
+          :operations (cond
+                        ;; The bash tool runs on the local operations. "local" signals their condition unchanged; "localWrapped" signals a new one with the same message, which is
+                        ;; not the backend's and keeps nothing of it (Pi matches the backend's class, bash.ts).
+                        ((member (bp-case case "ops") '("local" "localWrapped") :test #'equal)
+                         (let ((local (pig:bash-operations-exec (pig:create-local-bash-operations)))
+                               (wrapped (equal (bp-case case "ops") "localWrapped")))
                            (pig:make-bash-operations
                             (lambda (command cwd options)
-                              (note (format nil "exec:~A|cwd=~A" command cwd))
-                              (funcall (pig:bash-exec-options-on-data options) (sb-ext:string-to-octets (format nil "custom:~A" command) :external-format :utf-8))
-                              (pig:obj "exitCode" 0))))))))))
+                              (handler-bind ((error (lambda (e) (when wrapped (error "~A" e)))))
+                                (funcall local command cwd options))))))
+                        ((custom)
+                         (pig:make-bash-operations
+                          (lambda (command cwd options)
+                            (note (format nil "exec:~A|cwd=~A" command cwd))
+                            (funcall (pig:bash-exec-options-on-data options) (sb-ext:string-to-octets (format nil "custom:~A" command) :external-format :utf-8))
+                            (pig:obj "exitCode" 0)))))))))))
 
 (defun bp-factories (tool)
   "(definition-factory . tool-factory) of the built-in TOOL."

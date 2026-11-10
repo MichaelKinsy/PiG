@@ -81,11 +81,11 @@ pub(crate) fn run_user_bash_exec(
     req: &crate::protocol::RequestMsg,
     signal: ProviderSignal,
     notify: impl Fn(Value) + Send + Sync + 'static,
-) -> Result<Value, String> {
+) -> Result<Value, (String, Option<crate::protocol::ShellExit>)> {
     let handle = req.tool.as_deref().unwrap_or("");
     let exec = table
         .get(handle)
-        .ok_or_else(|| format!("unknown bash operations: {handle}"))?;
+        .ok_or_else(|| (format!("unknown bash operations: {handle}"), None))?;
     let args = req.args.clone().unwrap_or(Value::Null);
     let finished = Arc::new(std::sync::atomic::AtomicBool::new(false));
     let live = finished.clone();
@@ -110,13 +110,20 @@ pub(crate) fn run_user_bash_exec(
         timeout: args.get("timeout").and_then(Value::as_f64),
         env,
     };
+    crate::builtin_tool::forget_local_shell_timeout();
     let result = exec(
         args["command"].as_str().unwrap_or(""),
         args["cwd"].as_str().unwrap_or(""),
         options,
     );
     finished.store(true, std::sync::atomic::Ordering::SeqCst);
-    result.map(|exit_code| json!({ "exitCode": exit_code }))
+    match result {
+        Ok(exit_code) => Ok(json!({ "exitCode": exit_code })),
+        Err(message) => {
+            let shell_exit = crate::builtin_tool::local_shell_timeout_of(&message);
+            Err((message, shell_exit))
+        }
+    }
 }
 
 pub(crate) fn base64(data: &[u8]) -> String {

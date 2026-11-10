@@ -207,6 +207,18 @@ func builtinProbeSpec(c builtinProbeCase, log *builtinCallLog) (definition func(
 				return sdk.BashExecResult{ExitCode: new(0)}, nil
 			}}
 		}
+		if c.Ops == "local" || c.Ops == "localWrapped" {
+			// The bash tool runs on the local operations. "local" returns their error unchanged, as Pi's wrapper that rethrows what the local backend threw; "localWrapped" makes a
+			// new error with the same message, which is not the backend's error, so it keeps nothing of it (Pi matches the backend's class, bash.ts).
+			local := sdk.CreateLocalBashOperations(nil)
+			options.Operations = &sdk.BashOperations{Exec: func(command, cwd string, o sdk.BashExecOptions) (sdk.BashExecResult, error) {
+				result, err := local.Exec(command, cwd, o)
+				if err != nil && c.Ops == "localWrapped" {
+					return result, errors.New(err.Error())
+				}
+				return result, err
+			}}
+		}
 		return func() (sdk.BuiltinToolDefinition, error) { return sdk.CreateBashToolDefinition(cwd, options) },
 			func() (sdk.BuiltinTool, error) { return sdk.CreateBashTool(cwd, options) }
 	}

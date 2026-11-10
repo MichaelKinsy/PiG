@@ -6965,6 +6965,23 @@ fn builtin_options(case: &Value, log: &CallLog) -> ProbeOptions {
             })
         }));
     }
+    if matches!(case["ops"].as_str(), Some("local" | "localWrapped")) {
+        // The bash tool runs on the local operations. "local" returns their error unchanged; "localWrapped" returns a new error with the same message, which is not the
+        // backend's error and keeps nothing of it (Pi matches the backend's class, bash.ts).
+        let wrapped = case["ops"].as_str() == Some("localWrapped");
+        let inner = pig_sdk::create_local_bash_operations(None).exec;
+        options.bash.operations = Some(pig_sdk::BashOperations {
+            exec: Arc::new(move |command, cwd, exec_options| {
+                let result = inner(command, cwd, exec_options);
+                if wrapped {
+                    result.map_err(|error| format!("{error}"))
+                } else {
+                    result
+                }
+            }),
+        });
+        return options;
+    }
     if case["ops"].as_str() == Some("globlimit") {
         // Pi main 676af1d77 (#11747): the tool asks glob for one result past its limit.
         let glob_log = log.clone();

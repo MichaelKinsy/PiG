@@ -957,6 +957,12 @@ fn run_call(
     }
     let reply = reply?;
     if let Some(error) = reply.error {
+        if let Some(shell_exit) = error.shell_exit {
+            return Err(io::Error::other(HostShellTimeout {
+                message: host_error_message(error),
+                shell_exit,
+            }));
+        }
         return Err(io::Error::other(host_error_message(error)));
     }
     reply.result.ok_or_else(|| {
@@ -964,6 +970,41 @@ fn run_call(
             io::ErrorKind::InvalidData,
             format!("host reply to {method} has no result"),
         )
+    })
+}
+
+/// The host's error reply of a local command that timed out after its shell had exited (Pi's `ShellTimeoutError` with a `shellExit`).
+#[derive(Debug)]
+struct HostShellTimeout {
+    message: String,
+    shell_exit: crate::protocol::ShellExit,
+}
+
+impl std::fmt::Display for HostShellTimeout {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.message)
+    }
+}
+
+impl std::error::Error for HostShellTimeout {}
+
+thread_local! {
+    /// The error string the local operations of this thread last returned for a command that timed out after its shell had exited, by the address of its
+    /// buffer, with the shell's exit. Pi's bash tool tells that error by class, so only that error, returned from an exec unchanged, keeps the shell's exit; a
+    /// Rust error is a `String`, whose identity is its buffer, which a move keeps and a copy, a wrapper's `format!` or a new message does not.
+    static LOCAL_SHELL_TIMEOUT: std::cell::Cell<Option<(usize, usize, crate::protocol::ShellExit)>> = const { std::cell::Cell::new(None) };
+}
+
+/// Forgets the timeout the local operations of this thread last returned: the exec that starts next is judged by its own.
+pub(crate) fn forget_local_shell_timeout() {
+    LOCAL_SHELL_TIMEOUT.with(|slot| slot.set(None));
+}
+
+/// The shell's exit of `error`, if it is the very error the local operations of this thread returned last, unchanged.
+pub(crate) fn local_shell_timeout_of(error: &str) -> Option<crate::protocol::ShellExit> {
+    LOCAL_SHELL_TIMEOUT.with(|slot| {
+        let (address, len, shell_exit) = slot.take()?;
+        (address == error.as_ptr() as usize && len == error.len()).then_some(shell_exit)
     })
 }
 
@@ -1049,7 +1090,22 @@ fn local_exec(shell: &'static str, shell_path: Option<String>) -> BashOperations
             if let Some(message) = locked(&failure).clone() {
                 return Err(message);
             }
-            let reply = outcome.map_err(|error| error.to_string())?;
+            let reply = match outcome {
+                Ok(reply) => reply,
+                Err(error) => {
+                    let shell_exit = error
+                        .get_ref()
+                        .and_then(|inner| inner.downcast_ref::<HostShellTimeout>())
+                        .map(|timeout| timeout.shell_exit);
+                    let message = error.to_string();
+                    if let Some(shell_exit) = shell_exit {
+                        LOCAL_SHELL_TIMEOUT.with(|slot| {
+                            slot.set(Some((message.as_ptr() as usize, message.len(), shell_exit)));
+                        });
+                    }
+                    return Err(message);
+                }
+            };
             Ok(reply.get("exitCode").and_then(Value::as_i64))
         }),
     }

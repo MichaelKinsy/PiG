@@ -189,7 +189,24 @@ func (o directBashOperations) Exec(ctx context.Context, command, cwd string, opt
 			options.OnData(data)
 		}
 	})
-	return extension.BashOperationsResult{ExitCode: exitCode}, err
+	return extension.BashOperationsResult{ExitCode: exitCode}, localShellTimeout(err)
+}
+
+// localShellTimeout is the local shell backend's timeout when err is the error a fused extension's local operations returned, unchanged, for a command whose
+// shell had exited before the deadline: Pi's bash tool tells that error by class (bash.ts), and the SDK's error is of its own package's type.
+func localShellTimeout(err error) error {
+	reporter, ok := err.(interface {
+		ShellExitReport() (exitCode int, afterSeconds float64, ok bool)
+	})
+	if !ok {
+		return err
+	}
+	timeout, isTimeout := strings.CutPrefix(err.Error(), "timeout:")
+	exitCode, afterSeconds, exited := reporter.ShellExitReport()
+	if !isTimeout || !exited {
+		return err
+	}
+	return &tools.ShellTimeoutError{Timeout: timeout, ShellExit: &tools.ShellExit{ExitCode: exitCode, AfterSeconds: afterSeconds}}
 }
 
 // builtinCallbacks are the callbacks of one CallBuiltinToolExecute, which stay in the extension. A callback runs under the call's context.

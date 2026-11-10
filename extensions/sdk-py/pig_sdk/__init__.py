@@ -1374,6 +1374,9 @@ class HostCallError(RuntimeError):
         super().__init__(message if not code else f"{code}: {message}")
         self.code = code
         self.message = message
+        # Pi's ShellTimeoutError.shellExit (not exported by Pi): set only by the SDK, on the error of a local shell command that timed out after its shell had
+        # exited. Pi's bash tool tells that error by class, so only this error, raised from an exec unchanged, keeps it (see _local_exec).
+        self._shell_exit: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -6377,6 +6380,8 @@ class Extension:
         except Exception as exc:  # noqa: BLE001 - SDK boundary reports handler errors.
             # A handler whose dialog was answered before another's responds after it, error or not (_ToolStartOrder).
             error = {"message": str(exc)}
+            if isinstance(exc, HostCallError) and exc._shell_exit is not None:
+                error["shellExit"] = exc._shell_exit
             if ctx._tool_start is not None:
                 ctx._tool_start.respond(lambda: self._respond(req_id, None, error))
             else:
@@ -6597,7 +6602,10 @@ class Extension:
             raise RuntimeError("extension shut down during host call")
         if result.get("error"):
             err = result["error"]
-            raise HostCallError(err.get("message", "host call failed"), err.get("code"))
+            failure = HostCallError(err.get("message", "host call failed"), err.get("code"))
+            if isinstance(err.get("shellExit"), dict):
+                failure._shell_exit = err["shellExit"]
+            raise failure
         return result
 
     def _notify(self, method: str, args: Any = None) -> None:

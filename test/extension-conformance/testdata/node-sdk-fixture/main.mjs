@@ -1212,7 +1212,13 @@ export default function (pi) {
       case "find": if (c.ops === "globlimit") return { operations: { exists: async (p) => { log.push(`exists:${p}`); return true; }, glob: async (pattern, cwd, o) => { log.push(`glob:${pattern}:limit=${o.limit}`); return ["a.txt", "b.txt", "c.txt"].slice(0, o.limit); } } };
         return { operations: custom ? { exists: async (p) => { log.push(`exists:${p}`); return false; }, glob: async (pattern) => { log.push(`glob:${pattern}`); return []; } } : undefined };
       case "powershell": return { exposeSessionEnvironment: c.exposeSessionEnvironment ?? undefined };
-      default: return { commandPrefix: c.commandPrefix || undefined, exposeSessionEnvironment: c.exposeSessionEnvironment ?? undefined, spawnHook: hook, operations: custom ? { exec: async (command, cwd, o) => { log.push(`exec:${command}|cwd=${cwd}`); o.onData(Buffer.from(`custom:${command}`)); return { exitCode: 0 }; } } : undefined };
+      default: if (c.ops === "local" || c.ops === "localWrapped") {
+        // The bash tool runs on the local operations. "local" rethrows their error unchanged; "localWrapped" throws a new Error with the same message, which is not the
+        // backend's class and keeps nothing of it (bash.ts matches the class).
+        const local = piCodingAgent.createLocalBashOperations();
+        return { operations: { exec: async (command, cwd, o) => { try { return await local.exec(command, cwd, o); } catch (error) { throw c.ops === "localWrapped" ? new Error(error.message) : error; } } } };
+      }
+      return { commandPrefix: c.commandPrefix || undefined, exposeSessionEnvironment: c.exposeSessionEnvironment ?? undefined, spawnHook: hook, operations: custom ? { exec: async (command, cwd, o) => { log.push(`exec:${command}|cwd=${cwd}`); o.onData(Buffer.from(`custom:${command}`)); return { exitCode: 0 }; } } : undefined };
     }
   };
   const builtinFactories = { read: [piCodingAgent.createReadToolDefinition, piCodingAgent.createReadTool], write: [piCodingAgent.createWriteToolDefinition, piCodingAgent.createWriteTool], edit: [piCodingAgent.createEditToolDefinition, piCodingAgent.createEditTool], bash: [piCodingAgent.createBashToolDefinition, piCodingAgent.createBashTool], grep: [piCodingAgent.createGrepToolDefinition, piCodingAgent.createGrepTool], find: [piCodingAgent.createFindToolDefinition, piCodingAgent.createFindTool], ls: [piCodingAgent.createLsToolDefinition, piCodingAgent.createLsTool], powershell: [piCodingAgent.createPowerShellToolDefinition, piCodingAgent.createPowerShellTool] };
