@@ -881,3 +881,23 @@ func TestNativeSpansACloseRunsUnderItsChordCloseSpan(t *testing.T) {
 		t.Errorf("the close's own span is not a child of chord.close")
 	}
 }
+
+// native.ts `#closeWithin`: the close's signal (`timeout`) is aborted only when the close timed out. A close that settled in time
+// leaves its context live, so a closer that keeps its ctx (a task it started) still sees it unaborted after close returns.
+func TestNativeACloseInTimeLeavesItsContextUnabortedAfterItReturns(t *testing.T) {
+	h := newNativeHarness(t)
+	var kept context.Context
+	native := newNativeHandle(nativeOpener("v"), func(_ string, _ NativeCloseReason, ctx context.Context) error {
+		kept = ctx
+		return nil
+	}, time.Second, h.owner(1))
+	if err := native.open(chordctx.Background()); err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	if failure := native.close(NativeCloseReason{Kind: NativeCloseEnd}); failure != nil {
+		t.Fatalf("close = %+v", failure)
+	}
+	if kept == nil || kept.Err() != nil {
+		t.Fatalf("the close's ctx after a close in time = %v, want a live ctx", kept)
+	}
+}

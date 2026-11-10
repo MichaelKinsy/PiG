@@ -18,6 +18,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 )
 
+// pi: packages/chord/src/host/parked.ts
 // Ports packages/chord/test/host/parked.test.ts. The TestHostParkedCalls... cases are the upstream cases on whole hosts (a
 // served `Gated` type whose open waits on a gate, calls through `ref.log(...)` on a loading local reference, and a raw
 // provider or parent peer for the remote ones). The TestParkedCall... cases are own tests of parkedCalls on a fake loop
@@ -894,4 +895,120 @@ func TestParkedCallsACallerThatCancelsWhileItsCallIsBeingSentLeavesTheQueueAsItW
 	if !h.calls.waiting() {
 		t.Fatal("a call parked after it is not waiting: the count of the queue is off")
 	}
+}
+
+// Own tests of the queue walks of parked.ts `flush` and `#reject`: what the mutation run showed no case of the upstream file
+// pins. Each case names the line of the walk it checks.
+
+// parked.ts `flush`: a call whose deadline is exactly now is expired, not sent (`Date.now() >= due`).
+func TestParkedCallsACallDueExactlyNowIsRejectedNotSent(t *testing.T) {
+	h := newParkedHarness(t, time.Second)
+	result := h.park("a", chordctx.Background())
+	// The clock reaches the deadline without its timer having fired (timers could not run while earlier calls were sent).
+	h.loop.skew.Store(1000)
+	h.flush()
+	if len(h.log) != 0 {
+		t.Fatalf("log = %v, want the call due now not sent", h.log)
+	}
+	if _, err := parkedResultOf(t, result); err == nil || !isParkTimeout(err) {
+		t.Fatalf("call due now = %v, want unavailable/park_timeout", err)
+	}
+}
+
+// parked.ts `flush`: an expired call is skipped, and the calls after it are still sent.
+func TestParkedCallsTheCallsAfterAnExpiredOneAreStillSent(t *testing.T) {
+	h := newParkedHarness(t, time.Second)
+	expired := h.park("a", chordctx.Background())
+	h.advance(500)
+	h.park("b", chordctx.Background())
+	h.park("c", chordctx.Background())
+	// Now is 1100: a (due 1000) expired without its timer, b and c (due 1500) did not.
+	h.loop.skew.Store(600)
+	h.flush()
+	if want := []string{"b", "c"}; !reflect.DeepEqual(h.log, want) {
+		t.Fatalf("log = %v, want %v", h.log, want)
+	}
+	if _, err := parkedResultOf(t, expired); err == nil || !isParkTimeout(err) {
+		t.Fatalf("expired call = %v, want unavailable/park_timeout", err)
+	}
+}
+
+// parked.ts `#reject`: rejecting more calls than the queue compacts at leaves none out, and the queue ends empty.
+func TestParkedCallsRejectingManyCallsRejectsEachOfThemAndEmptiesTheQueue(t *testing.T) {
+	h := newParkedHarness(t, time.Second)
+	var results []*parkedCallResult
+	for i := range 40 {
+		results = append(results, h.park(string(rune('A'+i)), chordctx.Background()))
+	}
+	reason := errors.New("gone")
+	h.in(func() { h.calls.reject(reason) })
+	for i, result := range results {
+		if !isSettled(result) {
+			t.Fatalf("call %d was skipped by the walk", i)
+		}
+		if _, err := parkedResultOf(t, result); !errors.Is(err, reason) {
+			t.Fatalf("call %d = %v, want %v", i, err, reason)
+		}
+	}
+	if len(h.calls.calls) != 0 || h.calls.removed != 0 || h.calls.walking != 0 || h.calls.waiting() {
+		t.Fatalf("queue after the walk: calls %d removed %d walking %d waiting %v, want it empty and idle",
+			len(h.calls.calls), h.calls.removed, h.calls.walking, h.calls.waiting())
+	}
+}
+
+// parked.ts `flush`: calls that leave during the walk (a handler's synchronous part expires many) do not compact the queue
+// under it: the calls after them are all sent, in order.
+func TestParkedCallsManyCallsLeavingDuringTheWalkDoNotMakeItSkipTheRest(t *testing.T) {
+	h := newParkedHarness(t, time.Second)
+	for i := range 40 {
+		h.park(string(rune('A'+i)), chordctx.Background())
+	}
+	all := append([]*parkedCall(nil), h.calls.calls...)
+	h.during["A"] = func() {
+		for _, call := range all[1:21] {
+			h.calls.expire(call)
+		}
+	}
+	h.flush()
+	want := []string{"A"}
+	for i := 21; i < 40; i++ {
+		want = append(want, string(rune('A'+i)))
+	}
+	if !reflect.DeepEqual(h.log, want) {
+		t.Fatalf("log = %v, want %v", h.log, want)
+	}
+}
+
+// listenerCountingContext is a context whose abort listeners are counted: AfterFunc is how context.AfterFunc registers with
+// it, and its stop is counted.
+type listenerCountingContext struct {
+	done  chan struct{}
+	stops atomic.Int32
+}
+
+func (c *listenerCountingContext) Deadline() (time.Time, bool) { return time.Time{}, false }
+func (c *listenerCountingContext) Done() <-chan struct{}       { return c.done }
+func (c *listenerCountingContext) Err() error                  { return nil }
+func (c *listenerCountingContext) Value(any) any               { return nil }
+func (c *listenerCountingContext) AfterFunc(func()) func() bool {
+	return func() bool { c.stops.Add(1); return true }
+}
+
+// parked.ts `#take`: a call that leaves the queue (here: by its deadline) stops listening to its caller's signal.
+func TestParkedCallsACallThatLeavesTheQueueStopsListeningToItsCallersSignal(t *testing.T) {
+	h := newParkedHarness(t, time.Second)
+	ctx := &listenerCountingContext{done: make(chan struct{})}
+	result := h.park("a", ctx)
+	h.advance(1000)
+	if _, err := parkedResultOf(t, result); err == nil || !isParkTimeout(err) {
+		t.Fatalf("call = %v, want unavailable/park_timeout", err)
+	}
+	if got := ctx.stops.Load(); got != 1 {
+		t.Fatalf("abort listener stops = %d, want 1", got)
+	}
+}
+
+func isParkTimeout(err error) bool {
+	chordErr, ok := data.IsChordError(err)
+	return ok && chordErr.Code == data.CodeUnavailable && chordErr.Reason == data.ReasonParkTimeout
 }
