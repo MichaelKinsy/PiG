@@ -30677,7 +30677,9 @@
         "call:ai/models_runtime_refresh.go#Models.resolveNetworkRefresh"
       ],
       "evidence": [
-        "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream"
+        "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream",
+        "test:coding/extension/native_provider_members_test.go#TestNativeProviderOfRoundTripsRefreshModelsAuth",
+        "test:internal/codingagent/native_provider_refresh_auth_test.go#TestComposeProviderRefreshModelsAuth"
       ]
     },
     {
@@ -76437,7 +76439,9 @@
         "call:ai/models_runtime_refresh.go#Models.resolveNetworkRefresh"
       ],
       "evidence": [
-        "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream"
+        "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream",
+        "test:coding/extension/native_provider_members_test.go#TestNativeProviderOfRoundTripsRefreshModelsAuth",
+        "test:internal/codingagent/native_provider_refresh_auth_test.go#TestComposeProviderRefreshModelsAuth"
       ]
     },
     {
@@ -86936,7 +86940,9 @@
         "call:ai/models_runtime_refresh.go#Models.resolveNetworkRefresh"
       ],
       "evidence": [
-        "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream"
+        "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream",
+        "test:coding/extension/native_provider_members_test.go#TestNativeProviderOfRoundTripsRefreshModelsAuth",
+        "test:internal/codingagent/native_provider_refresh_auth_test.go#TestComposeProviderRefreshModelsAuth"
       ]
     },
     {
