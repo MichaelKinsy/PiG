@@ -7,7 +7,9 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/tui"
@@ -160,4 +162,39 @@ func TestRadiusLoginMenuShimmersOnlyTheSelectedRadiusRow(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Fatal("the animation did not request a render")
 	}
+}
+
+// radius-login-selector.ts dispose stops the animation: the goroutine that requests a frame each tick is gone once Dispose
+// returns, and no frame is requested after it.
+func TestRadiusLoginMenuDisposeStopsTheAnimation(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		label := "Sign in with Radius" + tui.FormatAuthSelectorProviderStatus(tui.OAuthProvider{ID: "radius", Name: "Radius", AuthType: "oauth"})
+		selector := tui.NewExtensionSelectorComponent("Select authentication method:", []string{"Sign in with an account", "Sign in with an API key", label}, nil, nil)
+		before := brandAnimationGoroutines()
+		var requests atomic.Int64
+		var disposed atomic.Bool
+		menu := newRadiusLoginMenu(selector, label, "Sign in with Radius", func() {
+			requests.Add(1)
+			if disposed.Load() {
+				t.Error("a render was requested after Dispose returned")
+			}
+		})
+		selector.HandleInput("\x1b[B")
+		selector.HandleInput("\x1b[B")
+		menu.Render(120)
+		time.Sleep(3 * tui.BrandAnimationFrame)
+		synctest.Wait()
+		if requests.Load() == 0 {
+			t.Fatal("the animation requested no render while the Radius row was selected")
+		}
+		if got := brandAnimationGoroutines(); got != before+1 {
+			t.Fatalf("%d animation goroutines while the menu is open, want %d", got, before+1)
+		}
+		menu.Dispose()
+		disposed.Store(true)
+		if got := brandAnimationGoroutines(); got != before {
+			t.Errorf("%d animation goroutines after Dispose returned, want %d", got, before)
+		}
+		time.Sleep(3 * tui.BrandAnimationFrame)
+	})
 }
