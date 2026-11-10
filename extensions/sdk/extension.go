@@ -1444,10 +1444,16 @@ func (e *Extension) armRequestScope(id string) (Context, *requestScope) {
 	}
 	reqCtx, cancel := context.WithCancelCause(requestRoot)
 	signalCtx, signal := context.WithCancelCause(reqCtx)
-	parent := e.conn.armParent(id, requestRoot, reqCtx)
-	e.conn.pendingMu.Lock()
-	parent.signal = signal
-	e.conn.pendingMu.Unlock()
+	parent, queued := e.conn.armParentWithSignal(id, requestRoot, reqCtx, signal)
+	// The cancel frames the read loop read before this arming (queuedCancel) are applied here, as if the loop had taken them first: the handler starts with its signal aborted and, after an ordinary cancel, its request ended.
+	if queued != nil {
+		if queued.signal {
+			signal(queued.signalCause)
+		}
+		if queued.request {
+			cancel(queued.requestCause)
+		}
+	}
 	e.requestsMu.Lock()
 	e.requests[id] = requestCancel{request: cancel, signal: signal}
 	e.requestsMu.Unlock()

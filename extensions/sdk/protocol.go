@@ -305,6 +305,8 @@ type conn struct {
 	pending        map[string]chan *callResultMsg
 	pendingParents map[string]string
 	requestParents map[string]*requestParent
+	// unarmed holds the requests the read loop queued for the main loop and the main loop has not armed yet, with the cancel frames the read loop read for each (queuedCancel).
+	unarmed map[string]*queuedCancel
 	// pendingSlots maps a dialog call to the response slot of the tool handler that waits for it. The read loop settles the slot when it reads the answer.
 	pendingSlots map[string]*settleSlot
 
@@ -368,6 +370,7 @@ func (c *conn) readLoop() {
 		clear(c.pending)
 		clear(c.pendingParents)
 		clear(c.requestParents)
+		clear(c.unarmed)
 		c.pendingMu.Unlock()
 		close(c.done)
 	}()
@@ -440,22 +443,26 @@ func (c *conn) readLoop() {
 			}
 			continue
 		}
-		if env.Type == msgCancel && env.Cancel != nil && env.Cancel.SignalOnly {
+		if env.Type == msgCancel {
 			id := env.ID
-			if id == "" {
+			if id == "" && env.Cancel != nil {
 				id = env.Cancel.RequestID
 			}
+			signalOnly := env.Cancel != nil && env.Cancel.SignalOnly
 			var cause error
-			if env.Cancel.Reason != "" {
+			if env.Cancel != nil && env.Cancel.Reason != "" {
 				cause = cancelReason(env.Cancel.Reason)
 			}
-			if c.signalParent(id, cause) {
+			if c.routeCancel(id, signalOnly, cause) {
 				continue
 			}
 		}
 		// Everything else goes to the main loop.
 		if env.Type == msgNotify {
 			c.notifications.Add(1)
+		}
+		if env.Type == msgRequest {
+			c.queueRequest(env.ID)
 		}
 		c.incoming <- env
 	}
