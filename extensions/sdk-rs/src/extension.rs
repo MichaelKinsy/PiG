@@ -4222,6 +4222,183 @@ mod tests {
         let _ = std::fs::remove_file(sock);
     }
 
+    fn cancel_env(request_id: &str, reason: &str, signal_only: bool) -> Envelope {
+        Envelope {
+            msg_type: "cancel".to_string(),
+            id: Some(request_id.to_string()),
+            cancel: Some(crate::protocol::CancelMsg {
+                request_id: request_id.to_string(),
+                reason: reason.to_string(),
+                signal_only,
+            }),
+            ..Default::default()
+        }
+    }
+
+    // Starts an extension whose "ask" command blocks in a host input call, runs it to the pending call, and hands back the socket, the call frame and what the handler reports once the call returns: (signal aborted, first input ok, second input ok).
+    fn start_pending_ask(
+        tag: &str,
+    ) -> (
+        UnixStream,
+        Envelope,
+        mpsc::Receiver<(bool, bool, bool)>,
+        std::thread::JoinHandle<std::io::Result<()>>,
+        std::path::PathBuf,
+    ) {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let sock = std::env::temp_dir().join(format!("pig-sdk-rs-{tag}-{unique}.sock"));
+        let _ = std::fs::remove_file(&sock);
+        let listener = UnixListener::bind(&sock).unwrap();
+        let (report_tx, report_rx) = mpsc::channel();
+        let mut ext = Extension::new("cancel-kinds");
+        ext.command("ask", "wait for input", move |ctx, _args| {
+            let first = ctx.input("Question", "Answer").is_ok();
+            let aborted = ctx.is_cancelled();
+            let second = ctx.input("Again", "Answer").is_ok();
+            let _ = report_tx.send((aborted, first, second));
+            CommandResult::Ok
+        });
+        let sock_for_ext = sock.clone();
+        let handle =
+            std::thread::spawn(move || ext.run_with_socket(sock_for_ext.to_str().unwrap()));
+        let (mut stream, _) = listener.accept().unwrap();
+        assert_eq!(read_env(&mut stream).msg_type, "register");
+        write_env(
+            &mut stream,
+            &Envelope {
+                msg_type: "ready".to_string(),
+                ready: Some(ReadyMsg {
+                    cwd: "/tmp".to_string(),
+                    mode: "tui".to_string(),
+                    width: 80,
+                    height: 24,
+                    source_info: None,
+                    state: None,
+                }),
+                ..Default::default()
+            },
+        );
+        write_env(
+            &mut stream,
+            &Envelope {
+                msg_type: "request".to_string(),
+                id: Some("req-ask".to_string()),
+                request: Some(RequestMsg {
+                    signal_aborted: false,
+                    child_session: None,
+                    terminal_input: None,
+                    stream: None,
+                    stream_error: None,
+                    args_error: None,
+                    deep_args: false,
+                    tool_call_index: None,
+                    args_raw: None,
+                    method: "command".to_string(),
+                    tool: Some("ask".to_string()),
+                    event: None,
+                    handler_id: 0,
+                    tool_call_id: None,
+                    batch: None,
+                    args: None,
+                }),
+                ..Default::default()
+            },
+        );
+        let call = read_env(&mut stream);
+        assert_eq!(call.msg_type, "call");
+        assert_eq!(
+            call.call.as_ref().unwrap().parent_request_id.as_deref(),
+            Some("req-ask")
+        );
+        (stream, call, report_rx, handle, sock)
+    }
+
+    fn answer_call(stream: &mut UnixStream, call: &Envelope) {
+        write_env(
+            stream,
+            &Envelope {
+                msg_type: "call_result".to_string(),
+                id: call.id.clone(),
+                call_result: Some(crate::protocol::CallResultMsg {
+                    result: Some(serde_json::json!({"text":"ok","ok":true})),
+                    error: None,
+                }),
+                ..Default::default()
+            },
+        );
+    }
+
+    fn ping_pong(stream: &mut UnixStream, nonce: &str) {
+        write_env(
+            stream,
+            &Envelope {
+                msg_type: "ping".to_string(),
+                ping: Some(crate::protocol::PingMsg {
+                    nonce: nonce.to_string(),
+                }),
+                ..Default::default()
+            },
+        );
+        assert_eq!(read_env(stream).pong.unwrap().nonce, nonce);
+    }
+
+    #[test]
+    fn signal_only_cancel_aborts_the_signal_and_leaves_host_calls_running() {
+        let (mut stream, call, report_rx, handle, sock) = start_pending_ask("signal-only");
+        write_env(&mut stream, &cancel_env("req-ask", "signal only", true));
+        // The pong follows the cancel in the read loop, so the cancel is handled before the call is answered.
+        ping_pong(&mut stream, "after-signal-only");
+        answer_call(&mut stream, &call);
+        // The handler's second call is not refused: the host sees it and answers it.
+        let second = read_env(&mut stream);
+        assert_eq!(second.msg_type, "call");
+        answer_call(&mut stream, &second);
+        assert_eq!(
+            report_rx.recv_timeout(Duration::from_secs(2)).unwrap(),
+            (true, true, true)
+        );
+        let response = read_env(&mut stream);
+        assert_eq!(response.msg_type, "response");
+        assert_eq!(response.id.as_deref(), Some("req-ask"));
+        assert!(response.response.unwrap().error.is_none());
+        write_env(
+            &mut stream,
+            &Envelope {
+                msg_type: "shutdown".to_string(),
+                ..Default::default()
+            },
+        );
+        handle.join().unwrap().unwrap();
+        let _ = std::fs::remove_file(sock);
+    }
+
+    #[test]
+    fn ordinary_cancel_after_signal_only_cancel_ends_the_request_and_its_host_calls() {
+        let (mut stream, _call, report_rx, handle, sock) = start_pending_ask("ordinary-after");
+        write_env(&mut stream, &cancel_env("req-ask", "signal only", true));
+        write_env(&mut stream, &cancel_env("req-ask", "ordinary", false));
+        // The pending call fails and the later call is refused: the next frame is the response, not a second call.
+        assert_eq!(
+            report_rx.recv_timeout(Duration::from_secs(2)).unwrap(),
+            (true, false, false)
+        );
+        let response = read_env(&mut stream);
+        assert_eq!(response.msg_type, "response");
+        assert_eq!(response.id.as_deref(), Some("req-ask"));
+        write_env(
+            &mut stream,
+            &Envelope {
+                msg_type: "shutdown".to_string(),
+                ..Default::default()
+            },
+        );
+        handle.join().unwrap().unwrap();
+        let _ = std::fs::remove_file(sock);
+    }
+
     #[test]
     fn oauth_registration_flags_modify_models_and_uses_callback_server_beside_refresh_models() {
         use crate::oauth::{OAuthCredentials, OAuthProvider};
