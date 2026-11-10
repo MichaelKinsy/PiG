@@ -121,8 +121,8 @@ func TestConditionsTakesTheServerProcessesConditionsByDefaultItsFlagsAndAQuotedN
 	}
 }
 
-// Intention of workers/base.test.ts "what stays external › resolves with the child's --conditions (both spellings)" (D600: a Go
-// worker has no esbuild base; the bundles a PiG server builds from Node code are the surfaces' bases, whose conditions are
+// Intention of workers/base.test.ts "what stays external › resolves with the child's --conditions (both spellings)" (a Go
+// worker has no esbuild base, language mechanics; the bundles a PiG server builds from Node code are the surfaces' bases, whose conditions are
 // the server process's, read by ProcessConditions): a package's `exports` resolve with the process's `--conditions`, in each
 // spelling Node takes (`--conditions=x`, `--conditions x`, `-C x`, `-C=x`, and the same in NODE_OPTIONS), to its source, and
 // with none to its default.

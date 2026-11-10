@@ -207,23 +207,23 @@ rationale = "Re-export barrel: the Go packages export the names directly (PORT_M
 [[files]]
 path = "packages/chord/src/node/plugins/stack.ts"
 change = "modified"
-disposition = "deferred"
-evidence = []
-rationale = "Pi 1.5.2 602b8d1cb: ported by the workers/stack commit of fix/port-152; pending that commit this row stays deferred."
+disposition = "ported"
+evidence = ["test:chord/nextnode/plugins/plugins_stack_test.go#TestStackParsesAScriptsMapAtTheFirstPositionLookedUpInIt", "test:chord/nextnode/plugins/plugins_node_test.go#TestNodeVendoredFilesAreExactlyTheManifests"]
+rationale = "Pi 602b8d1cb: a plugin script's source map is parsed at the first position mapStack looks up in it, not when the script is evaluated. The Node subprocess runs Pi's own stack.ts, vendored byte for byte (chord/nextnode/plugins/node, checked against its manifest); the Go test reads the lazy parse through the probe."
 
 [[files]]
 path = "packages/chord/src/node/workers/base.ts"
 change = "modified"
 disposition = "designed-out"
 evidence = []
-rationale = "Pi 602b8d1cb writes the base's source maps beside its files (sourcemap linked). A Go worker is the program's own executable (D600): there is no esbuild worker base, so no map file to link (PORT_MAP n/a row)."
+rationale = "Pi 602b8d1cb writes the base's source maps beside its files (sourcemap linked). A Go worker is the program's own executable (language mechanics): there is no esbuild worker base, so no map file to link (PORT_MAP n/a row)."
 
 [[files]]
 path = "packages/chord/src/node/workers/workers.ts"
 change = "modified"
-disposition = "deferred"
-evidence = []
-rationale = "Pi 1.5.2 602b8d1cb: ported by the workers/stack commit of fix/port-152; pending that commit this row stays deferred."
+disposition = "ported"
+evidence = ["test:chord/nextnode/workers/workers_workers_test.go#TestTheWorkerBaseForksWithoutEnableSourceMapsNodeParsesNoMapOfTheBaseWhoseMapsLieBesideItsFiles"]
+rationale = "Pi 602b8d1cb forks a worker with the app's execArgv alone, without a --enable-source-maps prefix. Go's fork passes WorkersOptions.ExecArgv to the worker program as given (workers_workers.go fork) and never had a prefix; the test pins no arguments for none and an app's flag as given."
 
 [[files]]
 path = "packages/chord/src/store/applier.ts"

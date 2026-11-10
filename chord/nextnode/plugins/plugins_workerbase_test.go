@@ -15,7 +15,7 @@ import (
 )
 
 // Intention checks for packages/chord/test/node/workers/base.test.ts. Pi's worker base bundles a Node entry for a forked
-// worker with esbuild; a PiG worker is a Go executable (D600), so no Go test can run that bundle. What each case protects is
+// worker with esbuild; a PiG worker is a Go executable (language mechanics: it has no JavaScript bundle), so no Go test can run that bundle. What each case protects is
 // tested where PiG has the same kind of code: the plugin scripts a worker runs are built by BuildFacet (the port of Pi's
 // plugin build, build.ts) and evaluated by the Node host, and the surfaces' bases (chord/nextnode/surfaces) are the bundles
 // read with the server's `--conditions`. Each test says which case it answers and what the PiG form of it is.
