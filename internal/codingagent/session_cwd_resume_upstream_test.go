@@ -63,7 +63,7 @@ func setupMissingCwd(t *testing.T, choice MissingSessionCwdChoice, switchCancell
 	}
 	rt := &missingCwdRuntime{orphan: orphan, missingCwd: missingCwd, currentCwd: currentCwd, switchCancelled: switchCancelled}
 	f := &missingCwdFixture{rt: rt, currentCwd: currentCwd, currentDir: currentDir, orphan: orphan, original: original}
-	f.m = &InteractiveMode{runtimeHost: rt, opts: InteractiveOptions{SessionHandle: &recordingCompactHandle{inner: current}}}
+	f.m = &InteractiveMode{runtimeHost: rt, opts: InteractiveModeOptions{SessionHandle: &recordingCompactHandle{inner: current}}}
 	f.host = resumeHost{
 		await: func(ctx context.Context, work func(context.Context) error) error { return work(ctx) },
 		selectOption: func(_ context.Context, _ string, labels []string) (string, bool) {
