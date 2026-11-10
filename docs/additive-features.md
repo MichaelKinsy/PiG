@@ -1719,7 +1719,7 @@ Audience: runtime
 
 Stock disposition: inert capability. It selects no product behavior and a user's `GOGC` turns it off: stdout, session files and model requests are the same; only when the Go collector runs changes.
 
-What: when the environment does not set `GOGC`, `cli.Main` sets the GC percent to 400 for a print (`-p`, or a stdin or stdout that is not a terminal), json (`--mode json`) or rpc (`--mode rpc`) run, before the session loads. After every collection a cleanup on an unreachable sentinel reads `/gc/heap/live:bytes`; the first one that finds more than 64 MiB live sets the percent back to 100 for the rest of the process. Interactive runs are untouched, a user's `GOGC` is never overridden, and neither GOMAXPROCS (D174) nor GOMEMLIMIT is read or set.
+What: when the environment does not set `GOGC`, `cli.Main` sets the GC percent to 400 for a print (`-p`, or a stdin or stdout that is not a terminal), json (`--mode json`) or rpc (`--mode rpc`) run, before the session loads. A goroutine reads `/gc/heap/live:bytes` every 5 ms, backing off to every 100 ms while no collection finishes; the first read that finds more than 64 MiB live sets the percent back to 100 for the rest of the process (a cleanup after each collection could run late or skip the collection that found the large heap). Interactive runs are untouched, a user's `GOGC` is never overridden, and neither GOMAXPROCS (D174) nor GOMEMLIMIT is read or set.
 
 Pi source: none. Node's collector has no such setting; the GC target is a Go runtime choice.
 
