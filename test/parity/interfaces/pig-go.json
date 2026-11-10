@@ -142655,6 +142655,17 @@
       "shapeHash": "sha256:d60ece4b65b59f6c1c650107e0968b4f85db0c9923a48e6c67869ebcdc977bf9"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#beforeEventSignal",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "beforeEventSignal",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(event any) context.Context"
+      },
+      "shapeHash": "sha256:0bc6d514339e7e599b61e4fefb72fc1e37a4d816e5b5aa4d131d58fc93a4d515"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#bigClose",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "bigClose",
@@ -154513,6 +154524,28 @@
       "shapeHash": "sha256:fc0dd2d848a6581066bfa5c671132f84e440ea0bb1dc9d4dd705548b9f82b6e3"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#requestSignal",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "requestSignal",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context) context.Context"
+      },
+      "shapeHash": "sha256:366d096859c2719867db797767571a760dd33d980fb8931079e27bb882464837"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#requestSignalKey",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "requestSignalKey",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "requestSignalKey"
+      },
+      "shapeHash": "sha256:1e6885589d40c1f21f3e611ec88a95bcabab6305aef7b7acf1de68527993cbf2"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#requestStateSink",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "requestStateSink",
@@ -162398,6 +162431,17 @@
         "type": "func(ctx context.Context, fn func()) context.Context"
       },
       "shapeHash": "sha256:44262c15481bba546bccc824d182ff324a131e50ad28aa8ee65d07c4746c5729"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#withRequestSignal",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "withRequestSignal",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, signal context.Context) context.Context"
+      },
+      "shapeHash": "sha256:993070435f8a0a00759907fca8f2664537592cca41f15b5c960537ba44ea3e20"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#withRequestSuspension",
