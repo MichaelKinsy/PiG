@@ -288,7 +288,13 @@ func checkPackage(staged, target, root string, ctx context.Context, options Inst
 	}
 	if len(discovery.Problems) > 0 {
 		problem := discovery.Problems[0]
-		return errors.New("installPlugin: " + strings.Replace(problem.Path, staged, target, 1) + ": " + problem.Error)
+		// Discovery reports paths under the staged directory's real path (a root reached through a link, or by a Windows
+		// short name, spells it otherwise), so that is the prefix the target replaces.
+		real, err := model.Realpath(staged)
+		if err != nil {
+			return err
+		}
+		return errors.New("installPlugin: " + strings.Replace(problem.Path, real, target, 1) + ": " + problem.Error)
 	}
 	if len(discovery.Plugins) == 0 {
 		return errors.New("installPlugin: " + target + " holds no plugin")
