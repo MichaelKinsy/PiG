@@ -6,11 +6,12 @@ import (
 )
 
 // Locale tags as Node's Intl treats them (Pi's canonicalLocale is `Intl.getCanonicalLocales(locale)[0]`, its direction `new
-// Intl.Locale(locale).maximize().script`). Forced Go difference (D458): Go has no ICU; the well-formedness grammar (ECMA-402
-// IsStructurallyValidLanguageTag: the `unicode_locale_id` of UTS 35, which refuses `en_US`, `i-klingon`, `zh-min-nan`, a four
-// letter language) is code, and CLDR's alias and likely-script data is the table of surfaces_locale_tables.go, generated from the
-// pinned Node by testdata/locale_tables.mjs and checked against it by TestLocaleTablesMatchIntl. Not ported: the value aliases of
-// `-u-` keywords (`ca-islamicc`), and the alias rules that need more than the language, region and variant subtags.
+// Intl.Locale(locale).maximize().script`). Go has no ICU: the well-formedness grammar (ECMA-402 IsStructurallyValidLanguageTag: the
+// `unicode_locale_id` of UTS 35, which refuses `en_US`, `i-klingon`, `zh-min-nan`, a four letter language) is code, and CLDR's alias and
+// likely-script data is the tables of surfaces_locale_tables.go, generated from the pinned Node by testdata/locale_tables.mjs and checked
+// against it by TestLocaleTablesMatchIntl: the aliases of a language, of a region, of a variant and of a script, those of a language that
+// apply only with another subtag (`tw-AA`), those of a language and a region together (`sgn-BR`), and the value aliases of `-u-` keywords
+// and `-t-` fields (`ca-islamicc`).
 
 //go:generate sh -c "node testdata/locale_tables.mjs | gofmt > surfaces_locale_tables.go"
 
@@ -142,6 +143,18 @@ func parseLocaleTag(tag string) (localeTag, bool) {
 	return parsed, true
 }
 
+// yesSubtag is the value of a `-u-` keyword that is `true` for every key (`kb-yes` is `kb`; testdata/locale_tables.mjs asks Intl of every key).
+const yesSubtag = "yes"
+
+// aliasedValues is the canonical form of the keyword or field key with values (subtags): the table's value for key and values joined by `-`
+// (the table's are lower case, a value of several subtags too), else values.
+func aliasedValues(table map[string]string, key string, values []string) []string {
+	if replacement, ok := table[key+"-"+strings.Join(values, "-")]; ok {
+		return strings.Split(replacement, "-")
+	}
+	return values
+}
+
 // canonicalUnicodeExtension is the subtags of a `-u-` extension (lower case): attributes, then keywords by key, a `true` value
 // dropped; false when they are no attributes and keywords.
 func canonicalUnicodeExtension(subtags []string) ([]string, bool) {
@@ -177,10 +190,15 @@ func canonicalUnicodeExtension(subtags []string) ([]string, bool) {
 	out := attributes
 	for _, each := range keywords {
 		out = append(out, each.key)
-		if len(each.values) == 1 && each.values[0] == "true" {
+		values := each.values
+		if len(values) == 1 && values[0] == yesSubtag {
+			values = []string{"true"}
+		}
+		values = aliasedValues(unicodeValueAliases, each.key, values)
+		if len(values) == 1 && values[0] == "true" {
 			continue
 		}
-		out = append(out, each.values...)
+		out = append(out, values...)
 	}
 	return out, true
 }
@@ -226,7 +244,7 @@ func canonicalTransformedExtension(subtags []string) ([]string, bool) {
 	slices.SortStableFunc(fields, func(a, b field) int { return strings.Compare(a.key, b.key) })
 	for _, each := range fields {
 		out = append(out, each.key)
-		out = append(out, each.values...)
+		out = append(out, aliasedValues(transformedValueAliases, each.key, each.values)...)
 	}
 	return out, true
 }
@@ -280,6 +298,10 @@ func (tag localeTag) canonicalize() localeTag {
 			}
 		}
 	}
+	// A language and a region that are one language of their own, the region gone (`sgn-BR` is `bzs`).
+	if replacement, ok := languageRegionRules[tag.language+"-"+tag.region]; ok && tag.script == "" {
+		tag.language, tag.region = replacement, ""
+	}
 	if replacement, ok := languageAliases[tag.language]; ok {
 		if parsed, ok := parseLocaleTag(replacement); ok {
 			tag.language = parsed.language
@@ -290,6 +312,12 @@ func (tag localeTag) canonicalize() localeTag {
 				tag.region = parsed.region
 			}
 		}
+	} else if replacement, ok := qualifiedLanguageAliases[tag.language]; ok && (tag.script != "" || tag.region != "" || len(tag.variants) > 0 || len(tag.extensions) > 0) {
+		// `tw` alone stays `tw`; with anything after it, it is `ak`.
+		tag.language = replacement
+	}
+	if replacement, ok := scriptAliases[tag.script]; ok {
+		tag.script = replacement
 	}
 	if tag.region != "" {
 		if replacement, ok := tag.regionAlias(); ok {

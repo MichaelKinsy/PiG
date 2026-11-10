@@ -218,6 +218,8 @@ export function createBridge({ port, wireError, host }) {
 	let nextAsk = 0;
 	/** The observers of the Go host's watches, by the id this side chose, which the frames of the Go side name. */
 	const observers = new Map();
+	/** The copies of the Go host's keyed members, by the id this side chose, which the `mirrorDoc` and `mirrorReset` frames name. */
+	const copies = new Map();
 
 	/**
 	 * Requests `event` of the Go host (`{ event, id, ... }`, answered by `{ op: "bridgeAnswer", id, ok, result | error }`) with
@@ -261,7 +263,7 @@ export function createBridge({ port, wireError, host }) {
 	return {
 		operations: { ...contractOperations, get, value, watch, pin, call },
 		/** The host package of the Go core facets' proxies (`GO_PACKAGE`), answered to the scripts that import it. */
-		hostPackage: createProxies({ ask, tell, watches: observers }),
+		hostPackage: createProxies({ ask, tell, watches: observers, mirrors: copies, fatal: (error) => port.control({ event: "fatal", error: wireError(error) }) }),
 		/**
 		 * Handles a control message that is no request of `operations`: a notification of the Go side (no id, no reply), or
 		 * what the Go side sends for a request it serves for this side (an answer, a frame or the end of a watch of the Go
@@ -282,6 +284,13 @@ export function createBridge({ port, wireError, host }) {
 					observer?.end(error === undefined ? { kind } : { kind, error: errorOf(error) });
 					return true;
 				}
+				case "mirrorDoc":
+					if (message.retired === true) copies.get(message.mirror)?.retire(message.key);
+					else copies.get(message.mirror)?.put(message.key, decodeValue(message.value));
+					return true;
+				case "mirrorReset":
+					copies.get(message.mirror)?.reset(message.docs.map(({ key, value }) => ({ key, value: decodeValue(value) })));
+					return true;
 			}
 			const notification = notifications[message.op];
 			if (notification === undefined) return false;

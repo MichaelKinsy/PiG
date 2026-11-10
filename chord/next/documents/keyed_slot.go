@@ -2,6 +2,7 @@ package documents
 
 import (
 	"context"
+	"maps"
 	"slices"
 
 	"github.com/MichaelKinsy/PiG/chord"
@@ -57,6 +58,9 @@ type KeyedSlot struct {
 	loads map[string]*sharedLoad
 	// keyWhat names a refused key.
 	keyWhat string
+	// observers are the bridge's copies of this slot, by registration number.
+	observers    map[int]KeyObserver
+	nextObserver int
 }
 
 // NewKeyedSlot is the keyed slot of definition on owner, persisted when persistence is not nil.
@@ -518,6 +522,7 @@ func (slot *KeyedSlot) Adopt(key string, tracker *delta.Tracker, prepared *delta
 	} else {
 		source.Written(before, prepared)
 	}
+	slot.tell(key, tracker.Value(), false)
 	return nil
 }
 
@@ -530,6 +535,7 @@ func (slot *KeyedSlot) Retire(key string) {
 	if source := slot.sources[key]; source != nil {
 		source.Retire()
 	}
+	slot.tell(key, nil, false)
 }
 
 // Evict is: the sweep found resident idle past the retention: it leaves memory.
@@ -549,6 +555,33 @@ func (slot *KeyedSlot) Drop() {
 		source.End()
 	}
 	clear(slot.sources)
+	slot.tell("", nil, true)
+}
+
+// KeyObserver is told, inside the commit, of each document its slot adopts (value) or retires (nil), and with dropped that
+// the slot ended (key and value are then empty). It must not block and must copy what it keeps of value.
+type KeyObserver func(key string, value *JsonObject, dropped bool)
+
+// Observe registers observer for the slot's later changes until the returned stop runs. It is how the plugins bridge keeps
+// a Node host's copy of a keyed member (not a Pi API: Pi's plugins share the one host).
+func (slot *KeyedSlot) Observe(observer KeyObserver) (stop func()) {
+	var id int
+	slot.owner.Do(func() {
+		slot.nextObserver++
+		id = slot.nextObserver
+		if slot.observers == nil {
+			slot.observers = map[int]KeyObserver{}
+		}
+		slot.observers[id] = observer
+	})
+	return func() { slot.owner.Do(func() { delete(slot.observers, id) }) }
+}
+
+// tell tells the observers, in registration order.
+func (slot *KeyedSlot) tell(key string, value *JsonObject, dropped bool) {
+	for _, id := range slices.Sorted(maps.Keys(slot.observers)) {
+		slot.observers[id](key, value, dropped)
+	}
 }
 
 // loadShared is a cold persisted key's load, one in flight per key, on the line under the owner's context (rule 11).

@@ -223,12 +223,12 @@ export default defineFacet((host) => host.serve(Echo, () => ({ text: constant("e
 
 var echo = mustLocal("test.echo", contracts.LocalDeclaration{Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{contracts.Mem("text", contracts.Str())}})
 
-// notesPlugin is the notes plugin of the worker tests: on each project's worker a persisted document, a table, and its WorkerInfo
-// start, reached from the server through the remote `Notes`.
+// notesPlugin is the notes plugin of the worker tests (Pi's NOTES_PLUGIN, test/node/app/support.ts): on each project's worker a persisted
+// document, a table, its WorkerInfo start and its files, reached from the server through the remote `Notes`.
 var notesPlugin = map[string]string{
-	"worker.ts": `import { defineFacet, defineState, defineTable, hostKind, int, local, method, obj, remote, str, unknown, WorkerInfo } from "@test/app/v1";
+	"worker.ts": `import { defineFacet, defineState, defineTable, Files, hostKind, int, local, method, obj, remote, str, unknown, WorkerInfo } from "@test/app/v1";
 const Project = hostKind("project", { id: str() });
-const Notes = remote("test.notes", { version: 1, params: { id: str() }, hostAddress: ({ id }) => Project({ id }), variants: { main: { state: { text: str(), start: unknown() }, methods: { write: method(str()), visit: method(str(), int()) } } } });
+const Notes = remote("test.notes", { version: 1, params: { id: str() }, hostAddress: ({ id }) => Project({ id }), variants: { main: { state: { text: str(), start: unknown() }, methods: { write: method(str()), visit: method(str(), int()), attach: method(str(), str()), file: method(str(), str()) } } } });
 const Text = defineState("test.text", { schema: obj({ text: str() }), version: 1, initial: () => ({ text: "" }), persist: true, checkpointWhen: () => false });
 const Visits = defineTable("test.visits", { version: 1, columns: { page: str(), count: int() }, key: ["page"] });
 const Store = local("test.store", { version: 1, params: {}, members: { text: str(), write: method(str()), visit: method(str(), int()) } });
@@ -245,11 +245,15 @@ export default defineFacet((host) => {
 	host.serve(Notes, (_params, _principal, self) => {
 		const store = self.get(Store, {});
 		const info = self.get(WorkerInfo, {});
+		const files = self.get(Files, {});
+		const decoder = new TextDecoder();
 		return { variant: "main", members: {
 			text: self.derive([store.text], ([value]) => value),
 			start: self.derive([info.start], ([value]) => value),
 			write: (next, ctx) => store.write(next, ctx),
 			visit: (page, ctx) => store.visit(page, ctx),
+			attach: async (body, ctx) => (await files.put({ space: "notes", path: "note.txt", mime: "text/plain", source: "test", bytes: new TextEncoder().encode(body) }, ctx)).id,
+			file: async (id, ctx) => decoder.decode(await files.read({ id, offset: 0, length: 1024 }, ctx)),
 		} };
 	});
 });`,
@@ -264,7 +268,10 @@ var notes = func() *contracts.Contract {
 		},
 		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{
 			State:   []contracts.Property{contracts.Prop("text", contracts.Str()), contracts.Prop("start", contracts.Unknown())},
-			Methods: []contracts.MethodEntry{contracts.Meth("write", contracts.NewMethod(contracts.Str())), contracts.Meth("visit", contracts.NewMethod(contracts.Str(), contracts.Int()))},
+			Methods: []contracts.MethodEntry{
+				contracts.Meth("write", contracts.NewMethod(contracts.Str())), contracts.Meth("visit", contracts.NewMethod(contracts.Str(), contracts.Int())),
+				contracts.Meth("attach", contracts.NewMethod(contracts.Str(), contracts.Str())), contracts.Meth("file", contracts.NewMethod(contracts.Str(), contracts.Str())),
+			},
 		})},
 	})
 	if err != nil {
