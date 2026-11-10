@@ -1590,6 +1590,36 @@
       ]
     },
     {
+      "id": "BF-09587d2",
+      "title": "Chord: `App.Close` no longer returns while the surfaces' and bases' build goroutines still run",
+      "symptom": "Chord: `App.Close` no longer returns while the surfaces' and bases' build goroutines still run.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord: `App.Close` no longer returns while the surfaces' and bases' build goroutines still run. It joins them after its steps, bounded by its context, and returns the context's error when that ends first (the builds finish on their own and what they finish after the close is dropped); a surface whose build had not started never starts it. Pi's `#close` does not wait for these builds; the Go goroutines are owned, so Close drains them.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "09587d2718",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/app/app_bases_linux_test.go::TestAppCloseAbandonsABaseBuildStalledOnAReadWhenItsContextEndsAndReturnsTheContextsError",
+        "chord/nextnode/app/app_bases_linux_test.go::TestAppCloseWaitsForABaseBuildStalledOnAReadAndReturnsOnceItEndsItsLateResultIsDropped",
+        "chord/nextnode/app/app_bases_scan_test.go::TestAppARecordOfTheServersCodeArrivingAfterTheClosedWatcherWatchesNothingAndMarksNothing",
+        "chord/nextnode/app/app_bases_scan_test.go::TestAppARecordOfTheServersCodeEditedSinceTheStartMarksBaseWhileTheAppIsOpen",
+        "chord/nextnode/app/app_bases_scan_test.go::TestAppCloseAbandonsAScanStalledOnAReadWhenItsContextEndsAndReturnsTheContextsError",
+        "chord/nextnode/app/app_bases_scan_test.go::TestAppCloseWaitsForAScanOfItsOwnCodeStalledOnAReadAndReturnsOnceItEndsItsLateResultIsDropped",
+        "chord/nextnode/surfaces/surfaces_build_linux_test.go::TestClosingASurfaceAbandonsItsBuildInFlightWhenTheContextEnds",
+        "chord/nextnode/surfaces/surfaces_build_linux_test.go::TestClosingASurfaceWaitsForItsBuildInFlight",
+        "chord/nextnode/surfaces/surfaces_build_test.go::TestASurfaceClosedBeforeItsBuildStartedNeverStartsOneItsWaitersAnswer503"
+      ]
+    },
+    {
       "id": "BF-098e33d",
       "title": "Extension `ctx.ui.theme.fg`, `bg` and `getBgAnsi` throw `Unknown theme color: \u003ctoken\u003e` in every SDK for a…",
       "symptom": "Extension `ctx.ui.theme.fg`, `bg` and `getBgAnsi` throw `Unknown theme color: \u003ctoken\u003e` in every SDK for a token the palette lacks, as Pi's theme does; a theme with no palette still leaves text unstyled.",
