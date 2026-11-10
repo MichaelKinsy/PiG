@@ -806,6 +806,8 @@ pub struct Extension {
     tool_prepare_fns: HashMap<String, ToolPrepareArguments>,
     command_fns: HashMap<String, CommandHandler>,
     shortcut_fns: HashMap<String, ShortcutHandler>,
+    /// D614: answers the intents of this extension's mounts.
+    view_intent_fn: Option<crate::ui_view::ViewIntentHandler>,
     renderer_fns: HashMap<String, MessageRenderFn>,
     entry_renderer_fns: HashMap<String, EntryRenderFn>,
     markdown_transformer: Option<MarkdownTransformerHandler>,
@@ -844,6 +846,7 @@ impl Extension {
             tool_prepare_fns: HashMap::new(),
             command_fns: HashMap::new(),
             shortcut_fns: HashMap::new(),
+            view_intent_fn: None,
             renderer_fns: HashMap::new(),
             entry_renderer_fns: HashMap::new(),
             markdown_transformer: None,
@@ -859,6 +862,11 @@ impl Extension {
             bus: Arc::new(crate::event_bus::BusRegistry::default()),
             loaded_fns: Vec::new(),
         }
+    }
+
+    /// Answers the intents of this extension's mounts (D614). A later call replaces the handler.
+    pub fn on_view_intent(&mut self, handler: impl Fn(crate::ViewIntentInvocation) -> crate::ViewIntentResult + Send + Sync + 'static) {
+        self.view_intent_fn = Some(Box::new(handler));
     }
 
     /// Runs `handler` once the extension is registered with the host and has received its state, before it serves any request (`session_start` included). It is the place for work a factory cannot do: a [`Context`] exists, so the handler can read session state, call the host and emit on [`Context::events`]. Handlers run in registration order, one at a time, on a thread of their own, so a host call the host answers itself is answered. The host's requests wait behind them (a listener dispatch excepted), so a handler must not wait for something that needs this extension to serve a request, such as a call that runs one of its own tools or event handlers: that wait never ends. A handler that panics is reported on stderr and does not stop the next. Pi has no such hook: its factory runs with no context and the extension's first handler is `session_start`.
@@ -2151,6 +2159,7 @@ impl Extension {
                                     base_ctx.shared_identity.lock().unwrap().apply_state(state);
                                     conn.api_state.lock().unwrap().apply_state(state);
                                     conn.views.apply_state(state);
+                                    conn.view_state.apply_state(state);
                                     let (footer_changed, branch_changed) = conn.footer.apply(state);
                                     if footer_changed {
                                         base_ctx.refresh_footer();
@@ -3328,6 +3337,11 @@ impl Extension {
                     }));
                 }
                 let _ = conn.respond(id, value, error);
+            }
+            "ui.view.intent" => {
+                let ctx = base_ctx.clone_for_request(cancel.clone(), None, id.to_string());
+                let value = crate::ui_view::handle_intent(self.view_intent_fn.as_ref(), ctx, req.args.as_ref());
+                let _ = conn.respond(id, Some(value), None);
             }
             "shortcut" => {
                 let shortcut_key = req.tool.as_deref().unwrap_or("");

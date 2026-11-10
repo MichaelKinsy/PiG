@@ -2030,3 +2030,40 @@ Remove when: Pi evaluates plugins in a runtime PiG does not start, or the progra
 
 Approval: owner decision relayed 2026-11-01 for the plugins' Node evaluator (plugfull lane), the same as D221.
 SCRUTINIZED:approved
+
+---
+
+## D614 One data-only UI protocol for plugins: mounts, intents and client abilities over D107 views
+
+Summary: An extension in any language can mount a view in a slot the attached client draws and answer the user's intents, without the client running any plugin code.
+
+Audience: author
+
+Stock disposition: inert capability. No client attaches by default, so `ClientAbilities` is absent, no slot exists and every mount fails with `unsupported`. A frontend that draws mounts calls `UIBridge.SetClientAbilities`; an extension selects the protocol by calling it. Nothing in Stock PiG mounts anything.
+
+What: Pi's extension UI is in-process component objects, so a Go, Python, Rust, Lisp or subprocess extension cannot reach a client other than the terminal. This record extends D107's `ui.view.*` namespace with persistent, plugin-owned views.
+
+- Host calls `ui.view.mount`, `ui.view.update`, `ui.view.hide`, `ui.view.show`, `ui.view.finish`, `ui.view.remove` and `ui.view.state`. A mount is `{key (1..128 bytes), slot, target?, view, intents?, assets?, fallback?}`. `view` is the D107 `View`; `slot` is one of notify, status, widget-above, widget-below, header, footer, dialog, overlay, panel, tool-card, message, entry (tool-card, message and entry need a `target`). Records are closed: an unknown field, slot or node kind rejects the call with code `invalid`, and no mount changes.
+- A mount is named by `{key, epoch, rev}`. `epoch` rises with every mount, `rev` with every accepted update. An update carries the ref it was computed from and is rejected with `stale` unless both are current, so an old snapshot never overwrites a newer one. The states are live, hidden, finished, removed and broken; the last three are terminal and the first one reached wins (a later operation fails with `terminal`). A key whose mount ended can be mounted again under a new epoch.
+- Intents. A mount declares `IntentDecl {name "<plugin>.<verb>", nodeKey?, arg, answer?, cancellable, timeoutMs 100..300000 (default 30000)}`. `arg` and `answer` are shapes of a closed JSON subset (boolean, string, integer, number, enum of at most 32, object of at most 32 properties without extra members, array of at most 64, depth 4). A client raises an intent on a mount ref; the host refuses an unknown intent or an argument outside its shape without reaching the plugin, and otherwise sends the plugin the request `ui.view.intent {mount{key,epoch}, rev, nodeKey?, intent, arg, ticket}`. The plugin answers `{outcome: done|refused|failed, answer?, error?}`; the host adds `cancelled`, `timeout` and `stale` (an answer for a mount that changed while the plugin answered). An answer outside the declared `answer` shape is `failed`.
+- `ClientAbilities {slots, nodes, markdown, imageFormats, limits {nodes, depth, snapshotBytes, textBytes, mounts, intentArgBytes}, input {keyboard, pointer, text}}` is replicated to every extension in the state snapshot (`state.uiAbilities`) and read before mounting (`ViewAbilities`). It is absent while no client is attached, and a full snapshot replaces it, so an absent value clears it. The host enforces the client's limits at mount and update.
+- Amendment, owner-approved design 2026-11-10 (via Main): a mount the host ends carries why. The state is `broken` and the reason is one of `session_replaced`, `owner_gone` and `shutdown` (`ui.view.state` returns it); no fourth record exists for it.
+- Amendment, owner-approved design 2026-11-10 (via Main): intent cancellation is delivered through the request's ordinary cancel frame, not a message of its own. A cancellable intent whose timeout elapses, or whose caller gives up, is settled `timeout` or `cancelled` at once and its handler's request is cancelled (`ctx` cancellation, `AbortSignal`, `is_cancelled`); an answer that arrives after that is dropped, and a late answer never replaces the settled outcome. A non-cancellable intent's handler is not cancelled; its late answer is dropped. A call the handler makes after the cancel is cancelled with its request, as for every other request.
+- Not taken: a result on `finish` (an intent's `answer` already returns values), per-mount diagnostics, per-role capability claims, attach/gap recovery records, alternatives and predicates, drawing, and a version or negotiation field. The `button` node of the D614 catalog is not built yet; it is the node A2UI's Button maps to.
+
+Pi source: none (Pi's extension UI is in-process `Component` objects). Cancellation follows `AbortSignal` on a handler's `ctx.signal`.
+
+Why: the owner approved one protocol for terminal, web, desktop and ACP clients on 2026-11-10 (multilang-plugins D614). The records are PiG's own and unversioned; no code, schema text or identifier is copied from another project (the provenance guard is `automation/ci/check-public-hygiene.py`).
+
+Stock behavior: no client attached, so a mount fails with `unsupported` and nothing is drawn. Existing extensions, Pi's wire and the parity scenarios are unchanged: `ui.view.*` calls and `uiAbilities` exist only for an extension that uses them, and the dependency is one-way (`make gui-import-guard`: chord never imports `coding/uiview`).
+
+Call-site markers: `coding/uiview/uiview.go` (the registry), `coding/extension/host/subprocess/protocol.go` (`CallUIViewMount` and the other `ui.view.*` constants, `RequestUIViewIntent`, `StatePayload.UIAbilities`), `coding/extension/host/subprocess/ui_view_mount.go`, `extensions/sdk/ui_view.go`, `extensions/sdk-py/pig_sdk/ui_view.py`, `extensions/sdk-rs/src/ui_view.rs`, `extensions/sdk-lisp/src/ui-view.lisp`, `coding/extension/host/subprocess/runtime-node/runtime.mjs` (`viewAbilities`, `mountView`, `onViewIntent`), `extensions/sdk-ts/index.d.ts`.
+
+Locked by: `TestConformance_UIViewMounts` (abilities, lifecycle, stale and terminal rejection, intent answer, malformed argument, cancellation, stale intent and the broken reason, in the Go, Node, packed Node, Rust, Python, Lisp and fused Go rows), `TestMountUpdateStaleRejected`, `TestFirstTerminalWinsAndKeyReusable`, `TestBreakReasons`, `TestAdmissionLimits`, `TestDecodeIsClosed`, `TestShapeValidate`, `TestInvokeOutcomes`, `TestInvokeStaleWhenMountChangesDuringAnswer`, `TestInvokeTimeoutAndCancelReachPlugin` (`coding/uiview`).
+
+Parity allowance: no Pi scenario mounts a view; Pi clients never see `ui.view.mount`.
+
+Remove when: the owner drops it, or Pi ships a portable extension UI (then port it).
+
+Approval: owner decision relayed 2026-11-10 (via Main): D614 approved as one protocol, re-expressed from concepts (multilang-plugins appendix D), with the amendments above.
+SCRUTINIZED:approved

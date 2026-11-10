@@ -9,6 +9,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/uiview"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
@@ -543,6 +544,9 @@ type StatePayload struct {
 	// The Node runtime installs it as pi-tui's keybindings manager, the one
 	// Pi hands editor and custom-component factories and sets globally.
 	Keybindings any `json:"keybindings,omitempty"`
+	// UIAbilities (D614) is what the attached client draws; absent when none is attached, so an extension cannot mount.
+	// Every state is a full snapshot, so an absent value clears it.
+	UIAbilities *uiview.ClientAbilities `json:"uiAbilities,omitempty"`
 }
 
 // TerminalCapabilitiesPayload mirrors pi-tui's TerminalCapabilities.
@@ -993,6 +997,21 @@ const (
 	// NotifyUIViewEvicted (host→ext) reports image refs whose bytes the
 	// host dropped; the next frame that references one sends its data again.
 	NotifyUIViewEvicted = "ui.view.evicted"
+)
+
+// pig additive (D614): plugin UI mounts over D107 views. An extension mounts a view in a client slot and the host sends
+// back the user's intents. The records are in coding/uiview; the wire has no version field.
+const (
+	CallUIViewMount  = "ui.view.mount"
+	CallUIViewUpdate = "ui.view.update"
+	CallUIViewHide   = "ui.view.hide"
+	CallUIViewShow   = "ui.view.show"
+	CallUIViewFinish = "ui.view.finish"
+	CallUIViewRemove = "ui.view.remove"
+	CallUIViewState  = "ui.view.state"
+	// RequestUIViewIntent (host→ext) raises one intent of a mount and expects {outcome: done|refused|failed, answer?, error?}.
+	// A cancellable intent that times out or is cancelled by its caller is cancelled through the request's ordinary cancel frame.
+	RequestUIViewIntent = "ui.view.intent"
 )
 
 // View node kinds. Each mirrors the upstream pi-tui (or coding-agent

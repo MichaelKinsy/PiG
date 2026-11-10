@@ -163,6 +163,9 @@ func kitImagePNG(n int) []byte {
 // for byte.
 const kitKindsPNG = "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c48900000010494441547801010500faff002a005fff026a01892888e8cd0000000049454e44ae426082"
 
+// viewCancelledTag is the tag of the last ui.view.intent whose handler saw its request cancelled.
+var viewCancelledTag atomic.Value
+
 type focusedList struct {
 	items    []string
 	selected int
@@ -968,6 +971,119 @@ func Extension() *sdk.Extension {
 			eventProbeOff = nil
 		}
 		return nil
+	})
+	// D614 plugin UI mounts: the conformance probe every SDK fixture implements the same way. Every number and name it
+	// reports comes from the host, so an SDK that never makes the call cannot produce it (conformance TestConformance_UIViewMounts).
+	viewText := func(ctx sdk.Context, suffix string) kit.View {
+		ab := ctx.ViewAbilities()
+		n := 0
+		if ab != nil {
+			n = ab.Limits.IntentArgBytes
+		}
+		return kit.View{Root: &kit.Text{Text: fmt.Sprintf("fixture-view-%d%s", n, suffix)}}
+	}
+	ext.Command("ui_view_abilities", "Report the replicated client abilities", func(ctx sdk.Context, args string) error {
+		ab := ctx.ViewAbilities()
+		if ab == nil {
+			ctx.Notify("view-abilities:none", "info")
+			return nil
+		}
+		slots := make([]string, len(ab.Slots))
+		for i, s := range ab.Slots {
+			slots[i] = string(s)
+		}
+		ctx.Notify(fmt.Sprintf("view-abilities:mounts=%d,argbytes=%d,slots=%s,nodes=%s,markdown=%t", ab.Limits.Mounts, ab.Limits.IntentArgBytes, strings.Join(slots, "+"), strings.Join(ab.Nodes, "+"), ab.Markdown), "info")
+		return nil
+	})
+	ext.Command("ui_view_probe", "Mount, update, hide, show, finish and remove a view", func(ctx sdk.Context, args string) error {
+		code := func(err error) string {
+			var ve *sdk.ViewError
+			if errors.As(err, &ve) {
+				return string(ve.Code)
+			}
+			return "none"
+		}
+		st, err := ctx.MountView(sdk.ViewMount{Key: "probe", Slot: sdk.ViewSlotPanel, ViewContent: sdk.ViewContent{View: viewText(ctx, "")}})
+		if err != nil {
+			return err
+		}
+		ctx.Notify(fmt.Sprintf("view-mounted:epoch=%d,rev=%d,state=%s", st.Mount.Epoch, st.Mount.Rev, st.State), "info")
+		first := st.Mount
+		st, err = ctx.UpdateView(sdk.ViewUpdate{Mount: first, ViewContent: sdk.ViewContent{View: viewText(ctx, "-2")}})
+		if err != nil {
+			return err
+		}
+		ctx.Notify(fmt.Sprintf("view-updated:rev=%d", st.Mount.Rev), "info")
+		_, err = ctx.UpdateView(sdk.ViewUpdate{Mount: first, ViewContent: sdk.ViewContent{View: viewText(ctx, "-stale")}})
+		ctx.Notify("view-stale:"+code(err), "info")
+		cur := st.Mount
+		if st, err = ctx.HideView(cur); err != nil {
+			return err
+		}
+		ctx.Notify("view-hidden:"+string(st.State), "info")
+		if st, err = ctx.ShowView(cur); err != nil {
+			return err
+		}
+		ctx.Notify("view-shown:"+string(st.State), "info")
+		if st, err = ctx.FinishView(cur); err != nil {
+			return err
+		}
+		ctx.Notify("view-finished:"+string(st.State), "info")
+		_, err = ctx.RemoveView(cur)
+		ctx.Notify("view-terminal:"+code(err), "info")
+		st, err = ctx.ViewState("probe")
+		if err != nil {
+			return err
+		}
+		ctx.Notify("view-final:"+string(st.State), "info")
+		intents := []sdk.ViewIntent{
+			{Name: "fx.add", Arg: sdk.ViewShape{Type: "object", Properties: map[string]sdk.ViewShape{"n": {Type: "integer"}}, Required: []string{"n"}}, Answer: &sdk.ViewShape{Type: "object", Properties: map[string]sdk.ViewShape{"sum": {Type: "integer"}}, Required: []string{"sum"}}},
+			{Name: "fx.wait", Arg: sdk.ViewShape{Type: "object", Properties: map[string]sdk.ViewShape{"tag": {Type: "string"}}, Required: []string{"tag"}}, Cancellable: true, TimeoutMs: 5000},
+		}
+		st, err = ctx.MountView(sdk.ViewMount{Key: "probe2", Slot: sdk.ViewSlotPanel, ViewContent: sdk.ViewContent{View: viewText(ctx, "-live"), Intents: intents}})
+		if err != nil {
+			return err
+		}
+		ctx.Notify(fmt.Sprintf("view-second:epoch=%d,rev=%d", st.Mount.Epoch, st.Mount.Rev), "info")
+		return nil
+	})
+	ext.Command("ui_view_cancelled", "Report the intent whose handler was cancelled", func(ctx sdk.Context, args string) error {
+		tag, _ := viewCancelledTag.Load().(string)
+		ctx.Notify("intent-cancelled:"+tag, "info")
+		return nil
+	})
+	ext.Command("ui_view_state", "Report the state of the second mount", func(ctx sdk.Context, args string) error {
+		st, err := ctx.ViewState("probe2")
+		if err != nil {
+			return err
+		}
+		ctx.Notify(fmt.Sprintf("view-state:%s:%s", st.State, st.Reason), "info")
+		return nil
+	})
+	ext.OnViewIntent(func(in sdk.ViewIntentInvocation) sdk.ViewIntentResult {
+		switch in.Intent {
+		case "fx.add":
+			var arg struct {
+				N int `json:"n"`
+			}
+			_ = json.Unmarshal(in.Arg, &arg)
+			sum := arg.N * 2
+			if ab := in.Context.ViewAbilities(); ab != nil {
+				sum += ab.Limits.IntentArgBytes
+			}
+			return sdk.ViewIntentResult{Outcome: "done", Answer: json.RawMessage(fmt.Sprintf(`{"sum":%d}`, sum))}
+		case "fx.wait":
+			var arg struct {
+				Tag string `json:"tag"`
+			}
+			_ = json.Unmarshal(in.Arg, &arg)
+			in.Context.Notify("intent-started:"+arg.Tag, "info")
+			<-in.Context.Done()
+			// A call made after the cancel is cancelled with its request, so the tag is kept for ui_view_cancelled.
+			viewCancelledTag.Store(arg.Tag)
+			return sdk.ViewIntentResult{Outcome: "done", Answer: json.RawMessage(`{}`)}
+		}
+		return sdk.ViewIntentResult{Outcome: "refused", Error: "unknown intent"}
 	})
 	ext.Command("report_geometry", "Report observed terminal geometry", func(ctx sdk.Context, args string) error {
 		ctx.Notify(fmt.Sprintf("geometry:%dx%d", ctx.Width(), ctx.Height()), "info")

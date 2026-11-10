@@ -563,6 +563,65 @@ kit-widget-event=<type>:<value> (a change report is not one). It never closes it
   (pig:command ext "surface_widget" "Set a string list widget wider than the pane"
                (lambda (ctx args) (declare (ignore args))
                  (pig:ctx-set-widget ctx "wide" (list (concatenate 'string (make-string 60 :initial-element #\A) " tail") "short"))))
+  ;; D614 plugin UI mounts: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewMounts).
+  (flet ((view-text (ctx suffix)
+           (let ((ab (pig:ctx-view-abilities ctx)))
+             (pig:kit-view (pig:kit-text (format nil "fixture-view-~D~A" (if ab (pig:jref ab "limits" "intentArgBytes") 0) suffix) 0 0))))
+         (code-of (thunk)
+           (handler-case (progn (funcall thunk) "none")
+             (pig:host-call-error (e) (pig:host-call-error-code e)))))
+    (let ((cancelled-tag (list ""))
+          (int (pig:view-shape "integer")))
+      (pig:command ext "ui_view_abilities" "Report the replicated client abilities"
+                   (lambda (ctx args) (declare (ignore args))
+                     (let ((ab (pig:ctx-view-abilities ctx)))
+                       (kp-notify ctx (if ab
+                                          (format nil "view-abilities:mounts=~D,argbytes=~D,slots=~{~A~^+~},nodes=~{~A~^+~},markdown=~A"
+                                                  (pig:jref ab "limits" "mounts") (pig:jref ab "limits" "intentArgBytes")
+                                                  (coerce (pig:jget ab "slots") 'list) (coerce (pig:jget ab "nodes") 'list)
+                                                  (kp-bool (eq (pig:jget ab "markdown") t)))
+                                          "view-abilities:none")))))
+      (pig:command ext "ui_view_probe" "Mount, update, hide, show, finish and remove a view"
+                   (lambda (ctx args) (declare (ignore args))
+                     (let* ((st (pig:ctx-mount-view ctx "probe" "panel" (view-text ctx "")))
+                            (first (pig:view-status-mount st)))
+                       (kp-notify ctx (format nil "view-mounted:epoch=~D,rev=~D,state=~A" (pig:view-ref-epoch first) (pig:view-ref-rev first) (pig:view-status-state st)))
+                       (setf st (pig:ctx-update-view ctx first (view-text ctx "-2")))
+                       (kp-notify ctx (format nil "view-updated:rev=~D" (pig:view-ref-rev (pig:view-status-mount st))))
+                       (kp-notify ctx (format nil "view-stale:~A" (code-of (lambda () (pig:ctx-update-view ctx first (view-text ctx "-stale"))))))
+                       (let ((cur (pig:view-status-mount st)))
+                         (kp-notify ctx (format nil "view-hidden:~A" (pig:view-status-state (pig:ctx-hide-view ctx cur))))
+                         (kp-notify ctx (format nil "view-shown:~A" (pig:view-status-state (pig:ctx-show-view ctx cur))))
+                         (kp-notify ctx (format nil "view-finished:~A" (pig:view-status-state (pig:ctx-finish-view ctx cur))))
+                         (kp-notify ctx (format nil "view-terminal:~A" (code-of (lambda () (pig:ctx-remove-view ctx cur))))))
+                       (kp-notify ctx (format nil "view-final:~A" (pig:view-status-state (pig:ctx-view-state ctx "probe"))))
+                       (setf st (pig:ctx-mount-view
+                                 ctx "probe2" "panel" (view-text ctx "-live")
+                                 :intents (list (pig:view-intent "fx.add" (pig:view-shape "object" :properties (list (cons "n" int)) :required '("n"))
+                                                                 :answer (pig:view-shape "object" :properties (list (cons "sum" int)) :required '("sum")))
+                                                (pig:view-intent "fx.wait" (pig:view-shape "object" :properties (list (cons "tag" (pig:view-shape "string"))) :required '("tag"))
+                                                                 :cancellable t :timeout-ms 5000))))
+                       (kp-notify ctx (format nil "view-second:epoch=~D,rev=~D" (pig:view-ref-epoch (pig:view-status-mount st)) (pig:view-ref-rev (pig:view-status-mount st)))))))
+      (pig:command ext "ui_view_cancelled" "Report the intent whose handler was cancelled"
+                   (lambda (ctx args) (declare (ignore args)) (kp-notify ctx (format nil "intent-cancelled:~A" (car cancelled-tag)))))
+      (pig:command ext "ui_view_state" "Report the state of the second mount"
+                   (lambda (ctx args) (declare (ignore args))
+                     (let ((st (pig:ctx-view-state ctx "probe2")))
+                       (kp-notify ctx (format nil "view-state:~A:~A" (pig:view-status-state st) (pig:view-status-reason st))))))
+      (pig:on-view-intent
+       ext
+       (lambda (ctx inv)
+         (let ((intent (pig:jget inv "intent")) (arg (pig:jget inv "arg")))
+           (cond ((equal intent "fx.add")
+                  (let ((ab (pig:ctx-view-abilities ctx)))
+                    (pig:view-intent-result "done" :answer (pig:obj "sum" (+ (* 2 (pig:jget arg "n")) (if ab (pig:jref ab "limits" "intentArgBytes") 0))))))
+                 ((equal intent "fx.wait")
+                  (kp-notify ctx (format nil "intent-started:~A" (pig:jget arg "tag")))
+                  (pig:ctx-wait-cancelled ctx)
+                  ;; a call made after the cancel is cancelled with its request, so the tag is kept for ui_view_cancelled
+                  (setf (car cancelled-tag) (pig:jget arg "tag"))
+                  (pig:view-intent-result "done" :answer (pig:obj)))
+                 (t (pig:view-intent-result "refused" :error "unknown intent"))))))))
   (pig:command ext "report_geometry" "Report the terminal geometry"
                (lambda (ctx args) (declare (ignore args)) (kp-notify ctx (format nil "geometry:~Dx~D" (pig:ctx-width ctx) (pig:ctx-height ctx)))))
   (pig:own-thinking-runs ext t)

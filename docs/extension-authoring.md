@@ -587,6 +587,29 @@ Differences from Pi, each tested: a `model` the host's registry does not hold ra
 
 An extension that draws the model's thinking itself, for example in an activity tree, calls `pi.ownThinkingRuns()` (Go `ext.OwnThinkingRuns(true)`, Rust `ext.own_thinking_runs(true)`, Python `ext.own_thinking_runs()`, Lisp `(own-thinking-runs ext)`) while it loads, and rewrites the visible run to an empty string with a Markdown transformer for `assistant-thinking`. The built-in message then draws no blank rows for a run that is hidden or empty (D214). Call it again with `false` through the runtime entry point (`ctx.OwnThinkingRuns(false)`, `ctx.own_thinking_runs(False)`, `ctx-own-thinking-runs`, Node `pi.ownThinkingRuns(false)`) to give the rows back; the flag is yours alone, the host ORs it with other extensions', and it leaves with your extension. In Node the call is a void setter ordered after your earlier UI calls; elsewhere it returns once the host applied it. `ownThinkingRuns` removes the spacing only; to also hide the thinking text, pair it with a Markdown transformer that rewrites the `assistant-thinking` text to empty (`pi.registerMarkdownTransformer` in Node, `MarkdownTransformer` in Go, `markdown_transformer` in Rust and Python).
 
+## Plugin UI mounts (D614)
+
+An extension can mount a view in a slot that the attached client draws, update it, and answer the user's intents. The view is a
+D107 view, so every SDK builds it with its kit. No client is attached by default: read the abilities first and mount only if
+there are any.
+
+1. `ctx.ViewAbilities()` (Go), `ctx.view_abilities()` (Python), `ctx.view_abilities()` (Rust), `ctx-view-abilities` (Lisp) or
+   `ctx.ui.viewAbilities()` (Node) returns what the client draws: slots, node kinds, markdown, image formats, limits and input.
+   It is nil, None, `null` or NIL while no client is attached, and a mount then fails with code `unsupported`.
+2. Mount with a key and a slot: `MountView`, `mount_view`, `mount_view`, `ctx-mount-view`, `ctx.ui.mountView`. The reply names the
+   mount `{key, epoch, rev}`. Pass the ref the last operation returned to `UpdateView` and the other operations; an update from an
+   older ref fails with code `stale`, so two writers never overwrite each other.
+3. A mount ends when you `finish` or `remove` it, or when the host breaks it (`state` `broken`, `reason` `session_replaced`,
+   `owner_gone` or `shutdown`). The first end wins; a later operation fails with code `terminal`.
+4. Declare the intents a user can raise with the mount (`ViewIntent`: a name `<extension>.<verb>`, an argument shape, an optional
+   answer shape, `cancellable`, `timeoutMs`). The host checks the argument against the shape before your handler runs. Answer
+   them with one handler (`OnViewIntent`, `on_view_intent`, `on_view_intent`, `on-view-intent`, `pi.onViewIntent`) that returns
+   `done` with an answer, `refused` or `failed`. A cancellable intent's handler is cancelled when its timeout elapses or the
+   user withdraws it (`ctx` cancellation, `is_cancelled`, `AbortSignal`); its answer is then dropped.
+
+Conformance: `TestConformance_UIViewMounts` runs the same probe in every SDK against the host, and `docs/additive-features.md` D614
+lists the records.
+
 ## Adding a new extension API surface
 
 1. Read upstream Pi behavior in Pi's `packages/coding-agent/docs/extensions.md` and the upstream source under `.upstream/current/`.

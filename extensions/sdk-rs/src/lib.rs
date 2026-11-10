@@ -212,6 +212,8 @@ pub use truncate::{
 };
 mod extension;
 pub mod kit;
+mod ui_view;
+pub use ui_view::{ViewAbilities, ViewAsset, ViewError, ViewInput, ViewIntent, ViewIntentInvocation, ViewIntentResult, ViewLimits, ViewMount, ViewRef, ViewShape, ViewStatus, ViewTarget, ViewUpdate};
 pub mod tui;
 mod tui_alt_screen;
 pub use tui_alt_screen::{

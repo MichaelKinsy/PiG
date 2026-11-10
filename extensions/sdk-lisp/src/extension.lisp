@@ -86,6 +86,8 @@
   (flags '()) (flag-defaults (make-hash-table :test 'equal))
   (handlers '()) (event-handlers (make-hash-table)) (next-handler-id 0)
   (loaded-handlers '())
+  ;; D614 plugin UI mounts: what the attached client draws (replicated, NIL while none is attached) and the intent handler
+  (view-lock (sb-thread:make-mutex :name "pig ui view")) (view-abilities nil) (view-intent-handler nil)
   (live nil)
   ;; connection and per-connection state
   (conn nil)

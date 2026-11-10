@@ -909,6 +909,9 @@ fn kit_event_name(kind: EventKind) -> &'static str {
     }
 }
 
+/// The tag of the last ui.view.intent whose handler saw its request cancelled.
+static VIEW_CANCELLED_TAG: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
+
 fn main() {
     let mut ext = Extension::new("rust-sdk-fixture");
     // factory_agent_dir is get_agent_dir() while the factory runs, where Pi's extensions call it (TestConformance_HostConfigurationAgreesAcrossSDKs).
@@ -3263,6 +3266,134 @@ fn main() {
             CommandResult::Ok
         },
     );
+    // D614 plugin UI mounts: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewMounts).
+    fn view_text(ctx: &pig_sdk::Context, suffix: &str) -> kit::View {
+        let n = ctx.view_abilities().map(|a| a.limits.intent_arg_bytes).unwrap_or(0);
+        kit::View::new(kit::Text::new(format!("fixture-view-{n}{suffix}"), 0, 0))
+    }
+    fn view_mount(key: &str, view: kit::View, intents: Vec<pig_sdk::ViewIntent>) -> pig_sdk::ViewMount {
+        pig_sdk::ViewMount { key: key.into(), slot: "panel".into(), target: None, view, intents, assets: vec![], fallback: None }
+    }
+    ext.command(
+        "ui_view_abilities",
+        "Report the replicated client abilities",
+        |ctx, _args| {
+            match ctx.view_abilities() {
+                None => ctx.notify("view-abilities:none", "info"),
+                Some(ab) => ctx.notify(
+                    &format!(
+                        "view-abilities:mounts={},argbytes={},slots={},nodes={},markdown={}",
+                        ab.limits.mounts,
+                        ab.limits.intent_arg_bytes,
+                        ab.slots.join("+"),
+                        ab.nodes.join("+"),
+                        ab.markdown
+                    ),
+                    "info",
+                ),
+            }
+            CommandResult::Ok
+        },
+    );
+    ext.command(
+        "ui_view_probe",
+        "Mount, update, hide, show, finish and remove a view",
+        |ctx, _args| {
+            let code = |r: Result<pig_sdk::ViewStatus, pig_sdk::ViewError>| match r {
+                Ok(_) => "none".to_string(),
+                Err(e) => e.code,
+            };
+            let st = match ctx.mount_view(view_mount("probe", view_text(ctx, ""), vec![])) {
+                Ok(st) => st,
+                Err(e) => return CommandResult::Error(e.to_string()),
+            };
+            ctx.notify(&format!("view-mounted:epoch={},rev={},state={}", st.mount.epoch, st.mount.rev, st.state), "info");
+            let first = st.mount.clone();
+            let st = match ctx.update_view(pig_sdk::ViewUpdate { mount: first.clone(), view: view_text(ctx, "-2"), intents: vec![], assets: vec![], fallback: None }) {
+                Ok(st) => st,
+                Err(e) => return CommandResult::Error(e.to_string()),
+            };
+            ctx.notify(&format!("view-updated:rev={}", st.mount.rev), "info");
+            let stale = ctx.update_view(pig_sdk::ViewUpdate { mount: first, view: view_text(ctx, "-stale"), intents: vec![], assets: vec![], fallback: None });
+            ctx.notify(&format!("view-stale:{}", code(stale)), "info");
+            let cur = st.mount.clone();
+            for (op, label) in [("hide", "view-hidden"), ("show", "view-shown"), ("finish", "view-finished")] {
+                let r = match op {
+                    "hide" => ctx.hide_view(&cur),
+                    "show" => ctx.show_view(&cur),
+                    _ => ctx.finish_view(&cur),
+                };
+                match r {
+                    Ok(st) => ctx.notify(&format!("{label}:{}", st.state), "info"),
+                    Err(e) => return CommandResult::Error(e.to_string()),
+                }
+            }
+            ctx.notify(&format!("view-terminal:{}", code(ctx.remove_view(&cur))), "info");
+            match ctx.view_state("probe") {
+                Ok(st) => ctx.notify(&format!("view-final:{}", st.state), "info"),
+                Err(e) => return CommandResult::Error(e.to_string()),
+            }
+            let int = pig_sdk::ViewShape::new("integer");
+            let intents = vec![
+                pig_sdk::ViewIntent {
+                    name: "fx.add".into(),
+                    arg: pig_sdk::ViewShape::object(&[("n", int.clone())], &["n"]),
+                    answer: Some(pig_sdk::ViewShape::object(&[("sum", int)], &["sum"])),
+                    ..Default::default()
+                },
+                pig_sdk::ViewIntent {
+                    name: "fx.wait".into(),
+                    arg: pig_sdk::ViewShape::object(&[("tag", pig_sdk::ViewShape::new("string"))], &["tag"]),
+                    cancellable: true,
+                    timeout_ms: 5000,
+                    ..Default::default()
+                },
+            ];
+            match ctx.mount_view(view_mount("probe2", view_text(ctx, "-live"), intents)) {
+                Ok(st) => ctx.notify(&format!("view-second:epoch={},rev={}", st.mount.epoch, st.mount.rev), "info"),
+                Err(e) => return CommandResult::Error(e.to_string()),
+            }
+            CommandResult::Ok
+        },
+    );
+    ext.command(
+        "ui_view_cancelled",
+        "Report the intent whose handler was cancelled",
+        |ctx, _args| {
+            let tag = VIEW_CANCELLED_TAG.lock().unwrap().clone();
+            ctx.notify(&format!("intent-cancelled:{tag}"), "info");
+            CommandResult::Ok
+        },
+    );
+    ext.command(
+        "ui_view_state",
+        "Report the state of the second mount",
+        |ctx, _args| match ctx.view_state("probe2") {
+            Ok(st) => {
+                ctx.notify(&format!("view-state:{}:{}", st.state, st.reason), "info");
+                CommandResult::Ok
+            }
+            Err(e) => CommandResult::Error(e.to_string()),
+        },
+    );
+    ext.on_view_intent(|inv| match inv.intent.as_str() {
+        "fx.add" => {
+            let n = inv.arg.get("n").and_then(Value::as_i64).unwrap_or(0);
+            let extra = inv.context.view_abilities().map(|a| a.limits.intent_arg_bytes as i64).unwrap_or(0);
+            pig_sdk::ViewIntentResult::done(json!({"sum": n * 2 + extra}))
+        }
+        "fx.wait" => {
+            let tag = inv.arg.get("tag").and_then(Value::as_str).unwrap_or("").to_string();
+            inv.context.notify(&format!("intent-started:{tag}"), "info");
+            while !inv.context.is_cancelled() {
+                thread::sleep(Duration::from_millis(10));
+            }
+            // A call made after the cancel is cancelled with its request, so the tag is kept for ui_view_cancelled.
+            *VIEW_CANCELLED_TAG.lock().unwrap() = tag;
+            pig_sdk::ViewIntentResult::done(json!({}))
+        }
+        _ => pig_sdk::ViewIntentResult::refused("unknown intent"),
+    });
     ext.command(
         "report_geometry",
         "Report observed terminal geometry",

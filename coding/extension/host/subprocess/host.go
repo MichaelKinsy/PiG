@@ -2527,6 +2527,7 @@ func (h *Host) Shutdown(reason string) {
 
 	// All consumers are ending together. Retire their UI/catalog subscriptions before provider removal, so cleanup cannot rebuild and send snapshots to siblings that are also shutting down.
 	if h.uiBridge != nil {
+		h.uiBridge.ViewsShutdown()
 		for _, me := range exts {
 			h.uiBridge.ClearExtensionConn(me.config.Name, me.connection())
 		}

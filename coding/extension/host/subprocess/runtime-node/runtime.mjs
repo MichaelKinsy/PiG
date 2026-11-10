@@ -1723,7 +1723,23 @@ function createNoOpUI(ui) {
     onThemeChange: ui.onThemeChange,
     onToolsExpandedChange: ui.onToolsExpandedChange,
     bell: ui.bell,
+    // pig additive (D614): plugin UI mounts go to the host, which answers by what the attached client draws.
+    viewAbilities: ui.viewAbilities,
+    mountView: ui.mountView,
+    updateView: ui.updateView,
+    hideView: ui.hideView,
+    showView: ui.showView,
+    finishView: ui.finishView,
+    removeView: ui.removeView,
+    viewState: ui.viewState,
   };
+}
+
+// viewArgs builds the argument of a ui.view.mount or ui.view.update call, leaving out the members the caller did not give.
+function viewArgs(head, content) {
+  const args = {};
+  for (const [name, value] of Object.entries({ ...head, ...content })) if (value !== undefined) args[name] = value;
+  return args;
 }
 
 class RuntimeUI {
@@ -1851,6 +1867,24 @@ class RuntimeUI {
   async setLogin(definition) { return this.runtime.call("ui.setLogin", definition); }
   // pig divergence (D2): an extension's sprite joins /sprite.
   async registerSprite(definition) { return this.runtime.call("ui.registerSprite", definition); }
+  // pig additive (D614): plugin UI mounts. A view is the D107 wire view ({ root: { kind: "text", text } }); the host checks it
+  // against what the attached client draws. A failed operation rejects with an Error whose code is invalid, unsupported,
+  // limit, stale, terminal or not_found. The reply is { mount: { key, epoch, rev }, state, reason? }.
+  viewAbilities() {
+    const abilities = this.runtime.viewAbilities;
+    return abilities ? structuredClone(abilities) : null;
+  }
+  mountView({ key, slot, target, view, intents, assets, fallback } = {}) {
+    return this.runtime.call("ui.view.mount", viewArgs({ key, slot, target }, { view, intents, assets, fallback }));
+  }
+  updateView(mount, { view, intents, assets, fallback } = {}) {
+    return this.runtime.call("ui.view.update", viewArgs({ mount }, { view, intents, assets, fallback }));
+  }
+  hideView(mount) { return this.runtime.call("ui.view.hide", { mount }); }
+  showView(mount) { return this.runtime.call("ui.view.show", { mount }); }
+  finishView(mount) { return this.runtime.call("ui.view.finish", { mount }); }
+  removeView(mount) { return this.runtime.call("ui.view.remove", { mount }); }
+  viewState(key) { return this.runtime.call("ui.view.state", { key }); }
   setTitle(title) { this.runtime.fireAndForget("ui.setTitle", { title }); }
   async custom(factory, options = {}) {
     // rpc-mode.ts custom(): RPC mode has no custom UI, so it resolves undefined and the factory never runs; the host call keeps the ui_prompt scope.
@@ -2164,6 +2198,8 @@ export class Runtime {
     this.themeSignature = undefined;
     this.toolsExpandedKnown = false;
     this.loadedHandlers = [];
+    this.viewIntentHandler = undefined;
+    this.viewAbilities = null;
     this.loadedPromise = undefined;
     this.commands = new Map();
     this.shortcuts = new Map();
@@ -2299,6 +2335,13 @@ export class Runtime {
       onLoaded: (handler) => {
         if (typeof handler !== "function") throw new TypeError("onLoaded requires a handler function");
         this.loadedHandlers.push(handler);
+      },
+      // pig additive (D614): answers the intents of this extension's mounts. handler({ mount, rev, nodeKey, intent, arg, ticket, signal }, ctx)
+      // returns { outcome: "done" | "refused" | "failed", answer?, error? } (a bare value is the answer of a done outcome). signal aborts
+      // when the host cancels a cancellable intent; an answer after that is dropped.
+      onViewIntent: (handler) => {
+        if (typeof handler !== "function") throw new TypeError("onViewIntent requires a handler function");
+        this.viewIntentHandler = handler;
       },
       registerMessageRenderer: (customType, handler) => this.registerMessageRenderer(customType, handler),
       registerEntryRenderer: (customType, handler) => this.registerEntryRenderer(customType, handler),
@@ -3354,6 +3397,8 @@ export class Runtime {
 
   applyState(snapshot) {
     if (!snapshot || typeof snapshot !== "object") return;
+    // pig additive (D614): every state is a full snapshot, so an absent uiAbilities clears the replica.
+    this.viewAbilities = snapshot.uiAbilities && typeof snapshot.uiAbilities === "object" ? snapshot.uiAbilities : null;
     for (const key of ["commands", "allThemes"]) {
       if (Object.hasOwn(snapshot, key)) this.state[key] = [...(snapshot[key] ?? [])];
     }
@@ -5098,6 +5143,19 @@ export class Runtime {
             }
           }
           await this.respond(id, result);
+          return;
+        }
+        case "ui.view.intent": {
+          const handler = this.viewIntentHandler;
+          if (!handler) {
+            await this.respond(id, { outcome: "refused", error: "no intent handler" });
+            return;
+          }
+          const { mount, rev, nodeKey, intent, arg, ticket } = request.args ?? {};
+          const answer = await handler({ mount, rev, nodeKey: nodeKey ?? "", intent, arg, ticket, signal: ctx[requestSignal] }, ctx);
+          const outcomes = ["done", "refused", "failed"];
+          const reply = answer && typeof answer === "object" && outcomes.includes(answer.outcome) ? answer : { outcome: "done", answer };
+          await this.respond(id, reply.answer === undefined ? { outcome: reply.outcome, ...(reply.error ? { error: String(reply.error) } : {}) } : reply);
           return;
         }
         case "shortcut": {

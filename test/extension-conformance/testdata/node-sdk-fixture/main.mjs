@@ -812,6 +812,57 @@ export default function (pi) {
   let eventProbeOff;
   pi.registerCommand("event_probe_subscribe", { description: "Subscribe to turn_end after connecting", handler: async () => { eventProbeOff = pi.on("turn_end", async (event, ctx) => { ctx.ui.notify(`event_probe:${event.messageEntryId}`, "info"); }); } });
   pi.registerCommand("event_probe_unsubscribe", { description: "Remove the turn_end handler registered after connecting", handler: async () => { eventProbeOff?.(); eventProbeOff = undefined; } });
+  // D614 plugin UI mounts: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewMounts).
+  const viewText = (ctx, suffix) => ({ root: { kind: "text", text: `fixture-view-${ctx.ui.viewAbilities()?.limits.intentArgBytes ?? 0}${suffix}` } });
+  const viewCode = async (call) => {
+    try {
+      await call();
+      return "none";
+    } catch (err) {
+      return err.code;
+    }
+  };
+  let viewCancelledTag = "";
+  pi.registerCommand("ui_view_abilities", { description: "Report the replicated client abilities", handler: async (_args, ctx) => {
+    const ab = ctx.ui.viewAbilities();
+    ctx.ui.notify(ab ? `view-abilities:mounts=${ab.limits.mounts},argbytes=${ab.limits.intentArgBytes},slots=${ab.slots.join("+")},nodes=${ab.nodes.join("+")},markdown=${ab.markdown}` : "view-abilities:none", "info");
+  } });
+  pi.registerCommand("ui_view_probe", { description: "Mount, update, hide, show, finish and remove a view", handler: async (_args, ctx) => {
+    let st = await ctx.ui.mountView({ key: "probe", slot: "panel", view: viewText(ctx, "") });
+    ctx.ui.notify(`view-mounted:epoch=${st.mount.epoch},rev=${st.mount.rev},state=${st.state}`, "info");
+    const first = st.mount;
+    st = await ctx.ui.updateView(first, { view: viewText(ctx, "-2") });
+    ctx.ui.notify(`view-updated:rev=${st.mount.rev}`, "info");
+    ctx.ui.notify(`view-stale:${await viewCode(() => ctx.ui.updateView(first, { view: viewText(ctx, "-stale") }))}`, "info");
+    const cur = st.mount;
+    ctx.ui.notify(`view-hidden:${(await ctx.ui.hideView(cur)).state}`, "info");
+    ctx.ui.notify(`view-shown:${(await ctx.ui.showView(cur)).state}`, "info");
+    ctx.ui.notify(`view-finished:${(await ctx.ui.finishView(cur)).state}`, "info");
+    ctx.ui.notify(`view-terminal:${await viewCode(() => ctx.ui.removeView(cur))}`, "info");
+    ctx.ui.notify(`view-final:${(await ctx.ui.viewState("probe")).state}`, "info");
+    const intents = [
+      { name: "fx.add", arg: { type: "object", properties: { n: { type: "integer" } }, required: ["n"] }, answer: { type: "object", properties: { sum: { type: "integer" } }, required: ["sum"] } },
+      { name: "fx.wait", arg: { type: "object", properties: { tag: { type: "string" } }, required: ["tag"] }, cancellable: true, timeoutMs: 5000 },
+    ];
+    st = await ctx.ui.mountView({ key: "probe2", slot: "panel", view: viewText(ctx, "-live"), intents });
+    ctx.ui.notify(`view-second:epoch=${st.mount.epoch},rev=${st.mount.rev}`, "info");
+  } });
+  pi.registerCommand("ui_view_cancelled", { description: "Report the intent whose handler was cancelled", handler: async (_args, ctx) => ctx.ui.notify(`intent-cancelled:${viewCancelledTag}`, "info") });
+  pi.registerCommand("ui_view_state", { description: "Report the state of the second mount", handler: async (_args, ctx) => {
+    const st = await ctx.ui.viewState("probe2");
+    ctx.ui.notify(`view-state:${st.state}:${st.reason ?? ""}`, "info");
+  } });
+  pi.onViewIntent(async (inv, ctx) => {
+    if (inv.intent === "fx.add") return { outcome: "done", answer: { sum: inv.arg.n * 2 + (ctx.ui.viewAbilities()?.limits.intentArgBytes ?? 0) } };
+    if (inv.intent === "fx.wait") {
+      ctx.ui.notify(`intent-started:${inv.arg.tag}`, "info");
+      if (!inv.signal.aborted) await new Promise((resolve) => inv.signal.addEventListener("abort", resolve, { once: true }));
+      // A call made after the cancel is cancelled with its request, so the tag is kept for ui_view_cancelled.
+      viewCancelledTag = inv.arg.tag;
+      return { outcome: "done", answer: {} };
+    }
+    return { outcome: "refused", error: "unknown intent" };
+  });
   pi.registerCommand("report_geometry", { description: "Report observed terminal geometry", handler: async (_args, ctx) => ctx.ui.notify(`geometry:${ctx.width}x${ctx.height}`, "info") });
 
   pi.registerCommand("surface_footer", { description: "Install a footer renderer", handler: async (_args, ctx) => ctx.ui.setFooter(() => ({ render: (width) => [`footer@${width}`], invalidate() {} })) });

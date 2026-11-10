@@ -90,6 +90,83 @@ export interface PiGExtensionSourceInfo {
   baseDir?: string;
 }
 
+/** D614: where a client draws a plugin mount. */
+export type PiGViewSlot = "notify" | "status" | "widget-above" | "widget-below" | "header" | "footer" | "dialog" | "overlay" | "panel" | "tool-card" | "message" | "entry";
+/** D614: the closed JSON subset an intent argument or answer is checked against (depth 4, enum at most 32, object at most 32 properties, array at most 64 items). */
+export interface PiGViewShape {
+  type: "boolean" | "string" | "integer" | "number" | "enum" | "object" | "array";
+  enum?: string[];
+  properties?: Record<string, PiGViewShape>;
+  required?: string[];
+  items?: PiGViewShape;
+  maxItems?: number;
+}
+export interface PiGViewIntent {
+  /** "<extension>.<verb>". */
+  name: string;
+  nodeKey?: string;
+  arg: PiGViewShape;
+  answer?: PiGViewShape;
+  cancellable?: boolean;
+  /** 100..300000; default 30000. */
+  timeoutMs?: number;
+}
+export interface PiGViewAsset {
+  id: string;
+  mime: "image/png" | "image/jpeg" | "image/gif" | "image/webp";
+  size: number;
+  sha256: string;
+  delivery: "inline" | "managed";
+}
+/** The D107 wire view, `{ root: { kind: "text", text: "..." } }`. */
+export interface PiGViewContent {
+  view: { root: Record<string, unknown>; focus?: string; theme?: Record<string, string> };
+  intents?: PiGViewIntent[];
+  assets?: PiGViewAsset[];
+  fallback?: Record<string, unknown>;
+}
+export interface PiGViewMount extends PiGViewContent {
+  key: string;
+  slot: PiGViewSlot;
+  target?: { toolCallId?: string; messageType?: string; entryType?: string };
+}
+/** One revision of one mount incarnation: pass the ref the last operation returned to the next update. */
+export interface PiGViewRef {
+  key: string;
+  epoch: number;
+  rev: number;
+}
+export interface PiGViewStatus {
+  mount: PiGViewRef;
+  state: "live" | "hidden" | "finished" | "removed" | "broken";
+  /** Set for `broken`. */
+  reason?: "session_replaced" | "owner_gone" | "shutdown";
+}
+/** What the attached client draws. */
+export interface PiGViewAbilities {
+  slots: PiGViewSlot[];
+  nodes: string[];
+  markdown: boolean;
+  imageFormats: string[];
+  limits: { nodes: number; depth: number; snapshotBytes: number; textBytes: number; mounts: number; intentArgBytes: number };
+  input: { keyboard: boolean; pointer: boolean; text: boolean };
+}
+export interface PiGViewIntentInvocation {
+  mount: PiGViewRef;
+  rev: number;
+  nodeKey: string;
+  intent: string;
+  arg: unknown;
+  ticket: string;
+  /** Aborts when the host cancels a cancellable intent; an answer after that is dropped. */
+  signal: AbortSignal;
+}
+export interface PiGViewIntentResult {
+  outcome: "done" | "refused" | "failed";
+  answer?: unknown;
+  error?: string;
+}
+
 declare module "@earendil-works/pi-coding-agent" {
   interface ExtensionAPI {
     /**
@@ -98,6 +175,11 @@ declare module "@earendil-works/pi-coding-agent" {
      * factory made were delivered. Pi has no such hook.
      */
     onLoaded(handler: (ctx: ExtensionContext) => void | Promise<void>): void;
+    /**
+     * Answer the intents of this extension's mounts (D614). A bare return value is the answer of a `done` outcome. A
+     * later call replaces the handler.
+     */
+    onViewIntent(handler: (invocation: PiGViewIntentInvocation, ctx: ExtensionContext) => PiGViewIntentResult | unknown | Promise<PiGViewIntentResult | unknown>): void;
   }
   interface ExtensionContext {
     /** The provenance the loader stamped on this extension; undefined when the host holds none. */
@@ -137,6 +219,19 @@ declare module "@earendil-works/pi-coding-agent" {
      * leaves /sprite when the extension unloads.
      */
     registerSprite(definition: PiGSpriteDefinition): Promise<void>;
+    /** What the attached client draws (D614), or null while none is attached. */
+    viewAbilities(): PiGViewAbilities | null;
+    /** Mount a view in a slot the attached client draws. Rejects with an Error whose `code` is invalid, unsupported, limit, stale, terminal or not_found. */
+    mountView(mount: PiGViewMount): Promise<PiGViewStatus>;
+    /** Replace the content of a mount; stale unless `mount` carries the epoch and rev the last operation returned. */
+    updateView(mount: PiGViewRef, content: PiGViewContent): Promise<PiGViewStatus>;
+    hideView(mount: PiGViewRef): Promise<PiGViewStatus>;
+    showView(mount: PiGViewRef): Promise<PiGViewStatus>;
+    /** End a mount as completed. Terminal: a later operation fails with code `terminal`. */
+    finishView(mount: PiGViewRef): Promise<PiGViewStatus>;
+    /** End a mount as withdrawn. Terminal. */
+    removeView(mount: PiGViewRef): Promise<PiGViewStatus>;
+    viewState(key: string): Promise<PiGViewStatus>;
   }
   interface ExtensionAPI {
     /**

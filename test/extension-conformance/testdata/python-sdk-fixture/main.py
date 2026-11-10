@@ -2100,6 +2100,78 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("event_probe_subscribe", "Subscribe to turn_end after connecting", event_probe_subscribe)
     ext.command("event_probe_unsubscribe", "Remove the turn_end handler registered after connecting", event_probe_unsubscribe)
+    # D614 plugin UI mounts: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewMounts).
+    def view_text(ctx, suffix):
+        ab = ctx.view_abilities()
+        n = ab.limits.intent_arg_bytes if ab else 0
+        return kit.View(kit.Text(f"fixture-view-{n}{suffix}"))
+
+    def view_abilities_probe(ctx, _args):
+        ab = ctx.view_abilities()
+        if ab is None:
+            ctx.notify("view-abilities:none", "info")
+            return
+        ctx.notify(f"view-abilities:mounts={ab.limits.mounts},argbytes={ab.limits.intent_arg_bytes},slots={'+'.join(ab.slots)},nodes={'+'.join(ab.nodes)},markdown={str(ab.markdown).lower()}", "info")
+
+    def view_probe(ctx, _args):
+        st = ctx.mount_view("probe", "panel", view_text(ctx, ""))
+        ctx.notify(f"view-mounted:epoch={st.mount.epoch},rev={st.mount.rev},state={st.state}", "info")
+        first = st.mount
+        st = ctx.update_view(first, view_text(ctx, "-2"))
+        ctx.notify(f"view-updated:rev={st.mount.rev}", "info")
+        try:
+            ctx.update_view(first, view_text(ctx, "-stale"))
+            code = "none"
+        except pig_sdk.ViewError as err:
+            code = err.code
+        ctx.notify(f"view-stale:{code}", "info")
+        cur = st.mount
+        ctx.notify(f"view-hidden:{ctx.hide_view(cur).state}", "info")
+        ctx.notify(f"view-shown:{ctx.show_view(cur).state}", "info")
+        ctx.notify(f"view-finished:{ctx.finish_view(cur).state}", "info")
+        try:
+            ctx.remove_view(cur)
+            code = "none"
+        except pig_sdk.ViewError as err:
+            code = err.code
+        ctx.notify(f"view-terminal:{code}", "info")
+        ctx.notify(f"view-final:{ctx.view_state('probe').state}", "info")
+        obj = pig_sdk.ViewShape
+        intents = [
+            pig_sdk.ViewIntent("fx.add", obj("object", properties={"n": obj("integer")}, required=("n",)), answer=obj("object", properties={"sum": obj("integer")}, required=("sum",))),
+            pig_sdk.ViewIntent("fx.wait", obj("object", properties={"tag": obj("string")}, required=("tag",)), cancellable=True, timeout_ms=5000),
+        ]
+        st = ctx.mount_view("probe2", "panel", view_text(ctx, "-live"), intents=intents)
+        ctx.notify(f"view-second:epoch={st.mount.epoch},rev={st.mount.rev}", "info")
+
+    view_cancelled: list = []
+
+    def view_cancelled_probe(ctx, _args):
+        ctx.notify("intent-cancelled:" + (view_cancelled[-1] if view_cancelled else ""), "info")
+
+    def view_state_probe(ctx, _args):
+        st = ctx.view_state("probe2")
+        ctx.notify(f"view-state:{st.state}:{st.reason}", "info")
+
+    def view_intent(inv):
+        if inv.intent == "fx.add":
+            ab = inv.context.view_abilities()
+            total = inv.arg["n"] * 2 + (ab.limits.intent_arg_bytes if ab else 0)
+            return pig_sdk.ViewIntentResult("done", {"sum": total})
+        if inv.intent == "fx.wait":
+            inv.context.notify("intent-started:" + inv.arg["tag"], "info")
+            while not inv.context.is_cancelled():
+                time.sleep(0.01)
+            # A call made after the cancel is cancelled with its request, so the tag is kept for ui_view_cancelled.
+            view_cancelled.append(inv.arg["tag"])
+            return pig_sdk.ViewIntentResult("done", {})
+        return pig_sdk.ViewIntentResult("refused", error="unknown intent")
+
+    ext.command("ui_view_abilities", "Report the replicated client abilities", view_abilities_probe)
+    ext.command("ui_view_probe", "Mount, update, hide, show, finish and remove a view", view_probe)
+    ext.command("ui_view_cancelled", "Report the intent whose handler was cancelled", view_cancelled_probe)
+    ext.command("ui_view_state", "Report the state of the second mount", view_state_probe)
+    ext.on_view_intent(view_intent)
     ext.command(
         "report_geometry",
         "Report observed terminal geometry",

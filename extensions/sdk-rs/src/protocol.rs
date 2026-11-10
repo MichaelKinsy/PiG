@@ -724,6 +724,8 @@ pub struct Connection {
     pub(crate) with_sessions: crate::replaced_session::WithSessionRegistry,
     /// The frontend flag, the image refs sent, and the live widget, header and footer views (D107).
     pub(crate) views: crate::kit::ViewLedger,
+    /// D614: the replicated client abilities.
+    pub(crate) view_state: crate::ui_view::ViewState,
     /// The setup callbacks of this connection's newSession calls in flight.
     pub(crate) setups: crate::setup_session::SetupRegistry,
     /// The functions passed in options of session graph objects (DefaultResourceLoader's overrides), by the name the host runs them under.
@@ -861,6 +863,7 @@ impl Connection {
             bash_operations: Default::default(),
             with_sessions: Default::default(),
             views: Default::default(),
+            view_state: Default::default(),
             setups: Default::default(),
             graph_callbacks: Default::default(),
             children: Default::default(),

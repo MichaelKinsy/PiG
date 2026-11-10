@@ -30,7 +30,9 @@ import type {
   ProviderConfig as AdapterProviderConfig,
   PiGLoginDefinition,
   PiGSpriteDefinition,
+  PiGViewAbilities,
   PiGViewLines,
+  PiGViewStatus,
   PiGViewTheme,
 } from "@michaelkinsy/pig-extension-types";
 
@@ -60,7 +62,12 @@ export default function extension(pi: ExtensionAPI): void {
     await ctx.ui.setLogin(login);
     await ctx.ui.registerSprite(sprite);
     ctx.ui.notify("ready", "info");
+    const abilities: PiGViewAbilities | null = ctx.ui.viewAbilities();
+    const mounted: PiGViewStatus = await ctx.ui.mountView({ key: "k", slot: "panel", view: { root: { kind: "text", text: String(abilities?.limits.mounts) } } });
+    await ctx.ui.updateView(mounted.mount, { view: { root: { kind: "text", text: "next" } } });
+    await ctx.ui.finishView(mounted.mount);
   });
+  pi.onViewIntent((invocation) => ({ outcome: "done", answer: { echo: invocation.intent, aborted: invocation.signal.aborted } }));
   // PiG emits Pi's UI prompt lifecycle for every SDK; the kinds and the
   // optional title come from the pinned Pi declarations.
   pi.on("ui_prompt_start", (event) => {

@@ -249,6 +249,8 @@ type Extension struct {
 	// frontend is set while a D91 frontend session draws (D107): views
 	// carry frontend-only annotations only then.
 	frontend      bool
+	// views is the D614 mount state: what the attached client draws and the intent handler.
+	views viewState
 	width         int
 	height        int
 	model         string
@@ -1642,6 +1644,10 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 		}
 		_ = e.conn.respond(id, result, err)
 
+	case "ui.view.intent":
+		result, err := e.handleViewIntent(ctx, req.Args)
+		_ = e.conn.respond(id, result, err)
+
 	case "shortcut":
 		e.toolMu.RLock()
 		handler, ok := e.shortcutFuncs[req.Tool]
@@ -1897,6 +1903,8 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 				Settings      json.RawMessage `json:"settings"`
 				McpServers    json.RawMessage `json:"mcpServers"`
 				FooterData    *footerDataWire `json:"footerData"`
+				// UIAbilities (D614) is absent while no client is attached; every state is a full snapshot, so absent clears it.
+				UIAbilities   json.RawMessage `json:"uiAbilities"`
 			} `json:"state"`
 		}
 		if err := json.Unmarshal(env.Notify.Args, &payload); err != nil {
@@ -1918,6 +1926,7 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 			e.hasUI = *payload.State.HasUI
 		}
 		e.frontend = payload.State.Frontend
+		e.views.applyAbilities(payload.State.UIAbilities)
 		if sessionState.SessionFile != "" {
 			e.sessionFile = sessionState.SessionFile
 		}
