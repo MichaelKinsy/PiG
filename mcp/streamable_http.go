@@ -344,7 +344,6 @@ func (t *StreamableHTTPTransport) Send(ctx context.Context, message JSONRPCMessa
 	}
 	switch kind := responseContentType(response); kind {
 	case "application/json":
-		// pig divergence (D233): Pi 1.5.0 reads an application/json reply whole; Pi main caps it at maxMessageBytes like an SSE event (4a8b60bc3, #11335).
 		maxBytes := t.maxMessageBytes()
 		data, truncated, err := readBodyBytes(response.Body, maxBytes)
 		if err != nil {
@@ -567,7 +566,6 @@ func (t *StreamableHTTPTransport) checkResponse(response *http.Response) error {
 	if response.StatusCode >= 200 && response.StatusCode < 300 {
 		return nil
 	}
-	// pig divergence (D233): Pi 1.5.0 keeps the first 8192 UTF-16 units of the whole body; Pi main reads only the first MAX_ERROR_BODY_BYTES bytes and cancels the rest (4a8b60bc3, #11335).
 	// TextDecoder decodes the kept bytes without a leading BOM; a failed read leaves an empty body.
 	data, _, _ := readBodyBytes(response.Body, maxErrorBodyBytes)
 	body := jsstring.FromUTF8(bytes.TrimPrefix(data, []byte("\uFEFF")))

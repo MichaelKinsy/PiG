@@ -42,7 +42,6 @@ type McpCommandOptions struct {
 	// Credentials defaults to `mcp-auth.json` in AgentDir.
 	Credentials *McpOAuthCredentialStore
 	// ProviderToken returns the token of a pi provider, refreshed when expired, for servers with `auth.provider`; "" when the provider has none. Nil sends no token.
-	// pig divergence (D255): Pi 4d72d05bc. Pi 1.5.0 sends no token in `pi mcp list`, so a signed-in provider's server shows as needing sign-in.
 	ProviderToken func(ctx context.Context, provider string) string
 	// OpenURL opens the sign-in URL in the platform browser. Nil opens nothing.
 	OpenURL func(url string)
@@ -353,7 +352,6 @@ func RunMcpCommand(ctx context.Context, args []string, options McpCommandOptions
 			c.error(fmt.Sprintf(`MCP server "%s" is defined in %s, not in the project; omit --local.`, name, entry.Source))
 			return 1
 		}
-		// pig divergence (D255): Pi 4d72d05bc points a provider-backed server to /login and /logout instead of failing with "does not use OAuth".
 		if provider := authProviderOf(*entry); provider != "" {
 			c.error(fmt.Sprintf(`MCP server "%s" uses the credentials of provider "%s". Run "%s auth %s %s".`, name, provider, c.app, command, provider))
 			return 1
@@ -784,7 +782,6 @@ func (c *mcpCLI) list(ctx context.Context, loaded LoadedMcpConfig, asJSON bool, 
 			c.log("  project override: " + report.override)
 		}
 		if report.state == string(StateNeedsAuth) {
-			// pig divergence (D255): Pi 4d72d05bc names /login <provider> for a provider-backed server.
 			if report.authProvider != "" {
 				c.log("  sign in with: /login " + report.authProvider + " in " + c.app)
 			} else {
