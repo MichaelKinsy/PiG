@@ -6,7 +6,7 @@ package telemetryingest
 // it; a batch that cannot be sent (no link, a refusal) is given up, best effort. One send at a time; nothing is sent while
 // the object is not bound.
 //
-// Forced Go difference (D454): Send blocks until its batch was answered (upstream returns a promise), and calls are
+// Forced Go difference (language mechanics): Send blocks until its batch was answered (upstream returns a promise), and calls are
 // serialised by a mutex, so the chain of promises is a lock.
 
 import (

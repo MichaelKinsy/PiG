@@ -321,7 +321,7 @@
   },
   "pkg:chord/.#MessageValue": {
     "go": "chord/next/surfaces/surfaces_messages.go#MessageValue",
-    "reason": "Pi packages/chord/src/surfaces/messages.ts:16 `MessageValue = string | ((...args: never[]) => string)`: a text, or a function of its arguments returning one. Go has no unions, so surfaces.MessageValue is `any` holding a string or a MessageFunc (a function of the language and its arguments returning the text and the error a JavaScript message would throw; D450), which DefineMessages checks (surfaces_messages.go)."
+    "reason": "Pi packages/chord/src/surfaces/messages.ts:16 `MessageValue = string | ((...args: never[]) => string)`: a text, or a function of its arguments returning one. Go has no unions, so surfaces.MessageValue is `any` holding a string or a MessageFunc (a function of the language and its arguments returning the text and the error a JavaScript message would throw; language mechanics), which DefineMessages checks (surfaces_messages.go)."
   },
   "pkg:chord/.#OwnerTable::property:get::call:0": {
     "go": "chord/next/store/adapter.go#OwnerTable.Get",
