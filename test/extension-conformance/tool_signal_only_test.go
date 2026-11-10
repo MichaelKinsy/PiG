@@ -3,11 +3,14 @@ package extensionconformance
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"slices"
 	"testing"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
+	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 )
 
@@ -34,6 +37,20 @@ func TestToolAbortKeepsTheToolsHostCalls(t *testing.T) {
 				}
 			})
 			h.ui.dialogs = newDialogGate()
+			// The Session's nested-call action: it runs the extension's own tool over the wire under the nested call's context, which ends when the abort reaches the nested call.
+			h.bridge.SetHostAction("executeTool", func(ctx context.Context, callerID, name string, args json.RawMessage, _ extension.ExecuteToolOptions) (extension.AgentToolCallOutcome, error) {
+				outcome := extension.AgentToolCallOutcome{ToolCall: ai.ToolCall{ID: callerID + "/1", Name: name, Arguments: ai.JsonObject{}}}
+				tool, ok := findTool(h.runner, name)
+				if !ok {
+					return outcome, fmt.Errorf("tool %s not registered", name)
+				}
+				result, err := tool.Definition.Execute(ctx, outcome.ToolCall.ID, args, nil)
+				if err != nil {
+					result = agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: err.Error()}}, IsError: true}
+				}
+				outcome.Result, outcome.IsError = result, result.IsError
+				return outcome, nil
+			})
 			// start runs the tool under a context the test can abort and returns its outcome.
 			type outcome struct {
 				result agent.AgentToolResult
