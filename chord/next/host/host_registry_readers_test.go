@@ -280,6 +280,63 @@ func TestReadersAHostRegistryWhoseDeadlineElapsedBeforeItsFirstLookReportsWhyThe
 	must(t, host.Close(background))
 }
 
+// directTimerLoop is a loop whose timers run their job on a goroutine of their own, not in a section: a deadline that fires while
+// a section is still running, here the load's, where a setup waits for the registry it asked for.
+type directTimerLoop struct{ *Loop }
+
+var _ sectionLoop = (*directTimerLoop)(nil)
+
+// AfterFunc implements the loop's timers: the job runs when the delay is over, whatever section is running.
+func (l *directTimerLoop) AfterFunc(d time.Duration, job func()) Timer {
+	timer := &overdueTimer{job: job}
+	time.AfterFunc(d, func() {
+		if timer.state.CompareAndSwap(timerPending, timerFired) {
+			timer.job()
+		}
+	})
+	return timer
+}
+
+// Ports the deadline of `registry` that fires after `load` was called and before the publication (chord host.ts:1125-1138):
+// `#assertLoadCalled` passed (host.ts:1128, 1767), `await awaitWithContext(this.#publication.promise, ...)` is still waiting, and
+// the timer armed at host.ts:1133 aborts with `notLive("registry app.sum", timeout)`, "did not become live within 5 ms". A
+// setup that asks for the registry is the one place the publication is pending while a `registry` call runs: the load's section
+// publishes after its setups.
+func TestReadersAHostRegistryWhoseDeadlineFiresAfterLoadStartedAndBeforeThePublicationDidNotBecomeLive(t *testing.T) {
+	const deadline = 5 * time.Millisecond
+	host := newHost(t, HostOptions{loop: &directTimerLoop{Loop: NewLoop()}})
+	asked := make(chan error, 1)
+	setup := rvPlugin("@app/asks", func(FacetHost, FacetSelf) error {
+		_, err := host.Registry(background, rvSum, rvWithin(deadline))
+		asked <- err
+		return nil
+	})
+	loaded := make(chan error, 1)
+	go func() {
+		_, err := host.Load([]HostFacet{setup}, background)
+		loaded <- err
+	}()
+	select {
+	case err := <-asked:
+		const want = "registry app.sum: did not become live within 5 ms"
+		if err == nil || err.Error() != want {
+			t.Fatalf("host.registry before the publication = %v, want %q", err, want)
+		}
+		if chordErr, ok := data.IsChordErrorCode(err, data.CodeUnavailable); !ok {
+			t.Fatalf("host.registry before the publication = %v (%v), want an unavailable error", err, chordErr)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("host.registry before the publication did not end at its 5 ms deadline")
+	}
+	select {
+	case err := <-loaded:
+		must(t, err)
+	case <-time.After(10 * time.Second):
+		t.Fatal("the load did not return")
+	}
+	must(t, host.Close(background))
+}
+
 func TestReadersAHostRegistryWhoseDeadlineElapsedBeforeItsFirstLookStillReturnsAValueItFindsThere(t *testing.T) {
 	const deadline = 5 * time.Millisecond
 	host, _ := rvPlugins(t, HostOptions{loop: &overdueLoop{Loop: NewLoop(), delay: deadline}}, rvPlugin("@app/sum", func(h FacetHost, _ FacetSelf) error {
