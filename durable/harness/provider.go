@@ -45,7 +45,9 @@ type providerSessionIds struct {
 	ids *orderedSet[string]
 }
 
-func newProviderSessionIds() *providerSessionIds { return &providerSessionIds{ids: newOrderedSet[string]()} }
+func newProviderSessionIds() *providerSessionIds {
+	return &providerSessionIds{ids: newOrderedSet[string]()}
+}
 
 func (sessions *providerSessionIds) add(sessionId string) {
 	sessions.mu.Lock()
