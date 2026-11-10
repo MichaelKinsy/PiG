@@ -616,7 +616,9 @@ kit-widget-event=<type>:<value> (a change report is not one). It never closes it
                   (let ((ab (pig:ctx-view-abilities ctx)))
                     (pig:view-intent-result "done" :answer (pig:obj "sum" (+ (* 2 (pig:jget arg "n")) (if ab (pig:jref ab "limits" "intentArgBytes") 0))))))
                  ((equal intent "fx.wait")
-                  (kp-notify ctx (format nil "intent-started:~A" (pig:jget arg "tag")))
+                  ;; the host cancels as soon as it reads this notice, so the cancel can land before the call returns, and a
+                  ;; Lisp host call of a cancelled request signals: the notice's outcome is not what this handler reports
+                  (ignore-errors (kp-notify ctx (format nil "intent-started:~A" (pig:jget arg "tag"))))
                   (pig:ctx-wait-cancelled ctx)
                   ;; a call made after the cancel is cancelled with its request, so the tag is kept for ui_view_cancelled
                   (setf (car cancelled-tag) (pig:jget arg "tag"))
