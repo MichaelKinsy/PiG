@@ -223195,7 +223195,7 @@
       "evidence": [
         "test:test/extension-conformance/api_on_events_test.go#TestConformanceAPIOnVoidEventsReachTheTypedHandlers",
         "test:test/extension-conformance/conformance_test.go#TestModelEventPayloadsMatchAcrossSDKs",
-        "test:test/extension-conformance/deep_event_delta_test.go#TestDeepEventStreamDeltasReachEverySDK"
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
       ]
     },
     {
