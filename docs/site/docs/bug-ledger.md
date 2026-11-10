@@ -561,6 +561,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-54e3983](#bf-54e3983) | fix(packagemanager): npm gets Node's realpathSync of the install root, and the npm tests expect it | PiG's own defect | All platforms | Unreleased |
 | [BF-54eb030](#bf-54eb030) | A Go, Rust, Python, Lisp or Node extension's SDK no longer prints its own diagnostics on the terminal | PiG's own defect | All platforms | Unreleased |
 | [BF-55573f4](#bf-55573f4) | fix(sdk): Rust and Python fuzzy match score contiguous occurrences (Pi) | PiG's own defect | All platforms | Unreleased |
+| [BF-55a5244](#bf-55a5244) | The find tool on Windows returned no results for patterns with Windows separators such as `src\**\*.ts`, and… | PiG's own defect | Windows | Unreleased |
+| [BF-55a5244-2](#bf-55a5244-2) | A find call aborted while the tool looked for a `.git` directory above the search path no longer starts fd | PiG's own defect | All platforms | Unreleased |
 | [BF-563f896](#bf-563f896) | A model request that is cancelled while its setup runs, for example the request after an abort during a tool… | PiG's own defect | All platforms | Unreleased |
 | [BF-5654e71](#bf-5654e71) | MCP OAuth discovery and resource selection now read URLs the way Node's `URL` does (default ports, dot… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5654e71-2](#bf-5654e71-2) | A JSON-RPC request or notification with a malformed `error` member is no longer rejected, and a `method` that… | PiG's own defect | All platforms | 0.5.0 |
@@ -637,6 +639,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-61300bb](#bf-61300bb) | MCP OAuth reads a non-HTTP redirect or server URL as Node's `new URL` does: dot segments are removed, a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-61300bb-2](#bf-61300bb-2) | Sorting names with `localeCompare` (MCP servers, sessions, login providers, codemode namespaces, model lists… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6132277](#bf-6132277) | An MCP OAuth authorization response with an `iss` parameter is now rejected when no authorization server… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
+| [BF-613d8aa](#bf-613d8aa) | fix(tools): restore the deprecated grep readFile hook in every SDK | PiG's own defect | All platforms | Unreleased |
 | [BF-619443a](#bf-619443a) | MCP sign-in now rejects authorization endpoints and other OAuth metadata URLs that are not `http:` or… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-61af4af](#bf-61af4af) | fix(durable/core): an api read that stores held changes ends with the Storage's answer; the host forgets what… | PiG's own defect | All platforms | Unreleased |
 | [BF-61fc01d](#bf-61fc01d) | `list_mcp_resources`, `list_mcp_resource_templates` and `read_mcp_resource` return every member a server sent… | PiG's own defect | All platforms | 0.5.0 |
@@ -1030,6 +1033,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8a9bb40](#bf-8a9bb40) | fix(ai): Anthropic retry-delay message and Codex error body without an error member | PiG's own defect | All platforms | Unreleased |
 | [BF-8ab5a89](#bf-8ab5a89) | A long session no longer holds each tool result twice | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8ab86c8](#bf-8ab86c8) | RPC `get_state` sent right after `new_session`, `fork`, `clone`, `switch_session` or `export_html` now… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-8ac653e](#bf-8ac653e) | The powershell tool no longer reports `Command exited with code 1` under Windows PowerShell 5.1 when a native… | PiG's own defect | Windows | Unreleased |
 | [BF-8aff02e](#bf-8aff02e) | `grep` with `context` numbers a file's lines at line feeds only, as ripgrep does: a lone carriage return no… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-8b75dc0](#bf-8b75dc0) | Config selector (`pig config`): every key that reaches the search input re-filters and resets the selection… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8b792f9](#bf-8b792f9) | Ctrl+V pastes files, images and text on Windows and WSL as well as Alt+V (terminals that pass Ctrl+V to the… | PiG's own defect | Windows, WSL | Unreleased |
@@ -9434,6 +9438,34 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `55573f475d` (2026-10-23)
 - **Tests:** None recorded.
 
+### BF-55a5244
+
+**The find tool on Windows returned no results for patterns with Windows separators such as `src\**\*.ts`, and…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The find tool on Windows returned no results for patterns with Windows separators such as `src\**\*.ts`, and for every path pattern such as `src/**/*.ts` with fd 10.5.1.
+- **Root cause:** Port of Pi (#11972, #9262) and (#11974). On Windows a backslash in the pattern is a separator, and a pattern with a slash is matched by a minimatch matcher (dot, noext, smart case, trailing /** as /**/*) over every entry fd lists; fd stops one match past the limit. The minimatch port gains the noext option. find returns before starting fd when the call was aborted during the .git lookup.
+- **User impact:** Behavior differed from Pi
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `55a52447fc` (2026-11-09)
+- **Tests:** `internal/codingagent/tools/find_pi151_test.go::TestFindDoesNotStartFdAfterAbortDuringGitLookup`, `internal/codingagent/tools/find_pi151_test.go::TestFindFdInvocationFdGlobArguments`, `internal/codingagent/tools/find_pi151_test.go::TestFindFdInvocationWindowsPathPattern`, `internal/codingagent/tools/find_pi151_test.go::TestFindPathFilterKeepsAFinalLineWithoutANewline`, `internal/codingagent/tools/find_pi151_test.go::TestFindPathFilterStopsFdAtTheLimit`, `internal/codingagent/tools/find_pi151_test.go::TestFindPathPatternsPi151`, `internal/codingagent/tools/find_regressions_test.go::TestFindPathGlobRegression`, `internal/codingagent/tools/spawn_arguments_test.go::TestSearchAndShellToolsReportSpawnArgumentErrorsAsPiDoes` and 1 more in docs/bug-ledger.json
+- **Release note:** The find tool on Windows returned no results for patterns with Windows separators such as `src\**\*.ts`, and for every path pattern such as `src/**/*.ts` with fd 10.5.1. A Windows path pattern now matches the same way with every fd version: `src/**/*.ts` also finds files directly in `src/`, and `src/*.ts` no longer finds files in subdirectories.
+
+### BF-55a5244-2
+
+**A find call aborted while the tool looked for a `.git` directory above the search path no longer starts fd**
+
+- **Source:** PiG's own defect
+- **Symptom:** A find call aborted while the tool looked for a `.git` directory above the search path no longer starts fd.
+- **Root cause:** Port of Pi (#11972, #9262) and (#11974). On Windows a backslash in the pattern is a separator, and a pattern with a slash is matched by a minimatch matcher (dot, noext, smart case, trailing /** as /**/*) over every entry fd lists; fd stops one match past the limit. The minimatch port gains the noext option. find returns before starting fd when the call was aborted during the .git lookup.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `55a52447fc` (2026-11-09)
+- **Tests:** `internal/codingagent/tools/find_pi151_test.go::TestFindDoesNotStartFdAfterAbortDuringGitLookup`, `internal/codingagent/tools/find_pi151_test.go::TestFindFdInvocationFdGlobArguments`, `internal/codingagent/tools/find_pi151_test.go::TestFindFdInvocationWindowsPathPattern`, `internal/codingagent/tools/find_pi151_test.go::TestFindPathFilterKeepsAFinalLineWithoutANewline`, `internal/codingagent/tools/find_pi151_test.go::TestFindPathFilterStopsFdAtTheLimit`, `internal/codingagent/tools/find_pi151_test.go::TestFindPathPatternsPi151`, `internal/codingagent/tools/find_regressions_test.go::TestFindPathGlobRegression`, `internal/codingagent/tools/spawn_arguments_test.go::TestSearchAndShellToolsReportSpawnArgumentErrorsAsPiDoes` and 1 more in docs/bug-ledger.json
+- **Release note:** A find call aborted while the tool looked for a `.git` directory above the search path no longer starts fd.
+
 ### BF-563f896
 
 **A model request that is cancelled while its setup runs, for example the request after an abort during a tool…**
@@ -10483,6 +10515,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `61322774f1` (2026-10-10)
 - **Tests:** `mcp/oauth/absent_test.go::TestOAuthIssuerMismatchErrorNamesAMissingIssAsNone`, `mcp/oauth/absent_test.go::TestOAuthIssuerMismatchErrorQuotesIssuersAsJSONStringify`, `mcp/oauth/behavior_test.go::TestOAuthErrorMessagesAreTheOnesErrorsTSBuilds`, `mcp/oauth/error_constructors_upstream_test.go::TestOAuthErrorConstructorsMatchErrorsTs`, `mcp/oauth/errors_class_test.go::TestOAuthErrorClassesCarryTheirNameAndMessage`
 - **Release note:** An MCP OAuth authorization response with an `iss` parameter is now rejected when no authorization server metadata was discovered, so a malicious MCP server cannot receive a code another authorization server issued (as Pi c5f5b328 does).
+
+### BF-613d8aa
+
+**fix(tools): restore the deprecated grep readFile hook in every SDK**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(tools): restore the deprecated grep readFile hook in every SDK
+- **Root cause:** Port of Pi. GrepOperations.readFile is optional, accepted and never called, in the tools package and the Go, Python, Rust and Lisp SDKs. The upgrade rule that deleted the member is retired with its tests.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `613d8aa7cc` (2026-11-09)
+- **Tests:** `extensions/sdk/builtin_tool_test.go::TestBuiltinToolOperationsMissingAMemberAreRefused`, `internal/codingagent/tools/grep_operations_readfile_test.go::TestGrepOperationsAcceptsADeprecatedReadFileHookWithoutCallingIt`, `test/extension-conformance/builtin_tool_delegate_test.go::TestConformance_BuiltinToolDelegationAcrossSDKs`
 
 ### BF-619443a
 
@@ -15936,6 +15981,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `8ab86c8219` (2026-10-10)
 - **Tests:** `coding/cli/rpc_replacement_order_test.go::TestRPCCloneAfterNewSessionOfOneBatchUsesTheRequestingSession`, `coding/cli/rpc_replacement_order_test.go::TestRPCReplacementStartsAfterItsBatchWasDispatched`, `coding/cli/rpc_replacement_order_test.go::TestRPCReplacementsOfOneBatchRunInRequestOrder`, `coding/cli/rpc_replacement_order_test.go::TestRPCSessionReplacementAnswersAfterALaterCommandOfItsBatch`, `coding/cli/rpc_replacement_order_test.go::TestRPCSessionReplacementsOfOneBatchSettleInDispatchOrder`, `coding/cli/rpc_resume_integration_test.go::TestRPCModeSessionReplacementAndExport`, `coding/cli/rpc_set_model_pipeline_test.go::TestRPCPipelinedSetModelsApplyInInputOrder`, `test/parity/scenarios/rpc/55-rpc-replacement-concurrent-get-state.toml`
 - **Release note:** RPC `get_state` sent right after `new_session`, `fork`, `clone`, `switch_session` or `export_html` now answers first from the old Session, as in Pi; PiG still answers the replacement when stdin ends, which Pi does not (D146).
+
+### BF-8ac653e
+
+**The powershell tool no longer reports `Command exited with code 1` under Windows PowerShell 5.1 when a native…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The powershell tool no longer reports `Command exited with code 1` under Windows PowerShell 5.1 when a native command succeeded but its stderr was redirected, as in `git push 2>&1 | Select-Object -Last 3`; such commands report the exit code PowerShell 7 reports.
+- **Root cause:** Port of Pi (#11964, #8842). For powershell.exe the command gets Pi's exit-code suffix unless it ends in a backtick; the shell is resolved before the command is wrapped, as createLocalPowerShellOperations does.
+- **User impact:** Behavior differed from Pi
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `8ac653e9b2` (2026-11-09)
+- **Tests:** `internal/codingagent/tools/powershell_exit_codes_test.go::TestLocalPowerShellOperationsResolveTheShellFirst`, `internal/codingagent/tools/powershell_exit_codes_test.go::TestPowerShellCommandAppendsTheExitSuffixForWindowsPowerShellOnly`, `internal/codingagent/tools/powershell_exit_codes_test.go::TestPowerShellExitCodes`, `internal/codingagent/tools/powershell_operations_test.go::TestLocalPowerShellOperationsWrapCommandsWithTheUTF8OutputSwitch`, `internal/codingagent/tools/powershell_test.go::TestPowerShellToolShellConfig`, `internal/codingagent/tools/powershell_test.go::TestShellToolWrapsCommandBeforeSpawn`, `internal/codingagent/tools/shell_operations_gaps_test.go::TestLocalShellOperationsWrapCommandBeforeTheShellRuns`
+- **Release note:** The powershell tool no longer reports `Command exited with code 1` under Windows PowerShell 5.1 when a native command succeeded but its stderr was redirected, as in `git push 2>&1 | Select-Object -Last 3`; such commands report the exit code PowerShell 7 reports.
 
 ### BF-8aff02e
 
