@@ -68,15 +68,15 @@ func TestAddressPartsAreTheAddressColumns(t *testing.T) {
 		want  addressParts
 	}{
 		{"session singleton", durable.DocumentRecordScope{Kind: durable.ScopeSession}, nil,
-			addressParts{kind: `"kind"`, scopeColumns: scopeColumns{scopeKind: "session"}, family: 0, keyValue: `""`}},
+			addressParts{kind: `"kind"`, scopeKind: "session", family: 0, keyValue: `""`}},
 		{"session family member with an empty key", durable.DocumentRecordScope{Kind: durable.ScopeSession}, &empty,
-			addressParts{kind: `"kind"`, scopeColumns: scopeColumns{scopeKind: "session"}, family: 1, keyValue: `""`}},
+			addressParts{kind: `"kind"`, scopeKind: "session", family: 1, keyValue: `""`}},
 		{"conversation owner", durable.DocumentRecordScope{Kind: durable.ScopeConversation, ConversationId: 4, TaskId: 6}, &key,
-			addressParts{kind: `"kind"`, scopeColumns: scopeColumns{scopeKind: "conversation", ownerId: 4}, family: 1, keyValue: `"k"`}},
+			addressParts{kind: `"kind"`, scopeKind: "conversation", ownerId: 4, family: 1, keyValue: `"k"`}},
 		{"task owner", durable.DocumentRecordScope{Kind: durable.ScopeTask, TaskId: 6, ConversationId: 4}, &key,
-			addressParts{kind: `"kind"`, scopeColumns: scopeColumns{scopeKind: "task", ownerId: 6}, family: 1, keyValue: `"k"`}},
+			addressParts{kind: `"kind"`, scopeKind: "task", ownerId: 6, family: 1, keyValue: `"k"`}},
 		{"session ignores stray owners", durable.DocumentRecordScope{Kind: durable.ScopeSession, ConversationId: 4, TaskId: 6}, nil,
-			addressParts{kind: `"kind"`, scopeColumns: scopeColumns{scopeKind: "session"}, family: 0, keyValue: `""`}},
+			addressParts{kind: `"kind"`, scopeKind: "session", family: 0, keyValue: `""`}},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

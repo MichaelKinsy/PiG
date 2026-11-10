@@ -105016,7 +105016,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_store_claims_test.go#TestClaimsAnObjectClaimsItsTablesAndDocumentsWhenItDeclaresThemAndReleasesThemAtItsEnd",
-        "test:chord/next/store/apply_batch_test.go#TestApplyBatch"
+        "test:chord/next/store/apply_batch_test.go#TestApplyBatch",
+        "test:durable/storage/store/documents_test.go#TestStoreStorageClaimsEveryScopeNamespaceOfItsOwner"
       ]
     },
     {
@@ -107460,7 +107461,8 @@
         "call:chord/next/store/engine.go#FindDocumentEntry"
       ],
       "evidence": [
-        "test:chord/next/store/engine_test.go#TestEngineEntries"
+        "test:chord/next/store/engine_test.go#TestEngineEntries",
+        "test:durable/storage/store/documents_test.go#TestRecordOfEntryReadsMetaAndSetsTheRetirement"
       ]
     },
     {
@@ -107482,7 +107484,7 @@
       "evidence": [
         "test:chord/next/store/apply_batch_test.go#TestApplyBatch",
         "test:chord/next/store/write_marshal_golden_test.go#TestWriteMarshalGolden",
-        "test:chord/next/store/engine_test.go#TestEngineEntries"
+        "test:durable/storage/store/documents_test.go#TestEngineRecordIsTheCreationAtItsSeqWithTheDurableRecordInMeta"
       ]
     },
     {
@@ -113861,7 +113863,8 @@
         "call:chord/next/store/adapter.go#NewOwnerTable"
       ],
       "evidence": [
-        "test:chord/next/store/evidence_storeB_adapter_test.go#TestOwnerTableJsonVersionAndReader"
+        "test:chord/next/store/evidence_storeB_adapter_test.go#TestOwnerTableJsonVersionAndReader",
+        "test:durable/storage/store/queries_test.go#TestTableQueriesSelectTheRecordVersionOnceItsColumnHasVersionsPastOne"
       ]
     },
     {
@@ -119344,9 +119347,9 @@
         "call:chord/next/store/adapter.go#NewOwnerTable"
       ],
       "evidence": [
+        "test:durable/storage/store/tables_test.go#TestTablesDeclareTheColumnsAndIndexesOfTablesTS",
         "test:test/wiring/chord_definitions_survive_test.go#TestTableDefinitionKeepsEveryDeclaredFieldSurvivesRegistration",
-        "test:chord/next/store/table_evolve_test.go#TestEvolveEdits",
-        "test:chord/next/store/table_evolve_test.go#TestTableTailEditorTakesTheEditsAfterTheDataStepThroughItsInterface"
+        "test:chord/next/store/table_evolve_test.go#TestEvolveEdits"
       ]
     },
     {
@@ -119450,9 +119453,9 @@
         "call:chord/next/store/adapter.go#NewOwnerTable"
       ],
       "evidence": [
+        "test:durable/storage/store/tables_test.go#TestTablesDeclareTheColumnsAndIndexesOfTablesTS",
         "test:test/wiring/chord_definitions_survive_test.go#TestTableDefinitionKeepsEveryDeclaredFieldSurvivesRegistration",
-        "test:chord/next/store/table_evolve_test.go#TestEvolveEdits",
-        "test:chord/next/store/table_evolve_test.go#TestTableTailEditorTakesTheEditsAfterTheDataStepThroughItsInterface"
+        "test:chord/next/store/table_evolve_test.go#TestEvolveEdits"
       ]
     },
     {
@@ -119561,8 +119564,8 @@
       ],
       "evidence": [
         "test:chord/next/store/table_test.go#TestDefineTable",
-        "test:test/wiring/chord_definitions_survive_test.go#TestTableDefinitionKeepsEveryDeclaredFieldSurvivesRegistration",
-        "test:chord/next/store/apply_batch_test.go#TestApplyBatch"
+        "test:durable/storage/store/tables_test.go#TestTablesDeclareTheColumnsAndIndexesOfTablesTS",
+        "test:test/wiring/chord_definitions_survive_test.go#TestTableDefinitionKeepsEveryDeclaredFieldSurvivesRegistration"
       ]
     },
     {
@@ -239478,7 +239481,7 @@
       "evidence": [
         "test:durable/codecs_test.go#TestDocumentRecordMarshalsInPiStorageOrder",
         "test:durable/storage/prepared_commit_apply_test.go#TestPrepareCommitAtRejectsASequenceBeyondTheSafeIntegers",
-        "test:durable/storage/sqlite/sqlite_commit_test.go#TestSqliteStorageBatchCommitsAgainstMemoryReference"
+        "test:durable/storage/sqlite/rows_test.go#TestDocumentRowCellsAreTheDocumentsColumnsInOrder"
       ]
     },
     {
@@ -258726,8 +258729,8 @@
       ],
       "evidence": [
         "test:durable/storage/sqlite/read_api_pi_test.go#TestSqliteStorageReadApiMirrorsPisStorageContract",
-        "test:durable/storage/sqlite/sqlite_copy_rejection_test.go#TestSqliteStorageRejectsAnUnresolvableDocumentCopyBeforeAnyEffect",
-        "test:durable/storage/sqlite/sqlite_storage_methods_test.go#TestSqliteStorageLookupsAndScansReadCommittedRecords"
+        "test:durable/storage/sqlite/rows_storage_test.go#TestSqliteStorageStoresEachDocumentsAddressScopeAndLifetimeInItsColumns",
+        "test:durable/storage/sqlite/sqlite_copy_rejection_test.go#TestSqliteStorageRejectsAnUnresolvableDocumentCopyBeforeAnyEffect"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -258749,8 +258752,8 @@
       ],
       "evidence": [
         "test:durable/storage/sqlite/read_api_pi_test.go#TestSqliteStorageReadApiMirrorsPisStorageContract",
-        "test:durable/storage/sqlite/sqlite_copy_rejection_test.go#TestSqliteStorageRejectsAnUnresolvableDocumentCopyBeforeAnyEffect",
-        "test:durable/storage/sqlite/sqlite_storage_methods_test.go#TestSqliteStorageLookupsAndScansReadCommittedRecords"
+        "test:durable/storage/sqlite/rows_storage_test.go#TestSqliteStorageStoresEachDocumentsAddressScopeAndLifetimeInItsColumns",
+        "test:durable/storage/sqlite/sqlite_copy_rejection_test.go#TestSqliteStorageRejectsAnUnresolvableDocumentCopyBeforeAnyEffect"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -259272,9 +259275,9 @@
         "call:durable/storage/store/storage.go#Open"
       ],
       "evidence": [
-        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageDurability",
-        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageFailures",
-        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageGC"
+        "test:durable/storage/store/commit_checks_test.go#TestStoreStorageRefusesACopyWhoseRecordDoesNotMatchItsSource",
+        "test:durable/storage/store/commit_checks_test.go#TestStoreStorageRefusesAnIDWrittenTwiceInOneCommitAsDurableDoes",
+        "test:durable/storage/store/documents_test.go#TestStoreStorageClaimsEveryScopeNamespaceOfItsOwner"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -259295,9 +259298,9 @@
         "call:durable/storage/store/storage.go#StoreStorage.Close"
       ],
       "evidence": [
+        "test:durable/storage/store/documents_test.go#TestStoreStorageClaimsEveryScopeNamespaceOfItsOwner",
         "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageFailures",
-        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageOtherUsersOfTheStore",
-        "test:durable/storage/store/store_storage_host_test.go#TestStoreStorageClosedStorageIsCollected"
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageOtherUsersOfTheStore"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -259318,9 +259321,9 @@
         "call:durable/storage/store/storage.go#StoreStorage.Close"
       ],
       "evidence": [
+        "test:durable/storage/store/documents_test.go#TestStoreStorageClaimsEveryScopeNamespaceOfItsOwner",
         "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageFailures",
-        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageOtherUsersOfTheStore",
-        "test:durable/storage/store/store_storage_host_test.go#TestStoreStorageClosedStorageIsCollected"
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageOtherUsersOfTheStore"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -259431,9 +259434,9 @@
         "call:durable/storage/store/storage.go#StoreStorage.Document"
       ],
       "evidence": [
-        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageDurability",
-        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageRefusals",
-        "test:durable/storage/store/store_storage_test.go#TestStoreStorageArchives"
+        "test:durable/storage/store/commit_checks_test.go#TestStoreStorageRefusesACopyWhoseRecordDoesNotMatchItsSource",
+        "test:durable/storage/store/documents_test.go#TestStoreStorageDoesNotReadAnotherOwnersDocuments",
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageDurability"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -259454,9 +259457,9 @@
         "call:durable/storage/store/storage.go#StoreStorage.Document"
       ],
       "evidence": [
-        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageDurability",
-        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageRefusals",
-        "test:durable/storage/store/store_storage_test.go#TestStoreStorageArchives"
+        "test:durable/storage/store/commit_checks_test.go#TestStoreStorageRefusesACopyWhoseRecordDoesNotMatchItsSource",
+        "test:durable/storage/store/documents_test.go#TestStoreStorageDoesNotReadAnotherOwnersDocuments",
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageDurability"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -259586,6 +259589,7 @@
         "call:durable/storage/store/storage.go#StoreStorage.FindLatestHeadMarker"
       ],
       "evidence": [
+        "test:durable/storage/store/queries_test.go#TestLatestHeadReadsTheNewestHeadEntryFirst",
         "test:durable/storage/store/store_storage_test.go#TestStoreStorageReviewRegressions"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -259607,6 +259611,7 @@
         "call:durable/storage/store/storage.go#StoreStorage.FindLatestHeadMarker"
       ],
       "evidence": [
+        "test:durable/storage/store/queries_test.go#TestLatestHeadReadsTheNewestHeadEntryFirst",
         "test:durable/storage/store/store_storage_test.go#TestStoreStorageReviewRegressions"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -259716,6 +259721,7 @@
         "call:durable/storage/store/storage.go#StoreStorage.ScanConversations"
       ],
       "evidence": [
+        "test:durable/storage/store/storage_cursor_test.go#TestScanConversationsStartAtTheEndsOfTheSafeIntegers",
         "test:durable/storage/store/store_storage_reads_test.go#TestStoreStorageEveryReadReturnsWhatWasCommittedAndNothingElse"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -259737,6 +259743,7 @@
         "call:durable/storage/store/storage.go#StoreStorage.ScanConversations"
       ],
       "evidence": [
+        "test:durable/storage/store/storage_cursor_test.go#TestScanConversationsStartAtTheEndsOfTheSafeIntegers",
         "test:durable/storage/store/store_storage_reads_test.go#TestStoreStorageEveryReadReturnsWhatWasCommittedAndNothingElse"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -259758,8 +259765,9 @@
         "call:durable/storage/store/storage.go#StoreStorage.ScanDocuments"
       ],
       "evidence": [
-        "test:durable/storage/store/store_storage_reads_test.go#TestStoreStorageEveryReadReturnsWhatWasCommittedAndNothingElse",
-        "test:durable/storage/store/store_storage_test.go#TestStoreStorageArchives"
+        "test:durable/storage/store/storage_cursor_test.go#TestScanDocumentsCursorIsASafeIntegerAndNothingElse",
+        "test:durable/storage/store/storage_cursor_test.go#TestScanDocumentsPagesByLimit",
+        "test:durable/storage/store/store_storage_reads_test.go#TestStoreStorageEveryReadReturnsWhatWasCommittedAndNothingElse"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -259780,8 +259788,9 @@
         "call:durable/storage/store/storage.go#StoreStorage.ScanDocuments"
       ],
       "evidence": [
-        "test:durable/storage/store/store_storage_reads_test.go#TestStoreStorageEveryReadReturnsWhatWasCommittedAndNothingElse",
-        "test:durable/storage/store/store_storage_test.go#TestStoreStorageArchives"
+        "test:durable/storage/store/storage_cursor_test.go#TestScanDocumentsCursorIsASafeIntegerAndNothingElse",
+        "test:durable/storage/store/storage_cursor_test.go#TestScanDocumentsPagesByLimit",
+        "test:durable/storage/store/store_storage_reads_test.go#TestStoreStorageEveryReadReturnsWhatWasCommittedAndNothingElse"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -260014,6 +260023,7 @@
         "call:durable/storage/store/storage.go#StoreStorage.Task"
       ],
       "evidence": [
+        "test:durable/storage/store/commit_checks_test.go#TestStoreStorageRefusesAnIDWrittenTwiceInOneCommitAsDurableDoes",
         "test:durable/storage/store/store_storage_reads_test.go#TestStoreStorageEveryReadReturnsWhatWasCommittedAndNothingElse"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -260035,6 +260045,7 @@
         "call:durable/storage/store/storage.go#StoreStorage.Task"
       ],
       "evidence": [
+        "test:durable/storage/store/commit_checks_test.go#TestStoreStorageRefusesAnIDWrittenTwiceInOneCommitAsDurableDoes",
         "test:durable/storage/store/store_storage_reads_test.go#TestStoreStorageEveryReadReturnsWhatWasCommittedAndNothingElse"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
