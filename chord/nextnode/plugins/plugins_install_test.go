@@ -330,8 +330,10 @@ func TestInstallPluginClonesARepositoryOfSeveralPluginsItsSubdirectoriesPinnedTo
 	}
 }
 
-func TestInstallPluginInstallsAnNpmPackageHereALocalTarballIntoRootName(t *testing.T) {
-	source := tempRoot(t)
+// packedClock is the package `@bob/clock` 1.2.0 packed by the machine's npm into its own directory: the directory and the tarball's name.
+func packedClock(t *testing.T) (source, packed string) {
+	t.Helper()
+	source = tempRoot(t)
 	writeFiles(t, source, map[string]string{
 		"package.json": manifestText(t, map[string]any{"name": "@bob/clock", "version": "1.2.0"}),
 		"worker.ts":    "export default { setup: () => {} };",
@@ -342,7 +344,39 @@ func TestInstallPluginInstallsAnNpmPackageHereALocalTarballIntoRootName(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	packed := strings.TrimSpace(string(out))
+	return source, strings.TrimSpace(string(out))
+}
+
+// fakeNpm12 is npm 12 as InstallPlugin runs it: `pack` copies the tarball of source to --pack-destination and prints printed;
+// `install` (the dependencies) does nothing.
+func fakeNpm12(t *testing.T, tools, tarball, printed string) []string {
+	t.Helper()
+	script := filepath.Join(tools, "npm12.mjs")
+	writeFiles(t, tools, map[string]string{"npm12.mjs": strings.Join([]string{
+		`import { copyFileSync } from "node:fs";`,
+		`import { join } from "node:path";`,
+		"const args = process.argv.slice(2);",
+		`if (args[0] === "pack") {`,
+		`	const destination = args[args.indexOf("--pack-destination") + 1];`,
+		fmt.Sprintf("	copyFileSync(%s, join(destination, %s));", jsString(t, tarball), jsString(t, filepath.Base(tarball))),
+		fmt.Sprintf("	console.log(JSON.stringify(%s));", printed),
+		"}",
+	}, "\n")})
+	return []string{pcNode(t), script}
+}
+
+// jsString is s as a JavaScript string literal.
+func jsString(t *testing.T, s string) string {
+	t.Helper()
+	text, err := json.Marshal(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(text)
+}
+
+func TestInstallPluginInstallsAnNpmPackageHereALocalTarballIntoRootName(t *testing.T) {
+	source, packed := packedClock(t)
 	root := tempRoot(t)
 	names, err := InstallPlugin(PluginSource{Npm: "@bob/clock", Version: "file:" + filepath.Join(source, packed)}, root, background, InstallPluginOptions{})
 	if err != nil || !reflect.DeepEqual(names, []string{"@bob/clock"}) {
@@ -355,6 +389,42 @@ func TestInstallPluginInstallsAnNpmPackageHereALocalTarballIntoRootName(t *testi
 	var installed struct{ Version string }
 	if err := json.Unmarshal(text, &installed); err != nil || installed.Version != "1.2.0" {
 		t.Fatalf("package.json = %s (%v)", text, err)
+	}
+}
+
+func TestInstallPluginReadsNpm12sPackOutputThePackedTarballsByPackageName(t *testing.T) {
+	source, packed := packedClock(t)
+	tools := tempRoot(t)
+	printed := fmt.Sprintf(`{"@bob/clock": {name: "@bob/clock", filename: %s}}`, jsString(t, packed))
+	root := tempRoot(t)
+	names, err := InstallPlugin(PluginSource{Npm: "@bob/clock", Version: "1.2.0"}, root, background, InstallPluginOptions{NpmCommand: fakeNpm12(t, tools, filepath.Join(source, packed), printed)})
+	if err != nil || !reflect.DeepEqual(names, []string{"@bob/clock"}) {
+		t.Fatalf("names = %v, error = %v", names, err)
+	}
+	text, err := os.ReadFile(filepath.Join(root, "@bob", "clock", "package.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var installed struct{ Version string }
+	if err := json.Unmarshal(text, &installed); err != nil || installed.Version != "1.2.0" {
+		t.Fatalf("package.json = %s (%v)", text, err)
+	}
+}
+
+// Not upstream's: install.ts reads `output[name]`, the member of the package asked for, not the first member of the object, so
+// an object that lists another package first (a dependency npm 12 packed too) still installs the package asked for.
+func TestInstallPluginTakesTheTarballOfItsPackageFromNpm12sOutputNotTheFirstOneListed(t *testing.T) {
+	source, packed := packedClock(t)
+	tools := tempRoot(t)
+	printed := fmt.Sprintf(`{"@bob/other": {name: "@bob/other", filename: "other-9.0.0.tgz"}, "@bob/clock": {name: "@bob/clock", filename: %s}}`, jsString(t, packed))
+	root := tempRoot(t)
+	names, err := InstallPlugin(PluginSource{Npm: "@bob/clock", Version: "1.2.0"}, root, background, InstallPluginOptions{NpmCommand: fakeNpm12(t, tools, filepath.Join(source, packed), printed)})
+	if err != nil || !reflect.DeepEqual(names, []string{"@bob/clock"}) {
+		t.Fatalf("names = %v, error = %v", names, err)
+	}
+	_, err = InstallPlugin(PluginSource{Npm: "@bob/missing", Version: "1.2.0"}, tempRoot(t), background, InstallPluginOptions{NpmCommand: fakeNpm12(t, tools, filepath.Join(source, packed), printed)})
+	if err == nil || !strings.Contains(err.Error(), "pack @bob/missing@1.2.0: packed nothing") {
+		t.Fatalf("error = %v, want packed nothing for a package the output does not list", err)
 	}
 }
 
@@ -520,24 +590,28 @@ func TestInstallPluginReturnsTheAbortsReasonAndRemovesWhatItCreated(t *testing.T
 	}
 }
 
-// D501: Pi reads `const [tarball] = JSON.parse(output)`, the list npm 10 and 11 print; npm 12 prints an object keyed by package name,
-// which PiG reads by its first member. Everything else is Pi's: its errors for an empty list, a null or primitive member, a name that
-// is no string, and for output that is no JSON value of those shapes.
-func TestPackedTarballReadsTheListNpm10And11PrintAndTheObjectNpm12Prints(t *testing.T) {
+// Not upstream's: install.ts reads `Array.isArray(output) ? output[0] : output[name]`, the first tarball of the list npm 11 and earlier
+// print or the member of the package asked for in the object npm 12 prints; `packedTarball` is that read and the errors JavaScript
+// gives for what it meets: nothing packed, a null or primitive member, a name that is no string, and a JSON null.
+func TestPackedTarballReadsTheListNpm11PrintsAndTheMemberOfThePackageNpm12Prints(t *testing.T) {
 	for name, tc := range map[string]struct{ output, want, wantError string }{
-		"list (npm 10, 11)":       {output: `[{"filename":"acme-1.0.0.tgz","size":3}]`, want: "acme-1.0.0.tgz"},
-		"first of a list":         {output: `[{"filename":"a.tgz"},{"filename":"b.tgz"}]`, want: "a.tgz"},
-		"object by name (npm 12)": {output: `{"acme":{"filename":"acme-1.0.0.tgz","size":3}}`, want: "acme-1.0.0.tgz"},
-		"first of an object":      {output: `{"acme":{"filename":"a.tgz"},"other":{"filename":"b.tgz"}}`, want: "a.tgz"},
-		"empty list":              {output: `[]`, wantError: "what: packed nothing"},
-		"empty object":            {output: `{}`, wantError: "what: packed nothing"},
-		"null member":             {output: `[null]`, wantError: "Cannot read properties of null (reading 'filename')"},
-		"primitive member":        {output: `{"acme":3}`, wantError: "Cannot read properties of a primitive (reading 'filename')"},
-		"no filename":             {output: `[{"size":3}]`, wantError: `The "path" argument must be of type string`},
-		"a string":                {output: `"acme.tgz"`, wantError: "npm's output is not a list of packed tarballs"},
+		"list (npm 11)":             {output: `[{"filename":"acme-1.0.0.tgz","size":3}]`, want: "acme-1.0.0.tgz"},
+		"first of a list":           {output: `[{"filename":"a.tgz"},{"filename":"b.tgz"}]`, want: "a.tgz"},
+		"object by name (npm 12)":   {output: `{"acme":{"filename":"acme-1.0.0.tgz","size":3}}`, want: "acme-1.0.0.tgz"},
+		"the member of the name":    {output: `{"other":{"filename":"b.tgz"},"acme":{"filename":"a.tgz"}}`, want: "a.tgz"},
+		"empty list":                {output: `[]`, wantError: "what: packed nothing"},
+		"empty object":              {output: `{}`, wantError: "what: packed nothing"},
+		"object without the name":   {output: `{"other":{"filename":"b.tgz"}}`, wantError: "what: packed nothing"},
+		"null member of a list":     {output: `[null]`, wantError: "Cannot read properties of null (reading 'filename')"},
+		"null member of the object": {output: `{"acme":null}`, wantError: "Cannot read properties of null (reading 'filename')"},
+		"primitive member":          {output: `{"acme":3}`, wantError: "Cannot read properties of a primitive (reading 'filename')"},
+		"no filename":               {output: `[{"size":3}]`, wantError: `The "path" argument must be of type string`},
+		"a string":                  {output: `"acme.tgz"`, wantError: "what: packed nothing"},
+		"a number":                  {output: `3`, wantError: "what: packed nothing"},
+		"null":                      {output: `null`, wantError: "Cannot read properties of null (reading 'acme')"},
 	} {
 		t.Run(name, func(t *testing.T) {
-			got, err := packedTarball(tc.output, "what")
+			got, err := packedTarball(tc.output, "acme", "what")
 			if tc.wantError != "" {
 				if err == nil || err.Error() != tc.wantError {
 					t.Fatalf("error = %v, want %q", err, tc.wantError)

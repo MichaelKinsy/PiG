@@ -35127,33 +35127,6 @@
       ]
     },
     {
-      "id": "BF-D501",
-      "title": "`npm pack --json` printing an object (npm 12) is read like the list npm 10 and 11 print",
-      "symptom": "With npm 12 Pi's `installPlugin` fails on the object output; to be filed upstream with the repro (`npm pack --json` of any package under npm 12).",
-      "rootCause": "a plugin install that fails on a current npm for a reason of output shape only is worse than Pi's behavior and costs nothing to avoid; the list form, the empty-output errors and the `filename` read are Pi's.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "An operation failed or was rejected",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D501",
-      "removeWhen": "Pi's install reads the object form.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "95f0f0d040",
-          "date": "2026-11-08"
-        },
-        {
-          "hash": "bdcd2b1248",
-          "date": "2026-11-08"
-        }
-      ],
-      "tests": [
-        "chord/nextnode/plugins/plugins_install_test.go::TestPackedTarballReadsTheListNpm10And11PrintAndTheObjectNpm12Prints"
-      ]
-    },
-    {
       "id": "BF-D520",
       "title": "A connection reset as soon as it is accepted reports the response read, where Pi usually reports the connect",
       "symptom": "none.",
@@ -57069,11 +57042,6 @@
       "id": "D466",
       "title": "No per-language formatter cache",
       "entry": "BF-D466"
-    },
-    {
-      "id": "D501",
-      "title": "`npm pack --json` printing an object (npm 12) is read like the list npm 10 and 11 print",
-      "entry": "BF-D501"
     },
     {
       "id": "D502",

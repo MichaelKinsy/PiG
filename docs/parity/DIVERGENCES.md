@@ -128,6 +128,8 @@ Every active divergence must have:
 
 - D311: `ctrl+o` applies to user bash output shown while the agent is working. Retired by the pin `1.5.1`, which contains Pi acd059b72 (fix(coding-agent): apply ctrl+o to user bash output shown while the agent is working, #11886): the pinned Pi starts the output of `!` and `!!` commands run while the agent works in the current expand state, keeps it in the pending-message area and moves it into the chat when the run settles, as `handleBashCommand`, `updatePendingMessagesDisplay` and `flushPendingBashBlocks` do, so the call-site markers are gone. `TestCtrlOExpandsUserBashOutputInThePendingArea`, `TestQueuedMessageUpdatesKeepUserBashOutputInThePendingArea`, `TestNewUserBashOutputStartsInTheCurrentExpandState`, `TestSettlingTheRunMovesUserBashOutputToTheChat` and `TestInteractiveBashDuringRunStaysPendingUntilTheRunSettles` hold the behavior.
 
+- D501: `npm pack --json` printing an object (npm 12) is read like the list npm 10 and 11 print. Retired by Pi 75d59639a (fix(chord): plugin installs read npm 12's pack output): Pi's install reads `Array.isArray(output) ? output[0] : output[name]`, the first of the list npm 11 and earlier print or the member of the package asked for in the object npm 12 prints, and `packedTarball` is that read, so the call-site marker is gone. PiG no longer takes the first member of the object whatever its name. `TestInstallPluginReadsNpm12sPackOutputThePackedTarballsByPackageName` is Pi's own test, `TestInstallPluginTakesTheTarballOfItsPackageFromNpm12sOutputNotTheFirstOneListed` and `TestPackedTarballReadsTheListNpm11PrintsAndTheMemberOfThePackageNpm12Prints` pin the keyed read. The ID remains reserved.
+
 ## Active divergences
 
 D78, D82 and D83 record owner-approved known gaps for 0.3.x (decision 2026-09-28). Approval records a difference; it does not prove parity, waive an unrelated defect, or turn a failing comparison into a pass. Same-process object behavior must remain Pi-exact. See `docs/findings/0.3.0-known-gaps.md` for the integration boundary and retained failures.
@@ -3455,28 +3457,6 @@ Call-site markers: `chord/next/surfaces/surfaces_format.go` (`FormatNumber`).
 Evidence: `TestFormatsAllocateOnlyTheResultForCanonicalTags`.
 
 Parity allowance: none needed beyond the evidence above.
-
-SCRUTINIZED:approved 2026-11-08
-
-## D501 `npm pack --json` printing an object (npm 12) is read like the list npm 10 and 11 print
-
-What: Pi's install reads `const [tarball] = JSON.parse(output)`, the list of packed tarballs npm 10 and 11 print. Newer npm (12) prints an object keyed by package name, which that destructuring cannot read: with npm 12 Pi's packing fails. PiG's `unpack` reads the first member of such an object the same way it reads the first element of the list, so an install works with either npm.
-
-Why: a plugin install that fails on a current npm for a reason of output shape only is worse than Pi's behavior and costs nothing to avoid; the list form, the empty-output errors and the `filename` read are Pi's.
-
-Pi bug: With npm 12 Pi's `installPlugin` fails on the object output; to be filed upstream with the repro (`npm pack --json` of any package under npm 12).
-
-Scope: `chord/nextnode/plugins` (`packedTarball`, used by `unpack`).
-
-Owner decision: approved by the owner (Michael Kinsy) on 2026-11-08 (OWNER-DECISIONS #2).
-
-Remove when: Pi's install reads the object form.
-
-Call-site markers: `chord/nextnode/plugins/plugins_install.go` (`packedTarball`).
-
-Evidence: `chord/nextnode/plugins/plugins_install_test.go` (`TestPackedTarballReadsTheListNpm10And11PrintAndTheObjectNpm12Prints`).
-
-Parity allowance: observable only with npm 12, where Pi's packing fails.
 
 SCRUTINIZED:approved 2026-11-08
 
