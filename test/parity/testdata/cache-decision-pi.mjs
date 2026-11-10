@@ -5,7 +5,7 @@ const root = new URL('../../../extensions/sdk-ts/node_modules/@earendil-works/pi
 const load = rel => import(new URL('dist/' + rel, root));
 const ai = await import(new URL('node_modules/@earendil-works/pi-ai/dist/index.js', root));
 const { getModel } = await import(new URL('node_modules/@earendil-works/pi-ai/dist/compat.js', root));
-const { getPromptCacheTtlMs } = await load('core/cache-warmer.js');
+const { getPromptCacheTtlMs } = ai;
 const model = {...getModel('anthropic','claude-opus-4-6'), promptCache:{short:300,long:3600}};
 console.log(JSON.stringify([getPromptCacheTtlMs(model), getPromptCacheTtlMs(model,{cacheRetention:'long'}), getPromptCacheTtlMs(model,{cacheRetention:'none'}) ?? null]));
 const { createAgentSession } = await load('core/sdk.js');

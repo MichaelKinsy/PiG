@@ -155017,7 +155017,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "85 normalized-name Pig candidates are ambiguous."
+        "86 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -155048,6 +155048,7 @@
         "go:github.com/MichaelKinsy/PiG/coding#uiRawResult.store",
         "go:github.com/MichaelKinsy/PiG/coding/cli#receivedTerminationSignal.Store",
         "go:github.com/MichaelKinsy/PiG/coding/cli#remoteCLIResolutions.Store",
+        "go:github.com/MichaelKinsy/PiG/coding/cli#repeatedTerminationSignal.Store",
         "go:github.com/MichaelKinsy/PiG/coding/cli#startupRegistrationRefreshReady.Store",
         "go:github.com/MichaelKinsy/PiG/coding/extension#noopThemeProvider.Store",
         "go:github.com/MichaelKinsy/PiG/coding/extension#registrationRevision.Store",
@@ -159972,7 +159973,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "113 normalized-name Pig candidates are ambiguous."
+        "114 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -160007,6 +160008,7 @@
         "go:github.com/MichaelKinsy/PiG/coding/cli#listenControls.add",
         "go:github.com/MichaelKinsy/PiG/coding/cli#listenHosts.add",
         "go:github.com/MichaelKinsy/PiG/coding/cli#receivedTerminationSignal.Add",
+        "go:github.com/MichaelKinsy/PiG/coding/cli#repeatedTerminationSignal.Add",
         "go:github.com/MichaelKinsy/PiG/coding/extension#registrationRevision.Add",
         "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/codemode#workersStarted.Add",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#tombstoneSequence.Add",
@@ -160142,7 +160144,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "26 normalized-name Pig candidates are ambiguous."
+        "27 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -160164,6 +160166,7 @@
         "go:github.com/MichaelKinsy/PiG/ai#streamedToolCallCounter.And",
         "go:github.com/MichaelKinsy/PiG/coding#lastMessageSequence.And",
         "go:github.com/MichaelKinsy/PiG/coding/cli#receivedTerminationSignal.And",
+        "go:github.com/MichaelKinsy/PiG/coding/cli#repeatedTerminationSignal.And",
         "go:github.com/MichaelKinsy/PiG/coding/extension#registrationRevision.And",
         "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/codemode#workersStarted.And",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#tombstoneSequence.And",
@@ -164339,7 +164342,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "30 normalized-name Pig candidates are ambiguous."
+        "31 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -164361,6 +164364,7 @@
         "go:github.com/MichaelKinsy/PiG/ai#streamedToolCallCounter.Or",
         "go:github.com/MichaelKinsy/PiG/coding#lastMessageSequence.Or",
         "go:github.com/MichaelKinsy/PiG/coding/cli#receivedTerminationSignal.Or",
+        "go:github.com/MichaelKinsy/PiG/coding/cli#repeatedTerminationSignal.Or",
         "go:github.com/MichaelKinsy/PiG/coding/extension#registrationRevision.Or",
         "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/codemode#workersStarted.Or",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#tombstoneSequence.Or",

@@ -113,7 +113,7 @@ A theme is data, but the Package that distributes it can also contain executable
 
 ## Upstream compatibility
 
-PiG follows the theme behavior of Pi 1.5.0 where the Go TUI exposes the same observable contract. The TypeScript package `@earendil-works/pi-tui` is a Pi package, not a PiG Go API.
+PiG follows the theme behavior of Pi 1.5.1 where the Go TUI exposes the same observable contract. The TypeScript package `@earendil-works/pi-tui` is a Pi package, not a PiG Go API.
 
 See [Pi's theme documentation](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/themes.md) for the complete theme format and its color tokens.
 

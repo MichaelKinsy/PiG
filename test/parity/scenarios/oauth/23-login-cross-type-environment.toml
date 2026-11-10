@@ -23,7 +23,7 @@ keys = ["Enter"]
 wait_contains = ["Select provider to configure:"]
 [[tmux.steps]]
 keys = ["openrouter"]
-wait_visible_contains = ["> openrouter", "OpenRouter • API key configured"]
+wait_visible_contains = ["> openrouter", "OpenRouter ✦ • API key configured"]
 [env]
 pig = ["OPENROUTER_API_KEY=w3-not-a-real-key", "PIG_CODING_AGENT_DIR=testdata/w3-stored-key", "PI_CODING_AGENT_DIR=", "HOME={{TEMP}}/home", "PATH={{FAKE_BIN}}:{{PATH}}"]
 pi = ["OPENROUTER_API_KEY=w3-not-a-real-key", "PI_CODING_AGENT_DIR=testdata/w3-stored-key", "PIG_CODING_AGENT_DIR=", "HOME={{TEMP}}/home", "PATH={{FAKE_BIN}}:{{PATH}}"]
@@ -31,6 +31,12 @@ pig_args = ["--offline", "--no-extensions", "--session-dir", "{{TEMP}}/sessions"
 pi_args = ["--offline", "--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
 [assert]
 both_reach_ready = true
-both_contain = ["> openrouter", "OpenRouter • API key configured"]
+both_contain = ["> openrouter", "OpenRouter ✦ • API key configured"]
 escaped_output_equal = true
 runs = 3
+
+# normalize-rationale: The selected row shows the animated provider brand (provider-brand.ts, driven by each process's own clock since the selector opened), so the two binaries sample different phases of the glow. Only the 24-bit foreground colour of the animated provider name is masked; the name, the escapes that close it, the partner glyph, every other escape and all layout stay compared. Pig's colour per elapsed time is covered by Go tests of tui/provider_brand.go.
+[[assert.normalize_replace]]
+pattern = '\x1b\[38;2;\d+;\d+;\d+m(OpenRouter)'
+with = "<openrouter-glow>${1}"
+reason = "The glow phase is the selector age, which differs per process; the colour is the only masked part of the row."

@@ -1,6 +1,6 @@
 {
   "piVersion": "1.5.1",
-  "node": "v24.22.2",
+  "node": "v24.19.0",
   "scenarios": [
     {
       "name": "oneChunk",
@@ -115,7 +115,7 @@
         },
         "stopReason": "toolUse",
         "responseId": "r1",
-        "durationMs": 31
+        "durationMs": 21
       }
     },
     {
@@ -1013,7 +1013,7 @@
         },
         "stopReason": "toolUse",
         "responseId": "r1",
-        "durationMs": 1
+        "durationMs": 0
       }
     },
     {
@@ -1129,7 +1129,7 @@
         },
         "stopReason": "toolUse",
         "responseId": "r1",
-        "durationMs": 0
+        "durationMs": 1
       }
     },
     {
@@ -1973,7 +1973,7 @@
         },
         "stopReason": "error",
         "errorMessage": "Expected ',' or '}' after property value in JSON at position 20 (line 1 column 21)",
-        "durationMs": 1
+        "durationMs": 0
       }
     },
     {

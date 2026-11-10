@@ -3569,8 +3569,8 @@ rationale = "Pi: the warm request sets disableContinuation so it does not replac
 path = "packages/coding-agent/src/core/compaction/utils.ts"
 change = "modified"
 disposition = "ported"
-evidence = ["test:internal/codingagent/compaction/serialization_oracle_test.go#TestSerializeConversationDropsASurrogatePairAtTheCut"]
-rationale = "Pi: truncateForSummary slices with sliceHead so a tool result cut inside a surrogate pair keeps the pair whole; the marker still counts the full units."
+evidence = ["test:internal/codingagent/compaction/serialization_oracle_test.go#TestSerializeConversationDropsASurrogatePairAtTheCut", "test:test/extension-conformance/serialize_conversation_test.go#TestConformance_SerializeConversationAgreesAcrossSDKs"]
+rationale = "Pi: truncateForSummary slices with sliceHead, so a cut between the halves of a surrogate pair drops the pair's high surrogate (one unit fewer; Pi 1.5.0 kept it) and the marker still counts the full units. The host and every SDK (Go, Python, Rust, Lisp; Node runs Pi's code) do the same: the conformance rows carry Pi 1.5.1's value, and a keep-the-high-surrogate mutant of each SDK fails them."
 
 [[files]]
 path = "packages/coding-agent/src/core/extensions/index.ts"
@@ -3913,7 +3913,7 @@ path = "packages/coding-agent/src/modes/print-mode.ts"
 change = "modified"
 disposition = "ported"
 evidence = ["test:coding/cli/print_final_disposal_signal_test.go#TestPrintModeSignalDuringFinalDisposalWaitsForIt"]
-rationale = "Pi (#11752): the signal handlers stay until the final disposal is done, a signal during it waits for that disposal and a repeated one exits at once with 143."
+rationale = "Pi (#11752): the signal handlers stay until the final disposal is done, a signal during it waits for that disposal and a repeated one exits at once with its own code (143 for SIGTERM, 129 for SIGHUP, whichever signal came first); the table test covers one, repeated and mixed signals."
 
 [[files]]
 path = "packages/coding-agent/src/modes/rpc/rpc-mode.ts"

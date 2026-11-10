@@ -418,9 +418,9 @@ An extension's standard error goes to its diagnostic log. The log keeps the firs
 
 `pi.sendMessage(message, options)` uses the current Session in print, JSON, and RPC as well as interactive mode. An idle message with `triggerTurn: false` is persisted without starting a model turn. RPC emits its `message_start` and `message_end` before acknowledging the command that sent it. `deliverAs: "nextTurn"` defers delivery until a later prompt. Preserve omission of `triggerTurn` separately from explicit false when a run is active. The Session owns triggered work and shutdown; the bridge does not create another run owner.
 
-A run that `sendMessage({ triggerTurn: true })` starts while idle checks compaction, emits `before_agent_start`, applies its result, and delivers pending `nextTurn` messages before it starts. The event's `messageType` is `"custom"`, with `message` and no `prompt`; a user prompt has `messageType: "user"`. A handler that should act only on user prompts must check `event.messageType === "user"`. Pi 1.5.0 does the same; Pi 1.1.0 skipped these steps for such a run ([Pi #5581](https://github.com/earendil-works/pi/issues/5581)).
+A run that `sendMessage({ triggerTurn: true })` starts while idle checks compaction, emits `before_agent_start`, applies its result, and delivers pending `nextTurn` messages before it starts. The event's `messageType` is `"custom"`, with `message` and no `prompt`; a user prompt has `messageType: "user"`. A handler that should act only on user prompts must check `event.messageType === "user"`. Pi 1.5.1 does the same; Pi 1.1.0 skipped these steps for such a run ([Pi #5581](https://github.com/earendil-works/pi/issues/5581)).
 
-The Session counts as busy from the moment a run starts, including while `before_agent_start` handlers run. During that time `ctx.isIdle()` returns false, `pi.sendMessage()` queues into the starting run, `pi.sendUserMessage()` requires `deliverAs`, and an abort aborts the run once it starts. This follows Pi 1.5.0. In Pi 1.1.0 a second `sendMessage` could start another run, which failed with "Agent is already processing" ([Pi #10739](https://github.com/earendil-works/pi/pull/10739)).
+The Session counts as busy from the moment a run starts, including while `before_agent_start` handlers run. During that time `ctx.isIdle()` returns false, `pi.sendMessage()` queues into the starting run, `pi.sendUserMessage()` requires `deliverAs`, and an abort aborts the run once it starts. This follows Pi 1.5.1. In Pi 1.1.0 a second `sendMessage` could start another run, which failed with "Agent is already processing" ([Pi #10739](https://github.com/earendil-works/pi/pull/10739)).
 
 Clearing the queue (RPC `clear_queue`, the SDK, or the interactive restore-to-editor key) removes only queued user messages. Custom messages that an extension queued with `deliverAs: "followUp"` or `"steer"` stay queued. Pi drops them without notice (D135, Pi #9886).
 
@@ -623,7 +623,7 @@ An extension that fails while registering shows its own error in the load messag
 
 ## Go SDK changes in 0.3.0
 
-Pi 1.5.0 represents unknown context usage as null, not zero. Go therefore keeps `ContextUsage.Tokens` as `*int` and `Percent` as `*float64`. `GetContextUsage()` returns nil when there is no usable model window, and a host failure as an error in every SDK (Go `error`, Rust `io::Result`, Python `HostCallError`). After compaction, a non-nil usage can contain nil counts. Rust uses `Option`; Python uses `None` for the same states.
+Pi 1.5.1 represents unknown context usage as null, not zero. Go therefore keeps `ContextUsage.Tokens` as `*int` and `Percent` as `*float64`. `GetContextUsage()` returns nil when there is no usable model window, and a host failure as an error in every SDK (Go `error`, Rust `io::Result`, Python `HostCallError`). After compaction, a non-nil usage can contain nil counts. Rust uses `Option`; Python uses `None` for the same states.
 
 Before:
 

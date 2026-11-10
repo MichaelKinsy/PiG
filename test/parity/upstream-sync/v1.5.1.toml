@@ -18,16 +18,16 @@ rationale = "The release commit moves PI_AI_VERSION from 1.5.0 to 1.5.1 (77959d6
 [[files]]
 path = "packages/chord/src/node/http/upgrades.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/http/upgrades_test.go#TestPluginSocketsAnOversizedFrameIsNotTerminatedAndTheSocketReportsItsProtocolCloseCode"]
+rationale = "Pi 7e713da2/cd5e3d2a: the error listener leaves a CLOSING socket alone; readFailed marks the socket Closing before error, and the server-side close event reports 1006 as Pi ws does (the peer sees 1009) (chord/nextnode/http/upgrades.go, websocket.go)."
 
 [[files]]
 path = "packages/chord/src/node/tui/sandbox.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/tui/tui_sandbox_test.go#TestTheSandboxStartsWithASymlinkedTemporaryDirectoryWithoutExpandingFilePermissions"]
+rationale = "Pi 3b921e31...: filepath.EvalSymlinks after os.MkdirTemp (Pi realpath) in chord/nextnode/tui/tui_sandbox.go; a startup fix, not a grant widening."
 
 [[files]]
 path = "packages/coding-agent/src/core/provider-composer.ts"
@@ -46,23 +46,23 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/core/tools/find.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/tools/find_pi151_test.go#TestFindFdInvocationWindowsPathPattern","test:internal/codingagent/tools/find_pi151_test.go#TestFindDoesNotStartFdAfterAbortDuringGitLookup"]
+rationale = "Pi 463b8f89 + a07f2512: Windows path patterns work with every fd version and fd is not started after an abort during the git lookup (find.go newFindFdInvocation, findPathFilter, internal/minimatch NoExt). Windows fd end to end only on Windows CI."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/grep.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/tools/grep_operations_readfile_test.go#TestGrepOperationsAcceptsADeprecatedReadFileHookWithoutCallingIt"]
+rationale = "Pi 244e5f5d restores the deprecated GrepOperations.readFile hook (GrepOperations.ReadFile in tools and the Go/Py/Rust/Lisp SDKs, conformance grepdir case)."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/powershell.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/tools/powershell_exit_codes_test.go#TestPowerShellCommandAppendsTheExitSuffixForWindowsPowerShellOnly","test:internal/codingagent/tools/powershell_exit_codes_test.go#TestPowerShellExitCodes"]
+rationale = "Pi c9dd2c53 reports native exit codes on Windows PowerShell 5.1 (powershell.go powerShellCommand). Exit-code cases run on Windows CI only."
 
 [[files]]
 path = "packages/coding-agent/src/package-manager-cli.ts"

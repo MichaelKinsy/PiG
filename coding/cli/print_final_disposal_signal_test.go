@@ -16,7 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
-// Pi main ace560c30 (#11752, print-mode.ts): the signal handlers stay until the final disposal is done, a signal during it waits for that disposal, and a repeated signal exits at once with 143. Pi 1.5.0 removed the handlers before the final disposeRuntime(), so a signal during it killed the process mid-dispose.
+// Pi main ace560c30 (#11752, print-mode.ts): the signal handlers stay until the final disposal is done, a signal during it waits for that disposal, and a repeated signal exits at once with the code of the signal that repeated (SIGTERM 143, SIGHUP 129: each handler closes over its own exitCode). Pi 1.5.0 removed the handlers before the final disposeRuntime(), so a signal during it killed the process mid-dispose.
 func TestPrintModeSignalDuringFinalDisposalWaitsForIt(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping signal shutdown test in short mode")
@@ -26,8 +26,20 @@ func TestPrintModeSignalDuringFinalDisposalWaitsForIt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for name, signals := range map[string]int{"one signal": 1, "repeated signal": 2} {
-		t.Run(name, func(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		signals []syscall.Signal
+		want    int
+	}{
+		{"one signal", []syscall.Signal{syscall.SIGTERM}, 143},
+		{"one SIGHUP", []syscall.Signal{syscall.SIGHUP}, 129},
+		{"repeated signal", []syscall.Signal{syscall.SIGTERM, syscall.SIGTERM}, 143},
+		{"repeated SIGHUP", []syscall.Signal{syscall.SIGHUP, syscall.SIGHUP}, 129},
+		{"SIGTERM then SIGHUP exits with the second's code", []syscall.Signal{syscall.SIGTERM, syscall.SIGHUP}, 129},
+		{"SIGHUP then SIGTERM exits with the second's code", []syscall.Signal{syscall.SIGHUP, syscall.SIGTERM}, 143},
+	} {
+		signals, want := tc.signals, tc.want
+		t.Run(tc.name, func(t *testing.T) {
 			report := filepath.Join(t.TempDir(), "report.txt")
 			cmd := exec.Command(bin, "--model", "test-faux/faux-1", "--no-session", "--no-extensions", "-e", fixture, "--print", "What is 20+22?")
 			cmd.Dir = t.TempDir()
@@ -52,22 +64,22 @@ func TestPrintModeSignalDuringFinalDisposalWaitsForIt(t *testing.T) {
 				time.Sleep(20 * time.Millisecond)
 			}
 			began := time.Now()
-			for i := range signals {
+			for i, sig := range signals {
 				if i > 0 {
 					// Signals that arrive before the first is taken off the queue coalesce into one.
 					time.Sleep(100 * time.Millisecond)
 				}
-				if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
+				if err := cmd.Process.Signal(sig); err != nil {
 					t.Fatal(err)
 				}
 			}
 			select {
 			case err := <-waited:
-				if signals == 1 {
+				if len(signals) == 1 {
 					t.Fatalf("process ended (%v) before the final disposal finished", err)
 				}
-				if exit, ok := errors.AsType[*exec.ExitError](err); !ok || exit.ExitCode() != 143 {
-					t.Fatalf("wait = %v, want exit status 143", err)
+				if exit, ok := errors.AsType[*exec.ExitError](err); !ok || exit.ExitCode() != want {
+					t.Fatalf("wait = %v, want exit status %d", err, want)
 				}
 				if took := time.Since(began); took > 2*time.Second {
 					t.Fatalf("exit took %s, want it before the 2.5 s handler ended", took)
@@ -76,12 +88,12 @@ func TestPrintModeSignalDuringFinalDisposalWaitsForIt(t *testing.T) {
 					t.Fatalf("report = %q, want the handler cut off", data)
 				}
 			case <-time.After(700 * time.Millisecond):
-				if signals == 2 {
-					t.Fatal("a repeated SIGTERM did not exit at once")
+				if len(signals) == 2 {
+					t.Fatalf("a repeated %v did not exit at once", signals[1])
 				}
 				err := <-waited
-				if exit, ok := errors.AsType[*exec.ExitError](err); !ok || exit.ExitCode() != 143 {
-					t.Fatalf("wait = %v, want exit status 143 after the disposal", err)
+				if exit, ok := errors.AsType[*exec.ExitError](err); !ok || exit.ExitCode() != want {
+					t.Fatalf("wait = %v, want exit status %d after the disposal", err, want)
 				}
 				if data, _ := os.ReadFile(report); !slices.Contains(strings.Fields(string(data)), "session_shutdown:done") {
 					t.Fatalf("report = %q, want the handler to run to its end", data)

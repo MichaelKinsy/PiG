@@ -1,6 +1,6 @@
 {
   "piVersion": "1.5.1",
-  "node": "v24.22.2",
+  "node": "v24.19.0",
   "api": "pi-messages",
   "bodies": {
     "tool": "data: {\"type\":\"start\"}\n\ndata: {\"type\":\"toolcall_start\",\"contentIndex\":0,\"id\":\"strictread1\",\"toolName\":\"read\"}\n\ndata: {\"type\":\"toolcall_delta\",\"contentIndex\":0,\"delta\":\"{\\\"path\\\":\\\"parity-read-target.txt\\\"}\"}\n\ndata: {\"type\":\"toolcall_end\",\"contentIndex\":0,\"toolCall\":{\"type\":\"toolCall\",\"id\":\"strictread1\",\"name\":\"read\",\"arguments\":{\"path\":\"parity-read-target.txt\"}}}\n\ndata: {\"type\":\"done\",\"reason\":\"toolUse\",\"usage\":{\"input\":10,\"output\":3,\"cacheRead\":0,\"cacheWrite\":0,\"totalTokens\":13,\"cost\":{\"input\":0,\"output\":0,\"cacheRead\":0,\"cacheWrite\":0,\"total\":0}},\"responseId\":\"msg-strict\"}\n\n",
@@ -201,7 +201,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 29
+                "durationMs": 20
               }
             }
           ]
@@ -312,7 +312,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 6
+                "durationMs": 3
               }
             },
             {
@@ -349,7 +349,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 6
+                "durationMs": 3
               }
             },
             {
@@ -386,7 +386,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 6
+                "durationMs": 3
               }
             },
             {
@@ -423,7 +423,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 6
+                "durationMs": 3
               }
             }
           ]
@@ -623,7 +623,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 4,
+                "durationMs": 3,
                 "thinkingLevel": "off"
               }
             }
@@ -772,7 +772,7 @@
             },
             "stopReason": "toolUse",
             "responseId": "msg-strict",
-            "durationMs": 26,
+            "durationMs": 18,
             "thinkingLevel": "off"
           }
         }
@@ -967,7 +967,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 154
+                "durationMs": 155
               }
             }
           ]
@@ -1389,7 +1389,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 156,
+                "durationMs": 154,
                 "thinkingLevel": "off"
               }
             }
@@ -1538,7 +1538,7 @@
             },
             "stopReason": "toolUse",
             "responseId": "msg-strict",
-            "durationMs": 171,
+            "durationMs": 172,
             "thinkingLevel": "off"
           }
         }
@@ -1741,7 +1741,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 253
+                "durationMs": 255
               }
             }
           ]
@@ -1954,7 +1954,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 252
+                "durationMs": 255
               }
             }
           ]
@@ -2302,7 +2302,7 @@
             },
             "stopReason": "toolUse",
             "responseId": "msg-strict",
-            "durationMs": 271,
+            "durationMs": 263,
             "thinkingLevel": "off"
           }
         }
@@ -2758,7 +2758,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 502
+                "durationMs": 507
               }
             }
           ]
@@ -3126,7 +3126,7 @@
             },
             "stopReason": "toolUse",
             "responseId": "msg-strict",
-            "durationMs": 522,
+            "durationMs": 520,
             "thinkingLevel": "off"
           }
         }
@@ -3743,7 +3743,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 302,
+                "durationMs": 304,
                 "thinkingLevel": "off"
               }
             }
@@ -3890,7 +3890,7 @@
             },
             "stopReason": "toolUse",
             "responseId": "msg-strict",
-            "durationMs": 323,
+            "durationMs": 321,
             "thinkingLevel": "off"
           }
         }
@@ -4461,7 +4461,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 8
+                "durationMs": 3
               }
             }
           ]
@@ -6047,7 +6047,7 @@
             },
             "stopReason": "toolUse",
             "responseId": "msg-strict",
-            "durationMs": 26,
+            "durationMs": 21,
             "thinkingLevel": "off"
           }
         }
@@ -6618,7 +6618,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 156
+                "durationMs": 155
               }
             }
           ]
@@ -7852,7 +7852,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 152,
+                "durationMs": 154,
                 "thinkingLevel": "off"
               }
             }
@@ -8204,7 +8204,7 @@
             },
             "stopReason": "toolUse",
             "responseId": "msg-strict",
-            "durationMs": 171,
+            "durationMs": 172,
             "thinkingLevel": "off"
           }
         }
@@ -8801,7 +8801,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 479
+                "durationMs": 481
               }
             }
           ]
@@ -10037,7 +10037,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 480,
+                "durationMs": 481,
                 "thinkingLevel": "off"
               }
             }
@@ -10383,7 +10383,7 @@
             },
             "stopReason": "toolUse",
             "responseId": "msg-strict",
-            "durationMs": 495,
+            "durationMs": 491,
             "thinkingLevel": "off"
           }
         }
@@ -11010,7 +11010,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 862
+                "durationMs": 860
               }
             }
           ]
@@ -12306,7 +12306,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 864,
+                "durationMs": 859,
                 "thinkingLevel": "off"
               }
             }
@@ -12652,7 +12652,7 @@
             },
             "stopReason": "toolUse",
             "responseId": "msg-strict",
-            "durationMs": 874,
+            "durationMs": 875,
             "thinkingLevel": "off"
           }
         }
@@ -13225,7 +13225,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 304
+                "durationMs": 306
               }
             }
           ]
@@ -13746,7 +13746,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 304
+                "durationMs": 303
               }
             },
             {
@@ -13792,7 +13792,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 304
+                "durationMs": 303
               }
             },
             {
@@ -13838,7 +13838,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 304
+                "durationMs": 303
               }
             },
             {
@@ -13884,7 +13884,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 304
+                "durationMs": 303
               }
             }
           ]
@@ -14462,7 +14462,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 302,
+                "durationMs": 304,
                 "thinkingLevel": "off"
               }
             }
@@ -14813,7 +14813,7 @@
             },
             "stopReason": "toolUse",
             "responseId": "msg-strict",
-            "durationMs": 322,
+            "durationMs": 321,
             "thinkingLevel": "off"
           }
         }
@@ -15028,7 +15028,7 @@
                 "stopReason": "error",
                 "errorMessage": "backend failed",
                 "responseId": "msg-error",
-                "durationMs": 1
+                "durationMs": 2
               }
             },
             {
@@ -15062,7 +15062,7 @@
                 "stopReason": "error",
                 "errorMessage": "backend failed",
                 "responseId": "msg-error",
-                "durationMs": 1
+                "durationMs": 2
               }
             },
             {
@@ -15096,7 +15096,7 @@
                 "stopReason": "error",
                 "errorMessage": "backend failed",
                 "responseId": "msg-error",
-                "durationMs": 1
+                "durationMs": 2
               }
             },
             {
@@ -15130,7 +15130,7 @@
                 "stopReason": "error",
                 "errorMessage": "backend failed",
                 "responseId": "msg-error",
-                "durationMs": 1
+                "durationMs": 2
               }
             }
           ]
@@ -15279,7 +15279,7 @@
                 "stopReason": "error",
                 "errorMessage": "backend failed",
                 "responseId": "msg-error",
-                "durationMs": 1,
+                "durationMs": 2,
                 "thinkingLevel": "off"
               }
             }
@@ -15317,7 +15317,7 @@
             "stopReason": "error",
             "errorMessage": "backend failed",
             "responseId": "msg-error",
-            "durationMs": 25
+            "durationMs": 17
           }
         },
         {
@@ -15393,7 +15393,7 @@
             "stopReason": "error",
             "errorMessage": "backend failed",
             "responseId": "msg-error",
-            "durationMs": 25,
+            "durationMs": 17,
             "thinkingLevel": "off"
           }
         }
@@ -15859,7 +15859,7 @@
                 "stopReason": "error",
                 "errorMessage": "backend failed",
                 "responseId": "msg-error",
-                "durationMs": 153,
+                "durationMs": 154,
                 "thinkingLevel": "off"
               }
             }
@@ -15897,7 +15897,7 @@
             "stopReason": "error",
             "errorMessage": "backend failed",
             "responseId": "msg-error",
-            "durationMs": 173
+            "durationMs": 165
           }
         },
         {
@@ -15973,7 +15973,7 @@
             "stopReason": "error",
             "errorMessage": "backend failed",
             "responseId": "msg-error",
-            "durationMs": 173,
+            "durationMs": 165,
             "thinkingLevel": "off"
           }
         }
@@ -16127,7 +16127,7 @@
                 "stopReason": "error",
                 "errorMessage": "backend failed",
                 "responseId": "msg-error",
-                "durationMs": 228
+                "durationMs": 227
               }
             }
           ]
@@ -16549,7 +16549,7 @@
             "stopReason": "error",
             "errorMessage": "backend failed",
             "responseId": "msg-error",
-            "durationMs": 247,
+            "durationMs": 240,
             "thinkingLevel": "off"
           }
         }
@@ -16715,7 +16715,7 @@
                 "stopReason": "error",
                 "errorMessage": "backend failed",
                 "responseId": "msg-error",
-                "durationMs": 378
+                "durationMs": 381
               }
             }
           ]
@@ -16888,7 +16888,7 @@
                 "stopReason": "error",
                 "errorMessage": "backend failed",
                 "responseId": "msg-error",
-                "durationMs": 381
+                "durationMs": 378
               }
             }
           ]
@@ -17055,7 +17055,7 @@
                 "stopReason": "error",
                 "errorMessage": "backend failed",
                 "responseId": "msg-error",
-                "durationMs": 379,
+                "durationMs": 377,
                 "thinkingLevel": "off"
               }
             }
@@ -17161,7 +17161,7 @@
             "stopReason": "error",
             "errorMessage": "backend failed",
             "responseId": "msg-error",
-            "durationMs": 394,
+            "durationMs": 396,
             "thinkingLevel": "off"
           }
         }
@@ -17627,7 +17627,7 @@
                 "stopReason": "error",
                 "errorMessage": "backend failed",
                 "responseId": "msg-error",
-                "durationMs": 303,
+                "durationMs": 302,
                 "thinkingLevel": "off"
               }
             }
@@ -17738,7 +17738,7 @@
             "stopReason": "error",
             "errorMessage": "backend failed",
             "responseId": "msg-error",
-            "durationMs": 321,
+            "durationMs": 319,
             "thinkingLevel": "off"
           }
         }
@@ -17881,7 +17881,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "p stream ended without a terminal event",
-                "durationMs": 3
+                "durationMs": 4
               }
             }
           ]
@@ -18036,7 +18036,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "p stream ended without a terminal event",
-                "durationMs": 2
+                "durationMs": 5
               }
             }
           ]
@@ -18180,7 +18180,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "p stream ended without a terminal event",
-                "durationMs": 2,
+                "durationMs": 3,
                 "thinkingLevel": "off"
               }
             }
@@ -18285,7 +18285,7 @@
             },
             "stopReason": "error",
             "errorMessage": "p stream ended without a terminal event",
-            "durationMs": 28,
+            "durationMs": 19,
             "thinkingLevel": "off"
           }
         }
@@ -18583,7 +18583,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "p stream ended without a terminal event",
-                "durationMs": 153
+                "durationMs": 152
               }
             }
           ]
@@ -18832,7 +18832,7 @@
             },
             "stopReason": "error",
             "errorMessage": "p stream ended without a terminal event",
-            "durationMs": 175,
+            "durationMs": 165,
             "thinkingLevel": "off"
           }
         }
@@ -18979,7 +18979,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "p stream ended without a terminal event",
-                "durationMs": 229
+                "durationMs": 228
               }
             }
           ]
@@ -19133,7 +19133,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "p stream ended without a terminal event",
-                "durationMs": 230
+                "durationMs": 229
               }
             }
           ]
@@ -19281,7 +19281,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "p stream ended without a terminal event",
-                "durationMs": 228,
+                "durationMs": 229,
                 "thinkingLevel": "off"
               }
             }
@@ -19381,7 +19381,7 @@
             },
             "stopReason": "error",
             "errorMessage": "p stream ended without a terminal event",
-            "durationMs": 251,
+            "durationMs": 243,
             "thinkingLevel": "off"
           }
         }
@@ -19686,7 +19686,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "p stream ended without a terminal event",
-                "durationMs": 252
+                "durationMs": 254
               }
             }
           ]
@@ -19836,7 +19836,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "p stream ended without a terminal event",
-                "durationMs": 253,
+                "durationMs": 255,
                 "thinkingLevel": "off"
               }
             }
@@ -19936,7 +19936,7 @@
             },
             "stopReason": "error",
             "errorMessage": "p stream ended without a terminal event",
-            "durationMs": 272,
+            "durationMs": 274,
             "thinkingLevel": "off"
           }
         }
@@ -20081,7 +20081,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "p stream ended without a terminal event",
-                "durationMs": 455
+                "durationMs": 452
               }
             }
           ]
@@ -20489,7 +20489,7 @@
             },
             "stopReason": "error",
             "errorMessage": "p stream ended without a terminal event",
-            "durationMs": 477,
+            "durationMs": 474,
             "thinkingLevel": "off"
           }
         }
@@ -20714,7 +20714,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "Expected ',' or '}' after property value in JSON at position 49 (line 1 column 50)",
-                "durationMs": 2
+                "durationMs": 3
               }
             }
           ]
@@ -20823,7 +20823,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "Expected ',' or '}' after property value in JSON at position 49 (line 1 column 50)",
-                "durationMs": 2,
+                "durationMs": 3,
                 "thinkingLevel": "off"
               }
             }
@@ -20906,7 +20906,7 @@
             },
             "stopReason": "error",
             "errorMessage": "Expected ',' or '}' after property value in JSON at position 49 (line 1 column 50)",
-            "durationMs": 26,
+            "durationMs": 32,
             "thinkingLevel": "off"
           }
         }
@@ -21323,7 +21323,7 @@
             },
             "stopReason": "error",
             "errorMessage": "Expected ',' or '}' after property value in JSON at position 49 (line 1 column 50)",
-            "durationMs": 171,
+            "durationMs": 168,
             "thinkingLevel": "off"
           }
         }
@@ -21551,7 +21551,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "Expected ',' or '}' after property value in JSON at position 49 (line 1 column 50)",
-                "durationMs": 204
+                "durationMs": 203
               }
             }
           ]
@@ -21742,7 +21742,7 @@
             },
             "stopReason": "error",
             "errorMessage": "Expected ',' or '}' after property value in JSON at position 49 (line 1 column 50)",
-            "durationMs": 221,
+            "durationMs": 225,
             "thinkingLevel": "off"
           }
         }
@@ -21856,7 +21856,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "Expected ',' or '}' after property value in JSON at position 49 (line 1 column 50)",
-                "durationMs": 230
+                "durationMs": 229
               }
             }
           ]
@@ -22089,7 +22089,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "Expected ',' or '}' after property value in JSON at position 49 (line 1 column 50)",
-                "durationMs": 228,
+                "durationMs": 227,
                 "thinkingLevel": "off"
               }
             }
@@ -22167,7 +22167,7 @@
             },
             "stopReason": "error",
             "errorMessage": "Expected ',' or '}' after property value in JSON at position 49 (line 1 column 50)",
-            "durationMs": 247,
+            "durationMs": 242,
             "thinkingLevel": "off"
           }
         }
@@ -22277,7 +22277,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "Expected ',' or '}' after property value in JSON at position 49 (line 1 column 50)",
-                "durationMs": 304
+                "durationMs": 302
               }
             }
           ]
@@ -22396,7 +22396,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "Expected ',' or '}' after property value in JSON at position 49 (line 1 column 50)",
-                "durationMs": 302
+                "durationMs": 303
               }
             }
           ]
@@ -22507,7 +22507,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "Expected ',' or '}' after property value in JSON at position 49 (line 1 column 50)",
-                "durationMs": 303,
+                "durationMs": 301,
                 "thinkingLevel": "off"
               }
             }
@@ -22590,7 +22590,7 @@
             },
             "stopReason": "error",
             "errorMessage": "Expected ',' or '}' after property value in JSON at position 49 (line 1 column 50)",
-            "durationMs": 318,
+            "durationMs": 323,
             "thinkingLevel": "off"
           }
         }
@@ -22697,7 +22697,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 2
+                "durationMs": 3
               }
             }
           ]
@@ -22813,7 +22813,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 1
+                "durationMs": 4
               }
             }
           ]
@@ -22921,7 +22921,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 3,
+                "durationMs": 2,
                 "thinkingLevel": "off"
               }
             }
@@ -23004,7 +23004,7 @@
             },
             "stopReason": "error",
             "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-            "durationMs": 27,
+            "durationMs": 26,
             "thinkingLevel": "off"
           }
         }
@@ -23111,7 +23111,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 154
+                "durationMs": 152
               }
             }
           ]
@@ -23227,7 +23227,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 152
+                "durationMs": 153
               }
             }
           ]
@@ -23418,7 +23418,7 @@
             },
             "stopReason": "error",
             "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-            "durationMs": 174,
+            "durationMs": 168,
             "thinkingLevel": "off"
           }
         }
@@ -23529,7 +23529,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 202
+                "durationMs": 203
               }
             }
           ]
@@ -23644,7 +23644,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 203
+                "durationMs": 204
               }
             }
           ]
@@ -23756,7 +23756,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 202,
+                "durationMs": 204,
                 "thinkingLevel": "off"
               }
             }
@@ -23834,7 +23834,7 @@
             },
             "stopReason": "error",
             "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-            "durationMs": 222,
+            "durationMs": 216,
             "thinkingLevel": "off"
           }
         }
@@ -23945,7 +23945,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 202
+                "durationMs": 206
               }
             }
           ]
@@ -24060,7 +24060,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 203
+                "durationMs": 204
               }
             }
           ]
@@ -24172,7 +24172,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 202,
+                "durationMs": 204,
                 "thinkingLevel": "off"
               }
             }
@@ -24250,7 +24250,7 @@
             },
             "stopReason": "error",
             "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-            "durationMs": 222,
+            "durationMs": 219,
             "thinkingLevel": "off"
           }
         }
@@ -24359,7 +24359,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 304
+                "durationMs": 303
               }
             }
           ]
@@ -24477,7 +24477,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 302
+                "durationMs": 304
               }
             }
           ]
@@ -24587,7 +24587,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 305,
+                "durationMs": 303,
                 "thinkingLevel": "off"
               }
             }
@@ -24670,7 +24670,7 @@
             },
             "stopReason": "error",
             "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-            "durationMs": 323,
+            "durationMs": 318,
             "thinkingLevel": "off"
           }
         }
@@ -24788,7 +24788,7 @@
             },
             "stopReason": "aborted",
             "errorMessage": "This operation was aborted",
-            "durationMs": 153
+            "durationMs": 154
           }
         }
       ]

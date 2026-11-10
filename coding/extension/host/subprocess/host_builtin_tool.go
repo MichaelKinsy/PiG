@@ -393,8 +393,8 @@ func (c *builtinCallbacks) editOperations() *tools.EditOperations {
 	return &tools.EditOperations{ReadFile: c.readFile, WriteFile: c.writeFile, Access: c.access}
 }
 
-// grepOperations is the isDirectory callback only: Pi main (8da141c2a) takes grep's context lines from ripgrep and no longer reads a
-// matched file, so a readFile member an extension still passes is accepted and ignored, as in Pi.
+// grepOperations is the isDirectory callback only: Pi takes grep's context lines from ripgrep and never calls the deprecated readFile member, so the host never
+// asks an extension for it and an announced readFile is ignored.
 func (c *builtinCallbacks) grepOperations() *tools.GrepOperations {
 	return &tools.GrepOperations{IsDirectory: func(path string) (bool, error) {
 		return callBool(c.call("operations.isDirectory", pathArgs{path}))

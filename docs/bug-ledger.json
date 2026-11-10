@@ -15672,6 +15672,66 @@
       "tests": []
     },
     {
+      "id": "BF-55a5244",
+      "title": "The find tool on Windows returned no results for patterns with Windows separators such as `src\\**\\*.ts`, and…",
+      "symptom": "The find tool on Windows returned no results for patterns with Windows separators such as `src\\**\\*.ts`, and for every path pattern such as `src/**/*.ts` with fd 10.5.1.",
+      "rootCause": "Port of Pi (#11972, #9262) and (#11974). On Windows a backslash in the pattern is a separator, and a pattern with a slash is matched by a minimatch matcher (dot, noext, smart case, trailing /** as /**/*) over every entry fd lists; fd stops one match past the limit. The minimatch port gains the noext option. find returns before starting fd when the call was aborted during the .git lookup.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The find tool on Windows returned no results for patterns with Windows separators such as `src\\**\\*.ts`, and for every path pattern such as `src/**/*.ts` with fd 10.5.1. A Windows path pattern now matches the same way with every fd version: `src/**/*.ts` also finds files directly in `src/`, and `src/*.ts` no longer finds files in subdirectories.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "55a52447fc",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/tools/find_pi151_test.go::TestFindDoesNotStartFdAfterAbortDuringGitLookup",
+        "internal/codingagent/tools/find_pi151_test.go::TestFindFdInvocationFdGlobArguments",
+        "internal/codingagent/tools/find_pi151_test.go::TestFindFdInvocationWindowsPathPattern",
+        "internal/codingagent/tools/find_pi151_test.go::TestFindPathFilterKeepsAFinalLineWithoutANewline",
+        "internal/codingagent/tools/find_pi151_test.go::TestFindPathFilterStopsFdAtTheLimit",
+        "internal/codingagent/tools/find_pi151_test.go::TestFindPathPatternsPi151",
+        "internal/codingagent/tools/find_regressions_test.go::TestFindPathGlobRegression",
+        "internal/codingagent/tools/spawn_arguments_test.go::TestSearchAndShellToolsReportSpawnArgumentErrorsAsPiDoes",
+        "internal/minimatch/minimatch_noext_test.go::TestMatchNoExtKeepsExtglobsLiteral"
+      ]
+    },
+    {
+      "id": "BF-55a5244-2",
+      "title": "A find call aborted while the tool looked for a `.git` directory above the search path no longer starts fd",
+      "symptom": "A find call aborted while the tool looked for a `.git` directory above the search path no longer starts fd.",
+      "rootCause": "Port of Pi (#11972, #9262) and (#11974). On Windows a backslash in the pattern is a separator, and a pattern with a slash is matched by a minimatch matcher (dot, noext, smart case, trailing /** as /**/*) over every entry fd lists; fd stops one match past the limit. The minimatch port gains the noext option. find returns before starting fd when the call was aborted during the .git lookup.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A find call aborted while the tool looked for a `.git` directory above the search path no longer starts fd.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "55a52447fc",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/tools/find_pi151_test.go::TestFindDoesNotStartFdAfterAbortDuringGitLookup",
+        "internal/codingagent/tools/find_pi151_test.go::TestFindFdInvocationFdGlobArguments",
+        "internal/codingagent/tools/find_pi151_test.go::TestFindFdInvocationWindowsPathPattern",
+        "internal/codingagent/tools/find_pi151_test.go::TestFindPathFilterKeepsAFinalLineWithoutANewline",
+        "internal/codingagent/tools/find_pi151_test.go::TestFindPathFilterStopsFdAtTheLimit",
+        "internal/codingagent/tools/find_pi151_test.go::TestFindPathPatternsPi151",
+        "internal/codingagent/tools/find_regressions_test.go::TestFindPathGlobRegression",
+        "internal/codingagent/tools/spawn_arguments_test.go::TestSearchAndShellToolsReportSpawnArgumentErrorsAsPiDoes",
+        "internal/minimatch/minimatch_noext_test.go::TestMatchNoExtKeepsExtglobsLiteral"
+      ]
+    },
+    {
       "id": "BF-563f896",
       "title": "A model request that is cancelled while its setup runs, for example the request after an abort during a tool…",
       "symptom": "A model request that is cancelled while its setup runs, for example the request after an abort during a tool call, ends as aborted instead of as an error.",
@@ -17905,6 +17965,29 @@
       ]
     },
     {
+      "id": "BF-613d8aa",
+      "title": "fix(tools): restore the deprecated grep readFile hook in every SDK",
+      "symptom": "fix(tools): restore the deprecated grep readFile hook in every SDK",
+      "rootCause": "Port of Pi. GrepOperations.readFile is optional, accepted and never called, in the tools package and the Go, Python, Rust and Lisp SDKs. The upgrade rule that deleted the member is retired with its tests.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "613d8aa7cc",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "extensions/sdk/builtin_tool_test.go::TestBuiltinToolOperationsMissingAMemberAreRefused",
+        "internal/codingagent/tools/grep_operations_readfile_test.go::TestGrepOperationsAcceptsADeprecatedReadFileHookWithoutCallingIt",
+        "test/extension-conformance/builtin_tool_delegate_test.go::TestConformance_BuiltinToolDelegationAcrossSDKs"
+      ]
+    },
+    {
       "id": "BF-619443a",
       "title": "MCP sign-in now rejects authorization endpoints and other OAuth metadata URLs that are not `http:` or…",
       "symptom": "MCP sign-in now rejects authorization endpoints and other OAuth metadata URLs that are not `http:` or `https:`, so a malicious server cannot make pig launch a `file:` or custom protocol URL.",
@@ -18295,6 +18378,26 @@
         "tui/extension_input_oracle_test.go::TestExtensionInputMatchesPi",
         "tui/extension_selector_oracle_test.go::TestExtensionSelectorMatchesPi"
       ]
+    },
+    {
+      "id": "BF-62aaa5e",
+      "title": "A second termination signal during print or JSON mode's shutdown now ends the process with the code of the…",
+      "symptom": "A second termination signal during print or JSON mode's shutdown now ends the process with the code of the signal that repeated (143 for SIGTERM, 129 for SIGHUP), as Pi's per-signal handler does.",
+      "rootCause": "The repeat killed the extension processes before it exited, which completed the disposal the first signal waited on, so the first signal's exit (and the mode's own return) raced it and could end the process with the first signal's code.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A second termination signal during print or JSON mode's shutdown now ends the process with the code of the signal that repeated (143 for SIGTERM, 129 for SIGHUP), as Pi's per-signal handler does. A SIGHUP that followed a SIGTERM could end with 143.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "62aaa5e7d9",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-62ae30d",
@@ -28412,6 +28515,34 @@
       ]
     },
     {
+      "id": "BF-8ac653e",
+      "title": "The powershell tool no longer reports `Command exited with code 1` under Windows PowerShell 5.1 when a native…",
+      "symptom": "The powershell tool no longer reports `Command exited with code 1` under Windows PowerShell 5.1 when a native command succeeded but its stderr was redirected, as in `git push 2\u003e\u00261 | Select-Object -Last 3`; such commands report the exit code PowerShell 7 reports.",
+      "rootCause": "Port of Pi (#11964, #8842). For powershell.exe the command gets Pi's exit-code suffix unless it ends in a backtick; the shell is resolved before the command is wrapped, as createLocalPowerShellOperations does.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The powershell tool no longer reports `Command exited with code 1` under Windows PowerShell 5.1 when a native command succeeded but its stderr was redirected, as in `git push 2\u003e\u00261 | Select-Object -Last 3`; such commands report the exit code PowerShell 7 reports.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8ac653e9b2",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/tools/powershell_exit_codes_test.go::TestLocalPowerShellOperationsResolveTheShellFirst",
+        "internal/codingagent/tools/powershell_exit_codes_test.go::TestPowerShellCommandAppendsTheExitSuffixForWindowsPowerShellOnly",
+        "internal/codingagent/tools/powershell_exit_codes_test.go::TestPowerShellExitCodes",
+        "internal/codingagent/tools/powershell_operations_test.go::TestLocalPowerShellOperationsWrapCommandsWithTheUTF8OutputSwitch",
+        "internal/codingagent/tools/powershell_test.go::TestPowerShellToolShellConfig",
+        "internal/codingagent/tools/powershell_test.go::TestShellToolWrapsCommandBeforeSpawn",
+        "internal/codingagent/tools/shell_operations_gaps_test.go::TestLocalShellOperationsWrapCommandBeforeTheShellRuns"
+      ]
+    },
+    {
       "id": "BF-8aff02e",
       "title": "`grep` with `context` numbers a file's lines at line feeds only, as ripgrep does: a lone carriage return no…",
       "symptom": "`grep` with `context` numbers a file's lines at line feeds only, as ripgrep does: a lone carriage return no longer adds a line, so the context lines after it keep their line numbers and the match is no longer shown on the wrong line.",
@@ -36746,6 +36877,28 @@
       ]
     },
     {
+      "id": "BF-a9ff675",
+      "title": "The terminal sandbox failed to start when the temporary directory had a symlinked ancestor, such as macOS's…",
+      "symptom": "The terminal sandbox failed to start when the temporary directory had a symlinked ancestor, such as macOS's default temporary directory.",
+      "rootCause": "Node resolves its entry before reading it, so a temporary directory under a symlinked ancestor (macOS /var, or a TMPDIR that is a link) made the sandbox exit at start. The directory is now resolved, and the one-script read grant names the resolved path; the grant is not widened. Ports Pi.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "macOS",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The terminal sandbox failed to start when the temporary directory had a symlinked ancestor, such as macOS's default temporary directory. It resolves the directory before starting, as Pi does; the sandbox's read access stays the one script.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a9ff67595c",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/tui/tui_sandbox_test.go::TestTheSandboxStartsWithASymlinkedTemporaryDirectoryWithoutExpandingFilePermissions"
+      ]
+    },
+    {
       "id": "BF-aa2003c",
       "title": "The edit tool's prepared arguments keep the members in the order the model sent them",
       "symptom": "A `tool_call` handler used to see the members sorted, with `\u003c`, `\u003e` and `\u0026` escaped.",
@@ -40151,7 +40304,7 @@
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "Quitting through `Runtime.Close` or the interactive quit during a tool call now waits for the interrupted run to settle before `session_shutdown` and disposal, so the aborted tool result and the final assistant message are saved and extensions see `session_shutdown` after them. Print mode's termination-signal shutdown and RPC shutdown keep Pi 1.5.0's order (Pi #9124, D247).",
+      "releaseNote": "Quitting through `Runtime.Close` or the interactive quit during a tool call now waits for the interrupted run to settle before `session_shutdown` and disposal, so the aborted tool result and the final assistant message are saved and extensions see `session_shutdown` after them. Print mode's termination-signal shutdown and RPC shutdown keep Pi 1.5.1's order (Pi #9124, D247).",
       "origin": "release note",
       "commits": [
         {
@@ -49281,6 +49434,28 @@
         "chord/delta/append_text_retention_norace_test.go::TestTrackerAppendTextReleasesBuffersOfReleasedKeys",
         "chord/delta/text_tails_test.go::TestTextTailsForgetCollectedBuffers",
         "chord/delta/text_tails_test.go::TestTrackerAppendTextStreamKeepsEarlierRevisions"
+      ]
+    },
+    {
+      "id": "BF-e35933e",
+      "title": "A WebSocket that receives an oversized frame is left closing while its handlers run, as Pi's is, so the peer…",
+      "symptom": "A WebSocket that receives an oversized frame is left closing while its handlers run, as Pi's is, so the peer receives its 1009 close frame; the server side reports close code 1006, as Pi does.",
+      "rootCause": "ws never reads the peer after a receiver error, so the server socket's close event keeps 1006 while the peer sees 1009. The socket stays closing while its error listeners run, so keep leaves it alone. The sandbox test also points TMP and TEMP at the link, as Pi's does.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A WebSocket that receives an oversized frame is left closing while its handlers run, as Pi's is, so the peer receives its 1009 close frame; the server side reports close code 1006, as Pi does.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e35933ead2",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/http/upgrades_test.go::TestPluginSocketsAnOversizedFrameLeavesTheSocketClosingTheServerReports1006AndThePeer1009"
       ]
     },
     {

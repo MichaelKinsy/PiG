@@ -37,7 +37,8 @@
 //     beside it and renamed into place while the component is open), records its bytes (`WorkersBuilt.Inputs`:
 //     an edit of the entry marks the app's `base`), every worker forks that copy, and `Close` removes the directory once every
 //     worker exited. A program cannot be held in memory, so the copy is made at the build and not at the first fork; a component
-//     that closed copies nothing and leaves a named directory as it is. It fails when `Entry` cannot be started or copied, as
+//     that closed copies nothing and leaves a named directory as it is (a start of the app's data directory removes the staged
+//     `.<kind>+build-*` directories an earlier process left beside it). It fails when `Entry` cannot be started or copied, as
 //     Pi's rejects when the base does not build: a start fails while it did (`worker failed to start`). There is no esbuild
 //     bundle, `cache/node` or `NODE_COMPILE_CACHE` (docs/parity/DIVERGENCES.md D600).
 //

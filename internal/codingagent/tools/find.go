@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -14,6 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/minimatch"
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
 	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 )
@@ -52,6 +54,9 @@ type FindTool struct {
 	FdPath     string
 	Tools      *ToolsManager
 	Operations *FindOperations
+
+	// gitRepoLookup replaces the .git lookup above the search path in tests.
+	gitRepoLookup func(searchPath string) bool
 }
 
 func (t *FindTool) Name() string  { return "find" }
@@ -111,36 +116,31 @@ func (t *FindTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 		return findError("fd is not available and could not be downloaded"), nil
 	}
 
-	args := []string{"--glob", "--color=never", "--hidden"}
-	// fd ignores .gitignore outside git repos unless --no-require-git; inside
-	// a repo its git-aware default stops parent rules at nested repos
-	// (upstream #5960).
-	if !insideGitRepo(searchPath) {
-		args = append(args, "--no-require-git")
+	// Pi 1.5.1 (#9262, #11972): see newFindFdInvocation for the arguments and the Windows path matcher.
+	invocation, err := newFindFdInvocation(p.Pattern, searchPath, effectiveLimit, runtime.GOOS == "windows", t.insideGitRepo(searchPath))
+	if err != nil {
+		return findError(err.Error()), nil
 	}
-	// One result past the limit tells "exactly N matches" from "more than N".
-	args = append(args, "--max-results", jsNumber(effectiveLimit+1))
-	// fd --glob matches the basename unless --full-path is set; in
-	// --full-path mode it matches the absolute candidate path, so a
-	// path-containing pattern needs a leading "**/".
-	effectivePattern := p.Pattern
-	if strings.Contains(p.Pattern, "/") {
-		args = append(args, "--full-path")
-		if !strings.HasPrefix(p.Pattern, "/") && !strings.HasPrefix(p.Pattern, "**/") && p.Pattern != "**" {
-			effectivePattern = "**/" + p.Pattern
-		}
-		if runtime.GOOS == "windows" {
-			effectivePattern = strings.ReplaceAll(effectivePattern, "/", `[/\\]`)
-		}
+	// An abort during the .git lookup above already returned the aborted result, but there was no child to stop yet. Do not start fd (Pi 1.5.1 #11974).
+	if ctx.Err() != nil {
+		return findError("Operation aborted"), nil
 	}
-	args = append(args, "--", effectivePattern, searchPath)
 
+	// A Windows path matcher lists every entry, so fd stops once one match past the limit arrived (--max-results would count non-matching entries).
+	fdCtx, stopFd := context.WithCancel(ctx)
+	defer stopFd()
 	//nolint:gosec // G204 (class b): program is fd resolved by PiG's tools manager; args are fixed flags, then -- and the pattern and search path from the find tool call, so the model cannot reach an fd option.
-	cmd := exec.CommandContext(ctx, fdPath, args...)
+	cmd := exec.CommandContext(fdCtx, fdPath, invocation.args...)
 	// Upstream's spawn finds fd with libuv's search on Windows.
 	nodespawn.SetProgram(cmd)
 	var stdout, stderr strings.Builder
-	cmd.Stdout = &stdout
+	var filter *findPathFilter
+	if invocation.pathMatcher != nil {
+		filter = &findPathFilter{matcher: invocation.pathMatcher, limit: effectiveLimit, stop: stopFd}
+		cmd.Stdout = filter
+	} else {
+		cmd.Stdout = &stdout
+	}
 	cmd.Stderr = &stderr
 	if err := cmd.Start(); err != nil {
 		// Upstream's catch rejects with an error spawn throws unchanged; only
@@ -153,6 +153,10 @@ func (t *FindTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 	waitErr := cmd.Wait()
 	if ctx.Err() != nil {
 		return findError("Operation aborted"), nil
+	}
+	if filter != nil {
+		filter.finish()
+		stdout.WriteString(filter.kept.String())
 	}
 	// readline decodes the child's bytes as UTF-8 (one U+FFFD per ill-formed subpart) before it splits them.
 	lines := readlineLines(jsstring.FromUTF8([]byte(stdout.String())))
@@ -314,4 +318,115 @@ func relativizeFindResultPathFor(resultPath, searchPath string, windows bool, en
 		return posixPath + "/"
 	}
 	return posixPath
+}
+
+// insideGitRepo is the .git lookup above the search path; gitRepoLookup replaces it in tests.
+func (t *FindTool) insideGitRepo(searchPath string) bool {
+	if t.gitRepoLookup != nil {
+		return t.gitRepoLookup(searchPath)
+	}
+	return insideGitRepo(searchPath)
+}
+
+// findFdInvocation is the fd command line of one find call and, on Windows for a pattern with a path separator, the matcher that picks the
+// paths fd lists.
+type findFdInvocation struct {
+	args        []string
+	pathMatcher *minimatch.Minimatch
+}
+
+// newFindFdInvocation builds find.ts's fd arguments. On Windows `\` in the pattern is a path separator and becomes `/` (#9262); on POSIX it stays
+// a glob escape. fd before 10.5.1 never matches --full-path globs on Windows and workarounds for that break on fd 10.5.1 (sharkdp/fd#2067), so on
+// Windows a path pattern (one with `/`) is not given to fd: fd lists every entry and the matcher decides (#11972). Its options keep fd's glob
+// behaviour: `*` matches dotfiles, `+(a|b)` is literal, and an all-lowercase pattern matches case-insensitively (smart case). A trailing `/**`
+// matches as `/**/*`, because minimatch's `src/**` also matches `src` itself and fd's does not.
+func newFindFdInvocation(pattern, searchPath string, effectiveLimit float64, windows, insideGit bool) (findFdInvocation, error) {
+	args := []string{"--color=never", "--hidden"}
+	// fd ignores .gitignore outside git repos unless --no-require-git; inside a repo its git-aware default stops parent rules at nested repos
+	// (upstream #5960).
+	if !insideGit {
+		args = append(args, "--no-require-git")
+	}
+	// fd --glob matches the basename unless --full-path is set; in --full-path mode it matches the absolute candidate path, so a path-containing
+	// pattern needs a leading "**/".
+	effectivePattern := pattern
+	if windows {
+		effectivePattern = strings.ReplaceAll(pattern, `\`, "/")
+	}
+	isPathPattern := strings.Contains(effectivePattern, "/")
+	if isPathPattern && !strings.HasPrefix(effectivePattern, "/") && !strings.HasPrefix(effectivePattern, "**/") && effectivePattern != "**" {
+		effectivePattern = "**/" + effectivePattern
+	}
+	if windows && isPathPattern {
+		globPattern := effectivePattern
+		if strings.HasSuffix(globPattern, "/**") {
+			globPattern = strings.TrimSuffix(globPattern, "**") + "**/*"
+		}
+		matcher, err := minimatch.New(globPattern, minimatch.Options{Dot: true, NoExt: true, NoCase: effectivePattern == jsstring.ToLower(effectivePattern), Platform: "win32"})
+		if err != nil {
+			return findFdInvocation{}, err
+		}
+		return findFdInvocation{args: append(args, "--", "", searchPath), pathMatcher: matcher}, nil
+	}
+	// One result past the limit tells "exactly N matches" from "more than N".
+	args = append(args, "--glob", "--max-results", jsNumber(effectiveLimit+1))
+	if isPathPattern {
+		args = append(args, "--full-path")
+	}
+	return findFdInvocation{args: append(args, "--", effectivePattern, searchPath)}, nil
+}
+
+// findPathFilter is the writer fd's stdout goes to when a path matcher decides the results: it keeps the lines the matcher accepts, one past the
+// limit at most, and stops fd once it has them.
+type findPathFilter struct {
+	matcher *minimatch.Minimatch
+	limit   float64
+	stop    func()
+
+	pending []byte
+	count   float64
+	done    bool
+	// kept is the accepted lines, each followed by a newline.
+	kept strings.Builder
+}
+
+func (f *findPathFilter) Write(p []byte) (int, error) {
+	if f.done {
+		return len(p), nil
+	}
+	f.pending = append(f.pending, p...)
+	for !f.done {
+		end := bytes.IndexByte(f.pending, '\n')
+		if end < 0 {
+			break
+		}
+		f.line(f.pending[:end])
+		f.pending = f.pending[end+1:]
+	}
+	if f.done {
+		f.pending = nil
+	}
+	return len(p), nil
+}
+
+// finish handles the text after the last newline, which readline emits as a final line.
+func (f *findPathFilter) finish() {
+	if !f.done && len(f.pending) > 0 {
+		f.line(f.pending)
+	}
+	f.pending = nil
+}
+
+func (f *findPathFilter) line(raw []byte) {
+	line := jsstring.Trim(strings.TrimSuffix(jsstring.FromUTF8(raw), "\r"))
+	if line == "" || !f.matcher.Match(line) {
+		return
+	}
+	f.kept.WriteString(line)
+	f.kept.WriteByte('\n')
+	f.count++
+	if f.count > f.limit {
+		f.done = true
+		f.stop()
+	}
 }

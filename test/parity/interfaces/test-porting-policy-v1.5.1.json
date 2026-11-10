@@ -4755,6 +4755,15 @@
       "rationale": "Tool admission, arguments, execution, cancellation, or returned output on coding turns."
     },
     {
+      "path": "packages/coding-agent/test/find-abort-before-spawn.test.ts",
+      "upstreamTestHash": "sha256:f2925681665f816a98a8f6d4079eaa08e5ea8718c830410e7ac5072e4f9781d8",
+      "area": "tools",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Tool admission, arguments, execution, cancellation, or returned output on coding turns."
+    },
+    {
       "path": "packages/coding-agent/test/first-time-setup-fork.test.ts",
       "upstreamTestHash": "sha256:38ae7d0f1aeb002ddbe6d0f9f0820b4b09b7d25d0656bde664c88d36694eabfa",
       "area": "cli",
@@ -4834,6 +4843,15 @@
         "hot-path"
       ],
       "rationale": "CLI startup, selected execution mode, settings, or command routing."
+    },
+    {
+      "path": "packages/coding-agent/test/grep-operations.test.ts",
+      "upstreamTestHash": "sha256:1de83e88c03775b8adecafcd7278bf9bdbd9ddc3f5674cc756a1cb042e3e1c63",
+      "area": "tools",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Tool admission, arguments, execution, cancellation, or returned output on coding turns."
     },
     {
       "path": "packages/coding-agent/test/http-dispatcher.test.ts",

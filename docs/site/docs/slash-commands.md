@@ -1,6 +1,6 @@
 # Slash commands
 
-PiG has the built-in slash commands of Pi 1.5.0 ([Pi's slash command reference](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/slash-commands.md)). Rows marked `[pig]` are PiG additions. Extensions can register more slash commands.
+PiG has the built-in slash commands of Pi 1.5.1 ([Pi's slash command reference](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/slash-commands.md)). Rows marked `[pig]` are PiG additions. Extensions can register more slash commands.
 
 ## Core
 
@@ -52,7 +52,7 @@ PiG Standard and other Piglets can add commands through selected extension Resou
 
 ## Worked examples
 
-Each example shows what you type, what PiG prints and where the behaviour comes from. The screens are taken from a real PiG session (a test model answering `What is in notes.txt?` first), so the lines above and below the result are the session's own. Paths and IDs on your computer differ. Where PiG differs from Pi, the divergence number is given. File and line references point to Pi 1.5.0's `packages/coding-agent/src/modes/interactive/interactive-mode.ts` (written `Pi:`) and to PiG's source.
+Each example shows what you type, what PiG prints and where the behaviour comes from. The screens are taken from a real PiG session (a test model answering `What is in notes.txt?` first), so the lines above and below the result are the session's own. Paths and IDs on your computer differ. Where PiG differs from Pi, the divergence number is given. File and line references point to Pi 1.5.1's `packages/coding-agent/src/modes/interactive/interactive-mode.ts` (written `Pi:`) and to PiG's source.
 
 ### Look at the session
 
