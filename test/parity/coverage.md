@@ -4,11 +4,11 @@ Generated from `1140` PORT_MAP entries and `876` parity scenarios.
 
 ## Status
 
-- **Porting:** 995 / 1026 intended-portable entries ✅ (97.0%).
-- **Behavior verification:** 813 / 995 ported entries (81.7%); 0 weak-only, 182 untested.
+- **Porting:** 998 / 1026 intended-portable entries ✅ (97.3%).
+- **Behavior verification:** 813 / 998 ported entries (81.5%); 0 weak-only, 185 untested.
 - **Upstream test porting:** 962 ported / 0 partial / 18 pending (7 other dispositions; [file mapping](interfaces/test-mapping-v1.5.1.json)). Of the partial/pending files, 0 deferred to 0.3.x by the [release policy](interfaces/test-porting-policy-v1.5.1.json) (`deferred-0.3.x`).
 
-Raw PORT_MAP rows: 1140. Breakdown: 114 n/a (designed out) · 29 🟡 partial · 2 ⬜ not started. See docs/parity/DIVERGENCES.md for the documented exceptions.
+Raw PORT_MAP rows: 1140. Breakdown: 114 n/a (designed out) · 26 🟡 partial · 2 ⬜ not started. See docs/parity/DIVERGENCES.md for the documented exceptions.
 
 ## Packages
 
@@ -18,7 +18,7 @@ Raw PORT_MAP rows: 1140. Breakdown: 114 n/a (designed out) · 29 🟡 partial ·
 | `ai` | 272 | 22 | 250 | 248 | 0 | 2 | 99.2% | 96.8% |
 | `chord` | 324 | 39 | 285 | 274 | 11 | 0 | 96.1% | 58.8% |
 | `codemode` | 17 | 4 | 13 | 13 | 0 | 0 | 100.0% | 100.0% |
-| `coding-agent` | 265 | 27 | 238 | 234 | 4 | 0 | 98.3% | 97.0% |
+| `coding-agent` | 265 | 27 | 238 | 237 | 1 | 0 | 99.6% | 95.8% |
 | `durable` | 100 | 10 | 90 | 78 | 12 | 0 | 86.7% | 96.2% |
 | `env` | 25 | 3 | 22 | 20 | 2 | 0 | 90.9% | 95.0% |
 | `evals` | 6 | 0 | 6 | 6 | 0 | 0 | 100.0% | 100.0% |
@@ -27,9 +27,9 @@ Raw PORT_MAP rows: 1140. Breakdown: 114 n/a (designed out) · 29 🟡 partial ·
 | `telemetry` | 8 | 1 | 7 | 7 | 0 | 0 | 100.0% | 100.0% |
 | `tui` | 46 | 1 | 45 | 45 | 0 | 0 | 100.0% | 100.0% |
 
-- **Four core packages (agent, ai, coding-agent, tui):** 532 / 538 intended-portable files ✅ (98.9%) from 589 rows; 517 behavioral (97.2%), 0 weak-only, 15 untested.
-- **Shipped surface (agent, ai, codemode, coding-agent, mcp, schema, telemetry, tui; coding-agent without ):** 617 / 623 intended-portable files ✅ (99.0%) from 685 rows; 552 behavioral (89.5%), 0 weak-only, 65 untested.
-- **Whole monorepo (12 packages):** 995 / 1026 intended-portable files ✅ (97.0%) from 1140 rows; 813 behavioral (81.7%), 0 weak-only, 182 untested.
+- **Four core packages (agent, ai, coding-agent, tui):** 535 / 538 intended-portable files ✅ (99.4%) from 589 rows; 517 behavioral (96.6%), 0 weak-only, 18 untested.
+- **Shipped surface (agent, ai, codemode, coding-agent, mcp, schema, telemetry, tui; coding-agent without ):** 620 / 623 intended-portable files ✅ (99.5%) from 685 rows; 552 behavioral (89.0%), 0 weak-only, 68 untested.
+- **Whole monorepo (12 packages):** 998 / 1026 intended-portable files ✅ (97.3%) from 1140 rows; 813 behavioral (81.5%), 0 weak-only, 185 untested.
 - **Interface closure:** 15056 of 15088 semantic interface IDs closed (519 designed-out, 32 pending, 14537 ported). A file-level ✅ does not close an interface ID.
 
 Behavioral evidence includes paired scenarios and reviewed mutation-proven Go unit tests. Unit tests are listed separately; last run refers only to paired scenarios, not unit execution or exhaustive parity.
@@ -394,7 +394,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/coding-agent/src/core/extensions/loader.ts` | ✅ | 26 (01-register-handshake, 04-slash-command, 31-extension-runtime-surface, 31-typescript-factory-error, 32-extension-load-failure-message, 32-headless-extension-cli-flags, 34-extension-module-loading, 36-extension-flag-defaults, 37-multiline-factory-error, 43-tool-parameter-schema, 52-interleaved-node-admission, 55-node-package-entry-exports, 56-failed-factory-api, 56-node-lazy-imports, 57-extension-factory-cache, 62-discovery-renderers, 64-runner-provider-bindings, 65-duplicate-go-folders, 65-dynamic-tools, 67-reload-module-state, 72-extension-exec-after-load, 72-extension-load-time-exec, 77-reload-stale-context, 86-reload-builtin-tool-registration, 88-startup-provider-registration-failure, 89-reload-provider-registration-failure) | 31 (01-register-handshake, 04-slash-command, 31-extension-runtime-surface, 31-typescript-factory-error, 32-extension-load-failure-message, 32-headless-extension-cli-flags, 34-extension-module-loading, 36-extension-flag-defaults, 37-multiline-factory-error, 43-tool-parameter-schema, 52-interleaved-node-admission, 55-node-package-entry-exports, 56-failed-factory-api, 56-node-lazy-imports, 57-extension-factory-cache, 64-runner-provider-bindings, 65-duplicate-go-folders, 65-dynamic-tools, 67-reload-module-state, 72-extension-exec-after-load, 72-extension-load-time-exec, 77-reload-stale-context, 86-reload-builtin-tool-registration, 88-startup-provider-registration-failure, 89-reload-provider-registration-failure, unit:./coding:TestDiscoverAndLoadExtensionsLoadsWhatItDiscoversAndReportsFailures, unit:./coding:TestDiscoverAndLoadExtensionsReturnsTheRuntimeTheExtensionsShare, unit:./coding:TestDiscoverExtensionPathsDefaultsTheAgentDirectoryToTheConfiguredOne, unit:./coding:TestDiscoverExtensionPathsFollowsPisLoaderOrderAndRules, unit:./coding:TestDiscoverExtensionPathsMatchesPisDiscoveryCases, unit:./coding:TestDiscoverExtensionPathsReadsManifestsLinksAndConfiguredPathsAsPi) | not run | ./coding:TestDiscoverAndLoadExtensionsLoadsWhatItDiscoversAndReportsFailures, ./coding:TestDiscoverAndLoadExtensionsReturnsTheRuntimeTheExtensionsShare, ./coding:TestDiscoverExtensionPathsDefaultsTheAgentDirectoryToTheConfiguredOne, ./coding:TestDiscoverExtensionPathsFollowsPisLoaderOrderAndRules, ./coding:TestDiscoverExtensionPathsMatchesPisDiscoveryCases, ./coding:TestDiscoverExtensionPathsReadsManifestsLinksAndConfiguredPathsAsPi |
 | `packages/coding-agent/src/core/extensions/wrapper.ts` | ✅ | 3 (01-print-extension-tool-bridge, 20-sdk-default-parallel-tools, 65-dynamic-tools) | 23 (01-print-extension-tool-bridge, 20-sdk-default-parallel-tools, 65-dynamic-tools, unit:./coding:TestBridgeNewRunnerTools_DropsMalformed, unit:./coding:TestBridgeToolForwardsTheAgentsUpdateCallbackAndReturnsTheDefinitionsResult, unit:./coding:TestBridgeToolKeepsExplicitConstrainedSamplingFalse, unit:./coding:TestBridgeToolPrepareArguments, unit:./coding:TestBridgeToolSchemaKeepsParameterMemberOrder, unit:./coding:TestBridgeTool_ConstrainedSamplingDisabled, unit:./coding:TestBridgeTool_ConstrainedSamplingGrammar, unit:./coding:TestBridgeTool_ConstrainedSamplingMalformed, unit:./coding:TestBridgeTool_ExecutePropagatesError, unit:./coding:TestBridgeTool_Execute_RoundTripResult, unit:./coding:TestBridgeTool_Execute_ZeroResultPassesThrough, unit:./coding:TestBridgeTool_ExecutionMode, unit:./coding:TestBridgeTool_NameAndSchema, unit:./coding:TestRuntime_ToolsSurfaceThroughBridge, unit:./coding:TestWrapRegisteredToolUpstream, unit:./coding:TestWrapRegisteredToolUpstream, unit:./coding:TestWrapRegisteredToolsGiveEachCallTheRunnersToolContext, unit:./coding:TestWrapRegisteredToolsUpstream, unit:./coding:TestWrapRegisteredToolsUpstream, unit:./coding:TestWrappedRegisteredToolSchemaPrepareAndReservationFollowTheDefinition) | not run | ./coding:TestBridgeNewRunnerTools_DropsMalformed, ./coding:TestBridgeToolForwardsTheAgentsUpdateCallbackAndReturnsTheDefinitionsResult, ./coding:TestBridgeToolKeepsExplicitConstrainedSamplingFalse, ./coding:TestBridgeToolPrepareArguments, ./coding:TestBridgeToolSchemaKeepsParameterMemberOrder, ./coding:TestBridgeTool_ConstrainedSamplingDisabled, ./coding:TestBridgeTool_ConstrainedSamplingGrammar, ./coding:TestBridgeTool_ConstrainedSamplingMalformed, ./coding:TestBridgeTool_ExecutePropagatesError, ./coding:TestBridgeTool_Execute_RoundTripResult, ./coding:TestBridgeTool_Execute_ZeroResultPassesThrough, ./coding:TestBridgeTool_ExecutionMode, ./coding:TestBridgeTool_NameAndSchema, ./coding:TestRuntime_ToolsSurfaceThroughBridge, ./coding:TestWrapRegisteredToolUpstream, ./coding:TestWrapRegisteredToolUpstream, ./coding:TestWrapRegisteredToolsGiveEachCallTheRunnersToolContext, ./coding:TestWrapRegisteredToolsUpstream, ./coding:TestWrapRegisteredToolsUpstream, ./coding:TestWrappedRegisteredToolSchemaPrepareAndReservationFollowTheDefinition |
 | `packages/coding-agent/src/core/extensions/index.ts` | n/a | 0 | 0 | not run |  |
-| `packages/coding-agent/src/core/extensions/pi-ai-extension-view.ts` | 🟡 | 0 | 0 | not run |  |
+| `packages/coding-agent/src/core/extensions/pi-ai-extension-view.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/coding-agent/src/extensions/index.ts` | ✅ | 0 | 1 (unit:./coding/cli:TestStartBuiltInLlamaRestoresTheStoredCatalog) | not run | ./coding/cli:TestStartBuiltInLlamaRestoresTheStoredCatalog |
 | `packages/coding-agent/src/extensions/llama/client.ts` | ✅ | 0 | 1 (unit:./internal/codingagent/llama:TestNormalizeLlamaServerURL) | not run | ./internal/codingagent/llama:TestNormalizeLlamaServerURL |
 | `packages/coding-agent/src/extensions/llama/huggingface.ts` | ✅ | 0 | 1 (unit:./internal/codingagent/llama:TestFindHuggingFaceTokenReadsTokenFiles) | not run | ./internal/codingagent/llama:TestFindHuggingFaceTokenReadsTokenFiles |
@@ -514,11 +514,11 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/coding-agent/src/cli/auth-command.ts` | ✅ | 0 | 3 (unit:./coding/cli:TestAuthCommandExitCodesAndErrors, unit:./coding/cli:TestAuthCommandPrintsSecretsOnlyInTheRequestedForm, unit:./coding/cli:TestParseAuthCommandLargeMinimumExpiry) | not run | ./coding/cli:TestAuthCommandExitCodesAndErrors, ./coding/cli:TestAuthCommandPrintsSecretsOnlyInTheRequestedForm, ./coding/cli:TestParseAuthCommandLargeMinimumExpiry |
 | `packages/coding-agent/src/cli/auth-login.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/coding-agent/src/cli/auth-logout.ts` | ✅ | **0 (untested)** | **0** | not run |  |
-| `packages/coding-agent/src/cli/auth-terminal.ts` | 🟡 | 0 | 0 | not run |  |
+| `packages/coding-agent/src/cli/auth-terminal.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/coding-agent/src/core/provider-matching.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/coding-agent/src/core/radius-mcp.ts` | 🟡 | 0 | 0 | not run |  |
 | `packages/coding-agent/src/utils/terminal-question.ts` | ✅ | **0 (untested)** | **0** | not run |  |
-| `packages/coding-agent/src/utils/web-url.ts` | 🟡 | 0 | 0 | not run |  |
+| `packages/coding-agent/src/utils/web-url.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/coding-agent/src/cli/setup.ts` | ✅ | 2 (32-extension-load-failure-message, 34-extension-process-identity) | 3 (32-extension-load-failure-message, 34-extension-process-identity, unit:./coding/cli:TestSetupCliSetsInheritedProcessMarkers) | not run | ./coding/cli:TestSetupCliSetsInheritedProcessMarkers |
 | `packages/coding-agent/src/core/bug-report-upload.ts` | n/a | 0 | 0 | not run |  |
 | `packages/coding-agent/src/core/bug-report.ts` | ✅ | 0 | 1 (unit:./internal/codingagent:TestRedactBugReportJSONKeepsTokenCounts) | not run | ./internal/codingagent:TestRedactBugReportJSONKeepsTokenCounts |
