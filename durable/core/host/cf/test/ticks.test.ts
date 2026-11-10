@@ -57,9 +57,9 @@ test("a call queued behind the reserve pass of the previous call's resume() star
   // await of generation.ts between its commits spends its tick: the helper async functions of a commit body (prepareBoundary, appendAssistant,
   // applyBoundary), the settle's reads (transaction.ts), the run's context read (context.ts, scheduler.ts), hooks.each (scheduler.ts),
   // ensureProviderSessionId (provider.ts), the stream's end and the start of a commit queued on an idle line (session.ts). Pi 1.2.0 counted 409; Pi 8b0caefc publishes a commit when Storage adopts it, hopcost.AdoptTail (3 over capsql) ticks before #runCommit resumes, so the wait on the last commit's publication resolves that much earlier: 406.
-  // Pi c23b9ec1 counts 346 (b556cfe5 counted 329, e7a0df27 counted 411; the generation's attempt and the tool slots' running deltas ride with the next commit, e5c6182b), measured as the `wait (running)` line of the reference run of F-ticks-seq-gate.
+  // Pi v1.5.1 counts 349 (three reservation passes of the lifecycle spend the pass of scheduler.ts #planCandidates; c23b9ec1 counted 346, b556cfe5 counted 329, e7a0df27 counted 411; the generation's attempt and the tool slots' running deltas ride with the next commit, e5c6182b), measured as the `wait (running)` line of the reference run of F-ticks-seq-gate.
   // The core's `wait (running)` of the same row, through `contract run F-ticks-seq-gate --impl native`, equals it.
-  assert.equal(running, 346)
+  assert.equal(running, 349)
   // snapshot of a document that does not exist: Session.snapshot awaits the line load once and returns (session.ts); the migration retry of
   // the host's read settles the same promise, so a success spends no pass of its own (Pi b556cfe5 counts 18, F-ticks-seq-gate `snapshot of a missing document`; e7a0df27 counted 13; the `.catch` adds one in both).
   assert.equal(snapshot, 18)
