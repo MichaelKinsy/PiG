@@ -657,6 +657,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6996de6](#bf-6996de6) | fix(durable/core): keep the reservation decision in a scheduler field, not two closure variables (TinyGo heap… | PiG's own defect | All platforms | Unreleased |
 | [BF-69b9811](#bf-69b9811) | Two PiG builds that share a config root (two installed versions, or stock PiG beside a Piglet Binary) no… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-69c175b](#bf-69c175b) | fix(models): models.json entries keep exposed limits and cost; bound thinking-only messages in summaries; pin… | PiG's own defect | All platforms | Unreleased |
+| [BF-69c667b](#bf-69c667b) | Changing the output padding now applies at once to the branch-summary, compaction-summary and… | PiG's own defect | All platforms | Unreleased |
 | [BF-69cd9d2](#bf-69cd9d2) | PageUp and PageDown (`tui.select.pageUp` and `tui.select.pageDown`) move the selection by one page in the… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-69f6341](#bf-69f6341) | The Radius relay WebSocket URL is built with the WHATWG URL parser, as Pi's `new URL` does: gateway hosts are… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6a46bc7](#bf-6a46bc7) | The Chord delivery scheduler no longer reads goroutine stacks or depends on how many goroutines the process… | PiG's own defect | All platforms | 0.7.0 |
@@ -10435,6 +10436,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `69c175bf60` (2026-10-09)
 - **Tests:** `coding/model_default_provider_race_test.go::TestExtensionProviderIsConfiguredWhenTheDefaultModelIsResolved`
+
+### BF-69c667b
+
+**Changing the output padding now applies at once to the branch-summary, compaction-summary and…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Changing the output padding now applies at once to the branch-summary, compaction-summary and skill-invocation cards already in the transcript.
+- **Root cause:** Settings > output padding calls SetOutputPad on every chat child; the branch-summary, compaction-summary and skill-invocation cards implement it as SetPaddingX on their embedded Box. A card is served from its container's per-child cache by its dirty flag, and SetPaddingX only dropped the Box's own render cache, so the chat kept drawing those cards at the old padding until the card changed for another reason. Pi's Container.render renders every child on every frame, so Pi shows the new padding at once. SetPaddingX and SetBgFn now set the Box's dirty flag.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `69c667b1ea` (2026-11-09)
+- **Tests:** `internal/codingagent/output_pad_test.go::TestApplyOutputPadReachesTheCardsTheChatContainerCaches`, `tui/box_dirty_test.go::TestBoxBackgroundThatDrawsNothingIsNotNoBackground`, `tui/box_dirty_test.go::TestBoxSetBgFnAndSetPaddingXReportTheChange`
+- **Release note:** Changing the output padding now applies at once to the branch-summary, compaction-summary and skill-invocation cards already in the transcript. Their padding change reached the card's box without telling the transcript, which kept showing the card at the old padding until the card changed for another reason.
 
 ### BF-69cd9d2
 
