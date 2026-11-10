@@ -47,6 +47,39 @@ func TestDefineStateTypesTheValueAndWhetherItIsKeyed(t *testing.T) {
 	}
 }
 
+// TestDefineStateKeysByADeclaredHostKindKeyedWithTheKindAsItsHostAnUndeclaredKindIsRefused runs `it("keys by a declared
+// host kind: keyed, with the kind as its host; an undeclared kind is refused")` of
+// packages/chord/test/documents/definition.test.ts. The expectTypeOf(Meta).toEqualTypeOf<StateDefinition<{ n: number },
+// typeof Session>> line is designed out as above.
+func TestDefineStateKeysByADeclaredHostKindKeyedWithTheKindAsItsHostAnUndeclaredKindIsRefused(t *testing.T) {
+	session, err := contracts.NewHostKind("session", contracts.Prop("id", contracts.Str()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	meta := mustDefine(t, "meta", StateOptions{
+		Schema:  contracts.Obj(contracts.Prop("n", contracts.Int())),
+		Version: 1,
+		Initial: func() *JsonObject { return obj("n", 0.0) },
+		Keyed:   session,
+	})
+	if !meta.Keyed || meta.Host != session {
+		t.Fatalf("keyed, host = %v, %v; want true, the session kind", meta.Keyed, meta.Host)
+	}
+	options := StateOptions{
+		Schema:  contracts.Obj(contracts.Prop("n", contracts.Int())),
+		Version: 1,
+		Initial: func() *JsonObject { return obj("n", 0.0) },
+	}
+	options.Keyed = true
+	if plain := mustDefine(t, "plain", options); plain.Host != nil {
+		t.Fatalf("a string-keyed definition has host %v", plain.Host)
+	}
+	options.Keyed = &contracts.HostKind{Kind: "session"}
+	if _, err := DefineState("meta", options); err == nil || err.Error() != "session: not a declared host kind" {
+		t.Fatalf("an undeclared kind: error = %v", err)
+	}
+}
+
 func TestDefineStateTakesARestrictedNameOnly(t *testing.T) {
 	options := StateOptions{
 		Schema:  contracts.Obj(contracts.Prop("n", contracts.Int())),
