@@ -19,7 +19,15 @@ export function formatMissingSessionCwdError(issue) {
     return `Stored session working directory does not exist: ${issue.sessionCwd}${sessionFile}\nCurrent working directory: ${issue.fallbackCwd}`;
 }
 export function formatMissingSessionCwdPrompt(issue) {
-    return `cwd from session file does not exist\n${issue.sessionCwd}\n\ncontinue in current cwd\n${issue.fallbackCwd}`;
+    return `Session cwd does not exist: ${issue.sessionCwd}`;
+}
+/** Prompt options for a missing session cwd, naming the current cwd; `undefined` cancels. */
+export function getMissingSessionCwdOptions(issue) {
+    return [
+        { label: `Continue in ${issue.fallbackCwd} (asks again next time)`, value: "continue" },
+        { label: `Fork into ${issue.fallbackCwd} (new session ID, original kept)`, value: "fork" },
+        { label: "Cancel", value: undefined },
+    ];
 }
 export class MissingSessionCwdError extends Error {
     issue;

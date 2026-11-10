@@ -9317,16 +9317,16 @@
         },
         {
           "kind": "output_normalized_equal",
-          "reason": "Declared plain-text/layout surface: A missing stored session cwd opens the exact pre-runtime Continue/Cancel selector.",
+          "reason": "Declared plain-text/layout surface: A missing stored session cwd opens the exact pre-runtime Continue/Fork/Cancel selector.",
           "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
         },
         {
           "kind": "terminal_crop",
           "configuration": {
-            "capture_start": "cwd from session file does not exist",
+            "capture_start": "Session cwd does not exist",
             "capture_end": "Cancel"
           },
-          "reason": "Owned visible surface: A missing stored session cwd opens the exact pre-runtime Continue/Cancel selector.",
+          "reason": "Owned visible surface: A missing stored session cwd opens the exact pre-runtime Continue/Fork/Cancel selector.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {

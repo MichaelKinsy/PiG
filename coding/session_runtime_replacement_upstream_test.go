@@ -3,6 +3,7 @@ package coding
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -149,9 +150,45 @@ func runtimeEventRecorder(events *[]any, cancelNew *string, cancelFork *bool) ex
 	return ext
 }
 
-// packages/coding-agent/test/suite/agent-session-runtime.test.ts:216.
+// packages/coding-agent/test/suite/agent-session-runtime.test.ts:218 (Pi #11060): "leaves no copy behind when an import fails on a missing
+// session cwd".
+func TestRuntimeOriginalImportMissingCwdLeavesNoCopy(t *testing.T) {
+	recordRuntimeOriginal(t, 218)
+	h := newRuntimeTestHarness(t, runtimeTestOptions{})
+	dir := h.runtime.Session().inner.Load().GetSessionDir()
+	importDir := filepath.Join(t.TempDir(), "import")
+	if err := os.MkdirAll(importDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	importPath := filepath.Join(importDir, "orphan.jsonl")
+	data, err := json.Marshal(icodingagent.SessionHeader{Type: "session", Version: 3, ID: "orphan", Timestamp: icodingagent.RFC3339NowNano(), CWD: filepath.Join(h.runtime.CWD(), "renamed-away")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(importPath, append(data, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err = h.runtime.ImportFromJsonl(t.Context(), importPath)
+	if _, ok := errors.AsType[*icodingagent.MissingSessionCwdError](err); !ok {
+		t.Fatalf("import error = %v, want MissingSessionCwdError", err)
+	}
+	if _, statErr := os.Stat(filepath.Join(dir, "orphan.jsonl")); !os.IsNotExist(statErr) {
+		t.Fatalf("the failed import left its copy behind: %v", statErr)
+	}
+	if _, err := h.runtime.ImportFromJsonl(t.Context(), importPath, h.runtime.CWD()); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := h.runtime.Session().Path(), filepath.Join(dir, "orphan.jsonl"); got != want {
+		t.Fatalf("session path = %q, want %q", got, want)
+	}
+	if _, statErr := os.Stat(filepath.Join(dir, "orphan-1.jsonl")); !os.IsNotExist(statErr) {
+		t.Fatalf("a second copy with the same id exists: %v", statErr)
+	}
+}
+
+// packages/coding-agent/test/suite/agent-session-runtime.test.ts:242.
 func TestRuntimeOriginalImportCollision(t *testing.T) {
-	recordRuntimeOriginal(t, 216)
+	recordRuntimeOriginal(t, 242)
 	h := newRuntimeTestHarness(t, runtimeTestOptions{})
 	dir := h.runtime.Session().inner.Load().GetSessionDir()
 	importDir := filepath.Join(t.TempDir(), "import")
@@ -189,9 +226,9 @@ func TestRuntimeOriginalImportCollision(t *testing.T) {
 	}
 }
 
-// packages/coding-agent/test/suite/agent-session-runtime.test.ts:249.
+// packages/coding-agent/test/suite/agent-session-runtime.test.ts:275.
 func TestRuntimeOriginalNewResumeEvents(t *testing.T) {
-	recordRuntimeOriginal(t, 249)
+	recordRuntimeOriginal(t, 275)
 	var events []any
 	h := newRuntimeTestHarness(t, runtimeTestOptions{extension: func() extension.Extension { return runtimeEventRecorder(&events, nil, nil) }})
 	if !reflect.DeepEqual(events, []any{extension.SessionStartEvent{Type: "session_start", Reason: "startup"}}) {
@@ -230,9 +267,9 @@ func TestRuntimeOriginalNewResumeEvents(t *testing.T) {
 	}
 }
 
-// packages/coding-agent/test/suite/agent-session-runtime.test.ts:294.
+// packages/coding-agent/test/suite/agent-session-runtime.test.ts:320.
 func TestRuntimeOriginalSwitchCancellation(t *testing.T) {
-	recordRuntimeOriginal(t, 294)
+	recordRuntimeOriginal(t, 320)
 	var events []any
 	var cancel string
 	h := newRuntimeTestHarness(t, runtimeTestOptions{extension: func() extension.Extension { return runtimeEventRecorder(&events, &cancel, nil) }})
@@ -258,9 +295,9 @@ func TestRuntimeOriginalSwitchCancellation(t *testing.T) {
 	}
 }
 
-// packages/coding-agent/test/suite/agent-session-runtime.test.ts:329.
+// packages/coding-agent/test/suite/agent-session-runtime.test.ts:355.
 func TestRuntimeOriginalForkEventsAndCancellation(t *testing.T) {
-	recordRuntimeOriginal(t, 329)
+	recordRuntimeOriginal(t, 355)
 	var events []any
 	cancel := false
 	h := newRuntimeTestHarness(t, runtimeTestOptions{extension: func() extension.Extension { return runtimeEventRecorder(&events, nil, &cancel) }})
@@ -295,9 +332,9 @@ func TestRuntimeOriginalForkEventsAndCancellation(t *testing.T) {
 	}
 }
 
-// packages/coding-agent/test/suite/agent-session-runtime.test.ts:378.
+// packages/coding-agent/test/suite/agent-session-runtime.test.ts:404.
 func TestRuntimeOriginalUnflushedForkDiagnostic(t *testing.T) {
-	recordRuntimeOriginal(t, 378)
+	recordRuntimeOriginal(t, 404)
 	h := newRuntimeTestHarness(t, runtimeTestOptions{})
 	s := h.runtime.Session()
 	if s.Path() == "" || s.LeafID() == nil {
@@ -312,13 +349,13 @@ func TestRuntimeOriginalUnflushedForkDiagnostic(t *testing.T) {
 	}
 }
 
-// packages/coding-agent/test/suite/agent-session-runtime.test.ts:391,431.
+// packages/coding-agent/test/suite/agent-session-runtime.test.ts:417,431.
 func TestRuntimeOriginalDuplicateCurrentBranch(t *testing.T) {
 	for _, memory := range []bool{false, true} {
 		t.Run(map[bool]string{false: "disk", true: "memory"}[memory], func(t *testing.T) {
-			site := 391
+			site := 417
 			if memory {
-				site = 431
+				site = 457
 			}
 			recordRuntimeOriginal(t, site)
 			h := newRuntimeTestHarness(t, runtimeTestOptions{memory: memory})
@@ -350,9 +387,9 @@ func TestRuntimeOriginalDuplicateCurrentBranch(t *testing.T) {
 	}
 }
 
-// packages/coding-agent/test/suite/agent-session-runtime.test.ts:543.
+// packages/coding-agent/test/suite/agent-session-runtime.test.ts:569.
 func TestRuntimeOriginalInvalidForkEntry(t *testing.T) {
-	recordRuntimeOriginal(t, 543)
+	recordRuntimeOriginal(t, 569)
 	h := newRuntimeTestHarness(t, runtimeTestOptions{})
 	_, err := h.runtime.Fork(t.Context(), "missing-entry", nil)
 	if err == nil || err.Error() != "Invalid entry ID for forking" {
@@ -360,9 +397,9 @@ func TestRuntimeOriginalInvalidForkEntry(t *testing.T) {
 	}
 }
 
-// packages/coding-agent/test/suite/agent-session-runtime.test.ts:548.
+// packages/coding-agent/test/suite/agent-session-runtime.test.ts:574.
 func TestRuntimeOriginalCrossCWD(t *testing.T) {
-	recordRuntimeOriginal(t, 548)
+	recordRuntimeOriginal(t, 574)
 	h := newRuntimeTestHarness(t, runtimeTestOptions{})
 	other := newRuntimeTestHarness(t, runtimeTestOptions{agentDir: h.runtime.Services().AgentDir()})
 	runtimePrompt(t, other.runtime, "other")
@@ -374,9 +411,9 @@ func TestRuntimeOriginalCrossCWD(t *testing.T) {
 	}
 }
 
-// packages/coding-agent/test/suite/agent-session-runtime.test.ts:620.
+// packages/coding-agent/test/suite/agent-session-runtime.test.ts:646.
 func TestRuntimeOriginalRestoreModelAndThinking(t *testing.T) {
-	recordRuntimeOriginal(t, 620)
+	recordRuntimeOriginal(t, 646)
 	h := newRuntimeTestHarness(t, runtimeTestOptions{noBootstrapModel: true})
 	other := newRuntimeTestHarness(t, runtimeTestOptions{noBootstrapModel: true, agentDir: h.runtime.Services().AgentDir()})
 	if err := other.runtime.Session().SetModel(other.models[1]); err != nil {

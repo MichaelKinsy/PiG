@@ -314,7 +314,7 @@
    #:refresh-models-context-stored #:refresh-models-context-allow-network #:refresh-models-context-force
    #:refresh-models-context-signal #:refresh-models-context-base-url #:provider #:make-provider #:provider-p #:provider-id
    #:provider-name #:provider-auth #:provider-get-models #:provider-stream #:provider-stream-simple #:provider-base-url
-   #:provider-headers #:provider-filter-models #:provider-get-all-models #:provider-filter-all-models #:provider-refresh-models
+   #:provider-headers #:provider-refresh-models-auth #:provider-filter-models #:provider-get-all-models #:provider-filter-all-models #:provider-refresh-models
    #:provider-fetch-deferred #:provider-cancel-deferred #:provider-generate-images #:provider-classify #:provider-handle
    #:oauth-auth-info #:make-oauth-auth-info #:oauth-auth-info-p #:oauth-auth-info-url #:oauth-auth-info-instructions
    #:oauth-device-code-info #:make-oauth-device-code-info #:oauth-device-code-info-p #:oauth-device-code-info-user-code

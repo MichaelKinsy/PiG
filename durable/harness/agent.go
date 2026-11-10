@@ -5,7 +5,6 @@ package harness
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"math"
 	"slices"
@@ -16,6 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/core/jv"
 	"github.com/MichaelKinsy/PiG/durable/env"
 	"github.com/MichaelKinsy/PiG/durable/session"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // DefaultRetryPolicy is the built-in durable generation retry policy (agent.ts:18-23).
@@ -55,7 +55,7 @@ type ExtensionSelection struct {
 // MarshalJSON writes an exact selection as an array and an edit as {add?, remove?}.
 func (selection ExtensionSelection) MarshalJSON() ([]byte, error) {
 	if selection.Exact {
-		return json.Marshal(nonNilStrings(selection.Names))
+		return jsstring.MarshalKeepingSurrogates(nonNilStrings(selection.Names))
 	}
 	var buffer bytes.Buffer
 	buffer.WriteByte('{')
@@ -78,7 +78,7 @@ func (selection *ExtensionSelection) UnmarshalJSON(data []byte) error {
 	*selection = ExtensionSelection{}
 	if trimmed := bytes.TrimSpace(data); len(trimmed) > 0 && trimmed[0] == '[' {
 		selection.Exact = true
-		if err := json.Unmarshal(trimmed, &selection.Names); err != nil {
+		if err := jsstring.UnmarshalKeepingSurrogates(trimmed, &selection.Names); err != nil {
 			return err
 		}
 		selection.Names = nonNilStrings(selection.Names)
@@ -88,7 +88,7 @@ func (selection *ExtensionSelection) UnmarshalJSON(data []byte) error {
 		Add    *[]string `json:"add"`
 		Remove *[]string `json:"remove"`
 	}
-	if err := json.Unmarshal(data, &edit); err != nil {
+	if err := jsstring.UnmarshalKeepingSurrogates(data, &edit); err != nil {
 		return err
 	}
 	if edit.Add != nil {
@@ -112,7 +112,7 @@ type ToolSelection struct {
 // MarshalJSON writes an exact selection as an array and a filter as {remove?, add?}.
 func (selection ToolSelection) MarshalJSON() ([]byte, error) {
 	if selection.Exact {
-		return json.Marshal(nonNilStrings(selection.Names))
+		return jsstring.MarshalKeepingSurrogates(nonNilStrings(selection.Names))
 	}
 	var buffer bytes.Buffer
 	buffer.WriteByte('{')
@@ -135,7 +135,7 @@ func (selection *ToolSelection) UnmarshalJSON(data []byte) error {
 	*selection = ToolSelection{}
 	if trimmed := bytes.TrimSpace(data); len(trimmed) > 0 && trimmed[0] == '[' {
 		selection.Exact = true
-		if err := json.Unmarshal(trimmed, &selection.Names); err != nil {
+		if err := jsstring.UnmarshalKeepingSurrogates(trimmed, &selection.Names); err != nil {
 			return err
 		}
 		selection.Names = nonNilStrings(selection.Names)
@@ -145,7 +145,7 @@ func (selection *ToolSelection) UnmarshalJSON(data []byte) error {
 		Remove *[]string `json:"remove"`
 		Add    *[]string `json:"add"`
 	}
-	if err := json.Unmarshal(data, &filter); err != nil {
+	if err := jsstring.UnmarshalKeepingSurrogates(data, &filter); err != nil {
 		return err
 	}
 	if filter.Remove != nil {
@@ -165,7 +165,7 @@ func nonNilStrings(values []string) []string {
 }
 
 func writeMember(buffer *bytes.Buffer, name string, value any, comma bool) error {
-	encoded, err := json.Marshal(value)
+	encoded, err := jsstring.MarshalKeepingSurrogates(value)
 	if err != nil {
 		return err
 	}

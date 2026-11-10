@@ -33,8 +33,35 @@ func FormatMissingSessionCwdError(issue SessionCwdIssue) string {
 	}
 	return fmt.Sprintf("Stored session working directory does not exist: %s%s\nCurrent working directory: %s", issue.SessionCwd, file, issue.FallbackCwd)
 }
+
+// FormatMissingSessionCwdPrompt ports formatMissingSessionCwdPrompt.
 func FormatMissingSessionCwdPrompt(issue SessionCwdIssue) string {
-	return fmt.Sprintf("cwd from session file does not exist\n%s\n\ncontinue in current cwd\n%s", issue.SessionCwd, issue.FallbackCwd)
+	return "Session cwd does not exist: " + issue.SessionCwd
+}
+
+// MissingSessionCwdChoice is how to open a session whose stored cwd is missing: run it in the current cwd once, or fork it there.
+type MissingSessionCwdChoice string
+
+const (
+	// MissingSessionCwdContinue runs the session in the current cwd; the choice is not stored.
+	MissingSessionCwdContinue MissingSessionCwdChoice = "continue"
+	// MissingSessionCwdFork copies the session into the current cwd as a new session.
+	MissingSessionCwdFork MissingSessionCwdChoice = "fork"
+)
+
+// MissingSessionCwdOption is one prompt option; an empty Value cancels (Pi's undefined).
+type MissingSessionCwdOption struct {
+	Label string
+	Value MissingSessionCwdChoice
+}
+
+// GetMissingSessionCwdOptions ports getMissingSessionCwdOptions: the prompt options for a missing session cwd, naming the current cwd.
+func GetMissingSessionCwdOptions(issue SessionCwdIssue) []MissingSessionCwdOption {
+	return []MissingSessionCwdOption{
+		{Label: "Continue in " + issue.FallbackCwd + " (asks again next time)", Value: MissingSessionCwdContinue},
+		{Label: "Fork into " + issue.FallbackCwd + " (new session ID, original kept)", Value: MissingSessionCwdFork},
+		{Label: "Cancel"},
+	}
 }
 
 type MissingSessionCwdError struct{ Issue SessionCwdIssue }

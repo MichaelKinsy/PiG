@@ -18,6 +18,7 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/MichaelKinsy/PiG/internal/terminalquestion"
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
 const secretPrompt = "Secret: "
@@ -56,7 +57,7 @@ func termiosOf(t *testing.T, tty *os.File) unix.Termios {
 // waitForRawMode returns once readSecret has put the terminal in raw mode: it writes its prompt first, so the prompt is no proof.
 func waitForRawMode(t *testing.T, tty *os.File) unix.Termios {
 	t.Helper()
-	deadline := time.Now().Add(30 * time.Second)
+	deadline := time.Now().Add(testbudget.Wait(t))
 	for {
 		termios := termiosOf(t, tty)
 		if termios.Lflag&(unix.ECHO|unix.ICANON) == 0 {
@@ -88,7 +89,7 @@ func awaitSecret(t *testing.T, done <-chan secretResult) secretResult {
 	select {
 	case got := <-done:
 		return got
-	case <-time.After(30 * time.Second):
+	case <-time.After(testbudget.Wait(t)):
 		t.Fatal("readSecret did not return")
 		return secretResult{}
 	}
@@ -179,7 +180,7 @@ func TestReadSecretCtrlCDoesNotEndThePromptWhenTheHandlerLeavesItRunning(t *test
 	writeMaster(t, master, "ab\x03")
 	select {
 	case <-interrupted:
-	case <-time.After(30 * time.Second):
+	case <-time.After(testbudget.Wait(t)):
 		t.Fatal("Ctrl+C did not reach the interrupt handler")
 	}
 	writeMaster(t, master, "c\r")
@@ -334,7 +335,7 @@ func TestLoginTerminalSecretReadsStdinAndWritesTheNewlineToItsOutput(t *testing.
 		if got.err != nil || got.value != "hunter2" || out.String() != secretPrompt+"\n" {
 			t.Fatalf("secret %q, %v, output %q", got.value, got.err, out.String())
 		}
-	case <-time.After(30 * time.Second):
+	case <-time.After(testbudget.Wait(t)):
 		t.Fatal("Secret did not return")
 	}
 
@@ -350,7 +351,7 @@ func TestLoginTerminalSecretReadsStdinAndWritesTheNewlineToItsOutput(t *testing.
 		if !errors.Is(got.err, errLoginCancelled) || interrupts.Load() != 1 {
 			t.Fatalf("secret %q, %v, interrupts %d", got.value, got.err, interrupts.Load())
 		}
-	case <-time.After(30 * time.Second):
+	case <-time.After(testbudget.Wait(t)):
 		t.Fatal("Secret did not return after Ctrl+C")
 	}
 }

@@ -1,4 +1,4 @@
-import { constants, copyFileSync, existsSync, mkdirSync } from "node:fs";
+import { constants, copyFileSync, existsSync, mkdirSync, rmSync } from "node:fs";
 import { basename, join, parse } from "node:path";
 import { pathsEqual, resolvePath } from "../utils/paths.js";
 import { emitSessionShutdownEvent } from "./extensions/runner.js";
@@ -282,7 +282,15 @@ export class AgentSessionRuntime {
             copyFileSync(resolvedPath, destinationPath, constants.COPYFILE_EXCL);
         }
         const sessionManager = SessionManager.open(destinationPath, sessionDir, cwdOverride);
-        assertSessionCwdExists(sessionManager, this.cwd);
+        try {
+            assertSessionCwdExists(sessionManager, this.cwd);
+        }
+        catch (error) {
+            // The import did not happen; drop the copy so a retry with a cwd override or a fork leaves no stray file.
+            if (!sourceAlreadyStored)
+                rmSync(destinationPath, { force: true });
+            throw error;
+        }
         await this.teardownCurrent("resume", sessionManager.getSessionFile());
         this.apply(await this.createRuntime({
             cwd: sessionManager.getCwd(),

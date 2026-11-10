@@ -192,6 +192,6 @@ internal/evals/.eval/
 # pin.py sync keeps only the active pin and reviewed baseline eligible for tracking.
 # BEGIN PINNED INTERFACE SNAPSHOTS
 /test/parity/interfaces/*-v*.json
-!/test/parity/interfaces/*-v1.5.1.json
+!/test/parity/interfaces/*-v1.5.2.json
 !/test/parity/interfaces/*-v0.84.0.json
 # END PINNED INTERFACE SNAPSHOTS
