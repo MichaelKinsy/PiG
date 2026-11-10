@@ -33,7 +33,7 @@ func TestTheSandboxStartsWithASymlinkedTemporaryDirectoryWithoutExpandingFilePer
 	if err := os.Mkdir(target, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	testenv.Symlink(t, target, linked)
+	testenv.RequireDirectoryLink(t, target, linked)
 	t.Setenv("TMPDIR", linked)
 	t.Setenv("TMP", linked)
 	t.Setenv("TEMP", linked)
