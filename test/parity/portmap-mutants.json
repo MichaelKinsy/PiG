@@ -6527,5 +6527,27 @@
    "old": "return parsed.Href, true",
    "new": "return parsed.Href + \"/\", true"
   }
+ ],
+ "packages/chord/src/host/parked.ts": [
+  {
+   "file": "chord/next/host/host_parked.go",
+   "old": "if float64(p.loop.Now()) >= call.due {",
+   "new": "if float64(p.loop.Now()) > call.due {"
+  },
+  {
+   "file": "chord/next/host/host_parked.go",
+   "old": "p.expire(call)\n\t\t\tcontinue\n",
+   "new": "p.expire(call)\n\t\t\tbreak\n"
+  },
+  {
+   "file": "chord/next/host/host_parked.go",
+   "old": "if call.cancel != nil {\n\t\tcall.cancel()\n\t}\n",
+   "new": "if call.cancel != nil {\n\t}\n"
+  },
+  {
+   "file": "chord/next/host/host_parked.go",
+   "old": "if p.walking == 0 && p.removed > 16 &&",
+   "new": "if p.removed > 16 &&"
+  }
  ]
 }

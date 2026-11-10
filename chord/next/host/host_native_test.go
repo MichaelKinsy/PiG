@@ -16,13 +16,14 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/test/host/native.test.ts for the part that needs no host. Every case of upstream's file runs a
-// host (loaded, host.get/hold/close, `self.open` in a served factory); the natives of an attempt, its closing in reverse
-// order, the host's close collecting throws, and the object's context belong to the attempt (attempt.ts) and the host core.
-// These are own tests of nativeHandle, within and drained on a fake loop, with the behavior each upstream case asserts of
-// the handle itself, each naming its case. `facets › cannot open natives` is a type-level check (see tests.json).
+// Ports packages/chord/test/host/native.test.ts. The TestHostNatives... cases are the upstream cases on whole hosts (loaded,
+// host.get/hold/close, `self.open` in a served factory) and the TestNativeSpans... cases (here and in host_spans_test.go)
+// its "spans (slice 9)" cases; the remaining TestNative..., TestWithin and TestDrained cases are own tests of nativeHandle,
+// within and drained on a fake loop, with the behavior each upstream case asserts of the handle itself, each naming its
+// case. `facets › cannot open natives` is TestFacetsCannotOpenNativesFacetHostDeclaresNoOpenMember (host_facet_test.go).
 
 // nativeHarness is the owner of the natives of `app.res(1)`: the reports it received and the loop it runs on.
 type nativeHarness struct {
@@ -218,6 +219,13 @@ func TestNativeALateValueIsClosedOnce(t *testing.T) {
 			if err := nativeResultOf(t, opening); err != nil {
 				t.Fatalf("open = %v, want nil", err)
 			}
+			// The late value was closed with its arrival: the native is closed, no longer waiting for a value to close.
+			native.mu.Lock()
+			standing := native.state.kind
+			native.mu.Unlock()
+			if standing != nativeClosed {
+				t.Fatalf("state after the late value was closed = %d, want closed (%d)", standing, nativeClosed)
+			}
 			if failure := native.close(NativeCloseReason{Kind: kind}); failure != nil {
 				t.Fatalf("second close: %+v", failure)
 			}
@@ -396,6 +404,16 @@ func TestNativeAnOpenerThatPanicsRejectsTheOpen(t *testing.T) {
 	if err := native.open(chordctx.Background()); err == nil || err.Error() != "no luck" {
 		t.Fatalf("open = %v, want no luck", err)
 	}
+	// What was thrown is what rejects: an error that panicked keeps its identity, a value that is no error becomes one.
+	boom := errors.New("boom")
+	if err := newNativeHandle(func(context.Context) (string, error) { panic(boom) },
+		func(string, NativeCloseReason, context.Context) error { return nil }, time.Second, h.owner(1)).open(chordctx.Background()); !errors.Is(err, boom) {
+		t.Fatalf("open of an opener that panicked with an error = %v, want that error", err)
+	}
+	if err := newNativeHandle(func(context.Context) (string, error) { panic("plain") },
+		func(string, NativeCloseReason, context.Context) error { return nil }, time.Second, h.owner(1)).open(chordctx.Background()); err == nil || err.Error() != "plain" {
+		t.Fatalf("open of an opener that panicked with a string = %v, want plain", err)
+	}
 	if got := nativeReadText[string](native); got != "not_ready/: app.res(1) native #1: not open yet" {
 		t.Fatalf("value = %q, want not_ready", got)
 	}
@@ -481,6 +499,54 @@ func TestDrained(t *testing.T) {
 	running.settle(nil)
 	if result := drained(loop, []*nativeWork{done, running, failed}, time.Second); result != withinSettled {
 		t.Fatalf("drained once it settled = %v, want settled", result)
+	}
+}
+
+// eagerLoop is a loop whose timers fire the moment they are set: a timer that is due before its race looks at the work, as
+// when the work settled in an earlier microtask than the timer's callback. It counts the timers set.
+type eagerLoop struct {
+	eventLoop
+	set int
+}
+
+type eagerTimer struct{}
+
+func (eagerTimer) Stop() bool { return false }
+
+func (l *eagerLoop) AfterFunc(_ time.Duration, job func()) Timer {
+	l.set++
+	job()
+	return eagerTimer{}
+}
+
+// Own test of `within` and `drained` when the work settled and the timer is due at the same time: the work wins (its
+// reaction runs before the timer's callback), every time, whichever case the select looks at first.
+func TestWithinAndDrainedAWorkSettledBeforeTheTimerRanWinsWhenBothAreDue(t *testing.T) {
+	loop := &eagerLoop{eventLoop: newFakeLoop()}
+	done := newNativeWork()
+	done.settle(nil)
+	for range 200 {
+		if result, err := within(loop, done, time.Second); result != withinSettled || err != nil {
+			t.Fatalf("within = %v, %v; want settled, nil", result, err)
+		}
+		if result := drained(loop, []*nativeWork{done, done}, time.Second); result != withinSettled {
+			t.Fatalf("drained = %v, want settled", result)
+		}
+	}
+	running := newNativeWork()
+	if result, _ := within(loop, running, time.Second); result != withinTimeout {
+		t.Fatalf("within of work that never settled = %v, want timeout", result)
+	}
+	if result := drained(loop, []*nativeWork{done, running}, time.Second); result != withinTimeout {
+		t.Fatalf("drained of work that never settled = %v, want timeout", result)
+	}
+}
+
+// Own test of `drained`: with no work it is settled at once, with no timer set (Pi: `size === 0 ? "settled" : ...`).
+func TestDrainedOfNothingSetsNoTimer(t *testing.T) {
+	loop := &eagerLoop{eventLoop: newFakeLoop()}
+	if result := drained(loop, nil, time.Second); result != withinSettled || loop.set != 0 {
+		t.Fatalf("drained of nothing = %v with %d timers set, want settled with none", result, loop.set)
 	}
 }
 
@@ -792,5 +858,46 @@ func TestHostNativesReportACloseStillRunningAfterItsCloseTimeoutAbortItsContextA
 	want := []HostError{{Kind: ErrCloseTimeout, Object: "app.res(1)", Native: Position{Kind: PositionNative, Position: 2}}}
 	if got := errs.All(); !reflect.DeepEqual(got, want) {
 		t.Fatalf("errors = %+v, want %+v", got, want)
+	}
+}
+
+// native.ts `#closeValue`: a close runs under the object's context with its `chord.close` span as the telemetry, so what a
+// close does is a child of that span (own case beside upstream's "spans (slice 9)" ones, which look at the span itself).
+func TestNativeSpansACloseRunsUnderItsChordCloseSpan(t *testing.T) {
+	recorder := telemetry.NewInMemoryTelemetryContext()
+	host, _ := loaded(t, serveRes(func(_ float64, self Self) {
+		self.Open(func(context.Context) (any, error) { return 1, nil },
+			func(_ any, _ NativeCloseReason, ctx context.Context) error {
+				return chordctx.Telemetry(ctx).StartSpan(telemetry.SpanOptions{Name: "app.cleanup"}, func(telemetry.TelemetrySpan) error { return nil })
+			})
+	}), loadedOptions{Telemetry: recorder})
+	if _, err := host.Get(background, nativeRes, jsonObject("id", float64(1)), GetOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	must(t, host.Close(background))
+	scopeEventually(t, "the close to settle", func() bool { return allSettled(recorder, "chord.close", "app.cleanup") })
+	closed := spanWhere(t, recorder, "chord.close", nil)
+	if cleanup := spanWhere(t, recorder, "app.cleanup", nil); !childOf(cleanup, closed) {
+		t.Errorf("the close's own span is not a child of chord.close")
+	}
+}
+
+// native.ts `#closeWithin`: the close's signal (`timeout`) is aborted only when the close timed out. A close that settled in time
+// leaves its context live, so a closer that keeps its ctx (a task it started) still sees it unaborted after close returns.
+func TestNativeACloseInTimeLeavesItsContextUnabortedAfterItReturns(t *testing.T) {
+	h := newNativeHarness(t)
+	var kept context.Context
+	native := newNativeHandle(nativeOpener("v"), func(_ string, _ NativeCloseReason, ctx context.Context) error {
+		kept = ctx
+		return nil
+	}, time.Second, h.owner(1))
+	if err := native.open(chordctx.Background()); err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	if failure := native.close(NativeCloseReason{Kind: NativeCloseEnd}); failure != nil {
+		t.Fatalf("close = %+v", failure)
+	}
+	if kept == nil || kept.Err() != nil {
+		t.Fatalf("the close's ctx after a close in time = %v, want a live ctx", kept)
 	}
 }

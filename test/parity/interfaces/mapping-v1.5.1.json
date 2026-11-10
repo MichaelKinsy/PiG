@@ -106906,7 +106906,7 @@
       "evidence": [
         "test:agent/agent_class_pi_oracle_test.go#TestAgentClassMatchesPi",
         "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi",
-        "test:chord/next/host/host_ctx_test.go#TestLinkedAbortSignalsAbortWithTheCallersSignalOrTheCallsTheCallersReasonFirst"
+        "test:chord/next/host/host_ctx_test.go#TestCtxGetRejectsWithTheAcquireErrorWhileItsHandlerRuns"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -106929,7 +106929,7 @@
       "evidence": [
         "test:chord/next/host/host_routines_test.go#TestOnTypesTheirHandlerByTheSourcesKindOpsAndRetiredForAJSONWatchableTheValueAloneForANativeOne",
         "test:chord/next/host/jobs_job_runs_test.go#TestPhaseSpansKeepARunsCtxAJobsUnderCtxTraceItsIdAndStateRecordedOrNot",
-        "test:chord/next/host/host_attempt_test.go#TestAttemptTheDrainAHandlerStuckPastItNoLongerCountsAsACallNorHoldsItsCtxGetReferences"
+        "test:chord/next/host/host_ctx_test.go#TestCtxGetRejectsWithTheAcquireErrorWhileItsHandlerRuns"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -113011,7 +113011,7 @@
       "evidence": [
         "test:chord/next/host/host_attempt_test.go#TestActivationSpansATransientFailureAndItsRetryIsARootOfTheHostsAdapterLinkedToItsFirstTriggerARetrysLinksToTheAttemptBefore",
         "test:chord/next/host/host_attempt_test.go#TestAttemptAnAttemptNotLiveWithinReadyTimeoutIsAbandonedAndFailsTransientTheOpenersContextAbortedWhatOpenedClosed",
-        "test:chord/next/host/host_native_test.go#TestNativeACloseInTimeReportsNothingAndLeavesNoTimer"
+        "test:chord/next/host/host_native_test.go#TestNativeACloseInTimeLeavesItsContextUnabortedAfterItReturns"
       ]
     },
     {
