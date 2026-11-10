@@ -53359,6 +53359,26 @@
       ]
     },
     {
+      "id": "BF-f6d6811",
+      "title": "CI: the Linux parity shards install the pinned SBCL as the test and portmap shards do, so the Lisp scenario…",
+      "symptom": "CI: the Linux parity shards install the pinned SBCL as the test and portmap shards do, so the Lisp scenario `75-robust-notes-lisp` no longer fails with `exec \"sbcl\" not found in PATH` on whichever parity shard runs it.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "Linux",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "CI: the Linux parity shards install the pinned SBCL as the test and portmap shards do, so the Lisp scenario `75-robust-notes-lisp` no longer fails with `exec \"sbcl\" not found in PATH` on whichever parity shard runs it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f6d681159b",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-f6e4695",
       "title": "Schemas decoded from a wire description (a Node child's contracts, a hold token) keep their declared property…",
       "symptom": "Schemas decoded from a wire description (a Node child's contracts, a hold token) keep their declared property order, so a failed args, result, state or input check lists its errors in that order as Pi does, and a description is written back in the declared order; they were sorted by name.",
