@@ -62,4 +62,10 @@ const walk = (alphabet, length) => Array.from({ length }, () => alphabet[next(al
 for (let i = 0; i < 1500; i++) record("localhost", "/" + walk(pathAlphabet, 1 + next(14)));
 for (let i = 0; i < 1500; i++) record(walk(hostAlphabet, 1 + next(12)), "/" + walk(pathAlphabet, next(4)));
 
+// A non-ASCII domain goes through UTS #46, where an `xn--` label that is empty or not ASCII is refused.
+for (const host of ["xn--.\u00e4", "..xn--\u00e4xn--", "XN--.\u00e4", "\u00e4.xn--", "\u00e4.xn--a", "\u00e4.xn--\u00e4", "xn--\u00e4.a", "x\u00e4.xn--a--", "\u00e4.XN--A"]) record(host, "/p");
+// Hosts made of punycode-looking labels, after the walks above so those rows keep their seed.
+const labelAlphabet = ["xn--", "xn--", "XN--", "a", "b", "-", ".", ".", "0", "1", "X", "N", "%78", "%6e", "%2d", "\xe4", "c", "9", "_"];
+for (let i = 0; i < 400; i++) record(walk(labelAlphabet, 1 + next(7)), "/p");
+
 process.stdout.write(out.join("\n") + "\n");

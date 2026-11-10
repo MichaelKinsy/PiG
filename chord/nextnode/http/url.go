@@ -232,11 +232,33 @@ func domainToASCII(domain string) (string, bool) {
 	if plain {
 		return strings.ToLower(domain), true
 	}
+	if badPunycodeLabel(domain) {
+		return "", false
+	}
 	ascii, err := domainProfile.ToASCII(domain)
 	if err != nil {
 		return "", false
 	}
 	return ascii, true
+}
+
+// badPunycodeLabel reports whether a non-ASCII domain has a label that starts with `xn--` and is empty after it or holds a non-ASCII
+// character: Node refuses the host, where x/net/idna drops the empty label or maps the characters.
+func badPunycodeLabel(domain string) bool {
+	for label := range strings.SplitSeq(domain, ".") {
+		if len(label) < 4 || !strings.EqualFold(label[:4], "xn--") {
+			continue
+		}
+		if len(label) == 4 {
+			return true
+		}
+		for i := 4; i < len(label); i++ {
+			if label[i] >= 0x80 {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // endsInANumber is the URL standard's check that a domain's last label is a number (decimal, octal or hexadecimal), which
