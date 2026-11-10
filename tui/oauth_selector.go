@@ -111,16 +111,16 @@ func NewOAuthSelectorComponent(mode string, providers []OAuthProvider, onSelect 
 	return newOAuthSelectorComponent(nil, mode, providers, onSelect, onCancel, initialSearch...)
 }
 
-// NewOAuthSelectorComponentAnimated is oauth-selector.ts's constructor (mode, providers, tui, onSelect, onCancel, initialSearchInput?):
+// NewOAuthSelectorComponentAnimated is oauth-selector.ts's constructor (mode, providers, onSelect, onCancel, initialSearchInput?, tui?):
 // the selected row of a preferred partner provider shows its animated brand style, and ui.RequestRender is called each animation
-// frame. A nil ui animates nothing, like NewOAuthSelectorComponent. initialSearch is the optional initialSearchInput ("" is none).
-// Dispose stops the animation.
-func NewOAuthSelectorComponentAnimated(mode string, providers []OAuthProvider, ui TUI, onSelect func(providerID, authType string), onCancel func(), initialSearch ...string) *OAuthSelectorComponent {
+// frame. A nil ui is Pi's omitted tui: nothing animates, as in NewOAuthSelectorComponent. initialSearch is the optional
+// initialSearchInput ("" is none). Dispose stops the animation.
+func NewOAuthSelectorComponentAnimated(mode string, providers []OAuthProvider, onSelect func(providerID, authType string), onCancel func(), initialSearch string, ui TUI) *OAuthSelectorComponent {
 	var requestRender func()
 	if ui != nil {
 		requestRender = func() { ui.RequestRender() }
 	}
-	return newOAuthSelectorComponent(requestRender, mode, providers, onSelect, onCancel, initialSearch...)
+	return newOAuthSelectorComponent(requestRender, mode, providers, onSelect, onCancel, initialSearch)
 }
 
 func newOAuthSelectorComponent(requestRender func(), mode string, providers []OAuthProvider, onSelect func(providerID, authType string), onCancel func(), initialSearch ...string) *OAuthSelectorComponent {

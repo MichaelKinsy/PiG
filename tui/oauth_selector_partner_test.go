@@ -17,7 +17,7 @@ func TestOAuthSelectorShowsTheBrandStyleOnlyOnTheSelectedPartnerRow(t *testing.T
 		{ID: "radius", Name: "Radius", AuthType: "oauth"},
 		{ID: "openrouter", Name: "OpenRouter", AuthType: "api_key"},
 	}
-	selector := NewOAuthSelectorComponentAnimated("login", providers, renderFuncTUI{f: func() {}}, func(string, string) {}, func() {}, "")
+	selector := NewOAuthSelectorComponentAnimated("login", providers, func(string, string) {}, func() {}, "", renderFuncTUI{f: func() {}})
 	defer selector.Dispose()
 
 	output := strings.Join(selector.Render(120), "\n")
@@ -90,12 +90,12 @@ func TestOAuthSelectorAnimatesAPartnerRowUntilDisposed(t *testing.T) {
 		selector := NewOAuthSelectorComponentAnimated("login", []OAuthProvider{
 			{ID: "radius", Name: "Radius", AuthType: "oauth"},
 			{ID: "anthropic", Name: "Anthropic", AuthType: "api_key"},
-		}, renderFuncTUI{f: func() {
+		}, func(string, string) {}, func() {}, "", renderFuncTUI{f: func() {
 			requests.Add(1)
 			if disposed.Load() {
 				t.Error("a render was requested after Dispose returned")
 			}
-		}}, func(string, string) {}, func() {}, "")
+		}})
 		selector.Render(120)
 		time.Sleep(3 * BrandAnimationFrame)
 		synctest.Wait()
