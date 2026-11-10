@@ -22,8 +22,11 @@ type windowHarness struct {
 	ext      *Extension
 	host     *conn
 	observed chan windowObservation
+	first    chan bool
 	pongs    chan struct{}
 	freeLoop func()
+
+	freeSecond func()
 }
 
 func newWindowHarness(t *testing.T) *windowHarness {
@@ -34,7 +37,7 @@ func newWindowHarness(t *testing.T) *windowHarness {
 	t.Cleanup(loop.Wait)
 	t.Cleanup(func() { _ = client.Close(); _ = server.Close() })
 	connection, host := newConn(client), newConn(server)
-	h := &windowHarness{ext: New("cancel-window"), host: host, observed: make(chan windowObservation, 1), pongs: make(chan struct{}, 1)}
+	h := &windowHarness{ext: New("cancel-window"), host: host, observed: make(chan windowObservation, 1), first: make(chan bool, 1), pongs: make(chan struct{}, 1)}
 	h.ext.conn = connection
 	closed := func(c <-chan struct{}) bool {
 		select {
@@ -47,6 +50,7 @@ func newWindowHarness(t *testing.T) *windowHarness {
 	h.ext.Tool("probe", "Probe", Schema{"type": "object"}, func(ctx Context, _ map[string]any) (any, error) {
 		var got windowObservation
 		got.firstDone = closed(ctx.Done())
+		h.first <- got.firstDone
 		result, err := ctx.callHost("ui.getEditorText", nil)
 		got.callErr = err
 		if result != nil {
@@ -69,12 +73,13 @@ func newWindowHarness(t *testing.T) *windowHarness {
 			}
 		}
 	}()
-	// The loop blocks on the first notify below until freeLoop, and on the second one for the rest of the test; both locks are free again before the connection closes.
+	// The loop blocks on the first notify below until freeLoop, which lets it arm the request and start the handler, and then on the second one until freeSecond; both locks are free again before the connection closes.
 	h.ext.bashOperationsMu.Lock()
 	h.ext.providerMu.Lock()
 	h.freeLoop = sync.OnceFunc(h.ext.bashOperationsMu.Unlock)
+	h.freeSecond = sync.OnceFunc(h.ext.providerMu.Unlock)
 	loop.Go(func() { _ = h.ext.loop() })
-	t.Cleanup(func() { h.freeLoop(); h.ext.providerMu.Unlock() })
+	t.Cleanup(func() { h.freeLoop(); h.freeSecond() })
 	return h
 }
 
@@ -105,10 +110,11 @@ func TestSignalOnlyCancelReadBeforeTheRequestIsArmedAbortsItsSignalAtStart(t *te
 	h := newWindowHarness(t)
 	h.queue(t, envelope{Type: msgCancel, ID: "probe-1", Cancel: &cancelMsg{RequestID: "probe-1", Reason: "tool aborted", SignalOnly: true}})
 	h.freeLoop()
-	got := <-h.observed
-	if !got.firstDone {
+	if !<-h.first {
 		t.Errorf("Done at the handler's first line was open, want the signal the cancel frame aborted")
 	}
+	h.freeSecond()
+	got := <-h.observed
 	if got.callErr != nil || got.callText != `"answered"` {
 		t.Errorf("host call = %q, %v, want the host's answer", got.callText, got.callErr)
 	}
@@ -122,6 +128,10 @@ func TestOrdinaryCancelReadBeforeTheRequestIsArmedEndsItAtStart(t *testing.T) {
 	h := newWindowHarness(t)
 	h.queue(t, envelope{Type: msgCancel, ID: "probe-1", Cancel: &cancelMsg{RequestID: "probe-1", Reason: "user aborted"}})
 	h.freeLoop()
+	if !<-h.first {
+		t.Errorf("Done at the handler's first line was open, want the request ended by the cancel frame the reader read")
+	}
+	h.freeSecond()
 	got := <-h.observed
 	if !got.firstDone || !got.laterDone || got.reason != "user aborted" {
 		t.Errorf("Done at the first line = %v, after the call = %v, CancellationReason = %q, want the request ended with the cancel's reason", got.firstDone, got.laterDone, got.reason)

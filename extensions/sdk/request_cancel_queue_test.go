@@ -26,6 +26,8 @@ func TestQueuedCancelIsDroppedWhenTheRequestIsArmedAndNoneIsKeptForAnUnknownRequ
 		t.Fatalf("requests queued and not armed = %d, want the one request", got)
 	}
 	h.freeLoop()
+	<-h.first
+	h.freeSecond()
 	<-h.observed
 	if got := unarmedRequests(h.ext.conn); got != 0 {
 		t.Fatalf("requests queued and not armed after the arming = %d, want none", got)
@@ -39,6 +41,8 @@ func TestSignalOnlyThenOrdinaryCancelReadBeforeTheArmingEndTheRequest(t *testing
 		envelope{Type: msgCancel, ID: "probe-1", Cancel: &cancelMsg{RequestID: "probe-1", Reason: "signal reason", SignalOnly: true}},
 		envelope{Type: msgCancel, ID: "probe-1", Cancel: &cancelMsg{RequestID: "probe-1", Reason: "request reason"}})
 	h.freeLoop()
+	<-h.first
+	h.freeSecond()
 	got := <-h.observed
 	if !got.firstDone || got.reason != "signal reason" {
 		t.Errorf("first Done = %v, CancellationReason = %q, want the signal aborted with the first cancel's reason", got.firstDone, got.reason)
