@@ -102,14 +102,15 @@ func TestDeepEventStreamDeltasReachEverySDK(t *testing.T) {
 			defer removeListener()
 			for _, name := range []string{"message_update", "tool_execution_update"} {
 				var events []extension.ExtensionEvent
+				var depths []int
 				for _, c := range deepDeltaShapes {
 					if name == "message_update" {
 						for _, event := range deepMessageUpdateEvents(c.shape, c.depth) {
-							events = append(events, event)
+							events, depths = append(events, event), append(depths, c.depth)
 						}
 					} else {
 						for _, event := range deepToolUpdateEvents(c.shape, c.depth) {
-							events = append(events, event)
+							events, depths = append(events, event), append(depths, c.depth)
 						}
 					}
 				}
@@ -131,7 +132,15 @@ func TestDeepEventStreamDeltasReachEverySDK(t *testing.T) {
 				// wrote (nodeEventStreamOutcomes, D268).
 				probeFails, fixtureFails := make([]bool, len(events)), make([]bool, len(events))
 				if node {
-					probeFails, fixtureFails = nodeEventStreamOutcomes(t, h.wire.frames.keptEventFrames(tc.extName, name), len(events))
+					frames := h.wire.frames.keptEventFrames(tc.extName, name)
+					probeFails, fixtureFails = nodeEventStreamOutcomes(t, frames, len(events))
+					// The replay runs the runtime's own event-stream code, so it cannot be its own oracle: the outcomes must be the ones the rule below gives, which uses none of it.
+					wantProbe, wantFixture := nodeExpectedFailures(t, events, depths, frames)
+					for index := range events {
+						if probeFails[index] != wantProbe[index] || fixtureFails[index] != wantFixture[index] {
+							t.Fatalf("%s: event %d (nesting %d): the runtime's copy makes the handlers fail (probe %v, fixture %v), the rule says (probe %v, fixture %v)", name, index, depths[index], probeFails[index], fixtureFails[index], wantProbe[index], wantFixture[index])
+						}
+					}
 				}
 				wantReports, wantFailures := 0, 0
 				for index := range events {
