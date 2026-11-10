@@ -167,10 +167,11 @@ func TestAppCloseWaitsForABaseBuildStalledOnAReadAndReturnsOnceItEndsItsLateResu
 		t.Fatal(err)
 	}
 	select {
-	case <-s.app.BaseWatched():
+	case <-s.app.BasesBuilt():
 	default:
 		t.Fatal("the close returned before the build ended")
 	}
+	<-s.app.BaseWatched()
 	if built := s.app.Web.built(); built == nil || built.Error == nil {
 		t.Fatalf("built = %+v, want the build the close ended failed (nothing published on the closed host)", built)
 	}
@@ -209,6 +210,95 @@ func TestAppCloseAbandonsABaseBuildStalledOnAReadWhenItsContextEndsAndReturnsThe
 	if reported := s.errors.kinds(); len(reported) != 0 {
 		t.Fatalf("reported %v after the close, want none", reported)
 	}
+}
+
+// refusedWhileLocked fails the test unless a second server on the data directory is refused: the first one still holds its lock.
+func refusedWhileLocked(t *testing.T, s started) {
+	t.Helper()
+	second, err := StartServer(optionsFor(t, s.dataDir, s.root), background)
+	if err == nil {
+		_ = second.Close(background)
+		t.Fatal("a second server started on the data directory: the close released its lock while it waited for the build")
+	}
+	if !strings.Contains(err.Error(), "another server runs on "+s.dataDir) {
+		t.Fatalf("a second server on the data directory: %v, want it refused (the lock is held)", err)
+	}
+}
+
+// startsAgain fails the test unless a second server starts on the data directory (the lock was released); it closes it.
+func startsAgain(t *testing.T, s started) {
+	t.Helper()
+	second, err := StartServer(optionsFor(t, s.dataDir, s.root), background)
+	if err != nil {
+		t.Fatalf("a second server on the data directory after the close: %v, want it started (the lock was released)", err)
+	}
+	if err := second.Close(background); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// letBuildGo ends the stalled build: its pipe is written.
+func letBuildGo(t *testing.T, held *os.File) {
+	t.Helper()
+	if _, err := held.WriteString("export {};"); err != nil {
+		t.Fatal(err)
+	}
+	_ = held.Close()
+}
+
+// What a build that outlives the close could still write is written under the data directory's lock: the lock is held while the
+// close waits for the build, and released once it ended.
+func TestAppCloseHoldsTheDataDirectorysLockWhileItWaitsForABuildAndReleasesItOnceItEnded(t *testing.T) {
+	s, held, draining := startWithAStalledBuild(t)
+	closed := make(chan error, 1)
+	go func() { closed <- s.app.Close(background) }()
+	<-draining
+	refusedWhileLocked(t, s)
+	letBuildGo(t, held)
+	if err := <-closed; err != nil {
+		t.Fatal(err)
+	}
+	startsAgain(t, s)
+	<-s.app.BaseWatched()
+}
+
+// A close whose context ended while it waited still releases the lock (only the abandoned build runs without it).
+func TestAppCloseReleasesTheDataDirectorysLockWhenItsContextEndsWhileItWaitsForABuild(t *testing.T) {
+	s, held, draining := startWithAStalledBuild(t)
+	ctx, cancel := context.WithCancel(background)
+	defer cancel()
+	closed := make(chan error, 1)
+	go func() { closed <- s.app.Close(ctx) }()
+	<-draining
+	refusedWhileLocked(t, s)
+	cancel()
+	if err := <-closed; !errors.Is(err, context.Canceled) {
+		t.Fatalf("close = %v, want the context's error", err)
+	}
+	startsAgain(t, s)
+	letBuildGo(t, held)
+	<-s.app.BaseWatched()
+}
+
+// A repeated Close returns the first call's result (Pi's one memoised promise): a later Close with a longer context does not resume
+// the drain the first one's context ended.
+func TestAppACloseAfterOneWhoseContextEndedReturnsItsResultAndDoesNotWaitAgain(t *testing.T) {
+	s, held, draining := startWithAStalledBuild(t)
+	ctx, cancel := context.WithCancel(background)
+	defer cancel()
+	closed := make(chan error, 1)
+	go func() { closed <- s.app.Close(ctx) }()
+	<-draining
+	cancel()
+	if err := <-closed; !errors.Is(err, context.Canceled) {
+		t.Fatalf("close = %v, want the context's error", err)
+	}
+	// The build is still held: a Close that waited again would not return.
+	if err := s.app.Close(background); !errors.Is(err, context.Canceled) {
+		t.Fatalf("second close = %v, want the first one's result", err)
+	}
+	letBuildGo(t, held)
+	<-s.app.BaseWatched()
 }
 
 func TestAppAnAbortedApplyWaitingAtTheWebStepForTheInitialBuildStopsThereTheBuildGoesOn(t *testing.T) {

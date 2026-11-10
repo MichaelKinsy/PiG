@@ -7,6 +7,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
+	"github.com/MichaelKinsy/PiG/chord/next/internal/hostdata"
 	"github.com/MichaelKinsy/PiG/chord/sqlite"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
@@ -38,7 +39,7 @@ type HostImportOptions struct {
 	Existing string
 }
 
-// The values of HostImportOptions.Existing and HostImportPlan.Existing.
+// The values of HostImportOptions.Existing and hostImportPlan.Existing.
 const (
 	ExistingRefuse  = "refuse"
 	ExistingReplace = "replace"
@@ -46,10 +47,7 @@ const (
 
 // HostDataCounts is what an import or a delete changed: the documents it created or retired, the rows it put or
 // deleted.
-type HostDataCounts struct {
-	Documents int
-	Rows      int
-}
+type HostDataCounts = hostdata.Counts
 
 // HostArchive is a host's data archive, read and checked (`ReadHostArchive`): one archive is one commit, so it is held
 // in memory.
@@ -345,17 +343,50 @@ func hostCellIs(row *delta.JsonObject, column, value string) bool {
 	return isText && cell == value
 }
 
-// HostCommit is how a host data operation commits: the host's fence and its reads in the step.
-type HostCommit struct {
+// Pi's barrel exports none of the import and delete operations: the host reaches them through the internal package
+// hostdata (see there), which these adapters register; the store's own types come back from its `any`s, and one of
+// another type is a programming error (panics).
+func init() {
+	archiveOf := func(archive any) *HostArchive {
+		typed, _ := archive.(*HostArchive)
+		return typed
+	}
+	commitOf := func(commit hostdata.Commit) hostCommit {
+		after := make([]StagedWrite, len(commit.After))
+		for index, write := range commit.After {
+			after[index] = write.(StagedWrite)
+		}
+		return hostCommit{Fence: CommitFence(commit.Fence), After: after}
+	}
+	hostdata.Register(hostdata.Operations{
+		TablesToMigrate: func(store, archive any) []string { return tablesToMigrate(store.(Store), archiveOf(archive)) },
+		Owners: func(store any, key string, archive any, ctx context.Context) (map[string]struct{}, error) {
+			return hostDataOwners(store.(Store), key, archiveOf(archive), ctx)
+		},
+		Import: func(store, archive any, plan hostdata.Plan, commit hostdata.Commit, ctx context.Context) (HostDataCounts, error) {
+			histories := make(map[string]*TableDefinition, len(plan.Histories))
+			for table, definition := range plan.Histories {
+				histories[table] = definition.(*TableDefinition)
+			}
+			return importHostData(store.(Store), archiveOf(archive), hostImportPlan{Target: plan.Target, Existing: plan.Existing, Histories: histories}, commitOf(commit), ctx)
+		},
+		Delete: func(store any, key string, commit hostdata.Commit, ctx context.Context) (HostDataCounts, error) {
+			return deleteHostData(store.(Store), key, commitOf(commit), ctx)
+		},
+	})
+}
+
+// hostCommit is how a host data operation commits: the host's fence and its reads in the step.
+type hostCommit struct {
 	// Fence admits the commit (the caller's context, the host open) and adopts what After read, after `COMMIT`.
 	Fence CommitFence
 	// After is staged after the operation's writes, in the same step: what the live owners hold, read again.
 	After []StagedWrite
 }
 
-// HostImportPlan is what `ImportHostData` does with an archive: under Target (canonical), Existing, with the tables'
+// hostImportPlan is what `importHostData` does with an archive: under Target (canonical), Existing, with the tables'
 // histories.
-type HostImportPlan struct {
+type hostImportPlan struct {
 	Target string
 	// Existing is ExistingRefuse or ExistingReplace.
 	Existing string
@@ -364,9 +395,9 @@ type HostImportPlan struct {
 	Histories map[string]*TableDefinition
 }
 
-// TablesToMigrate is the archive's tables whose rows must migrate before they can be merged into store (recorded at a
+// tablesToMigrate is the archive's tables whose rows must migrate before they can be merged into store (recorded at a
 // newer version, or exported `migrating`): their owners must be live for their histories. By SQL name.
-func TablesToMigrate(store Store, archive *HostArchive) []string {
+func tablesToMigrate(store Store, archive *HostArchive) []string {
 	// Stores are Chord's own: `OpenStore` and `ImportStore` made them.
 	chord := store.(*ChordStore)
 	var tables []string
@@ -380,10 +411,10 @@ func TablesToMigrate(store Store, archive *HostArchive) []string {
 	return tables
 }
 
-// HostDataOwners is the owners (object types) whose data an operation on host key changes: of tables with a
+// hostDataOwners is the owners (object types) whose data an operation on host key changes: of tables with a
 // `host(...)` column of its kind (recorded, and the archive's), of records belonging to it, and of the archive's
 // records. archive is nil for a delete.
-func HostDataOwners(store Store, key string, archive *HostArchive, ctx context.Context) (map[string]struct{}, error) {
+func hostDataOwners(store Store, key string, archive *HostArchive, ctx context.Context) (map[string]struct{}, error) {
 	// Stores are Chord's own: `OpenStore` and `ImportStore` made them.
 	chord := store.(*ChordStore)
 	kind := contracts.KindOfKey(key)
@@ -415,12 +446,12 @@ func HostDataOwners(store Store, key string, archive *HostArchive, ctx context.C
 	return owners, nil
 }
 
-// ImportHostData imports archive into store in one commit (spec §4) under plan.Target: the store's data of it refused
+// importHostData imports archive into store in one commit (spec §4) under plan.Target: the store's data of it refused
 // or, with ExistingReplace, retired and deleted first; tables the store does not record created from the archive,
 // recorded ones checked against the archive's metadata (the recorded host column decides) or migrated through their
 // histories; rows that would replace another row refused; records created with fresh ids at the commit's seq, their
 // values as bases; commit.After staged after it. Internal: the host coordinates it.
-func ImportHostData(store Store, archive *HostArchive, plan HostImportPlan, commit HostCommit, ctx context.Context) (HostDataCounts, error) {
+func importHostData(store Store, archive *HostArchive, plan hostImportPlan, commit hostCommit, ctx context.Context) (HostDataCounts, error) {
 	if contracts.KindOfKey(plan.Target) != contracts.KindOfKey(archive.Host) {
 		return HostDataCounts{}, invalidArgs("importHostData: data of %s cannot belong to %s, another kind", archive.Host, plan.Target)
 	}
@@ -436,10 +467,10 @@ func ImportHostData(store Store, archive *HostArchive, plan HostImportPlan, comm
 	return counts, nil
 }
 
-// DeleteHostData deletes the data of host key (canonical) from store in one commit: every record whose `host` is the
+// deleteHostData deletes the data of host key (canonical) from store in one commit: every record whose `host` is the
 // key retired, every row holding it in a `host(...)` column of its kind deleted (`deleteWhere`, counted). Internal, as
-// ImportHostData.
-func DeleteHostData(store Store, key string, commit HostCommit, ctx context.Context) (HostDataCounts, error) {
+// importHostData.
+func deleteHostData(store Store, key string, commit hostCommit, ctx context.Context) (HostDataCounts, error) {
 	var counts HostDataCounts
 	apply := func(step *Step, writes *[]StoreWrite) error {
 		var err error
@@ -453,7 +484,7 @@ func DeleteHostData(store Store, key string, commit HostCommit, ctx context.Cont
 }
 
 // commitOperation commits apply's writes, then commit.After, as one seq under commit.Fence.
-func commitOperation(store Store, apply func(step *Step, writes *[]StoreWrite) error, commit HostCommit, ctx context.Context) error {
+func commitOperation(store Store, apply func(step *Step, writes *[]StoreWrite) error, commit hostCommit, ctx context.Context) error {
 	write := stagedFunc{order: OrderWrite, apply: func(step *Step) ([]StoreWrite, error) {
 		var writes []StoreWrite
 		if err := apply(step, &writes); err != nil {
@@ -467,7 +498,7 @@ func commitOperation(store Store, apply func(step *Step, writes *[]StoreWrite) e
 }
 
 // applyImport is the import inside its commit step: the existing data first, then the tables, the rows, the records.
-func applyImport(step *Step, archive *HostArchive, plan HostImportPlan, writes *[]StoreWrite, ctx context.Context) (HostDataCounts, error) {
+func applyImport(step *Step, archive *HostArchive, plan hostImportPlan, writes *[]StoreWrite, ctx context.Context) (HostDataCounts, error) {
 	target := plan.Target
 	if plan.Existing == ExistingReplace {
 		if _, err := removeHostData(step, target, writes); err != nil {
@@ -510,7 +541,7 @@ func applyImport(step *Step, archive *HostArchive, plan HostImportPlan, writes *
 // importTable is one table of the archive: created with its indexes when the store does not record it; recorded newer
 // here, or exported `migrating`, its rows migrate through the table's history first. Every row must then hold target
 // in the recorded table's own host column (whatever the archive's metadata says) and take no other row's key.
-func importTable(step *Step, table *HostTable, source string, plan HostImportPlan, writes *[]StoreWrite, ctx context.Context) (int, error) {
+func importTable(step *Step, table *HostTable, source string, plan hostImportPlan, writes *[]StoreWrite, ctx context.Context) (int, error) {
 	write := table.Write
 	what := "importHostData: table " + write.Table
 	// The copy's rewrite, on the archive's own host column (a migration's renames carry it along).
@@ -560,14 +591,14 @@ func importTable(step *Step, table *HostTable, source string, plan HostImportPla
 	if !found {
 		return 0, invalidArgs("%s: no host column of %s here", what, contracts.KindOfKey(source))
 	}
-	var conditions string
+	var conditions strings.Builder
 	for index, name := range record.Key {
 		if index > 0 {
-			conditions += " AND "
+			conditions.WriteString(" AND ")
 		}
-		conditions += Quote(name) + " = ?"
+		conditions.WriteString(Quote(name) + " = ?")
 	}
-	exists := `SELECT 1 AS found FROM ` + Quote(write.Table) + ` WHERE ` + conditions
+	exists := `SELECT 1 AS found FROM ` + Quote(write.Table) + ` WHERE ` + conditions.String()
 	for _, put := range placed {
 		if !hostCellIs(put.Row, column, plan.Target) {
 			return 0, invalidArgs("%s: a row that does not belong to %s", what, plan.Target)

@@ -10,6 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/documents"
+	"github.com/MichaelKinsy/PiG/chord/next/internal/hostdata"
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
 	"github.com/MichaelKinsy/PiG/chord/sqlite"
@@ -229,11 +230,11 @@ func shdReadArchive(t *testing.T, parts []store.ArchivePart) *store.HostArchive 
 // shdImportInto imports archive into chordStore under address (the archive's own when nil), refusing or replacing
 // existing data, in a commit nobody coordinates (no live owner in these tests).
 func shdImportInto(chordStore *store.ChordStore, archive *store.HostArchive, address *contracts.Address, existing string) (store.HostDataCounts, error) {
-	plan := store.HostImportPlan{Target: archive.Host, Existing: existing, Histories: map[string]*store.TableDefinition{}}
+	plan := hostdata.Plan{Target: archive.Host, Existing: existing, Histories: map[string]any{}}
 	if address != nil {
 		plan.Target = address.Key
 	}
-	return store.ImportHostData(chordStore, archive, plan, store.HostCommit{Fence: openFence()}, background)
+	return hostdata.Import(chordStore, archive, plan, hostdata.Commit{Fence: hostdata.Fence(openFence())}, background)
 }
 
 // shdRefusal asserts err contains message (and is invalid/args when code is set).
@@ -423,7 +424,7 @@ func TestStoreHostDataImportIsRecordedInTheOutboxAsOrdinaryWrites(t *testing.T) 
 
 func TestStoreHostDataDeleteRetiresTheAddressSRecordsAndDeletesItsRowsInOneCommitOtherAddressesUntouched(t *testing.T) {
 	chordStore := shdPopulated(t)
-	counts, err := store.DeleteHostData(chordStore, "session|S1", store.HostCommit{Fence: openFence()}, background)
+	counts, err := hostdata.Delete(chordStore, "session|S1", hostdata.Commit{Fence: hostdata.Fence(openFence())}, background)
 	must(t, err)
 	if counts != (store.HostDataCounts{Documents: 1, Rows: 3}) {
 		t.Fatalf("counts = %+v", counts)
@@ -523,7 +524,7 @@ func TestStoreHostDataReviewRound2SelectsByTheCanonicalKeyALoneSurrogateInAnAddr
 	if puts != 2 || creates != 1 {
 		t.Fatalf("puts, creates = %d, %d, want 2, 1", puts, creates)
 	}
-	counts, err := store.DeleteHostData(chordStore, "session|x\uFFFD", store.HostCommit{Fence: openFence()}, background)
+	counts, err := hostdata.Delete(chordStore, "session|x\uFFFD", hostdata.Commit{Fence: hostdata.Fence(openFence())}, background)
 	must(t, err)
 	if counts != (store.HostDataCounts{Documents: 1, Rows: 2}) {
 		t.Fatalf("counts = %+v", counts)

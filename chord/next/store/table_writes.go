@@ -416,10 +416,10 @@ func ApplyTable(step *Step, write *TableDefinitionWrite) (StoreWrite, error) {
 	if existing != nil {
 		indexes = existing.Indexes
 	}
-	step.Tables[write.Table] = &TableRecord{
+	step.record(write.Table, &TableRecord{
 		Table: write.Table, Version: write.Version, State: write.State, Columns: write.Columns, Key: write.Key,
 		Fingerprint: write.Fingerprint, Indexes: indexes,
-	}
+	})
 	return write, nil
 }
 
@@ -440,7 +440,7 @@ func ApplyIndex(step *Step, write *IndexWrite) (StoreWrite, error) {
 	}
 	changed := *existing
 	changed.Indexes = indexes
-	step.Tables[write.Table] = &changed
+	step.record(write.Table, &changed)
 	return write, nil
 }
 
@@ -461,7 +461,7 @@ func ApplyDropIndex(step *Step, write *DropIndexWrite) (StoreWrite, error) {
 	}
 	changed := *existing
 	changed.Indexes = indexes
-	step.Tables[write.Table] = &changed
+	step.record(write.Table, &changed)
 	return write, nil
 }
 
@@ -538,7 +538,7 @@ func ApplyAlter(step *Step, write *AlterWrite) (StoreWrite, error) {
 	case EditJSON:
 		changed.Columns = withColumn(existing.Columns, edit.Name, edit.Column)
 	}
-	step.Tables[write.Table] = &changed
+	step.record(write.Table, &changed)
 	return write, nil
 }
 

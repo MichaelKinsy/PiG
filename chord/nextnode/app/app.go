@@ -375,7 +375,7 @@ type App struct {
 	closed  error
 	// closing is set when the close starts: what runs after the start (the bases' builds, the scan) stops reporting there.
 	closing atomic.Bool
-	// basesStarted is set once startBases started the goroutine baseWatched is closed by: the close waits for it (drainBuilds).
+	// basesStarted is set once startBases started the goroutine basesBuilt and baseWatched are closed by: the close waits for the builds (drainBuilds), not for the scan after them.
 	basesStarted atomic.Bool
 	// basesBuilt and baseWatched are BasesBuilt's and BaseWatched's channels, closed by the build after the listen (startBases).
 	basesBuilt, baseWatched chan struct{}
@@ -1024,14 +1024,18 @@ type DataImportOptions struct {
 // ImportData makes the data of address from the archive at archive (an archive of an address of its kind; another address is a copy:
 // the server's host cells and keys are rewritten), under the worker's lock; its next hold starts it. An address with data (a directory,
 // server records or rows) is refused, unless options.Existing is "replace": then its data is replaced. A refused or definitely failed
-// import is undone (the old directory back, nothing new left); one whose server commit has an unknown outcome (`storage_failed`)
-// undoes nothing: the new directory stays in place and the old one aside, and the error says so.
-func (a *App) ImportData(archive string, address contracts.Address, ctx context.Context, options DataImportOptions) error {
+// import is undone (the old directory back, nothing new left, the NodeHost's commit undone if the Go host's failed after it: its import
+// deleted, or with replace the old part put back); one whose server commit has an unknown outcome (`storage_failed`), or whose
+// NodeHost rollback failed, undoes nothing: the new directory stays in place and the old one aside, and the error says so.
+func (a *App) ImportData(archive string, address contracts.Address, ctx context.Context, options ...DataImportOptions) error {
 	if _, err := a.workersFor(address); err != nil {
 		return err
 	}
 	name, limits := a.options.Name, a.options.Limits
-	existing := options.Existing
+	existing := ""
+	if len(options) > 0 {
+		existing = options[0].Existing
+	}
 	if existing == "" {
 		existing = store.ExistingRefuse
 	}
@@ -1078,12 +1082,24 @@ func (a *App) ImportData(archive string, address contracts.Address, ctx context.
 			}
 			return err
 		}
+		// pig divergence (D462): a replace keeps the NodeHost's old part of the address to put it back when the Go host's commit fails after it.
+		old, forget, err := a.nodeOldPart(address, existing, filepath.Dir(dir), ctx)
+		defer forget()
+		if err != nil {
+			return errors.Join(err, undo())
+		}
 		// (2) The old directory aside, (3) the new one in place, (4) the server's parts, the commits, last.
 		committed, err := a.placeAndCommit(dir, staging, aside, server, kitServer, address, existing, &placed, ctx)
 		if err != nil {
-			if unknownOutcome(err) || committed {
+			if unknownOutcome(err) {
 				// It may have committed: undoing could pair the old directory with the new server data.
-				return a.unknownImport(address, aside, committed, err)
+				return a.unknownImport(address, aside, err)
+			}
+			if committed {
+				// The NodeHost's commit stood and the Go host's definitely failed: it is undone, so the import is refused as a whole.
+				if rolled := a.rollbackNode(address, existing, old, ctx); rolled != nil {
+					return a.rollbackFailed(address, aside, err, rolled)
+				}
 			}
 			return errors.Join(err, undo())
 		}
@@ -1095,6 +1111,36 @@ func (a *App) ImportData(archive string, address contracts.Address, ctx context.
 		}
 		return nil
 	})
+}
+
+// nodeOldPart is the NodeHost's part of address before an import, as a JSONL file in a new directory in parent when the import
+// replaces (the file to put back: "" otherwise); forget removes the directory.
+//
+// pig divergence (D462): Pi's one commit needs no such part.
+func (a *App) nodeOldPart(address contracts.Address, existing, parent string, ctx context.Context) (old string, forget func(), err error) {
+	forget = func() {}
+	if existing != store.ExistingReplace {
+		return "", forget, nil
+	}
+	staging, err := os.MkdirTemp(parent, ".chord-undo-")
+	if err != nil {
+		return "", forget, err
+	}
+	forget = func() { _ = os.RemoveAll(staging) }
+	old = filepath.Join(staging, "server.archive")
+	return old, forget, a.nodeData.ExportHostData(address, old, ctx)
+}
+
+// rollbackNode undoes the NodeHost's committed import of address: what a refused import put is deleted, a replace puts the old part
+// back (old). It runs whatever became of ctx: the caller's abort must not leave the two stores apart.
+//
+// pig divergence (D462): the NodeHost's commit is separate from the Go host's.
+func (a *App) rollbackNode(address contracts.Address, existing, old string, ctx context.Context) error {
+	ctx = context.WithoutCancel(ctx)
+	if existing == store.ExistingReplace {
+		return a.nodeData.ImportHostData(address, old, store.ExistingReplace, ctx)
+	}
+	return a.nodeData.DeleteHostData(address, ctx)
 }
 
 // placeAndCommit is steps 2 to 4 of ImportData: the old directory aside, the new one in place, then the server's parts (the NodeHost's
@@ -1131,8 +1177,8 @@ func (a *App) placeAndCommit(dir, staging, aside, server, kitServer string, addr
 	return true, err
 }
 
-// unknownImportError is the error of an import that undid nothing: the server's commit has an unknown outcome (or its first commit
-// stood and its second failed). Cause is the commit's rejection (Pi's `cause`); it is not part of the message.
+// unknownImportError is the error of an import that undid nothing: the server's commit has an unknown outcome (or the rollback of the
+// NodeHost's commit failed). Cause is the commit's rejection (Pi's `cause`); it is not part of the message.
 type unknownImportError struct {
 	message string
 	cause   error
@@ -1141,18 +1187,25 @@ type unknownImportError struct {
 func (err *unknownImportError) Error() string { return err.message }
 func (err *unknownImportError) Unwrap() error { return err.cause }
 
-// unknownImport is the unknownImportError of the import of address.
-func (a *App) unknownImport(address contracts.Address, aside string, committed bool, cause error) error {
+// rollbackFailed is the unknownImportError of an import whose Go host commit failed after the NodeHost's and whose NodeHost rollback
+// failed too: both errors are its cause.
+func (a *App) rollbackFailed(address contracts.Address, aside string, cause, rollback error) error {
+	return &unknownImportError{fmt.Sprintf("importData: %s: the server host's commit failed after the plugins' store committed, and restoring the plugins' store failed; nothing was undone (%s). %s.", address.Key, whereAfterImport(aside), importAgain), errors.Join(cause, rollback)}
+}
+
+func whereAfterImport(aside string) string {
 	where := "the new directory is in place"
 	if aside != "" {
 		where += ", the old one at " + aside
 	}
-	again := "Run the import again with existing: \"replace\""
-	if committed && !unknownOutcome(cause) {
-		// pig divergence (D462): the plugins' store committed and the Go host's definitely failed: Pi has one commit, so no such case.
-		return &unknownImportError{fmt.Sprintf("importData: %s: the plugins' store committed and the server host's did not; nothing was undone (%s). %s.", address.Key, where, again), cause}
-	}
-	return &unknownImportError{fmt.Sprintf("importData: %s: the server's commit has an unknown outcome; nothing was undone (%s). %s once the server's store is back.", address.Key, where, again), cause}
+	return where
+}
+
+const importAgain = `Run the import again with existing: "replace"`
+
+// unknownImport is the unknownImportError of the import of address.
+func (a *App) unknownImport(address contracts.Address, aside string, cause error) error {
+	return &unknownImportError{fmt.Sprintf("importData: %s: the server's commit has an unknown outcome; nothing was undone (%s). %s once the server's store is back.", address.Key, whereAfterImport(aside), importAgain), cause}
 }
 
 // DeleteData deletes the data of address (its worker's directory and the server's records and rows belonging to it) under the worker's
@@ -1208,7 +1261,9 @@ func (a *App) workerLock(address contracts.Address, ctx context.Context) (*worke
 // steps, the later ones wait for it and get its result (a later Close with a longer ctx does not resume what the first ended).
 // Pi's `#close` does not wait for the bases' builds and the surfaces' (a forced Go lifetime difference): the Go close waits for them
 // (drainBuilds) between the plugins' watcher and the lock's release, until ctx ends, so the lock is held while a build runs and only
-// a build abandoned at ctx's end runs without it. The lock is released when the drain ends, whatever it ended with; after a failed
+// a build abandoned at ctx's end runs without it. The scan of the server's own code is not waited for, as Pi's: the close ends it at its
+// next step (it stops once it finds the app closing, its result dropped) and returns; the goroutine that runs it ends with the scan, and
+// BaseWatched closes then (the join of whoever needs it). The lock is released when the drain ends, whatever it ended with; after a failed
 // step the drain still runs and the lock stays held, as after Pi's rejected chain.
 func (a *App) Close(ctx context.Context) error {
 	if !a.closing.Swap(true) {
@@ -1232,9 +1287,10 @@ func (a *App) closeSteps(ctx context.Context) error {
 	return drained
 }
 
-// drainBuilds waits for the goroutines the app started after the listen: each surface's build (one not started never starts), then
-// the bases' (startBases: it builds each base and records the base code), until ctx ends (its error then; the goroutines are left
-// to finish, what they do after the close began being dropped). It runs after the close's steps, the data directory's lock still held:
+// drainBuilds waits for the builds the app started after the listen: each surface's build (one not started never starts), then the
+// bases' (startBases: it builds each base), until ctx ends (its error then; the goroutines are left to finish, what they do after the
+// close began being dropped). The recording of the base code that follows the builds (the scan of the server's own code) is not
+// waited for. It runs after the close's steps, the data directory's lock still held:
 // a build that finishes meanwhile finds the host closed (its publication fails) and the watcher closed (a record arriving after the
 // close watches nothing).
 func (a *App) drainBuilds(ctx context.Context) error {
@@ -1250,12 +1306,12 @@ func (a *App) drainBuilds(ctx context.Context) error {
 		return nil
 	}
 	select {
-	case <-a.baseWatched:
+	case <-a.basesBuilt:
 		return nil
 	default:
 	}
 	select {
-	case <-a.baseWatched:
+	case <-a.basesBuilt:
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()

@@ -98,7 +98,7 @@ func TestAppExportsARunningWorkersDataWithoutStoppingItTheWorkerPacksItsOwnStore
 		t.Fatalf("text = %v", got)
 	}
 	write(t, p1, "after")
-	if err := s.app.ImportData(archive, project.Address(delta.JsonObjectOf("id", "p2")), background, DataImportOptions{}); err != nil {
+	if err := s.app.ImportData(archive, project.Address(delta.JsonObjectOf("id", "p2")), background); err != nil {
 		t.Fatal(err)
 	}
 	copied := holdNotes(t, s, "p2")
@@ -292,10 +292,10 @@ func TestAppRoundTripsAWorkersDocumentsAndTablesAndRefusesAnExistingAddressAndAn
 	if info, err := os.Stat(archive); err != nil || info.Mode().Perm() != 0o600 {
 		t.Fatalf("archive: %v %v", info, err)
 	}
-	if err := s.app.ImportData(archive, project.Address(delta.JsonObjectOf("id", "p1")), background, DataImportOptions{}); err == nil || !strings.Contains(err.Error(), "has data (its worker runs)") {
+	if err := s.app.ImportData(archive, project.Address(delta.JsonObjectOf("id", "p1")), background); err == nil || !strings.Contains(err.Error(), "has data (its worker runs)") {
 		t.Fatalf("import over a running worker: %v", err)
 	}
-	if err := s.app.ImportData(archive, project.Address(delta.JsonObjectOf("id", "p2")), background, DataImportOptions{}); err != nil {
+	if err := s.app.ImportData(archive, project.Address(delta.JsonObjectOf("id", "p2")), background); err != nil {
 		t.Fatal(err)
 	}
 	copied := holdNotes(t, s, "p2")
@@ -325,7 +325,7 @@ func TestAppRoundTripsAWorkersDocumentsAndTablesAndRefusesAnExistingAddressAndAn
 	copiedFiles.close()
 	// Another app refuses the archive.
 	other := startTestApp(t, nil, func(o *AppOptions) { o.Name = "other-app"; projectOptions(t)(o) })
-	err := other.app.ImportData(archive, project.Address(delta.JsonObjectOf("id", "p1")), background, DataImportOptions{})
+	err := other.app.ImportData(archive, project.Address(delta.JsonObjectOf("id", "p1")), background)
 	if err == nil || !strings.Contains(err.Error(), `an archive of "chord-test", not "other-app"`) {
 		t.Fatalf("import into another app: %v", err)
 	}

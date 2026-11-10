@@ -10,8 +10,10 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/documents"
+	"github.com/MichaelKinsy/PiG/chord/next/internal/hostdata"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // Ports packages/chord/src/host/host-data.ts
@@ -208,8 +210,8 @@ func importInto(site hostDataSite, parts store.PartSource, ctx context.Context, 
 		for {
 			var section importSection
 			err := exclusive(func() error {
-				migrating := store.TablesToMigrate(site.store, archive)
-				var histories map[string]*store.TableDefinition
+				migrating := hostdata.TablesToMigrate(site.store, archive)
+				var histories map[string]any
 				site.enter(func() { histories = historiesOf(site.objects(), migrating) })
 				var missing []string
 				for _, table := range migrating {
@@ -224,13 +226,13 @@ func importInto(site hostDataSite, parts store.PartSource, ctx context.Context, 
 					section = importSection{kind: importActivate, owners: missing}
 					return nil
 				}
-				owners, err := store.HostDataOwners(site.store, target, archive, ctx)
+				owners, err := hostdata.Owners(site.store, target, archive, ctx)
 				if err != nil {
 					return err
 				}
-				plan := store.HostImportPlan{Target: target, Existing: existing, Histories: histories}
-				counts, err = coordinated(site, owners, target, ctx, func(commit store.HostCommit) (store.HostDataCounts, error) {
-					return store.ImportHostData(site.store, archive, plan, commit, ctx)
+				plan := hostdata.Plan{Target: target, Existing: existing, Histories: histories}
+				counts, err = coordinated(site, owners, target, ctx, func(commit hostdata.Commit) (store.HostDataCounts, error) {
+					return hostdata.Import(site.store, archive, plan, commit, ctx)
 				})
 				section = importSection{kind: importDone}
 				return err
@@ -260,6 +262,11 @@ func importInto(site hostDataSite, parts store.PartSource, ctx context.Context, 
 	return counts, err
 }
 
+// compareUTF16 orders strings by UTF-16 code unit, as JavaScript's `<` does (not by byte or code point).
+func compareUTF16(a, b string) int {
+	return slices.Compare(jsstring.ToUTF16(a), jsstring.ToUTF16(b))
+}
+
 // ownerOf is the owner of table `table` (its SQL name `<owner>:<table>`).
 func ownerOf(table string) string {
 	return table[:strings.IndexByte(table, ':')]
@@ -274,12 +281,12 @@ func deleteFrom(site hostDataSite, address contracts.Address, ctx context.Contex
 	var counts store.HostDataCounts
 	err = site.gate.turn(func(exclusive func(section func() error) error) error {
 		return exclusive(func() error {
-			owners, err := store.HostDataOwners(site.store, key, nil, ctx)
+			owners, err := hostdata.Owners(site.store, key, nil, ctx)
 			if err != nil {
 				return err
 			}
-			counts, err = coordinated(site, owners, key, ctx, func(commit store.HostCommit) (store.HostDataCounts, error) {
-				return store.DeleteHostData(site.store, key, commit, ctx)
+			counts, err = coordinated(site, owners, key, ctx, func(commit hostdata.Commit) (store.HostDataCounts, error) {
+				return hostdata.Delete(site.store, key, commit, ctx)
 			})
 			return err
 		})
@@ -288,8 +295,8 @@ func deleteFrom(site hostDataSite, address contracts.Address, ctx context.Contex
 }
 
 // historiesOf are the live objects' declarations of tables (SQL names): the histories their rows migrate through.
-func historiesOf(objects []*chordObject, tables []string) map[string]*store.TableDefinition {
-	histories := map[string]*store.TableDefinition{}
+func historiesOf(objects []*chordObject, tables []string) map[string]any {
+	histories := map[string]any{}
 	for _, table := range tables {
 		for _, object := range objects {
 			if definition := object.declaredTable(table); definition != nil {
@@ -328,7 +335,7 @@ func (reads hostDataReads) Apply(step *store.Step) ([]store.StoreWrite, error) {
 // reads what those objects hold of the key (resident and pinned documents, live queries over tables with a host column of
 // the kind); after `COMMIT` it adopts all of it in one host batch. The commit is admitted only while ctx is not aborted
 // (`released` otherwise, nothing written). A document an object cannot read fails that object after the batch.
-func coordinated[T any](site hostDataSite, owners map[string]struct{}, key string, ctx context.Context, change func(commit store.HostCommit) (T, error)) (T, error) {
+func coordinated[T any](site hostDataSite, owners map[string]struct{}, key string, ctx context.Context, change func(commit hostdata.Commit) (T, error)) (T, error) {
 	var none T
 	kind := contracts.KindOfKey(key)
 	var objects []*chordObject
@@ -339,7 +346,7 @@ func coordinated[T any](site hostDataSite, owners map[string]struct{}, key strin
 			}
 		}
 	})
-	slices.SortFunc(objects, func(a, b *chordObject) int { return strings.Compare(a.identity, b.identity) })
+	slices.SortFunc(objects, func(a, b *chordObject) int { return compareUTF16(a.identity, b.identity) })
 	var releases []func()
 	defer func() {
 		for _, release := range releases {
@@ -384,8 +391,8 @@ func coordinated[T any](site hostDataSite, owners map[string]struct{}, key strin
 		}
 		return nil
 	}}
-	commit := store.HostCommit{
-		Fence: store.CommitFence{
+	commit := hostdata.Commit{
+		Fence: hostdata.Fence{
 			Admit: func() bool { return ctx.Err() == nil },
 			Adopt: func(int64, []int64, int) error {
 				var failed []*slotRead
@@ -417,7 +424,7 @@ func coordinated[T any](site hostDataSite, owners map[string]struct{}, key strin
 				return err
 			},
 		},
-		After: []store.StagedWrite{reads},
+		After: []any{reads},
 	}
 	return change(commit)
 }

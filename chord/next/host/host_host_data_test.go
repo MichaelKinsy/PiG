@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"testing"
 
@@ -646,12 +647,7 @@ func (o *hdOrder) all() []string {
 }
 
 func (o *hdOrder) has(entry string) bool {
-	for _, each := range o.all() {
-		if each == entry {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(o.all(), entry)
 }
 
 // host-data.test.ts › the gate › keeps load phases out while an operation is exclusive, and an operation waits for load
@@ -883,4 +879,19 @@ func TestHostDataReviewRound3ReleasesTheOwnersItActivatedHoweverTheImportEndsHer
 	must(t, err)
 	exEqual(t, "references", value, []any{})
 	closeHosts(t, h)
+}
+
+func TestHostDataObjectsAreOrderedByIdentityInUTF16CodeUnitOrderAsJavaScriptSortsThem(t *testing.T) {
+	// U+FF5E is one code unit 0xFF5E, U+1F600 the pair 0xD83D 0xDE00: by code point (and by byte) the first is smaller,
+	// by code unit the second.
+	low, high := "a\uff5e", "a\U0001f600"
+	if got := compareUTF16(high, low); got >= 0 {
+		t.Fatalf("compareUTF16(%q, %q) = %d, want < 0 (UTF-16 code unit order)", high, low, got)
+	}
+	if got := compareUTF16(low, high); got <= 0 {
+		t.Fatalf("compareUTF16(%q, %q) = %d, want > 0", low, high, got)
+	}
+	if got := compareUTF16("abc", "abc"); got != 0 {
+		t.Fatalf("compareUTF16 of equal strings = %d, want 0", got)
+	}
 }

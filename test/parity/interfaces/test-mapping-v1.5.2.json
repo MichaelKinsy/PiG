@@ -4116,13 +4116,12 @@
         "chord/next/store/columns_test.go"
       ],
       "designedOutCases": [
-        "row types › types rows with optional opt(...) fields and puts with optional defaulted fields",
-        "host(...) columns › type rows with addresses of their kind"
+        "row types › types rows with optional opt(...) fields and puts with optional defaulted fields"
       ],
-      "rationale": "4 of the 6 upstream cases run in the evidence file ('describes the helpers in declaration order', 'checks names', 'refuses other schemas...' and Pi 1.5.2's 'host(...) columns > are recorded as str columns with their kind, refused inside opt(...)': TestHostColumnsDescribed expects the record {type str, host session} and refuses Col(Opt(Host(kind)))); 2 type-level cases are designed out: the row-type assertion of opt(...)/defaulted fields and, new in 1.5.2, the row type of a host(...) column (an Address of its kind).",
-      "protects": "Row types carry optional opt(...) and defaulted fields, and a host(...) column's cell is typed as an address of its kind.",
-      "pigTest": "chord/next/store/evidence_storeA_test.go#TestEvidenceStoreAColumnsOptionalRowType plus its compile-time declarations over Opt, ColumnSchema.Optional and Row; the defaulted put runs in the ported table and row cases. The host column's address cell runs as a value in chord/next/store/rows_test.go TestHostCells (put and keyed as the address's key, decoded into the address).",
-      "whyNot": "The upstream cases are Equal<RowOf,...> type assertions with no runtime input. A Go row is map[string]any, so the optional and defaulted behavior and the address cell are the runtime tests above."
+      "rationale": "5 of the 6 upstream cases run in the evidence files ('describes the helpers in declaration order', 'checks names', 'refuses other schemas...', Pi 1.5.2's 'host(...) columns > are recorded as str columns with their kind, refused inside opt(...)' (TestHostColumnsDescribed expects the record {type str, host session} and refuses Col(Opt(Host(kind)))) and its 'host(...) columns > type rows with addresses of their kind', a type-level Equal<RowOf,...> assertion adapted to its runtime effect: TestHostCells in rows_test.go puts and keys a host cell as the address's key and decodes it into the address); 1 type-level case is designed out: the row-type assertion of opt(...)/defaulted fields.",
+      "protects": "Row types carry optional opt(...) and defaulted fields.",
+      "pigTest": "chord/next/store/evidence_storeA_test.go#TestEvidenceStoreAColumnsOptionalRowType plus its compile-time declarations over Opt, ColumnSchema.Optional and Row; the defaulted put runs in the ported table and row cases.",
+      "whyNot": "The upstream case is an Equal<RowOf,...> type assertion with no runtime input. A Go row is map[string]any, so the optional and defaulted behavior is the runtime test above."
     },
     {
       "path": "packages/chord/test/store/engine.test.ts",
@@ -4177,13 +4176,7 @@
         "chord/next/store/host_data_test.go",
         "chord/next/host/host_store_host_data_test.go"
       ],
-      "designedOutCases": [
-        "review round 2 › keeps import and delete off the store's public surface: the host is the only way"
-      ],
-      "rationale": "12 of the 13 upstream cases run in the evidence files: host_data_test.go runs them against the store's own API (the tables' handles and CreateDocument write the data, the tables' SQL and FindDocument read it back, as the object's methods of Pi's tests do): export (1), import (5), archive checks (the refusal rows and the folding of a record's base and deltas), delete (1) and review round 2 (3); host_store_host_data_test.go runs the cases that serve a host (export, import, delete and review round 2) through a live host. The remaining case, 'keeps import and delete off the store's public surface', asserts the TypeScript module's export list and is designed out. Go also runs 'names the owners whose data it changes' (HostDataOwners), which Pi's file has no title for.",
-      "protects": "Import and delete of a host's data are reachable through the host only, which gates them against activations and adopts them into the live owners.",
-      "pigTest": "chord/next/host/host_host_data_test.go and chord/next/host/host_store_host_data_test.go drive every import and delete through Host.ImportHostData and Host.DeleteHostData on a live host (the gate, the batch adoption and the cancellation rules); store.ImportHostData and store.DeleteHostData are called by that host.",
-      "whyNot": "The upstream case reads a TypeScript module's export list (that import and delete are not exported from the store's public entry). Go has no export list to assert: ImportHostData and DeleteHostData are exported functions of the store package that the host package is the only production caller of, so the property is an import graph, not a behavior a runtime test can observe."
+      "rationale": "All 13 upstream cases run in the evidence files: host_data_test.go runs them against the store's own API (the tables' handles and CreateDocument write the data, the tables' SQL and FindDocument read it back, as the object's methods of Pi's tests do): export (1), import (5), archive checks (the refusal rows and the folding of a record's base and deltas), delete (1), review round 2 (3) and 'keeps import and delete off the store's public surface' (TestHostDataSurface: the store package's exported identifiers hold ExportHostData and ReadHostArchive and no import or delete operation, which the host reaches only through chord/next/internal/hostdata, importable by chord/next packages alone); host_store_host_data_test.go runs the cases that serve a host (export, import, delete and review round 2) through a live host. Go also runs 'names the owners whose data it changes' (hostDataOwners), which Pi's file has no title for."
     },
     {
       "path": "packages/chord/test/store/import-migration.test.ts",

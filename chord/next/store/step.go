@@ -1,6 +1,7 @@
 package store
 
 import (
+	"cmp"
 	"maps"
 	"slices"
 
@@ -62,13 +63,29 @@ func NewStep(executor sqlite.SqliteExecutor, seq int64, ids *IdAllocator, catalo
 	return &Step{Executor: executor, Seq: seq, IDs: ids, Tables: map[string]*TableRecord{}, catalog: catalog}
 }
 
-// Records is every recorded table as this step leaves it so far, by SQL name (Pi's catalog is a Map in the order its
-// tables were recorded; the Go catalog is a map, so the order is the name's).
+// Records is every recorded table as this step leaves it so far, in the order of Pi's catalog Map: the tables as the store
+// opened (Pi's `readCatalog` reads `chord_tables`, a `WITHOUT ROWID` table, so by name), then the ones recorded since in
+// the order they were first recorded; a table recorded again keeps its place, with the step's record in it.
 func (step *Step) Records() []*TableRecord {
 	records := make(map[string]*TableRecord, len(step.catalog)+len(step.Tables))
 	maps.Copy(records, step.catalog)
 	maps.Copy(records, step.Tables)
-	return slices.SortedFunc(maps.Values(records), func(a, b *TableRecord) int { return CompareText(a.Table, b.Table) })
+	return slices.SortedFunc(maps.Values(records), func(a, b *TableRecord) int { return cmp.Compare(a.position, b.position) })
+}
+
+// record is Pi's `step.tables.set(name, record)`: the record keeps the place of the table's earlier record, or, for a table
+// not recorded yet, takes the place after every recorded one.
+func (step *Step) record(name string, record *TableRecord) {
+	if earlier := step.Table(name); earlier != nil {
+		record.position = earlier.position
+	} else {
+		next := 0
+		for _, other := range step.Records() {
+			next = max(next, other.position+1)
+		}
+		record.position = next
+	}
+	step.Tables[name] = record
 }
 
 // Table is the record of table name as this step leaves it so far; nil when there is none.

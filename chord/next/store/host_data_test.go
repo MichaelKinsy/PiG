@@ -2,13 +2,22 @@ package store
 
 import (
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
+	"io/fs"
+	"reflect"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
+	"github.com/MichaelKinsy/PiG/chord/next/internal/hostdata"
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 	"github.com/MichaelKinsy/PiG/chord/sqlite"
+	"github.com/MichaelKinsy/PiG/chord/sqlite/node"
 )
 
 // Ports packages/chord/test/store/host-data.test.ts: tests of a host's data in a store (decision "Documents and table
@@ -20,8 +29,8 @@ import (
 // Go forms: Pi's tests serve an object type (`Sessions`) on a host to write and read the data; the host is a later
 // package, so the data is written through the store's own API (the tables' handles and `CreateDocument`) and read back
 // by the tables' SQL and `FindDocument`, which is what the object's methods do. The case "keeps import and delete off
-// the store's public surface" is about the TypeScript module's export list; Go has no such list (the host package is
-// the only caller of ImportHostData and DeleteHostData by construction of its API), so it is designed out.
+// the store's public surface" asserts the package's exported identifiers (Go's export list) and that the operations'
+// way to the host is an internal package.
 //
 // pi: packages/chord/src/store/host-data.ts
 
@@ -193,11 +202,11 @@ func readHostArchiveOf(t *testing.T, parts []ArchivePart) *HostArchive {
 // importInto imports archive into store under address (the archive's own when nil), refusing or replacing existing
 // data, in a commit nobody coordinates (no live owner in these tests).
 func importInto(store *ChordStore, archive *HostArchive, address *contracts.Address, existing string) (HostDataCounts, error) {
-	plan := HostImportPlan{Target: archive.Host, Existing: existing, Histories: map[string]*TableDefinition{}}
+	plan := hostImportPlan{Target: archive.Host, Existing: existing, Histories: map[string]*TableDefinition{}}
 	if address != nil {
 		plan.Target = address.Key
 	}
-	return ImportHostData(store, archive, plan, HostCommit{Fence: openFence}, background)
+	return importHostData(store, archive, plan, hostCommit{Fence: openFence}, background)
 }
 
 func TestHostDataExport(t *testing.T) {
@@ -324,8 +333,8 @@ func TestHostDataImport(t *testing.T) {
 		must(t, PrepareTables([]DeclaredTable{{Definition: newer, Table: hostDataLabels}}, target, openFence, hostDataOwner, background))
 		_, err = importInto(target, archive, nil, "")
 		qFails(t, err, "at version 1, 2 here; its owner is not live")
-		qEqual(t, TablesToMigrate(target, archive), []string{hostDataLabels})
-		qEqual(t, TablesToMigrate(source, archive), []string(nil))
+		qEqual(t, tablesToMigrate(target, archive), []string{hostDataLabels})
+		qEqual(t, tablesToMigrate(source, archive), []string(nil))
 	})
 
 	t.Run("is recorded in the outbox as ordinary writes", func(t *testing.T) {
@@ -347,10 +356,10 @@ func TestHostDataImport(t *testing.T) {
 		f := newHostDataFixture(t)
 		source := f.populated()
 		archive := readHostArchiveOf(t, f.exportedHost(source, "S1"))
-		owners, err := HostDataOwners(source, "session|S1", archive, background)
+		owners, err := hostDataOwners(source, "session|S1", archive, background)
 		must(t, err)
 		qEqual(t, owners, map[string]struct{}{hostDataOwner: {}})
-		owners, err = HostDataOwners(memoryStore(t), "session|S1", nil, background)
+		owners, err = hostDataOwners(memoryStore(t), "session|S1", nil, background)
 		must(t, err)
 		qEqual(t, len(owners), 0)
 	})
@@ -440,7 +449,7 @@ func TestHostDataDelete(t *testing.T) {
 	t.Run("retires the address's records and deletes its rows in one commit, other addresses untouched", func(t *testing.T) {
 		f := newHostDataFixture(t)
 		store := f.populated()
-		counts, err := DeleteHostData(store, "session|S1", HostCommit{Fence: openFence}, background)
+		counts, err := deleteHostData(store, "session|S1", hostCommit{Fence: openFence}, background)
 		must(t, err)
 		qEqual(t, counts, HostDataCounts{Documents: 1, Rows: 3})
 		qEqual(t, f.read(store, "S1"), sessionData{Labels: []string{}, Notes: []string{}})
@@ -458,6 +467,73 @@ func TestHostDataDelete(t *testing.T) {
 		// The string-keyed document with the same key is no host's: still there.
 		plain := engineRows(t, store, `SELECT count(*) AS n FROM chord_documents WHERE kind = 'plain'`)
 		qEqual(t, plain[0]["n"], int64(2))
+	})
+}
+
+func TestStepRecordsOrder(t *testing.T) {
+	named := func(name string) *TableDefinitionWrite {
+		return applierTableWrite(func(write *TableDefinitionWrite) { write.Table = name })
+	}
+	tableNames := func(step *Step) []string {
+		var names []string
+		for _, record := range step.Records() {
+			names = append(names, record.Table)
+		}
+		return names
+	}
+	t.Run("the catalog's tables in the order they were recorded (a record again keeps its place), as Pi's Map", func(t *testing.T) {
+		db, err := node.OpenNodeSqliteDatabase(":memory:", node.NodeSqliteDatabaseOptions{})
+		noError(t, err)
+		defer func() { _ = db.Close() }()
+		noError(t, db.Transaction(func(executor sqlite.SqliteExecutor) error {
+			first := NewStep(executor, 1, NewIdAllocator(2), map[string]*TableRecord{})
+			for _, name := range []string{"app.store:zed", "app.store:alpha"} {
+				noError(t, applyWrite(first, named(name), "test"))
+			}
+			qEqual(t, tableNames(first), []string{"app.store:zed", "app.store:alpha"})
+			second := NewStep(executor, 2, NewIdAllocator(2), first.Tables)
+			noError(t, applyWrite(second, named("app.store:mid"), "test"))
+			noError(t, applyWrite(second, &IndexWrite{Table: "app.store:zed", Name: "by_id", Columns: []string{"id"}}, "test"))
+			qEqual(t, tableNames(second), []string{"app.store:zed", "app.store:alpha", "app.store:mid"})
+			qEqual(t, second.Records()[0].Indexes[0].Name, "by_id")
+			return nil
+		}))
+	})
+	t.Run("the catalog read at open is by name (a WITHOUT ROWID table's order), the live one in recording order", func(t *testing.T) {
+		f := newHostDataFixture(t)
+		store := memoryStore(t)
+		must(t, PrepareTables([]DeclaredTable{{Definition: f.pins, Table: hostDataPins}}, store, openFence, hostDataOwner, background))
+		must(t, PrepareTables([]DeclaredTable{{Definition: f.labels, Table: hostDataLabels}}, store, openFence, hostDataOwner, background))
+		var live, opened []string
+		noError(t, store.Replay(func(executor sqlite.SqliteExecutor, catalog map[string]*TableRecord) (Replayed, error) {
+			for _, record := range NewStep(executor, store.LastSeq()+1, NewIdAllocator(store.NextID()), catalog).Records() {
+				live = append(live, record.Table)
+			}
+			read, err := ReadCatalog(executor)
+			noError(t, err)
+			for _, record := range NewStep(executor, store.LastSeq()+1, NewIdAllocator(store.NextID()), read).Records() {
+				opened = append(opened, record.Table)
+			}
+			return Replayed{LastSeq: store.LastSeq(), NextID: store.NextID()}, nil
+		}, IsDiverged))
+		qEqual(t, live, []string{hostDataPins, hostDataLabels})
+		qEqual(t, opened, []string{hostDataLabels, hostDataPins})
+	})
+	t.Run("deleteHostData's outbox writes follow it: the tables as they were created, here not by name", func(t *testing.T) {
+		f := newHostDataFixture(t)
+		store := memoryStore(t, true)
+		must(t, PrepareTables([]DeclaredTable{{Definition: f.pins, Table: hostDataPins}}, store, openFence, hostDataOwner, background))
+		must(t, PrepareTables([]DeclaredTable{{Definition: f.labels, Table: hostDataLabels}}, store, openFence, hostDataOwner, background))
+		labels, pins := NewTableHandle(f.labels, hostDataLabels, store, tableOwner()), NewTableHandle(f.pins, hostDataPins, store, tableOwner())
+		f.write(store, labels, pins, "S1", "one", []string{"a"}, "p1")
+		_, err := deleteHostData(store, "session|S1", hostCommit{Fence: openFence}, background)
+		must(t, err)
+		commits, err := store.Outbox().Read(store.LastSeq()-1, 1, background)
+		must(t, err)
+		qEqual(t, []string{nexttest.JSONText(t, commits[0].Writes[1]), nexttest.JSONText(t, commits[0].Writes[2])}, []string{
+			`{"kind":"deleteWhere","table":"test.sessions:pins","where":{"eq":["session","session|S1"]},"count":1}`,
+			`{"kind":"deleteWhere","table":"test.sessions:labels","where":{"eq":["session","session|S1"]},"count":1}`,
+		})
 	})
 }
 
@@ -522,8 +598,55 @@ func TestHostDataReviewRound2(t *testing.T) {
 			}
 		}
 		qEqual(t, []int{puts, creates}, []int{2, 1})
-		counts, err := DeleteHostData(store, "session|x\uFFFD", HostCommit{Fence: openFence}, background)
+		counts, err := deleteHostData(store, "session|x\uFFFD", hostCommit{Fence: openFence}, background)
 		must(t, err)
 		qEqual(t, counts, HostDataCounts{Documents: 1, Rows: 2})
+	})
+}
+
+func TestHostDataSurface(t *testing.T) {
+	// review round 2 › keeps import and delete off the store's public surface: the host is the only way
+	t.Run("keeps import and delete off the store's public surface: the host is the only way", func(t *testing.T) {
+		files, err := parser.ParseDir(token.NewFileSet(), ".", func(info fs.FileInfo) bool { return !strings.HasSuffix(info.Name(), "_test.go") }, 0)
+		must(t, err)
+		exported := map[string]bool{}
+		for _, pkg := range files {
+			for _, file := range pkg.Files {
+				for _, declaration := range file.Decls {
+					switch declaration := declaration.(type) {
+					case *ast.FuncDecl:
+						if declaration.Recv == nil && declaration.Name.IsExported() {
+							exported[declaration.Name.Name] = true
+						}
+					case *ast.GenDecl:
+						for _, spec := range declaration.Specs {
+							switch spec := spec.(type) {
+							case *ast.TypeSpec:
+								exported[spec.Name.Name] = spec.Name.IsExported()
+							case *ast.ValueSpec:
+								for _, name := range spec.Names {
+									exported[name.Name] = name.IsExported()
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		for _, name := range []string{"ExportHostData", "ReadHostArchive", "HostArchive", "HostDataCounts", "HostImportOptions"} {
+			if !exported[name] {
+				t.Errorf("%s is not exported by the store", name)
+			}
+		}
+		for _, name := range []string{"ImportHostData", "DeleteHostData", "HostCommit", "HostImportPlan", "TablesToMigrate", "HostDataOwners"} {
+			if exported[name] {
+				t.Errorf("%s is exported by the store: import and delete are the host's, not the store's public surface", name)
+			}
+		}
+		// The way to the host is internal to chord/next: no consumer of the module can import it.
+		path := reflect.TypeFor[hostdata.Counts]().PkgPath()
+		if !slices.Contains(strings.Split(path, "/"), "internal") || !strings.Contains(path, "/chord/next/internal/") {
+			t.Errorf("the host data seam %s is not under chord/next/internal", path)
+		}
 	})
 }

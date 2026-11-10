@@ -227,8 +227,8 @@ func AddressOfKey(kind *HostKind, key string) (Address, error) {
 
 // KindOfKey is the kind's name of an address key: its first part (kind names never hold `|` or a backslash).
 func KindOfKey(key string) string {
-	if end := strings.IndexByte(key, '|'); end != -1 {
-		return key[:end]
+	if before, _, ok := strings.Cut(key, "|"); ok {
+		return before
 	}
 	return key
 }
