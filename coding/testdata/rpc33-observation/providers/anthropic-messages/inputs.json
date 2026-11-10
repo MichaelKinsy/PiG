@@ -1,7 +1,7 @@
 {
   "piVersion": "1.5.1",
   "anthropicSdkVersion": "0.129.0",
-  "nodeVersion": "v24.22.2",
+  "nodeVersion": "v24.19.0",
   "axes": {
     "shapes": [
       "tool",
