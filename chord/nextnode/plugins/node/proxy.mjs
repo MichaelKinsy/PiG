@@ -72,8 +72,12 @@ function replaceRoot(draft, value) {
 function createCopy(handle, fatal) {
 	let chain = Promise.resolve();
 	const present = new Set();
+	const { promise: ready, resolve: markReady } = Promise.withResolvers();
 	const enqueue = (work) => {
-		chain = chain.then(work).catch(fatal);
+		// A document change of an object that ended (its attempt is sealed) is `released`: the copy is gone with the object, not a failure.
+		chain = chain.then(work).catch((error) => {
+			if (error?.code !== "released") fatal(error);
+		});
 		return chain;
 	};
 	const put = async (key, value) => {
@@ -87,13 +91,16 @@ function createCopy(handle, fatal) {
 	return {
 		put: (key, value) => enqueue(() => put(key, value)),
 		retire: (key) => enqueue(() => retire(key)),
-		/** Makes the copy `docs` (`[{ key, value }]`): the documents that are not in it are retired. */
+		/** Makes the copy `docs` (`[{ key, value }]`): the documents that are not in it are retired. The first one makes the copy `ready`. */
 		reset: (docs) =>
 			enqueue(async () => {
 				const keys = new Set(docs.map((doc) => doc.key));
 				for (const key of [...present]) if (!keys.has(key)) await retire(key);
 				for (const doc of docs) await put(doc.key, doc.value);
+				markReady();
 			}),
+		/** Settles once the first reset was applied (the Go side sends it before every other frame). */
+		ready,
 		idle: () => chain,
 	};
 }
@@ -133,8 +140,9 @@ export function createProxies({ ask, tell, watches, mirrors, fatal }) {
 		// Registered before the request is sent: the frames that follow its reply find the copy.
 		mirrors.set(id, copy);
 		try {
-			const { docs } = await ask("mirror", { handle, member, mirror: id }, context);
-			await copy.reset(docs.map(({ key, value }) => ({ key, value: decodeValue(value) })));
+			await ask("mirror", { handle, member, mirror: id }, context);
+			// The first frame the Go side sends is the reset with the member's documents; every other frame follows it.
+			await copy.ready;
 		} catch (error) {
 			mirrors.delete(id);
 			tell("unmirror", { mirror: id });

@@ -76,11 +76,11 @@ func localeCorpus() []string {
 	tags = append(tags, aliasCorpus()...)
 	// Random well-formed and malformed tags, seeded.
 	random := rand.New(rand.NewSource(7))
-	// Languages first, then subtags; two quirks of Node's ICU stay out of the alphabet: `TW` in capitals as a language (`ak`; `tw` in
-	// small letters stays `tw`) and `true` or a variant of an alias in a `-t-` or private-use extension (D458).
-	languages := []string{"en", "de", "zh", "sr", "ar", "ja", "fr", "abc", "ab", "und", "nu", "uz", "ru"}
+	// Languages first, then subtags.
+	languages := []string{"en", "de", "zh", "sr", "ar", "ja", "fr", "abc", "ab", "und", "nu", "uz", "ru", "tw", "TW", "bh", "Bh", "tnf"}
 	pieces := []string{"en", "de", "Latn", "Hant", "Arab", "US", "DE", "GB", "419", "1996", "rozaj", "posix", "u", "t", "x", "a", "ca", "co", "nu",
-		"gregory", "phonebk", "latn", "fr", "abc", "ab", "k0", "m0", "und", "hepburn", "heploc", "aaland", "polytoni", "xyzzy12345"}
+		"gregory", "phonebk", "latn", "fr", "abc", "ab", "k0", "m0", "und", "hepburn", "heploc", "aaland", "polytoni", "xyzzy12345",
+		"true", "yes", "names", "islamicc", "hongkong", "tz", "x"}
 	for range 3000 {
 		n := 1 + random.Intn(6)
 		parts := make([]string, n)
@@ -93,7 +93,7 @@ func localeCorpus() []string {
 	return tags
 }
 
-// aliasCorpus is the tags of the alias rules Intl.getCanonicalLocales has beyond a bare language, a region and a variant (D458, listed from the
+// aliasCorpus is the tags of the alias rules Intl.getCanonicalLocales has beyond a bare language, a region and a variant (listed from the
 // data the generator probes Node for): the value aliases of `-u-` keywords and `-t-` fields, every three-letter value of the keywords that have
 // aliases, the aliases that need more than the language and the region (`tw-AA`, `sgn-BR`, `Qaai`), and every language with a few regions.
 func aliasCorpus() []string {
@@ -124,6 +124,18 @@ func aliasCorpus() []string {
 	for script := range scriptAliases {
 		tags = append(tags, "und-"+script, "en-"+script+"-US", "sh-"+script, "en-"+strings.ToLower(script)+"-1996")
 	}
+	// The review's classes: time zone aliases of six letters and more, the qualified languages in capitals and as a `-t-` source, a lone `true`
+	// in a private use.
+	for _, word := range []string{"factory", "hongkong", "iceland", "israel", "jamaica", "mxstis", "navajo", "poland", "portugal", "turkey", "usnavajo", "japan", "singapore", "egypt", "cuba", "eire", "gb", "gmt", "libya", "nz", "prc", "roc", "rok", "uct", "utc", "zulu"} {
+		tags = append(tags, "en-u-tz-"+word, "de-u-ca-gregory-tz-"+word, "en-u-tz-"+word+"-nu-latn")
+	}
+	for _, language := range []string{"tw", "tnf", "swc", "prs", "drw", "cnr", "bh"} {
+		cases := []string{language, strings.ToUpper(language), strings.ToUpper(language[:1]) + language[1:], language[:1] + strings.ToUpper(language[1:])}
+		for _, each := range cases {
+			tags = append(tags, each, each+"-AA", each+"-Latn", each+"-Latn-US", each+"-1996", each+"-u-ca-gregory", each+"-x-a", "en-t-"+each, "en-t-"+each+"-latn", "en-t-"+each+"-AA", "en-t-"+each+"-m0-names")
+		}
+	}
+	tags = append(tags, "en-x-true", "en-X-TRUE", "en-u-ca-gregory-x-true", "en-t-ja-x-true", "en-x-true-a", "en-x-a-true", "x-true", "en-t-ja-x-true-a", "en-u-x-true", "en-a-bbb-x-true")
 	keys := []string{"ca", "co", "ks", "ms", "nu", "tz", "rg", "sd", "kb", "kn", "kc", "kf", "kh", "kk", "kr", "kv", "hc", "fw", "lb", "lw", "mu", "ss", "va", "cu", "em", "dx"}
 	for _, key := range keys {
 		for _, a := range "abcdefghijklmnopqrstuvwxyz" {

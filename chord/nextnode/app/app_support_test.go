@@ -267,7 +267,7 @@ var notes = func() *contracts.Contract {
 			return project.Address(delta.JsonObjectOf("id", params.Value("id"))), nil
 		},
 		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{
-			State:   []contracts.Property{contracts.Prop("text", contracts.Str()), contracts.Prop("start", contracts.Unknown())},
+			State: []contracts.Property{contracts.Prop("text", contracts.Str()), contracts.Prop("start", contracts.Unknown())},
 			Methods: []contracts.MethodEntry{
 				contracts.Meth("write", contracts.NewMethod(contracts.Str())), contracts.Meth("visit", contracts.NewMethod(contracts.Str(), contracts.Int())),
 				contracts.Meth("attach", contracts.NewMethod(contracts.Str(), contracts.Str())), contracts.Meth("file", contracts.NewMethod(contracts.Str(), contracts.Str())),

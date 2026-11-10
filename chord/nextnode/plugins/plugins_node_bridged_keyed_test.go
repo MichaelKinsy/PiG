@@ -28,6 +28,17 @@ var kcDocs = func() *documents.StateDefinition {
 	return definition
 }()
 
+var kcDocs2 = func() *documents.StateDefinition {
+	definition, err := documents.DefineState("docs2", documents.StateOptions{
+		Schema: contracts.Obj(contracts.Prop("text", contracts.Str())), Version: 1, Keyed: true,
+		Initial: func() *delta.JsonObject { return delta.JsonObjectOf("text", "") },
+	})
+	if err != nil {
+		panic(err)
+	}
+	return definition
+}()
+
 var kcCore = mustContract(contracts.Local("test.keyedcore", contracts.LocalDeclaration{
 	Version: 1, Params: contracts.Params{contracts.Prop("id", contracts.Str())},
 	Members: []contracts.LocalEntry{
@@ -48,10 +59,14 @@ var kcOut = mustContract(contracts.Local("test.keyedout", contracts.LocalDeclara
 	},
 }))
 
-func kcFacet() host.Facet {
+func kcFacet() host.Facet { return kcFacetOf(kcDocs) }
+
+// kcFacetOf is the Go core facet keeping the keyed member's documents in definition: a reload with another definition ends the slot of the
+// first (no attempt declares it) and serves a new one.
+func kcFacetOf(definition *documents.StateDefinition) host.Facet {
 	return host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
 		return h.Serve(kcCore, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
-			docs := self.State(kcDocs).(*documents.Keyed)
+			docs := self.State(definition).(*documents.Keyed)
 			return contracts.Implementation{Members: contracts.VariantImplementation{
 				Keyed: map[string]contracts.KeyedWatchable[delta.JsonValue]{"docs": host.ExposeKeyed(docs)},
 				Methods: map[string]contracts.MethodFunction{
@@ -181,4 +196,77 @@ func TestBridgedAKeyedMemberOfTenThousandDocumentsIsCopiedBeforeTheObjectIsLive(
 	if got := kcCall(t, out, "read", fmt.Sprintf("space-%05d", documentCount)); got != nil {
 		t.Fatalf("read past the last = %v", got)
 	}
+}
+
+// A commit made after the snapshot was read and before the object is live (the frame follows the mirror's answer in the same chunk) is
+// applied after the snapshot: the snapshot neither retires the key the commit made nor puts back the value it changed.
+func TestBridgedAKeyedMemberKeepsACommitMadeWhileTheObjectOpens(t *testing.T) {
+	goHost := bgGoHost(t, host.HostFacet{Name: "@app/keyedcore", Facet: kcFacet()})
+	goRef, err := goHost.Get(background, kcCore, delta.JsonObjectOf("id", "a"), host.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(goRef.Release)
+	put := func(key, text string) {
+		t.Helper()
+		if _, err := goRef.Call("put", delta.JsonObjectOf("key", key, "text", text), background); err != nil {
+			t.Fatal(err)
+		}
+	}
+	put("a", "one")
+	hook := func() {
+		put("k", "new")
+		put("a", "two")
+	}
+	mirrorSnapshotHook.Store(&hook)
+	node := bgNode(t, []BridgedFacet{{Name: "@app/keyedcore", Host: goHost, Contracts: []*contracts.Contract{kcCore}}}, handmade(t, "@test/kplug", "worker", kcPlugin))
+	out, err := node.Get(background, kcOut, delta.JsonObjectOf("id", "a"), host.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(out.Release)
+	eventually(t, 15*time.Second, "the commit made while the object opened", func() bool {
+		return kcCall(t, out, "read", "k") == "new" && kcCall(t, out, "read", "a") == "two"
+	})
+}
+
+// A Go facet that reloads with the member kept in another definition ends the slot the mirror followed: the mirror reads the reference's
+// next slot and the plugin sees what that holds (the documents of the old slot gone), then what the object commits.
+func TestBridgedAKeyedMemberIsReadAgainAfterTheGoFacetReloads(t *testing.T) {
+	goHost := bgGoHost(t, host.HostFacet{Name: "@app/keyedcore", Facet: kcFacet()})
+	goRef, err := goHost.Get(background, kcCore, delta.JsonObjectOf("id", "a"), host.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(goRef.Release)
+	put := func(key, text string) {
+		t.Helper()
+		if _, err := goRef.Call("put", delta.JsonObjectOf("key", key, "text", text), background); err != nil {
+			t.Fatal(err)
+		}
+	}
+	reload := func() {
+		t.Helper()
+		if _, err := goHost.Reload([]host.HostFacet{{Name: "@app/keyedcore", Facet: kcFacetOf(kcDocs2)}}, background, host.ReloadOptions{}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	put("a", "one")
+	node := bgNode(t, []BridgedFacet{{Name: "@app/keyedcore", Host: goHost, Contracts: []*contracts.Contract{kcCore}}}, handmade(t, "@test/kplug", "worker", kcPlugin))
+	out, err := node.Get(background, kcOut, delta.JsonObjectOf("id", "a"), host.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(out.Release)
+	if got := kcCall(t, out, "read", "a"); got != "one" {
+		t.Fatalf("read a = %v", got)
+	}
+	// A commit made after the mirror read the new slot, before it sent the documents, follows them.
+	hook := func() { put("z", "fresh") }
+	mirrorSnapshotHook.Store(&hook)
+	reload()
+	eventually(t, 30*time.Second, "the commit made while the new slot was read", func() bool { return kcCall(t, out, "read", "z") == "fresh" })
+	eventually(t, 30*time.Second, "the document of the old slot to be gone", func() bool { return kcCall(t, out, "read", "a") == nil })
+	put("y", "after")
+	eventually(t, 30*time.Second, "a commit of the object after the reloads", func() bool { return kcCall(t, out, "read", "y") == "after" })
 }

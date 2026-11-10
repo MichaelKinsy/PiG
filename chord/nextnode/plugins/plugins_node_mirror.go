@@ -3,6 +3,7 @@ package plugins
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -11,17 +12,29 @@ import (
 )
 
 // The Node host's copy of a Go object's keyed member (plugins_node_bridged.go, node/proxy.mjs): the documents of the member, sent as
-// `mirrorDoc` and `mirrorReset` notifications under the id the proxy chose. No Pi file corresponds to this one: Pi's plugins share
+// `mirrorReset` and `mirrorDoc` notifications under the id the proxy chose. No Pi file corresponds to this one: Pi's plugins share
 // the one host, so a plugin reads the provider's keyed slot itself (reference.ts ReferenceKeyed.get/watch/at), and here that slot
 // is on the other side of the channel from the plugin's.
 //
-// Async contract: `mirror` answers with every document the member holds, after it registered its observer on the member's slot, and
-// the frames of the commits that followed follow the answer on the channel, in the order the Go host adopted them (the observer
-// queues them inside the commit; one goroutine sends the queue). A method call's answer waits for the queue to empty (`flush`),
-// so the frames of the commits it made precede its answer and the proxy, which applies frames in order before it answers its
-// caller, shows them to the plugin that awaited the call. A Go object that ended (its facet reloaded) is told by its slot's `dropped`: the
-// mirror reads the reference's next slot again (it retries while the reference has none live) and sends `mirrorReset`, which
-// the proxy applies as a replacement. The mirror lives until `unmirror`, the release of its reference or the process's end.
+// Async contract: `mirror` registers an observer on the member's slot, reads the slot's documents, and answers with nothing. The
+// first notification it sends is `mirrorReset` with the documents read; the commits the observer saw while they were read, and every
+// later one, follow it in the order the Go host adopted them (the observer runs inside the commit and only queues; one goroutine sends
+// the queue). The proxy makes the object live once it applied that first reset, so no commit is applied before the documents it
+// belongs to. A method call's answer waits for the queue to empty (`flush`), so the frames of the commits it made precede its answer and
+// the proxy, which applies frames in order before it answers its caller, shows them to the plugin that awaited the call. A Go object that
+// ended (its facet reloaded) is told by its slot's `dropped`: the mirror reads the reference's next slot (it retries while the
+// reference has none live, and again when that slot ends while it is read) and sends another `mirrorReset` before the commits that
+// followed its read. The mirror lives until `unmirror`, the release of its reference or the process's end.
+
+// mirrorSnapshotHook is run once, by tests, after a mirror's documents were read and before they are sent: a commit made there is one
+// the snapshot does not have, whose frame the mirror must send after the reset.
+var mirrorSnapshotHook atomic.Pointer[func()]
+
+func runMirrorSnapshotHook() {
+	if hook := mirrorSnapshotHook.Swap(nil); hook != nil {
+		(*hook)()
+	}
+}
 
 // resyncDelay is how long a mirror waits before it reads a reference again that had no live slot to read.
 const resyncDelay = 50 * time.Millisecond
@@ -39,20 +52,35 @@ type bridgedMirror struct {
 	started bool
 	sending bool
 	// idle is closed when the queue is empty and nothing is being sent; nil while it is.
-	idle      chan struct{}
-	stopSlot  func()
-	stopped   bool
+	idle     chan struct{}
+	stopSlot func()
+	stopped  bool
+	// reading is whether a slot's documents are being read: the commits its observer sees are kept in pending, to follow the reset
+	// that carries the documents. dropped is whether the slot ended meanwhile.
+	reading bool
+	pending []map[string]any
+	dropped bool
+	// resyncing is whether resync runs.
 	resyncing bool
 }
 
 // observe is the slot's observer: it runs inside the Go host's commit and only queues.
 func (m *bridgedMirror) observe(key string, value *documents.JsonObject, dropped bool) {
-	switch {
-	case dropped:
+	m.mu.Lock()
+	if dropped {
+		if m.reading {
+			m.dropped = true
+			m.mu.Unlock()
+			return
+		}
+		m.mu.Unlock()
 		go m.resync()
-	case value == nil:
+		return
+	}
+	m.mu.Unlock()
+	if value == nil {
 		m.enqueue(map[string]any{"op": "mirrorDoc", "mirror": m.id, "key": key, "retired": true})
-	default:
+	} else {
 		m.enqueue(map[string]any{"op": "mirrorDoc", "mirror": m.id, "key": key, "value": wireEncode(value)})
 	}
 }
@@ -61,6 +89,10 @@ func (m *bridgedMirror) enqueue(message map[string]any) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.stopped {
+		return
+	}
+	if m.reading {
+		m.pending = append(m.pending, message)
 		return
 	}
 	m.queue = append(m.queue, message)
@@ -121,6 +153,33 @@ func (m *bridgedMirror) flush(ctx context.Context) error {
 	}
 }
 
+// read reads the member's documents and registers the observer first. It returns false when the slot ended while it was read, which
+// the caller reads again; else the reset that carries the documents is queued, followed by the commits the read saw.
+func (m *bridgedMirror) read(ctx context.Context) (ok bool, err error) {
+	m.mu.Lock()
+	m.reading, m.dropped, m.pending = true, false, nil
+	m.mu.Unlock()
+	docs, stop, err := m.keyed.Snapshot(ctx, m.observe)
+	if err != nil {
+		return false, err
+	}
+	runMirrorSnapshotHook()
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.dropped || m.stopped {
+		m.pending = nil
+		go stop()
+		return false, nil
+	}
+	m.reading = false
+	m.stopSlot = stop
+	m.queue = append(m.queue, map[string]any{"op": "mirrorReset", "mirror": m.id, "docs": mirrorDocs(docs)})
+	m.queue = append(m.queue, m.pending...)
+	m.pending = nil
+	m.kick()
+	return true, nil
+}
+
 // resync reads the reference's keyed member again after its slot ended and sends it as a replacement.
 func (m *bridgedMirror) resync() {
 	m.mu.Lock()
@@ -130,20 +189,25 @@ func (m *bridgedMirror) resync() {
 	}
 	m.resyncing = true
 	m.mu.Unlock()
+	defer func() {
+		m.mu.Lock()
+		m.resyncing = false
+		m.mu.Unlock()
+	}()
 	for {
-		docs, stop, err := m.keyed.Snapshot(m.life, m.observe)
-		if err == nil {
-			m.mu.Lock()
-			m.resyncing = false
-			if m.stopped {
-				m.mu.Unlock()
-				stop()
-				return
-			}
-			m.stopSlot = stop
-			m.mu.Unlock()
-			m.enqueue(map[string]any{"op": "mirrorReset", "mirror": m.id, "docs": mirrorDocs(docs)})
+		ok, err := m.read(m.life)
+		if ok {
 			return
+		}
+		m.mu.Lock()
+		stopped := m.stopped
+		m.mu.Unlock()
+		if stopped || m.life.Err() != nil {
+			return
+		}
+		if err == nil {
+			// The slot read ended meanwhile: read the next at once.
+			continue
 		}
 		select {
 		case <-m.life.Done():
@@ -166,7 +230,7 @@ func (m *bridgedMirror) end() {
 	}
 }
 
-// mirrorDocs is docs as the `docs` of the `mirror` answer and of `mirrorReset`.
+// mirrorDocs is docs as the `docs` of `mirrorReset`.
 func mirrorDocs(docs []host.KeyedDocument) []any {
 	out := make([]any, len(docs))
 	for i, doc := range docs {
@@ -175,8 +239,8 @@ func mirrorDocs(docs []host.KeyedDocument) []any {
 	return out
 }
 
-// bridgedMirrorOf starts a mirror of keyed member name of the held reference handle under id: the answer is the member's
-// documents, and the returned function sends the frames that follow, which the caller runs once the answer is out.
+// bridgedMirrorOf starts a mirror of keyed member name of the held reference handle under id: the answer is empty, and the returned
+// function lets the frames go (the first is the reset with the member's documents), which the caller runs once the answer is out.
 func (h *NodeHost) bridgedMirrorOf(ctx context.Context, handle int, name string, id int) (result any, start func(), err error) {
 	reference, err := h.bridgedReference(handle)
 	if err != nil {
@@ -189,12 +253,20 @@ func (h *NodeHost) bridgedMirrorOf(ctx context.Context, handle int, name string,
 	serving := h.serving()
 	life, cancel := context.WithCancel(serving.life)
 	m := &bridgedMirror{host: h, id: id, handle: handle, keyed: keyed, life: life, cancel: cancel}
-	docs, stop, err := keyed.Snapshot(ctx, m.observe)
-	if err != nil {
-		cancel()
-		return nil, nil, err
+	for {
+		ok, err := m.read(ctx)
+		if err != nil {
+			cancel()
+			return nil, nil, err
+		}
+		if ok {
+			break
+		}
+		if ctx.Err() != nil {
+			cancel()
+			return nil, nil, context.Cause(ctx)
+		}
 	}
-	m.stopSlot = stop
 	serving.mu.Lock()
 	serving.mirrors[id] = m
 	serving.mu.Unlock()
@@ -205,7 +277,7 @@ func (h *NodeHost) bridgedMirrorOf(ctx context.Context, handle int, name string,
 		m.end()
 		return nil, nil, context.Cause(ctx)
 	}
-	return map[string]any{"docs": mirrorDocs(docs)}, m.start, nil
+	return map[string]any{}, m.start, nil
 }
 
 type keyedMemberError struct{ name string }

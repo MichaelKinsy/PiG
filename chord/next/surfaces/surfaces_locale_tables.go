@@ -1615,6 +1615,12 @@ var languageRegionRules = map[string]string{
 	"sgn-ZA":  "sfs",
 }
 
+// nonLowercaseLanguageAliases is the canonical form of each language that Intl.getCanonicalLocales aliases only when it is not spelled all in lower case, or as the source language of a `-t-` extension: `TW` is `ak`, `tw` alone stays `tw`.
+var nonLowercaseLanguageAliases = map[string]string{
+	"bh": "bho",
+	"tw": "ak",
+}
+
 // scriptedLanguageRegionRules is the canonical language of each language and region pair with a script between that is a language of its own, the region gone and the script kept (`sgn-Latn-NO` is `nsi-Latn`).
 var scriptedLanguageRegionRules = map[string]string{
 	"sgn-076": "bzs",
@@ -1952,22 +1958,33 @@ var unicodeValueAliases = map[string]string{
 	"tz-egypt":               "egcai",
 	"tz-eire":                "iedub",
 	"tz-est":                 "papty",
+	"tz-factory":             "unk",
 	"tz-gaza":                "gazastrp",
 	"tz-gmt0":                "gmt",
+	"tz-hongkong":            "hkhkg",
 	"tz-hst":                 "ushnl",
+	"tz-iceland":             "isrey",
 	"tz-iran":                "irthr",
+	"tz-israel":              "jeruslm",
+	"tz-jamaica":             "jmkin",
 	"tz-japan":               "jptyo",
 	"tz-libya":               "lytip",
 	"tz-met":                 "bebru",
 	"tz-mncoq":               "mnuln",
 	"tz-mst":                 "usphx",
+	"tz-mxstis":              "mxtij",
+	"tz-navajo":              "usden",
+	"tz-poland":              "plwaw",
+	"tz-portugal":            "ptlis",
 	"tz-prc":                 "cnsha",
 	"tz-roc":                 "twtpe",
 	"tz-rok":                 "krsel",
+	"tz-turkey":              "trist",
 	"tz-uaozh":               "uaiev",
 	"tz-uauzh":               "uaiev",
 	"tz-uct":                 "utc",
 	"tz-umjon":               "ushnl",
+	"tz-usnavajo":            "usden",
 	"tz-wet":                 "ptlis",
 	"tz-zulu":                "utc",
 }
