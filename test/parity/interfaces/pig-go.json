@@ -102450,6 +102450,28 @@
       "shapeHash": "sha256:d294ee7800fac2db3dec494ccdbe20599068c3656c178421ce0fb1132ad258ae"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#secretEntry",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "secretEntry",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "secretEntry"
+      },
+      "shapeHash": "sha256:fe2d590ebfa096565727397f50769d725077f70d78c0b52342aaaeb05676a709"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#secretEntry.handle",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "secretEntry.handle",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(chunk string) (ended bool, interrupted bool)"
+      },
+      "shapeHash": "sha256:92b85040026c7eb4910bb3315ad603d353b645e8fc5b79df0cae11a6425ab32b"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#selectAuthType",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "selectAuthType",

@@ -1,5 +1,7 @@
 package sdk
 
+// pi: packages/coding-agent/src/core/extensions/pi-ai-extension-view.ts (Type and StringEnum against the pinned extension view)
+
 import (
 	"context"
 	"encoding/json"
