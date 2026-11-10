@@ -35,4 +35,14 @@ func TestWindowsSocketErrorsAreNamedAsNodeNamesThem(t *testing.T) {
 	if message, code := nodeBodyFailure(opError("read", windows.WSAECONNRESET)); message != "other side closed" || code != "UND_ERR_SOCKET" {
 		t.Errorf("a body read reset: nodeBodyFailure = %q, %q, want other side closed, UND_ERR_SOCKET", message, code)
 	}
+	// The messages Pi reports for these failures, as the pinned connection oracle and TestProviderTransportResetRecordsDiagnosticAndKeepsMessage
+	// compare them on the other platforms.
+	reset := NewNodeTransportError("Connection error.", NewNodeTransportError("fetch failed", opError("read", windows.WSAECONNRESET)))
+	if got, want := WithCauseDetail(reset), "Connection error.: read ECONNRESET"; got != want {
+		t.Errorf("a reset before the response headers: WithCauseDetail = %q, want %q", got, want)
+	}
+	body := NewNodeTransportError("terminated", opError("read", windows.WSAECONNRESET))
+	if got, want := WithCauseDetail(body), "terminated: other side closed (UND_ERR_SOCKET)"; got != want {
+		t.Errorf("a response body reset: WithCauseDetail = %q, want %q", got, want)
+	}
 }
