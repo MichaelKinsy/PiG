@@ -64,7 +64,30 @@ func TestStartupPromptsApplyTheKeybindingsOfTheAgentDirectory(t *testing.T) {
 	}
 }
 
-// configureStartupTui installs the process-wide keybindings of the agent directory, so every test that opens a startup prompt has to restore them, or a later test that reads them depends on the order the tests run in (go test -shuffle).
+// requireRestoresTUIKeybindings runs the test run as a subtest and fails unless it leaves the process-wide TUI keybindings and the app key text resolver as it found them, or a later test that reads them depends on the order the tests run in (go test -shuffle).
+func requireRestoresTUIKeybindings(t *testing.T, name string, run func(*testing.T)) {
+	t.Helper()
+	restoreTUIKeybindings(t)
+	_ = DefaultKeybindingsManager()
+	marker := tui.NewTUIKeybindingsManager(nil)
+	tui.SetTUIKeybindings(marker)
+	actions := []string{tui.KBInputSubmit, "app.clear"}
+	before := make([]string, len(actions))
+	for i, action := range actions {
+		before[i] = tui.AppKeyText(action, "")
+	}
+	t.Run("test", run)
+	if tui.GetTUIKeybindings() != marker {
+		t.Errorf("%s left the process-wide TUI keybindings it installed; call restoreTUIKeybindings(t) in it", name)
+	}
+	for i, action := range actions {
+		if after := tui.AppKeyText(action, ""); after != before[i] {
+			t.Errorf("%s left the app key text of %s as %q, want %q; call restoreTUIKeybindings(t) in it", name, action, after, before[i])
+		}
+	}
+}
+
+// configureStartupTui installs the process-wide keybindings of the agent directory, so every test that opens a startup prompt has to restore them.
 func TestStartupPromptTestsRestoreTheProcessKeybindings(t *testing.T) {
 	for name, run := range map[string]func(*testing.T){
 		"TestStartupPromptAppliesTerminalColorsAndKeepsRepliesOutOfInput": TestStartupPromptAppliesTerminalColorsAndKeepsRepliesOutOfInput,
@@ -79,14 +102,18 @@ func TestStartupPromptTestsRestoreTheProcessKeybindings(t *testing.T) {
 		"TestFirstTimeSetupCreateYourOwnShowsTheHintAndKeepsTheSprite":    TestFirstTimeSetupCreateYourOwnShowsTheHintAndKeepsTheSprite,
 		"TestShowFirstTimeSetupReportsNoSettingsWriteFailure":             TestShowFirstTimeSetupReportsNoSettingsWriteFailure,
 	} {
-		t.Run(name, func(t *testing.T) {
-			restoreTUIKeybindings(t)
-			marker := tui.NewTUIKeybindingsManager(nil)
-			tui.SetTUIKeybindings(marker)
-			t.Run("test", run)
-			if tui.GetTUIKeybindings() != marker {
-				t.Fatalf("%s left the process-wide TUI keybindings it installed; call restoreTUIKeybindings(t) in it", name)
-			}
-		})
+		t.Run(name, func(t *testing.T) { requireRestoresTUIKeybindings(t, name, run) })
+	}
+}
+
+// NewKeybindingsManager installs the same process-wide state, so a test that builds one has to restore it too.
+func TestKeybindingsManagerTestsRestoreTheProcessKeybindings(t *testing.T) {
+	for name, run := range map[string]func(*testing.T){
+		"TestCompactionQueuePreservesUnprocessedImages":    TestCompactionQueuePreservesUnprocessedImages,
+		"TestResolvedBindingsReturnsDetachedSnapshot":      TestResolvedBindingsReturnsDetachedSnapshot,
+		"TestStripLeakGate":                                TestStripLeakGate,
+		"TestTerminalInputPreservesRemappedSubmitBindings": TestTerminalInputPreservesRemappedSubmitBindings,
+	} {
+		t.Run(name, func(t *testing.T) { requireRestoresTUIKeybindings(t, name, run) })
 	}
 }
