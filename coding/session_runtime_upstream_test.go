@@ -61,7 +61,7 @@ func TestAgentSessionRuntimeOriginalAssistantReplacement(t *testing.T) {
 		}
 	}
 	if os.Getenv("PIG_RUNTIME_ORIGINAL_PROBE") != "" {
-		data, err := json.Marshal([]any{"runtime", 125, []any{live.Role, live.Usage.Cost.Total, persisted.Role, persisted.Usage.Cost.Total}})
+		data, err := json.Marshal([]any{"runtime", 126, []any{live.Role, live.Usage.Cost.Total, persisted.Role, persisted.Usage.Cost.Total}})
 		if err != nil {
 			t.Fatal(err)
 		}

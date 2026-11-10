@@ -633,6 +633,10 @@ func (rt *Runtime) ImportFromJsonl(ctx context.Context, input string, cwdOverrid
 		return extension.CancelledResult{}, err
 	}
 	if err := icodingagent.AssertSessionCwdExists(manager, rt.CWD()); err != nil {
+		// The import did not happen; drop the copy so a retry with a cwd override or a fork leaves no stray file (Pi #11060).
+		if !alreadyStored {
+			_ = os.Remove(destination)
+		}
 		return extension.CancelledResult{}, err
 	}
 	if err := rt.replaceRuntime(ctx, manager, "resume", nil); err != nil {
