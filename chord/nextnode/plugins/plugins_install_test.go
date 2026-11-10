@@ -578,20 +578,20 @@ func TestInstallPluginReturnsTheAbortsReasonAndRemovesWhatItCreated(t *testing.T
 // gives for what it meets: nothing packed, a null or primitive member, a name that is no string, and a JSON null.
 func TestPackedTarballReadsTheListNpm11PrintsAndTheMemberOfThePackageNpm12Prints(t *testing.T) {
 	for name, tc := range map[string]struct{ output, want, wantError string }{
-		"list (npm 11)":              {output: `[{"filename":"acme-1.0.0.tgz","size":3}]`, want: "acme-1.0.0.tgz"},
-		"first of a list":            {output: `[{"filename":"a.tgz"},{"filename":"b.tgz"}]`, want: "a.tgz"},
-		"object by name (npm 12)":    {output: `{"acme":{"filename":"acme-1.0.0.tgz","size":3}}`, want: "acme-1.0.0.tgz"},
-		"the member of the name":     {output: `{"other":{"filename":"b.tgz"},"acme":{"filename":"a.tgz"}}`, want: "a.tgz"},
-		"empty list":                 {output: `[]`, wantError: "what: packed nothing"},
-		"empty object":               {output: `{}`, wantError: "what: packed nothing"},
-		"object without the name":    {output: `{"other":{"filename":"b.tgz"}}`, wantError: "what: packed nothing"},
-		"null member of a list":      {output: `[null]`, wantError: "Cannot read properties of null (reading 'filename')"},
-		"null member of the object":  {output: `{"acme":null}`, wantError: "Cannot read properties of null (reading 'filename')"},
-		"primitive member":           {output: `{"acme":3}`, wantError: "Cannot read properties of a primitive (reading 'filename')"},
-		"no filename":                {output: `[{"size":3}]`, wantError: `The "path" argument must be of type string`},
-		"a string":                   {output: `"acme.tgz"`, wantError: "what: packed nothing"},
-		"a number":                   {output: `3`, wantError: "what: packed nothing"},
-		"null":                       {output: `null`, wantError: "Cannot read properties of null (reading 'acme')"},
+		"list (npm 11)":             {output: `[{"filename":"acme-1.0.0.tgz","size":3}]`, want: "acme-1.0.0.tgz"},
+		"first of a list":           {output: `[{"filename":"a.tgz"},{"filename":"b.tgz"}]`, want: "a.tgz"},
+		"object by name (npm 12)":   {output: `{"acme":{"filename":"acme-1.0.0.tgz","size":3}}`, want: "acme-1.0.0.tgz"},
+		"the member of the name":    {output: `{"other":{"filename":"b.tgz"},"acme":{"filename":"a.tgz"}}`, want: "a.tgz"},
+		"empty list":                {output: `[]`, wantError: "what: packed nothing"},
+		"empty object":              {output: `{}`, wantError: "what: packed nothing"},
+		"object without the name":   {output: `{"other":{"filename":"b.tgz"}}`, wantError: "what: packed nothing"},
+		"null member of a list":     {output: `[null]`, wantError: "Cannot read properties of null (reading 'filename')"},
+		"null member of the object": {output: `{"acme":null}`, wantError: "Cannot read properties of null (reading 'filename')"},
+		"primitive member":          {output: `{"acme":3}`, wantError: "Cannot read properties of a primitive (reading 'filename')"},
+		"no filename":               {output: `[{"size":3}]`, wantError: `The "path" argument must be of type string`},
+		"a string":                  {output: `"acme.tgz"`, wantError: "what: packed nothing"},
+		"a number":                  {output: `3`, wantError: "what: packed nothing"},
+		"null":                      {output: `null`, wantError: "Cannot read properties of null (reading 'acme')"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			got, err := packedTarball(tc.output, "acme", "what")

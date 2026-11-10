@@ -1278,7 +1278,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D464](#bf-d464) | FormatNumber and FormatTime take closed option types and return errors (P1-3) | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D465](#bf-d465) | FormatTime takes a time.Time, not `Date`, `number` or `string` | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D466](#bf-d466) | No per-language formatter cache | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-D501](#bf-d501) | `npm pack --json` printing an object (npm 12) is read like the list npm 10 and 11 print | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D520](#bf-d520) | A connection reset as soon as it is accepted reports the response read, where Pi usually reports the connect | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D521](#bf-d521) | A bigint in validated tool arguments is the string `<digits>n`, where Pi holds a JavaScript bigint | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D540](#bf-d540) | The plugins watcher's directory identity has no birth time on a system whose stat Go does not expose it for | A Pi defect that PiG fixed first | All platforms | Unreleased |
@@ -19425,21 +19424,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `0950d13d68` (2026-11-07), `17136820e9` (2026-11-07), `95f0f0d040` (2026-11-08), `bdcd2b1248` (2026-11-08)
 - **Tests:** `chord/next/surfaces/intl_root_test.go::TestFormatsAllocateOnlyTheResultForCanonicalTags`
 
-### BF-D501
-
-**`npm pack --json` printing an object (npm 12) is read like the list npm 10 and 11 print**
-
-- **Source:** A Pi defect that PiG fixed first (divergence D501)
-- **Symptom:** With npm 12 Pi's `installPlugin` fails on the object output; to be filed upstream with the repro (`npm pack --json` of any package under npm 12).
-- **Root cause:** a plugin install that fails on a current npm for a reason of output shape only is worse than Pi's behavior and costs nothing to avoid; the list form, the empty-output errors and the `filename` read are Pi's.
-- **User impact:** An operation failed or was rejected
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Pi issue:** none recorded
-- **Removed when Pi fixes it:** Pi's install reads the object form.
-- **Fix commits:** `95f0f0d040` (2026-11-08), `bdcd2b1248` (2026-11-08)
-- **Tests:** `chord/nextnode/plugins/plugins_install_test.go::TestPackedTarballReadsTheListNpm10And11PrintAndTheObjectNpm12Prints`
-
 ### BF-D520
 
 **A connection reset as soon as it is accepted reports the response read, where Pi usually reports the connect**
@@ -29279,7 +29263,6 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D464 | FormatNumber and FormatTime take closed option types and return errors (P1-3) | [BF-D464](#bf-d464) |
 | D465 | FormatTime takes a time.Time, not `Date`, `number` or `string` | [BF-D465](#bf-d465) |
 | D466 | No per-language formatter cache | [BF-D466](#bf-d466) |
-| D501 | `npm pack --json` printing an object (npm 12) is read like the list npm 10 and 11 print | [BF-D501](#bf-d501) |
 | D502 | `TestPlugin` tests a plugin on the production topology: its host is the Node subprocess and the stubs are Go… | deliberate difference |
 | D503 | `TestPlugin`'s registries are named, its contributions are data, and `root` is `RootPrincipal`: no JavaScript… | deliberate difference |
 | D520 | A connection reset as soon as it is accepted reports the response read, where Pi usually reports the connect | [BF-D520](#bf-d520) |
