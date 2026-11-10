@@ -583,6 +583,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-578c1a3](#bf-578c1a3) | The "Applied use cases" page in the manual that ships inside PiG now links the Security page on the website | PiG's own defect | All platforms | 0.5.0 |
 | [BF-57a1687](#bf-57a1687) | fix(ai,agent): return a projection's blocks apart from its scalars so the caller's buffer stays on its stack | PiG's own defect | All platforms | Unreleased |
 | [BF-57ee33b](#bf-57ee33b) | A model an extension registers with `registerProvider` reaches `ctx.modelRegistry`, `ctx.model` and RPC as… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-584ab46](#bf-584ab46) | An oversized WebSocket frame closes with code `1009` on both sides: the socket is left to finish its close… | PiG's own defect | All platforms | Unreleased |
 | [BF-58f6697](#bf-58f6697) | Text typed and followed at once by Enter no longer skips the autocomplete menu Pi opens: `/model provider/id`… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-59456ae](#bf-59456ae) | Pressing a key in a subprocess extension's overlay no longer freezes interactive mode when the key reaches… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-59693cd](#bf-59693cd) | Interactive mode: after choosing an entry in `/tree` the chat first redrew at the old position and, about a… | PiG's own defect | All platforms | Unreleased |
@@ -1326,6 +1327,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a9757c8](#bf-a9757c8) | A Cloudflare model built with `coding.BuildModel` and streamed through its own `Provider` resolves… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a97bb03](#bf-a97bb03) | Highlighted code in a markdown block or a tool card, and the label of a legacy bash entry in the session… | PiG's own defect | All platforms | Unreleased |
 | [BF-a9d41ed](#bf-a9d41ed) | `chord/nextnode/plugins`: a failed build's empty `errors` list reaches the Node host as `[]` as in Pi, and a… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-a9ff675](#bf-a9ff675) | The terminal sandbox starts when the temporary directory has a symlinked ancestor, including macOS's default… | PiG's own defect | macOS | Unreleased |
 | [BF-aa2003c](#bf-aa2003c) | The edit tool's prepared arguments keep the members in the order the model sent them | PiG's own defect | All platforms | 0.5.0 |
 | [BF-aa48a25](#bf-aa48a25) | A command that writes to both stdout and stderr no longer keeps a reader spinning while the other stream's… | PiG's own defect | Windows, macOS, Linux | Unreleased |
 | [BF-aa69959](#bf-aa69959) | Key matching follows Pi for more terminal inputs and key identifiers | PiG's own defect | All platforms | 0.5.0 |
@@ -9739,6 +9741,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `50ca49180f` (2026-10-13), `57ee33b5c7` (2026-10-13), `5cd840e477` (2026-10-13)
 - **Tests:** `coding/cli/model_registry_refresh_test.go::TestSubprocessModelRegistryPublishesExtensionReplacementAndRestoration`, `coding/cli/model_registry_refresh_test.go::TestSubprocessModelRegistryPublishesProviderOnlyOverlayRefresh`, `coding/cli/model_registry_refresh_test.go::TestSubprocessModelRegistryPublishesProviderRegistrationAndRemoval`, `coding/cli/model_registry_refresh_test.go::TestSubprocessModelRegistryRefreshesConnectedNode`, `coding/cli/port_wave_10_package_command_paths_test.go::TestPortWave10ModelRuntimeCreation`, `coding/cli/shipped_piglet_inventory_test.go::TestShippedPigletInventory`, `coding/cli/strip_leak_gate_test.go::TestStripLeakGate`, `coding/model_availability_auth_view_test.go::TestAvailabilityPassAuthViewMatchesPiUpstream` and 1 more in docs/bug-ledger.json
 - **Release note:** A model an extension registers with `registerProvider` reaches `ctx.modelRegistry`, `ctx.model` and RPC as Pi's object: the definition's members in the order the extension wrote them, then `api`, `provider` and `baseUrl`, and its `input` as written. PiG sent the members in its own order and filled in `input: ["text"]` when the definition left it out.
+
+### BF-584ab46
+
+**An oversized WebSocket frame closes with code `1009` on both sides: the socket is left to finish its close…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An oversized WebSocket frame closes with code `1009` on both sides: the socket is left to finish its close handshake after the protocol error instead of being terminated (which reported `1006` and could discard the close frame), as Pi does.
+- **Root cause:** An oversized frame sent the 1009 close frame and then terminated the socket, so the server reported 1006 and the peer could miss the frame. The socket is CLOSING while its error listeners run and keep leaves a closing socket alone. Ports Pi (upgrades.ts, upgrades.test.ts, examples/66, and the files.test.ts equal-creation-time ordering case); Pi and and timing fixes for JS file watchers have no Go counterpart.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `584ab469e8` (2026-11-09)
+- **Tests:** `chord/nextnode/app/files_test.go::TestMetadataQueriesKeepSourceRefKeyMimeAndMetaFindVersionsByIDRefAndKey`, `chord/nextnode/http/http_example_66_test.go::TestExample66WebSocketLimits`, `chord/nextnode/http/upgrades_test.go::TestPluginSocketsAnOversizedFrameIsNotTerminatedAndTheSocketReportsItsProtocolCloseCode`
+- **Release note:** An oversized WebSocket frame closes with code `1009` on both sides: the socket is left to finish its close handshake after the protocol error instead of being terminated (which reported `1006` and could discard the close frame), as Pi does.
 
 ### BF-58f6697
 
@@ -20092,6 +20108,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `a9d41edbb7` (2026-11-01)
 - **Tests:** `chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeLifeContextEndsWithTheProcess`, `chord/nextnode/plugins/plugins_node_wire_test.go::TestBridgedProxyScriptWritesHTMLCharactersAsJSONStringifyDoes`, `chord/nextnode/plugins/plugins_node_wire_test.go::TestWireABuiltFacetHasErrorsOnlyWhenItFailedAndThenAlways`
 - **Release note:** `chord/nextnode/plugins`: a failed build's empty `errors` list reaches the Node host as `[]` as in Pi, and a proxy script for a Go core facet whose name has `<`, `>` or `&` is written as `JSON.stringify` writes it.
+
+### BF-a9ff675
+
+**The terminal sandbox starts when the temporary directory has a symlinked ancestor, including macOS's default…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The terminal sandbox starts when the temporary directory has a symlinked ancestor, including macOS's default temporary directory, without expanding its file permissions: the directory is resolved before the sandbox's one-script read grant names it, as Pi does.
+- **Root cause:** Node resolves its entry before reading it, so a temporary directory under a symlinked ancestor (macOS /var, or a TMPDIR that is a link) made the sandbox exit at start. The directory is now resolved, and the one-script read grant names the resolved path; the grant is not widened. Ports Pi.
+- **User impact:** Credential or permission exposure
+- **Platform:** macOS
+- **Fixed in:** Unreleased
+- **Fix commits:** `a9ff67595c` (2026-11-09)
+- **Tests:** `chord/nextnode/tui/tui_sandbox_test.go::TestTheSandboxStartsWithASymlinkedTemporaryDirectoryWithoutExpandingFilePermissions`
+- **Release note:** The terminal sandbox starts when the temporary directory has a symlinked ancestor, including macOS's default temporary directory, without expanding its file permissions: the directory is resolved before the sandbox's one-script read grant names it, as Pi does.
 
 ### BF-aa2003c
 
