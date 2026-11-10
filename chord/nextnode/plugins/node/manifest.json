@@ -1,8 +1,8 @@
 {
-	"commit": "77959d667edd855d2f008924296650c888653916",
-	"pin": "77959d667edd855d2f008924296650c888653916",
-	"piSchema": "1.5.0",
-	"piTelemetry": "1.5.0",
+	"commit": "dd30101cfc5b0609411dd80b6f93adbc14db14cf",
+	"pin": "dd30101cfc5b0609411dd80b6f93adbc14db14cf",
+	"piSchema": "1.5.1",
+	"piTelemetry": "1.5.1",
 	"files": [
 		{
 			"path": "pi/chord/src/context/index.ts",
@@ -762,7 +762,7 @@
 		},
 		{
 			"path": "pi/node_modules/@earendil-works/pi-telemetry/package.json",
-			"sha256": "6e9dbd90ae345976c464f9b8b4540b117d4c05aa670202b53a732e06af737ef6"
+			"sha256": "f0678358c66f3d0eb2695e0131c44b5752017dfcbe113de7b7c506396606c28c"
 		},
 		{
 			"path": "pi/schema/THIRD_PARTY_NOTICES/typebox-LICENSE",
@@ -770,7 +770,7 @@
 		},
 		{
 			"path": "pi/schema/package.json",
-			"sha256": "48d14ec4c8ca986caf9928e226c9239002c45786fbed0abc1369cf119789f05e"
+			"sha256": "feed22ecd4b90e60392393e9934946eacde63f3dfdb2dcdbb359fc84a2469923"
 		},
 		{
 			"path": "pi/schema/src/annotations.ts",

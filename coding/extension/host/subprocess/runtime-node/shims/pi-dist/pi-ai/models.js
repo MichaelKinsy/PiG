@@ -203,10 +203,10 @@ class ModelsImpl {
                     throw credentialError;
                 if (!allowNetwork || signal.aborted)
                     return;
-                const credential = await this.resolveRefreshCredential(provider, storedCredential, signal);
-                if (!credential)
+                const network = await this.resolveNetworkRefresh(provider, storedCredential, signal);
+                if (!network)
                     return;
-                await this.runProviderRefreshPhase(provider, credential, true, options.force, generation, signal);
+                await this.runProviderRefreshPhase(provider, network.credential, true, options.force, generation, signal);
             })();
             try {
                 await raceWithAbortSignal(operation, signal);
@@ -232,6 +232,14 @@ class ModelsImpl {
                 throw error;
         }
         return { aborted: callerSignal.aborted, errors: new Map(errors) };
+    }
+    /** The credential for the network refresh phase, or undefined when the provider is not configured. */
+    async resolveNetworkRefresh(provider, stored, signal) {
+        if (provider.refreshModelsAuth === "configured") {
+            return (await this.checkProviderAuth(provider, stored, signal)) ? {} : undefined;
+        }
+        const credential = await this.resolveRefreshCredential(provider, stored, signal);
+        return credential ? { credential } : undefined;
     }
     async resolveRefreshCredential(provider, stored, signal) {
         if (stored?.type === "oauth") {

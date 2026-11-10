@@ -1,7 +1,7 @@
 {
- "pi": "1.5.0+77959d66",
+ "pi": "1.5.1",
  "genai": "2.21.0",
- "node": "v26.12.1",
+ "node": "v24.22.2",
  "cap": 160,
  "note": "stamp = (seg, tick); see probe.mjs header. array order within a stamp is execution order.",
  "cases": [
@@ -4592,7 +4592,7 @@
       "timestamp": 0,
       "responseId": "g2",
       "rawStopReason": "STOP",
-      "durationMs": 3
+      "durationMs": 2
      }
     },
     {
@@ -4632,7 +4632,7 @@
       "timestamp": 0,
       "responseId": "g2",
       "rawStopReason": "STOP",
-      "durationMs": 3
+      "durationMs": 2
      }
     },
     {
