@@ -14,10 +14,10 @@ var (
 	claudeDateSuffix       = regexp.MustCompile(`-\d{8}$`)
 	claudeOpus5            = regexp.MustCompile(`^claude-opus-(?:5|5[.-]5)(?:-\d{8})?$`)
 	claudeSonnetHaiku55    = regexp.MustCompile(`^claude-(?:sonnet|haiku)-5[.-]5(?:-\d{8})?$`)
-	claudeFableMythos51    = regexp.MustCompile(`^claude-(?:fable|mythos)-5(?:[.-]1)(?:-\d{8})?$`)
+	claudeFableMythos51    = regexp.MustCompile(`^claude-(?:fable|mythos)-5[.-][12](?:-\d{8})?$`)
 	claudeSystemOpus       = regexp.MustCompile(`^claude-opus-(?:4[.-]8|5(?:[.-]5)?)(?:-\d{8})?$`)
 	claudeSystemSonnet     = regexp.MustCompile(`^claude-(?:sonnet|haiku)-5[.-]5(?:-\d{8})?$`)
-	claudeSystemFableMyth  = regexp.MustCompile(`^claude-(?:fable|mythos)-5(?:[.-]1)?(?:-\d{8})?$`)
+	claudeSystemFableMyth  = regexp.MustCompile(`^claude-(?:fable|mythos)-5(?:[.-][12])?(?:-\d{8})?$`)
 	claudeLatestAliasRegex = regexp.MustCompile(`^~anthropic/claude-[a-z]+-latest$`)
 )
 
@@ -31,8 +31,8 @@ func SupportsClaudeMidConvoEffort(modelID string) bool {
 	return claudeOpus5.MatchString(id) || claudeSonnetHaiku55.MatchString(id) || claudeFableMythos51.MatchString(id)
 }
 
-// Claude models that accept `thinking: {type: "disabled"}` alongside per-message effort. Opus 5.5, Sonnet 5.5, Fable 5.1, and
-// Mythos 5.1 reject it.
+// Claude models that accept `thinking: {type: "disabled"}` alongside per-message effort. Opus 5.5, Sonnet 5.5, Fable 5.1/5.2, and
+// Mythos 5.1/5.2 reject it.
 // https://platform.claude.com/docs/en/build-with-claude/thinking#configuring-thinking
 var disabledThinkingModels = map[string]bool{"claude-opus-5": true, "claude-haiku-5-5": true, "claude-haiku-5.5": true}
 

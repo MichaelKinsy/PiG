@@ -246,6 +246,45 @@ func TestModelsRuntimeRefreshUpstream(t *testing.T) {
 			t.Fatalf("stored=%+v err=%v", stored, err)
 		}
 	})
+	// pi-mono 6382d870 packages/ai/test/models-runtime.test.ts "refreshes catalogs that need only configured auth without refreshing OAuth".
+	t.Run("refreshes catalogs that need only configured auth without refreshing OAuth", func(t *testing.T) {
+		credentials := NewInMemoryCredentialStore()
+		modelsRuntimePut(t, credentials, "catalog-oauth", Credential{Type: CredentialOAuth, Access: "expired", Refresh: "revoked", Expires: 0})
+		oauthRefreshes := 0
+		oauth := modelsRuntimeOAuth()
+		oauth.Refresh = func(context.Context, Credential) (Credential, error) {
+			oauthRefreshes++
+			return Credential{}, errors.New("invalid_grant")
+		}
+		var networkCredentials []*Credential
+		unconfiguredRefreshes := 0
+		models := CreateModels(CreateModelsOptions{Credentials: credentials})
+		configured := modelsRuntimeProvider(modelsRuntimeProviderInput{id: "catalog-oauth", auth: &ProviderAuth{OAuth: oauth}, refreshModels: func(refresh RefreshModelsContext) error {
+			if refresh.AllowNetwork {
+				networkCredentials = append(networkCredentials, refresh.Credential)
+			}
+			return nil
+		}})
+		configured.RefreshModelsAuth = RefreshModelsAuthConfigured
+		models.SetProvider(configured)
+		unconfigured := modelsRuntimeProvider(modelsRuntimeProviderInput{id: "catalog-unconfigured", auth: &ProviderAuth{APIKey: &APIKeyAuth{Name: "Env", Resolve: func(context.Context, APIKeyAuthInput) (*AuthResult, error) { return nil, nil }}}, refreshModels: func(refresh RefreshModelsContext) error {
+			if refresh.AllowNetwork {
+				unconfiguredRefreshes++
+			}
+			return nil
+		}})
+		unconfigured.RefreshModelsAuth = RefreshModelsAuthConfigured
+		models.SetProvider(unconfigured)
+
+		result := models.Refresh(t.Context())
+		if len(result.Errors) != 0 || oauthRefreshes != 0 || len(networkCredentials) != 1 || networkCredentials[0] != nil || unconfiguredRefreshes != 0 {
+			t.Fatalf("errors=%v oauthRefreshes=%d networkCredentials=%v unconfigured=%d", result.Errors, oauthRefreshes, networkCredentials, unconfiguredRefreshes)
+		}
+		stored, err := credentials.Read(t.Context(), "catalog-oauth")
+		if err != nil || stored == nil || stored.Access != "expired" || stored.Refresh != "revoked" {
+			t.Fatalf("stored=%+v err=%v", stored, err)
+		}
+	})
 	// .upstream/v1.0.3/packages/ai/test/models-runtime.test.ts:476
 	t.Run("persists an OAuth refresh that started before the model refresh was cancelled", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {

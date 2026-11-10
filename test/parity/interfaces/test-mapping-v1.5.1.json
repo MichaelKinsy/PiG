@@ -207,8 +207,12 @@
     },
     {
       "path": "packages/ai/test/anthropic-mid-conversation-effort.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:cd0b170dc16d3c48302483d9fcde1ebba3035781e467407293991c072bbf2fd8"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:cd0b170dc16d3c48302483d9fcde1ebba3035781e467407293991c072bbf2fd8",
+      "evidence": [
+        "ai/anthropic_mid_effort_upstream_test.go"
+      ],
+      "rationale": "Pi 0d1793c2 cases \"gates Fable 5.2 like Fable 5.1 and keeps only fallbacks that accept per-message effort\" and the extended \"generates exact model and transport gates\" (claude-fable-5-2 in the off list) are ported."
     },
     {
       "path": "packages/ai/test/anthropic-oauth.test.ts",
@@ -1141,8 +1145,12 @@
     },
     {
       "path": "packages/ai/test/models-runtime.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:50c685a8e3537bfa705db92b19dd53064592735be4e9692ad0d679125429e17e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:50c685a8e3537bfa705db92b19dd53064592735be4e9692ad0d679125429e17e",
+      "evidence": [
+        "ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream"
+      ],
+      "rationale": "Pi 6382d870 case \"refreshes catalogs that need only configured auth without refreshing OAuth\" is ported in ai/models_runtime_refresh_upstream_test.go."
     },
     {
       "path": "packages/ai/test/node-http-proxy.test.ts",
@@ -6314,8 +6322,12 @@
     },
     {
       "path": "packages/coding-agent/test/package-command-paths.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:0e013778ab051b8e1d4d0db5a1edd56eb24be40b70ff3c925b968c02774e2834"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:0e013778ab051b8e1d4d0db5a1edd56eb24be40b70ff3c925b968c02774e2834",
+      "evidence": [
+        "coding/cli/port_wave_10_package_command_paths_test.go#TestPortWave10PackageCommandPaths"
+      ],
+      "rationale": "Pi 6382d870 cases \"warns about a stale provider login during update --models and keeps the refresh successful\" and \"fails update --models when a catalog refresh fails for a reason other than a stale login\" are ported."
     },
     {
       "path": "packages/coding-agent/test/package-distribution.test.ts",
@@ -6546,8 +6558,12 @@
     },
     {
       "path": "packages/coding-agent/test/remote-catalog-provider.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:77236185e212d14dc86a9068d875621d9a05b748f31a0638268cededca248a6e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:77236185e212d14dc86a9068d875621d9a05b748f31a0638268cededca248a6e",
+      "evidence": [
+        "internal/codingagent/remote_catalog_provider_upstream_test.go#TestRemoteCatalogProviderUpstream"
+      ],
+      "rationale": "Pi 6382d870 case \"fetches the pi.dev catalog without refreshing a stale OAuth login\" is ported."
     },
     {
       "path": "packages/coding-agent/test/resolve-config-value.test.ts",

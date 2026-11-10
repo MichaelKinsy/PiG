@@ -4,9 +4,9 @@ to = "1.5.1"
 [[files]]
 path = "packages/ai/src/models.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream"]
+rationale = "Pi 6382d870 adds Provider.refreshModelsAuth; ai/models_runtime.go ModelsProvider.RefreshModelsAuth (RefreshModelsAuthCredential default, RefreshModelsAuthConfigured) and ai/models_runtime_refresh.go resolveNetworkRefresh (configured providers skip the OAuth refresh and get a nil credential); the ported models-runtime.test.ts case \"refreshes catalogs that need only configured auth without refreshing OAuth\" pins it."
 
 [[files]]
 path = "packages/ai/src/utils/version.ts"
@@ -32,16 +32,16 @@ rationale = "Pi 3b921e31...: filepath.EvalSymlinks after os.MkdirTemp (Pi realpa
 [[files]]
 path = "packages/coding-agent/src/core/provider-composer.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/remote_catalog_provider_upstream_test.go#TestRemoteCatalogProviderUpstream"]
+rationale = "Pi 6382d870 keeps the base's refreshModelsAuth unless an extension supplies refreshModels or oauth.modifyModels (internal/codingagent/native_provider_composer.go); no Pi test targets the composer line, the remote-catalog case covers the base value reaching the runtime."
 
 [[files]]
 path = "packages/coding-agent/src/core/remote-catalog-provider.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/remote_catalog_provider_upstream_test.go#TestRemoteCatalogProviderUpstream"]
+rationale = "Pi 6382d870 declares refreshModelsAuth \"configured\" in withRemoteCatalog (WithRemoteCatalog; WithPersonalizedCatalog unchanged as in Pi); case \"fetches the pi.dev catalog without refreshing a stale OAuth login\"."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/find.ts"
@@ -67,6 +67,6 @@ rationale = "Pi c9dd2c53 reports native exit codes on Windows PowerShell 5.1 (po
 [[files]]
 path = "packages/coding-agent/src/package-manager-cli.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/cli/port_wave_10_package_command_paths_test.go#TestPortWave10PackageCommandPaths"]
+rationale = "Pi 6382d870 warns for OAuth ModelsError during update --models and fails only for other errors (coding/cli/package_model_catalogs.go; pig names the login command `pig auth login`, D2); both Pi cases ported (console.warn/console.error share stderr in Go, so the failure case asserts on the \"Could not refresh\" line)."

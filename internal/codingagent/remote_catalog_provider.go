@@ -318,6 +318,8 @@ func withRemoteCatalogOverlay(provider *ai.ModelsProvider, catalogBaseURL string
 		}
 		return mergeRemoteCatalogModels(baseline, overlay.snapshot()), nil
 	}
+	// pi.dev serves the catalog, so a stale provider login must not block or fail its refresh.
+	wrapped.RefreshModelsAuth = ai.RefreshModelsAuthConfigured
 	wrapped.RefreshModels = func(refresh ai.RefreshModelsContext) error {
 		return refreshRemoteCatalog(provider.ID, catalogBaseURL, localGeneratedAt, overlay, refresh)
 	}

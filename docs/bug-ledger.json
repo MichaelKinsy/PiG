@@ -23713,6 +23713,26 @@
       ]
     },
     {
+      "id": "BF-6f553ca",
+      "title": "`pig update --models` warns about a provider whose OAuth login can no longer be refreshed (`Warning: skipped…",
+      "symptom": "`pig update --models` warns about a provider whose OAuth login can no longer be refreshed (`Warning: skipped model catalog for \u003cprovider\u003e: ...`, with the `pig auth login \u003cprovider\u003e` command to sign in again) and finishes successfully; it fails only for other refresh errors, and the failure lists only those.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig update --models` warns about a provider whose OAuth login can no longer be refreshed (`Warning: skipped model catalog for \u003cprovider\u003e: ...`, with the `pig auth login \u003cprovider\u003e` command to sign in again) and finishes successfully; it fails only for other refresh errors, and the failure lists only those.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6f553cab69",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-6f74b70",
       "title": "The in-memory telemetry recorder stored two copies of each event's time, so the second and later events of a…",
       "symptom": "The in-memory telemetry recorder stored two copies of each event's time, so the second and later events of a span read another event's time in stored traces.",

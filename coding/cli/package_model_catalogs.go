@@ -4,8 +4,10 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"maps"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -13,6 +15,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding"
+	"github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
 type packageModelRuntime interface {
@@ -38,18 +41,24 @@ func refreshModelCatalogs(agentDir string) error {
 	if result.Aborted {
 		return fmt.Errorf("Model catalog refresh timed out.")
 	}
-	if len(result.Errors) > 0 {
-		order := slices.Clone(result.ErrorOrder)
-		for _, id := range slices.Sorted(maps.Keys(result.Errors)) {
-			if !slices.Contains(order, id) {
-				order = append(order, id)
-			}
+	order := slices.Clone(result.ErrorOrder)
+	for _, id := range slices.Sorted(maps.Keys(result.Errors)) {
+		if !slices.Contains(order, id) {
+			order = append(order, id)
 		}
-		details := make([]string, 0, len(order))
-		for _, id := range order {
-			details = append(details, id+": "+result.Errors[id].Error())
+	}
+	var failures []string
+	for _, id := range order {
+		err := result.Errors[id]
+		// A stale login only affects that provider's catalog; the others are still worth refreshing.
+		if modelsError, ok := errors.AsType[*ai.ModelsError](err); ok && modelsError.Code == ai.ModelsErrorOAuth {
+			fmt.Fprintln(os.Stderr, chalkYellow(fmt.Sprintf("Warning: skipped model catalog for %s: %s\nLog in again with `%s auth login %s` to refresh it.", id, err.Error(), codingagent.AppName, id)))
+		} else {
+			failures = append(failures, id+": "+err.Error())
 		}
-		return fmt.Errorf("Could not refresh model catalogs: %s", strings.Join(details, "; "))
+	}
+	if len(failures) > 0 {
+		return fmt.Errorf("Could not refresh model catalogs: %s", strings.Join(failures, "; "))
 	}
 	fmt.Println(chalkGreen("Model catalogs refreshed"))
 	return nil

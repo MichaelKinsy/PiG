@@ -18432,6 +18432,17 @@
       "shapeHash": "sha256:ca39004025f56b1af7a49ce69f8dc9f89ebb6b203b14426bc07a5219edd69860"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#Models.resolveNetworkRefresh",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "Models.resolveNetworkRefresh",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, provider *ModelsProvider, stored *Credential) (*networkRefresh, error)"
+      },
+      "shapeHash": "sha256:b29a76566dcfefd5b09b72b846e258a444ae80f3095f415e9354a844a8a0f519"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#Models.resolveRefreshCredential",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "Models.resolveRefreshCredential",
@@ -22357,6 +22368,39 @@
         "type": "func(event AssistantMessageEvent) AssistantMessageEvent"
       },
       "shapeHash": "sha256:28f5be727799a645c95bb2c4ea69034cfbf2127474f857290700eadb57486dfe"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#RefreshModelsAuthConfigured",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "RefreshModelsAuthConfigured",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "RefreshModelsAuthMode"
+      },
+      "shapeHash": "sha256:db2f76b8dcbe71c9d62b13fcd04ce60391ce3d2a55bf29e76fbe69285395ec74"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#RefreshModelsAuthCredential",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "RefreshModelsAuthCredential",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "RefreshModelsAuthMode"
+      },
+      "shapeHash": "sha256:db2f76b8dcbe71c9d62b13fcd04ce60391ce3d2a55bf29e76fbe69285395ec74"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#RefreshModelsAuthMode",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "RefreshModelsAuthMode",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "RefreshModelsAuthMode"
+      },
+      "shapeHash": "sha256:db2f76b8dcbe71c9d62b13fcd04ce60391ce3d2a55bf29e76fbe69285395ec74"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#RefreshModelsContext",
@@ -50627,6 +50671,17 @@
         "type": "func() ([]byte, error)"
       },
       "shapeHash": "sha256:57179946cef7df4d918e29b424f6d9096a9653a12925304bcb5da9ee7ff359ee"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#networkRefresh",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "networkRefresh",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "networkRefresh"
+      },
+      "shapeHash": "sha256:84a4fca03c673e289ea4bfc14af92d47e9d4e475d2bacbc85320ffb9e43478aa"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#newAnthropicEventReader",

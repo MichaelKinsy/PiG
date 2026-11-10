@@ -5960,9 +5960,9 @@
         "call:ai/anthropic.go#anthropicProvider.buildParams"
       ],
       "evidence": [
+        "test:ai/anthropic_mid_effort_upstream_test.go#TestAnthropicUpstreamMidConversationEffort",
         "test:ai/anthropic_native_tool_order_oracle_test.go#TestAnthropicNativeToolChangesPlaceholderAndDefinitionsFollowPiMemberOrder",
-        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
-        "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream"
       ]
     },
     {
@@ -20215,9 +20215,9 @@
         "call:ai/anthropic.go#anthropicProvider.buildParams"
       ],
       "evidence": [
+        "test:ai/anthropic_mid_effort_upstream_test.go#TestAnthropicUpstreamMidConversationEffort",
         "test:ai/anthropic_native_tool_order_oracle_test.go#TestAnthropicNativeToolChangesPlaceholderAndDefinitionsFollowPiMemberOrder",
-        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
-        "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream"
       ]
     },
     {
@@ -27505,9 +27505,9 @@
         "call:ai/anthropic.go#anthropicProvider.buildParams"
       ],
       "evidence": [
+        "test:ai/anthropic_mid_effort_upstream_test.go#TestAnthropicUpstreamMidConversationEffort",
         "test:ai/anthropic_native_tool_order_oracle_test.go#TestAnthropicNativeToolChangesPlaceholderAndDefinitionsFollowPiMemberOrder",
-        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
-        "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream"
       ]
     },
     {
@@ -28564,9 +28564,9 @@
         "call:ai/anthropic.go#anthropicProvider.buildParams"
       ],
       "evidence": [
+        "test:ai/anthropic_mid_effort_upstream_test.go#TestAnthropicUpstreamMidConversationEffort",
         "test:ai/anthropic_native_tool_order_oracle_test.go#TestAnthropicNativeToolChangesPlaceholderAndDefinitionsFollowPiMemberOrder",
-        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
-        "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream"
       ]
     },
     {
@@ -30307,8 +30307,26 @@
     },
     {
       "id": "pkg:ai/.#Provider",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:26745501ba3bf1436654d8ad8fdfdc54cf2f1bd71f8707633166555b2c0e0f61"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:26745501ba3bf1436654d8ad8fdfdc54cf2f1bd71f8707633166555b2c0e0f61",
+      "rationale": "Derived by the interface gap detector: Provider is Go ai/models_runtime.go#ModelsProvider (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/models_runtime.go#ModelsProvider"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/builtin_providers.go#BuiltinProviders"
+      ],
+      "evidence": [
+        "test:ai/builtin_provider_factories_upstream_test.go#TestBuiltinProviderFactoriesMatchPinnedModules",
+        "test:ai/builtin_provider_modules_upstream_test.go#TestBuiltinProvidersMatchPinnedProviderModules",
+        "test:ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:ai/.#Provider::property:auth",
@@ -30644,8 +30662,23 @@
     },
     {
       "id": "pkg:ai/.#Provider::property:refreshModelsAuth",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:184793a94e34bda6aad53dd59fd2b6ca10e25f7660274dd2394feb75b7df31c1"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:184793a94e34bda6aad53dd59fd2b6ca10e25f7660274dd2394feb75b7df31c1",
+      "rationale": "Derived by the interface gap detector: Provider::property:refreshModelsAuth is Go ai/models_runtime.go#ModelsProvider.RefreshModelsAuth (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/models_runtime.go#ModelsProvider.RefreshModelsAuth"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/models_runtime_refresh.go#Models.resolveNetworkRefresh"
+      ],
+      "evidence": [
+        "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream"
+      ]
     },
     {
       "id": "pkg:ai/.#Provider::property:stream",
@@ -50195,9 +50228,9 @@
         "call:ai/anthropic.go#anthropicProvider.buildParams"
       ],
       "evidence": [
+        "test:ai/anthropic_mid_effort_upstream_test.go#TestAnthropicUpstreamMidConversationEffort",
         "test:ai/anthropic_native_tool_order_oracle_test.go#TestAnthropicNativeToolChangesPlaceholderAndDefinitionsFollowPiMemberOrder",
-        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
-        "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream"
       ]
     },
     {
@@ -65730,9 +65763,9 @@
         "call:ai/anthropic.go#anthropicProvider.buildParams"
       ],
       "evidence": [
+        "test:ai/anthropic_mid_effort_upstream_test.go#TestAnthropicUpstreamMidConversationEffort",
         "test:ai/anthropic_native_tool_order_oracle_test.go#TestAnthropicNativeToolChangesPlaceholderAndDefinitionsFollowPiMemberOrder",
-        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
-        "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream"
       ]
     },
     {
@@ -73144,9 +73177,9 @@
         "call:ai/anthropic.go#anthropicProvider.buildParams"
       ],
       "evidence": [
+        "test:ai/anthropic_mid_effort_upstream_test.go#TestAnthropicUpstreamMidConversationEffort",
         "test:ai/anthropic_native_tool_order_oracle_test.go#TestAnthropicNativeToolChangesPlaceholderAndDefinitionsFollowPiMemberOrder",
-        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
-        "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream"
       ]
     },
     {
@@ -74247,9 +74280,9 @@
         "call:ai/anthropic.go#anthropicProvider.buildParams"
       ],
       "evidence": [
+        "test:ai/anthropic_mid_effort_upstream_test.go#TestAnthropicUpstreamMidConversationEffort",
         "test:ai/anthropic_native_tool_order_oracle_test.go#TestAnthropicNativeToolChangesPlaceholderAndDefinitionsFollowPiMemberOrder",
-        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
-        "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream"
       ]
     },
     {
@@ -76034,8 +76067,26 @@
     },
     {
       "id": "pkg:ai/compat#Provider",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:26745501ba3bf1436654d8ad8fdfdc54cf2f1bd71f8707633166555b2c0e0f61"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:26745501ba3bf1436654d8ad8fdfdc54cf2f1bd71f8707633166555b2c0e0f61",
+      "rationale": "Derived by the interface gap detector: Provider is Go ai/models_runtime.go#ModelsProvider (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/models_runtime.go#ModelsProvider"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/builtin_providers.go#BuiltinProviders"
+      ],
+      "evidence": [
+        "test:ai/builtin_provider_factories_upstream_test.go#TestBuiltinProviderFactoriesMatchPinnedModules",
+        "test:ai/builtin_provider_modules_upstream_test.go#TestBuiltinProvidersMatchPinnedProviderModules",
+        "test:ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:ai/compat#Provider::property:auth",
@@ -76371,8 +76422,23 @@
     },
     {
       "id": "pkg:ai/compat#Provider::property:refreshModelsAuth",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:184793a94e34bda6aad53dd59fd2b6ca10e25f7660274dd2394feb75b7df31c1"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:184793a94e34bda6aad53dd59fd2b6ca10e25f7660274dd2394feb75b7df31c1",
+      "rationale": "Derived by the interface gap detector: Provider::property:refreshModelsAuth is Go ai/models_runtime.go#ModelsProvider.RefreshModelsAuth (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/models_runtime.go#ModelsProvider.RefreshModelsAuth"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/models_runtime_refresh.go#Models.resolveNetworkRefresh"
+      ],
+      "evidence": [
+        "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream"
+      ]
     },
     {
       "id": "pkg:ai/compat#Provider::property:stream",
@@ -86519,8 +86585,26 @@
     },
     {
       "id": "pkg:ai/models#Provider",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:26745501ba3bf1436654d8ad8fdfdc54cf2f1bd71f8707633166555b2c0e0f61"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:26745501ba3bf1436654d8ad8fdfdc54cf2f1bd71f8707633166555b2c0e0f61",
+      "rationale": "Derived by the interface gap detector: Provider is Go ai/models_runtime.go#ModelsProvider (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/models_runtime.go#ModelsProvider"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/builtin_providers.go#BuiltinProviders"
+      ],
+      "evidence": [
+        "test:ai/builtin_provider_factories_upstream_test.go#TestBuiltinProviderFactoriesMatchPinnedModules",
+        "test:ai/builtin_provider_modules_upstream_test.go#TestBuiltinProvidersMatchPinnedProviderModules",
+        "test:ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:ai/models#Provider::property:auth",
@@ -86837,8 +86921,23 @@
     },
     {
       "id": "pkg:ai/models#Provider::property:refreshModelsAuth",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:184793a94e34bda6aad53dd59fd2b6ca10e25f7660274dd2394feb75b7df31c1"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:184793a94e34bda6aad53dd59fd2b6ca10e25f7660274dd2394feb75b7df31c1",
+      "rationale": "Derived by the interface gap detector: Provider::property:refreshModelsAuth is Go ai/models_runtime.go#ModelsProvider.RefreshModelsAuth (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/models_runtime.go#ModelsProvider.RefreshModelsAuth"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/models_runtime_refresh.go#Models.resolveNetworkRefresh"
+      ],
+      "evidence": [
+        "test:ai/models_runtime_refresh_upstream_test.go#TestModelsRuntimeRefreshUpstream"
+      ]
     },
     {
       "id": "pkg:ai/models#Provider::property:stream",
@@ -89540,8 +89639,8 @@
       ],
       "evidence": [
         "test:ai/anthropic_fallback_request_upstream_test.go#TestAnthropicAllowedFallbackRequestUpstream",
-        "test:ai/anthropic_sse_upstream_test.go#TestAnthropicUpstreamSSEParsing",
-        "test:coding/model_registry_overrides_upstream_test.go#TestModelRegistryModelOverridesUpstream"
+        "test:ai/anthropic_mid_effort_upstream_test.go#TestAnthropicUpstreamMidConversationEffort",
+        "test:ai/anthropic_sse_upstream_test.go#TestAnthropicUpstreamSSEParsing"
       ]
     },
     {
@@ -89844,9 +89943,9 @@
         "call:ai/anthropic.go#anthropicProvider.buildParams"
       ],
       "evidence": [
+        "test:ai/anthropic_mid_effort_upstream_test.go#TestAnthropicUpstreamMidConversationEffort",
         "test:ai/anthropic_native_tool_order_oracle_test.go#TestAnthropicNativeToolChangesPlaceholderAndDefinitionsFollowPiMemberOrder",
-        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
-        "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream"
       ]
     },
     {
@@ -90105,9 +90204,9 @@
         "call:ai/anthropic.go#anthropicProvider.buildParams"
       ],
       "evidence": [
+        "test:ai/anthropic_mid_effort_upstream_test.go#TestAnthropicUpstreamMidConversationEffort",
         "test:ai/anthropic_native_tool_order_oracle_test.go#TestAnthropicNativeToolChangesPlaceholderAndDefinitionsFollowPiMemberOrder",
-        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
-        "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream"
       ]
     },
     {
@@ -90538,9 +90637,9 @@
         "call:ai/anthropic.go#anthropicProvider.buildParams"
       ],
       "evidence": [
+        "test:ai/anthropic_mid_effort_upstream_test.go#TestAnthropicUpstreamMidConversationEffort",
         "test:ai/anthropic_native_tool_order_oracle_test.go#TestAnthropicNativeToolChangesPlaceholderAndDefinitionsFollowPiMemberOrder",
-        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
-        "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream"
       ]
     },
     {
@@ -91042,9 +91141,9 @@
         "call:ai/anthropic.go#anthropicProvider.buildParams"
       ],
       "evidence": [
+        "test:ai/anthropic_mid_effort_upstream_test.go#TestAnthropicUpstreamMidConversationEffort",
         "test:ai/anthropic_native_tool_order_oracle_test.go#TestAnthropicNativeToolChangesPlaceholderAndDefinitionsFollowPiMemberOrder",
-        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream",
-        "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream"
+        "test:ai/anthropic_strict_tool_fallback_upstream_test.go#TestAnthropicPreferredStrictToolFallbackUpstream"
       ]
     },
     {
