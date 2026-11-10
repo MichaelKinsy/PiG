@@ -633,8 +633,17 @@ func newHarness(ctx context.Context, storage durable.Storage, options HarnessOpt
 	now := SafeNow(options.Now, func(err error, info durable.ReportInfo) { harness.report(context.Background(), err, info) })
 	harness.SessionImpl = session.NewSessionImpl(storage, session.Hooks{
 		ConversationCreated: harness.conversationCreated,
-		// Join task invocations after admission is sealed and before Storage closes; writes no task outcome.
-		BeforeClose: func() { harness.tasks.Join() },
+		// Join task invocations after admission is sealed and before Storage closes, then release the pi-ai resources of the provider
+		// sessions they used, so none close while in use or outlive the Harness; writes no task outcome. A failing cleanup is reported and
+		// leaves Storage's closing alone (harness.ts beforeClose).
+		BeforeClose: func() {
+			harness.tasks.Join()
+			for _, sessionId := range harness.tasks.providerSessionIds.drain() {
+				if err := ai.CleanupSessionResources(sessionId); err != nil {
+					harness.report(context.Background(), err, durable.ReportInfo{Kind: durable.ReportHostError, Callback: durable.HostCallbackModels})
+				}
+			}
+		},
 		// The ownership memberships a commit's task changes write, from the scheduler's index.
 		MembershipKeys:  func(tx *session.Transaction) ([]string, error) { return harness.tasks.MembershipKeys(tx) },
 		Report:          harness.report,
