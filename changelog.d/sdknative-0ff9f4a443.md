@@ -5,3 +5,7 @@
 ### Fixed
 
 - A Provider object registered from an extension process ignored `refreshModelsAuth`: its network refresh always resolved (and so refreshed) the stored credential. <!-- fix: 0ff9f4a443 -->
+
+### Changed
+
+- Rust: `Provider` has the new public field `refresh_models_auth: Option<String>`, so a `Provider { .. }` struct literal must set it (`None` keeps Pi's default, `"credential"`). `Provider` has no `Default` (its `get_models`, `stream` and `stream_simple` have no meaningful default), so an extension that wants to avoid listing every optional field builds the value with `create_provider`, which sets it to `None`. <!-- feat: sdknative -->
