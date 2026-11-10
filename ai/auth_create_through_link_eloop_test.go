@@ -23,7 +23,7 @@ func TestAuthStorageCreateThroughSymlinkChainFollowsTheKernelsLimit(t *testing.T
 	// chain makes links auth.json -> c1 -> … -> c(n-1) -> target, n symlinks in all, with target missing.
 	chain := func(t *testing.T, dir string, n int) {
 		t.Helper()
-		for i := 0; i < n; i++ {
+		for i := range n {
 			name := "auth.json"
 			if i > 0 {
 				name = fmt.Sprintf("c%d", i)
