@@ -1,6 +1,9 @@
 package sdk
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // unarmedRequests is the number of requests the read loop queued for the main loop and the main loop has not armed.
 func unarmedRequests(c *conn) int {
@@ -47,7 +50,7 @@ func TestSignalOnlyThenOrdinaryCancelReadBeforeTheArmingEndTheRequest(t *testing
 	if !got.firstDone || got.reason != "signal reason" {
 		t.Errorf("first Done = %v, CancellationReason = %q, want the signal aborted with the first cancel's reason", got.firstDone, got.reason)
 	}
-	if got.callErr == nil || got.callText != "" {
-		t.Errorf("host call = %q, %v, want it refused: the ordinary cancel ended the request", got.callText, got.callErr)
+	if got.callErr == nil || got.callText != "" || !strings.Contains(got.callErr.Error(), "cancelled with its parent request") {
+		t.Errorf("host call = %q, %v, want it refused as a call of a cancelled parent request: the ordinary cancel ended the request", got.callText, got.callErr)
 	}
 }

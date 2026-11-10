@@ -3,6 +3,7 @@ package sdk
 import (
 	"encoding/json"
 	"net"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -136,7 +137,7 @@ func TestOrdinaryCancelReadBeforeTheRequestIsArmedEndsItAtStart(t *testing.T) {
 	if !got.firstDone || !got.laterDone || got.reason != "user aborted" {
 		t.Errorf("Done at the first line = %v, after the call = %v, CancellationReason = %q, want the request ended with the cancel's reason", got.firstDone, got.laterDone, got.reason)
 	}
-	if got.callErr == nil || got.callText != "" {
-		t.Errorf("host call = %q, %v, want it refused", got.callText, got.callErr)
+	if got.callErr == nil || got.callText != "" || !strings.Contains(got.callErr.Error(), "cancelled with its parent request") {
+		t.Errorf("host call = %q, %v, want it refused as a call of a cancelled parent request", got.callText, got.callErr)
 	}
 }
