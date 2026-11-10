@@ -182,10 +182,40 @@ func TestScopeHoldsFollowsAndCallsChangedOnEveryChangeReleasingEverythingAtDispo
 		t.Errorf("state after dispose = %s, want ended", kind)
 	}
 	after := changes.Load()
-	// A change arriving after Dispose reports nothing (a delivery already past the check may still land: D452).
+	// A change arriving after Dispose reports nothing.
 	scope.redraw()
 	if got := changes.Load(); got != after {
 		t.Errorf("changed called after dispose: %d -> %d", after, got)
+	}
+}
+
+// A change being delivered when Dispose runs is not left landing after Dispose returned: Dispose waits for the delivery in flight
+// (Pi's scope is one thread, so a `changed` never runs while, or after, `dispose` does).
+func TestADeliveryInFlightWhenDisposeRunsEndsBeforeDisposeReturns(t *testing.T) {
+	entered := make(chan struct{})
+	gate := make(chan struct{})
+	var landed atomic.Bool
+	scope := scopeOn(newHost(t), func() {
+		close(entered)
+		<-gate
+		landed.Store(true)
+	})
+	go scope.redraw()
+	<-entered
+	disposed := make(chan struct{})
+	go func() {
+		scope.Dispose()
+		close(disposed)
+	}()
+	select {
+	case <-disposed:
+		t.Fatal("Dispose returned while a change was still being delivered")
+	case <-time.After(100 * time.Millisecond):
+	}
+	close(gate)
+	<-disposed
+	if !landed.Load() {
+		t.Error("Dispose returned before the delivery in flight ended")
 	}
 }
 
