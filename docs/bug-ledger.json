@@ -3948,6 +3948,56 @@
       "tests": []
     },
     {
+      "id": "BF-17d97b4",
+      "title": "On Windows, attaching a file in a terminal prompt no longer reads a different file when a parent directory is…",
+      "symptom": "On Windows, attaching a file in a terminal prompt no longer reads a different file when a parent directory is swapped for a link after the first yes: the identity of the confirmed file is read from an open handle, not looked up again by path when it is compared.",
+      "rootCause": "An install problem names the target also when the root is reached by a link or a Windows short name: discovery reports the staged directory by its real path, so that is the prefix the target replaces.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "On Windows, attaching a file in a terminal prompt no longer reads a different file when a parent directory is swapped for a link after the first yes: the identity of the confirmed file is read from an open handle, not looked up again by path when it is compared.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "17d97b46d4",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_install_test.go::TestInstallPluginNamesTheTargetInAProblemWhenTheRootIsReachedByALink",
+        "chord/nextnode/plugins/plugins_watcher_base_test.go::TestTheBaseMarkWatchesABaseDirectoryRemovedAndRecreatedAndComparesItsFiles",
+        "chord/nextnode/plugins/plugins_watcher_windows_test.go::TestWindowsRefusesToRenameAWatchedTreeUntilTheWatcherCloses",
+        "internal/testenv/cellcache_test.go::TestSharedCellCacheDirIsKeyedByTheContentsOfItsInputs"
+      ]
+    },
+    {
+      "id": "BF-17d97b4-2",
+      "title": "A plugin install that finds no `package.json` (or another problem) names the directory it was going to…",
+      "symptom": "A plugin install that finds no `package.json` (or another problem) names the directory it was going to install into when the plugins root is reached through a link or a Windows short name, not the staging directory.",
+      "rootCause": "An install problem names the target also when the root is reached by a link or a Windows short name: discovery reports the staged directory by its real path, so that is the prefix the target replaces.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A plugin install that finds no `package.json` (or another problem) names the directory it was going to install into when the plugins root is reached through a link or a Windows short name, not the staging directory.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "17d97b46d4",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_install_test.go::TestInstallPluginNamesTheTargetInAProblemWhenTheRootIsReachedByALink",
+        "chord/nextnode/plugins/plugins_watcher_base_test.go::TestTheBaseMarkWatchesABaseDirectoryRemovedAndRecreatedAndComparesItsFiles",
+        "chord/nextnode/plugins/plugins_watcher_windows_test.go::TestWindowsRefusesToRenameAWatchedTreeUntilTheWatcherCloses",
+        "internal/testenv/cellcache_test.go::TestSharedCellCacheDirIsKeyedByTheContentsOfItsInputs"
+      ]
+    },
+    {
       "id": "BF-1827831",
       "title": "The MCP extension's `tool_call` handler passes a tool's `reachesTools` the call's input in the member order…",
       "symptom": "The MCP extension's `tool_call` handler passes a tool's `reachesTools` the call's input in the member order the model wrote it, as Pi passes `event.input`, instead of sorted by member name.",
@@ -35509,6 +35559,29 @@
         "test/extension-conformance/message_conversion_test.go::TestConformance_MessageConversionAgreesAcrossSDKs",
         "test/extension-conformance/serialize_conversation_test.go::TestConformance_SerializeConversationAgreesAcrossSDKs",
         "test/extension-conformance/session_skill_helpers_test.go::TestConformance_SessionAndSkillHelpersAgreeAcrossSDKs"
+      ]
+    },
+    {
+      "id": "BF-a17e2a1",
+      "title": "A runtime API key (`--api-key`, `SetRuntimeAPIKey`) for a Radius provider now counts as its auth, as it does…",
+      "symptom": "Requests used the key but the Radius catalog was not listed.",
+      "rootCause": "An earlier change's message and report said the mid-session test step covered a runtime key; it did not: its runtime-key step failed (HasConfiguredAuth false), and replaced it with stored credentials. TestGetAvailableModelDataListsARadiusCatalogExactlyWhenItsProviderHasAuth now has the runtime-key steps (appears, leaves, returns), an OAuth step and a models.json Radius provider (acme, custom base URL, one defined model), counting that provider's models too; TestRadiusRuntimeKeyIsRadiusAuthEverywhere pins the other questions.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A runtime API key (`--api-key`, `SetRuntimeAPIKey`) for a Radius provider now counts as its auth, as it does in Pi: the provider has configured auth, its models are in the available list and it counts as an available provider. Before, requests used the key but the Radius catalog was not listed.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a17e2a163e",
+          "date": "2026-11-10"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/model_registry_available_radius_test.go::TestGetAvailableModelDataListsARadiusCatalogExactlyWhenItsProviderHasAuth",
+        "internal/codingagent/model_registry_available_radius_test.go::TestRadiusRuntimeKeyIsRadiusAuthEverywhere"
       ]
     },
     {

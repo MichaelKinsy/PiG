@@ -31,9 +31,28 @@ func cellRoots(t *testing.T) (string, string) {
 	return filepath.Join(root, "sdk"), filepath.Join(root, "fixtures")
 }
 
+// releaseCellCacheClaims lets go of this process's claims on the directories directly under base, so that a test's temporary cache root can be
+// removed: a claim keeps its .used file open for the life of the process, and Windows deletes no file that is open.
+func releaseCellCacheClaims(t *testing.T, base string) {
+	t.Helper()
+	cellCacheClaimsMu.Lock()
+	defer cellCacheClaimsMu.Unlock()
+	kept := cellCacheClaims[:0]
+	for _, claim := range cellCacheClaims {
+		if filepath.Dir(filepath.Dir(claim.Path())) != filepath.Clean(base) {
+			kept = append(kept, claim)
+		} else if err := claim.Unlock(); err != nil {
+			t.Errorf("release the claim on %s: %v", claim.Path(), err)
+		}
+	}
+	cellCacheClaims = kept
+}
+
 // A cell cache is reused while the sources a build reads are unchanged and replaced when one changes; an edit to an installed dependency, which no build reads, keeps it.
 func TestSharedCellCacheDirIsKeyedByTheContentsOfItsInputs(t *testing.T) {
-	t.Setenv("PIG_TEST_CELL_CACHE", t.TempDir())
+	base := t.TempDir()
+	t.Setenv("PIG_TEST_CELL_CACHE", base)
+	t.Cleanup(func() { releaseCellCacheClaims(t, base) }) // runs before the temporary directory's removal
 	sdk, fixtures := cellRoots(t)
 	dir := func(pkg string) string {
 		t.Helper()
