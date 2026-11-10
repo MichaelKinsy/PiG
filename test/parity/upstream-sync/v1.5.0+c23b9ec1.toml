@@ -3913,7 +3913,7 @@ path = "packages/coding-agent/src/modes/print-mode.ts"
 change = "modified"
 disposition = "ported"
 evidence = ["test:coding/cli/print_final_disposal_signal_test.go#TestPrintModeSignalDuringFinalDisposalWaitsForIt"]
-rationale = "Pi (#11752): the signal handlers stay until the final disposal is done, a signal during it waits for that disposal and a repeated one exits at once with its own code (143 for SIGTERM, 129 for SIGHUP, whichever signal came first); the table test covers one, repeated and mixed signals."
+rationale = "Pi (#11752): the signal handlers stay until the final disposal is done, a signal during it waits for that disposal and a repeated one exits at once with its own code (143 for SIGTERM, 129 for SIGHUP; a repeat of the other kind decides with its own code, not the first signal's); the print table and the RPC mixed-signal test cover one, repeated and mixed signals."
 
 [[files]]
 path = "packages/coding-agent/src/modes/rpc/rpc-mode.ts"
