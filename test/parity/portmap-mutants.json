@@ -2415,6 +2415,13 @@
    "new": "Direction: \"asc\"}"
   }
  ],
+ "packages/durable/src/storage/store/storage.ts": [
+  {
+   "file": "durable/storage/store/storage.go",
+   "old": "\tif after > maxSafeInteger || after < -maxSafeInteger {\n",
+   "new": "\tif after > maxSafeInteger {\n"
+  }
+ ],
  "packages/durable/src/storage/store/tables.ts": [
   {
    "file": "durable/storage/store/tables.go",
@@ -6348,6 +6355,23 @@
    "file": "durable/storage/sqlite/commit.go",
    "old": "\t\t\t\tif typed.Content.Kind == durable.ContentDelta {\n",
    "new": "\t\t\t\tif typed.Content.Kind != durable.ContentDelta {\n"
+  }
+ ],
+ "packages/durable/src/storage/sqlite/rows.ts": [
+  {
+   "file": "durable/storage/sqlite/commit.go",
+   "old": "\t\tretired = int64(*record.RetiredAt)\n",
+   "new": "\t\tretired = int64(record.CreatedAt)\n"
+  },
+  {
+   "file": "durable/storage/sqlite/storage.go",
+   "old": "\treturn record.Scope.Kind != durable.ScopeConversation || record.History == durable.HistoryLatest\n",
+   "new": "\treturn record.Scope.Kind == durable.ScopeConversation || record.History == durable.HistoryLatest\n"
+  },
+  {
+   "file": "durable/storage/sqlite/storage.go",
+   "old": "\t\tparts.family = 1\n",
+   "new": "\t\tparts.family = 0\n"
   }
  ],
  "packages/durable/src/storage/sqlite/statements.ts": [
