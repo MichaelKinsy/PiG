@@ -22,7 +22,7 @@ const (
 	FallbackLiveBytes = 64 << 20
 	// minPoll and maxPoll bound the wait between reads of the live heap.
 	minPoll = 5 * time.Millisecond
-	maxPoll = 100 * time.Millisecond
+	maxPoll = time.Second
 )
 
 // Apply sets the GC target unless the environment sets GOGC, which debug.SetGCPercent would otherwise override. It then
@@ -35,11 +35,14 @@ func Apply() {
 	go watchLiveHeap()
 }
 
-// watchLiveHeap polls the runtime's metrics until one read finds more than FallbackLiveBytes live. It polls rather than waiting for a
-// cleanup after each collection because a cleanup runs when the sweeper reaches the sentinel's span (late under load, with a 400 target
-// spreading the sweep over a long runway) and a sentinel allocated while a collection is marking survives that collection. Either
-// one could skip the collection that found the large heap, and the target would then stay at 400 for the rest of the run. The wait
-// doubles from minPoll to maxPoll while no collection has finished, so an idle server wakes ten times a second at most.
+// watchLiveHeap polls the runtime's metrics until one read finds more than FallbackLiveBytes live. The live heap changes only when a
+// collection ends, and the runtime has no hook for that moment that does not run late: a cleanup or finalizer runs when the sweeper
+// reaches its span, one goroutine runs them all in turn, and a sentinel allocated while a collection marks survives that collection, so
+// a check armed that way can miss the collection that found the large heap and leave the target at 400 for the rest of the run.
+// debug.SetMemoryLimit is not a substitute: it caps the absolute heap rather than returning to a percent past a live size.
+// The wait doubles from minPoll to maxPoll while no collection has finished. An idle process then fires one timer a second, which
+// costs about 4 more voluntary context switches a second than a process without the watcher (273 against 39-46 in 60 s, 4-CPU
+// Linux container); a run that collects often reads every minPoll.
 func watchLiveHeap() {
 	sample := []metrics.Sample{{Name: "/gc/heap/live:bytes"}, {Name: "/gc/cycles/total:gc-cycles"}}
 	var cycles uint64
