@@ -160,7 +160,7 @@ path = "packages/coding-agent/src/core/preferred-providers.ts"
 change = "added"
 disposition = "ported"
 evidence = ["test:ai/preferred_providers_test.go", "test:internal/codingagent/preferred_providers_order_test.go"]
-rationale = "683a7a868 adds the partner provider ordering (new file); ai/preferred_providers.go ports it next to core/radius.ts and login, logout and /login completions sort through it."
+rationale = "683a7a868 adds the partner provider ordering (new file); ai/preferred_providers.go ports the partner list next to core/radius.ts, internal/codingagent/preferred_providers.go ports compareProviders (package ai links no collation tables), and login, logout and /login completions sort through it."
 
 [[files]]
 path = "packages/coding-agent/src/core/settings-defaults.ts"
@@ -195,7 +195,7 @@ path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
 change = "modified"
 disposition = "ported"
 evidence = ["test:internal/codingagent/preferred_providers_order_test.go", "test:internal/codingagent/login_provider_projection_test.go"]
-rationale = "683a7a868 sorts login, logout and /login completion providers with the preferred-providers order and passes the TUI to the selectors; internal/codingagent/interactive_login.go sorts through ai.CompareProviders and the order tests cover the three lists."
+rationale = "683a7a868 sorts login, logout and /login completion providers with the preferred-providers order and passes the TUI to the selectors; internal/codingagent/interactive_login.go sorts through compareProviders (internal/codingagent/preferred_providers.go) and the order tests cover the three lists."
 
 [[files]]
 path = "packages/durable/src/harness/scheduler.ts"

@@ -12063,17 +12063,6 @@
       "shapeHash": "sha256:e0c73d1b314cc5a5443367cdf9f648116cc9234294a5de7c993ec01c49622c14"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/ai#CompareProviders",
-      "package": "github.com/MichaelKinsy/PiG/ai",
-      "name": "CompareProviders",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(a ProviderRef, b ProviderRef) int"
-      },
-      "shapeHash": "sha256:f5285687ed572115251fe2bfa6d77687926bd5514f8ad432f72286949e72e1d3"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#CompareThinkingLevels",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "CompareThinkingLevels",
@@ -21532,17 +21521,6 @@
         "type": "ProviderMetadata"
       },
       "shapeHash": "sha256:f1efb005f7a60e2560f8a6da9847e06369995ddcfb1985470a88b427e9083bb7"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/ai#ProviderRef",
-      "package": "github.com/MichaelKinsy/PiG/ai",
-      "name": "ProviderRef",
-      "kind": "type",
-      "exported": true,
-      "shape": {
-        "type": "ProviderRef"
-      },
-      "shapeHash": "sha256:c20c2a2e0a0bc92b41a087b5dff49539a7c2fdafe6f8e9ef767a97a557fcce2d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#ProviderRequestError",
@@ -56974,17 +56952,6 @@
         "type": "func(ctx context.Context, form formFields, operation string) (OAuthCredentials, error)"
       },
       "shapeHash": "sha256:1bdc19fb788ebf6a82b3b885924087e2cc6ca0ee305605c41d62335d37709446"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/ai#preferredRank",
-      "package": "github.com/MichaelKinsy/PiG/ai",
-      "name": "preferredRank",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(providerID string) int"
-      },
-      "shapeHash": "sha256:39007ea5c3ed65d76a37566ddd9301848ff519351860314848bd940908e19f08"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#prefersJSONSchemaStrictSampling",
@@ -280518,6 +280485,17 @@
       "shapeHash": "sha256:120f116206f16969341392d0b3819482cc8faf73a1b1b12380d3f3924046a844"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#compareProviders",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "compareProviders",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(a providerRef, b providerRef) int"
+      },
+      "shapeHash": "sha256:3c82f352ade9ab2b42a7637f03b730a6fc6397c13f6192b5c7e5b6851a786044"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#compareSessionModifiedDesc",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "compareSessionModifiedDesc",
@@ -299614,6 +299592,17 @@
       "shapeHash": "sha256:7f4cc45ccd9c74e3a96019500fb01130a6e5c834c20dc594c09eedba35dc0589"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#preferredRank",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "preferredRank",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(providerID string) int"
+      },
+      "shapeHash": "sha256:39007ea5c3ed65d76a37566ddd9301848ff519351860314848bd940908e19f08"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#preferredThemeName",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "preferredThemeName",
@@ -300536,6 +300525,17 @@
         "type": "func(data []byte) []string"
       },
       "shapeHash": "sha256:16b3f80e8b708dd877fa5349ef16d4fe5eead1c2d3eba1bef58b7cea77391361"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#providerRef",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "providerRef",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "providerRef"
+      },
+      "shapeHash": "sha256:03cda575b6366eb3f8745036c7cc5ec1a4fd37abae54d993da8bd00e4aaf3f72"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#quarantineDirName",

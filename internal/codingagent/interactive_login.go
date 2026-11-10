@@ -80,7 +80,7 @@ func authSubscriptionArg(subscription *bool) []bool {
 // alphabetically by name. The sort is stable, so a provider's account option stays above its API key option.
 func sortAuthProviders(providers []tui.OAuthProvider) {
 	sortx.Stable(providers, func(a, b tui.OAuthProvider) int {
-		return ai.CompareProviders(ai.ProviderRef{ID: a.ID, Name: a.Name}, ai.ProviderRef{ID: b.ID, Name: b.Name})
+		return compareProviders(providerRef{ID: a.ID, Name: a.Name}, providerRef{ID: b.ID, Name: b.Name})
 	})
 }
 

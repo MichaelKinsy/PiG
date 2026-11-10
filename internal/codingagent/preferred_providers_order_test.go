@@ -12,6 +12,28 @@ import (
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
+// Port of coding-agent test/preferred-providers.test.ts "compareProviders".
+func TestCompareProvidersOrdersPreferredPartnersFirstThenTheRestByName(t *testing.T) {
+	providers := []providerRef{
+		{ID: "zai", Name: "Z.AI"},
+		{ID: "openrouter", Name: "OpenRouter"},
+		{ID: "anthropic", Name: "Anthropic"},
+		{ID: "radius", Name: "Radius"},
+		{ID: "google", Name: "Google"},
+	}
+	if want := []string{"radius", "openrouter"}; !slices.Equal(ai.PreferredProviderIDs, want) {
+		t.Fatalf("ai.PreferredProviderIDs = %v, want %v", ai.PreferredProviderIDs, want)
+	}
+	slices.SortFunc(providers, compareProviders)
+	var got []string
+	for _, provider := range providers {
+		got = append(got, provider.ID)
+	}
+	if want := []string{"radius", "openrouter", "anthropic", "google", "zai"}; !slices.Equal(got, want) {
+		t.Fatalf("order = %v, want %v", got, want)
+	}
+}
+
 // Pi 683a7a868 interactive-mode.ts getLoginProviderOptions sorts with compareProviders: Radius and OpenRouter first, in
 // that order, then every other provider alphabetically by name; a provider's account option stays above its API key option.
 func TestLoginProviderOptionsListPreferredPartnersFirstThenTheRestAlphabetically(t *testing.T) {
