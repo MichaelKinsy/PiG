@@ -441,6 +441,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-439c708](#bf-439c708) | Device-code logins (GitHub Copilot, Kimi Code, Meta, Radius) use the `verification_uri` a server sends only… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-439c708-2](#bf-439c708-2) | A pi-messages event whose `contentIndex` is not an integer naming the next block (for a `_start` event) or an… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-43a2293](#bf-43a2293) | Key order of non-index keys stays byte order (a Go map has no insertion order): question Q-state-order filed | PiG's own defect | All platforms | Unreleased |
+| [BF-43b8df7](#bf-43b8df7) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-43c46f5](#bf-43c46f5) | Chord host timers (reload vote, gate and retire deadlines, link pings, service linger, host manager grace… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-43d2597](#bf-43d2597) | `@` file autocomplete finds paths for queries that hold regex metacharacters such as `[` or `(`, for a query… | A fix Pi shipped that PiG ported | All platforms | 0.5.2 |
 | [BF-43d2597-2](#bf-43d2597-2) | `/compact <instructions>` applies the instructions to the summary of the start of a turn that compaction… | A fix Pi shipped that PiG ported | All platforms | 0.5.2 |
@@ -7790,6 +7791,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `43a22934f1` (2026-10-11)
 - **Tests:** `ai/llama_cpp_render_oracle_test.go::TestLlamaCppRenderDocsDump`, `ai/llama_cpp_render_oracle_test.go::TestLlamaCppRenderDocsParity`, `ai/llama_cpp_render_oracle_test.go::TestLlamaCppRenderQuestionMatchesPi`, `internal/jsstring/stringify_test.go::TestMarshalJSONOrdersArrayIndexKeysLikeJSONStringify`, `test/parity/scenarios/providers-registry/07-llama-classify-render-question.toml`
+
+### BF-43b8df7
+
+**Fix in shipped code**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fix in shipped code
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `43b8df78b5` (2026-11-09)
+- **Tests:** `ai/auth_create_through_link_eloop_test.go::TestAuthStorageCreateThroughSymlinkChainFollowsTheKernelsLimit`, `coding/cli/port_wave_10_package_command_paths_test.go::TestPortWave10PackageCommandPaths`
 
 ### BF-43c46f5
 

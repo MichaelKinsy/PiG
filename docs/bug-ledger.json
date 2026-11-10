@@ -12002,6 +12002,28 @@
       ]
     },
     {
+      "id": "BF-43b8df7",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "43b8df78b5",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "ai/auth_create_through_link_eloop_test.go::TestAuthStorageCreateThroughSymlinkChainFollowsTheKernelsLimit",
+        "coding/cli/port_wave_10_package_command_paths_test.go::TestPortWave10PackageCommandPaths"
+      ]
+    },
+    {
       "id": "BF-43c46f5",
       "title": "Chord host timers (reload vote, gate and retire deadlines, link pings, service linger, host manager grace…",
       "symptom": "A deadline above the limit used to never fire and a zero one fired at once.",
