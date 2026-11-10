@@ -21,12 +21,38 @@ import (
 
 type rowsOracleAnswer struct {
 	Records []struct {
+		Record  string `json:"record"`
 		Row     string `json:"row"`
 		Current bool   `json:"current"`
 		Address string `json:"address"`
 		Scope   string `json:"scope"`
 	} `json:"records"`
 	Values []string `json:"values"`
+}
+
+// rowsOracleRecord is what the oracle builds a record from: the address and the definition semantics documentCreate reads, and the seqs
+// the storage stamps. Pi writes the record; nothing the Go record encodes reaches it.
+type rowsOracleRecord struct {
+	Address    rowsOracleAddress `json:"address"`
+	Definition struct {
+		History durable.DocumentHistory `json:"history,omitempty"`
+		Fork    durable.DocumentFork    `json:"fork,omitempty"`
+	} `json:"definition"`
+	Id        durable.DocumentId `json:"id"`
+	CreatedAt durable.Seq        `json:"createdAt"`
+	RetiredAt *durable.Seq       `json:"retiredAt,omitempty"`
+}
+
+type rowsOracleAddress struct {
+	Kind  string                      `json:"kind"`
+	Scope durable.DocumentRecordScope `json:"scope"`
+	Key   *string                     `json:"key,omitempty"`
+}
+
+func describeRecord(record durable.DocumentRecord) rowsOracleRecord {
+	described := rowsOracleRecord{Address: rowsOracleAddress{Kind: record.Kind, Scope: record.Scope, Key: record.Key}, Id: record.Id, CreatedAt: record.CreatedAt, RetiredAt: record.RetiredAt}
+	described.Definition.History, described.Definition.Fork = record.History, record.Fork
+	return described
 }
 
 // rowsCorpus is every combination of the record fields the row builders read.
@@ -77,12 +103,16 @@ func TestRowsMatchPi(t *testing.T) {
 		float64(0), float64(1), 1.5, -2.25, 1e21, 1e-7, 123456789012345680000.0, float64(1 << 53),
 		true, false, nil, []any{}, []any{"a", float64(1), nil}, map[string]any{}, map[string]any{"k": "v"},
 	}
-	input, err := jsstring.MarshalJSON(map[string]any{"records": records, "values": values})
+	described := make([]rowsOracleRecord, len(records))
+	for index, record := range records {
+		described[index] = describeRecord(record)
+	}
+	input, err := jsstring.MarshalJSON(map[string]any{"records": described, "values": values})
 	if err != nil {
 		t.Fatal(err)
 	}
 	root := testenv.ModuleRoot(t)
-	cmd := exec.CommandContext(t.Context(), "node", "--disable-warning=ExperimentalWarning", "testdata/rows_oracle.mjs", filepath.Join(root, ".upstream", "current", "packages"))
+	cmd := exec.CommandContext(t.Context(), testenv.RequireQualifiedNode(t), "--disable-warning=ExperimentalWarning", "testdata/rows_oracle.mjs", filepath.Join(root, ".upstream", "current", "packages"))
 	cmd.Stdin = bytes.NewReader(input)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
@@ -97,6 +127,13 @@ func TestRowsMatchPi(t *testing.T) {
 	current, live := 0, 0
 	for index, record := range records {
 		want := pi.Records[index]
+		gotRecord, err := record.MarshalJSON()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(gotRecord) != want.Record {
+			t.Fatalf("record column of %+v\n got %s\nwant %s (Pi)", record, gotRecord, want.Record)
+		}
 		row, err := documentRow(record)
 		if err != nil {
 			t.Fatal(err)

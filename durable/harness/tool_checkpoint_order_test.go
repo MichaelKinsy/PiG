@@ -50,3 +50,24 @@ func TestAToolCheckpointWithoutArgumentsShowsAnEmptyObject(t *testing.T) {
 		}
 	}
 }
+
+// A tool call's arguments are model output, and a Pi string in them can hold a lone UTF-16 surrogate: JSON.stringify writes the unit as
+// the escape and JSON.parse reads it back. A Go string holds it as WTF-8, which encoding/json turned into U+FFFD on both sides.
+func TestAToolCheckpointKeepsALoneSurrogateInItsArguments(t *testing.T) {
+	const unit = "\xed\xa0\x80"
+	const stored = `{"phase":"execute","arguments":{"a":"\ud800"},"replay":"safe"}`
+	encoded, err := ToolTaskCheckpoint{Phase: toolPhaseExecute, Arguments: map[string]any{"a": unit}, Replay: durable.ReplaySafe}.MarshalJSON()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(encoded) != stored {
+		t.Errorf("encoded %s, want %s", encoded, stored)
+	}
+	var checkpoint ToolTaskCheckpoint
+	if err := checkpoint.UnmarshalJSON([]byte(stored)); err != nil {
+		t.Fatal(err)
+	}
+	if checkpoint.Arguments["a"] != unit {
+		t.Errorf("decoded arguments %q, want the unit %q", checkpoint.Arguments["a"], unit)
+	}
+}

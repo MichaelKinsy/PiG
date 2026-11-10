@@ -2415,13 +2415,6 @@
    "new": "Direction: \"asc\"}"
   }
  ],
- "packages/durable/src/storage/store/storage.ts": [
-  {
-   "file": "durable/storage/store/storage.go",
-   "old": "\tif after > maxSafeInteger || after < -maxSafeInteger {\n",
-   "new": "\tif after > maxSafeInteger {\n"
-  }
- ],
  "packages/durable/src/storage/store/tables.ts": [
   {
    "file": "durable/storage/store/tables.go",

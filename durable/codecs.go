@@ -111,12 +111,12 @@ func (draft EntryDraft) MarshalJSON() ([]byte, error) {
 	case draft.HeadSelf:
 		wire.Head = json.RawMessage(`"self"`)
 	case draft.Head != nil:
-		wire.Head, err = json.Marshal(*draft.Head)
+		wire.Head, err = jsstring.MarshalKeepingSurrogates(*draft.Head)
 		if err != nil {
 			return nil, err
 		}
 	}
-	return json.Marshal(wire)
+	return jsstring.MarshalKeepingSurrogates(wire)
 }
 
 // UnmarshalJSON decodes head "self" as HeadSelf.
@@ -125,7 +125,7 @@ func (draft *EntryDraft) UnmarshalJSON(data []byte) error {
 		entryDraftWire
 		Data orderedValue `json:"data"`
 	}
-	if err := json.Unmarshal(data, &decoded); err != nil {
+	if err := jsstring.UnmarshalKeepingSurrogates(data, &decoded); err != nil {
 		return err
 	}
 	wire := decoded.entryDraftWire
@@ -161,13 +161,13 @@ func (edit ContextEdit) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return json.Marshal(contextEditWire{Target: edit.Target, Action: edit.Action, Messages: messages})
+	return jsstring.MarshalKeepingSurrogates(contextEditWire{Target: edit.Target, Action: edit.Action, Messages: messages})
 }
 
 // UnmarshalJSON decodes Messages by message role.
 func (edit *ContextEdit) UnmarshalJSON(data []byte) error {
 	var wire contextEditWire
-	if err := json.Unmarshal(data, &wire); err != nil {
+	if err := jsstring.UnmarshalKeepingSurrogates(data, &wire); err != nil {
 		return err
 	}
 	messages, err := unmarshalModel(wire.Messages)
@@ -211,7 +211,7 @@ func (outcome TaskOutcome[R]) MarshalJSON() ([]byte, error) {
 	wire := taskOutcomeWire{Status: outcome.Status, Error: outcome.Error, Reason: outcome.Reason}
 	switch {
 	case outcome.Result != nil:
-		result, err := json.Marshal(*outcome.Result)
+		result, err := jsstring.MarshalKeepingSurrogates(*outcome.Result)
 		if err != nil {
 			return nil, err
 		}
@@ -219,7 +219,7 @@ func (outcome TaskOutcome[R]) MarshalJSON() ([]byte, error) {
 	case outcome.Status == OutcomeCompleted:
 		wire.Result = json.RawMessage("null")
 	}
-	return json.Marshal(wire)
+	return jsstring.MarshalKeepingSurrogates(wire)
 }
 
 // UnmarshalJSON keeps a present JSON-null result as a non-nil Result.
@@ -265,7 +265,7 @@ func (content DocumentContent) MarshalJSON() ([]byte, error) {
 		}
 		wire.Ops = &ops
 	}
-	return json.Marshal(wire)
+	return jsstring.MarshalKeepingSurrogates(wire)
 }
 
 // UnmarshalJSON decodes Ops as a delta.Ops batch, so an object an operation carries keeps its JSON key order, as Pi's storage JSON.parse does (storage/sqlite/storage.ts:63, storage/jsonl/storage.ts:118). Value is a JsonObject, which decodes in order itself.
@@ -276,7 +276,7 @@ func (content *DocumentContent) UnmarshalJSON(data []byte) error {
 		Value   JsonObject          `json:"value"`
 		Ops     delta.Ops           `json:"ops"`
 	}
-	if err := json.Unmarshal(data, &wire); err != nil {
+	if err := jsstring.UnmarshalKeepingSurrogates(data, &wire); err != nil {
 		return err
 	}
 	*content = DocumentContent{Version: wire.Version, Kind: wire.Kind, Value: wire.Value, Ops: wire.Ops}
@@ -302,7 +302,7 @@ func (state TaskState[S, R]) MarshalJSON() ([]byte, error) {
 		}
 		wire.On = &on
 	}
-	return json.Marshal(wire)
+	return jsstring.MarshalKeepingSurrogates(wire)
 }
 
 // orderedValue decodes a JsonValue member with insertion-ordered objects, as JSON.parse gives Pi.
