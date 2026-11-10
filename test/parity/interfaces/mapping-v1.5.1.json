@@ -132544,9 +132544,7 @@
       "evidence": [
         "test:chord/nextnode/surfaces/surfaces_build_linux_test.go#TestTheServersCloseFailsTheBuildInFlightItsWaitersAnswer503",
         "test:chord/nextnode/surfaces/surfaces_build_test.go#TestAFailedBuildAnswers503ForTheSurfacesFilesAndFailsItsStepsHost",
-        "test:chord/nextnode/surfaces/surfaces_build_test.go#TestAFailedBuildStaysFailedEveryLaterRequestAnswers503AndNothingRebuilds",
-        "test:chord/nextnode/surfaces/surfaces_build_test.go#TestOneSharedBuildBuildsOnceForEveryWaiterTheScriptsObjectShowsAnEmptySetBeforeTheFirstSetAfter",
-        "test:chord/nextnode/surfaces/surfaces_published_test.go#TestPublishedScriptsAFilePublishedInAnEarlierSetStaysServedWhileALaterSetStillHasIt"
+        "test:chord/nextnode/surfaces/surfaces_build_test.go#TestAFailedBuildStaysFailedEveryLaterRequestAnswers503AndNothingRebuilds"
       ]
     },
     {

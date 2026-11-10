@@ -6,10 +6,6 @@ pkg:ai/compat#CACHE_WARMING_IDLE_CONTINUATION_PROBABILITY	ai	type-mismatch	ai/ca
 pkg:ai/compat#CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS	ai	type-mismatch	ai/cache_warming.go#CacheWarmingMinimumExpectedSavings
 pkg:ai/compat#getCacheWarmingRequestOptions	ai	child-gap	ai/cache_warming.go#GetCacheWarmingRequestOptions
 pkg:ai/compat#getCacheWarmingRequestOptions::call:0	ai	signature-mismatch	ai/cache_warming.go#GetCacheWarmingRequestOptions
-pkg:chord/.#formatNumber	chord	child-gap	chord/next/surfaces/surfaces_format.go#FormatNumber
-pkg:chord/.#formatNumber::call:0	chord	signature-mismatch	chord/next/surfaces/surfaces_format.go#FormatNumber
-pkg:chord/.#formatTime	chord	child-gap	chord/next/surfaces/intl_time.go#FormatTime
-pkg:chord/.#formatTime::call:0	chord	signature-mismatch	chord/next/surfaces/intl_time.go#FormatTime
 pkg:chord/workers#WorkersBuilt	chord	type-mismatch	chord/nextnode/workers/workers_workers.go#WorkersBuilt
 pkg:chord/workers#WorkersOptions	chord	type-mismatch	chord/nextnode/workers/workers_workers.go#WorkersOptions
 pkg:coding-agent/.#GrepOperations	coding-agent	child-gap	internal/codingagent/tools/grep.go#GrepOperations
