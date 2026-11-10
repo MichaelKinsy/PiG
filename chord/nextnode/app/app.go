@@ -13,6 +13,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/MichaelKinsy/PiG/chord"
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -836,7 +838,7 @@ func (a *App) workersOf(kind AppWorkerKind, layout AppLayout, hosts *workerHosts
 			return delta.JsonObjectOf("kit", kit.json(), "app", app), nil
 		},
 		Lock: func(address contracts.Address) (string, error) {
-			return workerLock(options.Name, dataDir, address), nil
+			return workerLock(options.Name, dataDir, address.Key), nil
 		},
 		IdleMs:    idle,
 		Plugins:   a.Plugins.Component,
@@ -845,9 +847,16 @@ func (a *App) workersOf(kind AppWorkerKind, layout AppLayout, hosts *workerHosts
 	}, ctx)
 }
 
-// workerLock is the process lock of the worker at address: its worker holds it while it runs, an export or import meanwhile.
-func workerLock(name, dataDir string, address contracts.Address) string {
-	return name + ":" + dataDir + ":" + address.Key
+// unknownOutcome is whether a host data commit's rejection leaves its outcome unknown: the store stopped after or during `COMMIT`
+// (`unavailable/storage_failed`), so the commit may stand.
+func unknownOutcome(err error) bool {
+	chord, ok := data.IsChordError(err)
+	return ok && chord.Code == data.CodeUnavailable && chord.Reason == data.ReasonStorageFailed
+}
+
+// workerLock is the process lock of the worker with key: its worker holds it while it runs, an export or import meanwhile.
+func workerLock(name, dataDir, key string) string {
+	return name + ":" + dataDir + ":" + key
 }
 
 // linkHost is the host of the owner link for the address listened on: loopback for a wildcard, an IPv6 address in brackets.
@@ -920,10 +929,10 @@ func running(found *workers.Workers, address contracts.Address) bool {
 	return status == string(workers.WorkerRunning)
 }
 
-// ExportData writes the data the worker at address created (its store and finished files) as an archive at path, stopping nothing: a
-// running worker packs its own store at one consistent point; without one the server packs it under the worker's lock (no worker starts
-// meanwhile).
-func (a *App) ExportData(address contracts.Address, path string, ctx context.Context) error {
+// ExportData writes the data of the worker at address (its store and finished files, and the server's records and rows belonging to
+// the address) as an archive at path, stopping nothing: a running worker packs its own store at one consistent point; without one the
+// server packs it under the worker's lock (no worker starts meanwhile).
+func (a *App) ExportData(address contracts.Address, path string, ctx context.Context) (err error) {
 	found, err := a.workersFor(address)
 	if err != nil {
 		return err
@@ -933,17 +942,41 @@ func (a *App) ExportData(address contracts.Address, path string, ctx context.Con
 	if err != nil {
 		return err
 	}
+	// The server's parts first, staged beside the archive: the worker or PackData packs them with the rest.
+	staging, err := os.MkdirTemp(filepath.Dir(target), ".chord-server-")
+	if err != nil {
+		return err
+	}
+	defer func() { err = errors.Join(err, os.RemoveAll(staging)) }()
+	// pig divergence (D462): the server's data is the NodeHost's part (`server.archive`) and the Go host's (`kit-server.archive`).
+	server, kitServer := filepath.Join(staging, "server.archive"), filepath.Join(staging, "kit-server.archive")
+	if err := a.serverHostData("exportTo", delta.JsonObjectOf("address", AddressParam(address), "path", server), ctx); err != nil {
+		return err
+	}
+	export, err := a.Host.ExportHostData(address, ctx)
+	if err != nil {
+		return err
+	}
+	if err := writeParts(ctx, export, kitServer); err != nil {
+		return err
+	}
+	return a.exportWorker(found, address, manifest, server, kitServer, target, ctx)
+}
+
+// exportWorker packs the worker's data with the server's parts server and kitServer at target, by the running worker or under its
+// lock.
+func (a *App) exportWorker(found *workers.Workers, address contracts.Address, manifest ArchiveManifest, server, kitServer, target string, ctx context.Context) error {
 	// Running: the worker packs its own store. Else the lock, unless a worker starts first: then ask it.
 	for attempt := 1; ; attempt++ {
 		if running(found, address) {
-			return a.exportRunning(address, manifest, target, ctx)
+			return a.exportRunning(address, manifest, server, kitServer, target, ctx)
 		}
 		lock, err := a.workerLock(address, ctx)
 		if err != nil {
 			return err
 		}
 		if lock != nil {
-			return errors.Join(PackData(ctx, WorkerDirectory(a.DataDir, address), manifest, target), lock.Release())
+			return errors.Join(PackData(ctx, WorkerDirectory(a.DataDir, address), manifest, server, kitServer, target), lock.Release())
 		}
 		if attempt == 5 {
 			return fmt.Errorf("exportData: the worker at %s keeps starting; try again", address.Key)
@@ -951,7 +984,7 @@ func (a *App) ExportData(address contracts.Address, path string, ctx context.Con
 	}
 }
 
-func (a *App) exportRunning(address contracts.Address, manifest ArchiveManifest, target string, ctx context.Context) error {
+func (a *App) exportRunning(address contracts.Address, manifest ArchiveManifest, server, kitServer, target string, ctx context.Context) error {
 	reference, err := a.Host.Get(ctx, HostData, delta.JsonObjectOf("address", AddressParam(address)), host.GetOptions{})
 	if err != nil {
 		return err
@@ -964,17 +997,30 @@ func (a *App) exportRunning(address contracts.Address, manifest ArchiveManifest,
 	if err != nil {
 		return err
 	}
-	_, err = reference.Call("exportTo", delta.JsonObjectOf("path", target, "manifest", string(text)), ctx)
+	_, err = reference.Call("exportTo", delta.JsonObjectOf("path", target, "manifest", string(text), "server", server, "kitServer", kitServer), ctx)
 	return err
 }
 
-// ImportData makes the data of address (which must have none yet: nothing is overwritten) from the archive at archive, under the
-// worker's lock; its next hold starts it.
-func (a *App) ImportData(archive string, address contracts.Address, ctx context.Context) error {
+// DataImportOptions is what ImportData takes besides the archive and the address.
+type DataImportOptions struct {
+	// Existing is what happens when the address has data: store.ExistingRefuse (the default, also ""), or store.ExistingReplace.
+	Existing string
+}
+
+// ImportData makes the data of address from the archive at archive (an archive of an address of its kind; another address is a copy:
+// the server's host cells and keys are rewritten), under the worker's lock; its next hold starts it. An address with data (a directory,
+// server records or rows) is refused, unless options.Existing is "replace": then its data is replaced. A refused or definitely failed
+// import is undone (the old directory back, nothing new left); one whose server commit has an unknown outcome (`storage_failed`)
+// undoes nothing: the new directory stays in place and the old one aside, and the error says so.
+func (a *App) ImportData(archive string, address contracts.Address, ctx context.Context, options DataImportOptions) error {
 	if _, err := a.workersFor(address); err != nil {
 		return err
 	}
 	name, limits := a.options.Name, a.options.Limits
+	existing := options.Existing
+	if existing == "" {
+		existing = store.ExistingRefuse
+	}
 	accept := func(manifest ArchiveManifest) error {
 		// A trust boundary: an archive from anywhere.
 		if manifest.Format != ArchiveFormat {
@@ -983,29 +1029,151 @@ func (a *App) ImportData(archive string, address contracts.Address, ctx context.
 		if manifest.App != name {
 			return fmt.Errorf("importData: an archive of %q, not %q", manifest.App, name)
 		}
+		if manifest.Address.Kind != address.Kind {
+			return fmt.Errorf("importData: an archive of a %s, not a %s", manifest.Address.Kind, address.Kind)
+		}
 		return nil
 	}
+	dir := WorkerDirectory(a.DataDir, address)
+	source, err := filepath.Abs(archive)
+	if err != nil {
+		return err
+	}
+	return a.underLock(address, "importData", "has data (its worker runs)", ctx, func() error {
+		if existing == store.ExistingRefuse && Exists(dir) {
+			return fmt.Errorf("importData: %s exists already (an address is imported once)", dir)
+		}
+		// (1) Unpacked whole into staging: nothing changed yet.
+		staging, server, kitServer, err := UnpackStaging(ctx, source, filepath.Dir(dir), accept, ImportLimits{Bytes: limits.ImportBytes, Entries: limits.ImportEntries})
+		if err != nil {
+			return err
+		}
+		aside := ""
+		if existing == store.ExistingReplace && Exists(dir) {
+			aside = dir + ".aside-" + uuid.NewString()
+		}
+		placed := false
+		undo := func() error {
+			target := staging
+			if placed {
+				target = dir
+			}
+			err := os.RemoveAll(target)
+			if aside != "" && Exists(aside) {
+				err = errors.Join(err, os.Rename(aside, dir))
+			}
+			return err
+		}
+		// (2) The old directory aside, (3) the new one in place, (4) the server's parts, the commits, last.
+		committed, err := a.placeAndCommit(dir, staging, aside, server, kitServer, address, existing, &placed, ctx)
+		if err != nil {
+			if unknownOutcome(err) || committed {
+				// It may have committed: undoing could pair the old directory with the new server data.
+				return a.unknownImport(address, aside, committed, err)
+			}
+			return errors.Join(err, undo())
+		}
+		// Committed: what is left over is harmless, so these never fail the import.
+		_ = os.Remove(filepath.Join(dir, "server.archive"))
+		_ = os.Remove(filepath.Join(dir, "kit-server.archive"))
+		if aside != "" {
+			_ = os.RemoveAll(aside)
+		}
+		return nil
+	})
+}
+
+// placeAndCommit is steps 2 to 4 of ImportData: the old directory aside, the new one in place, then the server's parts (the NodeHost's
+// first, then the Go host's: two commits, D462). committed is whether the first commit succeeded before err.
+//
+// pig divergence (D462): the server's part is two commits (the NodeHost's store, then the Go host's), where Pi's `importHostData` is one.
+func (a *App) placeAndCommit(dir, staging, aside, server, kitServer string, address contracts.Address, existing string, placed *bool, ctx context.Context) (committed bool, err error) {
+	if aside != "" {
+		if err := os.Rename(dir, aside); err != nil {
+			return false, err
+		}
+	}
+	if err := os.Rename(staging, dir); err != nil {
+		return false, err
+	}
+	*placed = true
+	if err := a.serverHostData("importFrom", delta.JsonObjectOf("address", AddressParam(address), "path", filepath.Join(dir, "server.archive"), "existing", existing), ctx); err != nil {
+		return false, err
+	}
+	if kitServer == "" {
+		return true, nil
+	}
+	file, err := os.Open(filepath.Join(dir, "kit-server.archive"))
+	if err != nil {
+		return true, err
+	}
+	defer func() { _ = file.Close() }()
+	_, err = a.Host.ImportHostData(store.DecodeJsonl(&fileBytes{file: file}), ctx, store.HostImportOptions{Address: &address, Existing: existing})
+	return true, err
+}
+
+// unknownImportError is the error of an import that undid nothing: the server's commit has an unknown outcome (or its first commit
+// stood and its second failed). Cause is the commit's rejection (Pi's `cause`); it is not part of the message.
+type unknownImportError struct {
+	message string
+	cause   error
+}
+
+func (err *unknownImportError) Error() string { return err.message }
+func (err *unknownImportError) Unwrap() error { return err.cause }
+
+// unknownImport is the unknownImportError of the import of address.
+func (a *App) unknownImport(address contracts.Address, aside string, committed bool, cause error) error {
+	where := "the new directory is in place"
+	if aside != "" {
+		where += ", the old one at " + aside
+	}
+	again := "Run the import again with existing: \"replace\""
+	if committed && !unknownOutcome(cause) {
+		// pig divergence (D462): the plugins' store committed and the Go host's definitely failed: Pi has one commit, so no such case.
+		return &unknownImportError{fmt.Sprintf("importData: %s: the plugins' store committed and the server host's did not; nothing was undone (%s). %s.", address.Key, where, again), cause}
+	}
+	return &unknownImportError{fmt.Sprintf("importData: %s: the server's commit has an unknown outcome; nothing was undone (%s). %s once the server's store is back.", address.Key, where, again), cause}
+}
+
+// DeleteData deletes the data of address (its worker's directory and the server's records and rows belonging to it) under the worker's
+// lock; refused while its worker runs.
+func (a *App) DeleteData(address contracts.Address, ctx context.Context) error {
+	if _, err := a.workersFor(address); err != nil {
+		return err
+	}
+	dir := WorkerDirectory(a.DataDir, address)
+	return a.underLock(address, "deleteData", "runs; stop its worker first", ctx, func() error {
+		// The server's parts first (the commits); a crash before the directory goes leaves it orphaned (nothing refers to it) and a
+		// repeated DeleteData removes it.
+		// pig divergence (D462): two commits (the NodeHost's store, then the Go host's), where Pi's `deleteHostData` is one.
+		if err := a.serverHostData("deleteFor", delta.JsonObjectOf("address", AddressParam(address)), ctx); err != nil {
+			return err
+		}
+		if _, err := a.Host.DeleteHostData(address, ctx); err != nil {
+			return err
+		}
+		return os.RemoveAll(dir)
+	})
+}
+
+// underLock runs work under the worker's lock of address (refused while its worker runs: `<what>: <key> <held>`).
+func (a *App) underLock(address contracts.Address, what, held string, ctx context.Context, work func() error) error {
 	lock, err := a.workerLock(address, ctx)
 	if err != nil {
 		return err
 	}
-	// A worker holds it: it runs, so the address has data, and nothing is overwritten.
 	if lock == nil {
-		return fmt.Errorf("importData: %s has data (its worker runs)", address.Key)
+		return fmt.Errorf("%s: %s %s", what, address.Key, held)
 	}
-	source, err := filepath.Abs(archive)
-	if err != nil {
-		return errors.Join(err, lock.Release())
-	}
-	unpacked := UnpackData(ctx, source, WorkerDirectory(a.DataDir, address), accept, ImportLimits{Bytes: limits.ImportBytes, Entries: limits.ImportEntries})
-	return errors.Join(unpacked, lock.Release())
+	return errors.Join(work(), lock.Release())
 }
 
 // workerLock is the process lock of the worker at address (the one its worker takes at start), or nil while held.
 func (a *App) workerLock(address contracts.Address, ctx context.Context) (*workers.ProcessLockHandle, error) {
 	waited, cancel := context.WithTimeout(ctx, addressLock)
 	defer cancel()
-	lock, err := workers.ProcessLock(workerLock(a.options.Name, a.DataDir, address), waited)
+	lock, err := workers.ProcessLock(workerLock(a.options.Name, a.DataDir, address.Key), waited)
 	if err != nil {
 		if waited.Err() != nil && ctx.Err() == nil {
 			return nil, nil

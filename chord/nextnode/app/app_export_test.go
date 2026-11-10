@@ -21,7 +21,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/nextnode/workers"
 )
 
-// Ports packages/chord/test/node/app/app.test.ts "export and import per address" (Pi main c23b9ec1): a running worker packs its own
+// Ports packages/chord/test/node/app/app.test.ts "export and import per address" (Pi 8a5da3ce6; the cases about the server's records and rows are in app_export_host_test.go): a running worker packs its own
 // store without stopping, the worker's data object is the server's only, an export without a worker holds its lock (a hold arriving
 // meanwhile starts the worker after it), a failed address stays failed after an export, and the round trip with its refusals. The
 // round trip's file is put into the worker's directory and read from the copy's (a plugin cannot get a worker's `Files`, D461).
@@ -98,7 +98,7 @@ func TestAppExportsARunningWorkersDataWithoutStoppingItTheWorkerPacksItsOwnStore
 		t.Fatalf("text = %v", got)
 	}
 	write(t, p1, "after")
-	if err := s.app.ImportData(archive, project.Address(delta.JsonObjectOf("id", "p2")), background); err != nil {
+	if err := s.app.ImportData(archive, project.Address(delta.JsonObjectOf("id", "p2")), background, DataImportOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	copied := holdNotes(t, s, "p2")
@@ -292,10 +292,10 @@ func TestAppRoundTripsAWorkersDocumentsAndTablesAndRefusesAnExistingAddressAndAn
 	if info, err := os.Stat(archive); err != nil || info.Mode().Perm() != 0o600 {
 		t.Fatalf("archive: %v %v", info, err)
 	}
-	if err := s.app.ImportData(archive, project.Address(delta.JsonObjectOf("id", "p1")), background); err == nil || !strings.Contains(err.Error(), "has data (its worker runs)") {
+	if err := s.app.ImportData(archive, project.Address(delta.JsonObjectOf("id", "p1")), background, DataImportOptions{}); err == nil || !strings.Contains(err.Error(), "has data (its worker runs)") {
 		t.Fatalf("import over a running worker: %v", err)
 	}
-	if err := s.app.ImportData(archive, project.Address(delta.JsonObjectOf("id", "p2")), background); err != nil {
+	if err := s.app.ImportData(archive, project.Address(delta.JsonObjectOf("id", "p2")), background, DataImportOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	copied := holdNotes(t, s, "p2")
@@ -325,7 +325,7 @@ func TestAppRoundTripsAWorkersDocumentsAndTablesAndRefusesAnExistingAddressAndAn
 	copiedFiles.close()
 	// Another app refuses the archive.
 	other := startTestApp(t, nil, func(o *AppOptions) { o.Name = "other-app"; projectOptions(t)(o) })
-	err := other.app.ImportData(archive, project.Address(delta.JsonObjectOf("id", "p1")), background)
+	err := other.app.ImportData(archive, project.Address(delta.JsonObjectOf("id", "p1")), background, DataImportOptions{})
 	if err == nil || !strings.Contains(err.Error(), `an archive of "chord-test", not "other-app"`) {
 		t.Fatalf("import into another app: %v", err)
 	}
