@@ -28,7 +28,11 @@ type stalledScan struct {
 	release chan struct{}
 	// draining is closed when the close begins to wait for the scan.
 	draining chan struct{}
+	letOnce  sync.Once
 }
+
+// letGo ends the held scan; a test that fails while the close waits for it calls it, or the cleanup's close would wait for it for good.
+func (s *stalledScan) letGo() { s.letOnce.Do(func() { close(s.release) }) }
 
 // startWithAStalledScan starts an app whose scan of the server's own code waits for release, its bases not awaited.
 func startWithAStalledScan(t *testing.T) *stalledScan {
@@ -168,6 +172,7 @@ func TestAppARecordOfTheServersCodeArrivingAfterTheClosedWatcherWatchesNothingAn
 	var releaseOnce sync.Once
 	letGo := func() { releaseOnce.Do(func() { close(release) }) }
 	t.Cleanup(letGo)
+	defer letGo()
 	program := filepath.Join(t.TempDir(), "server")
 	if err := os.WriteFile(program, []byte("v1"), 0o755); err != nil {
 		t.Fatal(err)
@@ -250,11 +255,12 @@ func (s *stalledScan) startsAgain(t *testing.T) {
 // close waits for the scan, and released once it ended.
 func TestAppCloseHoldsTheDataDirectorysLockWhileItWaitsForABuildAndReleasesItOnceItEnded(t *testing.T) {
 	scan := startWithAStalledScan(t)
+	defer scan.letGo()
 	<-scan.entered
 	closed := scan.closeIn(background)
 	scan.untilDraining(t, closed)
 	scan.refusedWhileLocked(t)
-	close(scan.release)
+	scan.letGo()
 	if err := <-closed; err != nil {
 		t.Fatal(err)
 	}
@@ -264,6 +270,7 @@ func TestAppCloseHoldsTheDataDirectorysLockWhileItWaitsForABuildAndReleasesItOnc
 // A close whose context ended while it waited still releases the lock (only the abandoned build runs without it).
 func TestAppCloseReleasesTheDataDirectorysLockWhenItsContextEndsWhileItWaitsForABuild(t *testing.T) {
 	scan := startWithAStalledScan(t)
+	defer scan.letGo()
 	<-scan.entered
 	ctx, cancel := context.WithCancel(background)
 	defer cancel()
@@ -275,7 +282,7 @@ func TestAppCloseReleasesTheDataDirectorysLockWhenItsContextEndsWhileItWaitsForA
 		t.Fatalf("close = %v, want the context's error", err)
 	}
 	scan.startsAgain(t)
-	close(scan.release)
+	scan.letGo()
 	<-scan.app.BaseWatched()
 }
 
@@ -283,6 +290,7 @@ func TestAppCloseReleasesTheDataDirectorysLockWhenItsContextEndsWhileItWaitsForA
 // the drain the first one's context ended.
 func TestAppACloseAfterOneWhoseContextEndedReturnsItsResultAndDoesNotWaitAgain(t *testing.T) {
 	scan := startWithAStalledScan(t)
+	defer scan.letGo()
 	<-scan.entered
 	ctx, cancel := context.WithCancel(background)
 	defer cancel()
@@ -296,6 +304,6 @@ func TestAppACloseAfterOneWhoseContextEndedReturnsItsResultAndDoesNotWaitAgain(t
 	if err := scan.app.Close(background); !errors.Is(err, context.Canceled) {
 		t.Fatalf("second close = %v, want the first one's result", err)
 	}
-	close(scan.release)
+	scan.letGo()
 	<-scan.app.BaseWatched()
 }
