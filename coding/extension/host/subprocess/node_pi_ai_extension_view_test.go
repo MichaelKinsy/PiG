@@ -8,6 +8,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // The module Node extensions import as `@earendil-works/pi-ai` is Pi's extension view: pi-ai's compat entry plus TypeBox's Type and a TypeBox StringEnum. The pinned Pi's own
@@ -69,7 +71,7 @@ assert.equal(
 `
 	agent := filepath.Join(findModuleRoot(t), "extensions", "sdk-ts", "node_modules", "@earendil-works", "pi-coding-agent")
 	oracle := filepath.Join(agent, "dist", "core", "extensions", "pi-ai-extension-view.js")
-	cmd := exec.CommandContext(t.Context(), "node", "--import", registerLoaderURL(t, root), "--input-type=module", "-e", script, oracle)
+	cmd := exec.CommandContext(t.Context(), testenv.RequireQualifiedNode(t), "--import", registerLoaderURL(t, root), "--input-type=module", "-e", script, oracle)
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("extension view: %v\n%s", err, output)
 	}
