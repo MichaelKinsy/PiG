@@ -168,16 +168,6 @@ func (resources *providerResources) cleanedIds() []string {
 	return slices.Clone(resources.cleaned)
 }
 
-// providerSessionId is the persisted provider session ID of a conversation (ProviderDoc).
-func providerSessionId(t *testing.T, harness Harness, conversation Conversation) string {
-	t.Helper()
-	state, err := durable.Snapshot[ProviderState](testContext, harness, ProviderDoc, conversation.Id())
-	if err != nil || state == nil {
-		t.Fatalf("provider state of conversation %d: %v, %v", conversation.Id(), state, err)
-	}
-	return state.SessionId
-}
-
 // sameIds reports whether got and want hold the same session IDs, in any order.
 func sameIds(got, want []string) bool {
 	return slices.Equal(slices.Sorted(slices.Values(got)), slices.Sorted(slices.Values(want)))
@@ -331,7 +321,7 @@ func TestHarnessClose(t *testing.T) {
 		})
 		addTask(t, setup.Registry, stubborn.Erased())
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
-		sessionId := providerSessionId(t, harness, root)
+		sessionId := providerSessionId(t, harness, root.Id())
 		if _, err := submitInput(t, root, "allocate").Wait(testContext); err != nil {
 			t.Fatal(err)
 		}
@@ -368,7 +358,7 @@ func TestHarnessClose(t *testing.T) {
 		setup.Faux.SetResponses([]ai.FauxResponseStep{resources.answer("ok")})
 		store := newControlledStorage()
 		harness, root := openChat(t, store, setup)
-		sessionId := providerSessionId(t, harness, root)
+		sessionId := providerSessionId(t, harness, root.Id())
 		if _, err := submitInput(t, root, "allocate").Wait(testContext); err != nil {
 			t.Fatal(err)
 		}
@@ -408,9 +398,9 @@ func TestHarnessClose(t *testing.T) {
 			t.Fatal(err)
 		}
 		secondHarness, secondRoot := openChat(t, storage.NewMemoryStorage(), secondSetup)
-		firstId := providerSessionId(t, firstHarness, firstRoot)
-		firstChildId := providerSessionId(t, firstHarness, firstChild)
-		secondId := providerSessionId(t, secondHarness, secondRoot)
+		firstId := providerSessionId(t, firstHarness, firstRoot.Id())
+		firstChildId := providerSessionId(t, firstHarness, firstChild.Id())
+		secondId := providerSessionId(t, secondHarness, secondRoot.Id())
 		for _, send := range []struct {
 			conversation Conversation
 			text         string
