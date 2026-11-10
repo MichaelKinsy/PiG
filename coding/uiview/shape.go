@@ -21,12 +21,12 @@ type Shape struct {
 	MaxItems   int              `json:"maxItems,omitempty"`
 }
 
-// pig divergence (D614): the closed argument and answer shape limits of a view intent.
+// pig additive (D614): the closed argument and answer shape limits of a view intent.
 const (
-	maxShapeDepth = 4  // pig divergence (D614): nesting depth
-	maxEnum       = 32 // pig divergence (D614): enum members
-	maxProperties = 32 // pig divergence (D614): object properties
-	maxItemsCap   = 64 // pig divergence (D614): array length
+	maxShapeDepth = 4  // pig additive (D614): nesting depth
+	maxEnum       = 32 // pig additive (D614): enum members
+	maxProperties = 32 // pig additive (D614): object properties
+	maxItemsCap   = 64 // pig additive (D614): array length
 )
 
 func (s Shape) check() error { return s.checkDepth(1) }
