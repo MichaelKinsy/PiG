@@ -1277,7 +1277,7 @@ mod tests {
     fn a_local_exec_forgets_the_shell_exit_an_earlier_one_left() {
         let first = String::from("timeout:2");
         remember_local_shell_timeout(&first, crate::protocol::ShellExit { exit_code: 7, after_seconds: 0.5 });
-        let options = BashExecOptions { on_data: Arc::new(|_| {}), signal: crate::ProviderSignal::new(), timeout: Some(1.0), env: None };
+        let options = crate::BashExecOptions { on_data: Arc::new(|_| {}), signal: crate::ProviderSignal::new(), timeout: Some(1.0), env: None };
         // No extension is running in this test, so the exec fails at once: before it does anything else it must have forgotten the earlier error.
         let _ = (create_local_bash_operations(None).exec)("true", "/", options);
         assert_eq!(local_shell_timeout_of(&first), None);
