@@ -321493,6 +321493,17 @@
       "shapeHash": "sha256:37334cef172882b5b31dacd63d47fcb4dafd854f50dae194f4ee9733bbc3c725"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#SetStdioGraceTimerForTest",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "SetStdioGraceTimerForTest",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(timer func() github.com/MichaelKinsy/PiG/internal/childwait.IdleTimer) (restore func())"
+      },
+      "shapeHash": "sha256:6d97d4adf5bea409a9ed353b6bee1a3fe0563024484e61febd37495ae0e152b4"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#SettingsView",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
       "name": "SettingsView",
@@ -325167,6 +325178,61 @@
       "shapeHash": "sha256:0c5c6951bcf505254c992720315dc41d99fe0e45ed7d49be966bc6acd58f50a4"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#stdioGraceTimer",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "stdioGraceTimer",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "sync/atomic.Pointer[func() github.com/MichaelKinsy/PiG/internal/childwait.IdleTimer]"
+      },
+      "shapeHash": "sha256:a77a879f35b5fcc2bdda2d325061ed525ce022a7877ade08b0f4ae96018a8126"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#stdioGraceTimer.CompareAndSwap",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "stdioGraceTimer.CompareAndSwap",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(old *func() github.com/MichaelKinsy/PiG/internal/childwait.IdleTimer, new *func() github.com/MichaelKinsy/PiG/internal/childwait.IdleTimer) (swapped bool)"
+      },
+      "shapeHash": "sha256:f088f27a7e5d2c099b80eda274417bb32d46a8d6793fabf09739155d87e95d4e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#stdioGraceTimer.Load",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "stdioGraceTimer.Load",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() *func() github.com/MichaelKinsy/PiG/internal/childwait.IdleTimer"
+      },
+      "shapeHash": "sha256:404ec58e08d68a16758d3edf4f729c6df4fc651f7cfb370c349a4d11923e1f3c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#stdioGraceTimer.Store",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "stdioGraceTimer.Store",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(val *func() github.com/MichaelKinsy/PiG/internal/childwait.IdleTimer)"
+      },
+      "shapeHash": "sha256:ecfd661d20de696ce82fad08a634e953ef936843144e7736ce61a8629e5d5818"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#stdioGraceTimer.Swap",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "stdioGraceTimer.Swap",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(new *func() github.com/MichaelKinsy/PiG/internal/childwait.IdleTimer) (old *func() github.com/MichaelKinsy/PiG/internal/childwait.IdleTimer)"
+      },
+      "shapeHash": "sha256:a390c6f34e1342f77a35e5d62acf5cacb776c17a28eb7e7a87d0e2ebba6ba3c4"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#strictToolSampling",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
       "name": "strictToolSampling",
@@ -325297,17 +325363,6 @@
         "type": "func()"
       },
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#testHookStdioGraceTimer",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
-      "name": "testHookStdioGraceTimer",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "func() github.com/MichaelKinsy/PiG/internal/childwait.IdleTimer"
-      },
-      "shapeHash": "sha256:49b9df809dda982d7c290128bd579b3a412353257cdfcadea1fa2d6cd86f1b5e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#testHookTimeoutTimer",
