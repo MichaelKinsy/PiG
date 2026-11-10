@@ -454,6 +454,56 @@ func TestAppReplacesTheGoHostsDataByNothingWhenTheArchiveHasNoPartOfIt(t *testin
 	}
 }
 
+// goHostHolds puts a row of address into the Go host's store (a table of its own host-keyed by the address's kind): the address has data
+// in the Go host.
+func goHostHolds(t *testing.T, s started, address contracts.Address) {
+	t.Helper()
+	key := address.Key
+	text := strings.Join([]string{
+		`{"kind":"manifest","format":1,"schema":3,"lastSeq":0,"nextId":1,"host":"` + key + `"}`,
+		`{"kind":"table","table":"test.go:rows","version":1,"state":"ready","columns":{"p":{"type":"str","host":"project"}},"key":["p"],"fingerprint":"f"}`,
+		`{"kind":"put","table":"test.go:rows","row":{"p":"` + key + `"},"version":1,"columns":{}}`,
+		`{"kind":"end","writes":2}`,
+	}, "\n") + "\n"
+	path := filepath.Join(t.TempDir(), "go-host.jsonl")
+	if err := os.WriteFile(path, []byte(text), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = file.Close() }()
+	if _, err := s.app.Host.ImportHostData(store.DecodeJsonl(&fileBytes{file: file}), background, store.HostImportOptions{Address: &address}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Pi's `importHostData` refuses an address that has data in the store with existing refuse whatever the archive holds. An archive Pi
+// made has no `kit-server.archive`: the Go host's refusal is still asked, and when it refuses after the NodeHost's part was imported
+// the NodeHost is rolled back (its data of the address as before, the old directory back).
+func TestAppRefusesAPiMadeArchiveWhenTheGoHostHoldsDataOfTheAddressAndRollsTheNodeHostBack(t *testing.T) {
+	s := startTestApp(t, map[string]map[string]string{"notes": notesPlugin, "meta": metaPlugin}, projectOptions(t))
+	meta, err := s.app.Node.Get(background, metaStore, delta.NewJsonObject(0), host.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer meta.Release()
+	metaSet(t, meta, "p1", "first", "red")
+	archive := exportedProject(t, s)
+	piMade := filepath.Join(t.TempDir(), "pi-made.tar")
+	copyWithout(t, archive, piMade, "kit-server.archive")
+	goHostHolds(t, s, projectAddress("p3"))
+	err = s.app.ImportData(piMade, projectAddress("p3"), background)
+	wantError(t, err, "project|p3 has data in this store")
+	if got := dirEntries(t, filepath.Join(s.dataDir, "workers", "project")); !slices.Equal(got, []string{"project%7Cp1"}) {
+		t.Fatalf("workers after the refused import = %v", got)
+	}
+	if title, labels := metaGet(t, meta, "p3"); title != "" || len(labels) != 0 {
+		t.Fatalf("p3 meta after the refused import = %q %v, want none (the NodeHost's part rolled back)", title, labels)
+	}
+}
+
 // copyWithout writes the archive at from to to, without the entry named skip.
 func copyWithout(t *testing.T, from, to, skip string) {
 	t.Helper()

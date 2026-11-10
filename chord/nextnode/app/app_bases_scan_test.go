@@ -22,7 +22,7 @@ type stalledScan struct {
 	letOnce sync.Once
 }
 
-// letGo ends the held scan; a test that fails while the close waits for it calls it, or the cleanup's close would wait for it for good.
+// letGo ends the held scan (once); it runs when the test ends, before the app's cleanup joins the scan.
 func (s *stalledScan) letGo() { s.letOnce.Do(func() { close(s.release) }) }
 
 // startWithAStalledScan starts an app whose scan of the server's own code waits for release, its bases not awaited.
@@ -33,14 +33,6 @@ func startWithAStalledScan(t *testing.T) *stalledScan {
 		t.Fatal(err)
 	}
 	scan := &stalledScan{entered: make(chan struct{}), release: make(chan struct{})}
-	// Closed whatever the test did, so a scan still held never outlives it.
-	t.Cleanup(func() {
-		select {
-		case <-scan.release:
-		default:
-			close(scan.release)
-		}
-	})
 	began := time.Now()
 	scan.started = startUnbuilt(t, nil, func(o *AppOptions) {
 		o.executable = func() (string, error) {
@@ -51,6 +43,8 @@ func startWithAStalledScan(t *testing.T) *stalledScan {
 		// The program is older than the process: not an edit since its start, compared by its bytes.
 		o.processStart = func() time.Time { return began.Add(time.Hour) }
 	})
+	// Registered after the app's cleanups, so it runs before them: whatever the test did, a scan still held never outlives it.
+	t.Cleanup(scan.letGo)
 	return scan
 }
 
@@ -68,7 +62,7 @@ func TestAppAnswersBeforeTheScanOfItsOwnCodeFinishedTheScanRunsAfterTheStart(t *
 		t.Fatal("the base code is watched while its scan is held")
 	default:
 	}
-	close(scan.release)
+	scan.letGo()
 	<-scan.app.BaseWatched()
 	if reported := scan.errors.kinds(); len(reported) != 0 {
 		t.Fatalf("reported %v, want none", reported)
@@ -98,7 +92,7 @@ func TestAppClosesWithoutWaitingForAScanOfItsOwnCodeStalledOnAReadItsLateResultI
 		t.Fatal("the base code is watched while its scan is held")
 	default:
 	}
-	close(scan.release)
+	scan.letGo()
 	<-scan.app.BaseWatched()
 	if reported := scan.errors.kinds(); len(reported) != 0 {
 		t.Fatalf("reported %v after the close, want none", reported)
@@ -114,7 +108,6 @@ func TestAppClosesWithoutWaitingForAScanOfItsOwnCodeStalledOnAReadItsLateResultI
 // between the scan's last check of the close and the record (the process start the record's edit test reads).
 func TestAppARecordOfTheServersCodeArrivingAfterTheClosedWatcherWatchesNothingAndMarksNothing(t *testing.T) {
 	entered, release := make(chan struct{}), make(chan struct{})
-	draining := make(chan struct{})
 	var releaseOnce sync.Once
 	letGo := func() { releaseOnce.Do(func() { close(release) }) }
 	t.Cleanup(letGo)
@@ -132,20 +125,22 @@ func TestAppARecordOfTheServersCodeArrivingAfterTheClosedWatcherWatchesNothingAn
 			<-release
 			return began.Add(-time.Hour)
 		}
-		o.draining = func() { close(draining) }
 	})
 	<-entered
 	closed := make(chan error, 1)
 	go func() { closed <- s.app.Close(background) }()
 	select {
 	case err := <-closed:
-		t.Fatalf("the close returned (%v) while the scan was held: it did not wait for it", err)
-	case <-draining:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(20 * time.Second):
+		t.Fatal("the close did not return while the scan was held: it waits for it")
 	}
 	// Every step ran, the plugins' watcher closed; the scan records now.
 	letGo()
-	if err := <-closed; err != nil {
-		t.Fatal(err)
+	if err := s.app.Wait(background); err != nil {
+		t.Fatalf("wait = %v, want nil once the scan ended", err)
 	}
 	if s.app.Plugins.Component.Marks().Base {
 		t.Fatal("base is marked by a record that arrived after the watcher closed")

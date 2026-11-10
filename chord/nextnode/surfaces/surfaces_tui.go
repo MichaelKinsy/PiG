@@ -53,9 +53,13 @@ func (s *TuiSurface) Build() SurfaceBuilt { return s.building.build() }
 // Built is how the build ended, once it did (nil before).
 func (s *TuiSurface) Built() *SurfaceBuilt { return s.building.built() }
 
-// Close ends the terminal surface's build: one not started never starts, one in flight is waited for until ctx ends (ctx's error then).
-// Pi's `#close` leaves the build unawaited; the Go goroutine is owned (a forced Go lifetime difference).
-func (s *TuiSurface) Close(ctx context.Context) error { return s.building.close(ctx) }
+// Close ends the terminal surface's build without waiting for it, as Pi's `#close` leaves it unawaited: one not started never starts,
+// one in flight goes on and its result is dropped.
+func (s *TuiSurface) Close() { s.building.close() }
+
+// Wait returns once the terminal surface's build, if started, ended, or with ctx's error when ctx ends first (the build goes on). Go's
+// ownership of the build's goroutine: Pi has no counterpart.
+func (s *TuiSurface) Wait(ctx context.Context) error { return s.building.wait(ctx) }
 
 // TuiPrefix is where the terminal surface's files live (Pi's `TUI_PREFIX`).
 const TuiPrefix = "/_chord/tui/"

@@ -242,8 +242,6 @@ type AppOptions struct {
 
 	// executable is the server's own code: os.Executable unless a test names another.
 	executable func() (string, error)
-	// draining is called when the close begins to wait for the builds (drainBuilds), the steps before it done: a test's mark of that point.
-	draining func()
 	// processStart is when the process started, for the executable's edit since then: the program's start unless a test names another.
 	processStart func() time.Time
 }
@@ -375,7 +373,7 @@ type App struct {
 	closed  error
 	// closing is set when the close starts: what runs after the start (the bases' builds, the scan) stops reporting there.
 	closing atomic.Bool
-	// basesStarted is set once startBases started the goroutine basesBuilt and baseWatched are closed by: the close waits for the builds (drainBuilds), not for the scan after them.
+	// basesStarted is set once startBases started the goroutine basesBuilt and baseWatched are closed by: Wait joins it.
 	basesStarted atomic.Bool
 	// basesBuilt and baseWatched are BasesBuilt's and BaseWatched's channels, closed by the build after the listen (startBases).
 	basesBuilt, baseWatched chan struct{}
@@ -414,7 +412,7 @@ func StartServer(options AppOptions, ctx context.Context) (*App, error) {
 	}
 	app := &App{basesBuilt: make(chan struct{}), baseWatched: make(chan struct{}), ended: make(chan struct{}), Workers: map[string]*workers.Workers{}, DataDir: opened.layout.DataDir, OwnerTokenFile: opened.layout.OwnerToken, store: opened.store, lock: opened.lock, options: options}
 	if err := app.start(opened, ctx); err != nil {
-		return nil, errors.Join(err, app.Close(ctx))
+		return nil, errors.Join(err, app.Close(ctx), app.Wait(ctx))
 	}
 	return app, nil
 }
@@ -1161,12 +1159,16 @@ func (a *App) placeAndCommit(dir, staging, aside, server, kitServer string, addr
 		return false, err
 	}
 	if kitServer == "" {
-		// No part of the Go host's: its data of the address is replaced by nothing (a replace removes the address's data), or left (refuse).
+		// No part of the Go host's: its data of the address is replaced by nothing (a replace removes the address's data), or refused if it has any.
 		if existing == store.ExistingReplace {
 			_, err := a.Host.DeleteHostData(address, ctx)
 			return true, err
 		}
-		return true, nil
+		// Refuse: Pi's one `importHostData` refuses an address that has data in the store whatever the archive holds, so the Go host's
+		// refusal is asked of an import of an empty part of the address (it changes nothing when the address has none).
+		empty := store.SlicePartSource([]any{&store.ManifestPart{Format: store.ArchiveFormat, Schema: store.StoreSchema, NextID: 1, Host: &address.Key}, &store.EndPart{}})
+		_, err := a.Host.ImportHostData(empty, ctx, store.HostImportOptions{Address: &address, Existing: existing})
+		return true, err
 	}
 	file, err := os.Open(filepath.Join(dir, "kit-server.archive"))
 	if err != nil {
@@ -1257,14 +1259,12 @@ func (a *App) workerLock(address contracts.Address, ctx context.Context) (*worke
 
 // Close closes the HTTP component, the workers (in the options' order), the host, the store, the plugins' watcher and the data
 // directory's lock: in that order (HTTP first: it drains requests the host's close would seal). As Pi's `#close`, the first step that
-// fails ends the close there (the later steps do not run) and is what Close returns, to every caller: the first caller runs the
-// steps, the later ones wait for it and get its result (a later Close with a longer ctx does not resume what the first ended).
-// Pi's `#close` does not wait for the bases' builds and the surfaces' (a forced Go lifetime difference): the Go close waits for them
-// (drainBuilds) between the plugins' watcher and the lock's release, until ctx ends, so the lock is held while a build runs and only
-// a build abandoned at ctx's end runs without it. The scan of the server's own code is not waited for, as Pi's: the close ends it at its
-// next step (it stops once it finds the app closing, its result dropped) and returns; the goroutine that runs it ends with the scan, and
-// BaseWatched closes then (the join of whoever needs it). The lock is released when the drain ends, whatever it ended with; after a failed
-// step the drain still runs and the lock stays held, as after Pi's rejected chain.
+// fails ends the close there (the later steps do not run, the lock stays held) and is what Close returns, to every caller: the first
+// caller runs the steps, the later ones wait for it and get its result (a later Close with a longer ctx does not resume what the
+// first ended). As Pi's, it does not wait for the bases' builds, the surfaces' builds or the scan of the server's own code: what they
+// finish after the close is dropped (a build that ends later finds the app closing and reports and publishes nothing), and the lock
+// is released while they may still run (they write nothing under the data directory). A surface build not started by then never
+// starts.
 func (a *App) Close(ctx context.Context) error {
 	if !a.closing.Swap(true) {
 		close(a.ended)
@@ -1273,32 +1273,13 @@ func (a *App) Close(ctx context.Context) error {
 	return a.closed
 }
 
-// closeSteps is Pi's `#close`: each step awaited, the first failure returned; the builds are joined (drainBuilds) before the lock's
-// release.
-func (a *App) closeSteps(ctx context.Context) error {
-	if err := a.closeResources(ctx); err != nil {
-		_ = a.drainBuilds(ctx)
-		return err
-	}
-	drained := a.drainBuilds(ctx)
-	if released := a.lock.Release(); released != nil {
-		return errors.Join(drained, released)
-	}
-	return drained
-}
-
-// drainBuilds waits for the builds the app started after the listen: each surface's build (one not started never starts), then the
-// bases' (startBases: it builds each base), until ctx ends (its error then; the goroutines are left to finish, what they do after the
-// close began being dropped). The recording of the base code that follows the builds (the scan of the server's own code) is not
-// waited for. It runs after the close's steps, the data directory's lock still held:
-// a build that finishes meanwhile finds the host closed (its publication fails) and the watcher closed (a record arriving after the
-// close watches nothing).
-func (a *App) drainBuilds(ctx context.Context) error {
-	if a.options.draining != nil {
-		a.options.draining()
-	}
+// Wait returns once every build and scan the app started ended: each surface's build, the bases' builds and the scan of the server's
+// own code (BaseWatched closed), or with ctx's error when ctx ends first (the tasks are left to finish). Go's lifetime ownership of
+// what Pi leaves as unawaited promises: Pi has no counterpart, and Close does not call it. It returns nil at once when none started.
+// What the tasks finish after the app closed is dropped, as it is by Close.
+func (a *App) Wait(ctx context.Context) error {
 	for _, each := range a.surfaces {
-		if err := each.close(ctx); err != nil {
+		if err := each.wait(ctx); err != nil {
 			return err
 		}
 	}
@@ -1306,16 +1287,27 @@ func (a *App) drainBuilds(ctx context.Context) error {
 		return nil
 	}
 	select {
-	case <-a.basesBuilt:
+	case <-a.baseWatched:
 		return nil
 	default:
 	}
 	select {
-	case <-a.basesBuilt:
+	case <-a.baseWatched:
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
 	}
+}
+
+// closeSteps is Pi's `#close`: each step awaited, the first failure returned, the lock released last.
+func (a *App) closeSteps(ctx context.Context) error {
+	for _, each := range a.surfaces {
+		each.close()
+	}
+	if err := a.closeResources(ctx); err != nil {
+		return err
+	}
+	return a.lock.Release()
 }
 
 // closeResources is the steps of Pi's `#close` but the lock's release: the first failure ends them there.

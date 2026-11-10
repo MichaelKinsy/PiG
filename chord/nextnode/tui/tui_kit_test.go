@@ -113,7 +113,10 @@ func tuiApp(t testing.TB, text string) started {
 	t.Cleanup(func() {
 		noGoroutinesOf(t, "chord/nextnode/tui.", "chord/nextnode/app.", "chord/nextnode/http.", "chord/nextnode/workers.", "chord/nextnode/plugins.")
 	})
-	t.Cleanup(func() { _ = started.Close(background) })
+	t.Cleanup(func() {
+		_ = started.Close(background)
+		_ = started.Wait(background)
+	})
 	var port int
 	_, _ = fmt.Sscanf(started.OwnerLink(), "http://127.0.0.1:%d/", &port)
 	return started2(started, port, root)

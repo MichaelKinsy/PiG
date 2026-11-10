@@ -67,6 +67,7 @@ func (m ArchiveManifest) text() []byte {
 // PackData packs the host directory dir of a host that does not run (its worker's lock held: nothing writes it) into the archive
 // at path: manifest, its store's export, the server's part (the JSONL file server), the Go host's (kitServer, "": none) and its files.
 func PackData(ctx context.Context, dir string, manifest ArchiveManifest, server, kitServer, path string) error {
+	// pig divergence (D462): the server's part is two archive entries, the NodeHost's `server.archive` and the Go host's `kit-server.archive` ("": none).
 	if !Exists(dir) {
 		return fmt.Errorf("exportData: %s has no data", manifest.Address.Key)
 	}
@@ -441,6 +442,7 @@ func UnpackStaging(ctx context.Context, archive, parent string, accept func(Arch
 		}
 	}()
 	staging = made
+	// pig divergence (D462): the server's part is two entries, `server.archive` (the NodeHost's) and `kit-server.archive` (the Go host's, absent in an archive Pi made).
 	storeArchive, server, kitServer, err := unpackEntries(ctx, archive, staging, accept, limits)
 	if err != nil {
 		return "", "", "", err
