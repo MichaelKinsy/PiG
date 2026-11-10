@@ -1362,9 +1362,9 @@ func catalogResolver() string {
 	b.WriteString("\n// generatedCatalog sets the maps of generatedRows and returns them as the catalog.\nfunc generatedCatalog() []GeneratedModel {\n")
 	for _, table := range catalogMapTables {
 		if table.own && len(table.list) > 0 {
-			fmt.Fprintf(&b, "\tfor _, ref := range %sRefs {\n\t\tgeneratedRows[ref.row].%s = generatedMap(%sPairs[ref.element])\n\t}\n", table.name, table.field, table.name)
+			fmt.Fprintf(&b, "\tfor _, ref := range %sRefs[:] {\n\t\tgeneratedRows[ref.row].%s = generatedMap(%sPairs[ref.element])\n\t}\n", table.name, table.field, table.name)
 		} else if table.field != "" && len(table.list) > 0 {
-			fmt.Fprintf(&b, "\tgeneratedBuildMaps(%s[:], %sPairs[:])\n\tfor _, ref := range %sRefs {\n\t\tgeneratedRows[ref.row].%s = %s[ref.element]\n\t}\n", table.name, table.name, table.name, table.field, table.name)
+			fmt.Fprintf(&b, "\tgeneratedBuildMaps(%s[:], %sPairs[:])\n\tfor _, ref := range %sRefs[:] {\n\t\tgeneratedRows[ref.row].%s = %s[ref.element]\n\t}\n", table.name, table.name, table.name, table.field, table.name)
 		}
 	}
 	b.WriteString("\treturn generatedRows[:]\n}\n")

@@ -1,6 +1,6 @@
 # Keybindings
 
-PiG reads keybindings from `~/.pig/agent/keybindings.json`. The file is optional. If it is absent, PiG uses the defaults in this page. The action names and defaults are those of Pi 1.5.1 ([Pi's keybindings reference](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/keybindings.md)).
+PiG reads keybindings from `~/.pig/agent/keybindings.json`. The file is optional. If it is absent, PiG uses the defaults in this page. The action names and defaults are those of Pi 1.5.2 ([Pi's keybindings reference](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/keybindings.md)).
 
 Each entry maps one action to one key or a list of keys. To change a binding, write the action name and the keys you want:
 
@@ -199,7 +199,7 @@ During initial theme detection and managed-tool setup, submitting keeps the text
 | `tui.select.confirm` | `enter` | Confirm selection |
 | `tui.select.cancel` | `escape`, `ctrl+c` | Cancel selection |
 
-PiG pages like Pi 1.5.1: PageUp and PageDown move the selection by one visible page in the select and settings lists, the open autocomplete list, and the model, session, tree, user-message, OAuth, scoped-models, llama.cpp and `/mcp` selectors, and the fullscreen transcript behind such a list does not scroll. The config selector also pages, but, as in Pi, it does not keep the fullscreen transcript from scrolling on those keys. The extension selector, the trust selector and the first-time setup dialog have no page keys and ignore them ([Pi #7629](https://github.com/earendil-works/pi/issues/7629)).
+PiG pages like Pi 1.5.2: PageUp and PageDown move the selection by one visible page in the select and settings lists, the open autocomplete list, and the model, session, tree, user-message, OAuth, scoped-models, llama.cpp and `/mcp` selectors, and the fullscreen transcript behind such a list does not scroll. The config selector also pages, but, as in Pi, it does not keep the fullscreen transcript from scrolling on those keys. The extension selector, the trust selector and the first-time setup dialog have no page keys and ignore them ([Pi #7629](https://github.com/earendil-works/pi/issues/7629)).
 
 ### Fullscreen transcript
 
@@ -269,7 +269,7 @@ The key names are:
 
 A `super` binding needs a terminal that reports the modifier on its own, usually through the Kitty keyboard protocol.
 
-A shifted symbol such as `+` matches the character the key produces, so `ctrl++` responds under the Kitty keyboard protocol and modifyOtherKeys. Pi 1.1.0 did not match these bindings; Pi 1.5.1 does.
+A shifted symbol such as `+` matches the character the key produces, so `ctrl++` responds under the Kitty keyboard protocol and modifyOtherKeys. Pi 1.1.0 did not match these bindings; Pi 1.5.2 does.
 
 Terminals do not all report the same keys. If a binding does not respond, the terminal usually consumed the key before PiG saw it. See [terminal setup](/docs/latest/terminal-setup).
 

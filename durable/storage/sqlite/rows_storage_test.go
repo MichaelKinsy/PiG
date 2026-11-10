@@ -2,7 +2,7 @@ package sqlite_test
 
 // pi: packages/durable/src/storage/sqlite/rows.ts
 
-// Ports packages/durable/test/sqlite-storage.test.ts (the stored columns of documents)
+// Additive to packages/durable/test/sqlite-storage.test.ts, which has no case for the stored columns of documents.
 //
 // What SqliteStorage stores in its `documents` rows and keeps in `document_revisions` for each scope and history, read
 // back from the SQLite file with SQL: the address columns (kind, family, key, scope, owner) as Durable's indexed strings,

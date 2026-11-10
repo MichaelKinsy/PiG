@@ -46,6 +46,8 @@ windows | native-2 | queue
 windows | native-1 | pr
 windows | extension-conformance-1 | queue
 windows | extension-conformance-3 | queue
+windows | extension-conformance-5 | queue
+windows | extension-conformance-6 | queue
 windows | extension-host-1 | queue
 windows | native-4 | queue
 windows | extension-host-2 | queue

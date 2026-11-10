@@ -7,6 +7,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable/env"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // Ports the subset of packages/durable/src/harness/types.ts that packages/durable/src/types.ts references:
@@ -142,7 +143,7 @@ func (control ToolControl) MarshalJSON() ([]byte, error) {
 	if control.AddTools != nil {
 		addTools = &control.AddTools
 	}
-	return json.Marshal(struct {
+	return jsstring.MarshalKeepingSurrogates(struct {
 		AddTools  *[]string `json:"addTools,omitempty"`
 		Terminate bool      `json:"terminate,omitempty"`
 		Handoff   *string   `json:"handoff,omitempty"`

@@ -52,7 +52,7 @@ export default function (pi) {
     const waiting = provider.stream(model, { messages: [] }, { signal: controller.signal, metadata: { wait: true } });
     controller.abort();
     const cancelled = await waiting.result();
-    writeFileSync(path, JSON.stringify({ headers: provider.headers, check, auth, apiLogin, login, rotated, oauth,
+    writeFileSync(path, JSON.stringify({ refreshModelsAuth: provider.refreshModelsAuth, headers: provider.headers, check, auth, apiLogin, login, rotated, oauth,
       order, models: provider.getModels().map(model => model.id), result: result.content, simple: simple.content,
       deferred: deferred.content, cancelled: cancelled.stopReason }) + "\n");
   } });

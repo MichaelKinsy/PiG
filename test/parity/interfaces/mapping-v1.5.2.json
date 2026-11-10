@@ -99421,7 +99421,9 @@
         "call:ai/errors.go#WithCauseDetail"
       ],
       "evidence": [
-        "test:ai/error_body_cause_upstream_test.go#TestConnectionErrorCauseDetailUpstream"
+        "test:ai/error_body_cause_upstream_test.go#TestConnectionErrorCauseDetailUpstream",
+        "test:ai/error_cause_fserror_test.go#TestWithCauseDetailEndsAtANodeFSError",
+        "test:ai/error_cause_fserror_test.go#TestWithCauseDetailOfAWindowsPathErrorReadsAsNode"
       ]
     },
     {
@@ -99441,7 +99443,9 @@
         "call:ai/errors.go#WithCauseDetail"
       ],
       "evidence": [
-        "test:ai/error_body_cause_upstream_test.go#TestConnectionErrorCauseDetailUpstream"
+        "test:ai/error_body_cause_upstream_test.go#TestConnectionErrorCauseDetailUpstream",
+        "test:ai/error_cause_fserror_test.go#TestWithCauseDetailEndsAtANodeFSError",
+        "test:ai/error_cause_fserror_test.go#TestWithCauseDetailOfAWindowsPathErrorReadsAsNode"
       ]
     },
     {
@@ -106902,7 +106906,7 @@
       "evidence": [
         "test:agent/agent_class_pi_oracle_test.go#TestAgentClassMatchesPi",
         "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi",
-        "test:chord/next/host/host_ctx_test.go#TestLinkedAbortSignalsAbortWithTheCallersSignalOrTheCallsTheCallersReasonFirst"
+        "test:chord/next/host/host_ctx_test.go#TestCtxGetRejectsWithTheAcquireErrorWhileItsHandlerRuns"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -106925,7 +106929,7 @@
       "evidence": [
         "test:chord/next/host/host_routines_test.go#TestOnTypesTheirHandlerByTheSourcesKindOpsAndRetiredForAJSONWatchableTheValueAloneForANativeOne",
         "test:chord/next/host/jobs_job_runs_test.go#TestPhaseSpansKeepARunsCtxAJobsUnderCtxTraceItsIdAndStateRecordedOrNot",
-        "test:chord/next/host/host_attempt_test.go#TestAttemptTheDrainAHandlerStuckPastItNoLongerCountsAsACallNorHoldsItsCtxGetReferences"
+        "test:chord/next/host/host_ctx_test.go#TestCtxGetRejectsWithTheAcquireErrorWhileItsHandlerRuns"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -113016,7 +113020,7 @@
       "evidence": [
         "test:chord/next/host/host_attempt_test.go#TestActivationSpansATransientFailureAndItsRetryIsARootOfTheHostsAdapterLinkedToItsFirstTriggerARetrysLinksToTheAttemptBefore",
         "test:chord/next/host/host_attempt_test.go#TestAttemptAnAttemptNotLiveWithinReadyTimeoutIsAbandonedAndFailsTransientTheOpenersContextAbortedWhatOpenedClosed",
-        "test:chord/next/host/host_native_test.go#TestNativeACloseInTimeReportsNothingAndLeavesNoTimer"
+        "test:chord/next/host/host_native_test.go#TestNativeACloseInTimeLeavesItsContextUnabortedAfterItReturns"
       ]
     },
     {
@@ -129062,9 +129066,9 @@
         "call:chord/nextnode/plugins/plugins_install.go#InstallPlugin"
       ],
       "evidence": [
+        "test:chord/nextnode/plugins/plugins_install_tar_test.go#TestInstallPluginNamesTheTarballToTarRelativeToThePackDirectory",
         "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClaimsItsDirectoryFirstOfTwoConcurrentInstallsOneWinsTheOtherRemovesNothingOfItSol",
-        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryOfSeveralPluginsItsSubdirectoriesPinnedToACommit",
-        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryWhoseTopIsAPluginIntoRootRepositoryAtATagAndInstallsItsDependencies"
+        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryOfSeveralPluginsItsSubdirectoriesPinnedToACommit"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -129085,9 +129089,9 @@
         "call:chord/nextnode/plugins/plugins_install.go#InstallPlugin"
       ],
       "evidence": [
+        "test:chord/nextnode/plugins/plugins_install_tar_test.go#TestInstallPluginNamesTheTarballToTarRelativeToThePackDirectory",
         "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClaimsItsDirectoryFirstOfTwoConcurrentInstallsOneWinsTheOtherRemovesNothingOfItSol",
-        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryOfSeveralPluginsItsSubdirectoriesPinnedToACommit",
-        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryWhoseTopIsAPluginIntoRootRepositoryAtATagAndInstallsItsDependencies"
+        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryOfSeveralPluginsItsSubdirectoriesPinnedToACommit"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -129108,9 +129112,9 @@
         "call:chord/nextnode/plugins/plugins_install.go#InstallPlugin"
       ],
       "evidence": [
+        "test:chord/nextnode/plugins/plugins_install_tar_test.go#TestInstallPluginNamesTheTarballToTarRelativeToThePackDirectory",
         "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClaimsItsDirectoryFirstOfTwoConcurrentInstallsOneWinsTheOtherRemovesNothingOfItSol",
-        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryOfSeveralPluginsItsSubdirectoriesPinnedToACommit",
-        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryWhoseTopIsAPluginIntoRootRepositoryAtATagAndInstallsItsDependencies"
+        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryOfSeveralPluginsItsSubdirectoriesPinnedToACommit"
       ]
     },
     {
@@ -130061,8 +130065,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/app/app_changes_test.go#TestAppInstallsAPluginFromGitIntoTheUsersRootApplyingChangesLoadsIt",
-        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClaimsItsDirectoryFirstOfTwoConcurrentInstallsOneWinsTheOtherRemovesNothingOfItSol",
-        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryOfSeveralPluginsItsSubdirectoriesPinnedToACommit"
+        "test:chord/nextnode/plugins/plugins_install_tar_test.go#TestInstallPluginNamesTheTarballToTarRelativeToThePackDirectory",
+        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClaimsItsDirectoryFirstOfTwoConcurrentInstallsOneWinsTheOtherRemovesNothingOfItSol"
       ]
     },
     {
@@ -130407,13 +130411,21 @@
     },
     {
       "id": "pkg:chord/react#HostProvider",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:3ff454d8522c67d9aef04a8fea72d1dc0f739635e4fb66054d0823eadac74c02"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:4c4f24370c6afcaec37b34f4a292b0e359b564a539a26aec82699a5d0da94767",
+      "rationale": "Pi packages/chord/src/react/hooks.ts (Pi 1.5.1): a React hook or component of the bindings (HostProvider, useHold, useHost, useMessages, usePageState, useRefState, useRegistry, useWatch). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised by Pi's own tests: node/react/stores.test.ts as chord/nextnode/surfaces/surfaces_react_test.go TestReactWatchStoresReadTheValueCallBackOnChangesGiveUndefinedForNoWatchable (testdata/react_stores.test.mjs over the vendored sources) and node/react/hooks.test.ts as chord/nextnode/app/app_web_browser_test.go TestReactBindingsHoldWhileMountedReRenderOnChangeReleaseOnUnmount, TestReactBindingsKeepPageStateAcrossARemountByANewFunctionANewKeyStartingFresh and TestReactBindingsReRenderMessagesInALanguageChosenLiveKeepingHalfTypedInputs in real Chromium.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/react/hooks.ts#useHold"
+      ]
     },
     {
       "id": "pkg:chord/react#HostProvider::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:3c63eb5be20495ebb497676d0754b388c36aa16bf3afc591753bf263db477241"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:ac9f3bd2b895c09dadf00b1c5625436564e13dd8b92440ef040a491b8667e8d9",
+      "rationale": "Pi packages/chord/src/react/hooks.ts (Pi 1.5.1): a React hook or component of the bindings (HostProvider, useHold, useHost, useMessages, usePageState, useRefState, useRegistry, useWatch). It is TypeScript that runs in the browser or in the terminal sandbox's JavaScript context; no Go process can host it. PiG ships Pi's file itself, unchanged, embedded in the server (chord/nextnode/surfaces/client: manifest.json records Pi's commit and every file's hash, `make vendor-chord-surfaces-client` regenerates it, drift fails the build), so the behavior is Pi's code, not a port of it (D601). Intention check: what Pi's tests for this module guard (the page or terminal follows the host's state, language and theme, holds and releases what it uses, and survives a base-bundle change) is tested in PiG, over the shipped files, not skipped. Behavior is exercised by Pi's own tests: node/react/stores.test.ts as chord/nextnode/surfaces/surfaces_react_test.go TestReactWatchStoresReadTheValueCallBackOnChangesGiveUndefinedForNoWatchable (testdata/react_stores.test.mjs over the vendored sources) and node/react/hooks.test.ts as chord/nextnode/app/app_web_browser_test.go TestReactBindingsHoldWhileMountedReRenderOnChangeReleaseOnUnmount, TestReactBindingsKeepPageStateAcrossARemountByANewFunctionANewKeyStartingFresh and TestReactBindingsReRenderMessagesInALanguageChosenLiveKeepingHalfTypedInputs in real Chromium.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/client/pi/chord/src/react/hooks.ts#useHold"
+      ]
     },
     {
       "id": "pkg:chord/react#useHold",
@@ -156430,7 +156442,7 @@
       "evidence": [
         "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalCrossCWD",
         "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalImportCollision",
-        "test:coding/runtime_mode_hooks_test.go#TestRuntimeFactoryReceivesPiOptionsOnStartupAndNewSession"
+        "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalImportMissingCwdLeavesNoCopy"
       ]
     },
     {
@@ -156565,8 +156577,8 @@
       ],
       "evidence": [
         "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalImportCollision",
-        "test:coding/session_runtime_boundaries_test.go#TestRuntimeImportDirectoryDoesNotLeaveDestination",
-        "test:coding/session_runtime_boundaries_test.go#TestRuntimeImportFileURLAndMissingInput"
+        "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalImportMissingCwdLeavesNoCopy",
+        "test:coding/session_runtime_boundaries_test.go#TestRuntimeImportDirectoryDoesNotLeaveDestination"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -156588,8 +156600,8 @@
       ],
       "evidence": [
         "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalImportCollision",
-        "test:coding/session_runtime_boundaries_test.go#TestRuntimeImportDirectoryDoesNotLeaveDestination",
-        "test:coding/session_runtime_boundaries_test.go#TestRuntimeImportFileURLAndMissingInput"
+        "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalImportMissingCwdLeavesNoCopy",
+        "test:coding/session_runtime_boundaries_test.go#TestRuntimeImportDirectoryDoesNotLeaveDestination"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -195622,7 +195634,9 @@
         "call:internal/codingagent/native_model_runtime.go#ModelRegistry.GetProvider"
       ],
       "evidence": [
-        "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream"
+        "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream",
+        "test:internal/codingagent/model_catalog_data_radius_first_test.go#TestGetProviderModelDataDoesNotBuildTheBundledCatalogOfARadiusProvider",
+        "test:internal/codingagent/model_catalog_data_radius_first_test.go#TestGetProviderModelDataListsTheSameModelsWithTheRadiusBranchFirst"
       ]
     },
     {
@@ -195642,7 +195656,9 @@
         "call:internal/codingagent/native_model_runtime.go#ModelRegistry.GetProvider"
       ],
       "evidence": [
-        "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream"
+        "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream",
+        "test:internal/codingagent/model_catalog_data_radius_first_test.go#TestGetProviderModelDataDoesNotBuildTheBundledCatalogOfARadiusProvider",
+        "test:internal/codingagent/model_catalog_data_radius_first_test.go#TestGetProviderModelDataListsTheSameModelsWithTheRadiusBranchFirst"
       ]
     },
     {
@@ -209797,7 +209813,7 @@
       "evidence": [
         "test:coding/session_cwd_upstream_test.go#TestSessionCwdHandlingUpstream",
         "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalImportCollision",
-        "test:internal/codingagent/session_restore_upstream_test.go#TestSessionPreloadedEntriesUpstream"
+        "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalImportMissingCwdLeavesNoCopy"
       ]
     },
     {
@@ -209818,8 +209834,8 @@
       ],
       "evidence": [
         "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalImportCollision",
-        "test:internal/codingagent/session_custom_id_upstream_test.go#TestCustomSessionIDUpstream",
-        "test:internal/codingagent/session_restore_upstream_test.go#TestSessionPreloadedEntriesUpstream"
+        "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalImportMissingCwdLeavesNoCopy",
+        "test:internal/codingagent/session_custom_id_upstream_test.go#TestCustomSessionIDUpstream"
       ]
     },
     {
@@ -209839,9 +209855,9 @@
         "call:internal/sessionentry/union.go#SessionHeader.SameRecord"
       ],
       "evidence": [
+        "test:coding/cli/startup_session_test.go#TestApplyMissingCWDChoiceContinuesOrForks",
         "test:internal/codingagent/extension_session_info_memo_test.go#TestExtensionSessionInfoMemoFollowsEveryInput",
-        "test:internal/codingagent/session_clone_stream_test.go#TestCloneWritesTheSameFileFromResidentAndFileBackedSources",
-        "test:internal/codingagent/session_new_session_options_test.go#TestSessionNewSessionOptions"
+        "test:internal/codingagent/session_clone_stream_test.go#TestCloneWritesTheSameFileFromResidentAndFileBackedSources"
       ]
     },
     {
@@ -209862,8 +209878,8 @@
       ],
       "evidence": [
         "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalImportCollision",
-        "test:coding/cli/rpc_user_content_surrogate_test.go#TestRPCPersistedUserContentPreservesSurrogateEscapes",
-        "test:internal/codingagent/session_uuid_test.go#TestSessionFilesUsePiTimestampAndKeepLegacyIDs"
+        "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalImportMissingCwdLeavesNoCopy",
+        "test:coding/cli/rpc_user_content_surrogate_test.go#TestRPCPersistedUserContentPreservesSurrogateEscapes"
       ]
     },
     {
@@ -209884,8 +209900,8 @@
       ],
       "evidence": [
         "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalImportCollision",
-        "test:internal/codingagent/session_file_operations_upstream_test.go#TestSessionFileOperationsUpstream",
-        "test:coding/cli/rpc_user_content_surrogate_test.go#TestRPCPersistedUserContentPreservesSurrogateEscapes"
+        "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalImportMissingCwdLeavesNoCopy",
+        "test:internal/codingagent/session_file_operations_upstream_test.go#TestSessionFileOperationsUpstream"
       ]
     },
     {
@@ -209906,8 +209922,8 @@
       ],
       "evidence": [
         "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalImportCollision",
-        "test:internal/codingagent/session_restore_upstream_test.go#TestSessionFileMigrationRewritesAndReloads",
-        "test:internal/codingagent/session_restore_upstream_test.go#TestSessionMigrationUpstream"
+        "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalImportMissingCwdLeavesNoCopy",
+        "test:internal/codingagent/session_restore_upstream_test.go#TestSessionFileMigrationRewritesAndReloads"
       ]
     },
     {
@@ -227414,7 +227430,7 @@
       "evidence": [
         "test:test/extension-conformance/api_on_events_test.go#TestConformanceAPIOnVoidEventsReachTheTypedHandlers",
         "test:test/extension-conformance/conformance_test.go#TestModelEventPayloadsMatchAcrossSDKs",
-        "test:test/extension-conformance/deep_event_delta_test.go#TestDeepEventStreamDeltasReachEverySDK"
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
       ]
     },
     {
@@ -232539,9 +232555,9 @@
         "call:durable/codecs.go#editsOf"
       ],
       "evidence": [
+        "test:durable/surrogate_pi_oracle_test.go#TestLoneSurrogatesDecodeAsJSONParseDoes",
         "test:durable/harness/context_pi_oracle_test.go#TestContextDerivationMatchesPi",
-        "test:durable/types_upstream_test.go#TestTypesUpstream",
-        "test:durable/types_upstream_test.go#TestTypesUpstreamExclusivityLiteralsEncodeAsPiObjects"
+        "test:durable/types_upstream_test.go#TestTypesUpstream"
       ]
     },
     {
@@ -232569,7 +232585,7 @@
     {
       "id": "pkg:durable/.#Conversation",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:cec64f249c4b87f21e8250cfa5bb6f314ae85d1e41da52f86f75a017e4a52e1f",
+      "upstreamShapeHash": "sha256:45fe53c60cfe73df5a4581434cfa6bae0a2c7a9ed5b96616beee9cc5f44dad5a",
       "rationale": "Derived by the interface gap detector: Conversation is Go durable/harness/types.go#Conversation (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/harness/types.go#Conversation"
@@ -233095,7 +233111,7 @@
     {
       "id": "pkg:durable/.#Conversation::property:watch",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:d42250f7b871422dfd68cabea6bcd89550599054e08c7c5f118a76a492fe0ab0",
+      "upstreamShapeHash": "sha256:d366024e93397f1d2d2f849df9868b84cc065601aa6674133d7867e84e877abf",
       "rationale": "Derived by the interface gap detector: Conversation::property:watch is Go durable/harness/types.go#Conversation.Watch (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/harness/types.go#Conversation.Watch"
@@ -233116,7 +233132,7 @@
     {
       "id": "pkg:durable/.#Conversation::property:watch::call:0",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:3d1e3f5f1ec9f385528d29fb5384ee744c3dc9a977ce5662e61d0456eac8bab9",
+      "upstreamShapeHash": "sha256:ed3a17c8579ea4984f13d4d05b0a8690f64e949e806e8169c85667fa360620f9",
       "rationale": "Derived by the interface gap detector: Conversation::property:watch::call:0 is Go durable/harness/types.go#Conversation.Watch (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/harness/types.go#Conversation.Watch"
@@ -234115,7 +234131,7 @@
     {
       "id": "pkg:durable/.#ConversationWatch",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:bdaa608a6f33e8c7ee0e0d254d0a1eee0b0fe4d5e4dbfea9a20a4d914e926d86",
+      "upstreamShapeHash": "sha256:e53a8e8df6e62df6a5d3042f74ebf0be771b8be1055f072c9454e1bf10c8fdc7",
       "rationale": "Derived by the interface gap detector: ConversationWatch is Go durable/harness/types.go#ConversationWatch (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/harness/types.go#ConversationWatch"
@@ -234934,7 +234950,7 @@
       "evidence": [
         "test:durable/session/codemode_checkpoints_upstream_test.go#TestBuiltInDocumentCheckpointPolicies",
         "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
-        "test:durable/harness/harness_compaction_test.go#TestPiLiveMigrations"
+        "test:durable/surrogate_pi_oracle_test.go#TestAddressIdKeepsDifferentLoneSurrogatesApart"
       ]
     },
     {
@@ -234976,9 +234992,9 @@
         "call:durable/session/held.go#SessionImpl.storeHolds"
       ],
       "evidence": [
+        "test:durable/surrogate_pi_oracle_test.go#TestLoneSurrogatesDecodeAsJSONParseDoes",
         "test:durable/session/codemode_checkpoints_upstream_test.go#TestBuiltInDocumentCheckpointPolicies",
-        "test:durable/session/session_deferred_commits_upstream_test.go#TestBasesAndOverflowOfHeldChanges",
-        "test:durable/session/session_deferred_commits_upstream_test.go#TestPublicationsOfDeferredCommits"
+        "test:durable/session/session_deferred_commits_upstream_test.go#TestBasesAndOverflowOfHeldChanges"
       ]
     },
     {
@@ -235050,7 +235066,7 @@
     {
       "id": "pkg:durable/.#DocumentObserver",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:c848962d67a6ff5c844e61337bd52f7125fc7460ba6b6f2b36c7c16f49e94f97",
+      "upstreamShapeHash": "sha256:29c1fb4814c45e51fff2c6fd065cb5fbd2127e18a58a139d5827149b66e42abf",
       "rationale": "Derived by the interface gap detector: DocumentObserver is Go durable/types.go#DocumentObserver (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#DocumentObserver"
@@ -235073,7 +235089,7 @@
     {
       "id": "pkg:durable/.#DocumentObserver::property:watchDoc",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:b179b617d8e85a51db4a289713956c5d03761ffc06f94bf8b8934c02cb7e196b",
+      "upstreamShapeHash": "sha256:3b961e02e073abd807cb3317817f3091c221141a11ce451885f95a1da8559a9b",
       "rationale": "Derived by the interface gap detector: DocumentObserver::property:watchDoc is Go durable/types.go#DocumentObserver.WatchDocErased (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#DocumentObserver.WatchDocErased"
@@ -235096,7 +235112,7 @@
     {
       "id": "pkg:durable/.#DocumentObserver::property:watchDoc::call:0",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:0a6a0fd4a1ae644d22b17b7359d6bbf300b3fc1c867f58c9387243daa52cd60a",
+      "upstreamShapeHash": "sha256:e32e9542dcd874442a2a3c8341b514a212aff9fabb7b64419e5ec0d6a49c2e09",
       "rationale": "Derived by the interface gap detector: DocumentObserver::property:watchDoc::call:0 is Go durable/types.go#DocumentObserver.WatchDocErased (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#DocumentObserver.WatchDocErased"
@@ -235119,7 +235135,7 @@
     {
       "id": "pkg:durable/.#DocumentObserver::property:watchDoc::call:1",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:02c0790fd1360f8278342140c235c6eea094392aff2937f5613d7f44562ea273",
+      "upstreamShapeHash": "sha256:75b50a03ed6f2266a72da10a247d980ff9f67c6b60e55f84ff6a9118019be7ab",
       "rationale": "Derived by the interface gap detector: DocumentObserver::property:watchDoc::call:1 is Go durable/types.go#DocumentObserver.WatchDocErased (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#DocumentObserver.WatchDocErased"
@@ -235142,7 +235158,7 @@
     {
       "id": "pkg:durable/.#DocumentObserver::property:watchDoc::call:2",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:9071fe8748c3a93a623b9dfbdf310c4f47029d008aebb34018b92a01059ab398",
+      "upstreamShapeHash": "sha256:ed0489233d643f0d6bd3c8a8a2b20bc1aa0df231ce756a126f35fcc87ad2a462",
       "rationale": "Derived by the interface gap detector: DocumentObserver::property:watchDoc::call:2 is Go durable/types.go#DocumentObserver.WatchDocErased (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#DocumentObserver.WatchDocErased"
@@ -235165,7 +235181,7 @@
     {
       "id": "pkg:durable/.#DocumentObserver::property:watchDoc::call:3",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:f8f86c48d9ddb5b482dca587aedeadaf738b9545b5f936214cc1c22496942d94",
+      "upstreamShapeHash": "sha256:dc884322a21f812ec390665bde2d63bc8e796a724abe02cd430089a9bc4078ea",
       "rationale": "Derived by the interface gap detector: DocumentObserver::property:watchDoc::call:3 is Go durable/types.go#DocumentObserver.WatchDocErased (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#DocumentObserver.WatchDocErased"
@@ -235188,7 +235204,7 @@
     {
       "id": "pkg:durable/.#DocumentObserver::property:watchDoc::call:4",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:ebd86c3ee5e4d72b85632c9b6b2d6acae3875ef6941e56461f282a1ebbae3e42",
+      "upstreamShapeHash": "sha256:3c461d61768b95dd267e03d48a3712e529116053b0ebcb31ee659a07d5f82c8e",
       "rationale": "Derived by the interface gap detector: DocumentObserver::property:watchDoc::call:4 is Go durable/types.go#DocumentObserver.WatchDocErased (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#DocumentObserver.WatchDocErased"
@@ -235211,7 +235227,7 @@
     {
       "id": "pkg:durable/.#DocumentObserver::property:watchDoc::call:5",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:d9f9c196c3be55d29969307cf3655c1a15e50341021c09ae098e6f3b5a6efc75",
+      "upstreamShapeHash": "sha256:6d5dcbf5eed27d350f7f2fca47db20fb76aac8f45c85ba87a496621158eecf91",
       "rationale": "Derived by the interface gap detector: DocumentObserver::property:watchDoc::call:5 is Go durable/types.go#DocumentObserver.WatchDocErased (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#DocumentObserver.WatchDocErased"
@@ -235344,7 +235360,7 @@
     {
       "id": "pkg:durable/.#DocumentWatch",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:623ca3df78117b405a4f0a88bf904b638f283705dfa3b8e75826fb40b1f4406b",
+      "upstreamShapeHash": "sha256:b88606ed1f1b2b51d967e36135aa194300006289203ca00222d023813d0974d3",
       "rationale": "Derived by the interface gap detector: DocumentWatch is Go durable/types.go#DocumentWatch (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#DocumentWatch"
@@ -235488,9 +235504,9 @@
         "call:durable/entries.go#Entry.Draft"
       ],
       "evidence": [
+        "test:durable/surrogate_pi_oracle_test.go#TestLoneSurrogatesDecodeAsJSONParseDoes",
         "test:durable/harness/context_pi_oracle_test.go#TestContextDerivationMatchesPi",
-        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestReadingPiLiveInACommitStoresTheHeldPartial",
-        "test:durable/harness/view_pi_oracle_test.go#TestConversationViewsMatchPi"
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestReadingPiLiveInACommitStoresTheHeldPartial"
       ]
     },
     {
@@ -238026,8 +238042,25 @@
     },
     {
       "id": "pkg:durable/.#NativeWatchCall",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:cf8b58ffd2bef5c78f739e7699684779dd31d007ed5b36e32db1eeeb7e6173e0"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:fb12062b201b77602d8df8b9b5ec55a39aa85319fee12d2ae62ceef0e85831ee",
+      "rationale": "Derived by the interface gap detector: NativeWatchCall is Go durable/types.go#NativeWatchCall (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/types.go#NativeWatchCall"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/harness/registry_reader.go#compositionObserver.Advance"
+      ],
+      "evidence": [
+        "test:chord/watch_upstream_test.go#TestNativeWatchCollapses101PendingValuesToTheNewest",
+        "test:chord/watch_upstream_test.go#TestNativeWatchCollapses101PendingValuesToTheValueOfReplace",
+        "test:chord/watch_upstream_test.go#TestNativeWatchDeliversABacklogThatNeverDrainsInOrder"
+      ]
     },
     {
       "id": "pkg:durable/.#NestedCallDoc",
@@ -239605,13 +239638,49 @@
     },
     {
       "id": "pkg:durable/.#section",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:a6f53a2a6f5d4abcf6223de8e5febf35a646e322868255b3697061898ae4d1de"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:39b91335a6563b813182012d02877dba7d96c6622ddc2029f80564ec3fa281ca",
+      "rationale": "Derived by the interface gap detector: section is Go durable/harness/define.go#Section (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/harness/define.go#Section"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/harness/define.go#Section"
+      ],
+      "evidence": [
+        "test:durable/harness/registry_reader_upstream_test.go#TestRegistryReaderSnapshotsAreImmutableAndSubscribersSeeEachPublication",
+        "test:durable/core/driver/core_test.go#TestAgentIsServedByTheCoreFromTheRegistryAndTheStoredState",
+        "test:durable/core/driver/harness_reports_core_test.go#TestReports"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/.#section::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:86efe06cdc7a7d14b892e9bb86c21cfb66942978d3ecf2ad8ac3f22d19e85734"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9d507d4c192f068ecf115fa9f312e0bde59b7995f556fec66fa89db5d4631c43",
+      "rationale": "Derived by the interface gap detector: section::call:0 is Go durable/harness/define.go#Section (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/harness/define.go#Section"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/harness/define.go#Section"
+      ],
+      "evidence": [
+        "test:durable/harness/registry_reader_upstream_test.go#TestRegistryReaderSnapshotsAreImmutableAndSubscribersSeeEachPublication",
+        "test:durable/core/driver/core_test.go#TestAgentIsServedByTheCoreFromTheRegistryAndTheStoredState",
+        "test:durable/core/driver/harness_reports_core_test.go#TestReports"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/.#Seq",
@@ -239638,7 +239707,7 @@
     {
       "id": "pkg:durable/.#Session",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:1984f0921e4073e848196ccd3c4ee27d94aac24665260c0ac3cfe1fed3724ee5",
+      "upstreamShapeHash": "sha256:07029d4b0e10281a11c7416293f04c3241540d10391f279400a18c98292ad372",
       "rationale": "Derived by the interface gap detector: Session is Go durable/types.go#Session (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#Session"
@@ -240230,7 +240299,7 @@
     {
       "id": "pkg:durable/.#Session::property:watchDoc",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:b179b617d8e85a51db4a289713956c5d03761ffc06f94bf8b8934c02cb7e196b",
+      "upstreamShapeHash": "sha256:3b961e02e073abd807cb3317817f3091c221141a11ce451885f95a1da8559a9b",
       "rationale": "Derived by the interface gap detector: Session::property:watchDoc is Go durable/types.go#DocumentObserver.WatchDocErased (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#DocumentObserver.WatchDocErased"
@@ -240253,7 +240322,7 @@
     {
       "id": "pkg:durable/.#Session::property:watchDoc::call:0",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:0a6a0fd4a1ae644d22b17b7359d6bbf300b3fc1c867f58c9387243daa52cd60a",
+      "upstreamShapeHash": "sha256:e32e9542dcd874442a2a3c8341b514a212aff9fabb7b64419e5ec0d6a49c2e09",
       "rationale": "Derived by the interface gap detector: Session::property:watchDoc::call:0 is Go durable/types.go#DocumentObserver.WatchDocErased (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#DocumentObserver.WatchDocErased"
@@ -240276,7 +240345,7 @@
     {
       "id": "pkg:durable/.#Session::property:watchDoc::call:1",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:02c0790fd1360f8278342140c235c6eea094392aff2937f5613d7f44562ea273",
+      "upstreamShapeHash": "sha256:75b50a03ed6f2266a72da10a247d980ff9f67c6b60e55f84ff6a9118019be7ab",
       "rationale": "Derived by the interface gap detector: Session::property:watchDoc::call:1 is Go durable/types.go#DocumentObserver.WatchDocErased (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#DocumentObserver.WatchDocErased"
@@ -240299,7 +240368,7 @@
     {
       "id": "pkg:durable/.#Session::property:watchDoc::call:2",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:9071fe8748c3a93a623b9dfbdf310c4f47029d008aebb34018b92a01059ab398",
+      "upstreamShapeHash": "sha256:ed0489233d643f0d6bd3c8a8a2b20bc1aa0df231ce756a126f35fcc87ad2a462",
       "rationale": "Derived by the interface gap detector: Session::property:watchDoc::call:2 is Go durable/types.go#DocumentObserver.WatchDocErased (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#DocumentObserver.WatchDocErased"
@@ -240322,7 +240391,7 @@
     {
       "id": "pkg:durable/.#Session::property:watchDoc::call:3",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:f8f86c48d9ddb5b482dca587aedeadaf738b9545b5f936214cc1c22496942d94",
+      "upstreamShapeHash": "sha256:dc884322a21f812ec390665bde2d63bc8e796a724abe02cd430089a9bc4078ea",
       "rationale": "Derived by the interface gap detector: Session::property:watchDoc::call:3 is Go durable/types.go#DocumentObserver.WatchDocErased (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#DocumentObserver.WatchDocErased"
@@ -240345,7 +240414,7 @@
     {
       "id": "pkg:durable/.#Session::property:watchDoc::call:4",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:ebd86c3ee5e4d72b85632c9b6b2d6acae3875ef6941e56461f282a1ebbae3e42",
+      "upstreamShapeHash": "sha256:3c461d61768b95dd267e03d48a3712e529116053b0ebcb31ee659a07d5f82c8e",
       "rationale": "Derived by the interface gap detector: Session::property:watchDoc::call:4 is Go durable/types.go#DocumentObserver.WatchDocErased (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#DocumentObserver.WatchDocErased"
@@ -240368,7 +240437,7 @@
     {
       "id": "pkg:durable/.#Session::property:watchDoc::call:5",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:d9f9c196c3be55d29969307cf3655c1a15e50341021c09ae098e6f3b5a6efc75",
+      "upstreamShapeHash": "sha256:6d5dcbf5eed27d350f7f2fca47db20fb76aac8f45c85ba87a496621158eecf91",
       "rationale": "Derived by the interface gap detector: Session::property:watchDoc::call:5 is Go durable/types.go#DocumentObserver.WatchDocErased (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#DocumentObserver.WatchDocErased"
@@ -242191,7 +242260,7 @@
     {
       "id": "pkg:durable/.#TaskGraphWatch",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:95fb0f9984a13cde7e622ec571b920f6d1aff2e9c30e9f18198c7fed56fb4075",
+      "upstreamShapeHash": "sha256:f88cda2aaa73a5001096d6aab5f55f18d9bc95b5be358bdce4182d7df07b4618",
       "rationale": "Derived by the interface gap detector: TaskGraphWatch is Go durable/harness/task_graph.go#TaskGraphWatch (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/harness/task_graph.go#TaskGraphWatch"
@@ -242316,8 +242385,8 @@
       ],
       "evidence": [
         "test:durable/harness/types_upstream_test.go#TestMissingPhaseHandlerFaultsTheTaskAsAThrowingHandlerDoes",
-        "test:durable/types_upstream_test.go#TestTypesUpstreamExclusivityLiteralsEncodeAsPiObjects",
-        "test:durable/core/driver/harness_blocked_core_test.go#TestBlockedTasks"
+        "test:durable/surrogate_pi_oracle_test.go#TestLoneSurrogatesDecodeAsJSONParseDoes",
+        "test:durable/types_upstream_test.go#TestTypesUpstreamExclusivityLiteralsEncodeAsPiObjects"
       ]
     },
     {
@@ -242389,7 +242458,7 @@
     {
       "id": "pkg:durable/.#TaskRuntime",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:c0bc6fcb41f352a36841cb3fd2043fa137e7ad734990abbeec7db92b434675f6",
+      "upstreamShapeHash": "sha256:f95b5dd48c369e8f09f285b1de42e2fd709905e300450fd85afdbd05423dc974",
       "rationale": "Derived by the interface gap detector: TaskRuntime is Go durable/types.go#TaskRuntime (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#TaskRuntime"
@@ -243076,7 +243145,7 @@
       "evidence": [
         "test:durable/core/driver/task_owned_tasks_core_test.go#TestCoreOwnedTasksRejectsOnceItsInvocationHasEnded",
         "test:durable/harness/scheduler_owned_tasks_test.go#TestOwnedTasksRejectsOnceItsInvocationHasEnded",
-        "test:durable/core/driver/task_owned_tasks_core_test.go#TestCoreOwnedTasksListsTheLiveTasksATaskOwnsDirectlyInIdOrderAlsoAfterAReopen"
+        "test:durable/harness/surrogate_observable_test.go#TestOwnedTasksKeepsALoneSurrogateInTheRecordsItReturns"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -243099,7 +243168,7 @@
       "evidence": [
         "test:durable/core/driver/task_owned_tasks_core_test.go#TestCoreOwnedTasksRejectsOnceItsInvocationHasEnded",
         "test:durable/harness/scheduler_owned_tasks_test.go#TestOwnedTasksRejectsOnceItsInvocationHasEnded",
-        "test:durable/core/driver/task_owned_tasks_core_test.go#TestCoreOwnedTasksListsTheLiveTasksATaskOwnsDirectlyInIdOrderAlsoAfterAReopen"
+        "test:durable/harness/surrogate_observable_test.go#TestOwnedTasksKeepsALoneSurrogateInTheRecordsItReturns"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -243601,7 +243670,7 @@
     {
       "id": "pkg:durable/.#TaskRuntime::property:watchDoc",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:b179b617d8e85a51db4a289713956c5d03761ffc06f94bf8b8934c02cb7e196b",
+      "upstreamShapeHash": "sha256:3b961e02e073abd807cb3317817f3091c221141a11ce451885f95a1da8559a9b",
       "rationale": "Derived by the interface gap detector: TaskRuntime::property:watchDoc is Go durable/types.go#DocumentObserver.WatchDocErased (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#DocumentObserver.WatchDocErased"
@@ -243624,7 +243693,7 @@
     {
       "id": "pkg:durable/.#TaskRuntime::property:watchDoc::call:0",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:0a6a0fd4a1ae644d22b17b7359d6bbf300b3fc1c867f58c9387243daa52cd60a",
+      "upstreamShapeHash": "sha256:e32e9542dcd874442a2a3c8341b514a212aff9fabb7b64419e5ec0d6a49c2e09",
       "rationale": "Derived by the interface gap detector: TaskRuntime::property:watchDoc::call:0 is Go durable/types.go#DocumentObserver.WatchDocErased (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#DocumentObserver.WatchDocErased"
@@ -243647,7 +243716,7 @@
     {
       "id": "pkg:durable/.#TaskRuntime::property:watchDoc::call:1",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:02c0790fd1360f8278342140c235c6eea094392aff2937f5613d7f44562ea273",
+      "upstreamShapeHash": "sha256:75b50a03ed6f2266a72da10a247d980ff9f67c6b60e55f84ff6a9118019be7ab",
       "rationale": "Derived by the interface gap detector: TaskRuntime::property:watchDoc::call:1 is Go durable/types.go#DocumentObserver.WatchDocErased (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#DocumentObserver.WatchDocErased"
@@ -243670,7 +243739,7 @@
     {
       "id": "pkg:durable/.#TaskRuntime::property:watchDoc::call:2",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:9071fe8748c3a93a623b9dfbdf310c4f47029d008aebb34018b92a01059ab398",
+      "upstreamShapeHash": "sha256:ed0489233d643f0d6bd3c8a8a2b20bc1aa0df231ce756a126f35fcc87ad2a462",
       "rationale": "Derived by the interface gap detector: TaskRuntime::property:watchDoc::call:2 is Go durable/types.go#DocumentObserver.WatchDocErased (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#DocumentObserver.WatchDocErased"
@@ -243693,7 +243762,7 @@
     {
       "id": "pkg:durable/.#TaskRuntime::property:watchDoc::call:3",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:f8f86c48d9ddb5b482dca587aedeadaf738b9545b5f936214cc1c22496942d94",
+      "upstreamShapeHash": "sha256:dc884322a21f812ec390665bde2d63bc8e796a724abe02cd430089a9bc4078ea",
       "rationale": "Derived by the interface gap detector: TaskRuntime::property:watchDoc::call:3 is Go durable/types.go#DocumentObserver.WatchDocErased (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#DocumentObserver.WatchDocErased"
@@ -243716,7 +243785,7 @@
     {
       "id": "pkg:durable/.#TaskRuntime::property:watchDoc::call:4",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:ebd86c3ee5e4d72b85632c9b6b2d6acae3875ef6941e56461f282a1ebbae3e42",
+      "upstreamShapeHash": "sha256:3c461d61768b95dd267e03d48a3712e529116053b0ebcb31ee659a07d5f82c8e",
       "rationale": "Derived by the interface gap detector: TaskRuntime::property:watchDoc::call:4 is Go durable/types.go#DocumentObserver.WatchDocErased (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#DocumentObserver.WatchDocErased"
@@ -243739,7 +243808,7 @@
     {
       "id": "pkg:durable/.#TaskRuntime::property:watchDoc::call:5",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:d9f9c196c3be55d29969307cf3655c1a15e50341021c09ae098e6f3b5a6efc75",
+      "upstreamShapeHash": "sha256:6d5dcbf5eed27d350f7f2fca47db20fb76aac8f45c85ba87a496621158eecf91",
       "rationale": "Derived by the interface gap detector: TaskRuntime::property:watchDoc::call:5 is Go durable/types.go#DocumentObserver.WatchDocErased (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#DocumentObserver.WatchDocErased"
@@ -243800,7 +243869,7 @@
       "evidence": [
         "test:durable/toolsearch/toolsearch_pi_oracle_test.go#TestToolSearchMatchesPiOnSeededDeferredTools",
         "test:durable/core/driver/harness_inbox_core_test.go#TestInboxHandoff",
-        "test:durable/examples/agent_examples_test.go#TestExample26PlanMode"
+        "test:durable/surrogate_pi_oracle_test.go#TestLoneSurrogatesEncodeAsPiDoes"
       ]
     },
     {
@@ -243828,7 +243897,7 @@
     {
       "id": "pkg:durable/.#ToolExecutionApi",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:3968425dcaab5864e7793615b3135232dee16fd1d2b67a25e801fe6f703d1896",
+      "upstreamShapeHash": "sha256:4eb9719d8e302e6f67d21438b78583a94a0d30ce729a382ddb5bfb8437d0e87a",
       "rationale": "Derived by the interface gap detector: ToolExecutionApi is Go durable/harness_types.go#ToolExecutionApi (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/harness_types.go#ToolExecutionApi"
@@ -244816,7 +244885,7 @@
     {
       "id": "pkg:durable/.#ToolExecutionApi::property:watchDoc",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:b179b617d8e85a51db4a289713956c5d03761ffc06f94bf8b8934c02cb7e196b",
+      "upstreamShapeHash": "sha256:3b961e02e073abd807cb3317817f3091c221141a11ce451885f95a1da8559a9b",
       "rationale": "Derived by the interface gap detector: ToolExecutionApi::property:watchDoc is Go durable/types.go#DocumentObserver.WatchDocErased (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#DocumentObserver.WatchDocErased"
@@ -244839,7 +244908,7 @@
     {
       "id": "pkg:durable/.#ToolExecutionApi::property:watchDoc::call:0",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:0a6a0fd4a1ae644d22b17b7359d6bbf300b3fc1c867f58c9387243daa52cd60a",
+      "upstreamShapeHash": "sha256:e32e9542dcd874442a2a3c8341b514a212aff9fabb7b64419e5ec0d6a49c2e09",
       "rationale": "Derived by the interface gap detector: ToolExecutionApi::property:watchDoc::call:0 is Go durable/types.go#DocumentObserver.WatchDocErased (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#DocumentObserver.WatchDocErased"
@@ -244862,7 +244931,7 @@
     {
       "id": "pkg:durable/.#ToolExecutionApi::property:watchDoc::call:1",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:02c0790fd1360f8278342140c235c6eea094392aff2937f5613d7f44562ea273",
+      "upstreamShapeHash": "sha256:75b50a03ed6f2266a72da10a247d980ff9f67c6b60e55f84ff6a9118019be7ab",
       "rationale": "Derived by the interface gap detector: ToolExecutionApi::property:watchDoc::call:1 is Go durable/types.go#DocumentObserver.WatchDocErased (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#DocumentObserver.WatchDocErased"
@@ -244885,7 +244954,7 @@
     {
       "id": "pkg:durable/.#ToolExecutionApi::property:watchDoc::call:2",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:9071fe8748c3a93a623b9dfbdf310c4f47029d008aebb34018b92a01059ab398",
+      "upstreamShapeHash": "sha256:ed0489233d643f0d6bd3c8a8a2b20bc1aa0df231ce756a126f35fcc87ad2a462",
       "rationale": "Derived by the interface gap detector: ToolExecutionApi::property:watchDoc::call:2 is Go durable/types.go#DocumentObserver.WatchDocErased (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#DocumentObserver.WatchDocErased"
@@ -244908,7 +244977,7 @@
     {
       "id": "pkg:durable/.#ToolExecutionApi::property:watchDoc::call:3",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:f8f86c48d9ddb5b482dca587aedeadaf738b9545b5f936214cc1c22496942d94",
+      "upstreamShapeHash": "sha256:dc884322a21f812ec390665bde2d63bc8e796a724abe02cd430089a9bc4078ea",
       "rationale": "Derived by the interface gap detector: ToolExecutionApi::property:watchDoc::call:3 is Go durable/types.go#DocumentObserver.WatchDocErased (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#DocumentObserver.WatchDocErased"
@@ -244931,7 +245000,7 @@
     {
       "id": "pkg:durable/.#ToolExecutionApi::property:watchDoc::call:4",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:ebd86c3ee5e4d72b85632c9b6b2d6acae3875ef6941e56461f282a1ebbae3e42",
+      "upstreamShapeHash": "sha256:3c461d61768b95dd267e03d48a3712e529116053b0ebcb31ee659a07d5f82c8e",
       "rationale": "Derived by the interface gap detector: ToolExecutionApi::property:watchDoc::call:4 is Go durable/types.go#DocumentObserver.WatchDocErased (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#DocumentObserver.WatchDocErased"
@@ -244954,7 +245023,7 @@
     {
       "id": "pkg:durable/.#ToolExecutionApi::property:watchDoc::call:5",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:d9f9c196c3be55d29969307cf3655c1a15e50341021c09ae098e6f3b5a6efc75",
+      "upstreamShapeHash": "sha256:6d5dcbf5eed27d350f7f2fca47db20fb76aac8f45c85ba87a496621158eecf91",
       "rationale": "Derived by the interface gap detector: ToolExecutionApi::property:watchDoc::call:5 is Go durable/types.go#DocumentObserver.WatchDocErased (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#DocumentObserver.WatchDocErased"
@@ -245255,9 +245324,9 @@
         "call:durable/harness/tool.go#toolAbort"
       ],
       "evidence": [
+        "test:durable/harness/tool_checkpoint_order_test.go#TestAToolCheckpointKeepsALoneSurrogateInItsArguments",
         "test:durable/harness/tool_checkpoint_order_test.go#TestAToolCheckpointKeepsItsArgumentsInTheirStoredOrderWhenDecoded",
-        "test:durable/harness/tool_checkpoint_order_test.go#TestAToolCheckpointWithoutArgumentsShowsAnEmptyObject",
-        "test:durable/harness/agent_regression_test.go#TestCheckpointPhasesAreTheClosedPiUnions"
+        "test:durable/harness/tool_checkpoint_order_test.go#TestAToolCheckpointWithoutArgumentsShowsAnEmptyObject"
       ]
     },
     {
@@ -245349,7 +245418,7 @@
     {
       "id": "pkg:durable/.#Tx",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:107eea6ceb8ea3c748af5d6c035ddd00d9d718d53a28d59dc00285712543638e",
+      "upstreamShapeHash": "sha256:1a9836d1ac244a15dfda162e3c39eb538fdc897a7a0aae12ec529bad9e52297a",
       "rationale": "Derived by the interface gap detector: Tx is Go durable/types.go#Tx (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#Tx"
@@ -245617,7 +245686,7 @@
     {
       "id": "pkg:durable/.#Tx::property:doc",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:f2a4273cc71cff248a85be0a5e632df89831d771a1772318d64f80e0d88986a0",
+      "upstreamShapeHash": "sha256:b8e231c9375038e4d6d8824c600166edb10b7118f7215c3af6c0595964061a83",
       "rationale": "Derived by the interface gap detector: Tx::property:doc is Go durable/types.go#Tx.Doc (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#Tx.Doc"
@@ -245640,7 +245709,7 @@
     {
       "id": "pkg:durable/.#Tx::property:doc::call:0",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:2c44637a2f6e8538290397950e14871bcc64c439a1ea3140afabf99d760acae2",
+      "upstreamShapeHash": "sha256:4ea76bb357fa9e281d4f90cac852c30ba0fa662e41821fb7a15ec9991a7fe601",
       "rationale": "Derived by the interface gap detector: Tx::property:doc::call:0 is Go durable/types.go#Tx.Doc (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#Tx.Doc"
@@ -245663,7 +245732,7 @@
     {
       "id": "pkg:durable/.#Tx::property:doc::call:1",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:49764cd8fcc3bc1584a7c7d599f96a2ec1b818164897269a558ef9e1985e0273",
+      "upstreamShapeHash": "sha256:af7e6e81ec515f1d0a51e438c6d7ffda6678f70a602994620d4d1b9a5e538492",
       "rationale": "Derived by the interface gap detector: Tx::property:doc::call:1 is Go durable/types.go#Tx.Doc (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#Tx.Doc"
@@ -245686,7 +245755,7 @@
     {
       "id": "pkg:durable/.#Tx::property:doc::call:2",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:f657dc9d8c5ac7e8560b2fe5b116a8c3a0f74bb207afe3eef3a2e65725789089",
+      "upstreamShapeHash": "sha256:714966287e03a0bba5e15010112dc27c4070722ba827dc35f1d018321d06f35d",
       "rationale": "Derived by the interface gap detector: Tx::property:doc::call:2 is Go durable/types.go#Tx.Doc (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#Tx.Doc"
@@ -245709,7 +245778,7 @@
     {
       "id": "pkg:durable/.#Tx::property:doc::call:3",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:53dd1915f9994ec3dd241e4d785b996e36177a003557c64342361c74752746f2",
+      "upstreamShapeHash": "sha256:4696f5ebffecfda7a72cad5f7e3a0dd5f053f6c7960c5f9f24e3f6f808b52f48",
       "rationale": "Derived by the interface gap detector: Tx::property:doc::call:3 is Go durable/types.go#Tx.Doc (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#Tx.Doc"
@@ -245732,7 +245801,7 @@
     {
       "id": "pkg:durable/.#Tx::property:doc::call:4",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:4cda509f987ce1f56e80f2cdd28eb996c300edb172580305d592999e2ca9f56c",
+      "upstreamShapeHash": "sha256:a2e735d056feebf90521e432cdd5031830e5f713958dc2b14081ce1ad18dcd26",
       "rationale": "Derived by the interface gap detector: Tx::property:doc::call:4 is Go durable/types.go#Tx.Doc (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#Tx.Doc"
@@ -245755,7 +245824,7 @@
     {
       "id": "pkg:durable/.#Tx::property:doc::call:5",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:758692b048fb97f5ec1e33ebe851c4c16cfcad5dea4a9636dd3664e937cdd9f8",
+      "upstreamShapeHash": "sha256:e1baf73546e34f143add4aa46481f245201d11dca7cf549968e3fe97d6381c25",
       "rationale": "Derived by the interface gap detector: Tx::property:doc::call:5 is Go durable/types.go#Tx.Doc (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#Tx.Doc"
@@ -246621,18 +246690,70 @@
     },
     {
       "id": "pkg:durable/.#WatchCall",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:cf8b58ffd2bef5c78f739e7699684779dd31d007ed5b36e32db1eeeb7e6173e0"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:7af9911e853b8d811523aa00e428d56ba93e31fdc46bc80280bb5796919b8a62",
+      "rationale": "Derived by the interface gap detector: WatchCall is Go durable/types.go#WatchCall (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/types.go#WatchCall"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/harness/task_graph.go#publishChanged"
+      ],
+      "evidence": [
+        "test:chord/watch_upstream_test.go#TestDeliverySchedulerHoldFoldsTheFramesAdvancedWhileItIsOpenIntoOneCallPerWatch",
+        "test:chord/watch_upstream_test.go#TestWatchAwaitsEachCallbackAndFoldsFramesAdvancedWhileOneIsInFlightIntoTheNextCall",
+        "test:chord/watch_upstream_test.go#TestWatchCallObjectsCarryPlainDataOnlyTheFoldedChangeBuiltByTheWatch"
+      ]
     },
     {
       "id": "pkg:durable/.#WatchEnd",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:cf8b58ffd2bef5c78f739e7699684779dd31d007ed5b36e32db1eeeb7e6173e0"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:2e02a33979a21447015090d17efbafc702663996f65a507e2468fc3a2ae6aac9",
+      "rationale": "Derived by the interface gap detector: WatchEnd is Go durable/types.go#WatchEnd (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/types.go#WatchEnd"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/session/observation.go#guard.Advance"
+      ],
+      "evidence": [
+        "test:chord/watch_upstream_test.go#TestNativeWatchDeliversValuesByIdentityInOrderWithAContextNeverInline",
+        "test:chord/watch_upstream_test.go#TestNativeWatchEndsWithEveryReasonOfItsLifecycle",
+        "test:chord/watch_upstream_test.go#TestNativeWatchHandleInterface"
+      ]
     },
     {
       "id": "pkg:durable/.#WatchHandle",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:cf8b58ffd2bef5c78f739e7699684779dd31d007ed5b36e32db1eeeb7e6173e0"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:70e3c0b1c02b1aff785a59298c9b4c39a6a2ef549d54ba7481efbae69fb88c95",
+      "rationale": "Derived by the interface gap detector: WatchHandle is Go durable/types.go#WatchHandle (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/types.go#WatchHandle"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/harness/scheduler.go#TaskScheduler.createInvocationLocked"
+      ],
+      "evidence": [
+        "test:chord/watch_upstream_test.go#TestWatchableWatchHoldsTheCurrentValueThenOneFramePerChangeAndEndsWithItsContext",
+        "test:durable/session/session_deferred_commits_upstream_test.go#TestPublicationsOfDeferredCommits",
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotALoneSurrogateInAKeyIsUFFFDAtEveryEntryPointInMemoryAndInTheStoreNULIsRefused"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/.#Wrap",
@@ -256772,13 +256893,47 @@
     },
     {
       "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteDatabase",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:cf8b58ffd2bef5c78f739e7699684779dd31d007ed5b36e32db1eeeb7e6173e0"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:be8db0b32524ed2a0b6e910cf05ac9dce18cb41646b69fdd745618a58c6a2e5b",
+      "rationale": "Derived by the interface gap detector: DurableObjectSqliteDatabase is Go durable/storage/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteDatabase"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/sqlite/cloudflare/cloudflare.go#NewDurableObjectSqliteDatabase"
+      ],
+      "evidence": [
+        "test:chord/sqlite/cloudflare/adapter_semantics_test.go#TestDurableObjectSqliteDatabaseBindsIntegersExactlyWithinTheSafeRange",
+        "test:chord/sqlite/cloudflare/adapter_semantics_test.go#TestDurableObjectSqliteDatabaseGetAndAllReadTheCursor",
+        "test:chord/sqlite/cloudflare/adapter_semantics_test.go#TestDurableObjectSqliteDatabaseQueuesEveryOperationBehindATransaction"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/sqlite/cloudflare#DurableObjectSqliteStorage",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:cf8b58ffd2bef5c78f739e7699684779dd31d007ed5b36e32db1eeeb7e6173e0"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:aa3a2097992e6f0cd88f8d3f4880bed84b50e8f1f081eb32d844c32acce36d5a",
+      "rationale": "Derived by the interface gap detector: DurableObjectSqliteStorage is Go durable/storage/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteStorage (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/sqlite/cloudflare/cloudflare.go#DurableObjectSqliteStorage"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/sqlite/cloudflare/cloudflare.go#NewDurableObjectSqliteDatabase"
+      ],
+      "evidence": [
+        "test:durable/storage/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectSqliteAdapter",
+        "test:durable/storage/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectStorageConformance"
+      ]
     },
     {
       "id": "pkg:durable/storage/sqlite/cloudflare#openDurableObjectSqliteStorage",
@@ -256826,18 +256981,53 @@
     },
     {
       "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:cf8b58ffd2bef5c78f739e7699684779dd31d007ed5b36e32db1eeeb7e6173e0"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:fc1812c9289978df0dffa37dfb4eec70b42d71979cecfc64eca0e3f3878f7e52",
+      "rationale": "Derived by the interface gap detector: NodeSqliteDatabase is Go durable/storage/sqlite/node/node.go#NodeSqliteDatabase (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/sqlite/node/node.go#NodeSqliteDatabase"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/sqlite/node/node.go#NewNodeSqliteDatabase"
+      ],
+      "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestNewNodeSqliteDatabaseTakesPisModeAndDefaultsToReadWrite",
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabaseOptions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:cf8b58ffd2bef5c78f739e7699684779dd31d007ed5b36e32db1eeeb7e6173e0"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:d034b602317a1d4686c710de7cf68dbb707dd874270b80987cb99ebe668b7d24",
+      "rationale": "Derived by the interface gap detector: NodeSqliteDatabaseOptions is Go durable/storage/sqlite/node/node.go#NodeSqliteDatabaseOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/sqlite/node/node.go#NodeSqliteDatabaseOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/sqlite/node/node.go#OpenNodeSqliteDatabase"
+      ],
+      "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestNewNodeSqliteDatabaseTakesPisModeAndDefaultsToReadWrite",
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
+        "test:chord/sqlite/node/connection_defaults_test.go#TestNodeSqliteConfiguresConnectionDefaultsAndAcceptsExplicitSettings"
+      ]
     },
     {
       "id": "pkg:durable/storage/sqlite/node#NodeSqliteStorageOptions",
       "disposition": "ported",
-      "upstreamShapeHash": "sha256:0324b5dcdaf58d7b6468fcce884c7a67a69b3d09d9a488fedf49df0478ca5e5e",
+      "upstreamShapeHash": "sha256:357ec1b884dd0a9b2496cfe8f7a7039445b080312cf5fc5d3be845940557494d",
       "rationale": "Derived by the interface gap detector: NodeSqliteStorageOptions is Go durable/storage/sqlite/node/node.go#NodeSqliteStorageOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/storage/sqlite/node/node.go#NodeSqliteStorageOptions"
@@ -256858,18 +257048,72 @@
     },
     {
       "id": "pkg:durable/storage/sqlite/node#openNodeSqliteDatabase",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:cf8b58ffd2bef5c78f739e7699684779dd31d007ed5b36e32db1eeeb7e6173e0"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:4c8aa22211ea4f73b720f7a48f25353c60ab2a02d07cc43e2d943ee77eba38be",
+      "rationale": "Derived by the interface gap detector: openNodeSqliteDatabase is Go durable/storage/sqlite/node/node.go#OpenNodeSqliteDatabase (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/sqlite/node/node.go#OpenNodeSqliteDatabase"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/sqlite/node/node.go#OpenNodeSqliteDatabase"
+      ],
+      "evidence": [
+        "test:durable/harness/harness_generation_recovery_test.go#TestGenerationRecovery",
+        "test:durable/storage/sqlite/entry_surrogates_test.go#TestSqliteEntryTextKeepsLoneSurrogatesAtBothSidesOfTheBoundOfLargeRows",
+        "test:durable/storage/sqlite/node/kill_test.go#TestKilledDurableWriterLeavesWholeCalls"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/sqlite/node#openNodeSqliteStorage",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0f8d135de83cb950440c331103d0ee7e45d7f1d14a8ba0680c8f4d15f6cc8a46"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:900f6957aab1d3ca3b1295ae3d3f9301f94800f2602424ab9bd6146218c396fa",
+      "rationale": "Derived by the interface gap detector: openNodeSqliteStorage is Go durable/storage/sqlite/node/node.go#OpenNodeSqliteStorage (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/sqlite/node/node.go#OpenNodeSqliteStorage"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/sqlite/node/node.go#OpenNodeSqliteStorage"
+      ],
+      "evidence": [
+        "test:durable/core/driver/harness_ownership_core_test.go#TestCoreOwnershipDerivesMarksACrashLeftUnappliedBelowACancelledOwnerAtOpen",
+        "test:durable/examples/background_subagents_example_test.go#TestExample22SubagentBackground",
+        "test:durable/examples/lifecycle_examples_test.go#TestExample30ReloadAndRestart"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/sqlite/node#openNodeSqliteStorage::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d8d3aad0f16a2e0b5723c19bba83065ca3ea94704d4f105689e9651e163ac841"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:daf57c30ee40f1f0503d687bd0142aca726840cee1ac309142a95a20363c4c06",
+      "rationale": "Derived by the interface gap detector: openNodeSqliteStorage::call:0 is Go durable/storage/sqlite/node/node.go#OpenNodeSqliteStorage (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/sqlite/node/node.go#OpenNodeSqliteStorage"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/sqlite/node/node.go#OpenNodeSqliteStorage"
+      ],
+      "evidence": [
+        "test:durable/core/driver/harness_ownership_core_test.go#TestCoreOwnershipDerivesMarksACrashLeftUnappliedBelowACancelledOwnerAtOpen",
+        "test:durable/examples/background_subagents_example_test.go#TestExample22SubagentBackground",
+        "test:durable/examples/lifecycle_examples_test.go#TestExample30ReloadAndRestart"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/sqlite#applySqliteMigrations",
@@ -256919,8 +257163,24 @@
     },
     {
       "id": "pkg:durable/storage/sqlite#CURRENT_SQLITE_SCHEMA_VERSION",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:cef0f2075d92aacf725ee9180deaf5e9d84b355f7b6a74aa4a5ea23d4d28b93c"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:153a411c4574902239c832015b4f3178d08eb7694c9b7c5773679b28e043b009",
+      "rationale": "Derived by the interface gap detector: CURRENT_SQLITE_SCHEMA_VERSION is Go durable/storage/sqlite/migrations.go#CurrentSqliteSchemaVersion (name rule N2), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/sqlite/migrations.go#CurrentSqliteSchemaVersion"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:durable/storage/sqlite/migrations.go#CurrentSqliteSchemaVersion"
+      ],
+      "evidence": [
+        "test:durable/storage/sqlite/node/upgrade_in_place_test.go#TestOpenNodeSqliteStorageUpgradesAVersionOneStoreInPlace",
+        "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations"
+      ]
     },
     {
       "id": "pkg:durable/storage/sqlite#SQLITE_MIGRATIONS",
@@ -256946,18 +257206,70 @@
     },
     {
       "id": "pkg:durable/storage/sqlite#SqliteDatabase",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:cf8b58ffd2bef5c78f739e7699684779dd31d007ed5b36e32db1eeeb7e6173e0"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:5fb71ee4243b0fec9a72351c290bb4fba9e895fffdcf9bbb21217ab2054fff0c",
+      "rationale": "Derived by the interface gap detector: SqliteDatabase is Go durable/storage/sqlite/database.go#SqliteDatabase (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/sqlite/database.go#SqliteDatabase"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/sqlite/migrations.go#ApplySqliteMigrations"
+      ],
+      "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/sqlite#SqliteExecutor",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:cf8b58ffd2bef5c78f739e7699684779dd31d007ed5b36e32db1eeeb7e6173e0"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:0de2a29e3d6569b2fd315cbee742a007265335928a51d4c4140309e1911d00df",
+      "rationale": "Derived by the interface gap detector: SqliteExecutor is Go durable/storage/sqlite/database.go#SqliteExecutor (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/sqlite/database.go#SqliteExecutor"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/sqlite/commit.go#SqliteStorage.readCommitState"
+      ],
+      "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
+        "test:durable/storage/sqlite/insert_bigrow_pi_oracle_test.go#TestInsertRowsStoreTheBytesOfPiAtTheLargeRowBound"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/sqlite#SqliteMigration",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:cf8b58ffd2bef5c78f739e7699684779dd31d007ed5b36e32db1eeeb7e6173e0"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:216ff88e717e68b42f6600a93d73cf9c044409465149e58551cfb16b9c2f19b7",
+      "rationale": "Derived by the interface gap detector: SqliteMigration is Go durable/storage/sqlite/migrations.go#SqliteMigration (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/sqlite/migrations.go#SqliteMigration"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/sqlite/migrations.go#ApplySqliteMigrations"
+      ],
+      "evidence": [
+        "test:chord/sqlite/migrations_test.go#TestSqliteMigrations",
+        "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations"
+      ]
     },
     {
       "id": "pkg:durable/storage/sqlite#SqliteStorage",
@@ -257763,8 +258075,23 @@
     },
     {
       "id": "pkg:durable/storage/sqlite#SqliteValue",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:cf8b58ffd2bef5c78f739e7699684779dd31d007ed5b36e32db1eeeb7e6173e0"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:d3456d7f8912d144f41ea93d9cc0a180650d65a195afc964ee40a7a60a804ab4",
+      "rationale": "Derived by the interface gap detector: SqliteValue is Go durable/storage/sqlite/database.go#SqliteValue (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/sqlite/database.go#SqliteValue"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/sqlite/rows.go#eachRow"
+      ],
+      "evidence": [
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack"
+      ]
     },
     {
       "id": "pkg:durable/storage/store#StoreStorage",
@@ -284207,7 +284534,7 @@
       "id": "pkg:schema/.#CoercingValidator::construct:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:f88eacd057705de17759d989769b674dd0cf9a1c37bba88fe22c07fcf5bc7e77",
-      "rationale": "Pi packages/schema/src/validator.ts:70 CoercingValidator::construct:0 (Pi 1.5.1, unchanged from 1.4.0+b556cfe5): CoercingValidator is a class that inherits Validator's constructor `new CoercingValidator(schema, options, check)`, which compile() alone calls when `options.coerce === true` (validator.ts:24-26); Go has no constructor on a struct type with unexported fields: CompileCoercing(schema, options) (*CoercingValidator, error) builds it (schema/validator.go:86-92) and returns the compile throw as the error, so there is no NewCoercingValidator and no second way to make one. Designed out as a Go language mechanic. Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go). Owner approved 2026-11-02 (Pi 1.5.1 packages/schema/src/validator.ts:14-26, unchanged from 1.4.0+b556cfe5; CompileCoercing is a separate type, CoercingValidator, where Pi overloads compile by the coerce option). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go) and TestCoerceMatchesPi (schema/coerce_oracle_test.go).",
+      "rationale": "Pi packages/schema/src/validator.ts:70 CoercingValidator::construct:0 (Pi 1.5.1, unchanged from 1.4.0+b556cfe5): CoercingValidator is a class that inherits Validator's constructor `new CoercingValidator(schema, options, check)`, which compile() alone calls when `options.coerce === true` (validator.ts:24-26); Go has no constructor on a struct type with unexported fields: CompileCoercing(schema, options) (*CoercingValidator, error) builds it (schema/validator.go:86-92) and returns the compile throw as the error, so there is no NewCoercingValidator and no second way to make one. Designed out as a Go language mechanic. Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go). Owner approved 2026-11-02 (Pi 1.5.1 packages/schema/src/validator.ts:14-26, unchanged from 1.4.0+b556cfe5; CompileCoercing is a separate type, CoercingValidator, where Pi overloads compile by the coerce option). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go) and TestCoerceMatchesPi (schema/coerce_oracle_test.go). The probe grepped Pi's schema package for `new CoercingValidator(` and found only compile() (validator.ts:25), so no Pi caller constructs one any other way.",
       "pigTargets": [
         "schema/validator.go#CompileCoercing"
       ]
@@ -284507,7 +284834,7 @@
       "id": "pkg:schema/.#CompileOptions::property:coerce",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:3af09d79b0c8ee00ffdb590b413c2e47c852f10b7e5f0d294c2c496f12e5d120",
-      "rationale": "Pi packages/schema/src/types.ts:24 CompileOptions::property:coerce (Pi 1.5.1, unchanged from 1.4.0+b556cfe5): `coerce?: boolean` is a run-time flag that adds `coerce()` and `parse()` to the validator compile() returns; its static effect, the CoercingValidator return type of the overload (validator.ts:14-17), cannot follow a field's value in Go, and an option that changed what Compile returns at run time would make Coerce and Parse methods that can be missing. The Go form is the distinct type: CompileCoercing(schema, options) returns *CoercingValidator (schema/validator.go:86), CompileOptions has no Coerce field (schema/types.go:29-38), and Compile never coerces. Designed out as a Go language mechanic (owner 2026-10-29/30). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go). Owner approved 2026-11-02 (Pi 1.5.1 packages/schema/src/validator.ts:14-26, unchanged from 1.4.0+b556cfe5; CompileCoercing is a separate type, CoercingValidator, where Pi overloads compile by the coerce option). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go) and TestCoerceMatchesPi (schema/coerce_oracle_test.go).",
+      "rationale": "Pi packages/schema/src/types.ts:24 CompileOptions::property:coerce (Pi 1.5.1, unchanged from 1.4.0+b556cfe5): `coerce?: boolean` is a run-time flag that adds `coerce()` and `parse()` to the validator compile() returns; its static effect, the CoercingValidator return type of the overload (validator.ts:14-17), cannot follow a field's value in Go, and an option that changed what Compile returns at run time would make Coerce and Parse methods that can be missing. The Go form is the distinct type: CompileCoercing(schema, options) returns *CoercingValidator (schema/validator.go:86), CompileOptions has no Coerce field (schema/types.go:29-38), and Compile never coerces. Designed out as a Go language mechanic (owner 2026-10-29/30). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go). Owner approved 2026-11-02 (Pi 1.5.1 packages/schema/src/validator.ts:14-26, unchanged from 1.4.0+b556cfe5; CompileCoercing is a separate type, CoercingValidator, where Pi overloads compile by the coerce option). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go) and TestCoerceMatchesPi (schema/coerce_oracle_test.go). The probe read every use of `options.coerce` in Pi's schema package and found only compile()'s test (validator.ts:24), which picks the class.",
       "pigTargets": [
         "schema/validator.go#CompileCoercing",
         "schema/types.go#CompileOptions"
@@ -285107,7 +285434,7 @@
       "id": "pkg:schema/.#ParseResult",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:bba05fa9efb31f2588fa52fb40297b1946ab4ef3613864f27fa35617df4aa8e9",
-      "rationale": "Pi packages/schema/src/types.ts:34 ParseResult (Pi 1.5.1): ParseResult<T> = { ok: true; value: T } | { ok: false; errors: ValidationError[] } is a discriminated union whose members differ by the literal type of `ok` and the generic T; Go has neither, so ParseResult is one struct { OK bool; Value any; Errors []ValidationError } (schema/types.go:61-65), as Value is the coerced value when OK and Errors the errors of the coerced value otherwise (the other member is zero). Designed out as a Go language mechanic (discriminated union as a struct; T is the JSON value, any). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go: \"parse\").",
+      "rationale": "Pi packages/schema/src/types.ts:34 ParseResult (Pi 1.5.1): ParseResult<T> = { ok: true; value: T } | { ok: false; errors: ValidationError[] } is a discriminated union whose members differ by the literal type of `ok` and the generic T; Go has neither, so ParseResult is one struct { OK bool; Value any; Errors []ValidationError } (schema/types.go:61-65), as Value is the coerced value when OK and Errors the errors of the coerced value otherwise (the other member is zero). Designed out as a Go language mechanic (discriminated union as a struct; T is the JSON value, any). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go: \"parse\"). ParseResult is a TypeScript type alias (types.ts:34-36) that tsc erases: the probe found no emitted value, member or call for it.",
       "pigTargets": [
         "schema/types.go#ParseResult"
       ]
@@ -285116,7 +285443,7 @@
       "id": "pkg:schema/.#Properties",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:d5b5365aa47c294dfc461d3f0da41a6524d5d517cbd2e829f018657c6d754470",
-      "rationale": "Pi packages/schema/src/builders.ts:202 Properties (Pi 1.5.1): Properties = { readonly [name: string]: Schema | Optional } is an object whose own-key order is observable (the order of `properties`, `required` and of reported errors); Go has no insertion-ordered map, so schema.Properties is the ordered []Property of Prop and Opt entries (schema/builders.go:273-288) that Obj orders as JavaScript's own keys are ordered (array-index names ascending first, then declaration order). Designed out as a Go language mechanic (owner 2026-10-29/30). Exercised by TestObjUsesOwnKeyOrder and TestBuildersProduceEveryLeaf (schema/builders_upstream_test.go).",
+      "rationale": "Pi packages/schema/src/builders.ts:202 Properties (Pi 1.5.1): Properties = { readonly [name: string]: Schema | Optional } is an object whose own-key order is observable (the order of `properties`, `required` and of reported errors); Go has no insertion-ordered map, so schema.Properties is the ordered []Property of Prop and Opt entries (schema/builders.go:273-288) that Obj orders as JavaScript's own keys are ordered (array-index names ascending first, then declaration order). Designed out as a Go language mechanic (owner 2026-10-29/30). Exercised by TestObjUsesOwnKeyOrder and TestBuildersProduceEveryLeaf (schema/builders_upstream_test.go). Properties is a TypeScript type alias (builders.ts:202) that tsc erases: the probe found no emitted value or call for it; the key order is observable only through obj() (builders.ts:219), which the Go Obj reproduces.",
       "pigTargets": [
         "schema/builders.go#Properties"
       ]
@@ -285465,7 +285792,7 @@
       "id": "pkg:schema/.#Validator::construct:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:80d350d9fe873a423b4b332572354a05be33d03dba4d401acb8bbef202452c07",
-      "rationale": "Pi packages/schema/src/validator.ts:39 Validator::construct:0 (Pi 1.5.1): `new Validator(schema, options, check)` is the class constructor that compile() alone calls with the compiled check; Go has no constructor on a struct type with unexported fields: Compile(schema, options) (*Validator, error) builds the Validator (schema/validator.go:11-24) and returns the compile throw as the error, so there is no NewValidator and no second way to make one. Exercised by TestErrors (schema/validator_upstream_test.go).",
+      "rationale": "Pi packages/schema/src/validator.ts:39 Validator::construct:0 (Pi 1.5.1): `new Validator(schema, options, check)` is the class constructor that compile() alone calls with the compiled check; Go has no constructor on a struct type with unexported fields: Compile(schema, options) (*Validator, error) builds the Validator (schema/validator.go:11-24) and returns the compile throw as the error, so there is no NewValidator and no second way to make one. Exercised by TestErrors (schema/validator_upstream_test.go). The probe grepped Pi's schema package for `new Validator(` and found only compile() (validator.ts:26), so no Pi caller constructs one any other way.",
       "pigTargets": [
         "schema/validator.go#Compile"
       ]

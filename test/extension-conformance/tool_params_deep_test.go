@@ -10,9 +10,10 @@ import (
 )
 
 // Tool arguments nested deeply, read by every SDK through ToolParams and ToolInput. Pi has no fixed limit: its own runtime (the Node SDK) returns the object while V8 has
-// stack for JSON.stringify, which ends between 4300 and 4400 levels on the pinned Node (it moves with the Node version and --stack-size), and fails the call with V8's RangeError
-// (`Maximum call stack size exceeded`) beyond. The Go, Python, Rust and Lisp SDKs do not reproduce that stack exhaustion (D268): each returns the object, and the texts Pi writes
-// for it, for every frame the host can send (its own marshal refuses a value nested past 10000 levels). No SDK ends its extension or its connection on deep input: the same
+// stack for JSON.stringify, which ends between 4300 and 4400 levels on Node 24 (it moves with the Node version and --stack-size: Node 26's V8 stringifies a plain nested array
+// at any depth), and fails the call with V8's RangeError (`Maximum call stack size exceeded`) beyond. The Node SDK's expected outcome at each depth is what the running Node does
+// for the same JSON.stringify (nodeStringifyOverflows). The Go, Python, Rust and Lisp SDKs do not reproduce that stack exhaustion (D268): each returns the object, and the texts Pi
+// writes for it, for every frame the host can send (its own marshal refuses a value nested past 10000 levels). No SDK ends its extension or its connection on deep input: the same
 // extension answers the next call after each depth.
 func TestToolParamsNestingAcrossSDKs(t *testing.T) {
 	deep := func(n int) string { return strings.Repeat("[", n) + "1" + strings.Repeat("]", n) }
@@ -31,14 +32,24 @@ func TestToolParamsNestingAcrossSDKs(t *testing.T) {
 		}
 		return report, ""
 	}
+	// 9998 is the deepest the host sends: its marshal validates the arguments alone against 10000 levels, and they add two around the array.
+	depths := []int{200, 1000, 4000, 5000, 9000, 9998}
 	eachDeepPlacement(t, func(t *testing.T, r *modelTypesRig) {
 		node := strings.Contains(t.Name(), "/node-")
-		// 9998 is the deepest the host sends: its marshal validates the arguments alone against 10000 levels, and they add two around the array.
-		for _, depth := range []int{200, 1000, 4000, 5000, 9000, 9998} {
+		var overflows []bool
+		if node {
+			// The fixture's tool stringifies `meta`: the Node SDK fails the call exactly where the running Node's JSON.stringify does (D268).
+			metas := make([]string, len(depths))
+			for index, depth := range depths {
+				metas[index] = `{"d":` + deep(depth) + `}`
+			}
+			overflows = nodeStringifyOverflows(t, metas)
+		}
+		for index, depth := range depths {
 			report, failure := call(r, depth)
 			switch {
-			case node && depth >= 5000:
-				// What Pi's own runtime gives on the pinned Node (D268).
+			case node && overflows[index]:
+				// What Pi's own runtime gives on the running Node (D268).
 				if !strings.Contains(failure, "Maximum call stack size exceeded") {
 					t.Errorf("nesting %d: the Node SDK = %q (keys %v), want V8's RangeError", depth, failure, report.Keys)
 				}

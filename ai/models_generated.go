@@ -29566,14 +29566,14 @@ var generatedInputLimits = [...]ModelInputLimits{
 // generatedCatalog sets the maps of generatedRows and returns them as the catalog.
 func generatedCatalog() []GeneratedModel {
 	generatedBuildMaps(generatedHeaders[:], generatedHeadersPairs[:])
-	for _, ref := range generatedHeadersRefs {
+	for _, ref := range generatedHeadersRefs[:] {
 		generatedRows[ref.row].Headers = generatedHeaders[ref.element]
 	}
 	generatedBuildMaps(generatedThinkingLevelMaps[:], generatedThinkingLevelMapsPairs[:])
-	for _, ref := range generatedThinkingLevelMapsRefs {
+	for _, ref := range generatedThinkingLevelMapsRefs[:] {
 		generatedRows[ref.row].ThinkingLevelMap = generatedThinkingLevelMaps[ref.element]
 	}
-	for _, ref := range generatedPromptCachesRefs {
+	for _, ref := range generatedPromptCachesRefs[:] {
 		generatedRows[ref.row].PromptCache = generatedMap(generatedPromptCachesPairs[ref.element])
 	}
 	return generatedRows[:]

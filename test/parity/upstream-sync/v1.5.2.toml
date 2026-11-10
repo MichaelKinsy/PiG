@@ -216,7 +216,7 @@ path = "packages/chord/src/node/workers/base.ts"
 change = "modified"
 disposition = "designed-out"
 evidence = []
-rationale = "Pi 602b8d1cb writes the base's source maps beside its files (sourcemap linked). A Go worker is the program's own executable (D600): there is no esbuild worker base, so no map file to link (PORT_MAP n/a row)."
+rationale = "Pi 602b8d1cb writes the base's source maps beside its files (sourcemap linked). A Go worker is a program, not a Node bundle: PiG has no esbuild worker base, so no source map file exists to link beside it (PORT_MAP n/a row)."
 
 [[files]]
 path = "packages/chord/src/node/workers/workers.ts"
@@ -369,7 +369,7 @@ rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and tabl
 path = "packages/coding-agent/src/core/agent-session-runtime.ts"
 change = "modified"
 disposition = "ported"
-evidence = ["test:coding/session_import_test.go#TestImportFromJsonlMissingCwdNeedsOverride"]
+evidence = ["test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalImportMissingCwdLeavesNoCopy","test:coding/session_import_test.go#TestImportFromJsonlMissingCwdNeedsOverride"]
 rationale = "Pi 4ea883792 (#11975): importFromJsonl removes the copy it made when the session cwd check fails (a source already in the session directory is kept), so a retry with a cwd override or a fork leaves no stray s.jsonl/s-1.jsonl pair (coding/session_import.go). The ported suite case \"leaves no copy behind when an import fails on a missing session cwd\" is TestImportFromJsonlMissingCwdNeedsOverride (the failed import leaves no file; the retry opens s.jsonl, not s-1.jsonl)."
 
 [[files]]

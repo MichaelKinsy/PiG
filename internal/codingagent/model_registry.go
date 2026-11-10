@@ -1368,18 +1368,24 @@ func (r *ModelRegistry) GetAvailable() []ModelEntry {
 }
 
 // GetAvailableModelData returns the available catalog without request authentication or backend construction.
-// It reads every provider's catalog as GetAllModelData does, in the same order, but builds a model of a plain bundled catalog (plainGeneratedModels) only when the model is available: a catalog built for a provider without auth is discarded unseen.
+// It reads every provider's catalog as GetAllModelData does, in the same order, but builds a model of a plain bundled catalog (plainGeneratedModels) only when the model is available, and a Radius provider's models only when the provider has auth: a catalog built for a provider without auth is discarded unseen.
 func (r *ModelRegistry) GetAvailableModelData() []*ai.Model {
 	type providerData struct {
 		id      string
 		models  []*ai.Model
 		isPlain bool
+		// isRadius marks a provider whose models come only from its Radius catalog, bound to the provider's own ID (ai.newRadiusParts), so models read from it are available exactly when the provider is.
+		isRadius bool
 	}
 	ids := r.modelProviderIDs()
 	data := make([]providerData, len(ids))
 	for i, id := range ids {
 		if r.isPlainGenerated(id) {
 			data[i] = providerData{id: id, isPlain: true}
+			continue
+		}
+		if r.isRadiusCatalog(id) {
+			data[i] = providerData{id: id, isRadius: true}
 			continue
 		}
 		data[i].models = r.GetProviderModelData(id)
@@ -1405,6 +1411,12 @@ func (r *ModelRegistry) GetAvailableModelData() []*ai.Model {
 			}
 			continue
 		}
+		if provider.isRadius {
+			if !r.providerAvailable(configured, filters, provider.id) {
+				continue
+			}
+			provider.models = r.GetProviderModelData(provider.id)
+		}
 		for _, model := range provider.models {
 			if accept(model.ProviderMeta.ProviderID, model.ID) {
 				out = append(out, model)
@@ -1412,6 +1424,16 @@ func (r *ModelRegistry) GetAvailableModelData() []*ai.Model {
 		}
 	}
 	return out
+}
+
+// isRadiusCatalog reports whether GetProviderModelData(id) lists only the models of the Radius provider id: no provider code and no extension registration take the catalog (GetProviderModelData's radius branch).
+func (r *ModelRegistry) isRadiusCatalog(id string) bool {
+	if r.GetProvider(id) != nil {
+		return false
+	}
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.radiusProviderLocked(id) != nil
 }
 
 // providerAvailable reports whether providerID has configured auth, reading it and its account filter once into configured and filters.
