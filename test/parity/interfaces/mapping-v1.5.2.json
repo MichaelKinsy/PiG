@@ -99421,7 +99421,9 @@
         "call:ai/errors.go#WithCauseDetail"
       ],
       "evidence": [
-        "test:ai/error_body_cause_upstream_test.go#TestConnectionErrorCauseDetailUpstream"
+        "test:ai/error_body_cause_upstream_test.go#TestConnectionErrorCauseDetailUpstream",
+        "test:ai/error_cause_fserror_test.go#TestWithCauseDetailEndsAtANodeFSError",
+        "test:ai/error_cause_fserror_test.go#TestWithCauseDetailOfAWindowsPathErrorReadsAsNode"
       ]
     },
     {
@@ -99441,7 +99443,9 @@
         "call:ai/errors.go#WithCauseDetail"
       ],
       "evidence": [
-        "test:ai/error_body_cause_upstream_test.go#TestConnectionErrorCauseDetailUpstream"
+        "test:ai/error_body_cause_upstream_test.go#TestConnectionErrorCauseDetailUpstream",
+        "test:ai/error_cause_fserror_test.go#TestWithCauseDetailEndsAtANodeFSError",
+        "test:ai/error_cause_fserror_test.go#TestWithCauseDetailOfAWindowsPathErrorReadsAsNode"
       ]
     },
     {
@@ -106902,7 +106906,7 @@
       "evidence": [
         "test:agent/agent_class_pi_oracle_test.go#TestAgentClassMatchesPi",
         "test:agent/agent_loop_pi_oracle_test.go#TestAgentLoopMatchesPi",
-        "test:chord/next/host/host_ctx_test.go#TestLinkedAbortSignalsAbortWithTheCallersSignalOrTheCallsTheCallersReasonFirst"
+        "test:chord/next/host/host_ctx_test.go#TestCtxGetRejectsWithTheAcquireErrorWhileItsHandlerRuns"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -106925,7 +106929,7 @@
       "evidence": [
         "test:chord/next/host/host_routines_test.go#TestOnTypesTheirHandlerByTheSourcesKindOpsAndRetiredForAJSONWatchableTheValueAloneForANativeOne",
         "test:chord/next/host/jobs_job_runs_test.go#TestPhaseSpansKeepARunsCtxAJobsUnderCtxTraceItsIdAndStateRecordedOrNot",
-        "test:chord/next/host/host_attempt_test.go#TestAttemptTheDrainAHandlerStuckPastItNoLongerCountsAsACallNorHoldsItsCtxGetReferences"
+        "test:chord/next/host/host_ctx_test.go#TestCtxGetRejectsWithTheAcquireErrorWhileItsHandlerRuns"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -113016,7 +113020,7 @@
       "evidence": [
         "test:chord/next/host/host_attempt_test.go#TestActivationSpansATransientFailureAndItsRetryIsARootOfTheHostsAdapterLinkedToItsFirstTriggerARetrysLinksToTheAttemptBefore",
         "test:chord/next/host/host_attempt_test.go#TestAttemptAnAttemptNotLiveWithinReadyTimeoutIsAbandonedAndFailsTransientTheOpenersContextAbortedWhatOpenedClosed",
-        "test:chord/next/host/host_native_test.go#TestNativeACloseInTimeReportsNothingAndLeavesNoTimer"
+        "test:chord/next/host/host_native_test.go#TestNativeACloseInTimeLeavesItsContextUnabortedAfterItReturns"
       ]
     },
     {
@@ -129062,9 +129066,9 @@
         "call:chord/nextnode/plugins/plugins_install.go#InstallPlugin"
       ],
       "evidence": [
+        "test:chord/nextnode/plugins/plugins_install_tar_test.go#TestInstallPluginNamesTheTarballToTarRelativeToThePackDirectory",
         "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClaimsItsDirectoryFirstOfTwoConcurrentInstallsOneWinsTheOtherRemovesNothingOfItSol",
-        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryOfSeveralPluginsItsSubdirectoriesPinnedToACommit",
-        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryWhoseTopIsAPluginIntoRootRepositoryAtATagAndInstallsItsDependencies"
+        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryOfSeveralPluginsItsSubdirectoriesPinnedToACommit"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -129085,9 +129089,9 @@
         "call:chord/nextnode/plugins/plugins_install.go#InstallPlugin"
       ],
       "evidence": [
+        "test:chord/nextnode/plugins/plugins_install_tar_test.go#TestInstallPluginNamesTheTarballToTarRelativeToThePackDirectory",
         "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClaimsItsDirectoryFirstOfTwoConcurrentInstallsOneWinsTheOtherRemovesNothingOfItSol",
-        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryOfSeveralPluginsItsSubdirectoriesPinnedToACommit",
-        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryWhoseTopIsAPluginIntoRootRepositoryAtATagAndInstallsItsDependencies"
+        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryOfSeveralPluginsItsSubdirectoriesPinnedToACommit"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -129108,9 +129112,9 @@
         "call:chord/nextnode/plugins/plugins_install.go#InstallPlugin"
       ],
       "evidence": [
+        "test:chord/nextnode/plugins/plugins_install_tar_test.go#TestInstallPluginNamesTheTarballToTarRelativeToThePackDirectory",
         "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClaimsItsDirectoryFirstOfTwoConcurrentInstallsOneWinsTheOtherRemovesNothingOfItSol",
-        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryOfSeveralPluginsItsSubdirectoriesPinnedToACommit",
-        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryWhoseTopIsAPluginIntoRootRepositoryAtATagAndInstallsItsDependencies"
+        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryOfSeveralPluginsItsSubdirectoriesPinnedToACommit"
       ]
     },
     {
@@ -130061,8 +130065,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/app/app_changes_test.go#TestAppInstallsAPluginFromGitIntoTheUsersRootApplyingChangesLoadsIt",
-        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClaimsItsDirectoryFirstOfTwoConcurrentInstallsOneWinsTheOtherRemovesNothingOfItSol",
-        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryOfSeveralPluginsItsSubdirectoriesPinnedToACommit"
+        "test:chord/nextnode/plugins/plugins_install_tar_test.go#TestInstallPluginNamesTheTarballToTarRelativeToThePackDirectory",
+        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClaimsItsDirectoryFirstOfTwoConcurrentInstallsOneWinsTheOtherRemovesNothingOfItSol"
       ]
     },
     {
@@ -195630,7 +195634,9 @@
         "call:internal/codingagent/native_model_runtime.go#ModelRegistry.GetProvider"
       ],
       "evidence": [
-        "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream"
+        "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream",
+        "test:internal/codingagent/model_catalog_data_radius_first_test.go#TestGetProviderModelDataDoesNotBuildTheBundledCatalogOfARadiusProvider",
+        "test:internal/codingagent/model_catalog_data_radius_first_test.go#TestGetProviderModelDataListsTheSameModelsWithTheRadiusBranchFirst"
       ]
     },
     {
@@ -195650,7 +195656,9 @@
         "call:internal/codingagent/native_model_runtime.go#ModelRegistry.GetProvider"
       ],
       "evidence": [
-        "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream"
+        "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream",
+        "test:internal/codingagent/model_catalog_data_radius_first_test.go#TestGetProviderModelDataDoesNotBuildTheBundledCatalogOfARadiusProvider",
+        "test:internal/codingagent/model_catalog_data_radius_first_test.go#TestGetProviderModelDataListsTheSameModelsWithTheRadiusBranchFirst"
       ]
     },
     {
@@ -227422,7 +227430,7 @@
       "evidence": [
         "test:test/extension-conformance/api_on_events_test.go#TestConformanceAPIOnVoidEventsReachTheTypedHandlers",
         "test:test/extension-conformance/conformance_test.go#TestModelEventPayloadsMatchAcrossSDKs",
-        "test:test/extension-conformance/deep_event_delta_test.go#TestDeepEventStreamDeltasReachEverySDK"
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
       ]
     },
     {
@@ -232547,9 +232555,9 @@
         "call:durable/codecs.go#editsOf"
       ],
       "evidence": [
+        "test:durable/surrogate_pi_oracle_test.go#TestLoneSurrogatesDecodeAsJSONParseDoes",
         "test:durable/harness/context_pi_oracle_test.go#TestContextDerivationMatchesPi",
-        "test:durable/types_upstream_test.go#TestTypesUpstream",
-        "test:durable/types_upstream_test.go#TestTypesUpstreamExclusivityLiteralsEncodeAsPiObjects"
+        "test:durable/types_upstream_test.go#TestTypesUpstream"
       ]
     },
     {
@@ -234942,7 +234950,7 @@
       "evidence": [
         "test:durable/session/codemode_checkpoints_upstream_test.go#TestBuiltInDocumentCheckpointPolicies",
         "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
-        "test:durable/harness/harness_compaction_test.go#TestPiLiveMigrations"
+        "test:durable/surrogate_pi_oracle_test.go#TestAddressIdKeepsDifferentLoneSurrogatesApart"
       ]
     },
     {
@@ -234984,9 +234992,9 @@
         "call:durable/session/held.go#SessionImpl.storeHolds"
       ],
       "evidence": [
+        "test:durable/surrogate_pi_oracle_test.go#TestLoneSurrogatesDecodeAsJSONParseDoes",
         "test:durable/session/codemode_checkpoints_upstream_test.go#TestBuiltInDocumentCheckpointPolicies",
-        "test:durable/session/session_deferred_commits_upstream_test.go#TestBasesAndOverflowOfHeldChanges",
-        "test:durable/session/session_deferred_commits_upstream_test.go#TestPublicationsOfDeferredCommits"
+        "test:durable/session/session_deferred_commits_upstream_test.go#TestBasesAndOverflowOfHeldChanges"
       ]
     },
     {
@@ -235496,9 +235504,9 @@
         "call:durable/entries.go#Entry.Draft"
       ],
       "evidence": [
+        "test:durable/surrogate_pi_oracle_test.go#TestLoneSurrogatesDecodeAsJSONParseDoes",
         "test:durable/harness/context_pi_oracle_test.go#TestContextDerivationMatchesPi",
-        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestReadingPiLiveInACommitStoresTheHeldPartial",
-        "test:durable/harness/view_pi_oracle_test.go#TestConversationViewsMatchPi"
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestReadingPiLiveInACommitStoresTheHeldPartial"
       ]
     },
     {
@@ -242377,8 +242385,8 @@
       ],
       "evidence": [
         "test:durable/harness/types_upstream_test.go#TestMissingPhaseHandlerFaultsTheTaskAsAThrowingHandlerDoes",
-        "test:durable/types_upstream_test.go#TestTypesUpstreamExclusivityLiteralsEncodeAsPiObjects",
-        "test:durable/core/driver/harness_blocked_core_test.go#TestBlockedTasks"
+        "test:durable/surrogate_pi_oracle_test.go#TestLoneSurrogatesDecodeAsJSONParseDoes",
+        "test:durable/types_upstream_test.go#TestTypesUpstreamExclusivityLiteralsEncodeAsPiObjects"
       ]
     },
     {
@@ -243137,7 +243145,7 @@
       "evidence": [
         "test:durable/core/driver/task_owned_tasks_core_test.go#TestCoreOwnedTasksRejectsOnceItsInvocationHasEnded",
         "test:durable/harness/scheduler_owned_tasks_test.go#TestOwnedTasksRejectsOnceItsInvocationHasEnded",
-        "test:durable/core/driver/task_owned_tasks_core_test.go#TestCoreOwnedTasksListsTheLiveTasksATaskOwnsDirectlyInIdOrderAlsoAfterAReopen"
+        "test:durable/harness/surrogate_observable_test.go#TestOwnedTasksKeepsALoneSurrogateInTheRecordsItReturns"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -243160,7 +243168,7 @@
       "evidence": [
         "test:durable/core/driver/task_owned_tasks_core_test.go#TestCoreOwnedTasksRejectsOnceItsInvocationHasEnded",
         "test:durable/harness/scheduler_owned_tasks_test.go#TestOwnedTasksRejectsOnceItsInvocationHasEnded",
-        "test:durable/core/driver/task_owned_tasks_core_test.go#TestCoreOwnedTasksListsTheLiveTasksATaskOwnsDirectlyInIdOrderAlsoAfterAReopen"
+        "test:durable/harness/surrogate_observable_test.go#TestOwnedTasksKeepsALoneSurrogateInTheRecordsItReturns"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -243861,7 +243869,7 @@
       "evidence": [
         "test:durable/toolsearch/toolsearch_pi_oracle_test.go#TestToolSearchMatchesPiOnSeededDeferredTools",
         "test:durable/core/driver/harness_inbox_core_test.go#TestInboxHandoff",
-        "test:durable/examples/agent_examples_test.go#TestExample26PlanMode"
+        "test:durable/surrogate_pi_oracle_test.go#TestLoneSurrogatesEncodeAsPiDoes"
       ]
     },
     {
@@ -245316,9 +245324,9 @@
         "call:durable/harness/tool.go#toolAbort"
       ],
       "evidence": [
+        "test:durable/harness/tool_checkpoint_order_test.go#TestAToolCheckpointKeepsALoneSurrogateInItsArguments",
         "test:durable/harness/tool_checkpoint_order_test.go#TestAToolCheckpointKeepsItsArgumentsInTheirStoredOrderWhenDecoded",
-        "test:durable/harness/tool_checkpoint_order_test.go#TestAToolCheckpointWithoutArgumentsShowsAnEmptyObject",
-        "test:durable/harness/agent_regression_test.go#TestCheckpointPhasesAreTheClosedPiUnions"
+        "test:durable/harness/tool_checkpoint_order_test.go#TestAToolCheckpointWithoutArgumentsShowsAnEmptyObject"
       ]
     },
     {
@@ -284526,7 +284534,7 @@
       "id": "pkg:schema/.#CoercingValidator::construct:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:f88eacd057705de17759d989769b674dd0cf9a1c37bba88fe22c07fcf5bc7e77",
-      "rationale": "Pi packages/schema/src/validator.ts:70 CoercingValidator::construct:0 (Pi 1.5.1, unchanged from 1.4.0+b556cfe5): CoercingValidator is a class that inherits Validator's constructor `new CoercingValidator(schema, options, check)`, which compile() alone calls when `options.coerce === true` (validator.ts:24-26); Go has no constructor on a struct type with unexported fields: CompileCoercing(schema, options) (*CoercingValidator, error) builds it (schema/validator.go:86-92) and returns the compile throw as the error, so there is no NewCoercingValidator and no second way to make one. Designed out as a Go language mechanic. Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go). Owner approved 2026-11-02 (Pi 1.5.1 packages/schema/src/validator.ts:14-26, unchanged from 1.4.0+b556cfe5; CompileCoercing is a separate type, CoercingValidator, where Pi overloads compile by the coerce option). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go) and TestCoerceMatchesPi (schema/coerce_oracle_test.go).",
+      "rationale": "Pi packages/schema/src/validator.ts:70 CoercingValidator::construct:0 (Pi 1.5.1, unchanged from 1.4.0+b556cfe5): CoercingValidator is a class that inherits Validator's constructor `new CoercingValidator(schema, options, check)`, which compile() alone calls when `options.coerce === true` (validator.ts:24-26); Go has no constructor on a struct type with unexported fields: CompileCoercing(schema, options) (*CoercingValidator, error) builds it (schema/validator.go:86-92) and returns the compile throw as the error, so there is no NewCoercingValidator and no second way to make one. Designed out as a Go language mechanic. Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go). Owner approved 2026-11-02 (Pi 1.5.1 packages/schema/src/validator.ts:14-26, unchanged from 1.4.0+b556cfe5; CompileCoercing is a separate type, CoercingValidator, where Pi overloads compile by the coerce option). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go) and TestCoerceMatchesPi (schema/coerce_oracle_test.go). The probe grepped Pi's schema package for `new CoercingValidator(` and found only compile() (validator.ts:25), so no Pi caller constructs one any other way.",
       "pigTargets": [
         "schema/validator.go#CompileCoercing"
       ]
@@ -284826,7 +284834,7 @@
       "id": "pkg:schema/.#CompileOptions::property:coerce",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:3af09d79b0c8ee00ffdb590b413c2e47c852f10b7e5f0d294c2c496f12e5d120",
-      "rationale": "Pi packages/schema/src/types.ts:24 CompileOptions::property:coerce (Pi 1.5.1, unchanged from 1.4.0+b556cfe5): `coerce?: boolean` is a run-time flag that adds `coerce()` and `parse()` to the validator compile() returns; its static effect, the CoercingValidator return type of the overload (validator.ts:14-17), cannot follow a field's value in Go, and an option that changed what Compile returns at run time would make Coerce and Parse methods that can be missing. The Go form is the distinct type: CompileCoercing(schema, options) returns *CoercingValidator (schema/validator.go:86), CompileOptions has no Coerce field (schema/types.go:29-38), and Compile never coerces. Designed out as a Go language mechanic (owner 2026-10-29/30). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go). Owner approved 2026-11-02 (Pi 1.5.1 packages/schema/src/validator.ts:14-26, unchanged from 1.4.0+b556cfe5; CompileCoercing is a separate type, CoercingValidator, where Pi overloads compile by the coerce option). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go) and TestCoerceMatchesPi (schema/coerce_oracle_test.go).",
+      "rationale": "Pi packages/schema/src/types.ts:24 CompileOptions::property:coerce (Pi 1.5.1, unchanged from 1.4.0+b556cfe5): `coerce?: boolean` is a run-time flag that adds `coerce()` and `parse()` to the validator compile() returns; its static effect, the CoercingValidator return type of the overload (validator.ts:14-17), cannot follow a field's value in Go, and an option that changed what Compile returns at run time would make Coerce and Parse methods that can be missing. The Go form is the distinct type: CompileCoercing(schema, options) returns *CoercingValidator (schema/validator.go:86), CompileOptions has no Coerce field (schema/types.go:29-38), and Compile never coerces. Designed out as a Go language mechanic (owner 2026-10-29/30). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go). Owner approved 2026-11-02 (Pi 1.5.1 packages/schema/src/validator.ts:14-26, unchanged from 1.4.0+b556cfe5; CompileCoercing is a separate type, CoercingValidator, where Pi overloads compile by the coerce option). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go) and TestCoerceMatchesPi (schema/coerce_oracle_test.go). The probe read every use of `options.coerce` in Pi's schema package and found only compile()'s test (validator.ts:24), which picks the class.",
       "pigTargets": [
         "schema/validator.go#CompileCoercing",
         "schema/types.go#CompileOptions"
@@ -285426,7 +285434,7 @@
       "id": "pkg:schema/.#ParseResult",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:bba05fa9efb31f2588fa52fb40297b1946ab4ef3613864f27fa35617df4aa8e9",
-      "rationale": "Pi packages/schema/src/types.ts:34 ParseResult (Pi 1.5.1): ParseResult<T> = { ok: true; value: T } | { ok: false; errors: ValidationError[] } is a discriminated union whose members differ by the literal type of `ok` and the generic T; Go has neither, so ParseResult is one struct { OK bool; Value any; Errors []ValidationError } (schema/types.go:61-65), as Value is the coerced value when OK and Errors the errors of the coerced value otherwise (the other member is zero). Designed out as a Go language mechanic (discriminated union as a struct; T is the JSON value, any). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go: \"parse\").",
+      "rationale": "Pi packages/schema/src/types.ts:34 ParseResult (Pi 1.5.1): ParseResult<T> = { ok: true; value: T } | { ok: false; errors: ValidationError[] } is a discriminated union whose members differ by the literal type of `ok` and the generic T; Go has neither, so ParseResult is one struct { OK bool; Value any; Errors []ValidationError } (schema/types.go:61-65), as Value is the coerced value when OK and Errors the errors of the coerced value otherwise (the other member is zero). Designed out as a Go language mechanic (discriminated union as a struct; T is the JSON value, any). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go: \"parse\"). ParseResult is a TypeScript type alias (types.ts:34-36) that tsc erases: the probe found no emitted value, member or call for it.",
       "pigTargets": [
         "schema/types.go#ParseResult"
       ]
@@ -285435,7 +285443,7 @@
       "id": "pkg:schema/.#Properties",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:d5b5365aa47c294dfc461d3f0da41a6524d5d517cbd2e829f018657c6d754470",
-      "rationale": "Pi packages/schema/src/builders.ts:202 Properties (Pi 1.5.1): Properties = { readonly [name: string]: Schema | Optional } is an object whose own-key order is observable (the order of `properties`, `required` and of reported errors); Go has no insertion-ordered map, so schema.Properties is the ordered []Property of Prop and Opt entries (schema/builders.go:273-288) that Obj orders as JavaScript's own keys are ordered (array-index names ascending first, then declaration order). Designed out as a Go language mechanic (owner 2026-10-29/30). Exercised by TestObjUsesOwnKeyOrder and TestBuildersProduceEveryLeaf (schema/builders_upstream_test.go).",
+      "rationale": "Pi packages/schema/src/builders.ts:202 Properties (Pi 1.5.1): Properties = { readonly [name: string]: Schema | Optional } is an object whose own-key order is observable (the order of `properties`, `required` and of reported errors); Go has no insertion-ordered map, so schema.Properties is the ordered []Property of Prop and Opt entries (schema/builders.go:273-288) that Obj orders as JavaScript's own keys are ordered (array-index names ascending first, then declaration order). Designed out as a Go language mechanic (owner 2026-10-29/30). Exercised by TestObjUsesOwnKeyOrder and TestBuildersProduceEveryLeaf (schema/builders_upstream_test.go). Properties is a TypeScript type alias (builders.ts:202) that tsc erases: the probe found no emitted value or call for it; the key order is observable only through obj() (builders.ts:219), which the Go Obj reproduces.",
       "pigTargets": [
         "schema/builders.go#Properties"
       ]
@@ -285784,7 +285792,7 @@
       "id": "pkg:schema/.#Validator::construct:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:80d350d9fe873a423b4b332572354a05be33d03dba4d401acb8bbef202452c07",
-      "rationale": "Pi packages/schema/src/validator.ts:39 Validator::construct:0 (Pi 1.5.1): `new Validator(schema, options, check)` is the class constructor that compile() alone calls with the compiled check; Go has no constructor on a struct type with unexported fields: Compile(schema, options) (*Validator, error) builds the Validator (schema/validator.go:11-24) and returns the compile throw as the error, so there is no NewValidator and no second way to make one. Exercised by TestErrors (schema/validator_upstream_test.go).",
+      "rationale": "Pi packages/schema/src/validator.ts:39 Validator::construct:0 (Pi 1.5.1): `new Validator(schema, options, check)` is the class constructor that compile() alone calls with the compiled check; Go has no constructor on a struct type with unexported fields: Compile(schema, options) (*Validator, error) builds the Validator (schema/validator.go:11-24) and returns the compile throw as the error, so there is no NewValidator and no second way to make one. Exercised by TestErrors (schema/validator_upstream_test.go). The probe grepped Pi's schema package for `new Validator(` and found only compile() (validator.ts:26), so no Pi caller constructs one any other way.",
       "pigTargets": [
         "schema/validator.go#Compile"
       ]

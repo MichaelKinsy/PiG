@@ -2478,13 +2478,6 @@
    "new": "Direction: \"asc\"}"
   }
  ],
- "packages/durable/src/storage/store/storage.ts": [
-  {
-   "file": "durable/storage/store/storage.go",
-   "old": "\tif after > maxSafeInteger || after < -maxSafeInteger {\n",
-   "new": "\tif after > maxSafeInteger {\n"
-  }
- ],
  "packages/durable/src/storage/store/tables.ts": [
   {
    "file": "durable/storage/store/tables.go",
@@ -6526,6 +6519,28 @@
    "file": "internal/weburl/weburl.go",
    "old": "return parsed.Href, true",
    "new": "return parsed.Href + \"/\", true"
+  }
+ ],
+ "packages/chord/src/host/parked.ts": [
+  {
+   "file": "chord/next/host/host_parked.go",
+   "old": "if float64(p.loop.Now()) >= call.due {",
+   "new": "if float64(p.loop.Now()) > call.due {"
+  },
+  {
+   "file": "chord/next/host/host_parked.go",
+   "old": "p.expire(call)\n\t\t\tcontinue\n",
+   "new": "p.expire(call)\n\t\t\tbreak\n"
+  },
+  {
+   "file": "chord/next/host/host_parked.go",
+   "old": "if call.cancel != nil {\n\t\tcall.cancel()\n\t}\n",
+   "new": "if call.cancel != nil {\n\t}\n"
+  },
+  {
+   "file": "chord/next/host/host_parked.go",
+   "old": "if p.walking == 0 && p.removed > 16 &&",
+   "new": "if p.removed > 16 &&"
   }
  ]
 }

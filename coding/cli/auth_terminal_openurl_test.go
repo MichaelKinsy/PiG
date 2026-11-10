@@ -10,6 +10,8 @@ import (
 	"runtime"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
 // TestLoginTerminalOpenURLHandsTheURLToTheBrowserLauncher runs a launcher script named as the platform's launcher (xdg-open, open) and checks it received the URL as its one argument.
@@ -21,7 +23,7 @@ func TestLoginTerminalOpenURLHandsTheURLToTheBrowserLauncher(t *testing.T) {
 	dir := t.TempDir()
 	recorded := filepath.Join(dir, "recorded")
 	script := "#!/bin/sh\nprintf '%s\\n%s' \"$#\" \"$1\" > \"$RECORD_FILE.tmp\" && mv \"$RECORD_FILE.tmp\" \"$RECORD_FILE\"\n"
-	if err := os.WriteFile(filepath.Join(dir, launcher), []byte(script), 0o755); err != nil { //nolint:gosec // G306: the test launcher must be executable
+	if err := os.WriteFile(filepath.Join(dir, launcher), []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
@@ -29,7 +31,7 @@ func TestLoginTerminalOpenURLHandsTheURLToTheBrowserLauncher(t *testing.T) {
 
 	(processLoginTerminal{}).OpenURL("https://example.com/login?a=1&b=2")
 
-	deadline := time.Now().Add(30 * time.Second)
+	deadline := time.Now().Add(testbudget.Wait(t))
 	for {
 		data, err := os.ReadFile(recorded)
 		if err == nil {
