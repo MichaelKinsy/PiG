@@ -759,6 +759,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-78f1007](#bf-78f1007) | The Durable core conformance gate runs `U-codemode` and `U-harness-tools` alone, their reference run before… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-78f2d55](#bf-78f2d55) | `pig mcp login --help` described `--timeout` as only the wait for the browser; it limits the whole sign-in… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-7901dbc](#bf-7901dbc) | fix: cover the Lisp SDK in the blocked custom component row; regenerate the Node runtime pack and the bug… | PiG's own defect | All platforms | Unreleased |
+| [BF-79194eb](#bf-79194eb) | Aborting a compaction while extensions were being told it finished no longer keeps the extensions after the… | PiG's own defect | All platforms | Unreleased |
 | [BF-79eadcf](#bf-79eadcf) | Long sessions no longer slow down each streamed frame in the main screen: a frame redraws from the first line… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-79f9a9e](#bf-79f9a9e) | fix(agent): convert a live partial with one clone and keep events at an unchanged publication (TU-T7 rest) | PiG's own defect | All platforms | Unreleased |
 | [BF-7a4a8e8](#bf-7a4a8e8) | fix duplicate jsstring import in tui/assistant_message_block.go | PiG's own defect | All platforms | Unreleased |
@@ -11848,6 +11849,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `7901dbc959` (2026-10-27)
 - **Tests:** None recorded.
+
+### BF-79194eb
+
+**Aborting a compaction while extensions were being told it finished no longer keeps the extensions after the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Aborting a compaction while extensions were being told it finished no longer keeps the extensions after the first from hearing about it.
+- **Root cause:** Pi awaits runner.emit({ type: "session_compact" }) after the compaction entry is saved, and emit() takes no signal: an abort raised while the handlers run neither skips an extension nor fails the compaction. PiG passed the abortable compaction context to the dispatch, so AbortCompaction during the first handler cancelled that handler's request and every later subprocess extension's, which never received the event. Dispatch now detaches from the cancellation, as emitSessionCompactFailed already does.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `79194ebd9f` (2026-11-09)
+- **Tests:** `coding/session_compact_abort_dispatch_test.go::TestSessionCompactReachesEveryExtensionWhenAbortedDuringDispatch`, `test/extension-conformance/session_compact_abort_test.go::TestNodeSessionCompactReachesTheNextExtensionWhenAbortedDuringDispatch`, `test/extension-conformance/session_compact_abort_test.go::TestSessionCompactIsDeliveredToEverySDKWhenAbortedDuringDispatch`
+- **Release note:** Aborting a compaction while extensions were being told it finished no longer keeps the extensions after the first from hearing about it. `session_compact` now reaches every extension, in order, as in Pi, whichever of them calls `abortCompaction()` or has the compaction aborted while its handler runs; the saved compaction still completes.
 
 ### BF-79eadcf
 
