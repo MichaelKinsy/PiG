@@ -31,26 +31,50 @@ func TestRadiusCatalogModelsCarryTheirProvidersID(t *testing.T) {
 	}
 }
 
-// model-registry.ts getAvailable: a Radius provider with auth lists its catalog among the available models, in catalog order, and one without auth lists none.
-func TestGetAvailableModelDataListsAConfiguredRadiusCatalogInCatalogOrder(t *testing.T) {
-	registry, _, _ := radiusTestRegistry(t, `{"providers":{"acme":{"oauth":"radius","baseUrl":"https://acme.invalid"}}}`, map[string]ai.Credential{RadiusProviderID: {Type: ai.CredentialAPIKey, Key: "test-key"}})
+// model-runtime.ts:335-340 (the snapshot ModelRegistry.getAvailable returns) is the full catalog restricted to the providers with configured auth, and ai/src/models.ts:743-752 (Models.getAvailable) reads getModels only from authenticated providers. GetAvailableModelData reads a Radius catalog only for a provider with auth; the list, its order and every model must be what the full catalog filtered by provider auth gives, with no Radius auth, with it, and when it appears or goes mid-session.
+func TestGetAvailableModelDataListsARadiusCatalogExactlyWhenItsProviderHasAuth(t *testing.T) {
+	registry, auth, _ := radiusTestRegistry(t, `{"providers":{"acme":{"oauth":"radius","baseUrl":"https://acme.invalid"}}}`, nil)
 	registry.SetRuntimeAPIKey("xai", "key-xai")
-	var want []*ai.Model
-	radiusModels := 0
-	for _, model := range registry.GetAllModelData() {
-		if registry.HasConfiguredAuth(model.ProviderMeta.ProviderID) {
-			want = append(want, model)
-			if model.ProviderMeta.ProviderID == RadiusProviderID {
-				radiusModels++
+	if registry.HasConfiguredAuth(RadiusProviderID) {
+		t.Skip("the environment configures Radius auth")
+	}
+	check := func(step string, wantRadius bool) {
+		t.Helper()
+		var want []*ai.Model
+		radiusModels := 0
+		for _, model := range registry.GetAllModelData() {
+			if registry.HasConfiguredAuth(model.ProviderMeta.ProviderID) {
+				want = append(want, model)
+				if model.ProviderMeta.ProviderID == RadiusProviderID {
+					radiusModels++
+				}
+			}
+		}
+		if (radiusModels > 0) != wantRadius {
+			t.Fatalf("%s: the full catalog has %d Radius models with auth, want some: %v", step, radiusModels, wantRadius)
+		}
+		if len(want) <= radiusModels {
+			t.Fatalf("%s: no model of another configured provider (xai) is available", step)
+		}
+		got := registry.GetAvailableModelData()
+		if len(got) != len(want) {
+			t.Fatalf("%s: %d available models, want %d (%d of them Radius's)", step, len(got), len(want), radiusModels)
+		}
+		for i := range want {
+			if !reflect.DeepEqual(got[i], want[i]) {
+				t.Fatalf("%s: available[%d] = %s/%s differs from the full catalog's %s/%s", step, i, got[i].ProviderMeta.ProviderID, got[i].ID, want[i].ProviderMeta.ProviderID, want[i].ID)
 			}
 		}
 	}
-	if radiusModels == 0 {
-		t.Fatal("the configured Radius provider lists no model in the full catalog")
+	check("no Radius auth", false)
+	registry.SetRuntimeAPIKey(RadiusProviderID, "runtime-key")
+	check("a Radius runtime key appears", true)
+	registry.RemoveRuntimeAPIKey(RadiusProviderID)
+	check("the Radius runtime key is gone", false)
+	if err := auth.Set(RadiusProviderID, ai.Credential{Type: ai.CredentialAPIKey, Key: "stored-key"}); err != nil {
+		t.Fatal(err)
 	}
-	if got := registry.GetAvailableModelData(); !reflect.DeepEqual(got, want) {
-		t.Fatalf("available models = %d, want the %d models of configured providers, %d of them Radius's, in catalog order", len(got), len(want), radiusModels)
-	}
+	check("a Radius credential is stored", true)
 }
 
 // A start with no Radius auth does not build the Radius catalog: its models are discarded unseen, so listing the available models costs less than reading that catalog.
