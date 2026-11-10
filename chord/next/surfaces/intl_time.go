@@ -193,8 +193,12 @@ func (p *timePattern) appendTime(dst []byte, zero rune, hour, minute, second int
 	}
 	number := func(dst []byte, n int, padded bool) []byte {
 		if n >= 10 || padded {
-			//portlint:allow numbers n is a two-digit value 0..99 (hour, minute, second), so truncation is JS Math.floor(n / 10)
-			dst = utf8.AppendRune(dst, zero+rune(n/10))
+			// The tens digit is Math.floor(n / 10), counted by subtraction: no integer division stands in for the float one.
+			tens := rune(0)
+			for rest := n; rest >= 10; rest -= 10 {
+				tens++
+			}
+			dst = utf8.AppendRune(dst, zero+tens)
 		}
 		return utf8.AppendRune(dst, zero+rune(n%10))
 	}

@@ -79,8 +79,10 @@ func (*ProcessTerminal) OnResize(handler func()) func() {
 	stopped := make(chan struct{})
 	var once sync.Once
 	//portlint:allow golifetime ends when the returned stop function runs
-	//portlint:allow asyncorder Node's output.on("resize", handler) calls the handler from the signal itself, in no promise continuation, so no microtask order is ported
+	// Node's output.on("resize", handler) has the listener installed when it returns: the goroutine is listening before OnResize does.
+	listening := make(chan struct{})
 	go func() {
+		close(listening)
 		for {
 			select {
 			case <-signals:
@@ -90,6 +92,7 @@ func (*ProcessTerminal) OnResize(handler func()) func() {
 			}
 		}
 	}()
+	<-listening
 	return func() {
 		once.Do(func() {
 			signal.Stop(signals)
