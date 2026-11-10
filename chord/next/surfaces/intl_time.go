@@ -1,5 +1,7 @@
 package surfaces
 
+// Ports packages/chord/src/surfaces/format.ts (FormatTime; surfaces_format.go holds FormatNumber and the entry point).
+
 import (
 	"fmt"
 	"slices"

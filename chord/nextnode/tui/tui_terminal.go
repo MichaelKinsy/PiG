@@ -1,6 +1,6 @@
 package tui
 
-// Ports packages/chord/src/tui/terminal.ts
+// Ports packages/chord/src/node/tui/launcher.ts
 
 import (
 	"io"

@@ -1201,6 +1201,13 @@
    "new": "\t\tif hash == \"\" {\n\t\t\thash = \"unreadable\"\n\t\t}\n\t\tif hash != \"\" {\n\t\t\trecord[files[i]] = hash"
   }
  ],
+ "packages/chord/src/node/surfaces/published.ts": [
+  {
+   "file": "chord/nextnode/surfaces/surfaces_published.go",
+   "old": "slices.SortFunc(changes.Removed, compareUTF16)\n",
+   "new": "slices.Sort(changes.Removed)\n"
+  }
+ ],
  "packages/chord/src/node/workers/control.ts": [
   {
    "file": "chord/nextnode/workers/workers_control.go",
