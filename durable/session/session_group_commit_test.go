@@ -6,8 +6,9 @@ package session_test
 // caches do at publication, are in session_group_commit_internal_test.go.
 //
 // Not ported: the two `${value}` cases that reject with `undefined` and `null` (a Go error is never nil, so a rejection value
-// of no value does not exist; "rejects every part of a call with its rejection value" and "rejects a refused part with its
-// refusal" are ported with an error value in the cases below).
+// of no value does not exist). "rejects every part of a call with its rejection value" and "rejects a refused part with its
+// refusal" run in Go with each empty value Go can reject with: an error with an empty message and a zero-valued error struct,
+// so a rejection that carries nothing to print is still a rejection.
 
 import (
 	"context"
@@ -26,6 +27,13 @@ import (
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/session"
 )
+
+// emptyRejection is an error whose value and message are both empty.
+type emptyRejection struct{}
+
+func (emptyRejection) Error() string { return "" }
+
+var zeroRejections = []error{errors.New(""), emptyRejection{}}
 
 func TestGroupCommitBatching(t *testing.T) {
 	t.Run("stores the commits admitted while a call is in flight in one call, each with its seq, published in order", func(t *testing.T) {
@@ -601,67 +609,69 @@ func TestGroupCommitFailuresPerPart(t *testing.T) {
 		}
 	})
 
-	t.Run("rejects every part of a call with its rejection value", func(t *testing.T) {
-		g := openGC(t, 3)
-		a, b, c := g.ids[0], g.ids[1], g.ids[2]
-		held := g.storage.hold()
-		first := g.bump(a)
-		<-held.Entered()
-		parts := []*call{g.bump(b), g.bump(c)}
-		quiesce(parts...)
-		g.awaitQueued(2)
-		rejection := errors.New("rejection value")
-		g.storage.mu.Lock()
-		g.storage.rejection = rejection
-		g.storage.mu.Unlock()
-		g.storage.setRejectCall(g.storage.callCount())
-		held.Release()
-		mustBump(t, first)
-		for _, part := range parts {
-			if _, err := part.wait(); !errors.Is(err, rejection) {
-				t.Fatalf("part rejected with %v, want %v", err, rejection)
-			}
-		}
-		if end := g.closed(); !errors.Is(end.Error, rejection) {
-			t.Fatalf("session ended %+v, want failed with %v", end, rejection)
-		}
-	})
-
-	t.Run("rejects a refused part with its refusal, and the parts after it with SessionFailed", func(t *testing.T) {
-		g := openGC(t, 3)
-		a, b, c := g.ids[0], g.ids[1], g.ids[2]
-		held := g.storage.hold()
-		first := g.bump(a)
-		<-held.Entered()
-		refused := g.commitAsync(appendChange(b, "refuse"))
-		after := g.bump(c)
-		quiesce(refused, after)
-		g.awaitQueued(2)
-		refusal := errors.New("refusal value")
-		g.storage.mu.Lock()
-		g.storage.refusal = refusal
-		g.storage.mu.Unlock()
-		g.storage.setRefuse(func(writes []durable.StorageWrite) bool {
-			for _, write := range writes {
-				if entry, ok := write.(durable.EntryWrite); ok && entry.Value.Kind == "refuse" {
-					return true
+	for _, value := range zeroRejections {
+		t.Run(fmt.Sprintf("rejects every part of a call with its rejection value, %T included", value), func(t *testing.T) {
+			g := openGC(t, 3)
+			a, b, c := g.ids[0], g.ids[1], g.ids[2]
+			held := g.storage.hold()
+			first := g.bump(a)
+			<-held.Entered()
+			parts := []*call{g.bump(b), g.bump(c)}
+			quiesce(parts...)
+			g.awaitQueued(2)
+			rejection := value
+			g.storage.mu.Lock()
+			g.storage.rejection = rejection
+			g.storage.mu.Unlock()
+			g.storage.setRejectCall(g.storage.callCount())
+			held.Release()
+			mustBump(t, first)
+			for _, part := range parts {
+				if _, err := part.wait(); !errors.Is(err, rejection) {
+					t.Fatalf("part rejected with %v, want %v", err, rejection)
 				}
 			}
-			return false
+			if end := g.closed(); !errors.Is(end.Error, rejection) {
+				t.Fatalf("session ended %+v, want failed with %v", end, rejection)
+			}
 		})
-		held.Release()
-		mustBump(t, first)
-		if _, err := refused.wait(); !errors.Is(err, refusal) {
-			t.Fatalf("refused part rejected with %v, want %v", err, refusal)
-		}
-		_, err := after.wait()
-		if _, failed := isSessionFailed(err); !failed {
-			t.Fatalf("the part after the refused one got %v, want SessionFailed", err)
-		}
-		if end := g.closed(); !errors.Is(end.Error, refusal) {
-			t.Fatalf("session ended %+v, want failed with %v", end, refusal)
-		}
-	})
+
+		t.Run(fmt.Sprintf("rejects a refused part with its refusal, %T included, and the parts after it with SessionFailed", value), func(t *testing.T) {
+			g := openGC(t, 3)
+			a, b, c := g.ids[0], g.ids[1], g.ids[2]
+			held := g.storage.hold()
+			first := g.bump(a)
+			<-held.Entered()
+			refused := g.commitAsync(appendChange(b, "refuse"))
+			after := g.bump(c)
+			quiesce(refused, after)
+			g.awaitQueued(2)
+			refusal := value
+			g.storage.mu.Lock()
+			g.storage.refusal = refusal
+			g.storage.mu.Unlock()
+			g.storage.setRefuse(func(writes []durable.StorageWrite) bool {
+				for _, write := range writes {
+					if entry, ok := write.(durable.EntryWrite); ok && entry.Value.Kind == "refuse" {
+						return true
+					}
+				}
+				return false
+			})
+			held.Release()
+			mustBump(t, first)
+			if _, err := refused.wait(); !errors.Is(err, refusal) {
+				t.Fatalf("refused part rejected with %v, want %v", err, refusal)
+			}
+			_, err := after.wait()
+			if _, failed := isSessionFailed(err); !failed {
+				t.Fatalf("the part after the refused one got %v, want SessionFailed", err)
+			}
+			if end := g.closed(); !errors.Is(end.Error, refusal) {
+				t.Fatalf("session ended %+v, want failed with %v", end, refusal)
+			}
+		})
+	}
 }
 
 func TestGroupCommitDeferredCommits(t *testing.T) {

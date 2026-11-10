@@ -1101,7 +1101,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/harness/live.ts` | `durable/harness/live.go` | ✅ |
 | `packages/durable/src/harness/prompt.ts` | `durable/harness/prompt.go` | ✅ |
 | `packages/durable/src/harness/provider.ts` | `durable/harness/provider.go` | ✅ |
-| `packages/durable/src/harness/registry-reader.ts` | `durable/harness/registry_reader.go (durable/harness/registry_reader_test.go, durable/harness/registry_reader_upstream_test.go)` | 🟡 |
+| `packages/durable/src/harness/registry-reader.ts` | `durable/harness/registry_reader.go (durable/harness/registry_reader_test.go, durable/harness/registry_reader_host_test.go, durable/harness/registry_reader_upstream_test.go)` | ✅ |
 | `packages/durable/src/harness/registry.ts` | `durable/harness/registry.go` | ✅ |
 | `packages/durable/src/harness/scheduler.ts` | `durable/harness/scheduler.go`, `durable/types.go` | ✅ |
 | `packages/durable/src/harness/submissions.ts` | `durable/harness/submissions.go` | ✅ |
@@ -1119,13 +1119,13 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/images/node.ts` | `durable/images/node/node.go` | ✅ |
 | `packages/durable/src/images/photon-wasm.d.ts` | `(TypeScript declaration of the WebAssembly import; Go has no compiled module to import)` | n/a |
 | `packages/durable/src/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
-| `packages/durable/src/session/cached-storage.ts` | `durable/session/cached_storage.go` | 🟡 |
-| `packages/durable/src/session/conversation-tails.ts` | `durable/session/conversation_tails.go` | 🟡 |
+| `packages/durable/src/session/cached-storage.ts` | `durable/session/cached_storage.go (durable/session/cached_storage_test.go)` | ✅ |
+| `packages/durable/src/session/conversation-tails.ts` | `durable/session/conversation_tails.go (durable/session/conversation_tails_test.go)` | ✅ |
 | `packages/durable/src/session/forks.ts` | `durable/session/forks.go` | ✅ |
-| `packages/durable/src/session/keys.ts` | `durable/session/keys.go` | 🟡 |
+| `packages/durable/src/session/keys.ts` | `durable/session/keys.go (durable/session/keys_test.go; its upstream tests are the session ones: durable/session/session_group_commit_test.go, durable/session/session_line_api_test.go)` | ✅ |
 | `packages/durable/src/session/session.ts` | `durable/session/session.go`; the Durable core's native Go host of one Session, which the SQLite engine drives through the core ABI: `durable/core/sqlhost/host.go` (declares `// Ports packages/durable/src/session/session.ts`; `Host.Close` is `Session.close`) | ✅ |
 | `packages/durable/src/session/transaction.ts` | `durable/session/transaction.go` | ✅ |
-| `packages/durable/src/session/writer.ts` | `durable/session/writer.go` | 🟡 |
+| `packages/durable/src/session/writer.ts` | `durable/session/writer.go (durable/session/session_group_commit_test.go, durable/session/session_group_commit_internal_test.go, durable/session/wait_delivery_test.go)` | ✅ |
 | `packages/durable/src/storage/indexeddb.ts` | `(browser-only Storage backed by window IndexedDB: the file opens with /// <reference lib="dom" /> and every method drives IDBDatabase/IDBTransaction, which exist only in a browser; PiG is a Go process with no browser or WebAssembly build, so no caller can reach it. The Storage contract it implements is the one durable/storage/memory.go, jsonl, sqlite and the Cloudflare SQLite driver already satisfy; Pi 16f5f0af4d)` | n/a |
 | `packages/durable/src/storage/jsonl/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
 | `packages/durable/src/storage/jsonl/node.ts` | `durable/storage/jsonl/node/node.go` | ✅ |
@@ -1150,7 +1150,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/storage/store/tables.ts` | `durable/storage/store/tables.go` | 🟡 |
 | `packages/durable/src/tasks.ts` | `durable/tasks.go` | ✅ |
 | `packages/durable/src/testing/assertions.ts` | `durable/durabletest/durabletest.go` | ✅ |
-| `packages/durable/src/testing/commit-writes.ts` | `durable/durabletest/commit_writes.go` | 🟡 |
+| `packages/durable/src/testing/commit-writes.ts` | `durable/durabletest/commit_writes.go (durable/durabletest/commit_writes_test.go)` | ✅ |
 | `packages/durable/src/testing/env-conformance.ts` | `durable/durabletest/env_conformance.go` | ✅ |
 | `packages/durable/src/testing/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
 | `packages/durable/src/testing/runner.ts` | `durable/durabletest/durabletest.go + durable/durabletest/env_conformance.go` | ✅ |
