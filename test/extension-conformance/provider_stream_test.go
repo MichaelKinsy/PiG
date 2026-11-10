@@ -136,11 +136,11 @@ func loadProviderFixture(t *testing.T, host *subprocess.Host, caseName, source s
 	}
 	absoluteSource, err := filepath.Abs(source)
 	if err != nil {
-		t.Fatal(err)
+		return err
 	}
 	cfg, _, err := subprocess.ResolveExtConfigWithIdentity(absoluteSource, name)
 	if err != nil {
-		t.Fatal(err)
+		return err
 	}
 	cfgs := []subprocess.ExtConfig{cfg}
 	if packed {
@@ -150,11 +150,11 @@ func loadProviderFixture(t *testing.T, host *subprocess.Host, caseName, source s
 		}
 		absoluteSibling, err := filepath.Abs(siblingPath)
 		if err != nil {
-			t.Fatal(err)
+			return err
 		}
 		sibling, _, err := subprocess.ResolveExtConfigWithIdentity(absoluteSibling, "provider-sibling")
 		if err != nil {
-			t.Fatal(err)
+			return err
 		}
 		cfgs = append(cfgs, sibling)
 	} else {
