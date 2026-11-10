@@ -42,6 +42,9 @@ var versionLiteralAllowlist = []allowedVersionLiteral{
 	{".github/workflows/ci.yml", "12.1.0", "source of truth for npm: the NPM_VERSION env; make compliance checks every copy against it"},
 	{".github/workflows/ci.yml", "1.97.1", "source of truth for Rust: the RUST_VERSION env; make compliance checks every copy against it"},
 
+	// Pins that live in a script of their own.
+	{"automation/ci/build-libxcb.sh", "1.16.1", "the libxcb release the script builds for the X11 display oracle; the sha256 beside it fixes the bytes"},
+
 	// Checked copies. make compliance compares each with its source and fails on drift.
 	{"automation/images/ci-go/Dockerfile", "1.27.3", "ARG GO_IMAGE: a digest-pinned image tag; make compliance checks it against .go-version"},
 	{"automation/images/ci-go/metadata.env", "1.27.3", "IMAGE_TAG; make compliance checks it against .go-version"},
