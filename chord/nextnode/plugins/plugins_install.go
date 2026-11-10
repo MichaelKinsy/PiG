@@ -431,7 +431,7 @@ func unpack(name, version, dir string, ctx context.Context, options InstallOptio
 	if err != nil {
 		return err
 	}
-	filename, err := packedTarball(stdout, what)
+	filename, err := packedTarball(stdout, name, what)
 	if err != nil {
 		return err
 	}
@@ -444,31 +444,28 @@ func unpack(name, version, dir string, ctx context.Context, options InstallOptio
 	return err
 }
 
-// packedTarball is the file name of the first tarball in npm's `pack --json` output. Upstream reads `const [tarball] =
-// JSON.parse(output)`: the list of packed tarballs npm 10 and 11 print. Newer npm (12) prints an object keyed by package
-// name instead, which that destructuring cannot read; this reads the first member of an object the same way, so one
-// install works with either npm.
-func packedTarball(output, what string) (string, error) {
-	// pig divergence (D501): an object keyed by package name (npm 12's `pack --json`) is read as the list is; Pi's destructuring rejects it.
+// packedTarball is the file name of the tarball npm's `pack --json` output lists: Pi's `Array.isArray(output) ? output[0] :
+// output[name]`, the first of the list of packed tarballs (npm 11 and earlier) or the one an object keyed by package name
+// holds (npm 12). A missing one is "packed nothing"; reading a member of a JSON null throws, as JavaScript's does.
+func packedTarball(output, name, what string) (string, error) {
 	value, err := delta.DecodeJson([]byte(output))
 	if err != nil {
 		return "", err
 	}
 	var tarball any
+	found := false
 	switch typed := value.(type) {
 	case []any:
-		if len(typed) == 0 {
-			return "", errors.New(what + ": packed nothing")
+		if len(typed) > 0 {
+			tarball, found = typed[0], true
 		}
-		tarball = typed[0]
 	case *delta.JsonObject:
-		keys := typed.Keys()
-		if len(keys) == 0 {
-			return "", errors.New(what + ": packed nothing")
-		}
-		tarball, _ = typed.Get(keys[0])
-	default:
-		return "", errors.New("npm's output is not a list of packed tarballs")
+		tarball, found = typed.Get(name)
+	case nil:
+		return "", errors.New("Cannot read properties of null (reading '" + name + "')")
+	}
+	if !found {
+		return "", errors.New(what + ": packed nothing")
 	}
 	object, ok := tarball.(*delta.JsonObject)
 	if !ok {
