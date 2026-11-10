@@ -401,9 +401,9 @@ type recordBackend struct {
 
 func newRecordBackend() *recordBackend {
 	return &recordBackend{
-		recordingStorage: recordingStorage{log: &readLog{}},
-		conversations:    map[durable.ConversationId]durable.ConversationRecord{},
-		submissions:      map[durable.SubmissionId]durable.SubmissionRecord{},
+		log:           &readLog{},
+		conversations: map[durable.ConversationId]durable.ConversationRecord{},
+		submissions:   map[durable.SubmissionId]durable.SubmissionRecord{},
 	}
 }
 
@@ -683,7 +683,7 @@ type cachedScopeKey struct{}
 func TestCachedStoragePublishesInsideItsBackendsScopeWhenItHasOne(t *testing.T) {
 	log := &readLog{}
 	var ran []context.Context
-	scoped := cachedScopeStorage{recordingStorage: recordingStorage{log: log}, ran: &ran}
+	scoped := cachedScopeStorage{log: log, ran: &ran}
 	if session.ScopeOf(scoped) == nil {
 		t.Fatal("ScopeOf a backend with a scope is nil")
 	}
