@@ -70,20 +70,24 @@ func TestRadiusShimmerMatchesPi(t *testing.T) {
 }
 
 func TestOpenRouterGlowMatchesPi(t *testing.T) {
-	theme := ActiveTheme()
-	dark := theme.Appearance() != "light"
+	previous := activeTheme.Load()
+	t.Cleanup(func() { activeTheme.Store(previous) })
 	style := GetProviderBrandStyle("openrouter")
-	checked := 0
 	for _, c := range openRouterGlowCases {
-		if c.mode != theme.GetColorMode() || c.dark != dark {
-			continue
+		name := "light"
+		if c.dark {
+			name = "dark"
 		}
-		checked++
+		theme, err := loadBuiltinThemeWithMode(name, c.mode)
+		if err != nil {
+			t.Fatalf("theme %s in %s: %v", name, c.mode, err)
+		}
+		if theme.Appearance() != ThemeAppearance(name) || theme.GetColorMode() != c.mode {
+			t.Fatalf("theme %s in %s resolved as %s in %s", name, c.mode, theme.Appearance(), theme.GetColorMode())
+		}
+		activeTheme.Store(theme)
 		if got := style("OpenRouter", c.elapsed); got != c.want {
-			t.Errorf("glow at %v = %q, want %q", c.elapsed, got, c.want)
+			t.Errorf("glow at %v in %s dark=%v = %q, want %q", c.elapsed, c.mode, c.dark, got, c.want)
 		}
-	}
-	if checked == 0 {
-		t.Fatalf("no recorded Pi glow for mode %s dark=%v", theme.GetColorMode(), dark)
 	}
 }

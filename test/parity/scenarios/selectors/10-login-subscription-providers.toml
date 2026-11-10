@@ -11,8 +11,7 @@
 # (providers/openai.ts:11 "OpenAI", whose flow is "OpenAI (ChatGPT subscription)"; providers/openai-codex.ts:10 "OpenAI Codex").
 # oauth-selector.ts:164-179 preserves "stored" as a visible source label. Logout instead supplies "stored credential" and renders "configured".
 # Pi 1.0.0 (oauth-selector.ts:37 formatAuthSelectorProviderStatus) labels an option without credentials
-# " • not configured" instead of " • unconfigured". Re-probed against Pi 1.0.0 with this fixture,
-# the stable prefix is:
+# " • not configured" instead of " • unconfigured". Re-probed against Pi 1.0.0 with this fixture, the stable prefix was (without the "✦" partners, which Pi 1.0.0 never showed):
 #   Radius ✦ • not configured
 #   OpenRouter ✦ • not configured
 #   Anthropic • not configured
@@ -22,6 +21,7 @@
 #   OpenAI • not configured
 #   OpenAI Codex • not configured
 #
+# The prefix list above is the Pi 1.5.1 probe: Pi 1.0.0 had no preferred partners and listed Anthropic first.
 # Pi 1.5.1 (provider-brand.ts, oauth-selector.ts isPreferredProvider) lists the preferred partners "Radius ✦" and "OpenRouter ✦" first,
 # ahead of Anthropic (probed with both binaries); the selected Radius name is animated (masked below). Later entries (xAI) sort after
 # OpenAI Codex. This crop ends after OpenAI Codex and excludes only those later entries. Kimi's
