@@ -104,9 +104,9 @@ func WithCauseDetail(err error) string {
 		}
 	} else {
 		var deepest error
-		for current, depth := errors.Unwrap(err), 0; depth < maxCauseDepth && current != nil; depth++ {
+		for current, depth := nodeCause(err), 0; depth < maxCauseDepth && current != nil; depth++ {
 			deepest = current
-			current = errors.Unwrap(current)
+			current = nodeCause(current)
 		}
 		if deepest == nil {
 			return message
@@ -129,6 +129,16 @@ func WithCauseDetail(err error) string {
 		return detail
 	}
 	return message + ": " + detail
+}
+
+// nodeCause is err's `cause` as Node has it. A Node fs error (nodeerrno.FSError) has none: its Unwrap is the Go error behind it, which
+// names the failure in the platform's words ("The system cannot find the file specified." for Windows' ERROR_FILE_NOT_FOUND) and is
+// not part of Node's message, which the FSError already is.
+func nodeCause(err error) error {
+	if _, fs := err.(*nodeerrno.FSError); fs { //nolint:errorlint // Only the fs error itself ends the chain; one that wraps it has the cause.
+		return nil
+	}
+	return errors.Unwrap(err)
 }
 
 func providerErrorBody(value any) *string {
