@@ -129994,6 +129994,17 @@
       "shapeHash": "sha256:93a6c6c514b3d04f95e2b5274d3e899928348deef941bd76a022f9ea0f5ed2eb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.abortNestedHostCalls",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Conn.abortNestedHostCalls",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(parentRequestID string)"
+      },
+      "shapeHash": "sha256:63c82cb08e94de025092acbd1edcb8272ac16cf01f7f4430479bb7428a7b862e"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.afterRetryBackoff",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "Conn.afterRetryBackoff",
@@ -130390,6 +130401,17 @@
       "shapeHash": "sha256:7ad79e891d2b43376ceeccf99e02f56606a75cab31624d40742e171b596e724c"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.markNestedCall",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Conn.markNestedCall",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(callID string)"
+      },
+      "shapeHash": "sha256:56b14af6ffae765307ff4dd1df798c9d350605aecce278d040060fc557edf12b"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.markRequestStarted",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "Conn.markRequestStarted",
@@ -130454,6 +130476,17 @@
         "type": "func(parentRequestID string, callID string) (context.Context, func())"
       },
       "shapeHash": "sha256:7ad79e891d2b43376ceeccf99e02f56606a75cab31624d40742e171b596e724c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.parentAbortedOnly",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Conn.parentAbortedOnly",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(parentRequestID string) bool"
+      },
+      "shapeHash": "sha256:ceabc840e0aa02ef4fe382a73245e6964bd66ac56ddd2e40c9eecc8aee5d7729"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.readLoop",
@@ -150628,6 +150661,17 @@
         "type": "func(o github.com/MichaelKinsy/PiG/ai.StreamOptions) map[string]any"
       },
       "shapeHash": "sha256:e0e2a41f3c6d3a895339c7bc63489bc18995f6e68e24438ee23a17ef49d898a4"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#nestedAbortMethod",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "nestedAbortMethod",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(method string) bool"
+      },
+      "shapeHash": "sha256:d60ece4b65b59f6c1c650107e0968b4f85db0c9923a48e6c67869ebcdc977bf9"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#nestedCall",
@@ -213902,6 +213946,17 @@
       "shapeHash": "sha256:86ba07eca070d6e9f8d0a30a474d6d563d7490b30157cea6b466b5d46fcca183"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#conn.armParentWithSignal",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "conn.armParentWithSignal",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(id string, runtime context.Context, request context.Context, signal context.CancelCauseFunc) (*requestParent, *queuedCancel)"
+      },
+      "shapeHash": "sha256:cb8b36a36acd00e97b42671e935e4b25e8d4035c5e696eff4f2d1ffe6b4aaf96"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#conn.beginCall",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "conn.beginCall",
@@ -214023,6 +214078,17 @@
       "shapeHash": "sha256:af87d13ceb835dbabd41c907304d77c0d874859a6092bb7a256f6f42b2b66057"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#conn.queueRequest",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "conn.queueRequest",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(id string)"
+      },
+      "shapeHash": "sha256:cfecdc755116fa71eb3b2bdd3bd35e8bff60ec89238fe389c46963b6e90a69dd"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#conn.readFrame",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "conn.readFrame",
@@ -214067,6 +214133,17 @@
       "shapeHash": "sha256:e0a08b6a4afdfcc7d06a4e19b779391b1e1b0b6fed5b7c94a56b04bebd48f4cf"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#conn.routeCancel",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "conn.routeCancel",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(id string, signalOnly bool, cause error) bool"
+      },
+      "shapeHash": "sha256:d2968e766f90be0a69e0167bc5e39da79dcbe1ba7f464b533ff1898b3e74c78e"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#conn.send",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "conn.send",
@@ -214087,17 +214164,6 @@
         "type": "func(env envelope) error"
       },
       "shapeHash": "sha256:528713effb4ff38475b43717cb1f279a65f214d55826a9b5fbd8a64bb82504ac"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#conn.signalParent",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
-      "name": "conn.signalParent",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(id string, cause error) bool"
-      },
-      "shapeHash": "sha256:25ad72d56ebdbfedaf16a171599c28d0d24ced80d973737b6cba0cbd45685409"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#conn.start",
@@ -218938,6 +219004,17 @@
         "type": "[]string"
       },
       "shapeHash": "sha256:a1c330895d4124c2ac5e7956eaa7a61082b08546669578b38030562429ad3b1e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#queuedCancel",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "queuedCancel",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "queuedCancel"
+      },
+      "shapeHash": "sha256:fb5a2a15147095f606c3253d2008aa6320961e21f7ab188852c955282d4c5968"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#queuedEvent",

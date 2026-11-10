@@ -46110,6 +46110,38 @@
       ]
     },
     {
+      "id": "BF-dafd5f5",
+      "title": "Aborting a run while an extension tool awaits a host call, such as a dialog, a notification, a session read…",
+      "symptom": "Aborting a run while an extension tool awaits a host call, such as a dialog, a notification, a session read or `exec`, no longer fails that call in the Go, Node, Python, Rust and Lisp extension SDKs.",
+      "rootCause": "Pi's abort aborts the signal of the tool in flight and nothing else (agent-loop.ts:817-853): the tool's in-process host calls complete, and a nested executeTool without a signal of its own runs with the outer tool's signal (runner.ts:979-981). The host sent the ordinary cancel and cancelled every host call of the request.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Aborting a run while an extension tool awaits a host call, such as a dialog, a notification, a session read or `exec`, no longer fails that call in the Go, Node, Python, Rust and Lisp extension SDKs. The abort aborts the tool's signal and nothing else, as in Pi: the pending call and later calls return their results, and only the tool's nested `executeTool` calls take the abort as their signal. A tool that has not settled when the 3 s grace period ends (D111) is abandoned as before, and what it still awaits is cancelled then.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0821b337c2",
+          "date": "2026-11-10"
+        },
+        {
+          "hash": "0c06e59b1f",
+          "date": "2026-11-10"
+        },
+        {
+          "hash": "dafd5f5103",
+          "date": "2026-11-10"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/tool_abort_signal_only_test.go::TestToolCallAbortCancelsSignalOnlyAndSparesItsHostCalls",
+        "coding/extension/host/subprocess/tool_abort_signal_only_test.go::TestToolCallInactivityCancelStaysOrdinary",
+        "test/extension-conformance/tool_signal_only_test.go::TestToolAbortKeepsTheToolsHostCalls"
+      ]
+    },
+    {
       "id": "BF-db12780",
       "title": "fix(agent): end the tool flow at custom user messages and hold system messages mid-flow",
       "symptom": "fix(agent): end the tool flow at custom user messages and hold system messages mid-flow",
