@@ -10,7 +10,8 @@ so the check proves the two bundled executables work together. It then repeats t
 relative `--pig ./pig` and with no `--pig`, from an unrelated directory and a PATH without any pig, and
 requires pig-acp to find the pig beside itself. A started session
 is a session id, or, when pig has no credentials (CI), pig-acp's authentication
-error offering the terminal login. The caller names both executables.
+error offering the terminal login, which pig-acp advertises only to a client that
+declares `auth.terminal`, so the smoke declares it as an editor does. The caller names both executables.
 
     pig-acp-smoke.py --version X.Y.Z --pig-acp PATH --pig PATH
 """
@@ -57,7 +58,7 @@ def session(pig_acp: pathlib.Path, args: list[str], path_without_pig: str | None
         timer = threading.Timer(TIMEOUT, proc.kill)
         timer.start()
         try:
-            proc.stdin.write(request(1, "initialize", {"protocolVersion": 1, "clientCapabilities": {}}))
+            proc.stdin.write(request(1, "initialize", {"protocolVersion": 1, "clientCapabilities": {"auth": {"terminal": True}}}))
             proc.stdin.flush()
             initialize = read_response(proc, 1)
             if initialize.get("result", {}).get("protocolVersion") != 1:
