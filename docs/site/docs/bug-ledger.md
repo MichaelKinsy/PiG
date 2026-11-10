@@ -657,6 +657,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-626dccc](#bf-626dccc) | OpenAI-compatible Chat Completions requests resolve `chat_template_args` (the `baseten` thinking format) and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-62743f9](#bf-62743f9) | A streamed OpenRouter-style `reasoning_details` no longer costs more with every delta | PiG's own defect | All platforms | 0.7.0 |
 | [BF-62a1c87](#bf-62a1c87) | The `ExtensionSelector` and `ExtensionInput` oracles also run with the Kitty keyboard protocol active (CSI-u… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-62aaa5e](#bf-62aaa5e) | A second termination signal during print or JSON mode's shutdown now ends the process with the code of the… | PiG's own defect | All platforms | Unreleased |
 | [BF-62ae30d](#bf-62ae30d) | Durable: reading the history of a conversation whose parent conversation is not stored now fails with Pi's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-62b009c](#bf-62b009c) | fix: relocate the transcript wire encoders' perf annotations; raise the headless default size ceilings for… | PiG's own defect | All platforms | Unreleased |
 | [BF-62b28a2](#bf-62b28a2) | `/mcp login` and `pig mcp login` no longer stay on "Connecting..." after a successful browser sign-in while… | PiG's own defect | All platforms | Unreleased |
@@ -10773,6 +10774,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Commit that wrote the release note (the fix commit is not identified):** `62a1c87b2a` (2026-10-11)
 - **Tests:** `internal/codingagent/settings_selector_oracle_test.go::TestSettingsSelectorMatchesPi`, `tui/extension_input_oracle_test.go::TestExtensionInputMatchesPi`, `tui/extension_selector_oracle_test.go::TestExtensionSelectorMatchesPi`
 - **Release note:** The `ExtensionSelector` and `ExtensionInput` oracles also run with the Kitty keyboard protocol active (CSI-u enter, escape, ctrl+j, ctrl+c, shift+enter, letters, modified arrows) in Pi and Pig; no difference.
+
+### BF-62aaa5e
+
+**A second termination signal during print or JSON mode's shutdown now ends the process with the code of the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A second termination signal during print or JSON mode's shutdown now ends the process with the code of the signal that repeated (143 for SIGTERM, 129 for SIGHUP), as Pi's per-signal handler does.
+- **Root cause:** The repeat killed the extension processes before it exited, which completed the disposal the first signal waited on, so the first signal's exit (and the mode's own return) raced it and could end the process with the first signal's code.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `62aaa5e7d9` (2026-11-09)
+- **Tests:** None recorded.
+- **Release note:** A second termination signal during print or JSON mode's shutdown now ends the process with the code of the signal that repeated (143 for SIGTERM, 129 for SIGHUP), as Pi's per-signal handler does. A SIGHUP that followed a SIGTERM could end with 143.
 
 ### BF-62ae30d
 

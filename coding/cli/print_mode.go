@@ -62,6 +62,19 @@ func (e *signalExitError) ExitCode() int {
 // arriving mid-run.
 var receivedTerminationSignal atomic.Int32
 
+// repeatedTerminationSignal is the signal that repeated while print mode was disposing, if any. print-mode.ts gives each signal its own
+// handler, which exits with that signal's code (143 for SIGTERM, 129 for SIGHUP), so the repeat decides the code: it is set before
+// anything the repeat does can end the extension processes and so complete the disposal the first signal waits for.
+var repeatedTerminationSignal atomic.Int32
+
+// terminationExitSignal is the signal whose code ends the process: the repeated one, else the first.
+func terminationExitSignal(first syscall.Signal) syscall.Signal {
+	if repeated := repeatedTerminationSignal.Load(); repeated != 0 {
+		return syscall.Signal(repeated)
+	}
+	return first
+}
+
 // printModeRuntime is what main resolved for the print-mode session: the
 // runtime services and extensions, and the options the session starts with.
 type printModeRuntime struct {
@@ -300,7 +313,7 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 		if extensionHost, _ := rpcExtensionHost(rt.Session()); extensionHost != nil {
 			extensionHost.TerminateProcesses()
 		}
-		exitProcess(128 + int(sysSig))
+		exitProcess(128 + int(terminationExitSignal(sysSig)))
 	}
 	go func() {
 		select {
@@ -310,6 +323,7 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 				select {
 				case again := <-intCh:
 					if againSig, againOK := again.(syscall.Signal); againOK {
+						repeatedTerminationSignal.Store(int32(againSig))
 						tools.KillTrackedDetachedChildren()
 						exitOnSignal(againSig)
 					}
@@ -332,7 +346,7 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 		// surfaced, so the caller reports the signal's exit code instead of a
 		// generic failure.
 		if sig := receivedTerminationSignal.Load(); sig != 0 {
-			err = &signalExitError{signal: syscall.Signal(sig)}
+			err = &signalExitError{signal: terminationExitSignal(syscall.Signal(sig))}
 		}
 	}()
 
