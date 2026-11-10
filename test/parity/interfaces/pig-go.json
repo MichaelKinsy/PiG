@@ -48297,17 +48297,6 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/ai#maxLinkHops",
-      "package": "github.com/MichaelKinsy/PiG/ai",
-      "name": "maxLinkHops",
-      "kind": "constant",
-      "exported": false,
-      "shape": {
-        "type": "untyped int"
-      },
-      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#maxMistralErrorBodyChars",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "maxMistralErrorBodyChars",
