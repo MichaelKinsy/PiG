@@ -306,9 +306,19 @@ func (r *ModelRegistry) storedCredential(providerID string) (ai.Credential, bool
 	return *credential, true
 }
 
-// radiusHasAuth mirrors hasConfiguredAuth for a Radius provider: a stored
-// credential, configured API key, or RADIUS_API_KEY.
+// radiusHasAuth mirrors hasConfiguredAuth for a Radius provider: a runtime
+// API key (model-runtime.ts RuntimeCredentials answers the credential read
+// with {type: "api_key", key}), a stored credential, configured API key, or
+// RADIUS_API_KEY.
 func (r *ModelRegistry) radiusHasAuth(providerID string) bool {
+	r.mu.RLock()
+	runtime := r.runtimeCredentials.Load()
+	r.mu.RUnlock()
+	if runtime != nil {
+		if key, ok := runtime.RuntimeAPIKey(providerID); ok && key != "" {
+			return true
+		}
+	}
 	if _, ok := r.storedCredential(providerID); ok {
 		return true
 	}

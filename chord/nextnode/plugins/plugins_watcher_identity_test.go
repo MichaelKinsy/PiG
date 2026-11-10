@@ -100,10 +100,25 @@ func TestTheBaseMarkIsNotSetByADirectoryMovedAwayAndBackAndItsWatchesGoOn(t *tes
 	f.baseIs(true)
 }
 
+// skipWhereAWatchedTreeCannotMove skips a case that renames a directory with a watched directory inside it. Windows locks the
+// parent of a directory with a ReadDirectoryChangesW handle open (the handle's FILE_SHARE_DELETE frees the watched directory
+// itself, not its parent), so that rename fails with ERROR_ACCESS_DENIED. Pi's watcher does the same: packages/chord/src/node/
+// plugins/watcher.ts #watchAlone (line 404) and #watchDirs (line 478) call `watch(dir, ...)` once per directory, never with
+// `recursive`, and #watchDirs walks down to watch each subdirectory; its watcher.test.ts renames such trees on no platform
+// check, and Pi's CI has no Windows job for chord. TestWindowsRefusesToRenameAWatchedTreeUntilTheWatcherCloses shows the lock
+// on Windows.
+func skipWhereAWatchedTreeCannotMove(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows locks the parent of a watched directory against a rename, as it does for Pi's one fs.watch per directory (watcher.ts:404, :478)")
+	}
+}
+
 // A base directory (a tree watch, not one held alone) moved away and back in one burst keeps every watch of its tree: kqueue
 // drops the watch of a renamed directory, and `keepWatches` puts back the ones of the tree. An edit of a file in the directory
 // itself and one in its subdirectory are seen afterwards, and so is a new file (the directory's own watch).
 func TestTheBaseMarkKeepsTheTreeWatchesOfABaseDirectoryMovedAwayAndBackInOneBurst(t *testing.T) {
+	skipWhereAWatchedTreeCannotMove(t)
 	parent := realOf(t, tempRoot(t))
 	base := filepath.Join(parent, "app")
 	writeFiles(t, base, map[string]string{"core.ts": "v1", "sub/inner.ts": "inner"})
@@ -191,10 +206,18 @@ func TestTheBaseMarkWatchesADirectoryBackWhoseWatchCouldNotBePutBackWhileItWasAw
 	f.baseIs(true)
 	f.run(func() {
 		away := filepath.Join(top, "away")
+		// What ends the watch differs: inotify's ends with the removal of its directory and kqueue's with its rename, so it is lost
+		// after the move; the watch of ReadDirectoryChangesW stays on the moved directory, and fsnotify's Remove finds a watch by
+		// the path it has now, so on Windows it is lost before the move (nothing is watched inside the directory, so it can move).
+		if runtime.GOOS == "windows" {
+			f.loseWatch(dir)
+		}
 		if err := os.Rename(dir, away); err != nil {
 			t.Error(err)
 		}
-		f.loseWatch(dir)
+		if runtime.GOOS != "windows" {
+			f.loseWatch(dir)
+		}
 		f.watcher.event(f.watcher.fs, fsnotify.Event{Name: top, Op: fsnotify.Create})
 		if _, watched := f.watcher.baseWatched[dir]; watched {
 			t.Errorf("%s is watched, though it is missing", dir)
@@ -216,6 +239,7 @@ func TestTheBaseMarkWatchesADirectoryBackWhoseWatchCouldNotBePutBackWhileItWasAw
 // The same for a base directory, a tree: the watches of its directories that ended while it was away cannot be put back, and
 // are put back when it is back, whatever its identity then.
 func TestTheBaseMarkWatchesTheTreeOfABaseDirectoryBackWhoseWatchesCouldNotBePutBackWhileItWasAway(t *testing.T) {
+	skipWhereAWatchedTreeCannotMove(t)
 	parent := realOf(t, tempRoot(t))
 	base := filepath.Join(parent, "app")
 	writeFiles(t, base, map[string]string{"core.ts": "v1", "sub/inner.ts": "inner"})
