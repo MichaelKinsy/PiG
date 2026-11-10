@@ -268,7 +268,7 @@ func TestModelNetworkEnabledHonorsOfflineVariables(t *testing.T) {
 	}
 }
 
-// Pi refreshes Radius like every provider (Models.resolveRefreshCredential, then refreshStoredOAuthCredential): once the token request is on its way the caller's cancellation (the exit's) ends only the wait for the auth lock, so the rotated token is saved, and the registry's SettleCredentialWrites waits for that write (D237). Red without ModifyCredentialDetached and the detached request context: the cancelled request fails and auth.json keeps "old-refresh".
+// Pi refreshes Radius like every provider (Models.resolveRefreshCredential, then refreshStoredOAuthCredential): once the token request is on its way the caller's cancellation (the exit's) ends only the wait for the auth lock, so the rotated token is saved, and the registry's SettleCredentialWrites waits for that write. Red without ModifyCredentialDetached and the detached request context: the cancelled request fails and auth.json keeps "old-refresh".
 func TestRadiusRefreshSurvivesCancellationOnceTheTokenRequestWasSentAndExitWaitsForIt(t *testing.T) {
 	requested, release := make(chan struct{}), make(chan struct{})
 	var releaseOnce sync.Once

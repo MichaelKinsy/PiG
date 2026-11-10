@@ -486,7 +486,7 @@ func (a *AuthStorage) ensureFileExists() error {
 	if pathExists(a.path) {
 		return nil
 	}
-	// Exclusive creation preserves existing bytes, modes, ACLs and symlinks, including when another process creates the file concurrently. A symlink whose target is missing gets its target created, as Pi's writeFileSync does, because the lock follows the link to the real file (D236).
+	// Exclusive creation preserves existing bytes, modes, ACLs and symlinks, including when another process creates the file concurrently. A symlink whose target is missing gets its target created, as Pi's writeFileSync does, because the lock follows the link to the real file.
 	file, err := createNewFollowingLinks(a.path, ownerfile.CreateNew)
 	if errors.Is(err, fs.ErrExist) {
 		return nil

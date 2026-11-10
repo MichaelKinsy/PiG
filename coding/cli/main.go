@@ -1629,7 +1629,7 @@ func Main(args []string, options *MainOptions) {
 	// SIGTERM must reach extensions before the root context is cancelled.
 	setTerminationShutdownHook(func() {
 		interactive.ShutdownFromSignal()
-		// pig divergence (D237): Pi's signal shutdown awaits runtimeHost.dispose(), which waits for a started OAuth refresh to be saved. Main cancels the root context, which owns the extension processes, as soon as this hook returns.
+		// Pi's signal shutdown awaits runtimeHost.dispose(), which waits for a started OAuth refresh to be saved. Main cancels the root context, which owns the extension processes, as soon as this hook returns.
 		//portlint:allow ctxbackground Pi's signal shutdown awaits dispose() with no signal (interactive-mode.ts shutdown); this signal hook has no caller context
 		_ = rt.SettleCredentialWrites(context.Background())
 	})

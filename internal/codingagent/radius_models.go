@@ -394,7 +394,7 @@ func (r *ModelRegistry) refreshRadiusOAuth(ctx context.Context, provider *ai.Rad
 	if !hasStore {
 		return nil, nil
 	}
-	// pig divergence (D237): Pi refreshes Radius like every provider (Models.resolveRefreshCredential, then refreshStoredOAuthCredential): through the registry's credential overlay, whose pending modifications process exit waits for, with the caller's cancellation ending only the wait for the lock and the request bounded by the fifteen-second timeout alone.
+	// Pi refreshes Radius like every provider (Models.resolveRefreshCredential, then refreshStoredOAuthCredential): through the registry's credential overlay, whose pending modifications process exit waits for, with the caller's cancellation ending only the wait for the lock and the request bounded by the fifteen-second timeout alone.
 	oauth := &ai.OAuthAuth{Name: provider.OAuth().Name(), Refresh: func(ctx context.Context, current ai.Credential) (ai.Credential, error) {
 		next, err := provider.OAuth().RefreshTokenContext(ctx, current.OAuthCredentials())
 		if err != nil {

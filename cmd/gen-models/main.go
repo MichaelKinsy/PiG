@@ -534,10 +534,6 @@ func decodeJSONModelGroup(data []byte, seen map[string]string) ([]jsonModel, err
 			return nil, fmt.Errorf("%s: %w", key, err)
 		}
 		encoded := json.RawMessage(bytes.Clone(value)) // the next call on the decoder voids value
-		encoded, err = applyD240SonnetFiveTemperature(encoded)
-		if err != nil {
-			return nil, fmt.Errorf("%s: %w", key, err)
-		}
 		model, err := decodeJSONModel(encoded)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", key, err)

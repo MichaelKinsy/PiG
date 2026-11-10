@@ -141,7 +141,7 @@ func (p *nativeProviderProxy) refreshCredential(ctx context.Context, credential 
 		if float64(time.Now().UnixMilli()) < credential.ExpiresMillis() {
 			return credential, nil, nil
 		}
-		// pig divergence (D237): the request may already have rotated the single-use refresh token, so exit's cancellation must not cut it (as ai.Models' refresh, models.ts:resolveRefreshCredential).
+		// The request may already have rotated the single-use refresh token, so exit's cancellation must not cut it (as ai.Models' refresh, models.ts:resolveRefreshCredential).
 		value, err := ai.RefreshOAuthDetached(ctx, auth.OAuth, *credential)
 		if err != nil {
 			return nil, nil, err
