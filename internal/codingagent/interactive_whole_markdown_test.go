@@ -3,6 +3,7 @@ package codingagent
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"runtime"
 	"strings"
 	"testing"
 
