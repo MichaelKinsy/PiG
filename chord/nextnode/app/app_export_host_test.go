@@ -1,8 +1,10 @@
 package app
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -14,13 +16,14 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
 )
 
 // Ports packages/chord/test/node/app/app.test.ts "export and import per address" (Pi 8a5da3ce6), the parts about the server's records
 // and rows belonging to an address: copied, refused, replaced and deleted with it, and the order of an import and a delete around the
 // server's commit. The server's data is two parts here (D462): the NodeHost's (a plugin's documents and rows, `server.archive`) and the
-// Go host's (`kit-server.archive`); the cases that need the NodeHost's part (ServerHostData's JavaScript facet over Pi's TypeScript at
-// the 1.5.2 pin) fail until that facet lands.
+// Go host's (`kit-server.archive`); the NodeHost's part is Pi's TypeScript at the 1.5.2 pin, reached through the process's control requests (plugins.NodeHost.ExportHostData
+// and its siblings).
 
 // metaStore is the Go form of the meta plugin's server object (`MetaStore`; contracts are data).
 var metaStore = mustLocal("test.meta-store", contracts.LocalDeclaration{
@@ -55,7 +58,7 @@ func projectAddress(id string) contracts.Address {
 	return project.Address(delta.JsonObjectOf("id", id))
 }
 
-func metaSet(t *testing.T, meta *host.Reference, id, title, label string) {
+func metaSet(t *testing.T, meta *plugins.NodeReference, id, title, label string) {
 	t.Helper()
 	if _, err := meta.Call("set", delta.JsonObjectOf("id", id, "title", title, "label", label), background); err != nil {
 		t.Fatal(err)
@@ -63,7 +66,7 @@ func metaSet(t *testing.T, meta *host.Reference, id, title, label string) {
 }
 
 // metaGet is the title and the labels the meta plugin holds of project id.
-func metaGet(t *testing.T, meta *host.Reference, id string) (string, []string) {
+func metaGet(t *testing.T, meta *plugins.NodeReference, id string) (string, []string) {
 	t.Helper()
 	got, err := meta.Call("get", id, background)
 	if err != nil {
@@ -79,7 +82,8 @@ func metaGet(t *testing.T, meta *host.Reference, id string) (string, []string) {
 
 func TestAppCarriesTheServersRecordsAndRowsOfTheAddressCopiedRefusedReplacedAndDeletedWithIt(t *testing.T) {
 	s := startTestApp(t, map[string]map[string]string{"notes": notesPlugin, "meta": metaPlugin}, projectOptions(t))
-	meta, err := s.app.Host.Get(background, metaStore, delta.NewJsonObject(0), host.GetOptions{})
+	// A local type a plugin serves is the NodeHost's (Pi's `app.host.get`: one host; D462, as the echo plugin's test gets it).
+	meta, err := s.app.Node.Get(background, metaStore, delta.NewJsonObject(0), host.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,20 +145,28 @@ func TestAppCarriesTheServersRecordsAndRowsOfTheAddressCopiedRefusedReplacedAndD
 	}
 }
 
-// refusingHost is the app's host with the server's data part on the NodeHost failing with err (Pi's test replaces `importHostData` and
-// `deleteHostData` of the host; the NodeHost's commit is the one behind ServerHostData's `importFrom` and `deleteFor`).
-type refusingHost struct {
-	host.Host
+// refusingNode is the NodeHost's host data operations failing with err while it is set (Pi's test replaces `importHostData` and
+// `deleteHostData` of the host; the NodeHost's are the ones behind the app's `nodeData`, a Go seam for the replacement).
+type refusingNode struct {
+	nodeHostData
 	err   error
-	stubs *int
+	asked int
 }
 
-func (h *refusingHost) Get(ctx context.Context, contract *contracts.Contract, params any, options host.GetOptions) (*host.Reference, error) {
-	if contract == ServerHostData && h.err != nil {
-		*h.stubs++
-		return nil, h.err
+func (n *refusingNode) ImportHostData(address contracts.Address, path, existing string, ctx context.Context) error {
+	if n.err != nil {
+		n.asked++
+		return n.err
 	}
-	return h.Host.Get(ctx, contract, params, options)
+	return n.nodeHostData.ImportHostData(address, path, existing, ctx)
+}
+
+func (n *refusingNode) DeleteHostData(address contracts.Address, ctx context.Context) error {
+	if n.err != nil {
+		n.asked++
+		return n.err
+	}
+	return n.nodeHostData.DeleteHostData(address, ctx)
 }
 
 func TestAppOrdersAnImportAndADeleteAroundTheServersCommitUndoneBeforeItKeptAfterAnUnknownOutcome(t *testing.T) {
@@ -181,10 +193,9 @@ func TestAppOrdersAnImportAndADeleteAroundTheServersCommitUndoneBeforeItKeptAfte
 	if err := s.app.ExportData(projectAddress("p1"), archive, background); err != nil {
 		t.Fatal(err)
 	}
-	real := s.app.Host
-	stubbed := 0
-	refusing := &refusingHost{Host: real, stubs: &stubbed}
-	s.app.Host = refusing
+	real := s.app.nodeData
+	refusing := &refusingNode{nodeHostData: real}
+	s.app.nodeData = refusing
 	// The server refuses: the renames are undone, the old directory is back, nothing is left beside it.
 	refusing.err = data.Invalid(data.ReasonArgs, "refused by the server")
 	wantError(t, s.app.ImportData(archive, projectAddress("p2"), background, DataImportOptions{Existing: store.ExistingReplace}), "refused by the server")
@@ -222,10 +233,10 @@ func TestAppOrdersAnImportAndADeleteAroundTheServersCommitUndoneBeforeItKeptAfte
 	}
 	refusing.err = nil
 	// A directory whose server part is gone already (a crash between the two): a repeated delete removes it.
-	if err := s.app.serverHostData("deleteFor", delta.JsonObjectOf("address", AddressParam(projectAddress("p1"))), background); err != nil {
+	if err := real.DeleteHostData(projectAddress("p1"), background); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := real.DeleteHostData(projectAddress("p1"), background); err != nil {
+	if _, err := s.app.Host.DeleteHostData(projectAddress("p1"), background); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.app.DeleteData(projectAddress("p1"), background); err != nil {
@@ -234,8 +245,8 @@ func TestAppOrdersAnImportAndADeleteAroundTheServersCommitUndoneBeforeItKeptAfte
 	if got := dirEntries(t, projects); slices.Contains(got, "project%7Cp1") {
 		t.Fatalf("workers after the repeated delete = %v", got)
 	}
-	if stubbed == 0 {
-		t.Fatal("the server's data part was never asked")
+	if refusing.asked != 3 {
+		t.Fatalf("the NodeHost's part was asked to fail %d times, want 3", refusing.asked)
 	}
 }
 
@@ -276,5 +287,128 @@ func TestUnknownImportErrorKeepsTheCommitsRejectionAsItsCause(t *testing.T) {
 	want := `importData: project|p2: the server's commit has an unknown outcome; nothing was undone (the new directory is in place). Run the import again with existing: "replace" once the server's store is back.`
 	if err.Error() != want {
 		t.Fatalf("message = %q, want %q", err.Error(), want)
+	}
+}
+
+// goHost is the app's Go host with its host data operations watched or failing.
+type goHost struct {
+	host.Host
+	importErr error
+	deleted   []string
+}
+
+func (h *goHost) ImportHostData(parts store.PartSource, ctx context.Context, options store.HostImportOptions) (store.HostDataCounts, error) {
+	if h.importErr != nil {
+		return store.HostDataCounts{}, h.importErr
+	}
+	return h.Host.ImportHostData(parts, ctx, options)
+}
+
+func (h *goHost) DeleteHostData(address contracts.Address, ctx context.Context) (store.HostDataCounts, error) {
+	h.deleted = append(h.deleted, address.Key)
+	return h.Host.DeleteHostData(address, ctx)
+}
+
+// exportedProject exports project p1 (with notes) of a started app: its archive's path.
+func exportedProject(t *testing.T, s started) string {
+	t.Helper()
+	notes := holdNotes(t, s, "p1")
+	write(t, notes, "notes of p1")
+	notes.Release()
+	if err := s.app.Workers["project"].Stop(projectAddress("p1"), background); err != nil {
+		t.Fatal(err)
+	}
+	archive := filepath.Join(t.TempDir(), "p1.tar")
+	if err := s.app.ExportData(projectAddress("p1"), archive, background); err != nil {
+		t.Fatal(err)
+	}
+	return archive
+}
+
+// Beyond Pi's tests (D462: two commits where Pi has one): the NodeHost's commit stood and the Go host's definitely failed. The old
+// directory cannot be paired with the NodeHost's new data, so nothing is undone, and the error says which commit stood.
+func TestAppKeepsTheNewDirectoryWhenTheGoHostsCommitFailsAfterTheNodeHostsStood(t *testing.T) {
+	s := startTestApp(t, map[string]map[string]string{"notes": notesPlugin}, projectOptions(t))
+	archive := exportedProject(t, s)
+	failing := &goHost{Host: s.app.Host, importErr: data.Invalid(data.ReasonArgs, "refused by the Go host")}
+	s.app.Host = failing
+	err := s.app.ImportData(archive, projectAddress("p2"), background, DataImportOptions{})
+	wantError(t, err, "the plugins' store committed and the server host's did not; nothing was undone")
+	if !errors.Is(err, failing.importErr) {
+		t.Fatalf("the Go host's rejection is not the cause of %v", err)
+	}
+	if got := dirEntries(t, filepath.Join(s.dataDir, "workers", "project")); !slices.Equal(got, []string{"project%7Cp1", "project%7Cp2"}) {
+		t.Fatalf("workers = %v", got)
+	}
+}
+
+// An archive without the Go host's part replaces the Go host's data of the address by nothing under replace: Pi's replace removes the
+// address's data.
+func TestAppReplacesTheGoHostsDataByNothingWhenTheArchiveHasNoPartOfIt(t *testing.T) {
+	s := startTestApp(t, map[string]map[string]string{"notes": notesPlugin}, projectOptions(t))
+	archive := exportedProject(t, s)
+	without := filepath.Join(t.TempDir(), "without.tar")
+	copyWithout(t, archive, without, "kit-server.archive")
+	watching := &goHost{Host: s.app.Host}
+	s.app.Host = watching
+	if err := s.app.ImportData(without, projectAddress("p2"), background, DataImportOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if len(watching.deleted) != 0 {
+		t.Fatalf("a refusing import deleted the Go host's data of %v", watching.deleted)
+	}
+	if err := s.app.ImportData(without, projectAddress("p2"), background, DataImportOptions{Existing: store.ExistingReplace}); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(watching.deleted, []string{"project|p2"}) {
+		t.Fatalf("the Go host deleted the data of %v, want project|p2", watching.deleted)
+	}
+}
+
+// copyWithout writes the archive at from to to, without the entry named skip.
+func copyWithout(t *testing.T, from, to, skip string) {
+	t.Helper()
+	in, err := os.Open(from)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = in.Close() }()
+	type kept struct {
+		path string
+		text []byte
+	}
+	var entries []kept
+	if err := ReadTar(in, func(entry TarRead) error {
+		text, err := io.ReadAll(entry.Data)
+		if entry.Kind != TarDirectory && entry.Path != skip {
+			entries = append(entries, kept{entry.Path, text})
+		}
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	out, err := os.Create(to)
+	if err != nil {
+		t.Fatal(err)
+	}
+	all := func(yield func(TarEntry) bool) {
+		for _, entry := range entries {
+			if !yield(TarEntry{Path: entry.path, Size: int64(len(entry.text)), Data: bytes.NewReader(entry.text)}) {
+				return
+			}
+		}
+	}
+	if err := errors.Join(WriteTar(out, all), out.Close()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestUnknownOutcomeIsTheNodeHostsStorageFailedToo(t *testing.T) {
+	chord := data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Reason: data.ReasonStorageFailed, Message: "store: storage failed"}, nil)
+	if !unknownOutcome(chord) || !unknownOutcome(&plugins.NodeError{Name: "ChordError", Message: chord.Message, Chord: chord}) {
+		t.Fatal("storage_failed is not an unknown outcome")
+	}
+	if unknownOutcome(data.Invalid(data.ReasonArgs, "refused")) || unknownOutcome(&plugins.NodeError{Name: "Error", Message: "x"}) || unknownOutcome(errors.New("storage_failed")) {
+		t.Fatal("another rejection is an unknown outcome")
 	}
 }

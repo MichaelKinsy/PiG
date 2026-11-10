@@ -347,6 +347,8 @@ type App struct {
 	Plugins AppPlugins
 	// Node is the server's plugins' host (the NodeHost the server host accepted the link of).
 	Node *plugins.NodeHost
+	// nodeData is Node's host data operations (the seam of the tests).
+	nodeData nodeHostData
 	// DataDir is the data directory.
 	DataDir string
 	// Web is the web surface, when the app has one: its base bundle's hash once built (BasesBuilt).
@@ -652,6 +654,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	}, ctx)
 	// A required root's plugin failing returns the loaded host with the *PluginError: the app owns it and closes it.
 	a.Node = node
+	a.nodeData = node
 	if err != nil {
 		return err
 	}
@@ -848,10 +851,21 @@ func (a *App) workersOf(kind AppWorkerKind, layout AppLayout, hosts *workerHosts
 }
 
 // unknownOutcome is whether a host data commit's rejection leaves its outcome unknown: the store stopped after or during `COMMIT`
-// (`unavailable/storage_failed`), so the commit may stand.
+// (`unavailable/storage_failed`), so the commit may stand. The NodeHost's rejection is a *plugins.NodeError holding the ChordError.
 func unknownOutcome(err error) bool {
 	chord, ok := data.IsChordError(err)
+	if node, isNode := errors.AsType[*plugins.NodeError](err); !ok && isNode && node.Chord != nil {
+		chord, ok = node.Chord, true
+	}
 	return ok && chord.Code == data.CodeUnavailable && chord.Reason == data.ReasonStorageFailed
+}
+
+// nodeHostData is the host data operations of the NodeHost, the host of the server's plugins (*plugins.NodeHost; D462): the seam where
+// Pi's test replaces the host's `importHostData` and `deleteHostData`.
+type nodeHostData interface {
+	ExportHostData(address contracts.Address, path string, ctx context.Context) error
+	ImportHostData(address contracts.Address, path, existing string, ctx context.Context) error
+	DeleteHostData(address contracts.Address, ctx context.Context) error
 }
 
 // workerLock is the process lock of the worker with key: its worker holds it while it runs, an export or import meanwhile.
@@ -950,7 +964,7 @@ func (a *App) ExportData(address contracts.Address, path string, ctx context.Con
 	defer func() { err = errors.Join(err, os.RemoveAll(staging)) }()
 	// pig divergence (D462): the server's data is the NodeHost's part (`server.archive`) and the Go host's (`kit-server.archive`).
 	server, kitServer := filepath.Join(staging, "server.archive"), filepath.Join(staging, "kit-server.archive")
-	if err := a.serverHostData("exportTo", delta.JsonObjectOf("address", AddressParam(address), "path", server), ctx); err != nil {
+	if err := a.nodeData.ExportHostData(address, server, ctx); err != nil {
 		return err
 	}
 	export, err := a.Host.ExportHostData(address, ctx)
@@ -1097,10 +1111,15 @@ func (a *App) placeAndCommit(dir, staging, aside, server, kitServer string, addr
 		return false, err
 	}
 	*placed = true
-	if err := a.serverHostData("importFrom", delta.JsonObjectOf("address", AddressParam(address), "path", filepath.Join(dir, "server.archive"), "existing", existing), ctx); err != nil {
+	if err := a.nodeData.ImportHostData(address, filepath.Join(dir, "server.archive"), existing, ctx); err != nil {
 		return false, err
 	}
 	if kitServer == "" {
+		// No part of the Go host's: its data of the address is replaced by nothing (a replace removes the address's data), or left (refuse).
+		if existing == store.ExistingReplace {
+			_, err := a.Host.DeleteHostData(address, ctx)
+			return true, err
+		}
 		return true, nil
 	}
 	file, err := os.Open(filepath.Join(dir, "kit-server.archive"))
@@ -1147,7 +1166,7 @@ func (a *App) DeleteData(address contracts.Address, ctx context.Context) error {
 		// The server's parts first (the commits); a crash before the directory goes leaves it orphaned (nothing refers to it) and a
 		// repeated DeleteData removes it.
 		// pig divergence (D462): two commits (the NodeHost's store, then the Go host's), where Pi's `deleteHostData` is one.
-		if err := a.serverHostData("deleteFor", delta.JsonObjectOf("address", AddressParam(address)), ctx); err != nil {
+		if err := a.nodeData.DeleteHostData(address, ctx); err != nil {
 			return err
 		}
 		if _, err := a.Host.DeleteHostData(address, ctx); err != nil {
