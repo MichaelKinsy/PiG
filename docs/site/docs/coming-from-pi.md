@@ -2,15 +2,15 @@
 
 PiG is a Go implementation of [Pi](https://github.com/earendil-works/pi), the reference terminal coding agent. PiG follows Pi's observable behavior. This page is for people who already use Pi: what stays the same, what is different, and how to move over.
 
-PiG is not an official Pi project. Michael Kinsy created PiG, which was originally developed at Hewlett Packard Enterprise. Pi's own documentation is at [pi.dev](https://pi.dev/docs/latest). PiG currently follows Pi 1.5.1.
+PiG is not an official Pi project. Michael Kinsy created PiG, which was originally developed at Hewlett Packard Enterprise. Pi's own documentation is at [pi.dev](https://pi.dev/docs/latest). PiG currently follows Pi 1.5.2.
 
 ## What stays the same
 
 - The terminal interface, the slash commands, the keybindings and the built-in tools follow Pi. See [Slash commands](/docs/latest/slash-commands), [Keybindings](/docs/latest/keybindings) and [Using PiG](/docs/latest/usage).
-- Settings, `auth.json` and session files use formats that are compatible with Pi 1.5.1. See [Configuration](/docs/latest/configuration#using-pis-directories).
+- Settings, `auth.json` and session files use formats that are compatible with Pi 1.5.2. See [Configuration](/docs/latest/configuration#using-pis-directories).
 - `AGENTS.md` context files, skills, prompt templates, themes and Packages work as they do in Pi. A Pi Package with a `pi` manifest in its `package.json` installs the same way.
 - The modes follow Pi: interactive, print (`-p`), JSON ([JSON event stream](/docs/latest/json)) and RPC ([RPC protocol](/docs/latest/rpc)).
-- The extension API and events follow Pi 1.5.1. TypeScript and JavaScript extensions run on Node with Pi's own runtime code (D73).
+- The extension API and events follow Pi 1.5.2. TypeScript and JavaScript extensions run on Node with Pi's own runtime code (D73).
 
 Every difference that a user or an extension can observe has a numbered record in the [divergence ledger](https://github.com/MichaelKinsy/PiG/blob/main/docs/parity/DIVERGENCES.md). A difference that the ledger does not name is a defect. [Report it](https://github.com/MichaelKinsy/PiG/issues).
 

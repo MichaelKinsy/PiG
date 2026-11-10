@@ -216,7 +216,7 @@ path = "packages/chord/src/node/workers/base.ts"
 change = "modified"
 disposition = "designed-out"
 evidence = []
-rationale = "Pi 602b8d1cb writes the base's source maps beside its files (sourcemap linked). A Go worker is the program's own executable (D600): there is no esbuild worker base, so no map file to link (PORT_MAP n/a row)."
+rationale = "Pi 602b8d1cb writes the base's source maps beside its files (sourcemap linked). A Go worker is a program, not a Node bundle: PiG has no esbuild worker base, so no source map file exists to link beside it (PORT_MAP n/a row)."
 
 [[files]]
 path = "packages/chord/src/node/workers/workers.ts"

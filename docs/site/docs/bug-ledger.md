@@ -976,6 +976,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-7e42a6a](#bf-7e42a6a) | CSS module mappings are what Node's `vm` gives, as Pi's (key order of integer-like names, no `__proto__` key… | PiG's own defect | All platforms | Unreleased |
 | [BF-7ea21f3](#bf-7ea21f3) | RPC output writes summed usage (a tool result's usage with nested model calls, a compaction summary's usage)… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7eb7d29](#bf-7eb7d29) | The model picker (`/model`) now shows a catalog-refresh timeout or failure as soon as it happens | PiG's own defect | All platforms | Unreleased |
+| [BF-7ecacae](#bf-7ecacae) | fix(coding-agent,ai): offer fork when a session cwd no longer exists; Claude Code 2.1.322 | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-7f2c05b](#bf-7f2c05b) | A `ChordError` of code `invalid` from a failed args, result, state or input check carries TypeBox's whole… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-7f3a71c](#bf-7f3a71c) | fix(durable): the reference Harness wraps a plain Models once too | PiG's own defect | All platforms | Unreleased |
 | [BF-7f441d7](#bf-7f441d7) | MCP OAuth URLs are WHATWG URLs, as in Pi | PiG's own defect | All platforms | 0.5.0 |
@@ -15198,6 +15199,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `tui/child_cache_contract_test.go::TestAParentContainerShowsWhatAnyExportedMutatorChanged`, `tui/child_cache_contract_test.go::TestEveryExportedComponentTypeIsInTheCacheContract`, `tui/child_cache_contract_test.go::TestModelSelectorRefreshTimeoutShowsInTheNextFrame`, `tui/child_cache_contract_test.go::TestModelSelectorSetErrorReachesAParentContainersRender`, `tui/child_cache_contract_test.go::TestSettingsListUpdateValueReachesAParentContainersRender`
 - **Release note:** The model picker (`/model`) now shows a catalog-refresh timeout or failure as soon as it happens. It kept showing `Refreshing model catalogs...` until the next key press, because the screen reused the picker's last drawing; `SettingsList` value updates and `FilterableList` cursor moves had the same hole. A component that embeds a container now tells its parent about a change anywhere beneath it, so the per-child render cache can no longer show a child that Pi would redraw.
 
+### BF-7ecacae
+
+**fix(coding-agent,ai): offer fork when a session cwd no longer exists; Claude Code 2.1.322**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** fix(coding-agent,ai): offer fork when a session cwd no longer exists; Claude Code 2.1.322
+- **Root cause:** Ports Pi (#11975): the missing-session-cwd prompt offers Continue, Fork or Cancel at startup, for /resume and ctx.switchSession (Resumed session in <cwd>, Forked into new session <id> in <cwd>) and for /import; a failed import removes its copy. Ports: claudeCodeVersion 2.1.322.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `7ecacae312` (2026-11-10)
+- **Tests:** `coding/cli/startup_session_test.go::TestApplyMissingCWDChoiceContinuesOrForks`, `internal/codingagent/session_cwd_resume_upstream_test.go::TestMissingSessionCwdOptionsNameTheCurrentCwd`, `internal/codingagent/session_cwd_resume_upstream_test.go::TestResumeWithAMissingCwdContinuesTheOriginalInTheCurrentCwdWithoutWritingAFile`, `internal/codingagent/session_cwd_resume_upstream_test.go::TestResumeWithAMissingCwdCreatesNoForkWhenTheUserCancels`, `internal/codingagent/session_cwd_resume_upstream_test.go::TestResumeWithAMissingCwdForksIntoTheCurrentCwdAndLeavesTheOriginalUnchanged`, `internal/codingagent/session_cwd_resume_upstream_test.go::TestResumeWithAMissingCwdRemovesTheForkWhenAnExtensionCancelsTheSwitch`, `internal/codingagent/slash_session_handlers_test.go::TestImportHandlerForksIntoTheCurrentCwd`
+
 ### BF-7f2c05b
 
 **A `ChordError` of code `invalid` from a failed args, result, state or input check carries TypeBox's whole…**
@@ -21894,7 +21908,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `694685ee71` (2026-11-05), `bd8849d729` (2026-11-05), `c28332bfcb` (2026-11-05)
 - **Tests:** `coding/runtime_dispose_settlement_test.go::TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown`
-- **Release note:** Quitting through `Runtime.Close` or the interactive quit during a tool call now waits for the interrupted run to settle before `session_shutdown` and disposal, so the aborted tool result and the final assistant message are saved and extensions see `session_shutdown` after them. Print mode's termination-signal shutdown and RPC shutdown keep Pi 1.5.1's order (Pi #9124, D247).
+- **Release note:** Quitting through `Runtime.Close` or the interactive quit during a tool call now waits for the interrupted run to settle before `session_shutdown` and disposal, so the aborted tool result and the final assistant message are saved and extensions see `session_shutdown` after them. Print mode's termination-signal shutdown and RPC shutdown keep Pi 1.5.2's order (Pi #9124, D247).
 
 ### BF-bdb7ad8
 
