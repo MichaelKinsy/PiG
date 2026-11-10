@@ -553,7 +553,7 @@ function observeModelRequest(requestedModel, options, poll) {
 __name(observeModelRequest, "observeModelRequest");
 
 // pi-dist/pi-ai/utils/version.js
-var PI_AI_VERSION = "1.5.0";
+var PI_AI_VERSION = "1.5.1";
 
 // pi-dist/pi-ai/utils/identity.js
 import { pigUserAgent } from "../../../pig-identity.mjs";
@@ -1105,10 +1105,10 @@ var ModelsImpl = class {
           throw credentialError;
         if (!allowNetwork || signal.aborted)
           return;
-        const credential = await this.resolveRefreshCredential(provider2, storedCredential, signal);
-        if (!credential)
+        const network = await this.resolveNetworkRefresh(provider2, storedCredential, signal);
+        if (!network)
           return;
-        await this.runProviderRefreshPhase(provider2, credential, true, options.force, generation, signal);
+        await this.runProviderRefreshPhase(provider2, network.credential, true, options.force, generation, signal);
       })();
       try {
         await raceWithAbortSignal(operation, signal);
@@ -1129,6 +1129,14 @@ var ModelsImpl = class {
         throw error;
     }
     return { aborted: callerSignal.aborted, errors: new Map(errors) };
+  }
+  /** The credential for the network refresh phase, or undefined when the provider is not configured. */
+  async resolveNetworkRefresh(provider2, stored, signal) {
+    if (provider2.refreshModelsAuth === "configured") {
+      return await this.checkProviderAuth(provider2, stored, signal) ? {} : void 0;
+    }
+    const credential = await this.resolveRefreshCredential(provider2, stored, signal);
+    return credential ? { credential } : void 0;
   }
   async resolveRefreshCredential(provider2, stored, signal) {
     if (stored?.type === "oauth") {

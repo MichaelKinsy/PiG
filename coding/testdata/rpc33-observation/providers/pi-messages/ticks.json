@@ -1,6 +1,6 @@
 {
-  "piVersion": "1.5.0+77959d66",
-  "node": "v26.12.1",
+  "piVersion": "1.5.1",
+  "node": "v24.22.2",
   "scenarios": [
     {
       "name": "oneChunk",
@@ -115,7 +115,7 @@
         },
         "stopReason": "toolUse",
         "responseId": "r1",
-        "durationMs": 30
+        "durationMs": 31
       }
     },
     {
@@ -892,7 +892,7 @@
         },
         "stopReason": "toolUse",
         "responseId": "r1",
-        "durationMs": 3
+        "durationMs": 1
       }
     },
     {
@@ -1013,7 +1013,7 @@
         },
         "stopReason": "toolUse",
         "responseId": "r1",
-        "durationMs": 0
+        "durationMs": 1
       }
     },
     {
@@ -1209,7 +1209,7 @@
         },
         "stopReason": "error",
         "errorMessage": "p stream ended without a terminal event",
-        "durationMs": 0
+        "durationMs": 1
       }
     },
     {
@@ -1622,7 +1622,7 @@
         },
         "stopReason": "error",
         "errorMessage": "p stream ended without a terminal event",
-        "durationMs": 0
+        "durationMs": 1
       }
     },
     {
@@ -1973,7 +1973,7 @@
         },
         "stopReason": "error",
         "errorMessage": "Expected ',' or '}' after property value in JSON at position 20 (line 1 column 21)",
-        "durationMs": 0
+        "durationMs": 1
       }
     },
     {
@@ -2234,7 +2234,7 @@
         },
         "stopReason": "error",
         "errorMessage": "body failed",
-        "durationMs": 0
+        "durationMs": 1
       }
     },
     {

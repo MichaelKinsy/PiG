@@ -123,13 +123,13 @@ import {
   wrapRegisteredTools,
   writeBugReportArchive,
   writeRawStdout
-} from "./chunk-6KHGSVUO.js";
+} from "./chunk-4ORGYPF2.js";
 import {
   CredentialSynchronizationError,
   InMemoryCodingAgentModelsStore,
   ModelRuntime,
   VIRTUAL_MODEL_STATE_ENTRY
-} from "./chunk-H2BMMKZ4.js";
+} from "./chunk-HU4A3ZE6.js";
 import {
   convertToPng,
   createBashToolDefinition,
@@ -162,7 +162,7 @@ import {
   resolveReadPath,
   withFileMutationQueue,
   writeRenderers
-} from "./chunk-GAYOJ7LQ.js";
+} from "./chunk-GXPJB5J2.js";
 import {
   fetchWithRetry,
   getPiUserAgent
@@ -6626,7 +6626,7 @@ var builtInExtensions = [
 ];
 
 // pi-dist/pi-coding-agent/extensions/mcp/cli.lazy.js
-var loadMcpCommand = /* @__PURE__ */ __name(() => import("./chunk-ALRYPE2X.js"), "loadMcpCommand");
+var loadMcpCommand = /* @__PURE__ */ __name(() => import("./chunk-4E2HV3LO.js"), "loadMcpCommand");
 
 // pi-dist/pi-coding-agent/migrations.js
 import chalk4 from "../../../chalk/source/index.js";
@@ -20448,6 +20448,7 @@ __name(validateThemeJson, "validateThemeJson");
 // pi-dist/pi-coding-agent/package-manager-cli.js
 import { existsSync as existsSync8, mkdirSync as mkdirSync5, mkdtempSync as mkdtempSync3, readdirSync as readdirSync2, readFileSync as readFileSync11, renameSync as renameSync3, rmSync as rmSync6, writeFileSync as writeFileSync6 } from "node:fs";
 import { join as join14, resolve as resolve6 } from "node:path";
+import { ModelsError } from "../../pi-ai/sdk-bundle/index.js";
 import { Markdown as Markdown8 } from "../../../pi-tui.mjs";
 import chalk6 from "../../../chalk/source/index.js";
 import lockfile from "../../../proper-lockfile.mjs";
@@ -21778,9 +21779,17 @@ async function refreshModelCatalogs2(agentDir) {
     if (result.aborted) {
       throw new Error("Model catalog refresh timed out.");
     }
-    if (result.errors.size > 0) {
-      const details = Array.from(result.errors, ([provider, error]) => `${provider}: ${error.message}`).join("; ");
-      throw new Error(`Could not refresh model catalogs: ${details}`);
+    const failures = [];
+    for (const [provider, error] of result.errors) {
+      if (error instanceof ModelsError && error.code === "oauth") {
+        console.warn(chalk6.yellow(`Warning: skipped model catalog for ${provider}: ${error.message}
+Log in again with \`${APP_NAME} auth login ${provider}\` to refresh it.`));
+      } else {
+        failures.push(`${provider}: ${error.message}`);
+      }
+    }
+    if (failures.length > 0) {
+      throw new Error(`Could not refresh model catalogs: ${failures.join("; ")}`);
     }
   } finally {
     clearTimeout(timeout);
