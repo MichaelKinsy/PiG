@@ -50268,6 +50268,28 @@
       ]
     },
     {
+      "id": "BF-e88f858",
+      "title": "Windows: a connection reset before the response headers, or a response body reset, is reported as Pi reports…",
+      "symptom": "Windows: a connection reset before the response headers, or a response body reset, is reported as Pi reports it (\"Connection error.: read ECONNRESET\", \"terminated: other side closed (UND_ERR_SOCKET)\") instead of a bare \"Connection error.\" or \"terminated\".",
+      "rootCause": "nodeConnectionFailure and nodeBodyFailure matched a reset with errors.Is against syscall.ECONNRESET and syscall.EPIPE. On Windows those are values Go invents; the socket's error is WSAECONNRESET (or ERROR_NETNAME_DELETED, WSAESHUTDOWN), which libuv names ECONNRESET (EPIPE). Pi's message is \"Connection error.: read ECONNRESET\" there too; PiG gave a bare \"Connection error.\" and a body reset lost its \"other side closed\". Match by nodeerrno.ErrorCode, which carries the per-OS table.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Windows: a connection reset before the response headers, or a response body reset, is reported as Pi reports it (\"Connection error.: read ECONNRESET\", \"terminated: other side closed (UND_ERR_SOCKET)\") instead of a bare \"Connection error.\" or \"terminated\".",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e88f858c17",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "ai/transport_reset_windows_test.go::TestWindowsSocketErrorsAreNamedAsNodeNamesThem"
+      ]
+    },
+    {
       "id": "BF-e8a5d2e",
       "title": "The model catalog generator gives OpenCode Zen and Go Claude 5.5 models, Opus 5 and Fable 5.1 per-message…",
       "symptom": "The model catalog generator gives OpenCode Zen and Go Claude 5.5 models, Opus 5 and Fable 5.1 per-message effort (`supportsMidConvoEffort`), as Pi's generator does since 9ee7586a9 (#10954).",

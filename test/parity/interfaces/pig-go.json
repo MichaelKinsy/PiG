@@ -45107,6 +45107,17 @@
       "shapeHash": "sha256:4a5055322e6f75d7ee10cc59b4814e22cbd33d6a19d2b99d3e00212a527e3abf"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#isSocketReset",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "isSocketReset",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(err error, codes ...string) bool"
+      },
+      "shapeHash": "sha256:a3103778837df305cb24d135239e6400da3c12d578fa688f4ebe4fc4f7b50c42"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#isStrictToolLimitErrorMessage",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "isStrictToolLimitErrorMessage",

@@ -10,9 +10,9 @@ import (
 	"io"
 	"net"
 	"reflect"
+	"slices"
 	"strings"
 	"sync"
-	"syscall"
 	"unicode"
 
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
@@ -263,10 +263,16 @@ func nodeBodyFailure(cause error) (message, code string) {
 	if timeout, ok := errors.AsType[net.Error](cause); ok && timeout.Timeout() {
 		return "Body Timeout Error", "UND_ERR_BODY_TIMEOUT"
 	}
-	if errors.Is(cause, io.ErrUnexpectedEOF) || errors.Is(cause, io.EOF) || errors.Is(cause, syscall.ECONNRESET) || errors.Is(cause, syscall.EPIPE) || errors.Is(cause, net.ErrClosed) {
+	if errors.Is(cause, io.ErrUnexpectedEOF) || errors.Is(cause, io.EOF) || isSocketReset(cause, "ECONNRESET", "EPIPE") || errors.Is(cause, net.ErrClosed) {
 		return "other side closed", "UND_ERR_SOCKET"
 	}
 	return "", ""
+}
+
+// isSocketReset reports whether err wraps an errno whose Node code is one of codes. Node names the errno by libuv's table, so Windows'
+// WSAECONNRESET is ECONNRESET there; it is not syscall.ECONNRESET, a value Go invents on Windows, so errors.Is against that never matches.
+func isSocketReset(err error, codes ...string) bool {
+	return slices.Contains(codes, nodeerrno.ErrorCode(err))
 }
 
 // nodeConnectionFailure is the message and code of the cause undici attaches to "fetch failed" for a failed connection: Node's
@@ -292,7 +298,7 @@ func nodeConnectionFailure(cause error) (message, code string) {
 			}
 		// Node's read and write errors name the syscall and the code, not an address.
 		// pig divergence (D520): a reset on accept reaches Go's response read, where Node mostly reports it on the connect.
-		case op.Op == "write" && (errors.Is(op.Err, syscall.ECONNRESET) || errors.Is(op.Err, syscall.EPIPE)), op.Op == "read" && errors.Is(op.Err, syscall.ECONNRESET):
+		case op.Op == "write" && isSocketReset(op.Err, "ECONNRESET", "EPIPE"), op.Op == "read" && isSocketReset(op.Err, "ECONNRESET"):
 			code = nodeerrno.ErrorCode(op.Err)
 			return op.Op + " " + code, code
 		}
