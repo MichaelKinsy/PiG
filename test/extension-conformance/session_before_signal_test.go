@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
@@ -77,6 +78,8 @@ func TestSessionBeforeSignalReachesEverySDKWhenAbortedDuringDispatch(t *testing.
 								pollUntilConformance(t, "the handler never entered its wait", func() bool {
 									return slices.Contains(h.ui.Recorded(), entered)
 								})
+								// The host records the notification when the call reaches it and answers at once; an abort that arrives before the SDK read the answer cancels the call with the request, which Pi's in-process notify never suffers. The abort follows the answer.
+								time.Sleep(250 * time.Millisecond)
 								abort()
 							}
 							got := <-emitted
