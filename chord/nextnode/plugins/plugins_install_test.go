@@ -330,8 +330,10 @@ func TestInstallPluginClonesARepositoryOfSeveralPluginsItsSubdirectoriesPinnedTo
 	}
 }
 
-func TestInstallPluginInstallsAnNpmPackageHereALocalTarballIntoRootName(t *testing.T) {
-	source := tempRoot(t)
+// packedClock is the package `@bob/clock` 1.2.0 packed by the machine's npm into its own directory: the directory and the tarball's name.
+func packedClock(t *testing.T) (source, packed string) {
+	t.Helper()
+	source = tempRoot(t)
 	writeFiles(t, source, map[string]string{
 		"package.json": manifestText(t, map[string]any{"name": "@bob/clock", "version": "1.2.0"}),
 		"worker.ts":    "export default { setup: () => {} };",
@@ -342,7 +344,39 @@ func TestInstallPluginInstallsAnNpmPackageHereALocalTarballIntoRootName(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	packed := strings.TrimSpace(string(out))
+	return source, strings.TrimSpace(string(out))
+}
+
+// fakeNpm12 is npm 12 as InstallPlugin runs it: `pack` copies the tarball of source to --pack-destination and prints printed;
+// `install` (the dependencies) does nothing.
+func fakeNpm12(t *testing.T, tools, tarball, printed string) []string {
+	t.Helper()
+	script := filepath.Join(tools, "npm12.mjs")
+	writeFiles(t, tools, map[string]string{"npm12.mjs": strings.Join([]string{
+		`import { copyFileSync } from "node:fs";`,
+		`import { join } from "node:path";`,
+		"const args = process.argv.slice(2);",
+		`if (args[0] === "pack") {`,
+		`	const destination = args[args.indexOf("--pack-destination") + 1];`,
+		fmt.Sprintf("	copyFileSync(%s, join(destination, %s));", jsString(t, tarball), jsString(t, filepath.Base(tarball))),
+		fmt.Sprintf("	console.log(JSON.stringify(%s));", printed),
+		"}",
+	}, "\n")})
+	return []string{pcNode(t), script}
+}
+
+// jsString is s as a JavaScript string literal.
+func jsString(t *testing.T, s string) string {
+	t.Helper()
+	text, err := json.Marshal(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(text)
+}
+
+func TestInstallPluginInstallsAnNpmPackageHereALocalTarballIntoRootName(t *testing.T) {
+	source, packed := packedClock(t)
 	root := tempRoot(t)
 	names, err := InstallPlugin(PluginSource{Npm: "@bob/clock", Version: "file:" + filepath.Join(source, packed)}, root, background, InstallPluginOptions{})
 	if err != nil || !reflect.DeepEqual(names, []string{"@bob/clock"}) {
@@ -355,6 +389,42 @@ func TestInstallPluginInstallsAnNpmPackageHereALocalTarballIntoRootName(t *testi
 	var installed struct{ Version string }
 	if err := json.Unmarshal(text, &installed); err != nil || installed.Version != "1.2.0" {
 		t.Fatalf("package.json = %s (%v)", text, err)
+	}
+}
+
+func TestInstallPluginReadsNpm12sPackOutputThePackedTarballsByPackageName(t *testing.T) {
+	source, packed := packedClock(t)
+	tools := tempRoot(t)
+	printed := fmt.Sprintf(`{"@bob/clock": {name: "@bob/clock", filename: %s}}`, jsString(t, packed))
+	root := tempRoot(t)
+	names, err := InstallPlugin(PluginSource{Npm: "@bob/clock", Version: "1.2.0"}, root, background, InstallPluginOptions{NpmCommand: fakeNpm12(t, tools, filepath.Join(source, packed), printed)})
+	if err != nil || !reflect.DeepEqual(names, []string{"@bob/clock"}) {
+		t.Fatalf("names = %v, error = %v", names, err)
+	}
+	text, err := os.ReadFile(filepath.Join(root, "@bob", "clock", "package.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var installed struct{ Version string }
+	if err := json.Unmarshal(text, &installed); err != nil || installed.Version != "1.2.0" {
+		t.Fatalf("package.json = %s (%v)", text, err)
+	}
+}
+
+// Not upstream's: install.ts reads `output[name]`, the member of the package asked for, not the first member of the object, so
+// an object that lists another package first (a dependency npm 12 packed too) still installs the package asked for.
+func TestInstallPluginTakesTheTarballOfItsPackageFromNpm12sOutputNotTheFirstOneListed(t *testing.T) {
+	source, packed := packedClock(t)
+	tools := tempRoot(t)
+	printed := fmt.Sprintf(`{"@bob/other": {name: "@bob/other", filename: "other-9.0.0.tgz"}, "@bob/clock": {name: "@bob/clock", filename: %s}}`, jsString(t, packed))
+	root := tempRoot(t)
+	names, err := InstallPlugin(PluginSource{Npm: "@bob/clock", Version: "1.2.0"}, root, background, InstallPluginOptions{NpmCommand: fakeNpm12(t, tools, filepath.Join(source, packed), printed)})
+	if err != nil || !reflect.DeepEqual(names, []string{"@bob/clock"}) {
+		t.Fatalf("names = %v, error = %v", names, err)
+	}
+	_, err = InstallPlugin(PluginSource{Npm: "@bob/missing", Version: "1.2.0"}, tempRoot(t), background, InstallPluginOptions{NpmCommand: fakeNpm12(t, tools, filepath.Join(source, packed), printed)})
+	if err == nil || !strings.Contains(err.Error(), "pack @bob/missing@1.2.0: packed nothing") {
+		t.Fatalf("error = %v, want packed nothing for a package the output does not list", err)
 	}
 }
 
