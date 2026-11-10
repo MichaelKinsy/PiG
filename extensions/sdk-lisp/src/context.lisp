@@ -72,7 +72,9 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
 
 (defun deliver-call-result (ext env)
   (let ((slot (sb-thread:with-mutex ((extension-state-lock ext))
-                (let ((slot (gethash (jget env "id" "") (extension-pending ext))))
+                (let* ((id (jget env "id" "")) (slot (gethash id (extension-pending ext))))
+                  ;; An answered call is no longer the request's: a cancel that arrives before the waiting thread wakes must not cancel it (Python drops the parent on delivery).
+                  (when slot (remhash id (extension-pending ext)))
                   slot))))
     ;; Pi resumes the handlers whose dialogs were answered in the order the answers arrived: this reader reads them in that order
     (when slot
