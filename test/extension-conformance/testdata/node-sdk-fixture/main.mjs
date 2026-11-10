@@ -8,6 +8,19 @@ import { join as joinPath } from "node:path";
 import * as piTui from "@earendil-works/pi-tui";
 import * as piCodingAgent from "@earendil-works/pi-coding-agent";
 const { Container } = piTui;
+
+// Pi's waitForChildProcess releases the pipes of a shell that exited once they have been quiet for EXIT_STDIO_GRACE_MS (100 ms), a wall-clock timer that a writer's
+// CPU-bound gap between lines can outrun on a loaded host (the command then ends normally instead of at its deadline). The shell-exit cases need the writer to hold the
+// pipes until the deadline, so that one timer, set by Pi's armIdleTimer, never fires, as the host's own grace never elapses in the same cases (Pi's #5303 test uses
+// virtual time for it). Every other timer is untouched.
+{
+  const wallClockSetTimeout = globalThis.setTimeout;
+  const longest = 2 ** 31 - 1;
+  globalThis.setTimeout = function setTimeout(callback, delay, ...rest) {
+    if (delay === 100 && typeof callback === "function" && new Error().stack.includes("armIdleTimer")) return wallClockSetTimeout(callback, longest, ...rest);
+    return wallClockSetTimeout(callback, delay, ...rest);
+  };
+}
 import {
   createBashToolDefinition, createGrepToolDefinition, createLsToolDefinition, createReadToolDefinition, CONFIG_DIR_NAME, isToolCallEventType, CustomEditor, getAgentDir, getPackageDir, getShellConfig, generateDiffString, generateUnifiedPatch, sessionEntryToContextMessages, buildSessionContext, convertToPng, resizeImage, readStoredCredential, VERSION, formatSize, DEFAULT_MAX_LINES, DEFAULT_MAX_BYTES, truncateHead, truncateLine, truncateTail, withFileMutationQueue, isBashToolResult, isEditToolResult, isFindToolResult, isGrepToolResult, isLsToolResult, isPowerShellToolResult, isReadToolResult, isWriteToolResult,
   getMarkdownTheme, getSelectListTheme, getSettingsListTheme, renderDiff,

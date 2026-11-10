@@ -56,8 +56,9 @@ impl BashExecError {
         BashExecError { message, shell_exit: Some(shell_exit) }
     }
 
-    pub(crate) fn shell_exit(&self) -> Option<crate::protocol::ShellExit> {
-        self.shell_exit
+    /// The error's message and its shell exit, consumed: the `user_bash_exec` error response carries both.
+    pub(crate) fn into_parts(self) -> (String, Option<crate::protocol::ShellExit>) {
+        (self.message, self.shell_exit)
     }
 }
 

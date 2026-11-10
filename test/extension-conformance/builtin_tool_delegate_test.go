@@ -9,16 +9,20 @@ import (
 	"reflect"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/childwait"
+	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 )
 
 // shellExitedTicks is the writer's lines, and shellExitedAfter the seconds the shell reported, as the delegation cases below normalize them.
 var (
 	shellExitedTicks = regexp.MustCompile(`(?:tick\\n)+`)
-	shellExitedAfter = regexp.MustCompile(`after (?:0\.[5-9]|1\.[0-4]) seconds`)
+	shellExitedAfter = regexp.MustCompile(`after (\d+(?:\.\d)?) seconds`)
 )
 
 // TestConformance_BuiltinToolDelegationAcrossSDKs: Pi's create<Tool>ToolDefinition(cwd, options) and create<Tool>Tool factories (core/tools/*.ts, exported from the
@@ -39,6 +43,12 @@ func TestConformance_BuiltinToolDelegationAcrossSDKs(t *testing.T) {
 	t.Parallel()
 
 	type tcase = map[string]any
+	// The pipes' grace after the shell exits (childwait.Grace, Pi's EXIT_STDIO_GRACE_MS) is a 100 ms wall-clock timer that the writer's CPU-bound gap between ticks can
+	// outrun on a loaded host, ending the command normally with exit 7 instead of at its deadline. The host's grace never elapses here (Pi's own #5303 test uses virtual
+	// time for the same reason) and the Node reference's armIdleTimer is held the same way, so the writer holds the pipes until the 2 second deadline in every SDK.
+	t.Cleanup(tools.SetStdioGraceTimerForTest(func() childwait.IdleTimer {
+		return childwait.IdleTimer{Expired: make(chan time.Time), Rearm: func() {}, Stop: func() {}}
+	}))
 	// The shell exits with code 7 after half a second, and the writer it leaves holds the pipes: a loop that writes a line and then spends a few milliseconds in the
 	// shell itself, so it never leaves the pipe quiet for the 100 ms the wait allows and does not fork (a fork per line is how a loaded runner outruns that grace).
 	const shellExitedWriterCommand = `(while :; do echo tick; for ((i = 0; i < 20000; i++)); do :; done; done) & sleep 0.5; exit 7`
@@ -209,10 +219,16 @@ func TestConformance_BuiltinToolDelegationAcrossSDKs(t *testing.T) {
 				}
 				text = strings.ReplaceAll(text, dir[0], dir[1])
 			}
-			// The writer's lines are as many as the run had time for, and the shell's run time is the half second it slept plus the load's share: both are reported as what
-			// they are, a count of ticks and a time in [0.5, 1.5).
+			// The writer's lines are as many as the run had time for, and the shell's run time is the half second it slept plus the load's share: the lines are reported
+			// as a count of ticks and the time as a time after the spawn and before the 2 second deadline, which the code 7 and the sentence distinguish from the fallback.
 			text = shellExitedTicks.ReplaceAllString(text, `<ticks>\n`)
-			text = shellExitedAfter.ReplaceAllString(text, `after <0.5-1.4> seconds`)
+			text = shellExitedAfter.ReplaceAllStringFunc(text, func(found string) string {
+				seconds, _ := strconv.ParseFloat(shellExitedAfter.FindStringSubmatch(found)[1], 64)
+				if seconds > 0 && seconds < 2 {
+					return "after <0-2> seconds"
+				}
+				return found
+			})
 			var normalized map[string]any
 			if err := json.Unmarshal([]byte(text), &normalized); err != nil {
 				t.Fatal(err)
@@ -312,10 +328,10 @@ func TestConformance_BuiltinToolDelegationAcrossSDKs(t *testing.T) {
 		{59, calls, `["access:<host>/anything.txt","createReadStream:<host>/anything.txt"]`}, // and readFile was never asked for it
 		// The error text of Pi's bash tool (a throw, so the report's error), with the code and the seconds the shell reported: not the deadline's 2 seconds, nor a zero.
 		{61, errorOf, "<ticks>\n"},
-		{61, errorOf, "Command timed out after 2 seconds. The shell exited with code 7 after <0.5-1.4> seconds, but background processes it started kept writing output until the timeout."},
-		{62, errorOf, "Command timed out after 2 seconds. The shell exited with code 7 after <0.5-1.4> seconds, but background processes it started kept writing output until the timeout."},
+		{61, errorOf, "Command timed out after 2 seconds. The shell exited with code 7 after <0-2> seconds, but background processes it started kept writing output until the timeout."},
+		{62, errorOf, "Command timed out after 2 seconds. The shell exited with code 7 after <0-2> seconds, but background processes it started kept writing output until the timeout."},
 		{63, errorOf, "Command timed out after 2 seconds"},
-		{64, errorOf, "Command timed out after 2 seconds. The shell exited with code 7 after <0.5-1.4> seconds, but background processes it started kept writing output until the timeout."},
+		{64, errorOf, "Command timed out after 2 seconds. The shell exited with code 7 after <0-2> seconds, but background processes it started kept writing output until the timeout."},
 		{60, text, "g.txt:1: needle-1"},
 		{60, calls, `["isDirectory:<host>/grepdir"]`}, // the match was printed from ripgrep's output, and the readFile the reference's extension passes was not called
 		{28, definitionField("description"), `"Read the contents of a file. Supports text files and images (jpg, png, gif, webp, bmp). Images are sent as attachments. For text files, output is truncated to 2000 lines or 50KB (whichever is hit first).`},

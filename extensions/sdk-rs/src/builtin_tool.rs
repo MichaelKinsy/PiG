@@ -1249,9 +1249,9 @@ mod tests {
         let exit = crate::protocol::ShellExit { exit_code: 7, after_seconds: 0.5 };
         let error = crate::BashExecError::shell_timeout("timeout:2".to_string(), exit);
         let moved = std::thread::spawn(move || error.clone()).join().unwrap();
-        assert_eq!(moved.shell_exit(), Some(exit));
-        assert_eq!(crate::BashExecError::from(moved.to_string()).shell_exit(), None);
-        assert_eq!(crate::BashExecError::from(moved.message()).shell_exit(), None);
+        assert_eq!(moved.clone().into_parts().1, Some(exit));
+        assert_eq!(crate::BashExecError::from(moved.to_string()).into_parts().1, None);
+        assert_eq!(crate::BashExecError::from(moved.message()).into_parts().1, None);
     }
 
     // The behavior of the tools is the shared conformance row TestConformance_BuiltinToolDelegationAcrossSDKs; these cases pin what the SDK does before and after

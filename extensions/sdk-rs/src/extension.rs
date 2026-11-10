@@ -2869,13 +2869,14 @@ impl Extension {
                         let _ = conn.respond(id, Some(value), None);
                     }
                     Err(error) => {
+                        let (message, shell_exit) = error.into_parts();
                         let _ = conn.respond(
                             id,
                             None,
                             Some(ErrorInfo {
                                 code: None,
-                                shell_exit: error.shell_exit(),
-                                message: error.message().to_string(),
+                                shell_exit,
+                                message,
                             }),
                         );
                     }
