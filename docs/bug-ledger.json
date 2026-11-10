@@ -18292,6 +18292,50 @@
       ]
     },
     {
+      "id": "BF-618af0a",
+      "title": "`chord/next/surfaces` (Pi `translations.ts` `canonicalLocale`, `language.ts` `directionOf`): a locale tag is…",
+      "symptom": "`chord/next/surfaces` (Pi `translations.ts` `canonicalLocale`, `language.ts` `directionOf`): a locale tag is canonical as Node's `Intl.getCanonicalLocales` has it for the value aliases of `-u-` keywords and `-t-` fields (`ca-islamicc` is `ca-islamic-civil`, `ks-primary` is `ks-level1`, `kb-yes` is `kb`, `m0-names` is `m0-prprname`) and for the alias rules of several subtags (a language with a region or script, such as `sgn-BR`; `Qaai` is `Zinh`), so the `lang` and `dir` of a page and the locale chosen for a client no longer differ from Pi's for those tags.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`chord/next/surfaces` (Pi `translations.ts` `canonicalLocale`, `language.ts` `directionOf`): a locale tag is canonical as Node's `Intl.getCanonicalLocales` has it for the value aliases of `-u-` keywords and `-t-` fields (`ca-islamicc` is `ca-islamic-civil`, `ks-primary` is `ks-level1`, `kb-yes` is `kb`, `m0-names` is `m0-prprname`) and for the alias rules of several subtags (a language with a region or script, such as `sgn-BR`; `Qaai` is `Zinh`), so the `lang` and `dir` of a page and the locale chosen for a client no longer differ from Pi's for those tags. The tables are generated from the pinned Node by `testdata/locale_tables.mjs` and checked against its Intl.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "618af0a411",
+          "date": "2026-11-10"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_node_extract_test.go::TestTheExtractedRuntimeIsNamedByEveryFileOfTheRuntimeBesideTheManifest"
+      ]
+    },
+    {
+      "id": "BF-618af0a-2",
+      "title": "`chord/nextnode/plugins`: the directory the plugins' Node runtime is extracted to is named by the manifest…",
+      "symptom": "`chord/nextnode/plugins`: the directory the plugins' Node runtime is extracted to is named by the manifest and every file of the runtime beside it (`host.mjs`, `proxy.mjs`, `bridge.mjs`, ...), not by the manifest and `host.mjs` alone.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`chord/nextnode/plugins`: the directory the plugins' Node runtime is extracted to is named by the manifest and every file of the runtime beside it (`host.mjs`, `proxy.mjs`, `bridge.mjs`, ...), not by the manifest and `host.mjs` alone. Two builds with different `proxy.mjs` or `bridge.mjs` shared one directory under the user cache and repaired each other's files in place while a process of the other build was reading them, so a test run could start the Node host with another build's proxy (a run of the keyed-member bridge failed with `Cannot read properties of undefined (reading 'type')` from an old `proxy.mjs`).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "618af0a411",
+          "date": "2026-11-10"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_node_extract_test.go::TestTheExtractedRuntimeIsNamedByEveryFileOfTheRuntimeBesideTheManifest"
+      ]
+    },
+    {
       "id": "BF-619443a",
       "title": "MCP sign-in now rejects authorization endpoints and other OAuth metadata URLs that are not `http:` or…",
       "symptom": "MCP sign-in now rejects authorization endpoints and other OAuth metadata URLs that are not `http:` or `https:`, so a malicious server cannot make pig launch a `file:` or custom protocol URL.",
@@ -34922,39 +34966,6 @@
       "commits": [
         {
           "hash": "bdaa14582e",
-          "date": "2026-11-07"
-        },
-        {
-          "hash": "5291c9268f",
-          "date": "2026-11-08"
-        },
-        {
-          "hash": "95f0f0d040",
-          "date": "2026-11-08"
-        },
-        {
-          "hash": "bdcd2b1248",
-          "date": "2026-11-08"
-        }
-      ],
-      "tests": []
-    },
-    {
-      "id": "BF-D461",
-      "title": "`Files` and `FilesFolder` are not reachable from TypeScript plugins",
-      "symptom": "Not a Pi bug.",
-      "rootCause": "the plugins' proxy facets (`plugins/node/proxy.mjs`) forward state members and methods to the Go object; a JS keyed member must be a keyed document handle or a reference's keyed member, and the proxy has neither for an object on another host. Pi has the kit and the plugins in one host, so `self.get(Files, {})` works there.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D461",
-      "removeWhen": "the plugin bridge forwards a contract with a keyed member (a keyed-handle proxy between hosts), or the plugins run in the kit's host.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "d803ffa239",
           "date": "2026-11-07"
         },
         {
@@ -55868,6 +55879,30 @@
       ]
     },
     {
+      "id": "BF-fbd59e3",
+      "title": "`chord/nextnode/plugins`, `chord/nextnode/app` (Pi `app.test.ts` \"round-trips a worker's documents, tables…",
+      "symptom": "`chord/nextnode/plugins`, `chord/nextnode/app` (Pi `app.test.ts` \"round-trips a worker's documents, tables and files\", `worker.test.ts`): a TypeScript plugin can `get` the app kit's `Files` and `FilesFolder` on the server and on a worker, as Pi's plugins can (the divergence record of this limit retires).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`chord/nextnode/plugins`, `chord/nextnode/app` (Pi `app.test.ts` \"round-trips a worker's documents, tables and files\", `worker.test.ts`): a TypeScript plugin can `get` the app kit's `Files` and `FilesFolder` on the server and on a worker, as Pi's plugins can (the divergence record of this limit retires). The plugin bridge copies a keyed member of a Go core facet (`Files.summary`) to the plugins' Node host as a keyed document handle of the proxy object: the object goes live with every document the Go member holds, each later commit reaches the copy in the Go host's commit order, a Go facet that reloaded is read again, and a method's answer follows the commits it made, so a plugin that awaited `files.put` reads its summary. A plugin reads it as a reference's keyed member (`get`, `watch`, `at`). New Go API: `documents.KeyedSlot.Observe` and `host.ReferenceKeyed.Snapshot` (the bridge's observer and read of a keyed member).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "fbd59e3aff",
+          "date": "2026-11-10"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/app/app_workers_test.go::TestAppAWorkersDirectoryKeepsItsStoreAndFilesAcrossItsProcessesRestarts",
+        "chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberIsCopiedToThePluginsHost",
+        "chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberOfTenThousandDocumentsIsCopiedBeforeTheObjectIsLive"
+      ]
+    },
+    {
       "id": "BF-fc1703f",
       "title": "Durable's `tool_search` and Code Mode `searchTools()` rank like the coding agent's tool search: a query that…",
       "symptom": "Durable's `tool_search` and Code Mode `searchTools()` rank like the coding agent's tool search: a query that is exactly a tool's name ranks it first, a tool matching more of the query's distinct terms ranks above one matching fewer, a query term in the name outweighs any number of mentions in the description, and a tool whose whole name is in the query gets a large bonus.",
@@ -57024,11 +57059,6 @@
       "id": "D460",
       "title": "The app kit's facets are Go core facets beside the plugins' Node host",
       "entry": "BF-D460"
-    },
-    {
-      "id": "D461",
-      "title": "`Files` and `FilesFolder` are not reachable from TypeScript plugins",
-      "entry": "BF-D461"
     },
     {
       "id": "D462",
