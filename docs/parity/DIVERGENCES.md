@@ -88,6 +88,8 @@ Every active divergence must have:
 
 - D242: Reload is rejected while the session is running or compacting. Retired by the upstream pin: Pi main c3b938e3e (`packages/coding-agent/src/core/agent-session.ts` `reload`, #9222) rejects it the same way, with the same messages. `TestSessionReloadRejectedWhileRunningOrCompacting` and `TestRefusedReloadDuringARunningToolKeepsTheExtensionHostLive` cover it, and the scenario `reload-rejected-while-running-reaches-the-caller-unchanged` keeps the message identical in every SDK. The ID remains reserved.
 
+- D243: A bash or PowerShell timeout after the shell already exited reports the shell's exit code. Retired by the pin `1.5.1`, which contains Pi 06aa6563e (fix(coding-agent): report the shell exit code when bash times out after the shell exited, #11813): the pinned Pi's `ShellTimeoutError` carries the shell's exit code and run time, and the bash tool says `The shell exited with code C after S seconds, but background processes it started kept writing output until the timeout.`, as the local shell backend's `*ShellTimeoutError` and the shell tool do, so the two call-site markers are gone. The Go, Rust, Python and Lisp SDKs' `CreateLocalBashOperations` and `CreateLocalPowerShellOperations` carry the same: the `builtinTool.localExec` error reply and the SDK's `user_bash_exec` error response hold Pi's `shellExit` (`ErrorInfo.shellExit`), and the error an exec returns unchanged from the local operations, on whatever thread or task, makes the bash tool say the sentence, while an error wrapped around it or built with its message gives the plain timeout, as Pi's class check does. `TestBashTimeoutAfterShellExit11613` and the shell-exit cases of `TestConformance_BuiltinToolDelegationAcrossSDKs` hold the behavior.
+
 - D244: A user bash result whose earlier output was discarded is reported as truncated. Retired by the pin `1.5.1`, which contains Pi 66c655677 (fix(coding-agent): track discarded user bash output, #10165): the pinned Pi's `executeBashWithOperations` records a discarded chunk and reports `truncated: true` for a result whose head the rolling window dropped, as `ExecuteBashWithOperations` does, so the call-site marker and the oracle's `droppedFromWindow` allowance are gone and `TestExecuteBashWithOperationsMatchesPi` compares the results as they are. `TestExecuteBashWithOperationsReportsDiscardedChunks10164` and `TestBashExecutionToTextNamesTheLogOfDiscardedOutput` hold the behavior.
 
 - D245: The last-seen changelog version is read as its leading major.minor.patch; an unreadable one shows nothing and records the current version. Retired by the pin `1.5.1`, which contains Pi 9a1953961 (fix(coding-agent): ignore prerelease suffix of last seen changelog version, #11753): the pinned Pi's `getNewEntries` reads the leading `major.minor.patch` of the recorded version and returns undefined for an unreadable one, as `GetNewEntries` does, so the call-site markers and the oracle tests' `pinnedReadsLastSeenLikeD245` skip are gone. `TestGetNewEntriesIgnoresPrereleaseAndBuildSuffixes`, `TestRecordChangelogVersionRecordsCurrentVersionForUnreadableLastSeen`, `TestExtensionChangelogUpdatesUpstream`, `TestChangelogMatchesPiOracle` and the random changelog oracle hold the behavior.
@@ -3070,28 +3072,6 @@ Call-site markers: `graphSignal.read` (`coding/session_graph_extension_runner.go
 Evidence: `TestGraphGetSignalIsOneObjectForARunAndItsAbort`. A two-live-runs test arrives with the run token.
 
 Pre-existing: yes (an earlier variant made a new context per read). Found by RevCtxAbort on 2026-11-04.
-
-## D243 The SDK local bash operations lose the shell's exit code on a timeout after the shell exited
-
-What: Pi 1.5.1 (06aa6563e, #11813, fixing #11613) makes `createLocalBashOperations().exec` reject with a `ShellTimeoutError` whose `shellExit` holds the shell's exit code and the seconds it ran when the shell exited before the deadline, and the bash tool then says `The shell exited with code C after S seconds, but background processes it started kept writing output until the timeout.` (`bash.ts:100-105,179,408-411`). PiG's own tools match that: `*ShellTimeoutError` keeps `timeout:<seconds>` as its message and carries `ShellExit`. The Go, Rust, Python and Lisp SDKs' `CreateLocalBashOperations` (and the PowerShell variant, and a fused extension's `LocalExec`) reach the host over `builtinTool.localExec`; `handleBuiltinToolLocalExec` returns the bare error, so the reply carries only `timeout:<seconds>`. An extension that wraps those operations in a bash tool and rethrows loses the shell's exit code, and its bash tool prints the plain timeout message where Pi's adds the sentence. The Node SDK runs Pi's own code and matches.
-
-Why: The `builtinTool.localExec` wire reply has no field for the shell exit, and the SDKs have no equivalent of `ShellTimeoutError`. Carrying it needs a wire change and an equivalent error type in every non-Node SDK, which is not done yet. This is the narrowing of the previous D243 record, which the owner approved for the same SDK exception (owner approval for 0.7.1 covered this scope); the pin retired the in-process part and the SDK path is the unchanged remainder, not a new difference.
-
-Pi bug: none; this is the Pi 1.5.1 behavior (`bash.ts:100-105,179,408-411`) that the SDK path does not yet reproduce.
-
-Scope: only the SDKs' local bash and PowerShell operations over `builtinTool.localExec` when the shell exited before the deadline and a background process kept the pipes open. Nothing else changes: the host's own bash and PowerShell tools, custom operations that throw `timeout:N`, and the Node SDK.
-
-Owner decision: approved by owner Michael Kinsy for 0.7.1 (scope proposal `handoffs/0.7.1/SCOPE-PROPOSAL.md`, row S1.), for the same SDK scope; narrowing it after the pin retired the in-process part is not a new difference.
-
-SCRUTINIZED:approved
-
-Remove when: the `builtinTool.localExec` reply carries the shell exit (`shellExit`) and the Go, Rust, Python and Lisp SDKs raise the equivalent of `ShellTimeoutError` from `CreateLocalBashOperations`. Then the call-site markers and this record go.
-
-Call-site markers: `coding/extension/host/subprocess/host_builtin_tool.go` (`handleBuiltinToolLocalExec`), `CreateLocalBashOperations` in `extensions/sdk/builtin_tool.go`, `extensions/sdk-rs/src/builtin_tool.rs`, `extensions/sdk-py/pig_sdk/builtin_tool.py` and `extensions/sdk-lisp/src/builtin-tool.lisp`.
-
-Evidence: `TestBashTimeoutAfterShellExit11613` (`internal/codingagent/tools/bash_timeout_shell_exit_unix_test.go`) locks the in-process behavior the SDK path should reach.
-
-Parity allowance: none needed; Pi has no test of the SDK `createLocalBashOperations` timeout through a host wire, and the Node SDK's behavior is Pi's own code.
 
 ## D266 An image block with an empty `mimeType` is named `image/unknown` in tool cards, where Pi names it with the empty string
 

@@ -10910,17 +10910,11 @@
       "rootCauseSource": "release note",
       "userImpact": "An operation failed or was rejected",
       "platform": "Windows",
-      "class": "ahead-of-pi",
-      "divergence": "D243",
-      "removeWhen": "the pinned Pi release contains 06aa6563e. Then the call-site markers and this record go.",
+      "class": "own",
       "fixedIn": "Unreleased",
       "releaseNote": "A bash or PowerShell command that timed out after its shell had already exited, because a background process it started kept writing to the shared output, now reports the shell's exit code as well: `Command timed out after N seconds. The shell exited with code C after S seconds, but background processes it started kept writing output until the timeout.` The model no longer reads a failed command as a slow one and retries with a longer timeout. A shell still running at the deadline keeps the plain timeout message, and custom operations that fail with `timeout:N` are unchanged (D243).",
       "origin": "release note",
       "commits": [
-        {
-          "hash": "3cf1ce8466",
-          "date": "2026-11-05"
-        },
         {
           "hash": "3fe717aa8a",
           "date": "2026-11-05"
@@ -56251,11 +56245,6 @@
       "id": "D235",
       "title": "A session-graph client's two live runs with no \"no run\" read between them are one context",
       "entry": "BF-D235"
-    },
-    {
-      "id": "D243",
-      "title": "The SDK local bash operations lose the shell's exit code on a timeout after the shell exited",
-      "entry": "BF-3fe717a"
     },
     {
       "id": "D266",
