@@ -18245,6 +18245,17 @@
       "shapeHash": "sha256:ca39004025f56b1af7a49ce69f8dc9f89ebb6b203b14426bc07a5219edd69860"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#Models.resolveNetworkRefresh",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "Models.resolveNetworkRefresh",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, provider *ModelsProvider, stored *Credential) (*networkRefresh, error)"
+      },
+      "shapeHash": "sha256:b29a76566dcfefd5b09b72b846e258a444ae80f3095f415e9354a844a8a0f519"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#Models.resolveRefreshCredential",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "Models.resolveRefreshCredential",
@@ -22159,6 +22170,39 @@
         "type": "func(event AssistantMessageEvent) AssistantMessageEvent"
       },
       "shapeHash": "sha256:28f5be727799a645c95bb2c4ea69034cfbf2127474f857290700eadb57486dfe"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#RefreshModelsAuthConfigured",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "RefreshModelsAuthConfigured",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "RefreshModelsAuthMode"
+      },
+      "shapeHash": "sha256:db2f76b8dcbe71c9d62b13fcd04ce60391ce3d2a55bf29e76fbe69285395ec74"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#RefreshModelsAuthCredential",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "RefreshModelsAuthCredential",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "RefreshModelsAuthMode"
+      },
+      "shapeHash": "sha256:db2f76b8dcbe71c9d62b13fcd04ce60391ce3d2a55bf29e76fbe69285395ec74"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#RefreshModelsAuthMode",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "RefreshModelsAuthMode",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "RefreshModelsAuthMode"
+      },
+      "shapeHash": "sha256:db2f76b8dcbe71c9d62b13fcd04ce60391ce3d2a55bf29e76fbe69285395ec74"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#RefreshModelsContext",
@@ -33398,9 +33442,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "[1632]catalogBaseline"
+        "type": "[1639]catalogBaseline"
       },
-      "shapeHash": "sha256:5aac7741d5407178b9fd51080a9738dda416002151d68a51dbaa1b5ab20daf21"
+      "shapeHash": "sha256:5636d67a73a1762c25886bc17baf60cb54e66aebbf81b2ecd13d9035c5b92ed0"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#catalogRecordChunk",
@@ -41956,9 +42000,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "[79]ModelCompat"
+        "type": "[80]ModelCompat"
       },
-      "shapeHash": "sha256:21885135c841e958cff3f402c652b4ab9bcb8ef72400eed13f2d1aecea3591c8"
+      "shapeHash": "sha256:b0aa9450b333430eeba43b81cfe299325bc3a4c342cd498337a06c05d619ee5a"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#generatedFalse",
@@ -42066,9 +42110,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "[25]generatedMapRef"
+        "type": "[26]generatedMapRef"
       },
-      "shapeHash": "sha256:b71cfa891e6c72ccea5cf38be0777ea8973c060956cc8605cc178a4e09c69db3"
+      "shapeHash": "sha256:b14aa58e72ae0516300abdf0162b4e4c8cb2927392d0f76388a3783e3fa5fbf2"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#generatedRows",
@@ -42077,9 +42121,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "[1632]GeneratedModel"
+        "type": "[1639]GeneratedModel"
       },
-      "shapeHash": "sha256:d6db2d25609b52c706ab6381f45cb831d9d6632af6aa60088b129ce0918a58f9"
+      "shapeHash": "sha256:db08ecafae8a0cfbb74c5b3c05c9f3ca74171ec3f6609439b89fd9b8e3aed254"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#generatedStrings",
@@ -42099,9 +42143,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "[58]map[ModelThinkingLevel]*string"
+        "type": "[59]map[ModelThinkingLevel]*string"
       },
-      "shapeHash": "sha256:4fda5769169c743da539774d6d6ab831f9c6d68b66ea59ac53191e9875bac9ef"
+      "shapeHash": "sha256:bc14e7e197818eb868a666c3d9299fc8247a02a0e406ec33075c1ae138c934a4"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#generatedThinkingLevelMapsPairs",
@@ -42110,9 +42154,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "[58][]generatedPair[ModelThinkingLevel, *string]"
+        "type": "[59][]generatedPair[ModelThinkingLevel, *string]"
       },
-      "shapeHash": "sha256:bce66d23eb648fdbf0c5273215ad99576d96d8c6635a7cc4bc5d6b5d221e8e52"
+      "shapeHash": "sha256:b320ca9b689ae3d1aa27a08eeef3022af3a673ec623c24040e02ac23da5f57c4"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#generatedThinkingLevelMapsRefs",
@@ -42121,9 +42165,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "[875]generatedMapRef"
+        "type": "[880]generatedMapRef"
       },
-      "shapeHash": "sha256:29503a88b4255ea1e63ac8c0354c797baef6f08240dd1b23d9cb8d3589fc12ba"
+      "shapeHash": "sha256:a251804573955f6157fbd66339d46b35799946dac604dcbd4f23ec4be93c29c4"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#generatedToolCallID",
@@ -50418,6 +50462,17 @@
         "type": "func() ([]byte, error)"
       },
       "shapeHash": "sha256:57179946cef7df4d918e29b424f6d9096a9653a12925304bcb5da9ee7ff359ee"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#networkRefresh",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "networkRefresh",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "networkRefresh"
+      },
+      "shapeHash": "sha256:84a4fca03c673e289ea4bfc14af92d47e9d4e475d2bacbc85320ffb9e43478aa"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#newAnthropicEventReader",

@@ -3,8 +3,6 @@ pkg:ai/.#CACHE_WARMING_MAX_AGE_MS	ai	no-go-symbol
 pkg:ai/.#CACHE_WARMING_MAX_IDLE_AGE_MS	ai	no-go-symbol	
 pkg:ai/.#CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS	ai	type-mismatch	internal/codingagent/cache_warmer.go#cacheWarmingMinimumExpectedSavings
 pkg:ai/.#CacheWarmingPhase	ai	no-go-symbol	
-pkg:ai/.#Provider	ai	child-gap	ai/models_runtime.go#ModelsProvider
-pkg:ai/.#Provider::property:refreshModelsAuth	ai	member-missing	ai/models_runtime.go#ModelsProvider
 pkg:ai/.#evaluateCacheWarming	ai	no-go-symbol	
 pkg:ai/.#evaluateCacheWarming::call:0	ai	child-gap	
 pkg:ai/.#isCacheWarmingReplayable	ai	no-go-symbol	
@@ -14,14 +12,10 @@ pkg:ai/compat#CACHE_WARMING_MAX_AGE_MS	ai	no-go-symbol
 pkg:ai/compat#CACHE_WARMING_MAX_IDLE_AGE_MS	ai	no-go-symbol	
 pkg:ai/compat#CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS	ai	type-mismatch	internal/codingagent/cache_warmer.go#cacheWarmingMinimumExpectedSavings
 pkg:ai/compat#CacheWarmingPhase	ai	no-go-symbol	
-pkg:ai/compat#Provider	ai	child-gap	ai/models_runtime.go#ModelsProvider
-pkg:ai/compat#Provider::property:refreshModelsAuth	ai	member-missing	ai/models_runtime.go#ModelsProvider
 pkg:ai/compat#evaluateCacheWarming	ai	no-go-symbol	
 pkg:ai/compat#evaluateCacheWarming::call:0	ai	child-gap	
 pkg:ai/compat#isCacheWarmingReplayable	ai	no-go-symbol	
 pkg:ai/compat#isCacheWarmingReplayable::call:0	ai	child-gap	
-pkg:ai/models#Provider	ai	child-gap	ai/models_runtime.go#ModelsProvider
-pkg:ai/models#Provider::property:refreshModelsAuth	ai	member-missing	ai/models_runtime.go#ModelsProvider
 pkg:chord/.#formatNumber	chord	child-gap	chord/next/surfaces/surfaces_format.go#FormatNumber
 pkg:chord/.#formatNumber::call:0	chord	signature-mismatch	chord/next/surfaces/surfaces_format.go#FormatNumber
 pkg:chord/.#formatTime	chord	child-gap	chord/next/surfaces/intl_time.go#FormatTime
