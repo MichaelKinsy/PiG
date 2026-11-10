@@ -833,7 +833,7 @@ func (m *InteractiveMode) updatePendingMessagesDisplay() {
 		return
 	}
 	m.pendingMessagesContainer.Clear()
-	// pig divergence (D311): Pi acd059b72 keeps user bash output shown while the agent works in this area until the run settles.
+	// User bash output shown while the agent works in this area until the run settles.
 	m.pendingBashBlocksMu.Lock()
 	for _, block := range m.pendingBashBlocks {
 		m.pendingMessagesContainer.Add(block)

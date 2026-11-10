@@ -51,7 +51,6 @@ func (m *InteractiveMode) setRemoteEditor(editor extension.RemoteEditor) {
 	if m.editor == nil {
 		return
 	}
-	// pig divergence (D251): the draft moves with its collapsed paste markers expanded (Pi main 51313540a, #10146).
 	text := m.editor.GetExpandedText()
 	if m.remoteEditor != nil {
 		m.remoteEditor.finishAllInput()

@@ -114,7 +114,6 @@ func (m *InteractiveMode) resetWorkingStatus() {
 func (m *InteractiveMode) resetExtensionUIForReplacement() {
 	reset := func() {
 		m.resetExtensionDialogs()
-		// pig divergence (D310): Pi 80d4d3c86 removes every extension overlay on reset, not only the topmost one.
 		m.removeExtensionOverlays()
 		m.detachSubprocess()
 		if m.widgetContainer != nil {

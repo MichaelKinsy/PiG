@@ -1662,8 +1662,8 @@ type startupBenchmarkMode interface {
 // replies, and stops it without entering the input loop. It then disposes the session runtime, as a normal interactive quit does after it stops
 // the TUI, so extensions receive session_shutdown and release what they hold.
 //
-// pig divergence (D262): Pi efb45b51d disposes the runtime right after interactiveMode.stop() and before the timings print; Pi 1.5.0 never disposes it
-// on this path. The error path disposes too, where the process would otherwise exit without session_shutdown.
+// Pi disposes the runtime right after interactiveMode.stop() and before the timings print.
+// The error path disposes too, where the process would otherwise exit without session_shutdown.
 //
 // upstream: packages/coding-agent/src/main.ts:964-978 (startupBenchmark)
 func runStartupBenchmark(ctx context.Context, interactive startupBenchmarkMode, dispose func() error) {
