@@ -1458,7 +1458,7 @@ type WidgetPushPayload struct {
 type CancelPayload struct {
 	RequestID string `json:"request_id,omitempty"`
 	Reason    string `json:"reason,omitempty"`
-	// SignalOnly reports that only the request's AbortSignal ended (session_before_compact, session_before_tree: Pi's abortCompaction aborts the AbortController, agent-session.ts:2867) and the request goes on: the runtime aborts the signal its handler holds and cancels no host call, as Pi's in-process calls never fail with the abort. The host keeps answering the handler's calls, before and after, and waits for its reply. An ordinary cancel, without it, ends the request and its host calls.
+	// SignalOnly reports that only the request's AbortSignal ended (session_before_compact, session_before_tree: Pi's abortCompaction aborts the AbortController, agent-session.ts:2867; tool_call: Pi's run abort aborts the signal executePreparedToolCall hands tool.execute, agent-loop.ts:817-853) and the request goes on: the runtime aborts the signal its handler holds and cancels no host call, as Pi's in-process calls never fail with the abort. The host keeps answering the handler's calls, before and after, and waits for its reply. An ordinary cancel, without it, ends the request and its host calls; a tool_call whose grace period ended is ended by one.
 	SignalOnly bool `json:"signal_only,omitempty"`
 }
 
