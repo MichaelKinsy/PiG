@@ -22,7 +22,7 @@ import (
 // shellExitedTicks is the writer's lines, and shellExitedAfter the seconds the shell reported, as the delegation cases below normalize them.
 var (
 	shellExitedTicks = regexp.MustCompile(`(?:tick\\n)+`)
-	shellExitedAfter = regexp.MustCompile(`after (\d+(?:\.\d)?) seconds`)
+	shellExitedAfter = regexp.MustCompile(`(exited with code \d+) after (\d+(?:\.\d)?) seconds`)
 )
 
 // TestConformance_BuiltinToolDelegationAcrossSDKs: Pi's create<Tool>ToolDefinition(cwd, options) and create<Tool>Tool factories (core/tools/*.ts, exported from the
@@ -223,9 +223,10 @@ func TestConformance_BuiltinToolDelegationAcrossSDKs(t *testing.T) {
 			// as a count of ticks and the time as a time after the spawn and before the 2 second deadline, which the code 7 and the sentence distinguish from the fallback.
 			text = shellExitedTicks.ReplaceAllString(text, `<ticks>\n`)
 			text = shellExitedAfter.ReplaceAllStringFunc(text, func(found string) string {
-				seconds, _ := strconv.ParseFloat(shellExitedAfter.FindStringSubmatch(found)[1], 64)
+				match := shellExitedAfter.FindStringSubmatch(found)
+				seconds, _ := strconv.ParseFloat(match[2], 64)
 				if seconds > 0 && seconds < 2 {
-					return "after <0-2> seconds"
+					return match[1] + " after <0-2> seconds"
 				}
 				return found
 			})
