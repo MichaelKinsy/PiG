@@ -3661,13 +3661,13 @@ Parity allowance: none beyond the forms above.
 
 Remove when: PiG gets an in-process evaluator of plugins or Pi evaluates plugins out of process.
 
-## D616 An npm tarball is extracted with `tar` told the archive relative to the pack directory, where Pi passes its absolute path
+## D616 An npm tarball is extracted with `tar` told the archive and the destination relative to the pack directory, where Pi passes their absolute paths
 
-What: Pi's `installPlugin` packs an npm package into a temporary directory and extracts it with `run("tar", ["-xzf", join(packed, basename(tarball.filename)), "--strip-components=1", "-C", dir], packed, ...)` (`packages/chord/src/node/plugins/install.ts:248-249`): the archive is an absolute path. GNU tar reads an archive name with a colon before its first slash as `host:file`, so on Windows with the `tar` of Git for Windows ahead of `System32\tar.exe` (bsdtar) in PATH, `C:\...\pack-x\pkg-1.0.0.tgz` is the file `...` on a host named `C` and the extraction fails with `tar (child): Cannot connect to C: resolve failed`. PiG's `unpack` runs tar in the pack directory already (as Pi does) and names the archive `./<basename>`, which both tars read as a local file; every other argument is Pi's.
+What: Pi's `installPlugin` packs an npm package into a temporary directory and extracts it with `run("tar", ["-xzf", join(packed, basename(tarball.filename)), "--strip-components=1", "-C", dir], packed, ...)` (`packages/chord/src/node/plugins/install.ts:248-249`): the archive and the destination are absolute paths. GNU tar reads an archive name with a colon before its first slash as `host:file`, so on Windows with the `tar` of Git for Windows ahead of `System32\tar.exe` (bsdtar) in PATH, `C:\...\pack-x\pkg-1.0.0.tgz` is the file `...` on a host named `C` and the extraction fails with `tar (child): Cannot connect to C: resolve failed`. PiG's `unpack` runs tar in the pack directory already (as Pi does) and names the archive `./<basename>`, which both tars read as a local file; every other argument is Pi's.
 
 Why: a plugin install from npm that fails on a common Windows PATH (Git Bash first) for a reason of argument shape only is worse than Pi's behavior and costs nothing to avoid; on POSIX and with bsdtar the extraction is the same.
 
-Pi bug: With GNU tar of Git for Windows in PATH Pi's `installPlugin` of an npm package fails on Windows; to be filed upstream with the repro (`installPlugin` with an `npm` source on Windows from Git Bash).
+Pi bug: With GNU tar of Git for Windows in PATH Pi's `installPlugin` of an npm package fails on Windows (the archive, then the destination); to be filed upstream with the repro (`installPlugin` with an `npm` source on Windows from Git Bash).
 
 Scope: `chord/nextnode/plugins` (`unpack`).
 
@@ -3675,7 +3675,7 @@ Owner decision: owner approved 2026-11-10 (for 0.8.0).
 
 SCRUTINIZED:approved 2026-11-10
 
-Remove when: Pi's install names the archive relative to the pack directory.
+Remove when: Pi's install names the archive and the destination relative to the pack directory.
 
 Call-site markers: `chord/nextnode/plugins/plugins_install.go` (`unpack`).
 

@@ -308,6 +308,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-2fc2307](#bf-2fc2307) | A scalar that names a collection tag (`!!map 1`, `!!seq true`) inside a complex mapping key stays plain in… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-305432b](#bf-305432b) | fix(coding-agent): stop macOS shell groups before killing them (Pi) | A fix Pi shipped that PiG ported | macOS | Unreleased |
 | [BF-305bd8b](#bf-305bd8b) | A durable task that panics with a value whose `String` method panics now faults with the message `[object… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-30cdab4](#bf-30cdab4) | Windows: the environment daemon's `taskkill /F /T` runs with the `SystemRoot` it resolved for its path… | PiG's own defect | Windows | Unreleased |
 | [BF-30d4a6d](#bf-30d4a6d) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-30e47f4](#bf-30e47f4) | fix(tui): SetThemeInstance notifies the active theme observers, as Pi's setThemeInstance runs its callback | PiG's own defect | All platforms | Unreleased |
 | [BF-30e4a98](#bf-30e4a98) | The Node extension runtime now serves Pi's `ModelRuntime.settleCredentialWrites` and pi-ai's… | PiG's own defect | All platforms | Unreleased |
@@ -491,6 +492,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-47c3007-2](#bf-47c3007-2) | MCP OAuth sign-ins can now be cancelled with Esc at every step, session shutdown stops a running sign-in, and… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-47c3007-3](#bf-47c3007-3) | Shutdown no longer waits up to 15 seconds to refresh an MCP OAuth token that was about to expire, only to… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-47ec6e8](#bf-47ec6e8) | A chord plugin that starts a child process which keeps the Node host's output pipes open (a child that… | PiG's own defect | All platforms | Unreleased |
+| [BF-4812c01](#bf-4812c01) | Windows: installing a plugin from npm also names the extraction directory relative to the pack directory (`-C… | PiG's own defect | Windows | Unreleased |
 | [BF-48318eb](#bf-48318eb) | fix(hljs): a resumed run counts the scan iterations before its checkpoint | PiG's own defect | All platforms | Unreleased |
 | [BF-48435cd](#bf-48435cd) | A parsed http, https, ws, wss or ftp URL reports its fragment percent-encoded, as Node's `url.hash` does | PiG's own defect | All platforms | 0.5.0 |
 | [BF-486aee5](#bf-486aee5) | fix(sdk): the Go SDK ends the connection on a frame it cannot decode | PiG's own defect | All platforms | Unreleased |
@@ -5972,6 +5974,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `durable/harness/harness_listener_errors_test.go::TestAThrownValueThatCannotBeFormatted`, `durable/harness/tool_nested_test.go::TestAReplaySafeCallerReattachesToTheNestedCallsItMadeBeforeARestart`, `durable/harness/tool_nested_test.go::TestTheLeftRunningNestedCallsOfACallerInterruptedWhileItCleanedThemUpAreAborted`, `durable/harness/tool_nested_test.go::TestToolTaskMigratesVersion1InputToAModelIssuedCall`
 - **Release note:** A durable task that panics with a value whose `String` method panics now faults with the message `[object Object]`, as Pi's `errorMessage` gives for a thrown value that cannot be formatted, instead of Go's `%!v(PANIC=...)` text.
 
+### BF-30cdab4
+
+**Windows: the environment daemon's `taskkill /F /T` runs with the `SystemRoot` it resolved for its path…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Windows: the environment daemon's `taskkill /F /T` runs with the `SystemRoot` it resolved for its path (`C:\Windows` when the variable is empty or unset) instead of inheriting an empty one, with which taskkill did not run and left the killed program's tree alive.
+- **Root cause:** Windows: the environment daemon's `taskkill /F /T` runs with the `SystemRoot` it resolved for its path (`C:\Windows` when the variable is empty or unset) instead of inheriting an empty one, with which taskkill did not run and left the killed program's tree alive.
+- **User impact:** An operation failed or was rejected
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `30cdab4dca` (2026-11-10)
+- **Tests:** None recorded.
+- **Release note:** Windows: the environment daemon's `taskkill /F /T` runs with the `SystemRoot` it resolved for its path (`C:\Windows` when the variable is empty or unset) instead of inheriting an empty one, with which taskkill did not run and left the killed program's tree alive.
+
 ### BF-30d4a6d
 
 **Fix in shipped code**
@@ -8494,6 +8510,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `47ec6e80d8` (2026-11-05)
 - **Tests:** `chord/nextnode/plugins/plugins_node_test.go::TestNodeAProcessTheHostStartedThatHoldsItsPipesDoesNotHoldItsExit`
 - **Release note:** A chord plugin that starts a child process which keeps the Node host's output pipes open (a child that inherited stdout or stderr) no longer holds the host's exit: `Close` and the host's `Exited` waited for that child to end, for as long as it lived. The host now waits for its Node process to exit, and for the end of its output only for the stop grace after that, as Pi's server awaits the child's exit and not its output.
+
+### BF-4812c01
+
+**Windows: installing a plugin from npm also names the extraction directory relative to the pack directory (`-C…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Windows: installing a plugin from npm also names the extraction directory relative to the pack directory (`-C ../<dir>`), so the `tar` of Git for Windows, which resolves a `-C C:\...` name against its working directory, no longer fails with "Cannot open: No such file or directory".
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `4812c0127b` (2026-11-10)
+- **Tests:** `chord/nextnode/plugins/plugins_install_tar_test.go::TestInstallPluginNamesTheTarballToTarRelativeToThePackDirectory`
+- **Release note:** Windows: installing a plugin from npm also names the extraction directory relative to the pack directory (`-C ../<dir>`), so the `tar` of Git for Windows, which resolves a `-C C:\...` name against its working directory, no longer fails with "Cannot open: No such file or directory". Pi passes the absolute directory (D616 now names the archive and the destination).
 
 ### BF-48318eb
 
@@ -29376,7 +29406,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D601 | The browser page's and the terminal sandbox's client runtimes, and the React bindings, are Pi's TypeScript… | [BF-D601](#bf-d601) |
 | D605 | The server's two hosts serve one union: `Host.Delegate` one way, the Node host's destination the other | [BF-D605](#bf-d605) |
 | D607 | The plugins component loads hosts through a Node subprocess it starts: Pi's `evaluate`, `stack` and runtime… | deliberate difference |
-| D616 | An npm tarball is extracted with `tar` told the archive relative to the pack directory, where Pi passes its… | [BF-5043738](#bf-5043738) |
+| D616 | An npm tarball is extracted with `tar` told the archive and the destination relative to the pack directory… | [BF-5043738](#bf-5043738) |
 
 ## Fix-titled commits that are not bugs in a release
 
