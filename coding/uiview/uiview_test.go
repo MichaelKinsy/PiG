@@ -240,7 +240,7 @@ func TestInvokeOutcomes(t *testing.T) {
 	if res := r.Invoke(context.Background(), "p", st.Mount, "", "p.go", json.RawMessage(`1`), forged); res.Outcome != OutcomeFailed {
 		t.Errorf("plugin-chosen timeout = %+v", res)
 	}
-	r.Update("p", updateArgs(t, st.Mount, "newer"))
+	_, _ = r.Update("p", updateArgs(t, st.Mount, "newer"))
 	if res := r.Invoke(context.Background(), "p", st.Mount, "", "p.go", json.RawMessage(`1`), echo); res.Outcome != OutcomeStale {
 		t.Errorf("old rev = %+v", res)
 	}
@@ -258,7 +258,7 @@ func TestInvokeStaleWhenMountChangesDuringAnswer(t *testing.T) {
 	out := make(chan Result)
 	go func() { out <- r.Invoke(context.Background(), "p", st.Mount, "", "p.go", json.RawMessage(`1`), slow) }()
 	<-entered
-	r.Update("p", updateArgs(t, st.Mount, "newer"))
+	_, _ = r.Update("p", updateArgs(t, st.Mount, "newer"))
 	close(release)
 	if res := <-out; res.Outcome != OutcomeStale {
 		t.Fatalf("result = %+v", res)
@@ -333,8 +333,8 @@ func TestSubscribersSeeFullSnapshotsInOrder(t *testing.T) {
 	var got []Snapshot
 	r.Subscribe(func(e Event) { got = append(got, e.Snapshot) })
 	st, _ := r.Mount("p", mountArgs(t, "k", "one"))
-	r.Update("p", updateArgs(t, st.Mount, "two"))
-	r.Transition("p", "finish", RefArgs{Mount: st.Mount})
+	_, _ = r.Update("p", updateArgs(t, st.Mount, "two"))
+	_, _ = r.Transition("p", "finish", RefArgs{Mount: st.Mount})
 	if len(got) != 3 || got[0].Mount.Rev != 1 || got[1].Mount.Rev != 2 || got[2].State != StateFinished || len(got[2].View) == 0 {
 		t.Fatalf("events = %+v", got)
 	}
