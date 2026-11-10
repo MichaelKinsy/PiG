@@ -3,11 +3,13 @@ package store
 import (
 	"context"
 	"fmt"
+	"maps"
 	"math"
 	"reflect"
 	"slices"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/sqlite"
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
@@ -102,6 +104,8 @@ type RowCodec struct {
 	keyNames     map[string]bool
 	keyPositions []int
 	table        string
+	// host is the `host(...)` column, if the table has one: its cells are keys stored, addresses read.
+	host *Column
 }
 
 // NewRowCodec is the codec of columns and key (names of columns) of table.
@@ -113,6 +117,9 @@ func NewRowCodec(columns []Column, key []string, table string) *RowCodec {
 		codec.names[column.Name] = true
 		if column.Type == ColJson {
 			codec.json = append(codec.json, column)
+		}
+		if column.Host != nil {
+			codec.host = &columns[index]
 		}
 	}
 	for _, name := range key {
@@ -232,10 +239,54 @@ func (codec *RowCodec) Decode(ctx context.Context, stored sqlite.SqliteRow) (Row
 			}
 			row[column.Name] = value
 		default:
+			if column.Host != nil {
+				address, err := column.Host.Address(value.(string))
+				if err != nil {
+					return nil, err
+				}
+				row[column.Name] = address
+				continue
+			}
 			row[column.Name] = value
 		}
 	}
 	return row, nil
+}
+
+// Stored is a row as reads return it with its `host(...)` cell as stored (the address's key), for the evaluator, which
+// compares stored values; the row itself without a host column.
+func (codec *RowCodec) Stored(row Row) Row {
+	host := codec.host
+	if host == nil {
+		return row
+	}
+	// A read row's host cell is an address (Decode).
+	address, ok := row[host.Name].(contracts.Address)
+	if !ok {
+		return row
+	}
+	stored := maps.Clone(row)
+	stored[host.Name] = address.Key
+	return stored
+}
+
+// Addressed is a row with its `host(...)` cell as stored (a key) turned into the address reads return; Stored's inverse.
+func (codec *RowCodec) Addressed(row Row) (Row, error) {
+	host := codec.host
+	if host == nil {
+		return row, nil
+	}
+	key, ok := row[host.Name].(string)
+	if !ok {
+		return row, nil
+	}
+	address, err := host.Host.Address(key)
+	if err != nil {
+		return nil, err
+	}
+	addressed := maps.Clone(row)
+	addressed[host.Name] = address
+	return addressed, nil
 }
 
 // closedObject is the field lookup of value when it is an object with only fields of names; `invalid/args`
@@ -285,9 +336,17 @@ type JsonText struct {
 	Value any
 }
 
-// EncodeCell checks and encodes a value of column; a `json(...)` value is serialized, not walked (R9). Stored is a
-// strict JSON value: a string, a float64, a bool or the json value itself.
+// EncodeCell checks and encodes a value of column; a `json(...)` value is serialized, not walked (R9); a `host(...)`
+// one is an address of its kind, stored as its key. Stored is a strict JSON value: a string, a float64, a bool or the
+// json value itself.
 func EncodeCell(column Column, value any, what string) (Cell, error) {
+	if column.Host != nil {
+		key, err := column.Host.Key(value, what)
+		if err != nil {
+			return Cell{}, err
+		}
+		return Cell{Param: key, Stored: key}, nil
+	}
 	if column.Type != ColJson {
 		stored, err := CheckScalar(column.Type, value, what)
 		if err != nil {
@@ -322,10 +381,14 @@ func jsonScalar(scalar Scalar) any {
 	return scalar
 }
 
-// encodeScalar checks a scalar value of column and returns it (a json column has no scalar value).
+// encodeScalar checks a scalar value of column and returns it (a json column has no scalar value; an address for a
+// `host(...)` column is its key).
 func encodeScalar(column Column, value any, what string) (Scalar, error) {
 	if column.Type == ColJson {
 		return nil, data.Invalid(data.ReasonArgs, what+": a json(...) column has no scalar value")
+	}
+	if column.Host != nil {
+		return column.Host.Key(value, what)
 	}
 	return CheckScalar(column.Type, value, what)
 }

@@ -139,6 +139,22 @@ func (queries *LiveQueries) On(table string) []*LiveQuery {
 	return append([]*LiveQuery(nil), queries.byTable[table]...)
 }
 
+// OnHostKind are the live queries over tables with a `host(...)` column of host kind kind: what a host data change
+// re-runs.
+func (queries *LiveQueries) OnHostKind(kind string) []*LiveQuery {
+	queries.mu.Lock()
+	defer queries.mu.Unlock()
+	var found []*LiveQuery
+	for _, list := range queries.byTable {
+		for _, query := range list {
+			if host := query.handle.Definition.HostColumn; host != nil && host.Host.Kind.Kind == kind {
+				found = append(found, query)
+			}
+		}
+	}
+	return found
+}
+
 // RefreshOf is the re-run of the live queries over the tables a transaction writes (handles, in the order it first wrote
 // them), nil when none has one (the common case: a map lookup per written table, nothing more). ctx is the
 // transaction's: the runs count through it.

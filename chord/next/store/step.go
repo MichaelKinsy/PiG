@@ -1,6 +1,11 @@
 package store
 
-import "github.com/MichaelKinsy/PiG/chord/sqlite"
+import (
+	"maps"
+	"slices"
+
+	"github.com/MichaelKinsy/PiG/chord/sqlite"
+)
 
 // Ports packages/chord/src/store/step.ts
 //
@@ -55,6 +60,15 @@ type Step struct {
 // NewStep is a step over executor at seq; catalog is the store's catalog as the step starts (read only here).
 func NewStep(executor sqlite.SqliteExecutor, seq int64, ids *IdAllocator, catalog map[string]*TableRecord) *Step {
 	return &Step{Executor: executor, Seq: seq, IDs: ids, Tables: map[string]*TableRecord{}, catalog: catalog}
+}
+
+// Records is every recorded table as this step leaves it so far, by SQL name (Pi's catalog is a Map in the order its
+// tables were recorded; the Go catalog is a map, so the order is the name's).
+func (step *Step) Records() []*TableRecord {
+	records := make(map[string]*TableRecord, len(step.catalog)+len(step.Tables))
+	maps.Copy(records, step.catalog)
+	maps.Copy(records, step.Tables)
+	return slices.SortedFunc(maps.Values(records), func(a, b *TableRecord) int { return CompareText(a.Table, b.Table) })
 }
 
 // Table is the record of table name as this step leaves it so far; nil when there is none.
