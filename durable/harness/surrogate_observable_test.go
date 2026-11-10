@@ -128,20 +128,26 @@ func TestOwnedTasksKeepsALoneSurrogateInTheRecordsItReturns(t *testing.T) {
 		t.Fatalf("ownedTasks = %d records, want the child", len(records))
 	}
 	record := records[0]
-	input, _ := record.Input.(durable.JsonObject)
-	var checkpoint durable.JsonObject
-	if record.State.Checkpoint != nil {
-		checkpoint, _ = (*record.State.Checkpoint).(durable.JsonObject)
+	if record.State.Checkpoint == nil {
+		t.Fatalf("record = %+v, want a checkpoint", record)
 	}
-	if input == nil || checkpoint == nil {
-		t.Fatalf("record = %+v, want an input and a checkpoint object", record)
-	}
-	gotName, _ := input.Get("name")
-	gotNote, _ := checkpoint.Get("note")
+	gotName, gotNote := member(record.Input, "name"), member(*record.State.Checkpoint, "note")
 	if record.Kind != kind || gotName != name || gotNote != note {
 		t.Errorf("ownedTasks returned kind %q, input name %q, checkpoint note %q; want %q, %q, %q", record.Kind, gotName, gotNote, kind, name, note)
 	}
 	if err := harness.Close(testContext); err != nil {
 		t.Fatal(err)
 	}
+}
+
+// member is the value of one key of a decoded JSON object, whatever object type the decoder gave.
+func member(object durable.JsonValue, key string) any {
+	switch typed := object.(type) {
+	case durable.JsonObject:
+		value, _ := typed.Get(key)
+		return value
+	case map[string]any:
+		return typed[key]
+	}
+	return nil
 }
