@@ -34,8 +34,8 @@ A delivery that puts several HTTP chunks into one socket write is not an oracle:
 export PI_PACKAGE_ROOT="$(realpath extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent)"
 # Node 24.19.0 on PATH
 node probe.mjs --rpc "$PI_PACKAGE_ROOT/dist/cli.js" pi.json inputs.json
-# Trace only, for a second Node version; the cases must equal pi.json's
-node probe.mjs /tmp/pi-node26.json
+# Trace only, for a second Node release in 24.14.1..24.21.0: the cases must equal pi.json's (24.22.0 and later differ, see Findings)
+node probe.mjs /tmp/pi-node24.21.json
 # PiG through the same RPC fixtures
 node probe.mjs --rpc <pig-binary> /tmp/pig.json
 go test ./ai -run TestAnthropicMicrotaskTrace -count=3 -race
