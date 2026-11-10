@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -74,12 +75,7 @@ func TestSessionBeforeSignalReachesEverySDKWhenAbortedDuringDispatch(t *testing.
 								go emit()
 								entered := "event_signal:" + event.name + ":entered:info"
 								pollUntilConformance(t, "the handler never entered its wait", func() bool {
-									for _, line := range h.ui.Recorded() {
-										if line == entered {
-											return true
-										}
-									}
-									return false
+									return slices.Contains(h.ui.Recorded(), entered)
 								})
 								abort()
 							}
