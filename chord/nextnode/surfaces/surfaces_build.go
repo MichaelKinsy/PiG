@@ -25,12 +25,24 @@ import (
 // SurfaceBuilt is how a surface's build ended: built (its base bundle's hash and the files it read), or failed (esbuild's failure,
 // or the first set's).
 type SurfaceBuilt struct {
+	// Kind is `built` or `failed` (Pi's discriminator `kind`): Error is set exactly when it is failed.
+	Kind SurfaceBuiltKind
 	// Base is the base bundle's hash; Inputs the files it was built from, with their bytes' hashes.
 	Base   string
 	Inputs model.BaseInputs
-	// Err is why it failed: none built.
-	Err error
+	// Error is why it failed: none built.
+	Error error
 }
+
+// SurfaceBuiltKind is how a surface's build ended.
+type SurfaceBuiltKind string
+
+const (
+	// SurfaceBuiltKindBuilt is a build that made the base bundle and published the first set.
+	SurfaceBuiltKindBuilt SurfaceBuiltKind = "built"
+	// SurfaceBuiltKindFailed is a build that did not.
+	SurfaceBuiltKindFailed SurfaceBuiltKind = "failed"
+)
 
 // surfaceBuildOptions is what a surface builds: its kind, entry, conditions and the plugins component.
 type surfaceBuildOptions struct {
@@ -192,7 +204,7 @@ func (b *surfaceBuild) run(ctx context.Context) *buildOutcome {
 // publicOutcome is outcome as callers see it.
 func publicOutcome(outcome *buildOutcome) *SurfaceBuilt {
 	if outcome.err != nil {
-		return &SurfaceBuilt{Err: outcome.err}
+		return &SurfaceBuilt{Kind: SurfaceBuiltKindFailed, Error: outcome.err}
 	}
-	return &SurfaceBuilt{Base: outcome.base.Hash, Inputs: outcome.base.Inputs}
+	return &SurfaceBuilt{Kind: SurfaceBuiltKindBuilt, Base: outcome.base.Hash, Inputs: outcome.base.Inputs}
 }

@@ -29108,7 +29108,6 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D601 | The browser page's and the terminal sandbox's client runtimes, and the React bindings, are Pi's TypeScript… | [BF-D601](#bf-d601) |
 | D605 | The server's two hosts serve one union: `Host.Delegate` one way, the Node host's destination the other | [BF-D605](#bf-d605) |
 | D607 | The plugins component loads hosts through a Node subprocess it starts: Pi's `evaluate`, `stack` and runtime… | deliberate difference |
-| D608 | A client surface is built after the server's listen: `NewWebSurface`/`NewTuiSurface` return at once and… | deliberate difference |
 
 ## Fix-titled commits that are not bugs in a release
 

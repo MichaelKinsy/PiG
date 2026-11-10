@@ -116157,7 +116157,7 @@
       "evidence": [
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
         "test:chord/next/surfaces/surfaces_client_test.go#TestANewerSetIsNotDeliveredWhileTheUpdateBeforeItRunsSoItsRetryWaitsTheFirstPauseAgain",
-        "test:chord/nextnode/app/app_surfaces_test.go#TestWebSurfaceKeepsAPluginsAssetsWhileItKeepsItsOldScriptAfterFailedBuildsOpusL4FableM3"
+        "test:chord/nextnode/app/app_surfaces_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone"
       ]
     },
     {
@@ -116200,8 +116200,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
-        "test:chord/nextnode/app/app_surfaces_test.go#TestWebSurfaceKeepsAPluginsAssetsWhileItKeepsItsOldScriptAfterFailedBuildsOpusL4FableM3",
-        "test:chord/nextnode/app/app_surfaces_test.go#TestWebSurfacePublishesANewSetOnARolloutWithoutWaitingForClientsThePreviousFilesStayServed"
+        "test:chord/nextnode/app/app_surfaces_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
+        "test:chord/nextnode/app/app_surfaces_test.go#TestWebSurfaceKeepsAPluginsAssetsWhileItKeepsItsOldScriptAfterFailedBuildsOpusL4FableM3"
       ]
     },
     {
@@ -120759,7 +120759,8 @@
         "public-api:chord/next/surfaces/surfaces_scripts.go#TuiScripts"
       ],
       "evidence": [
-        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone"
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
+        "test:chord/nextnode/app/app_surfaces_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone"
       ]
     },
     {
@@ -122613,8 +122614,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
-        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientAnswersEightRequestsAtOnceRefusesMoreAndIgnoresSIGUSR1OpusE10E8",
-        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientDrawsItsPromptInItsOwnColoursAndIgnoresKeysTypedBeforeItAppearedOpusE4"
+        "test:chord/nextnode/app/app_surfaces_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientAnswersEightRequestsAtOnceRefusesMoreAndIgnoresSIGUSR1OpusE10E8"
       ]
     },
     {
@@ -122657,7 +122658,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
-        "test:chord/nextnode/app/app_surfaces_test.go#TestAppRunsTheWebAndTheTerminalSurfacesWithTheirOwnBaseBundles"
+        "test:chord/nextnode/app/app_surfaces_test.go#TestAppRunsTheWebAndTheTerminalSurfacesWithTheirOwnBaseBundles",
+        "test:chord/nextnode/app/app_surfaces_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone"
       ]
     },
     {
@@ -122786,9 +122788,9 @@
         "call:chord/nextnode/app/app.go#App.start"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_surfaces_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientAnswersEightRequestsAtOnceRefusesMoreAndIgnoresSIGUSR1OpusE10E8",
-        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientDrawsItsPromptInItsOwnColoursAndIgnoresKeysTypedBeforeItAppearedOpusE4",
-        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientEndsOnCtrlCWhileItsPromptIsOpenWhateverTheSandboxAsksOpusE11"
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientDrawsItsPromptInItsOwnColoursAndIgnoresKeysTypedBeforeItAppearedOpusE4"
       ]
     },
     {
@@ -128688,7 +128690,7 @@
       "evidence": [
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
         "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesOneAfterAnotherSoTheNewestBuildStaysDeployed",
-        "test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestPluginsBuildsShareOneEvaluatorProcessAndCloseEndsIt"
+        "test:chord/nextnode/app/app_surfaces_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone"
       ]
     },
     {
@@ -128710,7 +128712,7 @@
       "evidence": [
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
         "test:chord/nextnode/app/app_executable_test.go#TestAppStartsWhenAnOptionalPluginsFacetImportsAFileThatIsNotThereItsBuildFailsAndTheRestRuns",
-        "test:chord/nextnode/plugins/plugins_build_test.go#TestBuildMakesTheSameScriptsAsPisBuildFacetForTheFixtures"
+        "test:chord/nextnode/app/app_surfaces_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone"
       ]
     },
     {
@@ -129477,8 +129479,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
-        "test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestPluginsBuildsShareOneEvaluatorProcessAndCloseEndsIt",
-        "test:chord/nextnode/surfaces/surfaces_build_linux_test.go#TestARolloutStepDuringTheBuildStopsWaitingAtItsContextsAbortBeforeTheBuildEndsTheBuildGoesOn"
+        "test:chord/nextnode/app/app_surfaces_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
+        "test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestPluginsBuildsShareOneEvaluatorProcessAndCloseEndsIt"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -129500,8 +129502,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
-        "test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestPluginsBuildsShareOneEvaluatorProcessAndCloseEndsIt",
-        "test:chord/nextnode/surfaces/surfaces_build_linux_test.go#TestARolloutStepDuringTheBuildStopsWaitingAtItsContextsAbortBeforeTheBuildEndsTheBuildGoesOn"
+        "test:chord/nextnode/app/app_surfaces_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
+        "test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestPluginsBuildsShareOneEvaluatorProcessAndCloseEndsIt"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -132242,8 +132244,25 @@
     },
     {
       "id": "pkg:chord/surfaces#SurfaceBuilt",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:34bdd375acedab7847cbb59aada79e41a588b2e626f2c410aa7a35a2d3fe1ce9"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:34bdd375acedab7847cbb59aada79e41a588b2e626f2c410aa7a35a2d3fe1ce9",
+      "rationale": "Derived by the interface gap detector: SurfaceBuilt is Go chord/nextnode/surfaces/surfaces_build.go#SurfaceBuilt (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/surfaces_build.go#SurfaceBuilt"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/surfaces/surfaces_build.go#publicOutcome"
+      ],
+      "evidence": [
+        "test:chord/nextnode/surfaces/surfaces_build_linux_test.go#TestARolloutStepDuringTheBuildStopsWaitingAtItsContextsAbortBeforeTheBuildEndsTheBuildGoesOn",
+        "test:chord/nextnode/surfaces/surfaces_build_linux_test.go#TestTheServersCloseFailsTheBuildInFlightItsWaitersAnswer503",
+        "test:chord/nextnode/surfaces/surfaces_build_test.go#TestAFailedBuildAnswers503ForTheSurfacesFilesAndFailsItsStepsHost"
+      ]
     },
     {
       "id": "pkg:chord/surfaces#TUI_PREFIX",
@@ -132269,9 +132288,29 @@
       "id": "pkg:chord/surfaces#TuiStart",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:1a80ace86cc1656cf4a5eee789992946de8d6560207b46453d2c2909ddb4d2f7",
-      "rationale": "Derived by the interface gap detector: TuiStart is Go chord/nextnode/surfaces/surfaces_tui.go#TuiStart (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: TuiStart is Go chord/nextnode/surfaces/surfaces_tui.go#TuiStart (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/nextnode/surfaces/surfaces_tui.go#TuiStart"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/surfaces/surfaces_tui.go#NewTuiSurface"
+      ],
+      "evidence": [
+        "test:chord/nextnode/app/app_surfaces_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone"
+      ]
+    },
+    {
+      "id": "pkg:chord/surfaces#tuiSurface",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:f334f9661456fe7ef880c69c370a3f520b24731021551b4ba6075ff291add043",
+      "rationale": "Derived by the interface gap detector: tuiSurface is Go chord/nextnode/surfaces/surfaces_tui.go#NewTuiSurface (name rule N4), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/surfaces_tui.go#NewTuiSurface"
       ],
       "layers": {
         "behavior": "complete",
@@ -132286,20 +132325,44 @@
       ]
     },
     {
-      "id": "pkg:chord/surfaces#tuiSurface",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:f334f9661456fe7ef880c69c370a3f520b24731021551b4ba6075ff291add043"
-    },
-    {
       "id": "pkg:chord/surfaces#TuiSurface",
-      "disposition": "designed-out",
+      "disposition": "ported",
       "upstreamShapeHash": "sha256:35e9642ec330fdcfe34f164dd337e37bb49b35e73d8854a7fa845951eae8c3ea",
-      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/surfaces/tui.ts awaits the base bundle's build before it resolves and returns `base` and `inputs`; PiG's NewTuiSurface and TuiSurface return at once and Build builds after the server's listen (owner decision A of the kit), because the first set is published to the loaded host's scripts object. Intention check: web.test.ts/tui.test.ts guard that the surface's routes and files are served only once the base bundle is built, that a failed build is reported (503) and that the published set is the kind's current set; PiG ports them as surfaces_build_test.go and app_web_browser_test.go against NewWebSurface/NewTuiSurface + Build, observing the same responses, base hash and inputs (SurfaceBuilt). Owner-approved D608 for 0.8.0 (2026-11-08, docs/parity/divergences/D608.md); follow-up after 0.8.0: eager-build surfaces, design back to the owner first."
+      "rationale": "Derived by the interface gap detector: TuiSurface is Go chord/nextnode/surfaces/surfaces_tui.go#TuiSurface (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/surfaces_tui.go#TuiSurface"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/surfaces/surfaces_tui.go#NewTuiSurface"
+      ],
+      "evidence": [
+        "reach:chord/nextnode/surfaces/surfaces_tui.go#NewTuiSurface"
+      ]
     },
     {
       "id": "pkg:chord/surfaces#tuiSurface::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0055255cfba63a48ffa7851b66fae6d632903991e59321b28a08d799584a9e00"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:0055255cfba63a48ffa7851b66fae6d632903991e59321b28a08d799584a9e00",
+      "rationale": "Derived by the interface gap detector: tuiSurface::call:0 is Go chord/nextnode/surfaces/surfaces_tui.go#NewTuiSurface (name rule N4), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/surfaces_tui.go#NewTuiSurface"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/surfaces/surfaces_tui.go#NewTuiSurface"
+      ],
+      "evidence": [
+        "reach:chord/nextnode/surfaces/surfaces_tui.go#NewTuiSurface"
+      ]
     },
     {
       "id": "pkg:chord/surfaces#TuiSurfaceOptions",
@@ -132338,9 +132401,9 @@
         "call:chord/nextnode/surfaces/surfaces_web.go#NewWebSurface"
       ],
       "evidence": [
+        "test:chord/nextnode/surfaces/surfaces_build_linux_test.go#TestTheServersCloseFailsTheBuildInFlightItsWaitersAnswer503",
         "test:chord/nextnode/surfaces/surfaces_build_test.go#TestAFailedBuildAnswers503ForTheSurfacesFilesAndFailsItsStepsHost",
-        "test:chord/nextnode/surfaces/surfaces_build_test.go#TestOneSharedBuildBuildsOnceForEveryWaiterTheScriptsObjectShowsAnEmptySetBeforeTheFirstSetAfter",
-        "test:chord/nextnode/surfaces/surfaces_build_linux_test.go#TestARolloutStepDuringTheBuildStopsWaitingAtItsContextsAbortBeforeTheBuildEndsTheBuildGoesOn"
+        "test:chord/nextnode/surfaces/surfaces_build_test.go#TestAFailedBuildStaysFailedEveryLaterRequestAnswers503AndNothingRebuilds"
       ]
     },
     {
@@ -132365,9 +132428,23 @@
     },
     {
       "id": "pkg:chord/surfaces#WebSurface",
-      "disposition": "designed-out",
+      "disposition": "ported",
       "upstreamShapeHash": "sha256:b60e98cfb3c03d2da4e1c8da6c6fa0f5f154bea680717f59ae267d07c8d7ba82",
-      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/surfaces/web.ts awaits the base bundle's build before it resolves and returns `base` and `inputs`; PiG's NewWebSurface and WebSurface return at once and Build builds after the server's listen (owner decision A of the kit), because the first set is published to the loaded host's scripts object. Intention check: web.test.ts/tui.test.ts guard that the surface's routes and files are served only once the base bundle is built, that a failed build is reported (503) and that the published set is the kind's current set; PiG ports them as surfaces_build_test.go and app_web_browser_test.go against NewWebSurface/NewTuiSurface + Build, observing the same responses, base hash and inputs (SurfaceBuilt). Owner-approved D608 for 0.8.0 (2026-11-08, docs/parity/divergences/D608.md); follow-up after 0.8.0: eager-build surfaces, design back to the owner first."
+      "rationale": "Derived by the interface gap detector: WebSurface is Go chord/nextnode/surfaces/surfaces_web.go#WebSurface (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/surfaces/surfaces_web.go#WebSurface"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/surfaces/surfaces_web.go#NewWebSurface"
+      ],
+      "evidence": [
+        "reach:chord/nextnode/surfaces/surfaces_web.go#NewWebSurface"
+      ]
     },
     {
       "id": "pkg:chord/surfaces#webSurface::call:0",

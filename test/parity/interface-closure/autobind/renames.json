@@ -498,6 +498,7 @@
  "pkg:chord/next#num": "chord/next/contracts/schema.go#Num",
  "pkg:chord/next#remote": "chord/next/contracts/declare.go#Remote",
  "pkg:chord/next#str": "chord/next/contracts/schema.go#Str",
+ "pkg:chord/surfaces#tuiSurface": "chord/nextnode/surfaces/surfaces_tui.go#NewTuiSurface",
  "pkg:chord/tui#AttachedFile": "chord/nextnode/tui/tui_actions.go#AttachedFile",
  "pkg:chord/tui#BridgeRequest": "chord/nextnode/tui/tui_bridge.go#BridgeRequest",
  "pkg:chord/tui#BridgeStart": "chord/nextnode/tui/tui_bridge.go#BridgeStart",

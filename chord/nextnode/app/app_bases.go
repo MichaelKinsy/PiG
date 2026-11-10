@@ -88,7 +88,7 @@ func (a *App) reportLate(kind AppErrorKind, err any, base string) {
 func (a *App) startBases(bases []baseBuild) {
 	built, watched := a.basesBuilt, a.baseWatched
 	//portlint:allow golifetime the bases' builds cannot be cancelled (esbuild) and the close does not wait for them: what they finish after it is dropped, as upstream's
-	go func() { //portlint:allow asyncorder owner decision "A": the bases build at once after the listen, off the caller. Pi awaits them before the listen (app.ts:366-383: the server scan, each worker kind's base, the surfaces); D608 records the surfaces, the scan and the worker kinds have no divergence number yet. The builds join inside (builds.Wait, then close(built)) and each request that needs a base waits for built
+	go func() { //portlint:allow asyncorder the bases build at once after the listen, off the caller, as Pi's app.ts does (`buildBases` after `http.listening`, Pi 1.5.1); the builds join inside (builds.Wait, then close(built)) and each request that needs a base waits for built
 		defer close(watched)
 		compared := &comparisons{}
 		var builds sync.WaitGroup
@@ -163,7 +163,7 @@ func (a *App) baseBuilds() []baseBuild {
 	for _, each := range a.surfaces {
 		bases = append(bases, baseBuild{name: each.name, build: func() (model.BaseInputs, error) {
 			built := each.build()
-			return built.Inputs, built.Err
+			return built.Inputs, built.Error
 		}})
 	}
 	for _, kind := range a.options.Workers {

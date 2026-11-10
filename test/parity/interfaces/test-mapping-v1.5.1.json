@@ -3567,16 +3567,16 @@
         "chord/nextnode/surfaces/surfaces_build_test.go",
         "chord/nextnode/surfaces/surfaces_build_linux_test.go"
       ],
-      "rationale": "284e63d9c: the shared surface build (one build for every waiter, an empty scripts object before the first set, a failed build answering 503, a rollout step's abort not stopping the build) is ported to the two surfaces_build test files."
+      "rationale": "284e63d9c, all three Pi cases with the same inputs and expected results: `builds once for every waiter; the scripts object shows an empty set before, the first set after` is TestOneSharedBuildBuildsOnceForEveryWaiter... (two concurrent build() calls equal, 16-hex base, built equals the outcome, the scripts object shows the base, file() is not an error); `stops waiting at its context's abort, before the build ends; the build goes on for everyone else` (Linux, a mkfifo-held import) is TestARolloutStepDuringTheBuild... in surfaces_build_linux_test.go; `answers 503 for the surface's files and fails its step's host` (entry `export const broken = ;`) is TestAFailedBuildAnswers503... Added beyond Pi, guarding the contract Pi's code states: TestAFailedBuildStaysFailed... (a failed outcome persists: later file/parts/build answer the same failure, nothing rebuilds) and TestTheServersCloseFailsTheBuildInFlight... (the server's close fails a build in flight: its waiter answers 503). Pi 1.5.1 has no other test that calls webSurface/tuiSurface (git grep at v1.5.1)."
     },
     {
       "path": "packages/chord/test/node/surfaces/tui.test.ts",
       "disposition": "ported",
       "upstreamTestHash": "sha256:c4504c3907461a64a0723c44b88443e19c1ec8477210fd52384dc6579d6f5565",
       "evidence": [
-        "chord/nextnode/tui/tui_kit_upstream_test.go"
+        "chord/nextnode/app/app_surfaces_test.go"
       ],
-      "rationale": "All 1 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none). Pi 1.5.1 changes are JS file-watcher/GC timing fixes (settleFileEvents, vi.waitFor, capture before release) with no Go counterpart."
+      "rationale": "The one upstream case (`serves a signed-in launcher its start, the base bundle and the scripts; the base hash to anyone`) is nextnode/app/app_surfaces_test.go:TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone: start 401 without a token and {base, script, combined} with the owner token, the public base hash, a CommonJS base bundle, the plugin script `chordFacet(...)`, the combined file equal to it without its source map, and a terminal plugin importing an asset by URL failing its build with `assets by URL are for browser builds`. The plugin is Pi's linesPlugin; the fixtures are the vendored ones."
     },
     {
       "path": "packages/chord/test/node/surfaces/web.test.ts",

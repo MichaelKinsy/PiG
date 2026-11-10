@@ -3219,6 +3219,13 @@
       "rationale": "Chord v2 (Pi 93029a0f..c23b9ec1) has no PiG product consumer outside chord/next beyond durable's imports of chord/next/{contracts,data,documents,registries,state,store} and chord/{delta,sqlite,output,telemetrysqlite}; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordDelta, 2026-11-08): the Go evidence (surfaces_bundle_test.go) runs in package chord/nextnode/surfaces through exported production functions such as BuildBase, ProcessConditions; no export_test seam or test-only stand-in replaces the code under test."
     },
     {
+      "path": "packages/chord/test/node/surfaces/surface-build.test.ts",
+      "upstreamTestHash": "sha256:9f4ea7be0779c23f752917cdca187ac3e1d14e0b11615a1d2fb672e17aa8a57b",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 1.5.1, 284e63d9c) has no PiG product consumer outside chord/next beyond durable's imports; no non-test Go code outside chord imports its package, so it is not on a PiG product hot path. Production-path review (ChordSurfaceBuild151, Pi 1.5.1): the Go evidence (surfaces_build_test.go, surfaces_build_linux_test.go) runs in package chord/nextnode/surfaces on the production surfaceBuild: newSurfaceBuild is the constructor NewWebSurface and NewTuiSurface call, and build, built, file, parts and step are the methods their routes, the app's bases and the rollout call. The tests load a real host with ScriptsFacet and a real plugins component and build real files with esbuild; no stand-in replaces the code under test. The tests are internal (the unexported surfaceBuild) because Pi's SurfaceBuild is not exported either."
+    },
+    {
       "path": "packages/chord/test/node/surfaces/tui.test.ts",
       "upstreamTestHash": "sha256:c4504c3907461a64a0723c44b88443e19c1ec8477210fd52384dc6579d6f5565",
       "area": "extensions",

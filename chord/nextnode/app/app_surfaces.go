@@ -34,7 +34,7 @@ type AppSurface struct {
 
 // Base is the base bundle's hash once built (BasesBuilt); "" before, and when its build failed.
 func (s *AppSurface) Base() string {
-	if built := s.built(); built != nil && built.Err == nil {
+	if built := s.built(); built != nil && built.Error == nil {
 		return built.Base
 	}
 	return ""
