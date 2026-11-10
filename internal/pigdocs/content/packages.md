@@ -220,7 +220,7 @@ Add the keyword `pig-package` and a description to `package.json`, then run `npm
 ```sh
 pig install npm:@pi-in-go/pigpen-acp
 pig acp install
-pig-acp --version        # pig-acp 0.1.0 (ACP protocol version 1)
+pig-acp --version        # pig-acp 0.2.2 (ACP protocol version 1)
 ```
 
 `pig acp install` works offline from the installed Package's files, builds with the local Go toolchain, and writes `pig-acp` (`pig-acp.exe` on Windows) next to `pig`: in the directory of `$PIG_BIN`, else `~/.local/bin`. It prints the path, and says so when that directory is not on your `PATH`; use the full path as the editor command then.

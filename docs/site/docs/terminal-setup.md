@@ -1,6 +1,6 @@
 # Terminal setup
 
-PiG runs in any terminal. Some features need terminal support, and PiG turns each one on only when it detects that support. This page lists what PiG detects, and what to change when a key or an image does not work. The terminal setup is the same as for Pi 1.5.0 ([Pi's terminal guide](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/terminal-setup.md)), apart from the differences named below.
+PiG runs in any terminal. Some features need terminal support, and PiG turns each one on only when it detects that support. This page lists what PiG detects, and what to change when a key or an image does not work. The terminal setup is the same as for Pi 1.5.1 ([Pi's terminal guide](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/terminal-setup.md)), apart from the differences named below.
 
 ## Troubleshooting
 
@@ -223,7 +223,7 @@ PiG draws its own cursor. Some input methods, for example CJK input in the Intel
 PI_HARDWARE_CURSOR=1 pig
 ```
 
-The `showHardwareCursor` setting does the same. With either one, PiG shows only the terminal's cursor and does not also draw its own reverse-video cursor, as in Pi 1.5.0. Pi 1.1.0 drew both.
+The `showHardwareCursor` setting does the same. With either one, PiG shows only the terminal's cursor and does not also draw its own reverse-video cursor, as in Pi 1.5.1. Pi 1.1.0 drew both.
 
 ## Images
 
@@ -231,7 +231,7 @@ PiG shows images when the terminal accepts the Kitty graphics protocol or the iT
 
 Images are off inside `tmux` and `screen`. To see images, run PiG outside the multiplexer, or set `PI_IMAGE_PROTOCOL` when you know the multiplexer forwards them.
 
-In herdr (`TERM_PROGRAM=herdr`), PiG shows images with the Kitty graphics protocol, as Pi 1.5.0 does. Pi 1.1.0 showed no images there. When a pane sets `HERDR_ENV=1`, PiG shows images only if herdr also sets `HERDR_KITTY_GRAPHICS=1` (D44).
+In herdr (`TERM_PROGRAM=herdr`), PiG shows images with the Kitty graphics protocol, as Pi 1.5.1 does. Pi 1.1.0 showed no images there. When a pane sets `HERDR_ENV=1`, PiG shows images only if herdr also sets `HERDR_KITTY_GRAPHICS=1` (D44).
 
 ## Capability overrides
 
@@ -254,7 +254,7 @@ On Unix, `SIGTERM` and `SIGHUP` request shutdown even when `/scoped-models`, `/s
 
 In fullscreen mode, when the transcript grows or scrolls, PiG moves the rows that only moved with a scroll region and draws only the rows that changed. Pi draws every row that changed (D205). The screen is the same, and PiG writes a fraction of the bytes to the terminal, which matters most through tmux or ssh. PiG does this only when `TERM` names a terminal with scroll regions and PiG is not inside Zellij; with `TERM` unset, `dumb`, `unknown` or `vt52` it draws every changed row, as Pi does. Set `PIG_TUI_SCROLL_ROWS=0` to draw every changed row, as Pi does.
 
-When a terminal sends a device-attributes reply in several slow reads, PiG waits for the reply's final byte and does not pass the fragments to the editor. Pi 1.5.0 can type the rest of the reply, such as `24;28;32;42c`, into the editor (D143, [Pi #10657](https://github.com/earendil-works/pi/issues/10657)). A typed `ESC[?` then waits for the next key instead of 150 ms.
+When a terminal sends a device-attributes reply in several slow reads, PiG waits for the reply's final byte and does not pass the fragments to the editor. Pi 1.5.1 can type the rest of the reply, such as `24;28;32;42c`, into the editor (D143, [Pi #10657](https://github.com/earendil-works/pi/issues/10657)). A typed `ESC[?` then waits for the next key instead of 150 ms.
 
 Set `PIG_RENDER_DEBUG` to any value to write render diagnostics. Use it when you report a display problem. Set `PI_TUI_WRITE_LOG` to a file or directory to record the bytes PiG writes to the terminal, as in Pi.
 

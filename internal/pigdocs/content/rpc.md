@@ -2,7 +2,7 @@
 
 # RPC mode
 
-RPC mode runs PiG as a headless JSON Lines process. A client writes commands to standard input and reads responses and events from standard output. The protocol is the RPC protocol of Pi 1.5.0 ([Pi's RPC protocol reference](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/rpc.md)), apart from the differences named on this page.
+RPC mode runs PiG as a headless JSON Lines process. A client writes commands to standard input and reads responses and events from standard output. The protocol is the RPC protocol of Pi 1.5.1 ([Pi's RPC protocol reference](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/rpc.md)), apart from the differences named on this page.
 
 Use the [PiG Go SDK](sdk.md) when your Go application does not need a process boundary. Use RPC mode for another language, an IDE, or a separate process.
 
@@ -94,13 +94,13 @@ Every command can contain an `id`. The corresponding response repeats it:
 
 A response confirms command acceptance or reports a command error. Later model or tool failures arrive as events.
 
-A `compact` request aborts and joins the active turn before summarizing. It waits off the input loop, so the client can continue to send state queries and replies to extension dialogs. Several `compact` commands of one input batch run one after another. Pi 1.5.0 starts them at the same time (D147). A Session replacement in the same batch aborts a running compaction, which then answers one error (D148).
+A `compact` request aborts and joins the active turn before summarizing. It waits off the input loop, so the client can continue to send state queries and replies to extension dialogs. Several `compact` commands of one input batch run one after another. Pi 1.5.1 starts them at the same time (D147). A Session replacement in the same batch aborts a running compaction, which then answers one error (D148).
 
 ## Pi compatibility boundary
 
 PiG implements the command union in the pinned Pi `rpc-types.ts`. The generated test inventory fails when a pinned Pi command has no PiG dispatch branch. PiG adds one command, `get_extensions` (D101). See [RPC commands](rpc-commands.md#loaded-extensions).
 
-Close standard input to shut down RPC mode. PiG cancels active prompts, Bash commands, Session transitions, model-selection handlers, retries, and extension UI requests before it closes the process. When standard input ends while `new_session`, `fork`, `clone` or `switch_session` is still replacing the Session, PiG finishes the replacement and writes its response before it exits. Pi 1.5.0 exits without answering that command (D146). A suspended extension command's continuation can run before its runtime stops (D85), and a settle-tail handler of a runtime that cannot report its wait holds standard input open until it finishes (D86).
+Close standard input to shut down RPC mode. PiG cancels active prompts, Bash commands, Session transitions, model-selection handlers, retries, and extension UI requests before it closes the process. When standard input ends while `new_session`, `fork`, `clone` or `switch_session` is still replacing the Session, PiG finishes the replacement and writes its response before it exits. Pi 1.5.1 exits without answering that command (D146). A suspended extension command's continuation can run before its runtime stops (D85), and a settle-tail handler of a runtime that cannot report its wait holds standard input open until it finishes (D86).
 
 An extension can also request shutdown with `ctx.shutdown()`. If the session is idle and no command is being handled, PiG shuts down right away, also while the client sends nothing. Otherwise it shuts down once the current command has finished and its response is written (for `prompt`, once the prompt settles) or the active run emits `agent_settled`. A request made while an extension-started compaction runs waits for the next command or run to finish.
 
@@ -108,7 +108,7 @@ Once a shutdown has started, from standard input ending, a request or a signal, 
 
 Go programs can use `github.com/MichaelKinsy/PiG/coding/rpcclient`, the port of Pi's TypeScript `RpcClient`. It starts `pig --mode rpc`, correlates responses, exposes typed command methods, and delivers events to listeners. Other languages use the JSONL protocol directly.
 
-`new_session`, `switch_session`, `fork` and `clone` replace the Session through the same runtime factory that creates the first Session, as Pi's rpc-mode does with its runtime host. The replacement gets a new extension runner, new extension processes and services for the destination Session's working directory. The old runner is invalidated. As in Pi 1.5.0, the replacement's extensions receive `session_start` twice after these four commands, because rpc-mode rebinds once more after the command returns. An extension process does not inherit process-wide state such as environment variables from the replaced one. This is D70, which also covers `/reload`.
+`new_session`, `switch_session`, `fork` and `clone` replace the Session through the same runtime factory that creates the first Session, as Pi's rpc-mode does with its runtime host. The replacement gets a new extension runner, new extension processes and services for the destination Session's working directory. The old runner is invalidated. As in Pi 1.5.1, the replacement's extensions receive `session_start` twice after these four commands, because rpc-mode rebinds once more after the command returns. An extension process does not inherit process-wide state such as environment variables from the replaced one. This is D70, which also covers `/reload`.
 
 ## Events
 
