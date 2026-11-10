@@ -74,7 +74,7 @@ func TestARolloutStepDuringTheBuildStopsWaitingAtItsContextsAbortBeforeTheBuildE
 		t.Fatal("the build ended with the step")
 	}
 	release(t, pipe)
-	if outcome := f.building.build(); outcome.Err != nil {
+	if outcome := f.building.build(); outcome.Error != nil {
 		t.Fatalf("build = %+v, want built: the build went on", outcome)
 	}
 }
@@ -109,7 +109,7 @@ func TestTheServersCloseFailsTheBuildInFlightItsWaitersAnswer503(t *testing.T) {
 	case <-time.After(30 * time.Second):
 		t.Fatal("the waiter was never answered after the close")
 	}
-	if outcome := f.building.build(); outcome.Err == nil {
+	if outcome := f.building.build(); outcome.Error == nil {
 		t.Fatal("a build the close ended reports built")
 	}
 }

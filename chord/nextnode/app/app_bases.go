@@ -163,7 +163,7 @@ func (a *App) baseBuilds() []baseBuild {
 	for _, each := range a.surfaces {
 		bases = append(bases, baseBuild{name: each.name, build: func() (model.BaseInputs, error) {
 			built := each.build()
-			return built.Inputs, built.Err
+			return built.Inputs, built.Error
 		}})
 	}
 	for _, kind := range a.options.Workers {

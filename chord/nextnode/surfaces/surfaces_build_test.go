@@ -101,7 +101,7 @@ func TestOneSharedBuildBuildsOnceForEveryWaiterTheScriptsObjectShowsAnEmptySetBe
 	if first.Kind != SurfaceBuiltKindBuilt {
 		t.Fatalf("kind = %q, want built", first.Kind)
 	}
-	if first.Err != nil || second.Base != first.Base || len(second.Inputs) != len(first.Inputs) {
+	if first.Error != nil || second.Base != first.Base || len(second.Inputs) != len(first.Inputs) {
 		t.Fatalf("builds = %+v, %+v, want one", first, second)
 	}
 	if !regexp.MustCompile(`^[0-9a-f]{16}$`).MatchString(first.Base) {
@@ -129,7 +129,7 @@ func TestAFailedBuildAnswers503ForTheSurfacesFilesAndFailsItsStepsHost(t *testin
 	if err != nil || response.Kind != http.KindError || response.Status != 503 {
 		t.Fatalf("file = %+v, %v, want 503", response, err)
 	}
-	if outcome := f.building.build(); outcome.Kind != SurfaceBuiltKindFailed || outcome.Err == nil || !strings.Contains(outcome.Err.Error(), `Unexpected ";"`) {
+	if outcome := f.building.build(); outcome.Kind != SurfaceBuiltKindFailed || outcome.Error == nil || !strings.Contains(outcome.Error.Error(), `Unexpected ";"`) {
 		t.Fatalf("build = %+v, want esbuild's error", outcome)
 	}
 	built, err := f.plugins.Build(nil, chordctx.Background())
@@ -151,7 +151,7 @@ func TestAFailedBuildStaysFailedEveryLaterRequestAnswers503AndNothingRebuilds(t 
 	entry := entryIn(t, "export const broken = ;\n")
 	f := newBuildFixture(t, entry)
 	first := f.building.build()
-	if first.Err == nil {
+	if first.Error == nil {
 		t.Fatal("the build of a broken entry succeeded")
 	}
 	if err := os.WriteFile(entry, []byte("globalThis.fixed = true;\n"), 0o644); err != nil {
@@ -165,10 +165,10 @@ func TestAFailedBuildStaysFailedEveryLaterRequestAnswers503AndNothingRebuilds(t 
 		if parts, err := f.building.parts(context.Background()); parts != nil || err != nil {
 			t.Fatalf("parts = %+v, %v, want none", parts, err)
 		}
-		if again := f.building.build(); again.Err == nil || again.Err.Error() != first.Err.Error() {
-			t.Fatalf("build = %+v, want the first failure %v", again, first.Err)
+		if again := f.building.build(); again.Error == nil || again.Error.Error() != first.Error.Error() {
+			t.Fatalf("build = %+v, want the first failure %v", again, first.Error)
 		}
-		if got := f.building.built(); got == nil || got.Err == nil {
+		if got := f.building.built(); got == nil || got.Error == nil {
 			t.Fatalf("built = %+v, want the failed outcome", got)
 		}
 	}
