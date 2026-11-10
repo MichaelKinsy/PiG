@@ -21,7 +21,7 @@ import (
 // there, and a base that fails after the listen is reported and the server runs on (the page answers 503).
 //
 // Forced differences. A base build that waits is a web entry importing a named pipe (Linux, as Pi's mkfifo). A Go worker kind's
-// base is a copy of its executable (D600): its build cannot be held, so Pi's tests of a worker kind's base waiting for the build
+// base is a copy of its executable (a Go worker is a program, not a Node bundle): its build cannot be held, so Pi's tests of a worker kind's base waiting for the build
 // (`answers before a worker kind's base is built`) and of a closed start's late worker-base build (the same component-level tests
 // in chord/nextnode/workers: a component that closed copies nothing) have no app-level counterpart; the worker kind's part of the
 // failing-base test below is a start that fails, as Pi's. Pi's tests of the scan of the server's own code held on a pipe (`answers

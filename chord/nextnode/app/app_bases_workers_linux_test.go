@@ -20,7 +20,7 @@ import (
 // Ports the two worker-kind tests of "bases built after the listen" of packages/chord/test/node/app/app.test.ts (Pi 284e63d9):
 // `answers before a worker kind's base is built; a worker start waits for its base` and `a closed start's late worker-base build
 // never touches the next start's directory`. Pi holds the worker base's build on a pipe the worker's entry imports; a Go worker's base
-// is a copy of its entry (D600), so the entry is the pipe (`exec.LookPath` accepts a pipe with its execute bit): the copy reads it
+// is a copy of its entry (a Go worker is a program, not a Node bundle), so the entry is the pipe (`exec.LookPath` accepts a pipe with its execute bit): the copy reads it
 // and waits until it is written, with the bytes of the program the worker runs. The second test's close is the one whose context
 // ended: the Go close joins a build in flight (Pi's does not wait for it, a forced Go lifetime difference), so the old start's
 // data directory is free for the next start only once the close abandoned the build.
