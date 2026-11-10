@@ -1,0 +1,4 @@
+# SHA-256 of lowercase words that must not appear in the GUI extension paths (check-public-hygiene.py).
+# Hashes, so the list does not itself publish the words. Append one hash per line.
+6c43993dc2a74842f9f6f2a3ec5890467bba32b28c536d8310bc8049d5ef6524
+a6b70a8a5074fc12ed70d61d05fffa30a5bec120ed140cf009b8a6302328360b

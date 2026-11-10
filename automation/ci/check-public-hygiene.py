@@ -6,6 +6,7 @@ Default: tracked working files (for source-hygiene). --ref: immutable Git tree
 review of third-party redistribution rights.
 """
 import argparse
+import hashlib
 from pathlib import Path
 import re
 import subprocess
@@ -18,6 +19,22 @@ PRIVATE = re.compile(
     + "imla" + r"dris|hpe" + r"corp\.net|labs\.hpe" + r"corp|"
     + "pig" + r"-staging|(?:~/|\$HOME/)pig" + r"-lanes|"
     + r"\.dev" + r"cache/scratch|(?:/Users|/home)/[^/\s]+/PiG-launch"
+)
+# Provenance of the plugin UI work (D614): inside GUI_PATHS only, since the legacy SDK upgrade path legitimately names
+# an old module path elsewhere. Another organization's name, an event label, employer names outside copyright headers
+# and person names (SHA-256 of each word against gui-name-hashes.txt, so the list publishes nothing) never enter them.
+# Terms are assembled so this file does not match itself.
+PROVENANCE = re.compile("main" + r"st(?:ai|\.ai)|hack" + r"athon", re.IGNORECASE)
+EMPLOYER = re.compile(r"hew" + r"lett|\bh" + r"pe\b", re.IGNORECASE)
+GUI_PATHS = re.compile(
+    r"^(?:coding/uiview/|extensions/pig-ui/|extensions/sdk/(?:ui|view)|extensions/sdk-py/pig_sdk/ui|"
+    r"extensions/sdk-rs/src/ui|coding/extension/host/subprocess/(?:uiview|view_)|"
+    r"coding/extension/host/subprocess/runtime-node/shims/pig-ui|docs/ui-)"
+)
+WORD = re.compile(r"[A-Za-z]{3,}")
+NAME_HASHES = frozenset(
+    line.strip() for line in (Path(__file__).with_name('gui-name-hashes.txt').read_text().splitlines())
+    if line.strip() and not line.startswith('#')
 )
 LANE = re.compile(r"(^|/)(REVIEW[^/]*|QUESTIONS|REPORT|NATIVE-PROOF-REQUEST[^/]*|[^/]*-REPORT|TASK|[^/]*\.TASK)\.md$")
 ENV = re.compile(r"(^|/)(\.env(\.[^/]*)?|[^/]+\.env)$")
@@ -36,6 +53,15 @@ def findings(path, data):
         if PRIVATE.search(line):
             # Do not echo possibly sensitive line contents into CI logs.
             yield f"{path}:{number}: private infrastructure or operator path"
+        if GUI_PATHS.search(path):
+            if PROVENANCE.search(line):
+                yield f"{path}:{number}: forbidden provenance term"
+            if EMPLOYER.search(line) and 'SPDX-FileCopyrightText' not in line:
+                yield f"{path}:{number}: employer name outside a copyright header"
+            for word in WORD.findall(line):
+                if hashlib.sha256(word.lower().encode()).hexdigest() in NAME_HASHES:
+                    yield f"{path}:{number}: person name"
+                    break
 
 
 def main():

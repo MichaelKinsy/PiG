@@ -508,6 +508,10 @@ divergence-consistency: ## Match every docs/parity/DIVERGENCES.md entry to its c
 divergence-quality: ## Validate divergence records as enforceable contracts
 	@./automation/ci/check-divergence-quality.py
 
+# gui-import-guard keeps the dependency one-way: plugin UI code may import chord, chord never imports it.
+gui-import-guard: ## Fail when chord imports a plugin UI package
+	@./automation/ci/check-gui-import-guard.sh
+
 # divergence-guard fails on hidden divergences no docs/parity/DIVERGENCES.md entry
 # records: invented limits and timeouts, dropped events, swallowed errors,
 # success on an unknown stop reason. Current hits are ratcheted in
@@ -593,7 +597,7 @@ standard-check: ## Verify PiG Standard requires and resolves only fused extensio
 
 ##@ Gates
 
-check-core: startup-proxies build vet lint test test-go-modules lint-rust test-sdk-rs test-sdk-py test-sdk-lisp test-sdk-ts test-term-engines typescript-extension-corpus examples-check test-race test-integration lint-scenarios port-map-drift coverage-drift standard-check go-fix-clean divergence-consistency divergence-quality divergence-guard divergences-drift autofix-check port-lint any-trap perf-lint race-coverage check-contracts-fast source-hygiene fixture-guard test-provenance docs-drift bug-ledger-check perf-scoreboard-check module-size ## All deterministic build, lint, unit, race, and drift gates
+check-core: startup-proxies build vet lint test test-go-modules lint-rust test-sdk-rs test-sdk-py test-sdk-lisp test-sdk-ts test-term-engines typescript-extension-corpus examples-check test-race test-integration lint-scenarios port-map-drift coverage-drift standard-check go-fix-clean divergence-consistency divergence-quality divergence-guard gui-import-guard divergences-drift autofix-check port-lint any-trap perf-lint race-coverage check-contracts-fast source-hygiene fixture-guard test-provenance docs-drift bug-ledger-check perf-scoreboard-check module-size ## All deterministic build, lint, unit, race, and drift gates
 
 check: module-publication check-core parity-fast ## Pre-commit gate: published dependencies, check-core and parity-fast
 	@echo

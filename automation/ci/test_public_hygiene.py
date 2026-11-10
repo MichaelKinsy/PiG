@@ -102,5 +102,25 @@ for suffix in ('', 'hpe' + 'corp.net'):
             self.assertEqual([], list(hygiene.findings(name, b'/home/example/repo\nHERDR_PANE_ID')))
 
 
+class GuiProvenanceTests(unittest.TestCase):
+    def found(self, path, text):
+        return list(hygiene.findings(path, text.encode()))
+
+    def test_provenance_terms_fail_in_gui_paths_only(self):
+        self.assertTrue(self.found('coding/uiview/a.go', 'from Main' + 'stAI'))
+        self.assertTrue(self.found('extensions/sdk/ui/x.go', 'a hack' + 'athon entry'))
+        self.assertEqual(self.found('coding/uiview/a.go', 'mainstream release'), [])
+        self.assertEqual(self.found('docs/any.md', 'github.com/main' + 'stai/pig'), [])
+
+    def test_gui_paths_reject_names_and_employer_but_allow_copyright_header(self):
+        name = 'sam' + 'arth'
+        self.assertTrue(self.found('coding/uiview/a.go', '// thanks ' + name.title()))
+        self.assertEqual(self.found('coding/other/a.go', '// thanks ' + name.title()), [])
+        employer = 'Hew' + 'lett'
+        self.assertTrue(self.found('extensions/pig-ui/a.ts', '// ' + employer))
+        header = '// SPDX-FileCopyrightText: Copyright ' + employer + ' Packard'
+        self.assertEqual(self.found('extensions/pig-ui/a.ts', header), [])
+
+
 if __name__ == '__main__':
     unittest.main()
