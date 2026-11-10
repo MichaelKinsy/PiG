@@ -44,8 +44,8 @@ test("a call queued behind the reserve pass of the previous call's resume() star
   const get = await measure(() => harness.submission(first.id, context))
   const snapshot = await measure(() => (harness as any).snapshot({ definition: { kind: "diff.none", version: 1, scope: "conversation", history: "latest", initial: () => ({}) } }, root_.id, context).catch(() => undefined))
   await harness.close(context)
-  // Pi c23b9ec1 (as b556cfe5): 16, 19, 24 (F-ticks-seq-gate `wait (settled)`, `wait (settled, again)`, `entries`; e7a0df27 counted 14, 17, 19: a read of a conversation's entries waits for the key gates of the group-commit Session). A job queued behind the previous commit job's tail starts a tick later than one on an idle line.
-  assert.deepEqual({ settled, again, entries }, { settled: 16, again: 19, entries: 24 })
+  // Pi v1.5.1: 16, 20, 25: a call queued behind the reserve pass spends the pass of scheduler.ts #planCandidates (19 and 24 at c23b9ec1 as b556cfe5; F-ticks-seq-gate `wait (settled)`, `wait (settled, again)`, `entries`; e7a0df27 counted 14, 17, 19: a read of a conversation's entries waits for the key gates of the group-commit Session). A job queued behind the previous commit job's tail starts a tick later than one on an idle line.
+  assert.deepEqual({ settled, again, entries }, { settled: 16, again: 20, entries: 25 })
   // The other reads of the same scenario (Pi c23b9ec1, as b556cfe5; F-ticks-seq-gate): inspect is readOnLine(tasks.inspect, two scanAll pages) returned as it is
   // (harness.ts); getTask, status, get and conversation are one single-statement line read, the last three awaited by an async
   // method (harness.ts, submissions.ts).
