@@ -551,8 +551,8 @@ func prepareArguments(tool *durable.ToolRegistration, args map[string]any) (map[
 	// Tool arguments are pi-ai values, which Go keeps as ai.JsonObject maps.
 	var object map[string]any
 	if encoded, isObject := copied.(*delta.JsonObject); isObject {
-		text, _ := json.Marshal(encoded)
-		_ = json.Unmarshal(text, &object)
+		text, _ := jsstring.MarshalKeepingSurrogates(encoded)
+		_ = jsstring.UnmarshalKeepingSurrogates(text, &object)
 	}
 	return object, ""
 }

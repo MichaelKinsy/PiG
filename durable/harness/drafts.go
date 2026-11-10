@@ -1,10 +1,9 @@
 package harness
 
 import (
-	"encoding/json"
-
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // Document drafts are Chord overlay handles (packages/chord/src/delta/tracker.ts), so the operations a commit emits
@@ -74,13 +73,13 @@ func numberAt(object *delta.Object, key string) float64 {
 	return number
 }
 
-func marshalPlain(value any) ([]byte, error) { return json.Marshal(value) }
+func marshalPlain(value any) ([]byte, error) { return jsstring.MarshalKeepingSurrogates(value) }
 
 // decodeJSON decodes a plain JSON value into target through its JSON codec.
 func decodeJSON(value durable.JsonValue, target any) error {
-	encoded, err := json.Marshal(value)
+	encoded, err := jsstring.MarshalKeepingSurrogates(value)
 	if err != nil {
 		return err
 	}
-	return json.Unmarshal(encoded, target)
+	return jsstring.UnmarshalKeepingSurrogates(encoded, target)
 }
