@@ -18,6 +18,7 @@ host  ./coding/extension
 host  ./coding/extension/host/inproc
 host  ./coding/extension/host/runtimecell
 host  ./coding/extension/host/cellpack
+host  ./coding/uiview
 host  ./coding/mcpext
 host  ./coding/rpcclient
 host  ./internal/packagemanager
