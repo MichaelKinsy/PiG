@@ -61,7 +61,7 @@ func TestAuthStorageCreateThroughSymlinkChainFollowsTheKernelsLimit(t *testing.T
 			if err := os.Mkdir(filepath.Join(dir, "sub"), 0o700); err != nil {
 				t.Fatal(err)
 			}
-			testenv.Symlink(t, ".", filepath.Join(dir, "sub", "sub"))
+			testenv.RequireDirectoryLink(t, ".", filepath.Join(dir, "sub", "sub"))
 			testenv.Symlink(t, filepath.Join("sub", "auth.json"), filepath.Join(dir, "auth.json"))
 			testenv.Symlink(t, filepath.Join("sub", "auth.json"), filepath.Join(dir, "sub", "auth.json"))
 		}, "eloop"},

@@ -13,6 +13,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // Tests of the terminal's sandbox (slice 11 §4, decision "Slice 11, P8"; fix rounds 1 to 3: a child process, every way to modules
@@ -31,9 +33,7 @@ func TestTheSandboxStartsWithASymlinkedTemporaryDirectoryWithoutExpandingFilePer
 	if err := os.Mkdir(target, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink(target, linked); err != nil {
-		t.Fatal(err)
-	}
+	testenv.Symlink(t, target, linked)
 	t.Setenv("TMPDIR", linked)
 	t.Setenv("TMP", linked)
 	t.Setenv("TEMP", linked)

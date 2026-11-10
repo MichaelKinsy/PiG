@@ -52,7 +52,7 @@ func refreshModelCatalogs(agentDir string) error {
 		err := result.Errors[id]
 		// A stale login only affects that provider's catalog; the others are still worth refreshing.
 		if modelsError, ok := errors.AsType[*ai.ModelsError](err); ok && modelsError.Code == ai.ModelsErrorOAuth {
-			fmt.Fprintln(os.Stderr, chalkYellow(fmt.Sprintf("Warning: skipped model catalog for %s: %s\nLog in again with `%s auth login %s` to refresh it.", id, err.Error(), codingagent.AppName, id)))
+			fmt.Fprintln(os.Stderr, chalkYellow("Warning: skipped model catalog for "+id+": "+err.Error()+"\nLog in again with `"+codingagent.AppName+" auth login "+id+"` to refresh it."))
 		} else {
 			failures = append(failures, id+": "+err.Error())
 		}
