@@ -206,7 +206,7 @@ func newProviderProxy(ctx Context, decl providerObjectDeclaration) (*Provider, e
 	}
 	runtime.AddCleanup(lease, releaseProviderLease, *lease)
 	decl.lease = lease
-	p := &Provider{ID: decl.ID, Name: decl.Name, BaseURL: decl.BaseURL, handle: decl.Handle}
+	p := &Provider{ID: decl.ID, Name: decl.Name, BaseURL: decl.BaseURL, RefreshModelsAuth: decl.RefreshModelsAuth, handle: decl.Handle}
 	if decl.Headers != nil {
 		p.Headers = *decl.Headers
 	}

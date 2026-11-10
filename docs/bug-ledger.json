@@ -2659,6 +2659,29 @@
       ]
     },
     {
+      "id": "BF-0ff9f4a",
+      "title": "A Provider object registered from an extension process ignored `refreshModelsAuth`: its network refresh…",
+      "symptom": "A Provider object registered from an extension process ignored `refreshModelsAuth`: its network refresh always resolved (and so refreshed) the stored credential.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Provider object registered from an extension process ignored `refreshModelsAuth`: its network refresh always resolved (and so refreshed) the stored credential.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0ff9f4a443",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/native_provider_refresh_auth_test.go::TestSubprocessCarrierHonoursRefreshModelsAuth",
+        "test/extension-conformance/provider_object_test.go::TestProviderObjectRefreshModelsAuthAcrossSDKs"
+      ]
+    },
+    {
       "id": "BF-0ffb06a",
       "title": "fix(tui): diff rows with a CR are wrapped like Pi's Text",
       "symptom": "fix(tui): diff rows with a CR are wrapped like Pi's Text",

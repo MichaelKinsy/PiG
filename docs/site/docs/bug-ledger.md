@@ -117,6 +117,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-0e360a0](#bf-0e360a0) | The `tui` package's default keybindings no longer depend on the platform: undo is `ctrl+-` and the alt-screen… | PiG's own defect | Windows, WSL | 0.5.0 |
 | [BF-0e8761b](#bf-0e8761b) | A system message with an empty sections object is stored as `"sections": {}`, as Pi stores it after a reset | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-0f8bc0f](#bf-0f8bc0f) | `ctx.reload()` in print and RPC mode, and `Session.Reload` for SDK callers, now fail with `Wait for the… | PiG's own defect | All platforms | Unreleased |
+| [BF-0ff9f4a](#bf-0ff9f4a) | A Provider object registered from an extension process ignored `refreshModelsAuth`: its network refresh… | PiG's own defect | All platforms | Unreleased |
 | [BF-0ffb06a](#bf-0ffb06a) | fix(tui): diff rows with a CR are wrapped like Pi's Text | PiG's own defect | All platforms | Unreleased |
 | [BF-1003d2e](#bf-1003d2e) | fix(cli): the login secret prompt enters and leaves raw mode through tui.MakeRaw and tui.RestoreCooked (Pi) | PiG's own defect | All platforms | Unreleased |
 | [BF-1016b78](#bf-1016b78) | fix(delta-nonchord-core): test the aborted Models dispatch and fetchDeferred paths, the persisted tool result… | PiG's own defect | All platforms | Unreleased |
@@ -3341,6 +3342,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `0f8bc0f0de` (2026-11-05)
 - **Tests:** `coding/cli/headless_reload_test.go::TestRefusedReloadDuringARunningToolKeepsTheExtensionHostLive`, `coding/session_reload_busy_test.go::TestSessionReloadRejectedWhileRunningOrCompacting`
 - **Release note:** `ctx.reload()` in print and RPC mode, and `Session.Reload` for SDK callers, now fail with `Wait for the current response to finish before reloading.` while a response is running, and with `Wait for compaction to finish before reloading.` during compaction or tree navigation, instead of shutting the extensions down under a running tool, which then failed with a stale-context error. A refused reload leaves the extensions and the running tool's context untouched, and the extension sees the error in every SDK.
+
+### BF-0ff9f4a
+
+**A Provider object registered from an extension process ignored `refreshModelsAuth`: its network refresh…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Provider object registered from an extension process ignored `refreshModelsAuth`: its network refresh always resolved (and so refreshed) the stored credential.
+- **Root cause:** Not recorded.
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0ff9f4a443` (2026-11-09)
+- **Tests:** `internal/codingagent/native_provider_refresh_auth_test.go::TestSubprocessCarrierHonoursRefreshModelsAuth`, `test/extension-conformance/provider_object_test.go::TestProviderObjectRefreshModelsAuthAcrossSDKs`
+- **Release note:** A Provider object registered from an extension process ignored `refreshModelsAuth`: its network refresh always resolved (and so refreshed) the stored credential.
 
 ### BF-0ffb06a
 

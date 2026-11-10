@@ -44,6 +44,7 @@
     (flet ((get-models () (sb-thread:with-mutex (lock) (copy-list models)))
            (credential-key (credential) (and credential (pig:jget credential "key"))))
       (pig:make-provider
+       :refresh-models-auth (let ((auth (sb-ext:posix-getenv "CARRIER_REFRESH_AUTH"))) (and auth (plusp (length auth)) auth))
        :id "carrier-provider" :name "Carrier Provider" :base-url (pig:jget model "baseUrl") :headers (pig:obj "X-Carrier" "present")
        :auth (pig:make-provider-auth
               :api-key (pig:make-api-key-auth
@@ -92,7 +93,10 @@
                                      :update (lambda ()
                                                (sb-thread:with-mutex (lock)
                                                  (setf models (append models (list (carrier-model
-                                                                                    (format nil "refreshed:~A" (pig:refresh-models-context-base-url input))))))))))))
+                                                                                    (format nil "refreshed:~A~@[|credential=~A~]" (pig:refresh-models-context-base-url input)
+                                                                                                    (let ((auth (sb-ext:posix-getenv "CARRIER_REFRESH_AUTH")))
+                                                                                                      (and auth (plusp (length auth))
+                                                                                                           (if (pig:refresh-models-context-credential input) "true" "false"))))))))))))))
        :fetch-deferred (lambda (model handle options)
                          (carrier-stream model (pig:make-provider-stream-options
                                                 :values (pig:obj "metadata" (pig:obj "method" (pig:jget handle "id")))
@@ -147,7 +151,7 @@
               (let ((cancelled (pig:model-stream-result waiting)))
                 (flet ((clean (&rest members) (let ((table (pig:obj))) (loop for (k v) on members by #'cddr do (when v (setf (gethash k table) v))) table)))
                   (write-file path (pig:to-json
-                                    (pig:obj "headers" (pig:provider-headers provider)
+                                    (pig:obj "refreshModelsAuth" (or (pig:provider-refresh-models-auth provider) :null) "headers" (pig:provider-headers provider)
                                              "check" (clean "type" (pig:auth-check-type check) "source" (pig:auth-check-source check))
                                              "auth" (clean "auth" (pig:auth-result-auth auth) "env" (pig:auth-result-env auth) "source" (pig:auth-result-source auth))
                                              "apiLogin" api-login "login" login "rotated" rotated "oauth" to-auth
