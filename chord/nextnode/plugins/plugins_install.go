@@ -432,7 +432,8 @@ func unpack(name, version, dir string, ctx context.Context, options InstallOptio
 	if err := os.Mkdir(dir, 0o777); err != nil {
 		return err
 	}
-	file := filepath.Join(packed, nodeBasename(filename))
+	// pig divergence (D616): the archive is named relative to the pack directory (tar's cwd), where Pi passes join(packed, basename); GNU tar reads `C:\...` as host `C` and fails.
+	file := "./" + nodeBasename(filename)
 	_, err = run("tar", []string{"-xzf", file, "--strip-components=1", "-C", dir}, packed, ctx, "extracting "+name)
 	return err
 }
