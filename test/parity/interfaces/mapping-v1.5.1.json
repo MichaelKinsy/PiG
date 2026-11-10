@@ -195743,7 +195743,9 @@
         "call:internal/codingagent/native_model_runtime.go#ModelRegistry.GetProvider"
       ],
       "evidence": [
-        "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream"
+        "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream",
+        "test:internal/codingagent/model_catalog_data_radius_first_test.go#TestGetProviderModelDataDoesNotBuildTheBundledCatalogOfARadiusProvider",
+        "test:internal/codingagent/model_catalog_data_radius_first_test.go#TestGetProviderModelDataListsTheSameModelsWithTheRadiusBranchFirst"
       ]
     },
     {
@@ -195763,7 +195765,9 @@
         "call:internal/codingagent/native_model_runtime.go#ModelRegistry.GetProvider"
       ],
       "evidence": [
-        "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream"
+        "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream",
+        "test:internal/codingagent/model_catalog_data_radius_first_test.go#TestGetProviderModelDataDoesNotBuildTheBundledCatalogOfARadiusProvider",
+        "test:internal/codingagent/model_catalog_data_radius_first_test.go#TestGetProviderModelDataListsTheSameModelsWithTheRadiusBranchFirst"
       ]
     },
     {

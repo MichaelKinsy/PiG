@@ -35512,6 +35512,29 @@
       ]
     },
     {
+      "id": "BF-a17e2a1",
+      "title": "A runtime API key (`--api-key`, `SetRuntimeAPIKey`) for a Radius provider now counts as its auth, as it does…",
+      "symptom": "Requests used the key but the Radius catalog was not listed.",
+      "rootCause": "An earlier change's message and report said the mid-session test step covered a runtime key; it did not: its runtime-key step failed (HasConfiguredAuth false), and replaced it with stored credentials. TestGetAvailableModelDataListsARadiusCatalogExactlyWhenItsProviderHasAuth now has the runtime-key steps (appears, leaves, returns), an OAuth step and a models.json Radius provider (acme, custom base URL, one defined model), counting that provider's models too; TestRadiusRuntimeKeyIsRadiusAuthEverywhere pins the other questions.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A runtime API key (`--api-key`, `SetRuntimeAPIKey`) for a Radius provider now counts as its auth, as it does in Pi: the provider has configured auth, its models are in the available list and it counts as an available provider. Before, requests used the key but the Radius catalog was not listed.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a17e2a163e",
+          "date": "2026-11-10"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/model_registry_available_radius_test.go::TestGetAvailableModelDataListsARadiusCatalogExactlyWhenItsProviderHasAuth",
+        "internal/codingagent/model_registry_available_radius_test.go::TestRadiusRuntimeKeyIsRadiusAuthEverywhere"
+      ]
+    },
+    {
       "id": "BF-a18da32",
       "title": "fix(schema): resolve relative references against file and custom-scheme bases as a URL parser does",
       "symptom": "fix(schema): resolve relative references against file and custom-scheme bases as a URL parser does",

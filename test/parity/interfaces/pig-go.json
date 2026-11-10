@@ -72662,6 +72662,17 @@
       "shapeHash": "sha256:f1627669917a681a2d0de09c82296a20744a3daf51f53956333b1e782e2400d3"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.isRadiusCatalog",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "ModelRegistry.isRadiusCatalog",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(id string) bool"
+      },
+      "shapeHash": "sha256:f1627669917a681a2d0de09c82296a20744a3daf51f53956333b1e782e2400d3"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.isRadiusProvider",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "ModelRegistry.isRadiusProvider",
@@ -263427,6 +263438,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelRegistry.isPlainGenerated",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "ModelRegistry.isPlainGenerated",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(id string) bool"
+      },
+      "shapeHash": "sha256:f1627669917a681a2d0de09c82296a20744a3daf51f53956333b1e782e2400d3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelRegistry.isRadiusCatalog",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "ModelRegistry.isRadiusCatalog",
       "kind": "function",
       "exported": false,
       "shape": {

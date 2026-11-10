@@ -1293,6 +1293,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a156ef3](#bf-a156ef3) | On Linux, clipboard reads accept every `DISPLAY` spelling Pi's `xcb_connect` accepts: white space or a sign… | PiG's own defect | Linux | 0.5.0 |
 | [BF-a16d8b4](#bf-a16d8b4) | The Go, Rust, Python and Lisp SDKs asked the host on every read of the model object, the session id, the… | PiG's own defect | All platforms | Unreleased |
 | [BF-a178939](#bf-a178939) | The Go and Python `serializeConversation` keep an unpaired UTF-16 surrogate in a message, a tool-call name or… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-a17e2a1](#bf-a17e2a1) | A runtime API key (`--api-key`, `SetRuntimeAPIKey`) for a Radius provider now counts as its auth, as it does… | PiG's own defect | All platforms | Unreleased |
 | [BF-a18da32](#bf-a18da32) | fix(schema): resolve relative references against file and custom-scheme bases as a URL parser does | PiG's own defect | All platforms | Unreleased |
 | [BF-a1be545](#bf-a1be545) | The `@` file search of a tui editor that has a file-search provider but no task owner (an embedder's; no pig… | PiG's own defect | All platforms | Unreleased |
 | [BF-a1da44d](#bf-a1da44d) | The durable turn classifier retries on a status code (429, 500, 502, 503, 504, 520, 524) only when it stands… | PiG's own defect | All platforms | 0.5.2 |
@@ -19638,6 +19639,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `058e7a0e4b` (2026-10-11), `15cb4f2db8` (2026-10-11), `19966b4089` (2026-10-11), `50f526d69e` (2026-10-11), `a178939d6a` (2026-10-11), `a4e5b071cb` (2026-10-11), `e4aa58a078` (2026-10-11), `e8473d13c5` (2026-10-11), `f51d8b4bea` (2026-10-11)
 - **Tests:** `extensions/sdk-py/tests/test_compaction_estimate.py`, `extensions/sdk-py/tests/test_serialize_conversation_surrogates.py`, `extensions/sdk/compaction_estimate_test.go::TestEstimateTokensCountsUTF16UnitsAndJSONStringifyLength`, `extensions/sdk/compaction_estimate_test.go::TestJSNumberStringMatchesNumberToString`, `extensions/sdk/serialize_conversation_surrogate_test.go::TestSerializeConversationKeepsUnpairedSurrogates`, `test/extension-conformance/compaction_usage_test.go::TestConformance_CompactionUsageHelpersAgreeAcrossSDKs`, `test/extension-conformance/host_parser_helpers_test.go::TestConformance_HostParserHelpersAgreeAcrossSDKs`, `test/extension-conformance/message_conversion_test.go::TestConformance_MessageConversionAgreesAcrossSDKs` and 2 more in docs/bug-ledger.json
 - **Release note:** The Go and Python `serializeConversation` keep an unpaired UTF-16 surrogate in a message, a tool-call name or argument, and when the 2,000-unit cut splits a surrogate pair, as Pi does; the conformance test now compares those cases against Pi's own code.
+
+### BF-a17e2a1
+
+**A runtime API key (`--api-key`, `SetRuntimeAPIKey`) for a Radius provider now counts as its auth, as it does…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Requests used the key but the Radius catalog was not listed.
+- **Root cause:** An earlier change's message and report said the mid-session test step covered a runtime key; it did not: its runtime-key step failed (HasConfiguredAuth false), and replaced it with stored credentials. TestGetAvailableModelDataListsARadiusCatalogExactlyWhenItsProviderHasAuth now has the runtime-key steps (appears, leaves, returns), an OAuth step and a models.json Radius provider (acme, custom base URL, one defined model), counting that provider's models too; TestRadiusRuntimeKeyIsRadiusAuthEverywhere pins the other questions.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a17e2a163e` (2026-11-10)
+- **Tests:** `internal/codingagent/model_registry_available_radius_test.go::TestGetAvailableModelDataListsARadiusCatalogExactlyWhenItsProviderHasAuth`, `internal/codingagent/model_registry_available_radius_test.go::TestRadiusRuntimeKeyIsRadiusAuthEverywhere`
+- **Release note:** A runtime API key (`--api-key`, `SetRuntimeAPIKey`) for a Radius provider now counts as its auth, as it does in Pi: the provider has configured auth, its models are in the available list and it counts as an available provider. Before, requests used the key but the Radius catalog was not listed.
 
 ### BF-a18da32
 
