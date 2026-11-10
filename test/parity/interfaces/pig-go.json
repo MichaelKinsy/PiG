@@ -14830,9 +14830,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func(options StreamOptions, signal context.Context) (context.Context, StreamOptions)"
+        "type": "func(signal context.Context, options StreamOptions) (context.Context, StreamOptions)"
       },
-      "shapeHash": "sha256:c9a18a582f99405899d277acedc980007049468c3df71219f0373cc0a798995b"
+      "shapeHash": "sha256:166a044cc95ba1cddbe421cc9a89b1ef2208ffc92ad9ba3b1d976ddc2e238408"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#GetClientVersion",
@@ -344863,9 +344863,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func(requestRender func(), mode string, providers []OAuthProvider, onSelect func(providerID string, authType string), onCancel func(), initialSearch string) *OAuthSelectorComponent"
+        "type": "func(mode string, providers []OAuthProvider, onSelect func(providerID string, authType string), onCancel func(), initialSearch string, ui TUI) *OAuthSelectorComponent"
       },
-      "shapeHash": "sha256:5b120a438f02cb178f7548082f8b3c55329fd45085ec10a6f91d5472377cb8e0"
+      "shapeHash": "sha256:484cb91192cef113513ccf06a7f2679da2bfb635285b3e9821edfdea85b92be6"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#NewOkhslColor",
