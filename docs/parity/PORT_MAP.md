@@ -1139,15 +1139,15 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/storage/sqlite/node.ts` | `durable/storage/sqlite/node/node.go` (re-exports chord/sqlite/node; OpenNodeSqliteStorage) | ✅ |
 | `packages/durable/src/storage/sqlite/storage.ts` | `durable/storage/sqlite/storage.go` | ✅ |
 | `packages/durable/src/storage/sqlite/commit.ts` | `durable/storage/sqlite/commit.go` | ✅ |
-| `packages/durable/src/storage/sqlite/rows.ts` | `durable/storage/sqlite/commit.go` (documentRow; the cell encoders are in storage.go and statements.go) Missing: the stored row columns (family, key, scope, retired, isCurrentOnly) built by documentRow and the cell encoders are unasserted: no test fails an inverted isCurrentOnly or a retired column shifted by one (a mutant of commit.ts logic does not prove rows.ts) | 🟡 |
+| `packages/durable/src/storage/sqlite/rows.ts` | `durable/storage/sqlite/commit.go + durable/storage/sqlite/storage.go` (documentRow in commit.go; encodeJSON, encodeIndexedString, scopeColumnsOf, addressPartsOf and isCurrentOnly in storage.go; Pi's addressKey is the comparable addressParts struct used as the map key, proved equal to Pi's string key by rows_pi_oracle_test.go; tests in durable/storage/sqlite/rows_test.go, rows_storage_test.go and rows_pi_oracle_test.go, which runs Pi's rows.ts under Node over a corpus of records and values) | ✅ |
 | `packages/durable/src/storage/sqlite/statements.ts` | `durable/storage/sqlite/statements.go` (internal SQL, no D: reads and deletions take their keys through json_each as Pi's do, but every insert binds its cells in multi-row VALUES where Pi sends the rows of little text as one JSON array through json_each; the stored rows (up to 8 KiB of text; larger rows were bound already and are unchanged, a lone surrogate in one stays raw where Pi stores U+FFFD, as at the base) are the same bytes in the same storage classes, errors included, which insert_values_differential_test.go proves against Pi's statement over random batches) | ✅ |
 | `packages/durable/src/storage/sqlite/cloudflare.ts` | `durable/storage/sqlite/cloudflare/cloudflare.go` (re-exports chord/sqlite/cloudflare; OpenDurableObjectSqliteStorage) | ✅ |
-| `packages/durable/src/storage/store/commit.ts` | `durable/storage/store/commit.go` | 🟡 |
-| `packages/durable/src/storage/store/documents.ts` | `durable/storage/store/documents.go` | 🟡 |
+| `packages/durable/src/storage/store/commit.ts` | `durable/storage/store/commit.go` (tests in durable/storage/store/commit_checks_test.go (id claims, content commands, copy checks) and the conformance suite of store_storage_test.go and store_storage_commit_test.go) | ✅ |
+| `packages/durable/src/storage/store/documents.ts` | `durable/storage/store/documents.go` (tests in durable/storage/store/documents_test.go (every function of documents.ts, the scope claims, other owners' documents) and store_storage_test.go) | ✅ |
 | `packages/durable/src/storage/store/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
-| `packages/durable/src/storage/store/queries.ts` | `durable/storage/store/queries.go` | 🟡 |
-| `packages/durable/src/storage/store/storage.ts` | `durable/storage/store/storage.go` | 🟡 |
-| `packages/durable/src/storage/store/tables.ts` | `durable/storage/store/tables.go` | 🟡 |
+| `packages/durable/src/storage/store/queries.ts` | `durable/storage/store/queries.go` (tests in durable/storage/store/queries_test.go (compiled reads, head reads, versioned record columns) and store_storage_reads_test.go) | ✅ |
+| `packages/durable/src/storage/store/storage.ts` | `durable/storage/store/storage.go` (tests in durable/storage/store/storage_cursor_test.go (cursorId, scanFrom, page) and store_storage_test.go) | ✅ |
+| `packages/durable/src/storage/store/tables.ts` | `durable/storage/store/tables.go` (tests in durable/storage/store/tables_test.go (rows and declarations) and store_storage_commit_test.go) | ✅ |
 | `packages/durable/src/tasks.ts` | `durable/tasks.go` | ✅ |
 | `packages/durable/src/testing/assertions.ts` | `durable/durabletest/durabletest.go` | ✅ |
 | `packages/durable/src/testing/commit-writes.ts` | `durable/durabletest/commit_writes.go` | 🟡 |

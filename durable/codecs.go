@@ -325,9 +325,9 @@ type documentRecordWire struct {
 	RetiredAt *Seq                `json:"retiredAt,omitempty"`
 }
 
-// MarshalJSON writes the members in the order Pi's storages build a record, not the declaration order: the create's own members, then the createdAt and retiredAt that storage stamps (memory.ts and sqlite/storage.ts spread the create first and add retiredAt last).
+// MarshalJSON writes the members in the order Pi's storages build a record, not the declaration order: the create's own members, then the createdAt and retiredAt that storage stamps (memory.ts and sqlite/storage.ts spread the create first and add retiredAt last). A lone UTF-16 surrogate in kind or key (a Go string holds it as WTF-8) is the escape \udXXX, as JSON.stringify writes it, not U+FFFD.
 func (record DocumentRecord) MarshalJSON() ([]byte, error) {
-	return json.Marshal(documentRecordWire{
+	return jsstring.MarshalKeepingSurrogates(documentRecordWire{
 		Id: record.Id, Kind: record.Kind, Key: record.Key, Scope: record.Scope, History: record.History, Fork: record.Fork,
 		CreatedAt: record.CreatedAt, RetiredAt: record.RetiredAt,
 	})
