@@ -90,6 +90,7 @@
                 (:file "session-tests")
                 (:file "provider-tests")
                 (:file "ui-tests")
+                (:file "ui-view-tests")
                 (:file "editor-tests")
                 (:file "tui-alt-tests")
                 )
