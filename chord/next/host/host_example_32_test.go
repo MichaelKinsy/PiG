@@ -93,8 +93,25 @@ func TestExample32Startup(t *testing.T) {
 		}, ServeOptions{})
 	})
 	// 1. The server's load: publication (Catalog served), then Bootstrap starts and parks on the worker's Agent. A wait on
-	// another host is a first outcome, so `load` resolves without waiting for the worker.
-	mustLoad(t)(server.Load([]HostFacet{{Name: "@example/core", Facet: core}}, background))
+	// another host is a first outcome, so `load` resolves without waiting for the worker. The gate holds the worker's load
+	// until the read below, so a `load` that did wait for the worker (a remote wait not ending the first pass) cannot
+	// return: that is this assertion failing, and it is reported after a bound a passing run is nowhere near (a load of
+	// this host takes milliseconds), as `WorkerLoaded` does.
+	type loadResult struct {
+		report LoadReport
+		err    error
+	}
+	loaded := make(chan loadResult, 1)
+	go func() {
+		report, err := server.Load([]HostFacet{{Name: "@example/core", Facet: core}}, background)
+		loaded <- loadResult{report, err}
+	}()
+	select {
+	case done := <-loaded:
+		mustLoad(t)(done.report, done.err)
+	case <-time.After(10 * time.Second):
+		t.Fatalf("server.Load did not return while the worker's load was held: it waits for the worker, want it resolved at Bootstrap's first outcome")
+	}
 	if got := exStateNow(t, exHold(t, server, bootstrap, jsonObject())); got != "loading" {
 		t.Fatalf("server loaded; Bootstrap is %s, want loading", got)
 	}
