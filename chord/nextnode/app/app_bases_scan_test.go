@@ -14,7 +14,7 @@ import (
 // Ports the two tests of the scan of the server's own code held on a read of packages/chord/test/node/app/app.test.ts ("base code",
 // Pi 284e63d9): `answers before the scan of its own code finished: the scan runs after the start` and `closes without waiting for a
 // scan of its own code stalled on a read`; the second is the forced Go lifetime difference below. Pi holds the scan on a named pipe its start script imports; the Go server's own code is its
-// executable (D603), so the scan is the step that names it (`AppOptions.executable`, the test seam), and the test holds that step: the
+// executable (language mechanics: an executable has no import graph), so the scan is the step that names it (`AppOptions.executable`, the test seam), and the test holds that step: the
 // same stall, at the first thing the scan does, on every platform.
 //
 // Forced Go lifetime difference (not a numbered divergence): Pi's `#close` does not wait for the scan; the Go close joins it, last,
