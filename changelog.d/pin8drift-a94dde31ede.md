@@ -5,4 +5,4 @@
 
 ### Fixed
 
-- A runtime API key (`--api-key`, `SetRuntimeAPIKey`) for a Radius provider now counts as its auth, as it does in Pi: the provider has configured auth, its models are in the available list and it counts as an available provider. Before, requests used the key but the Radius catalog was not listed. <!-- fix: a17e2a163e4 -->
+- A runtime API key (`--api-key`, `SetRuntimeAPIKey`) for a Radius provider now counts as its auth, as it does in Pi: the provider has configured auth, its models are in the available list and it counts as an available provider. Before, requests used the key but the Radius catalog was not listed. <!-- fix: a94dde31ede -->
