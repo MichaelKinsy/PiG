@@ -264,6 +264,7 @@ func TestPortWave10PackageCommandPaths(t *testing.T) {
 		assert.Contains(t, stderr, "skipped model catalog for radius: OAuth refresh failed for radius: invalid_grant")
 		// D2 changes only the application name in the upstream login hint.
 		assert.Contains(t, stderr, "pig auth login radius")
+		assert.Equal(t, chalkYellow("Warning: skipped model catalog for radius: OAuth refresh failed for radius: invalid_grant\nLog in again with `pig auth login radius` to refresh it.")+"\n", stderr)
 		assert.Contains(t, stdout, "Model catalogs refreshed")
 		assert.NotContains(t, stderr, "Could not refresh")
 		assert.Equal(t, 0, code)
