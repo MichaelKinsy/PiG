@@ -1853,6 +1853,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-f12896b](#bf-f12896b) | Interactive startup writes the terminal color query before its first frame, as Pi does: starting the renderer… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f19efb1](#bf-f19efb1) | A `session_compact` handler's passive custom message reaches the overflow retry (D138, Pi #9051) | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-f1a59f9](#bf-f1a59f9) | An OpenAI Responses event's `output_index` matches an output item as a key of Pi's `Map` does: a string… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-f1ed7db](#bf-f1ed7db) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-f20cc08](#bf-f20cc08) | A Node extension that calls `pi.appendEntry` many times in one handler no longer slows down with the size of… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f21be69](#bf-f21be69) | `pig status` no longer lists the resources of an untrusted project as enabled | PiG's own defect | All platforms | 0.7.0 |
 | [BF-f21be69-2](#bf-f21be69-2) | `pig diagnose` no longer reports the `defaultModel` of an untrusted project, which the session does not use | PiG's own defect | All platforms | 0.7.0 |
@@ -27387,6 +27388,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `5078f73100` (2026-10-11), `5932542c21` (2026-10-11), `82414338e7` (2026-10-11), `8eb1202528` (2026-10-11), `b6afa7be1a` (2026-10-11), `e1abc6c615` (2026-10-11), `f1a59f9161` (2026-10-11)
 - **Tests:** `ai/anthropic_event_member_type_oracle_test.go::TestAnthropicEventMistypedMembersMatchPi`, `ai/mistral_chunk_member_type_oracle_test.go::TestMistralChunkMistypedMembersMatchPi`, `ai/openai_responses_member_type_oracle_test.go::TestOpenAIResponsesMistypedMembersMatchPi`
 - **Release note:** An OpenAI Responses event's `output_index` matches an output item as a key of Pi's `Map` does: a string, `null`, a boolean or a missing index is its own key rather than a decode error or item 0, and an object never matches.
+
+### BF-f1ed7db
+
+**Fix in shipped code**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fix in shipped code
+- **Root cause:** Workers/base.ts rationale no longer cites D600; the missing-cwd resume test cancels with the Cancel label; the main.ts async row drops its exit-on-cancel claim.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f1ed7db72d` (2026-11-10)
+- **Tests:** None recorded.
 
 ### BF-f20cc08
 

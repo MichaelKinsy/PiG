@@ -52459,6 +52459,25 @@
       ]
     },
     {
+      "id": "BF-f1ed7db",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "Workers/base.ts rationale no longer cites D600; the missing-cwd resume test cancels with the Cancel label; the main.ts async row drops its exit-on-cancel claim.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "f1ed7db72d",
+          "date": "2026-11-10"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-f20cc08",
       "title": "A Node extension that calls `pi.appendEntry` many times in one handler no longer slows down with the size of…",
       "symptom": "A Node extension that calls `pi.appendEntry` many times in one handler no longer slows down with the size of the session: each append now costs the same, as in Pi.",
