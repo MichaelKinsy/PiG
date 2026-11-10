@@ -299,7 +299,11 @@ func (tag localeTag) canonicalize() localeTag {
 		}
 	}
 	// A language and a region that are one language of their own, the region gone (`sgn-BR` is `bzs`).
-	if replacement, ok := languageRegionRules[tag.language+"-"+tag.region]; ok && tag.script == "" {
+	rules := languageRegionRules
+	if tag.script != "" {
+		rules = scriptedLanguageRegionRules
+	}
+	if replacement, ok := rules[tag.language+"-"+tag.region]; ok {
 		tag.language, tag.region = replacement, ""
 	}
 	if replacement, ok := languageAliases[tag.language]; ok {

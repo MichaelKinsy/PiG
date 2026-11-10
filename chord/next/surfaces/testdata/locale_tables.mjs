@@ -44,6 +44,69 @@ for (const r of regions) {
 	}
 }
 
+// Value aliases of `-u-` keywords and `-t-` fields. Node's ICU (CLDR bcp47 data) has no list to read, so each (key, value) is asked of
+// Intl: every key from `0a` to `9z` and `aa` to `zz` (a letter or a digit, then a letter) with `yes`, the values of CLDR's own lists (Intl.supportedValuesOf, and
+// the names of the data files that the aliases come from), and every value of three characters; then, for the keys that showed an alias, every
+// value of four characters, and of five letters for the keys of regions and time zones. A `true` alias is the value dropped (`yes` is `true`
+// for every key).
+const alnum = letters + "0123456789";
+const lettersOf = (n) => (n === 0 ? [""] : lettersOf(n - 1).flatMap((p) => [...letters].map((c) => p + c)));
+const triples = [];
+for (const a of alnum) for (const b of alnum) for (const c of alnum) triples.push(a + b + c);
+const quads = triples.flatMap((t) => [...alnum].map((c) => t + c));
+const unicodeKeys = [...alnum].flatMap((a) => [...letters].map((b) => a + b));
+const unicodeAlias = {};
+const unicodeAliasKeys = new Set();
+const askUnicode = (key, value) => {
+	const c = canon("en-u-" + key + "-" + value);
+	if (c === undefined) return;
+	const prefix = "en-u-" + key;
+	if (c === prefix + "-" + value || value === "yes" || value === "true") return;
+	if (!c.startsWith(prefix + "-")) return;
+	unicodeAlias[key + "-" + value] = c.slice(prefix.length + 1);
+	unicodeAliasKeys.add(key);
+};
+// `yes` is `true` (dropped) for every key, or this generator's `yesIsTrue` does not hold.
+for (const key of unicodeKeys) {
+	if (canon("en-u-" + key + "-yes") !== "en-u-" + key) throw new Error(`en-u-${key}-yes is not en-u-${key}`);
+}
+const supported = (what) => {
+	try {
+		return Intl.supportedValuesOf(what);
+	} catch {
+		return [];
+	}
+};
+const words = [
+	...supported("calendar"), ...supported("collation"), ...supported("numberingSystem"), ...supported("currency").map((c) => c.toLowerCase()),
+	"islamicc", "ethiopic-amete-alem", "islamic-civil", "gregorian", "iso8601", "traditional", "dictionary", "phonebook", "gb2312han", "big5han",
+	"primary", "secondary", "tertiary", "quaternary", "quarternary", "identical", "imperial", "metric", "uksystem", "ussystem", "level1", "level2", "level3",
+	"level4", "identic", "true", "false",
+];
+for (const key of unicodeKeys) for (const word of words) askUnicode(key, word);
+const tzKeys = ["tz", "rg", "sd"];
+const fewKeys = ["ca", "co", "ks", "ms", "nu", ...tzKeys];
+for (const key of fewKeys) for (const t of triples) askUnicode(key, t);
+for (const key of unicodeKeys) if (!fewKeys.includes(key)) for (const t of triples) askUnicode(key, t);
+for (const key of unicodeAliasKeys) for (const q4 of quads) askUnicode(key, q4);
+for (const key of tzKeys) for (const q4 of quads) askUnicode(key, q4);
+for (const key of tzKeys) {
+	for (const v of lettersOf(5)) askUnicode(key, v);
+}
+const transformedAlias = {};
+const transformedKeys = [...letters].flatMap((a) => [..."0123456789"].map((b) => a + b));
+const askTransformed = (key, value) => {
+	const c = canon("en-t-" + key + "-" + value);
+	if (c === undefined) return;
+	const prefix = "en-t-" + key;
+	if (c === prefix + "-" + value) return;
+	if (!c.startsWith(prefix + "-")) return;
+	transformedAlias[key + "-" + value] = c.slice(prefix.length + 1);
+};
+for (const key of transformedKeys) for (const word of ["names", "prprname", "ungegn", "bgn"]) askTransformed(key, word);
+for (const key of transformedKeys) for (const t of lettersOf(3)) askTransformed(key, t);
+for (const key of ["m0"]) for (const n of [4, 5]) for (const t of lettersOf(n)) askTransformed(key, t);
+
 // Language aliases that Intl applies only to a language with more in its tag: `tw` alone stays `tw`, `tw-AA` is `ak-AA`. And the language and
 // region pairs that are one language of their own, the region gone (`sgn-BR` is `bzs`).
 const qualifiedLangAlias = {};
@@ -58,6 +121,15 @@ for (const l of languages) {
 	for (const r of regions) {
 		const c = canon(l + "-" + r);
 		if (c !== undefined && !c.includes("-") && c !== (langAlias[l] ?? l)) languageRegionRules[l + "-" + r] = c;
+	}
+}
+// The same pairs with a script between (`sgn-Latn-NO` is `nsi-Latn`, where `sgn-NO` is `nsl`): the script stays.
+const scriptedLanguageRegionRules = {};
+for (const l of new Set(Object.keys(languageRegionRules).map((pair) => pair.split("-")[0]))) {
+	for (const r of regions) {
+		const c = canon(l + "-Latn-" + r);
+		const parts = c?.split("-");
+		if (parts?.length === 2 && parts[1] === "Latn" && parts[0] !== l) scriptedLanguageRegionRules[l + "-" + r] = parts[0];
 	}
 }
 // The one script alias: `Qaai` is `Zinh` (every other four-letter script is left as it is: asked of each).
@@ -100,69 +172,6 @@ for (const l of languages) {
 	}
 }
 
-// Value aliases of `-u-` keywords and `-t-` fields. Node's ICU (CLDR bcp47 data) has no list to read, so each (key, value) is asked of
-// Intl: every key from `0a` to `9z` and `aa` to `zz` (a letter or a digit, then a letter) with `yes`, the values of CLDR's own lists (Intl.supportedValuesOf, and
-// the names of the data files that the aliases come from), and every value of three characters; then, for the keys that showed an alias, every
-// value of four characters, and of five letters for the keys of regions and time zones. A `true` alias is the value dropped (`yes` is `true`
-// for every key).
-const alnum = letters + "0123456789";
-const lettersOf = (n) => (n === 0 ? [""] : lettersOf(n - 1).flatMap((p) => [...letters].map((c) => p + c)));
-const triples = [];
-for (const a of alnum) for (const b of alnum) for (const c of alnum) triples.push(a + b + c);
-const quads = triples.flatMap((t) => [...alnum].map((c) => t + c));
-const unicodeKeys = [...alnum].flatMap((a) => [...letters].map((b) => a + b));
-const unicodeAlias = {};
-const unicodeAliasKeys = new Set();
-const askUnicode = (key, value) => {
-	const c = canon("en-u-" + key + "-" + value);
-	if (c === undefined) return;
-	const prefix = "en-u-" + key;
-	if (c === prefix + "-" + value || value === "yes" || value === "true") return;
-	if (!c.startsWith(prefix)) throw new Error(`en-u-${key}-${value} is ${c}`);
-	unicodeAlias[key + "-" + value] = c.slice(prefix.length + 1);
-	unicodeAliasKeys.add(key);
-};
-// `yes` is `true` (dropped) for every key, or this generator's `yesIsTrue` does not hold.
-for (const key of unicodeKeys) {
-	if (canon("en-u-" + key + "-yes") !== "en-u-" + key) throw new Error(`en-u-${key}-yes is not en-u-${key}`);
-}
-const supported = (what) => {
-	try {
-		return Intl.supportedValuesOf(what);
-	} catch {
-		return [];
-	}
-};
-const words = [
-	...supported("calendar"), ...supported("collation"), ...supported("numberingSystem"), ...supported("currency").map((c) => c.toLowerCase()),
-	"islamicc", "ethiopic-amete-alem", "islamic-civil", "gregorian", "iso8601", "traditional", "dictionary", "phonebook", "gb2312han", "big5han",
-	"primary", "secondary", "tertiary", "quaternary", "quarternary", "identical", "imperial", "metric", "uksystem", "ussystem", "level1", "level2", "level3",
-	"level4", "identic", "true", "false", "no",
-];
-for (const key of unicodeKeys) for (const word of words) askUnicode(key, word);
-const tzKeys = ["tz", "rg", "sd"];
-const fewKeys = ["ca", "co", "ks", "ms", "nu", ...tzKeys];
-for (const key of fewKeys) for (const t of triples) askUnicode(key, t);
-for (const key of unicodeKeys) if (!fewKeys.includes(key)) for (const t of triples) askUnicode(key, t);
-for (const key of unicodeAliasKeys) for (const q4 of quads) askUnicode(key, q4);
-for (const key of tzKeys) for (const q4 of quads) askUnicode(key, q4);
-for (const key of tzKeys) {
-	for (const v of lettersOf(5)) askUnicode(key, v);
-}
-const transformedAlias = {};
-const transformedKeys = [...letters].flatMap((a) => [..."0123456789"].map((b) => a + b));
-const askTransformed = (key, value) => {
-	const c = canon("en-t-" + key + "-" + value);
-	if (c === undefined) return;
-	const prefix = "en-t-" + key;
-	if (c === prefix + "-" + value) return;
-	if (!c.startsWith(prefix)) throw new Error(`en-t-${key}-${value} is ${c}`);
-	transformedAlias[key + "-" + value] = c.slice(prefix.length + 1);
-};
-for (const key of transformedKeys) for (const word of ["names", "prprname", "ungegn", "bgn"]) askTransformed(key, word);
-for (const key of transformedKeys) for (const t of lettersOf(3)) askTransformed(key, t);
-for (const key of ["m0"]) for (const n of [4, 5]) for (const t of lettersOf(n)) askTransformed(key, t);
-
 const q = JSON.stringify;
 const map = (name, doc, o) =>
 	`// ${doc}\nvar ${name} = map[string]string{\n${Object.keys(o).sort().map((k) => `\t${q(k)}: ${q(o[k])},\n`).join("")}}\n\n`;
@@ -180,6 +189,7 @@ out += set("rtlLanguageRegions", "rtlLanguageRegions are the language-region pai
 out += set("ltrLanguageRegions", "ltrLanguageRegions are the language-region pairs that are left to right though the bare language is right to left.", ltrLangRegion);
 out += map("qualifiedLanguageAliases", "qualifiedLanguageAliases is the canonical language of each language that Intl.getCanonicalLocales changes only when the tag has a region (or more) after it: `tw` alone stays `tw`, `tw-AA` is `ak-AA`.", qualifiedLangAlias);
 out += map("languageRegionRules", "languageRegionRules is the canonical tag of each language and region pair that is a language of its own, the region gone (`sgn-BR` is `bzs`).", languageRegionRules);
+out += map("scriptedLanguageRegionRules", "scriptedLanguageRegionRules is the canonical language of each language and region pair with a script between that is a language of its own, the region gone and the script kept (`sgn-Latn-NO` is `nsi-Latn`).", scriptedLanguageRegionRules);
 out += map("scriptAliases", "scriptAliases is the canonical form of each script Intl.getCanonicalLocales changes (`Qaai` is `Zinh`).", scriptAlias);
 out += map("unicodeValueAliases", "unicodeValueAliases is the canonical value of each `-u-` keyword value that Intl.getCanonicalLocales changes, by the keyword's key and value joined by `-` (`ca-islamicc` is `islamic-civil`, `ks-primary` is `level1`); a value of several subtags is joined too (`ca-ethiopic-amete-alem` is `ethioaa`).", unicodeAlias);
 out += map("transformedValueAliases", "transformedValueAliases is the canonical value of each `-t-` field value that Intl.getCanonicalLocales changes, by the field's key and value joined by `-` (`m0-names` is `prprname`).", transformedAlias);

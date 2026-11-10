@@ -241,6 +241,35 @@ func (exit *NodeExit) Unwrap() []error {
 // completeMarker is the file extractNode writes last into a tree: its content is the hash the tree's directory is named for.
 const completeMarker = ".complete"
 
+// nodeTreeHash is the content hash that names an extracted tree: the manifest (which carries the hash of every file of the copy of
+// Pi) and every file of the runtime's own beside it (host.mjs, proxy.mjs, bridge.mjs, ...), by name. Two builds whose runtimes differ
+// in any of these files extract to different directories, so builds that share a cache directory (test runs of different trees on one
+// machine) never repair one another's tree in place while a process of the other build reads it.
+func nodeTreeHash(fsys fs.FS) (string, error) {
+	manifest, err := fs.ReadFile(fsys, "node/manifest.json")
+	if err != nil {
+		return "", err
+	}
+	entries, err := fs.ReadDir(fsys, "node")
+	if err != nil {
+		return "", err
+	}
+	sum := sha256.New()
+	sum.Write(manifest)
+	for _, entry := range entries {
+		if entry.IsDir() || entry.Name() == "manifest.json" {
+			continue
+		}
+		content, err := fs.ReadFile(fsys, "node/"+entry.Name())
+		if err != nil {
+			return "", err
+		}
+		fmt.Fprintf(sum, "\x00%s\x00%d\x00", entry.Name(), len(content))
+		sum.Write(content)
+	}
+	return hex.EncodeToString(sum.Sum(nil)), nil
+}
+
 // extractNode extracts the embedded tree under cacheDir (once per content hash) and returns its directory. A new tree is
 // extracted aside and renamed into place, so a process that lost the race finds the winner's. A directory is trusted when
 // its marker (written last) names this content and each of its files has the embedded size; one that is not (a cache that
@@ -253,18 +282,10 @@ func extractNode(cacheDir string) (string, error) {
 		}
 		cacheDir = filepath.Join(base, "pig")
 	}
-	manifest, err := nodeFiles.ReadFile("node/manifest.json")
+	hash, err := nodeTreeHash(nodeFiles)
 	if err != nil {
 		return "", err
 	}
-	driver, err := nodeFiles.ReadFile("node/host.mjs")
-	if err != nil {
-		return "", err
-	}
-	sum := sha256.New()
-	sum.Write(manifest)
-	sum.Write(driver)
-	hash := hex.EncodeToString(sum.Sum(nil))
 	//portlint:allow utf16units hash is a hex digest, ASCII only, so its byte offsets are its UTF-16 code-unit offsets
 	dir := filepath.Join(cacheDir, "chord-plugins-node-"+hash[:16])
 	if nodeTreeComplete(dir, hash) {
