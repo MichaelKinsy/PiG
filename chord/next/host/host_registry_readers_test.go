@@ -306,8 +306,12 @@ func TestReadersAHostRegistryWhoseDeadlineFiresAfterLoadStartedAndBeforeThePubli
 	const deadline = 5 * time.Millisecond
 	host := newHost(t, HostOptions{loop: &directTimerLoop{Loop: NewLoop()}})
 	asked := make(chan error, 1)
+	// The wait of the setup is bounded by a context of its own, so a deadline that never fires ends the test at once with its message
+	// (the load runs in a section the wait holds: nothing else could end it).
+	bound, cancel := context.WithTimeout(background, 3*time.Second)
+	defer cancel()
 	setup := rvPlugin("@app/asks", func(FacetHost, FacetSelf) error {
-		_, err := host.Registry(background, rvSum, rvWithin(deadline))
+		_, err := host.Registry(bound, rvSum, rvWithin(deadline))
 		asked <- err
 		return nil
 	})
@@ -326,7 +330,7 @@ func TestReadersAHostRegistryWhoseDeadlineFiresAfterLoadStartedAndBeforeThePubli
 			t.Fatalf("host.registry before the publication = %v (%v), want an unavailable error", err, chordErr)
 		}
 	case <-time.After(10 * time.Second):
-		t.Fatal("host.registry before the publication did not end at its 5 ms deadline")
+		t.Fatal("host.registry before the publication did not end at its 5 ms deadline or at the test's 3 s bound")
 	}
 	select {
 	case err := <-loaded:
