@@ -63,6 +63,7 @@
                (:file "virtual-model")
                (:file "mcp")
                (:file "kit")
+               (:file "ui-view")
                (:file "ui-custom")
                (:file "overlay")
                (:file "widgets")
