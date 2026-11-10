@@ -4699,7 +4699,7 @@
       "evidence": [
         "coding/session_queue_images_test.go#TestSessionResizesImagesInQueuedSteeringAndFollowUpMessages"
       ],
-      "rationale": "The one upstream case (steering, follow-up and a streaming prompt carry a resized image, with the resize hint, to the session file and every request) runs through Session.Steer, FollowUp and Prompt on the live Session; D249 records the Pi 1.5.0 difference."
+      "rationale": "The one upstream case (steering, follow-up and a streaming prompt carry a resized image, with the resize hint, to the session file and every request) runs through Session.Steer, FollowUp and Prompt on the live Session."
     },
     {
       "path": "packages/coding-agent/test/agent-session-retry.test.ts",
@@ -5498,7 +5498,7 @@
         "tui/extension_selector_test.go#TestExtensionSelectorWindowsLongOptionListsAroundTheSelection",
         "tui/extension_selector_test.go#TestExtensionSelectorShortAndEmptyListsHaveNoScrollIndicator"
       ],
-      "rationale": "Both upstream cases run in tui/extension_selector_test.go; D257 records the windowing Pi 1.5.0 lacks."
+      "rationale": "Both upstream cases run in tui/extension_selector_test.go."
     },
     {
       "path": "packages/coding-agent/test/extensions-discovery.test.ts",
@@ -5857,7 +5857,7 @@
         "internal/codingagent/ext_ui_custom_test.go#TestRestoreQueuedMessagesKeepsCollapsedPasteContent",
         "internal/codingagent/ext_ui_custom_test.go#TestSetRemoteEditorKeepsCollapsedPasteContent"
       ],
-      "rationale": "All 4 upstream cases run in internal/codingagent/ext_ui_custom_test.go (default editor to a replacement and back, custom UI after it closes and after it fails to open, queued messages restored above the draft); D251 records the Pi 1.5.0 difference."
+      "rationale": "All 4 upstream cases run in internal/codingagent/ext_ui_custom_test.go (default editor to a replacement and back, custom UI after it closes and after it fails to open, queued messages restored above the draft)."
     },
     {
       "path": "packages/coding-agent/test/interactive-mode-startup-input.test.ts",
@@ -8592,7 +8592,7 @@
         "internal/jsstring/slice_pair_test.go",
         "internal/codingagent/tools/grep_test.go#TestTruncateLine"
       ],
-      "rationale": "All 4 cases are ported (Pi 9e870f6f0): truncateLine drops an emoji the cut would split and keeps one that ends at the limit (TestTruncateLine), and sliceHead and sliceTail never split a pair and match slice without surrogates (slice_pair_test.go). D252 records that a pair the cut would split is dropped whole."
+      "rationale": "All 4 cases are ported (Pi 9e870f6f0): truncateLine drops an emoji the cut would split and keeps one that ends at the limit (TestTruncateLine), and sliceHead and sliceTail never split a pair and match slice without surrogates (slice_pair_test.go). A pair the cut would split is dropped whole."
     },
     {
       "path": "packages/coding-agent/test/truncate-to-width.test.ts",
