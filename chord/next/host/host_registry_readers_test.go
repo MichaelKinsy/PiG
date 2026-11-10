@@ -280,6 +280,19 @@ func TestReadersAHostRegistryWhoseDeadlineElapsedBeforeItsFirstLookReportsWhyThe
 	must(t, host.Close(background))
 }
 
+func TestReadersAHostRegistryWhoseDeadlineElapsedBeforeItsFirstLookStillReturnsAValueItFindsThere(t *testing.T) {
+	const deadline = 5 * time.Millisecond
+	host, _ := rvPlugins(t, HostOptions{loop: &overdueLoop{Loop: NewLoop(), delay: deadline}}, rvPlugin("@app/sum", func(h FacetHost, _ FacetSelf) error {
+		return rvServeSum(h, rvTotalCompose, nil)
+	}))
+	value, err := host.Registry(background, rvSum, rvWithin(deadline))
+	must(t, err)
+	if got, thrown := rvRead(value); thrown != nil || got != (rvTotal{total: 0}) {
+		t.Fatalf("value = %v (%v), want {0}", got, thrown)
+	}
+	must(t, host.Close(background))
+}
+
 func TestOlderReadersDropAnOlderReadersLastGoodMappingAfterAContributorItWasBuiltFromFailedLive(t *testing.T) {
 	current := rvRegistry(t, "app.mapped", 2)
 	old := rvRegistry(t, "app.mapped", 1)

@@ -202,82 +202,86 @@ func TestConformance_TransportsMatch(t *testing.T) {
 
 	cases := allHarnessCases()
 
-	var baseline recording
-	var baselineName string
+	// record is one row's work: the row's harness, its recording and the checks every row passes.
+	record := func(t *testing.T, tc harnessCase) recording {
+		t.Helper()
+		h := tc.make(t)
+		defer func() {
+			if h.cleanup != nil {
+				h.cleanup()
+			}
+			if h.host != nil {
+				h.host.Shutdown("test done")
+			}
+		}()
+		got := captureRecording(t, h)
+		// Pi hands extensions the collection-complete options (system-prompt.ts:37-64): every empty collection is present. An SDK or host that drops empty collections reports "absent".
+		const wantShape = "spo_shape=selectedTools:array:2,toolSnippets:object:0,toolGuidelines:object:1,promptGuidelines:array:0,appendSystemPrompt:string:0,sections:object:0,contextFiles:array:0,skills:array:1"
+		if !strings.Contains(got.ContextProbe, wantShape) {
+			t.Fatalf("%s: context probe = %q, want it to contain %q", tc.name, got.ContextProbe, wantShape)
+		}
+		// packages/coding-agent/src/core/extensions/types.ts:1692-1715 (ExtensionAPI.sendMessage, sendUserMessage, appendEntry, setSessionName): each
+		// call reaches the host with the arguments the extension passed, in every SDK, not only the same as the baseline transport's recording.
+		for _, wantAction := range []string{
+			"sendMessage:notice:hello-custom:steer:true",
+			"sendMessage:notice:default:unset:unset",
+			"sendMessage:notice:no-turn:unset:false",
+			"sendUserMessage:hello-user:followUp",
+			"setSessionName:conformance-session",
+			"appendEntry:conformance-entry:hello-entry",
+		} {
+			if !slices.Contains(got.ActionCalls, wantAction) {
+				t.Errorf("%s: host action %q was not recorded; got %v", tc.name, wantAction, got.ActionCalls)
+			}
+		}
+		// packages/coding-agent/src/core/extensions/types.ts:1676-1682 (ExtensionAPI.registerMessageRenderer, registerEntryRenderer): the renderer an extension
+		// registers for a custom type draws the host's message and entry at width 72 in every SDK.
+		if want := []string{"renderer:hello:expanded=true:width=72"}; !slices.Equal(got.MessageRenderer, want) {
+			t.Errorf("%s: registerMessageRenderer lines = %q, want %q", tc.name, got.MessageRenderer, want)
+		}
+		if want := []string{"entryrenderer:hi-entry:expanded=true:width=72"}; !slices.Equal(got.EntryRenderer, want) {
+			t.Errorf("%s: registerEntryRenderer lines = %q, want %q", tc.name, got.EntryRenderer, want)
+		}
+		// packages/coding-agent/src/core/extensions/types.ts:735-789 (pi.on session_start, session_shutdown, session_info_changed, session_before_compact,
+		// session_compact, session_compact_failed) and :680 (pi.on project_trust), :994 (pi.on agent_before_settle), :1006-1014 (pi.on ui_prompt_start, ui_prompt_end):
+		// each SDK's handler receives the event the host emitted with its payload fields, so the recording is the literal below and not only the baseline's.
+		wantSessionEvents := []string{
+			"session_start:startup:info", "session_shutdown:quit:info", "session_info_changed:conformance-session:info",
+			"session_before_compact:threshold:true:info", "session_compact:threshold:true:true:info",
+			"session_compact_failed:overflow:recovery failed:false:false:true:info", "turn_end:assistant-entry:tool-entry:info",
+		}
+		if !slices.Equal(got.SessionEventNotify, wantSessionEvents) {
+			t.Errorf("%s: session events = %q, want %q", tc.name, got.SessionEventNotify, wantSessionEvents)
+		}
+		if !strings.HasPrefix(got.AgentBeforeSettle, "agent_before_settle:completed:") {
+			t.Errorf("%s: agent_before_settle = %q", tc.name, got.AgentBeforeSettle)
+		}
+		if got.ProjectTrustDecision != "yes" {
+			t.Errorf("%s: project_trust decision = %q, want yes", tc.name, got.ProjectTrustDecision)
+		}
+		for _, promptEvent := range []string{"ui_prompt:ui_prompt_start:ui_prompt:select:Pick:info", "ui_prompt:ui_prompt_end:ui_prompt:select:Pick:info"} {
+			if !slices.Contains(got.UIPromptEvents, promptEvent) {
+				t.Errorf("%s: ui_prompt events lack %q: %q", tc.name, promptEvent, got.UIPromptEvents)
+			}
+		}
+		return got
+	}
+
+	// The first row is the reference. It records it, and so does the first later row when -run leaves it out.
+	baseline := referenceRow[recording]{name: cases[0].name}
 	for i, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			h := tc.make(t)
-			t.Cleanup(func() {
-				if h.cleanup != nil {
-					h.cleanup()
-				}
-				if h.host != nil {
-					h.host.Shutdown("test done")
-				}
-			})
-			got := captureRecording(t, h)
-			// Pi hands extensions the collection-complete options (system-prompt.ts:37-64): every empty collection is present. An SDK or host that drops empty collections reports "absent".
-			const wantShape = "spo_shape=selectedTools:array:2,toolSnippets:object:0,toolGuidelines:object:1,promptGuidelines:array:0,appendSystemPrompt:string:0,sections:object:0,contextFiles:array:0,skills:array:1"
-			if !strings.Contains(got.ContextProbe, wantShape) {
-				t.Fatalf("%s: context probe = %q, want it to contain %q", tc.name, got.ContextProbe, wantShape)
-			}
-			// packages/coding-agent/src/core/extensions/types.ts:1692-1715 (ExtensionAPI.sendMessage, sendUserMessage, appendEntry, setSessionName): each
-			// call reaches the host with the arguments the extension passed, in every SDK, not only the same as the baseline transport's recording.
-			for _, wantAction := range []string{
-				"sendMessage:notice:hello-custom:steer:true",
-				"sendMessage:notice:default:unset:unset",
-				"sendMessage:notice:no-turn:unset:false",
-				"sendUserMessage:hello-user:followUp",
-				"setSessionName:conformance-session",
-				"appendEntry:conformance-entry:hello-entry",
-			} {
-				if !slices.Contains(got.ActionCalls, wantAction) {
-					t.Errorf("%s: host action %q was not recorded; got %v", tc.name, wantAction, got.ActionCalls)
-				}
-			}
-			// packages/coding-agent/src/core/extensions/types.ts:1676-1682 (ExtensionAPI.registerMessageRenderer, registerEntryRenderer): the renderer an extension
-			// registers for a custom type draws the host's message and entry at width 72 in every SDK.
-			if want := []string{"renderer:hello:expanded=true:width=72"}; !slices.Equal(got.MessageRenderer, want) {
-				t.Errorf("%s: registerMessageRenderer lines = %q, want %q", tc.name, got.MessageRenderer, want)
-			}
-			if want := []string{"entryrenderer:hi-entry:expanded=true:width=72"}; !slices.Equal(got.EntryRenderer, want) {
-				t.Errorf("%s: registerEntryRenderer lines = %q, want %q", tc.name, got.EntryRenderer, want)
-			}
-			// packages/coding-agent/src/core/extensions/types.ts:735-789 (pi.on session_start, session_shutdown, session_info_changed, session_before_compact,
-			// session_compact, session_compact_failed) and :680 (pi.on project_trust), :994 (pi.on agent_before_settle), :1006-1014 (pi.on ui_prompt_start, ui_prompt_end):
-			// each SDK's handler receives the event the host emitted with its payload fields, so the recording is the literal below and not only the baseline's.
-			wantSessionEvents := []string{
-				"session_start:startup:info", "session_shutdown:quit:info", "session_info_changed:conformance-session:info",
-				"session_before_compact:threshold:true:info", "session_compact:threshold:true:true:info",
-				"session_compact_failed:overflow:recovery failed:false:false:true:info", "turn_end:assistant-entry:tool-entry:info",
-			}
-			if !slices.Equal(got.SessionEventNotify, wantSessionEvents) {
-				t.Errorf("%s: session events = %q, want %q", tc.name, got.SessionEventNotify, wantSessionEvents)
-			}
-			if !strings.HasPrefix(got.AgentBeforeSettle, "agent_before_settle:completed:") {
-				t.Errorf("%s: agent_before_settle = %q", tc.name, got.AgentBeforeSettle)
-			}
-			if got.ProjectTrustDecision != "yes" {
-				t.Errorf("%s: project_trust decision = %q, want yes", tc.name, got.ProjectTrustDecision)
-			}
-			for _, promptEvent := range []string{"ui_prompt:ui_prompt_start:ui_prompt:select:Pick:info", "ui_prompt:ui_prompt_end:ui_prompt:select:Pick:info"} {
-				if !slices.Contains(got.UIPromptEvents, promptEvent) {
-					t.Errorf("%s: ui_prompt events lack %q: %q", tc.name, promptEvent, got.UIPromptEvents)
-				}
-			}
 			if i == 0 {
-				baseline = got
-				baselineName = tc.name
+				baseline.set(t, record(t, tc))
 				return
 			}
-			if baselineName == "" {
-				t.Skip("baseline subtest was filtered out by -run; run the full suite")
-			}
-			if !reflect.DeepEqual(got, baseline) {
+			want := baseline.get(t, func() recording { return record(t, cases[0]) })
+			got := record(t, tc)
+			if !reflect.DeepEqual(got, want) {
 				gb, _ := json.MarshalIndent(got, "", "  ")
-				wb, _ := json.MarshalIndent(baseline, "", "  ")
+				wb, _ := json.MarshalIndent(want, "", "  ")
 				t.Fatalf("transport %q diverged from %q baseline\n--- baseline (%s) ---\n%s\n--- got (%s) ---\n%s",
-					tc.name, baselineName, baselineName, wb, tc.name, gb)
+					tc.name, cases[0].name, cases[0].name, wb, tc.name, gb)
 			}
 		})
 	}
