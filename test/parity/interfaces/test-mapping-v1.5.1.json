@@ -124,8 +124,13 @@
     },
     {
       "path": "packages/ai/test/anthropic-empty-thinking-signature-compat.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:1e680be5df104d817df111371ce6360a4537a5de600f0aecce1a120569a3b588"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:1e680be5df104d817df111371ce6360a4537a5de600f0aecce1a120569a3b588",
+      "evidence": [
+        "ai/anthropic_empty_signature_upstream_test.go#TestAnthropicUpstreamEmptyThinkingSignature",
+        "ai/anthropic_test.go#TestAnthConvertMessages_ThinkingBlocks"
+      ],
+      "rationale": "All 5 upstream case sites (:82 default conversion, :88 present signature with empty text, :94 allowEmptySignature, the Vercel AI Gateway catalog case, and the Fireworks it.each) retain 8 expanded cases in TestAnthropicUpstreamEmptyThinkingSignature with Pi's inputs and payload expectations. Pi 1.5.1 (647a197fc) replaces the removed nemotron-3-ultra-nvfp4 Fireworks row with ember-1; the Go row list is deepseek-v4p1-flash, qwen3p8-max, qwen3p8-2p4t-a95b, ember-1, each asserting the catalog compat flag and the unsigned thinking block followed by the answer text. The file hash is unchanged since the 0.99 pin; the row was reset to pending by the 1.5.0 hash re-stamp, not by a test change."
     },
     {
       "path": "packages/ai/test/anthropic-error-tool-result-images.test.ts",
@@ -742,8 +747,14 @@
     },
     {
       "path": "packages/ai/test/fireworks-models.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:6aaefbde5864cad03fa28a7d0483c18a32ec829c25299f9212c101870a3d3a3e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:6aaefbde5864cad03fa28a7d0483c18a32ec829c25299f9212c101870a3d3a3e",
+      "evidence": [
+        "ai/fireworks_models_upstream_test.go#TestFireworksModels",
+        "ai/fireworks_models_upstream_test.go#TestFireworksAnthropicSessionAffinityAndToolCompat",
+        "test/parity/scenarios/providers-registry/06-catalog-options-wire.toml"
+      ],
+      "rationale": "All 19 upstream case sites retain their cases in ai/fireworks_models_upstream_test.go with Pi's inputs and expectations: the catalog and compat rows (deepseek-v4p1-flash, glm-5p3 and glm-5p3-fast, kimi-k3 and kimi-k3-fast with the exact compat and thinkingLevelMap), the native Messages effort levels per model and level, the distinct effort levels, the budget-based fixture, FIREWORKS_API_KEY resolution, and the ten session-affinity and tool-compat request cases on a loopback server. Pi 647a197fc replaces the removed Nemotron rows with deepseek-v4p1-flash and a fixed kimi-k2p6 fixture for the budget-based case; the Go cases follow it (cited per case)."
     },
     {
       "path": "packages/ai/test/generate-models-strict.test.ts",
@@ -1705,8 +1716,32 @@
     },
     {
       "path": "packages/ai/test/providers.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:85d073665733efab0007b92b629e22a2c90cdde047ebc85dc63555461265f92d"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:85d073665733efab0007b92b629e22a2c90cdde047ebc85dc63555461265f92d",
+      "evidence": [
+        "ai/faux_test.go#TestFauxProvider_Cancellation",
+        "ai/register_builtins_test.go#TestRegisteredAPIs",
+        "ai/api_key_providers_test.go#TestAPIKeyProvidersStable",
+        "ai/provider_auth_upstream_test.go#TestProvidersOwnedCloudLoginUpstream",
+        "ai/provider_auth_upstream_test.go#TestProvidersCloudEnvironmentAuthUpstream",
+        "ai/env_api_key_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream",
+        "ai/providers_dispatch_upstream_test.go#TestLazyAPIOnlyDeclaredDeferredCapabilitiesUpstream",
+        "ai/models_collection_upstream_test.go",
+        "ai/models_provider_test.go#TestProviderMissingAPIImplementationUpstream",
+        "ai/models_refresh_upstream_test.go#TestModelsNewerDynamicRefreshSupersedesBlockedFetchUpstream",
+        "ai/faux_deferred_models_upstream_test.go",
+        "test/parity/scenarios/providers-faux-streaming/23-models-provider-lifecycle.toml",
+        "ai/providers_login_upstream_test.go#TestProviderOwnedBedrockLoginUpstream",
+        "ai/providers_login_upstream_test.go#TestProviderOwnedVertexLoginUpstream",
+        "ai/providers_login_upstream_test.go#TestEnvAPIKeyAuthLoginUpstream",
+        "ai/auth_login_test.go",
+        "test/parity/scenarios/providers-faux-streaming/22-provider-owned-login.toml",
+        "ai/providers_upstream_test.go#TestBuiltinProvidersUpstream",
+        "ai/providers_runtime_upstream_test.go#TestBuiltinModelsRuntimeRegistersCatalog",
+        "ai/providers_runtime_upstream_test.go#TestFauxQueuedResponsesThroughModelRuntime",
+        "ai/providers_unknown_upstream_test.go#TestBuiltinProvidersUnknownProviderIDsUpstream"
+      ],
+      "rationale": "All 30 upstream case sites (19 builtin providers, 2 envApiKeyAuth, 6 createProvider, 3 fauxProvider) are ported with Pi's inputs and expectations across the listed files; the mid-conversation supported (28) and unsupported (12) model tables, the proxied tool-change rows, the Kimi K3 and Kimi Coding prices and the Cloudflare, Bedrock and Vertex auth cases equal Pi 1.5.1's lists row by row. Pi 647a197fc moves the Fireworks unsupported row to deepseek-v4p1-flash (cited in the case). Provider, auth, deferred and refresh behavior is exercised through production CreateProvider, Models and ProviderStreams, not test-only facades."
     },
     {
       "path": "packages/ai/test/qwen-token-plan-models.test.ts",

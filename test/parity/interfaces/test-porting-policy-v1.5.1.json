@@ -727,6 +727,13 @@
       "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling."
     },
     {
+      "path": "packages/ai/test/azure-models.test.ts",
+      "upstreamTestHash": "sha256:92a5fb5e6f8ef15871259e89579c25a0c0b42044639df85e3693b96c3be9290b",
+      "area": "providers",
+      "tags": [],
+      "rationale": "The test covers Azure catalog generation (the OpenAI long-context price tier), which runs only in the build-time model generator and not on a PiG request path, so it is not on a product hot path. Production-path review (KnownGaps151, Pi 1.5.1): the Go evidence (internal/modelgen/providers/azure_test.go#TestAzureKeepsOpenAILongContextPriceTier) runs the production azureOpenAIModels, the function the Azure provider's generator calls on the fetched OpenAI models; the only difference from Pi is the unexported-access harness (the test calls the function directly because ProviderContext.providerModels is unexported), and no test-only stand-in replaces the code under test. The generated catalog data is checked by the model-catalog drift gate."
+    },
+    {
       "path": "packages/ai/test/azure-openai-base-url.test.ts",
       "upstreamTestHash": "sha256:96aaa0281fb4407d580ee76943930ec7cdcefbd29692c7ab1e0eda8c85b1d349",
       "area": "providers",
@@ -1981,6 +1988,15 @@
         "hot-path"
       ],
       "rationale": "New in 1.4.0+d0aa218c; area and tags follow the sibling tests under packages/ai/test/ until the production-path review."
+    },
+    {
+      "path": "packages/ai/test/strict-tool-limits.test.ts",
+      "upstreamTestHash": "sha256:ee075cc4c320a63375300b2015274698fa49c4b4b22e42bd69b5c56726ea6436",
+      "area": "providers",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Selected Provider request conversion and error handling: the session record decides whether Anthropic Messages and Bedrock requests send strict tools. Production-path review (KnownGaps151, Pi 1.5.1): the Go evidence (ai/strict_tool_limit_upstream_test.go) drives the production markStrictToolLimitsExceeded, hasExceededStrictToolLimits and CleanupSessionResources in ai/strict_tool_limits.go, the same functions the Anthropic provider calls when it builds a request (hasExceededStrictToolLimits) and when it handles a rejected one (markStrictToolLimitsExceeded). The 10,000-session cap case runs the real bounded set; no stand-in replaces the code under test."
     },
     {
       "path": "packages/ai/test/supports-xhigh.test.ts",
@@ -5407,6 +5423,15 @@
         "hot-path"
       ],
       "rationale": "CLI startup, selected execution mode, settings, or command routing."
+    },
+    {
+      "path": "packages/coding-agent/test/preferred-providers.test.ts",
+      "upstreamTestHash": "sha256:710ec48c3fbafb6a7025b8d1dfbda56a2654df0fa017f4c52215f42093691776",
+      "area": "cli",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Selected provider lists the login and model selectors show: preferred partners first, then the rest by name. Production-path review (KnownGaps151, Pi 1.5.1): the Go evidence runs the production IsPreferredProvider and PreferredProviderIDs (ai/preferred_providers_test.go; consumed by tui/oauth_selector.go) and the production compareProviders (internal/codingagent/preferred_providers_order_test.go; consumed by sortAuthProviders in interactive_login.go). The ordering test sorts with the real comparator and the real locale collation; no stand-in replaces the code under test."
     },
     {
       "path": "packages/coding-agent/test/print-mode.test.ts",
