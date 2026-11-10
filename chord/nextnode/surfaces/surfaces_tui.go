@@ -54,8 +54,6 @@ func (s *TuiSurface) Built() *SurfaceBuilt { return s.building.built() }
 // TuiPrefix is where the terminal surface's files live (Pi's `TUI_PREFIX`).
 const TuiPrefix = "/_chord/tui/"
 
-// pig divergence (D608): Pi's `tuiSurface` awaits the build; this returns at once and Build builds after the listen.
-//
 // NewTuiSurface is the terminal surface on server: its facet serves the launcher's start and the surface's files once Build built
 // the base bundle (503 when it failed). The build is not started here.
 func NewTuiSurface(server host.Host, options TuiSurfaceOptions) *TuiSurface {

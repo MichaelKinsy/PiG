@@ -141,3 +141,32 @@ func TestAFailedBuildAnswers503ForTheSurfacesFilesAndFailsItsStepsHost(t *testin
 		t.Fatalf("hosts = %+v, want the web host failed with esbuild's error", result.Hosts)
 	}
 }
+
+// A failed build is the surface's outcome for good: every later request and build answers it (503, the same error); nothing
+// rebuilds (Pi's #ready stores the failed outcome).
+func TestAFailedBuildStaysFailedEveryLaterRequestAnswers503AndNothingRebuilds(t *testing.T) {
+	entry := entryIn(t, "export const broken = ;\n")
+	f := newBuildFixture(t, entry)
+	first := f.building.build()
+	if first.Err == nil {
+		t.Fatal("the build of a broken entry succeeded")
+	}
+	if err := os.WriteFile(entry, []byte("globalThis.fixed = true;\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for range 3 {
+		response, err := f.building.file(WebPrefix+"base.0.js", context.Background())
+		if err != nil || response.Kind != http.KindError || response.Status != 503 {
+			t.Fatalf("file = %+v, %v, want 503", response, err)
+		}
+		if parts, err := f.building.parts(context.Background()); parts != nil || err != nil {
+			t.Fatalf("parts = %+v, %v, want none", parts, err)
+		}
+		if again := f.building.build(); again.Err == nil || again.Err.Error() != first.Err.Error() {
+			t.Fatalf("build = %+v, want the first failure %v", again, first.Err)
+		}
+		if got := f.building.built(); got == nil || got.Err == nil {
+			t.Fatalf("built = %+v, want the failed outcome", got)
+		}
+	}
+}

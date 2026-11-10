@@ -13,6 +13,7 @@ import (
 	"time"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/http"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
 )
 
@@ -75,5 +76,40 @@ func TestARolloutStepDuringTheBuildStopsWaitingAtItsContextsAbortBeforeTheBuildE
 	release(t, pipe)
 	if outcome := f.building.build(); outcome.Err != nil {
 		t.Fatalf("build = %+v, want built: the build went on", outcome)
+	}
+}
+
+// The server's close fails a build in flight (Pi: "the server's close fails it"): the waiting request is answered 503 once the
+// build's esbuild run ends, and nothing is published on the closed host.
+func TestTheServersCloseFailsTheBuildInFlightItsWaitersAnswer503(t *testing.T) {
+	entry, pipe := heldEntry(t)
+	f := newBuildFixture(t, entry)
+	answered := make(chan error, 1)
+	go func() {
+		response, err := f.building.file(WebPrefix+"base.0.js", context.Background())
+		if err == nil && (response.Kind != http.KindError || response.Status != 503) {
+			err = errors.New("the waiter was not answered 503")
+		}
+		answered <- err
+	}()
+	select {
+	case err := <-answered:
+		t.Fatalf("the request was answered before the build ended: %v", err)
+	case <-time.After(300 * time.Millisecond):
+	}
+	if err := f.server.Close(chordctx.Background()); err != nil {
+		t.Fatal(err)
+	}
+	release(t, pipe)
+	select {
+	case err := <-answered:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(30 * time.Second):
+		t.Fatal("the waiter was never answered after the close")
+	}
+	if outcome := f.building.build(); outcome.Err == nil {
+		t.Fatal("a build the close ended reports built")
 	}
 }
