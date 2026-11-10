@@ -265,8 +265,7 @@ func TestPublishedScriptsAPluginWhoseNextBuildFailsKeepsItsDigestTextStylesheetA
 	if len(failed) != 2 || failed[0].Plugin != "a" || failed[0].Error.Error() != "a.ts:1: bad\na.ts:2: worse" || failed[1].Plugin != "never" || failed[1].Error.Error() != "never.ts: bad" {
 		t.Fatalf("failed = %+v", failed)
 	}
-	var failure *buildFailure
-	if !errors.As(failed[0].Error, &failure) {
+	if _, ok := errors.AsType[*buildFailure](failed[0].Error); !ok {
 		t.Fatalf("failure is %T, want the build's failure", failed[0].Error)
 	}
 	set := f.published.Set()

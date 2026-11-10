@@ -443,7 +443,7 @@ func parseIPv6(input string) (string, bool) {
 	var out strings.Builder
 	out.WriteByte('[')
 	ignore0 := false
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		if ignore0 && address[i] == 0 {
 			continue
 		}
