@@ -32,7 +32,7 @@ func TestApplyFallsBackAboveTheLiveHeapLimit(t *testing.T) {
 	Apply()
 	for range 3 {
 		runtime.GC()
-		time.Sleep(10 * time.Millisecond) // Room for the cleanup of the collection to run.
+		time.Sleep(10 * time.Millisecond) // Room for the watcher to read after the collection.
 	}
 	if got := gcPercent(); got != TargetPercent {
 		t.Fatalf("GC percent %d after collections of a small heap, want %d", got, TargetPercent)
