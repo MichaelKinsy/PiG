@@ -169,9 +169,11 @@ func TestImportFromJsonlReportsMissingSource(t *testing.T) {
 	}
 }
 
-// A stored working directory that no longer exists fails after the copy
-// with MissingSessionCwdError (agent-session-runtime.ts:386-392). The retry
-// with the offered cwd opens that copy's successor, as upstream would.
+// A stored working directory that no longer exists fails with
+// MissingSessionCwdError (agent-session-runtime.ts:386-398) and leaves no copy
+// behind, so the retry with the offered cwd (or a fork) imports under the
+// source's own name. Pi's "leaves no copy behind when an import fails on a
+// missing session cwd" (#11060).
 func TestImportFromJsonlMissingCwdNeedsOverride(t *testing.T) {
 	sessionDir := t.TempDir()
 	sess, err := NewSession(newTestServices(t), SessionOptions{Model: fakeModel(), SessionDir: sessionDir})
@@ -187,15 +189,18 @@ func TestImportFromJsonlMissingCwdNeedsOverride(t *testing.T) {
 	if _, ok := errors.AsType[*icodingagent.MissingSessionCwdError](err); !ok {
 		t.Fatalf("err = %v, want MissingSessionCwdError", err)
 	}
-	if _, statErr := os.Stat(filepath.Join(sessionDir, "moved.jsonl")); statErr != nil {
-		t.Fatalf("the copy precedes the cwd check upstream: %v", statErr)
+	if _, statErr := os.Stat(filepath.Join(sessionDir, "moved.jsonl")); !os.IsNotExist(statErr) {
+		t.Fatalf("the failed import left its copy behind: %v", statErr)
 	}
 	override := t.TempDir()
 	if result, err := sess.ImportFromJsonl(t.Context(), importPath, override); err != nil || result.Cancelled {
 		t.Fatalf("import with override = %+v, %v", result, err)
 	}
-	if want := filepath.Join(sessionDir, "moved-1.jsonl"); sess.Path() != want || sess.Inner().CWD() != override {
+	if want := filepath.Join(sessionDir, "moved.jsonl"); sess.Path() != want || sess.Inner().CWD() != override {
 		t.Fatalf("session = %q cwd %q, want %q cwd %q", sess.Path(), sess.Inner().CWD(), want, override)
+	}
+	if _, statErr := os.Stat(filepath.Join(sessionDir, "moved-1.jsonl")); !os.IsNotExist(statErr) {
+		t.Fatalf("a second copy with the same id exists: %v", statErr)
 	}
 }
 
