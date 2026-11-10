@@ -195,12 +195,14 @@ type Implementation struct {
 }
 
 // KeyedWatchable is a keyed state member (slice 6a §12): documents by key, each watchable on its own; a keyed document
-// handle provides it. At is valid only in a factory (it pins the key while that attempt lives).
+// handle provides it. At is valid only in a factory (it pins the key while that attempt lives). A key is a string, or an
+// Address of the member's host kind when the member is host-keyed (Pi's `KeyedWatchable<T, Key>`, whose Key parameter is
+// designed out).
 type KeyedWatchable[T any] interface {
 	// Get is the document at key; found is false when absent.
-	Get(ctx context.Context, key string) (value T, found bool, err error)
+	Get(ctx context.Context, key any) (value T, found bool, err error)
 	// Watch is a watch of the document at key that follows its address; the handle is nil when absent.
-	Watch(ctx context.Context, key string) (chord.WatchHandle[T], error)
+	Watch(ctx context.Context, key any) (chord.WatchHandle[T], error)
 	// At is, in a factory only, the document at key as a watchable, initial() while absent.
-	At(key string) chord.Watchable[T]
+	At(key any) chord.Watchable[T]
 }
