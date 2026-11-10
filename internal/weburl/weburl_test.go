@@ -51,6 +51,8 @@ func webURLCases() []webURLCase {
 		{name: "a run of C0, DEL and C1 controls becomes one space", value: "file:///a\x00\x1b\x07\x7f\u0085\u009fb", display: "file:///a b"},
 		{name: "a control character ending a non-web value becomes a trailing space", value: "x-custom:y\r\n", display: "x-custom:y "},
 		{name: "U+00A0, just above the C1 range, is kept", value: "no url\u00a0here", display: "no url\u00a0here"},
+		{name: "3- and 4-byte characters in the path percent-encode as UTF-8", value: "https://example.com/€😀", href: "https://example.com/%E2%82%AC%F0%9F%98%80"},
+		{name: "3- and 4-byte characters in a non-web value are kept", value: "ünï €😀 text", display: "ünï €😀 text"},
 	}
 }
 
@@ -80,6 +82,17 @@ func TestDisplayURL(t *testing.T) {
 }
 
 func TestWebURLMatchesNode(t *testing.T) {
+	checkAgainstNode(t, "testdata/web_url.mjs")
+}
+
+// A pipe read may end inside a multi-byte character. testdata/split_stdin.cjs hands the script its stdin one byte per chunk, so the cases with 2-, 3- and
+// 4-byte characters round-trip only when the script decodes its stdin as UTF-8 across chunks.
+func TestWebURLMatchesNodeWhenStdinSplitsEveryMultiByteCharacter(t *testing.T) {
+	checkAgainstNode(t, "--require", "./testdata/split_stdin.cjs", "testdata/web_url.mjs")
+}
+
+func checkAgainstNode(t *testing.T, nodeArgs ...string) {
+	t.Helper()
 	cases := webURLCases()
 	values := make([]string, len(cases))
 	for i, tt := range cases {
@@ -89,7 +102,7 @@ func TestWebURLMatchesNode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.CommandContext(t.Context(), testenv.RequireQualifiedNode(t), "testdata/web_url.mjs")
+	cmd := exec.CommandContext(t.Context(), testenv.RequireQualifiedNode(t), nodeArgs...)
 	cmd.Stdin = bytes.NewReader(payload)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr

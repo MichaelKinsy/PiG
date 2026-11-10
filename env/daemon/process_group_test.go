@@ -18,7 +18,7 @@ const groupWait = 30 * time.Second
 // on Windows too, where a child started before the job assignment stays outside the job.
 func TestEndingAGroupKillsWhatTheHelperProgramLeftRunning(t *testing.T) {
 	started := startHelper(t, "wrapper")
-	if _, err := io.WriteString(started.stdin, "go\n"); err != nil {
+	if _, err := started.stdin.WriteString("go\n"); err != nil {
 		t.Fatal(err)
 	}
 	sleeper := watchProcess(t, readPid(t, started))
@@ -47,7 +47,7 @@ func TestWaitForExitBlocksUntilTheProgramExitsAndLeavesItUnreaped(t *testing.T) 
 		t.Fatalf("waitForExit returned while the program ran: %v", err)
 	case <-time.After(300 * time.Millisecond):
 	}
-	if _, err := io.WriteString(started.stdin, "go\n"); err != nil {
+	if _, err := started.stdin.WriteString("go\n"); err != nil {
 		t.Fatal(err)
 	}
 	select {
