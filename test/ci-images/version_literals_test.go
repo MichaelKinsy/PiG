@@ -54,7 +54,8 @@ var versionLiteralAllowlist = []allowedVersionLiteral{
 	{"automation/images/ci-go/metadata.env", "1.27.3", "IMAGE_TAG; make compliance checks it against .go-version"},
 	{"automation/images/ci-parity/Dockerfile", "1.27.3", "ARG GO_VERSION; make compliance checks it against .go-version"},
 	{"automation/images/ci-parity/metadata.env", "1.27.3", "IMAGE_TAG; make compliance checks it against .go-version"},
-	{"automation/images/ci-parity/Dockerfile", "1.5.0", "ARG PI_VERSION; make pin-sync writes it from .upstream/pin and make compliance checks it"},
+	{"automation/images/ci-parity/Dockerfile", "1.5.1", "ARG PI_VERSION; make pin-sync writes it from .upstream/pin and make compliance checks it"},
+	{"automation/images/ci-parity/metadata.env", "1.5.1", "IMAGE_TAG; make compliance checks it against the pin"},
 	{"automation/images/ci-parity/Dockerfile", "12.2.1", "the image's npm check; make compliance checks it against NPM_VERSION"},
 
 	{"automation/ci/install-shellcheck.sh", "0.11.0", "the pinned ShellCheck release, kept beside the sha256 of its tarballs; pre-push-gate.sh reads it with --print-version"},
