@@ -1612,8 +1612,6 @@
         "chord/nextnode/app/app_bases_linux_test.go::TestAppCloseWaitsForABaseBuildStalledOnAReadAndReturnsOnceItEndsItsLateResultIsDropped",
         "chord/nextnode/app/app_bases_scan_test.go::TestAppARecordOfTheServersCodeArrivingAfterTheClosedWatcherWatchesNothingAndMarksNothing",
         "chord/nextnode/app/app_bases_scan_test.go::TestAppARecordOfTheServersCodeEditedSinceTheStartMarksBaseWhileTheAppIsOpen",
-        "chord/nextnode/app/app_bases_scan_test.go::TestAppCloseAbandonsAScanStalledOnAReadWhenItsContextEndsAndReturnsTheContextsError",
-        "chord/nextnode/app/app_bases_scan_test.go::TestAppCloseWaitsForAScanOfItsOwnCodeStalledOnAReadAndReturnsOnceItEndsItsLateResultIsDropped",
         "chord/nextnode/surfaces/surfaces_build_linux_test.go::TestClosingASurfaceAbandonsItsBuildInFlightWhenTheContextEnds",
         "chord/nextnode/surfaces/surfaces_build_linux_test.go::TestClosingASurfaceWaitsForItsBuildInFlight",
         "chord/nextnode/surfaces/surfaces_build_test.go::TestASurfaceClosedBeforeItsBuildStartedNeverStartsOneItsWaitersAnswer503"

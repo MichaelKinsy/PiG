@@ -5,7 +5,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"io/fs"
+	"os"
 	"reflect"
 	"slices"
 	"strings"
@@ -607,26 +607,30 @@ func TestHostDataReviewRound2(t *testing.T) {
 func TestHostDataSurface(t *testing.T) {
 	// review round 2 › keeps import and delete off the store's public surface: the host is the only way
 	t.Run("keeps import and delete off the store's public surface: the host is the only way", func(t *testing.T) {
-		files, err := parser.ParseDir(token.NewFileSet(), ".", func(info fs.FileInfo) bool { return !strings.HasSuffix(info.Name(), "_test.go") }, 0)
+		entries, err := os.ReadDir(".")
 		must(t, err)
 		exported := map[string]bool{}
-		for _, pkg := range files {
-			for _, file := range pkg.Files {
-				for _, declaration := range file.Decls {
-					switch declaration := declaration.(type) {
-					case *ast.FuncDecl:
-						if declaration.Recv == nil && declaration.Name.IsExported() {
-							exported[declaration.Name.Name] = true
-						}
-					case *ast.GenDecl:
-						for _, spec := range declaration.Specs {
-							switch spec := spec.(type) {
-							case *ast.TypeSpec:
-								exported[spec.Name.Name] = spec.Name.IsExported()
-							case *ast.ValueSpec:
-								for _, name := range spec.Names {
-									exported[name.Name] = name.IsExported()
-								}
+		fileSet := token.NewFileSet()
+		for _, entry := range entries {
+			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") || strings.HasSuffix(entry.Name(), "_test.go") {
+				continue
+			}
+			file, err := parser.ParseFile(fileSet, entry.Name(), nil, 0)
+			must(t, err)
+			for _, declaration := range file.Decls {
+				switch declaration := declaration.(type) {
+				case *ast.FuncDecl:
+					if declaration.Recv == nil && declaration.Name.IsExported() {
+						exported[declaration.Name.Name] = true
+					}
+				case *ast.GenDecl:
+					for _, spec := range declaration.Specs {
+						switch spec := spec.(type) {
+						case *ast.TypeSpec:
+							exported[spec.Name.Name] = spec.Name.IsExported()
+						case *ast.ValueSpec:
+							for _, name := range spec.Names {
+								exported[name.Name] = name.IsExported()
 							}
 						}
 					}
