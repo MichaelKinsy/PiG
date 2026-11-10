@@ -306,6 +306,22 @@ func (m *InteractiveMode) requestRender() {
 	m.tuiInst.RequestRender()
 }
 
+// renderRequestTUI is the TUI argument of a component whose constructor takes Pi's `tui` only to call requestRender (oauth-selector.ts):
+// its RequestRender asks the renderer current at that moment, which a renderer swap may have replaced since the component was built.
+func (m *InteractiveMode) renderRequestTUI() tui.TUI {
+	m.rendererMu.RLock()
+	defer m.rendererMu.RUnlock()
+	return currentRendererTUI{TUI: m.tuiInst, request: m.requestRender}
+}
+
+// currentRendererTUI is a TUI whose RequestRender is request; every other member is the embedded TUI's.
+type currentRendererTUI struct {
+	tui.TUI
+	request func()
+}
+
+func (r currentRendererTUI) RequestRender(...bool) { r.request() }
+
 // teardownCurrentTui runs the current renderer's cleanup (owner-loop tick context
 // cancel). Idempotent and nil-safe; reads the field at call time so a renderer
 // swap's replacement cleanup is the one that runs at teardown.

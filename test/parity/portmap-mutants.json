@@ -3265,8 +3265,8 @@
  "packages/coding-agent/src/modes/interactive/components/radius-login-selector.ts": [
   {
    "file": "internal/codingagent/radius_login_selector.go",
-   "old": "\"#f1be57\"",
-   "new": "\"#f1be58\""
+   "old": "animated := theme.Fg(\"accent\", \"→ \") + shimmer + r.label[len(r.text):]",
+   "new": "animated := theme.Fg(\"accent\", \"→ \") + shimmer + r.label"
   }
  ],
  "packages/coding-agent/src/modes/interactive/components/themed-text.ts": [
@@ -6541,6 +6541,25 @@
    "file": "chord/next/host/host_parked.go",
    "old": "if p.walking == 0 && p.removed > 16 &&",
    "new": "if p.removed > 16 &&"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/provider-brand.ts": [
+  {
+   "file": "tui/provider_brand.go",
+   "old": "\"#f1be57\"",
+   "new": "\"#f1be58\""
+  }
+ ],
+ "packages/coding-agent/src/core/preferred-providers.ts": [
+  {
+   "file": "ai/preferred_providers.go",
+   "old": "[]string{RadiusProviderID, \"openrouter\"}",
+   "new": "[]string{\"openrouter\", RadiusProviderID}"
+  },
+  {
+   "file": "internal/codingagent/preferred_providers.go",
+   "old": "return rankA - rankB",
+   "new": "return rankB - rankA"
   }
  ]
 }

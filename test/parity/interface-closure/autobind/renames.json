@@ -972,6 +972,7 @@
  "pkg:coding-agent/.#ModelRuntimeAuthOverrides": "ai/auth_resolve.go#AuthResolutionOverrides",
  "pkg:coding-agent/.#ModelSelectorComponent::property:render": "tui/model_select.go#ModelSelectorComponent.Render",
  "pkg:coding-agent/.#NormalizedBuildSystemPromptOptions": "coding/extension/system_prompt_options.go#BuildSystemPromptOptions",
+ "pkg:coding-agent/.#OAuthSelectorComponent::construct:0": "tui/oauth_selector.go#NewOAuthSelectorComponentAnimated",
  "pkg:coding-agent/.#OAuthSelectorComponent::property:render": "tui/oauth_selector.go#OAuthSelectorComponent.Render",
  "pkg:coding-agent/.#PackageManager": "internal/packagemanager/package_manager.go#PackageManager",
  "pkg:coding-agent/.#ParsedSkillBlock": "internal/codingagent/skills.go#ParsedSkillBlockFromText",
