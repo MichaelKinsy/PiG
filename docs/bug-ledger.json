@@ -14820,6 +14820,29 @@
       ]
     },
     {
+      "id": "BF-5043738",
+      "title": "Windows: installing a plugin from npm extracts the packed tarball with a relative archive name, so the `tar`…",
+      "symptom": "Windows: installing a plugin from npm extracts the packed tarball with a relative archive name, so the `tar` of Git for Windows (which reads `C:\\...` as a file on host `C`) no longer fails with \"Cannot connect to C: resolve failed\".",
+      "rootCause": "Pi (packages/chord/src/node/plugins/install.ts:248-249) passes tar the absolute archive path join(packed, basename). GNU tar reads \"C:\\...\" as the file \"...\" on a host \"C\" (\"Cannot connect to C: resolve failed\"), so InstallPlugin of an npm package failed on Windows whenever Git for Windows' tar preceded System32 bsdtar in PATH (TestInstallPluginInstallsAnNpmPackageHereALocalTarballIntoRootName, red in the dispatched runs 42551386817, 42570233321, 42621762307 and 42725996591). unpack already runs tar in the pack directory; it now names the archive ./\u003cbasename\u003e.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Windows: installing a plugin from npm extracts the packed tarball with a relative archive name, so the `tar` of Git for Windows (which reads `C:\\...` as a file on host `C`) no longer fails with \"Cannot connect to C: resolve failed\". Pi passes the absolute path and fails there (D616, owner approved 2026-11-10).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5043738f10",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_install_tar_test.go::TestInstallPluginNamesTheTarballToTarRelativeToThePackDirectory",
+        "chord/nextnode/plugins/plugins_install_test.go::TestInstallPluginInstallsAnNpmPackageHereALocalTarballIntoRootName"
+      ]
+    },
+    {
       "id": "BF-504869b",
       "title": "The MCP client uses JavaScript's `trim()` and `\\s` where Pi does: in stdio and Streamable HTTP blank-line and…",
       "symptom": "The MCP client uses JavaScript's `trim()` and `\\s` where Pi does: in stdio and Streamable HTTP blank-line and blank-event checks, HTTP error bodies, the `insufficient_scope` challenge check and the `offline_access` consent check.",

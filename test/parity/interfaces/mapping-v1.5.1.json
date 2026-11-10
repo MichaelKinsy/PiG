@@ -129175,9 +129175,9 @@
         "call:chord/nextnode/plugins/plugins_install.go#InstallPlugin"
       ],
       "evidence": [
+        "test:chord/nextnode/plugins/plugins_install_tar_test.go#TestInstallPluginNamesTheTarballToTarRelativeToThePackDirectory",
         "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClaimsItsDirectoryFirstOfTwoConcurrentInstallsOneWinsTheOtherRemovesNothingOfItSol",
-        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryOfSeveralPluginsItsSubdirectoriesPinnedToACommit",
-        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryWhoseTopIsAPluginIntoRootRepositoryAtATagAndInstallsItsDependencies"
+        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryOfSeveralPluginsItsSubdirectoriesPinnedToACommit"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -129198,9 +129198,9 @@
         "call:chord/nextnode/plugins/plugins_install.go#InstallPlugin"
       ],
       "evidence": [
+        "test:chord/nextnode/plugins/plugins_install_tar_test.go#TestInstallPluginNamesTheTarballToTarRelativeToThePackDirectory",
         "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClaimsItsDirectoryFirstOfTwoConcurrentInstallsOneWinsTheOtherRemovesNothingOfItSol",
-        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryOfSeveralPluginsItsSubdirectoriesPinnedToACommit",
-        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryWhoseTopIsAPluginIntoRootRepositoryAtATagAndInstallsItsDependencies"
+        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryOfSeveralPluginsItsSubdirectoriesPinnedToACommit"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -129221,9 +129221,9 @@
         "call:chord/nextnode/plugins/plugins_install.go#InstallPlugin"
       ],
       "evidence": [
+        "test:chord/nextnode/plugins/plugins_install_tar_test.go#TestInstallPluginNamesTheTarballToTarRelativeToThePackDirectory",
         "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClaimsItsDirectoryFirstOfTwoConcurrentInstallsOneWinsTheOtherRemovesNothingOfItSol",
-        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryOfSeveralPluginsItsSubdirectoriesPinnedToACommit",
-        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryWhoseTopIsAPluginIntoRootRepositoryAtATagAndInstallsItsDependencies"
+        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryOfSeveralPluginsItsSubdirectoriesPinnedToACommit"
       ]
     },
     {
@@ -130174,8 +130174,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/app/app_changes_test.go#TestAppInstallsAPluginFromGitIntoTheUsersRootApplyingChangesLoadsIt",
-        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClaimsItsDirectoryFirstOfTwoConcurrentInstallsOneWinsTheOtherRemovesNothingOfItSol",
-        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryOfSeveralPluginsItsSubdirectoriesPinnedToACommit"
+        "test:chord/nextnode/plugins/plugins_install_tar_test.go#TestInstallPluginNamesTheTarballToTarRelativeToThePackDirectory",
+        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClaimsItsDirectoryFirstOfTwoConcurrentInstallsOneWinsTheOtherRemovesNothingOfItSol"
       ]
     },
     {
