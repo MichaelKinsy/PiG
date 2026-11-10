@@ -67,14 +67,18 @@ func TestGetAvailableModelDataListsARadiusCatalogExactlyWhenItsProviderHasAuth(t
 		}
 	}
 	check("no Radius auth", false)
-	registry.SetRuntimeAPIKey(RadiusProviderID, "runtime-key")
-	check("a Radius runtime key appears", true)
-	registry.RemoveRuntimeAPIKey(RadiusProviderID)
-	check("the Radius runtime key is gone", false)
 	if err := auth.Set(RadiusProviderID, ai.Credential{Type: ai.CredentialAPIKey, Key: "stored-key"}); err != nil {
 		t.Fatal(err)
 	}
 	check("a Radius credential is stored", true)
+	if err := auth.Delete(t.Context(), RadiusProviderID); err != nil {
+		t.Fatal(err)
+	}
+	check("the Radius credential is gone", false)
+	if err := auth.Set(RadiusProviderID, ai.Credential{Type: ai.CredentialAPIKey, Key: "stored-again"}); err != nil {
+		t.Fatal(err)
+	}
+	check("a Radius credential is stored again", true)
 }
 
 // A start with no Radius auth does not build the Radius catalog: its models are discarded unseen, so listing the available models costs less than reading that catalog.
