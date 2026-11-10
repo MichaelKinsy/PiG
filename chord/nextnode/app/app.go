@@ -240,6 +240,8 @@ type AppOptions struct {
 
 	// executable is the server's own code: os.Executable unless a test names another.
 	executable func() (string, error)
+	// draining is called when the close begins to wait for the builds (drainBuilds), the steps before it done: a test's mark of that point.
+	draining func()
 	// processStart is when the process started, for the executable's edit since then: the program's start unless a test names another.
 	processStart func() time.Time
 }
@@ -369,6 +371,8 @@ type App struct {
 	closed  error
 	// closing is set when the close starts: what runs after the start (the bases' builds, the scan) stops reporting there.
 	closing atomic.Bool
+	// basesStarted is set once startBases started the goroutine baseWatched is closed by: the close waits for it (drainBuilds).
+	basesStarted atomic.Bool
 	// basesBuilt and baseWatched are BasesBuilt's and BaseWatched's channels, closed by the build after the listen (startBases).
 	basesBuilt, baseWatched chan struct{}
 	// ended is closed when the close starts.
@@ -1014,7 +1018,9 @@ func (a *App) workerLock(address contracts.Address, ctx context.Context) (*worke
 // Close closes the HTTP component, the workers (in the options' order), the host, the store, the plugins' watcher and the data
 // directory's lock: in that order (HTTP first: it drains requests the host's close would seal). As Pi's `#close`, the first step that
 // fails ends the close there (the later steps do not run) and is what Close returns, to every caller: the first caller runs the
-// steps, the later ones wait for it.
+// steps, the later ones wait for it. Last, whatever the steps ended with, it waits for the bases' builds and the surfaces' (drainBuilds)
+// until ctx ends: Pi's `#close` does not wait for them, a forced Go lifetime difference. A step's failure is what Close returns
+// before ctx's error is.
 func (a *App) Close(ctx context.Context) error {
 	if !a.closing.Swap(true) {
 		close(a.ended)
@@ -1023,8 +1029,46 @@ func (a *App) Close(ctx context.Context) error {
 	return a.closed
 }
 
-// closeSteps is Pi's `#close`: each step awaited, the first failure returned.
+// closeSteps is Pi's `#close`: each step awaited, the first failure returned; then the builds are joined (drainBuilds).
 func (a *App) closeSteps(ctx context.Context) error {
+	err := a.closeResources(ctx)
+	if drained := a.drainBuilds(ctx); err == nil {
+		err = drained
+	}
+	return err
+}
+
+// drainBuilds waits for the goroutines the app started after the listen: each surface's build (one not started never starts), then
+// the bases' (startBases: it builds each base and records the base code), until ctx ends (its error then; the goroutines are left
+// to finish, what they do after the close began being dropped). It runs after the close's steps: a build that finishes meanwhile
+// finds the host closed (its publication fails) and the watcher closed (a record arriving after the close watches nothing).
+func (a *App) drainBuilds(ctx context.Context) error {
+	if a.options.draining != nil {
+		a.options.draining()
+	}
+	for _, each := range a.surfaces {
+		if err := each.close(ctx); err != nil {
+			return err
+		}
+	}
+	if !a.basesStarted.Load() {
+		return nil
+	}
+	select {
+	case <-a.baseWatched:
+		return nil
+	default:
+	}
+	select {
+	case <-a.baseWatched:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+// closeResources is the steps of Pi's `#close`: the first failure ends them there.
+func (a *App) closeResources(ctx context.Context) error {
 	if a.HTTP != nil {
 		a.HTTP.Close(ctx)
 	}
