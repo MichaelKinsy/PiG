@@ -1185,6 +1185,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-958e80d](#bf-958e80d) | A tool call whose arguments hold a number out of float64 range (`1e999`, `-1e999`) no longer ends the session… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-959a66e](#bf-959a66e) | fix(chord/nextnode/workers): shutdown takes effect before the next message; one signal channel each; no… | PiG's own defect | All platforms | Unreleased |
 | [BF-95a5f79](#bf-95a5f79) | RPC mode starts the `--tools` list active in its own order when it names extension tools, as Pi does | PiG's own defect | All platforms | 0.5.0 |
+| [BF-95db124](#bf-95db124) | A `-p`, `--mode json` or `--mode rpc` run over a large session no longer sometimes keeps the Go GC target of… | PiG's own defect | All platforms | Unreleased |
 | [BF-95de1de](#bf-95de1de) | An image the model receives is now JPEG-encoded with a port of Photon's encoder (image 0.24.9: the IJG… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-95eefe2](#bf-95eefe2) | openai-completions thinking formats now match Pi (`ai/openai.go`, openai-completions.ts:885-985 and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-9624fc4](#bf-9624fc4) | Azure OpenAI models now keep OpenAI's long-context price tier, so requests above 272K input tokens are costed… | PiG's own defect | All platforms | Unreleased |
@@ -18094,6 +18095,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `95a5f79e17` (2026-10-07)
 - **Tests:** `coding/cli/tools_flag_order_test.go::TestReloadKeepsTheToolsFlagOrder`, `coding/cli/tools_flag_order_test.go::TestToolsFlagOrderReachesTheProviderInEveryMode`, `coding/cli/tools_flag_order_test.go::TestToolsFlagSelectsToolsInItsOrder`, `coding/session_tool_registry_port_test.go::TestAllowedToolsStartActiveInTheirOrder`, `coding/session_tool_registry_port_test.go::TestReloadKeepsTheActiveToolOrder`, `test/parity/scenarios/rpc/45-rpc-tools-flag-order.toml`
 - **Release note:** RPC mode starts the `--tools` list active in its own order when it names extension tools, as Pi does. `--tools grep,my_tool,read` declares `grep`, `my_tool`, `read` to the model and lists them in that order in the system prompt; RPC mode listed the built-in tools first and appended the extension tools.
+
+### BF-95db124
+
+**A `-p`, `--mode json` or `--mode rpc` run over a large session no longer sometimes keeps the Go GC target of…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A `-p`, `--mode json` or `--mode rpc` run over a large session no longer sometimes keeps the Go GC target of 400 past 64 MiB live heap.
+- **Root cause:** A cleanup runs when the sweeper reaches the sentinel's span, and a sentinel allocated while a collection marks survives that collection, so the collection that found a large heap could be skipped and the target stayed at 400. TestPrintModeGCTargetFallsBackOnLargeHeap failed in CI run 42725996591 (exit at percent 400, RSS 1.57x); on xd670 with 4 CPUs and 3 busy loops it failed 6 of 80 runs at and 0 of 80 with this change.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `95db124c04` (2026-11-09)
+- **Tests:** `internal/gcpolicy/gcpolicy_test.go::TestApplyFallsBackAboveTheLiveHeapLimit`, `test/perfgate/print_tools_test.go::TestPrintModeGCTargetFallsBackOnLargeHeap`
+- **Release note:** A `-p`, `--mode json` or `--mode rpc` run over a large session no longer sometimes keeps the Go GC target of 400 past 64 MiB live heap. The check that returns to the default 100 waited for a cleanup after each collection, and that cleanup could run late or miss the collection that found the large heap; on a 66 MB session about 1 run in 13 under CPU load exited at target 400 with a peak RSS 1.37-1.80x that of `GOGC=100`. A goroutine now reads the live heap every 5 ms (every second while no collection finishes), so the fallback fires after the first collection that finds more than 64 MiB live. Output is unchanged.
 
 ### BF-95de1de
 

@@ -8,9 +8,10 @@ package gcpolicy
 
 import (
 	"os"
-	"runtime"
 	"runtime/debug"
 	"runtime/metrics"
+	"sync"
+	"time"
 )
 
 const (
@@ -20,33 +21,61 @@ const (
 	DefaultPercent = 100
 	// FallbackLiveBytes is the live heap above which a run returns to DefaultPercent.
 	FallbackLiveBytes = 64 << 20
+	// minPoll and maxPoll bound the wait between reads of the live heap.
+	minPoll = 5 * time.Millisecond
+	maxPoll = time.Second
 )
 
 // Apply sets the GC target unless the environment sets GOGC, which debug.SetGCPercent would otherwise override. It then
-// checks the live heap after every collection until a check finds more than FallbackLiveBytes, which restores DefaultPercent.
-func Apply() {
+// watches the live heap until a read finds more than FallbackLiveBytes, which restores DefaultPercent. The watcher is a goroutine
+// the caller owns: the returned stop ends it and waits until it has returned, and is a no-op when the watcher already ended (the
+// fallback fired, or GOGC is set). stop leaves the GC percent as it is and may be called more than once and from any goroutine.
+// A process calls it where it drains its other owned work, before the exit record counts goroutines.
+func Apply() (stop func()) {
 	if _, set := os.LookupEnv("GOGC"); set {
-		return
+		return func() {}
 	}
 	debug.SetGCPercent(TargetPercent)
-	armLiveHeapCheck()
-}
-
-// sentinel is unreachable as soon as it is armed, so its cleanup runs once per collection. Sixteen bytes keep it out of the tiny allocator,
-// which can keep a small object alive with its neighbours.
-type sentinel struct{ _ [16]byte }
-
-func armLiveHeapCheck() {
-	runtime.AddCleanup(new(sentinel), checkLiveHeap, struct{}{})
-}
-
-// checkLiveHeap reads the live heap the last collection marked.
-func checkLiveHeap(struct{}) {
-	sample := []metrics.Sample{{Name: "/gc/heap/live:bytes"}}
-	metrics.Read(sample)
-	if sample[0].Value.Uint64() > FallbackLiveBytes {
-		debug.SetGCPercent(DefaultPercent)
-		return
+	quit, done := make(chan struct{}), make(chan struct{})
+	go watchLiveHeap(quit, done)
+	var once sync.Once
+	return func() {
+		once.Do(func() { close(quit) })
+		<-done
 	}
-	armLiveHeapCheck()
+}
+
+// watchLiveHeap polls the runtime's metrics until one read finds more than FallbackLiveBytes live. The live heap changes only when a
+// collection ends, and the runtime has no hook for that moment that does not run late: a cleanup or finalizer runs when the sweeper
+// reaches its span, one goroutine runs them all in turn, and a sentinel allocated while a collection marks survives that collection, so
+// a check armed that way can miss the collection that found the large heap and leave the target at 400 for the rest of the run.
+// debug.SetMemoryLimit is not a substitute: it caps the absolute heap rather than returning to a percent past a live size.
+// The wait doubles from minPoll to maxPoll while no collection has finished. An idle process then fires one timer a second, which
+// costs about 4 more voluntary context switches a second than a process without the watcher (273 against 39-46 in 60 s, 4-CPU
+// Linux container); a run that collects often reads every minPoll.
+func watchLiveHeap(quit <-chan struct{}, done chan<- struct{}) {
+	defer close(done)
+	sample := []metrics.Sample{{Name: "/gc/heap/live:bytes"}, {Name: "/gc/cycles/total:gc-cycles"}}
+	var cycles uint64
+	wait := minPoll
+	timer := time.NewTimer(wait)
+	defer timer.Stop()
+	for {
+		select {
+		case <-quit:
+			return
+		case <-timer.C:
+		}
+		metrics.Read(sample)
+		if sample[0].Value.Uint64() > FallbackLiveBytes {
+			debug.SetGCPercent(DefaultPercent)
+			return
+		}
+		if now := sample[1].Value.Uint64(); now != cycles {
+			cycles, wait = now, minPoll
+		} else {
+			wait = min(2*wait, maxPoll)
+		}
+		timer.Reset(wait)
+	}
 }
