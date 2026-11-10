@@ -127,6 +127,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-11b199d](#bf-11b199d) | Session lines (and every other JSON.stringify-mode encode) now write ill-formed UTF-8 the way Pi does: one… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-11d48a2](#bf-11d48a2) | fix(chord/nextnode/workers): Close(ctx) stops waiting when ctx ends, as Pi's close does on abort | PiG's own defect | All platforms | Unreleased |
 | [BF-121ba35](#bf-121ba35) | The Durable core's conversation view follows Pi f3255de7's mount: a second observer of a conversation only… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-123827b](#bf-123827b) | Go, Rust, Python and Lisp extensions: a bash tool built on `createLocalBashOperations()` now says `The shell… | PiG's own defect | All platforms | Unreleased |
 | [BF-1239dac](#bf-1239dac) | fix(chord/nextnode/plugins): the Node host resolves pi-schema, and example 37's shapes file imports it as… | PiG's own defect | All platforms | Unreleased |
 | [BF-1268115](#bf-1268115) | fix(model runtime): a cancelled request to a caller-owned provider the runtime does not know is aborted, not… | PiG's own defect | All platforms | Unreleased |
 | [BF-12d5c56](#bf-12d5c56) | A Chord HTTP request or upgrade no longer reads the router and the authenticators from its own goroutine… | PiG's own defect | All platforms | 0.7.0 |
@@ -3456,6 +3457,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `121ba35041` (2026-10-27)
 - **Tests:** `durable/core/view_test.go::TestResolveWindow`
 - **Release note:** The Durable core's conversation view follows Pi f3255de7's mount: a second observer of a conversation only loads its own window and takes the one `docs` object of the mount, so attaching to a mounted view spends Pi's microtask passes and the observers of one conversation share their documents; a window the core rejects (a bound that is not an integer, `max` below `min`) reaches the host as the `RangeError` Pi throws.
+
+### BF-123827b
+
+**Go, Rust, Python and Lisp extensions: a bash tool built on `createLocalBashOperations()` now says `The shell…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Go, Rust, Python and Lisp extensions: a bash tool built on `createLocalBashOperations()` now says `The shell exited with code C after S seconds, but background processes it started kept writing output until the timeout.` when a command timed out after its shell had already exited, as Pi 1.5.1 does.
+- **Root cause:** The Go, Rust, Python and Lisp SDKs reach the local shell over builtinTool.localExec, whose error reply carried only 'timeout:N'.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `01d8d08b31` (2026-11-09), `123827b998` (2026-11-09)
+- **Tests:** `coding/extension/host/subprocess/shell_exit_wire_test.go::TestLocalShellTimeoutReadsAFusedSDKsError`, `coding/extension/host/subprocess/shell_exit_wire_test.go::TestShellExitCrossesTheWireAsErrorInfoShellExit`, `test/extension-conformance/builtin_tool_delegate_test.go::TestConformance_BuiltinToolDelegationAcrossSDKs`
+- **Release note:** Go, Rust, Python and Lisp extensions: a bash tool built on `createLocalBashOperations()` now says `The shell exited with code C after S seconds, but background processes it started kept writing output until the timeout.` when a command timed out after its shell had already exited, as Pi 1.5.1 does. The local operations of these SDKs reach the host over `builtinTool.localExec`, whose error reply carried only `timeout:N`; it now carries Pi's `shellExit` (the shell's exit code and run time), which the SDK passes on when its exec returns that error unchanged. An error wrapped around it, or a new error with its message, gives the plain `Command timed out after N seconds`, as in Pi.
 
 ### BF-1239dac
 
@@ -14560,7 +14575,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `787c3547c4` (2026-11-05)
-- **Tests:** `ai/anthropic_test.go::TestAnthropicTemperatureCompatibility`, `ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchPinnedProviderDataModules`, `ai/catalog_published_test.go::TestGeneratedCatalogsMatchPublishedPackage`, `cmd/gen-models/d240_sonnet5_temperature_test.go::TestApplyD240SonnetFiveTemperature`, `internal/modelgen/family_test.go::TestApplyClaudeFamilyRules`
+- **Tests:** `ai/anthropic_test.go::TestAnthropicTemperatureCompatibility`, `ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchPinnedProviderDataModules`, `ai/catalog_published_test.go::TestGeneratedCatalogsMatchPublishedPackage`, `internal/modelgen/family_test.go::TestApplyClaudeFamilyRules`
 - **Release note:** Requests to Claude Sonnet 5 no longer send `temperature`, as in Pi: the catalog marks the Sonnet 5 models on an Anthropic-messages provider as not supporting it.
 
 ### BF-78c4c6c

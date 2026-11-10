@@ -2902,6 +2902,34 @@
       ]
     },
     {
+      "id": "BF-123827b",
+      "title": "Go, Rust, Python and Lisp extensions: a bash tool built on `createLocalBashOperations()` now says `The shell…",
+      "symptom": "Go, Rust, Python and Lisp extensions: a bash tool built on `createLocalBashOperations()` now says `The shell exited with code C after S seconds, but background processes it started kept writing output until the timeout.` when a command timed out after its shell had already exited, as Pi 1.5.1 does.",
+      "rootCause": "The Go, Rust, Python and Lisp SDKs reach the local shell over builtinTool.localExec, whose error reply carried only 'timeout:N'.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Go, Rust, Python and Lisp extensions: a bash tool built on `createLocalBashOperations()` now says `The shell exited with code C after S seconds, but background processes it started kept writing output until the timeout.` when a command timed out after its shell had already exited, as Pi 1.5.1 does. The local operations of these SDKs reach the host over `builtinTool.localExec`, whose error reply carried only `timeout:N`; it now carries Pi's `shellExit` (the shell's exit code and run time), which the SDK passes on when its exec returns that error unchanged. An error wrapped around it, or a new error with its message, gives the plain `Command timed out after N seconds`, as in Pi.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "01d8d08b31",
+          "date": "2026-11-09"
+        },
+        {
+          "hash": "123827b998",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/shell_exit_wire_test.go::TestLocalShellTimeoutReadsAFusedSDKsError",
+        "coding/extension/host/subprocess/shell_exit_wire_test.go::TestShellExitCrossesTheWireAsErrorInfoShellExit",
+        "test/extension-conformance/builtin_tool_delegate_test.go::TestConformance_BuiltinToolDelegationAcrossSDKs"
+      ]
+    },
+    {
       "id": "BF-1239dac",
       "title": "fix(chord/nextnode/plugins): the Node host resolves pi-schema, and example 37's shapes file imports it as…",
       "symptom": "fix(chord/nextnode/plugins): the Node host resolves pi-schema, and example 37's shapes file imports it as Pi's does",
@@ -25461,7 +25489,6 @@
         "ai/anthropic_test.go::TestAnthropicTemperatureCompatibility",
         "ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchPinnedProviderDataModules",
         "ai/catalog_published_test.go::TestGeneratedCatalogsMatchPublishedPackage",
-        "cmd/gen-models/d240_sonnet5_temperature_test.go::TestApplyD240SonnetFiveTemperature",
         "internal/modelgen/family_test.go::TestApplyClaudeFamilyRules"
       ]
     },
