@@ -242925,7 +242925,7 @@
       "evidence": [
         "test:durable/core/driver/task_owned_tasks_core_test.go#TestCoreOwnedTasksRejectsOnceItsInvocationHasEnded",
         "test:durable/harness/scheduler_owned_tasks_test.go#TestOwnedTasksRejectsOnceItsInvocationHasEnded",
-        "test:durable/core/driver/task_owned_tasks_core_test.go#TestCoreOwnedTasksListsTheLiveTasksATaskOwnsDirectlyInIdOrderAlsoAfterAReopen"
+        "test:durable/harness/surrogate_observable_test.go#TestOwnedTasksKeepsALoneSurrogateInTheRecordsItReturns"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -242948,7 +242948,7 @@
       "evidence": [
         "test:durable/core/driver/task_owned_tasks_core_test.go#TestCoreOwnedTasksRejectsOnceItsInvocationHasEnded",
         "test:durable/harness/scheduler_owned_tasks_test.go#TestOwnedTasksRejectsOnceItsInvocationHasEnded",
-        "test:durable/core/driver/task_owned_tasks_core_test.go#TestCoreOwnedTasksListsTheLiveTasksATaskOwnsDirectlyInIdOrderAlsoAfterAReopen"
+        "test:durable/harness/surrogate_observable_test.go#TestOwnedTasksKeepsALoneSurrogateInTheRecordsItReturns"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
