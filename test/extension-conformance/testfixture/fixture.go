@@ -997,8 +997,7 @@ func Extension() *sdk.Extension {
 	})
 	ext.Command("ui_view_probe", "Mount, update, hide, show, finish and remove a view", func(ctx sdk.Context, args string) error {
 		code := func(err error) string {
-			var ve *sdk.ViewError
-			if errors.As(err, &ve) {
+			if ve, ok := errors.AsType[*sdk.ViewError](err); ok {
 				return string(ve.Code)
 			}
 			return "none"
