@@ -16070,7 +16070,7 @@ async function createAgentSessionFromServices(options) {
 __name(createAgentSessionFromServices, "createAgentSessionFromServices");
 
 // pi-dist/pi-coding-agent/core/agent-session-runtime.js
-import { constants, copyFileSync, existsSync as existsSync12, mkdirSync as mkdirSync5 } from "node:fs";
+import { constants, copyFileSync, existsSync as existsSync12, mkdirSync as mkdirSync5, rmSync as rmSync2 } from "node:fs";
 import { basename as basename8, join as join12, parse as parse2 } from "node:path";
 
 // pi-dist/pi-coding-agent/core/session-cwd.js
@@ -16099,13 +16099,17 @@ Current working directory: ${issue.fallbackCwd}`;
 }
 __name(formatMissingSessionCwdError, "formatMissingSessionCwdError");
 function formatMissingSessionCwdPrompt(issue) {
-  return `cwd from session file does not exist
-${issue.sessionCwd}
-
-continue in current cwd
-${issue.fallbackCwd}`;
+  return `Session cwd does not exist: ${issue.sessionCwd}`;
 }
 __name(formatMissingSessionCwdPrompt, "formatMissingSessionCwdPrompt");
+function getMissingSessionCwdOptions(issue) {
+  return [
+    { label: `Continue in ${issue.fallbackCwd} (asks again next time)`, value: "continue" },
+    { label: `Fork into ${issue.fallbackCwd} (new session ID, original kept)`, value: "fork" },
+    { label: "Cancel", value: void 0 }
+  ];
+}
+__name(getMissingSessionCwdOptions, "getMissingSessionCwdOptions");
 var MissingSessionCwdError = class extends Error {
   static {
     __name(this, "MissingSessionCwdError");
@@ -16392,7 +16396,13 @@ var AgentSessionRuntime = class {
       copyFileSync(resolvedPath, destinationPath, constants.COPYFILE_EXCL);
     }
     const sessionManager = SessionManager.open(destinationPath, sessionDir, cwdOverride);
-    assertSessionCwdExists(sessionManager, this.cwd);
+    try {
+      assertSessionCwdExists(sessionManager, this.cwd);
+    } catch (error) {
+      if (!sourceAlreadyStored)
+        rmSync2(destinationPath, { force: true });
+      throw error;
+    }
     await this.teardownCurrent("resume", sessionManager.getSessionFile());
     this.apply(await this.createRuntime({
       cwd: sessionManager.getCwd(),
@@ -16808,6 +16818,7 @@ export {
   DefaultResourceLoader,
   getMissingSessionCwdIssue,
   formatMissingSessionCwdPrompt,
+  getMissingSessionCwdOptions,
   MissingSessionCwdError,
   createAgentSessionServices,
   createAgentSessionFromServices,

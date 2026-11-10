@@ -79,7 +79,7 @@ func TestInteractiveResumeIntoAnUntrustedProjectPromptsForTrust(t *testing.T) {
 	p.quit()
 }
 
-// Pi handleResumeSession offers the current directory when the stored one is gone. Declining shows "Resume cancelled" and keeps the Session; accepting resumes and shows "Resumed session in current cwd".
+// Pi handleResumeSession offers the current directory when the stored one is gone. Cancel shows "Resume cancelled" and keeps the Session; Continue resumes and shows "Resumed session in <cwd>"; Fork copies the Session into the current directory and shows "Forked into new session <id> in <cwd>".
 func TestInteractiveResumeWithAMissingCWDShowsPisStatuses(t *testing.T) {
 	if testing.Short() {
 		t.Skip("starts the pig binary and extension processes")
@@ -89,8 +89,9 @@ func TestInteractiveResumeWithAMissingCWDShowsPisStatuses(t *testing.T) {
 		name, answer, status string
 		resumed              bool
 	}{
-		{"decline", keyDown + keyEnter, "Resume cancelled", false},
-		{"accept", keyEnter, "Resumed session in current cwd", true},
+		{"cancel", keyDown + keyDown + keyEnter, "Resume cancelled", false},
+		{"continue", keyEnter, "Resumed session in ", true},
+		{"fork", keyDown + keyEnter, "Forked into new session ", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			p := startInteractivePig(t)
@@ -103,7 +104,7 @@ func TestInteractiveResumeWithAMissingCWDShowsPisStatuses(t *testing.T) {
 				t.Fatal(err)
 			}
 			p.resume()
-			p.waitScreen("Session cwd not found", "the missing cwd prompt")
+			p.waitScreen("Session cwd does not exist", "the missing cwd prompt")
 			p.send(tc.answer)
 			p.waitScreen(tc.status, "the resume status")
 			if tc.resumed {
@@ -136,9 +137,9 @@ func TestInteractiveExtensionSwitchSessionWithAMissingCWDPrompts(t *testing.T) {
 		t.Fatal(err)
 	}
 	p.command("/switch-to " + path)
-	p.waitScreen("Session cwd not found", "the missing cwd prompt")
+	p.waitScreen("Session cwd does not exist", "the missing cwd prompt")
 	p.send(keyEnter)
-	p.waitScreen("Resumed session in current cwd", "the resume status")
+	p.waitScreen("Resumed session in ", "the resume status")
 	if !strings.Contains(strings.Join(replaceLogLines(t, p.log), "\n"), "session_start reason=resume") {
 		t.Fatalf("the extension switch did not resume: %q", replaceLogLines(t, p.log))
 	}

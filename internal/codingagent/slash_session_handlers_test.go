@@ -1072,6 +1072,8 @@ type importCommandFixture struct {
 	prompts   []string
 	answers   []string
 	imports   [][2]string
+	forks     [][2]string
+	forkErr   error
 	results   []error
 	cancelled bool
 	status    []string
@@ -1099,6 +1101,10 @@ func (f *importCommandFixture) context(args string) *SlashContext {
 				f.results = f.results[1:]
 			}
 			return f.cancelled, err
+		},
+		ForkSession: func(sourcePath, cwd string) (string, bool, error) {
+			f.forks = append(f.forks, [2]string{sourcePath, cwd})
+			return "Forked into new session s in " + cwd, f.cancelled, f.forkErr
 		},
 		ShowStatus: func(message string) { f.status = append(f.status, message) },
 		FatalRuntimeError: func(prefix string, err error) error {
@@ -1184,7 +1190,7 @@ func TestImportHandlerUsageAndCancellation(t *testing.T) {
 		"declined":      {answers: []string{"No"}},
 		"escaped":       {},
 		"before_switch": {answers: []string{"Yes"}, cancelled: true},
-		"cwd prompt no": {answers: []string{"Yes", "No"}, results: []error{&MissingSessionCwdError{Issue: SessionCwdIssue{SessionCwd: "/gone", FallbackCwd: "/here"}}}},
+		"cwd prompt no": {answers: []string{"Yes", "Cancel"}, results: []error{&MissingSessionCwdError{Issue: SessionCwdIssue{SessionCwd: "/gone", FallbackCwd: "/here"}}}},
 	} {
 		if err := importHandler(fx.context("session.jsonl")); err != nil {
 			t.Fatalf("%s: %v", name, err)
@@ -1195,15 +1201,15 @@ func TestImportHandlerUsageAndCancellation(t *testing.T) {
 	}
 }
 
-// Upstream promptForMissingSessionCwd offers the current cwd and retries
-// importFromJsonl with it.
+// Upstream promptForMissingSessionCwd offers Continue, Fork and Cancel; Continue
+// retries importFromJsonl with the current cwd.
 func TestImportHandlerRetriesWithOfferedCwd(t *testing.T) {
 	issue := SessionCwdIssue{SessionFile: "/sessions/moved.jsonl", SessionCwd: "/gone", FallbackCwd: "/here"}
-	f := &importCommandFixture{answers: []string{"Yes", "Yes"}, results: []error{&MissingSessionCwdError{Issue: issue}, nil}}
+	f := &importCommandFixture{answers: []string{"Yes", "Continue in /here (asks again next time)"}, results: []error{&MissingSessionCwdError{Issue: issue}, nil}}
 	if err := importHandler(f.context("moved.jsonl")); err != nil {
 		t.Fatal(err)
 	}
-	if want := "Session cwd not found\n" + FormatMissingSessionCwdPrompt(issue) + " Yes/No"; len(f.prompts) != 2 || f.prompts[1] != want {
+	if want := "Session cwd does not exist: /gone Continue in /here (asks again next time)/Fork into /here (new session ID, original kept)/Cancel"; len(f.prompts) != 2 || f.prompts[1] != want {
 		t.Fatalf("prompts = %q", f.prompts)
 	}
 	if !slices.Equal(f.imports, [][2]string{{"moved.jsonl", ""}, {"moved.jsonl", "/here"}}) {
@@ -1211,6 +1217,27 @@ func TestImportHandlerRetriesWithOfferedCwd(t *testing.T) {
 	}
 	if !slices.Equal(f.status, []string{"Session imported from: moved.jsonl"}) {
 		t.Fatalf("status = %q", f.status)
+	}
+}
+
+// Pi handleImportCommand: Fork switches to a fork of the source in the current cwd (switchToForkedSession), which shows its own status, and no
+// second import happens.
+func TestImportHandlerForksIntoTheCurrentCwd(t *testing.T) {
+	issue := SessionCwdIssue{SessionFile: "/sessions/moved.jsonl", SessionCwd: "/gone", FallbackCwd: "/here"}
+	f := &importCommandFixture{answers: []string{"Yes", "Fork into /here (new session ID, original kept)"}, results: []error{&MissingSessionCwdError{Issue: issue}}}
+	if err := importHandler(f.context("moved.jsonl")); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(f.imports, [][2]string{{"moved.jsonl", ""}}) || !slices.Equal(f.forks, [][2]string{{"moved.jsonl", "/here"}}) {
+		t.Fatalf("imports = %q, forks = %q", f.imports, f.forks)
+	}
+	if !slices.Equal(f.status, []string{"Forked into new session s in /here"}) {
+		t.Fatalf("status = %q", f.status)
+	}
+	// A switch an extension vetoed reports Import cancelled.
+	cancelled := &importCommandFixture{answers: []string{"Yes", "Fork into /here (new session ID, original kept)"}, results: []error{&MissingSessionCwdError{Issue: issue}}, cancelled: true}
+	if err := importHandler(cancelled.context("moved.jsonl")); err != nil || !slices.Equal(cancelled.status, []string{"Import cancelled"}) {
+		t.Fatalf("cancelled fork: status = %q, err = %v", cancelled.status, err)
 	}
 }
 

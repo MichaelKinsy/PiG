@@ -137,7 +137,9 @@ const reactVersions = {};
 	const pack = (name) => {
 		const pinned = lock[`node_modules/${name}`];
 		if (!pinned?.version || !pinned.integrity) throw new Error(`Pi's package-lock.json does not pin ${name}`);
-		const [packed] = JSON.parse(execFileSync("npm", ["pack", `${name}@${pinned.version}`, "--json", "--pack-destination", work], { encoding: "utf8" }));
+		// npm's pack --json is an array of packs, or an object of them by package name (npm 12).
+		const packs = JSON.parse(execFileSync("npm", ["pack", `${name}@${pinned.version}`, "--json", "--pack-destination", work], { encoding: "utf8" }));
+		const [packed] = Array.isArray(packs) ? packs : Object.values(packs);
 		if (packed.integrity !== pinned.integrity) throw new Error(`${name}@${pinned.version}: npm's tarball integrity ${packed.integrity} is not the lock's ${pinned.integrity}`);
 		const target = join(work, packed.filename.replace(/\.tgz$/, ""));
 		mkdirSync(target);

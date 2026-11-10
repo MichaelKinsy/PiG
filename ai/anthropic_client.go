@@ -20,7 +20,7 @@ import (
 
 // claudeCodeVersion is the Claude Code release named in the user-agent of
 // OAuth-token requests.
-const claudeCodeVersion = "2.1.280"
+const claudeCodeVersion = "2.1.322"
 
 // claudeCodeSystemPrompt is the first system block of every OAuth-token request.
 const claudeCodeSystemPrompt = "You are Claude Code, Anthropic's official CLI for Claude."

@@ -1061,6 +1061,10 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/web/scripts.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/scripts.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/web/styles.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/styles.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/web/themes.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/themes.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
+| `packages/chord/src/host/host-data.ts` | `(new upstream by 1.5.2; not mapped)` | ⬜ |
+| `packages/chord/src/store/host-column.ts` | `(new upstream by 1.5.2; not mapped)` | ⬜ |
+| `packages/chord/src/store/host-data.ts` | `(new upstream by 1.5.2; not mapped)` | ⬜ |
+| `packages/chord/src/store/import-migration.ts` | `(new upstream by 1.5.2; not mapped)` | ⬜ |
 
 ## `packages/protocol/src/`
 

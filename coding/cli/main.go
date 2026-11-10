@@ -1143,21 +1143,27 @@ func Main(args []string, options *MainOptions) {
 			fmt.Fprintf(os.Stderr, "%s\n", issue.Error())
 			exitProcess(1)
 		}
-		selected, ok, selectErr := codingagent.ShowStartupSelector(
-			issue.prompt(),
-			[]string{"Continue", "Cancel"},
-			startupUIOpts,
-		)
+		options := issue.options()
+		labels := make([]string, len(options))
+		for i, option := range options {
+			labels[i] = option.Label
+		}
+		selected, ok, selectErr := codingagent.ShowStartupSelector(issue.prompt(), labels, startupUIOpts)
 		if selectErr != nil {
 			printCLIError("select session cwd: %v", selectErr)
 			exitProcess(1)
 		}
-		if !ok || selected != 0 {
+		if !ok || selected < 0 || selected >= len(options) {
 			exitProcess(0)
 		}
-		startupSession.runtimeCWD = issue.fallbackCWD
-		startupSession.missingCWD = nil
-		flags.sessionCwdOverride = new(startupSession.runtimeCWD)
+		choice := options[selected].Value
+		if choice == "" {
+			exitProcess(0)
+		}
+		if applyErr := startupSession.applyMissingCWDChoice(choice, &flags, sessionDir); applyErr != nil {
+			printCLIError("%v", applyErr)
+			exitProcess(1)
+		}
 	}
 	cwd = startupSession.runtimeCWD
 	// upstream: packages/coding-agent/src/main.ts:autoTrustOnReloadCwd
