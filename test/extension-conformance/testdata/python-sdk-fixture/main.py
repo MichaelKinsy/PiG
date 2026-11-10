@@ -1886,6 +1886,28 @@ def new_extension() -> pig_sdk.Extension:
         time.sleep(8)
         return {"content": "late"}
 
+    # signal_host_probe shows that the host keeps answering a tool's host calls after its abort, as Pi's in-process calls are.
+    def signal_host_probe(ctx, _params):
+        def ask(title):
+            try:
+                return ctx.input(title, "p")[0]
+            except Exception as error:
+                return "failed: %s" % error
+
+        first = ask("tool_signal:first")
+        aborted = str(ctx.is_cancelled()).lower()
+        second = ask("tool_signal:later")
+        return {"content": "tool_signal:%s:%s:%s" % (aborted, first, second)}
+
+    # signal_nested_probe shows that the host keeps answering a nested tool call's host calls after the abort, as Pi's in-process calls are.
+    def signal_nested_probe(ctx, _params):
+        try:
+            result = ctx.execute_tool("abort_tool", {})["result"]
+            text = "".join(block.get("text", "") for block in result["content"]) if isinstance(result["content"], list) else result["content"]
+        except Exception as error:
+            text = "failed: %s" % error
+        return {"content": "tool_signal_nested:" + text}
+
     ext.tool("big_out", "Return text of the size in the argument", {"type": "object", "properties": {}}, lambda ctx, params: {"content": [{"type": "text", "text": "a" * int(params["n"])}]})
     ext.tool("echo_params", "Return the arguments as the result details", {"type": "object", "properties": {}}, lambda ctx, params: {"content": [{"type": "text", "text": "echoed"}], "details": params})
     ext.tool("nan_out", "Return details holding NaN and Infinity", {"type": "object", "properties": {}}, lambda ctx, params: {"content": [{"type": "text", "text": "nan"}], "details": {"n": float("nan"), "i": float("-inf"), "l": [float("nan"), 2, {"d": float("inf")}], "ok": 1}})
@@ -1894,6 +1916,8 @@ def new_extension() -> pig_sdk.Extension:
     ext.tool("ordered_result", "Return a result whose members are not in the declared order", {"type": "object", "properties": {}}, ordered_result)
     ext.tool("abort_tool", "Wait for the abort signal", {"type": "object", "properties": {}}, abort_tool)
     ext.tool("hang_tool", "Ignore the abort signal", {"type": "object", "properties": {}}, hang_tool)
+    ext.tool("signal_host_probe", "Await host dialogs across the abort", {"type": "object", "properties": {}}, signal_host_probe)
+    ext.tool("signal_nested_probe", "Run abort_tool as a nested tool call", {"type": "object", "properties": {}}, signal_nested_probe)
     ext.command(
         "abort_probe",
         "Report whether abort_tool saw its abort signal",

@@ -2777,6 +2777,35 @@ fn main() {
             ToolResult::text("late")
         },
     );
+    // signal_host_probe: the host keeps answering a tool's host calls after the abort, as Pi's in-process calls are.
+    ext.tool(
+        "signal_host_probe",
+        "Await host dialogs across the abort",
+        json!({"type": "object", "properties": {}}),
+        |ctx, _params: Value| {
+            let dialog = |title: &str| match ctx.input(title, "p") {
+                Ok((value, _)) => value.as_str().unwrap_or("").to_string(),
+                Err(error) => format!("failed: {error}"),
+            };
+            let first = dialog("tool_signal:first");
+            let aborted = ctx.is_cancelled();
+            let second = dialog("tool_signal:later");
+            ToolResult::text(format!("tool_signal:{aborted}:{first}:{second}"))
+        },
+    );
+    // signal_nested_probe: a nested tool call keeps working after the abort, as Pi's in-process calls do.
+    ext.tool(
+        "signal_nested_probe",
+        "Run abort_tool as a nested tool call",
+        json!({"type": "object", "properties": {}}),
+        |ctx, _params: Value| {
+            let text = match ctx.execute_tool("abort_tool", json!({}), pig_sdk::ExecuteToolOptions::default()) {
+                Ok(outcome) => outcome.result.content.iter().filter_map(|block| block["text"].as_str()).collect::<String>(),
+                Err(error) => format!("failed: {error}"),
+            };
+            ToolResult::text(format!("tool_signal_nested:{text}"))
+        },
+    );
     ext.command(
         "abort_probe",
         "Report whether abort_tool saw its abort signal",

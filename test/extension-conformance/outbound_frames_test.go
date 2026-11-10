@@ -28,6 +28,8 @@ type frameCheck struct {
 	deepDeltas map[string]int
 	// signalCancels counts the signal-only cancel frames (CancelPayload.SignalOnly) the host wrote.
 	signalCancels int
+	// toolCalls counts the tool_call requests the host wrote.
+	toolCalls int
 	failures      []string
 }
 
@@ -62,6 +64,9 @@ func (c *frameCheck) observe(extName string, frame []byte) {
 	if env.Type == subprocess.MsgCancel && env.Cancel != nil && env.Cancel.SignalOnly {
 		c.signalCancels++
 	}
+	if env.Request != nil && env.Request.Method == subprocess.MethodToolCall {
+		c.toolCalls++
+	}
 	if env.Request != nil && env.Request.Method == "event" {
 		if c.events == nil {
 			c.events = map[string]int{}
@@ -87,6 +92,13 @@ func (c *frameCheck) signalCancelFrames() int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.signalCancels
+}
+
+// toolCallRequests returns how many tool_call requests the host wrote: a nested tool call is a request of its own.
+func (c *frameCheck) toolCallRequests() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.toolCalls
 }
 
 // eventFrames returns how many event requests of each kind the host wrote.
