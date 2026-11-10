@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"encoding/json"
 	"io"
 	"net/http"
 	"os"
@@ -24,7 +23,8 @@ import (
 	nodesurfaces "github.com/MichaelKinsy/PiG/chord/nextnode/surfaces"
 )
 
-// Ports packages/chord/test/node/surfaces/web.test.ts and tui.test.ts (Pi 1.5.1: the web and terminal surfaces' server sides through the app kit) and
+// Ports packages/chord/test/node/surfaces/web.test.ts (Pi 1.5.1: the web surface's server side through the app kit; tui.test.ts is ported in
+// chord/nextnode/tui/tui_kit_upstream_test.go) and
 // tests the kit's surface steps (app_surfaces.go, Pi's `surfacesOf` and the `web`/`tui` options of app.ts): the surfaces' base
 // hashes, their order in the rollout (the server's step, the workers', then the web's and the terminal's), the base marks their
 // bundles' inputs give. A base bundle that does not build after the listen is reported and the server runs on (Pi 284e63d9: the
@@ -460,102 +460,4 @@ func TestAppMarksBaseForAChangeOfTheWebSurfacesBaseBundleInputs(t *testing.T) {
 			untilBase(t, s.app)
 		})
 	}
-}
-
-// tuiLinesPlugin is a terminal plugin contributing Lines a line (Pi's linesPlugin: the sandbox's escapes it tried are in the line).
-func tuiLinesPlugin(t testing.TB, text string) map[string]string {
-	t.Helper()
-	escapes, err := os.ReadFile(surfacesFixture(t, "tui", "escapes.ts"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	return map[string]string{
-		"escapes.ts": string(escapes),
-		"tui.ts": strings.Join([]string{
-			`import { defineFacet } from "@test/app/v1";`,
-			`import { Lines } from "@test/app/v1/tui";`,
-			`import { escapes } from "./escapes.ts";`,
-			`const found = Object.entries(escapes());`,
-			`const escaped = found.filter(([, outcome]) => outcome === "ok").map(([name]) => name).join(", ") || "none";`,
-			`export default defineFacet((_host, self) => self.contribute(Lines, ` + strconv.Quote(text) + ` + " tried=" + found.length + " escaped=" + escaped));`,
-		}, "\n"),
-	}
-}
-
-// Ports tui.test.ts "serves a signed-in launcher its start, the base bundle and the scripts; the base hash to anyone".
-func TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone(t *testing.T) {
-	tuiAPI := surfacesFixture(t, "tui", "api.ts")
-	s := startTestApp(t, map[string]map[string]string{"lines": tuiLinesPlugin(t, "plugin v1")}, func(o *AppOptions) {
-		o.Kinds = append(o.Kinds, AppKindEntry{Name: "tui", Kind: AppKind{Platform: model.PlatformNode, Packages: map[string]string{"@test/app/v1/tui": tuiAPI}}})
-		o.Tui = &AppTui{Entry: surfacesFixture(t, "tui", "main.ts"), Conditions: []string{"source"}}
-	})
-	token, err := os.ReadFile(s.app.OwnerTokenFile)
-	if err != nil {
-		t.Fatal(err)
-	}
-	headers := bearer(strings.TrimSpace(string(token)))
-	if status := surfaceGet(t, s.port, "/_chord/tui/start", nil).status; status != 401 {
-		t.Fatalf("start without a token = %d, want 401", status)
-	}
-	var start nodesurfaces.TuiStart
-	if err := json.Unmarshal(surfaceGet(t, s.port, "/_chord/tui/start", headers).body, &start); err != nil {
-		t.Fatal(err)
-	}
-	base := s.app.Tui.Base()
-	if start.Base != base || start.Script != "/_chord/tui/base."+base+".js" ||
-		!regexp.MustCompile(`^/_chord/tui/plugins\.[0-9a-f]{16}\.js$`).MatchString(start.Combined) {
-		t.Fatalf("start = %+v, want the base %s, its script and the combined file", start, base)
-	}
-	if got := surfaceGet(t, s.port, "/_chord/tui/base", nil).body; string(got) != `"`+base+`"` {
-		t.Fatalf("base = %s", got)
-	}
-	bundle := string(surfaceGet(t, s.port, start.Script, headers).body)
-	// A CommonJS script (the sandbox gives it its own `require`), no ES module.
-	if !strings.Contains(bundle, "require(") || regexp.MustCompile(`(?m)^\s*(?:import|export)\b`).MatchString(bundle) {
-		t.Fatalf("the base bundle is not a CommonJS script: %.200s", bundle)
-	}
-	scripts, err := s.app.Host.Get(background, nextsurfaces.TuiScripts, delta.NewJsonObject(0), host.GetOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer scripts.Release()
-	value, err := scripts.Member("set").Value()
-	if err != nil {
-		t.Fatal(err)
-	}
-	set := nextsurfaces.ScriptSetOf(value)
-	if len(set.Plugins) == 0 {
-		t.Fatal("the terminal set has no plugin")
-	}
-	entry := set.Plugins[0]
-	if entry.URL != "/_chord/tui/plugin/@test~lines."+entry.Digest+".js" {
-		t.Fatalf("entry url = %s", entry.URL)
-	}
-	script := string(surfaceGet(t, s.port, entry.URL, headers).body)
-	if !strings.HasPrefix(script, `chordFacet("@test/lines","`+entry.Digest+`",`) {
-		t.Fatalf("script = %.160s", script)
-	}
-	combined := string(surfaceGet(t, s.port, start.Combined, headers).body)
-	if want := regexp.MustCompile(`\n//# sourceMappingURL=data:[^\n]*`).ReplaceAllString(script, ""); combined != want {
-		t.Fatal("the combined file is not the script without its source map")
-	}
-	// Terminal facets are Node builds: an asset import fails the build, so the surface serves none.
-	writePlugin(t, s.root, "pictured", "@test/pictured", map[string]string{
-		"tui.ts":   "import icon from \"./icon.svg?url\";\nexport default { setup: () => icon };",
-		"icon.svg": "<svg/>",
-	})
-	untilMarks(t, s.app, "the plugin set", func(m plugins.PluginsState) bool { return m.Set })
-	built, err := s.app.Plugins.Component.Build([]string{"@test/pictured"}, background)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, facet := range built.Facets {
-		if facet.Plugin == "@test/pictured" {
-			if facet.Kind != model.BuiltFacetFailed || len(facet.Errors) == 0 || !strings.Contains(facet.Errors[0], "assets by URL are for browser builds") {
-				t.Fatalf("the pictured terminal facet = %+v, want a failed build naming assets by URL", facet)
-			}
-			return
-		}
-	}
-	t.Fatal("no build of the pictured plugin")
 }
