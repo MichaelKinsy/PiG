@@ -894,7 +894,9 @@ func Main(args []string, options *MainOptions) {
 	// pig additive (D232): a --listen server skips D175's GOGC 400 start, because resident memory across many sessions is its objective.
 	if (runMode == appModePrint || runMode == appModeJSON || runMode == appModeRPC) && flags.Listen == "" {
 		// pig additive (D175): print, json and rpc runs collect at GOGC 400 unless the environment sets GOGC, and at 100 again past 64 MiB live.
-		gcpolicy.Apply()
+		stopGCPolicy = gcpolicy.Apply()
+		// Deferred after stopProfiles, so it runs first: the exit record counts no watcher.
+		defer stopGCPolicy()
 	}
 	// pig additive (D232): a --listen server skips the rpc cap of 1 P, because one process runs many sessions.
 	if runMode == appModeRPC && flags.Listen == "" {

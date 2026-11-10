@@ -10,6 +10,7 @@ import (
 	"os"
 	"runtime/debug"
 	"runtime/metrics"
+	"sync"
 	"time"
 )
 
@@ -26,13 +27,22 @@ const (
 )
 
 // Apply sets the GC target unless the environment sets GOGC, which debug.SetGCPercent would otherwise override. It then
-// watches the live heap until a read finds more than FallbackLiveBytes, which restores DefaultPercent.
-func Apply() {
+// watches the live heap until a read finds more than FallbackLiveBytes, which restores DefaultPercent. The watcher is a goroutine
+// the caller owns: the returned stop ends it and waits until it has returned, and is a no-op when the watcher already ended (the
+// fallback fired, or GOGC is set). stop leaves the GC percent as it is and may be called more than once and from any goroutine.
+// A process calls it where it drains its other owned work, before the exit record counts goroutines.
+func Apply() (stop func()) {
 	if _, set := os.LookupEnv("GOGC"); set {
-		return
+		return func() {}
 	}
 	debug.SetGCPercent(TargetPercent)
-	go watchLiveHeap()
+	quit, done := make(chan struct{}), make(chan struct{})
+	go watchLiveHeap(quit, done)
+	var once sync.Once
+	return func() {
+		once.Do(func() { close(quit) })
+		<-done
+	}
 }
 
 // watchLiveHeap polls the runtime's metrics until one read finds more than FallbackLiveBytes live. The live heap changes only when a
@@ -43,12 +53,19 @@ func Apply() {
 // The wait doubles from minPoll to maxPoll while no collection has finished. An idle process then fires one timer a second, which
 // costs about 4 more voluntary context switches a second than a process without the watcher (273 against 39-46 in 60 s, 4-CPU
 // Linux container); a run that collects often reads every minPoll.
-func watchLiveHeap() {
+func watchLiveHeap(quit <-chan struct{}, done chan<- struct{}) {
+	defer close(done)
 	sample := []metrics.Sample{{Name: "/gc/heap/live:bytes"}, {Name: "/gc/cycles/total:gc-cycles"}}
 	var cycles uint64
 	wait := minPoll
+	timer := time.NewTimer(wait)
+	defer timer.Stop()
 	for {
-		time.Sleep(wait)
+		select {
+		case <-quit:
+			return
+		case <-timer.C:
+		}
 		metrics.Read(sample)
 		if sample[0].Value.Uint64() > FallbackLiveBytes {
 			debug.SetGCPercent(DefaultPercent)
@@ -59,5 +76,6 @@ func watchLiveHeap() {
 		} else {
 			wait = min(2*wait, maxPoll)
 		}
+		timer.Reset(wait)
 	}
 }
