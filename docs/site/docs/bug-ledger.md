@@ -533,6 +533,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-4ff1a44](#bf-4ff1a44) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-4ffcd59](#bf-4ffcd59) | An extension autocomplete provider that watches its abort signal no longer sees it fire when the user types a… | PiG's own defect | All platforms | Unreleased |
 | [BF-50233fd](#bf-50233fd) | An `env` SSH command that runs past its timeout now receives SIGTERM, as in Pi, instead of SIGKILL, and the… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-5043738](#bf-5043738) | Windows: installing a plugin from npm extracts the packed tarball with a relative archive name, so the `tar`… | A Pi defect that PiG fixed first | Windows | Unreleased |
 | [BF-504869b](#bf-504869b) | The MCP client uses JavaScript's `trim()` and `\s` where Pi does: in stdio and Streamable HTTP blank-line and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-504869b-2](#bf-504869b-2) | MCP response headers are read as Node's `fetch` returns them, one Latin-1 character per byte | PiG's own defect | All platforms | 0.5.0 |
 | [BF-504869b-3](#bf-504869b-3) | A JSON-RPC number id is a JavaScript number | PiG's own defect | All platforms | 0.5.0 |
@@ -9058,6 +9059,22 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `d4e4a82ed9` (2026-10-08), `50233fd0d4` (2026-10-10)
 - **Tests:** `coding/cli/session_replacement_interactive_test.go::TestInteractiveExtensionNewSessionKeepsTheCallerAliveUntilItReturns`, `coding/cli/session_resume_ui_test.go::TestInteractiveResumeIntoAnUntrustedProjectPromptsForTrust`, `coding/cli/session_resume_ui_test.go::TestInteractiveResumeWithAMissingCWDShowsPisStatuses`, `env/ssh_known_hosts_semantics_test.go::TestConcurrentHostKeyChangesToOneFileAreAppliedOneAtATime`, `env/ssh_timeout_test.go::TestRunSshTimeoutTerminatesTheChildAndFailsWithoutWaitingForItsOutputToClose`, `internal/codingagent/interactive_runtime_host_test.go::TestNewInteractiveModeRoutesSessionWorkThroughItsRuntimeHost`, `internal/codingagent/interactive_runtime_host_test.go::TestNewInteractiveModeWithoutRuntimeHostCannotImport`
 - **Release note:** An `env` SSH command that runs past its timeout now receives SIGTERM, as in Pi, instead of SIGKILL, and the operation fails as soon as the timeout expires, even when a process started by `ssh` keeps its output open.
+
+### BF-5043738
+
+**Windows: installing a plugin from npm extracts the packed tarball with a relative archive name, so the `tar`…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D616)
+- **Symptom:** Windows: installing a plugin from npm extracts the packed tarball with a relative archive name, so the `tar` of Git for Windows (which reads `C:\...` as a file on host `C`) no longer fails with "Cannot connect to C: resolve failed".
+- **Root cause:** Pi (packages/chord/src/node/plugins/install.ts:248-249) passes tar the absolute archive path join(packed, basename). GNU tar reads "C:\..." as the file "..." on a host "C" ("Cannot connect to C: resolve failed"), so InstallPlugin of an npm package failed on Windows whenever Git for Windows' tar preceded System32 bsdtar in PATH (TestInstallPluginInstallsAnNpmPackageHereALocalTarballIntoRootName, red in the dispatched runs 42551386817, 42570233321, 42621762307 and 42725996591). unpack already runs tar in the pack directory; it now names the archive ./<basename>.
+- **User impact:** An operation failed or was rejected
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** Pi's install names the archive relative to the pack directory.
+- **Fix commits:** `5043738f10` (2026-11-09)
+- **Tests:** `chord/nextnode/plugins/plugins_install_tar_test.go::TestInstallPluginNamesTheTarballToTarRelativeToThePackDirectory`, `chord/nextnode/plugins/plugins_install_test.go::TestInstallPluginInstallsAnNpmPackageHereALocalTarballIntoRootName`
+- **Release note:** Windows: installing a plugin from npm extracts the packed tarball with a relative archive name, so the `tar` of Git for Windows (which reads `C:\...` as a file on host `C`) no longer fails with "Cannot connect to C: resolve failed". Pi passes the absolute path and fails there (D616, owner approved 2026-11-10).
 
 ### BF-504869b
 
@@ -29078,6 +29095,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D605 | The server's two hosts serve one union: `Host.Delegate` one way, the Node host's destination the other | [BF-D605](#bf-d605) |
 | D607 | The plugins component loads hosts through a Node subprocess it starts: Pi's `evaluate`, `stack` and runtime… | deliberate difference |
 | D608 | A client surface is built after the server's listen: `NewWebSurface`/`NewTuiSurface` return at once and… | deliberate difference |
+| D616 | An npm tarball is extracted with `tar` told the archive relative to the pack directory, where Pi passes its… | [BF-5043738](#bf-5043738) |
 
 ## Fix-titled commits that are not bugs in a release
 
