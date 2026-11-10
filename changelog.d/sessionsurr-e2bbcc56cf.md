@@ -1,0 +1,3 @@
+### Fixed
+
+- A lone UTF-16 surrogate now keeps its unit through the coding paths that still went through `encoding/json`, which writes it as U+FFFD, where Pi's `JSON.stringify` and `JSON.parse` keep it: the text blocks of an extension's `sendUserMessage` (the persisted user message), the `tool_call` and `tool_result` input a handler sees and the arguments an edited call runs with, a `context` handler's change to such a message, the `entry_appended` event's usage entry (now the exact session-line bytes, with `<`, `>` and `&` literal), an `extension_ui_response` string value, the text of an RPC command field that a template literal coerces (`Model not found: …`, a non-string `bash` command), and the Go RPC client's typed decode of a response. <!-- fix: e2bbcc56cf -->
