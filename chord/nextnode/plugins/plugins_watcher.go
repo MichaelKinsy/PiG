@@ -40,6 +40,11 @@ import (
 // the code of the host's own sources does; a file event enters one through the batch's section (state.Batch.UseSection),
 // as a timer does. close does not wait for the goroutine (it may run in a section the goroutine is waiting to enter): join
 // does, after the section.
+//
+// Pi's libuv watches a path with FSEvents on macOS, so the watch of a directory moved away and back goes on; fsnotify's kqueue
+// watches the directory itself, ends that watch with the rename, and holds the directory again, when it is back, for its own
+// removal and rename alone (a "partial" watch: the notifier's PartialWatches). keepWatches adds such a directory again (one
+// `Add`), when an event names it.
 
 // PluginsState is the marks: plugins to rebuild, plugins to install, whether to discover again, whether base code changed.
 // Its value as a JSON watchable is the object `{ dirty, install, set, base }`.
