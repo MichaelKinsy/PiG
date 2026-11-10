@@ -6419,5 +6419,26 @@
    "old": "\t\tif err != nil {\n",
    "new": "\t\tif err == nil {\n"
   }
+ ],
+ "packages/coding-agent/src/cli/auth-terminal.ts": [
+  {
+   "file": "coding/cli/auth_terminal.go",
+   "old": "case char == 0x7f || char == '\\b':",
+   "new": "case char == 0x7f:"
+  }
+ ],
+ "packages/coding-agent/src/core/extensions/pi-ai-extension-view.ts": [
+  {
+   "file": "extensions/sdk/type_schema.go",
+   "old": "update(schema, map[string]any{\"~optional\": true}, nil)",
+   "new": "update(schema, map[string]any{\"~optional\": false}, nil)"
+  }
+ ],
+ "packages/coding-agent/src/utils/web-url.ts": [
+  {
+   "file": "internal/weburl/weburl.go",
+   "old": "return parsed.Href, true",
+   "new": "return parsed.Href + \"/\", true"
+  }
  ]
 }
