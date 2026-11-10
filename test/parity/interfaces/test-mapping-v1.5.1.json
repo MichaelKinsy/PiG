@@ -3542,9 +3542,9 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:c4504c3907461a64a0723c44b88443e19c1ec8477210fd52384dc6579d6f5565",
       "evidence": [
-        "chord/nextnode/app/app_surfaces_test.go"
+        "chord/nextnode/tui/tui_kit_upstream_test.go"
       ],
-      "rationale": "The one upstream case (`serves a signed-in launcher its start, the base bundle and the scripts; the base hash to anyone`) is nextnode/app/app_surfaces_test.go:TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone: start 401 without a token and {base, script, combined} with the owner token, the public base hash, a CommonJS base bundle, the plugin script `chordFacet(...)`, the combined file equal to it without its source map, and a terminal plugin importing an asset by URL failing its build with `assets by URL are for browser builds`. The plugin is Pi's linesPlugin; the fixtures are the vendored ones."
+      "rationale": "The one upstream case (`serves a signed-in launcher its start, the base bundle and the scripts; the base hash to anyone`) is nextnode/tui/tui_kit_upstream_test.go:TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone, with the same name and assertions."
     },
     {
       "path": "packages/chord/test/node/surfaces/web.test.ts",
