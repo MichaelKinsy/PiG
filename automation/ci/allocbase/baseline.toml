@@ -2371,7 +2371,7 @@ allocs = 166
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkCopilotAccountAvailability"
-allocs = 910
+allocs = 364
 
 [[benchmark]]
 package = "./internal/codingagent"
