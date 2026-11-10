@@ -137830,8 +137830,8 @@
       ],
       "evidence": [
         "test:chord/next/tui/tui_scope_release_test.go#TestAHoldersOwnReleaseBeforeTheScopesWatchStartsEndsQuietly",
-        "test:chord/next/tui/tui_scope_test.go#TestADeliveryInFlightWhenDisposeRunsEndsBeforeDisposeReturns",
-        "test:chord/next/tui/tui_scope_test.go#TestOptimisticAddReturnsTheResultOfItsCall"
+        "test:chord/next/tui/tui_scope_test.go#TestAChangedThatDisposesItsOwnScopeReturnsAndNothingFollows",
+        "test:chord/next/tui/tui_scope_test.go#TestADeliveryInFlightWhenDisposeRunsEndsBeforeDisposeReturns"
       ]
     },
     {
@@ -137852,8 +137852,8 @@
       ],
       "evidence": [
         "test:chord/next/tui/tui_scope_release_test.go#TestAHoldersOwnReleaseBeforeTheScopesWatchStartsEndsQuietly",
-        "test:chord/next/tui/tui_scope_test.go#TestADeliveryInFlightWhenDisposeRunsEndsBeforeDisposeReturns",
-        "test:chord/next/tui/tui_scope_test.go#TestOptimisticAddReturnsTheResultOfItsCall"
+        "test:chord/next/tui/tui_scope_test.go#TestAChangedThatDisposesItsOwnScopeReturnsAndNothingFollows",
+        "test:chord/next/tui/tui_scope_test.go#TestADeliveryInFlightWhenDisposeRunsEndsBeforeDisposeReturns"
       ]
     },
     {
@@ -137874,8 +137874,8 @@
       ],
       "evidence": [
         "test:chord/next/tui/tui_scope_release_test.go#TestAHoldersOwnReleaseBeforeTheScopesWatchStartsEndsQuietly",
-        "test:chord/next/tui/tui_scope_test.go#TestADeliveryInFlightWhenDisposeRunsEndsBeforeDisposeReturns",
-        "test:chord/next/tui/tui_scope_test.go#TestOptimisticAddReturnsTheResultOfItsCall"
+        "test:chord/next/tui/tui_scope_test.go#TestAChangedThatDisposesItsOwnScopeReturnsAndNothingFollows",
+        "test:chord/next/tui/tui_scope_test.go#TestADeliveryInFlightWhenDisposeRunsEndsBeforeDisposeReturns"
       ]
     },
     {
