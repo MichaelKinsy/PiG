@@ -1,6 +1,9 @@
 package surfaces
 
 import (
+	"fmt"
+	"os"
+	"runtime/pprof"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -15,9 +18,25 @@ func spin(d time.Duration) {
 	}
 }
 
-// A follower stopped at once, before the server answers its pick watch, ends quietly. The pick watch is made on a goroutine of its
-// own: the test waits for those goroutines to end, so a panic there (the review probe's "Watch is stopped") takes the test binary
-// down inside the test instead of after it.
+// stopWithin runs stop and ends the test binary, with every goroutine's stack, when it has not returned in a minute. A Stop that
+// waits for a callback that holds the host's loop is a deadlock of the loop, so the test's own cleanup (it closes the host through
+// the same loop) would hang behind it: t.Fatal would only move the hang to the go test timeout.
+func stopWithin(what string, stop func()) {
+	done := make(chan struct{})
+	go func() { defer close(done); stop() }()
+	select {
+	case <-done:
+	case <-time.After(time.Minute):
+		_ = pprof.Lookup("goroutine").WriteTo(os.Stderr, 1)
+		fmt.Fprintf(os.Stderr, "FAIL: %s did not return: a callback of the follower's pick watch blocks the host's loop\n", what)
+		os.Exit(1)
+	}
+}
+
+// A follower stopped at once, before the server answers its pick watch, ends quietly. The pick watch's start is a microtask of the
+// host's loop (WatchThen) that Stop races with at every moment of the bind: each Stop is bounded (stopWithin), and the test waits
+// for the surfaces goroutines to end, so a panic there (the review probe's "Watch is stopped") takes the test binary down inside
+// the test instead of after it.
 func TestStoppingAFollowerBeforeItsPickWatchBindsEndsQuietly(t *testing.T) {
 	notes := notesEnDe(t)
 	client, closeAll := languageSetup(t, notes)
@@ -28,7 +47,7 @@ func TestStoppingAFollowerBeforeItsPickWatchBindsEndsQuietly(t *testing.T) {
 			t.Fatal(err)
 		}
 		spin(time.Duration(i%13) * 20 * time.Microsecond)
-		follower.Stop()
+		stopWithin("a language follower's Stop", follower.Stop)
 	}
 	noSurfacesGoroutines(t)
 }
@@ -41,7 +60,7 @@ func TestStoppingAThemeFollowerBeforeItsPickWatchBindsEndsQuietly(t *testing.T) 
 			t.Fatal(err)
 		}
 		spin(time.Duration(i%13) * 20 * time.Microsecond)
-		follower.Stop()
+		stopWithin("a theme follower's Stop", follower.Stop)
 	}
 	noSurfacesGoroutines(t)
 }

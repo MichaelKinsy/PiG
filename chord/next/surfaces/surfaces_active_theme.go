@@ -94,17 +94,17 @@ func FollowActiveTheme(h host.Host, mode string, changed func(Theme), ctx contex
 		return nil, err
 	}
 	addStop(choice.Release)
-	//portlint:allow asyncorder active-theme.ts:44 `choice.pick.watch(ctx).then(start, () => {})` is not awaited: the pick follows once its hold binds, and the stop gate (gate, stopped) orders it against Stop
-	go func() {
-		watch, err := choice.Member("pick").Watch(ctx)
+	// The pick follows once its hold binds, from the microtask that opens its watch in the turn that binds the hold (Pi:
+	// `choice.pick.watch(ctx).then(start, () => {})`, not awaited): a change of the pick after the bind is a frame of the
+	// watch. The hold ending (the follower stopped) before its first value is no error.
+	choice.Member("pick").WatchThen(ctx, func(watch chord.WatchHandle[delta.JsonValue], err error) {
 		if err != nil {
-			// The hold ended (the follower stopped) before its first value.
 			return
 		}
 		gate.Lock()
 		defer gate.Unlock()
 		if stopped.Load() {
-			_, _ = watch.Stop()
+			// Nothing here may block (it is a microtask of the host's loop): Stop's cancel() aborts this watch, and the hold's release ends it.
 			return
 		}
 		addStop(func() { _, _ = watch.Stop() })
@@ -123,7 +123,7 @@ func FollowActiveTheme(h host.Host, mode string, changed func(Theme), ctx contex
 				return nil
 			})
 		})
-	}()
+	})
 	return &ThemeFollower{
 		SetMode: func(next string) {
 			mu.Lock()

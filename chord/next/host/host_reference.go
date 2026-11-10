@@ -793,41 +793,83 @@ func notReady(message string) error {
 // watch is a watch of `member` that ends when this reference is released, through its member (`referenceSource`): opened
 // at once once it has a value (its last one while its object is not live, frames again when it is); before its first
 // value it waits for its object's (`firstValues`: through failures, until the reference ends or ctx aborts). It blocks,
-// outside a section.
+// outside a section, for a member that never had a value: Pi's `await ref.member.watch(ctx)`, whose watch is opened by the
+// microtask that resumes after `firstValues`, in the turn that bound the reference, whenever the caller resumes. The checks
+// and a member that has a value are synchronous, inside the caller's section if it is in one (a derive's compute is
+// refused by the batch, as a synchronous throw).
 func (b *binding) watch(member string, ctx context.Context) (*chord.Watch[delta.JsonValue], error) {
-	var err error
 	var source *referenceSource
+	var opened *keyedPromise[*chord.Watch[delta.JsonValue]]
+	var watch *chord.Watch[delta.JsonValue]
+	var err error
 	b.loop.Run(func() {
-		// Checked here too: a constant's own watch has no batch to check. A released reference fails below.
-		if b.state.kind != bindingReleased {
-			if err = b.state.batch.AssertOutside("watch"); err != nil {
-				return
-			}
+		if source, err = b.watchSource(member); err != nil {
+			return
 		}
-		source, err = b.memberSource(member)
+		if !source.unbound() {
+			watch, err = b.openMemberWatch(source, ctx)
+			return
+		}
+		opened = newKeyedPromise[*chord.Watch[delta.JsonValue]](b.loop)
+		b.openWhenBound(source, ctx, opened.settle)
 	})
-	if err != nil {
-		return nil, err
+	if opened == nil {
+		return watch, err
 	}
-	// Never had a value: it waits for its object's, as before the first binding.
-	var wait bool
-	b.loop.Run(func() { wait = source.unbound() })
-	if wait {
-		if err = b.awaitFirstValues(ctx); err != nil {
+	return opened.await(ctx)
+}
+
+// watchThen is `watch(member, ctx).then(then, then)` of Pi's `async watch`, called inside a section: then gets the watch, or
+// nil and the error, as a microtask of the loop. A member that never had a value waits for its object's (`await
+// firstValues`), and the watch is opened by the microtask that resumes after it: in the turn that bound the reference,
+// before any section a link's frame starts, so a frame that arrives later reaches the watch (a watch's value is the
+// member's when it was opened, and a listener gets only the frames after it). A caller that resumes from a goroutine of
+// its own opens it after whatever section came between, and that section's change is folded into the value it never reads.
+func (b *binding) watchThen(member string, ctx context.Context, then func(*chord.Watch[delta.JsonValue], error)) {
+	settled := func(watch *chord.Watch[delta.JsonValue], err error) { b.loop.Queue(func() { then(watch, err) }) }
+	source, err := b.watchSource(member)
+	if err != nil {
+		settled(nil, err)
+		return
+	}
+	if !source.unbound() {
+		settled(b.openMemberWatch(source, ctx))
+		return
+	}
+	b.openWhenBound(source, ctx, settled)
+}
+
+// watchSource is the synchronous start of Pi's `async watch`: the checks, and the member's source.
+func (b *binding) watchSource(member string) (*referenceSource, error) {
+	// Checked here too: a constant's own watch has no batch to check. A released reference fails below.
+	if b.state.kind != bindingReleased {
+		if err := b.state.batch.AssertOutside("watch"); err != nil {
 			return nil, err
 		}
 	}
-	var watch *chord.Watch[delta.JsonValue]
-	b.loop.Run(func() {
-		if watch, err = source.OpenWatch(ctx); err != nil {
-			return
-		}
-		watch, err = b.follow(watch)
-	})
+	return b.memberSource(member)
+}
+
+// openMemberWatch is `this.follow(source.openWatch(context))`.
+func (b *binding) openMemberWatch(source *referenceSource, ctx context.Context) (*chord.Watch[delta.JsonValue], error) {
+	watch, err := source.OpenWatch(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return watch, nil
+	return b.follow(watch)
+}
+
+// openWhenBound is `if (source.unbound) await this.firstValues(context)` and the open after it, for a member that never had
+// a value: it waits for its object's, as before the first binding. The microtask that resumes after the wait opens the
+// watch and calls then with it (or with the wait's error), still in that turn.
+func (b *binding) openWhenBound(source *referenceSource, ctx context.Context, then func(*chord.Watch[delta.JsonValue], error)) {
+	b.firstValues(ctx).then(func(_ struct{}, err error) {
+		if err != nil {
+			then(nil, err)
+			return
+		}
+		then(b.openMemberWatch(source, ctx))
+	})
 }
 
 // firstValues resolves once its object's members have values (its first binding, for a watch on a reference that never
@@ -1162,6 +1204,27 @@ func (m *ReferenceMember) Watch(ctx context.Context) (chord.WatchHandle[delta.Js
 		return nil, err
 	}
 	return watch, nil
+}
+
+// WatchThen is `member.watch(ctx).then(then, then)`, not awaited (Pi's followers of a held reference: `choice.pick.watch(ctx).then(start,
+// () => {})`): it returns at once, and then gets the watch, or nil and the error (the reference was released, or ctx
+// aborted, before its first value), as a microtask of the host's loop. For a reference not bound yet that is the turn that
+// binds it, before any section a link's frame starts, so every change of the member after that bind reaches the watch's
+// listener: a goroutine that calls Watch and starts the result opens it after whatever section came first, whose change the
+// watch then holds as its value, which a follower that only listens never reads. then runs inside a section of the loop: it
+// must not block, and nothing it calls may wait for the loop or for a watch to end. In particular it does not call the
+// watch's Stop: Stop waits for the watch to close, and a watch whose ctx was cancelled closes only after its abort entered the
+// loop, which the callback holds. A callback that must end the watch cancels its ctx or releases the reference instead.
+func (m *ReferenceMember) WatchThen(ctx context.Context, then func(watch chord.WatchHandle[delta.JsonValue], err error)) {
+	m.binding.loop.Run(func() {
+		m.binding.watchThen(m.member, ctx, func(watch *chord.Watch[delta.JsonValue], err error) {
+			if err != nil {
+				then(nil, err)
+				return
+			}
+			then(watch, nil)
+		})
+	})
 }
 
 // source is the provider's member: a source or a constant.

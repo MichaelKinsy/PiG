@@ -7648,6 +7648,29 @@
       ]
     },
     {
+      "id": "BF-2e95347",
+      "title": "Chord's active-language and active-theme followers could miss the user's pick for good: the pick's watch was…",
+      "symptom": "Chord's active-language and active-theme followers could miss the user's pick for good: the pick's watch was opened from a goroutine after the hold bound, so a pick chosen in between (a language picked right after the page loaded) was folded into the watch's first value, which the follower never reads, and the page kept the device's language until the next change.",
+      "rootCause": "Pi's `async watch(member, ctx)` waits for `firstValues` and opens the watch in the microtask that resumes after it, so the watch is open in the turn that binds the reference and every later change of the member is a frame of it. The Go `Watch` opened it from the caller's goroutine, through three sections of its own: a frame a link delivered between the bind and the open (the principal's pick, chosen right after the hold bound) was folded into the watch's value, which a follower that only listens never reads. The language follower then never saw \"fr\" after choose(\"fr\") (portmap-8 CI, ~1 in 6400 under load).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord's active-language and active-theme followers could miss the user's pick for good: the pick's watch was opened from a goroutine after the hold bound, so a pick chosen in between (a language picked right after the page loaded) was folded into the watch's first value, which the follower never reads, and the page kept the device's language until the next change. A watch of a member that never had a value is now opened in the turn that binds its reference, as in Pi, and the followers start the pick watch from it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2e95347143",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "chord/next/host/host_reference_watch_then_test.go::TestAMemberWatchOfAReferenceNotBoundYetIsOpenInTheTurnThatBindsIt",
+        "chord/next/host/host_reference_watch_then_test.go::TestAMemberWatchThenOfAReferenceEndedBeforeItsFirstValueGetsTheError"
+      ]
+    },
+    {
       "id": "BF-2ea8ad2",
       "title": "The openai-completions, openai-responses and openrouter-images requests build their URL as the openai SDK…",
       "symptom": "The openai-completions, openai-responses and openrouter-images requests build their URL as the openai SDK does (base query rewritten through qs, one slash dropped, WHATWG normalisation) and a URL with credentials is refused as fetch refuses it (\"Connection error.\"), where Pig sent the credentials as Basic auth.",

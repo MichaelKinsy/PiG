@@ -290,6 +290,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-2d99958](#bf-2d99958) | A terminal's reply to the startup color query now applies the colors and ends the startup wait before the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2deefc0](#bf-2deefc0) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-2e8dcc1](#bf-2e8dcc1) | A Node extension loaded in a TUI could lose `ctx.ui` (every widget, status and footer call became a no-op)… | PiG's own defect | All platforms | Unreleased |
+| [BF-2e95347](#bf-2e95347) | Chord's active-language and active-theme followers could miss the user's pick for good: the pick's watch was… | PiG's own defect | All platforms | Unreleased |
 | [BF-2ea8ad2](#bf-2ea8ad2) | The openai-completions, openai-responses and openrouter-images requests build their URL as the openai SDK… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2f7f692](#bf-2f7f692) | Chord's surfaces: a language or theme follower stopped before its pick watch bound no longer crashes the… | PiG's own defect | All platforms | Unreleased |
 | [BF-2f7f692-2](#bf-2f7f692-2) | Chord's `TuiScope`: a holder that releases its own `Hold`en reference before the scope's watch of its state… | PiG's own defect | All platforms | Unreleased |
@@ -5705,6 +5706,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `2e8dcc1eea` (2026-11-07)
 - **Tests:** `test/extension-conformance/host_surface_test.go::TestSetWidgetRendererAcrossSDKs`
 - **Release note:** A Node extension loaded in a TUI could lose `ctx.ui` (every widget, status and footer call became a no-op) when the host's state update reached it while it was handling the ready frame, because the update applied before the older state of the ready frame, which then replaced it. The queued update is now applied only after the ready state.
+
+### BF-2e95347
+
+**Chord's active-language and active-theme followers could miss the user's pick for good: the pick's watch was…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Chord's active-language and active-theme followers could miss the user's pick for good: the pick's watch was opened from a goroutine after the hold bound, so a pick chosen in between (a language picked right after the page loaded) was folded into the watch's first value, which the follower never reads, and the page kept the device's language until the next change.
+- **Root cause:** Pi's `async watch(member, ctx)` waits for `firstValues` and opens the watch in the microtask that resumes after it, so the watch is open in the turn that binds the reference and every later change of the member is a frame of it. The Go `Watch` opened it from the caller's goroutine, through three sections of its own: a frame a link delivered between the bind and the open (the principal's pick, chosen right after the hold bound) was folded into the watch's value, which a follower that only listens never reads. The language follower then never saw "fr" after choose("fr") (portmap-8 CI, ~1 in 6400 under load).
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2e95347143` (2026-11-09)
+- **Tests:** `chord/next/host/host_reference_watch_then_test.go::TestAMemberWatchOfAReferenceNotBoundYetIsOpenInTheTurnThatBindsIt`, `chord/next/host/host_reference_watch_then_test.go::TestAMemberWatchThenOfAReferenceEndedBeforeItsFirstValueGetsTheError`
+- **Release note:** Chord's active-language and active-theme followers could miss the user's pick for good: the pick's watch was opened from a goroutine after the hold bound, so a pick chosen in between (a language picked right after the page loaded) was folded into the watch's first value, which the follower never reads, and the page kept the device's language until the next change. A watch of a member that never had a value is now opened in the turn that binds its reference, as in Pi, and the followers start the pick watch from it.
 
 ### BF-2ea8ad2
 
