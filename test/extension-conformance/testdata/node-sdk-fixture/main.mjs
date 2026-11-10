@@ -931,6 +931,7 @@ export default function (pi) {
       await new Promise((resolve) => { const timer = setTimeout(resolve, 8000); event.signal.aborted ? resolve() : event.signal.addEventListener("abort", () => { clearTimeout(timer); resolve(); }, { once: true }); });
       aborted = event.signal.aborted;
     }
+    if (mode === "first") ctx.ui.notify(`event_signal:${name}:notified`, "info");
     const state = `event_signal:${mode}:${aborted}`;
     return name === "session_before_compact" ? { compaction: { summary: state, firstKeptEntryId: "k", tokensBefore: 1 } } : { label: state };
   }); } });

@@ -1533,6 +1533,10 @@ func Extension() *sdk.Extension {
 				}
 				aborted = hctx.Err() != nil
 			}
+			if mode == "first" {
+				// Pi's handler runs ordinary host calls after the abort (custom-compaction.ts notifies first): the notification must reach the host.
+				hctx.Notify("event_signal:"+name+":notified", "info")
+			}
 			state := fmt.Sprintf("event_signal:%s:%t", mode, aborted)
 			if name == "session_before_compact" {
 				return map[string]any{"compaction": map[string]any{"summary": state, "firstKeptEntryId": "k", "tokensBefore": 1}}, nil

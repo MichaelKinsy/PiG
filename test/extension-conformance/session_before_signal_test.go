@@ -92,6 +92,13 @@ func TestSessionBeforeSignalReachesEverySDKWhenAbortedDuringDispatch(t *testing.
 							if want := fmt.Sprintf("event_signal:%s:true", mode); event.state(decoded) != want {
 								t.Fatalf("%s handler reported %q (result %s), want %q", mode, event.state(decoded), encoded, want)
 							}
+							if mode == "first" {
+								// Pi's handler dispatched after the abort runs ordinary host calls (examples/extensions/custom-compaction.ts notifies on its first line): the abort reaches it as event.signal, and its notification reaches the host.
+								notified := "event_signal:" + event.name + ":notified:info"
+								pollUntilConformance(t, "the handler's notification, sent after the abort, never reached the host", func() bool {
+									return slices.Contains(h.ui.Recorded(), notified)
+								})
+							}
 						})
 					}
 				})

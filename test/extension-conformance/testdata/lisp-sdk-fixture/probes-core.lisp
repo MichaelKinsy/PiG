@@ -698,11 +698,10 @@
                                         (mode (let ((m (pig:jget source "customInstructions"))) (if (stringp m) m "")))
                                         (aborted (pig:ctx-cancelled-p hctx)))
                                    (when (equal mode "wait")
-                                     ;; The abort can reach the handler while this notification is in flight, and it then ends with its request (host-call-cancelled); the handler goes on to report its signal.
-                                     (handler-case (core-info hctx (format nil "event_signal:~A:entered" name))
-                                       (pig:host-call-cancelled () nil))
+                                     (core-info hctx (format nil "event_signal:~A:entered" name))
                                      (pig:ctx-wait-cancelled hctx 8)
                                      (setf aborted (pig:ctx-cancelled-p hctx)))
+                                   (when (equal mode "first") (core-info hctx (format nil "event_signal:~A:notified" name)))
                                    (let ((state (format nil "event_signal:~A:~A" mode (if aborted "true" "false"))))
                                      (if (equal name "session_before_compact")
                                          (pig:obj "compaction" (pig:obj "summary" state "firstKeptEntryId" "k" "tokensBefore" 1))

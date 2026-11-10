@@ -4220,6 +4220,9 @@ fn main() {
                     }
                     aborted = hctx.is_cancelled();
                 }
+                if mode == "first" {
+                    hctx.notify(&format!("event_signal:{event}:notified"), "info");
+                }
                 let state = format!("event_signal:{mode}:{aborted}");
                 if event == "session_before_compact" {
                     Ok(Some(serde_json::json!({"compaction": {"summary": state, "firstKeptEntryId": "k", "tokensBefore": 1}})))

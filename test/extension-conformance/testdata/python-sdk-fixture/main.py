@@ -2531,6 +2531,8 @@ def new_extension() -> pig_sdk.Extension:
                 while not hctx.is_cancelled() and time.monotonic() < deadline:
                     time.sleep(0.005)
                 aborted = hctx.is_cancelled()
+            if mode == "first":
+                hctx.notify("event_signal:%s:notified" % name, "info")
             state = "event_signal:%s:%s" % (mode, str(aborted).lower())
             if name == "session_before_compact":
                 return {"compaction": {"summary": state, "firstKeptEntryId": "k", "tokensBefore": 1}}
