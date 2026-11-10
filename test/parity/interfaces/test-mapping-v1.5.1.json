@@ -2735,7 +2735,7 @@
         "chord/next/host/host_facet_test.go",
         "chord/next/host/host_spans_test.go"
       ],
-      "rationale": "All 5 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
+      "rationale": "All 6 upstream cases (602b8d1cb9 adds \"parses a script's map at the first position looked up in it\", TestStackParsesAScriptsMapAtTheFirstPositionLookedUpInIt) run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
     },
     {
       "path": "packages/chord/test/host/follow.test.ts",
@@ -3767,9 +3767,10 @@
       "evidence": [
         "chord/nextnode/workers/workers_base_held_linux_test.go#TestTheWorkerBaseAStartWaitsForAHeldBuildAndForksOnceItEndedTheStartDataIsAskedForThen",
         "chord/nextnode/workers/workers_workers_test.go#TestTheWorkerBaseAStartWaitsForTheBasesBuildAndStartsItWhenNothingDid",
-        "chord/nextnode/workers/workers_base_close_test.go#TestTheWorkerBaseCloseKeepsTheBasesCopyUntilItsWorkersExitedACloserStillFindsItsProgram"
+        "chord/nextnode/workers/workers_base_close_test.go#TestTheWorkerBaseCloseKeepsTheBasesCopyUntilItsWorkersExitedACloserStillFindsItsProgram",
+        "chord/nextnode/workers/workers_workers_test.go#TestTheWorkerBaseForksWithoutEnableSourceMapsNodeParsesNoMapOfTheBaseWhoseMapsLieBesideItsFiles"
       ],
-      "rationale": "284e63d9c: a start waits for the base's build and starts it when nothing did, and the close keeps the base's files until its workers exited; ported as the three tests. Pi-only: the held pipe is the entry (D600/D603)."
+      "rationale": "284e63d9c: a start waits for the base's build and starts it when nothing did, and the close keeps the base's files until its workers exited; ported as the three tests. 602b8d1cb9: \"forks without --enable-source-maps\" is ported as the fork's arguments being ExecArgv verbatim (a Go worker has no source maps and never had the flag; its base's maps lie beside no files). Pi-only: the held pipe is the entry (D600/D603)."
     },
     {
       "path": "packages/chord/test/output-skip.test.ts",

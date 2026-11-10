@@ -1007,8 +1007,8 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/node/tui/launcher.ts` | `chord/nextnode/tui/tui_launcher.go`, `chord/nextnode/tui/tui_terminal.go` (the launcher's process terminal: TerminalOptions input and output, raw mode and resize; chord/nextnode/tui/tui_terminal_test.go, tui_terminal_pty_linux_test.go) | ✅ |
 | `packages/chord/src/node/tui/pipe.ts` | `chord/nextnode/tui/tui_pipe.go` | ✅ |
 | `packages/chord/src/node/tui/sandbox.ts` | `chord/nextnode/tui/tui_sandbox.go` | ✅ |
-| `packages/chord/src/node/workers/base.ts` | `(designed out, D600 draft: a Go worker is the program's own executable; no esbuild worker base; rows/chord-reload-workers.md)` | n/a |
-| `packages/chord/src/node/workers/child.ts` | `(designed out, D600 draft: a Go worker is the program's own executable; no esbuild worker base; rows/chord-reload-workers.md)` | n/a |
+| `packages/chord/src/node/workers/base.ts` | `(language mechanics: Pi bundles the worker's JavaScript with esbuild, writes the ES modules with their source maps beside them (linked, 602b8d1cb9) and forks Node on them; a Go worker is the program's own executable, copied by chord/nextnode/workers Build, with no JavaScript bundle, source map or Node flag; Go stack traces are Go's whatever Pi's maps are)` | n/a |
+| `packages/chord/src/node/workers/child.ts` | `(language mechanics: the worker side of a Node fork, importable without esbuild; a Go worker is the program's own executable, whose WorkerMain is chord/nextnode/workers, and links no esbuild: chord/nextnode/workers TestTheWorkersPackageLinksNoEsbuild)` | n/a |
 | `packages/chord/src/react/hooks.ts` | `chord/nextnode/surfaces/client/pi/chord/src/react/hooks.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/react/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
 | `packages/chord/src/react/stores.ts` | `chord/nextnode/surfaces/client/pi/chord/src/react/stores.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
