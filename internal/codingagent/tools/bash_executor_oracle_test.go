@@ -125,14 +125,14 @@ func (s scriptedBashOperations) Exec(_ context.Context, _, _ string, options Bas
 	return BashOperationsResult{ExitCode: s.scenario.ExitCode}, nil
 }
 
-// executeBashWithOperations (core/bash-executor.ts) against pinned Pi over 900 seeded scripted runs: chunk boundaries inside multi-byte characters and escape sequences, ANSI and OSC sequences, carriage returns, NUL and other control bytes, invalid UTF-8, a leading byte-order mark, outputs from empty to 260 KB (past the 50 KB spill to a file and the 100 KB rolling window), more than 2000 lines, aborts before, during and after the output, error throws, null and nonzero exit codes. Compared: every onChunk call, the result and the spilled file's content.
-func TestExecuteBashWithOperationsMatchesPi(t *testing.T) {
-	scenarios := bashExecScenarios()
+// runBashExecutorOracle runs the scenarios through pinned Pi's executeBashWithOperations; nodeArgs go before the script.
+func runBashExecutorOracle(t *testing.T, scenarios []bashExecScenario, nodeArgs ...string) []bashExecOutcome {
+	t.Helper()
 	input, err := json.Marshal(scenarios)
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.CommandContext(t.Context(), "node", "testdata/bash_executor.mjs", pigversion.UpstreamPackageVersion)
+	cmd := exec.CommandContext(t.Context(), "node", append(nodeArgs, "testdata/bash_executor.mjs", pigversion.UpstreamPackageVersion)...)
 	cmd.Stdin = bytes.NewReader(input)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
@@ -144,6 +144,30 @@ func TestExecuteBashWithOperationsMatchesPi(t *testing.T) {
 	if err := json.Unmarshal(output, &want); err != nil {
 		t.Fatal(err)
 	}
+	return want
+}
+
+// Pi's executor ends its output stream without awaiting it, so the spilled file is complete only once that stream has closed. The oracle reports the file after the close, not after the size stops changing: on a loaded disk (here a shim that pauses halfway through every write) a file that has stopped growing for a moment is not finished, and reading it then compares PiG's complete file against a prefix of Pi's.
+func TestBashExecutorOracleReadsPiFileAfterItsStreamCloses(t *testing.T) {
+	text := strings.Repeat("x", 59999) + "\n"
+	var chunks []string
+	for rest := []byte(text); len(rest) > 0; rest = rest[min(20000, len(rest)):] {
+		chunks = append(chunks, hex.EncodeToString(rest[:min(20000, len(rest))]))
+	}
+	code := 0
+	want := runBashExecutorOracle(t, []bashExecScenario{{Chunks: chunks, AbortAfter: -2, UseSignal: true, ExitCode: &code}}, "--import", "./testdata/slow_fs_writes.mjs")
+	switch file := want[0].File; {
+	case file == nil:
+		t.Error("oracle reported no file")
+	case *file != text:
+		t.Errorf("oracle file has %d bytes, want all %d", len(*file), len(text))
+	}
+}
+
+// executeBashWithOperations (core/bash-executor.ts) against pinned Pi over 900 seeded scripted runs: chunk boundaries inside multi-byte characters and escape sequences, ANSI and OSC sequences, carriage returns, NUL and other control bytes, invalid UTF-8, a leading byte-order mark, outputs from empty to 260 KB (past the 50 KB spill to a file and the 100 KB rolling window), more than 2000 lines, aborts before, during and after the output, error throws, null and nonzero exit codes. Compared: every onChunk call, the result and the spilled file's content.
+func TestExecuteBashWithOperationsMatchesPi(t *testing.T) {
+	scenarios := bashExecScenarios()
+	want := runBashExecutorOracle(t, scenarios)
 	mismatches, spilled, truncated, cancelled, thrown := 0, 0, 0, 0, 0
 	for i, scenario := range scenarios {
 		ctx, cancel := context.WithCancel(t.Context())
