@@ -123,13 +123,15 @@ func TestFireworksModels(t *testing.T) {
 			assertCatalogJSON(t, GetSupportedThinkingLevels(mustGeneratedModel(t, "fireworks", tc.id).ToModel()), tc.want)
 		})
 	}
-	// .upstream/v0.99.1/packages/ai/test/fireworks-models.test.ts:162
-	t.Run("keeps toggle-only Messages models without a verified fallback on budget-based thinking", func(t *testing.T) {
-		m := mustGeneratedModel(t, "fireworks", "accounts/fireworks/models/nemotron-3-ultra-nvfp4")
-		if m.Compat.ForceAdaptiveThinking != nil {
+	// .upstream/v1.5.1/packages/ai/test/fireworks-models.test.ts:162 (Pi 647a197fc: the live catalog no longer lists a toggle-only Messages model, so Pi uses the fixed createFireworksModel fixture)
+	t.Run("keeps non-adaptive Messages models on budget-based thinking", func(t *testing.T) {
+		compat := &AnthropicMessagesCompat{AllowEmptySignature: new(true), SendSessionAffinityHeaders: new(true), SupportsEagerToolInputStreaming: new(false), SupportsCacheControlOnTools: new(false), SupportsLongCacheRetention: new(false)}
+		if compat.ForceAdaptiveThinking != nil {
 			t.Fatal("unexpected forceAdaptiveThinking")
 		}
-		p := fireworksCatalogPayload(t, m.ID, StreamOptions{Thinking: ThinkingLevelHigh})
+		model := &Model{ID: "accounts/fireworks/models/kimi-k2p6", DisplayName: "Kimi K2.6", Capabilities: ModelCapabilities{MaxThinking: ThinkingLevelHigh, ContextWindow: 262000, MaxOutputTokens: 262000}, Input: []string{"text", "image"}, ProviderMeta: ProviderMetadata{ProviderID: "fireworks", API: APIAnthropicMessages, BaseURL: "http://127.0.0.1:0", Reasoning: true}}
+		provider := NewAnthropicProvider(AnthropicConfig{APIKey: "test-fireworks-key", Model: model.ID, ModelMetadata: model, ProviderID: "fireworks", BaseURL: "http://127.0.0.1:0", Compat: compat})
+		p := captureCatalogPayload(t, provider, StreamOptions{Thinking: ThinkingLevelHigh, IsReasoning: true, MaxTokens: 262000})
 		assertCatalogJSON(t, p["thinking"], `{"type":"enabled","budget_tokens":16384,"display":"summarized"}`)
 		if _, ok := p["output_config"]; ok {
 			t.Fatalf("payload = %v", p)
@@ -143,9 +145,9 @@ func TestFireworksModels(t *testing.T) {
 			t.Fatal(got)
 		}
 	})
-	// .upstream/v0.99.1/packages/ai/test/fireworks-models.test.ts:189
+	// .upstream/v1.5.1/packages/ai/test/fireworks-models.test.ts:190 (Pi 647a197fc: deepseek-v4p1-flash replaces the removed Nemotron model)
 	t.Run("sets Fireworks-specific compat for session affinity and unsupported tool fields", func(t *testing.T) {
-		c := mustGeneratedModel(t, "fireworks", "accounts/fireworks/models/nemotron-3-ultra-nvfp4").Compat
+		c := mustGeneratedModel(t, "fireworks", "accounts/fireworks/models/deepseek-v4p1-flash").Compat
 		if c == nil || c.SendSessionAffinityHeaders == nil || !*c.SendSessionAffinityHeaders || c.SupportsEagerToolInputStreaming == nil || *c.SupportsEagerToolInputStreaming || c.SupportsCacheControlOnTools == nil || *c.SupportsCacheControlOnTools || c.SupportsLongCacheRetention == nil || *c.SupportsLongCacheRetention || c.AllowEmptySignature == nil || !*c.AllowEmptySignature {
 			t.Fatalf("compat = %+v", c)
 		}
