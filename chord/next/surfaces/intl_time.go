@@ -136,6 +136,12 @@ func (o TimeOptions) slot() (int, error) {
 // `{timeStyle: "short"}`). nil options is that default; lang nil is the platform's default locale. The zone is the
 // process's (time.Local), as a `Date`'s is in Node.
 func FormatTime(lang *Language, at time.Time, options *TimeOptions) (string, error) {
+	return formatClock(lang, at.Local(), options)
+}
+
+// formatClock is FormatTime with the zone already chosen: the clock it prints is at's own in at's location. FormatTime
+// passes the process's; a test that compares against Node's fixed zone passes UTC without rewriting the process-global time.Local.
+func formatClock(lang *Language, at time.Time, options *TimeOptions) (string, error) {
 	// pig divergence (D464): a closed option type over generated tables, not Intl's open options.
 	// pig divergence (D465): a time.Time for Pi's `Date | number | string`.
 	opts := TimeOptions{TimeStyle: TimeStyleShort}
@@ -166,7 +172,7 @@ func FormatTime(lang *Language, at time.Time, options *TimeOptions) (string, err
 		locale = intlTimeLocaleData[li]
 	}
 	pattern := &intlTimePatterns[intlTimeRows[locale.row][column]]
-	hour, minute, second := at.Local().Clock()
+	hour, minute, second := at.Clock()
 	var buf [64]byte
 	return string(pattern.appendTime(buf[:0], locale.zero, hour, minute, second)), nil
 }

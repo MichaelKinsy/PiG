@@ -248,9 +248,6 @@ func TestTimesMatchNode(t *testing.T) {
 	node := driftNode(t)
 	r := driftSeed(t)
 	t.Setenv("LC_ALL", "en_US.UTF-8")
-	oldLocal := time.Local
-	time.Local = time.UTC
-	t.Cleanup(func() { time.Local = oldLocal })
 	styles := []TimeStyle{"", TimeStyleShort, TimeStyleMedium}
 	fields := []FieldStyle{"", FieldNumeric, FieldTwoDigit}
 	n := driftCases(t)
@@ -264,7 +261,7 @@ func TestTimesMatchNode(t *testing.T) {
 			c.Locale = &locale
 		}
 		c.MS = r.Int64N(4_000_000_000_000) // 1970 to 2096
-		c.at = time.UnixMilli(c.MS)
+		c.at = time.UnixMilli(c.MS).UTC()
 		c.Options = map[string]any{"timeZone": "UTC"}
 		o := TimeOptions{TimeStyle: styles[r.IntN(3)], Hour: fields[r.IntN(3)], Minute: fields[r.IntN(3)], Second: fields[r.IntN(3)]}
 		if r.IntN(3) != 0 {
@@ -291,7 +288,7 @@ func TestTimesMatchNode(t *testing.T) {
 			for minute := range 24 * 60 {
 				ms := time.Date(2026, 6, 15, minute/60, minute%60, minute%60, 0, time.UTC).UnixMilli()
 				o := shape
-				c := driftCase{Kind: "time", Locale: &locale, MS: ms, at: time.UnixMilli(ms), timeOptions: &o, Options: map[string]any{"timeZone": "UTC"}}
+				c := driftCase{Kind: "time", Locale: &locale, MS: ms, at: time.UnixMilli(ms).UTC(), timeOptions: &o, Options: map[string]any{"timeZone": "UTC"}}
 				for k, v := range map[string]string{"timeStyle": string(o.TimeStyle), "hour": string(o.Hour), "minute": string(o.Minute), "second": string(o.Second)} {
 					if v != "" {
 						c.Options[k] = v
@@ -308,7 +305,7 @@ func TestTimesMatchNode(t *testing.T) {
 		if c.Locale != nil {
 			lang = &Language{Locale: *c.Locale}
 		}
-		got, err := FormatTime(lang, c.at, c.timeOptions)
+		got, err := formatClock(lang, c.at, c.timeOptions)
 		if !sameAsNode(got, err, want[i]) && bad < 30 {
 			bad++
 			t.Errorf("time %s %d %v: go %q (%v), node %+v", driftTag(c.Locale), c.MS, c.Options, got, err, want[i])

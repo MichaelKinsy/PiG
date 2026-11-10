@@ -19,6 +19,7 @@ func client(t testing.TB) host.Host {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { closed(t, h.Close(context.Background())) })
 	if _, err := h.Load(nil, context.Background()); err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +82,14 @@ func TestPageStateIsCollectedWithItsHost(t *testing.T) {
 	type kept struct{ text string }
 	hostGone, valueGone := make(chan struct{}), make(chan struct{})
 	func() {
-		created := client(t)
+		// Not client(t): its cleanup would keep the host reachable until the test ends.
+		created, err := host.CreateHost(host.HostOptions{OnError: func(host.HostError) {}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := created.Load(nil, context.Background()); err != nil {
+			t.Fatal(err)
+		}
 		value := &kept{"oat mi"}
 		PageStateOf(created, "draft", value)
 		closed(t, created.Close(context.Background()))

@@ -81,6 +81,7 @@ func connectUserWith(t testing.TB, server host.Host, id string, plugins []host.H
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { closed(t, client.Close(bg)) })
 	if report, err := client.Load(plugins, bg); err != nil || len(report.Failed) != 0 {
 		t.Fatalf("client load: %v %v", err, report.Failed)
 	}
