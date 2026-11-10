@@ -646,7 +646,9 @@ func (s *Scheduler) reserve(then func([]*reservation, error)) {
 		if err := s.endRegion(tx); err != nil {
 			return err
 		}
-		ticks++
+		// The pass is Pi 1.5.1's `await this.#planCandidates()` (scheduler.ts), an async function around the decision region: the region's
+		// tick, then the async function's return, one tick more than the `await this.#region(...)` the pass was before.
+		ticks += 2
 		defer func() { tx.ticks = ticks }()
 		var snapshot Snapshot
 		for _, id := range s.runnable.Values() {
