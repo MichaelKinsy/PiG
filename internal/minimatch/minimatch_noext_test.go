@@ -31,6 +31,14 @@ func TestMatchNoExtKeepsExtglobsLiteral(t *testing.T) {
 		{"@()", "@()", true},
 		{"a/b", "a/**", true},
 		{"a", "a/**", false},
+		// Rows that differ in one portion are not merged into `@(a|b)`, which noext would read as text: mergeRows is skipped.
+		{"x/a.ts", "x/{*.ts,*.js}", true},
+		{"x/b.js", "x/{*.ts,*.js}", true},
+		{"x/@(*.ts|*.js)", "x/{*.ts,*.js}", false},
+		{"x/c.md", "x/{*.ts,*.js}", false},
+		{"x/a.ts", "x/{*.ts,*.js}/y", false},
+		{"a/k.ts", "{a,b}/*.ts", true},
+		{"b/k.ts", "{a,b}/*.ts", true},
 	} {
 		if got := Match(tc.name, tc.pattern, Options{NoExt: true, Dot: true}); got != tc.want {
 			t.Errorf("Match(%q, %q, noext) = %v, want %v", tc.name, tc.pattern, got, tc.want)

@@ -324,9 +324,9 @@ func classEnd(pattern []rune, start int) int {
 	return -1
 }
 
-// literal is the string a path portion pattern matches if it has no magic, and whether that is so. It can report magic for a pattern that is in fact literal (eg, `[]`), but never the reverse, so a string result is always safe to compare directly.
-func literal(pattern string, noext bool) (string, bool) {
-	if !noext && pattern == "+()" || pattern == "@()" {
+// literal is the string a path portion pattern matches if it has no magic, and whether that is so. It can report magic for a pattern that is in fact literal (eg, `[]`), but never the reverse, so a string result is always safe to compare directly. Minimatch's `noext` option also stops it reporting an extglob as magic; with noext the matcher reads an extglob as text and answers the same, so no option is passed here (TestMatchNoExtKeepsExtglobsLiteral).
+func literal(pattern string) (string, bool) {
+	if pattern == "+()" || pattern == "@()" {
 		return pattern, true
 	}
 	p := []rune(pattern)
@@ -361,7 +361,7 @@ func literal(pattern string, noext bool) (string, bool) {
 			}
 			lit = append(lit, body...)
 			i = closing
-		case !noext && indexRune("+@!", c) >= 0 && i+1 < len(p) && p[i+1] == '(' && indexRuneFrom(p, ')', i+2) >= 0:
+		case indexRune("+@!", c) >= 0 && i+1 < len(p) && p[i+1] == '(' && indexRuneFrom(p, ')', i+2) >= 0:
 			return "", false
 		default:
 			lit = append(lit, c)
@@ -422,7 +422,7 @@ func (m *Minimatch) parse(pattern string) portion {
 	if pattern == "" {
 		return portion{}
 	}
-	lit, isLit := literal(pattern, m.options.NoExt)
+	lit, isLit := literal(pattern)
 	// in nocase mode, a literal with cased chars still needs a matcher.
 	if isLit && (!m.nocase || jsstring.ToUpper(pattern) == jsstring.ToLower(pattern)) {
 		return portion{s: lit}

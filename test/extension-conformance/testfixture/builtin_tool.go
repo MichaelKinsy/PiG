@@ -170,7 +170,8 @@ func builtinProbeSpec(c builtinProbeCase, log *builtinCallLog) (definition func(
 			// The deprecated ReadFile member builds and is ignored: it is not announced and never called.
 			options.Operations = &sdk.GrepOperations{
 				IsDirectory: func(path string) (bool, error) { log.add("isDirectory:%s", path); return true, nil },
-				ReadFile:    func(path string) (string, error) { log.add("readFile:%s", path); return "", nil },
+				//lint:ignore SA1019 the row proves the deprecated member is accepted and never called
+				ReadFile: func(path string) (string, error) { log.add("readFile:%s", path); return "", nil }, //nolint:staticcheck // SA1019: the row proves the deprecated member is accepted and never called.
 			}
 		}
 		return func() (sdk.BuiltinToolDefinition, error) { return sdk.CreateGrepToolDefinition(cwd, options) },
