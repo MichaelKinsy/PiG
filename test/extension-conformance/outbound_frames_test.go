@@ -29,7 +29,7 @@ type frameCheck struct {
 	deepDeltas map[string]int
 	// signalCancels counts the signal-only cancel frames (CancelPayload.SignalOnly) the host wrote.
 	signalCancels int
-	failures   []string
+	failures      []string
 	// keep names the events whose request frames are kept as written, by extension: kept[extName+"\x00"+event].
 	keep map[string]bool
 	kept map[string][][]byte
