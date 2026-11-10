@@ -1,6 +1,6 @@
 {
-  "piVersion": "1.5.0+77959d66",
-  "node": "v26.12.1",
+  "piVersion": "1.5.1",
+  "node": "v24.22.2",
   "cases": [
     {
       "fixture": "tool",
@@ -12,35 +12,35 @@
         ],
         [
           "push:toolcall_start",
-          4
+          5
         ],
         [
           "push:toolcall_delta",
-          4
+          5
         ],
         [
           "deliver:toolcall_start",
-          7
-        ],
-        [
-          "push:toolcall_end",
-          7
-        ],
-        [
-          "push:done",
           8
         ],
         [
-          "deliver:toolcall_delta",
+          "push:toolcall_end",
+          8
+        ],
+        [
+          "push:done",
           9
         ],
         [
+          "deliver:toolcall_delta",
+          10
+        ],
+        [
           "deliver:toolcall_end",
-          11
+          12
         ],
         [
           "deliver:done",
-          13
+          14
         ]
       ],
       "stopReason": "toolUse",
@@ -56,107 +56,107 @@
         ],
         [
           "push:thinking_start",
-          7
+          8
         ],
         [
           "push:thinking_delta",
-          7
+          8
         ],
         [
           "deliver:thinking_start",
-          10
+          11
         ],
         [
           "push:thinking_delta",
-          10
+          11
         ],
         [
           "deliver:thinking_delta",
-          12
+          13
         ],
         [
           "push:thinking_end",
-          13
-        ],
-        [
-          "push:text_start",
-          13
-        ],
-        [
-          "push:text_delta",
-          13
-        ],
-        [
-          "deliver:thinking_delta",
           14
         ],
         [
-          "deliver:thinking_end",
-          16
+          "push:text_start",
+          14
         ],
         [
           "push:text_delta",
-          16
+          14
+        ],
+        [
+          "deliver:thinking_delta",
+          15
+        ],
+        [
+          "deliver:thinking_end",
+          17
+        ],
+        [
+          "push:text_delta",
+          17
         ],
         [
           "deliver:text_start",
-          18
+          19
         ],
         [
           "push:text_end",
-          19
+          20
         ],
         [
           "push:toolcall_start",
-          19
+          20
         ],
         [
           "push:toolcall_delta",
-          19
-        ],
-        [
-          "deliver:text_delta",
           20
         ],
         [
           "deliver:text_delta",
-          22
+          21
+        ],
+        [
+          "deliver:text_delta",
+          23
         ],
         [
           "push:toolcall_delta",
-          22
+          23
         ],
         [
           "deliver:text_end",
-          24
+          25
         ],
         [
           "deliver:toolcall_start",
-          26
+          27
         ],
         [
           "deliver:toolcall_delta",
-          28
+          29
         ],
         [
           "deliver:toolcall_delta",
-          30
-        ],
-        [
-          "push:toolcall_end",
           31
         ],
         [
-          "push:done",
+          "push:toolcall_end",
           32
         ],
         [
+          "push:done",
+          33
+        ],
+        [
           "deliver:toolcall_end",
-          34
+          35
         ],
         [
           "deliver:done",
-          36
+          37
         ]
       ],
       "stopReason": "toolUse",
@@ -172,91 +172,91 @@
         ],
         [
           "push:text_start",
-          4
+          5
         ],
         [
           "push:text_delta",
-          4
+          5
         ],
         [
           "deliver:text_start",
-          7
+          8
         ],
         [
           "push:text_end",
-          7
+          8
         ],
         [
           "push:toolcall_start",
-          7
+          8
         ],
         [
           "push:toolcall_delta",
-          7
+          8
         ],
         [
           "push:toolcall_start",
-          7
+          8
         ],
         [
           "push:toolcall_delta",
-          7
+          8
         ],
         [
           "deliver:text_delta",
-          9
-        ],
-        [
-          "push:toolcall_delta",
           10
         ],
         [
-          "deliver:text_end",
+          "push:toolcall_delta",
           11
         ],
         [
+          "deliver:text_end",
+          12
+        ],
+        [
           "deliver:toolcall_start",
-          13
+          14
         ],
         [
           "deliver:toolcall_delta",
-          15
-        ],
-        [
-          "push:toolcall_end",
           16
         ],
         [
           "push:toolcall_end",
-          16
+          17
+        ],
+        [
+          "push:toolcall_end",
+          17
         ],
         [
           "deliver:toolcall_start",
-          17
+          18
         ],
         [
           "push:done",
-          17
+          18
         ],
         [
           "deliver:toolcall_delta",
-          19
+          20
         ],
         [
           "deliver:toolcall_delta",
-          21
+          22
         ],
         [
           "deliver:toolcall_end",
-          23
+          24
         ],
         [
           "deliver:toolcall_end",
-          25
+          26
         ],
         [
           "deliver:done",
-          27
+          28
         ]
       ],
       "stopReason": "toolUse",
@@ -272,43 +272,43 @@
         ],
         [
           "push:text_start",
-          4
+          5
         ],
         [
           "push:text_delta",
-          4
+          5
         ],
         [
           "deliver:text_start",
-          7
+          8
         ],
         [
           "deliver:text_delta",
-          9
-        ],
-        [
-          "push:text_delta",
           10
         ],
         [
+          "push:text_delta",
+          11
+        ],
+        [
           "deliver:text_delta",
-          13
-        ],
-        [
-          "push:text_end",
-          13
-        ],
-        [
-          "push:error",
           14
         ],
         [
+          "push:text_end",
+          14
+        ],
+        [
+          "push:error",
+          15
+        ],
+        [
           "deliver:text_end",
-          16
+          17
         ],
         [
           "deliver:error",
-          18
+          19
         ]
       ],
       "stopReason": "error",
@@ -324,27 +324,27 @@
         ],
         [
           "push:text_start",
-          4
+          5
         ],
         [
           "push:text_delta",
-          4
+          5
         ],
         [
           "deliver:text_start",
-          7
-        ],
-        [
-          "push:error",
           8
         ],
         [
-          "deliver:text_delta",
+          "push:error",
           9
         ],
         [
+          "deliver:text_delta",
+          10
+        ],
+        [
           "deliver:error",
-          11
+          12
         ]
       ],
       "stopReason": "error",
@@ -360,27 +360,27 @@
         ],
         [
           "push:text_start",
-          4
+          5
         ],
         [
           "push:text_delta",
-          4
+          5
         ],
         [
           "deliver:text_start",
-          7
-        ],
-        [
-          "push:error",
           8
         ],
         [
-          "deliver:text_delta",
+          "push:error",
           9
         ],
         [
+          "deliver:text_delta",
+          10
+        ],
+        [
           "deliver:error",
-          11
+          12
         ]
       ],
       "stopReason": "error",
@@ -396,27 +396,27 @@
         ],
         [
           "push:text_start",
-          4
+          5
         ],
         [
           "push:text_delta",
-          4
+          5
         ],
         [
           "deliver:text_start",
-          7
-        ],
-        [
-          "push:error",
           8
         ],
         [
-          "deliver:text_delta",
+          "push:error",
           9
         ],
         [
+          "deliver:text_delta",
+          10
+        ],
+        [
           "deliver:error",
-          11
+          12
         ]
       ],
       "stopReason": "error",

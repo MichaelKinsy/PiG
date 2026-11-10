@@ -1,5 +1,6 @@
 import { createInterface } from "node:readline";
 import { spawn } from "child_process";
+import { Minimatch } from "../../../../minimatch/dist/esm/index.js";
 import path from "path";
 import { Type } from "../../../../typebox.mjs";
 import { ensureTool } from "../../utils/tools-manager.js";
@@ -129,7 +130,7 @@ export function createFindToolDefinition(cwd, options) {
                             settle(() => reject(new Error("fd is not available and could not be downloaded")));
                             return;
                         }
-                        const args = ["--glob", "--color=never", "--hidden"];
+                        const args = ["--color=never", "--hidden"];
                         // fd normally ignores .gitignore outside git repos, so keep --no-require-git
                         // there. Inside repos, use fd's default git-aware behavior so parent
                         // .gitignore rules stop at nested repo boundaries:
@@ -147,22 +148,46 @@ export function createFindToolDefinition(cwd, options) {
                         }
                         if (!insideGitRepo)
                             args.push("--no-require-git");
-                        // One result past the limit tells "exactly N matches" apart from "more than N" (#7121).
-                        args.push("--max-results", String(effectiveLimit + 1));
                         // fd --glob matches against the basename unless --full-path is set; in --full-path
                         // mode it matches against the absolute candidate path, so a path-containing
                         // pattern like 'src/**/*.spec.ts' needs a leading '**/' to match anything.
-                        let effectivePattern = pattern;
-                        if (pattern.includes("/")) {
-                            args.push("--full-path");
-                            if (!pattern.startsWith("/") && !pattern.startsWith("**/") && pattern !== "**") {
-                                effectivePattern = `**/${pattern}`;
-                            }
-                            // fd matches full paths using native separators on Windows.
-                            if (process.platform === "win32")
-                                effectivePattern = effectivePattern.replaceAll("/", String.raw `[/\\]`);
+                        // On Windows `\` is a path separator, so native patterns like 'src\**\*.ts' are
+                        // normalized to '/' (#9262). On POSIX `\` stays a glob escape character.
+                        let effectivePattern = process.platform === "win32" ? pattern.replaceAll("\\", "/") : pattern;
+                        const isPathPattern = effectivePattern.includes("/");
+                        if (isPathPattern &&
+                            !effectivePattern.startsWith("/") &&
+                            !effectivePattern.startsWith("**/") &&
+                            effectivePattern !== "**") {
+                            effectivePattern = `**/${effectivePattern}`;
                         }
-                        args.push("--", effectivePattern, searchPath);
+                        // fd before 10.5.1 never matches --full-path globs on Windows, and workarounds for that
+                        // break on fd 10.5.1 (sharkdp/fd#2067). pi cannot rely on either fd version, so on
+                        // Windows fd lists every entry and minimatch matches path patterns. The options keep
+                        // fd's glob behavior: `*` matches dotfiles, `+(a|b)` is literal, and an all-lowercase
+                        // pattern matches case-insensitively (smart case). A trailing '/**' becomes '/**/*'
+                        // because minimatch's 'src/**' also matches 'src' itself and fd's does not.
+                        const windowsPathMatcher = process.platform === "win32" && isPathPattern
+                            ? new Minimatch(effectivePattern.replace(/\/\*\*$/, "/**/*"), {
+                                dot: true,
+                                noext: true,
+                                nocase: effectivePattern === effectivePattern.toLowerCase(),
+                            })
+                            : undefined;
+                        if (windowsPathMatcher) {
+                            args.push("--", "", searchPath);
+                        }
+                        else {
+                            // One result past the limit tells "exactly N matches" apart from "more than N" (#7121).
+                            args.push("--glob", "--max-results", String(effectiveLimit + 1));
+                            if (isPathPattern)
+                                args.push("--full-path");
+                            args.push("--", effectivePattern, searchPath);
+                        }
+                        // An abort during the .git lookup above already rejected the call, but there was no
+                        // child to stop yet. Do not start fd.
+                        if (signal?.aborted)
+                            return;
                         const child = spawn(fdPath, args, { stdio: ["ignore", "pipe", "pipe"] });
                         const rl = createInterface({ input: child.stdout });
                         let stderr = "";
@@ -188,8 +213,13 @@ export function createFindToolDefinition(cwd, options) {
                             const line = rawLine.replace(/\r$/, "").trim();
                             if (!line)
                                 return;
+                            if (windowsPathMatcher && !windowsPathMatcher.match(line))
+                                return;
                             if (resultCount === effectiveLimit) {
                                 resultLimitReached = true;
+                                // Without --max-results, fd keeps listing after the limit.
+                                if (windowsPathMatcher)
+                                    stopChild?.();
                                 return;
                             }
                             const result = relativizeFindResultPath(line, searchPath);

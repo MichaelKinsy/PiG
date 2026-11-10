@@ -815,6 +815,8 @@ function composeModelProvider(providerId, base, modelConfig, extension) {
     auth: { ...apiKey ? { apiKey } : {}, ...oauth ? { oauth } : {} },
     getModels: /* @__PURE__ */ __name(() => getAllModels().filter((model) => isModelType2(model, "chat")), "getModels"),
     getAllModels,
+    // Extension hooks read context.credential, so they need the default credential refresh.
+    refreshModelsAuth: extension?.refreshModels || extension?.oauth?.modifyModels ? void 0 : base?.refreshModelsAuth,
     refreshModels: base?.refreshModels || extension?.refreshModels || extension?.oauth?.modifyModels ? async (context) => {
       await base?.refreshModels?.(context);
       let refreshed;
@@ -962,6 +964,8 @@ function withRemoteCatalog(provider, catalogBaseUrl = DEFAULT_CATALOG_BASE_URL, 
     ...provider,
     getModels: /* @__PURE__ */ __name(() => mergeModels(provider.getModels(), dynamicModels.filter((model) => isModelType3(model, "chat"))), "getModels"),
     getAllModels: /* @__PURE__ */ __name(() => mergeModels(provider.getAllModels?.() ?? provider.getModels(), dynamicModels), "getAllModels"),
+    // pi.dev serves the catalog, so a stale provider login must not block or fail its refresh.
+    refreshModelsAuth: "configured",
     refreshModels: /* @__PURE__ */ __name(async (context) => {
       const stored = context.stored;
       const restored = remoteModels(stored, localGeneratedAt).filter((model) => model.provider === provider.id);
