@@ -1423,7 +1423,8 @@ func (r *relayed) Transported() {
 }
 
 // WorkerLoaded blocks until the latest worker of an address key finished its `host.load`, which the relay does not
-// await (`void host.load(...)`): the worker serves its facet's objects from then on.
+// await (`void host.load(...)`): the worker serves its facet's objects from then on, and `reload` runs after it (a
+// worker's `Reload` before this returns fails with "reload runs after load", whatever the tab already saw of it).
 func (r *relayed) WorkerLoaded(t testing.TB, key string) {
 	t.Helper()
 	loaded, ok := r.loads.Load(key)
@@ -1451,7 +1452,8 @@ func (r *relayed) Resolves() []string {
 	return append([]string(nil), r.resolves...)
 }
 
-// Worker is the worker host of an address key (the latest).
+// Worker is the worker host of an address key (the latest). It may still be loading: wait with WorkerLoaded before a
+// call that needs it loaded.
 func (r *relayed) Worker(key string) Host {
 	worker, _ := r.Workers.Load(key)
 	host, _ := worker.(Host)

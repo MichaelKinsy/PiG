@@ -22336,6 +22336,34 @@
       "tests": []
     },
     {
+      "id": "BF-81a9b76",
+      "title": "Releasing a session's services no longer leaves the model selector's catalog refresh running",
+      "symptom": "The refresh the selector starts and the shared catalog operation behind it were not joined by anything, so with a file-backed registry the operation could still write `auth.json` and `models-store.json` in the agent directory after the registry's model tasks were closed.",
+      "rootCause": "- the registry runs the shared operation as a model task, so CloseModelTasks cancels and joins it, and a closed registry returns an aborted result; - the selector's refresh is a task of its runtime's ModelSelectorTaskOwner, which the interactive mode backs with its background tasks, so Run's teardown cancels and joins it, including the runtime call it raced with the selector's signal; Dispose still cancels from the constructor's return.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Releasing a session's services no longer leaves the model selector's catalog refresh running. Before, the refresh the selector starts and the shared catalog operation behind it were not joined by anything, so with a file-backed registry the operation could still write `auth.json` and `models-store.json` in the agent directory after the registry's model tasks were closed. The selector's refresh is now an owned task of the interactive mode, which cancels and joins it when the mode shuts down, and the operation behind it is a task of the model registry, which cancels and joins it when the session's services are released (for example on session replacement); at quit the process exits, as Pi's does. The refresh result and the picker are unchanged.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "81a9b7614b",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/model_selector_refresh_owned_test.go::TestAbandonedModelCatalogRefreshIsJoinedByRegistryClose",
+        "internal/codingagent/model_selector_refresh_owned_test.go::TestModelCatalogRefreshAfterRegistryCloseIsAborted",
+        "internal/codingagent/model_selector_refresh_owned_test.go::TestModelSelectorRefreshDoesNotOutliveShutdown",
+        "tui/model_selector_owner_test.go::TestModelSelectorDisposeBeforeTheOwnerStartsTheTask",
+        "tui/model_selector_owner_test.go::TestModelSelectorRefreshIsJoinedByItsTaskOwner",
+        "tui/model_selector_owner_test.go::TestModelSelectorWaitJoinsItsOwnRefresh",
+        "tui/model_selector_owner_test.go::TestModelSelectorWithAShutDownOwnerShowsNoRefreshStatus"
+      ]
+    },
+    {
       "id": "BF-81e1a45",
       "title": "Streaming a tool call's arguments allocates less per delta",
       "symptom": "Streaming a tool call's arguments allocates less per delta.",
@@ -37145,6 +37173,28 @@
       "commitsFrom": "release note",
       "tests": [
         "internal/codingagent/cache_warmer_format_oracle_test.go::TestCacheWarmerPureFunctionsMatchPi"
+      ]
+    },
+    {
+      "id": "BF-d856f4a",
+      "title": "`host.Registry` with a short `ReadyTimeout` no longer fails \"did not become live\" when the machine delays the…",
+      "symptom": "`host.Registry` with a short `ReadyTimeout` no longer fails \"did not become live\" when the machine delays the waiting goroutine past the deadline: in Pi the wait's publication, lookup and first usable check run before any timer, so the deadline reports why the registry cannot be read (`contract_mismatch` for a version the provider cannot serve, `unavailable/undeclared` for a registry nobody serves).",
+      "rootCause": "host.Registry armed its deadline, then left the wait to a goroutine: the publication, the value lookup and the first usable() check. In Pi those are microtasks that run before any timer, so a deadline can only report the last reason the registry was unusable. In Go a loaded machine could run the deadline's section before the goroutine looked, and the wait failed \"did not become live\" instead of contract_mismatch or unavailable/undeclared (main's TestOlderReadersWithoutAValueMapping... failed that way on CI).",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`host.Registry` with a short `ReadyTimeout` no longer fails \"did not become live\" when the machine delays the waiting goroutine past the deadline: in Pi the wait's publication, lookup and first usable check run before any timer, so the deadline reports why the registry cannot be read (`contract_mismatch` for a version the provider cannot serve, `unavailable/undeclared` for a registry nobody serves). A deadline that finds the host published and the first check not yet made now lets that check run first.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d856f4a399",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "chord/next/host/host_registry_readers_test.go::TestReadersAHostRegistryWhoseDeadlineElapsedBeforeItsFirstLookReportsWhyTheRegistryIsNotUsable"
       ]
     },
     {

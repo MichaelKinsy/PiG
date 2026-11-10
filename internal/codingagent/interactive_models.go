@@ -40,6 +40,25 @@ func (m *InteractiveMode) scopedModelItems(items []tui.ModelSelectorItem) []tui.
 type modelSelectorRuntime struct {
 	m        *InteractiveMode
 	registry *ModelRegistry
+	// ctx is the lifetime of the selector's caller: the selector's refresh ends with it.
+	ctx context.Context
+}
+
+// StartModelSelectorTask is where Pi's unawaited `void this.refreshModels()` (model-selector.ts:162) lives in the interactive mode: an owned background task that ends when the selector's caller or the session shuts down, and that the session's shutdown joins with the other background tasks. A mode that is already shutting down admits none.
+func (r modelSelectorRuntime) StartModelSelectorTask(refresh func(context.Context)) bool {
+	background := r.m.backgroundCtx
+	if background != nil && background.Err() != nil {
+		return false
+	}
+	ctx, cancel := context.WithCancel(r.ctx)
+	r.m.backgroundTasks.Go(func() {
+		defer cancel()
+		if background != nil {
+			defer context.AfterFunc(background, cancel)()
+		}
+		refresh(ctx)
+	})
+	return true
 }
 
 func (r modelSelectorRuntime) GetAvailableSnapshot() []*ai.Model {
@@ -65,7 +84,7 @@ func (r modelSelectorRuntime) Refresh(ctx context.Context, _ ...ai.ModelsRefresh
 
 // pickModel shows the model selector until the user decides. An accepted selection stays shown and focused until the caller calls done, as Pi's showModelSelector closes the selector only once setModel settles (interactive-mode.ts:5313-5320). Meanwhile its cancel closes it, and another selection is applied after the pending one, as Pi's selectModel starts another setModel.
 func (m *InteractiveMode) pickModel(ctx context.Context, initialQuery string) (spec string, accepted, persist bool, done func()) {
-	runtime := modelSelectorRuntime{m: m, registry: m.modelRegistryOrDefault()}
+	runtime := modelSelectorRuntime{m: m, registry: m.modelRegistryOrDefault(), ctx: ctx}
 	var defaultModel *tui.DefaultModelReference
 	if sm := m.opts.SettingsManager; sm != nil && sm.GetDefaultProvider() != "" && sm.GetDefaultModel() != "" {
 		defaultModel = &tui.DefaultModelReference{Provider: sm.GetDefaultProvider(), ID: sm.GetDefaultModel()}
