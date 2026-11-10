@@ -1,0 +1,394 @@
+from = "1.5.1"
+to = "1.5.2"
+
+[[files]]
+path = "packages/ai/src/api/anthropic-messages.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/anthropic_oauth_test.go#TestAnthropicClientUserAgent", "test:ai/anthropic_oauth_test.go#TestAnthropicRequestAuthShapes"]
+rationale = "Pi a05e3a077 moves claudeCodeVersion from 2.1.280 to 2.1.322 (\"Fixed Anthropic OAuth requests reporting an outdated Claude Code version\"); ai/anthropic_client.go claudeCodeVersion follows, and the OAuth user-agent cases (claude-cli/2.1.322) of TestAnthropicClientUserAgent and TestAnthropicRequestAuthShapes, with the coding and cli request-shape tables, pin it."
+
+[[files]]
+path = "packages/ai/src/utils/version.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/user_agent_version_oracle_test.go#TestUserAgentVersionFieldFollowsPi", "test:ai/user_agent_test.go#TestPiUserAgentFormat", "test:ai/identity_test.go#TestClientIdentityVersionDefaultsToTheProductVersion", "test:coding/cli/main_test.go#TestVersionStringIncludesPigAndUpstreamVersions", "test:coding/cli/main_test.go#TestVersionFlagsPrintPisVersionWhileVersionCommandNamesBoth", "test:coding/extension/host/subprocess/runtime_node_product_version_test.go#TestNodeExtensionUserAgentNamesPiGAndItsVersion", "test:coding/extension/host/subprocess/runtime_node_pi_ai_version_test.go#TestVendoredPiAiExportsThePinnedPackageVersion"]
+rationale = "The release commit moves PI_AI_VERSION from 1.5.1 to 1.5.2 (v1.5.1..v1.5.2), and the number reaches users on three surfaces. The User-Agent (pig/<ver>) and the help banner report PiG's composite release version (ai/user_agent.go ProductVersion, D65: <PiG release>+<Pi release>), which stands for Pi's constant there: TestUserAgentVersionFieldFollowsPi compares the User-Agent version field with Pi's PI_AI_VERSION default and the product version, TestPiUserAgentFormat and TestClientIdentityVersionDefaultsToTheProductVersion pin the User-Agent and the identity default, TestVersionStringIncludesPigAndUpstreamVersions pins the banner's composite version, and TestVersionFlagsPrintPisVersionWhileVersionCommandNamesBoth pins that `pig --version` prints Pi's package version, as `pi --version` does, while `pig version` names the PiG release and the pin. The PI_AI_VERSION a Node extension imports is the vendored pi-ai module's, which exports Pi's package version: runtime-node/shims/pi-dist/pi-ai/utils/version.js carries \"1.5.1\" and TestVendoredPiAiExportsThePinnedPackageVersion requires it to equal the pinned package version."
+
+[[files]]
+path = "packages/chord/src/contracts/accepts.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/contracts/contract.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/contracts/declare.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/contracts/evolve.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/contracts/fingerprint.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/contracts/host-kind.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/contracts/internal.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "Re-export barrel: the Go packages export the names directly (PORT_MAP n/a row); the names it gains are ported with their definitions."
+
+[[files]]
+path = "packages/chord/src/contracts/schema.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/documents/definition.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/documents/documents.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/documents/handles.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/documents/index.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "Re-export barrel: the Go packages export the names directly (PORT_MAP n/a row); the names it gains are ported with their definitions."
+
+[[files]]
+path = "packages/chord/src/documents/internal.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "Re-export barrel: the Go packages export the names directly (PORT_MAP n/a row); the names it gains are ported with their definitions."
+
+[[files]]
+path = "packages/chord/src/documents/keyed-slot.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/documents/persistence.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/documents/slot.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/documents/transaction.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/host/attempt.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/host/host-data.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/host/host.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/host/members.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/host/object.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/host/reference.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/node/app/app.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/node/app/archive.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/node/app/data.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/node/app/index.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "Re-export barrel: the Go packages export the names directly (PORT_MAP n/a row); the names it gains are ported with their definitions."
+
+[[files]]
+path = "packages/chord/src/node/plugins/stack.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 602b8d1cb: ported by the workers/stack commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/node/workers/base.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "Pi 602b8d1cb writes the base's source maps beside its files (sourcemap linked). A Go worker is the program's own executable (D600): there is no esbuild worker base, so no map file to link (PORT_MAP n/a row)."
+
+[[files]]
+path = "packages/chord/src/node/workers/workers.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 602b8d1cb: ported by the workers/stack commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/store/applier.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/store/archive.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/store/columns.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/store/engine.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/store/export.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/store/expression.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/store/host-column.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/store/host-data.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/store/import-migration.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/store/import.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/store/index.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "Re-export barrel: the Go packages export the names directly (PORT_MAP n/a row); the names it gains are ported with their definitions."
+
+[[files]]
+path = "packages/chord/src/store/live-query.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/store/rows.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/store/schema.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/store/step.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/store/table-changes.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/store/table-evolve.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/store/table-history.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/store/table-migration.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/chord/src/store/table.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Pi 1.5.2 host-keyed data (8a5da3ce6 feat(chord): documents and table rows can belong to a host): ported by the chord host-data commit of fix/port-152; pending that commit this row stays deferred."
+
+[[files]]
+path = "packages/coding-agent/src/core/agent-session-runtime.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/session_import_test.go#TestImportFromJsonlMissingCwdNeedsOverride"]
+rationale = "Pi 4ea883792 (#11975): importFromJsonl removes the copy it made when the session cwd check fails (a source already in the session directory is kept), so a retry with a cwd override or a fork leaves no stray s.jsonl/s-1.jsonl pair (coding/session_import.go). The ported suite case \"leaves no copy behind when an import fails on a missing session cwd\" is TestImportFromJsonlMissingCwdNeedsOverride (the failed import leaves no file; the retry opens s.jsonl, not s-1.jsonl)."
+
+[[files]]
+path = "packages/coding-agent/src/core/session-cwd.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/session_cwd_pi_test.go#TestMissingSessionCwdMessagesMatchPi", "test:internal/codingagent/session_cwd_resume_upstream_test.go#TestMissingSessionCwdOptionsNameTheCurrentCwd"]
+rationale = "Pi 4ea883792 (#11975): formatMissingSessionCwdPrompt is `Session cwd does not exist: <cwd>` and getMissingSessionCwdOptions offers Continue in <cwd> (asks again next time), Fork into <cwd> (new session ID, original kept) and Cancel (undefined); internal/codingagent/session_cwd.go FormatMissingSessionCwdPrompt, MissingSessionCwdChoice and GetMissingSessionCwdOptions, pinned by the two tests."
+
+[[files]]
+path = "packages/coding-agent/src/main.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/cli/startup_session_test.go#TestApplyMissingCWDChoiceContinuesOrForks"]
+rationale = "Pi 4ea883792 (#11975): the interactive startup prompt for a session whose cwd is gone offers Continue, Fork and Cancel; Continue opens the Session with the current cwd, Fork is forkSessionOrExit into the current cwd (coding/cli/main.go, startup_session.go applyMissingCWDChoice: new id, parentSession the original, copy stored in the current session dir, original unchanged), Cancel exits 0. TestApplyMissingCWDChoiceContinuesOrForks pins both choices; the old promptForMissingSessionCwd helper is gone."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/session_cwd_resume_upstream_test.go#TestResumeWithAMissingCwdForksIntoTheCurrentCwdAndLeavesTheOriginalUnchanged", "test:internal/codingagent/session_cwd_resume_upstream_test.go#TestResumeWithAMissingCwdContinuesTheOriginalInTheCurrentCwdWithoutWritingAFile", "test:internal/codingagent/session_cwd_resume_upstream_test.go#TestResumeWithAMissingCwdRemovesTheForkWhenAnExtensionCancelsTheSwitch", "test:internal/codingagent/session_cwd_resume_upstream_test.go#TestResumeWithAMissingCwdCreatesNoForkWhenTheUserCancels", "test:internal/codingagent/slash_session_handlers_test.go#TestImportHandlerForksIntoTheCurrentCwd"]
+rationale = "Pi 4ea883792 (#11975): promptForMissingSessionCwd is a Continue/Fork/Cancel selector and switchToForkedSession forks into the current cwd, switches, and drops the fork when an extension vetoes the switch; /resume, ctx.switchSession (resumeThroughRuntime in internal/codingagent/extension_session_replacement.go) and /import (importHandler, SlashContext.ForkSession) use it, with the statuses `Resumed session in <cwd>` and `Forked into new session <id> in <cwd>`. The four cases of interactive-mode-resume-missing-cwd.test.ts are ported with the same inputs (fork leaves the original unchanged, continue writes no file, a vetoed switch removes the fork, cancel creates none); the import-command test's type-only change needs no port."

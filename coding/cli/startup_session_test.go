@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
 func TestResolveCLIResourceFlagsAnchorsPathsToLaunchCWD(t *testing.T) {
@@ -135,6 +137,55 @@ func TestResolveStartupSessionSelectionReportsMissingStoredCWD(t *testing.T) {
 	if got.runtimeCWD != wantLaunch {
 		t.Fatalf("runtimeCWD = %q, want unchanged launch cwd %q", got.runtimeCWD, wantLaunch)
 	}
+}
+
+// Pi main.ts (#11060): Continue runs the Session in the current cwd and stores nothing; Fork copies it into the current cwd as a new
+// Session with a new id and the original as its parent, leaves the original unchanged, and opens the copy.
+func TestApplyMissingCWDChoiceContinuesOrForks(t *testing.T) {
+	setup := func(t *testing.T) (startupSessionSelection, string, string, string) {
+		launchCWD := t.TempDir()
+		sessionDir := filepath.Join(launchCWD, "current-sessions")
+		path := writeStartupSession(t, filepath.Join(launchCWD, "old-sessions"), "orphan", filepath.Join(launchCWD, "removed"))
+		got, err := resolveStartupSessionSelection(Args{Session: path}, launchCWD, "")
+		if err != nil || got.missingCWD == nil {
+			t.Fatalf("selection = %+v, %v", got, err)
+		}
+		return got, path, canonicalStartupDir(launchCWD), sessionDir
+	}
+	t.Run("continue", func(t *testing.T) {
+		got, path, launch, sessionDir := setup(t)
+		var flags Args
+		if err := got.applyMissingCWDChoice(codingagent.MissingSessionCwdContinue, &flags, sessionDir); err != nil {
+			t.Fatal(err)
+		}
+		if got.missingCWD != nil || got.runtimeCWD != launch || got.forkPath != "" || got.resumePath != path || flags.sessionCwdOverride == nil || *flags.sessionCwdOverride != launch {
+			t.Fatalf("selection = %+v, override = %v", got, flags.sessionCwdOverride)
+		}
+		if _, err := os.Stat(sessionDir); !os.IsNotExist(err) {
+			t.Fatalf("continue wrote into the session dir: %v", err)
+		}
+	})
+	t.Run("fork", func(t *testing.T) {
+		got, path, launch, sessionDir := setup(t)
+		before, _ := os.ReadFile(path)
+		var flags Args
+		if err := got.applyMissingCWDChoice(codingagent.MissingSessionCwdFork, &flags, sessionDir); err != nil {
+			t.Fatal(err)
+		}
+		if got.missingCWD != nil || got.runtimeCWD != launch || got.resumePath != "" || flags.sessionCwdOverride != nil {
+			t.Fatalf("selection = %+v", got)
+		}
+		if filepath.Dir(got.forkPath) != sessionDir || got.sessionDir != sessionDir {
+			t.Fatalf("fork %q / session dir %q, want the current session dir %q", got.forkPath, got.sessionDir, sessionDir)
+		}
+		header, err := codingagent.ReadSessionHeader(got.forkPath)
+		if err != nil || header.CWD != launch || header.ID == "orphan" || header.ParentSession != path {
+			t.Fatalf("fork header = %+v, %v", header, err)
+		}
+		if after, _ := os.ReadFile(path); string(after) != string(before) {
+			t.Fatal("the original session changed")
+		}
+	})
 }
 
 // Pi main.ts:707-721 checks every session manager that has a session file, a new Session's included: SessionManager.create gives

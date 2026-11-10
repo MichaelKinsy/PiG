@@ -703,6 +703,19 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			m.renderCurrentSessionState()
 			return false, nil
 		},
+		ForkSession: func(sourcePath, cwd string) (string, bool, error) {
+			if m.runtimeHost == nil {
+				return "", false, errors.New("Session fork is not available in this context.")
+			}
+			m.invalidatePostLoginSelection()
+			m.clearStatusIndicator("")
+			result, status, err := m.switchToForkedSession(ctx, m.commandResumeHost(), sourcePath, cwd, nil)
+			if err != nil || result.Cancelled {
+				return "", result.Cancelled, err
+			}
+			m.renderCurrentSessionState()
+			return status, false, nil
+		},
 		SwitchModel: func(spec string, settled func(error)) {
 			// An accepted pick stays focused until its change settles; then Pi's selectModel calls done() (interactive-mode.ts:5313-5325).
 			done := sc.modelSelectorDone

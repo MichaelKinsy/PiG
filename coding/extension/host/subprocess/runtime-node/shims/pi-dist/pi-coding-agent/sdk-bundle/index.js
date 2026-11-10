@@ -76,6 +76,7 @@ import {
   getLastAssistantUsage,
   getLatestCompactionEntry,
   getMissingSessionCwdIssue,
+  getMissingSessionCwdOptions,
   getResourcePathKey,
   getSourcePackageKey,
   isBashToolResult,
@@ -123,7 +124,7 @@ import {
   wrapRegisteredTools,
   writeBugReportArchive,
   writeRawStdout
-} from "./chunk-4ORGYPF2.js";
+} from "./chunk-QSKTP3Z5.js";
 import {
   CredentialSynchronizationError,
   InMemoryCodingAgentModelsStore,
@@ -15556,8 +15557,9 @@ ${message}`, ["Yes", "No"], opts, {
     return result === "Yes";
   }
   async promptForMissingSessionCwd(error) {
-    const confirmed = await this.showExtensionConfirm("Session cwd not found", formatMissingSessionCwdPrompt(error.issue));
-    return confirmed ? error.issue.fallbackCwd : void 0;
+    const options = getMissingSessionCwdOptions(error.issue);
+    const label = await this.showExtensionSelector(formatMissingSessionCwdPrompt(error.issue), options.map((option) => option.label));
+    return options.find((option) => option.label === label)?.value;
   }
   /**
    * Show a text input for extensions.
@@ -17982,24 +17984,41 @@ ${packageLines}`, 1, 0));
       return result;
     } catch (error) {
       if (error instanceof MissingSessionCwdError) {
-        const selectedCwd = await this.promptForMissingSessionCwd(error);
-        if (!selectedCwd) {
-          this.showStatus("Resume cancelled");
-          return { cancelled: true };
+        switch (await this.promptForMissingSessionCwd(error)) {
+          case "continue": {
+            const result = await this.runtimeHost.switchSession(sessionPath, {
+              cwdOverride: error.issue.fallbackCwd,
+              withSession: options?.withSession,
+              projectTrustContextFactory: /* @__PURE__ */ __name((cwd) => this.createProjectTrustContext(cwd), "projectTrustContextFactory")
+            });
+            if (!result.cancelled)
+              this.showStatus(`Resumed session in ${error.issue.fallbackCwd}`);
+            return result;
+          }
+          case "fork":
+            return this.switchToForkedSession(sessionPath, error.issue.fallbackCwd, options);
+          case void 0:
+            this.showStatus("Resume cancelled");
+            return { cancelled: true };
         }
-        const result = await this.runtimeHost.switchSession(sessionPath, {
-          cwdOverride: selectedCwd,
-          withSession: options?.withSession,
-          projectTrustContextFactory: /* @__PURE__ */ __name((cwd) => this.createProjectTrustContext(cwd), "projectTrustContextFactory")
-        });
-        if (result.cancelled) {
-          return result;
-        }
-        this.showStatus("Resumed session in current cwd");
-        return result;
       }
       return this.handleFatalRuntimeError("Failed to resume session", error);
     }
+  }
+  /** Fork a session whose stored cwd is gone into `cwd` and switch to the fork, like `--session <id>` from another project (#11060). */
+  async switchToForkedSession(sourcePath, cwd, options) {
+    const fork = SessionManager.forkFrom(sourcePath, cwd, this.sessionManager.getSessionDir());
+    const forkPath = fork.getSessionFile();
+    const result = await this.runtimeHost.switchSession(forkPath, {
+      withSession: options?.withSession,
+      projectTrustContextFactory: /* @__PURE__ */ __name((cwd2) => this.createProjectTrustContext(cwd2), "projectTrustContextFactory")
+    });
+    if (result.cancelled) {
+      fs3.rmSync(forkPath, { force: true });
+      return result;
+    }
+    this.showStatus(`Forked into new session ${fork.getSessionId()} in ${cwd}`);
+    return result;
   }
   getLoginProviderOptions(authType) {
     const options = [];
@@ -18594,18 +18613,22 @@ ${packageLines}`, 1, 0));
       this.showStatus(`Session imported from: ${inputPath}`);
     } catch (error) {
       if (error instanceof MissingSessionCwdError) {
-        const selectedCwd = await this.promptForMissingSessionCwd(error);
-        if (!selectedCwd) {
-          this.showStatus("Import cancelled");
-          return;
+        switch (await this.promptForMissingSessionCwd(error)) {
+          case "continue": {
+            const result = await this.runtimeHost.importFromJsonl(inputPath, error.issue.fallbackCwd);
+            this.showStatus(result.cancelled ? "Import cancelled" : `Session imported from: ${inputPath}`);
+            return;
+          }
+          case "fork": {
+            const result = await this.switchToForkedSession(inputPath, error.issue.fallbackCwd);
+            if (result.cancelled)
+              this.showStatus("Import cancelled");
+            return;
+          }
+          case void 0:
+            this.showStatus("Import cancelled");
+            return;
         }
-        const result = await this.runtimeHost.importFromJsonl(inputPath, selectedCwd);
-        if (result.cancelled) {
-          this.showStatus("Import cancelled");
-          return;
-        }
-        this.showStatus(`Session imported from: ${inputPath}`);
-        return;
       }
       if (error instanceof SessionImportFileNotFoundError) {
         this.showError(`Failed to import session: ${error.message}`);
@@ -20446,7 +20469,7 @@ ${otherErrors.join("\n")}`;
 __name(validateThemeJson, "validateThemeJson");
 
 // pi-dist/pi-coding-agent/package-manager-cli.js
-import { existsSync as existsSync8, mkdirSync as mkdirSync5, mkdtempSync as mkdtempSync3, readdirSync as readdirSync2, readFileSync as readFileSync11, renameSync as renameSync3, rmSync as rmSync6, writeFileSync as writeFileSync6 } from "node:fs";
+import { existsSync as existsSync8, mkdirSync as mkdirSync5, mkdtempSync as mkdtempSync3, readdirSync as readdirSync2, readFileSync as readFileSync11, renameSync as renameSync3, rmSync as rmSync7, writeFileSync as writeFileSync6 } from "node:fs";
 import { join as join14, resolve as resolve6 } from "node:path";
 import { ModelsError } from "../../pi-ai/sdk-bundle/index.js";
 import { Markdown as Markdown8 } from "../../../pi-tui.mjs";
@@ -21191,7 +21214,7 @@ __name(selectConfig, "selectConfig");
 
 // pi-dist/pi-coding-agent/utils/windows-self-update.js
 import { randomUUID as randomUUID6 } from "node:crypto";
-import { copyFileSync, existsSync as existsSync7, mkdirSync as mkdirSync4, renameSync as renameSync2, rmSync as rmSync5 } from "node:fs";
+import { copyFileSync, existsSync as existsSync7, mkdirSync as mkdirSync4, renameSync as renameSync2, rmSync as rmSync6 } from "node:fs";
 import { basename as basename3, dirname as dirname5, join as join13, relative as relative4, resolve as resolve5, toNamespacedPath } from "node:path";
 var QUARANTINE_DIR_NAME = ".pi-native-quarantine";
 function normalizePath2(path6) {
@@ -21241,7 +21264,7 @@ function cleanupWindowsSelfUpdateQuarantine(packageDir) {
     return;
   }
   try {
-    rmSync5(quarantineRoot, { recursive: true, force: true });
+    rmSync6(quarantineRoot, { recursive: true, force: true });
   } catch {
   }
 }
@@ -21341,7 +21364,7 @@ function activateManagedRelease(managedRoot, version) {
 `);
     renameSync3(temporaryPath, currentPath);
   } finally {
-    rmSync6(temporaryPath, { force: true });
+    rmSync7(temporaryPath, { force: true });
   }
 }
 __name(activateManagedRelease, "activateManagedRelease");
@@ -21357,7 +21380,7 @@ function pruneManagedReleases(managedRoot, activeVersion) {
     if (entry === activeVersion || entry === VERSION || !MANAGED_RELEASE_VERSION_RE.test(entry))
       continue;
     try {
-      rmSync6(join14(releasesRoot, entry), { force: true, recursive: true });
+      rmSync7(join14(releasesRoot, entry), { force: true, recursive: true });
     } catch {
     }
   }
@@ -21368,7 +21391,7 @@ function cleanupManagedStaging(managedRoot) {
   try {
     for (const entry of readdirSync2(stagingRoot)) {
       if (entry.startsWith("update-")) {
-        rmSync6(join14(stagingRoot, entry), { force: true, recursive: true });
+        rmSync7(join14(stagingRoot, entry), { force: true, recursive: true });
       }
     }
   } catch {
@@ -21438,7 +21461,7 @@ async function runManagedSelfUpdate(managedRoot, version) {
     pruneManagedReleases(managedRoot, version);
   } finally {
     if (stageDir)
-      rmSync6(stageDir, { force: true, recursive: true });
+      rmSync7(stageDir, { force: true, recursive: true });
     await releaseLock();
   }
 }
@@ -22700,13 +22723,6 @@ function resolveCliPaths(cwd, paths) {
   return paths?.map((value) => isLocalPath(value) ? resolvePath(value, cwd) : value);
 }
 __name(resolveCliPaths, "resolveCliPaths");
-async function promptForMissingSessionCwd(issue, settingsManager) {
-  return showStartupSelector(settingsManager, formatMissingSessionCwdPrompt(issue), [
-    { label: "Continue", value: issue.fallbackCwd },
-    { label: "Cancel", value: void 0 }
-  ]);
-}
-__name(promptForMissingSessionCwd, "promptForMissingSessionCwd");
 async function main(args, options) {
   resetTimings();
   setThemeJsonValidator(validateThemeJson);
@@ -22808,11 +22824,19 @@ async function main(args, options) {
   const missingSessionCwdIssue = getMissingSessionCwdIssue(sessionManager, cwd);
   if (missingSessionCwdIssue) {
     if (appMode === "interactive") {
-      const selectedCwd = await promptForMissingSessionCwd(missingSessionCwdIssue, startupSettingsManager);
-      if (!selectedCwd) {
-        process.exit(0);
+      const sessionFile = missingSessionCwdIssue.sessionFile;
+      const choice = await showStartupSelector(startupSettingsManager, formatMissingSessionCwdPrompt(missingSessionCwdIssue), getMissingSessionCwdOptions(missingSessionCwdIssue));
+      switch (choice) {
+        case "continue":
+          sessionManager = SessionManager.open(sessionFile, sessionDir, cwd);
+          break;
+        // Fork like `--session <id>` from another project, so the choice sticks without rewriting history (#11060).
+        case "fork":
+          sessionManager = forkSessionOrExit(sessionFile, cwd, sessionDir);
+          break;
+        case void 0:
+          process.exit(0);
       }
-      sessionManager = SessionManager.open(missingSessionCwdIssue.sessionFile, sessionDir, selectedCwd);
     } else {
       console.error(chalk7.red(new MissingSessionCwdError(missingSessionCwdIssue).message));
       process.exit(1);
