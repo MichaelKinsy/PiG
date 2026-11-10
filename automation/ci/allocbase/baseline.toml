@@ -61,7 +61,7 @@ allocs = 75151
 [[benchmark]]
 package = "./agent"
 benchmark = "BenchmarkParallelToolBatch/settled"
-allocs = 604
+allocs = 603
 
 [[benchmark]]
 package = "./agent"
@@ -101,7 +101,7 @@ allocs = 30
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkAnthropicNativeOAuthLogin"
-allocs = 631
+allocs = 630
 
 [[benchmark]]
 package = "./ai"
@@ -1361,12 +1361,12 @@ allocs = 0
 [[benchmark]]
 package = "./coding"
 benchmark = "BenchmarkSessionSendLongTurnEvents/discarded"
-allocs = 38170
+allocs = 38159
 
 [[benchmark]]
 package = "./coding"
 benchmark = "BenchmarkSessionSendLongTurnEvents/drained"
-allocs = 120849
+allocs = 120846
 
 [[benchmark]]
 package = "./coding"
@@ -1551,7 +1551,7 @@ allocs = 606210
 [[benchmark]]
 package = "./coding/cli"
 benchmark = "BenchmarkPrintPipelineDeltas/print/text/deltas=1000"
-allocs = 23043
+allocs = 23042
 
 [[benchmark]]
 package = "./coding/cli"
