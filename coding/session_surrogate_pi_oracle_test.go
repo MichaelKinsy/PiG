@@ -19,15 +19,7 @@ import (
 // piStringify is JSON.stringify(JSON.parse(text)) for each document, the bytes Pi writes for the same value.
 func piStringify(t *testing.T, documents ...string) []string {
 	t.Helper()
-	input, err := jsstring.MarshalKeepingSurrogates(documents)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var out []string
-	if err := jsstring.UnmarshalKeepingSurrogates(testenv.NodeJSON(t, `return input.map((document) => JSON.stringify(JSON.parse(document)));`, input), &out); err != nil {
-		t.Fatal(err)
-	}
-	return out
+	return testenv.PiEval[[]string](t, `return input.map((document) => JSON.stringify(JSON.parse(document)));`, documents)
 }
 
 func unitsOf(text string) []uint16 { return jsstring.ToUTF16(text) }
@@ -97,14 +89,7 @@ func TestToolCallHookKeepsALoneSurrogateInTheModelsArguments(t *testing.T) {
 			if wire != modelArgs {
 				t.Errorf("event input %s, want the model's %s", wire, modelArgs)
 			}
-			input, err := jsstring.MarshalKeepingSurrogates(modelArgs)
-			if err != nil {
-				t.Fatal(err)
-			}
-			var want string
-			if err := jsstring.UnmarshalKeepingSurrogates(testenv.NodeJSON(t, `const args = JSON.parse(input); `+tc.pi+` return JSON.stringify(args);`, input), &want); err != nil {
-				t.Fatal(err)
-			}
+			want := testenv.PiEval[string](t, `const args = JSON.parse(input); `+tc.pi+` return JSON.stringify(args);`, modelArgs)
 			if tc.edit == nil {
 				if len(hook.Args) != 0 {
 					t.Errorf("an unedited call got arguments %s", hook.Args)

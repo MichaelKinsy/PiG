@@ -10,17 +10,11 @@ import (
 // rpc-client.ts parses each response line with JSON.parse, which keeps a lone UTF-16 surrogate in the text a caller reads.
 func TestResponseTextKeepsALoneSurrogate(t *testing.T) {
 	const line = `{"type":"response","id":"req_1","command":"get_last_assistant_text","success":true,"data":{"text":"a\ud800x\udfff<"},"error":"e\udc00"}`
-	input, err := jsstring.MarshalKeepingSurrogates(line)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var want struct {
+	type answer struct {
 		Text  string `json:"text"`
 		Error string `json:"error"`
 	}
-	if err := jsstring.UnmarshalKeepingSurrogates(testenv.NodeJSON(t, `const r = JSON.parse(input); return { text: r.data.text, error: r.error };`, input), &want); err != nil {
-		t.Fatal(err)
-	}
+	want := testenv.PiEval[answer](t, `const r = JSON.parse(input); return { text: r.data.text, error: r.error };`, line)
 	client := NewRpcClient(RpcClientOptions{})
 	request := pendingRequest{resolve: make(chan RpcResponse, 1), reject: make(chan error, 1)}
 	client.pendingRequests["req_1"] = request

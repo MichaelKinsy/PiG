@@ -24,18 +24,13 @@ func TestSessionFileWithLoneSurrogatesResumesAndResavesByteForByte(t *testing.T)
 		`{"type":"custom_message","id":"e6","parentId":"e5","timestamp":"2026-01-01T00:00:06.000Z","customType":"n","content":"c\ud800","display":true,"details":{"x":"\udfff"}}`,
 		`{"type":"branch_summary","id":"e7","parentId":"e6","timestamp":"2026-01-01T00:00:07.000Z","fromId":"e1","summary":"b\ud800"}`,
 		`{"type":"session_info","id":"e8","parentId":"e7","timestamp":"2026-01-01T00:00:08.000Z","name":"n\udfff"}`,
+		// An extension's sendUserMessage persists block content, not a string.
+		`{"type":"message","id":"e9","parentId":"e8","timestamp":"2026-01-01T00:00:09.000Z","message":{"role":"user","content":[{"type":"text","text":"b\ud800<&>"},{"type":"text","text":"\udfff"}],"timestamp":9}}`,
 	}
 	lines := append([]string{header}, entries...)
 
 	// The fixture is what Pi writes: JSON.stringify(JSON.parse(line)) is the line.
-	input, err := jsstring.MarshalKeepingSurrogates(lines)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var piLines []string
-	if err := jsstring.UnmarshalKeepingSurrogates(testenv.NodeJSON(t, `return input.map((line) => JSON.stringify(JSON.parse(line)));`, input), &piLines); err != nil {
-		t.Fatal(err)
-	}
+	piLines := testenv.PiEval[[]string](t, `return input.map((line) => JSON.stringify(JSON.parse(line)));`, lines)
 	for i := range lines {
 		if piLines[i] != lines[i] {
 			t.Fatalf("fixture line %d is not Pi's bytes:\n got  %s\n Pi's %s", i, lines[i], piLines[i])
@@ -78,7 +73,7 @@ func TestSessionFileWithLoneSurrogatesResumesAndResavesByteForByte(t *testing.T)
 		t.Errorf("fork of the file changed entries:\n%s", strings.Join(got, "\n"))
 	}
 
-	clone, err := sm.Clone(resumed, "e8")
+	clone, err := sm.Clone(resumed, "e9")
 	if err != nil {
 		t.Fatal(err)
 	}
