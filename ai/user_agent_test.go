@@ -5,7 +5,7 @@ package ai
 // value, upstream-specific configured-header precedence, and format. Ordinary
 // providers allow a configured override; Codex forces the product identity.
 // Anthropic's own default/override/OAuth-exception cases (Q3: OAuth requests
-// keep claude-cli/2.1.322 regardless of a configured header) are
+// send claude-cli/2.1.322 whatever client identity is configured) are
 // TestAnthropicClientUserAgent in anthropic_oauth_test.go. This file covers
 // openai-completions, openai-responses (and its azure/codex delegates),
 // google-generative-ai (and its vertex delegate), and mistral-conversations.
