@@ -10479,8 +10479,23 @@
     },
     {
       "id": "pkg:ai/.#CACHE_WARMING_IDLE_CONTINUATION_PROBABILITY",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:939b6bf968da1e05d78ed82b85996253fd5433846463e78e8d261a16b4599137"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:939b6bf968da1e05d78ed82b85996253fd5433846463e78e8d261a16b4599137",
+      "rationale": "Derived by the interface gap detector: CACHE_WARMING_IDLE_CONTINUATION_PROBABILITY is Go ai/cache_warming.go#CacheWarmingIdleContinuationProbability (name rule N2), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/cache_warming.go#CacheWarmingIdleContinuationProbability"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
+      ],
+      "evidence": [
+        "reach:ai/cache_warming.go#EvaluateCacheWarming"
+      ]
     },
     {
       "id": "pkg:ai/.#CACHE_WARMING_MAX_AGE_MS",
@@ -10524,8 +10539,23 @@
     },
     {
       "id": "pkg:ai/.#CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:c651ce6aae51a50301daf83abc99e321e0c8b306285992ae2411c172872d361a"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:c651ce6aae51a50301daf83abc99e321e0c8b306285992ae2411c172872d361a",
+      "rationale": "Derived by the interface gap detector: CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS is Go ai/cache_warming.go#CacheWarmingMinimumExpectedSavings (name rule N2), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/cache_warming.go#CacheWarmingMinimumExpectedSavings"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
+      ],
+      "evidence": [
+        "reach:ai/cache_warming.go#EvaluateCacheWarming"
+      ]
     },
     {
       "id": "pkg:ai/.#CacheRetention",
@@ -16239,13 +16269,45 @@
     },
     {
       "id": "pkg:ai/.#getCacheWarmingRequestOptions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:074fdb50b91090d88147095c9f2985649a218a66549350fbd55549e47ace1e5e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:074fdb50b91090d88147095c9f2985649a218a66549350fbd55549e47ace1e5e",
+      "rationale": "Derived by the interface gap detector: getCacheWarmingRequestOptions is Go ai/cache_warming.go#GetCacheWarmingRequestOptions (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/cache_warming.go#GetCacheWarmingRequestOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/cache_warming.go#GetCacheWarmingRequestOptions"
+      ],
+      "evidence": [
+        "reach:ai/cache_warming.go#GetCacheWarmingRequestOptions"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:ai/.#getCacheWarmingRequestOptions::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e76c791957d2277b823373bf6bc13e2e21ff69011452262203d659fa94d09a41"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e76c791957d2277b823373bf6bc13e2e21ff69011452262203d659fa94d09a41",
+      "rationale": "Derived by the interface gap detector: getCacheWarmingRequestOptions::call:0 is Go ai/cache_warming.go#GetCacheWarmingRequestOptions (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/cache_warming.go#GetCacheWarmingRequestOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/cache_warming.go#GetCacheWarmingRequestOptions"
+      ],
+      "evidence": [
+        "reach:ai/cache_warming.go#GetCacheWarmingRequestOptions"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:ai/.#getClientVersion",
@@ -48803,7 +48865,7 @@
       "id": "pkg:ai/api/strict-tool-limits#hasExceededStrictToolLimits",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:990e6fe03c7e6e9832799f63da821618844c44605d7c65c4396ec9cdb3158a28",
-      "rationale": "Derived by the interface gap detector: hasExceededStrictToolLimits is Go ai/provider_kit.go#HasExceededStrictToolLimits (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: hasExceededStrictToolLimits is Go ai/provider_kit.go#HasExceededStrictToolLimits (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/provider_kit.go#HasExceededStrictToolLimits"
       ],
@@ -48816,14 +48878,15 @@
         "call:ai/provider_kit.go#HasExceededStrictToolLimits"
       ],
       "evidence": [
-        "reach:ai/provider_kit.go#HasExceededStrictToolLimits"
+        "test:ai/strict_tool_limit_upstream_test.go#TestStrictToolLimitSessionsDropOldestBeyondCap",
+        "test:ai/strict_tool_limit_upstream_test.go#TestStrictToolLimitSessionsRememberedUntilCleanup"
       ]
     },
     {
       "id": "pkg:ai/api/strict-tool-limits#hasExceededStrictToolLimits::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:fd8d9697bb46c00ed14b9e57f0a18aa33cfb62f07f52e3cf5c2a9fa2c1e2ac32",
-      "rationale": "Derived by the interface gap detector: hasExceededStrictToolLimits::call:0 is Go ai/provider_kit.go#HasExceededStrictToolLimits (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: hasExceededStrictToolLimits::call:0 is Go ai/provider_kit.go#HasExceededStrictToolLimits (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/provider_kit.go#HasExceededStrictToolLimits"
       ],
@@ -48836,14 +48899,15 @@
         "call:ai/provider_kit.go#HasExceededStrictToolLimits"
       ],
       "evidence": [
-        "reach:ai/provider_kit.go#HasExceededStrictToolLimits"
+        "test:ai/strict_tool_limit_upstream_test.go#TestStrictToolLimitSessionsDropOldestBeyondCap",
+        "test:ai/strict_tool_limit_upstream_test.go#TestStrictToolLimitSessionsRememberedUntilCleanup"
       ]
     },
     {
       "id": "pkg:ai/api/strict-tool-limits#isStrictToolLimitErrorMessage",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:6faf4e9bd346cc30f976ae0f7e762f0d633f946d351228897180c4094f000d49",
-      "rationale": "Derived by the interface gap detector: isStrictToolLimitErrorMessage is Go ai/provider_kit.go#IsStrictToolLimitErrorMessage (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: isStrictToolLimitErrorMessage is Go ai/provider_kit.go#IsStrictToolLimitErrorMessage (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/provider_kit.go#IsStrictToolLimitErrorMessage"
       ],
@@ -48856,14 +48920,14 @@
         "call:ai/provider_kit.go#IsStrictToolLimitErrorMessage"
       ],
       "evidence": [
-        "reach:ai/provider_kit.go#IsStrictToolLimitErrorMessage"
+        "test:ai/strict_tool_limit_upstream_test.go#TestIsStrictToolLimitErrorMessage"
       ]
     },
     {
       "id": "pkg:ai/api/strict-tool-limits#isStrictToolLimitErrorMessage::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:b350c14870bf68cc304b6ce2cf655767817bf780f3547c5b8a0e33fe26b51167",
-      "rationale": "Derived by the interface gap detector: isStrictToolLimitErrorMessage::call:0 is Go ai/provider_kit.go#IsStrictToolLimitErrorMessage (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: isStrictToolLimitErrorMessage::call:0 is Go ai/provider_kit.go#IsStrictToolLimitErrorMessage (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/provider_kit.go#IsStrictToolLimitErrorMessage"
       ],
@@ -48876,14 +48940,14 @@
         "call:ai/provider_kit.go#IsStrictToolLimitErrorMessage"
       ],
       "evidence": [
-        "reach:ai/provider_kit.go#IsStrictToolLimitErrorMessage"
+        "test:ai/strict_tool_limit_upstream_test.go#TestIsStrictToolLimitErrorMessage"
       ]
     },
     {
       "id": "pkg:ai/api/strict-tool-limits#markStrictToolLimitsExceeded",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:7c9f24d8f7bf7eb90d3e8888712aec6315912f000fcfaeae09a0e597bc804d43",
-      "rationale": "Derived by the interface gap detector: markStrictToolLimitsExceeded is Go ai/provider_kit.go#MarkStrictToolLimitsExceeded (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: markStrictToolLimitsExceeded is Go ai/provider_kit.go#MarkStrictToolLimitsExceeded (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/provider_kit.go#MarkStrictToolLimitsExceeded"
       ],
@@ -48896,14 +48960,15 @@
         "call:ai/provider_kit.go#MarkStrictToolLimitsExceeded"
       ],
       "evidence": [
-        "reach:ai/provider_kit.go#MarkStrictToolLimitsExceeded"
+        "test:ai/strict_tool_limit_upstream_test.go#TestStrictToolLimitSessionsDropOldestBeyondCap",
+        "test:ai/strict_tool_limit_upstream_test.go#TestStrictToolLimitSessionsRememberedUntilCleanup"
       ]
     },
     {
       "id": "pkg:ai/api/strict-tool-limits#markStrictToolLimitsExceeded::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:9fddbcb3e9fedc340df6b43d736c3e821a4af5642dd72e1023db0887bcde18dd",
-      "rationale": "Derived by the interface gap detector: markStrictToolLimitsExceeded::call:0 is Go ai/provider_kit.go#MarkStrictToolLimitsExceeded (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: markStrictToolLimitsExceeded::call:0 is Go ai/provider_kit.go#MarkStrictToolLimitsExceeded (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/provider_kit.go#MarkStrictToolLimitsExceeded"
       ],
@@ -48916,7 +48981,8 @@
         "call:ai/provider_kit.go#MarkStrictToolLimitsExceeded"
       ],
       "evidence": [
-        "reach:ai/provider_kit.go#MarkStrictToolLimitsExceeded"
+        "test:ai/strict_tool_limit_upstream_test.go#TestStrictToolLimitSessionsDropOldestBeyondCap",
+        "test:ai/strict_tool_limit_upstream_test.go#TestStrictToolLimitSessionsRememberedUntilCleanup"
       ]
     },
     {
@@ -55066,8 +55132,23 @@
     },
     {
       "id": "pkg:ai/compat#CACHE_WARMING_IDLE_CONTINUATION_PROBABILITY",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:939b6bf968da1e05d78ed82b85996253fd5433846463e78e8d261a16b4599137"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:939b6bf968da1e05d78ed82b85996253fd5433846463e78e8d261a16b4599137",
+      "rationale": "Derived by the interface gap detector: CACHE_WARMING_IDLE_CONTINUATION_PROBABILITY is Go ai/cache_warming.go#CacheWarmingIdleContinuationProbability (name rule N2), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/cache_warming.go#CacheWarmingIdleContinuationProbability"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
+      ],
+      "evidence": [
+        "reach:ai/cache_warming.go#EvaluateCacheWarming"
+      ]
     },
     {
       "id": "pkg:ai/compat#CACHE_WARMING_MAX_AGE_MS",
@@ -55111,8 +55192,23 @@
     },
     {
       "id": "pkg:ai/compat#CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:c651ce6aae51a50301daf83abc99e321e0c8b306285992ae2411c172872d361a"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:c651ce6aae51a50301daf83abc99e321e0c8b306285992ae2411c172872d361a",
+      "rationale": "Derived by the interface gap detector: CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS is Go ai/cache_warming.go#CacheWarmingMinimumExpectedSavings (name rule N2), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/cache_warming.go#CacheWarmingMinimumExpectedSavings"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
+      ],
+      "evidence": [
+        "reach:ai/cache_warming.go#EvaluateCacheWarming"
+      ]
     },
     {
       "id": "pkg:ai/compat#CacheRetention",
@@ -61152,13 +61248,45 @@
     },
     {
       "id": "pkg:ai/compat#getCacheWarmingRequestOptions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:074fdb50b91090d88147095c9f2985649a218a66549350fbd55549e47ace1e5e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:074fdb50b91090d88147095c9f2985649a218a66549350fbd55549e47ace1e5e",
+      "rationale": "Derived by the interface gap detector: getCacheWarmingRequestOptions is Go ai/cache_warming.go#GetCacheWarmingRequestOptions (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/cache_warming.go#GetCacheWarmingRequestOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/cache_warming.go#GetCacheWarmingRequestOptions"
+      ],
+      "evidence": [
+        "reach:ai/cache_warming.go#GetCacheWarmingRequestOptions"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:ai/compat#getCacheWarmingRequestOptions::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e76c791957d2277b823373bf6bc13e2e21ff69011452262203d659fa94d09a41"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e76c791957d2277b823373bf6bc13e2e21ff69011452262203d659fa94d09a41",
+      "rationale": "Derived by the interface gap detector: getCacheWarmingRequestOptions::call:0 is Go ai/cache_warming.go#GetCacheWarmingRequestOptions (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/cache_warming.go#GetCacheWarmingRequestOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/cache_warming.go#GetCacheWarmingRequestOptions"
+      ],
+      "evidence": [
+        "reach:ai/cache_warming.go#GetCacheWarmingRequestOptions"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:ai/compat#getClientVersion",
@@ -189078,8 +189206,26 @@
     },
     {
       "id": "pkg:coding-agent/.#GrepOperations",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:1d3411a5508840a60bc4a55a4afb050a0808b4b8ce954201c2247569e5824552"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:1d3411a5508840a60bc4a55a4afb050a0808b4b8ce954201c2247569e5824552",
+      "rationale": "Derived by the interface gap detector: GrepOperations is Go internal/codingagent/tools/grep.go#GrepOperations (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "internal/codingagent/tools/grep.go#GrepOperations"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:internal/codingagent/tools/grep.go#GrepTool.Execute"
+      ],
+      "evidence": [
+        "test:internal/codingagent/tools/shell_operations_gaps_test.go#TestGrepDefaultOperationsReportDirectoriesFilesAndMissingPaths",
+        "test:internal/codingagent/tools/create_tool_factories_test.go#TestCreateReadOnlyToolsPassesEachToolItsOptionsAndTheBinDir",
+        "test:internal/codingagent/tools/create_tool_factories_test.go#TestCreateToolFactoriesBindTheirCwdAndOptions"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:coding-agent/.#GrepOperations::property:isDirectory",
@@ -189129,8 +189275,12 @@
     },
     {
       "id": "pkg:coding-agent/.#GrepOperations::property:readFile",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9ca846cabddc7d21e9e8826410c75d477547cf9732be8b5a3b8f3db3957c1db0"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:9ca846cabddc7d21e9e8826410c75d477547cf9732be8b5a3b8f3db3957c1db0",
+      "rationale": "Pi packages/coding-agent/src/core/tools/grep.ts:60-63 GrepOperations.readFile (Pi 1.5.1) is declared `@deprecated Ignored. Context lines come directly from ripgrep` and nothing in grep.ts reads it: the only references to the operations object are `operations?: GrepOperations` (grep.ts:79) and `customOps = options?.operations` (grep.ts:86), which use isDirectory. There is no behavior to port. PiG keeps the optional ReadFile field (internal/codingagent/tools/grep.go GrepOperations.ReadFile) only so a Pi-shaped operations value is accepted; no production code reads it, as in Pi. TestGrepOperationsAcceptsADeprecatedReadFileHookWithoutCallingIt (internal/codingagent/tools/grep_operations_readfile_test.go) proves that a readFile hook is accepted, never called, and that context lines still come from ripgrep.",
+      "pigTargets": [
+        "internal/codingagent/tools/grep.go#GrepOperations.ReadFile"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#GrepToolCallEvent",
@@ -199675,13 +199825,46 @@
     },
     {
       "id": "pkg:coding-agent/.#OAuthSelectorComponent",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:10814f6c4284c8df9d8ed2d0bff0f0b97082cdfadf026e789a0277d7414b7805"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:10814f6c4284c8df9d8ed2d0bff0f0b97082cdfadf026e789a0277d7414b7805",
+      "rationale": "Derived by the interface gap detector: OAuthSelectorComponent is Go tui/oauth_selector.go#OAuthSelectorComponent (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "tui/oauth_selector.go#OAuthSelectorComponent"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:tui/alt_screen_search.go#AltScreenSearchComponent.Invalidate"
+      ],
+      "evidence": [
+        "test:internal/codingagent/interactive_mode_status_upstream_test.go#TestInteractiveManagedToolStatusContiguousGroupUpstream",
+        "test:internal/codingagent/interactive_mode_status_upstream_test.go#TestInteractiveStatusCoalescingUpstream",
+        "test:internal/codingagent/interactive_tui_custom_status_upstream_test.go#TestCustomEditorDoesNotInheritDefaultStatusOptIn"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#OAuthSelectorComponent::construct:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b48b7f2ba4c1d726843c39c906467cec50b933e317dd7f95e0f700d28d69c69a"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:b48b7f2ba4c1d726843c39c906467cec50b933e317dd7f95e0f700d28d69c69a",
+      "rationale": "Derived by the interface gap detector: OAuthSelectorComponent::construct:0 is Go tui/oauth_selector.go#NewOAuthSelectorComponentAnimated (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "tui/oauth_selector.go#NewOAuthSelectorComponentAnimated"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:tui/oauth_selector.go#NewOAuthSelectorComponentAnimated"
+      ],
+      "evidence": [
+        "test:tui/oauth_selector_partner_test.go#TestOAuthSelectorAnimatesAPartnerRowUntilDisposed",
+        "test:tui/oauth_selector_partner_test.go#TestOAuthSelectorShowsTheBrandStyleOnlyOnTheSelectedPartnerRow"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#OAuthSelectorComponent::property:addChild",
