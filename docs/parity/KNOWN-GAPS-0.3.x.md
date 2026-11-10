@@ -14,9 +14,11 @@ Only `make test-porting-release` accepts the reviewed deferral tag. Unit tests, 
 
 Pi 1.5.1. `make known-gaps` generates this block from `go run ./test/parity/cmd/testinventorycheck -release-policy`, and `make known-gaps-drift` fails when it is stale. The block names no commit: its totals come from the [reviewed mapping](../../test/parity/interfaces/test-mapping-v1.5.1.json) and the [release policy](../../test/parity/interfaces/test-porting-policy-v1.5.1.json) at the commit that carries this file.
 
-The checker reports 981 files: 974 ported, 0 partial, 0 scenario-covered, 6 designed-out, 1 divergence and 0 pending. `make test-porting-release` accepts 0 approved 0.3.x known gaps and reports 981 reviewed paths and 974 ported (committed baseline 479). 0 files are open: 0 hot-path and 0 without a hot-path tag.
+The checker reports 987 files: 979 ported, 0 partial, 0 scenario-covered, 6 designed-out, 1 divergence and 1 pending. `make test-porting-release` accepts 0 approved 0.3.x known gaps and reports 987 reviewed paths and 979 ported (committed baseline 479). 1 file is open: 0 hot-path and 1 without a hot-path tag.
 
-No test file is open.
+| Area | Upstream test path | Status | Hot path | Follow-up |
+|---|---|---|---|---|
+| extensions | `packages/chord/test/registries/value.test.ts` | pending | no | none |
 
 Approved known gaps by area: tools 0, providers 0, sessions 0, extensions 0, tui 0, cli 0, utilities 0. `make test-porting-release` prints the full missing-case text for each approved gap.
 
