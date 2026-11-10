@@ -813,6 +813,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8241433](#bf-8241433) | A Mistral stream chunk with a member of an unexpected type is read as Pi's JavaScript reads it instead of… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-82ca8da](#bf-82ca8da) | On Windows, the host reports the load error of a Node extension that exits right after it sends the error | PiG's own defect | Windows | 0.7.0 |
 | [BF-82d1808](#bf-82d1808) | Subprocess extensions no longer slow down each streamed token in long sessions: the state sent before each… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-836c96b](#bf-836c96b) | An Anthropic OAuth request (a Claude subscription) names Claude Code 2.1.322 in its `user-agent` instead of… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-83d5488](#bf-83d5488) | `pig install <dir>` of a local directory with no package manifest and no `extensions/`, `skills/`, `prompts/`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-83fea11](#bf-83fea11) | On Windows, a refused connection reads as Node's `connect ECONNREFUSED` and is not retried, as in Pi; it was… | PiG's own defect | Windows | 0.5.0 |
 | [BF-844d215](#bf-844d215) | Repairing a partial tool-call arguments text follows partial-json's `obj["__proto__"] = value`: a… | PiG's own defect | All platforms | 0.5.0 |
@@ -12599,6 +12600,22 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/complexity_scaling_norace_test.go::TestScalingProviderRequestPerTurn`, `ai/complexity_scaling_norace_test.go::TestScalingProviderStreamPerDelta`, `coding/cli/complexity_scaling_norace_test.go::TestScalingExtensionEventStatePush`, `coding/complexity_scaling_norace_test.go::TestScalingSessionTurn`, `coding/extension/host/subprocess/complexity_scaling_norace_test.go::TestScalingMessageUpdatePayload`, `coding/session_context_usage_reuse_test.go::TestContextUsageReusesTheEstimateUntilTheLogOrWindowChanges`, `internal/codingagent/compaction/complexity_scaling_norace_test.go::TestScalingCompactionAndContextEstimate`, `internal/codingagent/complexity_scaling_norace_test.go::TestScalingSessionLogOperations` and 7 more in docs/bug-ledger.json
 - **Release note:** Subprocess extensions no longer slow down each streamed token in long sessions: the state sent before each event reuses the context usage estimate and the session name until the session changes.
 
+### BF-836c96b
+
+**An Anthropic OAuth request (a Claude subscription) names Claude Code 2.1.322 in its `user-agent` instead of…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D235)
+- **Symptom:** An Anthropic OAuth request (a Claude subscription) names Claude Code 2.1.322 in its `user-agent` instead of 2.1.280, which Anthropic refuses for newer models with `claude_code_version_too_old` ("Claude Code 2.1.280 does not support this model").
+- **Root cause:** Pi main's value, ahead of the pin, so that they work.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** the pinned Pi release contains a05e3a0. Then the call-site marker, the oracle comparison's mapping and this record go.
+- **Fix commits:** `836c96bad6` (2026-11-10)
+- **Tests:** `ai/anthropic_oauth_test.go::TestAnthropicClientUserAgent`, `ai/anthropic_oauth_test.go::TestAnthropicOnPayloadReplacesBetas`, `ai/anthropic_oauth_test.go::TestAnthropicRequestAuthShapes`, `ai/identity_oracle_test.go::TestAnthropicUserAgentHeaderReplacesTheClaudeCodeIdentityLikePi`, `ai/identity_oracle_test.go::TestProviderIdentityHeadersMatchPi`, `coding/anthropic_auth_test.go::TestBuildModelAnthropicEnvAuthRequestShapes`, `coding/cli/model_anthropic_auth_test.go::TestBuildModelAnthropicAuthRequestShapes`
+- **Release note:** An Anthropic OAuth request (a Claude subscription) names Claude Code 2.1.322 in its `user-agent` instead of 2.1.280, which Anthropic refuses for newer models with `claude_code_version_too_old` ("Claude Code 2.1.280 does not support this model"). Pi 1.5.0 sends 2.1.280; PiG follows Pi main a05e3a0 (D235). A configured `User-Agent` header still replaces it.
+
 ### BF-83d5488
 
 **`pig install <dir>` of a local directory with no package manifest and no `extensions/`, `skills/`, `prompts/`…**
@@ -23932,6 +23949,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D228 | Terminal.app: plain Up dequeues a queued message, and Up recall elsewhere says once that the text is a copy | [BF-2359a0a](#bf-2359a0a) |
 | D231 | PiG follows Pi main 1708b4788 ahead of the v1.5.0 pin: RPC mode acts on an idle `ctx.shutdown()` | [BF-0cced6a](#bf-0cced6a) |
 | D233 | A Streamable HTTP application/json reply is capped at maxMessageBytes, and an HTTP error body keeps its first… | [BF-d4e641b](#bf-d4e641b) |
+| D235 | An Anthropic OAuth request names Claude Code 2.1.322, as Pi main a05e3a0 does | [BF-836c96b](#bf-836c96b) |
 
 ## Fix-titled commits that are not bugs in a release
 

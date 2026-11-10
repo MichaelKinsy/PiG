@@ -22614,6 +22614,36 @@
       ]
     },
     {
+      "id": "BF-836c96b",
+      "title": "An Anthropic OAuth request (a Claude subscription) names Claude Code 2.1.322 in its `user-agent` instead of…",
+      "symptom": "An Anthropic OAuth request (a Claude subscription) names Claude Code 2.1.322 in its `user-agent` instead of 2.1.280, which Anthropic refuses for newer models with `claude_code_version_too_old` (\"Claude Code 2.1.280 does not support this model\").",
+      "rootCause": "Pi main's value, ahead of the pin, so that they work.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D235",
+      "removeWhen": "the pinned Pi release contains a05e3a0. Then the call-site marker, the oracle comparison's mapping and this record go.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An Anthropic OAuth request (a Claude subscription) names Claude Code 2.1.322 in its `user-agent` instead of 2.1.280, which Anthropic refuses for newer models with `claude_code_version_too_old` (\"Claude Code 2.1.280 does not support this model\"). Pi 1.5.0 sends 2.1.280; PiG follows Pi main a05e3a0 (D235). A configured `User-Agent` header still replaces it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "836c96bad6",
+          "date": "2026-11-10"
+        }
+      ],
+      "tests": [
+        "ai/anthropic_oauth_test.go::TestAnthropicClientUserAgent",
+        "ai/anthropic_oauth_test.go::TestAnthropicOnPayloadReplacesBetas",
+        "ai/anthropic_oauth_test.go::TestAnthropicRequestAuthShapes",
+        "ai/identity_oracle_test.go::TestAnthropicUserAgentHeaderReplacesTheClaudeCodeIdentityLikePi",
+        "ai/identity_oracle_test.go::TestProviderIdentityHeadersMatchPi",
+        "coding/anthropic_auth_test.go::TestBuildModelAnthropicEnvAuthRequestShapes",
+        "coding/cli/model_anthropic_auth_test.go::TestBuildModelAnthropicAuthRequestShapes"
+      ]
+    },
+    {
       "id": "BF-83d5488",
       "title": "`pig install \u003cdir\u003e` of a local directory with no package manifest and no `extensions/`, `skills/`, `prompts/`…",
       "symptom": "Previously Pig recorded the Package and loaded nothing from it.",
@@ -47485,6 +47515,11 @@
       "id": "D233",
       "title": "A Streamable HTTP application/json reply is capped at maxMessageBytes, and an HTTP error body keeps its first…",
       "entry": "BF-d4e641b"
+    },
+    {
+      "id": "D235",
+      "title": "An Anthropic OAuth request names Claude Code 2.1.322, as Pi main a05e3a0 does",
+      "entry": "BF-836c96b"
     }
   ],
   "exemptCommits": {
