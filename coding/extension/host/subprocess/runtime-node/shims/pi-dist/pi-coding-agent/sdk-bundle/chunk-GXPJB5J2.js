@@ -1635,6 +1635,7 @@ import { withFileMutationQueue as withFileMutationQueue3 } from "../../../file-m
 // pi-dist/pi-coding-agent/core/tools/find.js
 import { createInterface } from "node:readline";
 import { spawn as spawn2 } from "child_process";
+import { Minimatch } from "../../../minimatch/dist/esm/index.js";
 import path from "path";
 import { Type as Type3 } from "../../../typebox.mjs";
 
@@ -2112,7 +2113,7 @@ function createFindToolDefinition(cwd, options) {
               settle(() => reject(new Error("fd is not available and could not be downloaded")));
               return;
             }
-            const args = ["--glob", "--color=never", "--hidden"];
+            const args = ["--color=never", "--hidden"];
             let insideGitRepo = false;
             for (let current = searchPath; ; ) {
               if (await pathExists(path.join(current, ".git"))) {
@@ -2126,17 +2127,26 @@ function createFindToolDefinition(cwd, options) {
             }
             if (!insideGitRepo)
               args.push("--no-require-git");
-            args.push("--max-results", String(effectiveLimit + 1));
-            let effectivePattern = pattern;
-            if (pattern.includes("/")) {
-              args.push("--full-path");
-              if (!pattern.startsWith("/") && !pattern.startsWith("**/") && pattern !== "**") {
-                effectivePattern = `**/${pattern}`;
-              }
-              if (process.platform === "win32")
-                effectivePattern = effectivePattern.replaceAll("/", String.raw`[/\\]`);
+            let effectivePattern = process.platform === "win32" ? pattern.replaceAll("\\", "/") : pattern;
+            const isPathPattern = effectivePattern.includes("/");
+            if (isPathPattern && !effectivePattern.startsWith("/") && !effectivePattern.startsWith("**/") && effectivePattern !== "**") {
+              effectivePattern = `**/${effectivePattern}`;
             }
-            args.push("--", effectivePattern, searchPath);
+            const windowsPathMatcher = process.platform === "win32" && isPathPattern ? new Minimatch(effectivePattern.replace(/\/\*\*$/, "/**/*"), {
+              dot: true,
+              noext: true,
+              nocase: effectivePattern === effectivePattern.toLowerCase()
+            }) : void 0;
+            if (windowsPathMatcher) {
+              args.push("--", "", searchPath);
+            } else {
+              args.push("--glob", "--max-results", String(effectiveLimit + 1));
+              if (isPathPattern)
+                args.push("--full-path");
+              args.push("--", effectivePattern, searchPath);
+            }
+            if (signal?.aborted)
+              return;
             const child = spawn2(fdPath, args, { stdio: ["ignore", "pipe", "pipe"] });
             const rl = createInterface({ input: child.stdout });
             let stderr = "";
@@ -2159,8 +2169,12 @@ function createFindToolDefinition(cwd, options) {
               const line = rawLine.replace(/\r$/, "").trim();
               if (!line)
                 return;
+              if (windowsPathMatcher && !windowsPathMatcher.match(line))
+                return;
               if (resultCount === effectiveLimit) {
                 resultLimitReached = true;
+                if (windowsPathMatcher)
+                  stopChild?.();
                 return;
               }
               const result = relativizeFindResultPath(line, searchPath);
@@ -2716,15 +2730,20 @@ function createLsTool(cwd, options) {
 __name(createLsTool, "createLsTool");
 
 // pi-dist/pi-coding-agent/core/tools/powershell.js
+import { win32 } from "node:path";
 var UTF8_OUTPUT_PREFIX = "try { [Console]::OutputEncoding=[System.Text.Encoding]::UTF8 } catch {}\n";
+var WINDOWS_POWERSHELL_EXIT_SUFFIX = '\n;\nif ($?) { exit 0 }\nif (($LASTEXITCODE -eq 0) -and ("$($Error[0].FullyQualifiedErrorId)" -like "NativeCommandError*")) { exit 0 }\nexit 1';
 var powershellToolSystemPromptContribution = {
   snippet: "Execute PowerShell commands",
   guidelines: ["You can inspect PI_* environment variables for current model and session details."]
 };
 function createLocalPowerShellOperations() {
-  const operations = createLocalShellOperations("PowerShell", getPowerShellConfig);
   return {
-    exec: /* @__PURE__ */ __name((command, cwd, options) => operations.exec(`${UTF8_OUTPUT_PREFIX}${command}`, cwd, options), "exec")
+    exec: /* @__PURE__ */ __name(async (command, cwd, options) => {
+      const shellConfig = getPowerShellConfig();
+      const suffix = win32.basename(shellConfig.shell).toLowerCase() === "powershell.exe" && !command.endsWith("`") ? WINDOWS_POWERSHELL_EXIT_SUFFIX : "";
+      return createLocalShellOperations("PowerShell", () => shellConfig).exec(`${UTF8_OUTPUT_PREFIX}${command}${suffix}`, cwd, options);
+    }, "exec")
   };
 }
 __name(createLocalPowerShellOperations, "createLocalPowerShellOperations");
