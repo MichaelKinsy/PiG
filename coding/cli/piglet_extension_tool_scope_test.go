@@ -17,6 +17,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
@@ -320,12 +321,16 @@ func firstRequestToolsIn(t *testing.T, provider *scopeProvider, home, dir, mode 
 	if terminal != nil {
 		// The startup listing names every loaded extension, which happens after the Piglet has scoped their tools; the prompt follows it.
 		if err := waitUntil(ctx, provider, terminal, func() bool { return terminal.shows("scoped.mjs") }); err != nil {
-			t.Fatalf("no model request in %s mode: %v before the startup listing\nstderr:\n%s", mode, err, stderr.String())
+			t.Fatalf("no model request in %s mode: %v before the startup listing\nstderr:\n%s\nscreen:\n%s", mode, err, stderr.String(), tools.StripANSI([]byte(terminal.String())))
 		}
 		terminal.send("hi\r")
 	}
 	if err := waitUntil(ctx, provider, terminal, func() bool { _, ok := provider.first(); return ok }); err != nil {
-		t.Fatalf("no model request in %s mode: %v\nstderr:\n%s", mode, err, stderr.String())
+		screen := ""
+		if terminal != nil {
+			screen = string(tools.StripANSI([]byte(terminal.String())))
+		}
+		t.Fatalf("no model request in %s mode: %v\nstderr:\n%s\nscreen:\n%s", mode, err, stderr.String(), screen)
 	}
 	names, _ := provider.first()
 	return names

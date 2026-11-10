@@ -135,11 +135,45 @@ func (p *conPTYProcess) close() {
 	_ = p.output.Close()
 }
 
+// procPeekNamedPipe is kernel32's PeekNamedPipe, which golang.org/x/sys/windows does not wrap.
+var procPeekNamedPipe = windows.NewLazySystemDLL("kernel32.dll").NewProc("PeekNamedPipe")
+
+// conPTYQuietAfterExit is how long the terminal's output stays empty after the process has exited before Read reports the end of the terminal. ConPTY
+// renders the screen on its own schedule, so the last frame can reach the output pipe some time after the process exit.
+const conPTYQuietAfterExit = time.Second
+
 // conPTYTerminal reads the terminal's screen output and writes its keyboard
 // input.
 type conPTYTerminal struct{ *conPTYProcess }
 
-func (t conPTYTerminal) Read(p []byte) (int, error)  { return t.output.Read(p) }
+// Read returns the screen output, and io.EOF once the process has exited and its output has been drained, as a Unix pseudo-terminal's master does when
+// the process on its slave exits. A pseudoconsole's output pipe stays open after the process exits until the host closes the pseudoconsole, so a
+// plain read of it blocks forever once pig has exited, and a test waiting for pig's output would hang until its deadline instead of seeing pig exit.
+func (t conPTYTerminal) Read(p []byte) (int, error) {
+	var quietSince time.Time
+	for {
+		var available uint32
+		if ok, _, _ := procPeekNamedPipe.Call(t.output.Fd(), 0, 0, 0, uintptr(unsafe.Pointer(&available)), 0); ok == 0 { //nolint:gosec // G103: PeekNamedPipe fills the available count, and x/sys has no wrapper for it.
+			return 0, io.EOF
+		}
+		if available > 0 {
+			return t.output.Read(p)
+		}
+		_, exited, err := t.wait(0)
+		if err != nil {
+			return 0, io.EOF
+		}
+		if exited {
+			if quietSince.IsZero() {
+				quietSince = time.Now()
+			} else if time.Since(quietSince) >= conPTYQuietAfterExit {
+				return 0, io.EOF
+			}
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
 func (t conPTYTerminal) Write(p []byte) (int, error) { return t.input.Write(p) }
 
 // runPigOnTerminalStdinToFile runs pig the way `pig "q" > out.txt` runs from a
