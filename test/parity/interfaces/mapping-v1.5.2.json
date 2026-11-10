@@ -122915,8 +122915,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/app/app_bases_linux_test.go#TestAppAnswersItsOwnerPageBeforeTheWebBaseIsBuiltAPageRequestWaitsForItsBase",
-        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppCloseAbandonsABaseBuildStalledOnAReadWhenItsContextEndsAndReturnsTheContextsError",
-        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppCloseWaitsForABaseBuildStalledOnAReadAndReturnsOnceItEndsItsLateResultIsDropped"
+        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppCloseDoesNotWaitForABaseBuildStalledOnAReadItsLateResultIsDroppedAndWaitReturnsNil",
+        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppCloseReleasesTheDataDirectorysLockAtOnceWhileABuildIsStalled"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -122937,9 +122937,9 @@
         "call:chord/nextnode/app/app_bases.go#App.BaseWatched"
       ],
       "evidence": [
-        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppACloseAfterOneWhoseContextEndedReturnsItsResultAndDoesNotWaitAgain",
         "test:chord/nextnode/app/app_bases_linux_test.go#TestAppAnAbortedApplyWaitingAtTheWebStepForTheInitialBuildStopsThereTheBuildGoesOn",
-        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppAnswersItsOwnerPageBeforeTheWebBaseIsBuiltAPageRequestWaitsForItsBase"
+        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppAnswersItsOwnerPageBeforeTheWebBaseIsBuiltAPageRequestWaitsForItsBase",
+        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppCloseDoesNotWaitForABaseBuildStalledOnAReadItsLateResultIsDroppedAndWaitReturnsNil"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -122961,8 +122961,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginEndsItsSessionsWithTheServer",
-        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppACloseAfterOneWhoseContextEndedReturnsItsResultAndDoesNotWaitAgain",
-        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppCloseAbandonsABaseBuildStalledOnAReadWhenItsContextEndsAndReturnsTheContextsError"
+        "test:chord/nextnode/app/app_bases_scan_test.go#TestAppARecordOfTheServersCodeArrivingAfterTheClosedWatcherWatchesNothingAndMarksNothing",
+        "test:chord/nextnode/app/app_bases_scan_test.go#TestAppClosesWithoutWaitingForAScanOfItsOwnCodeStalledOnAReadItsLateResultIsDropped"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -122984,8 +122984,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginEndsItsSessionsWithTheServer",
-        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppACloseAfterOneWhoseContextEndedReturnsItsResultAndDoesNotWaitAgain",
-        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppCloseAbandonsABaseBuildStalledOnAReadWhenItsContextEndsAndReturnsTheContextsError"
+        "test:chord/nextnode/app/app_bases_scan_test.go#TestAppARecordOfTheServersCodeArrivingAfterTheClosedWatcherWatchesNothingAndMarksNothing",
+        "test:chord/nextnode/app/app_bases_scan_test.go#TestAppClosesWithoutWaitingForAScanOfItsOwnCodeStalledOnAReadItsLateResultIsDropped"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -123271,8 +123271,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
-        "test:chord/nextnode/app/app_bases_scan_test.go#TestAppARecordOfTheServersCodeArrivingAfterTheClosedWatcherWatchesNothingAndMarksNothing",
-        "test:chord/nextnode/app/app_bases_scan_test.go#TestAppARecordOfTheServersCodeEditedSinceTheStartMarksBaseWhileTheAppIsOpen"
+        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppCloseDoesNotWaitForABaseBuildStalledOnAReadItsLateResultIsDroppedAndWaitReturnsNil",
+        "test:chord/nextnode/app/app_bases_scan_test.go#TestAppARecordOfTheServersCodeArrivingAfterTheClosedWatcherWatchesNothingAndMarksNothing"
       ]
     },
     {
@@ -123314,7 +123314,7 @@
       ],
       "evidence": [
         "test:chord/nextnode/app/app_bases_linux_test.go#TestAppAnswersItsOwnerPageBeforeTheWebBaseIsBuiltAPageRequestWaitsForItsBase",
-        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppCloseWaitsForABaseBuildStalledOnAReadAndReturnsOnceItEndsItsLateResultIsDropped",
+        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppCloseDoesNotWaitForABaseBuildStalledOnAReadItsLateResultIsDroppedAndWaitReturnsNil",
         "test:chord/nextnode/app/app_bases_test.go#TestAppReportsABaseThatFailsAfterTheListenAndRunsOnThePageAnswers503TheKindsWorkersFailTheirStart"
       ]
     },
@@ -123468,7 +123468,7 @@
       "evidence": [
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
         "test:chord/nextnode/app/app_changes_test.go#TestAppInstallsAPluginFromGitIntoTheUsersRootApplyingChangesLoadsIt",
-        "test:chord/nextnode/app/app_bases_scan_test.go#TestAppARecordOfTheServersCodeArrivingAfterTheClosedWatcherWatchesNothingAndMarksNothing"
+        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppCloseDoesNotWaitForABaseBuildStalledOnAReadItsLateResultIsDroppedAndWaitReturnsNil"
       ]
     },
     {
@@ -130134,8 +130134,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
-        "test:chord/nextnode/app/app_bases_scan_test.go#TestAppARecordOfTheServersCodeArrivingAfterTheClosedWatcherWatchesNothingAndMarksNothing",
-        "test:chord/nextnode/app/app_bases_scan_test.go#TestAppARecordOfTheServersCodeEditedSinceTheStartMarksBaseWhileTheAppIsOpen"
+        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppCloseDoesNotWaitForABaseBuildStalledOnAReadItsLateResultIsDroppedAndWaitReturnsNil",
+        "test:chord/nextnode/app/app_bases_scan_test.go#TestAppARecordOfTheServersCodeArrivingAfterTheClosedWatcherWatchesNothingAndMarksNothing"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -132937,7 +132937,7 @@
         "call:chord/nextnode/surfaces/surfaces_build.go#publicOutcome"
       ],
       "evidence": [
-        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppCloseWaitsForABaseBuildStalledOnAReadAndReturnsOnceItEndsItsLateResultIsDropped",
+        "test:chord/nextnode/app/app_bases_linux_test.go#TestAppCloseDoesNotWaitForABaseBuildStalledOnAReadItsLateResultIsDroppedAndWaitReturnsNil",
         "test:chord/nextnode/surfaces/surfaces_build_linux_test.go#TestARolloutStepDuringTheBuildStopsWaitingAtItsContextsAbortBeforeTheBuildEndsTheBuildGoesOn",
         "test:chord/nextnode/surfaces/surfaces_build_linux_test.go#TestTheServersCloseFailsTheBuildInFlightItsWaitersAnswer503"
       ]

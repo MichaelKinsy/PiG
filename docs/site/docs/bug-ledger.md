@@ -76,7 +76,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-0920a00](#bf-0920a00) | `/llama` pointed at llama-swap no longer ends in a bare "llama.cpp returned HTTP 404" when you load or unload… | A Pi defect that PiG fixed first | All platforms | 0.7.0 |
 | [BF-093cf5c](#bf-093cf5c) | Provider error text is written the way Pi writes it | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0950d13](#bf-0950d13) | Chord: `FormatNumber` and `FormatTime` format in ICU's root locale when neither the tag nor the platform… | PiG's own defect | All platforms | Unreleased |
-| [BF-09587d2](#bf-09587d2) | Chord: `App.Close` no longer returns while the surfaces' and bases' build goroutines still run | PiG's own defect | All platforms | Unreleased |
+| [BF-09587d2](#bf-09587d2) | Chord: the surfaces' and bases' build goroutines are joined by `App.Wait` | PiG's own defect | All platforms | Unreleased |
 | [BF-098e33d](#bf-098e33d) | Extension `ctx.ui.theme.fg`, `bg` and `getBgAnsi` throw `Unknown theme color: <token>` in every SDK for a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0a0d27d](#bf-0a0d27d) | The training run's socket was in the build's work directory, whose path under a deep agent directory can… | PiG's own defect | All platforms | Unreleased |
 | [BF-0a3094a](#bf-0a3094a) | fix(codingagent): hold the exit record's owner with a channel, not a replaceable write function | PiG's own defect | All platforms | Unreleased |
@@ -2781,17 +2781,17 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 ### BF-09587d2
 
-**Chord: `App.Close` no longer returns while the surfaces' and bases' build goroutines still run**
+**Chord: the surfaces' and bases' build goroutines are joined by `App.Wait`**
 
 - **Source:** PiG's own defect
-- **Symptom:** Chord: `App.Close` no longer returns while the surfaces' and bases' build goroutines still run.
+- **Symptom:** Chord: the surfaces' and bases' build goroutines are joined by `App.Wait`.
 - **Root cause:** Not recorded.
 - **User impact:** An operation failed or was rejected
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `09587d2718` (2026-11-09)
-- **Tests:** `chord/nextnode/app/app_bases_linux_test.go::TestAppCloseAbandonsABaseBuildStalledOnAReadWhenItsContextEndsAndReturnsTheContextsError`, `chord/nextnode/app/app_bases_linux_test.go::TestAppCloseWaitsForABaseBuildStalledOnAReadAndReturnsOnceItEndsItsLateResultIsDropped`, `chord/nextnode/app/app_bases_scan_test.go::TestAppARecordOfTheServersCodeArrivingAfterTheClosedWatcherWatchesNothingAndMarksNothing`, `chord/nextnode/app/app_bases_scan_test.go::TestAppARecordOfTheServersCodeEditedSinceTheStartMarksBaseWhileTheAppIsOpen`, `chord/nextnode/surfaces/surfaces_build_linux_test.go::TestClosingASurfaceAbandonsItsBuildInFlightWhenTheContextEnds`, `chord/nextnode/surfaces/surfaces_build_linux_test.go::TestClosingASurfaceWaitsForItsBuildInFlight`, `chord/nextnode/surfaces/surfaces_build_test.go::TestASurfaceClosedBeforeItsBuildStartedNeverStartsOneItsWaitersAnswer503`
-- **Release note:** Chord: `App.Close` no longer returns while the surfaces' and bases' build goroutines still run. It joins them after its steps, bounded by its context, and returns the context's error when that ends first (the builds finish on their own and what they finish after the close is dropped); a surface whose build had not started never starts it. Pi's `#close` does not wait for these builds; the Go goroutines are owned, so Close drains them.
+- **Tests:** `chord/nextnode/app/app_bases_linux_test.go::TestAppARepeatedCloseWhileABuildIsStalledReturnsTheFirstResultAtOnce`, `chord/nextnode/app/app_bases_linux_test.go::TestAppCloseDoesNotWaitForABaseBuildStalledOnAReadItsLateResultIsDroppedAndWaitReturnsNil`, `chord/nextnode/app/app_bases_linux_test.go::TestAppCloseReleasesTheDataDirectorysLockAtOnceWhileABuildIsStalled`, `chord/nextnode/app/app_bases_linux_test.go::TestAppWaitReturnsTheContextsErrorWhileAStalledBuildOutlivesItAndNilOnceItEnded`, `chord/nextnode/app/app_bases_linux_test.go::TestAppWaitWithoutAnyBuildStartedReturnsNilAtOnce`, `chord/nextnode/app/app_bases_scan_test.go::TestAppARecordOfTheServersCodeArrivingAfterTheClosedWatcherWatchesNothingAndMarksNothing`, `chord/nextnode/app/app_bases_scan_test.go::TestAppARecordOfTheServersCodeEditedSinceTheStartMarksBaseWhileTheAppIsOpen`, `chord/nextnode/surfaces/surfaces_build_linux_test.go::TestClosingASurfaceDoesNotWaitForItsBuildInFlightWaitJoinsIt` and 2 more in docs/bug-ledger.json
+- **Release note:** Chord: the surfaces' and bases' build goroutines are joined by `App.Wait`. It is bounded by its context and returns the context's error when that ends first (the builds finish on their own and what they finish after the close is dropped); a surface whose build had not started never starts it. `App.Close` does not wait for them, as Pi's `#close` does not.
 
 ### BF-098e33d
 
