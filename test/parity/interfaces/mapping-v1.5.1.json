@@ -107611,7 +107611,7 @@
       "evidence": [
         "test:durable/types_upstream_test.go#TestCommitChangeUnionsKeepPiDiscriminatorsAndMembership",
         "test:durable/ledger_commit_change_test.go#TestDocumentCommitChangeKindsAndCopySource",
-        "test:durable/session/keys_test.go#TestGatedStorageReadsTouchTheirKeysFirst"
+        "test:durable/session/cached_storage_test.go#TestCachedStoragePassesEveryOtherCallThroughWithItsArguments"
       ]
     },
     {
@@ -232142,9 +232142,9 @@
         "call:durable/session/cached_storage.go#CachedStorage.Commit"
       ],
       "evidence": [
+        "test:durable/durabletest/commit_writes_test.go#TestCommitWrites",
         "test:durable/session/cached_storage_test.go#TestCachedStorageAppliesBatchStoredWithCommitWhenPublishedNotAtReceipt",
-        "test:durable/storage/jsonl/jsonl_storage_test.go#TestJsonlStorageBatches",
-        "test:durable/storage/sqlite/sqlite_commit_test.go#TestSqliteStorageBatchCommitRegressions"
+        "test:durable/session/cached_storage_test.go#TestCachedStoragePassesEveryOtherCallThroughWithItsArguments"
       ]
     },
     {
@@ -235227,7 +235227,7 @@
       "evidence": [
         "test:durable/types_upstream_test.go#TestCommitChangeUnionsKeepPiDiscriminatorsAndMembership",
         "test:durable/ledger_commit_change_test.go#TestDocumentCommitChangeKindsAndCopySource",
-        "test:durable/session/keys_test.go#TestGatedStorageReadsTouchTheirKeysFirst"
+        "test:durable/session/cached_storage_test.go#TestCachedStoragePassesEveryOtherCallThroughWithItsArguments"
       ]
     },
     {
@@ -235248,8 +235248,8 @@
       ],
       "evidence": [
         "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
-        "test:durable/session/keys_test.go#TestGatedStorageReadsTouchTheirKeysFirst",
-        "test:durable/session/session_tables_test.go#TestSessionTransactionTables"
+        "test:durable/session/cached_storage_test.go#TestCachedStoragePassesEveryOtherCallThroughWithItsArguments",
+        "test:durable/session/keys_test.go#TestGatedStorageAFailedTouchSkipsEveryRead"
       ]
     },
     {
@@ -241929,7 +241929,7 @@
       "evidence": [
         "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
         "test:durable/examples/pocket_dropin_test.go#TestPocketOpenCreatesDocumentsAndSurvivesReopen",
-        "test:durable/storage/create_unions_variants_test.go#TestSettledSubmissionRecordUnionEveryVariantIsStored"
+        "test:durable/session/cached_storage_test.go#TestCachedStoragePassesEveryOtherCallThroughWithItsArguments"
       ]
     },
     {

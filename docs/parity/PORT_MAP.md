@@ -1101,7 +1101,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/harness/live.ts` | `durable/harness/live.go` | ✅ |
 | `packages/durable/src/harness/prompt.ts` | `durable/harness/prompt.go` | ✅ |
 | `packages/durable/src/harness/provider.ts` | `durable/harness/provider.go` | ✅ |
-| `packages/durable/src/harness/registry-reader.ts` | `durable/harness/registry_reader.go (durable/harness/registry_reader_test.go, durable/harness/registry_reader_upstream_test.go)` | 🟡 |
+| `packages/durable/src/harness/registry-reader.ts` | `durable/harness/registry_reader.go (durable/harness/registry_reader_test.go, durable/harness/registry_reader_host_test.go, durable/harness/registry_reader_upstream_test.go)` Missing: six one-line mutations of registry_reader.go that no test in durable/harness fails (mutation run of 2026-11-10, 15 mutants, 9 killed or not compilable): the snapshot never cached (snapshot-never-cached); the cached-seen flag never set (cache-seen-not-set); attach overwriting a newer cached value (attach-overwrites-newer); Subscribe dropping its ctx (subscribe-ctx-dropped); the reader dropping its observer and the observer's ctx (reader-observer-dropped, reader-observer-ctx-dropped); each needs an asserting case before the row closes | 🟡 |
 | `packages/durable/src/harness/registry.ts` | `durable/harness/registry.go` | ✅ |
 | `packages/durable/src/harness/scheduler.ts` | `durable/harness/scheduler.go`, `durable/types.go` | ✅ |
 | `packages/durable/src/harness/submissions.ts` | `durable/harness/submissions.go` | ✅ |
@@ -1119,13 +1119,13 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/images/node.ts` | `durable/images/node/node.go` | ✅ |
 | `packages/durable/src/images/photon-wasm.d.ts` | `(TypeScript declaration of the WebAssembly import; Go has no compiled module to import)` | n/a |
 | `packages/durable/src/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
-| `packages/durable/src/session/cached-storage.ts` | `durable/session/cached_storage.go` | 🟡 |
-| `packages/durable/src/session/conversation-tails.ts` | `durable/session/conversation_tails.go` | 🟡 |
+| `packages/durable/src/session/cached-storage.ts` | `durable/session/cached_storage.go (durable/session/cached_storage_test.go)` | ✅ |
+| `packages/durable/src/session/conversation-tails.ts` | `durable/session/conversation_tails.go (durable/session/conversation_tails_test.go)` | ✅ |
 | `packages/durable/src/session/forks.ts` | `durable/session/forks.go` | ✅ |
-| `packages/durable/src/session/keys.ts` | `durable/session/keys.go` | 🟡 |
+| `packages/durable/src/session/keys.ts` | `durable/session/keys.go (durable/session/keys_test.go; its upstream tests are the session ones: durable/session/session_group_commit_test.go, durable/session/session_line_api_test.go)` | ✅ |
 | `packages/durable/src/session/session.ts` | `durable/session/session.go`; the Durable core's native Go host of one Session, which the SQLite engine drives through the core ABI: `durable/core/sqlhost/host.go` (declares `// Ports packages/durable/src/session/session.ts`; `Host.Close` is `Session.close`) | ✅ |
 | `packages/durable/src/session/transaction.ts` | `durable/session/transaction.go` | ✅ |
-| `packages/durable/src/session/writer.ts` | `durable/session/writer.go` | 🟡 |
+| `packages/durable/src/session/writer.ts` | `durable/session/writer.go (durable/session/session_group_commit_test.go, durable/session/session_group_commit_internal_test.go, durable/session/wait_delivery_test.go)` Missing: 32 of 82 one-line mutations of writer.go that no test in durable/session fails (mutation run of 2026-11-10; named by the mutation id, the failure and publication paths of the batch writer): send-no-precommit-failure-check, send-no-postcommit-failure-check, send-cancel-not-removed, send-first-parts-ctx-only-other, publish-after-stop-always-own, publish-after-stop-unstored-own, publish-refusal-any-index, publish-external-not-stopping, publish-external-not-flagged-published, publish-adoption-unpublished, publish-rejected-no-report, publish-listener-no-fail-early, publish-listener-no-stop, publish-failed-meanwhile-ignored, publish-own-includes-all, publish-fail-boundary-first-part, publish-fail-stop-cause-missing, publish-not-own-outcome-cause, publish-tail-queue-kept, publishpart-no-deferred-leave, abandon-no-fail, abandon-resettles, abandon-skips-settled-less, abandon-no-unregister, abandon-no-open, failed-no-session-failure, unregister-any-owner, open-newest-any, settle-last-wins, onsettled-late-nil-err, sendguarded-no-recover, wait-not-joined; the cases that fail them (a failure injected before and after the commit, a refusal at each part index, an external publication, a listener that fails early, abandon and the deferred leave) are not yet ported | 🟡 |
 | `packages/durable/src/storage/indexeddb.ts` | `(browser-only Storage backed by window IndexedDB: the file opens with /// <reference lib="dom" /> and every method drives IDBDatabase/IDBTransaction, which exist only in a browser; PiG is a Go process with no browser or WebAssembly build, so no caller can reach it. The Storage contract it implements is the one durable/storage/memory.go, jsonl, sqlite and the Cloudflare SQLite driver already satisfy; Pi 16f5f0af4d)` | n/a |
 | `packages/durable/src/storage/jsonl/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
 | `packages/durable/src/storage/jsonl/node.ts` | `durable/storage/jsonl/node/node.go` | ✅ |
@@ -1150,7 +1150,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/storage/store/tables.ts` | `durable/storage/store/tables.go` (tests in durable/storage/store/tables_test.go (rows and declarations) and store_storage_commit_test.go) | ✅ |
 | `packages/durable/src/tasks.ts` | `durable/tasks.go` | ✅ |
 | `packages/durable/src/testing/assertions.ts` | `durable/durabletest/durabletest.go` | ✅ |
-| `packages/durable/src/testing/commit-writes.ts` | `durable/durabletest/commit_writes.go` | 🟡 |
+| `packages/durable/src/testing/commit-writes.ts` | `durable/durabletest/commit_writes.go (durable/durabletest/commit_writes_test.go)` | ✅ |
 | `packages/durable/src/testing/env-conformance.ts` | `durable/durabletest/env_conformance.go` | ✅ |
 | `packages/durable/src/testing/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
 | `packages/durable/src/testing/runner.ts` | `durable/durabletest/durabletest.go + durable/durabletest/env_conformance.go` | ✅ |
