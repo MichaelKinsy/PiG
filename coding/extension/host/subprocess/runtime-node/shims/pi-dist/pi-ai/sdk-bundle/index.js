@@ -38,7 +38,7 @@ import {
   uuidv7,
   validateToolArguments,
   validateToolCall
-} from "./chunk-2T7OTNEE.js";
+} from "./chunk-HCFCIE4R.js";
 import {
   envApiKeyAuth,
   lazyOAuth
@@ -90,7 +90,7 @@ import {
   toToolDeclaration,
   withClientIdentity,
   withoutInitialSystemMessage
-} from "./chunk-VPJIG2LB.js";
+} from "./chunk-TG7FIA7M.js";
 import "./chunk-SHUYVCID.js";
 export {
   AI_TELEMETRY_SCHEMA,

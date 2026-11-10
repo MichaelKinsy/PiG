@@ -99,7 +99,7 @@ func (p *nativeProviderProxy) carrier() *extension.NativeProvider {
 			defer p.host.mu.Unlock()
 			return p.host.nativeProviders[p.conn][p.declaration.ID] == p
 		},
-		ID: p.declaration.ID, Name: p.declaration.Name, BaseURL: baseURL, Models: p.declaration.Models,
+		ID: p.declaration.ID, Name: p.declaration.Name, BaseURL: baseURL, Models: p.declaration.Models, RefreshModelsAuth: p.declaration.RefreshModelsAuth,
 		Auth:                     p.auth(context.Background()),
 		FilterModels:             p.filterModels,
 		CheckAuth:                p.checkAuth,

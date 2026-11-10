@@ -2,12 +2,12 @@ package durable
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"math"
 	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // Ports packages/durable/src/documents.ts
@@ -257,7 +257,7 @@ func AddressId(address DocumentAddress) string {
 	if address.Key != nil {
 		key = *address.Key
 	}
-	encoded, err := json.Marshal([]any{address.Kind, address.Scope.Kind, owner, key})
+	encoded, err := jsstring.MarshalKeepingSurrogates([]any{address.Kind, address.Scope.Kind, owner, key})
 	if err != nil {
 		panic(err)
 	}

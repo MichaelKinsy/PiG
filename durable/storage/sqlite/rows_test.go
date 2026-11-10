@@ -131,3 +131,14 @@ func TestEncodeJSONKeepsLoneSurrogatesAndLiteralMarkup(t *testing.T) {
 		t.Fatalf("encodeJSON = %s, want %s", got, want)
 	}
 }
+
+// SqliteStorage reads back the text it wrote: the escape of a lone UTF-16 surrogate is the unit (JSON.parse), not U+FFFD.
+func TestParseJSONReadsALoneSurrogateEscapeAsTheUnit(t *testing.T) {
+	record, err := parseJSON[durable.DocumentRecord](`{"id":3,"kind":"\ud800","key":"k\udc00","scope":{"kind":"session"},"createdAt":2}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if record.Kind != "\xed\xa0\x80" || record.Key == nil || *record.Key != "k\xed\xb0\x80" {
+		t.Errorf("record = %q %v, want the units kept", record.Kind, record.Key)
+	}
+}

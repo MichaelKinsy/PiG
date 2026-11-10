@@ -8,7 +8,7 @@ JSON mode runs one prompt and writes its Session header and model-loop events as
 pig --mode json --model <provider/model> "Your prompt"
 ```
 
-Use this mode when one process invocation handles one prompt. Use [RPC mode](rpc.md) when a client must send several commands to a long-running PiG process. The record types and fields are those of Pi 1.5.1 ([Pi's JSON event stream reference](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/json.md)).
+Use this mode when one process invocation handles one prompt. Use [RPC mode](rpc.md) when a client must send several commands to a long-running PiG process. The record types and fields are those of Pi 1.5.2 ([Pi's JSON event stream reference](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/json.md)).
 
 ## Framing
 

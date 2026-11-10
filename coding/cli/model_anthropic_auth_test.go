@@ -38,7 +38,7 @@ func TestBuildModelAnthropicAuthRequestShapes(t *testing.T) {
 			name:          "stored subscription login takes the Claude Code identity",
 			env:           map[string]string{"ANTHROPIC_AUTH_TOKEN": "auth-token"},
 			storedAccess:  "sk-ant-oat01-stored",
-			authorization: "Bearer sk-ant-oat01-stored", userAgent: "claude-cli/2.1.280", systemBlocks: 2,
+			authorization: "Bearer sk-ant-oat01-stored", userAgent: "claude-cli/2.1.322", systemBlocks: 2,
 		},
 		{
 			name:   "api key",
