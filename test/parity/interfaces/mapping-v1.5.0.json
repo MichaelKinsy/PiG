@@ -266696,7 +266696,7 @@
       "evidence": [
         "test:coding/mcpext/exit_cleanup_test.go#TestKillTrackedDetachedChildrenEndsRunningMCPStdioServers",
         "test:coding/mcpext/regression_unix_test.go#TestConnectionNeverReusesAStdioServerThatDied",
-        "test:internal/codingagent/tools/shell_tracked_test.go#TestKillTrackedDetachedChildrenEndsRunningMCPStdioServers"
+        "test:mcp/client_methods_test.go#TestTransportsExposeTheirConstructionOptions"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -267052,8 +267052,8 @@
       ],
       "evidence": [
         "test:coding/mcpext/exit_cleanup_test.go#TestKillTrackedDetachedChildrenEndsRunningMCPStdioServers",
-        "test:internal/codingagent/tools/shell_tracked_test.go#TestKillTrackedDetachedChildrenEndsRunningMCPStdioServers",
-        "test:mcp/client_methods_test.go#TestTransportsExposeTheirConstructionOptions"
+        "test:mcp/client_methods_test.go#TestTransportsExposeTheirConstructionOptions",
+        "test:mcp/goroutines_test.go#TestStdioClientLeavesNoGoroutineBehindAfterClose"
       ]
     },
     {

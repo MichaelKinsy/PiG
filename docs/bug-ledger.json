@@ -12455,6 +12455,7 @@
         "coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthCancelsASignInWaitingOnTheAuthorizationServerWhenTheSessionShutsDown",
         "coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthClosesTheSessionWithoutRefreshingAnExpiringToken",
         "coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthGivesUpOnPigMcpLoginAfterTimeoutAlsoWhileTheAuthorizationServerHangs",
+        "coding/mcpext/exit_cleanup_test.go::TestKillTrackedDetachedChildrenEndsRunningMCPStdioServers",
         "coding/mcpext/manager_test.go::TestMcpManagerReconnectRunsInTheBackgroundWithoutAStatusScreen",
         "coding/mcpext/manager_test.go::TestMcpManagerServerMenuAndDisable",
         "coding/mcpext/manager_test.go::TestMcpManagerStatusScreenCancelsTheRunningOperationWithTheCancelKey",
@@ -12475,7 +12476,6 @@
         "coding/mcpext/responsive_test.go::TestMcpPreparedToolCallResolvesTheConnectionWhenItExecutes",
         "coding/session_run_prompt_options_test.go::TestSetRunPromptRecordsThePublishedRunSectionsInTheTranscript",
         "internal/codingagent/interactive_run_prompt_test.go::TestInteractiveRunPromptIsPublishedToTheSessionForTheRunsDuration",
-        "internal/codingagent/tools/shell_tracked_test.go::TestKillTrackedDetachedChildrenEndsRunningMCPStdioServers",
         "mcp/streamable_http_test.go::TestStreamableHTTPTransportClosesTheSessionWithTheLastRequestsTokenWithoutAskingTheAuthProvider",
         "test/extension-conformance/api_append_entry_test.go::TestConformance_ExtensionAPIAppendEntry",
         "test/parity/scenarios/slash-commands/16-mcp-manager-while-connecting.toml",
@@ -31484,7 +31484,7 @@
         "ai/abort_race_test.go::TestOperationSignalKeepsASignalAndSuppliesAnUncancelledOne",
         "ai/abort_race_test.go::TestRaceWithAbortSignalSettlesWithTheFirstOfOperationAndAbort",
         "ai/abort_utils_oracle_test.go::TestAbortUtilsMatchPi",
-        "internal/codingagent/tools/shell_tracked_test.go::TestKillTrackedDetachedChildrenEndsRunningMCPStdioServers",
+        "coding/mcpext/exit_cleanup_test.go::TestKillTrackedDetachedChildrenEndsRunningMCPStdioServers",
         "test/parity/scenarios/slash-commands/16-mcp-manager-while-connecting.toml"
       ]
     },
