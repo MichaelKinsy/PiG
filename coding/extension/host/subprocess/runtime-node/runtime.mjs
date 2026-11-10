@@ -1464,7 +1464,12 @@ export class Connection {
     }
     // The host needs this process's event loop for any other request, and for shutdown: a wait for its own turn ends (awaitTurnTaken).
     if (env.type === "request" || env.type === "shutdown") turnWait.turn = 0;
-    if (env.type === "cancel") this.cancelParent(env.cancel?.request_id || env.id || "", true);
+    if (env.type === "cancel") {
+      const requestId = env.cancel?.request_id || env.id || "";
+      // A signal-only cancel (session_before_compact, session_before_tree: Pi's abort fires event.signal and nothing else) cancels no host call, and its signal aborts here, where the frame is read: a synchronous call of the handler settles in this reader at once, and the handler must find event.signal aborted when that call returns, as the cancel frame precedes the result on the wire.
+      if (env.cancel?.signal_only) this.owner?.activeRequests.get(requestId)?.abort(env.cancel.reason || "cancelled");
+      else this.cancelParent(requestId, true);
+    }
     if (env.type === "notify" && env.notify?.method === "model_stream_event" && env.notify.args?.started) {
       this.streamStarts.get(env.notify.args.streamId)?.();
       return;
@@ -3342,7 +3347,8 @@ export class Runtime {
         if (env.type === "cancel") {
           const requestId = env.cancel?.request_id || env.id || "";
           (this.activeRequests.get(requestId) ?? this.retainedController(requestId))?.abort(env.cancel?.reason || "cancelled");
-          this.conn.cancelParent(requestId);
+          // A signal-only cancel aborts the request's signal alone: the handler's host calls, pending and later, are answered and its reply is delivered.
+          if (!env.cancel?.signal_only) this.conn.cancelParent(requestId);
           continue;
         }
         if (env.type === "request") this.startRequest(env);

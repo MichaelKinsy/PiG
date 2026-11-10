@@ -869,9 +869,9 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 		issued()
 	}
 	if signal != nil && !signalAborted {
-		// The cancel follows the request frame, also when the signal ended after the flag was read: AfterFunc runs at once for a signal that already ended. The reply is still awaited, as Pi awaits the handler.
+		// The signal-only cancel follows the request frame, also when the signal ended after the flag was read: AfterFunc runs at once for a signal that already ended. The reply is still awaited, as Pi awaits the handler.
 		stop := context.AfterFunc(signal, func() {
-			_ = c.Send(&Envelope{Type: MsgCancel, ID: env.ID, Cancel: &CancelPayload{RequestID: env.ID, Reason: signal.Err().Error()}})
+			_ = c.Send(&Envelope{Type: MsgCancel, ID: env.ID, Cancel: &CancelPayload{RequestID: env.ID, Reason: signal.Err().Error(), SignalOnly: true}})
 		})
 		defer stop()
 	}
@@ -2393,7 +2393,7 @@ func requestIssued(ctx context.Context) func() {
 
 type requestSignalKey struct{}
 
-// withRequestSignal gives request the AbortSignal its handler receives as event.signal (session_before_compact, session_before_tree), for a request whose own context must not end with it: Pi awaits every handler of the event, with the signal aborted, and keeps its result (runner.ts emit). Request records whether the signal had ended before the frame was written (RequestPayload.SignalAborted), and when it ends while the handler runs it cancels the handler's request and keeps waiting for the reply.
+// withRequestSignal gives request the AbortSignal its handler receives as event.signal (session_before_compact, session_before_tree), for a request whose own context must not end with it: Pi awaits every handler of the event, with the signal aborted, and keeps its result (runner.ts emit). Request records whether the signal had ended before the frame was written (RequestPayload.SignalAborted), and when it ends while the handler runs it sends a signal-only cancel (CancelPayload.SignalOnly: no host call of the handler is cancelled) and keeps waiting for the reply.
 func withRequestSignal(ctx, signal context.Context) context.Context {
 	return context.WithValue(ctx, requestSignalKey{}, signal)
 }

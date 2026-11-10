@@ -2198,7 +2198,11 @@ impl Extension {
                         .filter(|id| !id.is_empty())
                         .or(env.id.as_deref())
                         .unwrap_or("");
-                    conn.cancel_pending_calls_for(request_id);
+                    // A signal-only cancel (session_before_compact / session_before_tree: Pi's abort fires event.signal and nothing else) aborts the signal the handler holds and cancels no host call: the handler's calls, pending and later, are answered and its reply is delivered. An ordinary cancel ends the request and its calls.
+                    let signal_only = env.cancel.as_ref().is_some_and(|c| c.signal_only);
+                    if !signal_only {
+                        conn.cancel_pending_calls_for(request_id);
+                    }
                     if let Some(cancel) = active_requests.lock().unwrap().get(request_id) {
                         let reason = env
                             .cancel
@@ -4194,6 +4198,7 @@ mod tests {
                 cancel: Some(crate::protocol::CancelMsg {
                     request_id: "req-1".to_string(),
                     reason: "test cancel".to_string(),
+                    signal_only: false,
                 }),
                 ..Default::default()
             },

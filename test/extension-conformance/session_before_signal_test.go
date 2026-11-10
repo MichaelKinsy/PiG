@@ -14,7 +14,7 @@ import (
 //   - mode "wait": the abort reaching it while a host call of its own is pending (a dialog the host UI holds): event.signal aborts, the pending call is not cancelled and returns the user's answer, and the handler's reply, returned after the abort, reaches the host;
 //   - mode "first": a handler dispatched after the abort starts with the signal already aborted, on its first line, and its host call runs and returns the answer.
 //
-// The probe returns the state it read in its result (the signal on its first line, the signal after the call, the call's answer), which no SDK's fallback produces: a handler that never ran, a reply the host dropped, a call cancelled with the request and a signal that was not aborted all give another value. The row is deterministic: the host UI holds the call until the host has queued the cancel frame, so the cancel precedes the call's answer on the wire and every runtime must apply it before it routes the answer. It runs in every SDK, isolated, packed and (Go) fused, with the dispatch context detached from the abort as the Session emits the events.
+// The probe returns the state it read in its result (the signal on its first line, the signal after the call, the call's answer), which no SDK's fallback produces: a handler that never ran, a reply the host dropped, a call cancelled with the request and a signal that was not aborted all give another value. The row is deterministic: the host UI holds the call until the host has queued the signal-only cancel frame, so the cancel precedes the call's answer on the wire and every runtime must apply it before it routes the answer. It runs in every SDK, isolated, packed and (Go) fused, with the dispatch context detached from the abort as the Session emits the events.
 func TestSessionBeforeSignalReachesEverySDKWhenAbortedDuringDispatch(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
@@ -80,10 +80,10 @@ func TestSessionBeforeSignalReachesEverySDKWhenAbortedDuringDispatch(t *testing.
 							} else {
 								go emit()
 								pollUntilConformance(t, "the handler never reached its host call", held)
-								// The abort reaches the handler while its call is pending: the host holds the call until it has queued the cancel frame, which then precedes the answer on the wire.
-								cancels := h.wire.frames.cancelFrames()
+								// The abort reaches the handler while its call is pending: the host holds the call until it has queued the signal-only cancel frame, which then precedes the answer on the wire.
+								cancels := h.wire.frames.signalCancelFrames()
 								abort()
-								pollUntilConformance(t, "the host never sent the cancel frame", func() bool { return h.wire.frames.cancelFrames() > cancels })
+								pollUntilConformance(t, "the host never sent the signal-only cancel frame", func() bool { return h.wire.frames.signalCancelFrames() > cancels })
 							}
 							h.ui.dialogs.answer(t, pending, "answered")
 							got := <-emitted

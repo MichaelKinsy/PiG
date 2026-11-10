@@ -304,7 +304,7 @@ type Extension struct {
 	branchFeed   stateFeed[struct{}]
 
 	requestsMu sync.Mutex
-	requests   map[string]context.CancelCauseFunc
+	requests   map[string]requestCancel
 	requestWG  sync.WaitGroup
 	runCtx     context.Context
 	runCancel  context.CancelFunc
@@ -745,7 +745,7 @@ func New(name string) *Extension {
 		messageViewRendererFuncs: make(map[string]MessageViewRendererFunc),
 		entryViewRendererFuncs:   make(map[string]EntryViewRendererFunc),
 		flagDefaults:             make(map[string]any),
-		requests:                 make(map[string]context.CancelCauseFunc),
+		requests:                 make(map[string]requestCancel),
 		modelStreams:             make(map[string]*ModelEventStream),
 		modelStreamCallbacks:     make(map[string]*modelStreamCallbacks),
 		overlays:                 make(map[string]*remoteOverlay),
@@ -1330,8 +1330,8 @@ func (e *Extension) loop() error {
 			}
 			ctx, scope := e.armRequestScope(env.ID)
 			if env.Request != nil && env.Request.SignalAborted {
-				// The request is cancelled before its handler starts, as a cancel frame queued ahead of it would: the handler's first line sees the abort (runner.ts emit awaits a handler dispatched after the signal aborted).
-				scope.cancel(cancelReason(context.Canceled.Error()))
+				// The event's signal is aborted before its handler starts, as a signal-only cancel queued ahead of the request would leave it: the handler's first line sees the abort (runner.ts emit awaits a handler dispatched after the signal aborted), and its host calls run.
+				scope.signal(cancelReason(context.Canceled.Error()))
 			}
 			if env.Request != nil && env.Request.Method == "tool_call" {
 				ctx.start = e.toolBatches.reserve(env.Request.Batch)
@@ -1413,7 +1413,15 @@ type requestScope struct {
 	e      *Extension
 	id     string
 	cancel context.CancelCauseFunc
+	// signal aborts the request's signal alone: Context.Done and Err, not the request the host calls wait on.
+	signal context.CancelCauseFunc
 	place  jsloop.Place
+}
+
+// requestCancel is what a cancel frame of an active request reaches: the request, and the signal its handler holds.
+type requestCancel struct {
+	request context.CancelCauseFunc
+	signal  context.CancelCauseFunc
 }
 
 func (s *requestScope) end() {
@@ -1428,17 +1436,22 @@ func (e *Extension) armRequest(id string) (Context, func()) {
 	return ctx, scope.end
 }
 
+// armRequestScope arms a request with two contexts: the request's, which the host calls of its handler wait on, and the signal's, a child of it, which is Context.Done and Err. An ordinary cancel ends the request and with it the signal; a signal-only cancel (session_before_compact and session_before_tree, whose event.signal aborts while the handler goes on, as Pi's in-process host calls never fail with it) ends the signal alone.
 func (e *Extension) armRequestScope(id string) (Context, *requestScope) {
 	requestRoot := e.runCtx
 	if requestRoot == nil {
 		requestRoot = context.Background()
 	}
 	reqCtx, cancel := context.WithCancelCause(requestRoot)
+	signalCtx, signal := context.WithCancelCause(reqCtx)
 	parent := e.conn.armParent(id, requestRoot, reqCtx)
+	e.conn.pendingMu.Lock()
+	parent.signal = signal
+	e.conn.pendingMu.Unlock()
 	e.requestsMu.Lock()
-	e.requests[id] = cancel
+	e.requests[id] = requestCancel{request: cancel, signal: signal}
 	e.requestsMu.Unlock()
-	return Context{ext: e, requestID: id, parent: parent, ctx: reqCtx}, &requestScope{e: e, id: id, cancel: cancel}
+	return Context{ext: e, requestID: id, parent: parent, ctx: signalCtx}, &requestScope{e: e, id: id, cancel: cancel, signal: signal}
 }
 
 func (e *Extension) handleRequest(id string, req *requestMsg) {
@@ -2149,17 +2162,24 @@ func (e *Extension) cancelRequest(env envelope) {
 		return
 	}
 	e.requestsMu.Lock()
-	cancel := e.requests[id]
+	cancel, armed := e.requests[id]
 	e.requestsMu.Unlock()
+	var cause error
+	if env.Cancel != nil && env.Cancel.Reason != "" {
+		cause = cancelReason(env.Cancel.Reason)
+	}
+	if env.Cancel != nil && env.Cancel.SignalOnly {
+		// Only the request's signal ended: no host call is cancelled and the request is not marked cancelled, so the handler's calls, pending and later, are answered and its reply is delivered.
+		if armed {
+			cancel.signal(cause)
+		}
+		return
+	}
 	if e.conn != nil {
 		e.conn.cancelParentCalls(id)
 	}
-	if cancel != nil {
-		var cause error
-		if env.Cancel != nil && env.Cancel.Reason != "" {
-			cause = cancelReason(env.Cancel.Reason)
-		}
-		cancel(cause)
+	if armed {
+		cancel.request(cause)
 	}
 }
 
@@ -2167,9 +2187,9 @@ func (e *Extension) cancelAllRequests() {
 	e.requestsMu.Lock()
 	cancels := make([]context.CancelCauseFunc, 0, len(e.requests))
 	for _, cancel := range e.requests {
-		cancels = append(cancels, cancel)
+		cancels = append(cancels, cancel.request)
 	}
-	e.requests = make(map[string]context.CancelCauseFunc)
+	e.requests = make(map[string]requestCancel)
 	e.requestsMu.Unlock()
 	for _, cancel := range cancels {
 		cancel(nil)

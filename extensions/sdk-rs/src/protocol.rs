@@ -713,6 +713,9 @@ pub struct CancelMsg {
     pub request_id: String,
     #[serde(default)]
     pub reason: String,
+    /// Only the request's AbortSignal ended (`session_before_compact`, `session_before_tree`) and the request goes on: the signal the handler holds aborts and no host call is cancelled.
+    #[serde(default)]
+    pub signal_only: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
