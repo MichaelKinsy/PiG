@@ -29716,6 +29716,26 @@
       "tests": []
     },
     {
+      "id": "BF-8e21230",
+      "title": "Closing a durable Harness releases the pi-ai resources of the provider sessions its tasks used, after the…",
+      "symptom": "Closing a durable Harness releases the pi-ai resources of the provider sessions its tasks used, after the running task invocations joined and before Storage closes, so a legacy OpenAI Codex WebSocket no longer keeps the process alive after `Harness.close()` returns.",
+      "rootCause": "Ports provider.ts, scheduler.ts and harness.ts beforeClose: ensureProviderSessionId records the provider session ID it resolves into the set of the Harness that owns the task runtime; once task invocations joined, close runs pi-ai's scoped cleanup (ai.CleanupSessionResources) for each of them, reporting a failing cleanup as host_error/models without stopping Storage from closing. The persisted ProviderDoc is untouched, and another live Harness's sessions are left alone.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Closing a durable Harness releases the pi-ai resources of the provider sessions its tasks used, after the running task invocations joined and before Storage closes, so a legacy OpenAI Codex WebSocket no longer keeps the process alive after `Harness.close()` returns. The cleanup is scoped to the closing Harness (another live Harness in the process keeps its resources), runs also when the Harness fails, leaves the persisted provider session IDs for a reopened Harness, and a failing cleanup is reported as a `host_error` for `models` without stopping Storage from closing.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8e2123081c",
+          "date": "2026-11-10"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-8e3613d",
       "title": "Text typed over an extension's autocomplete provider and followed at once by Enter no longer skips the menu…",
       "symptom": "Text typed over an extension's autocomplete provider and followed at once by Enter no longer skips the menu Pi opens.",

@@ -1078,6 +1078,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8d46bf8-2](#bf-8d46bf8-2) | `mcp-auth.json` is replaced through a temporary file and a rename, so a crash cannot leave a torn credential… | PiG's own defect | All platforms | Unreleased |
 | [BF-8d46bf8-3](#bf-8d46bf8-3) | Tool search and codemode resolve a local `$ref` in one pass over the schema instead of parsing it once per… | PiG's own defect | All platforms | Unreleased |
 | [BF-8d6fb83](#bf-8d6fb83) | A bare URL in Markdown ends at CJK punctuation, so `https://example.com。后面的中文` links… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
+| [BF-8e21230](#bf-8e21230) | Closing a durable Harness releases the pi-ai resources of the provider sessions its tasks used, after the… | PiG's own defect | All platforms | Unreleased |
 | [BF-8e3613d](#bf-8e3613d) | Text typed over an extension's autocomplete provider and followed at once by Enter no longer skips the menu… | A Pi defect that PiG fixed first | All platforms | 0.7.0 |
 | [BF-8e70eff](#bf-8e70eff) | fix(chord/nextnode/workers): the channel refuses a record over the limit | PiG's own defect | All platforms | Unreleased |
 | [BF-8eb1202](#bf-8eb1202) | An OpenAI Chat Completions chunk with a member of an unexpected type (a number for `delta.content`… | PiG's own defect | All platforms | 0.5.0 |
@@ -16618,6 +16619,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `8d6fb83fb2` (2026-10-30, #10933)
 - **Tests:** None recorded.
 - **Release note:** A bare URL in Markdown ends at CJK punctuation, so `https://example.com。后面的中文` links `https://example.com` and keeps the rest as text. The URL took the punctuation and the text after it into the link. Carried forward from Pi fa168515 (earendil-works/pi#10933), past the 1.4.0+b3a29f11 pin.
+
+### BF-8e21230
+
+**Closing a durable Harness releases the pi-ai resources of the provider sessions its tasks used, after the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Closing a durable Harness releases the pi-ai resources of the provider sessions its tasks used, after the running task invocations joined and before Storage closes, so a legacy OpenAI Codex WebSocket no longer keeps the process alive after `Harness.close()` returns.
+- **Root cause:** Ports provider.ts, scheduler.ts and harness.ts beforeClose: ensureProviderSessionId records the provider session ID it resolves into the set of the Harness that owns the task runtime; once task invocations joined, close runs pi-ai's scoped cleanup (ai.CleanupSessionResources) for each of them, reporting a failing cleanup as host_error/models without stopping Storage from closing. The persisted ProviderDoc is untouched, and another live Harness's sessions are left alone.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8e2123081c` (2026-11-10)
+- **Tests:** None recorded.
+- **Release note:** Closing a durable Harness releases the pi-ai resources of the provider sessions its tasks used, after the running task invocations joined and before Storage closes, so a legacy OpenAI Codex WebSocket no longer keeps the process alive after `Harness.close()` returns. The cleanup is scoped to the closing Harness (another live Harness in the process keeps its resources), runs also when the Harness fails, leaves the persisted provider session IDs for a reopened Harness, and a failing cleanup is reported as a `host_error` for `models` without stopping Storage from closing.
 
 ### BF-8e3613d
 
