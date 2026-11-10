@@ -85,7 +85,6 @@ func AcquireSync(path string) (*Lock, error) {
 
 // AcquireAuthSync is FileAuthStorageBackend.acquireLockSyncWithRetry (auth-storage.ts:81-95), the synchronous auth loop: ten attempts 20 ms apart that retry ELOCKED and, on Windows, EPERM. It reclaims stale idle legacy sidecars.
 func AcquireAuthSync(path string) (*Lock, error) {
-	// pig divergence (D236): Pi 081a6e87f locks the resolved file, so every symlinked alias of the file shares one lock.
 	return acquireSyncWithRetry(path, func(err error) bool { return retryableLockErrorCode(err) != "" }, realpathLockTarget)
 }
 
@@ -144,7 +143,6 @@ func Acquire(ctx context.Context, path string) (*Lock, error) {
 		if err := context.Cause(ctx); err != nil {
 			return nil, err
 		}
-		// pig divergence (D236): Pi 081a6e87f locks the resolved file, so every symlinked alias of the file shares one lock.
 		lock, err := tryAcquireResolved(ctx, path)
 		if err == nil {
 			return lockUnlessAborted(ctx, lock)

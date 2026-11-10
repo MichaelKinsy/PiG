@@ -769,6 +769,7 @@ def create_local_bash_operations(options: dict[str, Any] | None = None) -> Any:
     from .user_bash import BashOperations
 
     shell_path = _member(options, "shell_path")
+    # pig divergence (D243): Pi 1.5.1's exec rejects with a ShellTimeoutError carrying the shell's exit code; builtinTool.localExec carries only the error text, so a timeout reaches the extension as plain timeout:<seconds>.
     return BashOperations(exec=lambda command, cwd, exec_options: _local_exec("bash", shell_path, command, cwd, exec_options))
 
 

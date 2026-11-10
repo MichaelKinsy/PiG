@@ -59,7 +59,7 @@ type InteractiveSessionHandle interface {
 	// persistence failure.
 	RecordUserBashResult(command string, result BashResult, excludeFromContext bool) error
 	// QueuedUserMessage builds the user message the mode queues on the Agent while a run streams. The Session marks a message with
-	// images so they are normalized when it is delivered (D249: Pi main 4cf69332c).
+	// images so they are normalized when it is delivered.
 	QueuedUserMessage(text string, images []ai.ImageContent) agent.AgentMessage
 	// Events returns the agent's streaming event channel. Used by
 	// processAgentEvents to drive live UI updates.

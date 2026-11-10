@@ -214,7 +214,7 @@ func executeShellTool(ctx context.Context, cwd string, cfg shellToolConfig, rawP
 		case strings.HasPrefix(msg, "timeout:"):
 			status := "Command timed out after " + strings.TrimPrefix(msg, "timeout:") + " seconds"
 			if timeoutErr, ok := errors.AsType[*ShellTimeoutError](err); ok && timeoutErr.ShellExit != nil {
-				// pig divergence (D243): both facts matter, the command's real result and that
+				// Both facts matter, the command's real result and that
 				// its background processes were still writing when the timeout hit.
 				status += ". The shell exited with code " + strconv.Itoa(timeoutErr.ShellExit.ExitCode) + " after " + jsNumber(timeoutErr.ShellExit.AfterSeconds) + " seconds, but background processes it started kept writing output until the timeout."
 			}

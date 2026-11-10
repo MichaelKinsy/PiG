@@ -4707,7 +4707,7 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "Production-path review at Pi main 3b57ed7e2: the Go tests drive tui.ExtensionSelectorComponent, the component extension ui.select, /bug and the login pickers mount (D257), through HandleInput and Render; the extension dialog path is covered in internal/codingagent/ext_ui_dialog_displace_test.go."
+      "rationale": "Production-path review at Pi 3b57ed7e2: the Go tests drive tui.ExtensionSelectorComponent, the component extension ui.select, /bug and the login pickers mount, through HandleInput and Render; the extension dialog path is covered in internal/codingagent/ext_ui_dialog_displace_test.go."
     },
     {
       "path": "packages/coding-agent/test/extensions-discovery.test.ts",

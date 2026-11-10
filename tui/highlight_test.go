@@ -144,7 +144,7 @@ func TestLanguageFromPath(t *testing.T) {
 		{"foo.tsx", "typescript"},
 		{"foo.md", "markdown"},
 		{"foo.unknownext", ""},
-		// Pi main c13f6acfb (syntax-highlight.test.ts "maps file extensions of eagerly loaded languages to their language"; D260)
+		// Pi main c13f6acfb (syntax-highlight.test.ts "maps file extensions of eagerly loaded languages to their language")
 		{"lib/main.dart", "dart"},
 		{"flake.nix", "nix"},
 		{"script.groovy", "groovy"},
@@ -241,7 +241,7 @@ func TestHighlightCodeThatFailsTakesTheCodeBlockColor(t *testing.T) {
 	}
 }
 
-// D260: a .dart, .nix or .groovy file renders highlighted, not as plain text, through the language the path maps to.
+// A .dart, .nix or .groovy file renders highlighted, not as plain text, through the language the path maps to.
 func TestHighlightCodeHighlightsDartNixAndGroovy(t *testing.T) {
 	for path, code := range map[string]string{
 		"main.dart":    "class A { final int x = 1; }",

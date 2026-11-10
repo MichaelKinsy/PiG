@@ -1299,7 +1299,7 @@ func (m *InteractiveMode) restoreQueuedMessagesToEditor(abort bool) int {
 		}
 		m.compactionQueue = nil
 		combined := strings.Join(texts, "\n\n")
-		if current := m.editor.GetExpandedText(); widthx.JSTrim(current) != "" { // pig divergence (D251): Pi main 51313540a keeps pasted text
+		if current := m.editor.GetExpandedText(); widthx.JSTrim(current) != "" {
 			combined += "\n\n" + current
 		}
 		m.editor.SetText(combined)

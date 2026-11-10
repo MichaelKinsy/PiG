@@ -255,7 +255,6 @@ func (o *LocalShellOperations) Exec(ctx context.Context, command, cwd string, op
 	}
 	code := shellExitCode(cmd.ProcessState)
 	if didTimeOut {
-		// pig divergence (D243): Pi main 06aa6563e reports the shell's exit code when it exited before the deadline.
 		timeoutErr := &ShellTimeoutError{Timeout: jsNumber(*opts.Timeout)}
 		if exitedBefore >= 0 {
 			timeoutErr.ShellExit = &ShellExit{ExitCode: code, AfterSeconds: math.Round(float64(exitedBefore.Milliseconds())/100) / 10}

@@ -397,6 +397,7 @@ session's working directory, model and identity from CTX; the cwd given to the f
   "Pi's createLocalBashOperations(options): the bash-operations that run a command in the local shell, which an extension wraps to rewrite commands while it keeps Pi's
 local shell behavior. The command runs on the host; (funcall (bash-operations-exec ops) command cwd options) streams its output to the options' on-data in order and
 returns {\"exitCode\": ...}, or signals what Pi's exec rejects with (\"aborted\" when the signal was set, \"timeout:<seconds>\" when the timeout elapsed)."
+  ;; pig divergence (D243): Pi 1.5.1's exec rejects with a ShellTimeoutError carrying the shell's exit code; builtinTool.localExec carries only the error text, so a timeout reaches the extension as plain timeout:<seconds>.
   (make-bash-operations (lambda (command cwd options) (bt-local-exec "bash" (or shell-path "") command cwd options))))
 
 (defun create-local-powershell-operations ()

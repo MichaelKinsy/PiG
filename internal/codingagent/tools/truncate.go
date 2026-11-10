@@ -193,7 +193,6 @@ func TruncateLine(line string, maxChars int) TruncateLineResult {
 	if jsLength(line) <= maxChars {
 		return TruncateLineResult{Text: line}
 	}
-	// pig divergence (D252): Pi main 9e870f6f0 keeps a surrogate pair whole, so a cut inside one drops it.
 	return TruncateLineResult{Text: jsstring.SliceHead(line, maxChars) + truncatedLineSuffix, WasTruncated: true}
 }
 

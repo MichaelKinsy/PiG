@@ -707,7 +707,7 @@ func (m *InteractiveMode) handleBashCommand(ctx context.Context, command string,
 			block = tui.NewBashExecutionComponent(command, m.tuiInst, excludeFromContext, m.outputPad)
 			m.toolMu.Lock()
 			m.bashOrder = append(m.bashOrder, block)
-			// pig divergence (D311): Pi acd059b72 starts the block in the current expand state, where Pi 1.5.0 starts it collapsed.
+			// The block starts in the current expand state.
 			block.SetExpanded(m.toolsExpanded)
 			m.toolMu.Unlock()
 			if deferred {

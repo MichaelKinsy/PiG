@@ -299,7 +299,7 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 			resultMu.Unlock()
 			rt.Session().Dispose()
 			release()
-			// pig divergence (D237): Pi main b2cb62923 makes runtimeHost.dispose() wait for credential writes in progress, so a started OAuth refresh is saved before the signal's exit.
+			// Pi's runtimeHost.dispose() waits for credential writes in progress, so a started OAuth refresh is saved before the signal's exit.
 			//portlint:allow ctxbackground Pi's SIGTERM/SIGHUP handler awaits runtimeHost.dispose() with no signal (print-mode.ts:57-60); this signal hook has no caller context
 			_ = rt.SettleCredentialWrites(context.Background())
 		})
@@ -318,7 +318,7 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 	go func() {
 		select {
 		case sig := <-intCh:
-			// a repeated signal exits at once, without waiting for the disposal the first one started (print-mode.ts signalCount > 1), including a wait for a credential write (D237). The watcher starts before anything that can wait on that disposal.
+			// a repeated signal exits at once, without waiting for the disposal the first one started (print-mode.ts signalCount > 1), including a wait for a credential write. The watcher starts before anything that can wait on that disposal.
 			go func() {
 				select {
 				case again := <-intCh:

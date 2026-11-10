@@ -716,6 +716,7 @@ func (h *Host) handleBuiltinToolLocalExec(ctx context.Context, conn *Conn, call 
 		return err
 	})
 	if err != nil {
+		// pig divergence (D243): the bare error crosses the wire, so a *ShellTimeoutError's ShellExit never reaches the SDK; a timeout is plain timeout:<seconds>.
 		return nil, err
 	}
 	data, err := json.Marshal(BuiltinToolLocalExecResult{ExitCode: exitCode})

@@ -112,7 +112,7 @@
   (multiple-value-bind (text was) (pig:truncate-line "short")
     (check-equal "short" text) (check (not was)))
   (let ((emoji (make-string 10 :initial-element (code-char #x1F600))))
-    ;; 10 emoji are 20 UTF-16 units: a limit of 16 keeps 8 of them, a limit of 7 would cut a pair, so the whole pair is dropped (Pi main 9e870f6f0, pig divergence (D252))
+    ;; 10 emoji are 20 UTF-16 units: a limit of 16 keeps 8 of them, a limit of 7 would cut a pair, so the whole pair is dropped (Pi 9e870f6f0)
     (check-equal (concatenate 'string (subseq emoji 0 8) "... [truncated]") (pig:truncate-line emoji 16))
     (check-equal (concatenate 'string (subseq emoji 0 3) "... [truncated]") (pig:truncate-line emoji 7))))
 

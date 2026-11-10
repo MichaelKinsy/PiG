@@ -1255,7 +1255,7 @@ id = "coding-agent/handle-event/agent-end-settled"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.handleEvent"
 family = "compaction"
 kind = "event-dispatch"
-claim = "agent_end stops the terminal progress when the setting is on, clears the working status only, removes a message still streaming, clears the pending tools and requests a render; agent_settled ends the session when an extension asked for shutdown during the run (ctx.shutdown() ends an idle session at once); agent_settled first moves user bash output shown while the run worked into the chat and requests a render (Pi acd059b72, kept as D311)"
+claim = "agent_end stops the terminal progress when the setting is on, clears the working status only, removes a message still streaming, clears the pending tools and requests a render; agent_settled ends the session when an extension asked for shutdown during the run (ctx.shutdown() ends an idle session at once); agent_settled first moves user bash output shown while the run worked into the chat and requests a render"
 status = "ported"
 pig_targets = [
   "internal/codingagent/interactive_events.go#handleAgentEvent",
@@ -4575,7 +4575,7 @@ id = "tui/terminal-image/detect-capabilities"
 upstream_id = "input:packages/tui/src/terminal-image.ts#<module>.detectCapabilities"
 family = "tui-components"
 kind = "boundary-transition"
-claim = "the image protocol, truecolor and hyperlink capabilities follow Pi's environment order: tmux (hyperlinks from the probe) and screen first, then herdr, Rex, kitty, ghostty, wezterm, Warp, iTerm, Windows Terminal, alacritty, vscode, zed, JetBrains JediTerm and the Windows console, with Rex reporting Kitty images, with the COLORTERM and -direct truecolor hint, and the PI_IMAGE_PROTOCOL (case-insensitive kitty, iterm2, none, 0), PI_HYPERLINKS and PI_TRUE_COLOR (exactly 1 or 0) overrides, over 2072 environments; Alacritty is also detected by TERM=alacritty* or ALACRITTY_WINDOW_ID (Pi 2af8a42f5, D259)"
+claim = "the image protocol, truecolor and hyperlink capabilities follow Pi's environment order: tmux (hyperlinks from the probe) and screen first, then herdr, Rex, kitty, ghostty, wezterm, Warp, iTerm, Windows Terminal, alacritty, vscode, zed, JetBrains JediTerm and the Windows console, with Rex reporting Kitty images, with the COLORTERM and -direct truecolor hint, and the PI_IMAGE_PROTOCOL (case-insensitive kitty, iterm2, none, 0), PI_HYPERLINKS and PI_TRUE_COLOR (exactly 1 or 0) overrides, over 2072 environments; Alacritty is also detected by TERM=alacritty* or ALACRITTY_WINDOW_ID (Pi 2af8a42f5)"
 status = "ported"
 pig_targets = [
   "tui/terminal_image.go#DetectCapabilities",
@@ -7196,7 +7196,7 @@ id = "tui/terminal-image/detect-capabilities-branch-order"
 upstream_id = "input:packages/tui/src/terminal-image.ts#<module>.detectCapabilities"
 family = "tui-components"
 kind = "boundary-transition"
-claim = "detectCapabilitiesFromEnvironment tests tmux (environment variable or TERM prefix), screen, herdr, rex, orca with ORCA_IMAGE_PROTOCOL=kitty, kitty, ghostty, wezterm, Warp, iTerm, Windows Terminal, alacritty/vscode/zed, JetBrains JediTerm and the Windows console in that order, so an environment matching two of them takes the first; every environment, every pair of the 28 trigger environments (Orca with and without its protocol variable included), each with the tmux probe answering both ways, on Linux and on a Windows console, matches Pi's detectCapabilities; Alacritty is also recognised by TERM=alacritty* or ALACRITTY_WINDOW_ID in the same branch (Pi 2af8a42f5, D259)"
+claim = "detectCapabilitiesFromEnvironment tests tmux (environment variable or TERM prefix), screen, herdr, rex, orca with ORCA_IMAGE_PROTOCOL=kitty, kitty, ghostty, wezterm, Warp, iTerm, Windows Terminal, alacritty/vscode/zed, JetBrains JediTerm and the Windows console in that order, so an environment matching two of them takes the first; every environment, every pair of the 28 trigger environments (Orca with and without its protocol variable included), each with the tmux probe answering both ways, on Linux and on a Windows console, matches Pi's detectCapabilities; Alacritty is also recognised by TERM=alacritty* or ALACRITTY_WINDOW_ID in the same branch (Pi 2af8a42f5)"
 status = "ported"
 pig_targets = [
   "tui/terminal_image.go#detectCapabilitiesFromEnvironment",

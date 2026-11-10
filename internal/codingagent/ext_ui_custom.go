@@ -151,7 +151,7 @@ func (c *customCall) build(ctx context.Context, create extension.CustomFactory, 
 	if ctx.Err() != nil {
 		return
 	}
-	c.savedText = m.editor.GetExpandedText() // pig divergence (D251): Pi main 51313540a keeps pasted text
+	c.savedText = m.editor.GetExpandedText()
 	if options.Overlay && options.Blocked != nil {
 		// An overlay stays blocked until its interaction ends, also while setHidden() hides it.
 		c.statusSource = m.nextBlockingOverlaySource()

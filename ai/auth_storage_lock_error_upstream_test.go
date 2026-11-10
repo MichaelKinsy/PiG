@@ -27,21 +27,8 @@ func piCodingAgentPackage(t *testing.T) string {
 // runPiLockedStore runs one operation of Pi's own store on file and returns the message the operation throws, or "ok". auth-sync and auth-async are FileAuthStorageBackend.withLock and withLockAsync, logout is pi-ai's Models.logout over AuthStorage.create(file), and models-write is FileModelsStore.write.
 func runPiLockedStore(t *testing.T, op, file string) string {
 	t.Helper()
-	return runPiStore(t, op, file, false)
-}
-
-// runPiLockedStoreOnRealpath is runPiLockedStore for a lock error, which names the lock directory. The pinned Pi locks the path as given (realpath: false), but PiG locks the resolved file as Pi main 081a6e87f does (D236), so the oracle is handed the path Node's own fs.realpathSync gives the file's directory: where the temporary directory is itself a link (macOS /var is /private/var) both name the same lock directory, and Node's JS realpath keeps a Windows 8.3 name (RUNNER~1) as given.
-func runPiLockedStoreOnRealpath(t *testing.T, op, file string) string {
-	t.Helper()
-	return runPiStore(t, op, file, true)
-}
-
-func runPiStore(t *testing.T, op, file string, realpath bool) string {
-	t.Helper()
 	const script = `(async () => {
-  const [root, op, given, realpath] = process.argv.slice(1);
-  const nodePath = require('node:path');
-  const file = realpath === 'realpath' ? nodePath.join(require('node:fs').realpathSync(nodePath.dirname(given)), nodePath.basename(given)) : given;
+  const [root, op, file] = process.argv.slice(1);
   const load = (rel) => import(require('node:url').pathToFileURL(require('node:path').join(root, rel)).href);
   try {
     if (op === 'auth-sync') {
@@ -65,11 +52,7 @@ func runPiStore(t *testing.T, op, file string, realpath bool) string {
     console.log(err.message);
   }
 })()`
-	mode := ""
-	if realpath {
-		mode = "realpath"
-	}
-	out, err := exec.CommandContext(t.Context(), "node", "-e", script, piCodingAgentPackage(t), op, file, mode).CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), "node", "-e", script, piCodingAgentPackage(t), op, file).CombinedOutput()
 	if err != nil {
 		t.Fatalf("node: %v\n%s", err, out)
 	}
@@ -112,7 +95,7 @@ func TestAuthStorageLockErrorIsProperLockfileErrorUpstream(t *testing.T) {
 	t.Run("async-stale-nonempty", func(t *testing.T) {
 		storage, path := authPortFile(t, stored)
 		staleNonEmptyLock(t, path+".lock")
-		want := runPiLockedStoreOnRealpath(t, "auth-async", path)
+		want := runPiLockedStore(t, "auth-async", path)
 		_, err := storage.Modify(t.Context(), "openai", func(*Credential) (*Credential, error) {
 			return &Credential{Type: CredentialAPIKey, Key: "new"}, nil
 		})
@@ -127,7 +110,7 @@ func TestAuthStorageLockErrorIsProperLockfileErrorUpstream(t *testing.T) {
 	t.Run("logout", func(t *testing.T) {
 		storage, path := authPortFile(t, stored)
 		staleNonEmptyLock(t, path+".lock")
-		want := runPiLockedStoreOnRealpath(t, "logout", path)
+		want := runPiLockedStore(t, "logout", path)
 		models := CreateModels(CreateModelsOptions{Credentials: storage})
 		t.Cleanup(models.Close)
 		err := models.Logout(context.Background(), "openai")
@@ -146,7 +129,7 @@ func TestAuthStorageLockErrorIsProperLockfileErrorUpstream(t *testing.T) {
 func TestFileModelsStoreLockErrorIsProperLockfileErrorUpstream(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "models-store.json")
 	staleNonEmptyLock(t, path+".lock")
-	want := runPiLockedStoreOnRealpath(t, "models-write", path)
+	want := runPiLockedStore(t, "models-write", path)
 	err := NewFileModelsStore(path).Write(t.Context(), "probe", ModelsStoreEntry{Models: []AnyModel{}})
 	if err == nil || nodeerrno.ErrorCode(err) != "ENOTEMPTY" {
 		t.Fatalf("Write = %v, want rmdir's ENOTEMPTY", err)

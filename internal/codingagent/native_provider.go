@@ -97,7 +97,7 @@ func (r *ModelRegistry) NativeProviderAuth(ctx context.Context, id string, overr
 	if key, ok := r.RuntimeAPIKey(id); ok && overrides.APIKey == nil {
 		overrides.APIKey = &key
 	}
-	// pig divergence (D237): the caller returns when ctx ends (Pi's abortable race, resolve.ts:33-44) while a refresh that has started finishes and is saved, bounded by the lock wait and the fifteen-second refresh timeout, and the exit waits for it (RuntimeCredentials.Settled). The refresh is the only work under the store's modify, as in Pi, so the exit waits for nothing else here.
+	// The caller returns when ctx ends (Pi's abortable race, resolve.ts:33-44) while a refresh that has started finishes and is saved, bounded by the lock wait and the fifteen-second refresh timeout, and the exit waits for it (RuntimeCredentials.Settled). The refresh is the only work under the store's modify, as in Pi, so the exit waits for nothing else here.
 	type outcome struct {
 		resolution *ai.AuthResult
 		err        error
@@ -226,7 +226,7 @@ func (r *ModelRegistry) refreshNativeProvider(parent context.Context, p *extensi
 		}
 		if network {
 			var refreshCredential *ai.Credential
-			// pig divergence (D237): a refresh that started before exit must be saved; the cancellation of the catalog refresh ends only the wait for the lock.
+			// A refresh that started before exit must be saved; the cancellation of the catalog refresh ends only the wait for the lock.
 			_, err = ai.ModifyCredentialDetached(ctx, credentials, p.ID, func(current *ai.Credential) (*ai.Credential, error) {
 				// The transaction owns this overlay; reacquiring r.mu here inverts the registry-to-credential lock order used by catalog readers.
 				if key, ok := credentials.RuntimeAPIKey(p.ID); ok {

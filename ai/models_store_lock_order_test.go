@@ -50,7 +50,7 @@ func TestWithSidecarLockHandsACompromiseOnlyCheck(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	path := filepath.Join(t.TempDir(), "models-store.json")
-	// FileModelsStore creates the file before it locks, and the lock follows the file's symlinks (D236).
+	// FileModelsStore creates the file before it locks, and the lock follows the file's symlinks.
 	if err := os.WriteFile(path, []byte("{}"), 0o600); err != nil {
 		t.Fatal(err)
 	}

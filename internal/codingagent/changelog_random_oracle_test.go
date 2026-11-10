@@ -74,12 +74,12 @@ emit(input.changelogs.map((_, i) => {
 		}
 		check("parse", entries, want[i][0])
 		for k, last := range lastVersions {
-			if !pinnedReadsLastSeenLikeD245(last) {
-				continue // pig divergence (D245): Pi main reads the leading major.minor.patch; the pinned Pi 1.5.0 differs for these.
-			}
 			got, ok := GetNewEntries(entries, last)
 			if !ok {
-				t.Errorf("changelog %d since %q: unreadable, Pi 1.5.0 reads it", i, last)
+				got = nil // Pi's getNewEntries returns undefined, which the oracle emits as null
+				if want[i][k+1] != nil {
+					t.Errorf("changelog %d since %s: Go has no entries (unreadable last-seen), Pi %+v", i, last, want[i][k+1])
+				}
 			}
 			check("since "+last, got, want[i][k+1])
 		}

@@ -68,7 +68,6 @@ var adaptiveThinking = []string{
 func isClaudeLatestAlias(modelID string) bool { return claudeLatestAliasRegex.MatchString(modelID) }
 
 var (
-	// pig divergence (D240): Pi 4b9777737 lists sonnet-5 and sonnet.5 (Sonnet 5 and every later Sonnet 5.x) where Pi 1.5.0 lists only sonnet-5-5 and sonnet-5.5.
 	temperatureUnsupported = []string{"opus-4-7", "opus-4.7", "opus-4-8", "opus-4.8", "opus-5", "opus.5", "sonnet-5", "sonnet.5", "haiku-5-5", "haiku-5.5"}
 	maxEffortOnly          = []string{"opus-4-6", "opus-4.6", "sonnet-4-6", "sonnet-4.6"}
 	xhighAndMaxEffort      = []string{"opus-4-7", "opus-4.7", "opus-4-8", "opus-4.8", "opus-5", "opus.5", "sonnet-5", "sonnet.5", "haiku-5", "haiku.5"}

@@ -94,7 +94,6 @@ func TestBuiltinCatalogsMatchPinnedProviderDataModules(t *testing.T) {
 					}
 					switch kind {
 					case "chat":
-						d240PatchPublished(model) // pig divergence (D240): see d240_sonnet5_allowance_test.go
 						wantChat[id] = model
 					case "image":
 						wantImage[id] = model

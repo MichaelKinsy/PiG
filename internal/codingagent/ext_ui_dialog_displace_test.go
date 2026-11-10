@@ -145,7 +145,7 @@ func TestAbortingAHiddenDialogLeavesTheShownDialog(t *testing.T) {
 	}
 }
 
-// pi main 3b57ed7e2 (#11072; D257) through the extension dialog path: ui.select with a long list shows a ten-option window around the
+// pi main 3b57ed7e2 (#11072) through the extension dialog path: ui.select with a long list shows a ten-option window around the
 // cursor, the cursor keys dispatched by the mode move it, and the chosen option settles the call.
 func TestExtensionSelectLongListShowsAWindowAroundTheCursor(t *testing.T) {
 	m, _ := newExtensionDialogProbe(t)

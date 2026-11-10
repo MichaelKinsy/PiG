@@ -743,7 +743,7 @@ func (u *ExtUIContext) RunRemoteOverlay(opts extension.RemoteOverlayOptions, hos
 			// Match upstream ctx.ui.custom(): the component joins the editor-slot dialog stack directly
 			// rather than being wrapped in a second modal shell (interactive-mode.ts pushExtensionDialog).
 			// upstream: showExtensionCustom restoreEditor puts back the editor text saved when the component opened.
-			savedText := u.m.editor.GetExpandedText() // pig divergence (D251): Pi main 51313540a keeps pasted text
+			savedText := u.m.editor.GetExpandedText()
 			entry := &extensionDialog{component: overlay, blocked: blockedStatusOf(opts.Blocked)}
 			u.m.pushExtensionDialog(entry)
 			cleanup = func() {
