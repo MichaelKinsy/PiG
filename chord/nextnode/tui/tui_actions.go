@@ -193,10 +193,11 @@ func Attach(filePath string, terminal PromptTerminal, platform string) (*Attache
 		return nil, errCannotAttach
 	}
 	// The file the user confirms, by identity: what is read must be it (Opus R1: a parent directory swapped for a link after the
-	// yes would lead elsewhere, past `O_NOFOLLOW`, which guards the last step only). The identity is read from an open handle:
-	// on Windows `os.Stat` leaves the file's index to `os.SameFile`, which opens the path again then, after the swap.
-	shown, err := identityOf(file)
-	if err != nil {
+	// yes would lead elsewhere, past `O_NOFOLLOW`, which guards the last step only). Nothing is opened before the user confirms
+	// the link (a FIFO opened without blocking releases a writer that waits for a reader). On Windows the file ID of an `os.Stat`
+	// result loads by path inside `os.SameFile`, after the swap, so `SameFile(shown, shown)` loads it now (coding/cli's lstatPinned).
+	shown, err := os.Stat(file)
+	if err != nil || !os.SameFile(shown, shown) {
 		return nil, errCannotAttach
 	}
 	if file != named {
@@ -222,19 +223,6 @@ func Attach(filePath string, terminal PromptTerminal, platform string) (*Attache
 		return nil, errCannotAttach
 	}
 	return &AttachedFile{Name: baseName(file), Bytes: bytes[:read]}, nil
-}
-
-// identityOf is the identity of file as an open handle reports it, the handle closed again: the device and index are read now.
-func identityOf(file string) (os.FileInfo, error) {
-	handle, err := openNoFollow(file)
-	if err != nil {
-		return nil, err
-	}
-	info, err := handle.Stat()
-	if closeErr := handle.Close(); err == nil {
-		err = closeErr
-	}
-	return info, err
 }
 
 // cleanJoin is directory and rest joined and cleaned, by the running system's rules.

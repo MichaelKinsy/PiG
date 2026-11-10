@@ -195,9 +195,6 @@ func (f *watcherFixture) loseWatch(dir string) {
 // for certain. It is then no other directory than the one watched, and with a record of its identity and no watch, nothing
 // renews it: the files under it are never watched again.
 func TestTheBaseMarkWatchesADirectoryBackWhoseWatchCouldNotBePutBackWhileItWasAway(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("a watch ended by the move of its directory (inotify's, kqueue's) does not exist there: the watch of ReadDirectoryChangesW stays on the moved directory, and fsnotify's Remove finds a watch by the path it has now")
-	}
 	_, f := based(t, nil)
 	top := realOf(t, tempRoot(t))
 	dir := filepath.Join(top, "d")
@@ -209,10 +206,18 @@ func TestTheBaseMarkWatchesADirectoryBackWhoseWatchCouldNotBePutBackWhileItWasAw
 	f.baseIs(true)
 	f.run(func() {
 		away := filepath.Join(top, "away")
+		// What ends the watch differs: inotify's ends with the removal of its directory and kqueue's with its rename, so it is lost
+		// after the move; the watch of ReadDirectoryChangesW stays on the moved directory, and fsnotify's Remove finds a watch by
+		// the path it has now, so on Windows it is lost before the move (nothing is watched inside the directory, so it can move).
+		if runtime.GOOS == "windows" {
+			f.loseWatch(dir)
+		}
 		if err := os.Rename(dir, away); err != nil {
 			t.Error(err)
 		}
-		f.loseWatch(dir)
+		if runtime.GOOS != "windows" {
+			f.loseWatch(dir)
+		}
 		f.watcher.event(f.watcher.fs, fsnotify.Event{Name: top, Op: fsnotify.Create})
 		if _, watched := f.watcher.baseWatched[dir]; watched {
 			t.Errorf("%s is watched, though it is missing", dir)

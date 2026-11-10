@@ -1026,7 +1026,7 @@ jobs:
           set -euo pipefail
           case "$EXTENSION_SHARD" in
             extension-host-*) package=./coding/extension/host/subprocess shards=3 ;;
-            extension-conformance-*) package=./test/extension-conformance shards=4 ;;
+            extension-conformance-*) package=./test/extension-conformance shards=6 ;;
             *) echo "unexpected shard $EXTENSION_SHARD" >&2; exit 1 ;;
           esac
           run=$(automation/ci/test-shard-pattern.sh "${EXTENSION_SHARD##*-}" "$shards" "$package")
