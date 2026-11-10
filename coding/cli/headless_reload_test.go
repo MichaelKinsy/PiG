@@ -128,7 +128,7 @@ def log(line):
     path = os.environ.get("RELOAD_PROBE_LOG")
     if not path:
         return  # the build that loads the module to find its factory has no log
-    with open(path, "a", encoding="utf-8") as file:
+    with open(path, "a", encoding="utf-8", newline="\n") as file:
         file.write(line + "\n")
 
 

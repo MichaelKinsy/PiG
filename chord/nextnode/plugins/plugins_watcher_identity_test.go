@@ -100,13 +100,17 @@ func TestTheBaseMarkIsNotSetByADirectoryMovedAwayAndBackAndItsWatchesGoOn(t *tes
 	f.baseIs(true)
 }
 
-// skipWhereAWatchedTreeCannotMove skips a case that renames a directory with a watched directory inside it, which Windows refuses
-// with ERROR_ACCESS_DENIED while any handle is open on something inside (Node's `fs.watch`, one watch per directory as here,
-// holds such handles too). TestWindowsRefusesToRenameAWatchedTreeUntilTheWatcherCloses runs that fact on Windows.
+// skipWhereAWatchedTreeCannotMove skips a case that renames a directory with a watched directory inside it. Windows locks the
+// parent of a directory with a ReadDirectoryChangesW handle open (the handle's FILE_SHARE_DELETE frees the watched directory
+// itself, not its parent), so that rename fails with ERROR_ACCESS_DENIED. Pi's watcher does the same: packages/chord/src/node/
+// plugins/watcher.ts #watchAlone (line 404) and #watchDirs (line 478) call `watch(dir, ...)` once per directory, never with
+// `recursive`, and #watchDirs walks down to watch each subdirectory; its watcher.test.ts renames such trees on no platform
+// check, and Pi's CI has no Windows job for chord. TestWindowsRefusesToRenameAWatchedTreeUntilTheWatcherCloses shows the lock
+// on Windows.
 func skipWhereAWatchedTreeCannotMove(t *testing.T) {
 	t.Helper()
 	if runtime.GOOS == "windows" {
-		t.Skip("Windows refuses to rename a directory with a watched directory inside it")
+		t.Skip("Windows locks the parent of a watched directory against a rename, as it does for Pi's one fs.watch per directory (watcher.ts:404, :478)")
 	}
 }
 
