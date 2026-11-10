@@ -56936,10 +56936,6 @@
     {
       "id": "D607",
       "title": "The plugins component loads hosts through a Node subprocess it starts: Pi's `evaluate`, `stack` and runtime…"
-    },
-    {
-      "id": "D608",
-      "title": "A client surface is built after the server's listen: `NewWebSurface`/`NewTuiSurface` return at once and…"
     }
   ],
   "exemptCommits": {

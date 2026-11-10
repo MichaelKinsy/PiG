@@ -17,8 +17,6 @@ pkg:chord/.#formatNumber::call:0	chord	signature-mismatch	chord/next/surfaces/su
 pkg:chord/.#formatTime	chord	child-gap	chord/next/surfaces/intl_time.go#FormatTime
 pkg:chord/.#formatTime::call:0	chord	signature-mismatch	chord/next/surfaces/intl_time.go#FormatTime
 pkg:chord/surfaces#SurfaceBuilt	chord	type-mismatch	chord/nextnode/surfaces/surfaces_build.go#SurfaceBuilt
-pkg:chord/surfaces#tuiSurface	chord	undecidable	
-pkg:chord/surfaces#tuiSurface::call:0	chord	child-gap	
 pkg:chord/workers#WorkersBuilt	chord	type-mismatch	chord/nextnode/workers/workers_workers.go#WorkersBuilt
 pkg:chord/workers#WorkersOptions	chord	type-mismatch	chord/nextnode/workers/workers_workers.go#WorkersOptions
 pkg:coding-agent/.#GrepOperations	coding-agent	child-gap	internal/codingagent/tools/grep.go#GrepOperations
