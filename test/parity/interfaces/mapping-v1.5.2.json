@@ -156442,7 +156442,7 @@
       "evidence": [
         "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalCrossCWD",
         "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalImportCollision",
-        "test:coding/runtime_mode_hooks_test.go#TestRuntimeFactoryReceivesPiOptionsOnStartupAndNewSession"
+        "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalImportMissingCwdLeavesNoCopy"
       ]
     },
     {
@@ -156577,8 +156577,8 @@
       ],
       "evidence": [
         "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalImportCollision",
-        "test:coding/session_runtime_boundaries_test.go#TestRuntimeImportDirectoryDoesNotLeaveDestination",
-        "test:coding/session_runtime_boundaries_test.go#TestRuntimeImportFileURLAndMissingInput"
+        "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalImportMissingCwdLeavesNoCopy",
+        "test:coding/session_runtime_boundaries_test.go#TestRuntimeImportDirectoryDoesNotLeaveDestination"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -156600,8 +156600,8 @@
       ],
       "evidence": [
         "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalImportCollision",
-        "test:coding/session_runtime_boundaries_test.go#TestRuntimeImportDirectoryDoesNotLeaveDestination",
-        "test:coding/session_runtime_boundaries_test.go#TestRuntimeImportFileURLAndMissingInput"
+        "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalImportMissingCwdLeavesNoCopy",
+        "test:coding/session_runtime_boundaries_test.go#TestRuntimeImportDirectoryDoesNotLeaveDestination"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -209813,7 +209813,7 @@
       "evidence": [
         "test:coding/session_cwd_upstream_test.go#TestSessionCwdHandlingUpstream",
         "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalImportCollision",
-        "test:internal/codingagent/session_restore_upstream_test.go#TestSessionPreloadedEntriesUpstream"
+        "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalImportMissingCwdLeavesNoCopy"
       ]
     },
     {
@@ -209834,8 +209834,8 @@
       ],
       "evidence": [
         "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalImportCollision",
-        "test:internal/codingagent/session_custom_id_upstream_test.go#TestCustomSessionIDUpstream",
-        "test:internal/codingagent/session_restore_upstream_test.go#TestSessionPreloadedEntriesUpstream"
+        "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalImportMissingCwdLeavesNoCopy",
+        "test:internal/codingagent/session_custom_id_upstream_test.go#TestCustomSessionIDUpstream"
       ]
     },
     {
@@ -209878,8 +209878,8 @@
       ],
       "evidence": [
         "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalImportCollision",
-        "test:coding/cli/rpc_user_content_surrogate_test.go#TestRPCPersistedUserContentPreservesSurrogateEscapes",
-        "test:internal/codingagent/session_uuid_test.go#TestSessionFilesUsePiTimestampAndKeepLegacyIDs"
+        "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalImportMissingCwdLeavesNoCopy",
+        "test:coding/cli/rpc_user_content_surrogate_test.go#TestRPCPersistedUserContentPreservesSurrogateEscapes"
       ]
     },
     {
@@ -209900,8 +209900,8 @@
       ],
       "evidence": [
         "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalImportCollision",
-        "test:internal/codingagent/session_file_operations_upstream_test.go#TestSessionFileOperationsUpstream",
-        "test:coding/cli/rpc_user_content_surrogate_test.go#TestRPCPersistedUserContentPreservesSurrogateEscapes"
+        "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalImportMissingCwdLeavesNoCopy",
+        "test:internal/codingagent/session_file_operations_upstream_test.go#TestSessionFileOperationsUpstream"
       ]
     },
     {
@@ -209922,8 +209922,8 @@
       ],
       "evidence": [
         "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalImportCollision",
-        "test:internal/codingagent/session_restore_upstream_test.go#TestSessionFileMigrationRewritesAndReloads",
-        "test:internal/codingagent/session_restore_upstream_test.go#TestSessionMigrationUpstream"
+        "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalImportMissingCwdLeavesNoCopy",
+        "test:internal/codingagent/session_restore_upstream_test.go#TestSessionFileMigrationRewritesAndReloads"
       ]
     },
     {

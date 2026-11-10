@@ -981,7 +981,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-7e42a6a](#bf-7e42a6a) | CSS module mappings are what Node's `vm` gives, as Pi's (key order of integer-like names, no `__proto__` key… | PiG's own defect | All platforms | Unreleased |
 | [BF-7ea21f3](#bf-7ea21f3) | RPC output writes summed usage (a tool result's usage with nested model calls, a compaction summary's usage)… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7eb7d29](#bf-7eb7d29) | The model picker (`/model`) now shows a catalog-refresh timeout or failure as soon as it happens | PiG's own defect | All platforms | Unreleased |
-| [BF-7ecacae](#bf-7ecacae) | fix(coding-agent,ai): offer fork when a session cwd no longer exists; Claude Code 2.1.322 | A fix Pi shipped that PiG ported | All platforms | Unreleased |
+| [BF-7ecacae](#bf-7ecacae) | When a session's working directory no longer exists, interactive mode now offers Continue, Fork or Cancel (Pi… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-7f2c05b](#bf-7f2c05b) | A `ChordError` of code `invalid` from a failed args, result, state or input check carries TypeBox's whole… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-7f3a71c](#bf-7f3a71c) | fix(durable): the reference Harness wraps a plain Models once too | PiG's own defect | All platforms | Unreleased |
 | [BF-7f441d7](#bf-7f441d7) | MCP OAuth URLs are WHATWG URLs, as in Pi | PiG's own defect | All platforms | 0.5.0 |
@@ -15282,16 +15282,17 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 ### BF-7ecacae
 
-**fix(coding-agent,ai): offer fork when a session cwd no longer exists; Claude Code 2.1.322**
+**When a session's working directory no longer exists, interactive mode now offers Continue, Fork or Cancel (Pi…**
 
 - **Source:** A fix Pi shipped that PiG ported
-- **Symptom:** fix(coding-agent,ai): offer fork when a session cwd no longer exists; Claude Code 2.1.322
+- **Symptom:** When a session's working directory no longer exists, interactive mode now offers Continue, Fork or Cancel (Pi 1.5.2): Continue runs the session in the current directory without storing the choice, Fork copies it into the current directory as a new session so the next resume no longer asks.
 - **Root cause:** Ports Pi (#11975): the missing-session-cwd prompt offers Continue, Fork or Cancel at startup, for /resume and ctx.switchSession (Resumed session in <cwd>, Forked into new session <id> in <cwd>) and for /import; a failed import removes its copy. Ports: claudeCodeVersion 2.1.322.
-- **User impact:** Behavior differed from Pi
+- **User impact:** An operation failed or was rejected
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `7ecacae312` (2026-11-10)
 - **Tests:** `coding/cli/startup_session_test.go::TestApplyMissingCWDChoiceContinuesOrForks`, `internal/codingagent/session_cwd_resume_upstream_test.go::TestMissingSessionCwdOptionsNameTheCurrentCwd`, `internal/codingagent/session_cwd_resume_upstream_test.go::TestResumeWithAMissingCwdContinuesTheOriginalInTheCurrentCwdWithoutWritingAFile`, `internal/codingagent/session_cwd_resume_upstream_test.go::TestResumeWithAMissingCwdCreatesNoForkWhenTheUserCancels`, `internal/codingagent/session_cwd_resume_upstream_test.go::TestResumeWithAMissingCwdForksIntoTheCurrentCwdAndLeavesTheOriginalUnchanged`, `internal/codingagent/session_cwd_resume_upstream_test.go::TestResumeWithAMissingCwdRemovesTheForkWhenAnExtensionCancelsTheSwitch`, `internal/codingagent/slash_session_handlers_test.go::TestImportHandlerForksIntoTheCurrentCwd`
+- **Release note:** When a session's working directory no longer exists, interactive mode now offers Continue, Fork or Cancel (Pi 1.5.2): Continue runs the session in the current directory without storing the choice, Fork copies it into the current directory as a new session so the next resume no longer asks. This applies at startup (`--session`, `--resume`), to `/resume`, to `ctx.switchSession()` from extensions and to `/import`; a failed `/import` removes the copy it made, and Anthropic OAuth requests report Claude Code 2.1.322.
 
 ### BF-7f2c05b
 
