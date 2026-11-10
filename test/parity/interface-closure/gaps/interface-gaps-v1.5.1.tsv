@@ -12,10 +12,6 @@ pkg:ai/compat#getCacheWarmingRequestOptions	ai	child-gap	ai/cache_warming.go#Get
 pkg:ai/compat#getCacheWarmingRequestOptions::call:0	ai	signature-mismatch	ai/cache_warming.go#GetCacheWarmingRequestOptions
 pkg:ai/models#Provider	ai	child-gap	ai/models_runtime.go#ModelsProvider
 pkg:ai/models#Provider::property:refreshModelsAuth	ai	member-missing	ai/models_runtime.go#ModelsProvider
-pkg:chord/.#formatNumber	chord	child-gap	chord/next/surfaces/surfaces_format.go#FormatNumber
-pkg:chord/.#formatNumber::call:0	chord	signature-mismatch	chord/next/surfaces/surfaces_format.go#FormatNumber
-pkg:chord/.#formatTime	chord	child-gap	chord/next/surfaces/intl_time.go#FormatTime
-pkg:chord/.#formatTime::call:0	chord	signature-mismatch	chord/next/surfaces/intl_time.go#FormatTime
 pkg:chord/surfaces#SurfaceBuilt	chord	type-mismatch	chord/nextnode/surfaces/surfaces_build.go#SurfaceBuilt
 pkg:chord/surfaces#tuiSurface	chord	undecidable	
 pkg:chord/surfaces#tuiSurface::call:0	chord	child-gap	
