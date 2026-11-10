@@ -1164,7 +1164,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-b96952c](#bf-b96952c) | fix(chord/nextnode/workers): Kill never uses a closed job handle; a worker that cannot be placed in a job… | PiG's own defect | All platforms | Unreleased |
 | [BF-b99457f](#bf-b99457f) | `tool_search` and codemode tool search match Chinese, Japanese and Korean queries: each such character is a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b9db06c](#bf-b9db06c) | fix(subprocess): keep a user_bash operations object alive while its exec runs | PiG's own defect | All platforms | Unreleased |
-| [BF-b9de6a2](#bf-b9de6a2) | The provider bridge (`pig` `--provider-bridge`), the Durable core's `model_context` effect, the durable… | PiG's own defect | All platforms | Unreleased |
+| [BF-b9de6a2](#bf-b9de6a2) | The provider bridge (`pig` `--provider-bridge`), the Durable core's `model_context` effect and an extension… | PiG's own defect | All platforms | Unreleased |
 | [BF-ba80002](#bf-ba80002) | fix(chord/nextnode/plugins): a process the Go side killed ends with SIGKILL on Windows too | PiG's own defect | Windows | Unreleased |
 | [BF-ba8b6b7](#bf-ba8b6b7) | `/logout` reads stored credentials with Pi's 15-second signal, so an unreadable `auth.json` reports "Could… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ba9c37b](#bf-ba9c37b) | Starting `pig` no longer waits for the daily cleanup of the extension cache | PiG's own defect | All platforms | 0.5.0 |
@@ -17474,17 +17474,17 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 ### BF-b9de6a2
 
-**The provider bridge (`pig` `--provider-bridge`), the Durable core's `model_context` effect, the durable…**
+**The provider bridge (`pig` `--provider-bridge`), the Durable core's `model_context` effect and an extension…**
 
 - **Source:** PiG's own defect
-- **Symptom:** The provider bridge (`pig` `--provider-bridge`), the Durable core's `model_context` effect, the durable generation task and an extension host's `modelStream` call now send a `start` event whose partial is the pending, empty message the provider built, as Pi does: Pi attaches its consumer before any response I/O can complete.
+- **Symptom:** The provider bridge (`pig` `--provider-bridge`), the Durable core's `model_context` effect and an extension host's `modelStream` call now send a `start` event whose partial is the pending, empty message the provider built, as Pi does (the durable generation task reads the same pending partial but skips content-less partials before its observer, so it publishes no start partial): Pi attaches its consumer before any response I/O can complete.
 - **Root cause:** Four consumers create a provider stream and read it from an ordinary goroutine: the provider bridge, the model_context driver, the durable generation, and the extension host modelStream call. Pi creates the stream and attaches its for-await in one synchronous prefix, so the start event it reads holds the partial the provider built; a goroutine that attaches after the provider finished reads the finished message there, because the partial is the shared reference each event carries.
 - **User impact:** An operation failed or was rejected
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `b9de6a2def` (2026-11-09), `cbbb5ed7cb` (2026-11-09)
 - **Tests:** `coding/cli/provider_bridge_test.go::TestProviderBridgeStartIsSerializedBeforeTheResponseFillsItsPartial`, `coding/extension/host/subprocess/model_stream_attach_test.go::TestModelStreamForwardsStartBeforeTheResponseFillsItsPartial`, `durable/core/driver/model_test.go::TestModelContextSendsStartBeforeTheResponseFillsItsPartial`, `durable/harness/observe_response_test.go::TestObserveResponseSkipsTheStartEventWhoseProviderPartialHasNoContentYet`
-- **Release note:** The provider bridge (`pig` `--provider-bridge`), the Durable core's `model_context` effect, the durable generation task and an extension host's `modelStream` call now send a `start` event whose partial is the pending, empty message the provider built, as Pi does: Pi attaches its consumer before any response I/O can complete. Each created the provider's stream and read it from an ordinary goroutine, so under load the goroutine could start reading after the provider had filled the shared partial, and a `start` event reached the wire carrying the finished message (`toolUse`, the whole content and the final usage) where Pi sends `stopReason: "pending"` and no content. Each now creates the stream and reads it inside one stream continuation, as the Agent does; event content, order, cancellation and errors are unchanged.
+- **Release note:** The provider bridge (`pig` `--provider-bridge`), the Durable core's `model_context` effect and an extension host's `modelStream` call now send a `start` event whose partial is the pending, empty message the provider built, as Pi does (the durable generation task reads the same pending partial but skips content-less partials before its observer, so it publishes no start partial): Pi attaches its consumer before any response I/O can complete. Each created the provider's stream and read it from an ordinary goroutine, so under load the goroutine could start reading after the provider had filled the shared partial, and a `start` event reached the wire carrying the finished message (`toolUse`, the whole content and the final usage) where Pi sends `stopReason: "pending"` and no content. Each now creates the stream and reads it inside one stream continuation, as the Agent does; event content, order, cancellation and errors are unchanged.
 
 ### BF-ba80002
 

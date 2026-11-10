@@ -32506,15 +32506,15 @@
     },
     {
       "id": "BF-b9de6a2",
-      "title": "The provider bridge (`pig` `--provider-bridge`), the Durable core's `model_context` effect, the durable…",
-      "symptom": "The provider bridge (`pig` `--provider-bridge`), the Durable core's `model_context` effect, the durable generation task and an extension host's `modelStream` call now send a `start` event whose partial is the pending, empty message the provider built, as Pi does: Pi attaches its consumer before any response I/O can complete.",
+      "title": "The provider bridge (`pig` `--provider-bridge`), the Durable core's `model_context` effect and an extension…",
+      "symptom": "The provider bridge (`pig` `--provider-bridge`), the Durable core's `model_context` effect and an extension host's `modelStream` call now send a `start` event whose partial is the pending, empty message the provider built, as Pi does (the durable generation task reads the same pending partial but skips content-less partials before its observer, so it publishes no start partial): Pi attaches its consumer before any response I/O can complete.",
       "rootCause": "Four consumers create a provider stream and read it from an ordinary goroutine: the provider bridge, the model_context driver, the durable generation, and the extension host modelStream call. Pi creates the stream and attaches its for-await in one synchronous prefix, so the start event it reads holds the partial the provider built; a goroutine that attaches after the provider finished reads the finished message there, because the partial is the shared reference each event carries.",
       "rootCauseSource": "commit",
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "The provider bridge (`pig` `--provider-bridge`), the Durable core's `model_context` effect, the durable generation task and an extension host's `modelStream` call now send a `start` event whose partial is the pending, empty message the provider built, as Pi does: Pi attaches its consumer before any response I/O can complete. Each created the provider's stream and read it from an ordinary goroutine, so under load the goroutine could start reading after the provider had filled the shared partial, and a `start` event reached the wire carrying the finished message (`toolUse`, the whole content and the final usage) where Pi sends `stopReason: \"pending\"` and no content. Each now creates the stream and reads it inside one stream continuation, as the Agent does; event content, order, cancellation and errors are unchanged.",
+      "releaseNote": "The provider bridge (`pig` `--provider-bridge`), the Durable core's `model_context` effect and an extension host's `modelStream` call now send a `start` event whose partial is the pending, empty message the provider built, as Pi does (the durable generation task reads the same pending partial but skips content-less partials before its observer, so it publishes no start partial): Pi attaches its consumer before any response I/O can complete. Each created the provider's stream and read it from an ordinary goroutine, so under load the goroutine could start reading after the provider had filled the shared partial, and a `start` event reached the wire carrying the finished message (`toolUse`, the whole content and the final usage) where Pi sends `stopReason: \"pending\"` and no content. Each now creates the stream and reads it inside one stream continuation, as the Agent does; event content, order, cancellation and errors are unchanged.",
       "origin": "release note",
       "commits": [
         {
