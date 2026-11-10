@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"runtime/debug"
 	"runtime/metrics"
+	"strings"
 	"testing"
 	"time"
 )
@@ -29,7 +30,7 @@ func unsetGOGC(t *testing.T) {
 func TestApplyFallsBackAboveTheLiveHeapLimit(t *testing.T) {
 	unsetGOGC(t)
 	defer debug.SetGCPercent(debug.SetGCPercent(DefaultPercent))
-	Apply()
+	defer Apply()()
 	for range 3 {
 		runtime.GC()
 		time.Sleep(10 * time.Millisecond) // Room for the watcher to read after the collection.
@@ -53,7 +54,7 @@ func TestApplyFallsBackAboveTheLiveHeapLimit(t *testing.T) {
 func TestApplyLeavesAUserGOGC(t *testing.T) {
 	t.Setenv("GOGC", "50")
 	defer debug.SetGCPercent(debug.SetGCPercent(50))
-	Apply()
+	defer Apply()()
 	if got := gcPercent(); got != 50 {
 		t.Fatalf("GC percent %d with GOGC=50 set, want 50", got)
 	}
@@ -80,7 +81,7 @@ func TestApplyFallsBackWithoutACleanup(t *testing.T) {
 	case <-time.After(10 * time.Second):
 		t.Fatal("the blocking cleanup did not run after a collection")
 	}
-	Apply()
+	defer Apply()()
 	live := make([]byte, FallbackLiveBytes+16<<20)
 	runtime.GC() // The only collection after Apply: it finds the heap large.
 	deadline := time.Now().Add(5 * time.Second)
@@ -91,4 +92,48 @@ func TestApplyFallsBackWithoutACleanup(t *testing.T) {
 		time.Sleep(time.Millisecond)
 	}
 	runtime.KeepAlive(live)
+}
+
+func watcherRunning() bool {
+	buf := make([]byte, 1<<20)
+	return strings.Contains(string(buf[:runtime.Stack(buf, true)]), "gcpolicy.watchLiveHeap")
+}
+
+// D175: the watcher is owned by its caller. stop returns only after the goroutine has returned, so a process that calls it before
+// its exit record counts no goroutine of the policy; calling it again, or after the fallback ended the watcher, returns at once.
+func TestStopWaitsForTheWatcher(t *testing.T) {
+	unsetGOGC(t)
+	defer debug.SetGCPercent(debug.SetGCPercent(DefaultPercent))
+	stop := Apply()
+	if !watcherRunning() {
+		t.Fatal("no watcher goroutine after Apply")
+	}
+	stop()
+	if watcherRunning() {
+		t.Fatal("the watcher goroutine is still running after stop returned")
+	}
+	stop()
+
+	stop = Apply()
+	live := make([]byte, FallbackLiveBytes+16<<20)
+	runtime.GC()
+	deadline := time.Now().Add(5 * time.Second)
+	for watcherRunning() {
+		if time.Now().After(deadline) {
+			t.Fatal("the watcher did not end after the fallback fired")
+		}
+		time.Sleep(time.Millisecond)
+	}
+	stop() // Already ended: returns at once.
+	runtime.KeepAlive(live)
+}
+
+// D175: with GOGC set there is no watcher and stop is a no-op.
+func TestStopWithAUserGOGC(t *testing.T) {
+	t.Setenv("GOGC", "50")
+	defer debug.SetGCPercent(debug.SetGCPercent(50))
+	Apply()()
+	if watcherRunning() {
+		t.Fatal("a watcher is running with GOGC set")
+	}
 }
