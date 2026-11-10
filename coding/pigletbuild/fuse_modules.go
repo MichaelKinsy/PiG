@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strings"
 
+	"go/version"
 	"golang.org/x/mod/modfile"
 	"golang.org/x/mod/module"
 	"golang.org/x/mod/semver"
@@ -118,7 +119,7 @@ func mergeFusedModules(pig *modfile.File, fused []fusedEntry) (fusedModuleGraph,
 		if err != nil {
 			return fusedModuleGraph{}, fmt.Errorf("fuse %q: %w", member, err)
 		}
-		if file.Go != nil && semver.Compare("v"+file.Go.Version, "v"+memberGoVersion) > 0 {
+		if file.Go != nil && (memberGoVersion == "" || version.Compare("go"+file.Go.Version, "go"+memberGoVersion) > 0) {
 			memberGoVersion = file.Go.Version
 		}
 		for _, requirement := range file.Require {
@@ -163,7 +164,7 @@ func mergeFusedModules(pig *modfile.File, fused []fusedEntry) (fusedModuleGraph,
 		if pig.Go != nil {
 			pigGoVersion = pig.Go.Version
 		}
-		if semver.Compare("v"+memberGoVersion, "v"+pigGoVersion) > 0 {
+		if version.Compare("go"+memberGoVersion, "go"+pigGoVersion) > 0 {
 			if err := pig.AddGoStmt(memberGoVersion); err != nil {
 				return fusedModuleGraph{}, fmt.Errorf("raise pig go directive to %s: %w", memberGoVersion, err)
 			}
