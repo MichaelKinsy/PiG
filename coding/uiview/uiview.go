@@ -280,6 +280,7 @@ func (c *Content) check() *Error {
 		if d.TimeoutMs == 0 {
 			d.TimeoutMs = defaultIntentTimeoutMs
 		}
+		// pig divergence (D614): an intent timeout is 100..300000 ms.
 		if d.TimeoutMs < 100 || d.TimeoutMs > 300000 {
 			return fail(CodeInvalid, "intent %q timeoutMs must be 100..300000", d.Name)
 		}
@@ -303,6 +304,7 @@ func (c *Content) check() *Error {
 	return nil
 }
 
+// pig divergence (D614): an intent without a timeout waits 30 s.
 const defaultIntentTimeoutMs = 30000
 
 // Limits bound what one client draws. A zero value allows nothing.
