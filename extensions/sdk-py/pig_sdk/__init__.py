@@ -6047,11 +6047,10 @@ class Extension:
         ctx = Context(self, req.get("tool_call_id"), req_id, cancel, _parent=parent, _tool_context=req.get("method") == "tool_call", _tool_index=req.get("tool_call_index"), _tool_args=req.get("args") if req.get("method") == "tool_call" else None)
         ctx._reason_provider = lambda: self._active.get(req_id, (None, None))[1]
         if req.get("signal_aborted"):
-            # session_before_compact / session_before_tree dispatched after the event's signal aborted: the request starts cancelled, as a cancel frame queued ahead of it would (runner.ts emit awaits the handler with event.signal aborted), so is_cancelled() is true on the handler's first line.
+            # session_before_compact / session_before_tree dispatched after the event's signal aborted: the handler starts with its signal aborted (runner.ts emit awaits it so), so is_cancelled() is true on its first line, but the request is not cancelled: its host calls run, as Pi's ctx.ui.notify never fails on abort.
             reason = "context canceled"
             with self._state_lock:
                 self._active[req_id] = (cancel, reason)
-                parent.state = "cancelled"
             cancel.set()
         return ctx
 

@@ -370,10 +370,10 @@
 (defun start-request (ext env)
   (let* ((id (jget env "id" "")) (req (or (jget env "request") (obj)))
          (request (make-request id (make-abort-signal)))
-         ;; session_before_compact / session_before_tree dispatched after the event's signal aborted: the request starts cancelled, as a cancel frame queued ahead of it would (runner.ts emit awaits the handler with event.signal aborted)
+         ;; session_before_compact / session_before_tree dispatched after the event's signal aborted: the handler starts with its signal aborted, as a cancel frame queued ahead of it would leave it (runner.ts emit awaits the handler with event.signal aborted), but the request is not cancelled: its host calls run, as Pi's ctx.ui.notify never fails on abort
          (aborted (eq (jget req "signal_aborted") t)))
     (sb-thread:with-mutex ((extension-state-lock ext))
-      (when aborted (setf (request-reason request) "context canceled" (request-state request) :cancelled))
+      (when aborted (setf (request-reason request) "context canceled"))
       (setf (gethash id (extension-active ext)) request))
     (when aborted (signal-abort (request-signal request) "context canceled"))
     (let ((ctx (make-ctx ext request env)))
