@@ -261,8 +261,9 @@ func TestPluginSocketsAnOversizedFrameClosesOnlyThatSocket1009NeverTheServer(t *
 }
 
 // Pi 7e713da2: ws already sends the protocol close code (1009) when a frame is oversized; terminating the socket then can discard
-// that frame, so the socket is left to finish its close handshake and reports 1009, not the 1006 of a terminated one.
-func TestPluginSocketsAnOversizedFrameIsNotTerminatedAndTheSocketReportsItsProtocolCloseCode(t *testing.T) {
+// that frame, so the socket stays CLOSING while its error listeners run. The peer sees 1009; the server's own `close` event
+// reports 1006 (ws never reads the peer's close frame after a receiver error: Pi's ws 8.21 gives server 1006, client 1009).
+func TestPluginSocketsAnOversizedFrameLeavesTheSocketClosingTheServerReports1006AndThePeer1009(t *testing.T) {
 	stateAtError := make(chan int, 1)
 	serverClose := make(chan CloseEvent, 1)
 	watched := &HttpSocket{Handle: func(socket *WebSocketHandle, _ HttpRequest, _ host.Ctx) error {
@@ -282,8 +283,8 @@ func TestPluginSocketsAnOversizedFrameIsNotTerminatedAndTheSocketReportsItsProto
 	if state := receive(t, stateAtError, "the error"); state != WebSocketClosing {
 		t.Fatalf("ready state at the error = %d, want %d (closing)", state, WebSocketClosing)
 	}
-	if event := receive(t, serverClose, "the server's close"); event.Code != 1009 {
-		t.Fatalf("server close code = %d, want 1009", event.Code)
+	if event := receive(t, serverClose, "the server's close"); event.Code != 1006 {
+		t.Fatalf("server close code = %d, want 1006", event.Code)
 	}
 }
 

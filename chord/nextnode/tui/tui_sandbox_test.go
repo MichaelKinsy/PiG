@@ -35,6 +35,8 @@ func TestTheSandboxStartsWithASymlinkedTemporaryDirectoryWithoutExpandingFilePer
 		t.Fatal(err)
 	}
 	t.Setenv("TMPDIR", linked)
+	t.Setenv("TMP", linked)
+	t.Setenv("TEMP", linked)
 	messages := make(chan SandboxMessage, 4)
 	ended := make(chan string, 1)
 	sandbox, err := StartSandbox(node, `globalThis.chordBridge.send({ kind: "exit", code: 0 });`,
