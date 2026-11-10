@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 
@@ -177,13 +178,33 @@ func TestTheBaseMarkRenewsTheWatchesOfADirectoryReplacedByAnotherOfTheSameName(t
 	f.baseIs(true)
 }
 
-// loseWatch has the watcher hold no watch of dir, as when fsnotify ends the watch of a directory: inotify's ends with the removal
-// of its directory, kqueue's with a rename of it. It runs in a section.
+// loseWatch has the watcher hold no watch of dir, as when the system's notifier ends the watch of a directory: inotify's ends
+// with the removal of its directory (kqueue's with a rename of it: loseWatchOfRenamed). It runs in a section.
 func (f *watcherFixture) loseWatch(dir string) {
 	f.t.Helper()
 	_ = f.watcher.fs.Remove(dir) // an error: the watch has ended already
 	if slices.Contains(f.watcher.fs.WatchList(), dir) {
 		f.t.Errorf("the watcher still holds a watch of %s", dir)
+	}
+}
+
+// loseWatchOfRenamed is loseWatch for a directory that was renamed (a section moves it before this runs; on Windows, after).
+// A notifier whose watch of a renamed directory ends with the rename (PartialWatches: kqueue) ends it itself, so it is waited
+// for: its reader (fsnotify v1.5.4 kqueue.go, readEvents) removes the watch and forgets the entry in `fileExists` together, and
+// a Remove of the case's own that came first leaves the entry known, so that when the directory is back the reader reports no
+// creation of it (sendDirectoryChangeEvents lists it as one it knows) and holds it for its rename alone: no event names it and
+// nothing in it is watched. That is not the end of a watch a rename brings, and nothing could renew what no event tells.
+func (f *watcherFixture) loseWatchOfRenamed(dir string) {
+	f.t.Helper()
+	if !f.watcher.fs.PartialWatches() {
+		f.loseWatch(dir)
+		return
+	}
+	for deadline := time.Now().Add(5 * time.Second); slices.Contains(f.watcher.fs.WatchList(), dir); time.Sleep(5 * time.Millisecond) {
+		if time.Now().After(deadline) {
+			f.t.Errorf("the notifier did not end the watch of %s, renamed", dir)
+			return
+		}
 	}
 }
 
@@ -210,13 +231,13 @@ func TestTheBaseMarkWatchesADirectoryBackWhoseWatchCouldNotBePutBackWhileItWasAw
 		// after the move; the watch of ReadDirectoryChangesW stays on the moved directory, and fsnotify's Remove finds a watch by
 		// the path it has now, so on Windows it is lost before the move (nothing is watched inside the directory, so it can move).
 		if runtime.GOOS == "windows" {
-			f.loseWatch(dir)
+			f.loseWatchOfRenamed(dir)
 		}
 		if err := os.Rename(dir, away); err != nil {
 			t.Error(err)
 		}
 		if runtime.GOOS != "windows" {
-			f.loseWatch(dir)
+			f.loseWatchOfRenamed(dir)
 		}
 		f.watcher.event(f.watcher.fs, fsnotify.Event{Name: top, Op: fsnotify.Create})
 		if _, watched := f.watcher.baseWatched[dir]; watched {
@@ -250,7 +271,7 @@ func TestTheBaseMarkWatchesTheTreeOfABaseDirectoryBackWhoseWatchesCouldNotBePutB
 		if err := os.Rename(base, away); err != nil {
 			t.Error(err)
 		}
-		f.loseWatch(base)
+		f.loseWatchOfRenamed(base)
 		f.loseWatch(filepath.Join(base, "sub"))
 		f.watcher.event(f.watcher.fs, fsnotify.Event{Name: parent, Op: fsnotify.Create})
 		for _, dir := range []string{base, filepath.Join(base, "sub")} {
