@@ -154,9 +154,9 @@ Returns the host and the register envelope."
 (deftest signal-only-cancel-aborts-the-signal-and-leaves-host-calls-running
   (let ((ext (pig:make-extension "signal-only")) (seen nil))
     (pig:command ext "c" "C" (lambda (ctx args) (declare (ignore args))
-                               (let ((first (pig:ctx-is-idle-p ctx)))
+                               (let ((first (pig:ctx-call-host ctx "probe")))
                                  (setf seen (list first (pig:ctx-cancelled-p ctx) (pig:ctx-cancellation-reason ctx)
-                                                  (pig:ctx-is-idle-p ctx))))))
+                                                  (pig:ctx-call-host ctx "probe"))))))
     (with-host (host ext)
       (request host "r" "command" "tool" "c" "args" "")
       (let ((call (hread-type host "call")))
