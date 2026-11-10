@@ -160,3 +160,73 @@ func TestHostAddress(t *testing.T) {
 		same(next)
 	})
 }
+
+func TestAddressKeys(t *testing.T) {
+	flag := mustKind("flag", contracts.Prop("on", contracts.Bool()), contracts.Prop("id", contracts.Str()))
+	kindOf := func(name string) *contracts.HostKind {
+		for _, kind := range []*contracts.HostKind{session, shard, flag, server} {
+			if kind.Kind == name {
+				return kind
+			}
+		}
+		t.Fatalf("no kind %q", name)
+		return nil
+	}
+
+	t.Run("decode into addresses: str, int and bool fields, oneOf literals, escaped parts, a kind without params", func(t *testing.T) {
+		for _, address := range []contracts.Address{
+			session.Address(delta.JsonObjectOf("id", "a|b\\c")),
+			shard.Address(delta.JsonObjectOf("region", "us", "n", 12.0)),
+			flag.Address(delta.JsonObjectOf("on", false, "id", "")),
+			server.Address(nil),
+		} {
+			got, err := contracts.AddressOfKey(kindOf(address.Kind), address.Key)
+			wantNoError(t, err)
+			if !reflect.DeepEqual(got, address) {
+				t.Fatalf("AddressOfKey(%q) = %+v, want %+v", address.Key, got, address)
+			}
+		}
+		_, err := contracts.AddressOfKey(session, "shard|eu|1")
+		wantError(t, err, "not an address key of session")
+		if got := contracts.KindOfKey("session|S1"); got != "session" {
+			t.Fatalf("KindOfKey = %q", got)
+		}
+		if got := contracts.KindOfKey("server"); got != "server" {
+			t.Fatalf("KindOfKey = %q", got)
+		}
+	})
+
+	t.Run("of a value are computed from its params, refused for anything that is not an address of the kind", func(t *testing.T) {
+		if key, ok := contracts.KeyOfAddress(session, session.Address(delta.JsonObjectOf("id", "S1"))); !ok || key != "session|S1" {
+			t.Fatalf("key = %q, %v", key, ok)
+		}
+		// A forged key is not taken: the key comes from the params.
+		forged := contracts.Address{Kind: "session", Params: delta.JsonObjectOf("id", "S1"), Key: "session|S2"}
+		if key, ok := contracts.KeyOfAddress(session, forged); !ok || key != "session|S1" {
+			t.Fatalf("forged key = %q, %v", key, ok)
+		}
+		for name, value := range map[string]any{
+			"a string":    "session|S1",
+			"nil":         nil,
+			"other kind":  shard.Address(delta.JsonObjectOf("region", "eu", "n", 1.0)),
+			"wrong type":  contracts.Address{Kind: "session", Params: delta.JsonObjectOf("id", 1.0)},
+			"no params":   contracts.Address{Kind: "session", Params: delta.NewJsonObject(0)},
+			"extra param": contracts.Address{Kind: "session", Params: delta.JsonObjectOf("id", "S1", "extra", 1.0)},
+		} {
+			if key, ok := contracts.KeyOfAddress(session, value); ok {
+				t.Errorf("%s: key = %q, want none", name, key)
+			}
+		}
+		for name, value := range map[string]contracts.Address{
+			"a literal outside oneOf": {Kind: "shard", Params: delta.JsonObjectOf("region", "asia", "n", 1.0)},
+			"a non-integer":           {Kind: "shard", Params: delta.JsonObjectOf("region", "eu", "n", 1.5)},
+		} {
+			if key, ok := contracts.KeyOfAddress(shard, value); ok {
+				t.Errorf("%s: key = %q, want none", name, key)
+			}
+		}
+		if key, ok := contracts.KeyOfAddress(flag, contracts.Address{Kind: "flag", Params: delta.JsonObjectOf("on", "true", "id", "x")}); ok {
+			t.Errorf("a string for a bool: key = %q, want none", key)
+		}
+	})
+}

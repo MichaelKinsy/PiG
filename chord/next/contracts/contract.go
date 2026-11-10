@@ -84,7 +84,14 @@ type VariantData struct {
 	State   *NamedMap[*Snapshot]
 	Methods *NamedMap[*MethodData]
 	// Keyed holds keyed state members (slice 6a §12): only a local contract has any.
-	Keyed *NamedMap[*Snapshot]
+	Keyed *NamedMap[*KeyedSnapshot]
+}
+
+// KeyedSnapshot is a keyed member's schema snapshot and, for a host-keyed one, the host kind its keys are addresses of
+// (nil: string keys).
+type KeyedSnapshot struct {
+	Snapshot
+	Key *HostKind
 }
 
 // MethodData is a method's argument and result snapshots.
