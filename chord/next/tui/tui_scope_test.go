@@ -219,6 +219,54 @@ func TestADeliveryInFlightWhenDisposeRunsEndsBeforeDisposeReturns(t *testing.T) 
 	}
 }
 
+// A `changed` that disposes its own scope returns normally, as Pi's does (sync JS: `dispose` inside the callback only stops later
+// deliveries), and nothing is delivered afterwards; two scopes' callbacks that dispose their scopes from other goroutines at once
+// wait for no one.
+func TestAChangedThatDisposesItsOwnScopeReturnsAndNothingFollows(t *testing.T) {
+	var scope *TuiScope
+	var calls atomic.Int64
+	scope = scopeOn(newHost(t), func() {
+		calls.Add(1)
+		scope.Dispose()
+	})
+	done := make(chan struct{})
+	go func() {
+		scope.redraw()
+		scope.redraw()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("a changed that disposes its own scope never returned")
+	}
+	if got := calls.Load(); got != 1 {
+		t.Errorf("changed ran %d times, want once (nothing after the dispose)", got)
+	}
+}
+
+func TestChangedsThatDisposeTheirScopeFromOtherGoroutinesAtOnceWaitForNoOne(t *testing.T) {
+	var scope *TuiScope
+	var inside sync.WaitGroup
+	inside.Add(2)
+	scope = scopeOn(newHost(t), func() {
+		inside.Done()
+		inside.Wait()
+		scope.Dispose()
+	})
+	done := make(chan struct{}, 2)
+	for range 2 {
+		go func() { scope.redraw(); done <- struct{}{} }()
+	}
+	for range 2 {
+		select {
+		case <-done:
+		case <-time.After(5 * time.Second):
+			t.Fatal("two changed that dispose their scope waited for each other")
+		}
+	}
+}
+
 type noValue struct{}
 
 func (noValue) Value() string { panic(errors.New("not ready")) }
