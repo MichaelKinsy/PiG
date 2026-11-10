@@ -1,0 +1,30 @@
+from = "1.5.2"
+to = "1.5.2+f2bd84a5"
+
+[[files]]
+path = "packages/chord/src/node/plugins/install.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginReadsNpm12sPackOutputThePackedTarballsByPackageName", "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginTakesTheTarballOfItsPackageFromNpm12sOutputNotTheFirstOneListed", "test:chord/nextnode/plugins/plugins_install_test.go#TestPackedTarballReadsTheListNpm11PrintsAndTheMemberOfThePackageNpm12Prints"]
+rationale = "75d59639a reads `npm pack --json` as `Array.isArray(output) ? output[0] : output[name]`: the list npm 11 and earlier print, or the member of the package asked for in the object npm 12 prints. plugins_install.go packedTarball takes the package name and reads the same member, so D501 (PiG took the object's first member) is retired; Pi's own npm 12 test is ported with a fake npm 12, and the keyed selection and JavaScript's errors for a missing member or a JSON null are pinned."
+
+[[files]]
+path = "packages/durable/src/harness/harness.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_lifecycle_test.go#TestHarnessClose"]
+rationale = "64c96d00d (#11961): beforeClose joins the task invocations, then releases the pi-ai resources of every provider session the Harness's tasks used (cleanupSessionResources per session id, a failure reported as host_error for models), so none close while in use and none outlive the Harness. harness.go BeforeClose runs Join, then ai.CleanupSessionResources for each recorded id and reports a failure the same way; the three Pi cases (after running tasks join, when the Harness fails, not another Harness's) are ported."
+
+[[files]]
+path = "packages/durable/src/harness/provider.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_lifecycle_test.go#TestHarnessClose"]
+rationale = "64c96d00d: ensureProviderSessionId records the session id it returns in the set of the Harness that owns the task runtime (providerSessionsByRuntime); the persisted ProviderDoc is unchanged. provider.go records it in the Harness's providerSessionIds, which rides the invocation's Signal context because a Go runtime reaches the handler wrapped in its task definition's types."
+
+[[files]]
+path = "packages/durable/src/harness/scheduler.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_lifecycle_test.go#TestHarnessClose"]
+rationale = "64c96d00d: the scheduler owns the Harness's providerSessionIds and associates every task runtime it builds with that set. scheduler.go holds the set and attaches it to the context every invocation's Signal derives from."
