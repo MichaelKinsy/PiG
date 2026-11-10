@@ -91,8 +91,8 @@ func writeEveryCollection(model *Model, tiers bool) {
 
 var publishedRadiusModelsSink []*Model
 
-// The Radius baseline copies each catalog entry once, from the catalog itself, and equals the baseline built from ToModel's copy. Its models share nothing with the catalog.
-func TestPublishedRadiusModelsCopyTheCatalogOnce(t *testing.T) {
+// The Radius baseline is a view of the catalog (radius.ts builds it once and getModels returns it), and what a caller gets from GetModels equals the baseline built from ToModel's copy and shares nothing with the catalog or with another call: a caller that writes through every collection of its models changes neither.
+func TestPublishedRadiusModelsAreViewsAndGetModelsIsolatesCallers(t *testing.T) {
 	reference := func(id string) []*Model {
 		var models []*Model
 		for i := range GeneratedModels {
@@ -106,32 +106,52 @@ func TestPublishedRadiusModelsCopyTheCatalogOnce(t *testing.T) {
 		return models
 	}
 	for _, id := range []string{RadiusProviderID, "my-gateway"} {
-		got, want := publishedRadiusModels(id), reference(id)
+		want := reference(id)
 		if len(want) == 0 {
 			t.Fatal("the generated catalog has no Radius models")
 		}
+		views := publishedRadiusModels(id)
+		got := make([]*Model, len(views))
+		for i, view := range views {
+			got[i] = cloneRadiusModel(view)
+		}
 		if !reflect.DeepEqual(got, want) {
-			t.Fatalf("%s: publishedRadiusModels = %+v, want %+v", id, got, want)
+			t.Fatalf("%s: the copies of publishedRadiusModels = %+v, want %+v", id, got, want)
 		}
 	}
 
 	before := reference(RadiusProviderID)
-	for _, model := range publishedRadiusModels(RadiusProviderID) {
+	provider := NewRadiusGatewayProvider(RadiusProviderOptions{})
+	first := provider.GetModels()
+	if !reflect.DeepEqual(first, before) {
+		t.Fatal("GetModels is not the baseline built from ToModel's copy")
+	}
+	for _, model := range first {
 		writeEveryCollection(model, true)
 	}
 	if after := reference(RadiusProviderID); !reflect.DeepEqual(after, before) {
-		t.Fatal("writing to the published Radius models changed the generated catalog")
+		t.Fatal("writing to the models GetModels returned changed the generated catalog")
+	}
+	if second := provider.GetModels(); !reflect.DeepEqual(second, before) {
+		t.Fatal("writing to the models GetModels returned changed what the next call returns")
 	}
 
-	var radiusModels int
-	for i := range GeneratedModels {
-		if GeneratedModels[i].Provider == RadiusProviderID {
-			radiusModels++
+	// The baseline costs what building the views costs and no copy of them: radius.ts builds the baseline once, and GetModels is the one copy.
+	viewsOnly := func(id string) []*Model {
+		var models []*Model
+		for i := range GeneratedModels {
+			if GeneratedModels[i].Provider != RadiusProviderID {
+				continue
+			}
+			model := GeneratedModels[i].catalogView()
+			model.ProviderMeta.ProviderID = id
+			models = append(models, model)
 		}
+		return models
 	}
-	viewAllocs := testing.AllocsPerRun(20, func() { publishedRadiusModelsSink = publishedRadiusModels(RadiusProviderID) })
-	copyAllocs := testing.AllocsPerRun(20, func() { publishedRadiusModelsSink = reference(RadiusProviderID) })
-	if viewAllocs >= copyAllocs-float64(radiusModels) {
-		t.Fatalf("publishedRadiusModels: %v allocations, the second copy took %v; want at least one fewer per model (%d models)", viewAllocs, copyAllocs, radiusModels)
+	published := testing.AllocsPerRun(20, func() { publishedRadiusModelsSink = publishedRadiusModels(RadiusProviderID) })
+	views := testing.AllocsPerRun(20, func() { publishedRadiusModelsSink = viewsOnly(RadiusProviderID) })
+	if published > views {
+		t.Fatalf("publishedRadiusModels: %v allocations, building the catalog views alone takes %v; the baseline is not copied", published, views)
 	}
 }

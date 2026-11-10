@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"sync"
 	"testing"
+	"time"
 	"weak"
 
 	"github.com/MichaelKinsy/PiG/chord"
@@ -13,12 +14,14 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
+	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 )
 
 // Ports packages/chord/test/host/ctx.test.ts. The cases that build a host (`loaded`, `linked`) run on a real host: a
 // handler gets its `ctx` as the *callContext the host made for the call (every method's context.Context is a Ctx). The
-// `linked abort signals` cases need no host.
+// `linked abort signals` cases need no host. The ctx.trace cases are in host_spans_test.go (TestCtxTrace...), its code in
+// host_ctx_trace.go.
 
 var (
 	ctxItem = mustContract(declareLocal("app.item", contracts.LocalDeclaration{
@@ -133,6 +136,9 @@ func desk(t *testing.T) (Host, *deskSeen, *Reference) {
 				},
 				"late": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					c := ctx.(Ctx)
+					seen.mu.Lock()
+					seen.ctx = c
+					seen.mu.Unlock()
 					go func() { _, err := c.Get(ctxItem, jsonObject("id", float64(3)), GetOptions{}); seen.late <- err }()
 					// The get's synchronous part ran (its object is created) before the handler settles, as in Pi. In Go the
 					// get runs on a goroutine of its own, and the handler suspends (Pi's `await`) while it waits for it.
@@ -194,6 +200,7 @@ func TestCtxGetOfAHandlerWhoseCallWasAbortedChecksTheSignalFirstNothingIsCreated
 	var mu sync.Mutex
 	entered, gate := make(chan struct{}), make(chan struct{})
 	got := make(chan error, 1)
+	started := make(chan bool, 1)
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
 		if err := h.Serve(ctxItem, func(params *delta.JsonObject, _ Self) (contracts.Implementation, error) {
 			mu.Lock()
@@ -215,6 +222,8 @@ func TestCtxGetOfAHandlerWhoseCallWasAbortedChecksTheSignalFirstNothingIsCreated
 					// The caller's abort reaches the call's context through a listener of its own.
 					UntilAborted(ctx)
 					_, err := ctx.(Ctx).Get(ctxItem, jsonObject("id", float64(1)), GetOptions{})
+					// An aborted call's get is refused before it makes anything: no settling signal, no link to it.
+					started <- ctx.(*callContext).settling != nil
 					got <- err
 					return float64(0), nil
 				},
@@ -235,6 +244,9 @@ func TestCtxGetOfAHandlerWhoseCallWasAbortedChecksTheSignalFirstNothingIsCreated
 	close(gate)
 	if err := <-got; err == nil || err.Error() != "caller gave up" {
 		t.Fatalf("ctx.get = %v, want the caller's reason", err)
+	}
+	if <-started {
+		t.Fatal("the refused get made its settling signal")
 	}
 	<-done
 	mu.Lock()
@@ -270,6 +282,16 @@ func TestCtxAGetFinishingAfterItsHandlerSettledIsReleasedAtOnceRace11(t *testing
 	})
 	if items != 0 {
 		t.Fatalf("app.item objects alive = %d, want 0", items)
+	}
+	// Released at once, so not kept for a release that will not come: the settled ctx lists no reference of it.
+	var kept int
+	h.enter(func() {
+		seen.mu.Lock()
+		defer seen.mu.Unlock()
+		kept = len(seen.ctx.(*callContext).references)
+	})
+	if kept != 0 {
+		t.Fatalf("the settled ctx kept %d references, want 0", kept)
 	}
 }
 
@@ -561,5 +583,255 @@ func TestCallChainAMethodsCtxIsItsOwnChainNodeAboveItTheChainOfTheCallThatMadeIt
 	}
 	if got := chainOf(seenRoot); got != nil {
 		t.Fatalf("a root's chain = %v, want none", got)
+	}
+}
+
+// ctxProbe is a local type whose handlers use their ctx by the test's own steps: `idle` only keeps it, `counted` takes
+// `ctx.get` while counting the listeners on its settling signal, `far` runs the test's own function on it.
+var ctxProbe = mustContract(declareLocal("app.ctx-probe", contracts.LocalDeclaration{Params: contracts.Params{},
+	Version: 1,
+	Members: []contracts.LocalEntry{
+		contracts.Mem("idle", contracts.NewMethod()),
+		contracts.Mem("counted", contracts.NewMethod()),
+		contracts.Mem("far", contracts.NewMethod()),
+	},
+}))
+
+// ctxProbeHost serves ctxItem (counting its factories into seen) and ctxProbe, whose `idle` records its ctx into seen and
+// whose `far` runs far.
+func ctxProbeHost(t *testing.T, seen *deskSeen, far func(ctx Ctx) error) Host {
+	t.Helper()
+	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
+		if err := h.Serve(ctxItem, func(params *delta.JsonObject, _ Self) (contracts.Implementation, error) {
+			seen.mu.Lock()
+			seen.factories++
+			seen.mu.Unlock()
+			return contracts.Implementation{Members: contracts.VariantImplementation{
+				State: map[string]chord.Watchable[delta.JsonValue]{"id": constant(params.Value("id"))},
+			}}, nil
+		}, ServeOptions{}); err != nil {
+			return err
+		}
+		return h.Serve(ctxProbe, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
+			return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+				"idle": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+					seen.mu.Lock()
+					seen.ctx = ctx.(Ctx)
+					seen.mu.Unlock()
+					return nil, nil
+				},
+				// counted takes a reference while a counting signal stands for the ctx's settling one.
+				"counted": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+					call := ctx.(*callContext)
+					counting, abort := newScopeCounting()
+					call.settling, call.settlingCancel = counting, abort
+					if _, err := call.Get(ctxItem, jsonObject("id", float64(1)), GetOptions{}); err != nil {
+						return nil, err
+					}
+					if got := counting.count(); got != 0 {
+						return nil, fmt.Errorf("listeners left on the settling signal after the get = %d, want none", got)
+					}
+					return nil, nil
+				},
+				"far": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) { return nil, far(ctx.(Ctx)) },
+			}}}, nil
+		}, ServeOptions{})
+	}, loadedOptions{})
+	return host
+}
+
+// ctx.ts `get`: a settled scope refuses `released` before it makes anything: no object is created for it, no settling
+// signal is made, and its references are gone with the settle.
+func TestCtxGetOnASettledCtxMakesNothing(t *testing.T) {
+	seen := &deskSeen{}
+	host := ctxProbeHost(t, seen, nil)
+	defer closeHosts(t, host)
+	ref, err := host.Get(background, ctxProbe, jsonObject(), GetOptions{})
+	must(t, err)
+	if _, err := ref.Call("idle", nil, background); err != nil {
+		t.Fatal(err)
+	}
+	seen.mu.Lock()
+	settled := seen.ctx.(*callContext)
+	seen.mu.Unlock()
+	if settled.references != nil {
+		t.Fatalf("a settled ctx kept %d references", len(settled.references))
+	}
+	reference, err := settled.Get(ctxItem, jsonObject("id", float64(1)), GetOptions{})
+	wantScopeError(t, err, data.CodeReleased, data.ReasonSettled, "app.item: ctx.get after its call settled")
+	if reference != nil || seen.factoryCount() != 0 || settled.settling != nil {
+		t.Fatalf("reference %v, factories %d, settling signal made %v; want nothing made", reference, seen.factoryCount(), settled.settling != nil)
+	}
+}
+
+// ctx.ts `get`: `finally { scoped.release() }`: once the reference is acquired nothing of the get listens to the ctx's
+// settling signal or the caller's any more.
+func TestCtxGetLeavesNoListenerOnTheSettlingSignalOnceItAcquired(t *testing.T) {
+	seen := &deskSeen{}
+	host := ctxProbeHost(t, seen, nil)
+	defer closeHosts(t, host)
+	ref, err := host.Get(background, ctxProbe, jsonObject(), GetOptions{})
+	must(t, err)
+	// A caller with a signal: the get links to it and to the settling one.
+	caller, cancel := chordctx.WithCancel(background)
+	defer cancel(nil)
+	if _, err := ref.Call("counted", nil, caller); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// ctx.ts `get`: what the acquire rejects with is what `get` rejects with while the handler is still running (a reference
+// that never goes live in its time, here).
+func TestCtxGetRejectsWithTheAcquireErrorWhileItsHandlerRuns(t *testing.T) {
+	far := mustContract(declareRemote("app.far-away", contracts.RemoteDeclaration{
+		Version:     1,
+		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
+		Variants:    []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("n", contracts.Int())}})},
+	}))
+	var got error
+	var reference *Reference
+	host := ctxProbeHost(t, &deskSeen{}, func(ctx Ctx) error {
+		var err error
+		reference, err = ctx.Get(far, jsonObject(), GetOptions{ReadyTimeout: new(20 * time.Millisecond)})
+		got = err
+		return nil
+	})
+	defer closeHosts(t, host)
+	ref, err := host.Get(background, ctxProbe, jsonObject(), GetOptions{})
+	must(t, err)
+	if _, err := ref.Call("far", nil, background); err != nil {
+		t.Fatal(err)
+	}
+	if reference != nil {
+		t.Fatalf("get returned a reference %v with its error %v", reference, got)
+	}
+	if _, ok := data.IsChordErrorCode(got, data.CodeUnavailable); !ok {
+		t.Fatalf("get error = %v, want unavailable", got)
+	}
+}
+
+// ctx.ts `withLinkedAbortSignal` without a caller's signal: the child is the call's signal; an abort of it is reported by
+// `aborted` at once, from the child itself.
+func TestLinkedAbortSignalsReportTheCallsAbortAtOnceWithoutACallersSignal(t *testing.T) {
+	callCtx, abortCall := chordctx.WithCancel(chordctx.Background())
+	linked := withLinkedAbortSignal(callCtx, chordctx.Background())
+	if got := linked.aborted(); got != nil {
+		t.Fatalf("aborted before any abort = %v", got)
+	}
+	abortCall(scopeReason("call"))
+	if got := linked.aborted(); got == nil || got.Error() != "call" {
+		t.Fatalf("aborted right after the call's abort = %v, want %q", got, "call")
+	}
+}
+
+// ctx.ts `get`: "Made for the caller: its principal and its origin's incarnation travel with the reference's holds". A
+// reference a remote handler takes with ctx.get is listed as the handler's caller's: its principal and its host's
+// incarnation (`host.references`), not the server's.
+func TestCtxGetMakesTheReferenceForTheCallerPrincipalAndIncarnation(t *testing.T) {
+	peer := mustContract(declareRemote("app.ctx-peer", contracts.RemoteDeclaration{
+		Version:     1,
+		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
+		Variants:    []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("n", contracts.Int())}})},
+	}))
+	door := mustContract(declareRemote("app.ctx-door", contracts.RemoteDeclaration{
+		Version:     1,
+		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
+		Variants: []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{Methods: []contracts.MethodEntry{
+			contracts.Meth("enter", contracts.NewMethod()),
+		}})},
+	}))
+	var server Host
+	var listed []any
+	l := linked(t, func(h FacetHost) error {
+		if err := h.Serve(peer, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
+			return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+				State: map[string]chord.Watchable[delta.JsonValue]{"n": constant(1.0)},
+			}}, nil
+		}, ServeOptions{}); err != nil {
+			return err
+		}
+		return h.Serve(door, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
+			return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+				"enter": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+					if _, err := ctx.(Ctx).Get(peer, jsonObject(), GetOptions{}); err != nil {
+						return nil, err
+					}
+					listed = presenceList(t, server, peer)
+					return nil, nil
+				},
+			}}}, nil
+		}, ServeOptions{})
+	}, linkedOptions{})
+	defer closeHosts(t, l.Client, l.Server)
+	server = l.Server
+	server.References(peer)
+	ref, err := l.Client.Get(background, door, jsonObject(), GetOptions{})
+	must(t, err)
+	if _, err := ref.Call("enter", nil, background); err != nil {
+		t.Fatal(err)
+	}
+	nexttest.RequireJSONEqual(t, listed, []any{
+		jsonObject("params", jsonObject(), "principal", ownerPrincipal(), "incarnation", incarnationOf(l.Client)),
+	})
+}
+
+// ctx.ts `withLinkedAbortSignal`: `AbortSignal.any` takes the reason of the source that aborted first, which listeners on
+// goroutines of their own cannot tell by when they run: linkedCause ranks the sources by when they aborted, a source it
+// cannot rank (a context of another package) after the ones it can, in the order given (the caller's first), and a source
+// that did not abort never.
+func TestLinkedAbortSignalsTheReasonIsThatOfTheSourceThatAbortedFirst(t *testing.T) {
+	stdlib := func(reason string) context.Context {
+		ctx, cancel := context.WithCancelCause(context.Background())
+		cancel(scopeReason(reason))
+		return ctx
+	}
+	chordAborted := func(reason string) context.Context {
+		ctx, abort := chordctx.WithCancel(chordctx.Background())
+		abort(scopeReason(reason))
+		return ctx
+	}
+	notAborted, _ := chordctx.WithCancel(chordctx.Background())
+	cause := func(sources [2]context.Context) string { return linkedCause(sources).Error() }
+	caller, call := chordAborted("caller"), chordAborted("call")
+	if got := cause([2]context.Context{caller, call}); got != "caller" {
+		t.Errorf("caller aborted first: %q, want caller", got)
+	}
+	call, caller = chordAborted("call"), chordAborted("caller")
+	if got := cause([2]context.Context{caller, call}); got != "call" {
+		t.Errorf("call aborted first: %q, want call", got)
+	}
+	if got := cause([2]context.Context{notAborted, chordAborted("call")}); got != "call" {
+		t.Errorf("only the call aborted: %q, want call", got)
+	}
+	if got := cause([2]context.Context{chordAborted("caller"), notAborted}); got != "caller" {
+		t.Errorf("only the caller aborted: %q, want caller", got)
+	}
+	if got := cause([2]context.Context{stdlib("caller"), stdlib("call")}); got != "caller" {
+		t.Errorf("two sources it cannot rank: %q, want the caller's (the first given)", got)
+	}
+	if got := cause([2]context.Context{stdlib("caller"), chordAborted("call")}); got != "call" {
+		t.Errorf("an unranked caller and a ranked call: %q, want the ranked one", got)
+	}
+	if got := cause([2]context.Context{chordAborted("caller"), stdlib("call")}); got != "caller" {
+		t.Errorf("a ranked caller and an unranked call: %q, want the ranked one", got)
+	}
+	if got := cause([2]context.Context{notAborted, stdlib("call")}); got != "call" {
+		t.Errorf("an unaborted caller and an unranked call: %q, want call", got)
+	}
+}
+
+// ctx.ts `withLinkedAbortSignal`: a source that aborts removes the listener on the other one (`forward` runs `release()`).
+func TestLinkedAbortSignalsAnAbortOfOneSourceRemovesTheListenerOnTheOther(t *testing.T) {
+	for _, first := range []string{"caller", "call"} {
+		callerCtx, abortCaller := newScopeCounting()
+		callCtx, abortCall := newScopeCounting()
+		linked := withLinkedAbortSignal(callCtx, callerCtx)
+		if first == "caller" {
+			abortCaller(scopeReason(first))
+		} else {
+			abortCall(scopeReason(first))
+		}
+		<-linked.context.Done()
+		scopeEventually(t, "the listeners to go", func() bool { return callerCtx.count() == 0 && callCtx.count() == 0 })
 	}
 }
