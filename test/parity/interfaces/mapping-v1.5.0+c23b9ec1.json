@@ -118858,8 +118858,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_host_test.go#TestHostStoreBelongsToOneOpenHostAtATime",
-        "test:chord/next/surfaces/surfaces_translations_test.go#TestTranslationsFacetServesTheRegistryComposingItsPluginsContributions",
-        "test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointAcceptsALinkAsTheAuthenticatedPrincipalWithTheOptionsLinksOptionsGaveThatSocket"
+        "test:chord/next/surfaces/surfaces_page_state_test.go#TestPageStateIsCollectedWithItsHost",
+        "test:chord/next/surfaces/surfaces_translations_test.go#TestTranslationsFacetServesTheRegistryComposingItsPluginsContributions"
       ]
     },
     {
@@ -118880,8 +118880,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_host_test.go#TestHostStoreBelongsToOneOpenHostAtATime",
-        "test:chord/next/surfaces/surfaces_translations_test.go#TestTranslationsFacetServesTheRegistryComposingItsPluginsContributions",
-        "test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointAcceptsALinkAsTheAuthenticatedPrincipalWithTheOptionsLinksOptionsGaveThatSocket"
+        "test:chord/next/surfaces/surfaces_page_state_test.go#TestPageStateIsCollectedWithItsHost",
+        "test:chord/next/surfaces/surfaces_translations_test.go#TestTranslationsFacetServesTheRegistryComposingItsPluginsContributions"
       ]
     },
     {
