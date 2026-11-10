@@ -98116,6 +98116,94 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#repeatedTerminationSignal",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "repeatedTerminationSignal",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "sync/atomic.Int32"
+      },
+      "shapeHash": "sha256:fd7b3a52623a834ba07ed827d0f243fc8307d18aa97252ac41062e9a3d9f0aca"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#repeatedTerminationSignal.Add",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "repeatedTerminationSignal.Add",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(delta int32) (new int32)"
+      },
+      "shapeHash": "sha256:ca8a8702ba5222af46b48abc77ee0fa8212d1e4830601c2173ee6ce5570a758d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#repeatedTerminationSignal.And",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "repeatedTerminationSignal.And",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(mask int32) (old int32)"
+      },
+      "shapeHash": "sha256:471357bef85562cbc36ecc2694776a984224b9aec855ba0662a637682a0efd7a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#repeatedTerminationSignal.CompareAndSwap",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "repeatedTerminationSignal.CompareAndSwap",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(old int32, new int32) (swapped bool)"
+      },
+      "shapeHash": "sha256:6db4bebd3f29c1e7762d10548e4f3cfaeaced4a9d38c32b33c4796d5103ce76f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#repeatedTerminationSignal.Load",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "repeatedTerminationSignal.Load",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int32"
+      },
+      "shapeHash": "sha256:497acb0f151fe3f0bf3a4577b97bef65b95399e81f77f8db664900273304fe7b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#repeatedTerminationSignal.Or",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "repeatedTerminationSignal.Or",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(mask int32) (old int32)"
+      },
+      "shapeHash": "sha256:471357bef85562cbc36ecc2694776a984224b9aec855ba0662a637682a0efd7a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#repeatedTerminationSignal.Store",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "repeatedTerminationSignal.Store",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(val int32)"
+      },
+      "shapeHash": "sha256:14da265d122037c8b56dc063167a392185e5ba763be70220c5f0a8bf16857609"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#repeatedTerminationSignal.Swap",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "repeatedTerminationSignal.Swap",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(new int32) (old int32)"
+      },
+      "shapeHash": "sha256:e78bd48ba099222a93f70961cc5afa8d61b55e82060018e3bca69eff19aefcd7"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#reportActivePigBinary",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "reportActivePigBinary",
@@ -104263,6 +104351,17 @@
         "type": "func(f func())"
       },
       "shapeHash": "sha256:68e289131fd5e3f508eafc4a9635216800cdaae21d75faad62aa0496c8a28e80"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#terminationExitSignal",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "terminationExitSignal",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(first syscall.Signal) syscall.Signal"
+      },
+      "shapeHash": "sha256:1c2b77872fb1320c0c38714b2dfa0501d5b8c9e32a81700de616279046492b6e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#terminationPreludeFunc",

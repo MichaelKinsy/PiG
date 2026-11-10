@@ -18267,6 +18267,26 @@
       ]
     },
     {
+      "id": "BF-62aaa5e",
+      "title": "A second termination signal during print or JSON mode's shutdown now ends the process with the code of the…",
+      "symptom": "A second termination signal during print or JSON mode's shutdown now ends the process with the code of the signal that repeated (143 for SIGTERM, 129 for SIGHUP), as Pi's per-signal handler does.",
+      "rootCause": "The repeat killed the extension processes before it exited, which completed the disposal the first signal waited on, so the first signal's exit (and the mode's own return) raced it and could end the process with the first signal's code.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A second termination signal during print or JSON mode's shutdown now ends the process with the code of the signal that repeated (143 for SIGTERM, 129 for SIGHUP), as Pi's per-signal handler does. A SIGHUP that followed a SIGTERM could end with 143.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "62aaa5e7d9",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-62ae30d",
       "title": "Durable: reading the history of a conversation whose parent conversation is not stored now fails with Pi's…",
       "symptom": "Durable: reading the history of a conversation whose parent conversation is not stored now fails with Pi's error (\"Cannot read properties of undefined (reading 'parent')\") at the point where Pi's lineage walk reaches the missing record, instead of returning a truncated history.",
