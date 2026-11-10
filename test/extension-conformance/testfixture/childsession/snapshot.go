@@ -19,6 +19,7 @@ type snapshotFields struct {
 //
 //nolint:staticcheck // SA1019: these fields are deprecated and this scenario proves they still hold the creation values.
 func readSnapshot(s *sdk.AgentSession) snapshotFields {
+	//lint:ignore SA1019 tests the deprecated snapshot fields for compatibility
 	return snapshotFields{s.SessionID, s.SessionFile, s.SystemPrompt, s.ThinkingLevel, s.Model, s.ActiveTools}
 }
 
