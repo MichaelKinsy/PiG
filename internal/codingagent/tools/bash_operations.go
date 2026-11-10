@@ -272,15 +272,6 @@ type ShellTimeoutError struct {
 
 func (e *ShellTimeoutError) Error() string { return "timeout:" + e.Timeout }
 
-// ShellExitReport is the shell's exit when it exited before the deadline. A fused extension's SDK, which cannot import this package, reads it through this
-// method, as the host reads the SDK's error through the same method.
-func (e *ShellTimeoutError) ShellExitReport() (exitCode int, afterSeconds float64, ok bool) {
-	if e.ShellExit == nil {
-		return 0, 0, false
-	}
-	return e.ShellExit.ExitCode, e.ShellExit.AfterSeconds, true
-}
-
 // shellSpawnError preserves the spawn errno with Node's user-visible message.
 type shellSpawnError struct {
 	path  string
