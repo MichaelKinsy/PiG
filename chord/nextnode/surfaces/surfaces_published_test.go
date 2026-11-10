@@ -1,5 +1,7 @@
 package surfaces
 
+// pi: packages/chord/src/node/surfaces/published.ts
+
 import (
 	"crypto/sha256"
 	"encoding/hex"

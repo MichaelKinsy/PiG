@@ -7791,6 +7791,129 @@
       ]
     },
     {
+      "id": "BF-2f8638b",
+      "title": "Chord: the rollout Step of a published script set now lists removed plugins in UTF-16 code unit order, as Pi…",
+      "symptom": "Chord: the rollout Step of a published script set now lists removed plugins in UTF-16 code unit order, as Pi does, instead of UTF-8 byte order; names outside the Basic Multilingual Plane no longer sort differently.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord: the rollout Step of a published script set now lists removed plugins in UTF-16 code unit order, as Pi does, instead of UTF-8 byte order; names outside the Basic Multilingual Plane no longer sort differently.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2f8638b949",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "chord/next/link/websocket_test.go::TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend",
+        "chord/nextnode/http/node_test.go::TestTargetsReachTheComponentOnlyWhereNodesParserTakesThem",
+        "chord/nextnode/http/url_test.go::TestTheWireURLIsWhatTheURLParserMakesOfTheHostAndTarget",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsAFilePublishedInAnEarlierSetStaysServedWhileALaterSetStillHasIt",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsAPluginWhoseNextBuildFailsKeepsItsDigestTextStylesheetAndAssets",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsAStylesheetChangeAloneKeepsTheScriptsDigestAndChangesItsName",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsFilesNameEachScriptStylesheetAndAssetByContentAndCombineWithoutSourceMaps",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsStartPublishesTheKindsFirstSet",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsTheFilesOfTheLastFourSetsStayServed",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsTheRolloutStepReportsAddedChangedAndRemovedInPisOrderAndPublishesTheSet",
+        "chord/nextnode/tui/tui_terminal_pty_linux_test.go::TestTheProcessTerminalCallsTheResizeHandlerOnEachSIGWINCHUntilItIsRemoved",
+        "chord/nextnode/tui/tui_terminal_pty_linux_test.go::TestTheProcessTerminalOnAPseudoTerminalReportsItsSizeAndThatItIsATTY",
+        "chord/nextnode/tui/tui_terminal_pty_linux_test.go::TestTheProcessTerminalSetsRawModeOnStdinAndRestoresTheModeItSaved",
+        "chord/nextnode/tui/tui_terminal_pty_linux_test.go::TestTheProcessTerminalTakesItsSizeFromStdoutAndItsTTYAnswerFromStdin",
+        "chord/nextnode/tui/tui_terminal_pty_linux_test.go::TestTwoResizeHandlersEachGetTheSignalAndRemovingOneKeepsTheOther",
+        "chord/nextnode/tui/tui_terminal_test.go::TestAStreamsTerminalFillsAMissingInputOrOutputWithTheProcess",
+        "chord/nextnode/tui/tui_terminal_test.go::TestStreamsFindTheOptionalMembersOfTheirInputAndOutput",
+        "chord/nextnode/tui/tui_terminal_test.go::TestStreamsWithoutTheOptionalMembersHaveNoSizeNoRawModeAndNoResizes",
+        "chord/nextnode/tui/tui_terminal_test.go::TestTheProcessTerminalClearingRawModeWithoutHavingSetItIsANoOpAndSettingItOnAPipeFails",
+        "chord/nextnode/tui/tui_terminal_test.go::TestTheProcessTerminalIsStdinAndStdoutAndReportsNoSizeOrTTYForPipes"
+      ]
+    },
+    {
+      "id": "BF-2f8638b-2",
+      "title": "Chord: the HTTP listener now parses the Host header and the request target with the WHATWG URL algorithm, as…",
+      "symptom": "Chord: the HTTP listener now parses the Host header and the request target with the WHATWG URL algorithm, as Node does, instead of an approximation.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord: the HTTP listener now parses the Host header and the request target with the WHATWG URL algorithm, as Node does, instead of an approximation.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2f8638b949",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "chord/next/link/websocket_test.go::TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend",
+        "chord/nextnode/http/node_test.go::TestTargetsReachTheComponentOnlyWhereNodesParserTakesThem",
+        "chord/nextnode/http/url_test.go::TestTheWireURLIsWhatTheURLParserMakesOfTheHostAndTarget",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsAFilePublishedInAnEarlierSetStaysServedWhileALaterSetStillHasIt",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsAPluginWhoseNextBuildFailsKeepsItsDigestTextStylesheetAndAssets",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsAStylesheetChangeAloneKeepsTheScriptsDigestAndChangesItsName",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsFilesNameEachScriptStylesheetAndAssetByContentAndCombineWithoutSourceMaps",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsStartPublishesTheKindsFirstSet",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsTheFilesOfTheLastFourSetsStayServed",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsTheRolloutStepReportsAddedChangedAndRemovedInPisOrderAndPublishesTheSet",
+        "chord/nextnode/tui/tui_terminal_pty_linux_test.go::TestTheProcessTerminalCallsTheResizeHandlerOnEachSIGWINCHUntilItIsRemoved",
+        "chord/nextnode/tui/tui_terminal_pty_linux_test.go::TestTheProcessTerminalOnAPseudoTerminalReportsItsSizeAndThatItIsATTY",
+        "chord/nextnode/tui/tui_terminal_pty_linux_test.go::TestTheProcessTerminalSetsRawModeOnStdinAndRestoresTheModeItSaved",
+        "chord/nextnode/tui/tui_terminal_pty_linux_test.go::TestTheProcessTerminalTakesItsSizeFromStdoutAndItsTTYAnswerFromStdin",
+        "chord/nextnode/tui/tui_terminal_pty_linux_test.go::TestTwoResizeHandlersEachGetTheSignalAndRemovingOneKeepsTheOther",
+        "chord/nextnode/tui/tui_terminal_test.go::TestAStreamsTerminalFillsAMissingInputOrOutputWithTheProcess",
+        "chord/nextnode/tui/tui_terminal_test.go::TestStreamsFindTheOptionalMembersOfTheirInputAndOutput",
+        "chord/nextnode/tui/tui_terminal_test.go::TestStreamsWithoutTheOptionalMembersHaveNoSizeNoRawModeAndNoResizes",
+        "chord/nextnode/tui/tui_terminal_test.go::TestTheProcessTerminalClearingRawModeWithoutHavingSetItIsANoOpAndSettingItOnAPipeFails",
+        "chord/nextnode/tui/tui_terminal_test.go::TestTheProcessTerminalIsStdinAndStdoutAndReportsNoSizeOrTTYForPipes"
+      ]
+    },
+    {
+      "id": "BF-2f8638b-3",
+      "title": "Chord: the HTTP listener answers 400 for a request target that contains bytes Node refuses, where it used to…",
+      "symptom": "Chord: the HTTP listener answers 400 for a request target that contains bytes Node refuses, where it used to pass the request to the component.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord: the HTTP listener answers 400 for a request target that contains bytes Node refuses, where it used to pass the request to the component.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2f8638b949",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "chord/next/link/websocket_test.go::TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend",
+        "chord/nextnode/http/node_test.go::TestTargetsReachTheComponentOnlyWhereNodesParserTakesThem",
+        "chord/nextnode/http/url_test.go::TestTheWireURLIsWhatTheURLParserMakesOfTheHostAndTarget",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsAFilePublishedInAnEarlierSetStaysServedWhileALaterSetStillHasIt",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsAPluginWhoseNextBuildFailsKeepsItsDigestTextStylesheetAndAssets",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsAStylesheetChangeAloneKeepsTheScriptsDigestAndChangesItsName",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsFilesNameEachScriptStylesheetAndAssetByContentAndCombineWithoutSourceMaps",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsStartPublishesTheKindsFirstSet",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsTheFilesOfTheLastFourSetsStayServed",
+        "chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsTheRolloutStepReportsAddedChangedAndRemovedInPisOrderAndPublishesTheSet",
+        "chord/nextnode/tui/tui_terminal_pty_linux_test.go::TestTheProcessTerminalCallsTheResizeHandlerOnEachSIGWINCHUntilItIsRemoved",
+        "chord/nextnode/tui/tui_terminal_pty_linux_test.go::TestTheProcessTerminalOnAPseudoTerminalReportsItsSizeAndThatItIsATTY",
+        "chord/nextnode/tui/tui_terminal_pty_linux_test.go::TestTheProcessTerminalSetsRawModeOnStdinAndRestoresTheModeItSaved",
+        "chord/nextnode/tui/tui_terminal_pty_linux_test.go::TestTheProcessTerminalTakesItsSizeFromStdoutAndItsTTYAnswerFromStdin",
+        "chord/nextnode/tui/tui_terminal_pty_linux_test.go::TestTwoResizeHandlersEachGetTheSignalAndRemovingOneKeepsTheOther",
+        "chord/nextnode/tui/tui_terminal_test.go::TestAStreamsTerminalFillsAMissingInputOrOutputWithTheProcess",
+        "chord/nextnode/tui/tui_terminal_test.go::TestStreamsFindTheOptionalMembersOfTheirInputAndOutput",
+        "chord/nextnode/tui/tui_terminal_test.go::TestStreamsWithoutTheOptionalMembersHaveNoSizeNoRawModeAndNoResizes",
+        "chord/nextnode/tui/tui_terminal_test.go::TestTheProcessTerminalClearingRawModeWithoutHavingSetItIsANoOpAndSettingItOnAPipeFails",
+        "chord/nextnode/tui/tui_terminal_test.go::TestTheProcessTerminalIsStdinAndStdoutAndReportsNoSizeOrTTYForPipes"
+      ]
+    },
+    {
       "id": "BF-2f881ba",
       "title": "\"Your first extension\" now says that `pig install --validate-only` exits 1 when the extension does not build",
       "symptom": "It said 0.",

@@ -108472,99 +108472,23 @@
     },
     {
       "id": "pkg:chord/.#formatNumber",
-      "disposition": "ported",
-      "upstreamShapeHash": "sha256:2b31f5d7bf92e344dccb3d5deaee1b643c3eadbecdcdfb428666ff262c337c40",
-      "rationale": "Pi packages/chord/src/surfaces/format.ts formatNumber(value, options?) is `Intl.NumberFormat` with the current language's locale (the platform's default outside a render). Go FormatNumber(lang *Language, value float64, options *NumberOptions) (string, error): the language is the first parameter, nil outside a render (D450); the options are the closed NumberOptions over tables generated from the pinned Node's Intl (D464), with no per-language formatter cache (D466); the errors Intl throws are the returned ErrOption/ErrLocale. Every output is diffed against a live Node by TestNumbersMatchNode (a seeded corpus of locales, values and options) and the three upstream cases of packages/chord/test/surfaces/format.test.ts run in surfaces_format_test.go; mutating the nil-language platform default, the language's locale, or the fraction-digit options fails these tests. The public library API has no PiG call site: its callers are the tests.",
-      "pigTargets": [
-        "chord/next/surfaces/surfaces_format.go#FormatNumber"
-      ],
-      "layers": {
-        "shape": "complete",
-        "production": "public-api-tested",
-        "behavior": "complete"
-      },
-      "production": [
-        "public-api:chord/next/surfaces/surfaces_format.go#FormatNumber"
-      ],
-      "evidence": [
-        "test:chord/next/surfaces/surfaces_format_test.go#TestFormatsNumbersInTheRendersLocale",
-        "test:chord/next/surfaces/surfaces_format_test.go#TestFormatsNumbersInThePlatformsDefaultLocaleOutsideARender",
-        "test:chord/next/surfaces/surfaces_format_test.go#TestFormatNumberFractionDigits",
-        "test:chord/next/surfaces/surfaces_format_test.go#TestFormatsRefuseLocalesIntlRefuses",
-        "test:chord/next/surfaces/intl_drift_test.go#TestNumbersMatchNode"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:2b31f5d7bf92e344dccb3d5deaee1b643c3eadbecdcdfb428666ff262c337c40"
     },
     {
       "id": "pkg:chord/.#formatNumber::call:0",
-      "disposition": "ported",
-      "upstreamShapeHash": "sha256:e7e5581fb3f867aeb6f38fe3ae155c58f200003090c0c3b547af0cfdd656a4da",
-      "rationale": "Pi packages/chord/src/surfaces/format.ts formatNumber(value, options?) is `Intl.NumberFormat` with the current language's locale (the platform's default outside a render). Go FormatNumber(lang *Language, value float64, options *NumberOptions) (string, error): the language is the first parameter, nil outside a render (D450); the options are the closed NumberOptions over tables generated from the pinned Node's Intl (D464), with no per-language formatter cache (D466); the errors Intl throws are the returned ErrOption/ErrLocale. Every output is diffed against a live Node by TestNumbersMatchNode (a seeded corpus of locales, values and options) and the three upstream cases of packages/chord/test/surfaces/format.test.ts run in surfaces_format_test.go; mutating the nil-language platform default, the language's locale, or the fraction-digit options fails these tests. The public library API has no PiG call site: its callers are the tests.",
-      "pigTargets": [
-        "chord/next/surfaces/surfaces_format.go#FormatNumber"
-      ],
-      "layers": {
-        "shape": "complete",
-        "production": "public-api-tested",
-        "behavior": "complete"
-      },
-      "production": [
-        "public-api:chord/next/surfaces/surfaces_format.go#FormatNumber"
-      ],
-      "evidence": [
-        "test:chord/next/surfaces/surfaces_format_test.go#TestFormatsNumbersInTheRendersLocale",
-        "test:chord/next/surfaces/surfaces_format_test.go#TestFormatsNumbersInThePlatformsDefaultLocaleOutsideARender",
-        "test:chord/next/surfaces/surfaces_format_test.go#TestFormatNumberFractionDigits",
-        "test:chord/next/surfaces/surfaces_format_test.go#TestFormatsRefuseLocalesIntlRefuses",
-        "test:chord/next/surfaces/intl_drift_test.go#TestNumbersMatchNode"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:e7e5581fb3f867aeb6f38fe3ae155c58f200003090c0c3b547af0cfdd656a4da"
     },
     {
       "id": "pkg:chord/.#formatTime",
-      "disposition": "ported",
-      "upstreamShapeHash": "sha256:9055cd64b295fb3fd5dad4a9abf478ce2da81497df40f152bba3f9ee6f966271",
-      "rationale": "Pi packages/chord/src/surfaces/format.ts formatTime(at, options?) is `Intl.DateTimeFormat` with the current language's locale (the platform's default outside a render), `{timeStyle: \"short\"}` by default, of `new Date(at)`. Go FormatTime(lang *Language, at time.Time, options *TimeOptions) (string, error): the language is the first parameter (D450); `Date | number | string` is a time.Time (D465); the options are the closed TimeOptions over tables generated from the pinned Node's Intl (D464); the zone is the process's, as a Date's is. TestTimesMatchNode diffs every output against a live Node and TestFormatTimeShowsTheInstantInTheProcessZone pins the zone; mutating the process zone to UTC or the default style to medium fails the tests. The public library API has no PiG call site: its callers are the tests.",
-      "pigTargets": [
-        "chord/next/surfaces/surfaces_format.go#FormatTime",
-        "chord/next/surfaces/intl_time.go#FormatTime"
-      ],
-      "layers": {
-        "shape": "complete",
-        "production": "public-api-tested",
-        "behavior": "complete"
-      },
-      "production": [
-        "public-api:chord/next/surfaces/intl_time.go#FormatTime"
-      ],
-      "evidence": [
-        "test:chord/next/surfaces/surfaces_format_test.go#TestFormatsTimesInTheRendersLocale",
-        "test:chord/next/surfaces/surfaces_format_test.go#TestFormatTimeRefusesOptionsOutsideTheClosedType",
-        "test:chord/next/surfaces/intl_root_test.go#TestFormatTimeShowsTheInstantInTheProcessZone",
-        "test:chord/next/surfaces/intl_drift_test.go#TestTimesMatchNode"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:9055cd64b295fb3fd5dad4a9abf478ce2da81497df40f152bba3f9ee6f966271"
     },
     {
       "id": "pkg:chord/.#formatTime::call:0",
-      "disposition": "ported",
-      "upstreamShapeHash": "sha256:d722554fc8dc2d98f7686bb0c6bc325734287ef82b54fab924fb9912e8ec8c21",
-      "rationale": "Pi packages/chord/src/surfaces/format.ts formatTime(at, options?) is `Intl.DateTimeFormat` with the current language's locale (the platform's default outside a render), `{timeStyle: \"short\"}` by default, of `new Date(at)`. Go FormatTime(lang *Language, at time.Time, options *TimeOptions) (string, error): the language is the first parameter (D450); `Date | number | string` is a time.Time (D465); the options are the closed TimeOptions over tables generated from the pinned Node's Intl (D464); the zone is the process's, as a Date's is. TestTimesMatchNode diffs every output against a live Node and TestFormatTimeShowsTheInstantInTheProcessZone pins the zone; mutating the process zone to UTC or the default style to medium fails the tests. The public library API has no PiG call site: its callers are the tests.",
-      "pigTargets": [
-        "chord/next/surfaces/surfaces_format.go#FormatTime",
-        "chord/next/surfaces/intl_time.go#FormatTime"
-      ],
-      "layers": {
-        "shape": "complete",
-        "production": "public-api-tested",
-        "behavior": "complete"
-      },
-      "production": [
-        "public-api:chord/next/surfaces/intl_time.go#FormatTime"
-      ],
-      "evidence": [
-        "test:chord/next/surfaces/surfaces_format_test.go#TestFormatsTimesInTheRendersLocale",
-        "test:chord/next/surfaces/surfaces_format_test.go#TestFormatTimeRefusesOptionsOutsideTheClosedType",
-        "test:chord/next/surfaces/intl_root_test.go#TestFormatTimeShowsTheInstantInTheProcessZone",
-        "test:chord/next/surfaces/intl_drift_test.go#TestTimesMatchNode"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:d722554fc8dc2d98f7686bb0c6bc325734287ef82b54fab924fb9912e8ec8c21"
     },
     {
       "id": "pkg:chord/.#GetOptions",
@@ -111493,7 +111417,7 @@
       "evidence": [
         "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort",
         "test:chord/next/link/ipc_test.go#TestIPCLinksToAChild",
-        "test:chord/next/link/websocket_test.go#TestWebSocketLinksOverAFakeSocket"
+        "test:chord/next/link/websocket_test.go#TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend"
       ]
     },
     {
@@ -111515,7 +111439,7 @@
       "evidence": [
         "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort",
         "test:chord/next/link/ipc_test.go#TestIPCLinksToAChild",
-        "test:chord/next/link/websocket_test.go#TestWebSocketLinksOverAFakeSocket"
+        "test:chord/next/link/websocket_test.go#TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend"
       ]
     },
     {
@@ -111581,7 +111505,7 @@
       "evidence": [
         "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort",
         "test:chord/next/link/ipc_test.go#TestIPCLinksToAChild",
-        "test:chord/next/link/websocket_test.go#TestWebSocketLinksOverAFakeSocket"
+        "test:chord/next/link/websocket_test.go#TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend"
       ]
     },
     {
@@ -111603,7 +111527,7 @@
       "evidence": [
         "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort",
         "test:chord/next/link/ipc_test.go#TestIPCLinksToAChild",
-        "test:chord/next/link/websocket_test.go#TestWebSocketLinksOverAFakeSocket"
+        "test:chord/next/link/websocket_test.go#TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend"
       ]
     },
     {
@@ -115236,7 +115160,9 @@
         "call:chord/next/surfaces/surfaces_registered.go#RegisteredSource"
       ],
       "evidence": [
-        "test:chord/next/surfaces/surfaces_registered_test.go#TestRegisteredScriptsRegisterTheirPluginDigestAndFunctionTheSourceMapCommentKeptInsideTheCall"
+        "test:chord/next/surfaces/surfaces_registered_test.go#TestRegisteredScriptsRegisterTheirPluginDigestAndFunctionTheSourceMapCommentKeptInsideTheCall",
+        "test:chord/nextnode/surfaces/surfaces_published_test.go#TestPublishedScriptsAPluginWhoseNextBuildFailsKeepsItsDigestTextStylesheetAndAssets",
+        "test:chord/nextnode/surfaces/surfaces_published_test.go#TestPublishedScriptsFilesNameEachScriptStylesheetAndAssetByContentAndCombineWithoutSourceMaps"
       ]
     },
     {
@@ -115256,7 +115182,9 @@
         "call:chord/next/surfaces/surfaces_registered.go#RegisteredSource"
       ],
       "evidence": [
-        "test:chord/next/surfaces/surfaces_registered_test.go#TestRegisteredScriptsRegisterTheirPluginDigestAndFunctionTheSourceMapCommentKeptInsideTheCall"
+        "test:chord/next/surfaces/surfaces_registered_test.go#TestRegisteredScriptsRegisterTheirPluginDigestAndFunctionTheSourceMapCommentKeptInsideTheCall",
+        "test:chord/nextnode/surfaces/surfaces_published_test.go#TestPublishedScriptsAPluginWhoseNextBuildFailsKeepsItsDigestTextStylesheetAndAssets",
+        "test:chord/nextnode/surfaces/surfaces_published_test.go#TestPublishedScriptsFilesNameEachScriptStylesheetAndAssetByContentAndCombineWithoutSourceMaps"
       ]
     },
     {
@@ -121667,7 +121595,7 @@
       "evidence": [
         "test:chord/next/host/host_example_13_test.go#TestExample13Relay",
         "test:chord/next/host/remote_websocket_test.go#TestWebSocketLinksOverALoopbackServer",
-        "test:chord/next/link/websocket_test.go#TestWebSocketLinksOverAFakeSocket"
+        "test:chord/next/link/websocket_test.go#TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend"
       ]
     },
     {
@@ -121689,7 +121617,7 @@
       "evidence": [
         "test:chord/next/host/host_example_13_test.go#TestExample13Relay",
         "test:chord/next/host/remote_websocket_test.go#TestWebSocketLinksOverALoopbackServer",
-        "test:chord/next/link/websocket_test.go#TestWebSocketLinksOverAFakeSocket"
+        "test:chord/next/link/websocket_test.go#TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend"
       ]
     },
     {
@@ -132286,9 +132214,9 @@
         "call:chord/nextnode/surfaces/surfaces_bundle.go#BuildBase"
       ],
       "evidence": [
-        "test:chord/nextnode/surfaces/surfaces_bundle_test.go#TestConditionsKeepsABrowserBuildsModuleConditionAndBrowserFieldWithCustomConditions",
-        "test:chord/nextnode/surfaces/surfaces_bundle_test.go#TestConditionsResolvePackageExportsWithEachSpellingOfTheFlagTheDefaultWithNone",
-        "test:chord/nextnode/surfaces/surfaces_bundle_test.go#TestConditionsResolvesWithTheGivenConditionsTheSourceAsInputNotDistEachWithItsBytesHash"
+        "test:chord/nextnode/surfaces/surfaces_published_test.go#TestPublishedScriptsAPluginWhoseNextBuildFailsKeepsItsDigestTextStylesheetAndAssets",
+        "test:chord/nextnode/surfaces/surfaces_published_test.go#TestPublishedScriptsAStylesheetChangeAloneKeepsTheScriptsDigestAndChangesItsName",
+        "test:chord/nextnode/surfaces/surfaces_published_test.go#TestPublishedScriptsFilesNameEachScriptStylesheetAndAssetByContentAndCombineWithoutSourceMaps"
       ]
     },
     {
@@ -132391,7 +132319,7 @@
       "evidence": [
         "test:chord/nextnode/surfaces/surfaces_build_test.go#TestAFailedBuildAnswers503ForTheSurfacesFilesAndFailsItsStepsHost",
         "test:chord/nextnode/surfaces/surfaces_build_test.go#TestOneSharedBuildBuildsOnceForEveryWaiterTheScriptsObjectShowsAnEmptySetBeforeTheFirstSetAfter",
-        "test:chord/nextnode/surfaces/surfaces_build_linux_test.go#TestARolloutStepDuringTheBuildStopsWaitingAtItsContextsAbortBeforeTheBuildEndsTheBuildGoesOn"
+        "test:chord/nextnode/surfaces/surfaces_published_test.go#TestPublishedScriptsAFilePublishedInAnEarlierSetStaysServedWhileALaterSetStillHasIt"
       ]
     },
     {

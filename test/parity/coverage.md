@@ -4,11 +4,11 @@ Generated from `1140` PORT_MAP entries and `876` parity scenarios.
 
 ## Status
 
-- **Porting:** 995 / 1026 intended-portable entries ✅ (97.0%).
-- **Behavior verification:** 813 / 995 ported entries (81.7%); 0 weak-only, 182 untested.
+- **Porting:** 999 / 1026 intended-portable entries ✅ (97.4%).
+- **Behavior verification:** 814 / 999 ported entries (81.5%); 0 weak-only, 185 untested.
 - **Upstream test porting:** 962 ported / 0 partial / 18 pending (7 other dispositions; [file mapping](interfaces/test-mapping-v1.5.1.json)). Of the partial/pending files, 0 deferred to 0.3.x by the [release policy](interfaces/test-porting-policy-v1.5.1.json) (`deferred-0.3.x`).
 
-Raw PORT_MAP rows: 1140. Breakdown: 114 n/a (designed out) · 29 🟡 partial · 2 ⬜ not started. See docs/parity/DIVERGENCES.md for the documented exceptions.
+Raw PORT_MAP rows: 1140. Breakdown: 114 n/a (designed out) · 25 🟡 partial · 2 ⬜ not started. See docs/parity/DIVERGENCES.md for the documented exceptions.
 
 ## Packages
 
@@ -16,7 +16,7 @@ Raw PORT_MAP rows: 1140. Breakdown: 114 n/a (designed out) · 29 🟡 partial ·
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | `agent` | 6 | 1 | 5 | 5 | 0 | 0 | 100.0% | 100.0% |
 | `ai` | 272 | 22 | 250 | 248 | 0 | 2 | 99.2% | 96.8% |
-| `chord` | 324 | 39 | 285 | 274 | 11 | 0 | 96.1% | 58.8% |
+| `chord` | 324 | 39 | 285 | 278 | 7 | 0 | 97.5% | 58.3% |
 | `codemode` | 17 | 4 | 13 | 13 | 0 | 0 | 100.0% | 100.0% |
 | `coding-agent` | 265 | 27 | 238 | 234 | 4 | 0 | 98.3% | 97.0% |
 | `durable` | 100 | 10 | 90 | 78 | 12 | 0 | 86.7% | 96.2% |
@@ -29,8 +29,8 @@ Raw PORT_MAP rows: 1140. Breakdown: 114 n/a (designed out) · 29 🟡 partial ·
 
 - **Four core packages (agent, ai, coding-agent, tui):** 532 / 538 intended-portable files ✅ (98.9%) from 589 rows; 517 behavioral (97.2%), 0 weak-only, 15 untested.
 - **Shipped surface (agent, ai, codemode, coding-agent, mcp, schema, telemetry, tui; coding-agent without ):** 617 / 623 intended-portable files ✅ (99.0%) from 685 rows; 552 behavioral (89.5%), 0 weak-only, 65 untested.
-- **Whole monorepo (12 packages):** 995 / 1026 intended-portable files ✅ (97.0%) from 1140 rows; 813 behavioral (81.7%), 0 weak-only, 182 untested.
-- **Interface closure:** 15056 of 15088 semantic interface IDs closed (519 designed-out, 32 pending, 14537 ported). A file-level ✅ does not close an interface ID.
+- **Whole monorepo (12 packages):** 999 / 1026 intended-portable files ✅ (97.4%) from 1140 rows; 814 behavioral (81.5%), 0 weak-only, 185 untested.
+- **Interface closure:** 15061 of 15088 semantic interface IDs closed (519 designed-out, 27 pending, 14542 ported). A file-level ✅ does not close an interface ID.
 
 Behavioral evidence includes paired scenarios and reviewed mutation-proven Go unit tests. Unit tests are listed separately; last run refers only to paired scenarios, not unit execution or exhaustive parity.
 
@@ -737,7 +737,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/chord/src/link/part.ts` | ✅ | 0 | 3 (unit:./chord/next/link:TestLimitsPerPart, unit:./chord/next/link:TestOpeningAPart, unit:./chord/next/link:TestTheAsynchronousInflate) | not run | ./chord/next/link:TestLimitsPerPart, ./chord/next/link:TestOpeningAPart, ./chord/next/link:TestTheAsynchronousInflate |
 | `packages/chord/src/link/text.ts` | ✅ | 0 | 1 (unit:./chord/next/link:TestTheTextCodec) | not run | ./chord/next/link:TestTheTextCodec |
 | `packages/chord/src/link/values.ts` | ✅ | 0 | 1 (unit:./chord/next/link:TestPayloads) | not run | ./chord/next/link:TestPayloads |
-| `packages/chord/src/link/websocket.ts` | 🟡 | 0 | 1 (unit:./chord/next/link:TestWebSocketLinksOverAFakeSocket) | not run | ./chord/next/link:TestWebSocketLinksOverAFakeSocket |
+| `packages/chord/src/link/websocket.ts` | ✅ | 0 | 1 (unit:./chord/next/link:TestWebSocketLinksOverAFakeSocket) | not run | ./chord/next/link:TestWebSocketLinksOverAFakeSocket |
 | `packages/chord/src/store/table-writes.ts` | ✅ | 0 | 2 (unit:./chord/next/store:TestEvidenceStoreAClearedJSONRecordsNoVersion, unit:./chord/next/store:TestEvidenceStoreADropIndexRecord) | not run | ./chord/next/store:TestEvidenceStoreAClearedJSONRecordsNoVersion, ./chord/next/store:TestEvidenceStoreADropIndexRecord |
 | `packages/chord/src/store/table-changes.ts` | ✅ | 0 | 1 (unit:./chord/next/store:TestTableChanges) | not run | ./chord/next/store:TestTableChanges |
 | `packages/chord/src/store/table-handle.ts` | ✅ | 0 | 2 (unit:./chord/next/store:TestTableHandle, unit:./chord/next/store:TestTableHandle) | not run | ./chord/next/store:TestTableHandle, ./chord/next/store:TestTableHandle |
@@ -871,7 +871,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/chord/src/node/http/http.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/http/incoming.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/http/index.ts` | n/a | 0 | 0 | not run |  |
-| `packages/chord/src/node/http/node.ts` | 🟡 | 0 | 0 | not run |  |
+| `packages/chord/src/node/http/node.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/http/request.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/http/response.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/http/router.ts` | ✅ | **0 (untested)** | **0** | not run |  |
@@ -929,7 +929,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/chord/src/node/surfaces/current.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/surfaces/surface-build.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/surfaces/index.ts` | n/a | 0 | 0 | not run |  |
-| `packages/chord/src/node/surfaces/published.ts` | 🟡 | 0 | 0 | not run |  |
+| `packages/chord/src/node/surfaces/published.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/surfaces/served.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/surfaces/tui.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/surfaces/web.ts` | ✅ | **0 (untested)** | **0** | not run |  |
@@ -950,7 +950,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/chord/src/surfaces/active-theme.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/surfaces/client.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/surfaces/connection.ts` | ✅ | **0 (untested)** | **0** | not run |  |
-| `packages/chord/src/surfaces/format.ts` | 🟡 | 0 | 0 | not run |  |
+| `packages/chord/src/surfaces/format.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/surfaces/index.ts` | n/a | 0 | 0 | not run |  |
 | `packages/chord/src/surfaces/language.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/surfaces/loaded.ts` | ✅ | **0 (untested)** | **0** | not run |  |

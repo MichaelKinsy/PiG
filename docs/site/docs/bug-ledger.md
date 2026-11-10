@@ -291,6 +291,9 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-2ea8ad2](#bf-2ea8ad2) | The openai-completions, openai-responses and openrouter-images requests build their URL as the openai SDK… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2f7f692](#bf-2f7f692) | Chord's surfaces: a language or theme follower stopped before its pick watch bound no longer crashes the… | PiG's own defect | All platforms | Unreleased |
 | [BF-2f7f692-2](#bf-2f7f692-2) | Chord's `TuiScope`: a holder that releases its own `Hold`en reference before the scope's watch of its state… | PiG's own defect | All platforms | Unreleased |
+| [BF-2f8638b](#bf-2f8638b) | Chord: the rollout Step of a published script set now lists removed plugins in UTF-16 code unit order, as Pi… | PiG's own defect | All platforms | Unreleased |
+| [BF-2f8638b-2](#bf-2f8638b-2) | Chord: the HTTP listener now parses the Host header and the request target with the WHATWG URL algorithm, as… | PiG's own defect | All platforms | Unreleased |
+| [BF-2f8638b-3](#bf-2f8638b-3) | Chord: the HTTP listener answers 400 for a request target that contains bytes Node refuses, where it used to… | PiG's own defect | All platforms | Unreleased |
 | [BF-2f881ba](#bf-2f881ba) | "Your first extension" now says that `pig install --validate-only` exits 1 when the extension does not build | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2fb2917](#bf-2fb2917) | fix(interactive): label skill diagnostics [Skill warnings] and show the model scope in the fullscreen header | PiG's own defect | All platforms | Unreleased |
 | [BF-2fc2307](#bf-2fc2307) | A scalar that names a collection tag (`!!map 1`, `!!seq true`) inside a complex mapping key stays plain in… | PiG's own defect | All platforms | 0.5.0 |
@@ -5719,6 +5722,48 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `0a547c7879` (2026-11-07), `2f7f6929c0` (2026-11-07), `6ed0a7ce4a` (2026-11-07)
 - **Tests:** `chord/next/surfaces/surfaces_follower_stop_test.go::TestAFollowersCallbackMayStopItAndChangeTheDevice`, `chord/next/surfaces/surfaces_follower_stop_test.go::TestAThemeFollowersCallbackMayStopItAndSetTheMode`, `chord/next/surfaces/surfaces_follower_stop_test.go::TestStoppingAFollowerBeforeItsPickWatchBindsEndsQuietly`, `chord/next/surfaces/surfaces_follower_stop_test.go::TestStoppingAThemeFollowerBeforeItsPickWatchBindsEndsQuietly`, `chord/next/tui/tui_scope_release_test.go::TestAHoldersOwnReleaseBeforeTheScopesWatchStartsEndsQuietly`, `chord/next/tui/tui_scope_test.go::TestOptimisticAppliesAReducerOverEveryActionInFlightInOrderAndSaysWhetherACallIsPending`, `chord/next/tui/tui_scope_test.go::TestOptimisticNeverCallsChangedAfterDispose`, `chord/next/tui/tui_scope_test.go::TestOptimisticShowsTheLastValueUntilEveryCallSettledAFailedCallDropsItAsASucceededOneDoes` and 7 more in docs/bug-ledger.json
 - **Release note:** Chord's `TuiScope`: a holder that releases its own `Hold`en reference before the scope's watch of its state started no longer crashes the process.
+
+### BF-2f8638b
+
+**Chord: the rollout Step of a published script set now lists removed plugins in UTF-16 code unit order, as Pi…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Chord: the rollout Step of a published script set now lists removed plugins in UTF-16 code unit order, as Pi does, instead of UTF-8 byte order; names outside the Basic Multilingual Plane no longer sort differently.
+- **Root cause:** Not recorded.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2f8638b949` (2026-11-09)
+- **Tests:** `chord/next/link/websocket_test.go::TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend`, `chord/nextnode/http/node_test.go::TestTargetsReachTheComponentOnlyWhereNodesParserTakesThem`, `chord/nextnode/http/url_test.go::TestTheWireURLIsWhatTheURLParserMakesOfTheHostAndTarget`, `chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsAFilePublishedInAnEarlierSetStaysServedWhileALaterSetStillHasIt`, `chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsAPluginWhoseNextBuildFailsKeepsItsDigestTextStylesheetAndAssets`, `chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsAStylesheetChangeAloneKeepsTheScriptsDigestAndChangesItsName`, `chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsFilesNameEachScriptStylesheetAndAssetByContentAndCombineWithoutSourceMaps`, `chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsStartPublishesTheKindsFirstSet` and 12 more in docs/bug-ledger.json
+- **Release note:** Chord: the rollout Step of a published script set now lists removed plugins in UTF-16 code unit order, as Pi does, instead of UTF-8 byte order; names outside the Basic Multilingual Plane no longer sort differently.
+
+### BF-2f8638b-2
+
+**Chord: the HTTP listener now parses the Host header and the request target with the WHATWG URL algorithm, as…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Chord: the HTTP listener now parses the Host header and the request target with the WHATWG URL algorithm, as Node does, instead of an approximation.
+- **Root cause:** Not recorded.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2f8638b949` (2026-11-09)
+- **Tests:** `chord/next/link/websocket_test.go::TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend`, `chord/nextnode/http/node_test.go::TestTargetsReachTheComponentOnlyWhereNodesParserTakesThem`, `chord/nextnode/http/url_test.go::TestTheWireURLIsWhatTheURLParserMakesOfTheHostAndTarget`, `chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsAFilePublishedInAnEarlierSetStaysServedWhileALaterSetStillHasIt`, `chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsAPluginWhoseNextBuildFailsKeepsItsDigestTextStylesheetAndAssets`, `chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsAStylesheetChangeAloneKeepsTheScriptsDigestAndChangesItsName`, `chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsFilesNameEachScriptStylesheetAndAssetByContentAndCombineWithoutSourceMaps`, `chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsStartPublishesTheKindsFirstSet` and 12 more in docs/bug-ledger.json
+- **Release note:** Chord: the HTTP listener now parses the Host header and the request target with the WHATWG URL algorithm, as Node does, instead of an approximation.
+
+### BF-2f8638b-3
+
+**Chord: the HTTP listener answers 400 for a request target that contains bytes Node refuses, where it used to…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Chord: the HTTP listener answers 400 for a request target that contains bytes Node refuses, where it used to pass the request to the component.
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2f8638b949` (2026-11-09)
+- **Tests:** `chord/next/link/websocket_test.go::TestWebSocketLinkSendsOnAnOpenSocketAndClosesOnAThrownSend`, `chord/nextnode/http/node_test.go::TestTargetsReachTheComponentOnlyWhereNodesParserTakesThem`, `chord/nextnode/http/url_test.go::TestTheWireURLIsWhatTheURLParserMakesOfTheHostAndTarget`, `chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsAFilePublishedInAnEarlierSetStaysServedWhileALaterSetStillHasIt`, `chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsAPluginWhoseNextBuildFailsKeepsItsDigestTextStylesheetAndAssets`, `chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsAStylesheetChangeAloneKeepsTheScriptsDigestAndChangesItsName`, `chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsFilesNameEachScriptStylesheetAndAssetByContentAndCombineWithoutSourceMaps`, `chord/nextnode/surfaces/surfaces_published_test.go::TestPublishedScriptsStartPublishesTheKindsFirstSet` and 12 more in docs/bug-ledger.json
+- **Release note:** Chord: the HTTP listener answers 400 for a request target that contains bytes Node refuses, where it used to pass the request to the component.
 
 ### BF-2f881ba
 
