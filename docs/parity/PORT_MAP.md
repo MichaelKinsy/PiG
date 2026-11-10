@@ -356,8 +356,8 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/ai/src/utils/oauth-page.ts` | `ai/oauth_page.go (upstream 0.99.1 moved the file unchanged from auth/oauth/oauth-page.ts)` | ✅ |
 | `packages/ai/src/providers/openrouter-api.ts` | `ai/openrouter_api.go (OpenRouterModel, OpenRouterCost and the rest of the row's exported members), cmd/gen-models/` | ✅ |
 | `packages/ai/src/telemetry.ts` | `ai/telemetry.go` | ✅ |
-| `packages/ai/src/lazy-bedrock-provider.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/ai/src/lazy-oauth.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/ai/src/lazy-bedrock-provider.ts` | `(designed out: registerLazyBedrockProvider only replaces how the first Bedrock request imports its module, for Node bundles that split at dynamic imports; Go links Bedrock when a program imports ai/providers/bedrock (ai/all does, as does cmd/pig; a pig_strip_bedrock_converse_stream build or a Piglet's strip.apis removes it, D92), and the API stream is ai.BedrockConverseStreamAPI, ai/api_streams.go; no upstream test covers the file, the Pi test for lazy loading is packages/ai/test/lazy-module-load.test.ts, ai/lazy_module_load_upstream_test.go)` | n/a |
+| `packages/ai/src/lazy-oauth.ts` | `(designed out: registerLazyOAuthFlows only replaces how each OAuth flow module is imported, for Node bundles that split at dynamic imports; Go links the flows, ai/oauth_registry.go, and ai/oauth_load_oracle_test.go TestOAuthFlowLoadersMatchPi proves each flow it registers resolves with no registration and that Go's built-in OAuth set equals Pi's providers with auth.oauth; no upstream test covers the file)` | n/a |
 
 ## `packages/coding-agent/src/`
 
