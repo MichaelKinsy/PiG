@@ -184,6 +184,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/ai/src/auth/oauth/radius.ts` | `ai/oauth_radius.go (ai/oauth_radius_test.go)` | ✅ |
 | `packages/ai/src/auth/oauth/trusted-url.ts` | `ai/oauth_trusted_url.go trustedHTTPURL (shared by ai/githubcopilot.go via ai/copilot_verification_uri.go, ai/oauth_kimi.go, ai/oauth_meta.go and ai/oauth_radius.go; ai/trusted_url_oracle_test.go compares it with Pi's trustedHttpUrl over the verification-URI corpus)` | ✅ |
 | `packages/ai/src/auth/oauth/xai.ts` | `ai/oauth_xai.go (device-code login, polling, refresh, response validation, and owner-context cancellation; ai/oauth_xai_test.go including LoginContext/RefreshTokenContext cancellation, coding/cli/model_oauth_refresh_test.go caller cancellation, oauth/09 behavioral scenario)` | ✅ |
+| `packages/ai/src/cache-warming.ts` | `ai/cache_warming.go (the shared cache-warming policy: delay, prompt-cache TTL, replayability, EvaluateCacheWarming)` | ✅ |
 | `packages/ai/src/bun-oauth.ts` | `(Bun-only OAuth flow registration; Go links OAuth implementations directly)` | n/a |
 | `packages/ai/src/compat.ts` | `ai/compat.go`, `ai/builtin_providers.go`, `ai/registry.go`, `ai/faux.go` | ✅ |
 | `packages/ai/src/compat/extension-oauth-types.ts` | `ai/oauth_types.go (type-only legacy OAuth callback and prompt contracts; runtime OAuth behavior belongs to the auth/provider rows; the file re-exports OAuthCredentials, whose JSON member order and tags are the observable wire contract, so the red-proof mutants edit that credential shape in ai/oauth_types.go)` | ✅ |
@@ -530,6 +531,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/modes/interactive/components/auth-url.ts` | `tui/auth_url.go (AuthURL; used by the login dialog and the MCP manager RedirectURL)` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/model-selector.ts` | `tui/model_select.go + tui/model_selector_runtime.go` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/oauth-selector.ts` | `tui/oauth_selector.go (driven by the interactive login and slash auth code)` | ✅ |
+| `packages/coding-agent/src/modes/interactive/components/provider-brand.ts` | `tui/provider_brand.go (GetProviderBrandStyle, RadiusShimmer, openRouterGlow, StartBrandAnimation)` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts` | `tui/scoped_models_list.go (driven by the interactive mode)` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/session-selector.ts` | `internal/codingagent/session_selector.go (the component, hosted by startup_ui, the interactive mode and its theme modal; its unexported helpers session_selector_load (owned scope loads, progress and cancellation), session_selector_status (setStatusMessage) and session_selector_delete with its _unix and _windows variants (deleteSessionFile) await storage with UI-task pumping; canonicalSessionPath is getSessionPathKey: canonicalizePath through resolvepath.ComparisonKey)`, `internal/codingagent/session_selector_load.go` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/session-selector-search.ts` | `internal/codingagent/session_selector.go + tui/fuzzy.go` | ✅ |
@@ -568,6 +570,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/core/bug-report-upload.ts` | `(designed out: D62, PiG never uploads bug reports)` | n/a |
 | `packages/coding-agent/src/core/bug-report.ts` | `internal/codingagent/bug_report.go (export subset: metadata, redaction, diagnostics, archive; D62) + internal/codingagent/compaction/bug_report_summary.go (coding/bug_report.go; internal/codingagent/compaction/bug_report_summary_test.go)` | ✅ |
 | `packages/coding-agent/src/core/cache-warmer.ts` | `internal/codingagent/cache_warmer.go + coding/extension/cache_warming.go (retention, lifecycle, scheduling and awaited extension decisions; the sdk.ts streamFn and agent-session.ts wiring that drives the warmer lives in coding session_cache_warming, cited by core/sdk.ts)` | ✅ |
+| `packages/coding-agent/src/core/preferred-providers.ts` | `ai/preferred_providers.go (PreferredProviderIDs, IsPreferredProvider, CompareProviders; core/radius.ts lives in ai, so does this)` | ✅ |
 | `packages/coding-agent/src/core/crash-log.ts` | `internal/codingagent/crash_log.go + interactive_crash.go (crash persistence, startup notice, /bug attachment and cleanup, fatal create/resume/import reporting, and loaded-extension stack attribution; D98 adds the Go goroutine trace form; TestCrashLogMatchesPi compares the pinned Pi's module over generated crash records)` | ✅ |
 | `packages/coding-agent/src/core/extensions/jiti-loader.ts` | `(barrel re-export)` | n/a |
 | `packages/coding-agent/src/core/extensions/jiti-static-loader.ts` | `(barrel re-export)` | n/a |
@@ -991,6 +994,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/node/plugins/testing.ts` | `chord/nextnode/plugins/plugins_testing.go` | ✅ |
 | `packages/chord/src/node/surfaces/bundle.ts` | `chord/nextnode/surfaces/surfaces_bundle.go` | ✅ |
 | `packages/chord/src/node/surfaces/current.ts` | `chord/nextnode/surfaces/surfaces_current.go` | ✅ |
+| `packages/chord/src/node/surfaces/surface-build.ts` | `chord/nextnode/surfaces/surfaces_build.go` | ✅ |
 | `packages/chord/src/node/surfaces/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
 | `packages/chord/src/node/surfaces/published.ts` | `chord/nextnode/surfaces/surfaces_published.go` Missing: no Go test of PublishedScripts of its own (only the incidental run of TestTheTerminalSurfaceServesASignedInLauncher... covers 22 of 48 statements): the retention of the last few sets (served files of recent sets stay), a plugin whose next build fails keeping its digest, text and stylesheet, source-map comment, asset collection and the file(path) lookup, the rollout Step ordering | 🟡 |
 | `packages/chord/src/node/surfaces/served.ts` | `chord/nextnode/surfaces/surfaces_served.go` | ✅ |

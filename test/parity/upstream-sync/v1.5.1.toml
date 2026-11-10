@@ -11,9 +11,9 @@ rationale = ""
 [[files]]
 path = "packages/ai/src/utils/version.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/user_agent_version_oracle_test.go#TestUserAgentVersionFieldFollowsPi", "test:ai/user_agent_test.go#TestPiUserAgentFormat", "test:ai/identity_test.go#TestClientIdentityVersionDefaultsToTheProductVersion", "test:coding/cli/main_test.go#TestVersionStringIncludesPigAndUpstreamVersions", "test:coding/cli/main_test.go#TestVersionFlagsPrintPisVersionWhileVersionCommandNamesBoth", "test:coding/extension/host/subprocess/runtime_node_product_version_test.go#TestNodeExtensionUserAgentNamesPiGAndItsVersion", "test:coding/extension/host/subprocess/runtime_node_pi_ai_version_test.go#TestVendoredPiAiExportsThePinnedPackageVersion"]
+rationale = "The release commit moves PI_AI_VERSION from 1.5.0 to 1.5.1 (77959d66..v1.5.1), and the number reaches users on three surfaces. The User-Agent (pig/<ver>) and the help banner report PiG's composite release version (ai/user_agent.go ProductVersion, D65: <PiG release>+<Pi release>), which stands for Pi's constant there: TestUserAgentVersionFieldFollowsPi compares the User-Agent version field with Pi's PI_AI_VERSION default and the product version, TestPiUserAgentFormat and TestClientIdentityVersionDefaultsToTheProductVersion pin the User-Agent and the identity default, TestVersionStringIncludesPigAndUpstreamVersions pins the banner's composite version, and TestVersionFlagsPrintPisVersionWhileVersionCommandNamesBoth pins that `pig --version` prints Pi's package version, as `pi --version` does, while `pig version` names the PiG release and the pin. The PI_AI_VERSION a Node extension imports is the vendored pi-ai module's, which exports Pi's package version: runtime-node/shims/pi-dist/pi-ai/utils/version.js carries \"1.5.1\" and TestVendoredPiAiExportsThePinnedPackageVersion requires it to equal the pinned package version."
 
 [[files]]
 path = "packages/chord/src/node/http/upgrades.ts"

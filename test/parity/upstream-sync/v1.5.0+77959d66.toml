@@ -32,114 +32,114 @@ rationale = "45344bd3a adds the per-session memory of strict tool limit rejectio
 [[files]]
 path = "packages/ai/src/cache-warming.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/cache_warmer_test.go", "test:internal/codingagent/cache_warmer_oracle_test.go", "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi"]
+rationale = "c9552c7d8 adds the shared cache-warming policy (delay, prompt-cache TTL, replayability, evaluation) to ai; ai/cache_warming.go ports it and the cache warmer tests run against it, with the oracle tests comparing the pure functions with the pinned Pi."
 
 [[files]]
 path = "packages/ai/src/index.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/cache_warmer_test.go"]
+rationale = "The one added line re-exports ./cache-warming.ts; in Go the helpers are package-level identifiers of ai (ai/cache_warming.go), used by internal/codingagent/cache_warmer.go."
 
 [[files]]
 path = "packages/chord/src/node/app/app.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/app_bases_scan_test.go", "test:chord/nextnode/app/app_bases_workers_linux_test.go"]
+rationale = "284e63d9c lets the server answer before the scan of its own code and before the worker bases are built; chord/nextnode/app/app.go starts the listen first, and the tests pin the answer before the scan, the close without waiting for a stalled scan and a late result dropped, and the worker kinds' base build."
 
 [[files]]
 path = "packages/chord/src/node/app/layout.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/layout_test.go"]
+rationale = "284e63d9c adds the cache directory with the worker bases and the Node compile cache to the layout; chord/nextnode/app/layout.go creates and exposes them and layout_test.go pins the paths."
 
 [[files]]
 path = "packages/chord/src/node/plugins/plugins.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/plugins/plugins_watcher_base_test.go#TestRecordBaseSettlesOnceItsFirstComparisonsEnded"]
+rationale = "284e63d9c makes watchBase return a promise that settles once the first comparisons did; chord/nextnode/plugins/plugins_plugins.go waits for RecordBase the same way."
 
 [[files]]
 path = "packages/chord/src/node/plugins/watcher.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/plugins/plugins_watcher_base_test.go#TestRecordBaseSettlesOnceItsFirstComparisonsEnded", "test:chord/nextnode/plugins/plugins_watcher_base_test.go#TestARecordedBaseAfterTheCloseWatchesNothing"]
+rationale = "284e63d9c makes recordBase settle once its first comparisons ended and makes a record arriving after the close watch nothing; both are pinned by the two tests."
 
 [[files]]
 path = "packages/chord/src/node/surfaces/bundle.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/surfaces/surfaces_build_test.go#TestAFailedBuildAnswers503ForTheSurfacesFilesAndFailsItsStepsHost"]
+rationale = "284e63d9c changes the doc comment of the bundle (it rejects instead of throwing, because the build is off the start path); no behavior change, surfaces_bundle.go's build failure reaches the surface as the failed-build answer pinned by the test."
 
 [[files]]
 path = "packages/chord/src/node/surfaces/current.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/surfaces/surfaces_build_test.go#TestOneSharedBuildBuildsOnceForEveryWaiterTheScriptsObjectShowsAnEmptySetBeforeTheFirstSetAfter"]
+rationale = "284e63d9c starts the surface's facet at an empty set before its build and publishes the first set after it; the test pins the scripts object empty before and filled after."
 
 [[files]]
 path = "packages/chord/src/node/surfaces/index.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/surfaces/surfaces_build_test.go"]
+rationale = "The one added line re-exports the SurfaceBuilt type of surface-build.ts, a type-only export that is the Go package surface (surfaces_build.go)."
 
 [[files]]
 path = "packages/chord/src/node/surfaces/published.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/surfaces/surfaces_build_test.go#TestOneSharedBuildBuildsOnceForEveryWaiterTheScriptsObjectShowsAnEmptySetBeforeTheFirstSetAfter"]
+rationale = "284e63d9c changes the doc comment: the kind's current set is taken after the server's load because the surface's build publishes it; surfaces_published.go follows."
 
 [[files]]
 path = "packages/chord/src/node/surfaces/surface-build.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/surfaces/surfaces_build_test.go#TestOneSharedBuildBuildsOnceForEveryWaiterTheScriptsObjectShowsAnEmptySetBeforeTheFirstSetAfter", "test:chord/nextnode/surfaces/surfaces_build_test.go#TestAFailedBuildAnswers503ForTheSurfacesFilesAndFailsItsStepsHost", "test:chord/nextnode/surfaces/surfaces_build_linux_test.go#TestARolloutStepDuringTheBuildStopsWaitingAtItsContextsAbortBeforeTheBuildEndsTheBuildGoesOn"]
+rationale = "284e63d9c adds the surface's shared build off the start path (new file); chord/nextnode/surfaces/surfaces_build.go ports it: one build for every waiter, a failed build answering 503, a rollout step's abort not stopping the build."
 
 [[files]]
 path = "packages/chord/src/node/surfaces/tui.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/surfaces/surfaces_build_test.go"]
+rationale = "284e63d9c moves the terminal surface's build behind SurfaceBuild; surfaces_tui.go builds through surfaces_build.go and the shared build tests pin the waiter and failure behavior."
 
 [[files]]
 path = "packages/chord/src/node/surfaces/web.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/app_bases_scan_test.go", "test:chord/nextnode/surfaces/surfaces_build_test.go"]
+rationale = "284e63d9c moves the web surface's build behind SurfaceBuild: an owner page answers before the web base is built and a page request waits for it; surfaces_web.go builds through surfaces_build.go."
 
 [[files]]
 path = "packages/chord/src/node/workers/base.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/workers/workers_workers_test.go#TestTheWorkerBaseInANamedDirectoryEmptiedFirstWrittenAgainThereRemovedByClose", "test:chord/nextnode/workers/workers_workers_test.go#TestTheWorkerBaseAComponentThatClosedBeforeItsBuildWritesNothingAndLeavesANamedDirectoryAsItIs"]
+rationale = "284e63d9c makes the worker base write nothing until the first file and stage in a named directory; workers_base.go ports it (staged beside the named directory and renamed in, a Go mechanic recorded with D600/D603)."
 
 [[files]]
 path = "packages/chord/src/node/workers/index.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/workers/workers_workers_test.go"]
+rationale = "The one added line re-exports the WorkersBuilt type, a type-only export that is the Go package surface of chord/nextnode/workers."
 
 [[files]]
 path = "packages/chord/src/node/workers/workers.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/workers/workers_workers_test.go#TestTheWorkerBaseAStartWaitsForTheBasesBuildAndStartsItWhenNothingDid", "test:chord/nextnode/workers/workers_base_held_linux_test.go#TestTheWorkerBaseAStartWaitsForAHeldBuildAndForksOnceItEndedTheStartDataIsAskedForThen", "test:chord/nextnode/workers/workers_base_close_test.go#TestTheWorkerBaseCloseKeepsTheBasesCopyUntilItsWorkersExitedACloserStillFindsItsProgram"]
+rationale = "284e63d9c makes the base build one shared promise a start waits for until the close and the close does not wait for; workers_workers.go owns one build goroutine, a late result is dropped, and the tests pin the start's wait, the close and the held build."
 
 [[files]]
 path = "packages/codemode/src/runtime/prelude-source.ts"
@@ -151,51 +151,51 @@ rationale = "33cd7e507 (#11945) prints NaN and Infinity in console output and th
 [[files]]
 path = "packages/coding-agent/src/core/cache-warmer.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/cache_warmer_test.go", "test:internal/codingagent/cache_warmer_oracle_test.go", "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi"]
+rationale = "c9552c7d8 moves the delay, TTL and replayability helpers to ai; internal/codingagent/cache_warmer.go drops its copies, aliases CacheWarmingAction/Decision to the ai types and calls ai.EvaluateCacheWarming."
 
 [[files]]
 path = "packages/coding-agent/src/core/preferred-providers.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/preferred_providers_test.go", "test:internal/codingagent/preferred_providers_order_test.go"]
+rationale = "683a7a868 adds the partner provider ordering (new file); ai/preferred_providers.go ports it next to core/radius.ts and login, logout and /login completions sort through it."
 
 [[files]]
 path = "packages/coding-agent/src/core/settings-defaults.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/settings_cache_warming_test.go", "test:internal/codingagent/settings_manager_upstream_test.go"]
+rationale = "7bcc15c92 changes the cacheWarming default from streaming to idle; internal/codingagent/settings.go and configschema/settings.go carry it and the settings tests and /session scenarios pin the default."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/oauth-selector.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/oauth_selector_partner_test.go", "test:tui/oauth_selector_upstream_test.go"]
+rationale = "683a7a868 marks partner providers with a star and animates the selected row; tui/oauth_selector.go ports it (the constructor's tui argument is a requestRender callback because the renderer is replaceable)."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/provider-brand.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/oauth_selector_partner_test.go"]
+rationale = "683a7a868 adds the provider brand style and animation (new file); tui/provider_brand.go ports GetProviderBrandStyle, RadiusShimmer, openRouterGlow and StartBrandAnimation."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/radius-login-selector.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/login_radius_menu_test.go", "test:internal/codingagent/radius_login_oracle_test.go"]
+rationale = "683a7a868 moves the shimmer and its timer to provider-brand; internal/codingagent/radius_login_selector.go follows and the unchanged Radius oracle test still compares the frames with the pinned Pi."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/preferred_providers_order_test.go", "test:internal/codingagent/login_provider_projection_test.go"]
+rationale = "683a7a868 sorts login, logout and /login completion providers with the preferred-providers order and passes the TUI to the selectors; internal/codingagent/interactive_login.go sorts through ai.CompareProviders and the order tests cover the three lists."
 
 [[files]]
 path = "packages/durable/src/harness/scheduler.ts"
