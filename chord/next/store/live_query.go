@@ -8,6 +8,7 @@ import (
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 	"github.com/MichaelKinsy/PiG/chord/sqlite"
@@ -490,7 +491,7 @@ func sameStored(a, b sqlite.SqliteRow, physical []string) bool {
 }
 
 // rowJSON is a decoded row as a JSON object in the table's column order (absent optional columns left out; integers as JSON
-// numbers).
+// numbers; a `host(...)` cell as the address's object).
 func rowJSON(definition *TableDefinition, row Row) *delta.JsonObject {
 	object := delta.NewJsonObject(len(definition.Columns))
 	for _, column := range definition.Columns {
@@ -498,8 +499,12 @@ func rowJSON(definition *TableDefinition, row Row) *delta.JsonObject {
 		if !present || value == nil {
 			continue
 		}
-		if number, isInt := value.(int64); isInt {
-			value = float64(number)
+		switch typed := value.(type) {
+		case int64:
+			value = float64(typed)
+		case contracts.Address:
+			// A `host(...)` cell is the address's plain object (a JSON value cannot hold the struct).
+			value = delta.JsonObjectOf("kind", typed.Kind, "params", typed.Params, "key", typed.Key)
 		}
 		object.Set(column.Name, value)
 	}
