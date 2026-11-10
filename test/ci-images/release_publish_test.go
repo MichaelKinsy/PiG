@@ -26,7 +26,7 @@ func TestReleaseCandidatePublishesADraftGitHubRelease(t *testing.T) {
 
 	for _, want := range []string{
 		"\n  publish:\n",
-		"needs: [binary, native-smoke, acp, acp-native-smoke, source]",
+		"needs: [binary, native-smoke, acp, acp-native-smoke, standard, standard-native-smoke, source]",
 		"environment:\n      name: release\n",
 		"contents: write",
 		"automation/release/combine-checksums.py release",

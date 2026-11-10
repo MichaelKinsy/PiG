@@ -453,6 +453,127 @@
       (ignore-errors (sb-bsd-sockets:socket-close listener))
       (ignore-errors (delete-file path)))))
 
+;; A packed cell's members build one after another, and the host accepts their connections in that order, serving a connection only after the members before it
+;; have registered. The second member's factory-time call therefore waits for the first member's register, so the first member's run, which takes its own
+;; connection to register, must not wait for that call. A lock held across the wait deadlocks the two: the host never sees the first register, and the cell's
+;; load hangs.
+(deftest a-factory-call-waiting-for-the-host-does-not-hold-up-another-members-register
+  (let* ((tag (format nil "~D-~D" (sb-posix:getpid) (random 1000000)))
+         (path0 (format nil "/tmp/pig-lisp-test-member0-~A.sock" tag))
+         (path1 (format nil "/tmp/pig-lisp-test-member1-~A.sock" tag))
+         (listener0 (make-instance 'sb-bsd-sockets:local-socket :type :stream))
+         (listener1 (make-instance 'sb-bsd-sockets:local-socket :type :stream))
+         (conn0 nil) (conn1 nil) (call1 nil) (caller1 nil) (runner nil))
+    (loop for (path . listener) in (list (cons path0 listener0) (cons path1 listener1))
+          do (ignore-errors (delete-file path))
+             (sb-bsd-sockets:socket-bind listener path)
+             (sb-bsd-sockets:socket-listen listener 4))
+    (unwind-protect
+         (progn
+           ;; the first member's factory made its one host call and returned: its connection is dialled and waits for its run to take it
+           (sb-posix:setenv "PIG_EXT_SOCKET" path0 1)
+           (let ((caller0 (sb-thread:make-thread (lambda () (pig::helper-call "factory-time" (pig:obj))) :name "test-factory-0")))
+             (setf conn0 (pig::socket-conn (sb-bsd-sockets:socket-accept listener0)))
+             (sbr-answer-call conn0 (pig::read-frame conn0) (pig:obj))
+             (sb-thread:join-thread caller0 :default nil :timeout 10))
+           ;; the second member's factory calls the host, which has not accepted its connection yet: the call waits
+           (sb-posix:setenv "PIG_EXT_SOCKET" path1 1)
+           (setf caller1 (sb-thread:make-thread (lambda () (pig::helper-call "factory-time" (pig:obj))) :name "test-factory-1"))
+           (setf conn1 (pig::socket-conn (sb-bsd-sockets:socket-accept listener1))
+                 call1 (pig::read-frame conn1))
+           (check-equal "call" (pig:jget call1 "type"))
+           ;; the first member's run registers meanwhile; a bounded wait, so a run held up by the second member's call fails the test instead of hanging it
+           (setf runner (sb-thread:make-thread (lambda () (pig:run-extension (pig:make-extension "rt-member-0") path0)) :name "test-run-0"))
+           (let ((register (sb-thread:make-thread (lambda () (handler-case (pig:jget (pig::read-frame conn0) "type") (error () :eof))) :name "test-register-0")))
+             (check-equal "register" (sb-thread:join-thread register :default :none-within-10s :timeout 10)
+                          "the first member registered while the second member's call waited for the host")))
+      ;; answer the waiting call so a held-up run finishes, then end both threads
+      (when call1 (ignore-errors (sbr-answer-call conn1 call1 (pig:obj))))
+      (when caller1 (sb-thread:join-thread caller1 :default nil :timeout 10))
+      (when conn0 (ignore-errors (sbr-send-shutdown conn0)))
+      (when runner (sb-thread:join-thread runner :default nil :timeout 10))
+      (pig::helper-drop-conn path1)
+      (sb-posix:unsetenv "PIG_EXT_SOCKET")
+      (loop for (path . listener) in (list (cons path0 listener0) (cons path1 listener1))
+            do (ignore-errors (sb-bsd-sockets:socket-close listener))
+               (ignore-errors (delete-file path))))))
+
+;; Every call on a socket path takes that path's lock (with-helper-path-lock), and two threads on one path must never hold two different locks for it.
+;; helper-take-conn holds the lock while it takes the connection; thread B comes to the same path and waits for that lock; the take ends, B takes the lock, and a
+;; third caller C then comes to the path. C must find the lock B holds: a lock dropped from the table while B waited for it gives C a new one, and the two run at
+;; once. B and C go through the macro itself, so the test sees what the macro does: the entry each of them counted itself into (helper-path-enter, wrapped to
+;; record it) must be the same, and B must count itself in before it waits for the lock, not after it holds it. Once the last user has left, the table is empty.
+(deftest a-path-lock-is-not-dropped-while-a-thread-waits-for-it
+  (let* ((path (format nil "/nonexistent/pig-path-lock-~D-~D.sock" (sb-posix:getpid) (random 1000000)))
+         (in-undial (sb-thread:make-semaphore)) (go (sb-thread:make-semaphore))
+         (b-came (sb-thread:make-semaphore)) (c-came (sb-thread:make-semaphore)) (b-holds (sb-thread:make-semaphore)) (release (sb-thread:make-semaphore))
+         (guard (sb-thread:make-mutex)) (counted '()) (taker nil) (b nil) (c nil))
+    (sb-thread:with-recursive-lock (pig::*helper-lock*) (push (cons path :test-conn) pig::*helper-dialled*))
+    (sb-int:encapsulate 'pig::helper-undial 'test-pause
+                        (lambda (function &rest args)
+                          ;; the take is inside its path's lock here, and holds nothing else
+                          (sb-thread:signal-semaphore in-undial)
+                          (sb-thread:wait-on-semaphore go :timeout 10)
+                          (apply function args)))
+    (sb-int:encapsulate 'pig::helper-path-enter 'test-record
+                        (lambda (function &rest args)
+                          (let ((entry (apply function args)) (name (sb-thread:thread-name sb-thread:*current-thread*)))
+                            (sb-thread:with-mutex (guard) (push (cons name entry) counted))
+                            (cond ((equal name "test-b") (sb-thread:signal-semaphore b-came))
+                                  ((equal name "test-c") (sb-thread:signal-semaphore c-came)))
+                            entry)))
+    (flet ((counted-entry (name) (sb-thread:with-mutex (guard) (cdr (assoc name counted :test #'equal)))))
+      (unwind-protect
+           (progn
+             (setf taker (sb-thread:make-thread (lambda () (pig::helper-take-conn path)) :name "test-taker"))
+             (check (sb-thread:wait-on-semaphore in-undial :timeout 10) "the take reached its connection table")
+             (setf b (sb-thread:make-thread
+                      (lambda ()
+                        (pig::with-helper-path-lock (path)
+                          (sb-thread:signal-semaphore b-holds)
+                          (sb-thread:wait-on-semaphore release :timeout 10)))
+                      :name "test-b"))
+             (check (sb-thread:wait-on-semaphore b-came :timeout 10) "B counted itself among the path lock's users while the take held the lock")
+             (sb-thread:signal-semaphore go)
+             (check (eq :test-conn (sb-thread:join-thread taker :default :none-within-10s :timeout 10)) "the take returned the dialled connection")
+             (check (sb-thread:wait-on-semaphore b-holds :timeout 10) "B took the path's lock after the take ended")
+             (setf c (sb-thread:make-thread (lambda () (pig::with-helper-path-lock (path) :c-held)) :name "test-c"))
+             (check (sb-thread:wait-on-semaphore c-came :timeout 10) "C came to the path's lock")
+             (check (and (counted-entry "test-b") (eq (counted-entry "test-b") (counted-entry "test-c"))) "a caller after B finds the lock B holds"))
+        (sb-int:unencapsulate 'pig::helper-path-enter 'test-record)
+        (sb-int:unencapsulate 'pig::helper-undial 'test-pause)
+        (sb-thread:signal-semaphore go)
+        (sb-thread:signal-semaphore release)
+        (when taker (sb-thread:join-thread taker :default nil :timeout 10))
+        (when b (sb-thread:join-thread b :default nil :timeout 10))
+        (when c (sb-thread:join-thread c :default nil :timeout 10))
+        (sb-thread:with-recursive-lock (pig::*helper-lock*)
+          (setf pig::*helper-dialled* (remove path pig::*helper-dialled* :key #'car :test #'string=)
+                pig::*helper-taken* (remove path pig::*helper-taken* :key #'cdr :test #'equal))
+          (check (null (assoc path pig::*helper-path-locks* :test #'string=)) "a path's lock stays in the table after its last user left"))))))
+
+;; A thread that leaves with-helper-path-lock by an error, a return-from or a throw is no longer a user of the lock, and the lock is released: the count is right
+;; while another user is inside, and the table is empty when nobody is.
+(deftest a-thread-that-leaves-a-path-lock-non-locally-leaves-the-count-right
+  (let ((path (format nil "/nonexistent/pig-path-lock-exit-~D-~D.sock" (sb-posix:getpid) (random 1000000))))
+    (flet ((users () (let ((entry (assoc path pig::*helper-path-locks* :test #'string=))) (and entry (third entry)))))
+      (handler-case (pig::with-helper-path-lock (path)
+                      (check-equal 1 (users) "one user inside")
+                      (error "leaving by an error"))
+        (error () nil))
+      (check (null (users)) "an error left the lock: no user, no entry")
+      (block out (pig::with-helper-path-lock (path) (return-from out)))
+      (check (null (users)) "a return-from left the lock: no user, no entry")
+      (catch 'out (pig::with-helper-path-lock (path) (throw 'out nil)))
+      (check (null (users)) "a throw left the lock: no user, no entry")
+      (pig::with-helper-path-lock (path)
+        (block inner (pig::with-helper-path-lock (path) (check-equal 2 (users) "the nested use counts too") (return-from inner)))
+        (check-equal 1 (users) "the nested use left by a return-from; the outer one is still counted"))
+      (check (null (users)) "both uses left: no entry")
+      (check (eq :took-it (sb-thread:join-thread (sb-thread:make-thread (lambda () (pig::with-helper-path-lock (path) :took-it)) :name "test-after-exit")
+                                                 :default :none-within-10s :timeout 10))
+             "another thread takes the lock the non-local exits released"))))
+
 (deftest events-on-validates-its-arguments
   (let ((bus (pig:extension-events (pig:make-extension "rt-bus-args"))))
     (check-error simple-error (pig:events-on bus 3 #'identity))

@@ -152276,7 +152276,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "38 normalized-name Pig candidates are ambiguous."
+        "39 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -152306,6 +152306,7 @@
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#withSessionRoute.run",
         "go:github.com/MichaelKinsy/PiG/coding/piglet#osRuntimeCommands.Run",
         "go:github.com/MichaelKinsy/PiG/coding/piglet/internal/genstripids#run",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#AgentSession.run",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#Extension.Run",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#editorSession.run",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#settleSlot.run",
@@ -169379,22 +169380,24 @@
     {
       "id": "pkg:chord/delta#Op",
       "upstreamShapeHash": "sha256:9c42e574da621604ecb01879956dbdccdef1c10183753333ec2aa8e5dea06aa6",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/coding/cli#childSession.Op",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/frontend#Op"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -221008,7 +221011,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "4 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -221019,6 +221022,8 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/coding#Session.CacheWarmingStatus",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#AgentSession.CacheWarmingStatus",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#CacheWarmingStatus",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#CacheWarmingStatus"
       ],
       "missingClosure": [
@@ -222251,7 +222256,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "5 normalized-name Pig candidates are ambiguous."
+        "6 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -222264,6 +222269,7 @@
         "go:github.com/MichaelKinsy/PiG/coding#CompactionResult",
         "go:github.com/MichaelKinsy/PiG/coding/extension#CompactionResult",
         "go:github.com/MichaelKinsy/PiG/coding/rpcclient#CompactionResult",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#CompactionResult",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#CompactionResult",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/compaction#CompactionResult"
       ],
@@ -256586,7 +256592,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -256597,6 +256603,7 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/coding#ModelCycleResult",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#ModelCycleResult",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelCycleResult"
       ],
       "missingClosure": [
@@ -279467,7 +279474,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -279478,7 +279485,8 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/coding#SessionStats",
-        "go:github.com/MichaelKinsy/PiG/coding/rpcclient#SessionStats"
+        "go:github.com/MichaelKinsy/PiG/coding/rpcclient#SessionStats",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#SessionStats"
       ],
       "missingClosure": [
         "candidate-disambiguation",
@@ -304194,7 +304202,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "15 normalized-name Pig candidates are ambiguous."
+        "16 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -304211,6 +304219,7 @@
         "go:github.com/MichaelKinsy/PiG/coding/extension#ReplacedSessionContext.Compact",
         "go:github.com/MichaelKinsy/PiG/coding/extension#ToolContext.Compact",
         "go:github.com/MichaelKinsy/PiG/coding/rpcclient#RpcClient.Compact",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#AgentSession.Compact",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#Context.Compact",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#ExtensionCommandContext.Compact",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#ExtensionContext.Compact",
@@ -311339,7 +311348,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "5 normalized-name Pig candidates are ambiguous."
+        "6 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -311352,6 +311361,7 @@
         "go:github.com/MichaelKinsy/PiG/coding#CompactionResult",
         "go:github.com/MichaelKinsy/PiG/coding/extension#CompactionResult",
         "go:github.com/MichaelKinsy/PiG/coding/rpcclient#CompactionResult",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#CompactionResult",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#CompactionResult",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/compaction#CompactionResult"
       ],

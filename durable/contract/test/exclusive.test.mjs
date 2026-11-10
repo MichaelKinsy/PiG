@@ -6,7 +6,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { loadCorpus, validateCorpus } from "../lib/corpus.mjs"
-import { runRows, runVitestRow } from "../lib/gate.mjs"
+import { costOf, runRows, runVitestRow } from "../lib/gate.mjs"
 
 const tick = () => new Promise(resolve => setTimeout(resolve, 5))
 
@@ -71,6 +71,92 @@ test("corpus: exclusive is true and a field of vitest rows; the rows that name r
 	assert.match(problems({ exclusive: false }).join("\n"), /exclusive is true/)
 	assert.match(problems({ exclusive: true, runner: "bench" }).join("\n"), /exclusive is true/)
 	const exclusive = loadCorpus().scenario.filter(s => s.exclusive).map(s => s.id)
-	assert.deepEqual(exclusive, ["U-codemode", "U-harness-ownership", "U-harness-scheduler-retention", "U-harness-tools"])
+	assert.deepEqual(exclusive, ["U-codemode", "U-harness-idle-scopes", "U-harness-ownership", "U-harness-scheduler-retention", "U-harness-tools"])
 	for (const s of loadCorpus().scenario) if (s.real_time_tests) assert.equal(s.exclusive, true, `${s.id} names real-time tests; the gate must not run it beside other rows`)
+})
+
+// The recorded cost bound (corpus cost_test, cost_max_ratio): the candidate's duration of one test over the reference's.
+const timed = (name, ms) => ({ tests: new Map([[name, "passed"]]), durations: new Map([[name, ms]]) })
+const costRow = { cost_test: "suite slow", cost_max_ratio: 4 }
+
+test("costOf: a candidate within the bound passes and says its ratio; one over it fails with both times", () => {
+	const ok = costOf(costRow, timed("suite slow one", 500), timed("suite slow one", 1900))
+	assert.equal(ok.over, undefined)
+	assert.match(ok.text, /1900 ms against the reference's 500 ms \(3\.80x of at most 4x\)/)
+	const bad = costOf(costRow, timed("suite slow one", 500), timed("suite slow one", 2100))
+	assert.equal(bad.over.bound, 4)
+	assert.match(bad.over.problem, /slower than the recorded bound: .*2100 ms against the reference's 500 ms \(4\.20x/)
+	assert.equal(costOf({}, timed("x", 1), timed("x", 99)), undefined)
+})
+
+test("costOf: a test the reports hold no duration for fails the row instead of passing it unmeasured", () => {
+	assert.match(costOf(costRow, timed("other", 500), timed("other", 500)).over.problem, /has no duration/)
+	assert.match(costOf(costRow, timed("suite slow one", 0), timed("suite slow one", 5)).over.problem, /has no duration/)
+})
+
+test("runVitestRow: an exclusive row with a cost bound fails when the candidate's test is slower than the bound, and passes within it", async () => {
+	const name = "suite slow one"
+	const run = (refMs, candMs) => async (impl, _ctx, include) => Object.assign(new Map([[`${include.split("/").pop()}`, { status: "passed", tests: new Map([[name, "passed"]]), failures: new Map(), durations: new Map([[name, impl.name === "ref" ? refMs : candMs]]) }]]), { timedOut: false, guard: [] })
+	const cand = { name: "cand-bound", vitest: true, candidateDir: "x", env: {} }
+	// The gate memoizes a file's two runs per implementation, so each call below is a file of its own.
+	const slow = await runVitestRow(row("bound", { exclusive: true, ...costRow }), cand, { out: "x", run: run(500, 2500) }, corpus)
+	assert.equal(slow.status, "fail")
+	assert.match(JSON.stringify(slow), /recorded bound/)
+	const fine = await runVitestRow(row("bound-fine", { exclusive: true, ...costRow }), cand, { out: "x", run: run(500, 1500) }, corpus)
+	assert.equal(fine.status, "pass", JSON.stringify(fine))
+	assert.match(fine.detail, /3\.00x of at most 4x/)
+})
+
+test("corpus: a cost bound is a vitest row's test prefix and a ratio above 1, on an exclusive row", () => {
+	const problems = extra => validateCorpus({ scenario: [{ id: "U-x", family: "upstream-test", runner: "vitest", owner: "dcore-session", status: "ready", exclusive: true, ...extra }] })
+	assert.deepEqual(problems({ cost_test: "t", cost_max_ratio: 4 }), [])
+	assert.match(problems({ cost_test: "t", cost_max_ratio: 1 }).join("\n"), /cost bound/)
+	assert.match(problems({ cost_max_ratio: 4 }).join("\n"), /cost bound/)
+	assert.match(problems({ cost_test: "t", cost_max_ratio: 4, exclusive: undefined }).join("\n"), /exclusive row/)
+})
+
+test("costOf: the reference's time is the smaller of its two samples, so a stalled reference run cannot hide a slow candidate", () => {
+	const stalled = timed("suite slow one", 1700)
+	const again = timed("suite slow one", 450)
+	const hidden = costOf(costRow, stalled, timed("suite slow one", 2300))
+	assert.equal(hidden.over, undefined, "one sample alone: 1.35x, within the bound")
+	const caught = costOf(costRow, stalled, timed("suite slow one", 2300), again)
+	assert.equal(caught.over.bound, 4)
+	assert.match(caught.over.problem, /2300 ms against the reference's 450 ms \(the smaller of 1700 and 450\) \(5\.11x/)
+	assert.equal(costOf(costRow, timed("suite slow one", 450), timed("suite slow one", 1700), timed("suite slow one", 1700)).over, undefined, "a stalled second sample does not raise the reference")
+})
+
+test("runVitestRow: an exclusive row with a cost bound runs the test a second time on each side, alone, after the candidate's first run, and uses the smaller time of each", async () => {
+	const name = "suite slow one"
+	const log = []
+	const refTimes = [1700, 450]
+	const run = async (impl, _ctx, include, label, _isSc, _timeout, testName) => {
+		log.push(`${impl.name}${testName ? ` only ${testName}` : ""}`)
+		const ms = impl.name === "ref" ? refTimes.shift() : 2300
+		return Object.assign(new Map([[include.split("/").pop(), { status: "passed", tests: new Map([[name, "passed"]]), failures: new Map(), durations: new Map([[name, ms]]) }]]), { timedOut: false, guard: [] })
+	}
+	const result = await runVitestRow(row("twice", { exclusive: true, ...costRow }), { name: "cand-twice", vitest: true, candidateDir: "x", env: {} }, { out: "x", run }, corpus)
+	assert.equal(result.status, "fail", JSON.stringify(result))
+	assert.deepEqual(log, ["ref", "cand-twice", "ref only suite slow", "cand-twice only suite slow"])
+	assert.match(result.detail.problem, /the smaller of 1700 and 450/)
+})
+
+test("costOf: the candidate's time is the smaller of its two samples too, so a stalled candidate run does not fail a candidate within the bound", () => {
+	const stalled = timed("suite slow one", 3000)
+	const ok = costOf(costRow, timed("suite slow one", 500), stalled, undefined, timed("suite slow one", 1600))
+	assert.equal(ok.over, undefined)
+	assert.match(ok.text, /1600 ms \(the smaller of 3000 and 1600\) against the reference's 500 ms \(3\.20x/)
+	assert.equal(costOf(costRow, timed("suite slow one", 500), stalled).over.bound, 4, "one sample alone: 6x")
+	assert.equal(costOf(costRow, timed("suite slow one", 500), stalled, undefined, timed("suite slow one", 2400)).over.bound, 4, "both samples slow: still over")
+})
+
+test("costOf: a second run in which the test did not pass is ignored, on either side", () => {
+	const failedEarly = name => ({ tests: new Map([[name, "failed"]]), durations: new Map([[name, 3]]) })
+	const n = "suite slow one"
+	const caught = costOf(costRow, timed(n, 500), timed(n, 2500), failedEarly(n))
+	assert.equal(caught.over.bound, 4, "a reference that failed in 3 ms does not lower the reference")
+	assert.match(caught.text, /against the reference's 500 ms \(5\.00x/)
+	const fine = costOf(costRow, timed(n, 500), timed(n, 1500), undefined, failedEarly(n))
+	assert.equal(fine.over, undefined)
+	assert.match(fine.text, /1500 ms against/, "a candidate that failed in 3 ms does not lower the candidate")
 })

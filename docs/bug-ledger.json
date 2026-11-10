@@ -390,6 +390,30 @@
       ]
     },
     {
+      "id": "BF-0309820",
+      "title": "Aborting a compaction while extensions were being told it finished no longer keeps the extensions after the…",
+      "symptom": "Aborting a compaction while extensions were being told it finished no longer keeps the extensions after the first from hearing about it.",
+      "rootCause": "Pi awaits runner.emit({ type: \"session_compact\" }) after the compaction entry is saved, and emit() takes no signal: an abort raised while the handlers run neither skips an extension nor fails the compaction. PiG passed the abortable compaction context to the dispatch, so AbortCompaction during the first handler cancelled that handler's request and every later subprocess extension's, which never received the event. Dispatch now detaches from the cancellation, as emitSessionCompactFailed already does.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Aborting a compaction while extensions were being told it finished no longer keeps the extensions after the first from hearing about it. `session_compact` now reaches every extension, in order, as in Pi, whichever of them calls `abortCompaction()` or has the compaction aborted while its handler runs; the saved compaction still completes.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "030982080e",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "coding/session_compact_abort_dispatch_test.go::TestSessionCompactReachesEveryExtensionWhenAbortedDuringDispatch",
+        "test/extension-conformance/session_compact_abort_test.go::TestNodeSessionCompactReachesTheNextExtensionWhenAbortedDuringDispatch",
+        "test/extension-conformance/session_compact_abort_test.go::TestSessionCompactIsDeliveredToEverySDKWhenAbortedDuringDispatch"
+      ]
+    },
+    {
       "id": "BF-030f512",
       "title": "A nested `RawMessage` or `MarshalJSON` output, and an agent message or content block written by the SDK…",
       "symptom": "A nested `RawMessage` or `MarshalJSON` output, and an agent message or content block written by the SDK encoder, no longer lose a quote, newline, backslash or other two-character escape that stands before the letters `fffd` (`\"say \\\"fffd\\\"\"` was written as `\"say �\"`): only the `\\ufffd` escape itself is written as the replacement character.",
@@ -8611,6 +8635,30 @@
       "tests": []
     },
     {
+      "id": "BF-336d0dc",
+      "title": "Chord's plugin watcher watches a directory of the app's base code again when it comes back after its watch…",
+      "symptom": "Chord's plugin watcher watches a directory of the app's base code again when it comes back after its watch had ended: moved away and back (the watch of a renamed directory ends on macOS and BSD, with kqueue), or removed and made again (inotify on Linux, where ext4 also gives the new directory the inode and birth time of the old one).",
+      "rootCause": "When the watcher put a watch back and found the directory missing, it kept the recorded identity of a directory it did not watch, and the directory seen again looked like the same one; the watch now leaves no identity behind, so the directory is watched again.",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "macOS, Linux",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord's plugin watcher watches a directory of the app's base code again when it comes back after its watch had ended: moved away and back (the watch of a renamed directory ends on macOS and BSD, with kqueue), or removed and made again (inotify on Linux, where ext4 also gives the new directory the inode and birth time of the old one). An edit of the app's base code in that directory went unnoticed, so `base` was never marked and the app kept its hosts on the old code, where Pi marks it. When the watcher put a watch back and found the directory missing, it kept the recorded identity of a directory it did not watch, and the directory seen again looked like the same one; the watch now leaves no identity behind, so the directory is watched again.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "336d0dc96f",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_watcher_base_test.go::TestTheBaseMarkRenewsTheWatchOfAnAncestorRemovedAndMadeAgainWhileTheRecordedDirectoryIsMissing",
+        "chord/nextnode/plugins/plugins_watcher_identity_test.go::TestTheBaseMarkWatchesADirectoryBackWhoseWatchCouldNotBePutBackWhileItWasAway",
+        "chord/nextnode/plugins/plugins_watcher_identity_test.go::TestTheBaseMarkWatchesTheTreeOfABaseDirectoryBackWhoseWatchesCouldNotBePutBackWhileItWasAway"
+      ]
+    },
+    {
       "id": "BF-33dc8a0",
       "title": "fix(ai): keep a custom client identity's slash in Bedrock's user agent, as the JavaScript SDK does",
       "symptom": "fix(ai): keep a custom client identity's slash in Bedrock's user agent, as the JavaScript SDK does",
@@ -15156,6 +15204,26 @@
       ]
     },
     {
+      "id": "BF-536faf0",
+      "title": "A failed extension load could report a less specific error than the extension's stderr gave",
+      "symptom": "A failed extension load could report a less specific error than the extension's stderr gave.",
+      "rootCause": "A runner that fails its only member writes the cause to stderr, closes the member's socket and exits. The host reads the socket closing, flushes the console pipe and reads the cause from the stderr log; but the reaper's finish had already closed the pipe behind the exited process, and flush returned at once on a closed pipe while the copy was still forwarding what the process wrote. The load error then lacked the factory's own failure and read as a bare \"connection closed before register\", so an isolated member and the same member in a shared cell reported different errors. A flush on a closed pipe now waits, bounded by consoleFlushWait, for the copy to end.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A failed extension load could report a less specific error than the extension's stderr gave. When a Go, Rust, Python or Lisp runner failed its only member and exited at once, the host read the stderr log before its copy had forwarded the runner's last line, so a factory that returned nothing after a host helper call was reported as a bare \"connection closed before register\", while the same factory in a shared cell reported \"factory returned nil\". The host now waits for that copy to end, within two seconds, before it reads the cause.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "536faf0fb3",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-5380e0a",
       "title": "fix(extension): load failure shows the extension's own cause; registration edge-case rows",
       "symptom": "fix(extension): load failure shows the extension's own cause; registration edge-case rows",
@@ -17212,6 +17280,31 @@
       ],
       "tests": [
         "ai/anthropic_beta_override_test.go::TestAnthropicManagedEffortBodyFollowsTheBetasSent"
+      ]
+    },
+    {
+      "id": "BF-5e55e0d",
+      "title": "A Node extension's `refreshModels`, both as a provider config's callback and as a provider object's method…",
+      "symptom": "A Node extension's `refreshModels`, both as a provider config's callback and as a provider object's method, now receives the context object Pi builds (`packages/ai/src/models.ts`): its members in Pi's order (the login, the stored catalog, `publish`, `allowNetwork`, `force`, `signal`, `baseUrl`), every key present, and a member Pi has no value for (no login, no stored catalog, no `force`, no `baseUrl`) is `undefined`.",
+      "rootCause": "The Node runtime rebuilt the refreshModels context in its own order for both forms of the callback: the config form listed allowNetwork, baseUrl, credential, stored, force, signal, publish, and the provider object credential, stored, allowNetwork, force, baseUrl, signal, publish, with the unset members null (object) or missing (config). Pi hands the object of models.ts:554-562: credential, stored, publish, allowNetwork, force, signal, baseUrl, every key present and the members it has no value for undefined. Both forms now build that object (refreshModelsContext), and the host leaves unset credential, stored and force out of the request, as JSON.stringify drops them.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Node extension's `refreshModels`, both as a provider config's callback and as a provider object's method, now receives the context object Pi builds (`packages/ai/src/models.ts`): its members in Pi's order (the login, the stored catalog, `publish`, `allowNetwork`, `force`, `signal`, `baseUrl`), every key present, and a member Pi has no value for (no login, no stored catalog, no `force`, no `baseUrl`) is `undefined`. The config form listed `allowNetwork` and `baseUrl` first and `publish` last and left the unset members out, so `Object.keys(context)` and `'force' in context` answered differently from Pi; the provider object listed `publish` last and gave the unset members `null`, so `Object.keys(context)` and an `=== undefined` check on an unset member answered differently from Pi.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5e55e0d13d",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/provider_operations_wire_test.go::TestModifyModelsHostCloseIsTheConnectionsError",
+        "coding/extension/host/subprocess/provider_operations_wire_test.go::TestProviderRequestsOnAConnectionNotYetStarted",
+        "coding/extension/host/subprocess/provider_operations_wire_test.go::TestRefreshModelsRequestWithoutOptionalMembers",
+        "test/extension-conformance/provider_refresh_context_node_test.go::TestRefreshModelsContextMembersNode"
       ]
     },
     {
@@ -23151,6 +23244,32 @@
         "test/parity/scenarios/extensions-runtime/73-shutdown-from-session-before-fork.toml",
         "test/parity/scenarios/extensions-runtime/73-shutdown-from-session-before-switch.toml",
         "test/parity/scenarios/extensions-runtime/73-shutdown-from-session-start.toml"
+      ]
+    },
+    {
+      "id": "BF-6d3043e",
+      "title": "The startup prompts (the project-trust and extension selectors, the extension text input and first-time…",
+      "symptom": "The startup prompts (the project-trust and extension selectors, the extension text input and first-time setup) now load the `keybindings.json` of the agent directory, as Pi's startup UI does.",
+      "rootCause": "Pi's createStartupTui calls setKeybindings(KeybindingsManager.create()) for each startup prompt (cli/startup-ui.ts:91). configureStartupTheme only set the theme, so the selector, input and first-time-setup prompts took whatever keybindings the process held: a tui.select.confirm remapped earlier left a prompt Enter could not confirm, and runStartupComponentWith waited for a key that never came. The user's keybindings.json was ignored by those prompts too.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The startup prompts (the project-trust and extension selectors, the extension text input and first-time setup) now load the `keybindings.json` of the agent directory, as Pi's startup UI does. They took whatever keybindings the process held before, so a remapped `tui.select.confirm` or `tui.select.cancel` was ignored by them.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6d3043e50b",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/startup_ui_theme_test.go::TestStartupPromptAppliesColorsThatArriveAfterTheTimeout",
+        "internal/codingagent/startup_ui_theme_test.go::TestStartupPromptAppliesTerminalColorsAndKeepsRepliesOutOfInput",
+        "internal/codingagent/startup_ui_theme_test.go::TestStartupPromptWithFixedThemeQueriesAndKeepsTheTheme",
+        "internal/codingagent/theme_selection_presence_test.go::TestStartupPromptExplicitEmptyThemeFallsBackToSystem",
+        "internal/codingagent/theme_selection_presence_test.go::TestStartupPromptMalformedThemeUsesSystemTheme"
       ]
     },
     {
@@ -33406,6 +33525,26 @@
       "tests": []
     },
     {
+      "id": "BF-9ee5c21",
+      "title": "Loading a packed Lisp cell no longer hangs when two of its extensions each make a host call, such as a…",
+      "symptom": "Loading a packed Lisp cell no longer hangs when two of its extensions each make a host call, such as a `pi.events` subscription, while their factories run.",
+      "rootCause": "helper-loading-call held *helper-lock* for the whole wait for the host's answer. The host accepts a packed cell's members in order and answers a member's call only after the members before it registered, while every member's run takes *helper-lock* in helper-take-conn before it registers, so a second member's call that came first locked both. The wait now holds only the lock of its own socket path; *helper-lock* guards the tables for the moment each is read or changed. A shutdown frame is noted under it (helper-note-shutdown), and a path lock is forgotten after it is released. Keeps the refused-request clauses of the wait loop. Regenerates the Lisp SDK bundle.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Loading a packed Lisp cell no longer hangs when two of its extensions each make a host call, such as a `pi.events` subscription, while their factories run. The host serves a cell's connections in order, so the second extension's first call waits for the first extension's register; the first extension's run needed the lock that call held to take its connection, and when the second factory reached its call before the first run took its connection, neither could continue and the load never ended. A factory-time call now holds only the lock of its own connection.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "9ee5c21f21",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-9f4702c",
       "title": "A failed extension shortcut handler is now reported as `Error: Shortcut handler error: …` in the error…",
       "symptom": "Previously it was shown as a warning.",
@@ -39987,6 +40126,34 @@
       ],
       "tests": [
         "coding/runtime_dispose_settlement_test.go::TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown"
+      ]
+    },
+    {
+      "id": "BF-bd9ac3b",
+      "title": "Releasing a session's services no longer leaves the model selector's catalog refresh running",
+      "symptom": "The refresh the selector starts and the shared catalog operation behind it were not joined by anything, so with a file-backed registry the operation could still write `auth.json` and `models-store.json` in the agent directory after the registry's model tasks were closed.",
+      "rootCause": "- the registry runs the shared operation as a model task, so CloseModelTasks cancels and joins it, and a closed registry returns an aborted result; - the selector's refresh is a task of its runtime's ModelSelectorTaskOwner, which the interactive mode backs with its background tasks, so Run's teardown cancels and joins it, including the runtime call it raced with the selector's signal; Dispose still cancels from the constructor's return.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Releasing a session's services no longer leaves the model selector's catalog refresh running. Before, the refresh the selector starts and the shared catalog operation behind it were not joined by anything, so with a file-backed registry the operation could still write `auth.json` and `models-store.json` in the agent directory after the registry's model tasks were closed. The selector's refresh is now an owned task of the interactive mode, which cancels and joins it when the mode shuts down, and the operation behind it is a task of the model registry, which cancels and joins it when the session's services are released (for example on session replacement); at quit the process exits, as Pi's does. The refresh result and the picker are unchanged.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "bd9ac3b95a",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/model_selector_refresh_owned_test.go::TestAbandonedModelCatalogRefreshIsJoinedByRegistryClose",
+        "internal/codingagent/model_selector_refresh_owned_test.go::TestModelCatalogRefreshAfterRegistryCloseIsAborted",
+        "internal/codingagent/model_selector_refresh_owned_test.go::TestModelSelectorRefreshDoesNotOutliveShutdown",
+        "tui/model_selector_owner_test.go::TestModelSelectorDisposeBeforeTheOwnerStartsTheTask",
+        "tui/model_selector_owner_test.go::TestModelSelectorRefreshIsJoinedByItsTaskOwner",
+        "tui/model_selector_owner_test.go::TestModelSelectorWaitJoinsItsOwnRefresh",
+        "tui/model_selector_owner_test.go::TestModelSelectorWithAShutDownOwnerShowsNoRefreshStatus"
       ]
     },
     {
@@ -47748,6 +47915,26 @@
       ]
     },
     {
+      "id": "BF-dd7613e",
+      "title": "Loading a packed Python cell no longer hangs when its second extension's factory makes a host call before the…",
+      "symptom": "The Python SDK had the same lock order as the Lisp SDK: a factory-time host call held the lock `run` takes while it waited for the host, so neither could continue.",
+      "rootCause": "loading_call held _State.lock across the wait for the host's answer, which take_helper_socket (run's first step) needs, so a second member's call that came first before the first member's run took its connection locked both while the host waited for the first member's register. The wait now holds only the lock of its own socket path (_path_lock); _State.lock guards the tables for the moment each is read or changed, and a path lock is forgotten after it is released. Keeps report_load_failure. Regenerates the Python SDK bundle.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Loading a packed Python cell no longer hangs when its second extension's factory makes a host call before the first extension's run has taken its connection. The Python SDK had the same lock order as the Lisp SDK: a factory-time host call held the lock `run` takes while it waited for the host, so neither could continue. A factory-time call now holds only the lock of its own connection.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "dd7613e756",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-ddd4772",
       "title": "fix(ai): a lone surrogate in a content block stays one code unit, as in JSON.parse",
       "symptom": "fix(ai): a lone surrogate in a content block stays one code unit, as in JSON.parse",
@@ -49628,6 +49815,28 @@
       ],
       "tests": [
         "durable/harness/harness_tasks_test.go::TestPublicationAtAdoption"
+      ]
+    },
+    {
+      "id": "BF-e676d48",
+      "title": "`host.Registry` with a short `ReadyTimeout` no longer fails \"did not become live\" when the machine delays the…",
+      "symptom": "`host.Registry` with a short `ReadyTimeout` no longer fails \"did not become live\" when the machine delays the waiting goroutine past the deadline: in Pi the wait's publication, lookup and first usable check run before any timer, so the deadline reports why the registry cannot be read (`contract_mismatch` for a version the provider cannot serve, `unavailable/undeclared` for a registry nobody serves).",
+      "rootCause": "host.Registry armed its deadline, then left the wait to a goroutine: the publication, the value lookup and the first usable() check. In Pi those are microtasks that run before any timer, so a deadline can only report the last reason the registry was unusable. In Go a loaded machine could run the deadline's section before the goroutine looked, and the wait failed \"did not become live\" instead of contract_mismatch or unavailable/undeclared (main's TestOlderReadersWithoutAValueMapping... failed that way on CI).",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`host.Registry` with a short `ReadyTimeout` no longer fails \"did not become live\" when the machine delays the waiting goroutine past the deadline: in Pi the wait's publication, lookup and first usable check run before any timer, so the deadline reports why the registry cannot be read (`contract_mismatch` for a version the provider cannot serve, `unavailable/undeclared` for a registry nobody serves). A deadline that finds the host published and the first check not yet made now lets that check run first.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e676d48779",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "chord/next/host/host_registry_readers_test.go::TestReadersAHostRegistryWhoseDeadlineElapsedBeforeItsFirstLookReportsWhyTheRegistryIsNotUsable"
       ]
     },
     {

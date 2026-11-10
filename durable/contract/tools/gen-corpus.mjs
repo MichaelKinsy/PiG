@@ -132,18 +132,35 @@ const NOT_THE_CORE = {
 // because the window is filled by the run's own work and any other row's processes on the host stretch that work past it.
 // Read-only: assigned once at initialization.
 const REAL_TIME = {
+	// The next two are not real-time windows. Each is a total CPU budget the reference clears with headroom (Pi's 60 s for a chain the reference
+	// needs 24 s for; vitest's 5 s for 201 cycles the reference needs 0.6 s for), made exclusive because the gate's own `-j 8` load starves the
+	// candidate past the budget: the candidate costs more CPU for the same test (ownership 1.02x the reference's time, retention 2-4x).
 	"harness-ownership": [
 		"# `tracks ownership chains deeper than the call stack` builds a 20,000-task chain inside Pi's own 60 s budget (`}, 60_000)`): 24 s of CPU in the",
 		"# reference and 24.5 s in the candidate, alone. A process the host gives under ~40% of a CPU for that stretch misses the budget. The gate's own",
 		"# load did that (a full run at 5 gates on one host: the candidate ended at 62 s, 1 of 5), so the gate runs the row alone.",
 		`exclusive = true`,
 	],
-	"harness-scheduler-retention": [
-		"# `forgets ended subagent chains once their work ends` runs 201 subagent cycles under vitest's default 5 s test budget (Pi's config sets none). It is",
-		"# CPU-bound: the candidate takes 1.8 s at 8 CPUs, 2.3 s at 2 and 4.6 s at 1, about 2.5 times the reference (each commit crosses the host/core",
-		"# boundary), so a process the host gives under ~40% of a CPU misses the budget while the reference, at 0.6 s, does not. The gate's own load does that:",
-		"# 8 concurrent runs of the row (the shape of -j 8) on 4 CPUs all ended at 10-11 s; alone it passes. The gate therefore runs the row alone.",
+	"harness-idle-scopes": [
+		"# `incremental idle state equals a full recompute after every step of random nested work` runs under vitest's default 5 s test budget. The",
+		"# reference takes 0.9 s at 8 CPUs, the candidate 1.6 s (2.0 s at most), 1.5-2.1 times as long (5 alternated runs, so no cost bound): enough that a",
+		"# process the host gives about a third of a CPU misses the budget on the candidate alone. At 4 CPUs under the gate's -j 8 it failed 2 of 2 full",
+		"# rounds of the U-harness rows (\"after 5082 ms\"), the reference passing; so the gate runs the row alone.",
 		`exclusive = true`,
+	],
+	"harness-scheduler-retention": [
+		"# `forgets ended subagent chains once their work ends` runs 201 subagent cycles under vitest's default 5 s test budget (Pi's config sets none). The",
+		"# reference clears it with headroom (0.5-0.7 s at 8 CPUs); the candidate costs 2-4 times that CPU (1.4-2.0 s at 8 CPUs, 2.3 s at 2 and 4.6 s at 1):",
+		"# the core is a separate process behind the facade, so each step of the test is a pipe round trip.",
+		"# A process the host gives under ~40% of a CPU misses the 5 s budget on the candidate alone: 8 concurrent runs of the row (the shape of -j 8) on",
+		"# 4 CPUs all ended at 10-11 s, alone it passes. The gate therefore runs the row alone, and because that no longer lets a slowdown show as a missed",
+		"# budget, the row records a bound on the candidate's time for the test over the reference's: 5x (cost_max_ratio), 1.3 times the largest ratio",
+		"# measured in 20 paired runs at 8 CPUs (2.1-3.9, median 2.9; durable/contract/README.md, Exclusive rows). The gate reads it in costOf (gate.mjs).",
+		"# Pi's own 5 s budget has about 3x margin for the native candidate (a pipe round trip per core call; the shipped Go path has no such hop), so the row",
+		"# can still miss that budget alone at a host load above about 100: recorded here, not excused by the gate.",
+		`exclusive = true`,
+		`cost_test = "scheduler retention forgets ended subagent chains"`,
+		`cost_max_ratio = 5`,
 	],
 	"harness-tools": [
 		"# The test sleeps 20 ms (real setTimeout) inside the 100 ms output throttle window; a process stall longer than ~80 ms flushes the",
