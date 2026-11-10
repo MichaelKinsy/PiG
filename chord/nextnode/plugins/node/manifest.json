@@ -1,6 +1,7 @@
 {
-	"commit": "dd30101cfc5b0609411dd80b6f93adbc14db14cf",
+	"commit": "602b8d1cb98035d52c4c360d0d95c65503b989ae",
 	"pin": "dd30101cfc5b0609411dd80b6f93adbc14db14cf",
+	"catchup": "602b8d1cb98035d52c4c360d0d95c65503b989ae",
 	"piSchema": "1.5.1",
 	"piTelemetry": "1.5.1",
 	"files": [
@@ -410,7 +411,7 @@
 		},
 		{
 			"path": "pi/chord/src/node/plugins/stack.ts",
-			"sha256": "9407458339f0cc95ea6ed1775bb542930ca1d6691761eee12e0f209f8585c7cf"
+			"sha256": "52eb01ebb9f8a706401b387b65e6e98b542f830cc2f2dd16d3818cb1e1492c0d"
 		},
 		{
 			"path": "pi/chord/src/registries/contribution.ts",
