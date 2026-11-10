@@ -4,10 +4,13 @@ package tools
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -96,9 +99,72 @@ func TestKillTrackedDetachedChildrenKillsAShellStartedButNotYetTracked(t *testin
 			t.Fatalf("exit code = %s, want %d", exitCodeText(result.ExitCode), 128+int(syscall.SIGKILL))
 		}
 	case <-time.After(testbudget.Wait(t)):
-		t.Fatal("the shell started before the kill survived it")
+		// A call that ends the shell returns long before this. Whether the shell is still running, stopped (T) or
+		// gone, and what else its group holds, is what macOS needs to show here: the wait ended on a CI runner once
+		// and a shell that survives a kill is not observable from the exit code.
+		t.Fatalf("the shell started before the kill survived it; children of the test and their process groups:\n%s", shellGroupState(os.Getpid()))
 	}
 	<-killed
+}
+
+// shellGroupState reports what ps shows for each child of the process parent that has a process group of its own (a
+// shell a bash call started) and for every process in such a group: pid, ppid, pgid and stat, where a stat that starts
+// with T is a stopped process. It tells a shell that a kill stopped and did not end from one that was never signalled
+// and from a descendant that outlived the shell.
+func shellGroupState(parent int) string {
+	out, err := exec.Command("ps", "ax", "-o", "pid,ppid,pgid,stat,command").CombinedOutput()
+	if err != nil {
+		return fmt.Sprintf("ps: %v\n%s", err, out)
+	}
+	lines := strings.Split(strings.TrimRight(string(out), "\n"), "\n")
+	self, own := strconv.Itoa(parent), strconv.Itoa(syscall.Getpgrp())
+	child := func(f []string) bool { return len(f) >= 4 && f[1] == self && f[2] != own }
+	groups := map[string]bool{}
+	for _, line := range lines[1:] {
+		if f := strings.Fields(line); child(f) {
+			groups[f[2]] = true
+		}
+	}
+	var report strings.Builder
+	report.WriteString(lines[0] + "\n")
+	for _, line := range lines[1:] {
+		if f := strings.Fields(line); child(f) || (len(f) >= 4 && groups[f[2]]) {
+			report.WriteString(line + "\n")
+		}
+	}
+	return report.String()
+}
+
+// The report that a hung kill test prints must show a child of the test with its own process group and, once that
+// group is stopped, the stop: a report that hid either would leave the next hit as unreadable as the last.
+func TestShellGroupStateShowsAChildOfTheTestAndItsStop(t *testing.T) {
+	cmd := exec.Command("sleep", "60")
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	pid := cmd.Process.Pid
+	t.Cleanup(func() {
+		_ = syscall.Kill(-pid, syscall.SIGKILL)
+		_ = cmd.Wait()
+	})
+	stat := func() string {
+		for line := range strings.SplitSeq(shellGroupState(os.Getpid()), "\n") {
+			f := strings.Fields(line)
+			if len(f) >= 6 && f[0] == strconv.Itoa(pid) && f[1] == strconv.Itoa(os.Getpid()) && f[2] == strconv.Itoa(pid) && f[4] == "sleep" && f[5] == "60" {
+				return f[3]
+			}
+		}
+		return ""
+	}
+	waitFor(t, func() bool { return stat() != "" })
+	if got := stat(); strings.HasPrefix(got, "T") {
+		t.Fatalf("the running child reports stat %q, want one that is not stopped", got)
+	}
+	if err := syscall.Kill(-pid, syscall.SIGSTOP); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, func() bool { return strings.HasPrefix(stat(), "T") })
 }
 
 // waitForKillInSpawnWindow returns once KillTrackedDetachedChildren waits for the spawn lock (TryRLock fails while a
