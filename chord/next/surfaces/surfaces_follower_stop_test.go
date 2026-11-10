@@ -33,9 +33,10 @@ func stopWithin(what string, stop func()) {
 	}
 }
 
-// A follower stopped at once, before the server answers its pick watch, ends quietly. The pick watch is made on a goroutine of its
-// own: the test waits for those goroutines to end, so a panic there (the review probe's "Watch is stopped") takes the test binary
-// down inside the test instead of after it.
+// A follower stopped at once, before the server answers its pick watch, ends quietly. The pick watch's start is a microtask of the
+// host's loop (WatchThen) that Stop races with at every moment of the bind: each Stop is bounded (stopWithin), and the test waits
+// for the surfaces goroutines to end, so a panic there (the review probe's "Watch is stopped") takes the test binary down inside
+// the test instead of after it.
 func TestStoppingAFollowerBeforeItsPickWatchBindsEndsQuietly(t *testing.T) {
 	notes := notesEnDe(t)
 	client, closeAll := languageSetup(t, notes)
