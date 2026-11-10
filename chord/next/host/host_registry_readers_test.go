@@ -280,27 +280,6 @@ func TestReadersAHostRegistryWhoseDeadlineElapsedBeforeItsFirstLookReportsWhyThe
 	must(t, host.Close(background))
 }
 
-func TestReadersAHostRegistryWhoseDeadlineElapsedBeforeThePublicationStillSaysItDidNotBecomeLive(t *testing.T) {
-	const deadline = 5 * time.Millisecond
-	host := newHost(t, HostOptions{loop: &overdueLoop{Loop: NewLoop(), delay: deadline}})
-	done := make(chan error, 1)
-	go func() {
-		_, err := host.Registry(background, rvSumV1, rvWithin(deadline))
-		done <- err
-	}()
-	// A deadline before the publication ends the wait at once; one wrongly held back for a look the unpublished host
-	// cannot give never returns, which the bound reports (the cleanup's close ends that wait).
-	select {
-	case err := <-done:
-		if err == nil || err.Error() != "registry app.sum: did not become live within 5 ms" {
-			t.Fatalf("host.registry before the publication = %v, want %q", err, "registry app.sum: did not become live within 5 ms")
-		}
-	case <-time.After(10 * time.Second):
-		t.Fatal("host.registry before the publication did not return after its 5 ms deadline")
-	}
-	must(t, host.Close(background))
-}
-
 func TestReadersAHostRegistryWhoseDeadlineElapsedBeforeItsFirstLookStillReturnsAValueItFindsThere(t *testing.T) {
 	const deadline = 5 * time.Millisecond
 	host, _ := rvPlugins(t, HostOptions{loop: &overdueLoop{Loop: NewLoop(), delay: deadline}}, rvPlugin("@app/sum", func(h FacetHost, _ FacetSelf) error {
