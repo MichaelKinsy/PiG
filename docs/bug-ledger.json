@@ -8278,6 +8278,26 @@
       ]
     },
     {
+      "id": "BF-30cdab4",
+      "title": "Windows: the environment daemon's `taskkill /F /T` runs with the `SystemRoot` it resolved for its path…",
+      "symptom": "Windows: the environment daemon's `taskkill /F /T` runs with the `SystemRoot` it resolved for its path (`C:\\Windows` when the variable is empty or unset) instead of inheriting an empty one, with which taskkill did not run and left the killed program's tree alive.",
+      "rootCause": "Windows: the environment daemon's `taskkill /F /T` runs with the `SystemRoot` it resolved for its path (`C:\\Windows` when the variable is empty or unset) instead of inheriting an empty one, with which taskkill did not run and left the killed program's tree alive.",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Windows: the environment daemon's `taskkill /F /T` runs with the `SystemRoot` it resolved for its path (`C:\\Windows` when the variable is empty or unset) instead of inheriting an empty one, with which taskkill did not run and left the killed program's tree alive.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "30cdab4dca",
+          "date": "2026-11-10"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-30d4a6d",
       "title": "Fix in shipped code",
       "symptom": "Fix in shipped code",
@@ -13457,6 +13477,28 @@
       ],
       "tests": [
         "chord/nextnode/plugins/plugins_node_test.go::TestNodeAProcessTheHostStartedThatHoldsItsPipesDoesNotHoldItsExit"
+      ]
+    },
+    {
+      "id": "BF-4812c01",
+      "title": "Windows: installing a plugin from npm also names the extraction directory relative to the pack directory (`-C…",
+      "symptom": "Windows: installing a plugin from npm also names the extraction directory relative to the pack directory (`-C ../\u003cdir\u003e`), so the `tar` of Git for Windows, which resolves a `-C C:\\...` name against its working directory, no longer fails with \"Cannot open: No such file or directory\".",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Windows: installing a plugin from npm also names the extraction directory relative to the pack directory (`-C ../\u003cdir\u003e`), so the `tar` of Git for Windows, which resolves a `-C C:\\...` name against its working directory, no longer fails with \"Cannot open: No such file or directory\". Pi passes the absolute directory (D616 now names the archive and the destination).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4812c0127b",
+          "date": "2026-11-10"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_install_tar_test.go::TestInstallPluginNamesTheTarballToTarRelativeToThePackDirectory"
       ]
     },
     {
@@ -57325,7 +57367,7 @@
     },
     {
       "id": "D616",
-      "title": "An npm tarball is extracted with `tar` told the archive relative to the pack directory, where Pi passes its…",
+      "title": "An npm tarball is extracted with `tar` told the archive and the destination relative to the pack directory…",
       "entry": "BF-5043738"
     }
   ],

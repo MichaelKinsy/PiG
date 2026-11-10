@@ -3,6 +3,7 @@ package workers
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
 )
@@ -91,7 +92,12 @@ func TestTheWorkerBaseKindsWhoseNamesStartWithEachOtherBuildInParallel(t *testin
 // The data directory is any path: `[`, `*` and `?` in it are names, not a pattern, so the cleanup finds the leftovers beside the base
 // directory of `/home/x/[proj]/cache/workers/worker` and only those.
 func TestTheWorkerBaseABuildRemovesTheStagedDirectoriesBesideANamedDirectoryWhosePathHasGlobCharacters(t *testing.T) {
-	named := filepath.Join(t.TempDir(), "[proj]*?", "bases", "worker")
+	// Windows forbids `*` and `?` in a name; `[` and `]` are the characters Glob reads as a class there.
+	directory := "[proj]*?"
+	if runtime.GOOS == "windows" {
+		directory = "[proj]"
+	}
+	named := filepath.Join(t.TempDir(), directory, "bases", "worker")
 	if err := os.MkdirAll(named, 0o700); err != nil {
 		t.Fatal(err)
 	}

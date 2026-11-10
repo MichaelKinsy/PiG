@@ -13,8 +13,8 @@ import (
 )
 
 // Ports the npm-tarball case of packages/chord/test/node/plugins/install.test.ts, with the tar of Git for Windows in PATH: it reads the archive
-// `C:\...` as the file `...` on a host `C` ("Cannot connect to C: resolve failed"), so an absolute archive fails there (D616). The fake tar here
-// refuses an absolute archive as that tar does, and extracts with the real one otherwise.
+// `C:\...` as the file `...` on a host `C` ("Cannot connect to C: resolve failed"), so an absolute archive fails there, and a `-C C:\...` destination is read relative to its working directory, so an absolute destination fails
+// there (D616). The fake tar here refuses an absolute archive and an absolute destination, and extracts with the real one otherwise.
 func TestInstallPluginNamesTheTarballToTarRelativeToThePackDirectory(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("the fake tar is a POSIX shell script; the Windows jobs run TestInstallPluginInstallsAnNpmPackageHereALocalTarballIntoRootName against Git for Windows' tar")
@@ -39,8 +39,9 @@ func TestInstallPluginNamesTheTarballToTarRelativeToThePackDirectory(t *testing.
 	bin := t.TempDir()
 	record := filepath.Join(bin, "archive.txt")
 	script := "#!/bin/sh\n" +
-		"printf '%s\\n' \"$2\" > '" + record + "'\n" +
+		"printf '%s\\n%s\\n' \"$2\" \"$5\" > '" + record + "'\n" +
 		"case $2 in /*) echo \"tar (child): Cannot connect to $2: resolve failed\" >&2; exit 2;; esac\n" +
+		"case $5 in /*) echo \"tar: $5: Cannot open: No such file or directory\" >&2; exit 2;; esac\n" +
 		"exec '" + realTar + "' \"$@\"\n"
 	if err := os.WriteFile(filepath.Join(bin, "tar"), []byte(script), 0o755); err != nil {
 		t.Fatal(err)
@@ -56,7 +57,11 @@ func TestInstallPluginNamesTheTarballToTarRelativeToThePackDirectory(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := strings.TrimSpace(string(archive)); got != "./"+packed {
-		t.Fatalf("tar got the archive %q, want ./%s", got, packed)
+	recorded := strings.Split(strings.TrimSpace(string(archive)), "\n")
+	if len(recorded) != 2 || recorded[0] != "./"+packed || recorded[1] != "../package" {
+		t.Fatalf("tar got the archive and destination %q, want [./%s ../package]", recorded, packed)
+	}
+	if _, err := os.Stat(filepath.Join(root, "@bob", "clock", "package.json")); err != nil {
+		t.Fatalf("the package was not extracted into the plugin directory: %v", err)
 	}
 }
