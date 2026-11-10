@@ -22,6 +22,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/compactiontypes"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/usagetotals"
 )
 
@@ -528,12 +529,12 @@ func customMessageToLlm(custom map[string]any) (ai.Message, bool) {
 		if content, ok := custom["content"].(string); ok {
 			return text(content), true
 		}
-		raw, err := json.Marshal(map[string]any{"role": agent.RoleUser, "content": custom["content"]})
+		raw, err := jsstring.MarshalKeepingSurrogates(map[string]any{"role": agent.RoleUser, "content": custom["content"]})
 		if err != nil {
 			return nil, false
 		}
 		var decoded agent.AgentMessage
-		if json.Unmarshal(raw, &decoded) != nil || decoded.User == nil {
+		if jsstring.UnmarshalKeepingSurrogates(raw, &decoded) != nil || decoded.User == nil {
 			return nil, false
 		}
 		if content, ok := decoded.User.Content.(ai.UserText); ok {

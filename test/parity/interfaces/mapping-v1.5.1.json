@@ -155153,7 +155153,7 @@
       "evidence": [
         "test:coding/session_prompt_expansion_upstream_test.go#TestUpstreamSessionPromptExpansion",
         "test:coding/session_settled_upstream_test.go#TestAgentSettledUpstream",
-        "test:coding/session_invocation_test.go#TestSendUserMessageInvocationExpansion"
+        "test:coding/session_surrogate_pi_oracle_test.go#TestExtensionUserMessageKeepsALoneSurrogate"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -155176,7 +155176,7 @@
       "evidence": [
         "test:coding/session_prompt_expansion_upstream_test.go#TestUpstreamSessionPromptExpansion",
         "test:coding/session_settled_upstream_test.go#TestAgentSettledUpstream",
-        "test:coding/session_invocation_test.go#TestSendUserMessageInvocationExpansion"
+        "test:coding/session_surrogate_pi_oracle_test.go#TestExtensionUserMessageKeepsALoneSurrogate"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -159994,9 +159994,9 @@
         "call:coding/extension/host/subprocess/event_payload.go#applyToolCallInput"
       ],
       "evidence": [
+        "test:coding/session_surrogate_pi_oracle_test.go#TestToolCallHookKeepsALoneSurrogateInTheModelsArguments",
         "test:test/extension-conformance/tool_call_input_mutation_test.go#TestToolCallInputMutationAcrossSDKs",
-        "test:coding/session_tool_admission_upstream_test.go#TestSessionParallelPreflightAbortPreventsPreparedEffects",
-        "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch"
+        "test:coding/session_tool_admission_upstream_test.go#TestSessionParallelPreflightAbortPreventsPreparedEffects"
       ]
     },
     {
@@ -160016,9 +160016,9 @@
         "call:coding/extension/host/subprocess/event_payload.go#applyToolCallInput"
       ],
       "evidence": [
+        "test:coding/session_surrogate_pi_oracle_test.go#TestToolCallHookKeepsALoneSurrogateInTheModelsArguments",
         "test:coding/session_tool_admission_upstream_test.go#TestSessionParallelPreflightAbortPreventsPreparedEffects",
-        "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
+        "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch"
       ]
     },
     {
@@ -161861,8 +161861,8 @@
       ],
       "evidence": [
         "test:coding/session_compaction_extensions_upstream_test.go#TestCompactionExtensionsUpstream",
-        "test:internal/codingagent/cache_stats_oracle_test.go#TestCollectCacheMissesMatchesPi",
-        "test:internal/codingagent/cache_stats_upstream_test.go#TestCacheStatsUpstream"
+        "test:coding/session_surrogate_pi_oracle_test.go#TestEntryAppendedCarriesTheEntryAsTheSessionWroteIt",
+        "test:internal/codingagent/cache_stats_oracle_test.go#TestCollectCacheMissesMatchesPi"
       ]
     },
     {
@@ -164057,8 +164057,8 @@
       ],
       "evidence": [
         "test:coding/session_compaction_extensions_upstream_test.go#TestCompactionExtensionsUpstream",
-        "test:internal/codingagent/cache_stats_oracle_test.go#TestCollectCacheMissesMatchesPi",
-        "test:internal/codingagent/cache_stats_upstream_test.go#TestCacheStatsUpstream"
+        "test:coding/session_surrogate_pi_oracle_test.go#TestEntryAppendedCarriesTheEntryAsTheSessionWroteIt",
+        "test:internal/codingagent/cache_stats_oracle_test.go#TestCollectCacheMissesMatchesPi"
       ]
     },
     {
@@ -165334,8 +165334,8 @@
       ],
       "evidence": [
         "test:coding/session_compaction_extensions_upstream_test.go#TestCompactionExtensionsUpstream",
-        "test:internal/codingagent/cache_stats_oracle_test.go#TestCollectCacheMissesMatchesPi",
-        "test:internal/codingagent/cache_stats_upstream_test.go#TestCacheStatsUpstream"
+        "test:coding/session_surrogate_pi_oracle_test.go#TestEntryAppendedCarriesTheEntryAsTheSessionWroteIt",
+        "test:internal/codingagent/cache_stats_oracle_test.go#TestCollectCacheMissesMatchesPi"
       ]
     },
     {
@@ -169938,8 +169938,8 @@
       ],
       "evidence": [
         "test:coding/session_compaction_extensions_upstream_test.go#TestCompactionExtensionsUpstream",
-        "test:internal/codingagent/cache_stats_oracle_test.go#TestCollectCacheMissesMatchesPi",
-        "test:internal/codingagent/cache_stats_upstream_test.go#TestCacheStatsUpstream"
+        "test:coding/session_surrogate_pi_oracle_test.go#TestEntryAppendedCarriesTheEntryAsTheSessionWroteIt",
+        "test:internal/codingagent/cache_stats_oracle_test.go#TestCollectCacheMissesMatchesPi"
       ]
     },
     {
@@ -170635,8 +170635,8 @@
       ],
       "evidence": [
         "test:coding/session_compaction_extensions_upstream_test.go#TestCompactionExtensionsUpstream",
-        "test:internal/codingagent/cache_stats_oracle_test.go#TestCollectCacheMissesMatchesPi",
-        "test:internal/codingagent/cache_stats_upstream_test.go#TestCacheStatsUpstream"
+        "test:coding/session_surrogate_pi_oracle_test.go#TestEntryAppendedCarriesTheEntryAsTheSessionWroteIt",
+        "test:internal/codingagent/cache_stats_oracle_test.go#TestCollectCacheMissesMatchesPi"
       ]
     },
     {
@@ -172773,9 +172773,9 @@
         "call:coding/extension/host/subprocess/event_payload.go#applyToolCallInput"
       ],
       "evidence": [
+        "test:coding/session_surrogate_pi_oracle_test.go#TestToolCallHookKeepsALoneSurrogateInTheModelsArguments",
         "test:test/extension-conformance/tool_call_input_mutation_test.go#TestToolCallInputMutationAcrossSDKs",
-        "test:coding/session_tool_admission_upstream_test.go#TestSessionParallelPreflightAbortPreventsPreparedEffects",
-        "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch"
+        "test:coding/session_tool_admission_upstream_test.go#TestSessionParallelPreflightAbortPreventsPreparedEffects"
       ]
     },
     {
@@ -172795,9 +172795,9 @@
         "call:coding/extension/host/subprocess/event_payload.go#applyToolCallInput"
       ],
       "evidence": [
+        "test:coding/session_surrogate_pi_oracle_test.go#TestToolCallHookKeepsALoneSurrogateInTheModelsArguments",
         "test:coding/session_tool_admission_upstream_test.go#TestSessionParallelPreflightAbortPreventsPreparedEffects",
-        "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
+        "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch"
       ]
     },
     {
@@ -187288,9 +187288,9 @@
         "call:coding/extension/host/subprocess/event_payload.go#applyToolCallInput"
       ],
       "evidence": [
+        "test:coding/session_surrogate_pi_oracle_test.go#TestToolCallHookKeepsALoneSurrogateInTheModelsArguments",
         "test:test/extension-conformance/tool_call_input_mutation_test.go#TestToolCallInputMutationAcrossSDKs",
-        "test:coding/session_tool_admission_upstream_test.go#TestSessionParallelPreflightAbortPreventsPreparedEffects",
-        "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch"
+        "test:coding/session_tool_admission_upstream_test.go#TestSessionParallelPreflightAbortPreventsPreparedEffects"
       ]
     },
     {
@@ -187310,9 +187310,9 @@
         "call:coding/extension/host/subprocess/event_payload.go#applyToolCallInput"
       ],
       "evidence": [
+        "test:coding/session_surrogate_pi_oracle_test.go#TestToolCallHookKeepsALoneSurrogateInTheModelsArguments",
         "test:coding/session_tool_admission_upstream_test.go#TestSessionParallelPreflightAbortPreventsPreparedEffects",
-        "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
+        "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch"
       ]
     },
     {
@@ -189148,9 +189148,9 @@
         "call:coding/extension/host/subprocess/event_payload.go#applyToolCallInput"
       ],
       "evidence": [
+        "test:coding/session_surrogate_pi_oracle_test.go#TestToolCallHookKeepsALoneSurrogateInTheModelsArguments",
         "test:test/extension-conformance/tool_call_input_mutation_test.go#TestToolCallInputMutationAcrossSDKs",
-        "test:coding/session_tool_admission_upstream_test.go#TestSessionParallelPreflightAbortPreventsPreparedEffects",
-        "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch"
+        "test:coding/session_tool_admission_upstream_test.go#TestSessionParallelPreflightAbortPreventsPreparedEffects"
       ]
     },
     {
@@ -189170,9 +189170,9 @@
         "call:coding/extension/host/subprocess/event_payload.go#applyToolCallInput"
       ],
       "evidence": [
+        "test:coding/session_surrogate_pi_oracle_test.go#TestToolCallHookKeepsALoneSurrogateInTheModelsArguments",
         "test:coding/session_tool_admission_upstream_test.go#TestSessionParallelPreflightAbortPreventsPreparedEffects",
-        "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
+        "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch"
       ]
     },
     {
@@ -193179,9 +193179,9 @@
         "call:coding/extension/host/subprocess/event_payload.go#applyToolCallInput"
       ],
       "evidence": [
+        "test:coding/session_surrogate_pi_oracle_test.go#TestToolCallHookKeepsALoneSurrogateInTheModelsArguments",
         "test:test/extension-conformance/tool_call_input_mutation_test.go#TestToolCallInputMutationAcrossSDKs",
-        "test:coding/session_tool_admission_upstream_test.go#TestSessionParallelPreflightAbortPreventsPreparedEffects",
-        "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch"
+        "test:coding/session_tool_admission_upstream_test.go#TestSessionParallelPreflightAbortPreventsPreparedEffects"
       ]
     },
     {
@@ -193201,9 +193201,9 @@
         "call:coding/extension/host/subprocess/event_payload.go#applyToolCallInput"
       ],
       "evidence": [
+        "test:coding/session_surrogate_pi_oracle_test.go#TestToolCallHookKeepsALoneSurrogateInTheModelsArguments",
         "test:coding/session_tool_admission_upstream_test.go#TestSessionParallelPreflightAbortPreventsPreparedEffects",
-        "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
+        "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch"
       ]
     },
     {
@@ -194907,8 +194907,8 @@
       ],
       "evidence": [
         "test:coding/session_compaction_extensions_upstream_test.go#TestCompactionExtensionsUpstream",
-        "test:internal/codingagent/cache_stats_oracle_test.go#TestCollectCacheMissesMatchesPi",
-        "test:internal/codingagent/cache_stats_upstream_test.go#TestCacheStatsUpstream"
+        "test:coding/session_surrogate_pi_oracle_test.go#TestEntryAppendedCarriesTheEntryAsTheSessionWroteIt",
+        "test:internal/codingagent/cache_stats_oracle_test.go#TestCollectCacheMissesMatchesPi"
       ]
     },
     {
@@ -201301,9 +201301,9 @@
         "call:coding/extension/host/subprocess/event_payload.go#applyToolCallInput"
       ],
       "evidence": [
+        "test:coding/session_surrogate_pi_oracle_test.go#TestToolCallHookKeepsALoneSurrogateInTheModelsArguments",
         "test:test/extension-conformance/tool_call_input_mutation_test.go#TestToolCallInputMutationAcrossSDKs",
-        "test:coding/session_tool_admission_upstream_test.go#TestSessionParallelPreflightAbortPreventsPreparedEffects",
-        "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch"
+        "test:coding/session_tool_admission_upstream_test.go#TestSessionParallelPreflightAbortPreventsPreparedEffects"
       ]
     },
     {
@@ -201323,9 +201323,9 @@
         "call:coding/extension/host/subprocess/event_payload.go#applyToolCallInput"
       ],
       "evidence": [
+        "test:coding/session_surrogate_pi_oracle_test.go#TestToolCallHookKeepsALoneSurrogateInTheModelsArguments",
         "test:coding/session_tool_admission_upstream_test.go#TestSessionParallelPreflightAbortPreventsPreparedEffects",
-        "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
+        "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch"
       ]
     },
     {
@@ -203585,9 +203585,9 @@
         "call:coding/extension/host/subprocess/event_payload.go#applyToolCallInput"
       ],
       "evidence": [
+        "test:coding/session_surrogate_pi_oracle_test.go#TestToolCallHookKeepsALoneSurrogateInTheModelsArguments",
         "test:test/extension-conformance/tool_call_input_mutation_test.go#TestToolCallInputMutationAcrossSDKs",
-        "test:coding/session_tool_admission_upstream_test.go#TestSessionParallelPreflightAbortPreventsPreparedEffects",
-        "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch"
+        "test:coding/session_tool_admission_upstream_test.go#TestSessionParallelPreflightAbortPreventsPreparedEffects"
       ]
     },
     {
@@ -203607,9 +203607,9 @@
         "call:coding/extension/host/subprocess/event_payload.go#applyToolCallInput"
       ],
       "evidence": [
+        "test:coding/session_surrogate_pi_oracle_test.go#TestToolCallHookKeepsALoneSurrogateInTheModelsArguments",
         "test:coding/session_tool_admission_upstream_test.go#TestSessionParallelPreflightAbortPreventsPreparedEffects",
-        "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
+        "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch"
       ]
     },
     {
@@ -206191,9 +206191,9 @@
         "public-api:coding/rpcclient/rpc_client.go#NewRpcClient"
       ],
       "evidence": [
+        "test:coding/rpcclient/surrogate_decode_oracle_test.go#TestResponseTextKeepsALoneSurrogate",
         "test:coding/rpcclient/commands_methods_wire_test.go#TestRpcClientStartLaunchesTheAgentWithItsOptions",
-        "test:coding/rpcclient/jsonl_test.go#TestRpcClientReadStdoutDrainsAfterCallbacksStop",
-        "test:coding/rpcclient/jsonl_test.go#TestRpcClientReadStdoutParsesSplitInvalidBlankAndUnterminatedRecords"
+        "test:coding/rpcclient/jsonl_test.go#TestRpcClientReadStdoutDrainsAfterCallbacksStop"
       ]
     },
     {
@@ -208113,6 +208113,7 @@
         "call:coding/cli/rpc_ui.go#newRPCUIContext"
       ],
       "evidence": [
+        "test:coding/cli/rpc_surrogate_pi_oracle_test.go#TestRPCDialogAnswerKeepsALoneSurrogate",
         "test:coding/cli/rpc_ui_response_upstream_test.go#TestRpcExtensionUIResponseDecodesEachUnionMemberUpstream"
       ]
     },
@@ -208133,6 +208134,7 @@
         "public-api:coding/rpcclient/types.go#RpcResponse"
       ],
       "evidence": [
+        "test:coding/rpcclient/surrogate_decode_oracle_test.go#TestResponseTextKeepsALoneSurrogate",
         "test:coding/rpcclient/response_dispatch_test.go#TestRpcClientAnswersAPendingRequestOnceAndEmitsLaterResponsesWithItsIdAsEvents"
       ]
     },
@@ -209815,8 +209817,8 @@
       ],
       "evidence": [
         "test:coding/session_compaction_extensions_upstream_test.go#TestCompactionExtensionsUpstream",
-        "test:internal/codingagent/cache_stats_oracle_test.go#TestCollectCacheMissesMatchesPi",
-        "test:internal/codingagent/cache_stats_upstream_test.go#TestCacheStatsUpstream"
+        "test:coding/session_surrogate_pi_oracle_test.go#TestEntryAppendedCarriesTheEntryAsTheSessionWroteIt",
+        "test:internal/codingagent/cache_stats_oracle_test.go#TestCollectCacheMissesMatchesPi"
       ]
     },
     {
@@ -210446,8 +210448,8 @@
       ],
       "evidence": [
         "test:coding/session_compaction_extensions_upstream_test.go#TestCompactionExtensionsUpstream",
-        "test:internal/codingagent/cache_stats_oracle_test.go#TestCollectCacheMissesMatchesPi",
-        "test:internal/codingagent/cache_stats_upstream_test.go#TestCacheStatsUpstream"
+        "test:coding/session_surrogate_pi_oracle_test.go#TestEntryAppendedCarriesTheEntryAsTheSessionWroteIt",
+        "test:internal/codingagent/cache_stats_oracle_test.go#TestCollectCacheMissesMatchesPi"
       ]
     },
     {
@@ -212205,8 +212207,8 @@
       ],
       "evidence": [
         "test:coding/session_compaction_extensions_upstream_test.go#TestCompactionExtensionsUpstream",
-        "test:internal/codingagent/cache_stats_oracle_test.go#TestCollectCacheMissesMatchesPi",
-        "test:internal/codingagent/cache_stats_upstream_test.go#TestCacheStatsUpstream"
+        "test:coding/session_surrogate_pi_oracle_test.go#TestEntryAppendedCarriesTheEntryAsTheSessionWroteIt",
+        "test:internal/codingagent/cache_stats_oracle_test.go#TestCollectCacheMissesMatchesPi"
       ]
     },
     {
@@ -225200,8 +225202,8 @@
       ],
       "evidence": [
         "test:coding/session_compaction_extensions_upstream_test.go#TestCompactionExtensionsUpstream",
-        "test:internal/codingagent/cache_stats_oracle_test.go#TestCollectCacheMissesMatchesPi",
-        "test:internal/codingagent/cache_stats_upstream_test.go#TestCacheStatsUpstream"
+        "test:coding/session_surrogate_pi_oracle_test.go#TestEntryAppendedCarriesTheEntryAsTheSessionWroteIt",
+        "test:internal/codingagent/cache_stats_oracle_test.go#TestCollectCacheMissesMatchesPi"
       ]
     },
     {
@@ -231764,9 +231766,9 @@
         "call:coding/extension/host/subprocess/event_payload.go#applyToolCallInput"
       ],
       "evidence": [
+        "test:coding/session_surrogate_pi_oracle_test.go#TestToolCallHookKeepsALoneSurrogateInTheModelsArguments",
         "test:test/extension-conformance/tool_call_input_mutation_test.go#TestToolCallInputMutationAcrossSDKs",
-        "test:coding/session_tool_admission_upstream_test.go#TestSessionParallelPreflightAbortPreventsPreparedEffects",
-        "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch"
+        "test:coding/session_tool_admission_upstream_test.go#TestSessionParallelPreflightAbortPreventsPreparedEffects"
       ]
     },
     {
@@ -231786,9 +231788,9 @@
         "call:coding/extension/host/subprocess/event_payload.go#applyToolCallInput"
       ],
       "evidence": [
+        "test:coding/session_surrogate_pi_oracle_test.go#TestToolCallHookKeepsALoneSurrogateInTheModelsArguments",
         "test:coding/session_tool_admission_upstream_test.go#TestSessionParallelPreflightAbortPreventsPreparedEffects",
-        "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
+        "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch"
       ]
     },
     {
