@@ -278,6 +278,8 @@ type TaskSchedulerOptions struct {
 // rejected. mu guards the in-memory state; it is never held while waiting for the line.
 type TaskScheduler struct {
 	options TaskSchedulerOptions
+	// providerSessionIds are the provider session IDs the task runtimes of this Harness resolved; closing the Harness releases pi-ai's resources for them.
+	providerSessionIds *providerSessionIds
 	// telemetry is the Harness's root adapter, which parents phase spans whose task has no stored carrier.
 	telemetry      telemetry.TelemetryContext
 	activeMetric   telemetry.TelemetryUpDownCounter
@@ -420,6 +422,7 @@ func NewTaskScheduler(options TaskSchedulerOptions) *TaskScheduler {
 	metrics := telemetry.CreateTypedMetrics(rootMetrics, DurableTelemetrySchema)
 	return &TaskScheduler{
 		options:             options,
+		providerSessionIds:  newProviderSessionIds(),
 		telemetry:           root,
 		metricsOn:           rootMetrics != telemetry.NoopTelemetryMetrics,
 		activeMetric:        metrics.UpDownCounter("pi.durable.tasks.active"),
@@ -2344,7 +2347,7 @@ func (s *TaskScheduler) inspectTaskLocked(record anyTaskRecord, snapshot durable
 }
 
 func (s *TaskScheduler) createInvocationLocked(record anyTaskRecord, mode invocationMode, extension string) *invocation {
-	ctx, cancel := newLinkedSignal(s.options.Context)
+	ctx, cancel := newLinkedSignal(withProviderSessions(s.options.Context, s.providerSessionIds))
 	created := &invocation{
 		taskId:         record.Id,
 		kind:           record.Kind,
