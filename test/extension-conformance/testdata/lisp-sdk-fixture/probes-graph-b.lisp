@@ -94,6 +94,18 @@
           :operations (cond
                         ;; The bash tool runs on the local operations. "local" signals their condition unchanged; "localWrapped" signals a new one with the same message, which is
                         ;; not the backend's and keeps nothing of it (Pi matches the backend's class, bash.ts).
+                        ;; "localThread" runs them on another thread and signals the very condition they signaled there, unchanged.
+                        ((equal (bp-case case "ops") "localThread")
+                         (let ((local (pig:bash-operations-exec (pig:create-local-bash-operations))))
+                           (pig:make-bash-operations
+                            (lambda (command cwd options)
+                              (let* ((failure nil)
+                                     (worker (sb-thread:make-thread
+                                              (lambda ()
+                                                (handler-case (funcall local command cwd options)
+                                                  (error (e) (setf failure e) nil))))))
+                                (let ((result (sb-thread:join-thread worker)))
+                                  (if failure (error failure) result)))))))
                         ((member (bp-case case "ops") '("local" "localWrapped") :test #'equal)
                          (let ((local (pig:bash-operations-exec (pig:create-local-bash-operations)))
                                (wrapped (equal (bp-case case "ops") "localWrapped")))

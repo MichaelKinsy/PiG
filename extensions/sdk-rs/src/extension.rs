@@ -2863,19 +2863,19 @@ impl Extension {
                         },
                     )
                 })
-                .unwrap_or_else(|_| Err(("bash operations panicked".to_string(), None)));
+                .unwrap_or_else(|_| Err("bash operations panicked".into()));
                 match result {
                     Ok(value) => {
                         let _ = conn.respond(id, Some(value), None);
                     }
-                    Err((message, shell_exit)) => {
+                    Err(error) => {
                         let _ = conn.respond(
                             id,
                             None,
                             Some(ErrorInfo {
                                 code: None,
-                                message,
-                                shell_exit,
+                                shell_exit: error.shell_exit(),
+                                message: error.message().to_string(),
                             }),
                         );
                     }

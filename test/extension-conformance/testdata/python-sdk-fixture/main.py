@@ -11,6 +11,7 @@ import socket
 import struct
 import sys
 import threading
+import threading
 import time
 import zlib
 from typing import Any
@@ -995,6 +996,26 @@ def new_extension() -> pig_sdk.Extension:
                 log.append("spawnHook:" + spawn["command"])
                 return {"command": "printf '%s|%s' \"$HOOK_VAR\" \"$PI_SESSION_ID\"", "cwd": spawn["cwd"], "env": {**spawn["env"], "HOOK_VAR": "hook-env"}}
         ops = None
+        if case.get("ops") == "localThread":
+            # The local operations run on another thread and their error comes back unchanged.
+            local = pig_sdk.create_local_bash_operations()
+
+            def local_thread_exec(command, cwd, options):
+                outcome = {}
+
+                def run():
+                    try:
+                        outcome["result"] = local.exec(command, cwd, options)
+                    except BaseException as error:  # noqa: BLE001
+                        outcome["error"] = error
+
+                worker = threading.Thread(target=run)
+                worker.start()
+                worker.join()
+                if "error" in outcome:
+                    raise outcome["error"]
+                return outcome["result"]
+            ops = pig_sdk.BashOperations(exec=local_thread_exec)
         if case.get("ops") in ("local", "localWrapped"):
             # The bash tool runs on the local operations. "local" raises their error unchanged; "localWrapped" raises a new one with the same message, which is not the
             # backend's error and keeps nothing of it (Pi matches the backend's class, bash.ts).

@@ -1212,7 +1212,12 @@ export default function (pi) {
       case "find": if (c.ops === "globlimit") return { operations: { exists: async (p) => { log.push(`exists:${p}`); return true; }, glob: async (pattern, cwd, o) => { log.push(`glob:${pattern}:limit=${o.limit}`); return ["a.txt", "b.txt", "c.txt"].slice(0, o.limit); } } };
         return { operations: custom ? { exists: async (p) => { log.push(`exists:${p}`); return false; }, glob: async (pattern) => { log.push(`glob:${pattern}`); return []; } } : undefined };
       case "powershell": return { exposeSessionEnvironment: c.exposeSessionEnvironment ?? undefined };
-      default: if (c.ops === "local" || c.ops === "localWrapped") {
+      default: if (c.ops === "localThread") {
+        // The local operations run on another thread (Node has one thread, so the nearest is another turn of the event loop) and their error comes back unchanged.
+        const local = piCodingAgent.createLocalBashOperations();
+        return { operations: { exec: (command, cwd, o) => new Promise((resolve, reject) => { setImmediate(() => { local.exec(command, cwd, o).then(resolve, reject); }); }) } };
+      }
+      if (c.ops === "local" || c.ops === "localWrapped") {
         // The bash tool runs on the local operations. "local" rethrows their error unchanged; "localWrapped" throws a new Error with the same message, which is not the
         // backend's class and keeps nothing of it (bash.ts matches the class).
         const local = piCodingAgent.createLocalBashOperations();

@@ -123,7 +123,7 @@ fn operations() -> (BashOperations, SeenExec) {
             (options.on_data)(b"one");
             (options.on_data)(&[0xff, 0x00]);
             match command {
-                "reject" => Err(format!("rejected: {cwd}")),
+                "reject" => Err(format!("rejected: {cwd}").into()),
                 "none" => Ok(None),
                 _ => Ok(Some(5)),
             }

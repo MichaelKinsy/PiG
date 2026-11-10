@@ -988,33 +988,6 @@ impl std::fmt::Display for HostShellTimeout {
 
 impl std::error::Error for HostShellTimeout {}
 
-thread_local! {
-    /// The error string the local operations of this thread last returned for a command that timed out after its shell had exited, by the address of its
-    /// buffer, with the shell's exit. Pi's bash tool tells that error by class, so only that error, returned from an exec unchanged, keeps the shell's exit; a
-    /// Rust error is a `String`, whose identity is its buffer, which a move keeps and a copy, a wrapper's `format!` or a new message does not.
-    static LOCAL_SHELL_TIMEOUT: std::cell::Cell<Option<(usize, usize, usize, crate::protocol::ShellExit)>> = const { std::cell::Cell::new(None) };
-}
-
-/// Forgets the timeout the local operations of this thread last returned: the exec that starts next is judged by its own.
-pub(crate) fn forget_local_shell_timeout() {
-    LOCAL_SHELL_TIMEOUT.with(|slot| slot.set(None));
-}
-
-/// The shell's exit of `error`, if it is the very error the local operations of this thread returned last, unchanged.
-#[allow(clippy::ptr_arg)] // the buffer's capacity is part of the error's identity
-pub(crate) fn local_shell_timeout_of(error: &String) -> Option<crate::protocol::ShellExit> {
-    LOCAL_SHELL_TIMEOUT.with(|slot| {
-        let (address, len, capacity, shell_exit) = slot.take()?;
-        (address == error.as_ptr() as usize && len == error.len() && capacity == error.capacity()).then_some(shell_exit)
-    })
-}
-
-/// Names `message`, the error a local exec returns, as the one the shell's exit belongs to.
-#[allow(clippy::ptr_arg)] // the buffer's capacity is part of the error's identity
-fn remember_local_shell_timeout(message: &String, shell_exit: crate::protocol::ShellExit) {
-    LOCAL_SHELL_TIMEOUT.with(|slot| slot.set(Some((message.as_ptr() as usize, message.len(), message.capacity(), shell_exit))));
-}
-
 /// Runs one function of a call's options for the host's `builtin_tool_callback`. An `Err` is the callback's throw.
 pub(crate) fn dispatch_callback(args: &Value) -> Result<Value, String> {
     let handle = text_of(args, "handle");
@@ -1049,9 +1022,7 @@ pub struct LocalBashOperationsOptions {
 fn local_exec(shell: &'static str, shell_path: Option<String>) -> BashOperations {
     BashOperations {
         exec: Arc::new(move |command, cwd, options| {
-            // The slot names the error of the last local exec of this thread only: whatever an earlier one left is not this exec's.
-            forget_local_shell_timeout();
-            let conn = host_helpers::running_connection().map_err(|error| error.to_string())?;
+            let conn = host_helpers::running_connection().map_err(|error| crate::BashExecError::from(error.to_string()))?;
             let execute_id = format!("x{}", conn.execute_seq.fetch_add(1, Ordering::Relaxed));
             // A throw in onData (a panic) ends the command with it, as Pi's would reject the exec.
             let failure: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
@@ -1097,7 +1068,7 @@ fn local_exec(shell: &'static str, shell_path: Option<String>) -> BashOperations
             );
             registry(|registry| registry.exec_data.remove(&execute_id));
             if let Some(message) = locked(&failure).clone() {
-                return Err(message);
+                return Err(message.into());
             }
             let reply = match outcome {
                 Ok(reply) => reply,
@@ -1107,10 +1078,10 @@ fn local_exec(shell: &'static str, shell_path: Option<String>) -> BashOperations
                         .and_then(|inner| inner.downcast_ref::<HostShellTimeout>())
                         .map(|timeout| timeout.shell_exit);
                     let message = error.to_string();
-                    if let Some(shell_exit) = shell_exit {
-                        remember_local_shell_timeout(&message, shell_exit);
-                    }
-                    return Err(message);
+                    return Err(match shell_exit {
+                        Some(shell_exit) => crate::BashExecError::shell_timeout(message, shell_exit),
+                        None => message.into(),
+                    });
                 }
             };
             Ok(reply.get("exitCode").and_then(Value::as_i64))
@@ -1271,16 +1242,16 @@ pub fn create_read_only_tools(
 mod tests {
     use super::*;
 
-    // A local exec judges its own error only: the exit an earlier exec on the thread left for its error is forgotten when the next one starts, so a later plain timeout
-    // that happens to reuse the freed buffer is not taken for it.
+    // The shell's exit is a private field of the error: it survives a move, a clone and a thread hop, and a message alone (from a String, a &str, or the error's
+    // own text) does not carry it.
     #[test]
-    fn a_local_exec_forgets_the_shell_exit_an_earlier_one_left() {
-        let first = String::from("timeout:2");
-        remember_local_shell_timeout(&first, crate::protocol::ShellExit { exit_code: 7, after_seconds: 0.5 });
-        let options = BashExecOptions { on_data: Arc::new(|_| {}), signal: crate::ProviderSignal::new(), timeout: Some(1.0), env: None };
-        // No extension is running in this test, so the exec fails at once: before it does anything else it must have forgotten the earlier error.
-        let _ = (create_local_bash_operations(None).exec)("true", "/", options);
-        assert_eq!(local_shell_timeout_of(&first), None);
+    fn the_shell_exit_belongs_to_the_error_and_not_to_its_message() {
+        let exit = crate::protocol::ShellExit { exit_code: 7, after_seconds: 0.5 };
+        let error = crate::BashExecError::shell_timeout("timeout:2".to_string(), exit);
+        let moved = std::thread::spawn(move || error.clone()).join().unwrap();
+        assert_eq!(moved.shell_exit(), Some(exit));
+        assert_eq!(crate::BashExecError::from(moved.to_string()).shell_exit(), None);
+        assert_eq!(crate::BashExecError::from(moved.message()).shell_exit(), None);
     }
 
     // The behavior of the tools is the shared conformance row TestConformance_BuiltinToolDelegationAcrossSDKs; these cases pin what the SDK does before and after

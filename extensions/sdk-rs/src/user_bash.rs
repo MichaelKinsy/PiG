@@ -33,9 +33,57 @@ pub struct BashExecOptions {
     pub env: Option<HashMap<String, String>>,
 }
 
-/// The exec function of Pi's `BashOperations`: runs `command` in `cwd` and returns the exit code, or `None` for a failed command (report a signal termination as 128 plus the signal number). An `Err` rejects, as Pi's exec rejects; return `"aborted"` when the signal was set.
+/// The error a [`BashExecFn`] rejects with: Pi's exec rejects with an `Error` whose class the bash tool tells (`ShellTimeoutError`, which carries the shell's own
+/// exit code and run time when a command timed out after its shell had exited). Build one from a message with `From<String>` or `From<&str>`; `"aborted"` is the
+/// message when the signal was set. The error [`create_local_bash_operations`](crate::create_local_bash_operations) returns for that timeout keeps the shell's exit
+/// in a private field of its own, so it survives a move, a clone or a thread hop and cannot be forged: a wrapper that returns the error unchanged (for example with
+/// `?`) makes the bash tool say that the shell exited with code C after S seconds, as Pi's `instanceof ShellTimeoutError` does, while one that builds a new
+/// error from its message (including `error.message()` or `error.to_string()`) gets the plain `timeout:<seconds>` text.
+#[derive(Debug, Clone)]
+pub struct BashExecError {
+    message: String,
+    shell_exit: Option<crate::protocol::ShellExit>,
+}
+
+impl BashExecError {
+    /// The error's message, as Pi's `error.message`.
+    pub fn message(&self) -> &str {
+        &self.message
+    }
+
+    /// The error of a command that timed out after its shell had exited: only the local operations make one.
+    pub(crate) fn shell_timeout(message: String, shell_exit: crate::protocol::ShellExit) -> Self {
+        BashExecError { message, shell_exit: Some(shell_exit) }
+    }
+
+    pub(crate) fn shell_exit(&self) -> Option<crate::protocol::ShellExit> {
+        self.shell_exit
+    }
+}
+
+impl From<String> for BashExecError {
+    fn from(message: String) -> Self {
+        BashExecError { message, shell_exit: None }
+    }
+}
+
+impl From<&str> for BashExecError {
+    fn from(message: &str) -> Self {
+        BashExecError::from(message.to_string())
+    }
+}
+
+impl std::fmt::Display for BashExecError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.message)
+    }
+}
+
+impl std::error::Error for BashExecError {}
+
+/// The exec function of Pi's `BashOperations`: runs `command` in `cwd` and returns the exit code, or `None` for a failed command (report a signal termination as 128 plus the signal number). An `Err` rejects, as Pi's exec rejects; return `"aborted".into()` when the signal was set.
 pub type BashExecFn =
-    Arc<dyn Fn(&str, &str, BashExecOptions) -> Result<Option<i64>, String> + Send + Sync>;
+    Arc<dyn Fn(&str, &str, BashExecOptions) -> Result<Option<i64>, BashExecError> + Send + Sync>;
 
 /// Pi's `BashOperations`: pluggable command execution, local by default and remote (for example SSH) when a `user_bash` handler returns it from [`crate::Context::bash_operations`].
 #[derive(Clone)]
@@ -81,11 +129,11 @@ pub(crate) fn run_user_bash_exec(
     req: &crate::protocol::RequestMsg,
     signal: ProviderSignal,
     notify: impl Fn(Value) + Send + Sync + 'static,
-) -> Result<Value, (String, Option<crate::protocol::ShellExit>)> {
+) -> Result<Value, BashExecError> {
     let handle = req.tool.as_deref().unwrap_or("");
     let exec = table
         .get(handle)
-        .ok_or_else(|| (format!("unknown bash operations: {handle}"), None))?;
+        .ok_or_else(|| BashExecError::from(format!("unknown bash operations: {handle}")))?;
     let args = req.args.clone().unwrap_or(Value::Null);
     let finished = Arc::new(std::sync::atomic::AtomicBool::new(false));
     let live = finished.clone();
@@ -110,20 +158,13 @@ pub(crate) fn run_user_bash_exec(
         timeout: args.get("timeout").and_then(Value::as_f64),
         env,
     };
-    crate::builtin_tool::forget_local_shell_timeout();
     let result = exec(
         args["command"].as_str().unwrap_or(""),
         args["cwd"].as_str().unwrap_or(""),
         options,
     );
     finished.store(true, std::sync::atomic::Ordering::SeqCst);
-    match result {
-        Ok(exit_code) => Ok(json!({ "exitCode": exit_code })),
-        Err(message) => {
-            let shell_exit = crate::builtin_tool::local_shell_timeout_of(&message);
-            Err((message, shell_exit))
-        }
-    }
+    result.map(|exit_code| json!({ "exitCode": exit_code }))
 }
 
 pub(crate) fn base64(data: &[u8]) -> String {

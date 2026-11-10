@@ -124,6 +124,9 @@ func TestConformance_BuiltinToolDelegationAcrossSDKs(t *testing.T) {
 			{"kind": "delegate", "tool": "bash", "factoryCwd": factoryCwd, "params": tcase{"command": shellExitedWriterCommand, "timeout": 2}, "ops": "local"},
 			{"kind": "delegate", "tool": "bash", "factoryCwd": factoryCwd, "params": tcase{"command": shellExitedWriterCommand, "timeout": 2}, "ops": "local", "noContext": true},
 			{"kind": "delegate", "tool": "bash", "factoryCwd": factoryCwd, "params": tcase{"command": shellExitedWriterCommand, "timeout": 2}, "ops": "localWrapped"},
+			// The same command with the local operations run on another thread (a goroutine, a Python thread, a Lisp thread, a Rust std::thread; the Node reference runs them in
+			// another turn of its event loop): the shell's exit belongs to the error and not to the thread that made it, so it survives the hop in every SDK.
+			{"kind": "delegate", "tool": "bash", "factoryCwd": factoryCwd, "params": tcase{"command": shellExitedWriterCommand, "timeout": 2}, "ops": "localThread"},
 			// A truncated read's details, whose members Pi writes in an order a sorted map would lose
 			{"kind": "delegate", "tool": "read", "factoryCwd": factoryCwd, "params": tcase{"path": "big.txt"}},
 			// createCodingTools and createReadOnlyTools
@@ -312,6 +315,7 @@ func TestConformance_BuiltinToolDelegationAcrossSDKs(t *testing.T) {
 		{61, errorOf, "Command timed out after 2 seconds. The shell exited with code 7 after <0.5-1.4> seconds, but background processes it started kept writing output until the timeout."},
 		{62, errorOf, "Command timed out after 2 seconds. The shell exited with code 7 after <0.5-1.4> seconds, but background processes it started kept writing output until the timeout."},
 		{63, errorOf, "Command timed out after 2 seconds"},
+		{64, errorOf, "Command timed out after 2 seconds. The shell exited with code 7 after <0.5-1.4> seconds, but background processes it started kept writing output until the timeout."},
 		{60, text, "g.txt:1: needle-1"},
 		{60, calls, `["isDirectory:<host>/grepdir"]`}, // the match was printed from ripgrep's output, and the readFile the reference's extension passes was not called
 		{28, definitionField("description"), `"Read the contents of a file. Supports text files and images (jpg, png, gif, webp, bmp). Images are sent as attachments. For text files, output is truncated to 2000 lines or 50KB (whichever is hit first).`},

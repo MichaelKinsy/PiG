@@ -207,6 +207,23 @@ func builtinProbeSpec(c builtinProbeCase, log *builtinCallLog) (definition func(
 				return sdk.BashExecResult{ExitCode: new(0)}, nil
 			}}
 		}
+		if c.Ops == "localThread" {
+			// The local operations run on another goroutine and their error comes back unchanged.
+			local := sdk.CreateLocalBashOperations(nil)
+			options.Operations = &sdk.BashOperations{Exec: func(command, cwd string, o sdk.BashExecOptions) (sdk.BashExecResult, error) {
+				type outcome struct {
+					result sdk.BashExecResult
+					err    error
+				}
+				done := make(chan outcome, 1)
+				go func() {
+					result, err := local.Exec(command, cwd, o)
+					done <- outcome{result, err}
+				}()
+				got := <-done
+				return got.result, got.err
+			}}
+		}
 		if c.Ops == "local" || c.Ops == "localWrapped" {
 			// The bash tool runs on the local operations. "local" returns their error unchanged, as Pi's wrapper that rethrows what the local backend threw; "localWrapped" makes a
 			// new error with the same message, which is not the backend's error, so it keeps nothing of it (Pi matches the backend's class, bash.ts).
