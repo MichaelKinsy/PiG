@@ -214,17 +214,24 @@ type shardHalf struct {
 	first, last int
 }
 
-// shardHalves returns the recipes of test-<group>-1 and test-<group>-2 in the Makefile sources.
+// shardHalves returns the recipes of test-<group>-1 and test-<group>-2 in the Makefile sources, in that order; each target must have exactly one recipe with a shard range.
 func shardHalves(sources, group string) ([]shardHalf, error) {
 	recipe := regexp.MustCompile(`(?m)^(test-` + regexp.QuoteMeta(group) + `-[12]):[^\n]*\n\t@\./automation/ci/test-grouped\.sh ` + regexp.QuoteMeta(group) + ` ([0-9]+) ([0-9]+)$`)
+	found := recipe.FindAllStringSubmatch(sources, -1)
 	var halves []shardHalf
-	for _, m := range recipe.FindAllStringSubmatch(sources, -1) {
-		first, _ := strconv.Atoi(m[2])
-		last, _ := strconv.Atoi(m[3])
-		halves = append(halves, shardHalf{target: m[1], first: first, last: last})
-	}
-	if len(halves) != 2 {
-		return nil, fmt.Errorf("found %d test-%s halves with a shard range, want test-%[2]s-1 and test-%[2]s-2", len(halves), group)
+	for _, target := range []string{"test-" + group + "-1", "test-" + group + "-2"} {
+		var recipes []shardHalf
+		for _, m := range found {
+			if m[1] == target {
+				first, _ := strconv.Atoi(m[2])
+				last, _ := strconv.Atoi(m[3])
+				recipes = append(recipes, shardHalf{target: target, first: first, last: last})
+			}
+		}
+		if len(recipes) != 1 {
+			return nil, fmt.Errorf("found %d %s recipes with a shard range, want exactly one", len(recipes), target)
+		}
+		halves = append(halves, recipes[0])
 	}
 	return halves, nil
 }
@@ -266,10 +273,10 @@ func TestShardHalvesNeedBothTargetsAndEveryShardOnce(t *testing.T) {
 	}{
 		{"both targets", recipes("test-conformance-1", "test-conformance-2"), ""},
 		{"targets in either order", recipes("test-conformance-2", "test-conformance-1"), ""},
-		{"first target twice", recipes("test-conformance-1", "test-conformance-1"), "test-conformance-2"},
-		{"second target twice", recipes("test-conformance-2", "test-conformance-2"), "test-conformance-1"},
-		{"only one target", recipes("test-conformance-1"), "found 1"},
-		{"three recipes", recipes("test-conformance-1", "test-conformance-2", "test-conformance-1"), "found 3"},
+		{"first target twice", recipes("test-conformance-1", "test-conformance-1"), "found 2 test-conformance-1 recipes"},
+		{"second target twice", recipes("test-conformance-2", "test-conformance-2"), "found 0 test-conformance-1 recipes"},
+		{"only one target", recipes("test-conformance-1"), "found 0 test-conformance-2 recipes"},
+		{"a target three times", recipes("test-conformance-1", "test-conformance-2", "test-conformance-1"), "found 2 test-conformance-1 recipes"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			halves, err := shardHalves(tc.sources, "conformance")
