@@ -23,4 +23,4 @@ Non-test: test/examples/66-websocket-limits.ts -> chord/nextnode/http/http_examp
 No row change (upgrades.ts and sandbox.ts rows stay ✅).
 
 ## Changelog
-changelog.d/chord-pi151-584ab469e.md
+changelog.d/chord-pi151-e35933ead2.md

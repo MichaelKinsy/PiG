@@ -16268,34 +16268,6 @@
       ]
     },
     {
-      "id": "BF-584ab46",
-      "title": "A WebSocket that receives an oversized frame is left closing while its handlers run, as Pi's is, so the peer…",
-      "symptom": "A WebSocket that receives an oversized frame is left closing while its handlers run, as Pi's is, so the peer receives its 1009 close frame; the server side reports close code 1006, as Pi does.",
-      "rootCause": "An oversized frame sent the 1009 close frame and then terminated the socket, so the server reported 1006 and the peer could miss the frame. The socket is CLOSING while its error listeners run and keep leaves a closing socket alone. Ports Pi (upgrades.ts, upgrades.test.ts, examples/66, and the files.test.ts equal-creation-time ordering case); Pi and and timing fixes for JS file watchers have no Go counterpart.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "A WebSocket that receives an oversized frame is left closing while its handlers run, as Pi's is, so the peer receives its 1009 close frame; the server side reports close code 1006, as Pi does.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "584ab469e8",
-          "date": "2026-11-09"
-        },
-        {
-          "hash": "e35933ead2",
-          "date": "2026-11-09"
-        }
-      ],
-      "tests": [
-        "chord/nextnode/app/files_test.go::TestMetadataQueriesKeepSourceRefKeyMimeAndMetaFindVersionsByIDRefAndKey",
-        "chord/nextnode/http/http_example_66_test.go::TestExample66WebSocketLimits",
-        "chord/nextnode/http/upgrades_test.go::TestPluginSocketsAnOversizedFrameLeavesTheSocketClosingTheServerReports1006AndThePeer1009"
-      ]
-    },
-    {
       "id": "BF-58f6697",
       "title": "Text typed and followed at once by Enter no longer skips the autocomplete menu Pi opens: `/model provider/id`…",
       "symptom": "Text typed and followed at once by Enter no longer skips the autocomplete menu Pi opens: `/model provider/id` typed and entered in one go switched the model in PiG, where Pi accepts the suggestion into the editor on the first Enter and switches on the second (the same holds for `/thinking level`, any command with argument completions, and a partially typed slash command, which Pi accepts and submits).",
@@ -49062,6 +49034,28 @@
         "chord/delta/append_text_retention_norace_test.go::TestTrackerAppendTextReleasesBuffersOfReleasedKeys",
         "chord/delta/text_tails_test.go::TestTextTailsForgetCollectedBuffers",
         "chord/delta/text_tails_test.go::TestTrackerAppendTextStreamKeepsEarlierRevisions"
+      ]
+    },
+    {
+      "id": "BF-e35933e",
+      "title": "A WebSocket that receives an oversized frame is left closing while its handlers run, as Pi's is, so the peer…",
+      "symptom": "A WebSocket that receives an oversized frame is left closing while its handlers run, as Pi's is, so the peer receives its 1009 close frame; the server side reports close code 1006, as Pi does.",
+      "rootCause": "ws never reads the peer after a receiver error, so the server socket's close event keeps 1006 while the peer sees 1009. The socket stays closing while its error listeners run, so keep leaves it alone. The sandbox test also points TMP and TEMP at the link, as Pi's does.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A WebSocket that receives an oversized frame is left closing while its handlers run, as Pi's is, so the peer receives its 1009 close frame; the server side reports close code 1006, as Pi does.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e35933ead2",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/http/upgrades_test.go::TestPluginSocketsAnOversizedFrameLeavesTheSocketClosingTheServerReports1006AndThePeer1009"
       ]
     },
     {

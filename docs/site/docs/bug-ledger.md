@@ -583,7 +583,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-578c1a3](#bf-578c1a3) | The "Applied use cases" page in the manual that ships inside PiG now links the Security page on the website | PiG's own defect | All platforms | 0.5.0 |
 | [BF-57a1687](#bf-57a1687) | fix(ai,agent): return a projection's blocks apart from its scalars so the caller's buffer stays on its stack | PiG's own defect | All platforms | Unreleased |
 | [BF-57ee33b](#bf-57ee33b) | A model an extension registers with `registerProvider` reaches `ctx.modelRegistry`, `ctx.model` and RPC as… | PiG's own defect | All platforms | 0.5.0 |
-| [BF-584ab46](#bf-584ab46) | A WebSocket that receives an oversized frame is left closing while its handlers run, as Pi's is, so the peer… | PiG's own defect | All platforms | Unreleased |
 | [BF-58f6697](#bf-58f6697) | Text typed and followed at once by Enter no longer skips the autocomplete menu Pi opens: `/model provider/id`… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-59456ae](#bf-59456ae) | Pressing a key in a subprocess extension's overlay no longer freezes interactive mode when the key reaches… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-59693cd](#bf-59693cd) | Interactive mode: after choosing an entry in `/tree` the chat first redrew at the old position and, about a… | PiG's own defect | All platforms | Unreleased |
@@ -1726,6 +1725,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-e2db931](#bf-e2db931) | On Windows, refreshing an MCP server's OAuth token no longer fails with `EPERM` when another `pig` process is… | PiG's own defect | Windows | 0.5.0 |
 | [BF-e32c60c](#bf-e32c60c) | A Piglet or Package installed under a symlinked agent directory keeps the origin integrity recorded in its… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e33dbb0](#bf-e33dbb0) | fix(chord/delta): textTails remembers buffers weakly so a released text costs nothing | PiG's own defect | All platforms | Unreleased |
+| [BF-e35933e](#bf-e35933e) | A WebSocket that receives an oversized frame is left closing while its handlers run, as Pi's is, so the peer… | PiG's own defect | All platforms | Unreleased |
 | [BF-e38ea7c](#bf-e38ea7c) | A code block that begins like an earlier streamed block and then differs, such as a file rewritten with its… | PiG's own defect | All platforms | Unreleased |
 | [BF-e3b5d44](#bf-e3b5d44) | fix(chord/nextnode/workers): a worker forks a private copy of the entry made at creation, removed on close | PiG's own defect | All platforms | Unreleased |
 | [BF-e3bc5f0](#bf-e3bc5f0) | A codemode script that makes a tool call at the moment its execution ends (an abort, a timeout… | PiG's own defect | All platforms | Unreleased |
@@ -9741,20 +9741,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `50ca49180f` (2026-10-13), `57ee33b5c7` (2026-10-13), `5cd840e477` (2026-10-13)
 - **Tests:** `coding/cli/model_registry_refresh_test.go::TestSubprocessModelRegistryPublishesExtensionReplacementAndRestoration`, `coding/cli/model_registry_refresh_test.go::TestSubprocessModelRegistryPublishesProviderOnlyOverlayRefresh`, `coding/cli/model_registry_refresh_test.go::TestSubprocessModelRegistryPublishesProviderRegistrationAndRemoval`, `coding/cli/model_registry_refresh_test.go::TestSubprocessModelRegistryRefreshesConnectedNode`, `coding/cli/port_wave_10_package_command_paths_test.go::TestPortWave10ModelRuntimeCreation`, `coding/cli/shipped_piglet_inventory_test.go::TestShippedPigletInventory`, `coding/cli/strip_leak_gate_test.go::TestStripLeakGate`, `coding/model_availability_auth_view_test.go::TestAvailabilityPassAuthViewMatchesPiUpstream` and 1 more in docs/bug-ledger.json
 - **Release note:** A model an extension registers with `registerProvider` reaches `ctx.modelRegistry`, `ctx.model` and RPC as Pi's object: the definition's members in the order the extension wrote them, then `api`, `provider` and `baseUrl`, and its `input` as written. PiG sent the members in its own order and filled in `input: ["text"]` when the definition left it out.
-
-### BF-584ab46
-
-**A WebSocket that receives an oversized frame is left closing while its handlers run, as Pi's is, so the peer…**
-
-- **Source:** PiG's own defect
-- **Symptom:** A WebSocket that receives an oversized frame is left closing while its handlers run, as Pi's is, so the peer receives its 1009 close frame; the server side reports close code 1006, as Pi does.
-- **Root cause:** An oversized frame sent the 1009 close frame and then terminated the socket, so the server reported 1006 and the peer could miss the frame. The socket is CLOSING while its error listeners run and keep leaves a closing socket alone. Ports Pi (upgrades.ts, upgrades.test.ts, examples/66, and the files.test.ts equal-creation-time ordering case); Pi and and timing fixes for JS file watchers have no Go counterpart.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `584ab469e8` (2026-11-09), `e35933ead2` (2026-11-09)
-- **Tests:** `chord/nextnode/app/files_test.go::TestMetadataQueriesKeepSourceRefKeyMimeAndMetaFindVersionsByIDRefAndKey`, `chord/nextnode/http/http_example_66_test.go::TestExample66WebSocketLimits`, `chord/nextnode/http/upgrades_test.go::TestPluginSocketsAnOversizedFrameLeavesTheSocketClosingTheServerReports1006AndThePeer1009`
-- **Release note:** A WebSocket that receives an oversized frame is left closing while its handlers run, as Pi's is, so the peer receives its 1009 close frame; the server side reports close code 1006, as Pi does.
 
 ### BF-58f6697
 
@@ -25634,6 +25620,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `e33dbb0ad0` (2026-11-01)
 - **Tests:** `chord/delta/append_text_retention_norace_test.go::TestTrackerAppendTextReleasesBuffersOfReleasedKeys`, `chord/delta/text_tails_test.go::TestTextTailsForgetCollectedBuffers`, `chord/delta/text_tails_test.go::TestTrackerAppendTextStreamKeepsEarlierRevisions`
+
+### BF-e35933e
+
+**A WebSocket that receives an oversized frame is left closing while its handlers run, as Pi's is, so the peer…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A WebSocket that receives an oversized frame is left closing while its handlers run, as Pi's is, so the peer receives its 1009 close frame; the server side reports close code 1006, as Pi does.
+- **Root cause:** ws never reads the peer after a receiver error, so the server socket's close event keeps 1006 while the peer sees 1009. The socket stays closing while its error listeners run, so keep leaves it alone. The sandbox test also points TMP and TEMP at the link, as Pi's does.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `e35933ead2` (2026-11-09)
+- **Tests:** `chord/nextnode/http/upgrades_test.go::TestPluginSocketsAnOversizedFrameLeavesTheSocketClosingTheServerReports1006AndThePeer1009`
+- **Release note:** A WebSocket that receives an oversized frame is left closing while its handlers run, as Pi's is, so the peer receives its 1009 close frame; the server side reports close code 1006, as Pi does.
 
 ### BF-e38ea7c
 
