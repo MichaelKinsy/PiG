@@ -866,9 +866,19 @@
         {
           "hash": "05b3416ad9",
           "date": "2026-11-09"
+        },
+        {
+          "hash": "6b778e70d7",
+          "date": "2026-11-09"
         }
       ],
-      "tests": []
+      "tests": [
+        "coding/session_before_abort_dispatch_test.go::TestNavigateTreeHonoursAHandlerResultReturnedAfterTheAbort",
+        "coding/session_before_abort_dispatch_test.go::TestSessionBeforeCompactReachesEveryExtensionWhenAbortedDuringDispatch",
+        "test/extension-conformance/session_before_abort_test.go::TestNodeSessionBeforeCompactReachesTheNextExtensionWhenAbortedDuringDispatch",
+        "test/extension-conformance/session_before_abort_test.go::TestNodeSessionBeforeTreeHonoursAResultReturnedAfterTheAbort",
+        "test/extension-conformance/session_before_signal_test.go::TestSessionBeforeSignalReachesEverySDKWhenAbortedDuringDispatch"
+      ]
     },
     {
       "id": "BF-05c7426",
@@ -2171,6 +2181,32 @@
       ],
       "tests": [
         "chord/nextnode/plugins/plugins_watcher_identity_test.go::TestIdentityOfADirectoryIsItsInodeAndBirthTimeAndNoneForNoEntry"
+      ]
+    },
+    {
+      "id": "BF-0c4a06b",
+      "title": "A Lisp extension's host call that the host had already answered no longer fails with `host-call-cancelled`…",
+      "symptom": "A Lisp extension's host call that the host had already answered no longer fails with `host-call-cancelled` when the request is cancelled before the waiting thread wakes, so a `ctx-notify` in a handler cancelled at that moment no longer ends the handler with no result.",
+      "rootCause": "deliver-call-result left an answered call in extension-pending, so a cancel that arrived before the waiting thread woke finished it as cancelled and the call raised host-call-cancelled although the host had answered it: a notify in a handler whose request was cancelled at that moment ended the handler with no result. Python drops the parent on delivery; Lisp now removes the answered slot under the state lock.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Lisp extension's host call that the host had already answered no longer fails with `host-call-cancelled` when the request is cancelled before the waiting thread wakes, so a `ctx-notify` in a handler cancelled at that moment no longer ends the handler with no result.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0c4a06b0e4",
+          "date": "2026-11-09"
+        },
+        {
+          "hash": "f8180c331b",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/session_before_signal_test.go::TestSessionBeforeSignalReachesEverySDKWhenAbortedDuringDispatch"
       ]
     },
     {
@@ -11224,9 +11260,15 @@
         {
           "hash": "41063244c4",
           "date": "2026-11-09"
+        },
+        {
+          "hash": "c3342406bf",
+          "date": "2026-11-09"
         }
       ],
-      "tests": []
+      "tests": [
+        "coding/session_before_abort_dispatch_test.go::TestNavigateTreeEmitsSessionTreeToEveryExtensionAfterTheCallerContextEnded"
+      ]
     },
     {
       "id": "BF-410d733",
@@ -45289,6 +45331,32 @@
       "tests": [
         "tui/login_dialog_device_code_test.go::TestLoginURLsOpenOnlyHTTPSignInURLs",
         "tui/login_dialog_device_code_test.go::TestLoginURLsReplaceControlCharactersInURLsThatAreNotWebURLs"
+      ]
+    },
+    {
+      "id": "BF-d93f8bc",
+      "title": "A Python or Lisp `session_before_compact` or `session_before_tree` handler dispatched after the operation was…",
+      "symptom": "A Python or Lisp `session_before_compact` or `session_before_tree` handler dispatched after the operation was aborted can now make host calls, such as a notification on its first line, as Pi's handler can.",
+      "rootCause": "A session_before_compact or session_before_tree handler dispatched after the event's signal aborted started with its request cancelled, so every host call of it raised, including a void ctx.ui.notify (examples/extensions/custom-compaction.ts notifies on its first line) and a later {cancel:true} or summary was lost. Pi's notify never fails on abort. The handler still starts with its signal aborted (is_cancelled, ctx-cancelled-p), and the request is not cancelled.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Python or Lisp `session_before_compact` or `session_before_tree` handler dispatched after the operation was aborted can now make host calls, such as a notification on its first line, as Pi's handler can. The handler still starts with its signal aborted.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d93f8bccf0",
+          "date": "2026-11-09"
+        },
+        {
+          "hash": "f8180c331b",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/session_before_signal_test.go::TestSessionBeforeSignalReachesEverySDKWhenAbortedDuringDispatch"
       ]
     },
     {

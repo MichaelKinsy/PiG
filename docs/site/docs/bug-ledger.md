@@ -99,6 +99,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-0bc05bf](#bf-0bc05bf) | Fixed `!` and RPC `bash` output keeping fragments of color codes, such as a stray `m`, when a code was split… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0bed50c](#bf-0bed50c) | fix(extensions): message identity survives a session switch and a handler's in-place edit; numbering costs… | PiG's own defect | All platforms | Unreleased |
 | [BF-0c44f84](#bf-0c44f84) | fix(chord): the base watches are renewed when the directory is another one, as Pi's identity check | PiG's own defect | All platforms | Unreleased |
+| [BF-0c4a06b](#bf-0c4a06b) | A Lisp extension's host call that the host had already answered no longer fails with `host-call-cancelled`… | PiG's own defect | All platforms | Unreleased |
 | [BF-0c7d23f](#bf-0c7d23f) | A model's `bash`, `powershell`, `grep`, `find` or `ls` call is now drawn by the tool's built-in card, as Pi… | PiG's own defect | Windows | Unreleased |
 | [BF-0cced6a](#bf-0cced6a) | RPC mode now acts on an extension's `ctx.shutdown()` while idle, for example from a timer, instead of waiting… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-0cd1934](#bf-0cd1934) | fix(env): a native watch ignores the nameless event kqueue sends after a watched directory is removed | PiG's own defect | All platforms | Unreleased |
@@ -1617,6 +1618,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-d90c2f4](#bf-d90c2f4) | Markdown now nests a `**strong**` run inside `*emphasis*` as Pi does, renders a line underlined with `===` or… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d918706](#bf-d918706) | A Go extension no longer re-sorts the JSON keys of objects it hands back to the host | PiG's own defect | All platforms | Unreleased |
 | [BF-d91ce8f](#bf-d91ce8f) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
+| [BF-d93f8bc](#bf-d93f8bc) | A Python or Lisp `session_before_compact` or `session_before_tree` handler dispatched after the operation was… | PiG's own defect | All platforms | Unreleased |
 | [BF-d943286](#bf-d943286) | A tool's `handoff` control now continues the run in the new context in the Durable core as it does in Pi: the… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-d943286-2](#bf-d943286-2) | `HarnessSettings.afterFailedRun` reaches the Durable core from the TypeScript host, so inputs queued behind a… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-d94e83f](#bf-d94e83f) | Subagents of `pi-open-agents` (and any extension that finds the Pi CLI from the package root of… | PiG's own defect | All platforms | 0.7.0 |
@@ -2410,8 +2412,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **User impact:** Wrong output or ordering
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `05b3416ad9` (2026-11-09)
-- **Tests:** None recorded.
+- **Fix commits:** `05b3416ad9` (2026-11-09), `6b778e70d7` (2026-11-09)
+- **Tests:** `coding/session_before_abort_dispatch_test.go::TestNavigateTreeHonoursAHandlerResultReturnedAfterTheAbort`, `coding/session_before_abort_dispatch_test.go::TestSessionBeforeCompactReachesEveryExtensionWhenAbortedDuringDispatch`, `test/extension-conformance/session_before_abort_test.go::TestNodeSessionBeforeCompactReachesTheNextExtensionWhenAbortedDuringDispatch`, `test/extension-conformance/session_before_abort_test.go::TestNodeSessionBeforeTreeHonoursAResultReturnedAfterTheAbort`, `test/extension-conformance/session_before_signal_test.go::TestSessionBeforeSignalReachesEverySDKWhenAbortedDuringDispatch`
 - **Release note:** Aborting a compaction or a session-tree move while extensions were handling `session_before_compact` or `session_before_tree` no longer drops the handler's reply and keeps every later extension from hearing about it. As in Pi, each handler now receives the event in order, `event.signal` aborts for the one that is running, and a handler dispatched after the abort starts with the signal already aborted. A `{ cancel: true }`, summary, instructions or label returned after a tree move was aborted is honoured.
 
 ### BF-05c7426
@@ -3061,6 +3063,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `0c44f84f21` (2026-11-07)
 - **Tests:** `chord/nextnode/plugins/plugins_watcher_identity_test.go::TestIdentityOfADirectoryIsItsInodeAndBirthTimeAndNoneForNoEntry`
+
+### BF-0c4a06b
+
+**A Lisp extension's host call that the host had already answered no longer fails with `host-call-cancelled`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Lisp extension's host call that the host had already answered no longer fails with `host-call-cancelled` when the request is cancelled before the waiting thread wakes, so a `ctx-notify` in a handler cancelled at that moment no longer ends the handler with no result.
+- **Root cause:** deliver-call-result left an answered call in extension-pending, so a cancel that arrived before the waiting thread woke finished it as cancelled and the call raised host-call-cancelled although the host had answered it: a notify in a handler whose request was cancelled at that moment ended the handler with no result. Python drops the parent on delivery; Lisp now removes the answered slot under the state lock.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0c4a06b0e4` (2026-11-09), `f8180c331b` (2026-11-09)
+- **Tests:** `test/extension-conformance/session_before_signal_test.go::TestSessionBeforeSignalReachesEverySDKWhenAbortedDuringDispatch`
+- **Release note:** A Lisp extension's host call that the host had already answered no longer fails with `host-call-cancelled` when the request is cancelled before the waiting thread wakes, so a `ctx-notify` in a handler cancelled at that moment no longer ends the handler with no result.
 
 ### BF-0c7d23f
 
@@ -7382,8 +7398,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `41063244c4` (2026-11-09)
-- **Tests:** None recorded.
+- **Fix commits:** `41063244c4` (2026-11-09), `c3342406bf` (2026-11-09)
+- **Tests:** `coding/session_before_abort_dispatch_test.go::TestNavigateTreeEmitsSessionTreeToEveryExtensionAfterTheCallerContextEnded`
 - **Release note:** A `session_tree` handler is no longer cancelled, and later extensions no longer miss the event, when the context of the tree navigation ended while it ran. As in Pi, the event reaches every extension after the leaf moved.
 
 ### BF-410d733
@@ -24121,6 +24137,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `d91ce8f74a` (2026-10-27)
 - **Tests:** `tui/login_dialog_device_code_test.go::TestLoginURLsOpenOnlyHTTPSignInURLs`, `tui/login_dialog_device_code_test.go::TestLoginURLsReplaceControlCharactersInURLsThatAreNotWebURLs`
+
+### BF-d93f8bc
+
+**A Python or Lisp `session_before_compact` or `session_before_tree` handler dispatched after the operation was…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Python or Lisp `session_before_compact` or `session_before_tree` handler dispatched after the operation was aborted can now make host calls, such as a notification on its first line, as Pi's handler can.
+- **Root cause:** A session_before_compact or session_before_tree handler dispatched after the event's signal aborted started with its request cancelled, so every host call of it raised, including a void ctx.ui.notify (examples/extensions/custom-compaction.ts notifies on its first line) and a later {cancel:true} or summary was lost. Pi's notify never fails on abort. The handler still starts with its signal aborted (is_cancelled, ctx-cancelled-p), and the request is not cancelled.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d93f8bccf0` (2026-11-09), `f8180c331b` (2026-11-09)
+- **Tests:** `test/extension-conformance/session_before_signal_test.go::TestSessionBeforeSignalReachesEverySDKWhenAbortedDuringDispatch`
+- **Release note:** A Python or Lisp `session_before_compact` or `session_before_tree` handler dispatched after the operation was aborted can now make host calls, such as a notification on its first line, as Pi's handler can. The handler still starts with its signal aborted.
 
 ### BF-d943286
 
