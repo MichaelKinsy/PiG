@@ -133,6 +133,7 @@ type clientSetup struct {
 	outdated int
 	sockets  []socket
 	base     string
+	finished bool
 }
 
 func (s *clientSetup) fetchedNow() []string {
@@ -185,6 +186,21 @@ func setup(t *testing.T, initial []RegisteredScript, available []RegisteredScrip
 		t.Fatalf("server load: %v %v", err, report.Failed)
 	}
 	s := &clientSetup{server: server, base: "B1"}
+	// A test that never reaches finish (a failed Fatal, or one that only reads the setup) must not leave the server's and the
+	// client's hosts ticking their heartbeats into the next test.
+	t.Cleanup(func() {
+		if s.finished {
+			return
+		}
+		if s.client != nil {
+			if err := s.client.Stop(ctx); err != nil {
+				t.Errorf("client stop: %v", err)
+			}
+		}
+		if err := server.Close(ctx); err != nil {
+			t.Errorf("server close: %v", err)
+		}
+	})
 	var failing atomic.Int32
 	failing.Store(int32(opt.failing))
 	env := LoopEnvironment{
@@ -270,6 +286,7 @@ func setup(t *testing.T, initial []RegisteredScript, available []RegisteredScrip
 
 func (s *clientSetup) finish(t *testing.T) {
 	t.Helper()
+	s.finished = true
 	if err := s.client.Stop(ctx); err != nil {
 		t.Errorf("client stop: %v", err)
 	}
