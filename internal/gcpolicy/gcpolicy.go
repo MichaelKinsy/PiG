@@ -47,7 +47,7 @@ func Apply() (stop func()) {
 
 // watchLiveHeap polls the runtime's metrics until one read finds more than FallbackLiveBytes live. The live heap changes only when a
 // collection ends, and the runtime has no hook for that moment that does not run late: a cleanup or finalizer runs when the sweeper
-// reaches its span, one goroutine runs them all in turn, and a sentinel allocated while a collection marks survives that collection, so
+// reaches its span and then waits its turn on the goroutines that run them (at most max(GOMAXPROCS/4, 1): one under D174's cap of 2 Ps), and a sentinel allocated while a collection marks survives that collection, so
 // a check armed that way can miss the collection that found the large heap and leave the target at 400 for the rest of the run.
 // debug.SetMemoryLimit is not a substitute: it caps the absolute heap rather than returning to a percent past a live size.
 // The wait doubles from minPoll to maxPoll while no collection has finished. An idle process then fires one timer a second, which
