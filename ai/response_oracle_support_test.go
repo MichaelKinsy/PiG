@@ -236,12 +236,12 @@ func compareResponses(t *testing.T, module, apiName string, api ai.API, run func
 		gotJSON, wantJSON = generatedIDClock.ReplaceAll(gotJSON, []byte("_CLOCK_N")), generatedIDClock.ReplaceAll(wantJSON, []byte("_CLOCK_N"))
 		if p.CheckRequest {
 			gotJSON, _ = json.Marshal(map[string]any{"request": comparableRequest(gotRequest, p.KeepUserAgent)})
-			wantJSON, _ = json.Marshal(map[string]any{"request": comparableRequest(want[i].Request, p.KeepUserAgent)})
+			wantJSON, _ = json.Marshal(map[string]any{"request": comparablePiRequest(want[i].Request, p.KeepUserAgent)})
 		}
 		if !bytes.Equal(gotJSON, wantJSON) {
 			if p.CheckRequest {
 				gotHeaders, _ := comparableRequest(gotRequest, p.KeepUserAgent)["headers"].(map[string]any)
-				wantHeaders, _ := comparableRequest(want[i].Request, p.KeepUserAgent)["headers"].(map[string]any)
+				wantHeaders, _ := comparablePiRequest(want[i].Request, p.KeepUserAgent)["headers"].(map[string]any)
 				var diff []string
 				for name, value := range wantHeaders {
 					if gotHeaders[name] != value {
@@ -347,11 +347,18 @@ func comparableRequest(request map[string]any, keepUserAgent bool) map[string]an
 	if keepUserAgent && kept["originator"] == "pi" {
 		kept["originator"] = pigidentity.CodexOriginator
 	}
-	// pig divergence (D235): PiG names Claude Code 2.1.322 on an OAuth request, as Pi main a05e3a0 does, where Pi 1.5.0 names 2.1.280.
-	if keepUserAgent && kept["user-agent"] == "claude-cli/2.1.280" {
-		kept["user-agent"] = "claude-cli/2.1.322"
-	}
 	return map[string]any{"path": request["path"], "method": request["method"], "headers": kept}
+}
+
+// comparablePiRequest is comparableRequest of Pi's request, the expectation PiG's is compared with.
+func comparablePiRequest(request map[string]any, keepUserAgent bool) map[string]any {
+	comparable := comparableRequest(request, keepUserAgent)
+	// pig divergence (D235): PiG names Claude Code 2.1.322 on an OAuth request, as Pi main a05e3a0 does, where Pi 1.5.0 names
+	// 2.1.280. Only Pi's side is mapped, so a PiG request that still named 2.1.280 differs.
+	if headers, _ := comparable["headers"].(map[string]any); keepUserAgent && headers["user-agent"] == "claude-cli/2.1.280" {
+		headers["user-agent"] = "claude-cli/2.1.322"
+	}
+	return comparable
 }
 
 var generatedIDClock = regexp.MustCompile(`_\d{13}_\d+`)
