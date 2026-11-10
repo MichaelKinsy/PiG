@@ -2,15 +2,15 @@
 
 PiG is a Go implementation of [Pi](https://github.com/earendil-works/pi), the reference terminal coding agent. PiG follows Pi's observable behavior. This page is for people who already use Pi: what stays the same, what is different, and how to move over.
 
-PiG is not an official Pi project. Michael Kinsy created PiG, which was originally developed at Hewlett Packard Enterprise. Pi's own documentation is at [pi.dev](https://pi.dev/docs/latest). PiG currently follows Pi 1.5.0.
+PiG is not an official Pi project. Michael Kinsy created PiG, which was originally developed at Hewlett Packard Enterprise. Pi's own documentation is at [pi.dev](https://pi.dev/docs/latest). PiG currently follows Pi 1.5.1.
 
 ## What stays the same
 
 - The terminal interface, the slash commands, the keybindings and the built-in tools follow Pi. See [Slash commands](/docs/latest/slash-commands), [Keybindings](/docs/latest/keybindings) and [Using PiG](/docs/latest/usage).
-- Settings, `auth.json` and session files use formats that are compatible with Pi 1.5.0. See [Configuration](/docs/latest/configuration#using-pis-directories).
+- Settings, `auth.json` and session files use formats that are compatible with Pi 1.5.1. See [Configuration](/docs/latest/configuration#using-pis-directories).
 - `AGENTS.md` context files, skills, prompt templates, themes and Packages work as they do in Pi. A Pi Package with a `pi` manifest in its `package.json` installs the same way.
 - The modes follow Pi: interactive, print (`-p`), JSON ([JSON event stream](/docs/latest/json)) and RPC ([RPC protocol](/docs/latest/rpc)).
-- The extension API and events follow Pi 1.5.0. TypeScript and JavaScript extensions run on Node with Pi's own runtime code (D73).
+- The extension API and events follow Pi 1.5.1. TypeScript and JavaScript extensions run on Node with Pi's own runtime code (D73).
 
 Every difference that a user or an extension can observe has a numbered record in the [divergence ledger](https://github.com/MichaelKinsy/PiG/blob/main/docs/parity/DIVERGENCES.md). A difference that the ledger does not name is a defect. [Report it](https://github.com/MichaelKinsy/PiG/issues).
 
@@ -24,7 +24,7 @@ Every difference that a user or an extension can observe has a numbered record i
 | `~/.pi/agent` | `~/.pig/agent`. PiG does not read or write `~/.pi` unless you opt in. | D2 |
 | `<project>/.pi` | `<project>/.pig`. PiG reads `.pig` only from the working directory. | D2 |
 | `PI_CODING_AGENT_DIR` | `PIG_CODING_AGENT_DIR`. Pi's variable is read only in shared mode. | D2 |
-| The startup header shows Pi's version, `v1.5.0` | The startup header and the help banner show PiG's version with the Pi release it ports, for example `v0.7.0+1.5.0`. `pig --version` prints Pi's version exactly as `pi --version` does; `pig version` prints the PiG release and the Pi release as separate fields. | D2 |
+| The startup header shows Pi's version, `v1.5.1` | The startup header and the help banner show PiG's version with the Pi release it ports, for example `v0.7.0+1.5.1`. `pig --version` prints Pi's version exactly as `pi --version` does; `pig version` prints the PiG release and the Pi release as separate fields. | D2 |
 | Requests identify as `pi/<version>` | Requests identify as `pig/<version>`. PiG never identifies itself as Pi to a service. | D26, D65 |
 | Hosted endpoints on pi.dev | Hosted endpoints on pi-in-go.dev, including `/share`, the model catalog, the install report and the installer. PiG reads its version check from the update manifest of the latest GitHub Release, not from pi-in-go.dev. | D39, D64 |
 | `/bug` can upload a report | `/bug` writes a zip file and prints a link to a PiG issue form. | D62 |

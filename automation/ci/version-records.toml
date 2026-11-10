@@ -264,3 +264,11 @@ paths = [
   "docs/site/docs/keybindings.md",
   "docs/site/docs/themes.md",
 ]
+
+[[record]]
+version = "1.5.0"
+reason = "Entries that record the release a change was fixed or measured against. A bug-ledger release note (generated from the fix commits) names the Pi release the fix was written against, and the extension-api-parity oracle row quotes the output the pinned Pi 1.5.0 printed; it was not re-measured at 1.5.1, and the code behind it is unchanged between the tags."
+paths = [
+  "docs/site/docs/bug-ledger.md",
+  "docs/extension-api-parity.md",
+]
