@@ -168,7 +168,7 @@ func TestResumedSessionWaitsForTheNextRequest(t *testing.T) {
 	}
 }
 
-// The default streaming mode stops warming once the run settles, so a
+// The streaming mode stops warming once the run settles, so a
 // one-shot Send never leaves a refresh scheduled.
 func TestStreamingModeStopsWarmingWhenTheRunSettles(t *testing.T) {
 	sess, _ := newWarmingSession(t, "streaming", SessionOptions{NoSession: true})

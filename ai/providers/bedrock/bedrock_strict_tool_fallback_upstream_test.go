@@ -265,13 +265,17 @@ func TestBedrockPreferredStrictToolFallbackUpstream(t *testing.T) {
 	})
 }
 
-// strictFlags is the strict flag of every tool of every request, in order.
-func (h *strictToolFallbackHarness) strictFlags() [][]bool {
-	var flags [][]bool
+// strictFlags is the strict flag of every tool of every request, in order; an absent flag is nil, as Pi's undefined.
+func (h *strictToolFallbackHarness) strictFlags() [][]any {
+	var flags [][]any
 	for _, request := range h.snapshot() {
-		var perRequest []bool
+		var perRequest []any
 		for _, tool := range request.ToolConfig.Tools {
-			perRequest = append(perRequest, tool.ToolSpec.Strict != nil && *tool.ToolSpec.Strict)
+			if tool.ToolSpec.Strict == nil {
+				perRequest = append(perRequest, nil)
+			} else {
+				perRequest = append(perRequest, *tool.ToolSpec.Strict)
+			}
 		}
 		flags = append(flags, perRequest)
 	}
@@ -291,7 +295,7 @@ func TestBedrockStrictToolLimitNotRememberedWithoutSession(t *testing.T) {
 	tools := []ai.ToolSchema{strictToolFallbackTool(t, "preferred", "prefer")}
 	h.run(t, tools, nil)
 	h.run(t, tools, nil)
-	if got, want := h.strictFlags(), [][]bool{{true}, {false}, {true}}; !reflect.DeepEqual(got, want) {
+	if got, want := h.strictFlags(), [][]any{{true}, {nil}, {true}}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("strict flags = %v, want %v", got, want)
 	}
 }
@@ -306,7 +310,7 @@ func TestBedrockStrictToolLimitRememberedPerSession(t *testing.T) {
 	if second.StopReason != ai.StopReasonStop || second.Diagnostics != nil {
 		t.Fatalf("second stop = %s, diagnostics = %#v", second.StopReason, second.Diagnostics)
 	}
-	if got, want := h.strictFlags(), [][]bool{{true, true}, {false, true}, {false, true}, {true, true}}; !reflect.DeepEqual(got, want) {
+	if got, want := h.strictFlags(), [][]any{{true, true}, {nil, true}, {nil, true}, {true, true}}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("strict flags = %v, want %v", got, want)
 	}
 }
@@ -319,7 +323,7 @@ func TestBedrockStrictToolLimitForgottenAfterSessionCleanup(t *testing.T) {
 		t.Fatal(err)
 	}
 	h.runSession(t, tools, nil, "cleaned")
-	if got, want := h.strictFlags(), [][]bool{{true}, {false}, {true}}; !reflect.DeepEqual(got, want) {
+	if got, want := h.strictFlags(), [][]any{{true}, {nil}, {true}}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("strict flags = %v, want %v", got, want)
 	}
 }

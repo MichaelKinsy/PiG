@@ -3772,14 +3772,6 @@ count = 1
 class = "cold: once per bug report"
 
 [[hit]]
-file = "internal/codingagent/cache_warmer.go"
-func = "cacheWarmingEnvValue"
-pattern = "env-stat"
-detail = "os.Getenv"
-count = 1
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
-
-[[hit]]
 file = "internal/codingagent/clipboard_text.go"
 func = "readClipboardText"
 pattern = "timer-per-call"

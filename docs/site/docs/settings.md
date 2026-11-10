@@ -51,7 +51,7 @@ An empty default column means PiG has no value for the key until you set one, or
 | `httpProxy` | string | unset | Global HTTP/HTTPS proxy URL. Sets only absent `HTTP_PROXY` and `HTTPS_PROXY` environment variables. Provider requests use CONNECT tunnels; `NO_PROXY` controls bypasses. Global setting only. |
 | `websocketConnectTimeoutMs` | number | `15000` | WebSocket opening-handshake timeout in milliseconds. `0` or `"disabled"` turns it off. Explicit request options override the setting. |
 | `httpIdleTimeoutMs` | number | `300000` | Idle timeout for provider requests, in milliseconds: the wait for response headers and for each part of the body. `0` or `"disabled"` turns it off. Keepalive comments and pings do not restart it, so a stream that sends only keepalives ends with an error after this timeout. Pi 1.5.0 waits for ever on such a stream (D131, [Pi #10761](https://github.com/earendil-works/pi/issues/10761)). |
-| `cacheWarming` | string | `streaming` | `off`, `streaming`, or `idle`. Keeps the provider's prompt cache warm with periodic requests. Global setting only: PiG ignores it in a project file. See [cache warming](#cache-warming). |
+| `cacheWarming` | string | `idle` | `off`, `streaming`, or `idle`. Keeps the provider's prompt cache warm with periodic requests. Global setting only: PiG ignores it in a project file. See [cache warming](#cache-warming). |
 
 ### Provider retries
 
@@ -68,8 +68,8 @@ Keep `retry.provider.maxRetries` at `0` unless you need provider-level retries. 
 Cache warming is on by default, as in Pi. Each refresh is a real provider request that you pay for. PiG replays the last request with a one-token output limit shortly before the prompt cache expires, so the next request reads the cache instead of writing it again at full price.
 
 - `off`: PiG never sends refreshes.
-- `streaming`: only while the agent is running. This is the default.
-- `idle`: while the agent runs, and between runs for up to 30 minutes after the last request.
+- `streaming`: only while the agent is running.
+- `idle`: while the agent runs, and between runs for up to 30 minutes after the last request. This is the default.
 
 A refresh is sent only when the model declares a prompt cache lifetime and PiG expects it to save at least $0.05 in avoided cache-miss cost. Warming stops when the conversation or model changes, after one hour (30 minutes when idle), and when the session ends. Refresh usage counts toward the session's token and cost totals, but it never enters the model's context. `/session` shows the mode, the next decision, and its estimated cost. An extension can change the decision with a `cache_warming_decision` handler.
 

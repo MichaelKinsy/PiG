@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"os"
 	"runtime/debug"
 	"slices"
 	"strings"
@@ -19,72 +18,6 @@ import (
 )
 
 // Port of upstream core/cache-warmer.ts.
-
-const (
-	// maxWarmingAgeMs: streaming warming never continues past this long after
-	// the real request that started it.
-	maxWarmingAgeMs int64 = 60 * 60_000
-	// maxIdleWarmingAgeMs: idle warming uses a shorter horizon because
-	// continuation estimates become less reliable with age.
-	maxIdleWarmingAgeMs int64 = 30 * 60_000
-	// cacheWarmingMinimumExpectedSavings: a refresh is sent only when it is
-	// expected to save at least this many dollars.
-	cacheWarmingMinimumExpectedSavings = 0.05
-	// idleContinuationProbability is the chance that a real request arrives
-	// before the cache entry expires while the agent sits idle.
-	idleContinuationProbability = 0.15
-)
-
-// GetCacheWarmingDelayMs refreshes at 90% of the TTL while preserving at least
-// ten seconds of margin. The bool is false when the TTL is too short. The delay is a float64 like the JavaScript
-// number: a lifetime from a models.json promptCache can exceed the int64 range.
-func GetCacheWarmingDelayMs(ttlMs float64) (float64, bool) {
-	if ttlMs <= 10_000 {
-		return 0, false
-	}
-	return max(1, math.Floor(math.Min(ttlMs*0.9, ttlMs-10_000))), true
-}
-
-// GetPromptCacheTtlMs returns the model's prompt-cache lifetime for the request's retention. Explicit retention wins over the environment; none or a missing tier has no lifetime.
-func GetPromptCacheTtlMs(model *ai.Model, options ai.StreamOptions) (float64, bool) {
-	retention := string(options.CacheRetention)
-	if retention == "" {
-		retention = "short"
-		if cacheWarmingEnvValue("PI_CACHE_RETENTION", options.Env) == "long" {
-			retention = "long"
-		}
-	}
-	if retention == "none" {
-		return 0, false
-	}
-	seconds, ok := model.PromptCache[retention]
-	if !ok {
-		return 0, false
-	}
-	return seconds * 1000, true
-}
-
-// cacheWarmingEnvValue mirrors getProviderEnvValue: request env first, then
-// the process environment.
-func cacheWarmingEnvValue(name string, env ai.ProviderEnv) string {
-	if value := env[name]; value != "" {
-		return value
-	}
-	return os.Getenv(name)
-}
-
-// IsReplayable reports whether replaying the request with a one-token output
-// cap leaves its cache entry untouched. Anthropic's budget-based thinking
-// derives budget_tokens from max_tokens, and Anthropic keys the message cache
-// on that budget, so only adaptive thinking replays safely.
-func IsReplayable(model *ai.Model, options ai.StreamOptions) bool {
-	reasoning := options.Thinking != ""
-	if !reasoning || model.ProviderMeta.API != ai.APIAnthropicMessages {
-		return true
-	}
-	compat := model.ProviderMeta.Compat
-	return compat != nil && compat.ForceAdaptiveThinking != nil && *compat.ForceAdaptiveThinking
-}
 
 // lastPromptTokens is the prompt size of the most recent real request on the
 // branch, as reported by the provider.
@@ -129,39 +62,16 @@ func lastPromptTokens(entries []SessionEntry) int {
 	return 0
 }
 
-func price(model *ai.Model, usage ai.Usage) float64 {
-	return ai.CalculateCost(model, &usage).Total
-}
-
-// CacheWarmingAction is Pi's warm-or-stop decision, the one type the extension API carries (types.ts CacheWarmingDecisionEvent.action).
-type CacheWarmingAction = extension.CacheWarmingAction
+// CacheWarmingAction is Pi's warm-or-stop decision, the one type the extension API carries (types.ts CacheWarmingDecisionEvent.action). It and CacheWarmingDecision are pi-ai's, re-exported as cache-warmer.ts does.
+type CacheWarmingAction = ai.CacheWarmingAction
 
 const (
-	CacheWarmingActionWarm = extension.CacheWarmingActionWarm
-	CacheWarmingActionStop = extension.CacheWarmingActionStop
+	CacheWarmingActionWarm = ai.CacheWarmingActionWarm
+	CacheWarmingActionStop = ai.CacheWarmingActionStop
 )
 
-// CacheWarmingDecision holds the inputs and outcome of one warm-or-stop
-// decision, as shown by /session.
-type CacheWarmingDecision struct {
-	// Phase is "streaming" while the agent run that sent the request is still
-	// active, then "idle".
-	Phase string `json:"phase"`
-	// WarmCost is the price of this refresh: a cache read of the prompt plus
-	// one output token.
-	WarmCost float64 `json:"warmCost"`
-	// MissCost is the extra price of the next real request if the entry is lost.
-	MissCost float64 `json:"missCost"`
-	// ContinuationProbability estimates the chance that a real request
-	// arrives before the entry expires.
-	ContinuationProbability float64 `json:"continuationProbability"`
-	// ExpectedSavings is ContinuationProbability*MissCost - WarmCost.
-	ExpectedSavings float64 `json:"expectedSavings"`
-	// EconomicsAvailable is false when the prompt size or prices are unknown.
-	EconomicsAvailable bool `json:"economicsAvailable"`
-	// Action is "warm" when ExpectedSavings is at least $0.05.
-	Action CacheWarmingAction `json:"action"`
-}
+// CacheWarmingDecision holds the inputs and outcome of one warm-or-stop decision, as shown by /session.
+type CacheWarmingDecision = ai.CacheWarmingDecision
 
 // CacheWarmingDecisionEvent is fired before each refresh with Pi's decision filled in; an extension may override Action. It is the event
 // the extension API delivers to cache_warming_decision handlers.
@@ -214,7 +124,7 @@ type cacheWarmingRun struct {
 	startedAt         int64
 	ctx               context.Context
 	cancel            context.CancelFunc
-	phase             string
+	phase             ai.CacheWarmingPhase
 	nextWarmAt        int64
 	// extensionOverride is set while a refresh that an extension forced is
 	// in flight.
@@ -325,8 +235,8 @@ func (w *CacheWarmer) Start(request CacheWarmRequest, isCurrent func() bool) {
 		w.stopLocked(reason, nil, false)
 		return
 	}
-	ttlMs, _ := GetPromptCacheTtlMs(request.Model, request.Options)
-	delayMs, _ := GetCacheWarmingDelayMs(ttlMs)
+	ttlMs, _ := ai.GetPromptCacheTtlMs(request.Model, request.Options)
+	delayMs, _ := ai.GetCacheWarmingDelayMs(ttlMs)
 	ctx, cancel := context.WithCancel(context.Background())
 	w.run = &cacheWarmingRun{
 		CacheWarmRequest: request,
@@ -336,7 +246,7 @@ func (w *CacheWarmer) Start(request CacheWarmRequest, isCurrent func() bool) {
 		startedAt:        cacheWarmingNowMs(),
 		ctx:              ctx,
 		cancel:           cancel,
-		phase:            "streaming",
+		phase:            ai.CacheWarmingPhaseStreaming,
 	}
 	w.scheduleLocked(w.run)
 }
@@ -346,14 +256,14 @@ func (w *CacheWarmer) startStopReason(request CacheWarmRequest) string {
 	if w.getMode() == "off" {
 		return "cache warming disabled"
 	}
-	if !IsReplayable(request.Model, request.Options) {
+	if !ai.IsCacheWarmingReplayable(request.Model, request.Options) {
 		return "request cannot be replayed safely"
 	}
-	ttlMs, ok := GetPromptCacheTtlMs(request.Model, request.Options)
+	ttlMs, ok := ai.GetPromptCacheTtlMs(request.Model, request.Options)
 	if !ok {
 		return "cache lifetime unavailable"
 	}
-	if _, ok := GetCacheWarmingDelayMs(ttlMs); !ok {
+	if _, ok := ai.GetCacheWarmingDelayMs(ttlMs); !ok {
 		return "cache lifetime unavailable"
 	}
 	return ""
@@ -372,8 +282,8 @@ func (w *CacheWarmer) OnAgentSettled() {
 		w.stopLocked("agent run settled", nil, false)
 		return
 	}
-	run.phase = "idle"
-	deadline := run.startedAt + maxIdleWarmingAgeMs
+	run.phase = ai.CacheWarmingPhaseIdle
+	deadline := run.startedAt + ai.CacheWarmingMaxIdleAgeMs
 	if run.nextWarmAt > deadline || cacheWarmingNowMs() >= deadline {
 		w.stopLocked("30-minute idle safety limit reached", nil, false)
 	}
@@ -450,9 +360,9 @@ func (w *CacheWarmer) scheduleLocked(run *cacheWarmingRun) {
 	run.extensionOverride = false
 	now := cacheWarmingNowMs()
 	next := float64(now) + run.delayMs
-	limit, reason := maxWarmingAgeMs, "one-hour safety limit reached"
+	limit, reason := ai.CacheWarmingMaxAgeMs, "one-hour safety limit reached"
 	if run.phase == "idle" {
-		limit, reason = maxIdleWarmingAgeMs, "30-minute idle safety limit reached"
+		limit, reason = ai.CacheWarmingMaxIdleAgeMs, "30-minute idle safety limit reached"
 	}
 	if deadline := run.startedAt + limit; next > float64(deadline) || now >= deadline {
 		w.stopLocked(reason, nil, false)
@@ -560,11 +470,8 @@ func (w *CacheWarmer) sendRefresh(run *cacheWarmingRun, extensionOverride bool) 
 			reschedule = true
 		}
 	}()
-	options := run.Options
-	options.MaxTokens = 1
-	// The warm request repeats the last request; it must not replace the conversation's continuation state (cache-warmer.ts:336).
-	options.DisableContinuation = true
-	stream, err := w.stream(ai.WithProviderMaxRetries(run.ctx, 0), run.Model, run.Context, options)
+	ctx, options := ai.GetCacheWarmingRequestOptions(run.Options, run.ctx)
+	stream, err := w.stream(ctx, run.Model, run.Context, options)
 	if err != nil {
 		return true
 	}
@@ -645,34 +552,7 @@ func (w *CacheWarmer) modeStopReason(run *cacheWarmingRun) string {
 }
 
 func (w *CacheWarmer) evaluate(run *cacheWarmingRun) CacheWarmingDecision {
-	model := run.Model
-	promptTokens := lastPromptTokens(warmerBranch(w.sessionManager))
-	cacheHitCost := price(model, ai.Usage{CacheRead: promptTokens})
-	missUsage := ai.Usage{Input: promptTokens}
-	if model.Capabilities.CacheWriteCostPer1M > 0 {
-		missUsage = ai.Usage{CacheWrite: promptTokens}
-	}
-	cacheMissCost := price(model, missUsage)
-	warmCost := price(model, ai.Usage{CacheRead: promptTokens, Output: 1})
-	missCost := math.Max(0, cacheMissCost-cacheHitCost)
-	continuationProbability := 1.0
-	if run.phase == "idle" {
-		continuationProbability = idleContinuationProbability
-	}
-	expectedSavings := float64(continuationProbability*missCost) - warmCost
-	action := CacheWarmingActionStop
-	if expectedSavings >= cacheWarmingMinimumExpectedSavings {
-		action = CacheWarmingActionWarm
-	}
-	return CacheWarmingDecision{
-		Phase:                   run.phase,
-		WarmCost:                warmCost,
-		MissCost:                missCost,
-		ContinuationProbability: continuationProbability,
-		ExpectedSavings:         expectedSavings,
-		EconomicsAvailable:      promptTokens > 0 && (cacheHitCost > 0 || cacheMissCost > 0),
-		Action:                  action,
-	}
+	return ai.EvaluateCacheWarming(run.Model, lastPromptTokens(warmerBranch(w.sessionManager)), run.phase)
 }
 
 func formatDollars(value float64) string {
@@ -695,7 +575,7 @@ func formatCacheWarmingEconomics(decision CacheWarmingDecision) string {
 	if decision.Action == CacheWarmingActionWarm {
 		comparison = ">="
 	}
-	return fmt.Sprintf("%s, expected savings %s %s $%s", probabilityText, formatDollars(decision.ExpectedSavings), comparison, jsstring.ToFixed(cacheWarmingMinimumExpectedSavings, 3))
+	return fmt.Sprintf("%s, expected savings %s %s $%s", probabilityText, formatDollars(decision.ExpectedSavings), comparison, jsstring.ToFixed(ai.CacheWarmingMinimumExpectedSavings, 3))
 }
 
 func formatCacheWarmingDecisionTime(nextWarmAt, now int64) string {

@@ -22,7 +22,7 @@ type cacheWarmerOracleResult struct {
 	Replayable bool     `json:"replayable"`
 }
 
-// cache-warmer.ts getPromptCacheTtlMs and isReplayable: the lifetime a request's cache entry has from the model's
+// pi-ai cache-warming.ts getPromptCacheTtlMs and isCacheWarmingReplayable: the lifetime a request's cache entry has from the model's
 // promptCache tier for the retention the request used (an explicit cacheRetention beats PI_CACHE_RETENTION in the request
 // env, which beats the process environment; only the value "long" selects the long tier), and whether a one-token replay
 // leaves the entry untouched. Run against the pinned Pi with the process variable unset and set.
@@ -46,12 +46,12 @@ func TestCachePromptTTLAndReplayableMatchPi(t *testing.T) {
 	for _, processEnv := range []string{"", "long", "short", "other"} {
 		var want []cacheWarmerOracleResult
 		pioracle.Run(t, `
-const mod = await load("pi-coding-agent/core/cache-warmer.js");
+const mod = await load("pi-ai/cache-warming.js");
 emit(input.map((c) => {
 	const model = { api: c.api, promptCache: c.promptCache ?? undefined, compat: c.forceAdaptive === undefined || c.forceAdaptive === null ? undefined : { forceAdaptiveThinking: c.forceAdaptive } };
 	const options = { cacheRetention: c.cacheRetention || undefined, env: c.env ?? undefined, reasoning: c.reasoning || undefined };
 	const ttl = mod.getPromptCacheTtlMs(model, options);
-	return { ttl: ttl === undefined ? null : ttl, replayable: mod.isReplayable(model, options) };
+	return { ttl: ttl === undefined ? null : ttl, replayable: mod.isCacheWarmingReplayable(model, options) };
 }));`, cases, &want, "PI_CACHE_RETENTION="+processEnv)
 		t.Setenv("PI_CACHE_RETENTION", processEnv)
 		failures := 0
@@ -64,7 +64,7 @@ emit(input.map((c) => {
 				model.ProviderMeta.Compat = &ai.ModelCompat{ForceAdaptiveThinking: c.ForceAdaptive}
 			}
 			options := ai.StreamOptions{CacheRetention: ai.CacheRetention(c.CacheRetention), Env: ai.ProviderEnv(c.Env), Thinking: ai.ThinkingLevel(c.Reasoning)}
-			ttl, ok := GetPromptCacheTtlMs(model, options)
+			ttl, ok := ai.GetPromptCacheTtlMs(model, options)
 			gotTTL, wantTTL := "none", "none"
 			if ok {
 				gotTTL = fmt.Sprint(ttl)
@@ -72,9 +72,9 @@ emit(input.map((c) => {
 			if want[i].TTL != nil {
 				wantTTL = fmt.Sprint(*want[i].TTL)
 			}
-			if gotTTL != wantTTL || IsReplayable(model, options) != want[i].Replayable {
+			if gotTTL != wantTTL || ai.IsCacheWarmingReplayable(model, options) != want[i].Replayable {
 				if failures++; failures <= 8 {
-					t.Errorf("process env %q case %d %+v\n  Pig ttl %s replayable %t\n  Pi  ttl %s replayable %t", processEnv, i, c, gotTTL, IsReplayable(model, options), wantTTL, want[i].Replayable)
+					t.Errorf("process env %q case %d %+v\n  Pig ttl %s replayable %t\n  Pi  ttl %s replayable %t", processEnv, i, c, gotTTL, ai.IsCacheWarmingReplayable(model, options), wantTTL, want[i].Replayable)
 				}
 			}
 		}
@@ -84,17 +84,17 @@ emit(input.map((c) => {
 	}
 }
 
-// cache-warmer.ts getCacheWarmingDelayMs: refresh at 90% of the lifetime keeping ten seconds of margin; undefined for
+// pi-ai cache-warming.ts getCacheWarmingDelayMs: refresh at 90% of the lifetime keeping ten seconds of margin; undefined for
 // ten seconds or less. A lifetime comes from the promptCache seconds of a models.json (any number above zero), so very
 // large and fractional lifetimes reach it.
 func TestCacheWarmingDelayMatchesPi(t *testing.T) {
 	ttls := []float64{-5, 0, 1e-9, 1, 9_999, 10_000, 10_000.0000001, 10_001, 10_010, 11_111.1, 20_000.5, 99_999, 100_000, 300_000, 3_600_000, 86_400_000, 1e12, 9e15, 9.1e15, 1e18, 9.3e18, 1e19, 1e30, 1e300}
 	var want []*float64
 	pioracle.Run(t, `
-const mod = await load("pi-coding-agent/core/cache-warmer.js");
+const mod = await load("pi-ai/cache-warming.js");
 emit(input.map((ttl) => { const delay = mod.getCacheWarmingDelayMs(ttl); return delay === undefined ? null : delay; }));`, ttls, &want)
 	for i, ttl := range ttls {
-		got, ok := GetCacheWarmingDelayMs(ttl)
+		got, ok := ai.GetCacheWarmingDelayMs(ttl)
 		gotText, wantText := "none", "none"
 		if ok {
 			gotText = fmt.Sprint(got)
