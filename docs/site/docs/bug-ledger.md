@@ -783,6 +783,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6646adc](#bf-6646adc) | A durable transaction that settles a submission with a detail that is not strict JSON now counts as having… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-666acff](#bf-666acff) | Package filters, manifest `!`/`+`/`-` overrides, settings resource patterns and built-in extension overrides… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-666acff-2](#bf-666acff-2) | A pattern that Pi cannot compile now fails where Pi fails: a local Package keeps only the resource kinds… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-667d493](#bf-667d493) | On Windows, an edit or write waits for an earlier edit or write of the same file reached through a hard link… | PiG's own defect | Windows | Unreleased |
 | [BF-668b3fa](#bf-668b3fa) | Fix the shared attribute-order store case: advance the clock before flush and compare metric row names only | PiG's own defect | All platforms | Unreleased |
 | [BF-66b0fc0](#bf-66b0fc0) | The Anthropic workload-identity token endpoint check parses the base URL with the WHATWG parser, as the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-66beda3](#bf-66beda3) | `pig mcp login -l` and `pig mcp logout -l` no longer fail with `Unknown option --local.`, as `pig mcp add`… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
@@ -12527,6 +12528,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `311609427b` (2026-10-07), `49798a80d2` (2026-10-07), `630f56def0` (2026-10-07), `66bb7180b3` (2026-10-07), `947d0669ee` (2026-10-07), `965ef796b1` (2026-10-07), `a79de03e7f` (2026-10-07), `a7b6786111` (2026-10-07), `f235c0bcc5` (2026-10-07), `1cbb6b6fb2` (2026-10-09), `4401fa4630` (2026-10-09), `4cc5ef904b` (2026-10-09), `6584435bb6` (2026-10-09), `6e6b9132c2` (2026-10-09), `926f5d2e63` (2026-10-09), `9fa02166f5` (2026-10-09), `aff3d7266f` (2026-10-09), `d586d71f85` (2026-10-09), `ef007a4e5e` (2026-10-09), `6410ef49f6` (2026-10-10), `666acff687` (2026-10-10), `6edaafdfe2` (2026-10-10), `6f8d83861a` (2026-10-10), `c1055c449e` (2026-10-10), `fce99d43d7` (2026-10-10)
 - **Tests:** `ai/simple_options_test.go::TestBuildBaseOptions`, `coding/cli/cli_package_glob_test.go::TestCLIGitSourceRefreshesOncePerLoad`, `coding/cli/cli_package_glob_test.go::TestCLIPackageSourceGlobThrowFirstSourceWins`, `coding/cli/cli_package_glob_test.go::TestCLIPackageSourceGlobThrowFollowsPi`, `coding/cli/cli_package_glob_test.go::TestReloadSnapshotReportsCLIPackageGlobThrow`, `coding/cli/cli_package_glob_test.go::TestStartupStopsAtACLIPackageGlobThrow`, `coding/cli/resource_loader_gaps_upstream_test.go::TestPrintModeInvalidDiscoveredFileURLFailsBind`, `coding/cli/settings_file_url_upstream_test.go::TestNpmPackageManifestGlobThrowRejectsResolution` and 64 more in docs/bug-ledger.json
 - **Release note:** A pattern that Pi cannot compile now fails where Pi fails: a local Package keeps only the resource kinds collected before it, an npm or git Package (configured or `-e`) stops startup and `/reload` with the JavaScript error, and so does a settings pattern or an override on auto-discovered resources.
+
+### BF-667d493
+
+**On Windows, an edit or write waits for an earlier edit or write of the same file reached through a hard link…**
+
+- **Source:** PiG's own defect
+- **Symptom:** On Windows, an edit or write waits for an earlier edit or write of the same file reached through a hard link even when the queued file was replaced meanwhile (an atomic write): the queue keeps the identity of the file as it was when the mutation queued, not the one the path names when a later mutation is compared.
+- **Root cause:** Both stats are pinned with SameFile(info, info) when taken, as coding/cli lstatPinned does; a file whose identity cannot be read counts as missing. Pi has no identity rule (its key is realpath only), so the recorded divergence is unchanged.
+- **User impact:** Behavior differed from Pi
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `667d4938ce` (2026-11-10)
+- **Tests:** `internal/codingagent/tools/mutation_queue_identity_test.go::TestMutationQueueKeepsTheIdentityOfAFileReplacedWhileItsMutationIsQueued`
+- **Release note:** On Windows, an edit or write waits for an earlier edit or write of the same file reached through a hard link even when the queued file was replaced meanwhile (an atomic write): the queue keeps the identity of the file as it was when the mutation queued, not the one the path names when a later mutation is compared.
 
 ### BF-668b3fa
 
