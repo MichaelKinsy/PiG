@@ -4,13 +4,13 @@ package app
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
 	"sync"
 	"syscall"
 	"testing"
-	"time"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
@@ -21,7 +21,9 @@ import (
 // `answers before a worker kind's base is built; a worker start waits for its base` and `a closed start's late worker-base build
 // never touches the next start's directory`. Pi holds the worker base's build on a pipe the worker's entry imports; a Go worker's base
 // is a copy of its entry (D600), so the entry is the pipe (`exec.LookPath` accepts a pipe with its execute bit): the copy reads it
-// and waits until it is written, with the bytes of the program the worker runs.
+// and waits until it is written, with the bytes of the program the worker runs. The second test's close is the one whose context
+// ended: the Go close joins a build in flight (Pi's does not wait for it, a forced Go lifetime difference), so the old start's
+// data directory is free for the next start only once the close abandoned the build.
 
 // heldWorkerEntry is a named pipe that can be started, as a worker kind's entry.
 func heldWorkerEntry(t *testing.T) string {
@@ -121,19 +123,28 @@ func TestAppAClosedStartsLateWorkerBaseBuildNeverTouchesTheNextStartsDirectoryIt
 	plugins := map[string]map[string]string{"notes": notesPlugin}
 	pipe := heldWorkerEntry(t)
 	oldWorker, _ := heldWorker(t, pipe)
-	old := startUnbuilt(t, plugins, func(o *AppOptions) { o.Workers = []AppWorkerKind{oldWorker} })
+	draining := make(chan struct{})
+	old := startUnbuilt(t, plugins, func(o *AppOptions) {
+		o.Workers = []AppWorkerKind{oldWorker}
+		o.draining = func() { close(draining) }
+	})
 	// The old start's build reads the pipe (an open for writing succeeds now); it is held until the pipe is written.
 	writer := untilReading(t, pipe)
+	// Pi's close does not wait for the build; the Go close joins it, bounded by its context (a forced Go lifetime difference): the
+	// close whose context ended abandons the build, every step of it done (the data directory's lock released).
+	ctx, cancel := context.WithCancel(background)
+	defer cancel()
 	closed := make(chan error, 1)
-	go func() { closed <- old.app.Close(background) }()
+	go func() { closed <- old.app.Close(ctx) }()
 	select {
 	case err := <-closed:
-		if err != nil {
-			t.Fatal(err)
-		}
-	case <-time.After(30 * time.Second):
 		release(writer, program)
-		t.Fatal("the close waited for the worker base's build")
+		t.Fatalf("the close returned (%v) while the worker base's build was held: it did not wait for it", err)
+	case <-draining:
+	}
+	cancel()
+	if err := <-closed; !errors.Is(err, context.Canceled) {
+		t.Fatalf("close = %v, want the context's error", err)
 	}
 	// The next start of the data directory: its worker kind's base is written into cache/workers/project/.
 	next := startTestApp(t, nil, func(o *AppOptions) {
@@ -155,6 +166,7 @@ func TestAppAClosedStartsLateWorkerBaseBuildNeverTouchesTheNextStartsDirectoryIt
 	// The old start's build ends now: what it finishes after its close is dropped.
 	release(writer, program)
 	<-old.app.BasesBuilt()
+	<-old.app.BaseWatched()
 	after, err := os.Stat(copied)
 	if err != nil || !os.SameFile(before, after) {
 		t.Fatalf("the next start's copy after the old build ended: %v, %v, want the same file", after, err)
