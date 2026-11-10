@@ -58,3 +58,37 @@ func TestApplyLeavesAUserGOGC(t *testing.T) {
 		t.Fatalf("GC percent %d with GOGC=50 set, want 50", got)
 	}
 }
+
+// D175: the fallback does not wait on the runtime's cleanup goroutine. A cleanup runs when the sweeper reaches its span, and one
+// goroutine runs them all in turn, so a check armed as a cleanup could trail the collection that found the large heap by as long as
+// the cleanups ahead of it take. Here a cleanup is blocked before Apply and one collection finds more than FallbackLiveBytes live;
+// with no further collection the percent must still become DefaultPercent. A design that reads the live heap from a cleanup
+// leaves it at TargetPercent until the blocked cleanup returns.
+func TestApplyFallsBackWithoutACleanup(t *testing.T) {
+	unsetGOGC(t)
+	defer debug.SetGCPercent(debug.SetGCPercent(DefaultPercent))
+	started, release := make(chan struct{}), make(chan struct{})
+	type blocker struct{ _ [16]byte }
+	runtime.AddCleanup(new(blocker), func(struct{}) {
+		close(started)
+		<-release
+	}, struct{}{})
+	defer close(release)
+	runtime.GC()
+	select {
+	case <-started:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the blocking cleanup did not run after a collection")
+	}
+	Apply()
+	live := make([]byte, FallbackLiveBytes+16<<20)
+	runtime.GC() // The only collection after Apply: it finds the heap large.
+	deadline := time.Now().Add(5 * time.Second)
+	for gcPercent() != DefaultPercent {
+		if time.Now().After(deadline) {
+			t.Fatalf("GC percent %d, %d bytes live and one collection since Apply, want %d", gcPercent(), len(live), DefaultPercent)
+		}
+		time.Sleep(time.Millisecond)
+	}
+	runtime.KeepAlive(live)
+}
