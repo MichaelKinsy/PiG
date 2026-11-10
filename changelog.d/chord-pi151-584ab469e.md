@@ -1,4 +1,4 @@
 ### Fixed
 
-- The terminal sandbox starts when the temporary directory has a symlinked ancestor, including macOS's default temporary directory, without expanding its file permissions: the directory is resolved before the sandbox's one-script read grant names it, as Pi does. <!-- fix: a9ff67595 -->
-- An oversized WebSocket frame closes with code `1009` on both sides: the socket is left to finish its close handshake after the protocol error instead of being terminated (which reported `1006` and could discard the close frame), as Pi does. <!-- fix: 584ab469e -->
+- The terminal sandbox failed to start when the temporary directory had a symlinked ancestor, such as macOS's default temporary directory. It resolves the directory before starting, as Pi does; the sandbox's read access stays the one script. <!-- fix: a9ff67595 -->
+- A WebSocket that receives an oversized frame is left closing while its handlers run, as Pi's is, so the peer receives its 1009 close frame; the server side reports close code 1006, as Pi does. <!-- fix: 584ab469e, e35933ead2 -->
