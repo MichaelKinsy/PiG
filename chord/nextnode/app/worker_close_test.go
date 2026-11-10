@@ -22,7 +22,8 @@ func (s *recordingSender) Stop() { s.mu.Lock(); s.stops++; s.mu.Unlock() }
 // Pi worker.ts: the close is Promise.race([send(true), sleep(1 s)]); the final send queues behind a periodic send in flight and the
 // one bound covers both.
 func TestWorkerCloseBoundCoversAPeriodicSendStillInFlight(t *testing.T) {
-	ticked := make(chan struct{}) // a periodic send that never ends
+	ticked := make(chan struct{}) // a periodic send that ends only when the test does
+	t.Cleanup(func() { close(ticked) })
 	sender := &recordingSender{}
 	start := time.Now()
 	closeTelemetry(sender, ticked, 50*time.Millisecond)
