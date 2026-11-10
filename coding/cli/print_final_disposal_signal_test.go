@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
@@ -41,9 +42,10 @@ func TestPrintModeSignalDuringFinalDisposalWaitsForIt(t *testing.T) {
 		signals, want := tc.signals, tc.want
 		t.Run(tc.name, func(t *testing.T) {
 			report := filepath.Join(t.TempDir(), "report.txt")
+			agentDir := filepath.Join(t.TempDir(), "agent")
 			cmd := exec.Command(bin, "--model", "test-faux/faux-1", "--no-session", "--no-extensions", "-e", fixture, "--print", "What is 20+22?")
 			cmd.Dir = t.TempDir()
-			cmd.Env = append(os.Environ(), "PIG_HOME="+t.TempDir(), "PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic",
+			cmd.Env = append(os.Environ(), "PIG_HOME="+t.TempDir(), "PIG_CODING_AGENT_DIR="+agentDir, "PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic",
 				"RPC_SHUTDOWN_REPORT="+report, "RPC_SHUTDOWN_SLOW=2500", "RPC_SHUTDOWN_RECORD_DONE=1")
 			cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 			if err := cmd.Start(); err != nil {
@@ -63,43 +65,53 @@ func TestPrintModeSignalDuringFinalDisposalWaitsForIt(t *testing.T) {
 				}
 				time.Sleep(20 * time.Millisecond)
 			}
-			began := time.Now()
 			for i, sig := range signals {
 				if i > 0 {
-					// Signals that arrive before the first is taken off the queue coalesce into one.
-					time.Sleep(100 * time.Millisecond)
+					// A signal the process has not yet taken in coalesces with the next one of its kind, so the repeat waits for the exit.log line the first one writes once the process has received it.
+					awaitExitLogLine(t, agentDir, "received "+codingagent.SignalName(signals[0]), waited)
 				}
 				if err := cmd.Process.Signal(sig); err != nil {
 					t.Fatal(err)
 				}
 			}
+			var err error
 			select {
-			case err := <-waited:
-				if len(signals) == 1 {
-					t.Fatalf("process ended (%v) before the final disposal finished", err)
-				}
-				if exit, ok := errors.AsType[*exec.ExitError](err); !ok || exit.ExitCode() != want {
-					t.Fatalf("wait = %v, want exit status %d", err, want)
-				}
-				if took := time.Since(began); took > 2*time.Second {
-					t.Fatalf("exit took %s, want it before the 2.5 s handler ended", took)
-				}
-				if data, _ := os.ReadFile(report); slices.Contains(strings.Fields(string(data)), "session_shutdown:done") {
-					t.Fatalf("report = %q, want the handler cut off", data)
-				}
-			case <-time.After(700 * time.Millisecond):
-				if len(signals) == 2 {
-					t.Fatalf("a repeated %v did not exit at once", signals[1])
-				}
-				err := <-waited
-				if exit, ok := errors.AsType[*exec.ExitError](err); !ok || exit.ExitCode() != want {
-					t.Fatalf("wait = %v, want exit status %d after the disposal", err, want)
-				}
-				if data, _ := os.ReadFile(report); !slices.Contains(strings.Fields(string(data)), "session_shutdown:done") {
-					t.Fatalf("report = %q, want the handler to run to its end", data)
-				}
+			case err = <-waited:
+			case <-time.After(testbudget.Wait(t)):
+				t.Fatalf("the process did not end after %v", signals)
+			}
+			if exit, ok := errors.AsType[*exec.ExitError](err); !ok || exit.ExitCode() != want {
+				t.Fatalf("wait = %v, want exit status %d", err, want)
+			}
+			// The handler records "session_shutdown:done" 2.5 s after it started and before the process can exit on its own, so the report tells whether the exit waited for the disposal (one signal) or cut it off (a repeat).
+			done := false
+			if data, _ := os.ReadFile(report); slices.Contains(strings.Fields(string(data)), "session_shutdown:done") {
+				done = true
+			}
+			if wantDone := len(signals) == 1; done != wantDone {
+				t.Fatalf("session_shutdown ran to its end = %v, want %v after %v", done, wantDone, signals)
 			}
 		})
+	}
+}
+
+// awaitExitLogLine waits until exit.log holds a line with want: the process has taken that signal in. It stops early when the process has ended.
+func awaitExitLogLine(t *testing.T, agentDir, want string, waited <-chan error) {
+	t.Helper()
+	deadline := time.Now().Add(testbudget.Wait(t))
+	for {
+		if data, _ := os.ReadFile(codingagent.ExitLogPath(agentDir)); strings.Contains(string(data), want) {
+			return
+		}
+		select {
+		case err := <-waited:
+			t.Fatalf("process ended (%v) before exit.log said %q", err, want)
+		default:
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("exit.log never said %q", want)
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 }
 
@@ -114,9 +126,10 @@ func TestPrintModeRepeatedSignalAfterStdoutFailureExitsAtOnce(t *testing.T) {
 		t.Fatal(err)
 	}
 	report := filepath.Join(t.TempDir(), "report.txt")
+	agentDir := filepath.Join(t.TempDir(), "agent")
 	cmd := exec.Command(bin, "--mode", "json", "--model", "test-faux/faux-1", "--no-session", "--no-extensions", "-e", fixture, "--print", "What is 20+22?")
 	cmd.Dir = t.TempDir()
-	cmd.Env = append(os.Environ(), "PIG_HOME="+t.TempDir(), "PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic",
+	cmd.Env = append(os.Environ(), "PIG_HOME="+t.TempDir(), "PIG_CODING_AGENT_DIR="+agentDir, "PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic",
 		"RPC_SHUTDOWN_REPORT="+report, "RPC_SHUTDOWN_SLOW=2500", "RPC_SHUTDOWN_RECORD_DONE=1")
 	// Every write to /dev/full fails with ENOSPC; a closed pipe would end the process with SIGPIPE instead.
 	full, err := os.OpenFile("/dev/full", os.O_WRONLY, 0)
@@ -148,10 +161,9 @@ func TestPrintModeRepeatedSignalAfterStdoutFailureExitsAtOnce(t *testing.T) {
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
-	began := time.Now()
 	for i := range 2 {
 		if i > 0 {
-			time.Sleep(100 * time.Millisecond)
+			awaitExitLogLine(t, agentDir, "received SIGTERM", waited)
 		}
 		if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
 			t.Fatal(err)
@@ -162,8 +174,8 @@ func TestPrintModeRepeatedSignalAfterStdoutFailureExitsAtOnce(t *testing.T) {
 		if exit, ok := errors.AsType[*exec.ExitError](err); !ok || exit.ExitCode() != 143 {
 			t.Fatalf("wait = %v, want exit status 143", err)
 		}
-		if took := time.Since(began); took > 2*time.Second {
-			t.Fatalf("exit took %s, want it before the 2.5 s handler ended", took)
+		if data, _ := os.ReadFile(report); slices.Contains(strings.Fields(string(data)), "session_shutdown:done") {
+			t.Fatalf("report = %q, want the handler cut off", data)
 		}
 	case <-time.After(testbudget.Wait(t)):
 		t.Fatal("a repeated SIGTERM did not exit at once")
