@@ -60,26 +60,31 @@ func TestApplyLeavesAUserGOGC(t *testing.T) {
 	}
 }
 
-// D175: the fallback does not wait on the runtime's cleanup goroutine. A cleanup runs when the sweeper reaches its span, and one
-// goroutine runs them all in turn, so a check armed as a cleanup could trail the collection that found the large heap by as long as
-// the cleanups ahead of it take. Here a cleanup is blocked before Apply and one collection finds more than FallbackLiveBytes live;
-// with no further collection the percent must still become DefaultPercent. A design that reads the live heap from a cleanup
-// leaves it at TargetPercent until the blocked cleanup returns.
+// D175: the fallback does not wait on the runtime's cleanup goroutines. A cleanup runs when the sweeper reaches its span, on one of at
+// most max(GOMAXPROCS/4, 1) goroutines that run the queued cleanups in turn (runtime/mcleanup.go), so a check armed as a cleanup could
+// trail the collection that found the large heap by as long as the cleanups ahead of it take. Here every cleanup goroutine is
+// blocked before Apply and one collection finds more than FallbackLiveBytes live; with no further collection the percent must still
+// become DefaultPercent. A design that reads the live heap from a cleanup leaves it at TargetPercent until a blocked cleanup returns.
 func TestApplyFallsBackWithoutACleanup(t *testing.T) {
 	unsetGOGC(t)
 	defer debug.SetGCPercent(debug.SetGCPercent(DefaultPercent))
+	blocked := max(runtime.GOMAXPROCS(0)/4, 1)
 	started, release := make(chan struct{}), make(chan struct{})
-	type blocker struct{ _ [16]byte }
-	runtime.AddCleanup(new(blocker), func(struct{}) {
-		close(started)
-		<-release
-	}, struct{}{})
 	defer close(release)
-	runtime.GC()
-	select {
-	case <-started:
-	case <-time.After(10 * time.Second):
-		t.Fatal("the blocking cleanup did not run after a collection")
+	type blocker struct{ _ [16]byte }
+	// One collection per cleanup: cleanups queued together share a block that one goroutine runs in turn, while each collection's
+	// cleanup finds the goroutines already blocked and makes the runtime start another, up to its limit.
+	for range blocked {
+		runtime.AddCleanup(new(blocker), func(struct{}) {
+			started <- struct{}{}
+			<-release
+		}, struct{}{})
+		runtime.GC()
+		select {
+		case <-started:
+		case <-time.After(10 * time.Second):
+			t.Fatalf("a blocking cleanup did not run after a collection with %d cleanup goroutines to block", blocked)
+		}
 	}
 	defer Apply()()
 	live := make([]byte, FallbackLiveBytes+16<<20)
