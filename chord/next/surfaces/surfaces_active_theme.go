@@ -2,6 +2,7 @@ package surfaces
 
 import (
 	"context"
+	"slices"
 	"sync"
 	"sync/atomic"
 
@@ -53,14 +54,17 @@ func FollowActiveTheme(h host.Host, mode string, changed func(Theme), ctx contex
 	var stopsMu sync.Mutex
 	var stops []func()
 	addStop := func(stop func()) { stopsMu.Lock(); stops = append(stops, stop); stopsMu.Unlock() }
+	// stopAll stops the follower, holding no lock while it runs the stops: a stop enters the host's loop, and the pick watch's
+	// start (a microtask of that loop) takes stopsMu to add its own.
 	stopAll := func() {
 		gate.Lock()
 		stopped.Store(true)
 		gate.Unlock()
 		cancel()
 		stopsMu.Lock()
-		defer stopsMu.Unlock()
-		for _, stop := range stops {
+		running := slices.Clone(stops)
+		stopsMu.Unlock()
+		for _, stop := range running {
 			stop()
 		}
 	}
@@ -94,11 +98,11 @@ func FollowActiveTheme(h host.Host, mode string, changed func(Theme), ctx contex
 		return nil, err
 	}
 	addStop(choice.Release)
-	//portlint:allow asyncorder active-theme.ts:44 `choice.pick.watch(ctx).then(start, () => {})` is not awaited: the pick follows once its hold binds, and the stop gate (gate, stopped) orders it against Stop
-	go func() {
-		watch, err := choice.Member("pick").Watch(ctx)
+	// The pick follows once its hold binds, from the microtask that opens its watch in the turn that binds the hold (Pi:
+	// `choice.pick.watch(ctx).then(start, () => {})`, not awaited): a change of the pick after the bind is a frame of the
+	// watch. The hold ending (the follower stopped) before its first value is no error.
+	choice.Member("pick").WatchThen(ctx, func(watch chord.WatchHandle[delta.JsonValue], err error) {
 		if err != nil {
-			// The hold ended (the follower stopped) before its first value.
 			return
 		}
 		gate.Lock()
@@ -123,7 +127,7 @@ func FollowActiveTheme(h host.Host, mode string, changed func(Theme), ctx contex
 				return nil
 			})
 		})
-	}()
+	})
 	return &ThemeFollower{
 		SetMode: func(next string) {
 			mu.Lock()

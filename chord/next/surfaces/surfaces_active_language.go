@@ -3,6 +3,7 @@ package surfaces
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sync"
 	"sync/atomic"
 
@@ -74,13 +75,19 @@ func FollowActiveLanguage(h host.Host, preferred []string, changed func(*Languag
 	var stops []func()
 	var stopsMu sync.Mutex
 	addStop := func(stop func()) { stopsMu.Lock(); stops = append(stops, stop); stopsMu.Unlock() }
-	fail := func(err error) (*LanguageFollower, error) {
-		cancel()
+	// stopAll runs the stops added so far, holding no lock: a stop enters the host's loop, and the pick watch's start (a
+	// microtask of that loop) takes stopsMu to add its own.
+	stopAll := func() {
 		stopsMu.Lock()
-		for _, stop := range stops {
+		running := slices.Clone(stops)
+		stopsMu.Unlock()
+		for _, stop := range running {
 			stop()
 		}
-		stopsMu.Unlock()
+	}
+	fail := func(err error) (*LanguageFollower, error) {
+		cancel()
+		stopAll()
 		return nil, err
 	}
 
@@ -112,10 +119,10 @@ func FollowActiveLanguage(h host.Host, preferred []string, changed func(*Languag
 		return fail(err)
 	}
 	addStop(choice.Release)
-	// The pick follows once its hold binds; the hold ending (the follower stopped) before its first value is no error.
-	//portlint:allow asyncorder active-language.ts:58 `choice.pick.watch(ctx).then(start, () => {})` is not awaited: the pick follows once its hold binds, and the stop gate (gate, stopped) orders it against Stop
-	go func() {
-		watch, err := choice.Member("pick").Watch(ctx)
+	// The pick follows once its hold binds, from the microtask that opens its watch in the turn that binds the hold (Pi:
+	// `choice.pick.watch(ctx).then(start, () => {})`, not awaited): a change of the pick after the bind is a frame of the
+	// watch. The hold ending (the follower stopped) before its first value is no error.
+	choice.Member("pick").WatchThen(ctx, func(watch chord.WatchHandle[delta.JsonValue], err error) {
 		if err != nil {
 			return
 		}
@@ -145,7 +152,7 @@ func FollowActiveLanguage(h host.Host, preferred []string, changed func(*Languag
 				return nil
 			})
 		})
-	}()
+	})
 	return &LanguageFollower{
 		SetDevice: func(next []string) {
 			mu.Lock()
@@ -158,11 +165,7 @@ func FollowActiveLanguage(h host.Host, preferred []string, changed func(*Languag
 			stopped.Store(true)
 			gate.Unlock()
 			cancel()
-			stopsMu.Lock()
-			defer stopsMu.Unlock()
-			for _, stop := range stops {
-				stop()
-			}
+			stopAll()
 		},
 	}, nil
 }
