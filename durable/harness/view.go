@@ -14,6 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/internal/detach"
 	"github.com/MichaelKinsy/PiG/durable/session"
+	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
@@ -116,6 +117,14 @@ func (docs *ViewDocs) UnmarshalJSON(data []byte) error {
 	object := delta.NewJsonObject(0)
 	if err := jsstring.UnmarshalKeepingSurrogates(data, object); err != nil {
 		return err
+	}
+	if jsstring.HasSurrogateEscape(data) {
+		// Chord's object decoder reads the escape of a lone surrogate as U+FFFD; the text is read again as JSON.parse reads it.
+		value, err := chordjson.DecodeUnquoting(data, func(raw []byte, text *string) error { return jsstring.UnmarshalKeepingSurrogates(raw, text) })
+		if err != nil {
+			return err
+		}
+		object = value.(*delta.JsonObject)
 	}
 	for kind, value := range object.All() {
 		if _, isObject := value.(durable.JsonObject); !isObject {
