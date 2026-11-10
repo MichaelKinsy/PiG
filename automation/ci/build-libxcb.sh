@@ -17,9 +17,20 @@ if [[ ! -f "${prefix}/lib/pkgconfig/xcb.pc" ]]; then
   curl --fail --silent --show-error --location --retry 5 --retry-all-errors --output "${work}/libxcb.tar.xz" "${url}"
   echo "${sha256}  ${work}/libxcb.tar.xz" | sha256sum --check --status || { echo "build-libxcb: checksum mismatch for ${url}" >&2; exit 1; }
   tar -xJf "${work}/libxcb.tar.xz" -C "${work}"
+  # libxcb generates its sources with xcb-proto's xcbgen module, so configure needs a python that imports it. The python3
+  # first in PATH need not be one (actions/setup-python puts its own first, and apt installs xcbgen for /usr/bin/python3
+  # only); xcb-proto.pc's pythondir does not help, as Ubuntu's names a directory apt does not install to.
+  python=""
+  for candidate in "$(command -v python3 || true)" /usr/bin/python3; do
+    if [[ -n "${candidate}" ]] && "${candidate}" -c 'import xcbgen' 2>/dev/null; then
+      python="${candidate}"
+      break
+    fi
+  done
+  [[ -n "${python}" ]] || { echo "build-libxcb: no python3 imports xcb-proto's xcbgen; install xcb-proto and python3-xcbgen" >&2; exit 1; }
   (
     cd "${work}/libxcb-${version}"
-    ./configure --prefix="${prefix}" --disable-static --disable-devel-docs --without-doxygen >"${work}/configure.log" 2>&1 || { tail -30 "${work}/configure.log" >&2; exit 1; }
+    ./configure PYTHON="${python}" --prefix="${prefix}" --disable-static --disable-devel-docs --without-doxygen >"${work}/configure.log" 2>&1 || { tail -30 "${work}/configure.log" >&2; exit 1; }
     make -j"$(nproc)" >"${work}/make.log" 2>&1 || { tail -30 "${work}/make.log" >&2; exit 1; }
     make install >>"${work}/make.log" 2>&1 || { tail -30 "${work}/make.log" >&2; exit 1; }
   )
