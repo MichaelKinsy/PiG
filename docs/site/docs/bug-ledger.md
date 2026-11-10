@@ -106,6 +106,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-0ce459e](#bf-0ce459e) | `/login` offers a provider object's own login methods (Pi's `registerNativeProvider`, the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0d0a3ef](#bf-0d0a3ef) | A turn through OpenRouter (Chat Completions or Anthropic Messages) now reports the cost OpenRouter billed… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0d13b01](#bf-0d13b01) | `SettingsManager.getTransport` and fifteen sibling getters (settings-manager.ts: getSteeringMode… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-0d13d8e](#bf-0d13d8e) | Windows: a missing Anthropic identity token file reports Pi's message, "Failed to read identity token file at… | PiG's own defect | Windows | Unreleased |
 | [BF-0d1c973](#bf-0d1c973) | `tui.Box` no longer invalidates its children when a child is added or removed or the box is cleared | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0d55b30](#bf-0d55b30) | A panicking notify while MCP reports startup problems is shown as "MCP failed to load" instead of ending the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0d55b30-2](#bf-0d55b30-2) | The Python SDK reports a component whose `set_invalidate(None)` raises during cleanup in the extension log… | PiG's own defect | All platforms | 0.5.0 |
@@ -3180,6 +3181,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Commit that wrote the release note (the fix commit is not identified):** `0d13b01176` (2026-10-10)
 - **Tests:** `internal/codingagent/settings_getters_oracle_test.go::TestSettingsManagerGettersMatchPi`
 - **Release note:** `SettingsManager.getTransport` and fifteen sibling getters (settings-manager.ts: getSteeringMode, getFollowUpMode, getDefaultThinkingLevel, getTheme, getDefaultProvider, getDefaultModel, getHideThinkingBlock, getCompactionEnabled, getImageAutoResize, getBlockImages, getShowImages, getEditorPaddingX, getAutocompleteMaxVisible, getCodeBlockIndent, getEnableSkillCommands): new live-Pi oracle `TestSettingsManagerGettersMatchPi` (`internal/codingagent/settings_getters_oracle_test.go`, 1,500 global/project file pairs setting, omitting or conflicting on each key, nested objects merged one level) compares every getter's value, defaults included, with Pi's. No bug found. 8 mutations red (transport/steering/follow-up defaults, showImages default, compaction/blockImages/hideThinking inversions, editorPaddingX). Not compared: environment-reading getters (hardware cursor, clear on shrink), wrong-typed values and fractional numbers (Settings is typed), and a codeBlockIndent of "" (Go's string cannot tell "" from absent, so GetCodeBlockIndent returns the default where Pi keeps ""). Closes the flip:c2cc995c row (`SettingsManager.GetTransport`) at v1.1.0.
+
+### BF-0d13d8e
+
+**Windows: a missing Anthropic identity token file reports Pi's message, "Failed to read identity token file at…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Windows: a missing Anthropic identity token file reports Pi's message, "Failed to read identity token file at <path>: Error: ENOENT: no such file or directory, open '<path>'", without Windows' own wording ("The system cannot find the file specified.") appended after it.
+- **Root cause:** Pi interpolates the fs error into the message ("Failed to read identity token file at <path>: Error: ENOENT: ..., open <path>") and an fs error has no cause, so withCauseDetail appends nothing. The Go walk descended into the error behind nodeerrno.FSError and appended its platform text: on Linux "no such file or directory" is already in Node's message and was dropped, on Windows "The system cannot find the file specified." is not, and TestAnthropicFederationExchangeErrors failed on every Windows run.
+- **User impact:** An operation failed or was rejected
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `0d13d8e6cb` (2026-11-09)
+- **Tests:** `ai/anthropic_federation_sdk_upstream_test.go::TestAnthropicFederationExchangeErrors`, `ai/error_cause_fserror_test.go::TestWithCauseDetailEndsAtANodeFSError`
+- **Release note:** Windows: a missing Anthropic identity token file reports Pi's message, "Failed to read identity token file at <path>: Error: ENOENT: no such file or directory, open '<path>'", without Windows' own wording ("The system cannot find the file specified.") appended after it.
 
 ### BF-0d1c973
 

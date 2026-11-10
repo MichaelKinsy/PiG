@@ -99421,7 +99421,9 @@
         "call:ai/errors.go#WithCauseDetail"
       ],
       "evidence": [
-        "test:ai/error_body_cause_upstream_test.go#TestConnectionErrorCauseDetailUpstream"
+        "test:ai/error_body_cause_upstream_test.go#TestConnectionErrorCauseDetailUpstream",
+        "test:ai/error_cause_fserror_test.go#TestWithCauseDetailEndsAtANodeFSError",
+        "test:ai/error_cause_fserror_test.go#TestWithCauseDetailOfAWindowsPathErrorReadsAsNode"
       ]
     },
     {
@@ -99441,7 +99443,9 @@
         "call:ai/errors.go#WithCauseDetail"
       ],
       "evidence": [
-        "test:ai/error_body_cause_upstream_test.go#TestConnectionErrorCauseDetailUpstream"
+        "test:ai/error_body_cause_upstream_test.go#TestConnectionErrorCauseDetailUpstream",
+        "test:ai/error_cause_fserror_test.go#TestWithCauseDetailEndsAtANodeFSError",
+        "test:ai/error_cause_fserror_test.go#TestWithCauseDetailOfAWindowsPathErrorReadsAsNode"
       ]
     },
     {

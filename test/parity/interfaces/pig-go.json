@@ -51366,6 +51366,17 @@
       "shapeHash": "sha256:1bb9c984db81d4e0dfe410c3e304f1b7b58d78960dbc4e0d77f7db999c51e1f4"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#nodeCause",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "nodeCause",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(err error) error"
+      },
+      "shapeHash": "sha256:757366f347b77fab18c96d624ec5206676e19d18aa9ceb4a88a9343171f303d5"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#nodeConnectionFailure",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "nodeConnectionFailure",

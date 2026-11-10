@@ -2359,6 +2359,29 @@
       ]
     },
     {
+      "id": "BF-0d13d8e",
+      "title": "Windows: a missing Anthropic identity token file reports Pi's message, \"Failed to read identity token file at…",
+      "symptom": "Windows: a missing Anthropic identity token file reports Pi's message, \"Failed to read identity token file at \u003cpath\u003e: Error: ENOENT: no such file or directory, open '\u003cpath\u003e'\", without Windows' own wording (\"The system cannot find the file specified.\") appended after it.",
+      "rootCause": "Pi interpolates the fs error into the message (\"Failed to read identity token file at \u003cpath\u003e: Error: ENOENT: ..., open \u003cpath\u003e\") and an fs error has no cause, so withCauseDetail appends nothing. The Go walk descended into the error behind nodeerrno.FSError and appended its platform text: on Linux \"no such file or directory\" is already in Node's message and was dropped, on Windows \"The system cannot find the file specified.\" is not, and TestAnthropicFederationExchangeErrors failed on every Windows run.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Windows: a missing Anthropic identity token file reports Pi's message, \"Failed to read identity token file at \u003cpath\u003e: Error: ENOENT: no such file or directory, open '\u003cpath\u003e'\", without Windows' own wording (\"The system cannot find the file specified.\") appended after it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0d13d8e6cb",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "ai/anthropic_federation_sdk_upstream_test.go::TestAnthropicFederationExchangeErrors",
+        "ai/error_cause_fserror_test.go::TestWithCauseDetailEndsAtANodeFSError"
+      ]
+    },
+    {
       "id": "BF-0d1c973",
       "title": "`tui.Box` no longer invalidates its children when a child is added or removed or the box is cleared",
       "symptom": "`tui.Box` no longer invalidates its children when a child is added or removed or the box is cleared.",
