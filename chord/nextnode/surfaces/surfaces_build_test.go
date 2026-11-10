@@ -98,6 +98,9 @@ func TestOneSharedBuildBuildsOnceForEveryWaiterTheScriptsObjectShowsAnEmptySetBe
 	wg.Go(func() { first = f.building.build() })
 	wg.Go(func() { second = f.building.build() })
 	wg.Wait()
+	if first.Kind != SurfaceBuiltKindBuilt {
+		t.Fatalf("kind = %q, want built", first.Kind)
+	}
 	if first.Err != nil || second.Base != first.Base || len(second.Inputs) != len(first.Inputs) {
 		t.Fatalf("builds = %+v, %+v, want one", first, second)
 	}
@@ -126,7 +129,7 @@ func TestAFailedBuildAnswers503ForTheSurfacesFilesAndFailsItsStepsHost(t *testin
 	if err != nil || response.Kind != http.KindError || response.Status != 503 {
 		t.Fatalf("file = %+v, %v, want 503", response, err)
 	}
-	if outcome := f.building.build(); outcome.Err == nil || !strings.Contains(outcome.Err.Error(), `Unexpected ";"`) {
+	if outcome := f.building.build(); outcome.Kind != SurfaceBuiltKindFailed || outcome.Err == nil || !strings.Contains(outcome.Err.Error(), `Unexpected ";"`) {
 		t.Fatalf("build = %+v, want esbuild's error", outcome)
 	}
 	built, err := f.plugins.Build(nil, chordctx.Background())
