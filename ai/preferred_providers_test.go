@@ -1,5 +1,7 @@
 package ai
 
+// pi: packages/coding-agent/src/core/preferred-providers.ts
+
 import "testing"
 
 // Port of coding-agent test/preferred-providers.test.ts "isPreferredProvider".

@@ -184,7 +184,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/ai/src/auth/oauth/radius.ts` | `ai/oauth_radius.go (ai/oauth_radius_test.go)` | ✅ |
 | `packages/ai/src/auth/oauth/trusted-url.ts` | `ai/oauth_trusted_url.go trustedHTTPURL (shared by ai/githubcopilot.go via ai/copilot_verification_uri.go, ai/oauth_kimi.go, ai/oauth_meta.go and ai/oauth_radius.go; ai/trusted_url_oracle_test.go compares it with Pi's trustedHttpUrl over the verification-URI corpus)` | ✅ |
 | `packages/ai/src/auth/oauth/xai.ts` | `ai/oauth_xai.go (device-code login, polling, refresh, response validation, and owner-context cancellation; ai/oauth_xai_test.go including LoginContext/RefreshTokenContext cancellation, coding/cli/model_oauth_refresh_test.go caller cancellation, oauth/09 behavioral scenario)` | ✅ |
-| `packages/ai/src/cache-warming.ts` | `ai/cache_warming.go (the shared cache-warming policy: delay, prompt-cache TTL, replayability, EvaluateCacheWarming)` | ✅ |
+| `packages/ai/src/cache-warming.ts` | `ai/cache_warming.go (the shared cache-warming policy: delay, prompt-cache TTL, replayability, EvaluateCacheWarming)`, `coding/extension/cache_warming.go` (CacheWarmingDecisionEvent, the decision an extension sees) | ✅ |
 | `packages/ai/src/bun-oauth.ts` | `(Bun-only OAuth flow registration; Go links OAuth implementations directly)` | n/a |
 | `packages/ai/src/compat.ts` | `ai/compat.go`, `ai/builtin_providers.go`, `ai/registry.go`, `ai/faux.go` | ✅ |
 | `packages/ai/src/compat/extension-oauth-types.ts` | `ai/oauth_types.go (type-only legacy OAuth callback and prompt contracts; runtime OAuth behavior belongs to the auth/provider rows; the file re-exports OAuthCredentials, whose JSON member order and tags are the observable wire contract, so the red-proof mutants edit that credential shape in ai/oauth_types.go)` | ✅ |
@@ -961,12 +961,12 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/node/workers/lock.ts` | `chord/nextnode/workers/workers_lock.go, workers_lock_unix.go` (the Windows named-pipe variant workers_lock_windows is built only on Windows and is run by the native Windows CI job) | ✅ |
 | `packages/chord/src/node/workers/main.ts` | `chord/nextnode/workers/workers_main.go` | ✅ |
 | `packages/chord/src/node/workers/process.ts` | `chord/nextnode/workers/workers_process.go, workers_process_unix.go, workers_channel.go, workers_channel_unix.go` (the Windows variants workers_process_windows and workers_channel_windows are built only on Windows and are run by the native Windows CI job) | ✅ |
-| `packages/chord/src/node/workers/workers.ts` | `chord/nextnode/workers/workers_workers.go` | ✅ |
+| `packages/chord/src/node/workers/workers.ts` | `chord/nextnode/workers/workers_workers.go` Missing: two interface-ledger rows are pending (interface-gaps baseline). WorkersBuilt: Pi's the built-or-failed union is observable through `built.kind` (workers.ts:103-105, 259-260), and Go's WorkersBuilt carries Inputs and Err with no Kind discriminator field and no constants for "built" and "failed" (rule U5); each needs a Kind field set by Build and a case that asserts it. WorkersOptions: `compileCache` (workers.ts:48, Node's NODE_COMPILE_CACHE for forked workers) has no Go field (rule T12); a Go worker is the program's own executable (D600), so the member is designed out, but the ledger has no way to record a designed-out member of an alias row that has no property rows, so the row needs either that mechanism or a field. | 🟡 |
 | `packages/chord/src/host/old-work.ts` | `chord/next/host/host_old_work.go` | ✅ |
 | `packages/chord/src/host/readiness.ts` | `chord/next/host/host_readiness.go` | ✅ |
 | `packages/chord/src/host/reload-cycle.ts` | `chord/next/host/host_reload_cycle.go` | ✅ |
 | `packages/chord/src/host/unbound-clock.ts` | `chord/next/host/host_unbound_clock.go` | ✅ |
-| `packages/chord/src/node/app/app.ts` | `chord/nextnode/app/app.go` | ✅ |
+| `packages/chord/src/node/app/app.ts` | `chord/nextnode/app/app.go`, `chord/nextnode/app/app_bases.go` (App.BasesBuilt and App.BaseWatched) | ✅ |
 | `packages/chord/src/node/app/archive.ts` | `chord/nextnode/app/archive.go` | ✅ |
 | `packages/chord/src/node/app/blobs.ts` | `chord/nextnode/app/blobs.go` | ✅ |
 | `packages/chord/src/node/app/data.ts` | `chord/nextnode/app/data.go, host_data.mjs` | ✅ |
