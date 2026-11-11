@@ -1430,6 +1430,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-b4e83db](#bf-b4e83db) | Anthropic tools list `eager_input_streaming` and `strict` before `input_schema`, and the input schema and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b4f1d4a](#bf-b4f1d4a) | Pasting a large text that arrives in many terminal reads no longer stalls input: the paste is joined once… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b50a5ab](#bf-b50a5ab) | A telemetry span of a failed provider request kept a 500-character cut of the provider's error message that… | PiG's own defect | All platforms | Unreleased |
+| [BF-b5115ae](#bf-b5115ae) | A worker that crashed while a script waited on it is restarted for its holders even under load: the workers… | PiG's own defect | All platforms | Unreleased |
 | [BF-b54f9aa](#bf-b54f9aa) | The tree selector label time of a session entry whose timestamp is not a valid date prints "aN/NaN/NaN… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b59b9db](#bf-b59b9db) | fix(durable/core): a Session-mode read that stored held changes answers when the Storage settles the commit… | PiG's own defect | All platforms | Unreleased |
 | [BF-b5b7b43](#bf-b5b7b43) | Frontmatter YAML parsing matches the `yaml` library on text outside ASCII and on unterminated quotes: an… | PiG's own defect | All platforms | 0.5.0 |
@@ -21553,6 +21554,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `b50a5abb5c` (2026-11-08)
 - **Tests:** `ai/streaming_json_parser_cost_test.go::TestToolCallArgumentsStreamIsCollectedOnceTheCallerDropsIt`, `ai/streaming_tool_arguments_upstream_test.go::TestStreamingToolArgumentsReleaseTheStreamAndItsPartialMessagesOnceTheCallerDropsThem`, `ai/telemetry_upstream_test.go::TestAITelemetryKeepsABoundedErrorMessageThatDoesNotHoldTheProvidersWholeMessageAliveUpstream`, `codemode/sandbox_test.go::TestWorkerHostAcceptsAModuleFromAFilePath`, `codemode/sandbox_test.go::TestWorkerHostReportsAMissingModuleFileAsASandboxError`, `internal/codingagent/configschema/references_test.go::TestModelsConfigurationReferenceMatchesTheCommittedPage`, `internal/codingagent/configschema/references_test.go::TestModelsConfigurationReferenceMatchesThePinnedPiPage`, `internal/codingagent/configschema/references_test.go::TestReferencesRenderTheModelsConfigurationPageOnly` and 2 more in docs/bug-ledger.json
 - **Release note:** A telemetry span of a failed provider request kept a 500-character cut of the provider's error message that still pointed into the whole message, so a 4 MB error body stayed in memory for as long as the recorded span did. The cut is copied now.
+
+### BF-b5115ae
+
+**A worker that crashed while a script waited on it is restarted for its holders even under load: the workers…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A worker that crashed while a script waited on it is restarted for its holders even under load: the workers component released the next queued operation of an address (the Stop and the Retry after it that follow a crash) when a start settled, before the route applied the start's result, so the Retry found the address still resolving, did nothing, and the failure the route then recorded stayed until the next retry (a Code Mode script resumed after its worker was killed could wait for ever).
+- **Root cause:** Pi: workers.ts #enqueue registers the bookkeeping reaction on a start's promise before the route's await of it, and the next operation of the address (the Stop and the Retry after it that p2 makes for a crashed worker) is a reaction on the promise that bookkeeping settles, so route.ts #resolve's continuation has applied the result (resolving cleared, the failure recorded) before it. The Go route applies the result in a section after the goroutine of Resolve returned, and the queue released the next operation at the settle: under load the Retry entered the host loop first, found the address resolving, did nothing, and the failure the section then recorded stayed (holders failed until the…
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `b5115ae25a` (2026-11-11)
+- **Tests:** `chord/next/host/host_route_applied_test.go::TestRouteRunsWhatTheAppReleasedOnAResolveAfterThatResolvesResultWasApplied`, `chord/nextnode/workers/workers_applied_test.go::TestResolveReleasesTheNextOperationInTheSectionThatAppliesTheStartsResult`, `chord/nextnode/workers/workers_applied_test.go::TestResolveReleasesTheNextOperationWhenTheStartSettlesWithoutARouteThatApplies`
+- **Release note:** A worker that crashed while a script waited on it is restarted for its holders even under load: the workers component released the next queued operation of an address (the Stop and the Retry after it that follow a crash) when a start settled, before the route applied the start's result, so the Retry found the address still resolving, did nothing, and the failure the route then recorded stayed until the next retry (a Code Mode script resumed after its worker was killed could wait for ever). A start the route awaits now releases the next operation in the section that applies its result, the order of Pi's route continuation.
 
 ### BF-b54f9aa
 

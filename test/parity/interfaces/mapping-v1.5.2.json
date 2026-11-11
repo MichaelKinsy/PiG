@@ -140614,8 +140614,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/workers/proof_chord_test.go#TestWorkerMainRunsTheForkedWorkerFromItsStartMessageToItsFirstServedCall",
-        "test:chord/nextnode/workers/workers_base_close_test.go#TestTheWorkerBaseAStartsWaitForTheBuildEndsClosedWhenTheBuildAndTheCloseAreBothDone",
-        "test:chord/nextnode/workers/workers_base_close_test.go#TestTheWorkerBaseCloseKeepsTheBasesCopyUntilItsWorkersExitedACloserStillFindsItsProgram"
+        "test:chord/nextnode/workers/workers_applied_test.go#TestResolveReleasesTheNextOperationInTheSectionThatAppliesTheStartsResult",
+        "test:chord/nextnode/workers/workers_applied_test.go#TestResolveReleasesTheNextOperationWhenTheStartSettlesWithoutARouteThatApplies"
       ]
     },
     {
@@ -140636,8 +140636,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/workers/proof_chord_test.go#TestWorkerMainRunsTheForkedWorkerFromItsStartMessageToItsFirstServedCall",
-        "test:chord/nextnode/workers/workers_base_close_test.go#TestTheWorkerBaseAStartsWaitForTheBuildEndsClosedWhenTheBuildAndTheCloseAreBothDone",
-        "test:chord/nextnode/workers/workers_base_close_test.go#TestTheWorkerBaseCloseKeepsTheBasesCopyUntilItsWorkersExitedACloserStillFindsItsProgram"
+        "test:chord/nextnode/workers/workers_applied_test.go#TestResolveReleasesTheNextOperationInTheSectionThatAppliesTheStartsResult",
+        "test:chord/nextnode/workers/workers_applied_test.go#TestResolveReleasesTheNextOperationWhenTheStartSettlesWithoutARouteThatApplies"
       ]
     },
     {
@@ -141240,7 +141240,7 @@
       "evidence": [
         "test:chord/nextnode/workers/workers_base_close_test.go#TestTheWorkerBaseCloseKeepsTheBasesCopyUntilItsWorkersExitedACloserStillFindsItsProgram",
         "test:chord/nextnode/workers/proof_chord_test.go#TestWorkerMainRunsTheForkedWorkerFromItsStartMessageToItsFirstServedCall",
-        "test:chord/nextnode/workers/workers_base_close_test.go#TestTheWorkerBaseAStartsWaitForTheBuildEndsClosedWhenTheBuildAndTheCloseAreBothDone"
+        "test:chord/nextnode/workers/workers_applied_test.go#TestResolveReleasesTheNextOperationInTheSectionThatAppliesTheStartsResult"
       ]
     },
     {
@@ -141261,8 +141261,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/workers/proof_chord_test.go#TestWorkerMainRunsTheForkedWorkerFromItsStartMessageToItsFirstServedCall",
-        "test:chord/nextnode/workers/workers_base_close_test.go#TestTheWorkerBaseAStartsWaitForTheBuildEndsClosedWhenTheBuildAndTheCloseAreBothDone",
-        "test:chord/nextnode/workers/workers_base_close_test.go#TestTheWorkerBaseCloseKeepsTheBasesCopyUntilItsWorkersExitedACloserStillFindsItsProgram"
+        "test:chord/nextnode/workers/workers_applied_test.go#TestResolveReleasesTheNextOperationInTheSectionThatAppliesTheStartsResult",
+        "test:chord/nextnode/workers/workers_applied_test.go#TestResolveReleasesTheNextOperationWhenTheStartSettlesWithoutARouteThatApplies"
       ]
     },
     {

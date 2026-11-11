@@ -39473,6 +39473,30 @@
       ]
     },
     {
+      "id": "BF-b5115ae",
+      "title": "A worker that crashed while a script waited on it is restarted for its holders even under load: the workers…",
+      "symptom": "A worker that crashed while a script waited on it is restarted for its holders even under load: the workers component released the next queued operation of an address (the Stop and the Retry after it that follow a crash) when a start settled, before the route applied the start's result, so the Retry found the address still resolving, did nothing, and the failure the route then recorded stayed until the next retry (a Code Mode script resumed after its worker was killed could wait for ever).",
+      "rootCause": "Pi: workers.ts #enqueue registers the bookkeeping reaction on a start's promise before the route's await of it, and the next operation of the address (the Stop and the Retry after it that p2 makes for a crashed worker) is a reaction on the promise that bookkeeping settles, so route.ts #resolve's continuation has applied the result (resolving cleared, the failure recorded) before it. The Go route applies the result in a section after the goroutine of Resolve returned, and the queue released the next operation at the settle: under load the Retry entered the host loop first, found the address resolving, did nothing, and the failure the section then recorded stayed (holders failed until the…",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A worker that crashed while a script waited on it is restarted for its holders even under load: the workers component released the next queued operation of an address (the Stop and the Retry after it that follow a crash) when a start settled, before the route applied the start's result, so the Retry found the address still resolving, did nothing, and the failure the route then recorded stayed until the next retry (a Code Mode script resumed after its worker was killed could wait for ever). A start the route awaits now releases the next operation in the section that applies its result, the order of Pi's route continuation.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b5115ae25a",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "chord/next/host/host_route_applied_test.go::TestRouteRunsWhatTheAppReleasedOnAResolveAfterThatResolvesResultWasApplied",
+        "chord/nextnode/workers/workers_applied_test.go::TestResolveReleasesTheNextOperationInTheSectionThatAppliesTheStartsResult",
+        "chord/nextnode/workers/workers_applied_test.go::TestResolveReleasesTheNextOperationWhenTheStartSettlesWithoutARouteThatApplies"
+      ]
+    },
+    {
       "id": "BF-b54f9aa",
       "title": "The tree selector label time of a session entry whose timestamp is not a valid date prints \"aN/NaN/NaN…",
       "symptom": "The tree selector label time of a session entry whose timestamp is not a valid date prints \"aN/NaN/NaN NaN:NaN\", and a timestamp is read in any form Date.parse accepts, not only RFC 3339.",
