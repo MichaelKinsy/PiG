@@ -15,6 +15,14 @@ cd apps/p2-mac
 open build/PiG.app
 ```
 
+Or use the Makefile, which builds the app and the checkout's `p2` and runs the app in the foreground against this repository's `apps/p2`:
+
+```sh
+make run          # its own server, local only: port 8798, data in ~/.pi/p2-mac/local (FAKE=1: faux provider)
+make run-radius   # its own server connected to Radius: port 8799, data in ~/.pi/p2-mac/radius (signs in on first use)
+make attach       # the p2 already running on 127.0.0.1:8788 with ~/.pi/p2
+```
+
 On first launch, choose a checkout in the menu bar item (**Choose p2 Checkout…**). It can be a PiG root or its `apps/p2`, with `p2` built there (`cd apps/p2 && go build ./cmd/p2`). The app then runs `p2 server` there.
 
 If a p2 already answers on the port, the app adopts it instead and opens that server.

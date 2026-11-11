@@ -16,7 +16,6 @@ The p2 server running in the app's own process on a loopback port, shown in one 
 | `icons/` | the PiG pixel pig master (`pig-pixel-green.png`) and every generated icon; `go run ./icons/gen` regenerates them all (script header documents the grid, scaling rules and sources) |
 | `cmd/p2-desktop/` | the executable: the app, and `p2-desktop worker` for the session workers the server forks |
 | `smoke/` | macOS smoke and measurements (against `p2 server` plus a browser tab) |
-| `Makefile` | `make run` / `make run-radius`: build and run the app against its own data directory (local, or connected to Radius; Pi main 3a647d9dc) |
 | `mygo.json` | app name, identifier, `pig` URL scheme, macOS microphone text, Linux package fields |
 
 The module has its own `go.work` (`.`, `../..`, `../p2`) so that MyGo's requirements do not enter the root workspace; do not add it to the root `go.work` and do not run `go work sync` here (it rewrites the root `go.mod`).
@@ -40,15 +39,6 @@ go build ./cmd/p2-desktop                         # debug build: developer tools
 go run github.com/egoist/mygo/cmd/mygo build -platform darwin/arm64 -skip-dmg   # build/darwin-arm64/PiG.app, production, ad hoc signed
 P2_FAKE=1 build/darwin-arm64/PiG.app/Contents/MacOS/PiG   # the faux provider
 ```
-
-Or use the Makefile, which builds the debug app and runs it in the foreground, each target on its own data directory so `p2 server` on `~/.pi/p2` is left alone:
-
-```sh
-make run          # its own server, local only: data in ~/.pi/p2-desktop/local (FAKE=1: faux provider)
-make run-radius   # its own server connected to Radius: data in ~/.pi/p2-desktop/radius (signs in on first use)
-```
-
-The app has no attach mode (Pi's `make attach`, the p2-mac app on a p2 already running on 8788, has no counterpart): its server runs in its own process, and a `p2 server` on the same data directory makes it quit.
 
 Environment: `P2_FAKE=1` (faux provider), `P2_DATA_DIR`, `P2_IDLE_MS` (worker idle stop), `P2_DESKTOP_STATE_DIR` (where `state.json` lives), `P2_DESKTOP_LEAKCHECK=1` (check at quit that no goroutine started by the server survives; exit code 3 if one does).
 
