@@ -357627,6 +357627,17 @@
       "shapeHash": "sha256:a4307b294e707f8b9a300c3d47e756970f9abd9e03d8ef7c0feb728e6793f884"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#currentTrueColor",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "currentTrueColor",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#cusp",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "cusp",
