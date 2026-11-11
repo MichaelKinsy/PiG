@@ -708,6 +708,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-633152d](#bf-633152d) | Starting a Go extension no longer fails with `hash <dir> after its build: open …/release/deps/rmeta…: no… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-63b4fc8](#bf-63b4fc8) | `NodeExecutionEnv.Watch` gives a directory replaced at the same path a new watcher, reports changes to the… | A fix Pi shipped that PiG ported | macOS | 0.5.0 |
 | [BF-63bb0b7](#bf-63bb0b7) | `pig extension upgrade` now rewrites a `Context` getter call that is the only argument of a variadic call… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-63de63a](#bf-63de63a) | p2's terminal client no longer drops a newer view of a conversation that arrived while a load of earlier or… | PiG's own defect | All platforms | Unreleased |
 | [BF-6445df7](#bf-6445df7) | PNG images are now decoded the way Pi decodes them, pixel for pixel and error for error on every file of the… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-644a9f2](#bf-644a9f2) | Changelog link rewriting and `git` source parsing match a URL scheme case-insensitively as Pi's regex with… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-644a9f2-2](#bf-644a9f2-2) | A Node extension's `ctx.ui.custom` factory can call `tui.showOverlay`, `tui.hideOverlay` and `tui.setFocus`… | PiG's own defect | All platforms | 0.5.0 |
@@ -11569,6 +11570,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `63bb0b7eac` (2026-10-12), `974050757c` (2026-10-12), `d305b76bda` (2026-10-12)
 - **Tests:** `coding/cli/extension_upgrade_test.go::TestUpgraderRestoresEveryFileWhenTheRebuildFails`, `coding/cli/extension_upgrade_test.go::TestUpgraderRestoresWrittenFilesWhenAWriteFails`, `coding/extension/host/runtimecell/go_sdk_override_test.go::TestGoSDKPathOverrideIgnoresRetiredStagedSDK`, `coding/extension/host/runtimecell/go_sdk_override_test.go::TestGoSDKPathOverrideKeepsCurrentStagedSDK`, `coding/extension/host/runtimecell/go_sdk_override_test.go::TestRustSDKPathOverrideIgnoresRetiredStagedSDK`, `coding/extension/host/subprocess/builder_test.go::TestGoNeedsStagedSDK`, `coding/extension/host/subprocess/builder_test.go::TestRustNeedsStagedSDK`, `extensions/sdk/upgrade/fixtures_test.go::TestFixturesUpgradeAndBuild` and 3 more in docs/bug-ledger.json
 - **Release note:** `pig extension upgrade` now rewrites a `Context` getter call that is the only argument of a variadic call, such as `fmt.Println(ctx.ConfigHome())`. That call still compiles against the current SDK because the value and the error both become arguments, so the error was printed or passed on instead of handled and the upgrade reported nothing. It is now rewritten like the other uses: the function returns the error, or, for `ConfigHome` in a function that does not return an error, the line is listed for you to change.
+
+### BF-63de63a
+
+**p2's terminal client no longer drops a newer view of a conversation that arrived while a load of earlier or…**
+
+- **Source:** PiG's own defect
+- **Symptom:** p2's terminal client no longer drops a newer view of a conversation that arrived while a load of earlier or missing entries was ending: the older view the load returned replaced it until the next change.
+- **Root cause:** LoadEarlier and FillGap set the view their load returned over the store value. The goroutine that follows the view merges on its own, so a merge between the end of the load and the store lock was undone. Pi's store is one event loop where nothing merges between a load end and its resumption. The store now brings the transcript up to its latest merged view after a load.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `63de63aa7a` (2026-11-11)
+- **Tests:** None recorded.
+- **Release note:** p2's terminal client no longer drops a newer view of a conversation that arrived while a load of earlier or missing entries was ending: the older view the load returned replaced it until the next change.
 
 ### BF-6445df7
 
