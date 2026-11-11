@@ -844,7 +844,7 @@ func TestTheWorkersBuildSaysHowItEndedItsKindBuiltWithItsInputsOrFailedWithItsEr
 // (its plugins' host), which inherit its environment.
 func TestTheWorkersCompileCacheIsNodeCompileCacheInEveryForksEnvironmentUnlessEnvSetsIt(t *testing.T) {
 	compileCacheOf := func(options fleetOptions) string {
-		env := map[string]string{fixtureReportArgs: "1"}
+		env := map[string]string{fixtureReportCompileCache: "1"}
 		maps.Copy(env, options.env)
 		options.env = env
 		f := newFleet(t, options)
