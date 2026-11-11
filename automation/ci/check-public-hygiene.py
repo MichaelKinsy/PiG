@@ -24,11 +24,14 @@ PRIVATE = re.compile(
 # an old module path elsewhere. Another organization's name, an event label, employer names outside copyright headers
 # and person names (SHA-256 of each word against gui-name-hashes.txt, so the list publishes nothing) never enter them.
 # Terms are assembled so this file does not match itself.
-PROVENANCE = re.compile("main" + r"st(?:ai|\.ai)|hack" + r"athon", re.IGNORECASE)
+PROVENANCE = re.compile(
+    "main" + r"st(?:ai|\.ai)|hack" + r"athon|cdi" + r"-eig|\bf" + r"tc\b|\bc" + r"xo\b|github\.h" + r"pe", re.IGNORECASE
+)
 EMPLOYER = re.compile(r"hew" + r"lett|\bh" + r"pe\b", re.IGNORECASE)
 GUI_PATHS = re.compile(
     r"^(?:coding/uiview/|extensions/pig-ui/|extensions/sdk/(?:ui|view)|extensions/sdk-py/pig_sdk/ui|"
-    r"extensions/sdk-rs/src/ui|coding/extension/host/subprocess/(?:uiview|view_)|"
+    r"extensions/sdk-rs/src/ui|coding/presentation/|cmd/pig/rpc_gui|"
+    r"coding/extension/host/subprocess/(?:uiview|view_|presentation_bridge)|"
     r"coding/extension/host/subprocess/runtime-node/shims/pig-ui|docs/ui-)"
 )
 WORD = re.compile(r"[A-Za-z]{3,}")

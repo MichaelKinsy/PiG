@@ -4,7 +4,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 modpath=$(awk '$1 == "module" {print $2; exit}' go.mod)
-gui=${GUI_PACKAGES:-"coding/uiview extensions/sdk/ui"}
+gui=${GUI_PACKAGES:-"coding/uiview coding/presentation extensions/sdk/ui"}
 status=0
 while read -r pkg imports; do
   for imp in $imports; do
