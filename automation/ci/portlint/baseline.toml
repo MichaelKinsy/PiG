@@ -2104,12 +2104,6 @@ snippet = "select {"
 
 [[hit]]
 check = "golifetime"
-file = "internal/codingagent/model_tasks.go"
-func = "ModelRegistry.CloseModelTasks"
-snippet = "go models.Close()"
-
-[[hit]]
-check = "golifetime"
 file = "internal/codingagent/remote_editor.go"
 func = "remoteEventQueue.post"
 snippet = "go func() {"
