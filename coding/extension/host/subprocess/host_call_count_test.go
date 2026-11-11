@@ -106,12 +106,12 @@ func TestHostCallsAreCountedPerRequestFromTheirFrames(t *testing.T) {
 		if got, want := snapshot(), []string{"+dialog"}; !slices.Equal(got, want) {
 			t.Fatalf("events after the dialog frame = %v, want %v", got, want)
 		}
-		write(Envelope{Type: MsgCall, ID: "exec", Call: &CallPayload{Method: "newSession", ParentRequestID: id, Args: json.RawMessage(`{}`)}})
+		write(Envelope{Type: MsgCall, ID: "exec", Call: &CallPayload{Method: "newSession", ParentRequestID: id, CommandContext: true, Args: json.RawMessage(`{}`)}})
 		synctest.Wait()
 		// A call that does not keep Pi's loop alive is not counted at all.
 		write(Envelope{Type: MsgCall, ID: "status", Call: &CallPayload{Method: "ui.setStatus", ParentRequestID: id, Args: json.RawMessage(`{}`)}})
 		// A call of another request is not this command's.
-		write(Envelope{Type: MsgCall, ID: "other", Call: &CallPayload{Method: "newSession", ParentRequestID: "another", Args: json.RawMessage(`{}`)}})
+		write(Envelope{Type: MsgCall, ID: "other", Call: &CallPayload{Method: "newSession", ParentRequestID: "another", CommandContext: true, Args: json.RawMessage(`{}`)}})
 		synctest.Wait()
 		if got, want := snapshot(), []string{"+dialog", "+call"}; !slices.Equal(got, want) {
 			t.Fatalf("events with a dialog and an exec = %v, want %v", got, want)
