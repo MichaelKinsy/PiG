@@ -2655,22 +2655,36 @@ fn main() {
     let shared_heard = std::sync::Arc::new(std::sync::Mutex::new(Vec::<String>::new()));
     {
         let heard = shared_heard.clone();
-        ext.events().on("shared-cells", move |_ctx, data| {
-            heard.lock().unwrap().push(data.get("from").and_then(Value::as_str).unwrap_or("").to_string());
-            Ok(())
-        }).unwrap();
+        ext.events()
+            .on("shared-cells", move |_ctx, data| {
+                heard.lock().unwrap().push(
+                    data.get("from")
+                        .and_then(Value::as_str)
+                        .unwrap_or("")
+                        .to_string(),
+                );
+                Ok(())
+            })
+            .unwrap();
     }
     ext.tool(
         "counter",
         "This instance's call count",
         json!({"type": "object", "properties": {}}),
-        move |_ctx, _params: Value| ToolResult::text((shared_calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1).to_string()),
+        move |_ctx, _params: Value| {
+            ToolResult::text(
+                (shared_calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1).to_string(),
+            )
+        },
     );
     ext.tool(
         "ping",
         "Emit on the shared-cells channel",
         json!({"type": "object", "required": ["name"], "properties": {"name": {"type": "string"}}}),
-        |ctx, params: Value| match ctx.events().emit("shared-cells", json!({"from": params.get("name").and_then(Value::as_str).unwrap_or("")})) {
+        |ctx, params: Value| match ctx.events().emit(
+            "shared-cells",
+            json!({"from": params.get("name").and_then(Value::as_str).unwrap_or("")}),
+        ) {
             Ok(()) => ToolResult::text("pinged"),
             Err(err) => ToolResult::error(err.to_string()),
         },
@@ -2679,7 +2693,12 @@ fn main() {
         "received",
         "What this instance heard on shared-cells",
         json!({"type": "object", "properties": {}}),
-        move |_ctx, _params: Value| ToolResult::text(format!("received={}", shared_heard.lock().unwrap().join(","))),
+        move |_ctx, _params: Value| {
+            ToolResult::text(format!(
+                "received={}",
+                shared_heard.lock().unwrap().join(",")
+            ))
+        },
     );
     ext.tool_with_prepare_arguments(
         "prepared_tool",
