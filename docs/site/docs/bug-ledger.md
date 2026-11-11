@@ -1118,6 +1118,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-af1fe1a](#bf-af1fe1a) | Cycling models in the interactive UI goes through the Session as in Pi: the new model persists as the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-af36fe8](#bf-af36fe8) | A streamed tool call whose arguments are valid JSON but not an object (`[]`, `null`, `5`, `"s"`) keeps them… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-af66ca5](#bf-af66ca5) | The CI image version-literal test no longer reports the Pi part of an image tag (`1.4.0.b3a29f11`, written by… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-af74c53](#bf-af74c53) | Draining a model collection while it refreshes no longer starts provider work after the drain began, and a… | PiG's own defect | All platforms | Unreleased |
 | [BF-afa1dd5](#bf-afa1dd5) | Amazon Bedrock `requestMetadata` keeps its keys' insertion order on the wire, as Pi's AWS SDK writes the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-afa1dd5-2](#bf-afa1dd5-2) | `make port-lint` has three more checks: `regexpinfunc` (a constant pattern compiled inside a function)… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-afb14da](#bf-afb14da) | fix(chord/nextnode/plugins): the Node host is the child of the Go side, as Pi's forked worker is of its server | PiG's own defect | All platforms | Unreleased |
@@ -16846,6 +16847,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `af66ca50b1` (2026-10-28)
 - **Tests:** `test/ci-images/version_literals_test.go::TestBuildAutomationNamesNoUnrecordedVersionLiteral`
 - **Release note:** The CI image version-literal test no longer reports the Pi part of an image tag (`1.4.0.b3a29f11`, written by `make pin-sync` and checked by `make pin-check`) as a hard-coded version when the pinned commit starts with a letter.
+
+### BF-af74c53
+
+**Draining a model collection while it refreshes no longer starts provider work after the drain began, and a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Draining a model collection while it refreshes no longer starts provider work after the drain began, and a streaming request's blocked auth callback no longer holds the drain.
+- **Root cause:** Drain took its snapshot of the collection's owned work without stopping the collection from admitting more. A refresh loop with providers still queued kept starting them after Drain began, and any owned worker added while Drain waited (or at a zero count) raced the WaitGroup. Drain now sets a draining flag under the lock that admission takes, so work is admitted before it or not at all: the refresh loop starts no further provider, a late publication writes nothing, and the loop's own settle wait is a counter instead of one more owned goroutine.
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `af74c5323b` (2026-11-11)
+- **Tests:** `ai/models_runtime_drain_test.go::TestModelsDrainDoesNotWaitForAStreamsAuthCallback`, `ai/models_runtime_drain_test.go::TestModelsDrainJoinsTheCredentialWriteOfACancelledStream`, `ai/models_runtime_drain_test.go::TestModelsPublicationAfterDrainWritesNothing`, `ai/models_runtime_drain_test.go::TestModelsRefreshLoopStartsNoQueuedProviderAfterDrainBegan`, `ai/models_runtime_drain_test.go::TestModelsRefreshStartsNoProviderWorkOnceDrainBegan`
+- **Release note:** Draining a model collection while it refreshes no longer starts provider work after the drain began, and a streaming request's blocked auth callback no longer holds the drain. `ai.Models.Drain` now stops the collection admitting owned work under the lock the work is admitted under, so a refresh with providers still queued starts none of them, a publication made afterwards writes nothing, and no worker is added to the group the drain is waiting on. A stream's auth callbacks run outside the work `Drain` joins, as a login's do, while the credential write of a stored OAuth refresh, which a cancelled stream leaves running, is joined.
 
 ### BF-afa1dd5
 

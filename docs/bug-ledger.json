@@ -31132,6 +31132,32 @@
       ]
     },
     {
+      "id": "BF-af74c53",
+      "title": "Draining a model collection while it refreshes no longer starts provider work after the drain began, and a…",
+      "symptom": "Draining a model collection while it refreshes no longer starts provider work after the drain began, and a streaming request's blocked auth callback no longer holds the drain.",
+      "rootCause": "Drain took its snapshot of the collection's owned work without stopping the collection from admitting more. A refresh loop with providers still queued kept starting them after Drain began, and any owned worker added while Drain waited (or at a zero count) raced the WaitGroup. Drain now sets a draining flag under the lock that admission takes, so work is admitted before it or not at all: the refresh loop starts no further provider, a late publication writes nothing, and the loop's own settle wait is a counter instead of one more owned goroutine.",
+      "rootCauseSource": "commit",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Draining a model collection while it refreshes no longer starts provider work after the drain began, and a streaming request's blocked auth callback no longer holds the drain. `ai.Models.Drain` now stops the collection admitting owned work under the lock the work is admitted under, so a refresh with providers still queued starts none of them, a publication made afterwards writes nothing, and no worker is added to the group the drain is waiting on. A stream's auth callbacks run outside the work `Drain` joins, as a login's do, while the credential write of a stored OAuth refresh, which a cancelled stream leaves running, is joined.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "af74c5323b",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "ai/models_runtime_drain_test.go::TestModelsDrainDoesNotWaitForAStreamsAuthCallback",
+        "ai/models_runtime_drain_test.go::TestModelsDrainJoinsTheCredentialWriteOfACancelledStream",
+        "ai/models_runtime_drain_test.go::TestModelsPublicationAfterDrainWritesNothing",
+        "ai/models_runtime_drain_test.go::TestModelsRefreshLoopStartsNoQueuedProviderAfterDrainBegan",
+        "ai/models_runtime_drain_test.go::TestModelsRefreshStartsNoProviderWorkOnceDrainBegan"
+      ]
+    },
+    {
       "id": "BF-afa1dd5",
       "title": "Amazon Bedrock `requestMetadata` keeps its keys' insertion order on the wire, as Pi's AWS SDK writes the…",
       "symptom": "Amazon Bedrock `requestMetadata` keeps its keys' insertion order on the wire, as Pi's AWS SDK writes the object.",
