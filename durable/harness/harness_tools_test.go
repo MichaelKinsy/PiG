@@ -726,8 +726,8 @@ func TestToolResults(t *testing.T) {
 	})
 
 	// #10549
-	// harness-tools.test.ts:432 it("records how long execute() took, excluding hooks, and nothing for calls that did not run")
-	t.Run("records how long execute() took, excluding hooks, and nothing for calls that did not run", func(t *testing.T) {
+	// harness-tools.test.ts:461 it("records each result's span from the call's first run, hooks included, also for calls that did not execute")
+	t.Run("records each result's span from the call's first run, hooks included, also for calls that did not execute", func(t *testing.T) {
 		setup := chatSetup(t)
 		sleep := func(ms int) { time.Sleep(time.Duration(ms) * time.Millisecond) }
 		addTool(t, setup.Registry, tlTool("slow", func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
@@ -757,17 +757,17 @@ func TestToolResults(t *testing.T) {
 		for _, id := range []string{"slow", "thrower"} {
 			duration := byId[id].DurationMs
 			if duration == nil {
-				t.Fatalf("%s recorded no durationMs, want [25, 100)", id)
+				t.Fatalf("%s recorded no durationMs, want at least 125", id)
 			}
-			if *duration < 25 || *duration >= 100 {
-				t.Fatalf("%s durationMs %d, want [25, 100): the execute() time, not the hook's", id, *duration)
+			if *duration < 125 {
+				t.Fatalf("%s durationMs %d, want at least 125: the hook's 100 ms and the execute()'s 30 ms", id, *duration)
 			}
 		}
 		if !byId["thrower"].IsError {
 			t.Fatalf("thrower result %+v is not an error", byId["thrower"])
 		}
-		if byId["blocked"].DurationMs != nil {
-			t.Fatalf("blocked call has durationMs %d, want none", *byId["blocked"].DurationMs)
+		if duration := byId["blocked"].DurationMs; duration == nil || *duration < 95 {
+			t.Fatalf("blocked call has durationMs %v, want at least 95: the hook's time", duration)
 		}
 		mustClose(t, run.harness)
 	})

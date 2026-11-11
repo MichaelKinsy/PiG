@@ -909,7 +909,7 @@ func TestAfterRun(t *testing.T) {
 		}
 		want := []string{
 			"Task test.unknown is not installed",
-			"An afterRun hook cannot start the built-in task pi.generation",
+			"A hook cannot start the built-in task pi.generation",
 			"Value contains a non-JSON function; expected strict JSON",
 			"initial failed",
 			"Task test.bad-start starts at the unknown phase nowhere",

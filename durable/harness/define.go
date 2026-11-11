@@ -40,7 +40,9 @@ func Hook[I, S, R, H any](task durable.Task[I, S, R, H], handlers H) durable.Hoo
 	return durable.HookRegistration{Task: task.AnyDefinition().Name, Handlers: handlers}
 }
 
-// WrapTool wraps the tool named like tool wherever the wrapping extension is selected.
+// WrapTool wraps the tool named like tool wherever the wrapping extension is selected. Wrappers never park: one passes the
+// api it gets (and its context) to its base unchanged, or in a struct that embeds it, and returns the base's Park
+// unchanged; a Park of its own ends the call invalid_park.
 func WrapTool(tool *durable.ToolRegistration, wrapper func(tool *durable.ToolRegistration) *durable.ToolRegistration) durable.Wrap {
 	return durable.ToolWrap{Tool: tool.Name, Wrap: wrapper}
 }
@@ -50,8 +52,8 @@ func WrapSection(key string, wrapper func(section *durable.PromptSection) *durab
 	return durable.SectionWrap{Section: key, Wrap: wrapper}
 }
 
-// HookTaskOf is a task an afterRun hook asks for, its input typed by the task (spec §8.3). The input is checked and
-// copied as JSON when the generation prepares the request, so a broken one is rejected there, against the hook's
+// HookTaskOf is a task a hook (AfterTools, OnYield, AfterRun) asks for, its input typed by the task. The input is checked
+// and copied as JSON when the generation prepares the request, so a broken one is rejected there, against the hook's
 // extension.
 func HookTaskOf[I, S, R, H any](task durable.Task[I, S, R, H], input I) HookTask {
 	return HookTask{Task: task.Erased(), Input: input}

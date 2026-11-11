@@ -1122,7 +1122,7 @@ func TestAFinishedNestedCallIsADoneSlotWithItsSummaryUntilItsCallerSettles(t *te
 	}
 	want := []string{
 		"false timed=true usage=false  0",
-		"true timed=false usage=false Tool missing 29",
+		"true timed=true usage=false Tool missing 29",
 		"false timed=true usage=true  0",
 		"true timed=true usage=false bad image 9",
 		"true timed=true usage=false eeeeeeeeeeee 500",
