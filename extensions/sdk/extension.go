@@ -1328,8 +1328,8 @@ func (e *Extension) loop() error {
 			if env.Request != nil && env.Request.Stream != nil {
 				e.applyEventStream(env.Request)
 			}
-			ctx, scope := e.armRequestScope(env.ID)
-			if env.Request != nil && env.Request.SignalAborted {
+			ctx, scope := e.armRequestScope(env.ID, carriesAbortSignal(env.Request))
+			if env.Request != nil && env.Request.SignalAborted && scope.signal != nil {
 				// The event's signal is aborted before its handler starts, as a signal-only cancel queued ahead of the request would leave it: the handler's first line sees the abort (runner.ts emit awaits a handler dispatched after the signal aborted), and its host calls run.
 				scope.signal(cancelReason(context.Canceled.Error()))
 			}
@@ -1432,26 +1432,37 @@ func (s *requestScope) end() {
 }
 
 func (e *Extension) armRequest(id string) (Context, func()) {
-	ctx, scope := e.armRequestScope(id)
+	ctx, scope := e.armRequestScope(id, true)
 	return ctx, scope.end
 }
 
-// armRequestScope arms a request with two contexts: the request's, which the host calls of its handler wait on, and the signal's, a child of it, which is Context.Done and Err. An ordinary cancel ends the request and with it the signal; a signal-only cancel (session_before_compact and session_before_tree, whose event.signal aborts while the handler goes on, as Pi's in-process host calls never fail with it) ends the signal alone.
-func (e *Extension) armRequestScope(id string) (Context, *requestScope) {
+// carriesAbortSignal reports whether the host holds an AbortSignal for the request that can end without ending the request: the event.signal of session_before_compact and session_before_tree (host.go beforeEventSignal). Only such a request can get a signal-only cancel or start with its signal aborted.
+func carriesAbortSignal(req *requestMsg) bool {
+	return req != nil && (req.Event == EventSessionBeforeCompact || req.Event == EventSessionBeforeTree)
+}
+
+// armRequestScope arms a request with its context, which the host calls of its handler wait on and which is Context.Done and Err. With abortSignal (carriesAbortSignal) the request also gets a signal context, a child of it, that Done and Err report instead: an ordinary cancel ends the request and with it the signal; a signal-only cancel (session_before_compact and session_before_tree, whose event.signal aborts while the handler goes on, as Pi's in-process host calls never fail with it) ends the signal alone. A request without an abort signal has no such child and no signal function, which would cost a tool_call round trip five allocations.
+func (e *Extension) armRequestScope(id string, abortSignal bool) (Context, *requestScope) {
 	requestRoot := e.runCtx
 	if requestRoot == nil {
 		requestRoot = context.Background()
 	}
 	reqCtx, cancel := context.WithCancelCause(requestRoot)
-	signalCtx, signal := context.WithCancelCause(reqCtx)
+	handlerCtx := reqCtx
+	var signal context.CancelCauseFunc
+	if abortSignal {
+		handlerCtx, signal = context.WithCancelCause(reqCtx)
+	}
 	parent := e.conn.armParent(id, requestRoot, reqCtx)
-	e.conn.pendingMu.Lock()
-	parent.signal = signal
-	e.conn.pendingMu.Unlock()
+	if signal != nil {
+		e.conn.pendingMu.Lock()
+		parent.signal = signal
+		e.conn.pendingMu.Unlock()
+	}
 	e.requestsMu.Lock()
 	e.requests[id] = requestCancel{request: cancel, signal: signal}
 	e.requestsMu.Unlock()
-	return Context{ext: e, requestID: id, parent: parent, ctx: signalCtx}, &requestScope{e: e, id: id, cancel: cancel, signal: signal}
+	return Context{ext: e, requestID: id, parent: parent, ctx: handlerCtx}, &requestScope{e: e, id: id, cancel: cancel, signal: signal}
 }
 
 func (e *Extension) handleRequest(id string, req *requestMsg) {
@@ -2169,8 +2180,8 @@ func (e *Extension) cancelRequest(env envelope) {
 		cause = cancelReason(env.Cancel.Reason)
 	}
 	if env.Cancel != nil && env.Cancel.SignalOnly {
-		// Only the request's signal ended: no host call is cancelled and the request is not marked cancelled, so the handler's calls, pending and later, are answered and its reply is delivered.
-		if armed {
+		// Only the request's signal ended: no host call is cancelled and the request is not marked cancelled, so the handler's calls, pending and later, are answered and its reply is delivered. A request with no abort signal (carriesAbortSignal) has nothing to abort.
+		if armed && cancel.signal != nil {
 			cancel.signal(cause)
 		}
 		return
