@@ -202,7 +202,7 @@ func TestAfterRunAnswersCarryRejectedOnlyWhenARequestWasRejected(t *testing.T) {
 	}{
 		{"none asked", harness.HookTasks{}, `{"tasks":[]}`},
 		{"a request without a definition", harness.HookTasks{Tasks: []harness.HookTask{{}}},
-			`{"tasks":[],"rejected":[{"name":"Error","message":"An afterRun hook asked for a task without a definition"}]}`},
+			`{"tasks":[],"rejected":[{"name":"Error","message":"A hook asked for a task without a definition"}]}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			handler := &harness.GenerationHooks{AfterRun: func(context.Context, harness.RunSummary, harness.HookApi) (*harness.HookTasks, error) {
