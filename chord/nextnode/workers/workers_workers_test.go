@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -768,7 +769,7 @@ func TestGC1000FailedAndRetriedAddressesLeaveNoStateNoRecordAndNoSuspension(t *t
 
 // Pi's `describe('the worker base (decision "Workers start from the base code the server booted with")')`: Pi's base is a bundle of the
 // entry's imported source, built in memory and written at the first fork. A Go worker's is a private copy of the entry executable,
-// made by Build (a program cannot be held in memory), which every worker forks and Close removes (docs/parity/DIVERGENCES.md D600).
+// made by Build (a program cannot be held in memory), which every worker forks and Close removes.
 
 // copiedEntry is a copy of the fixture's worker program in a new directory: its path.
 func copiedEntry(t *testing.T) string {
@@ -795,10 +796,88 @@ func forkedFrom(f *fleet) string {
 	return from
 }
 
+// TestTheWorkerBaseForksWithoutEnableSourceMapsNodeParsesNoMapOfTheBaseWhoseMapsLieBesideItsFiles ports `it("forks without
+// --enable-source-maps: Node parses no map of the base, whose maps lie beside its files")` (workers.test.ts). Pi's workers fork
+// without the flag (an app passes it in `execArgv`); a Go worker never had it: it is an executable that has no source maps, and
+// its arguments are ExecArgv verbatim (workers.ts: `execArgv: this.#options.execArgv ?? []`). The worker is forked with none, then
+// with an app's flag among its arguments (which Pi passes on as given), and its arguments are read from the worker itself.
+func TestTheWorkerBaseForksWithoutEnableSourceMapsNodeParsesNoMapOfTheBaseWhoseMapsLieBesideItsFiles(t *testing.T) {
+	argsOf := func(execArgv []string) string {
+		f := newFleet(t, fleetOptions{execArgv: execArgv, env: map[string]string{fixtureReportArgs: "1"}})
+		notes := f.hold(fixtureNotes, "S1")
+		until(t, func() bool { return refKind(notes) == host.RefStateLive })
+		var args string
+		for _, line := range f.output.all() {
+			if got, ok := strings.CutPrefix(line, "session|S1 args "); ok {
+				args = got
+			}
+		}
+		notes.Release()
+		if err := f.workers.Close(background); err != nil {
+			t.Fatal(err)
+		}
+		return args
+	}
+	if got := argsOf(nil); got != "[]" {
+		t.Fatalf("a worker's arguments = %s, want none (no --enable-source-maps prefix)", got)
+	}
+	if got := argsOf([]string{"--enable-source-maps", "--other"}); got != `["--enable-source-maps" "--other"]` {
+		t.Fatalf("a worker's arguments = %s, want ExecArgv as given", got)
+	}
+}
+
+// `WorkersBuilt` is Pi's `{ kind: "built", inputs } | { kind: "failed", error }` (workers.ts:103-105, builtOf :259-260): its kind says how
+// the build ended, a Go worker's base being the copy of its entry.
+func TestTheWorkersBuildSaysHowItEndedItsKindBuiltWithItsInputsOrFailedWithItsError(t *testing.T) {
+	ok := newFleet(t, fleetOptions{})
+	if built := ok.workers.Build(); built.Kind != WorkersBuiltBuilt || built.Err != nil || len(built.Inputs) != 1 {
+		t.Fatalf("build = %+v, want kind %q with its inputs", built, WorkersBuiltBuilt)
+	}
+	broken := newFleet(t, fleetOptions{entry: filepath.Join(t.TempDir(), "no-such-worker")})
+	if built := broken.workers.Build(); built.Kind != WorkersBuiltFailed || built.Err == nil || built.Inputs != nil {
+		t.Fatalf("build = %+v, want kind %q with its error", built, WorkersBuiltFailed)
+	}
+}
+
+// Pi's `compileCache` (workers.ts:45-48, :288-289): every fork gets `NODE_COMPILE_CACHE` in its environment, unless `env` sets it;
+// none: the server's environment decides. A Go worker is no Node module, so the variable matters to the Node processes it starts
+// (its plugins' host), which inherit its environment.
+func TestTheWorkersCompileCacheIsNodeCompileCacheInEveryForksEnvironmentUnlessEnvSetsIt(t *testing.T) {
+	compileCacheOf := func(options fleetOptions) string {
+		env := map[string]string{fixtureReportCompileCache: "1"}
+		maps.Copy(env, options.env)
+		options.env = env
+		f := newFleet(t, options)
+		notes := f.hold(fixtureNotes, "S1")
+		until(t, func() bool { return refKind(notes) == host.RefStateLive })
+		var got string
+		for _, line := range f.output.all() {
+			if value, ok := strings.CutPrefix(line, "session|S1 compilecache "); ok {
+				got = value
+			}
+		}
+		notes.Release()
+		if err := f.workers.Close(background); err != nil {
+			t.Fatal(err)
+		}
+		return got
+	}
+	if got := compileCacheOf(fleetOptions{compileCache: "/data/cache/node"}); got != `"/data/cache/node"` {
+		t.Fatalf("NODE_COMPILE_CACHE = %s, want the option's", got)
+	}
+	if got := compileCacheOf(fleetOptions{compileCache: "/data/cache/node", env: map[string]string{"NODE_COMPILE_CACHE": "/elsewhere"}}); got != `"/elsewhere"` {
+		t.Fatalf("NODE_COMPILE_CACHE = %s, want env's", got)
+	}
+	t.Setenv("NODE_COMPILE_CACHE", "/server/env")
+	if got := compileCacheOf(fleetOptions{}); got != `"/server/env"` {
+		t.Fatalf("NODE_COMPILE_CACHE = %s, want the server's environment's", got)
+	}
+}
+
 // TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeTheBaseWasBuiltWith runs `it("a worker started after an
 // edit of the entry's imported source runs the code the base was built with")`. `inputs` (packages/chord/src/node/workers/workers.ts:256,
 // workers.test.ts:75) lists the files the base was built from, so that an edit of any of them is detected: here, with a Go worker's base
-// being one copy of its executable (D600), the entry with its bytes' hash.
+// being one copy of its executable (a Go worker is a program, not a Node bundle), the entry with its bytes' hash.
 func TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeTheBaseWasBuiltWith(t *testing.T) {
 	entry := copiedEntry(t)
 	f := newFleet(t, fleetOptions{entry: entry, env: map[string]string{fixtureReportExecutable: "1"}})

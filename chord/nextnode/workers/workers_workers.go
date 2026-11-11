@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -46,6 +47,17 @@ import (
 // `idleMs` is a time.Duration. `Close` waits for the goroutines the component owns, a start's call into the app's `start`
 // excepted: an app hook that ignores its context and never returns is the app's, abandoned when Close aborts the wait.
 
+// workersEnvironment is the workers' environment: Env, with NODE_COMPILE_CACHE from CompileCache unless Env sets it
+// (`compileCache === undefined ? env : { NODE_COMPILE_CACHE: compileCache, ...env }`).
+func workersEnvironment(options WorkersOptions) map[string]string {
+	if options.CompileCache == "" {
+		return options.Env
+	}
+	environment := map[string]string{"NODE_COMPILE_CACHE": options.CompileCache}
+	maps.Copy(environment, options.Env)
+	return environment
+}
+
 // WorkersOptions is what CreateWorkers takes. Kind, Entry, ExecArgv and Env are bootstrap; the functions are called per use.
 type WorkersOptions struct {
 	// Kind is the facet kind its workers load ("worker"), shipped by the plugins component.
@@ -58,6 +70,10 @@ type WorkersOptions struct {
 	// it is open (emptied first, removed at Close, never touched after it, so a later start may own it then); none: a new temporary
 	// directory. One that stays the same between starts is the kit's (`cache/workers/<kind>/`).
 	BaseDir string
+	// CompileCache is Node's compile cache for the workers (`NODE_COMPILE_CACHE` in their environment unless Env sets it): none, the
+	// server's environment decides. A Go worker is no Node module; the variable reaches the Node processes it starts (its plugins'
+	// host), which inherit its environment (Pi's `compileCache`: forks load the base and its packages from compiled code).
+	CompileCache string
 	// Authorize is the route's `authorize`: whether principal may reach address.
 	Authorize func(principal data.Principal, address contracts.Address) (bool, error)
 	// Principal is who the worker at address is (stamped on its link).
@@ -154,12 +170,24 @@ func (BatchWorkersError) workersError()    {}
 // Go worker's base is a private copy of its own executable, which holds its code already (no bundle: see the worker base note in
 // doc.go); its build checks that Entry is a program that can be started and copies it.
 type WorkersBuilt struct {
+	// Kind says how it ended: WorkersBuiltBuilt (Inputs) or WorkersBuiltFailed (Err), Pi's `kind`. Empty when a close ended the wait
+	// for the build (awaitBuild): it did not end.
+	Kind WorkersBuiltKind
 	// Inputs is the file the base was built from with the hash of the bytes copied: the app's base code for its workers, an edit
 	// of it outdates the base. Nil when it failed.
 	Inputs model.BaseInputs
 	// Err is why it did not build.
 	Err error
 }
+
+// WorkersBuiltKind is the `kind` of how a build ended.
+type WorkersBuiltKind string
+
+// The kinds of how a build ended.
+const (
+	WorkersBuiltBuilt  WorkersBuiltKind = "built"
+	WorkersBuiltFailed WorkersBuiltKind = "failed"
+)
 
 // Build copies the worker's entry into the base's private directory and records its bytes, once (a start waits for it, and starts
 // it when nothing did); Pi's `build` bundles the worker base in memory and writes it at the first fork. A program cannot be held in
@@ -189,10 +217,10 @@ func (c *Workers) startBuild() {
 				err = c.commitBase(staged)
 			}
 			if err != nil {
-				built.Err = err
+				built.Kind, built.Err = WorkersBuiltFailed, err
 			} else {
 				c.entryPath = found
-				built.Inputs = model.BaseInputs{found: staged.hash}
+				built.Kind, built.Inputs = WorkersBuiltBuilt, model.BaseInputs{found: staged.hash}
 			}
 			c.built.Store(&built)
 			close(c.buildDone)
@@ -491,8 +519,10 @@ type Workers struct {
 	route   host.RouteHandle
 	state   *workersState
 	options WorkersOptions
-	loop    *host.Loop
-	clock   clock
+	// environment is the workers' environment: Env, with NODE_COMPILE_CACHE from CompileCache unless Env sets it (Pi's `#environment`).
+	environment map[string]string
+	loop        *host.Loop
+	clock       clock
 
 	// addresses is Pi's `Map<string, Routed>`, in insertion order; guarded by the loop.
 	addresses map[string]*routed
@@ -522,7 +552,7 @@ func newWorkers(options WorkersOptions, ctx context.Context) *Workers {
 	if options.BaseDir != "" {
 		options.BaseDir = filepath.Clean(options.BaseDir)
 	}
-	c := &Workers{options: options, loop: host.NewLoop(), addresses: map[string]*routed{}, buildDone: make(chan struct{})}
+	c := &Workers{options: options, environment: workersEnvironment(options), loop: host.NewLoop(), addresses: map[string]*routed{}, buildDone: make(chan struct{})}
 	c.clock = options.clock
 	if c.clock == nil {
 		c.clock = c.loop
@@ -905,7 +935,7 @@ func (c *Workers) startChild(record *routed, spawned *child, data delta.JsonValu
 func (c *Workers) fork(record *routed, entry string) (*child, error) {
 	address := record.address
 	var spawned *child
-	options := ForkOptions{Entry: entry, ExecArgv: c.options.ExecArgv, Env: c.options.Env}
+	options := ForkOptions{Entry: entry, ExecArgv: c.options.ExecArgv, Env: c.environment}
 	if output := c.options.OnOutput; output != nil {
 		options.OnOutput = func(stream string, chunk []byte) { output(address, stream, chunk) }
 	}

@@ -2562,14 +2562,14 @@ path = "packages/chord/src/node/workers/base.ts"
 change = "added"
 disposition = "designed-out"
 evidence = []
-rationale = "D600 (draft; rows/chord-reload-workers.md): a Go worker is the program's own executable; no esbuild worker base."
+rationale = "Language mechanics: a Go worker is the program's own executable; no esbuild worker base."
 
 [[files]]
 path = "packages/chord/src/node/workers/child.ts"
 change = "added"
 disposition = "designed-out"
 evidence = []
-rationale = "D600 (draft; rows/chord-reload-workers.md): a Go worker is the program's own executable; no esbuild worker base."
+rationale = "Language mechanics: a Go worker is the program's own executable; no esbuild worker base."
 
 [[files]]
 path = "packages/chord/src/node/workers/control.ts"
@@ -2611,7 +2611,7 @@ path = "packages/chord/src/node/workers/workers.ts"
 change = "added"
 disposition = "ported"
 evidence = ["test:chord/nextnode/workers/workers_workers_test.go", "test:chord/nextnode/workers/workers_blocked_unix_test.go", "test:chord/nextnode/workers/workers_rollout_test.go"]
-rationale = "Moved from next-node/workers/workers.ts (Pi e9c0ff4d8). Content delta: the worker_link_lost event (a running worker's link lost to the heartbeat or a protocol error: stopped, its holders start anew) and base inputs for the app's base code. Go: workers_workers.go and workers_outcome.go (WorkerLinkLostError); workers_blocked_unix_test.go asserts the worker_link_lost error with its address, workers_workers_test.go and workers_rollout_test.go the lifecycle. The worker-base build (esbuild bundle of the Node entry) is D600-designed out, listed in the owner question, not in this row's evidence."
+rationale = "Moved from next-node/workers/workers.ts (Pi e9c0ff4d8). Content delta: the worker_link_lost event (a running worker's link lost to the heartbeat or a protocol error: stopped, its holders start anew) and base inputs for the app's base code. Go: workers_workers.go and workers_outcome.go (WorkerLinkLostError); workers_blocked_unix_test.go asserts the worker_link_lost error with its address, workers_workers_test.go and workers_rollout_test.go the lifecycle. The worker-base build (esbuild bundle of the Node entry) is language mechanics (a Go worker is the program's own executable), not in this row's evidence."
 
 [[files]]
 path = "packages/chord/src/object.ts"

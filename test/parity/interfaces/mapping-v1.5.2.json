@@ -141118,8 +141118,25 @@
     },
     {
       "id": "pkg:chord/workers#WorkersOptions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:38d4c48df43853627a53336a7cf07a40713a584ffdc15a3f627158cbbd0a9f44"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:38d4c48df43853627a53336a7cf07a40713a584ffdc15a3f627158cbbd0a9f44",
+      "rationale": "Derived by the interface gap detector: WorkersOptions is Go chord/nextnode/workers/workers_workers.go#WorkersOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/workers/workers_workers.go#WorkersOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/nextnode/workers/workers_workers.go#CreateWorkers"
+      ],
+      "evidence": [
+        "test:chord/nextnode/workers/proof_chord_test.go#TestWorkerMainRunsTheForkedWorkerFromItsStartMessageToItsFirstServedCall",
+        "test:chord/nextnode/workers/workers_base_close_test.go#TestTheWorkerBaseAStartsWaitForTheBuildEndsClosedWhenTheBuildAndTheCloseAreBothDone",
+        "test:chord/nextnode/workers/workers_base_close_test.go#TestTheWorkerBaseCloseKeepsTheBasesCopyUntilItsWorkersExitedACloserStillFindsItsProgram"
+      ]
     },
     {
       "id": "pkg:chord/workers#WorkerStart",

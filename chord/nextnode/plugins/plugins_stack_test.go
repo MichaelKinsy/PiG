@@ -39,6 +39,23 @@ const stackOps = evaluateOpsPrelude + `
 		for (let round = 0; round < 10 && stack.mapStack(held.error).includes("notes/helper.ts"); round++) await ops.settle();
 		return { before, collected, after: stack.mapStack(held.error) };
 	},
+	lazy: async (a) => {
+		// A map that does not parse ("not json"), under a filename of its own: evaluation never reads it.
+		const built = {
+			...a.script.built,
+			digest: "broken-map",
+			source: a.script.built.source.replace(/base64,[A-Za-z0-9+/=]+/, "base64,bm90IGpzb24="),
+		};
+		const facet = evaluate.evaluateFacet(built, { hostPackages: await ops.packages(a), plugin: a.script.plugin });
+		const elsewhere = stack.mapStack(new Error("elsewhere"));
+		let threw = "nothing";
+		try {
+			stack.mapStack(ops.thrownBy(facet));
+		} catch (error) {
+			threw = error instanceof SyntaxError ? "SyntaxError" : String(error);
+		}
+		return { elsewhere, threw };
+	},
 	failed: async (a) => {
 		const hostPackages = await ops.packages(a);
 		let failure;
@@ -104,6 +121,20 @@ func TestStackMapsAPluginScriptsPositionsToThePluginsFilesAndLines(t *testing.T)
 	}
 	if got["plain"] != "not an error" {
 		t.Errorf("mapStack(\"not an error\") = %v", got["plain"])
+	}
+}
+
+// stack.test.ts › mapStack › parses a script's map at the first position looked up in it, not when the script is evaluated
+// (read through the probe: the map that does not parse is a SyntaxError of the first lookup, never of the evaluation).
+func TestStackParsesAScriptsMapAtTheFirstPositionLookedUpInIt(t *testing.T) {
+	script := stackFailing(t)
+	p := evaluateProbe(t, stackOps)
+	got := asMap(t, p.must("lazy", evaluateArgs(t, script, "chord")))
+	if elsewhere, _ := got["elsewhere"].(string); !regexp.MustCompile(`^Error: elsewhere\n`).MatchString(elsewhere) {
+		t.Errorf("mapStack(elsewhere) = %q", elsewhere)
+	}
+	if got["threw"] != "SyntaxError" {
+		t.Errorf("mapStack of the broken script's error threw %v, want SyntaxError", got["threw"])
 	}
 }
 

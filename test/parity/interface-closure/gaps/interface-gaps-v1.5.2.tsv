@@ -15,7 +15,6 @@ pkg:chord/.#Tx::property:draft::call:1	chord	undecidable	chord/next/documents/tr
 pkg:chord/.#Tx::property:retire	chord	child-gap	chord/next/documents/transaction.go#Tx.Retire
 pkg:chord/.#Tx::property:retire::call:1	chord	undecidable	chord/next/documents/transaction.go#Tx.Retire
 pkg:chord/workers#WorkersBuilt	chord	type-mismatch	chord/nextnode/workers/workers_workers.go#WorkersBuilt
-pkg:chord/workers#WorkersOptions	chord	type-mismatch	chord/nextnode/workers/workers_workers.go#WorkersOptions
 pkg:coding-agent/.#GrepOperations	coding-agent	child-gap	internal/codingagent/tools/grep.go#GrepOperations
 pkg:coding-agent/.#GrepOperations::property:readFile	coding-agent	not-exercised	internal/codingagent/tools/grep.go#GrepOperations.ReadFile
 pkg:coding-agent/.#OAuthSelectorComponent	coding-agent	child-gap	tui/oauth_selector.go#OAuthSelectorComponent

@@ -14,7 +14,7 @@ import (
 )
 
 // The tests of the worker base's build that hold it on a named pipe (Pi's mkfifo, Linux only). Pi holds the bundle's build with a
-// file the entry imports; a Go worker's base is a copy of its entry (D600), so the entry itself is the pipe: the copy reads it and
+// file the entry imports; a Go worker's base is a copy of its entry (a Go worker is a program, not a Node bundle), so the entry itself is the pipe: the copy reads it and
 // waits until it is written. `exec.LookPath` accepts a pipe with its execute bit, as the base's check of the entry.
 
 // heldEntry is a named pipe that can be started, as a worker's entry: its copy waits until the pipe is written.
