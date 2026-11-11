@@ -1573,6 +1573,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ce0f352-2](#bf-ce0f352-2) | The editor's autocomplete list takes its colors from one `getSelectListTheme` equivalent, the same function… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ce366dd](#bf-ce366dd) | fix(coding): resume restores the transcript's tools only for the unchanged default selection… | PiG's own defect | All platforms | Unreleased |
 | [BF-ce42877](#bf-ce42877) | `durable/images.CreatePhotonImages`, and `durable/images/node.CreateNodePhotonImages` with `Worker: false`… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-ce4df6b](#bf-ce4df6b) | An interactive start in a project whose AGENTS.md or CLAUDE.md is large no longer keeps three copies of the… | PiG's own defect | All platforms | Unreleased |
 | [BF-ce7dae9](#bf-ce7dae9) | MCP servers that frame server-sent events with a lone CR (or a CRLF split across reads) now deliver their… | PiG's own defect | All platforms | Unreleased |
 | [BF-ce8587e](#bf-ce8587e) | On macOS, reading an image or file paths from the clipboard and writing text to it no longer risk passing… | PiG's own defect | macOS | 0.5.0 |
 | [BF-ced3a9c](#bf-ced3a9c) | RPC model objects of built-in models carry `"type":"chat"` (`get_available_models`, `get_state`, `set_model`… | PiG's own defect | All platforms | 0.5.0 |
@@ -23532,6 +23533,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `34f7594aa5` (2026-10-11), `8435c98530` (2026-10-13), `ce42877426` (2026-10-13)
 - **Tests:** `durable/images/node/worker_test.go::TestTheWorkerPreparesImagesInCallOrder`, `durable/images/node/worker_test.go::TestTheWorkerPreparesOneImageAtATime`, `durable/images/node/worker_test.go::TestWorkerFalsePreparesWithThePlainProcessor`, `durable/images/sequential_test.go::TestCreatePhotonImagesPreparesImagesInCallOrder`, `durable/images/sequential_test.go::TestCreatePhotonImagesPreparesOneImageAtATime`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestAwaitedExtensionPhaseWithoutShutdownReturnsItsResult`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestNewSessionEndedByShutdownIsNotAFatalRuntimeError`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestShutdownDuringAwaitedExtensionPhaseDoesNotWaitForAHandlerThatIgnoresCancellation` and 4 more in docs/bug-ledger.json
 - **Release note:** `durable/images.CreatePhotonImages`, and `durable/images/node.CreateNodePhotonImages` with `Worker: false`, which returns it, prepare images one at a time in call order on the caller's goroutine, as Pi's `createPhotonImages` does on its calling thread. Before, concurrent calls prepared side by side. A caller whose context is cancelled while it waits returns the context's error and does not hold up or reorder the calls after it.
+
+### BF-ce4df6b
+
+**An interactive start in a project whose AGENTS.md or CLAUDE.md is large no longer keeps three copies of the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An interactive start in a project whose AGENTS.md or CLAUDE.md is large no longer keeps three copies of the system prompt in memory.
+- **Root cause:** An interactive start rendered the system prompt three times (the CLI, the Session, the interactive mode) and kept all three. With this repository's 60 KB AGENTS.md in the prompt, each copy is 65 KB: TestInteractiveFirstFrameProcessGate measured process.interactive_first_frame.heap_live_bytes at 2,155,000 B on and 2,024,080-2,025,328 B with the Session and the mode keeping the CLI's string when their own rendering is equal (8 runs, same host; 24 runs before: 2,153,264-2,157,104 B). The prompt text is unchanged.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `ce4df6b13c` (2026-11-11)
+- **Tests:** `test/integration/perf_gate_test.go::TestInteractiveFirstFrameProcessGate`
+- **Release note:** An interactive start in a project whose AGENTS.md or CLAUDE.md is large no longer keeps three copies of the system prompt in memory. The CLI, the Session and the interactive mode each rendered the same prompt text and each kept it; the Session and the interactive mode now keep the CLI's string when their rendering is equal, so the live heap at the first frame is 130 KB smaller in this repository (2,155,000 B before, 2,025,000 B after, `process.interactive_first_frame.heap_live_bytes`). The prompt text is unchanged.
 
 ### BF-ce7dae9
 

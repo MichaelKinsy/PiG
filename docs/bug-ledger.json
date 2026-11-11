@@ -43681,6 +43681,28 @@
       ]
     },
     {
+      "id": "BF-ce4df6b",
+      "title": "An interactive start in a project whose AGENTS.md or CLAUDE.md is large no longer keeps three copies of the…",
+      "symptom": "An interactive start in a project whose AGENTS.md or CLAUDE.md is large no longer keeps three copies of the system prompt in memory.",
+      "rootCause": "An interactive start rendered the system prompt three times (the CLI, the Session, the interactive mode) and kept all three. With this repository's 60 KB AGENTS.md in the prompt, each copy is 65 KB: TestInteractiveFirstFrameProcessGate measured process.interactive_first_frame.heap_live_bytes at 2,155,000 B on and 2,024,080-2,025,328 B with the Session and the mode keeping the CLI's string when their own rendering is equal (8 runs, same host; 24 runs before: 2,153,264-2,157,104 B). The prompt text is unchanged.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An interactive start in a project whose AGENTS.md or CLAUDE.md is large no longer keeps three copies of the system prompt in memory. The CLI, the Session and the interactive mode each rendered the same prompt text and each kept it; the Session and the interactive mode now keep the CLI's string when their rendering is equal, so the live heap at the first frame is 130 KB smaller in this repository (2,155,000 B before, 2,025,000 B after, `process.interactive_first_frame.heap_live_bytes`). The prompt text is unchanged.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ce4df6b13c",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "test/integration/perf_gate_test.go::TestInteractiveFirstFrameProcessGate"
+      ]
+    },
+    {
       "id": "BF-ce7dae9",
       "title": "MCP servers that frame server-sent events with a lone CR (or a CRLF split across reads) now deliver their…",
       "symptom": "MCP servers that frame server-sent events with a lone CR (or a CRLF split across reads) now deliver their events, as in Pi; the call used to fail with \"stream ended without a response\".",
