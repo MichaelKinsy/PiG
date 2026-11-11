@@ -17,6 +17,7 @@ powershell
 prompt
 send-file
 sessions
+settings
 sharing
 subagents
 terminals
