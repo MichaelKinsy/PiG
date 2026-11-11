@@ -658,6 +658,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-5c9d23f](#bf-5c9d23f) | A provider object's OAuth login receives Pi's login options, as `oauth.login(interaction, options)` does in Pi | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5cbecb0](#bf-5cbecb0) | In fullscreen mode a focused selection list takes every viewport key, not only the page keys, so `Ctrl+Home`… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-5cc630e](#bf-5cc630e) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
+| [BF-5ce1f19](#bf-5ce1f19) | p2's cache warming no longer sends repeated refresh requests for a `promptCache` lifetime beyond about 27.6… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-5d04c3c](#bf-5d04c3c) | fix(chord): a CSS module's mapping is what Node's vm gives, as Pi's | PiG's own defect | All platforms | Unreleased |
 | [BF-5d36a58](#bf-5d36a58) | fix(agent): end the tool flow at custom user messages and hold system messages mid-flow | PiG's own defect | All platforms | Unreleased |
 | [BF-5d4c432](#bf-5d4c432) | A tool schema built with `ai.StringEnum`, and the schemas of the eval harness's custom tools, reach every… | PiG's own defect | All platforms | 0.7.0 |
@@ -10877,6 +10878,22 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `144341e42a` (2026-10-27), `5cc630eba0` (2026-10-27)
 - **Tests:** `tui/login_dialog_device_code_test.go::TestLoginURLsOpenOnlyHTTPSignInURLs`, `tui/login_dialog_device_code_test.go::TestLoginURLsReplaceControlCharactersInURLsThatAreNotWebURLs`
+
+### BF-5ce1f19
+
+**p2's cache warming no longer sends repeated refresh requests for a `promptCache` lifetime beyond about 27.6…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D612)
+- **Symptom:** p2's cache warming no longer sends repeated refresh requests for a `promptCache` lifetime beyond about 27.6 days (a refresh delay beyond Node's 2147483647 ms timer limit, about 24.8 days): Pi re-arms such a refresh after 1 ms and sends paid one-token requests back to back until its warming window closes (60 minutes while a run is streaming, 30 minutes once idle); PiG arms the timer for the limit, then stops without a request (D612).
+- **Root cause:** The port reproduced that; armLocked now arms the timer for 2147483647 ms, after which the run is past its age window and stops without a request.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** Pi clamps or skips the arm for a delay above 2147483647 ms in `apps/p2/plugins/cache-warming/warmer.ts` (then PiG follows Pi's fix and the marker goes).
+- **Fix commits:** `5ce1f19946` (2026-11-09), `884197072c` (2026-11-09)
+- **Tests:** `apps/p2/plugins/cache-warming/warmer_test.go::TestALifetimeBeyondSetTimeoutsRangeCloseEndsTheRun`, `apps/p2/plugins/cache-warming/warmer_test.go::TestALifetimeBeyondSetTimeoutsRangeSendsNoRefreshAndStopsAtTheClamp`, `apps/p2/plugins/cache-warming/warmer_test.go::TestALifetimeBeyondSetTimeoutsRangeStopEndsTheRun`
+- **Release note:** p2's cache warming no longer sends repeated refresh requests for a `promptCache` lifetime beyond about 27.6 days (a refresh delay beyond Node's 2147483647 ms timer limit, about 24.8 days): Pi re-arms such a refresh after 1 ms and sends paid one-token requests back to back until its warming window closes (60 minutes while a run is streaming, 30 minutes once idle); PiG arms the timer for the limit, then stops without a request (D612).
 
 ### BF-5d04c3c
 
@@ -30844,6 +30861,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D607 | The plugins component loads hosts through a Node subprocess it starts: Pi's `evaluate`, `stack` and runtime… | deliberate difference |
 | D608 | A client surface is built after the server's listen: `NewWebSurface`/`NewTuiSurface` return at once and… | deliberate difference |
 | D611 | The TUI launcher runs the plugins' TUI facets in its own process: no sandbox worker, no bundle, no version… | deliberate difference |
+| D612 | The p2 cache-warming plugin never arms a refresh timer longer than Node's setTimeout maximum | [BF-5ce1f19](#bf-5ce1f19) |
 
 ## Fix-titled commits that are not bugs in a release
 

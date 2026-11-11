@@ -18040,6 +18040,36 @@
       ]
     },
     {
+      "id": "BF-5ce1f19",
+      "title": "p2's cache warming no longer sends repeated refresh requests for a `promptCache` lifetime beyond about 27.6…",
+      "symptom": "p2's cache warming no longer sends repeated refresh requests for a `promptCache` lifetime beyond about 27.6 days (a refresh delay beyond Node's 2147483647 ms timer limit, about 24.8 days): Pi re-arms such a refresh after 1 ms and sends paid one-token requests back to back until its warming window closes (60 minutes while a run is streaming, 30 minutes once idle); PiG arms the timer for the limit, then stops without a request (D612).",
+      "rootCause": "The port reproduced that; armLocked now arms the timer for 2147483647 ms, after which the run is past its age window and stops without a request.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D612",
+      "removeWhen": "Pi clamps or skips the arm for a delay above 2147483647 ms in `apps/p2/plugins/cache-warming/warmer.ts` (then PiG follows Pi's fix and the marker goes).",
+      "fixedIn": "Unreleased",
+      "releaseNote": "p2's cache warming no longer sends repeated refresh requests for a `promptCache` lifetime beyond about 27.6 days (a refresh delay beyond Node's 2147483647 ms timer limit, about 24.8 days): Pi re-arms such a refresh after 1 ms and sends paid one-token requests back to back until its warming window closes (60 minutes while a run is streaming, 30 minutes once idle); PiG arms the timer for the limit, then stops without a request (D612).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5ce1f19946",
+          "date": "2026-11-09"
+        },
+        {
+          "hash": "884197072c",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "apps/p2/plugins/cache-warming/warmer_test.go::TestALifetimeBeyondSetTimeoutsRangeCloseEndsTheRun",
+        "apps/p2/plugins/cache-warming/warmer_test.go::TestALifetimeBeyondSetTimeoutsRangeSendsNoRefreshAndStopsAtTheClamp",
+        "apps/p2/plugins/cache-warming/warmer_test.go::TestALifetimeBeyondSetTimeoutsRangeStopEndsTheRun"
+      ]
+    },
+    {
       "id": "BF-5d04c3c",
       "title": "fix(chord): a CSS module's mapping is what Node's vm gives, as Pi's",
       "symptom": "fix(chord): a CSS module's mapping is what Node's vm gives, as Pi's",
@@ -59570,6 +59600,11 @@
     {
       "id": "D611",
       "title": "The TUI launcher runs the plugins' TUI facets in its own process: no sandbox worker, no bundle, no version…"
+    },
+    {
+      "id": "D612",
+      "title": "The p2 cache-warming plugin never arms a refresh timer longer than Node's setTimeout maximum",
+      "entry": "BF-5ce1f19"
     }
   ],
   "exemptCommits": {
