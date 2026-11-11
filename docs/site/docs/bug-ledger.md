@@ -282,6 +282,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-2c3897f](#bf-2c3897f) | The Lisp and Python extension SDKs now give each `onThemeChange` handler the theme of its own change, in… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-2c5d240](#bf-2c5d240) | fix(extension): take a Node client whose pipe connect event has not been set | PiG's own defect | All platforms | Unreleased |
 | [BF-2c5db8b](#bf-2c5db8b) | A Piglet Binary with a fused Go extension starts within a few milliseconds of Stock PiG | PiG's own defect | All platforms | 0.5.0 |
+| [BF-2c7db1a](#bf-2c7db1a) | Shutting down a Session no longer leaves a provider's model refresh, or an auth check it had abandoned… | PiG's own defect | Windows | Unreleased |
 | [BF-2c88c5f](#bf-2c88c5f) | Ill-formed UTF-8 in a string that PiG re-encodes as JSON (an extension's raw JSON, tool schemas, code-mode… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2cef1bf](#bf-2cef1bf) | A packed Go, Python or Rust extension whose factory calls a host helper (`parseFrontmatter`, `Date.parse`, a… | PiG's own defect | All platforms | Unreleased |
 | [BF-2cef1bf-2](#bf-2cef1bf-2) | When two extensions of one packed cell fail to load, each load error carries its own cause, not the last one… | PiG's own defect | All platforms | Unreleased |
@@ -1045,6 +1046,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-860776a](#bf-860776a) | A Google provider built from a model id without catalog metadata now sends its own earlier thinking blocks as… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8620e9e](#bf-8620e9e) | The SDK `DefaultResourceLoader` lists a tool or flag that two extensions register as an error of the… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-86364b4](#bf-86364b4) | fix(minimatch): case-insensitive patterns compare as a JavaScript RegExp does | PiG's own defect | All platforms | Unreleased |
+| [BF-86376a7](#bf-86376a7) | Draining a model collection while it refreshes no longer starts provider work after the drain began, and a… | PiG's own defect | All platforms | Unreleased |
 | [BF-866c7f9](#bf-866c7f9) | fix(rpc): two prompts of one batch answer in request order | PiG's own defect | All platforms | Unreleased |
 | [BF-869cef8](#bf-869cef8) | A pi-messages stream event that is a number, string, boolean or array is skipped, as Pi skips an event of… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-86c411a](#bf-86c411a) | fix(builtin): codemode and tool_search declare their parameters in TypeBox key order | PiG's own defect | All platforms | Unreleased |
@@ -5626,6 +5628,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `2c5db8b20a` (2026-10-06)
 - **Tests:** None recorded.
 - **Release note:** A Piglet Binary with a fused Go extension starts within a few milliseconds of Stock PiG. On an Apple M4 Pro (median of 20, faux provider), `-p` took 72.1 ms against 31.7 ms for Stock PiG and now takes 33.0 ms, and the first typed key showed in the editor after 71.0 ms against 33.6 ms and now after 33.4 ms. The extension host encoded the whole model catalog (more than 1 MB of JSON) three times at startup for every extension. Now it builds and sends that snapshot only to Node extensions, which answer `ctx.modelRegistry` reads from it. Go, Rust and Python extensions read the registry from the host when they ask, as before, so Stock PiG with such extensions starts faster too. See D19 in `docs/additive-features.md`.
+
+### BF-2c7db1a
+
+**Shutting down a Session no longer leaves a provider's model refresh, or an auth check it had abandoned…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Shutting down a Session no longer leaves a provider's model refresh, or an auth check it had abandoned, running against the agent directory.
+- **Root cause:** CloseModelTasks cancelled the native collection's refreshes and then joined its operations on a detached goroutine (`go models.Close()`), so a provider's refreshModels, its store write, or an auth check the caller had abandoned kept running after Close returned, so its owner could remove the agent directory under it. Windows cannot delete a directory while a file in it is being written or held open, and TestModelPickerGeminiAuthAndCatalog failed on Windows CI with "TempDir RemoveAll cleanup: The directory is not empty". That failure was not reproduced; the Linux evidence is TestModelSelectorNativeProviderRefreshDoesNotOutliveShutdown, which shows the provider's refresh still running after…
+- **User impact:** An operation failed or was rejected
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `2c7db1a655` (2026-11-11)
+- **Tests:** `ai/models_runtime_drain_test.go::TestModelsDrainJoinsAbandonedRefreshButNotLogin`, `internal/codingagent/model_availability_read_context_test.go::TestAvailabilityReadContextOnlyWithoutExtensionProviders`, `internal/codingagent/model_picker_parity_test.go::TestModelPickerGeminiAuthAndCatalog`, `internal/codingagent/model_selector_native_refresh_owned_test.go::TestModelSelectorNativeProviderRefreshDoesNotOutliveShutdown`
+- **Release note:** Shutting down a Session no longer leaves a provider's model refresh, or an auth check it had abandoned, running against the agent directory. Closing the registry's model tasks cancelled the native model collection's refreshes but joined their work on a detached goroutine, so the refresh could still be writing its catalog after `Close` returned and the owner removed the directory (which on Windows cannot delete a directory whose file is still being written). `ai.Models` gains `Drain`, which cancels active refreshes and waits for the work the collection runs for its own queries (a provider's refresh and its store write, auth resolution and checks, availability) but not for a caller's login or stream, and `CloseModelTasks` calls it before returning.
 
 ### BF-2c88c5f
 
@@ -16180,6 +16196,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `86364b4411` (2026-10-10)
 - **Tests:** `internal/minimatch/minimatch_oracle_test.go::TestMatchAgainstNodeMinimatch`
+
+### BF-86376a7
+
+**Draining a model collection while it refreshes no longer starts provider work after the drain began, and a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Draining a model collection while it refreshes no longer starts provider work after the drain began, and a streaming request's blocked auth callback no longer holds the drain.
+- **Root cause:** Drain took its snapshot of the collection's owned work without stopping the collection from admitting more. A refresh loop with providers still queued kept starting them after Drain began, and any owned worker added while Drain waited (or at a zero count) raced the WaitGroup. Drain now sets a draining flag under the lock that admission takes, so work is admitted before it or not at all: the refresh loop starts no further provider, a late publication writes nothing, and the loop's own settle wait is a counter instead of one more owned goroutine.
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `86376a7777` (2026-11-11)
+- **Tests:** `ai/models_runtime_drain_test.go::TestModelsDrainDoesNotWaitForAStreamsAuthCallback`, `ai/models_runtime_drain_test.go::TestModelsDrainJoinsTheCredentialWriteOfACancelledStream`, `ai/models_runtime_drain_test.go::TestModelsPublicationAfterDrainWritesNothing`, `ai/models_runtime_drain_test.go::TestModelsRefreshLoopStartsNoQueuedProviderAfterDrainBegan`, `ai/models_runtime_drain_test.go::TestModelsRefreshStartsNoProviderWorkOnceDrainBegan`
+- **Release note:** Draining a model collection while it refreshes no longer starts provider work after the drain began, and a streaming request's blocked auth callback no longer holds the drain. `ai.Models.Drain` now stops the collection admitting owned work under the lock the work is admitted under, so a refresh with providers still queued starts none of them, a publication made afterwards writes nothing, and no worker is added to the group the drain is waiting on. A stream's auth callbacks run outside the work `Drain` joins, as a login's do, while the credential write of a stored OAuth refresh, which a cancelled stream leaves running, is joined.
 
 ### BF-866c7f9
 

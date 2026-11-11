@@ -23206,9 +23206,9 @@
         "call:ai/models_runtime_refresh.go#Models.publishProviderModels"
       ],
       "evidence": [
+        "test:ai/models_runtime_drain_test.go#TestModelsPublicationAfterDrainWritesNothing",
         "test:ai/models_store_inmemory_test.go#TestInMemoryModelsStoreKeepsDetachedCopiesPerProvider",
-        "test:ai/models_store_test.go#TestInMemoryModelsStoreClonesAndDeletes",
-        "test:ai/radius_test.go#TestRadiusProviderExposesNoModelsWhenTheOrganizationDisabledAll"
+        "test:ai/models_store_test.go#TestInMemoryModelsStoreClonesAndDeletes"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -23271,9 +23271,9 @@
         "call:ai/models_runtime_refresh.go#Models.runProviderRefreshPhase"
       ],
       "evidence": [
+        "test:ai/models_runtime_drain_test.go#TestModelsPublicationAfterDrainWritesNothing",
         "test:ai/radius_test.go#TestRadiusProviderExposesNoModelsWhenTheOrganizationDisabledAll",
-        "test:ai/radius_test.go#TestRadiusProviderImportsLegacyCredentialCatalogOnce",
-        "test:ai/radius_test.go#TestRadiusProviderOverlaysRefreshedModels"
+        "test:ai/radius_test.go#TestRadiusProviderImportsLegacyCredentialCatalogOnce"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -23294,9 +23294,9 @@
         "call:ai/models_runtime_refresh.go#Models.runProviderRefreshPhase"
       ],
       "evidence": [
+        "test:ai/models_runtime_drain_test.go#TestModelsPublicationAfterDrainWritesNothing",
         "test:ai/radius_test.go#TestRadiusProviderExposesNoModelsWhenTheOrganizationDisabledAll",
-        "test:ai/radius_test.go#TestRadiusProviderImportsLegacyCredentialCatalogOnce",
-        "test:ai/radius_test.go#TestRadiusProviderOverlaysRefreshedModels"
+        "test:ai/radius_test.go#TestRadiusProviderImportsLegacyCredentialCatalogOnce"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -68773,9 +68773,9 @@
         "call:ai/models_runtime_refresh.go#Models.publishProviderModels"
       ],
       "evidence": [
+        "test:ai/models_runtime_drain_test.go#TestModelsPublicationAfterDrainWritesNothing",
         "test:ai/models_store_inmemory_test.go#TestInMemoryModelsStoreKeepsDetachedCopiesPerProvider",
-        "test:ai/models_store_test.go#TestInMemoryModelsStoreClonesAndDeletes",
-        "test:ai/radius_test.go#TestRadiusProviderExposesNoModelsWhenTheOrganizationDisabledAll"
+        "test:ai/models_store_test.go#TestInMemoryModelsStoreClonesAndDeletes"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -68838,9 +68838,9 @@
         "call:ai/models_runtime_refresh.go#Models.runProviderRefreshPhase"
       ],
       "evidence": [
+        "test:ai/models_runtime_drain_test.go#TestModelsPublicationAfterDrainWritesNothing",
         "test:ai/radius_test.go#TestRadiusProviderExposesNoModelsWhenTheOrganizationDisabledAll",
-        "test:ai/radius_test.go#TestRadiusProviderImportsLegacyCredentialCatalogOnce",
-        "test:ai/radius_test.go#TestRadiusProviderOverlaysRefreshedModels"
+        "test:ai/radius_test.go#TestRadiusProviderImportsLegacyCredentialCatalogOnce"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -68861,9 +68861,9 @@
         "call:ai/models_runtime_refresh.go#Models.runProviderRefreshPhase"
       ],
       "evidence": [
+        "test:ai/models_runtime_drain_test.go#TestModelsPublicationAfterDrainWritesNothing",
         "test:ai/radius_test.go#TestRadiusProviderExposesNoModelsWhenTheOrganizationDisabledAll",
-        "test:ai/radius_test.go#TestRadiusProviderImportsLegacyCredentialCatalogOnce",
-        "test:ai/radius_test.go#TestRadiusProviderOverlaysRefreshedModels"
+        "test:ai/radius_test.go#TestRadiusProviderImportsLegacyCredentialCatalogOnce"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -198669,7 +198669,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/auth_resolve.go#ResolveProviderAuth"
+        "call:ai/auth_resolve.go#resolveProviderAuth"
       ],
       "evidence": [
         "test:ai/models_runtime_auth_upstream_test.go#TestModelsRuntimeAuthUpstream",
@@ -198691,7 +198691,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/auth_resolve.go#ResolveProviderAuth"
+        "call:ai/auth_resolve.go#resolveProviderAuth"
       ],
       "evidence": [
         "test:coding/model_runtime_auth_options_upstream_test.go#TestExtensionAuthResolvesRequestScopedEnvironmentUpstream"
@@ -198711,7 +198711,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/auth_resolve.go#ResolveProviderAuth"
+        "call:ai/auth_resolve.go#resolveProviderAuth"
       ],
       "evidence": [
         "test:ai/auth_resolve_test.go#TestResolveProviderAuthEnforcesRequestedMinimumValidity",
