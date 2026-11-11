@@ -13,9 +13,10 @@ import (
 // processTree is the process group a worker leads: killing it kills everything the worker spawned.
 type processTree struct{ pid int }
 
-// detach makes cmd lead a process group of its own (Node's `detached: true`).
+// detach starts cmd as the leader of a session of its own, as Node's `detached: true` does (libuv setsid): the worker leads its own process group, so killing
+// the group kills everything the worker spawned, and it has no controlling terminal.
 func detach(cmd *exec.Cmd) {
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
 }
 
 // treeOf is the tree of the started cmd.
