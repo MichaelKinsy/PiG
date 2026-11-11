@@ -306,6 +306,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-2fc2307](#bf-2fc2307) | A scalar that names a collection tag (`!!map 1`, `!!seq true`) inside a complex mapping key stays plain in… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-305432b](#bf-305432b) | fix(coding-agent): stop macOS shell groups before killing them (Pi) | A fix Pi shipped that PiG ported | macOS | Unreleased |
 | [BF-305bd8b](#bf-305bd8b) | A durable task that panics with a value whose `String` method panics now faults with the message `[object… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-308d280](#bf-308d280) | `chord/next/surfaces`: a locale tag whose `-u-` extension is only `true` or `yes` keeps it as Node's… | PiG's own defect | All platforms | Unreleased |
+| [BF-308d280-2](#bf-308d280-2) | `chord/nextnode/plugins`: a Go facet that reloads twice in a row no longer leaves the copy of its keyed… | PiG's own defect | All platforms | Unreleased |
 | [BF-30d4a6d](#bf-30d4a6d) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-30e47f4](#bf-30e47f4) | fix(tui): SetThemeInstance notifies the active theme observers, as Pi's setThemeInstance runs its callback | PiG's own defect | All platforms | Unreleased |
 | [BF-30e4a98](#bf-30e4a98) | The Node extension runtime now serves Pi's `ModelRuntime.settleCredentialWrites` and pi-ai's… | PiG's own defect | All platforms | Unreleased |
@@ -5944,6 +5946,34 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `305bd8be1f` (2026-10-13)
 - **Tests:** `durable/harness/harness_listener_errors_test.go::TestAThrownValueThatCannotBeFormatted`, `durable/harness/tool_nested_test.go::TestAReplaySafeCallerReattachesToTheNestedCallsItMadeBeforeARestart`, `durable/harness/tool_nested_test.go::TestTheLeftRunningNestedCallsOfACallerInterruptedWhileItCleanedThemUpAreAborted`, `durable/harness/tool_nested_test.go::TestToolTaskMigratesVersion1InputToAModelIssuedCall`
 - **Release note:** A durable task that panics with a value whose `String` method panics now faults with the message `[object Object]`, as Pi's `errorMessage` gives for a thrown value that cannot be formatted, instead of Go's `%!v(PANIC=...)` text.
+
+### BF-308d280
+
+**`chord/next/surfaces`: a locale tag whose `-u-` extension is only `true` or `yes` keeps it as Node's…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `chord/next/surfaces`: a locale tag whose `-u-` extension is only `true` or `yes` keeps it as Node's `Intl.getCanonicalLocales` does (`en-u-true` and `en-u-yes` are attributes); the lone `true` or `yes` of another singleton is still dropped.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `308d2802ce` (2026-11-10)
+- **Tests:** `chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberIsReadAgainWhenTheNextSlotEndsAfterTheResync`, `chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberKeepsACommitMadeWhileTheObjectOpens`, `chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAMethodCalledWhileTheMirrorIsReadAgainAnswersAfterItsFrames`
+- **Release note:** `chord/next/surfaces`: a locale tag whose `-u-` extension is only `true` or `yes` keeps it as Node's `Intl.getCanonicalLocales` does (`en-u-true` and `en-u-yes` are attributes); the lone `true` or `yes` of another singleton is still dropped. `TestLocaleTablesMatchIntl` covers both tags.
+
+### BF-308d280-2
+
+**`chord/nextnode/plugins`: a Go facet that reloads twice in a row no longer leaves the copy of its keyed…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `chord/nextnode/plugins`: a Go facet that reloads twice in a row no longer leaves the copy of its keyed member on the slot of the first reload (the mirror stopped resyncing after it queued the reset, so an end of the next slot in between was lost), and a method called while the copy is read again answers after the frames of its commits were sent, so the plugin reads what it wrote.
+- **Root cause:** Not recorded.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `308d2802ce` (2026-11-10)
+- **Tests:** `chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberIsReadAgainWhenTheNextSlotEndsAfterTheResync`, `chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAKeyedMemberKeepsACommitMadeWhileTheObjectOpens`, `chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestBridgedAMethodCalledWhileTheMirrorIsReadAgainAnswersAfterItsFrames`
+- **Release note:** `chord/nextnode/plugins`: a Go facet that reloads twice in a row no longer leaves the copy of its keyed member on the slot of the first reload (the mirror stopped resyncing after it queued the reset, so an end of the next slot in between was lost), and a method called while the copy is read again answers after the frames of its commits were sent, so the plugin reads what it wrote.
 
 ### BF-30d4a6d
 
