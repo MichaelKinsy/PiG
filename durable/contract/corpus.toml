@@ -10,7 +10,7 @@
 
 [pin]
 reference = "earendil-works/pi"
-commit = "c23b9ec1ef12a63573d739d4c294f81a377b7d57"
+commit = "b4afdddf44e059c67ccf5097e5317d913521b470"
 release = "1.0.4"
 
 [[scenario]]
@@ -894,7 +894,7 @@ id = "U-harness-read-only"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-read-only.test.ts"
-sha256 = "ab194b95e69f2855c837d0efffbb10ddf69a7054b284dfa31f301047590a8eaf"
+sha256 = "0bd9fb1ed6b56f2ccfb6158d158a0abd74d988adea103ddd045eadc7d2a1464d"
 owner = "dcore-session"
 levels = ["tests"]
 status = "ready"
@@ -1067,7 +1067,7 @@ id = "U-harness-tasks"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-tasks.test.ts"
-sha256 = "167fa91d055d3660832344cf54c4afa5af7e732e7e8af021f59976262f82c8b6"
+sha256 = "6b3c61985a68d9a96af0613a18e84a3ae30e914a7397caeae0f66e384e429f00"
 owner = "dcore-session"
 levels = ["tests"]
 status = "ready"
@@ -1182,7 +1182,7 @@ id = "U-jsonl-storage"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/jsonl-storage.test.ts"
-sha256 = "8ec8e4026789901469a2cc1ef63564a975bbb98ac5c6d06c162d01a626e21359"
+sha256 = "b5d3ad9bfd1891aa92ed2605266ffb061d0d8fc963550a0fb2fea4d23d00c487"
 owner = "dcore-host"
 levels = ["tests"]
 status = "skipped"
