@@ -56,13 +56,13 @@ func Apply() (stop func()) {
 // debug.SetMemoryLimit is not a substitute: it caps the absolute heap rather than returning to a percent past a live size.
 // The first read of runtime/metrics builds the runtime's metric table (12,704 bytes in 72 objects), and a run that ends before its
 // first collection has no live heap to read. Until a collection has finished the poll therefore counts collections with
-// runtime.ReadMemStats, which builds nothing and stops the world for a moment per poll (polls at 5, 15, 35, 75 ms and so on, then one a
-// second), and it reads metrics from the first collection on.
+// collectionsFinished (polls at 5, 15, 35, 75 ms and so on, then one a second), and it reads metrics from the first collection on.
+// runtime.ReadMemStats is not the counter: it stops the world and flushes every P's allocation cache on each call, and the polls of a
+// 70 ms rpc start left the process 0.5 MB more anonymous memory at ready (4.87 MB against 4.28 MB, ceiling 4.5 MB).
 // The wait doubles from minPoll to maxPoll while no collection has finished. An idle process then fires one timer a second, which
 // costs about 4 more voluntary context switches a second than a process without the watcher (273 against 39-46 in 60 s, 4-CPU
 // Linux container); a run that collects often reads every minPoll.
 func watchLiveHeap(quit <-chan struct{}) {
-	var memstats runtime.MemStats
 	var sample []metrics.Sample
 	var cycles uint64
 	wait := minPoll
@@ -75,7 +75,7 @@ func watchLiveHeap(quit <-chan struct{}) {
 		case <-timer.C:
 		}
 		if sample == nil {
-			if runtime.ReadMemStats(&memstats); memstats.NumGC == 0 {
+			if collectionsFinished() == 0 {
 				wait = min(2*wait, maxPoll)
 				timer.Reset(wait)
 				continue
@@ -94,4 +94,32 @@ func watchLiveHeap(quit <-chan struct{}) {
 		}
 		timer.Reset(wait)
 	}
+}
+
+// debug.ReadGCStats takes the runtime's heap lock and nothing else (no stop-the-world, no mcache flush), but it makes its two history
+// buffers (4,120 and 6,144 bytes) when the caller gives it none. A watcher that polls before the first collection hands it these
+// two, which live in the binary's zeroed data, so a poll allocates nothing on the heap; the runtime writes only the entries
+// for the collections that have run and three trailing words, so a process that has collected nothing touches one page of them.
+// gcStatsMu serializes the watchers of two Apply calls that overlap, which only a test makes.
+var (
+	gcStatsMu       sync.Mutex
+	gcStats         debug.GCStats
+	gcPauseScratch  [2*pauseHistory + 3]time.Duration
+	gcPauseEndSpace [pauseHistory]time.Time
+)
+
+// pauseHistory is the number of collections the runtime keeps pause times for (len(runtime.MemStats{}.PauseNs)); debug.ReadGCStats
+// allocates its buffers unless they have room for twice this and three words, and for this many end times.
+const pauseHistory = 256
+
+// The compiler rejects a runtime whose history length is not pauseHistory.
+var _ = [1]struct{}{}[pauseHistory-len(runtime.MemStats{}.PauseNs)]
+
+// collectionsFinished is the number of collections that have finished, as debug.ReadGCStats reports it.
+func collectionsFinished() int64 {
+	gcStatsMu.Lock()
+	defer gcStatsMu.Unlock()
+	gcStats.Pause, gcStats.PauseEnd = gcPauseScratch[:0], gcPauseEndSpace[:0]
+	debug.ReadGCStats(&gcStats)
+	return gcStats.NumGC
 }
