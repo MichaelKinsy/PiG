@@ -1,0 +1,177 @@
+from = "1.5.2"
+to = "1.5.2+d9d535b6"
+
+[[files]]
+path = "packages/durable/src/signals.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_signals_test.go#TestDefineSignal", "test:durable/harness/harness_signals_test.go#TestSignalDelivery", "test:durable/harness/harness_signals_test.go#TestSleepingOnSignals", "test:durable/harness/harness_submission_notify_test.go#TestSubmissionsThatNotifyATask"]
+rationale = "473515f9c adds signals: typed JSON values delivered to a live task and kept in its memos `pi.signal.<name>/<key>` until a wake uses them. durable/signals.go ports defineSignal (panics where Pi throws a TypeError), deliverSignal (not_found, closed for a terminal, completing, or abort-marked task or an expired key, invalid for a value outside the schema, duplicate, a delivery after the deadline closing the key), readSignal (migration, newer-version and missing-migrate errors), checkSleep, sleepDue, sleepWake, and the built-in SubmissionSettled signal, named SubmissionSettledSignal because Go's SubmissionSettled is the settled result of Submission.Abort. A Go method cannot take a type parameter, so Tx.SignalErased, TaskRuntime.ReadSignalErased, HookApi.ReadSignalErased and Harness.SignalErased take an erased token and durable.Signal, durable.ReadSignal and harness.Signal are the typed calls. SubmissionSettledSignal is upstream's `SubmissionSettled` under a Go name, which the settled result of Submission.Abort already holds; its wire name `pi.submission-settled`, version 1, and schema are Pi's, so no stored record, delivered value, or error text differs."
+
+[[files]]
+path = "packages/durable/src/harness/parks.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_tool_parks_test.go#TestToolParksInvalid", "test:durable/harness/harness_tool_parks_test.go#TestToolParksWrappers"]
+rationale = "473515f9c adds the park shape check and wrapComposite: wrappers never park, a composite's park its base did not return is invalid_park. durable/harness/parks.go keeps the park a pointer (ToolExecutionResult.Park, because a Go tool returns one struct where Pi returns a result or a park object) so identity tells a base's park from a wrapper's; the run's park set travels on the run's api and, for a wrapper that hands its base another api, on the call's context. Go forced shapes here, none observable against Pi: ToolExecutionResult.Park is a pointer on the one result struct because a Go return holds one type, where Pi tells a park from a result by its `sleep` or `wait` key; the park set rides on the api or the context because Go has no spread-and-pass api object or own symbol property; and a Park holding neither Sleep nor Wait, which Pi's types forbid and which Pi meets as a TypeError at `(sleep ?? wait)!.checkpoint`, is an invalid_park result with the text `a park has either sleep or wait, but this one has neither`, a text Pi has no counterpart for (the `both` and result-field texts are Pi's, verbatim)."
+
+[[files]]
+path = "packages/durable/src/harness/tool.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_tool_parks_test.go#TestToolParksOnASignal", "test:durable/harness/harness_tool_parks_test.go#TestToolParksNestedCalls", "test:durable/harness/harness_tool_parks_test.go#TestToolParksOnTasks", "test:durable/harness/harness_tool_parks_test.go#TestToolParksCancel", "test:durable/harness/harness_tool_parks_test.go#TestToolParksWaking", "test:durable/harness/harness_tool_gates_test.go#TestToolGatesBeforeToolSleep", "test:durable/harness/harness_park_children_test.go#TestParkChildrenNestedCallsWithoutWaiting", "test:durable/harness/harness_park_children_test.go#TestParkChildrenTasksCreatedUnderAKey", "test:durable/harness/harness_park_children_test.go#TestParkChildrenAfterARestart"]
+rationale = "473515f9c: pi.tool version 4 with the `parked` phase and the wake and checkpoint of `execute`; a tool's execute may park (sleep or wait) and runs again when woken with api.wake and api.checkpoint; cancel cleans up the external work of an aborted parked call in a context only the Harness close cancels; beforeTool gates may sleep (parkAtGate); executeTool with wait false returns a NestedToolCall; createTask takes a key; explicit keys after a wake; durationMs spans the call from its first run (startedAt) to its result. tool.go and tool_nested.go port each; Pi's overload `executeTool({ wait: false })` is ExecuteToolNoWait and `createTask({ key })` is CreateTaskErased with ToolTaskOptions, because a Go method has one result type and one options type. durationMs stays an *int64 as in every Go tool-result and message type; the span is rounded to whole milliseconds, where Pi stores `runtime.now() - startedAt` unrounded, so the values differ only under a Harness clock that returns fractional milliseconds (Date.now() and the Go default clock return whole ones)."
+
+[[files]]
+path = "packages/durable/src/harness/scheduler.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_signals_test.go#TestSleepingOnSignals", "test:durable/harness/harness_signals_test.go#TestWaitsWithPolicyAny", "test:durable/harness/harness_signals_test.go#TestWakes", "test:durable/harness/harness_idle_scopes_test.go#TestIdleKeptContextRanges", "test:durable/harness/harness_tool_gates_test.go#TestToolGatesRegistryChangesAndOpens", "test:durable/harness/scheduler_parked_test.go#TestCloseSignalOutlivesAnAbortMark", "test:durable/harness/scheduler_parked_test.go#TestKeptChildrenSurviveARestart"]
+rationale = "473515f9c: a reservation in run mode ends a wait or sleep with a wake (time, expired, signal, tasks) and the consumed or expired signal memos; sleeps wait for signals or until; waits take policy any; a committed state of the same checkpoint keeps the wake; registry publications, opens, and a sleep committed under a replaced snapshot wake a call parked at its gates; the abandonOnRestart children of a parked or not started tool call survive a restart; the Harness close signal outlives an abort mark; kept contexts expire while all of a conversation's live work is parked. scheduler.go and scheduler_parked.go keep the scheduler's single lock, so each decision Pi makes between two awaits is made under it."
+
+[[files]]
+path = "packages/durable/src/harness/generation.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_hook_tasks_test.go#TestAfterToolsTasks", "test:durable/harness/harness_hook_tasks_test.go#TestOnYieldTasks", "test:durable/harness/harness_hook_tasks_test.go#TestHookTasksRecovery"]
+rationale = "473515f9c: pi.generation version 3 with the afterTools and yield phases; afterTools and onYield hooks may ask for tasks that run as the generation's children, an afterTools task ends the run with { terminate: true }, onYield tasks decide whether an answer stands while the inputs stay open (LiveRun.yield). generation.go ports finishToolRound/endToolRound, the yield handler, concludeAnswer and createHookTasks; the onYield result is the sealed YieldResult (*YieldContinue or *YieldTasks)."
+
+[[files]]
+path = "packages/durable/src/harness/live.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_hook_tasks_test.go#TestOnYieldTasks", "test:durable/harness/harness_tool_parks_test.go#TestToolParksOnASignal"]
+rationale = "473515f9c: slot status sleeping and waiting, LiveRun.yield, clearOutput, and the yield branch of settleSchedulerOutcome. live.go ports each."
+
+[[files]]
+path = "packages/durable/src/harness/define.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_hook_tasks_test.go#TestAfterToolsTasks"]
+rationale = "473515f9c renames runEndTask to hookTask (RunEndTask to HookTask); define.go has HookTaskOf and types.go HookTask and HookTasks."
+
+[[files]]
+path = "packages/durable/src/harness/agent.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_tool_parks_test.go#TestToolParksWrappers"]
+rationale = "473515f9c applies tool wrappers through wrapComposite so a composite's parks are told from its base's; agent.go ports it."
+
+[[files]]
+path = "packages/durable/src/harness/harness.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_signals_test.go#TestSignalDelivery", "test:durable/harness/harness_submission_notify_test.go#TestSubmissionsThatNotifyATask"]
+rationale = "473515f9c adds Harness.signal and passes the keepsAbandoned and gated predicates to the scheduler; harness.go has SignalErased and harness.Signal."
+
+[[files]]
+path = "packages/durable/src/harness/submissions.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_submission_notify_test.go#TestSubmissionsThatNotifyATask"]
+rationale = "473515f9c: SubmissionDraft.notify is stored on the submission record; isSettled moves to signals.ts (durable.IsSettled)."
+
+[[files]]
+path = "packages/durable/src/harness/task-graph.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_signals_test.go#TestSleepingOnSignals"]
+rationale = "473515f9c: a sleeping node's until is optional and it lists its signals. task_graph.go ports it."
+
+[[files]]
+path = "packages/durable/src/harness/types.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_tool_parks_test.go#TestToolParksInvalid", "test:durable/harness/harness_hook_tasks_test.go#TestAfterToolsTasks"]
+rationale = "473515f9c: ToolPark, NestedToolCall, ToolExecutionApi.wake/checkpoint/readSignal, ToolRegistration.cancel, GateSleep, HookApi.readSignal/now, HookTask, YieldDecision, AfterToolsDecision, TaskInspection until optional, SubmissionDraft.notify. harness_types.go and harness/types.go port them; unions are structs or sealed interfaces (ToolExecutionResult.Park, YieldResult)."
+
+[[files]]
+path = "packages/durable/src/types.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_signals_test.go#TestWakes", "test:durable/durabletest/storage_conformance_cases_test.go#TestCreateStorageConformanceCasesMatchUpstream"]
+rationale = "473515f9c: WakeReason, TaskState.wake and signals, until optional, JoinPolicy any, SubmissionNotify, Tx.signal, TaskRuntime.readSignal. types.go and codecs.go port them (WakeReason is a struct that writes the member its reason names)."
+
+[[files]]
+path = "packages/durable/src/session/transaction.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_signals_test.go#TestSignalDelivery", "test:durable/harness/harness_submission_notify_test.go#TestSubmissionsThatNotifyATask"]
+rationale = "473515f9c: Tx.signal reads the task and stages the delivery against the latest candidate (under the transaction lock, as Pi's synchronous stretch after the await); a commit that settles a submission with notify delivers SubmissionSettled in the same batch; a live task replacement keeps the memos an earlier write staged."
+
+[[files]]
+path = "packages/durable/src/testing/storage-conformance.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/durabletest/storage_conformance_cases_test.go#TestCreateStorageConformanceCasesMatchUpstream"]
+rationale = "473515f9c adds the case 'round-trips sleeps on signals, any waits, and wakes'; durabletest/storage_conformance.go has it and the case list test names 33 cases."
+
+[[files]]
+path = "packages/durable/src/index.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "Re-export barrel: the exports are the Go package surface."
+
+[[files]]
+path = "packages/chord/src/node/plugins/install.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginReadsNpm12sPackOutputThePackedTarballsByPackageName", "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginTakesTheTarballOfItsPackageFromNpm12sOutputNotTheFirstOneListed", "test:chord/nextnode/plugins/plugins_install_test.go#TestPackedTarballReadsTheListNpm11PrintsAndTheMemberOfThePackageNpm12Prints"]
+rationale = "75d59639a reads `npm pack --json` as `Array.isArray(output) ? output[0] : output[name]`: the list npm 11 and earlier print, or the member of the package asked for in the object npm 12 prints. plugins_install.go packedTarball takes the package name and reads the same member, so D501 (PiG took the object's first member) is retired; Pi's own npm 12 test is ported with a fake npm 12, and the keyed selection and JavaScript's errors for a missing member or a JSON null are pinned. 91d9719b4 (test-only: the two git-dependency install tests of packages/chord/test/node/plugins/install.test.ts skip on npm 12, where `allow-git` defaults to none and Pi has not decided whether the installer opts in) needs no skip here: the PiG tests set npm_config_allow_git=all (allowGitDependencies in plugins_install_test.go, and TestExample50PluginImports), so they run on every npm; the installer's own behaviour is unchanged."
+
+[[files]]
+path = "packages/durable/src/harness/provider.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_lifecycle_test.go#TestHarnessClose"]
+rationale = "64c96d00d: ensureProviderSessionId records the session id it returns in the set of the Harness that owns the task runtime (providerSessionsByRuntime); the persisted ProviderDoc is unchanged. provider.go records it in the Harness's providerSessionIds, which rides the invocation's Signal context because a Go runtime reaches the handler wrapped in its task definition's types."
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/read.ts"
+change = "modified"
+disposition = "unchanged-observable"
+evidence = ["test:internal/codingagent/tools/read_streaming_test.go#TestReadStreamingRejectsWhenAbortedWhileOpeningTheFile", "test:internal/codingagent/tools/read_streaming_test.go#TestReadStreamingStopsReadingALocalFileWhenAbortedMidRead"]
+rationale = "ef9361ab7 (#12025, #11956) stops giving the file stream the abort signal: a stream destroyed by an aborted signal emitted an unhandled 'error' that exited pi, and the read loop already checks the signal between chunks. That is a Node EventEmitter failure; ReadTool.Execute (read.go) already returns \"Operation aborted\" on ctx.Err(), reads no further chunk (selectLinesFromStream checks ctx before each Read) and closes the stream (deferred Close). Pi's two read-streaming cases (abort while the file is opened; abort mid-read of a 1 MB file, one chunk read) are ported with the same inputs and pass unchanged on next."
+
+[[files]]
+path = "packages/coding-agent/src/core/session-manager.ts"
+change = "modified"
+disposition = "unchanged-observable"
+evidence = ["test:internal/codingagent/session_listing_test.go#TestSessionListingDoesNotFailWhenAbortedAfterAFileThatIsNotASessionWasSkipped"]
+rationale = "ef9361ab7 (#11956): buildSessionInfo no longer hands the picker's signal to the file stream, checks it per line and after the loop, and destroys the stream in a finally (the old early return for a file whose first entry is not a session header left the stream open, leaking its descriptor, and a later abort crashed pi with an unhandled stream 'error'). summarizeSessionFileWith (session_resume.go) opens with a deferred Close, closes the file on abort through context.AfterFunc and returns ctx.Err(), so it neither leaks on the early return nor has an unhandled-error path. Pi's file-operations case (list a directory holding a 1 MB non-session .jsonl, then abort) is ported and passes unchanged on next."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/session-share.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "ef9361ab7 adds an 'error' listener to spawn(\"gh\", ...) so a failed spawn of the GitHub CLI is a failed command instead of an uncaught exception. PiG's /share does not run gh: it uploads through the PiG gateway (session_share.go, D64), so the child-process failure path does not exist; Pi has no test for it either."
+
+[[files]]
+path = "packages/ai/src/api/anthropic-messages.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsAnyProviderOnAnthropicEndpoint", "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsEndpointSupport"]
+rationale = "49fe0a237 (#11987) makes the default of supportsMessageThreads `compat ?? baseUrl.includes(\"api.anthropic.com\")`, with no provider id check. anthropicProvider.supportsMessageThreads (ai/anthropic.go) does the same; Pi's case (an alias provider on api.anthropic.com creates then continues a thread, a gateway sends none) is ported."
+
+[[files]]
+path = "packages/ai/src/providers/compat-schema.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/configschema/compat_schema_exports_test.go#TestCompatSchemaExportsMatchPi"]
+rationale = "49fe0a237 rewords the supportsMessageThreads description (default true for a baseUrl on api.anthropic.com); configschema/compat_b.go, the models.schema.json and models-configuration.md mirrors carry the new text."
+
+[[files]]
+path = "packages/coding-agent/src/extensions/llama/provider.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/llama/provider_test.go#TestModelsProviderIsDormantUntilConfigured"]
+rationale = "b3c2e4a6b (#12001) changes DEFAULT_LLAMA_SERVER_URL from port 8080 to 9931; provider.go DefaultLlamaServerURL does the same, and the upstream test inputs (llama-extension, llama-cpp-classify) are ported with port 9931. 74dcca7d4 (#12004) is docs only (the NVIDIA RTX guide drops `--port 8080` and connects to port 9931); docs/site/docs/nvidia-rtx-llama-cpp.md mirrors it."
+
+[[files]]
+path = "packages/durable/src/harness/util.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_wait_cancel_test.go#TestAWaitEndedBeforeItsResultIsDelivered"]
+rationale = "d9d535b6c (#12041, fixing #11963 and #11820) makes Waiters.add attach a no-op handler to every promise it returns, including the already-aborted one, so a wait cancelled or closed before the line delivered its job's result reports no unhandled rejection while the caller still gets the rejection. Go has no unhandled rejection: a Waiter is a done channel and a value the caller reads in Wait, and Waiters.Add already registers a waiter that settles once, gives the caller context.Cause (or the close error) once the job is delivered, removes a cancelled waiter from the set, and ends its goroutine. No Go change is needed, so this is already equivalent; harness_wait_cancel_test.go ports the Pi case (a held publication, then a Submission.Wait whose context ends, ended before, or whose Harness closes) and checks the registry and the goroutines Waiters.Add started. Harness.WaitForTask registers through the same Waiters.Add."
