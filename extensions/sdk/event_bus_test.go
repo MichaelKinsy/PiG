@@ -321,29 +321,24 @@ func TestEventBusErrorPaths(t *testing.T) {
 	stopBusExtension(t, host, done)
 }
 
-// A request the factory pump serves while the extension loads (an events dispatch) never reaches the main loop's arming, so the read loop's queue entry for it is dropped when it is served.
-func TestLoadTimeRequestsLeaveNothingQueuedForTheArming(t *testing.T) {
+// A request the factory pump serves while the factory runs never reaches the main loop's arming, so the read loop's queue entry for it is dropped when it is served.
+func TestFactoryPumpServedRequestsLeaveNothingQueuedForTheArming(t *testing.T) {
+	host := factoryHost(t)
 	ext := New("bus")
-	if _, err := ext.Events().On("ch", func(Context, any) error { return nil }); err != nil {
-		t.Fatal(err)
+	on, result := onInFactory(t, host, ext, "ch", func(Context, any) error { return nil })
+	if err := awaitResult(t, result); err != nil {
+		t.Fatalf("On = %v", err)
 	}
-	host, done := startBusExtension(t, ext)
-	on, _ := readBusCall(t, host, "events.on", "null")
-	for host.readEnvelope(t).Type != msgRegister {
-	}
-	args, _ := json.Marshal(map[string]any{"handlerId": on.HandlerID, "channel": "ch", "json": "early"})
-	host.writeEnvelope(t, envelope{Type: msgRequest, ID: "d1", Request: &requestMsg{Method: "events.dispatch", Args: args}})
-	for host.readEnvelope(t).Type != msgResponse {
+	if msg := dispatchTo(t, host, "d1", on.HandlerID, "ch", "early"); msg != "" {
+		t.Fatalf("dispatch answered with error %q", msg)
 	}
 	ext.eventMu.Lock()
 	loading := ext.loading
 	ext.eventMu.Unlock()
 	if loading == nil {
-		t.Fatal("the extension is not loading")
+		t.Fatal("the factory has no connection")
 	}
 	if got := unarmedRequests(loading); got != 0 {
-		t.Fatalf("requests queued and not armed after the load-time answers = %d, want none", got)
+		t.Fatalf("requests queued and not armed after the pump answered = %d, want none", got)
 	}
-	host.writeEnvelope(t, envelope{Type: msgReady, Ready: &readyMsg{Cwd: "/tmp", Width: 80}})
-	stopBusExtension(t, host, done)
 }
