@@ -104,7 +104,7 @@ emit(
 	"# status: ready (a runner exists and the reference capture is deterministic), pending (no candidate can run it yet, with the",
 	"# reason and the owner; `--strict` fails on it), skipped (nobody can run it here, with the reason).",
 	"",
-	"[pin]", `reference = ${q("earendil-works/pi")}`, `commit = ${q("c23b9ec1ef12a63573d739d4c294f81a377b7d57")}`, `release = ${q("1.0.4")}`,
+	"[pin]", `reference = ${q("earendil-works/pi")}`, `commit = ${q("b4afdddf44e059c67ccf5097e5317d913521b470")}`, `release = ${q("1.0.4")}`,
 )
 for (const f of readdirSync(join(pi, "packages/durable/test/examples")).filter(f => /^\d\d-.*\.ts$/.test(f)).sort()) {
 	const name = f.replace(/\.ts$/, "")
