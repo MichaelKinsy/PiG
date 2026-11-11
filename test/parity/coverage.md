@@ -1,14 +1,14 @@
 # PORT_MAP coverage report
 
-Generated from `1140` PORT_MAP entries and `876` parity scenarios.
+Generated from `1144` PORT_MAP entries and `876` parity scenarios.
 
 ## Status
 
-- **Porting:** 1016 / 1023 intended-portable entries ✅ (99.3%).
-- **Behavior verification:** 821 / 1016 ported entries (80.8%); 0 weak-only, 195 untested.
-- **Upstream test porting:** 979 ported / 0 partial / 1 pending (7 other dispositions; [file mapping](interfaces/test-mapping-v1.5.1.json)). Of the partial/pending files, 0 deferred to 0.3.x by the [release policy](interfaces/test-porting-policy-v1.5.1.json) (`deferred-0.3.x`).
+- **Porting:** 1021 / 1027 intended-portable entries ✅ (99.4%).
+- **Behavior verification:** 821 / 1021 ported entries (80.4%); 0 weak-only, 200 untested.
+- **Upstream test porting:** 983 ported / 1 partial / 1 pending (7 other dispositions; [file mapping](interfaces/test-mapping-v1.5.2.json)). Of the partial/pending files, 0 deferred to 0.3.x by the [release policy](interfaces/test-porting-policy-v1.5.2.json) (`deferred-0.3.x`).
 
-Raw PORT_MAP rows: 1140. Breakdown: 117 n/a (designed out) · 7 🟡 partial. See docs/parity/DIVERGENCES.md for the documented exceptions.
+Raw PORT_MAP rows: 1144. Breakdown: 117 n/a (designed out) · 6 🟡 partial. See docs/parity/DIVERGENCES.md for the documented exceptions.
 
 ## Packages
 
@@ -16,7 +16,7 @@ Raw PORT_MAP rows: 1140. Breakdown: 117 n/a (designed out) · 7 🟡 partial. Se
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | `agent` | 6 | 1 | 5 | 5 | 0 | 0 | 100.0% | 100.0% |
 | `ai` | 272 | 24 | 248 | 248 | 0 | 0 | 100.0% | 97.2% |
-| `chord` | 324 | 40 | 284 | 282 | 2 | 0 | 99.3% | 59.2% |
+| `chord` | 328 | 40 | 288 | 287 | 1 | 0 | 99.7% | 58.2% |
 | `codemode` | 17 | 4 | 13 | 13 | 0 | 0 | 100.0% | 100.0% |
 | `coding-agent` | 265 | 27 | 238 | 237 | 1 | 0 | 99.6% | 95.8% |
 | `durable` | 100 | 10 | 90 | 88 | 2 | 0 | 97.8% | 86.4% |
@@ -29,8 +29,8 @@ Raw PORT_MAP rows: 1140. Breakdown: 117 n/a (designed out) · 7 🟡 partial. Se
 
 - **Four core packages (agent, ai, coding-agent, tui):** 535 / 536 intended-portable files ✅ (99.8%) from 589 rows; 518 behavioral (96.8%), 0 weak-only, 17 untested.
 - **Shipped surface (agent, ai, codemode, coding-agent, mcp, schema, telemetry, tui; coding-agent without ):** 620 / 621 intended-portable files ✅ (99.8%) from 685 rows; 553 behavioral (89.2%), 0 weak-only, 67 untested.
-- **Whole monorepo (12 packages):** 1016 / 1023 intended-portable files ✅ (99.3%) from 1140 rows; 821 behavioral (80.8%), 0 weak-only, 195 untested.
-- **Interface closure:** 15086 of 15088 semantic interface IDs closed (520 designed-out, 2 pending, 14566 ported). A file-level ✅ does not close an interface ID.
+- **Whole monorepo (12 packages):** 1021 / 1027 intended-portable files ✅ (99.4%) from 1144 rows; 821 behavioral (80.4%), 0 weak-only, 200 untested.
+- **Interface closure:** 15047 of 15056 semantic interface IDs closed (518 designed-out, 9 pending, 14529 ported). A file-level ✅ does not close an interface ID.
 
 Behavioral evidence includes paired scenarios and reviewed mutation-proven Go unit tests. Unit tests are listed separately; last run refers only to paired scenarios, not unit execution or exhaustive parity.
 
@@ -894,7 +894,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/chord/src/node/workers/lock.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/workers/main.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/node/workers/process.ts` | ✅ | **0 (untested)** | **0** | not run |  |
-| `packages/chord/src/node/workers/workers.ts` | 🟡 | 0 | 0 | not run |  |
+| `packages/chord/src/node/workers/workers.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/host/old-work.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/host/readiness.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/host/reload-cycle.ts` | ✅ | **0 (untested)** | **0** | not run |  |
@@ -994,6 +994,10 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/chord/src/web/scripts.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/web/styles.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/web/themes.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/host/host-data.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/store/host-column.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/store/host-data.ts` | ✅ | **0 (untested)** | **0** | not run |  |
+| `packages/chord/src/store/import-migration.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/durable/src/documents.ts` | ✅ | 0 | 3 (unit:./durable/session:TestSessionHistoricalDocumentSnapshots, unit:./durable:TestDocumentConversionsKeepRevisionsAndStayStrict, unit:./durable:TestResolveAddressRejectsAnUnsafeOwnerId) | not run | ./durable/session:TestSessionHistoricalDocumentSnapshots, ./durable:TestDocumentConversionsKeepRevisionsAndStayStrict, ./durable:TestResolveAddressRejectsAnUnsafeOwnerId |
 | `packages/durable/src/entries.ts` | ✅ | 0 | 5 (unit:./durable/harness:TestGenerationRecovery, unit:./durable/harness:TestManualCompaction, unit:./durable/session:TestDocumentDefinitions, unit:./durable:TestDefineEntryGuardsByKindAndDecodesTypedData, unit:./durable:TestTaskEntryNarrowsToTheTokenKind) | not run | ./durable/harness:TestGenerationRecovery, ./durable/harness:TestManualCompaction, ./durable/session:TestDocumentDefinitions, ./durable:TestDefineEntryGuardsByKindAndDecodesTypedData, ./durable:TestTaskEntryNarrowsToTheTokenKind |
 | `packages/durable/src/env/decode.ts` | ✅ | 0 | 22 (unit:./durable/env:TestLineScanner, unit:./durable/env:TestLineScannerSafeIntegerBounds, unit:./durable/env:TestLineScannerSelectionPastTheLastLineIsEmptyAtTheEnd, unit:./durable/env:TestRangeDecoderKeepsAByteOrderMark, unit:./durable/env:TestRangeDecoderKeepsAByteOrderMark, unit:./durable/env:TestRangeDecoderKeepsAByteOrderMark, unit:./durable/env:TestStartsWithBom, unit:./durable/env:TestStartsWithBom, unit:./durable/env:TestStartsWithBomChecksEachOfTheThreeBytes, unit:./durable/env:TestStreamDecoder, unit:./durable/env:TestStreamDecoder, unit:./durable/env:TestStreamDecoder, unit:./durable/env:TestStreamDecoder, unit:./durable/env:TestStreamDecoderDropsAByteOrderMarkOnlyAtTheStartOfTheStream, unit:./durable/env:TestStreamDecoderDropsAByteOrderMarkOnlyAtTheStartOfTheStream, unit:./durable/env:TestStreamDecoderHoldsAnIncompleteCharacterUntilItsRemainingBytesArrive, unit:./durable/env:TestStreamDecoderHoldsAnIncompleteCharacterUntilItsRemainingBytesArrive, unit:./durable/env:TestStreamDecoderHoldsAnIncompleteCharacterUntilItsRemainingBytesArrive, unit:./durable/env:TestStreamDecoderMatchesPi, unit:./durable/env:TestStreamDecoderMatchesPi, unit:./durable/env:TestStreamDecoderMatchesPi, unit:./durable/env:TestStreamDecoderTrimsOnlyTheMarkAtTheStart) | not run | ./durable/env:TestLineScanner, ./durable/env:TestLineScannerSafeIntegerBounds, ./durable/env:TestLineScannerSelectionPastTheLastLineIsEmptyAtTheEnd, ./durable/env:TestRangeDecoderKeepsAByteOrderMark, ./durable/env:TestRangeDecoderKeepsAByteOrderMark, ./durable/env:TestRangeDecoderKeepsAByteOrderMark, ./durable/env:TestStartsWithBom, ./durable/env:TestStartsWithBom, ./durable/env:TestStartsWithBomChecksEachOfTheThreeBytes, ./durable/env:TestStreamDecoder, ./durable/env:TestStreamDecoder, ./durable/env:TestStreamDecoder, ./durable/env:TestStreamDecoder, ./durable/env:TestStreamDecoderDropsAByteOrderMarkOnlyAtTheStartOfTheStream, ./durable/env:TestStreamDecoderDropsAByteOrderMarkOnlyAtTheStartOfTheStream, ./durable/env:TestStreamDecoderHoldsAnIncompleteCharacterUntilItsRemainingBytesArrive, ./durable/env:TestStreamDecoderHoldsAnIncompleteCharacterUntilItsRemainingBytesArrive, ./durable/env:TestStreamDecoderHoldsAnIncompleteCharacterUntilItsRemainingBytesArrive, ./durable/env:TestStreamDecoderMatchesPi, ./durable/env:TestStreamDecoderMatchesPi, ./durable/env:TestStreamDecoderMatchesPi, ./durable/env:TestStreamDecoderTrimsOnlyTheMarkAtTheStart |
