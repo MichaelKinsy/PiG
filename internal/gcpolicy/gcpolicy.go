@@ -8,7 +8,6 @@ package gcpolicy
 
 import (
 	"os"
-	"runtime"
 	"runtime/debug"
 	"runtime/metrics"
 	"sync"
@@ -49,21 +48,16 @@ func Apply() (stop func()) {
 	}
 }
 
-// watchLiveHeap polls until one read of the runtime's metrics finds more than FallbackLiveBytes live. The live heap changes only when a
+// watchLiveHeap polls the runtime's metrics until one read finds more than FallbackLiveBytes live. The live heap changes only when a
 // collection ends, and the runtime has no hook for that moment that does not run late: a cleanup or finalizer runs when the sweeper
 // reaches its span and then waits its turn on the goroutines that run them (at most max(GOMAXPROCS/4, 1): one under D174's cap of 2 Ps), and a sentinel allocated while a collection marks survives that collection, so
 // a check armed that way can miss the collection that found the large heap and leave the target at 400 for the rest of the run.
 // debug.SetMemoryLimit is not a substitute: it caps the absolute heap rather than returning to a percent past a live size.
-// The first read of runtime/metrics builds the runtime's metric table (12,704 bytes in 72 objects), and a run that ends before its
-// first collection has no live heap to read. Until a collection has finished the poll therefore counts collections with
-// runtime.ReadMemStats, which builds nothing and stops the world for a moment per poll (polls at 5, 15, 35, 75 ms and so on, then one a
-// second), and it reads metrics from the first collection on.
 // The wait doubles from minPoll to maxPoll while no collection has finished. An idle process then fires one timer a second, which
 // costs about 4 more voluntary context switches a second than a process without the watcher (273 against 39-46 in 60 s, 4-CPU
 // Linux container); a run that collects often reads every minPoll.
 func watchLiveHeap(quit <-chan struct{}) {
-	var memstats runtime.MemStats
-	var sample []metrics.Sample
+	sample := []metrics.Sample{{Name: "/gc/heap/live:bytes"}, {Name: "/gc/cycles/total:gc-cycles"}}
 	var cycles uint64
 	wait := minPoll
 	timer := time.NewTimer(wait)
@@ -73,14 +67,6 @@ func watchLiveHeap(quit <-chan struct{}) {
 		case <-quit:
 			return
 		case <-timer.C:
-		}
-		if sample == nil {
-			if runtime.ReadMemStats(&memstats); memstats.NumGC == 0 {
-				wait = min(2*wait, maxPoll)
-				timer.Reset(wait)
-				continue
-			}
-			sample = []metrics.Sample{{Name: "/gc/heap/live:bytes"}, {Name: "/gc/cycles/total:gc-cycles"}}
 		}
 		metrics.Read(sample)
 		if sample[0].Value.Uint64() > FallbackLiveBytes {
