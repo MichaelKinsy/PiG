@@ -416,7 +416,7 @@ func refreshStoredOAuthLocked(ctx context.Context, credentials CredentialStore, 
 // RefreshStoredOAuth is [refreshStoredOAuthCredential] for a provider whose OAuth refresh is not an [OAuthAuth] of a Models provider: refreshes the stored OAuth credential under the store's lock when needsRefresh still holds, and persists the result, with the caller's cancellation ending only the wait for the lock. It returns nil when the credential was removed or replaced by a non-OAuth one meanwhile.
 // upstream: packages/ai/src/auth/resolve.ts:refreshStoredOAuthCredential
 func RefreshStoredOAuth(ctx context.Context, credentials CredentialStore, providerID string, oauth *OAuthAuth, needsRefresh func(Credential) bool) (*Credential, error) {
-	return refreshStoredOAuthCredential(ctx, credentials, providerID, oauth, needsRefresh)
+	return refreshStoredOAuthCredential(ctx, credentials, providerID, oauth, needsRefresh, startOAuthRefreshWork)
 }
 
 // ModifyCredentialDetached is credentials.Modify for a transaction that may rotate a single-use token: ctx cancels only the wait for the store's lock. Once fn starts, a cancelled ctx neither stops fn's store write nor discards its result, so the rotated token is persisted; fn itself must not use ctx for the provider request, which is bounded by [RefreshOAuthDetached]. A ctx that ended before fn started returns [AbortReason]. A caller that returns when ctx ends owns running the transaction to its end, as refreshStoredOAuthCredential's goroutine does.
