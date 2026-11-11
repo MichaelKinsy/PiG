@@ -24,7 +24,7 @@ import (
 const LlamaProviderID = "llama.cpp"
 
 // DefaultLlamaServerURL mirrors DEFAULT_LLAMA_SERVER_URL.
-const DefaultLlamaServerURL = "http://127.0.0.1:8080"
+const DefaultLlamaServerURL = "http://127.0.0.1:9931"
 
 const openAICompletionsAPI = "openai-completions"
 

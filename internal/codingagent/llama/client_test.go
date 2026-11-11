@@ -78,7 +78,7 @@ func listen(t *testing.T, handler http.HandlerFunc) string {
 
 func TestNormalizeLlamaServerURL(t *testing.T) {
 	cases := []struct{ input, want string }{
-		{"http://127.0.0.1:8080/v1/", "http://127.0.0.1:8080"},
+		{"http://127.0.0.1:9931/v1/", "http://127.0.0.1:9931"},
 		{"https://example.com/prefix/v1", "https://example.com/prefix"},
 		{"\thttp://HOST:80/\n", "http://host"},
 		{"http://host/a//v1", "http://host/a"},
