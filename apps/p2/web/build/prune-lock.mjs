@@ -6,7 +6,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const direct = ["@earendil-works/design-tokens", "@earendil-works/elanor-fonts", "@earendil-works/elanor-icons-react", "@earendil-works/elanor-react", "lowlight", "marked", "partial-json", "react", "react-dom"];
+const direct = ["@earendil-works/design-tokens", "@earendil-works/elanor-fonts", "@earendil-works/elanor-icons-react", "@earendil-works/elanor-react", "articulated", "lowlight", "marked", "partial-json", "react", "react-dom"];
 const lock = JSON.parse(readFileSync(process.argv[2], "utf8"));
 // apps/p2's own node_modules entries (marked) shadow the hoisted ones for files of apps/p2, so they take the root's place.
 for (const key of Object.keys(lock.packages))

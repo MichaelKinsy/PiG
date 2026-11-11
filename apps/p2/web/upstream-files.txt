@@ -572,3 +572,9 @@ plugins/views/sheet.tsx
 plugins/views/tool.ts
 plugins/views/views.css
 plugins/views/web.tsx
+plugins/views/room-contract.ts
+plugins/views/text.ts
+plugins/views/kit/connection.ts
+plugins/views/kit/main.ts
+plugins/views/kit/text-client.ts
+test/p2/views-text.test.ts
