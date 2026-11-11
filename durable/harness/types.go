@@ -342,7 +342,7 @@ type TaskInspectionState struct {
 	Migrates bool
 	On       []durable.TaskId
 	// Until is the time a sleeping task wakes at, when it has one: a sleep may wait for signals only.
-	Until *float64
+	Until  *float64
 	Reason string
 	Error  error
 }
