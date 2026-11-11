@@ -198,7 +198,7 @@ ${rects}
 /** By file: the vendored file's sha256 when it is replaced or extended (a Pi change fails the build), the whole replacement, the appended CSS, and the exact literals replaced once each. */
 const files = {
 	"src/web/PiLogo.tsx": { sha256: "2b29bc2437e8cc0285678c5e8ad2bb6153fe45943ce9fcc28d37e7c804edb0de", replaceWhole: pigLogo },
-	"src/web/style.css": { sha256: "0030fe28cbc2fb5e522176f63f7583a36330232d0d5939b2a1bca3072e7d2ece", append: stylesheet },
+	"src/web/style.css": { sha256: "f8ef1492135de961a82a2e433e3a875aaf7fb562ddd12aec6be869ff4750d162", append: stylesheet },
 	"plugins/chat/web.tsx": {
 		literals: [
 			['"Message Pi…"', '"Message PiG…"', "Message Pi…"],

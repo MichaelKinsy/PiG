@@ -10,6 +10,7 @@ import (
 	settingscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/settings/contract"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/chord"
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
@@ -48,6 +49,9 @@ var Server = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) 
 			State: map[string]chord.Watchable[delta.JsonValue]{"settings": settings, "error": failure},
 			Methods: map[string]contracts.MethodFunction{
 				"update": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+					// The method blocks on the model configuration's reload and save, which the host's loop must be free to serve: it
+					// suspends out of its section first, as the models plugin's own saves do.
+					chordctx.Suspend(ctx)
 					value, err := native()
 					if err != nil {
 						return nil, err
