@@ -42,6 +42,13 @@ func (c *conn) armParentWithSignal(id string, runtime, request context.Context, 
 	return parent, queued
 }
 
+// dropQueuedRequest forgets the read loop's queue entry of a request served without arming: while the extension loads, the factory pump answers it and the main loop never sees it.
+func (c *conn) dropQueuedRequest(id string) {
+	c.pendingMu.Lock()
+	delete(c.unarmed, id)
+	c.pendingMu.Unlock()
+}
+
 // loadingConn is the connection of a Context the factory's own emit made for a listener, while the extension has not connected: afterwards the Context is an ordinary one that rides the connection Run adopted, and this returns nil.
 func (c Context) loadingConn() *conn {
 	if c.loading == nil {
