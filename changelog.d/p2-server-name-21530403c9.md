@@ -1,0 +1,3 @@
+### Added
+
+- p2's server has a name of its own: Settings, General, **Server name** (owner only, one line of at most 63 characters) is kept in `identity.json` in the data directory only while the owner set one; without it the device's name (the macOS computer name, else the host name) stands and is read again at every start, so `identity.json` is no longer created on first use. Radius shows the server under that name: the server sends it with every connect and, on a rename while connected, at once with `PUT /v1/servers/<id>/name` instead of a reconnect that would drop every channel; a failed or offline rename goes with the next connect. <!-- feat: p2-server-name -->
