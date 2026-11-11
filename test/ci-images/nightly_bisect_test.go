@@ -26,7 +26,7 @@ func bisectFixture(t *testing.T, badFrom int) (dir string, commits []string, pro
 	t.Helper()
 	dir = t.TempDir()
 	runGitIn(t, dir, "init", "-q", "-b", "main")
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		state := "ok"
 		if i >= badFrom {
 			state = "broken"

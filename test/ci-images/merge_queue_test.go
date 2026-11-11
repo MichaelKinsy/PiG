@@ -506,13 +506,13 @@ func TestCIWorkflowFollowsThePlan(t *testing.T) {
 
 func TestPlannerRejectsAMalformedTable(t *testing.T) {
 	for name, table := range map[string]string{
-		"unknown tier":                  "linux | build | sometimes\nwindows | native-1 | pr\nmacos | native | pr\n",
-		"unknown job":                   "linux | build | pr\nlinus | build | pr\nwindows | native-1 | pr\nmacos | native | pr\n",
-		"duplicate row":                 "linux | build | pr\nlinux | build | queue\nwindows | native-1 | pr\nmacos | native | pr\n",
-		"missing shard":                 "linux | | pr\nwindows | native-1 | pr\nmacos | native | pr\n",
-		"light target on windows":       "linux | build | pr\nwindows | native-1 | pr | ci-x\nmacos | native | pr\n",
+		"unknown tier":                        "linux | build | sometimes\nwindows | native-1 | pr\nmacos | native | pr\n",
+		"unknown job":                         "linux | build | pr\nlinus | build | pr\nwindows | native-1 | pr\nmacos | native | pr\n",
+		"duplicate row":                       "linux | build | pr\nlinux | build | queue\nwindows | native-1 | pr\nmacos | native | pr\n",
+		"missing shard":                       "linux | | pr\nwindows | native-1 | pr\nmacos | native | pr\n",
+		"light target on windows":             "linux | build | pr\nwindows | native-1 | pr | ci-x\nmacos | native | pr\n",
 		"no linux row runs in the light plan": "linux | build | queue\nwindows | native-1 | pr\nmacos | native | pr\n",
-		"quote in a shard":              "linux | b\"d | pr\nwindows | native-1 | pr\nmacos | native | pr\n",
+		"quote in a shard":                    "linux | b\"d | pr\nwindows | native-1 | pr\nmacos | native | pr\n",
 	} {
 		t.Run(name, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "tiers.txt")
@@ -800,7 +800,7 @@ func TestChangeClassifierReadsMergeGroups(t *testing.T) {
 		cmd := testenv.ScriptCommand(t, script, event, from, to)
 		cmd.Dir = repo
 		output, err := cmd.Output()
-		for _, line := range strings.Split(string(output), "\n") {
+		for line := range strings.SplitSeq(string(output), "\n") {
 			if strings.HasPrefix(line, prefix) {
 				return strings.TrimSpace(line), err
 			}
