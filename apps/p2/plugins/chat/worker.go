@@ -56,7 +56,7 @@ var linger = 30 * time.Second
 
 // Facet is the chat worker facet: the send routers, the shell commands, `Conversation`, `ChatCosts` and `Chat`.
 func Facet() host.Facet {
-	return host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+	return p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 		if err := chatcontract.SendRouters.Serve(facet); err != nil {
 			return err
 		}

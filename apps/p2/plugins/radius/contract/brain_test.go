@@ -33,9 +33,10 @@ type flakyRelay struct {
 	conns    []*websocket.Conn
 	server   *http.Server
 
-	statusMu sync.Mutex
-	statuses []Status
-	brain    *Brain
+	statusMu  sync.Mutex
+	statuses  []Status
+	brain     *Brain
+	directory string
 }
 
 func (f *flakyRelay) snapshot() (silent bool, connections, pings int, urls []string, stalled int) {
@@ -179,6 +180,7 @@ func startFlakyRelay(t *testing.T) *flakyRelay {
 	}
 	go func() { _ = f.server.Serve(listener) }()
 	directory := t.TempDir()
+	f.directory = directory
 	if err := WriteConfig(directory, Config{
 		Gateway: "http://" + listener.Addr().String(), ServerID: NewServerID(),
 		Credential: ai.OAuthCredentials{Access: "fixture-token", Refresh: "fixture-refresh", Expires: time.Now().Add(time.Hour).UnixMilli()},
@@ -316,4 +318,49 @@ func TestBrainKeepsReplacingAgainstARelayThatIgnoresReplaceAndAnswers409(t *test
 	}
 	f.set(func() { f.occupied = false })
 	waitFor(t, "the connection", func() bool { return f.connected() == 1 })
+}
+
+// Ports "Radius brain connects under its name, the device's at first, and a rename goes with the next connect"
+// (test/p2/radius.test.ts, Pi main 5c37d3be1).
+func TestBrainConnectsUnderItsNameTheDevicesAtFirstAndARenameGoesWithTheNextConnect(t *testing.T) {
+	f := startFlakyRelay(t)
+	names := func() []string {
+		_, _, _, urls, _ := f.snapshot()
+		var out []string
+		for _, raw := range urls {
+			parsed, err := url.Parse(raw)
+			if err != nil {
+				t.Fatal(err)
+			}
+			out = append(out, parsed.Query().Get("name"))
+		}
+		return out
+	}
+	device, _ := DeviceName()
+	f.brain.Start()
+	waitFor(t, "the first connection", func() bool { return f.connected() == 1 })
+	if got := names(); len(got) != 1 || got[0] != device {
+		t.Fatalf("names = %q, want [%q]", got, device)
+	}
+	// The first connect created identity.json with the device's name; it stays the brain's until changed here.
+	if got := ReadBrainIdentity(f.directory); device != "" && (got == nil || got.Name != device) {
+		t.Fatalf("identity = %v, want %q", got, device)
+	}
+	if err := WriteBrainIdentity(f.directory, BrainIdentity{Name: "Studio brain"}); err != nil {
+		t.Fatal(err)
+	}
+	f.closeHost(1001, "")
+	waitFor(t, "the second connection", func() bool { return f.connected() == 2 })
+	if got := names(); got[len(got)-1] != "Studio brain" {
+		t.Fatalf("names = %q", got)
+	}
+	var last Status
+	for _, status := range f.statusList() {
+		if status.Kind == StatusConnected {
+			last = status
+		}
+	}
+	if last.Name != "Studio brain" {
+		t.Fatalf("last connected status = %+v", last)
+	}
 }

@@ -217,7 +217,7 @@ func duration(ms *float64) string {
 }
 
 // Facet is the plugin's TUI facet.
-var Facet = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+var Facet = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 	return p2runtime.Contribute(facet, "p2.tui-quiet-tools", func(self host.StoreSelf) error {
 		// Key 10 runs before other resolvers, so it wraps whatever they and the registry would draw.
 		p2runtime.ContributeKeyed(self, tuiruntime.TuiToolRendererResolvers, p2runtime.Entry("10:quiet-tools", tools.ToolRendererResolver(QuietTools)))

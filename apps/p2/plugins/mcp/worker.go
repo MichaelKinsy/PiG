@@ -40,7 +40,7 @@ const retryAfter = 2 * time.Second
 const codemodeExtension = "codemode"
 
 // Worker is the plugin's worker facet.
-var Worker = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+var Worker = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 	return p2runtime.Contribute(facet, "p2.mcp-worker", mcpWorker)
 })
 

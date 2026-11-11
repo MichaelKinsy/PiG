@@ -138,7 +138,7 @@ func (onlyOwner) Error() string { return "Only the owner rebuilds the search ind
 var errOnlyOwner error = onlyOwner{}
 
 // Facet is the plugin's TUI facet.
-var Facet = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+var Facet = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 	return p2runtime.Contribute(facet, "p2.tui-search", func(self host.StoreSelf) error {
 		p2runtime.ContributeKeyed(self, runtime.TuiSessionSources, p2runtime.Entry("search", runtime.TuiSessionSource{Search: searchSource}))
 		p2runtime.ContributeKeyed(self, runtime.TuiCommands, p2runtime.Entry("p2.search.reindex", runtime.TuiCommand{

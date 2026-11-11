@@ -262,7 +262,7 @@ func serveSessionFiles(facet host.FacetHost) error {
 
 // Facet is the plugin's worker facet.
 func Facet() host.Facet {
-	return host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+	return p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 		for _, serve := range []func(host.FacetHost) error{serveFilesMirror, serveAttachments, serveSessionFiles} {
 			if err := serve(facet); err != nil {
 				return err

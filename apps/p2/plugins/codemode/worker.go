@@ -110,7 +110,7 @@ func boolPointer(value bool) *bool { return &value }
 
 // NewFacet is a new value of the plugin's worker facet (a reload with it replaces what the plugin contributed).
 func NewFacet() host.Facet {
-	return host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+	return p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 		return facet.Serve(contract.CodemodeRuntime, host.LocalFactory(serveRuntime), host.ServeOptions{})
 	})
 }

@@ -17,7 +17,7 @@ const ToolName = "powershell"
 var Renderers = tools.CreateShellRenderers("PS>")
 
 // Facet is the plugin's TUI facet.
-var Facet = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+var Facet = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 	return p2runtime.Contribute(facet, "p2.tui-powershell", func(self host.StoreSelf) error {
 		p2runtime.ContributeKeyed(self, tuiruntime.TuiToolRenderers, p2runtime.Entry(ToolName, Renderers))
 		return nil

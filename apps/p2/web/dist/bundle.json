@@ -1,7 +1,7 @@
 {
-	"version": "4ba7750ce76d31cbc914fc223bf6b19802e175522ecce1bb839441be3eb5c192",
-	"script": "app-4SEG53Z5.js",
-	"style": "app-BNZFOQLQ.css",
+	"version": "177b67011d393f238379b2344db370f2e5c60da905b24afdb919d3105914ce3f",
+	"script": "app-P6HROH6O.js",
+	"style": "app-J35UJDSQ.css",
 	"plugins": [
 		"agent",
 		"artifacts",
@@ -22,9 +22,11 @@
 		"prompt",
 		"send-file",
 		"sessions",
+		"settings",
 		"sharing",
 		"subagents",
 		"terminals",
+		"views",
 		"voice",
 		"web-shell",
 		"workspace"
@@ -61,28 +63,28 @@
 			"sha256": "29b1a5c95c8fa5920b2acc54501ac56800757cfee07cb9ab46c08e512ff75426"
 		},
 		{
-			"name": "app-4SEG53Z5.js",
-			"type": "text/javascript; charset=utf-8",
-			"size": 1322322,
-			"sha256": "eb4f8a38d8c57dd35fe24797db2208b351d056f71491c09c1e2c6dd14ec52413"
-		},
-		{
-			"name": "app-4SEG53Z5.js.map",
-			"type": "application/json",
-			"size": 6193962,
-			"sha256": "f23d644a167318f21d0e86f67199bb463f9c45d70eb4b87ca34fcddec31d1bab"
-		},
-		{
-			"name": "app-BNZFOQLQ.css",
+			"name": "app-J35UJDSQ.css",
 			"type": "text/css; charset=utf-8",
-			"size": 349884,
-			"sha256": "127f2a86b9380cb185d918d86fc0c0df3c8f40913ff117c60bdfb44c9046c605"
+			"size": 364843,
+			"sha256": "472453bb166b4216af51e50b0ca6809b28e82d0c3a95dde90f5b2b618718417f"
 		},
 		{
-			"name": "app-BNZFOQLQ.css.map",
+			"name": "app-J35UJDSQ.css.map",
 			"type": "application/json",
-			"size": 632704,
-			"sha256": "01133aec1bf433419bf784bdaaaa3a95181a49d203cf6d29263d2533dbde2ced"
+			"size": 671846,
+			"sha256": "cf0224644dcfdbb2a1c7dd1c908f33df2b846faa388ac81f1341267e455e0bb0"
+		},
+		{
+			"name": "app-P6HROH6O.js",
+			"type": "text/javascript; charset=utf-8",
+			"size": 1536224,
+			"sha256": "c8aee2839c33539d5f242d8521bb1efd168409da0146b127077b7262ecbb5deb"
+		},
+		{
+			"name": "app-P6HROH6O.js.map",
+			"type": "application/json",
+			"size": 7336842,
+			"sha256": "886f998fccb0677897fd688fe85dd3ba0f9d451cb76d7dcc459355b34d2c35f6"
 		},
 		{
 			"name": "ghostty-vt-BNEKZYKQ.wasm",
@@ -97,7 +99,7 @@
 			"light": "#ffffff",
 			"dark": "#101c1a"
 		},
-		"upstreamVersion": "e57d10afeb19d0bd565d7904221f5d2c54948f9c0ff8efdcba9e4483fa5585ea",
+		"upstreamVersion": "5f4c3ead21a8bdcd136cc1cecb4fca6c3b658d7d3e1a6e7ce57e0f98aeda4af7",
 		"public": [
 			"icons/apple-touch-icon.png",
 			"icons/favicon.svg",

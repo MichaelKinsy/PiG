@@ -29,6 +29,9 @@ func objectOf(value any) *delta.JsonObject { o, _ := value.(*delta.JsonObject); 
 func StatusText(status contract.Status) string {
 	switch status.Kind {
 	case contract.StatusConnected:
+		if status.Name != "" {
+			return "connected as brain " + status.Name
+		}
 		return "connected as brain " + status.ServerID
 	case contract.StatusRetrying:
 		return "not connected (" + status.Error + ")"
@@ -53,7 +56,7 @@ func (f forwardsOf) RadiusOrigin() string {
 
 func (f forwardsOf) SetRadiusOrigin(origin string) { f().SetRadiusOrigin(&origin) }
 
-var serverFacet = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+var serverFacet = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 	if err := contract.ServeRadiusConnections(facet); err != nil {
 		return err
 	}

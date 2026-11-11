@@ -42,7 +42,7 @@ func TestRestartOverAnExistingChildStorePublishesItsRowsWithoutRacingTheLoop(t *
 		}
 		p2test.CheckLeaks(t, 0)
 		info := p2test.Stub{Contract: p2runtime.ServerLocal, Factory: func(*delta.JsonObject, p2runtime.Principal, p2test.StubSelf) p2test.StubMembers {
-			return p2test.StubMembers{State: map[string]any{"info": delta.JsonObjectOf("app", "/app", "dataDir", dir, "fake", true, "allowedHosts", []any{}, "port", float64(1))}, Methods: inert("revokeOwners", "revokeGuests")}
+			return p2test.StubMembers{State: map[string]any{"info": delta.JsonObjectOf("app", "/app", "dataDir", dir, "fake", true, "allowedHosts", []any{}, "port", float64(1))}, Methods: inert("revokeOwners", "revokeGuests", "revokeFrames")}
 		}}
 		hosts := p2test.Stub{Contract: p2runtime.Hosts, Factory: func(_ *delta.JsonObject, _ p2runtime.Principal, self p2test.StubSelf) p2test.StubMembers {
 			return p2test.StubMembers{State: map[string]any{"workers": self.Cell(delta.NewJsonObject(0))}, Methods: inert("stop")}

@@ -36,7 +36,7 @@ var store = func() *documents.StateDefinition {
 
 // Facet serves `DraftStore` (worker, in memory) and `Drafts` (the caller's own restored drafts).
 func Facet() host.Facet {
-	return host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+	return p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 		if err := facet.Serve(contract.DraftStore, host.LocalFactory(serveStore), host.ServeOptions{}); err != nil {
 			return err
 		}

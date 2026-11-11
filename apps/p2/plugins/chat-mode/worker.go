@@ -379,7 +379,7 @@ func route(harnessOf func() (*p2runtime.HarnessParts, error)) chatcontract.SendR
 }
 
 // Worker is the chat-mode plugin's worker facet.
-var Worker = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+var Worker = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 	linger := linger
 	if err := facet.Serve(contract.ChatModeSetting, host.LocalFactory(serveSetting), host.ServeOptions{Linger: &linger}); err != nil {
 		return err

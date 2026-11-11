@@ -331,7 +331,7 @@ func serveScan(facet host.FacetHost) error {
 }
 
 // WorkerFacet serves the worker's indexer and the scan the server's rebuild waits for.
-var WorkerFacet = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+var WorkerFacet = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 	if err := serveIndexer(facet); err != nil {
 		return err
 	}

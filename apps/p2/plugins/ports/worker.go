@@ -20,7 +20,7 @@ import (
 // Ports apps/p2/plugins/ports/worker.ts and tool.ts: the worker facet contributes the `ports` tool, which asks the server
 // (`Ports`, the worker's variant) to list, open and close forwards.
 
-var workerFacet = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+var workerFacet = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 	return p2runtime.Contribute(facet, "p2.port-tools", registerPortTools)
 })
 

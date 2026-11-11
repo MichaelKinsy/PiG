@@ -62,7 +62,7 @@ func durableOf(parts func() (*p2runtime.HarnessParts, error)) (harness.Harness, 
 }
 
 // Worker is the tree plugin's worker facet.
-var Worker = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+var Worker = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 	if err := p2runtime.Contribute(facet, "p2.tree-branches", serveBranches); err != nil {
 		return err
 	}

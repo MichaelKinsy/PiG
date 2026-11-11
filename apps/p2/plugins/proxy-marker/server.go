@@ -4,6 +4,7 @@
 package proxymarker
 
 import (
+	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/apps/p2/plugins/proxy-marker/contract"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
@@ -11,7 +12,7 @@ import (
 )
 
 // Server is the plugin's server facet: it serves `ProxyMarker`, which has no members.
-var Server = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+var Server = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 	return facet.Serve(contract.ProxyMarker, host.LocalFactory(func(_ *delta.JsonObject, _ host.Self) (contracts.Implementation, error) {
 		return contracts.Implementation{}, nil
 	}), host.ServeOptions{})

@@ -141,7 +141,7 @@ func (b agentBackend) Close(ctx context.Context, key, target string) (string, er
 }
 
 // WorkerFacet is the plugin's worker facet.
-var WorkerFacet = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+var WorkerFacet = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 	return p2runtime.Contribute(facet, "p2.terminal-tools", func(self host.StoreSelf) error {
 		harness := p2runtime.HarnessOf(self)
 		worker := p2runtime.WorkerOf(self)

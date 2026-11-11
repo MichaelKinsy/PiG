@@ -732,7 +732,7 @@ func servePromptResources(params *delta.JsonObject, principal data.Principal, se
 }
 
 // WorkerFacet serves the worker's parts: the session's `Prompt` and the participants' `PromptResources`.
-var WorkerFacet = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+var WorkerFacet = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 	if err := p2runtime.ServeNative[promptFilesParts](facet, promptFilesNative); err != nil {
 		return err
 	}

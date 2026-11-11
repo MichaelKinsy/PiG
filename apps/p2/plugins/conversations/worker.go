@@ -297,7 +297,7 @@ func answerOf(ctx context.Context, d harness.Harness) (*delta.JsonObject, error)
 }
 
 // Worker is the conversations plugin's worker facet.
-var Worker = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+var Worker = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 	toolsContract, err := contracts.Local("p2.conversation-tools", contracts.LocalDeclaration{Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{}})
 	if err != nil {
 		return err

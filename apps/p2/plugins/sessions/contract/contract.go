@@ -397,3 +397,59 @@ var SessionLock = must(contracts.Remote("p2.session-lock", contracts.RemoteDecla
 		contracts.Var("worker", contracts.VariantDeclaration{State: []contracts.Property{p2runtime.StateProp("lock", lockOrNone)}}),
 	},
 }))
+
+// SidebarWindowSchema is how long a sidebar rollup keeps showing a session that nothing else keeps in view (pinned, open,
+// working, unread, failed): one day, three days, a week, or as long as it is not archived.
+var SidebarWindowSchema = union(p2runtime.Literal("1d"), p2runtime.Literal("3d"), p2runtime.Literal("1w"), p2runtime.Literal("forever"))
+
+// sidebarKey is a rollup's key (plugins/sessions/sidebar/model.ts): `recent`, `projects`, `folders`, `archive`.
+var sidebarKey = str(schema.MinLength(1), schema.MaxLength(1000))
+
+var (
+	// The owner's sidebar settings: rollup keys in the order the owner put them (rollups not named follow in their
+	// default order), each rollup's window by key, and whether a rollup shows only its heading, by key.
+	sidebarOrder     = arr(str())
+	sidebarWindows   = p2runtime.Record(SidebarWindowSchema)
+	sidebarCollapsed = p2runtime.Record(boolean())
+
+	setOrderArgs     = obj(schema.Properties{prop("order", schema.Arr(sidebarKey, schema.MaxItems(100)))})
+	setWindowArgs    = obj(schema.Properties{prop("key", sidebarKey), prop("window", SidebarWindowSchema)})
+	setCollapsedArgs = obj(schema.Properties{prop("key", sidebarKey), prop("collapsed", boolean())})
+)
+
+// SidebarSettingsStore is the owner's sidebar settings (`p2.sidebar-settings-store`; server, host-internal, persisted in
+// the server's store: a person's view, not the session catalog): the rollups' order and windows, and which rollups are
+// collapsed.
+var SidebarSettingsStore = must(contracts.Local("p2.sidebar-settings-store", contracts.LocalDeclaration{
+	Version: 1,
+	Params:  contracts.Params{},
+	Members: []contracts.LocalEntry{
+		contracts.Mem("order", c(sidebarOrder)),
+		contracts.Mem("windows", c(sidebarWindows)),
+		contracts.Mem("collapsed", c(sidebarCollapsed)),
+		contracts.Mem("setOrder", method(setOrderArgs)),
+		contracts.Mem("setWindow", method(setWindowArgs)),
+		contracts.Mem("setCollapsed", method(setCollapsedArgs)),
+	},
+}))
+
+// SidebarSettings is the owner's sidebar settings, and the methods that change them (`p2.sidebar-settings`).
+var SidebarSettings = must(contracts.Remote("p2.sidebar-settings", contracts.RemoteDeclaration{
+	Version:     1,
+	Params:      contracts.Params{},
+	HostAddress: p2runtime.ServerHost,
+	Variants: []contracts.VariantEntry{
+		contracts.Var("owner", contracts.VariantDeclaration{
+			State: []contracts.Property{
+				p2runtime.StateProp("order", sidebarOrder),
+				p2runtime.StateProp("windows", sidebarWindows),
+				p2runtime.StateProp("collapsed", sidebarCollapsed),
+			},
+			Methods: []contracts.MethodEntry{
+				contracts.Meth("setOrder", method(setOrderArgs)),
+				contracts.Meth("setWindow", method(setWindowArgs)),
+				contracts.Meth("setCollapsed", method(setCollapsedArgs)),
+			},
+		}),
+	},
+}))

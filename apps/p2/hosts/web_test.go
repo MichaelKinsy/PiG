@@ -58,7 +58,7 @@ func TestServesTheAppPageNamingTheCurrentBundleWhoseFilesNeverChange(t *testing.
 	if got := get(t, port, "/__p2_web", owner(nil)).Headers.Get("Cache-Control"); got != "no-store" {
 		t.Fatalf("manifest Cache-Control %q", got)
 	}
-	for _, path := range []string{"/", "/s/0b9f3a52-6a39-4d43-9d55-1a0f4ea4f1a2", "/s/0b9f3a52-6a39-4d43-9d55-1a0f4ea4f1a2/c/3"} {
+	for _, path := range []string{"/", "/new", "/s/0b9f3a52-6a39-4d43-9d55-1a0f4ea4f1a2", "/s/0b9f3a52-6a39-4d43-9d55-1a0f4ea4f1a2/c/3"} {
 		page := get(t, port, path, owner(nil))
 		if page.Status != 200 {
 			t.Fatalf("%s: %d", path, page.Status)

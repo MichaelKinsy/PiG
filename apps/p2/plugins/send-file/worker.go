@@ -120,7 +120,7 @@ func serveSentFiles(facet host.FacetHost) error {
 
 // Facet is the plugin's worker facet.
 func Facet() host.Facet {
-	return host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+	return p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 		if err := serveTools(facet); err != nil {
 			return err
 		}

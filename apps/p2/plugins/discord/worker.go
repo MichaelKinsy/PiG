@@ -94,7 +94,7 @@ func discordSection() *durable.PromptSection {
 	})
 }
 
-var workerFacet = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+var workerFacet = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 	if err := p2runtime.Contribute(facet, "p2.discord-extension", func(self host.StoreSelf) error {
 		p2runtime.ContributeKeyed(self, p2runtime.Extensions, p2runtime.Entry(extensionName, &p2runtime.P2Extension{
 			Extension: &durable.Extension{Name: extensionName, Sections: []*durable.PromptSection{discordSection()}},

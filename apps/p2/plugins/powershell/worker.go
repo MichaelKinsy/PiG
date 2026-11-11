@@ -369,7 +369,7 @@ func mapKeys[V any](m map[string]V) func(func(string) bool) {
 }
 
 func init() {
-	workerFacet = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+	workerFacet = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 		return facet.Serve(contract.PowerShell, host.LocalFactory(servePowerShell), host.ServeOptions{})
 	})
 	tuiFacet := powershelltui.Facet

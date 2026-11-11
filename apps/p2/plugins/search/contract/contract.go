@@ -120,7 +120,8 @@ func with(first schema.Property, rest schema.Properties) schema.Properties {
 // host-internal, SQLite `search.sqlite`). Derived and rebuildable: a schema change drops it, and workers catch up from their
 // cursors (0) at their next start.
 var SearchIndex = must(contracts.Local("p2.search-index", contracts.LocalDeclaration{
-	Version: 1,
+	// 2: `mentions`. Only the server's plugins hold it, and they reload with it: no `accepts`.
+	Version: 2,
 	Params:  contracts.Params{},
 	Members: []contracts.LocalEntry{
 		// The entry ID up to which the chosen conversation is indexed (0: nothing).
@@ -138,6 +139,9 @@ var SearchIndex = must(contracts.Local("p2.search-index", contracts.LocalDeclara
 		contracts.Mem("history", contracts.NewMethod(c(obj(with(schema.Prop("session", str()), historyQueryProperties()))), c(HistoryHitsSchema))),
 		// Message matches among `sessions` (literal terms, all required).
 		contracts.Mem("messages", contracts.NewMethod(c(obj(schema.Properties{schema.Prop("query", str()), schema.Prop("sessions", arr(str()))})), c(arr(messageHitSchema)))),
+		// The sessions with a message matching `query` (keywords as `FTSQuery` reads them, all required) at or after `since`,
+		// each with the time of its latest one (rollups' `mentions`).
+		contracts.Mem("mentions", contracts.NewMethod(c(obj(schema.Properties{schema.Prop("query", str(schema.MinLength(1), schema.MaxLength(500))), schema.Opt("since", num())})), c(p2runtime.Record(num())))),
 		// The index rebuilds running or failed (a job each: they survive a server restart).
 		contracts.Mem("rebuilds", c(arr(RebuildSchema))),
 		// Starts re-indexing `session` from the start (`Search.rebuildIndex`); refuses an unknown session.
@@ -184,10 +188,18 @@ var searchV1 = must(contracts.Remote("p2.search", contracts.RemoteDeclaration{
 	},
 }))
 
-// Search is search over session titles, working directories and message text (owner only). 2: `rebuildIndex` answers once
-// the rebuild started (a job); `rebuilds` shows it running, and why it failed. The provider still serves 1.
-var Search = must(contracts.Evolve(searchV1, func(e *contracts.RemoteEditor) *contracts.RemoteEditor {
+// searchV2 is `Search` as version 2 had it: `rebuildIndex` answers once the rebuild started (a job); `rebuilds` shows it
+// running, and why it failed.
+var searchV2 = must(contracts.Evolve(searchV1, func(e *contracts.RemoteEditor) *contracts.RemoteEditor {
 	return e.AddState("owner", "rebuilds", c(arr(RebuildSchema)))
+}))
+
+// Search is search over session titles, working directories and message text (owner only). 3: `sessions` limits a search
+// to those sessions before ranking and the 41-hit limit (a sidebar list's own sessions). The provider still serves 1 and 2.
+var Search = must(contracts.Evolve(searchV2, func(e *contracts.RemoteEditor) *contracts.RemoteEditor {
+	properties := p2runtime.PropertiesOf(querySchema)
+	properties = append(properties, schema.Opt("sessions", schema.Arr(schema.Str(schema.MaxLength(64)), schema.MaxItems(10000))))
+	return e.Args("search", c(obj(properties)))
 }))
 
 // SessionReads is unread answers (owners only): a session is unread while its latest root answer (`answers`) is newer than

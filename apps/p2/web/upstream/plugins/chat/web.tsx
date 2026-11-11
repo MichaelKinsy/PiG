@@ -23,7 +23,9 @@ import {
 	CostPanel,
 	closeLayers,
 	conversationRoute,
+	type Detail,
 	DownIcon,
+	ErrorToast,
 	errorText,
 	type FileCompletion,
 	FileCompletionPopover,
@@ -37,6 +39,7 @@ import {
 	keptSizes,
 	knownMain,
 	LockIcon,
+	lightTap,
 	loadKept,
 	locationLabel,
 	MenuIcon,
@@ -50,6 +53,7 @@ import {
 	OpenTerminal,
 	OpenWorkspaceFile,
 	openLayer,
+	openSidebar,
 	type PickedFile,
 	PiLogo,
 	PlusIcon,
@@ -66,8 +70,6 @@ import {
 	Slots,
 	StopIcon,
 	seedSizes,
-	setDrawer,
-	setSidebarCollapsed,
 	ToolActivities,
 	ToolActivityContext,
 	type Transcript,
@@ -237,6 +239,35 @@ function useModelResources(owner: boolean, fail: (error: unknown) => void) {
 	return [resources, setDefault] as const;
 }
 
+/** Where this device remembers settings.json's `detail` (the owner's), for the moment before the settings arrive. */
+const DETAIL_KEY = "p2-detail";
+const detailOf = (value: unknown): Detail | undefined =>
+	value === 1 || value === 2 || value === 3 || value === 4 ? value : undefined;
+
+/**
+ * settings.json's `detail` (undefined: the default): from the owner's settings once they arrive, and until then (each
+ * chat holds them anew, a page loads) as this device last saw it, so a chat opens laid out as it will stay instead of
+ * regrouping its turns a moment later.
+ */
+function useDetail(resources: ResourceSnapshot | undefined): Detail | undefined {
+	// null: the settings arrived and name no level (the default).
+	const known = resources ? (detailOf(resources.settings.detail) ?? null) : undefined;
+	useEffect(() => {
+		if (known === undefined) return;
+		try {
+			localStorage.setItem(DETAIL_KEY, known === null ? "" : String(known));
+		} catch {
+			// Storage unavailable (private mode): only this page's later chats lose it.
+		}
+	}, [known]);
+	if (known !== undefined) return known ?? undefined;
+	try {
+		return detailOf(Number(localStorage.getItem(DETAIL_KEY)));
+	} catch {
+		return undefined;
+	}
+}
+
 /** The model and thinking chip that opens the model sheet. */
 function ModelControl({ resources, choice }: { resources: ResourceSnapshot | undefined; choice?: ModelChoice }) {
 	const name = choice ? modelName(resources, choice.model) : "Choose model";
@@ -256,15 +287,6 @@ function ModelControl({ resources, choice }: { resources: ResourceSnapshot | und
 			</span>
 		</button>
 	);
-}
-
-/** The composer's error; tapping it dismisses it. */
-function ErrorToast({ error, onDismiss }: { error: string | undefined; onDismiss: () => void }) {
-	return error ? (
-		<button type="button" className="toast" onClick={onDismiss}>
-			{error}
-		</button>
-	) : null;
 }
 
 /** Textarea with send, stop, steer and attachments; Enter sends with a fine pointer, Escape stops. */
@@ -561,15 +583,9 @@ function TopBar({
 	);
 	return (
 		<header className="topbar">
-			<button
-				type="button"
-				className="icon-button menu sidebar-open"
-				onClick={() =>
-					window.matchMedia("(min-width: 900px)").matches ? setSidebarCollapsed(false) : setDrawer(true)
-				}
-				aria-label="Sessions"
-			>
+			<button type="button" className="icon-button menu sidebar-open" onClick={openSidebar} aria-label="Sessions">
 				<MenuIcon />
+				<Slot name="menu-badge" />
 			</button>
 			<div className="title">
 				{child ? (
@@ -612,6 +628,7 @@ function TopBar({
 				)}
 			</div>
 			{!connected && <span className="offline">Offline</span>}
+			<Slot name="view-actions" />
 			<Slot name="artifact-actions" />
 			<Slot name="terminal-actions" />
 			<Slot name="workspace-actions" />
@@ -827,7 +844,6 @@ function SessionChat({ sessionId, conversationId }: { sessionId: string; convers
 		setDraft,
 		steer,
 		setSteer,
-		error,
 		setError,
 		files,
 		setFiles,
@@ -977,19 +993,10 @@ function SessionChat({ sessionId, conversationId }: { sessionId: string; convers
 	// How tools' calls show: contributed by the plugins that own them.
 	const tools = useRegistry(ToolActivities);
 	// How much of a turn the transcript shows (settings.json `detail`, the owner's; guests see the default).
-	const detail = resources?.settings.detail;
+	const detail = useDetail(resources);
 	const rows = useMemo(
-		() =>
-			shown
-				? transcriptRows(
-						shown.items,
-						tools,
-						shown.working,
-						known,
-						// Anything else: the default (`transcriptRows`' `DEFAULT_DETAIL`).
-						detail === 1 || detail === 2 || detail === 3 || detail === 4 ? detail : undefined,
-					)
-				: undefined,
+		// Anything else: the default (`transcriptRows`' `DEFAULT_DETAIL`).
+		() => (shown ? transcriptRows(shown.items, tools, shown.working, known, detail) : undefined),
 		[shown, tools, known, detail],
 	);
 	const follow = useChatScroll({
@@ -1020,6 +1027,7 @@ function SessionChat({ sessionId, conversationId }: { sessionId: string; convers
 	const send = () => {
 		const text = draft.trim();
 		if ((!text && !files.length) || !canWrite) return;
+		lightTap();
 		setStopped(undefined);
 		const id = crypto.randomUUID();
 		outbox.add({
@@ -1406,7 +1414,7 @@ function SessionChat({ sessionId, conversationId }: { sessionId: string; convers
 				/>
 			)}
 
-			<ErrorToast error={error} onDismiss={() => setError(undefined)} />
+			<ErrorToast />
 			{place(
 				<div className="scroller transcript" ref={follow.scroller}>
 					{failure && connected ? (
@@ -1503,7 +1511,14 @@ function NewSession() {
 	const sessions = liveIn(catalog, "owner");
 	const [resources, setDefault] = useModelResources(owner, useComposerState().fail);
 	const recent = useMemo(() => (listed ?? []).toSorted((a, b) => b.updatedAt - a.updatedAt), [listed]);
-	const { location: selectedLocation, setLocation, choice: selectedChoice, setChoice } = useNewSessionState();
+	const {
+		location: selectedLocation,
+		setLocation,
+		join,
+		setJoin,
+		choice: selectedChoice,
+		setChoice,
+	} = useNewSessionState();
 	const location =
 		selectedLocation ?? (recent[0] ? { env: recent[0].env ?? null, cwd: recent[0].cwd } : { env: null, cwd: "~" });
 	const fallback = resources?.settings.defaultModel ?? recent[0]?.model;
@@ -1514,7 +1529,7 @@ function NewSession() {
 		(entry) => entry.provider === choice?.model.provider && entry.modelId === choice?.model.modelId,
 	)?.contextWindow;
 	const composer = useComposerState();
-	const { draft, setDraft, files, setFiles, error, setError, steer, setSteer, setStopped } = composer;
+	const { draft, setDraft, files, setFiles, setError, steer, setSteer, setStopped } = composer;
 	const cwdSheet = useSheet("cwd");
 	const modelSheet = useSheet("model");
 	const attaching = attachingOf(composer);
@@ -1535,6 +1550,7 @@ function NewSession() {
 			openLayer({ kind: "sheet", name: "model" });
 			return;
 		}
+		lightTap();
 		setStopped(undefined);
 		const id = crypto.randomUUID();
 		sessionStart.add(
@@ -1546,7 +1562,7 @@ function NewSession() {
 				item: outgoingItem(id, text, files, OWNER_AUTHOR),
 			},
 			// The page chooses the session's ID: a retried creation answers the same session.
-			{ session: crypto.randomUUID(), location, choice },
+			{ session: crypto.randomUUID(), location, choice, ...(join ? { join } : {}) },
 		);
 		setDraft("");
 		setFiles([]);
@@ -1567,7 +1583,7 @@ function NewSession() {
 			return;
 		}
 		sessionStart.connect({
-			create: async ({ session, location, choice }) => {
+			create: async ({ session, location, choice, join }) => {
 				// The new session's worker starts beside the creation, not after it (its start waits for the row): held
 				// here and lingering for the session's view, which holds it next.
 				const chat = host.hold(Chat, { session, conversation: 1 }, BACKGROUND_CONTEXT);
@@ -1587,10 +1603,15 @@ function NewSession() {
 					chat.release();
 					throw error;
 				}
+				// A project's "+": the session joins the project once it exists, so a refused creation leaves no membership
+				// behind; a failed join leaves the session as it is, and the toast says why.
+				if (join) void join.run(session).catch(composer.fail);
 			},
 			// The server's own errors (a missing directory, an unknown model) refuse; a lost connection is tried again.
 			refused: (error) => !isChordError(error) || refused(error),
 			created: (session) => {
+				// The next new session starts in no project unless its "+" is used again.
+				setJoin(undefined);
 				if (shownHere.current) navigate({ session }, { replace: true });
 			},
 			restore: (messages, error) => {
@@ -1600,7 +1621,7 @@ function NewSession() {
 			},
 		});
 		return () => sessionStart.connect(undefined);
-	}, [connected, sessions, host, setDraft, setFiles, setError]);
+	}, [connected, sessions, host, setDraft, setFiles, setError, setJoin, composer.fail]);
 	// Leaving the page loses a session not created yet: the browser asks first.
 	useEffect(() => {
 		if (!start) return;
@@ -1659,7 +1680,7 @@ function NewSession() {
 					onClose={closeLayers}
 				/>
 			)}
-			<ErrorToast error={error} onDismiss={() => setError(undefined)} />
+			<ErrorToast />
 			{place(
 				<div className={outgoing ? "scroller transcript" : "scroller"} ref={follow.scroller}>
 					{outgoing && rows ? (
@@ -1677,6 +1698,7 @@ function NewSession() {
 							>
 								<FolderIcon />
 								<span>{locationLabel(location.env, location.cwd)}</span>
+								{join && <small className="cwd-join">in {join.label}</small>}
 								<ChevronIcon size={14} />
 							</button>
 							{owner && resources && !resources.credentials.length && (

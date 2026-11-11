@@ -189,7 +189,7 @@ var Card = &tools.ToolRenderers{
 }
 
 // Facet is the plugin's TUI facet.
-var Facet = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+var Facet = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 	return p2runtime.Contribute(facet, "p2.tui-codemode", func(self host.StoreSelf) error {
 		p2runtime.ContributeKeyed(self, tuiruntime.TuiToolRenderers, p2runtime.Entry("codemode", Card))
 		return nil

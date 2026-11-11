@@ -393,7 +393,7 @@ var commands = p2runtime.Keyed[runtime.TuiCommand]{
 }
 
 // Facet is the plugin's TUI facet.
-var Facet = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+var Facet = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 	return p2runtime.Contribute(facet, "p2.tui-artifacts", func(self host.StoreSelf) error {
 		p2runtime.ContributeKeyed(self, runtime.TuiToolRenderers, p2runtime.Entry("artifact", Renderers))
 		p2runtime.ContributeKeyed(self, runtime.TuiCommands, commands...)

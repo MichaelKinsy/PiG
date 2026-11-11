@@ -137,7 +137,7 @@ func newSessionsFixtureAt(t *testing.T, dir string, extra ...host.Facet) *sessio
 		return self.Contribute(envcontract.EnvManagers, &envcontract.EnvManagerParts{Manager: sshManager{}})
 	})
 	info := p2test.Stub{Contract: p2runtime.ServerLocal, Factory: func(*delta.JsonObject, p2runtime.Principal, p2test.StubSelf) p2test.StubMembers {
-		return p2test.StubMembers{State: map[string]any{"info": delta.JsonObjectOf("app", "/app", "dataDir", fixture.dataDir, "fake", true, "allowedHosts", []any{}, "port", float64(1))}, Methods: inert("revokeOwners", "revokeGuests")}
+		return p2test.StubMembers{State: map[string]any{"info": delta.JsonObjectOf("app", "/app", "dataDir", fixture.dataDir, "fake", true, "allowedHosts", []any{}, "port", float64(1))}, Methods: inert("revokeOwners", "revokeGuests", "revokeFrames")}
 	}}
 	modelConfig := p2test.Stub{Contract: modelscontract.ModelConfig, Factory: func(_ *delta.JsonObject, _ p2runtime.Principal, self p2test.StubSelf) p2test.StubMembers {
 		fixture.defaultModel = self.Cell(delta.JsonObjectOf("models", []any{}, "defaultModel", nil, "errors", []any{}))

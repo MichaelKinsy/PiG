@@ -370,4 +370,4 @@ func int64Of(value any) (int64, bool) {
 }
 
 // ServerFacet contributes the workspace's HTTP routes.
-var ServerFacet = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error { return serveRoutes(facet) })
+var ServerFacet = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error { return serveRoutes(facet) })

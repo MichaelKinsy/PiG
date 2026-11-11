@@ -25,7 +25,7 @@ import (
 // RetryAfter is how long to wait before trying a refused move again when no commit comes.
 const RetryAfter = 2 * time.Second
 
-var workerFacet = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+var workerFacet = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 	if err := p2runtime.Contribute(facet, "p2.location-tools", registerTools); err != nil {
 		return err
 	}
