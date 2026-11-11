@@ -1031,6 +1031,7 @@ func (h *highlightRun) processLexeme(textBeforeMatch []rune, match *enhancedMatc
 // highlightAuto is highlight.js highlightAuto(code, languageSubset).
 func (r *Registry) highlightAuto(code []rune, languageSubset []string) Result {
 	if languageSubset == nil {
+		r.missedBeforeLoad = r.missedBeforeLoad || !r.allLoaded
 		// Auto-detection runs every language, so the rest of the full set is decoded now.
 		r.decodeAllDeferred()
 		languageSubset = slices.Clone(r.order)

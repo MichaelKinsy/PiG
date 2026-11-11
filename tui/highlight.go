@@ -31,18 +31,21 @@ type HighlightOptions struct {
 var loadAllHighlightLanguagesOnce sync.Once
 
 // LoadAllHighlightLanguages registers every highlight.js language, as loadAllHighlightLanguages does, and returns when they are available. It runs once; later calls wait for that load. Highlighted code cached before the load is discarded, because more languages now highlight.
-func LoadAllHighlightLanguages() {
+// It reports whether the call that loaded them found an earlier highlight lookup whose answer the load changes, which is when a screen that drew highlighted code needs drawing again; a call that did not load them, or a load before any lookup, reports false.
+func LoadAllHighlightLanguages() (earlierLookupsDiffer bool) {
+	// pig divergence (D618): the result tells the caller whether a repaint is owed; Pi's loadAllHighlightLanguages resolves with no value and its caller always repaints.
 	// pig additive (D92): a Piglet that strips syntax-highlight loads no grammar.
 	if highlightStripped() {
-		return
+		return false
 	}
 	loadAllHighlightLanguagesOnce.Do(func() {
-		highlightRegistry().LoadAllLanguages()
+		earlierLookupsDiffer = highlightRegistry().LoadAllLanguages()
 		hlMu.Lock()
 		resetHighlightCacheLocked()
 		hlGeneration++
 		hlMu.Unlock()
 	})
+	return earlierLookupsDiffer
 }
 
 // SupportsLanguage reports whether highlight.js has a language or alias of that name.

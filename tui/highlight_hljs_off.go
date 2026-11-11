@@ -17,7 +17,7 @@ func highlightRegistry() highlightEngine { return plainHighlightEngine{} }
 
 func highlightStripped() bool { return true }
 
-func (plainHighlightEngine) LoadAllLanguages() {}
+func (plainHighlightEngine) LoadAllLanguages() bool { return false }
 
 func (plainHighlightEngine) SupportsLanguage(string) bool { return false }
 

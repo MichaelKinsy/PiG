@@ -2,7 +2,7 @@
   "mechanisms": [
     {
       "source": "test/parity/runner/asserts.go",
-      "sha256": "c5386bb97328c246411e0c6b0919877745db4f44c2ec975d6ba76d15f6ffa375",
+      "sha256": "3da86a852d098537c3279afa61ae2d66f22fbef09b01bb45278066b57ee2e2cc",
       "reason": "Normalized/layout comparators are explicit plain-terminal contracts: ANSI, CR, trailing spaces and outer blank rows are not compared. They are not full wire proof. Exact comparators apply only scenario-declared, justified replacements."
     },
     {
@@ -4643,6 +4643,15 @@
           "reason": "Owned visible surface: No frame begins after the frame that carries the end of a reply, in the raw terminal stream.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/69-startup-frames-after-grammar-load.toml",
+      "transforms": [
         {
           "kind": "cwd_snapshot_digits",
           "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
