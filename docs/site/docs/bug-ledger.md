@@ -161,6 +161,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-1724c9e](#bf-1724c9e) | Two pig processes that reach the same `auth.json` through different paths, such as an agent directory whose… | PiG's own defect | Windows | Unreleased |
 | [BF-173060b](#bf-173060b) | fix(chord/next/store): decodeStoreWrite never panics (2500 malformed writes); no recover in the outbox; D3… | PiG's own defect | All platforms | Unreleased |
 | [BF-176542a](#bf-176542a) | fix: the chord boundary allows internal/sortx, a stdlib-only helper that jsstring and ecmaregex link… | PiG's own defect | All platforms | Unreleased |
+| [BF-17a4170](#bf-17a4170) | A worker that crashed while a script waited on it is restarted for its holders even when its exit is handled… | PiG's own defect | All platforms | Unreleased |
 | [BF-17d97b4](#bf-17d97b4) | On Windows, attaching a file in a terminal prompt no longer reads a different file when a parent directory is… | PiG's own defect | Windows | Unreleased |
 | [BF-17d97b4-2](#bf-17d97b4-2) | A plugin install that finds no `package.json` (or another problem) names the directory it was going to… | PiG's own defect | Windows | Unreleased |
 | [BF-1827831](#bf-1827831) | The MCP extension's `tool_call` handler passes a tool's `reachesTools` the call's input in the member order… | PiG's own defect | All platforms | 0.5.0 |
@@ -3962,6 +3963,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `176542ac65` (2026-11-08)
 - **Tests:** None recorded.
+
+### BF-17a4170
+
+**A worker that crashed while a script waited on it is restarted for its holders even when its exit is handled…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A worker that crashed while a script waited on it is restarted for its holders even when its exit is handled before its link closes and the machine is loaded: the route applied the result of a resolve that was rejected at once (a failed address) in a section of its own after the section that began it, so the Retry of the crash restart could enter between them, find the address still resolving and do nothing, and the failure the resolve then recorded stayed until the next retry (a Code Mode script resumed after its worker was killed could wait for ever).
+- **Root cause:** The Go route lent that section to Resolve and applied the result with Loop.Run after the goroutine that ended the section had given the loop up (Loop.Run unlocks, then resumeAfter runs the rest of the lent handler), so another goroutine's section could enter between them: when the worker's exit was handled before its link's close (the failure already recorded, the resolve rejected at once, which parking.Applied does not order because that start is not queued), the crash restart's Retry met the address resolving, did nothing, and the failure the resolve then recorded stayed (holders failed until the next retry; e2e TestCodeModeFakeProvider, kill-and-reopen, hung under load with applied).
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `17a41700a2` (2026-11-11)
+- **Tests:** `chord/next/host/host_route_microtask_test.go::TestRouteAppliesAResolveThatSettledInsideItsSectionAsAMicrotaskOfThatSection`
+- **Release note:** A worker that crashed while a script waited on it is restarted for its holders even when its exit is handled before its link closes and the machine is loaded: the route applied the result of a resolve that was rejected at once (a failed address) in a section of its own after the section that began it, so the Retry of the crash restart could enter between them, find the address still resolving and do nothing, and the failure the resolve then recorded stayed until the next retry (a Code Mode script resumed after its worker was killed could wait for ever). The result is now applied as a microtask of the section that began the resolve, the order of Pi's route continuation.
 
 ### BF-17d97b4
 
