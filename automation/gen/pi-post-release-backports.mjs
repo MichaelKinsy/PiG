@@ -10,6 +10,10 @@
 //
 // Run through vendor-pi-dist.sh after the identity patches and before the SDK and library bundles are compiled.
 // The same entries are applied to the installed Pi the parity tests compare with (`--packages name=dir ...`, from automation/pin/oracle.py), so the oracle is Pi with these fixes.
+// The source mirror (.upstream/current) stays the pinned release, which the sync ledger's delta audit compares with the earlier pin; the
+// tests that read the mirror's docs and schemas read them through `--read-mirror <mirror> <path>` (internal/upstreammirror.ReadPicked), the
+// pinned file plus the entries of packageFileBackports and backportPatches that cover it.
+// `--verify-packages` and `--verify-mirror` fail when an installed Pi does not carry each entry once, or a mirror file is not the pinned release's.
 //
 // Pi commits of the 0.8.0 list that are not here, and why:
 //   49fe0a237 (Anthropic threads by endpoint), code part: pi-ai's anthropic-messages implementation is a bridge stub that runs in PiG's host; only its description text is backported below.
@@ -20,18 +24,17 @@ import { fileURLToPath } from "node:url";
 
 const note = (sha) => `// Pi ${sha} (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.\n`;
 
+// 49fe0a237 (#11987): the supportsMessageThreads description of pi-ai's compat schema, which the models docs and the models.json schema repeat.
+const messageThreadsDefault = ["Default: true for provider anthropic with a baseUrl on api.anthropic.com", "Default: true for a baseUrl on api.anthropic.com"];
+
 export const backportPatches = {
   // b3c2e4a6bef8 (#12001): the llama.cpp default server port is 9931.
   "pi-coding-agent/extensions/llama/provider.js": [
     ['export const DEFAULT_LLAMA_SERVER_URL = "http://127.0.0.1:8080";', 'export const DEFAULT_LLAMA_SERVER_URL = "http://127.0.0.1:9931";'],
   ],
   // 49fe0a237 (#11987): Anthropic message threads default by endpoint, not provider id (the description pi-ai's compat schema and the models docs carry).
-  "pi-ai/providers/compat-schema.js": [
-    ["Default: true for provider anthropic with a baseUrl on api.anthropic.com", "Default: true for a baseUrl on api.anthropic.com"],
-  ],
-  "pi-coding-agent/docs/models-configuration.md": [
-    ["Default: true for provider anthropic with a baseUrl on api.anthropic.com", "Default: true for a baseUrl on api.anthropic.com"],
-  ],
+  "pi-ai/providers/compat-schema.js": [messageThreadsDefault],
+  "pi-coding-agent/docs/models-configuration.md": [messageThreadsDefault],
   // be2744d95 (#12047): a Kitty fullscreen redraw keeps the uploaded images and skips the ED 2 clear.
   "pi-tui/tui-alt-screen.js": [
     [`            const clearImages = this.imageProtocol === "kitty" && hadUploadedKittyImages
@@ -166,11 +169,13 @@ export function stripAnsiEscapes(text) {
     }
 `],
   ],
+  // 0e1e3fc81 (#12052): a rendered line is blank once every escape sequence the converter handles is stripped.
   "pi-coding-agent/core/export-html/tool-renderer.js": [
     ['import { ansiLinesToHtml } from "./ansi-to-html.js";', 'import { ansiLinesToHtml, stripAnsiEscapes } from "./ansi-to-html.js";'],
     ["const ANSI_ESCAPE_REGEX = /\\x1b\\[[\\d;]*m/g;\n", ""],
     ['    return line.replace(ANSI_ESCAPE_REGEX, "").trim().length === 0;', '    return stripAnsiEscapes(line).trim().length === 0;'],
   ],
+  // 0e1e3fc81 (#12052): a click on a link in an expandable tool output does not toggle it.
   "pi-coding-agent/core/export-html/template.js": [
     ["class=\"tool-output expandable ansi-rendered\" onclick=\"if(window.getSelection().toString())return;this.classList.toggle('expanded')\">",
       "class=\"tool-output expandable ansi-rendered\" onclick=\"if(window.getSelection().toString()||event.target.closest('a'))return;this.classList.toggle('expanded')\">"],
@@ -210,9 +215,18 @@ export function stripAnsiEscapes(text) {
   ],
 };
 
-// patchBackports returns source, the text of file (relative to shims/pi-dist), with its backports applied.
+// Files of a Pi package that are not compiled output and that the vendored runtime does not carry, but that the installed Pi package
+// (the parity oracle) and the source mirror hold, with the same text: keyed like backportPatches, by package and path in the package.
+export const packageFileBackports = {
+  // 49fe0a237 (#11987): the models.json schema Pi generates from compat-schema.ts.
+  "pi-coding-agent/schemas/models.schema.json": [messageThreadsDefault],
+};
+
+const patchesOf = (file) => backportPatches[file] ?? packageFileBackports[file] ?? [];
+
+// patchBackports returns source, the text of file (a key of backportPatches or packageFileBackports), with its backports applied.
 export function patchBackports(file, source) {
-  for (const [before, after] of backportPatches[file] ?? []) {
+  for (const [before, after] of patchesOf(file)) {
     if (source.split(before).length !== 2) throw new Error(`Pi source changed in ${file}, a post-v1.5.2 backport no longer applies: ${before}`);
     source = source.replace(before, () => after);
   }
@@ -227,23 +241,74 @@ export function applyBackportPatches(dist) {
   }
 }
 
+// packageLocation is where the file of package `name` with the path `rest` (the segments of its backport key after the package)
+// lives in an installed Pi package: the compiled output under dist/, the docs and schemas at the package root.
+const packageLocation = (name, rest) => (name === "pi-coding-agent" && (rest[0] === "docs" || rest[0] === "schemas") ? rest : ["dist", ...rest]).join("/");
+
+const packageBackportKeys = () => [...Object.keys(backportPatches), ...Object.keys(packageFileBackports)];
+
 // applyPackageBackports applies the backports of each package in `packages` (a short name such as "pi-tui" and the root directory
-// of that Pi package, as `npm ci` installs it) in place: a file of Pi's compiled output is under dist/ and the models docs under
-// docs/. The oracle the parity tests run (automation/pin/oracle.py) is that installed Pi, so it carries what the Go port carries.
+// of that Pi package, as `npm ci` installs it) in place. The oracle the parity tests run (automation/pin/oracle.py) is that installed
+// Pi, so it carries what the Go port carries.
 export function applyPackageBackports(packages) {
-  for (const file of Object.keys(backportPatches)) {
+  for (const file of packageBackportKeys()) {
     const [name, ...rest] = file.split("/");
     if (!(name in packages)) continue;
-    const inPackage = name === "pi-coding-agent" && rest[0] === "docs" ? rest.join("/") : ["dist", ...rest].join("/");
-    const path = join(packages[name], inPackage);
+    const path = join(packages[name], packageLocation(name, rest));
     writeFileSync(path, patchBackports(file, readFileSync(path, "utf8")));
   }
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  if (process.argv[2] === "--packages") {
-    applyPackageBackports(Object.fromEntries(process.argv.slice(3).map((arg) => arg.split(/=(.*)/s).slice(0, 2))));
-  } else {
-    applyBackportPatches(process.argv[2]);
+const count = (text, part) => text.split(part).length - 1;
+
+// verifyPackageBackports throws when a file of `packages` does not carry each of its backports once: an installed Pi that was not
+// patched (a reader would compare the port with the pinned release, not with the release plus its fixes) or was patched twice.
+export function verifyPackageBackports(packages) {
+  const problems = [];
+  for (const file of packageBackportKeys()) {
+    const [name, ...rest] = file.split("/");
+    if (!(name in packages)) continue;
+    const text = readFileSync(join(packages[name], packageLocation(name, rest)), "utf8");
+    for (const [before, after] of patchesOf(file)) {
+      // A backport that only removes text leaves nothing to count but the text it removed.
+      const [part, want] = after === "" ? [before, 0] : [after, 1];
+      const n = count(text, part);
+      if (n !== want) problems.push(`${file} holds ${n} copies of a backport's ${after === "" ? "removed" : "added"} text, want ${want}: ${part.slice(0, 80)}`);
+    }
   }
+  if (problems.length > 0) throw new Error(problems.join("\n"));
+}
+
+// mirrorKey is the backport key of a file of the Pi repository the source mirror holds (packages/coding-agent/docs/x.md), or undefined
+// for a file no backport table covers: the mirror's TypeScript sources stay Pi's, whose delta from the pin the sync ledger accounts for.
+const mirrorKey = (path) => {
+  const match = /^packages\/coding-agent\/((?:docs|schemas)\/.+)$/.exec(path);
+  return match && `pi-coding-agent/${match[1]}`;
+};
+
+// readMirrorFile returns the text of `path` (relative to the Pi repository) in the source mirror `mirror` with the backports applied:
+// the file of the pinned release plus the fixes the release line carries. The mirror itself stays the pinned release.
+export function readMirrorFile(mirror, path) {
+  const source = readFileSync(join(mirror, path), "utf8");
+  const key = mirrorKey(path);
+  return key === undefined ? source : patchBackports(key, source);
+}
+
+// verifyMirrorBackports throws when a mirror file a backport covers is not the pinned release's (the backport no longer applies once).
+export function verifyMirrorBackports(mirror) {
+  for (const key of packageBackportKeys()) {
+    const path = key.replace(/^pi-coding-agent\//, "packages/coding-agent/");
+    if (mirrorKey(path) === key) readMirrorFile(mirror, path);
+  }
+}
+
+const packagesOf = (args) => Object.fromEntries(args.map((arg) => arg.split(/=(.*)/s).slice(0, 2)));
+
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  const [mode, ...args] = process.argv.slice(2);
+  if (mode === "--packages") applyPackageBackports(packagesOf(args));
+  else if (mode === "--verify-packages") verifyPackageBackports(packagesOf(args));
+  else if (mode === "--read-mirror") process.stdout.write(readMirrorFile(args[0], args[1]));
+  else if (mode === "--verify-mirror") verifyMirrorBackports(args[0]);
+  else applyBackportPatches(mode);
 }

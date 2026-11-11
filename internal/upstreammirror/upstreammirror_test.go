@@ -3,6 +3,7 @@ package upstreammirror
 import (
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -66,5 +67,25 @@ func TestCheckAcceptsOnlyTheMirrorOfTheLedgerVersion(t *testing.T) {
 				t.Fatalf("Check error %q does not name %q and the fix", err, c.wantFail)
 			}
 		})
+	}
+}
+
+// The mirror of the pinned release is read through ReadPicked, which applies the release's recorded Pi fixes to the file it returns:
+// each file a fix covers must still be the pinned release's, so a fix applies once and never to a mirror that already holds it.
+func TestTheMirrorHoldsThePinnedReleaseWhereTheRecordedFixesApply(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := exec.Command("node", filepath.Join(root, filepath.FromSlash(BackportsScript)), "--verify-mirror", filepath.Join(root, ".upstream", "current")).CombinedOutput()
+	if err != nil {
+		t.Fatalf("%v\n%s", err, out)
+	}
+	got, err := ReadPicked(root, "packages/coding-agent/docs/models-configuration.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(got), "Default: true for provider anthropic") || !strings.Contains(string(got), "Default: true for a baseUrl on api.anthropic.com") {
+		t.Error("ReadPicked did not return Pi's models-configuration.md with the post-release fixes")
 	}
 }
