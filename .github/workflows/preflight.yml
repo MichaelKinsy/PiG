@@ -24,6 +24,11 @@ on:
         required: false
         default: false
         type: boolean
+      repo:
+        description: With dry-run only, another repository's PRs to judge, read only (for a test on a fork)
+        required: false
+        default: ''
+        type: string
 
 permissions: {}
 
@@ -64,11 +69,17 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           PRS: ${{ inputs.prs }}
           DRY_RUN: ${{ inputs.dry-run }}
+          REPO: ${{ inputs.repo }}
         run: |
           set -uo pipefail
           extra=()
           if [ "${DRY_RUN:-}" = true ]; then extra+=(--dry-run); fi
-          "$RUNNER_TEMP/preflight/preflight" run --repo "$GITHUB_REPOSITORY" --root "$GITHUB_WORKSPACE" \
+          # Another repository is read only: never written to.
+          if [ -n "${REPO:-}" ] && [ "${DRY_RUN:-}" != true ]; then
+            echo "::error::repo is for a dry run only"
+            exit 2
+          fi
+          "$RUNNER_TEMP/preflight/preflight" run --repo "${REPO:-$GITHUB_REPOSITORY}" --root "$GITHUB_WORKSPACE" \
             --bin "$RUNNER_TEMP/preflight/bin" --work "$RUNNER_TEMP/preflight/work" \
             --prs "${PRS:-}" --budget 20 --time-budget 25m --next "$RUNNER_TEMP/preflight/next.json" \
             --handled "$RUNNER_TEMP/preflight/handled.json" "${extra[@]}"
@@ -122,11 +133,12 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           PRS: ${{ matrix.prs }}
           DRY_RUN: ${{ inputs.dry-run }}
+          REPO: ${{ inputs.repo }}
         run: |
           set -euo pipefail
           extra=()
           if [ "${DRY_RUN:-}" = true ]; then extra+=(--dry-run); fi
-          "$RUNNER_TEMP/preflight/preflight" run --repo "$GITHUB_REPOSITORY" --root "$GITHUB_WORKSPACE" \
+          "$RUNNER_TEMP/preflight/preflight" run --repo "${REPO:-$GITHUB_REPOSITORY}" --root "$GITHUB_WORKSPACE" \
             --bin "$RUNNER_TEMP/preflight/bin" --work "$RUNNER_TEMP/preflight/work" \
             --prs "$PRS" --time-budget 25m --handled "$RUNNER_TEMP/preflight/handled.json" "${extra[@]}"
       - name: Keep what the job did with each PR, for the verify job
