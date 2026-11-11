@@ -242,9 +242,9 @@ type durableRegistry struct {
 	// Snapshot taken after the batch, by anyone who saw its effect, reads the composition it made.
 	composition atomic.Pointer[composed]
 	// writing orders the writes of composition (an observer in its batch, a subscription's refresh) and counts the
-	// compositions observed: generation.
+	// compositions observed of each registry: generation.
 	writing    sync.Mutex
-	generation uint64
+	generation [2]uint64
 
 	mu        sync.Mutex
 	snapshots map[*KeyedTable[*P2Extension]]map[string]durable.RegistrySnapshot
@@ -280,28 +280,44 @@ func disabledIn(value any) []string {
 	return off
 }
 
+// compositionOf names the registry a composition is of.
+type compositionOf int
+
+const (
+	ofExtensions compositionOf = iota
+	ofSwitches
+)
+
 // observed records a composition of one registry, inside the batch that made it: update makes the composition from the
 // last one.
-func (r *durableRegistry) observed(update func(last *composed) *composed) {
+func (r *durableRegistry) observed(of compositionOf, update func(last *composed) *composed) {
 	r.writing.Lock()
 	defer r.writing.Unlock()
-	r.generation++
+	r.generation[of]++
 	r.composition.Store(update(r.composition.Load()))
 }
 
-// refresh records the registries' values now, unless a composition was observed while it read them: that one is newer.
-// The values it reads are those of the last batch that composed before the read, so a composition after the read is
-// observed.
-func (r *durableRegistry) refresh() {
+// refresh records the registries' values now.
+func (r *durableRegistry) refresh() { r.refreshFrom(r.read) }
+
+// refreshFrom records what read returns for each registry that did not compose while it read: a composition observed
+// meanwhile is newer than the read's. The read sees the last batch that composed before it, so a composition after it is
+// observed. Each registry is judged apart: the switches composing meanwhile do not drop the extensions the read saw.
+func (r *durableRegistry) refreshFrom(read func() *composed) {
 	r.writing.Lock()
 	seen := r.generation
 	r.writing.Unlock()
-	now := r.read()
+	now := read()
 	r.writing.Lock()
 	defer r.writing.Unlock()
-	if r.generation == seen {
-		r.composition.Store(now)
+	next := *r.composition.Load()
+	if r.generation[ofExtensions] == seen[ofExtensions] {
+		next.table = now.table
 	}
+	if r.generation[ofSwitches] == seen[ofSwitches] {
+		next.off, next.key = now.off, now.key
+	}
+	r.composition.Store(&next)
 }
 
 func (r *durableRegistry) Snapshot() durable.RegistrySnapshot {
@@ -358,14 +374,14 @@ func (r *durableRegistry) Subscribe(listener func()) func() {
 	ctx := chordctx.Background()
 	extensions, err := r.extensions.Observe(&compositionObserver{record: func(value any) {
 		table, _ := value.(*KeyedTable[*P2Extension])
-		r.observed(func(last *composed) *composed { return &composed{table: table, off: last.off, key: last.key} })
+		r.observed(ofExtensions, func(last *composed) *composed { return &composed{table: table, off: last.off, key: last.key} })
 	}, wake: listener}, ctx)
 	if err != nil {
 		panic(err)
 	}
 	switches, err := r.switches.Observe(&compositionObserver{record: func(value any) {
 		off := disabledIn(value)
-		r.observed(func(last *composed) *composed {
+		r.observed(ofSwitches, func(last *composed) *composed {
 			return &composed{table: last.table, off: off, key: strings.Join(off, "\n")}
 		})
 	}, wake: listener}, ctx)
