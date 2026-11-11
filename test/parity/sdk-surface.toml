@@ -1085,8 +1085,8 @@ partial = "reaches the host's tool definition, but PiG's system prompt does not 
 
 [[row]]
 key = "tool.execute"
-partial = "params arrive as JSON; onUpdate is ctx.OnUpdate/on_update and the AbortSignal is the request's cancellation"
-node_partial = "the AbortSignal is the tool request's, aborted when the host cancels it"
+partial = "params arrive as JSON; onUpdate is ctx.OnUpdate/on_update and the AbortSignal is the request's cancellation: the host aborts it with a signal-only cancel (CancelPayload.signal_only), which cancels none of the tool's host calls, as in Pi; only its nested executeTool calls take the abort, and the ordinary cancel follows when D111's grace period ends"
+node_partial = "the AbortSignal is the tool request's, aborted by the signal-only cancel, which cancels none of the tool's host calls; the ordinary cancel follows when D111's grace period ends"
 
 [[row]]
 key = "tool.renderCall"

@@ -130,6 +130,38 @@ def test_signal_only_cancel_aborts_the_signal_and_leaves_host_calls_running():
     assert seen == [("answered", True), ("later", True)]
 
 
+def test_ordinary_cancel_after_signal_only_cancel_still_ends_host_calls():
+    ext = pig_sdk.Extension("signal-only-then-ordinary")
+    seen = []
+    answered, release = threading.Event(), threading.Event()
+
+    def command(ctx, _):
+        seen.append(ctx.get_editor_text())
+        answered.set()
+        assert release.wait(5)
+        try:
+            ctx.get_editor_text()
+        except RuntimeError as error:
+            seen.append(("refused", str(error)))
+
+    ext.command("wait", "Call the host across signal-only then ordinary cancels", command)
+    with connected_extension(ext) as (send, receive):
+        send({"type": "request", "id": "origin", "request": {"method": "command", "tool": "wait"}})
+        first = receive("call")
+        send({"type": "cancel", "cancel": {"request_id": "origin", "reason": "context canceled", "signal_only": True}})
+        send({"type": "call_result", "id": first["id"], "call_result": {"result": {"text": "answered"}}})
+        assert answered.wait(5)
+        try:
+            send({"type": "cancel", "cancel": {"request_id": "origin", "reason": "context canceled"}})
+            send({"type": "ping", "ping": {"nonce": "ordinary-observed"}})
+            assert receive("pong")["pong"]["nonce"] == "ordinary-observed"
+        finally:
+            release.set()
+        assert receive("response")["id"] == "origin"
+    assert seen[0] == "answered"
+    assert len(seen) == 2 and seen[1][0] == "refused"
+
+
 def test_failed_worker_start_releases_armed_parent(monkeypatch):
     ext = pig_sdk.Extension("failed-worker")
     ext.command("capture", "Must not enter", lambda *_: pytest.fail("failed worker ran"))

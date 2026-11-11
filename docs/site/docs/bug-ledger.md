@@ -1673,6 +1673,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-da907ca-4](#bf-da907ca-4) | The Termux page's link to the Quickstart reaches its "Authenticate a provider" section | PiG's own defect | Android and Termux | 0.5.0 |
 | [BF-dac3cd5](#bf-dac3cd5) | A session keeps reading its history as it loaded it when another program rewrites, truncates, replaces or… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-dae37be](#bf-dae37be) | fix: the input loop never waits for the Session lock; the abort-fix leak and two stale tests | PiG's own defect | All platforms | Unreleased |
+| [BF-dafd5f5](#bf-dafd5f5) | Aborting a run while an extension tool awaits a host call, such as a dialog, a notification, a session read… | PiG's own defect | All platforms | Unreleased |
 | [BF-db12780](#bf-db12780) | fix(agent): end the tool flow at custom user messages and hold system messages mid-flow | PiG's own defect | All platforms | Unreleased |
 | [BF-db5d71f](#bf-db5d71f) | fix(chord/nextnode/workers): a lock holder reads its waiters' connections and forgets one that closed | PiG's own defect | All platforms | Unreleased |
 | [BF-db7007d](#bf-db7007d) | A Radius gateway model's `samplingParamsByThinkingLevel` now reaches the `pi-messages` model and the composed… | PiG's own defect | All platforms | 0.5.0 |
@@ -24907,6 +24908,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `dae37be433` (2026-10-10)
 - **Tests:** `coding/cli/model_oauth_refresh_test.go::TestBuildModelContextCancelsOAuthRefresh`, `coding/session_prompt_compaction_check_test.go::TestBeginPromptCompactionCheckDoesNotWaitForTheSessionLock`, `coding/session_prompt_compaction_check_test.go::TestBeginPromptCompactionCheckReturnsOnlyADueCompaction`, `coding/session_prompt_compaction_check_test.go::TestPromptCompactionCheckReplaysAnOverflowedResponse`, `coding/tree_edit_after_abort_test.go::TestNavigateToUserMessageAfterAbortLoadsEditor`
+
+### BF-dafd5f5
+
+**Aborting a run while an extension tool awaits a host call, such as a dialog, a notification, a session read…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Aborting a run while an extension tool awaits a host call, such as a dialog, a notification, a session read or `exec`, no longer fails that call in the Go, Node, Python, Rust and Lisp extension SDKs.
+- **Root cause:** Pi's abort aborts the signal of the tool in flight and nothing else (agent-loop.ts:817-853): the tool's in-process host calls complete, and a nested executeTool without a signal of its own runs with the outer tool's signal (runner.ts:979-981). The host sent the ordinary cancel and cancelled every host call of the request.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0821b337c2` (2026-11-10), `0c06e59b1f` (2026-11-10), `dafd5f5103` (2026-11-10)
+- **Tests:** `coding/extension/host/subprocess/tool_abort_signal_only_test.go::TestToolCallAbortCancelsSignalOnlyAndSparesItsHostCalls`, `coding/extension/host/subprocess/tool_abort_signal_only_test.go::TestToolCallInactivityCancelStaysOrdinary`, `test/extension-conformance/tool_signal_only_test.go::TestToolAbortKeepsTheToolsHostCalls`
+- **Release note:** Aborting a run while an extension tool awaits a host call, such as a dialog, a notification, a session read or `exec`, no longer fails that call in the Go, Node, Python, Rust and Lisp extension SDKs. The abort aborts the tool's signal and nothing else, as in Pi: the pending call and later calls return their results, and only the tool's nested `executeTool` calls take the abort as their signal. A tool that has not settled when the 3 s grace period ends (D111) is abandoned as before, and what it still awaits is cancelled then.
 
 ### BF-db12780
 

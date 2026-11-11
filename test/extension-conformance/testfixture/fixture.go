@@ -837,6 +837,28 @@ func Extension() *sdk.Extension {
 		time.Sleep(8 * time.Second)
 		return "late", nil
 	})
+	// signal_host_probe awaits two host dialogs across the abort of its run: Pi's abort fires the tool's signal and nothing else, so the dialog pending at the abort and the one opened after it are answered (TestToolAbortKeepsTheToolsHostCalls).
+	ext.Tool("signal_host_probe", "Await host dialogs across the abort", sdk.Schema{"type": "object", "properties": map[string]any{}}, func(ctx sdk.Context, _ map[string]any) (any, error) {
+		ask := func(title string) string {
+			answer, _, err := ctx.Input(title, "p")
+			if err != nil {
+				return "failed: " + err.Error()
+			}
+			return fmt.Sprint(answer)
+		}
+		first := ask("tool_signal:first")
+		aborted := ctx.Err() != nil
+		second := ask("tool_signal:later")
+		return fmt.Sprintf("tool_signal:%t:%s:%s", aborted, first, second), nil
+	})
+	// signal_nested_probe runs abort_tool as a nested call without a signal of its own: it gets the calling tool's signal (runner.ts:979-981 `options.signal ?? signal`), so the run's abort reaches it.
+	ext.Tool("signal_nested_probe", "Run abort_tool as a nested tool call", sdk.Schema{"type": "object", "properties": map[string]any{}}, func(ctx sdk.Context, _ map[string]any) (any, error) {
+		outcome, err := ctx.ExecuteTool("abort_tool", map[string]any{}, nil)
+		if err != nil {
+			return "tool_signal_nested:failed: " + err.Error(), nil
+		}
+		return "tool_signal_nested:" + outcome.Result.Text(), nil
+	})
 	ext.Command("abort_probe", "Report whether abort_tool saw its abort signal", func(ctx sdk.Context, args string) error {
 		ctx.Notify(fmt.Sprintf("abort:%t", abortObserved.Load()), "info")
 		return nil

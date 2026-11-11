@@ -235,6 +235,10 @@ type Conn struct {
 	hostCallMu      sync.Mutex
 	hostCalls       map[string]map[string]context.CancelFunc
 	cancelledParent map[string]struct{}
+	// abortedParent holds the requests whose AbortSignal alone ended (a tool_call): their nested tool calls end, and the other host calls go on (abortNestedHostCalls).
+	abortedParent map[string]struct{}
+	// nestedCallIDs holds the call frames that run a nested tool of their request (nestedAbortMethod), from the moment the read loop admits them until their context is released.
+	nestedCallIDs map[string]struct{}
 	// reservedCalls holds the context of each call frame the read loop admitted and the host has not yet started, by call ID.
 	reservedCalls map[string]reservedHostCall
 
@@ -346,6 +350,8 @@ func newConnWithOptions(name string, c net.Conn, options connOptions) *Conn {
 		suspensionsSettled: make(chan struct{}),
 		hostCalls:          make(map[string]map[string]context.CancelFunc),
 		cancelledParent:    make(map[string]struct{}),
+		abortedParent:      make(map[string]struct{}),
+		nestedCallIDs:      make(map[string]struct{}),
 		reservedCalls:      make(map[string]reservedHostCall),
 		clock:              options.Clock,
 		heartbeatInterval:  options.HeartbeatInterval,
@@ -853,6 +859,7 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 		}
 		c.hostCallMu.Lock()
 		delete(c.cancelledParent, env.ID)
+		delete(c.abortedParent, env.ID)
 		c.hostCallMu.Unlock()
 	}()
 
@@ -962,16 +969,23 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 			if c.beforeCancel != nil {
 				c.beforeCancel()
 			}
+			toolCall := env.Request != nil && env.Request.Method == MethodToolCall
 			// pig additive (D19): the cancel is queued before the request's calls are cancelled, so a call's cancellation result follows it on the wire. The extension cancels its own pending calls on the cancel, and the result finds none.
+			// A tool_call's cancel is the abort of its AbortSignal alone: Pi's executePreparedToolCall awaits tool.execute with the signal aborted and nothing else is cancelled (agent-loop.ts:817-853), so the tool's pending and later host calls are answered. Only its nested tool calls take the abort, as the signal they run with; the rest of the request's calls end with the request, when the grace period does.
 			_ = c.Send(&Envelope{
 				Type: MsgCancel,
 				ID:   env.ID,
 				Cancel: &CancelPayload{
-					RequestID: env.ID,
-					Reason:    ctx.Err().Error(),
+					RequestID:  env.ID,
+					Reason:     ctx.Err().Error(),
+					SignalOnly: toolCall,
 				},
 			})
-			c.cancelHostCalls(env.ID)
+			if toolCall {
+				c.abortNestedHostCalls(env.ID)
+			} else {
+				c.cancelHostCalls(env.ID)
+			}
 			if env.Request != nil && (env.Request.Method == MethodProviderStream || env.Request.Method == RequestUserBashExec) && (errors.Is(context.Cause(ctx), context.Canceled) || errors.Is(context.Cause(ctx), context.DeadlineExceeded)) {
 				// Pi forwards the native stream's own terminal event after signaling
 				// abort, and executeBashWithOperations awaits operations.exec until it
@@ -980,7 +994,7 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 				cancelled = nil
 				continue
 			}
-			if env.Request != nil && env.Request.Method == MethodToolCall {
+			if toolCall {
 				// pig divergence (D111): the call waits ToolAbortGrace for the tool to settle, as Pi awaits tool.execute after its signal aborts (agent-loop.ts:831-853), and then fails as aborted instead of awaiting a tool that ignores its signal forever.
 				cancelled = nil
 				grace := c.clock.NewTimer(ToolAbortGrace)
@@ -990,6 +1004,13 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 			}
 			return nil, ctx.Err()
 		case <-abortGraceC:
+			// pig divergence (D111): the tool is abandoned, so its request ends as an ordinary cancel does: the extension cancels what the tool still awaits, and the host ends the request's calls.
+			_ = c.Send(&Envelope{
+				Type:   MsgCancel,
+				ID:     env.ID,
+				Cancel: &CancelPayload{RequestID: env.ID, Reason: ctx.Err().Error()},
+			})
+			c.cancelHostCalls(env.ID)
 			return nil, ErrToolAborted
 		case <-quantumC:
 			// pig divergence (D86): the handler outlived the quantum, so it is waiting.
@@ -1378,6 +1399,9 @@ func (c *Conn) readLoop(ctx context.Context) {
 		// A call frame owns its parent-scoped context from the moment it is read, while the frames before a response are still ahead of it.
 		if env.Type == MsgCall && env.Call != nil && env.ID != "" {
 			c.reportProvisionalBlocks(env.Call)
+			if env.Call.ParentRequestID != "" && nestedAbortMethod(env.Call.Method) {
+				c.markNestedCall(env.ID)
+			}
 			c.reserveHostCall(env.Call.ParentRequestID, env.ID)
 			if startsRun(env.Call.Method) && env.Call.ParentRequestID != "" {
 				c.reportRequestPhase(env.Call.ParentRequestID, invocation.Resumed)
@@ -1926,6 +1950,9 @@ func (c *Conn) openHostCall(parentRequestID, callID string) (context.Context, fu
 		_, pending := c.pending[parentRequestID]
 		if !pending {
 			c.pendingMu.Unlock()
+			c.hostCallMu.Lock()
+			delete(c.nestedCallIDs, callID)
+			c.hostCallMu.Unlock()
 			cancel()
 			return ctx, func() {}
 		}
@@ -1935,7 +1962,12 @@ func (c *Conn) openHostCall(parentRequestID, callID string) (context.Context, fu
 		c.hostCallMu.Lock()
 	}
 	_, cancelled := c.cancelledParent[parentRequestID]
+	if _, nested := c.nestedCallIDs[callID]; nested && !cancelled {
+		// A nested tool call made after the abort runs with the aborted signal, as Pi's nested call does with the outer tool's.
+		_, cancelled = c.abortedParent[parentRequestID]
+	}
 	if cancelled || c.closed.Load() {
+		delete(c.nestedCallIDs, callID)
 		c.hostCallMu.Unlock()
 		cancel()
 		return ctx, func() {}
@@ -1954,6 +1986,7 @@ func (c *Conn) openHostCall(parentRequestID, callID string) (context.Context, fu
 		cancel()
 		c.hostCallMu.Lock()
 		delete(calls, callID)
+		delete(c.nestedCallIDs, callID)
 		if len(calls) == 0 {
 			delete(c.hostCalls, parentRequestID)
 		}
@@ -1973,6 +2006,43 @@ func (c *Conn) cancelHostCalls(parentRequestID string) {
 	for _, cancel := range cancels {
 		cancel()
 	}
+}
+
+// nestedAbortMethod reports the extension→host calls that run a nested tool (executeTool, and the built-in tools' execute and localExec): called under a request, they carry the abort of that request as the nested tool's signal (runner.ts:979-981 `options.signal ?? signal`; an extension that passed a signal of its own makes the call detached from the request).
+func nestedAbortMethod(method string) bool {
+	return method == CallExecuteTool || method == CallBuiltinToolExecute || method == CallBuiltinToolLocalExec
+}
+
+// markNestedCall records, as the read loop admits the call frame callID, that the call runs a nested tool of its request, before the host opens the call's context.
+func (c *Conn) markNestedCall(callID string) {
+	c.hostCallMu.Lock()
+	c.nestedCallIDs[callID] = struct{}{}
+	c.hostCallMu.Unlock()
+}
+
+// abortNestedHostCalls is the abort of a request whose AbortSignal alone ended (a tool_call): it ends the nested tool calls of the request, which take the abort as their signal, and the nested calls it makes later, and spares every other host call of the request, as Pi's in-process calls never fail with the abort. cancelHostCalls ends the rest when the request is abandoned.
+func (c *Conn) abortNestedHostCalls(parentRequestID string) {
+	c.hostCallMu.Lock()
+	c.abortedParent[parentRequestID] = struct{}{}
+	var cancels []context.CancelFunc
+	for callID, cancel := range c.hostCalls[parentRequestID] {
+		if _, nested := c.nestedCallIDs[callID]; nested {
+			cancels = append(cancels, cancel)
+		}
+	}
+	c.hostCallMu.Unlock()
+	for _, cancel := range cancels {
+		cancel()
+	}
+}
+
+// parentAbortedOnly reports whether the request's AbortSignal ended and nothing else (abortNestedHostCalls): its extension was not told to cancel the calls it still makes.
+func (c *Conn) parentAbortedOnly(parentRequestID string) bool {
+	c.hostCallMu.Lock()
+	defer c.hostCallMu.Unlock()
+	_, aborted := c.abortedParent[parentRequestID]
+	_, cancelled := c.cancelledParent[parentRequestID]
+	return aborted && !cancelled
 }
 
 func (c *Conn) cancelAllHostCalls() {

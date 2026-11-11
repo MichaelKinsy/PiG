@@ -151,6 +151,39 @@ Returns the host and the register envelope."
       (hread-type host "response")
       (check-equal "host call isIdle cancelled with its parent request" message))))
 
+(deftest signal-only-cancel-aborts-the-signal-and-leaves-host-calls-running
+  (let ((ext (pig:make-extension "signal-only")) (seen nil))
+    (pig:command ext "c" "C" (lambda (ctx args) (declare (ignore args))
+                               (let ((first (pig:ctx-call-host ctx "probe")))
+                                 (setf seen (list first (pig:ctx-cancelled-p ctx) (pig:ctx-cancellation-reason ctx)
+                                                  (pig:ctx-call-host ctx "probe"))))))
+    (with-host (host ext)
+      (request host "r" "command" "tool" "c" "args" "")
+      (let ((call (hread-type host "call")))
+        (hsend host "type" "cancel" "cancel" (pig:obj "request_id" "r" "reason" "tool done" "signal_only" t))
+        (hsend host "type" "call_result" "id" (pig:jget call "id") "call_result" (pig:obj "result" "first-answer")))
+      (let ((call (hread-type host "call")))
+        (check-equal "r" (pig:jget (pig:jget call "call") "parent_request_id"))
+        (hsend host "type" "call_result" "id" (pig:jget call "id") "call_result" (pig:obj "result" "second-answer")))
+      (hread-type host "response")
+      (check-equal '("first-answer" t "tool done" "second-answer") seen))))
+
+(deftest an-ordinary-cancel-after-a-signal-only-cancel-ends-the-request-and-its-host-calls
+  (let ((ext (pig:make-extension "signal-only-then-cancel")) (seen nil))
+    (pig:command ext "c" "C" (lambda (ctx args) (declare (ignore args))
+                               (let ((first (handler-case (pig:ctx-is-idle-p ctx)
+                                              (pig:host-call-cancelled (e) (pig:host-call-error-message e))))
+                                     (second (handler-case (pig:ctx-is-idle-p ctx)
+                                               (pig:host-call-cancelled (e) (pig:host-call-error-message e)))))
+                                 (setf seen (list first second)))))
+    (with-host (host ext)
+      (request host "r" "command" "tool" "c" "args" "")
+      (hread-type host "call")
+      (hsend host "type" "cancel" "cancel" (pig:obj "request_id" "r" "signal_only" t))
+      (hsend host "type" "cancel" "cancel" (pig:obj "request_id" "r"))
+      (hread-type host "response")
+      (check-equal '("host call isIdle cancelled with its parent request" "host call cancelled with its parent request") seen))))
+
 (deftest tool-call-event-reports-the-edited-input
   (with-host (host (simple-extension))
     (request host "r" "event" "event" "tool_call" "handler_id" 1
