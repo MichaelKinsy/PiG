@@ -323,7 +323,7 @@ func OpenSettings(ctx runtime.TuiContext) error {
 		if typed := slices.IndexFunc(fields[index].values, func(option any) bool { return str(option) == value }); typed >= 0 {
 			set(fields[index].path, fields[index].values[typed])
 		}
-	}, finish)
+	}, finish, pitui.SettingsListOptions{EnableSearch: true})
 	framed := box(ctx, "Settings", list, func() string {
 		if changed {
 			return "Esc saves the changes (the launcher shows them first)"

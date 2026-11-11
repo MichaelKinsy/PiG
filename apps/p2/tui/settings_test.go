@@ -116,6 +116,24 @@ func TestSettingsCollectsChangesAndProposesOnePatchTheThemePreviewNeverTouchesTh
 	}
 }
 
+// Ports apps/p2/test/p2/tui-settings.test.ts "/settings filters its rows as you type, like pi's settings".
+func TestSettingsFiltersItsRowsAsYouTypeLikePisSettings(t *testing.T) {
+	f, grants := settingsRuntime(t, tui.Facet)
+	f.Do(func() { f.Runtime.Ctx.Commands().RunSlash("/settings") })
+	waitFor(f, "Hide thinking")
+	f.Send("tool calls")
+	f.Poll(func() bool { return regexp.MustCompile(`→ Tool calls +quiet`).MatchString(screenText(f)) })
+	if strings.Contains(screenText(f), "Hide thinking") {
+		t.Fatalf("rows that do not match are hidden:\n%s", f.Screen())
+	}
+	f.Send("\r")
+	f.Send("\x1b")
+	f.Poll(func() bool { return grants.count() == 1 })
+	if got := grants.list()[0]; got != `["savePrefs",{"patch":{"settings":{"plugins":{"quiet-tools":{"toolCalls":"full"}}}}}]` {
+		t.Fatalf("grant = %s", got)
+	}
+}
+
 func TestSettingsListsPluginRowsTuiSettingFieldsAndSavesThemUnderPlugins(t *testing.T) {
 	f, grants := settingsRuntime(t, tui.Facet)
 	f.Do(func() { f.Runtime.Ctx.Commands().RunSlash("/settings") })
