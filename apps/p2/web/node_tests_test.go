@@ -33,3 +33,8 @@ func TestGlyphsRunPisTests(t *testing.T) {
 func TestViewsLayoutRunsPisTests(t *testing.T) {
 	oracle.RunNodeTests(t, "test/p2/views-layout.test.ts")
 }
+
+// Pi main 335814952: a subagent's state and its words in the sidebar (plugins/sessions/sidebar/subagent-state.ts).
+func TestSubagentStateRunsPisTests(t *testing.T) {
+	oracle.RunNodeTests(t, "test/p2/subagent-state.test.ts")
+}

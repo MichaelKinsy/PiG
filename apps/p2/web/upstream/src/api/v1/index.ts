@@ -13,6 +13,7 @@ export {
 	defineRegistry,
 	defineState,
 	evolve,
+	evolveTable,
 	type HandleOf,
 	isChordError,
 	type JobCtx,

@@ -18,7 +18,7 @@ func graph(tasks ...*delta.JsonObject) *delta.JsonObject {
 }
 
 func node(conversation int, background bool) *delta.JsonObject {
-	return delta.JsonObjectOf("conversationId", float64(conversation), "background", background)
+	return delta.JsonObjectOf("conversationId", float64(conversation), "background", background, "kind", "pi.generation")
 }
 
 func TestSummarizeCountsEveryLiveTaskAndListsConversationsWithForegroundWork(t *testing.T) {
@@ -27,8 +27,8 @@ func TestSummarizeCountsEveryLiveTaskAndListsConversationsWithForegroundWork(t *
 		t.Fatalf("tasks = %d", tasks)
 	}
 	// A background reporter does not make a conversation busy; each busy conversation once, ascending.
-	encoded, _ := chordjson.Marshal(busy)
-	if string(encoded) != "[1,3]" {
+	encoded, _ := chordjson.Marshal(busyList(busy))
+	if string(encoded) != "[1,3]" || !busy[3]["pi.generation"] {
 		t.Fatalf("busy = %s", encoded)
 	}
 	if tasks, busy := summarize(delta.JsonObjectOf("tasks", delta.NewJsonObject(0))); tasks != 0 || len(busy) != 0 {

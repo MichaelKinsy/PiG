@@ -51,7 +51,7 @@ var serverFacet = p2runtime.DefineFacet(func(facet host.FacetHost, self host.Fac
 	if err := facet.Serve(contract.ChildStore, host.LocalFactory(serveChildStore), host.ServeOptions{}); err != nil {
 		return err
 	}
-	if err := facet.Serve(contract.Subagents, host.RemoteFactory(serveSubagents), host.ServeOptions{}); err != nil {
+	if err := facet.Serve(contract.Subagents, host.RemoteFactory(serveSubagents), host.ServeOptions{Accepts: subagentsAccepts()}); err != nil {
 		return err
 	}
 	// A worker places own cwds stored before locations existed on the environment recorded here.
@@ -212,6 +212,51 @@ func serveChildStore(_ *delta.JsonObject, self host.Self) (contracts.Implementat
 
 // serveSubagents serves `Subagents`: a worker reports its own session's children, the owner reads every session's, a guest
 // those of the sessions shared with them.
+// withoutDetail is a child as a guest sees it: its failure without the detail.
+func withoutDetail(each any) any {
+	child := object(each)
+	failure := object(child.Value("failure"))
+	if failure == nil || !failure.Has("detail") {
+		return each
+	}
+	shown := child.Clone()
+	shown.Set("failure", delta.JsonObjectOf("reason", failure.Value("reason")))
+	return shown
+}
+
+// subagentsAccepts: `Subagents` 2: pages read children without their time and failure; workers report them without.
+func subagentsAccepts() contracts.AcceptsTable {
+	withoutNew := func(value delta.JsonValue) (delta.JsonValue, error) {
+		all := object(value)
+		if all == nil {
+			return value, nil
+		}
+		out := delta.NewJsonObject(all.Len())
+		for session, each := range all.All() {
+			list, _ := each.([]any)
+			kept := make([]any, len(list))
+			for at, item := range list {
+				child := object(item)
+				stripped := delta.NewJsonObject(child.Len())
+				for key, field := range child.All() {
+					if key != "updatedAt" && key != "failure" {
+						stripped.Set(key, field)
+					}
+				}
+				kept[at] = stripped
+			}
+			out.Set(session, kept)
+		}
+		return out, nil
+	}
+	return contracts.AcceptsTable{{Name: "2", Value: contracts.VersionMappings{
+		VariantState: []contracts.Entry[[]contracts.Entry[contracts.StateMapping]]{{Name: "reader", Value: []contracts.Entry[contracts.StateMapping]{
+			{Name: "children", Value: contracts.StateMapping{Func: withoutNew}},
+		}}},
+		Methods: []contracts.Entry[contracts.MethodMapping]{{Name: "report", Value: contracts.MethodMapping{Args: func(old delta.JsonValue) (delta.JsonValue, error) { return old, nil }}}},
+	}}}
+}
+
 func serveSubagents(_ *delta.JsonObject, principal data.Principal, self host.Self) (contracts.Implementation, error) {
 	who, err := p2runtime.FromChord(principal)
 	if err != nil {
@@ -230,8 +275,13 @@ func serveSubagents(_ *delta.JsonObject, principal data.Principal, self host.Sel
 			all := object(values[0])
 			visible := delta.NewJsonObject(len(typed.Sessions))
 			for session := range typed.Sessions {
-				if list := all.Value(session); list != nil {
-					visible.Set(session, list)
+				if list, _ := all.Value(session).([]any); list != nil {
+					// A failure's reason, never its detail (an error's text: paths, stacks), as status keeps the worker's error.
+					shown := make([]any, len(list))
+					for at, each := range list {
+						shown[at] = withoutDetail(each)
+					}
+					visible.Set(session, shown)
 				} else {
 					visible.Set(session, []any{})
 				}
