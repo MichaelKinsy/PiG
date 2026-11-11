@@ -86,6 +86,8 @@ type workspace struct {
 	tree  string // tree/: a repository holding only the changed files
 	main  string // main's tree
 	bin   string // main's built tools and the installed scanners
+	// remote is the git host the PR's head is fetched from: https://github.com, or another host's URL.
+	remote string
 }
 
 // prepareWorkspace writes the inputs the given scans read: the added lines, a sparse checkout of the PR's head with
@@ -136,7 +138,7 @@ func prepareWorkspace(ctx context.Context, d *data, scans []check, ws workspace,
 	slices.Sort(patterns)
 	patterns = slices.Compact(patterns)
 	start := time.Now()
-	remote := "https://github.com/" + d.Repo
+	remote := strings.TrimSuffix(ws.remote, "/") + "/" + d.Repo
 	ref := fmt.Sprintf("refs/pull/%d/head", d.PR)
 	steps := [][]string{
 		{"init", "-q", ws.head},

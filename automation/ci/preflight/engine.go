@@ -19,7 +19,9 @@ import (
 // runOptions are one pre-flight run over a repository's PRs.
 type runOptions struct {
 	apiBase, token string
-	repo           string
+	// gitBase is where the PRs' heads are fetched from, https://github.com unless the host is another.
+	gitBase string
+	repo    string
 	// root is main's tree: the code and configuration that judge the PRs.
 	root string
 	// bin holds main's built tools and the installed scanners.
@@ -60,7 +62,7 @@ func runPR(ctx context.Context, cfg config, env *ruleEnv, o runOptions, version 
 		if ev.cheapFailed(cfg) && !o.forceScans {
 			logf(log, "scans skipped: a cheap check failed")
 		} else {
-			ws := workspace{dir: filepath.Join(o.work, strconv.Itoa(pr)), main: o.root, bin: o.bin}
+			ws := workspace{dir: filepath.Join(o.work, strconv.Itoa(pr)), main: o.root, bin: o.bin, remote: o.gitBase}
 			if err := runScans(ctx, cfg, d, &ev, ws, log); err != nil {
 				for _, name := range ev.Scans {
 					v := ev.Checks[name]

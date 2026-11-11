@@ -90,6 +90,9 @@ func (d *data) failed(mu *sync.Mutex, log io.Writer, source string, err error) {
 	logf(log, "::warning::source %s failed after retries: %v", source, err)
 }
 
+// mergeableRetryDelay is how long GitHub gets to compute mergeable before the one retry.
+var mergeableRetryDelay = 3 * time.Second
+
 var dependsOnRE = regexp.MustCompile(`(?mi)^[ \t]*Depends on:[ \t]*(\S.*?)[ \t]*$`)
 
 // parseDependsOn reads the template's "Depends on:" line: "None" or "#<n>". ok is false when the line is missing or holds
@@ -138,7 +141,6 @@ type fetchOptions struct {
 	repo     string
 	pr       int
 	version  string
-	root     string
 	previous *state
 }
 
@@ -292,7 +294,7 @@ func fetch(ctx context.Context, cfg config, o fetchOptions, log io.Writer) (*dat
 			select {
 			case <-ctx.Done():
 				return
-			case <-time.After(3 * time.Second):
+			case <-time.After(mergeableRetryDelay):
 			}
 			var p pull
 			if err := a.get(ctx, fmt.Sprintf("%s/pulls/%d", prefix, o.pr), &p, false); err != nil {

@@ -85,6 +85,7 @@ func runCommand(ctx context.Context, cfg config, args []string, stdout, stderr i
 	fs.StringVar(&o.states, "states", "", "directory of the PR states")
 	fs.StringVar(&o.work, "work", "", "work directory")
 	fs.StringVar(&o.apiBase, "api", "https://api.github.com", "GitHub API base URL")
+	fs.StringVar(&o.gitBase, "git", "https://github.com", "where the PRs' heads are fetched from")
 	fs.IntVar(&o.jobs, "jobs", 4, "PRs checked at once")
 	fs.BoolVar(&o.dryRun, "dry-run", false, "set no status and post no comment")
 	fs.BoolVar(&o.forceScans, "force-scans", false, "run the scans even when a cheap check failed")

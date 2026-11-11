@@ -111,7 +111,7 @@ func errOrNil(status int, err error) error {
 }
 
 func (a *api) once(ctx context.Context, target string) ([]byte, http.Header, int, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil) //nolint:gosec // G704: target is the operator's --api base plus a fixed path, or a next-page link get checked to be under that base.
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
 	if err != nil {
 		return nil, nil, 0, err
 	}
@@ -123,7 +123,7 @@ func (a *api) once(ctx context.Context, target string) ([]byte, http.Header, int
 	a.mu.Lock()
 	a.calls++
 	a.mu.Unlock()
-	resp, err := a.client.Do(req) //nolint:gosec // G704: the request built above, whose URL get checked to be under the --api base.
+	resp, err := a.client.Do(req)
 	if err != nil {
 		return nil, nil, 0, err
 	}

@@ -66,7 +66,7 @@ func installArchive(ctx context.Context, t tool, bin, cache string) error {
 		}
 		target := filepath.Join(bin, t.Name)
 		tmp := target + ".tmp"
-		f, err := os.OpenFile(tmp, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o755) //nolint:gosec // G302: an executable the run starts.
+		f, err := os.OpenFile(tmp, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o755)
 		if err != nil {
 			return err
 		}
@@ -121,7 +121,7 @@ func get(ctx context.Context, url string) ([]byte, int, error) {
 	if err != nil {
 		return nil, 0, err
 	}
-	resp, err := (&http.Client{Timeout: 5 * time.Minute}).Do(req) //nolint:gosec // G704: the URL is a tool's pinned release in config.yaml, and its body is accepted only at the pinned SHA-256.
+	resp, err := (&http.Client{Timeout: 5 * time.Minute}).Do(req)
 	if err != nil {
 		return nil, 0, err
 	}

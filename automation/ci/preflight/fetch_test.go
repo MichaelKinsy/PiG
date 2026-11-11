@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"net/http"
@@ -206,5 +207,72 @@ func TestGetRefusesANextPageOutsideTheBase(t *testing.T) {
 	err := newAPI(server.URL, "").get(context.Background(), "items", &files, true)
 	if err == nil || !strings.Contains(err.Error(), "is not under") {
 		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestFetchDeltaAndWaveTwo(t *testing.T) {
+	saved := mergeableRetryDelay
+	mergeableRetryDelay = time.Millisecond
+	t.Cleanup(func() { mergeableRetryDelay = saved })
+	pulls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch p := r.URL.Path; p {
+		case "/repos/o/r/pulls/7":
+			pulls++
+			mergeable := "null"
+			if pulls > 1 {
+				mergeable = "true"
+			}
+			_, _ = io.WriteString(w, `{"number":7,"body":"Depends on: #5","mergeable":`+mergeable+`,"commits":2,"changed_files":2,"head":{"sha":"new"},"base":{"sha":"b","ref":"main"}}`)
+		case "/repos/o/r/pulls/7/files":
+			_, _ = io.WriteString(w, `[{"filename":"a.go","status":"modified","sha":"s1"},{"filename":"go.sum","status":"modified","sha":"s2"}]`)
+		case "/repos/o/r/pulls/7/commits":
+			_, _ = io.WriteString(w, `[{"sha":"old"},{"sha":"new"}]`)
+		case "/repos/o/r/compare/main...new":
+			_, _ = io.WriteString(w, `{"status":"diverged","ahead_by":2,"behind_by":1}`)
+		case "/repos/o/r/compare/old...new":
+			_, _ = io.WriteString(w, `{"status":"ahead","ahead_by":1,"files":[{"filename":"go.sum"}]}`)
+		case "/repos/o/r/pulls/5":
+			_, _ = io.WriteString(w, `{"number":5,"state":"closed","merged":true}`)
+		case "/repos/o/r/dependency-graph/compare/b...new":
+			_, _ = io.WriteString(w, `[{"change_type":"added","name":"x","version":"1"}]`)
+		case "/repos/o/r/contents/" + acknowledgedPath:
+			_, _ = io.WriteString(w, `{"encoding":"base64","content":"`+base64.StdEncoding.EncodeToString([]byte("[[ack]]\n"))+`"}`)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+	cfg, err := loadConfig(configYAML)
+	if err != nil {
+		t.Fatal(err)
+	}
+	prev := &state{Version: "v", Head: "old", Base: "b"}
+	d, err := fetchWith(t, cfg, fetchOptions{apiBase: server.URL, repo: "o/r", pr: 7, version: "v", previous: prev}, io.Discard)
+	if err != nil {
+		t.Fatal(err)
+	}
+	switch {
+	case d.Mode != modeDelta || d.MainMoved || !slices.Equal(d.Delta, []string{"go.sum"}):
+		t.Fatalf("mode %s moved %v delta %v", d.Mode, d.MainMoved, d.Delta)
+	case d.DependsOn == nil || !d.DependsOn.Merged:
+		t.Fatalf("depends on %+v", d.DependsOn)
+	case len(d.Dependencies) != 1:
+		t.Fatalf("dependencies %+v", d.Dependencies)
+	case d.Acknowledged != "[[ack]]\n":
+		t.Fatalf("acknowledged %q", d.Acknowledged)
+	case d.Pull.Mergeable == nil || !*d.Pull.Mergeable:
+		t.Fatalf("mergeable after the retry: %v", formatBool(d.Pull.Mergeable))
+	case len(d.SourceErrors) != 0:
+		t.Fatalf("source errors %v", d.SourceErrors)
+	case !slices.Contains(d.Relevant, "dependency-review") || slices.Contains(d.Relevant, "workflows"):
+		t.Fatalf("relevant %v", d.Relevant)
+	}
+
+	// A previous head that no longer exists (a force-push) is a full run.
+	prev.Head = "gone"
+	d, err = fetchWith(t, cfg, fetchOptions{apiBase: server.URL, repo: "o/r", pr: 7, version: "v", previous: prev}, io.Discard)
+	if err != nil || d.Mode != modeFull || !strings.Contains(d.Reason, "force-push") {
+		t.Fatalf("mode %s %q, err %v", d.Mode, d.Reason, err)
 	}
 }
