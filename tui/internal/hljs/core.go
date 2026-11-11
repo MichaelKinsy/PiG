@@ -1128,8 +1128,10 @@ func unitsToString(units []rune) string {
 }
 
 // stringToUnits decodes WTF-8 (or UTF-8) into UTF-16 code units.
-func stringToUnits(text string) []rune {
-	units := make([]rune, 0, len(text))
+func stringToUnits(text string) []rune { return appendUnits(make([]rune, 0, len(text)), text) }
+
+// appendUnits appends the UTF-16 code units of the WTF-8 (or UTF-8) text to units.
+func appendUnits(units []rune, text string) []rune {
 	for len(text) > 0 {
 		if text[0] < utf8.RuneSelf {
 			units = append(units, rune(text[0]))

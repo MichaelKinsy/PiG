@@ -20,6 +20,11 @@ import (
 func TestStreamedWriteCardFrameCostIsFlat(t *testing.T) {
 	m, _ := newTickRenderProbe(t, "regular")
 	m.backgroundCtx, m.backgroundCancel = context.WithCancel(t.Context())
+	// A step of the highlight warm-up falls into the measured frames every few kilobytes and runs on the session's worker, which
+	// allocates in the same process: what is measured is the frame, which hands the content over and highlights no more than its lines.
+	previousWarm := writeWarmHighlight
+	writeWarmHighlight = func(string, string) bool { return true }
+	t.Cleanup(func() { writeWarmHighlight = previousWarm })
 	const width, delta, warm, frames = 120, 64, 8, 64
 	var source strings.Builder
 	for line := 0; source.Len() < 400<<10+(warm+frames+1)*delta; line++ {
