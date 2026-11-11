@@ -904,21 +904,37 @@ func LauncherActions(options LauncherActionOptions) map[string]LauncherAction {
 			return map[string]any{"saved": true}, WritePrefsFile(prefsDirectory, ApplyPrefsPatch(current, patch))
 		},
 	}
-	// C (owner): `{action: "reload"}` on the dev channel `/__p2_dev`, with the launcher's own sign-in.
+	// C (owner): `{action: "reload" | "restart"}` on the dev channel `/__p2_dev`, with the launcher's own sign-in. A restart may drop the request as the
+	// server exits; that counts as requested (the launcher reconnects).
 	actions["devCommand"] = LauncherAction{
 		Kind: GrantC,
 		Consent: func(payload any, _ ConsentContext) *ConsentRequest {
 			value := record(payload)
-			if options.Role == "owner" && value["action"] == "reload" && len(value) == 1 {
+			if options.Role != "owner" || len(value) != 1 {
+				return nil
+			}
+			switch value["action"] {
+			case "reload":
 				return &ConsentRequest{Action: "Reload the server's changed plugins (dev server)", ConfirmLabel: "reload"}
+			case "restart":
+				// No screen: the request goes to the server the runtime came from, which can restart itself anyway.
+				ask := false
+				return &ConsentRequest{Action: "Restart the server (npm run dev supervisor)", Ask: &ask}
 			}
 			return nil
 		},
-		Run: func(_ any, ctx ActionContext) (any, error) {
+		Run: func(payload any, ctx ActionContext) (any, error) {
+			action := "reload"
+			if record(payload)["action"] == "restart" {
+				action = "restart"
+			}
 			timed, cancel := context.WithTimeout(ctx.Grant.Context, 120*time.Second)
 			defer cancel()
-			response, err := request(timed, "/__p2_dev", Request{Method: http.MethodPost, Headers: map[string]string{"Content-Type": "application/json"}, Body: strings.NewReader(`{"action":"reload"}`)})
+			response, err := request(timed, "/__p2_dev", Request{Method: http.MethodPost, Headers: map[string]string{"Content-Type": "application/json"}, Body: strings.NewReader(`{"action":"` + action + `"}`)})
 			if err != nil {
+				if action == "restart" && ctx.Grant.Context.Err() == nil {
+					return map[string]any{"message": "Restart requested; reconnecting…"}, nil
+				}
 				return nil, err
 			}
 			defer response.Body.Close()

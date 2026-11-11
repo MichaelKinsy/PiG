@@ -1609,6 +1609,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-c807fb7](#bf-c807fb7) | `pig mcp list` sends the token of the provider named by a server's `auth.provider` (Radius, for example)… | PiG's own defect | All platforms | Unreleased |
 | [BF-c80895b](#bf-c80895b) | An entry read from a long session's file no longer keeps the whole shared read (up to 8 MiB) alive: each… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-c80895b-2](#bf-c80895b-2) | Switching to a long session with `/resume`, `/fork` or `/tree` no longer leaves memory the replaced session… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-c87d7e9](#bf-c87d7e9) | p2's terminal client pushes the kitty keyboard flags on the alternate screen the runtime draws on (the main… | PiG's own defect | All platforms | Unreleased |
 | [BF-c8a90a6](#bf-c8a90a6) | Pressing the login dialog's cancel key again cancels again, and Enter after a cancelled prompt leaves the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c8e3d86](#bf-c8e3d86) | Settings submenus: the type-to-filter box no longer shows a hardware cursor marker (Pi never focuses it), and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c910f98](#bf-c910f98) | fix(photonimage): decode Radiance HDR as Photon does | PiG's own defect | All platforms | Unreleased |
@@ -24081,6 +24082,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `7fae0d4832` (2026-11-02), `c80895bd4f` (2026-11-02)
 - **Tests:** `coding/session_replay_reads_test.go::TestReplayedTranscriptAllocatesAFractionOfTheSessionFile`, `internal/codingagent/session_run_buffer_retention_test.go::TestEntriesDecodedFromAJoinedReadDoNotPinTheRead`, `internal/codingagent/switch_heap_release_test.go::TestSessionSwitchesRequestAHeapRelease`
 - **Release note:** Switching to a long session with `/resume`, `/fork` or `/tree` no longer leaves memory the replaced session used: the heap is returned to the OS once the new transcript is painted, as it is at start. A 375 MB session resumed from inside PiG held 2.2 GB until exit; it now holds about 100 MB.
+
+### BF-c87d7e9
+
+**p2's terminal client pushes the kitty keyboard flags on the alternate screen the runtime draws on (the main…**
+
+- **Source:** PiG's own defect
+- **Symptom:** p2's terminal client pushes the kitty keyboard flags on the alternate screen the runtime draws on (the main and alternate screens keep separate keyboard-mode stacks), so Alt+Enter in a kitty-protocol terminal sends a follow-up instead of inserting a newline; the flags are popped before the runtime leaves that screen, on suspend and on cleanup.
+- **Root cause:** The main and alternate screens keep separate keyboard-mode stacks, and the launcher pushes only on the main screen, so on the alternate screen a kitty-protocol terminal reported Option+Enter as ESC CR, which the runtime decodes as Shift+Enter: Alt+Enter inserted a newline instead of sending a follow-up. TerminalModes.Keyboard pushes the flags once per alternate screen (after the runtime's output, after launcher UI closes, on input), and the pop goes before every sequence that leaves it (the runtime's own leave, suspend, cleanup).
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c87d7e96cd` (2026-11-10)
+- **Tests:** `apps/p2/tui/host/grants_test.go::TestTerminalModesTheKittyKeyboardFlagsArePushedOnTheAlternateScreenAndPoppedBeforeLeavingIt`
+- **Release note:** p2's terminal client pushes the kitty keyboard flags on the alternate screen the runtime draws on (the main and alternate screens keep separate keyboard-mode stacks), so Alt+Enter in a kitty-protocol terminal sends a follow-up instead of inserting a newline; the flags are popped before the runtime leaves that screen, on suspend and on cleanup.
 
 ### BF-c8a90a6
 

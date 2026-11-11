@@ -20,6 +20,15 @@ const TerminalReset = "\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l\x1b[?1004l\x
 
 var privateMode = lazyregexp.New(`\x1b\[\?(\d+)([hl])`)
 
+// The kitty keyboard flags ProcessTerminal pushes (pi-tui terminal.ts, `DESIRED_KITTY_KEYBOARD_PROTOCOL_FLAGS`), and their pop. The main and alternate
+// screens keep separate keyboard-mode stacks (kitty keyboard protocol spec), and the launcher pushes on the main screen before the runtime enters the
+// alternate one.
+const (
+	kittyKeyboardPush = "\x1b[>7u"
+	kittyKeyboardPop  = "\x1b[<u"
+	leaveAltScreen    = "\x1b[?1049l"
+)
+
 // TerminalModes tracks the modes the current worker changed.
 type TerminalModes struct {
 	// Allowed are the modes a frame may set.
@@ -29,6 +38,8 @@ type TerminalModes struct {
 	// state is the last state per mode as written by the current worker (only modes it changed), in the order first changed.
 	order []string
 	state map[string]string
+	// altKeyboard is whether the launcher pushed the kitty keyboard flags on the alternate screen (Keyboard).
+	altKeyboard bool
 }
 
 // NewTerminalModes admits the base modes, the mouse modes unless the policy is off, and 1003 only for "all".
@@ -62,7 +73,34 @@ func (m *TerminalModes) Filter(data string) (string, error) {
 		}
 		m.state[match[1]] = match[2]
 	}
+	// The runtime leaves the alternate screen: pop the flags pushed there first, so its stack ends where it began.
+	if m.altKeyboard && strings.Contains(output, leaveAltScreen) {
+		m.altKeyboard = false
+		return strings.Replace(output, leaveAltScreen, kittyKeyboardPop+leaveAltScreen, 1), nil
+	}
 	return output, nil
+}
+
+// Keyboard is what to write so the screen the runtime draws on reports keys as the launcher negotiated them. Without it, a kitty-protocol terminal
+// reports keys on the alternate screen in legacy form (Option+Enter as ESC CR) while the runtime decodes kitty form (ESC CR is Shift+Enter there),
+// so Alt+Enter inserts a newline instead of a follow-up.
+func (m *TerminalModes) Keyboard(kitty bool) string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if !kitty || m.state["1049"] != "h" || m.altKeyboard {
+		return ""
+	}
+	m.altKeyboard = true
+	return kittyKeyboardPush
+}
+
+// leaveKeyboardLocked is the pop of the alternate screen's pushed flags, before a sequence leaves that screen.
+func (m *TerminalModes) leaveKeyboardLocked() string {
+	if !m.altKeyboard {
+		return ""
+	}
+	m.altKeyboard = false
+	return kittyKeyboardPop
 }
 
 // Restore re-applies the worker's mode state after launcher-drawn UI (worker output was discarded meanwhile).
@@ -103,12 +141,17 @@ func (m *TerminalModes) Cleanup() string {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	inverse := m.inverseLocked()
+	pop := m.leaveKeyboardLocked()
 	m.order, m.state = nil, map[string]string{}
-	return inverse + TerminalReset
+	return pop + inverse + TerminalReset
 }
 
 // SuspendSequence leaves the worker's terminal state for a local program (editor, suspend) without forgetting it.
-func (m *TerminalModes) SuspendSequence() string { return m.inverse() + TerminalReset }
+func (m *TerminalModes) SuspendSequence() string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.leaveKeyboardLocked() + m.inverseLocked() + TerminalReset
+}
 
 // ResumeSequence re-enters the worker's terminal state after SuspendSequence (the worker then redraws everything).
 func (m *TerminalModes) ResumeSequence() string {

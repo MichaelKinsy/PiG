@@ -1,10 +1,12 @@
 package contract
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -96,6 +98,8 @@ type TurnState struct {
 	Text   string
 	Reason string
 	Files  []OfferedFile
+	// Answer is the answered turn's entry; inputs steered into one turn share it.
+	Answer float64
 }
 
 // DownloadFile is a Discord attachment to download into the session's uploads.
@@ -215,6 +219,10 @@ const (
 	readChunk      = 4 * 1024 * 1024
 	// MaxAttachmentsPerMessage is the attachments one Discord message carries at most.
 	MaxAttachmentsPerMessage = 10
+	// MaxBotTurns is the turns bots may start in a row in one channel or thread before a person writes there.
+	MaxBotTurns = 3
+	// rememberedAnswers is the answers kept in mind as posted, to post a run's answer once however its inputs settle.
+	rememberedAnswers = 200
 )
 
 func now() float64 { return float64(time.Now().UnixMilli()) }
@@ -238,6 +246,15 @@ type Relay struct {
 	lanes map[string]chan struct{}
 	// delivering: channels and threads with deliveries under way (how many), and their bots.
 	delivering map[string]*activeDelivery
+	// botStreaks: per channel or thread, the turns bots started in a row since a person last wrote there (in memory).
+	botStreaks map[string]*botStreak
+	// posted: answers posted lately (session and entry): a run's other inputs, settled later, post nothing.
+	posted []string
+}
+
+type botStreak struct {
+	turns   int
+	noticed bool
 }
 
 type activeDelivery struct {
@@ -250,6 +267,7 @@ func NewRelay(discord func(bot string) Port, sessions Sessions, state StatePort)
 	return &Relay{
 		discord: discord, sessions: sessions, state: state,
 		checking: map[string]bool{}, lanes: map[string]chan struct{}{}, delivering: map[string]*activeDelivery{},
+		botStreaks: map[string]*botStreak{},
 	}
 }
 
@@ -288,14 +306,21 @@ func contains(list []string, value string) bool {
 }
 
 // OnMessage handles a message bot `bot` received: a mention of it by someone allowed to wake Pi, in a channel linked
-// through it (or a thread of one), delivers.
+// through it (or a thread of one), delivers. Other bots count as people, within the loop guard; the bot's own messages never count.
 func (r *Relay) OnMessage(ctx context.Context, bot string, message Message) error {
-	if message.Author.Bot || !message.MentionsBot {
-		return nil
-	}
 	port, err := r.port(bot)
 	if err != nil {
 		return err
+	}
+	if message.Author.ID == port.BotID() {
+		return nil
+	}
+	// A person's message, mention or not, ends the bots' streak where it was written.
+	if !message.Author.Bot {
+		r.personWrote(message.ChannelID)
+	}
+	if !message.MentionsBot {
+		return nil
 	}
 	bindings := r.state.Value().Bindings
 	binding := bindings[message.ChannelID]
@@ -322,7 +347,48 @@ func (r *Relay) OnMessage(ctx context.Context, bot string, message Message) erro
 	if command := CommandOf(message.Text, port.BotID()); command != "" {
 		return r.command(ctx, *binding, thread, message, command)
 	}
+	if !r.botTurnAllowed(ctx, port, message) {
+		return nil
+	}
 	return r.Deliver(ctx, binding.ChannelID, message, thread)
+}
+
+// personWrote: a person wrote in target (a channel or thread): bots may wake Pi there again.
+func (r *Relay) personWrote(target string) {
+	r.mu.Lock()
+	delete(r.botStreaks, target)
+	r.mu.Unlock()
+}
+
+// botTurnAllowed is whether message may start a turn: a person's always; a bot's while fewer than MaxBotTurns turns in a row there were started by bots
+// (two bots mentioning each other would otherwise talk forever). The first one refused gets a short notice; the streak ends when a person writes.
+func (r *Relay) botTurnAllowed(ctx context.Context, port Port, message Message) bool {
+	if !message.Author.Bot {
+		return true
+	}
+	target := message.ChannelID
+	r.mu.Lock()
+	streak := r.botStreaks[target]
+	if streak == nil {
+		streak = &botStreak{}
+		r.botStreaks[target] = streak
+	}
+	if streak.turns < MaxBotTurns {
+		streak.turns++
+		r.mu.Unlock()
+		return true
+	}
+	notice := !streak.noticed
+	streak.noticed = true
+	r.mu.Unlock()
+	fmt.Fprintf(os.Stderr, "p2 discord: not answering %s in %s: %d bot-started turns in a row\n", message.Author.Name, target, MaxBotTurns)
+	if notice {
+		// Not awaited (`void port.reply(...).catch(() => {})`): the refusal does not wait for Discord.
+		go func() {
+			_ = port.Reply(context.WithoutCancel(ctx), target, message.ID, fmt.Sprintf("Not answering more bots here until a person writes (%d bot turns in a row).", MaxBotTurns), nil)
+		}()
+	}
+	return false
 }
 
 // command runs channel command of message on the channel's main conversation or the thread's subagent.
@@ -503,7 +569,7 @@ func (r *Relay) deliver(ctx context.Context, channelID string, trigger Message, 
 	}
 	if before != "" {
 		if err := history(ctx, port, channelID, binding.Cursor, before, func(message Message) {
-			if !message.Author.Bot && !isCommand(binding, message, port.BotID()) {
+			if message.Author.ID != port.BotID() && !isCommand(binding, message, port.BotID()) {
 				window.add(partChannel, message)
 			}
 		}); err != nil {
@@ -511,7 +577,7 @@ func (r *Relay) deliver(ctx context.Context, channelID string, trigger Message, 
 		}
 	}
 	if err := history(ctx, port, where, cursor, trigger.ID, func(message Message) {
-		if !message.Author.Bot && !isCommand(binding, message, port.BotID()) {
+		if message.Author.ID != port.BotID() && !isCommand(binding, message, port.BotID()) {
 			window.add(partHere, message)
 		}
 	}); err != nil {
@@ -628,14 +694,20 @@ func (r *Relay) catchUpPlace(ctx context.Context, port Port, binding *Binding, i
 	var newest *Message
 	// A missed command is stale: it neither runs nor triggers a delivery.
 	if err := history(ctx, port, id, cursor, "", func(message Message) {
-		if !message.Author.Bot && message.MentionsBot && MayWake(binding.Wake, message.Author.ID, message.Roles) && !isCommand(binding, message, port.BotID()) {
+		if message.Author.ID == port.BotID() {
+			return
+		}
+		if !message.Author.Bot {
+			r.personWrote(id)
+		}
+		if message.MentionsBot && MayWake(binding.Wake, message.Author.ID, message.Roles) && !isCommand(binding, message, port.BotID()) {
 			copy := message
 			newest = &copy
 		}
 	}); err != nil {
 		return err
 	}
-	if newest == nil {
+	if newest == nil || !r.botTurnAllowed(ctx, port, *newest) {
 		return nil
 	}
 	var thread *Channel
@@ -649,9 +721,18 @@ func (r *Relay) catchUpPlace(ctx context.Context, port Port, binding *Binding, i
 	return r.Deliver(ctx, binding.ChannelID, *newest, thread)
 }
 
-// CheckPending posts the replies of the turns that ended (sessions: only those, when not nil); answers split at 2000.
+// CheckPending posts the replies of the turns that ended (sessions: only those, when not nil); answers split at 2000. Inputs steered into one turn share
+// its answer: it is posted once, as the reply to the newest of their mentions, with the files of the whole turn; the others' replies go without a post.
 func (r *Relay) CheckPending(ctx context.Context, sessions map[string]bool) error {
 	current := now()
+	var done []settledTurn
+	defer func() {
+		r.mu.Lock()
+		for _, each := range done {
+			delete(r.checking, each.pending.MessageID)
+		}
+		r.mu.Unlock()
+	}()
 	for _, pending := range r.state.Value().Pending {
 		r.mu.Lock()
 		skip := (sessions != nil && !sessions[pending.Session]) || r.checking[pending.MessageID]
@@ -660,8 +741,7 @@ func (r *Relay) CheckPending(ctx context.Context, sessions map[string]bool) erro
 			continue
 		}
 		// A bot that is not connected (or was removed) keeps its replies until it is, or they time out.
-		port := r.discord(pending.BotID)
-		if port == nil && current-pending.Since < PendingTimeout {
+		if r.discord(pending.BotID) == nil && current-pending.Since < PendingTimeout {
 			continue
 		}
 		r.mu.Lock()
@@ -671,47 +751,124 @@ func (r *Relay) CheckPending(ctx context.Context, sessions map[string]bool) erro
 		}
 		r.checking[pending.MessageID] = true
 		r.mu.Unlock()
-		err := r.check(ctx, port, *pending, current)
+		if turn := r.settled(ctx, *pending, current); turn != nil {
+			done = append(done, settledTurn{*pending, *turn})
+			continue
+		}
 		r.mu.Lock()
 		delete(r.checking, pending.MessageID)
 		r.mu.Unlock()
-		if err != nil {
+	}
+	var keys []string
+	runs := map[string][]settledTurn{}
+	for _, each := range done {
+		key := each.pending.MessageID
+		if each.turn.State == "answered" {
+			key = each.pending.Session + ":" + jsNumber(each.turn.Answer)
+		}
+		if _, ok := runs[key]; !ok {
+			keys = append(keys, key)
+		}
+		runs[key] = append(runs[key], each)
+	}
+	for _, key := range keys {
+		if err := r.post(ctx, key, runs[key]); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (r *Relay) check(ctx context.Context, port Port, pending Pending, current float64) error {
-	turn, err := r.sessions.Turn(ctx, pending.Session, pending.SubmissionID)
+// settledTurn is a pending reply with the turn that ended it.
+type settledTurn struct {
+	pending Pending
+	turn    TurnState
+}
+
+// settled is pending reply pending's turn once it ended (timed out: unanswered), else nil.
+func (r *Relay) settled(ctx context.Context, pending Pending, current float64) *TurnState {
 	timedOut := TurnState{State: "unanswered", Reason: "the session did not answer in time.", Files: []OfferedFile{}}
+	turn, err := r.sessions.Turn(ctx, pending.Session, pending.SubmissionID)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "p2 discord: reading a turn failed:", errText(err))
 		if current-pending.Since < PendingTimeout {
 			return nil
 		}
-		turn = timedOut
+		return &timedOut
 	}
-	if turn.State == "pending" {
-		if current-pending.Since < PendingTimeout {
-			return nil
-		}
-		turn = timedOut
+	if turn.State != "pending" {
+		return &turn
 	}
-	// A stopped turn posts nothing: the stop command answered already.
-	if turn.State != "stopped" {
-		var err error
-		if port == nil {
-			err = errors.New("its bot is not connected")
-		} else {
-			err = r.reply(ctx, port, pending, turn)
-		}
-		if err != nil {
+	if current-pending.Since < PendingTimeout {
+		return nil
+	}
+	return &timedOut
+}
+
+// post posts one run's reply (run: its pending replies, all settled) to the newest mention, then drops them all.
+func (r *Relay) post(ctx context.Context, key string, run []settledTurn) error {
+	ordered := slices.Clone(run)
+	slices.SortStableFunc(ordered, func(a, b settledTurn) int {
+		return cmp.Compare(snowflake(a.pending.MessageID), snowflake(b.pending.MessageID))
+	})
+	newest := ordered[len(ordered)-1]
+	r.mu.Lock()
+	postedBefore := slices.Contains(r.posted, key)
+	r.mu.Unlock()
+	// A stopped turn posts nothing (the stop command answered already), nor does an answer posted before (an input of its run settled after the others were
+	// checked).
+	if (newest.turn.State == "answered" || newest.turn.State == "unanswered") && !postedBefore {
+		if err := r.postRun(ctx, key, ordered, newest); err != nil {
 			// A channel that went away: the reply is dropped, as Discord has nowhere to show it.
 			fmt.Fprintln(os.Stderr, "p2 discord: posting a reply failed:", errText(err))
 		}
 	}
-	return r.state.Change(ctx, func(draft *State) { delete(draft.Pending, pending.MessageID) })
+	return r.state.Change(ctx, func(draft *State) {
+		for _, each := range run {
+			delete(draft.Pending, each.pending.MessageID)
+		}
+	})
+}
+
+func (r *Relay) postRun(ctx context.Context, key string, ordered []settledTurn, newest settledTurn) error {
+	port := r.discord(newest.pending.BotID)
+	if port == nil {
+		return errors.New("its bot is not connected")
+	}
+	// The oldest input's span covers the whole turn; files are listed once each.
+	var files []OfferedFile
+	at := map[string]int{}
+	for _, each := range ordered {
+		if each.turn.State == "stopped" || each.turn.State == "pending" {
+			continue
+		}
+		for _, file := range each.turn.Files {
+			if index, ok := at[file.ID]; ok {
+				files[index] = file
+				continue
+			}
+			at[file.ID] = len(files)
+			files = append(files, file)
+		}
+	}
+	turn := newest.turn
+	turn.Files = files
+	if err := r.reply(ctx, port, newest.pending, turn); err != nil {
+		return err
+	}
+	if turn.State == "answered" {
+		r.remember(key)
+	}
+	return nil
+}
+
+func (r *Relay) remember(key string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.posted = append(r.posted, key)
+	if len(r.posted) > rememberedAnswers {
+		r.posted = r.posted[1:]
+	}
 }
 
 // reply posts a finished turn's reply: its text split at 2000 characters, the first part replying to the waking message,
@@ -972,7 +1129,11 @@ func BatchOf(sections []Section, botID, header string) (string, []DownloadFile) 
 				parts = append(parts, fmt.Sprintf("[attachment %s (%s bytes): %s]", attachment.Name, jsNumber(attachment.Size), attachment.URL))
 			}
 		}
-		return message.Author.Name + ": " + strings.Join(parts, "\n")
+		who := "<@" + message.Author.ID + ">"
+		if message.Author.Bot {
+			who = "bot, " + who
+		}
+		return message.Author.Name + " (" + who + "): " + strings.Join(parts, "\n")
 	}
 	lines := []string{header}
 	for _, section := range sections {

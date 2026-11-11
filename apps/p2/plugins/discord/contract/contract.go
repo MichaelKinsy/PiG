@@ -185,7 +185,8 @@ var DiscordIngress = must(contracts.Remote("p2.discord-ingress", contracts.Remot
 			obj(schema.Properties{prop("submissionId", num())}),
 			union(
 				obj(schema.Properties{prop("state", lit("pending"))}),
-				obj(schema.Properties{prop("state", lit("answered")), prop("text", str()), prop("files", arr(OfferedFileSchema))}),
+				// `answer`: its entry; inputs steered into one turn share it.
+				obj(schema.Properties{prop("state", lit("answered")), prop("text", str()), prop("files", arr(OfferedFileSchema)), prop("answer", num())}),
 				obj(schema.Properties{prop("state", lit("stopped"))}),
 				obj(schema.Properties{prop("state", lit("unanswered")), prop("reason", str()), prop("files", arr(OfferedFileSchema))}),
 			),
