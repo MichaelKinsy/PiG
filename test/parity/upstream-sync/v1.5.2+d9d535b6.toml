@@ -1,9 +1,0 @@
-from = "1.5.2"
-to = "1.5.2+d9d535b6"
-
-[[files]]
-path = "packages/durable/src/harness/util.ts"
-change = "modified"
-disposition = "ported"
-evidence = ["test:durable/harness/wait_aborted_context_test.go#TestWaitCancelledBeforeItsResultIsDeliveredReturnsTheCauseOnThatWait"]
-rationale = "Pi d9d535b6c9e4 (#11963, #11820) marks the promise Waiters.add returns as handled before it reaches the caller, so a wait cancelled or closed while the line still delivers earlier outcomes leaves no unhandledRejection; the caller still gets the rejection. Go has no unhandled rejection: Waiter.Wait returns the stored cancellation cause or closed error on the same call, so no Go source changed and the contract is the error on that operation. The ported Pi case (slow Publishing, earlier write, cancelled wait) is TestWaitCancelledBeforeItsResultIsDeliveredReturnsTheCauseOnThatWait; a mutant of Waiters.Add that drops the cause of an already-done context fails it."
