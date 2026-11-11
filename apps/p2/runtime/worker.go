@@ -1154,7 +1154,7 @@ func DurableStorage(ctx context.Context, store chordstore.Store) (durable.Storag
 
 // WorkerCore is the worker's core facet: its registries, its natives, the Harness and the server's lifecycle calls.
 func WorkerCore(init WorkerInit, session SessionInit, liveness *Liveness, location *SessionLocation, store chordstore.Store, root func(fn func(ctx host.Ctx) (any, error), ctx context.Context) (any, error)) host.Facet {
-	return host.DefineFacet(func(facet host.FacetHost, self host.FacetSelf) error {
+	return DefineFacet(func(facet host.FacetHost, self host.FacetSelf) error {
 		if err := ServeWorkerRegistries(facet); err != nil {
 			return err
 		}

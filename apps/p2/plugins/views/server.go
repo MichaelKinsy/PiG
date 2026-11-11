@@ -286,7 +286,7 @@ func serveFrames(facet host.FacetHost) error {
 }
 
 // Server is the plugin's server facet.
-var Server = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+var Server = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 	for _, serve := range []func(host.FacetHost) error{serveLibrary, serveSavedViews, serveFrames} {
 		if err := serve(facet); err != nil {
 			return err

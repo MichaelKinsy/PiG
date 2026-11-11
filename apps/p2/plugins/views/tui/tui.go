@@ -52,6 +52,6 @@ func ViewInputDisplay(data any) *chatcontract.EntryDisplay {
 }
 
 // Facet is the views plugin's TUI facet.
-var Facet = host.DefineFacet(func(_ host.FacetHost, self host.FacetSelf) error {
+var Facet = p2runtime.DefineFacet(func(_ host.FacetHost, self host.FacetSelf) error {
 	return chatcontract.TranscriptEntries.Contribute(self, p2runtime.Entry(contract.ViewInput, ViewInputDisplay))
 })

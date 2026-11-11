@@ -299,7 +299,7 @@ func fieldOf(value any, key string) any {
 }
 
 // Server is the plugin's server facet.
-var Server = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+var Server = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 	if err := contract.ServeDeviceAccesses(facet); err != nil {
 		return err
 	}

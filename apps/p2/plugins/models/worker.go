@@ -16,7 +16,7 @@ import (
 // Ports apps/p2/plugins/models/worker.ts: the worker facet. `WorkerModels` holds the worker's own configuration
 // observer, contributes the Harness's model access and settings (key "default"), and publishes `settings.json`.
 
-var workerFacet = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+var workerFacet = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 	return facet.Serve(contract.WorkerModels, host.LocalFactory(serveWorkerModels), host.ServeOptions{})
 })
 

@@ -271,7 +271,7 @@ func serveTransfer(facet host.FacetHost) error {
 }
 
 // Worker is the sessions plugin's worker facet.
-var Worker = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+var Worker = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 	for _, serve := range []func(host.FacetHost) error{serveLockMirror, serveTransfer, serveSessionTools} {
 		if err := serve(facet); err != nil {
 			return err

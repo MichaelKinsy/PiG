@@ -24,7 +24,7 @@ func objectOf(value any) *delta.JsonObject {
 }
 
 // Server is the plugin's server facet: it serves `Settings` to owners only.
-var Server = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+var Server = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 	return facet.Serve(settingscontract.Settings, host.RemoteFactory(func(_ *delta.JsonObject, principal data.Principal, self host.Self) (contracts.Implementation, error) {
 		who, err := p2runtime.FromChord(principal)
 		if err != nil || !p2runtime.IsOwner(who) {

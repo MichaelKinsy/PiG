@@ -603,7 +603,7 @@ func searchAccepts() contracts.AcceptsTable {
 }
 
 // ServerFacet serves the index, the workers' feed, owner search and unread answers.
-var ServerFacet = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+var ServerFacet = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 	for _, serve := range []func(host.FacetHost) error{serveIndex, serveSessionReads, serveFeed, serveSearch} {
 		if err := serve(facet); err != nil {
 			return err

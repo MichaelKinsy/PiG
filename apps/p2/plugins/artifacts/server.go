@@ -181,6 +181,6 @@ func serveRoutes(facet host.FacetHost) error {
 }
 
 // Server is the plugin's server facet.
-var Server = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+var Server = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 	return serveRoutes(facet)
 })

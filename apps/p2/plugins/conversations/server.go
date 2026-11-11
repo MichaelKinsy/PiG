@@ -180,7 +180,7 @@ func isJSSpace(r rune) bool {
 }
 
 // Server is the conversations plugin's server facet.
-var Server = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+var Server = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 	if err := facet.Serve(contract.ConversationBroker, host.LocalFactory(func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
 		return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{"query": broker(self)}}}, nil
 	}), host.ServeOptions{}); err != nil {

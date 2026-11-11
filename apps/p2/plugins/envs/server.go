@@ -144,7 +144,7 @@ func must[T any](value T, err error) T {
 	return value
 }
 
-var serverFacet = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+var serverFacet = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 	if err := contract.ServeEnvManagers(facet); err != nil {
 		return err
 	}

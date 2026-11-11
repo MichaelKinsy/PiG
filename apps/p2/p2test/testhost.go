@@ -115,7 +115,7 @@ func (stub Stub) serve(facet host.FacetHost) error {
 // host (`kind: "worker"`): the session's Harness (Harness) and the worker process (Worker). Unset parts are inert: no
 // location moves, liveness counts nothing, roots run on the host given.
 func WorkerFacet(harness *p2runtime.HarnessParts, worker *p2runtime.WorkerParts, rootHost func() host.Host) host.Facet {
-	return host.DefineFacet(func(facet host.FacetHost, self host.FacetSelf) error {
+	return p2runtime.DefineFacet(func(facet host.FacetHost, self host.FacetSelf) error {
 		if err := p2runtime.ServeWorkerNatives(facet); err != nil {
 			return err
 		}
@@ -220,7 +220,7 @@ func NewTestHost(t testing.TB, options TestHostOptions) *TestHost {
 		t.Fatal(err)
 	}
 	testHost.Host = created
-	base := host.DefineFacet(func(facet host.FacetHost, self host.FacetSelf) error {
+	base := p2runtime.DefineFacet(func(facet host.FacetHost, self host.FacetSelf) error {
 		if options.Worker {
 			if err := p2runtime.ServeWorkerRegistries(facet); err != nil {
 				return err
@@ -341,7 +341,7 @@ func (h *TestHost) ReloadFacets(facets []host.Facet) error { return h.Reload(h.b
 
 // StubFacet is a facet that serves stubs: a dependency a host under test needs, on a host that takes facets only (WorkerHost).
 func StubFacet(stubs ...Stub) host.Facet {
-	return host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+	return p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 		for _, stub := range stubs {
 			if err := stub.serve(facet); err != nil {
 				return err
@@ -368,7 +368,7 @@ func (h *TestHost) WorkerHost(session string, generation int, facets ...host.Fac
 	if err := worker.Connect(up, host.LinkOptions{Principal: p2runtime.ToChord(p2runtime.Server)}, Background); err != nil {
 		h.t.Fatal(err)
 	}
-	base := host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error { return p2runtime.ServeWorkerRegistries(facet) })
+	base := p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error { return p2runtime.ServeWorkerRegistries(facet) })
 	if err := h.load(worker, base, facets); err != nil {
 		_ = worker.Close(Background)
 		h.t.Fatal(err)

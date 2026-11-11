@@ -260,7 +260,7 @@ const (
 	maxEarly = 64
 )
 
-var serverFacet = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+var serverFacet = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 	if err := facet.Serve(voicecontract.VoiceServiceStore, host.LocalFactory(serveStore), host.ServeOptions{}); err != nil {
 		return err
 	}

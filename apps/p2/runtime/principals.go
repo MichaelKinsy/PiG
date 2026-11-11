@@ -81,6 +81,38 @@ func (GuestPrincipal) principalKind() string  { return "guest" }
 func (WorkerPrincipal) principalKind() string { return "worker" }
 func (ServerPrincipal) principalKind() string { return "server" }
 func (HostPrincipal) principalKind() string   { return "host" }
+// ViewMode is what a view's frame may do in its room: watch (`read`), or also send (`write`).
+type ViewMode string
+
+const (
+	// ViewRead frames only watch.
+	ViewRead ViewMode = "read"
+	// ViewWrite frames may also send, offer, answer, snapshot and edit.
+	ViewWrite ViewMode = "write"
+)
+
+// ViewPrincipal is a custom view's frame on its own link (apps/p2/docs/rooms.md): stamped by the server's `/chord/view` route
+// from a token the page asked for. It reaches only types declared `ForViews` (its room), never what its viewer may reach.
+type ViewPrincipal struct {
+	Session string
+	View    string
+	// Opening is which opening of the view: a view closed and opened again under its ID is another opening.
+	Opening string
+	// Mode is the viewer's mode when the token was made.
+	Mode ViewMode
+	// ForName and ForRole say whom the frame is shown to ("owner" or "guest"): for names and presence only, never authority.
+	ForName string
+	ForRole string
+	// Link is the token's ID, minted by the server: each frame link is a principal (and a room's peer) of its own.
+	Link string
+	// Editor is the ID of the frame's first link: one frame across its reconnects (a text room's editor).
+	Editor string
+	// Viewer is the viewer's revocations when the token was made: revoking the viewer revokes its frames.
+	Viewer []Revocation
+}
+
+func (ViewPrincipal) principalKind() string { return "view" }
+
 
 // Host is every host's own principal (`createHost({ principal })`), upstream's HOST.
 var Host Principal = HostPrincipal{}
@@ -107,6 +139,16 @@ func RevokeLocalOwners() Revocation { return delta.JsonObjectOf("owners", "local
 // RevokeGuest is the revocation of one guest, all its revisions.
 func RevokeGuest(guest string) Revocation { return delta.JsonObjectOf("guest", guest) }
 
+// RevokeView is the revocation of every frame of one opening of a view (`ViewKey`).
+func RevokeView(key string) Revocation { return delta.JsonObjectOf("view", key) }
+
+// RevokeLink is the revocation of one frame's link.
+func RevokeLink(link string) Revocation { return delta.JsonObjectOf("link", link) }
+
+// ViewKey is the `view` revocation's value for one opening of a view of a session.
+func ViewKey(session, view, opening string) string { return session + "/" + view + "/" + opening }
+
+
 // RevokedBy returns the revocations that end principal's objects and links.
 func RevokedBy(principal Principal) []Revocation {
 	switch p := principal.(type) {
@@ -120,6 +162,9 @@ func RevokedBy(principal Principal) []Revocation {
 		return []Revocation{RevokeLocalOwners()}
 	case GuestPrincipal:
 		return []Revocation{RevokeGuest(p.ID)}
+	case ViewPrincipal:
+		revoked := []Revocation{RevokeView(ViewKey(p.Session, p.View, p.Opening)), RevokeLink(p.Link)}
+		return append(revoked, p.Viewer...)
 	}
 	return []Revocation{}
 }
@@ -169,6 +214,8 @@ func Key(principal Principal) string {
 		return fmt.Sprintf("guest:%s:r%d", p.ID, p.Revision)
 	case WorkerPrincipal:
 		return fmt.Sprintf("worker:%s:%d", p.Session, p.Generation)
+	case ViewPrincipal:
+		return "view:" + p.Link
 	}
 	return principal.principalKind()
 }
@@ -235,6 +282,13 @@ func ToChord(principal Principal) data.Principal {
 		return object
 	case WorkerPrincipal:
 		return delta.JsonObjectOf("kind", "worker", "session", p.Session, "generation", float64(p.Generation))
+	case ViewPrincipal:
+		viewer := make([]any, len(p.Viewer))
+		for i, revocation := range p.Viewer {
+			viewer[i] = revocation
+		}
+		return delta.JsonObjectOf("kind", "view", "session", p.Session, "view", p.View, "opening", p.Opening, "mode", string(p.Mode),
+			"for", delta.JsonObjectOf("name", p.ForName, "role", p.ForRole), "link", p.Link, "editor", p.Editor, "viewer", viewer)
 	}
 	return delta.JsonObjectOf("kind", principal.principalKind())
 }
@@ -326,6 +380,53 @@ func FromChord(principal data.Principal) (Principal, error) {
 			return nil, err
 		}
 		return worker, nil
+	case "view":
+		view := ViewPrincipal{}
+		if view.Session, err = text("session"); err != nil {
+			return nil, err
+		}
+		if view.View, err = text("view"); err != nil {
+			return nil, err
+		}
+		if view.Opening, err = text("opening"); err != nil {
+			return nil, err
+		}
+		mode, err := text("mode")
+		if err != nil {
+			return nil, err
+		}
+		if view.Mode = ViewMode(mode); view.Mode != ViewRead && view.Mode != ViewWrite {
+			return nil, fmt.Errorf("p2 principal: unknown view mode %q", mode)
+		}
+		if view.Link, err = text("link"); err != nil {
+			return nil, err
+		}
+		if view.Editor, err = text("editor"); err != nil {
+			return nil, err
+		}
+		value, _ := principal.Get("for")
+		who, ok := value.(*delta.JsonObject)
+		if !ok {
+			return nil, fmt.Errorf("p2 principal: \"for\" is not an object")
+		}
+		view.ForName, _ = who.Value("name").(string)
+		view.ForRole, _ = who.Value("role").(string)
+		if view.ForRole != "owner" && view.ForRole != "guest" {
+			return nil, fmt.Errorf("p2 principal: unknown view role %q", view.ForRole)
+		}
+		value, _ = principal.Get("viewer")
+		viewer, ok := value.([]any)
+		if !ok {
+			return nil, fmt.Errorf("p2 principal: \"viewer\" is not a list")
+		}
+		for _, each := range viewer {
+			revocation, ok := each.(*delta.JsonObject)
+			if !ok {
+				return nil, fmt.Errorf("p2 principal: a revocation is not an object")
+			}
+			view.Viewer = append(view.Viewer, revocation)
+		}
+		return view, nil
 	case "server":
 		return Server, nil
 	case "host":

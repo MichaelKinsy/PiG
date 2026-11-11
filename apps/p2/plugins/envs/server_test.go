@@ -63,7 +63,7 @@ func newEnvsFixture(t *testing.T) *envsFixture {
 	p2test.CheckLeaks(t, 0)
 	f := &envsFixture{dataDir: t.TempDir(), stopped: &stoppedWorkers{}}
 	info := p2test.Stub{Contract: p2runtime.ServerLocal, Factory: func(*delta.JsonObject, p2runtime.Principal, p2test.StubSelf) p2test.StubMembers {
-		return p2test.StubMembers{State: map[string]any{"info": delta.JsonObjectOf("app", "/app", "dataDir", f.dataDir, "fake", true, "allowedHosts", []any{}, "port", float64(1))}, Methods: inert("revokeOwners", "revokeGuests")}
+		return p2test.StubMembers{State: map[string]any{"info": delta.JsonObjectOf("app", "/app", "dataDir", f.dataDir, "fake", true, "allowedHosts", []any{}, "port", float64(1))}, Methods: inert("revokeOwners", "revokeGuests", "revokeFrames")}
 	}}
 	catalog := p2test.Stub{Contract: sessionscontract.Catalog, Factory: func(_ *delta.JsonObject, _ p2runtime.Principal, self p2test.StubSelf) p2test.StubMembers {
 		f.sessions = self.Cell([]any{})

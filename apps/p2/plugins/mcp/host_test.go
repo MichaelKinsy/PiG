@@ -238,7 +238,7 @@ func newMcpHost(t *testing.T, servers func(log string) map[string]any, options .
 			return p2test.StubMembers{State: map[string]any{"locks": cell}, Methods: inertMethods("set")}
 		}},
 		{Contract: p2runtime.ServerLocal, Factory: func(*delta.JsonObject, p2runtime.Principal, p2test.StubSelf) p2test.StubMembers {
-			return p2test.StubMembers{State: map[string]any{"info": delta.JsonObjectOf("app", "/app", "dataDir", h.dataDir, "fake", true, "allowedHosts", []any{}, "port", float64(1))}, Methods: inertMethods("revokeOwners", "revokeGuests")}
+			return p2test.StubMembers{State: map[string]any{"info": delta.JsonObjectOf("app", "/app", "dataDir", h.dataDir, "fake", true, "allowedHosts", []any{}, "port", float64(1))}, Methods: inertMethods("revokeOwners", "revokeGuests", "revokeFrames")}
 		}},
 		{Contract: p2runtime.Hosts, Factory: func(_ *delta.JsonObject, _ p2runtime.Principal, self p2test.StubSelf) p2test.StubMembers {
 			cell := self.Cell(delta.NewJsonObject(0))

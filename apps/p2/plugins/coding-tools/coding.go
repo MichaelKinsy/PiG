@@ -21,7 +21,7 @@ const preamble = "You are a concise coding assistant. Inspect files before editi
 const extensionName = "p2-coding"
 
 func init() {
-	workerFacet = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
+	workerFacet = p2runtime.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
 		return p2runtime.Contribute(facet, "p2.coding-tools", func(self host.StoreSelf) error {
 			harnessOf := p2runtime.HarnessOf(self)
 			environments := self.Registry(p2runtime.HarnessEnvironments.Registry)
