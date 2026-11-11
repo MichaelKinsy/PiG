@@ -1414,6 +1414,13 @@
    "new": "from.role != linkRoleParent ||"
   }
  ],
+ "packages/chord/src/host/host-data.ts": [
+  {
+   "file": "chord/next/host/host_host_data.go",
+   "old": "Admit: func() bool { return ctx.Err() == nil },",
+   "new": "Admit: func() bool { return ctx.Err() != nil },"
+  }
+ ],
  "packages/chord/src/host/members.ts": [
   {
    "file": "chord/next/host/host_members.go",
@@ -5971,6 +5978,13 @@
    "file": "chord/nextnode/tui/tui_pipe.go",
    "old": "length < 4 || length > MaxPipeFrame {",
    "new": "length < 4 || length > MaxPipeFrame*2 {"
+  }
+ ],
+ "packages/chord/src/store/import-migration.ts": [
+  {
+   "file": "chord/next/store/import_migration.go",
+   "old": "\tstate.version = v\n\treturn nil\n}",
+   "new": "\tstate.version = v + 1\n\treturn nil\n}"
   }
  ],
  "packages/chord/src/store/live-query.ts": [
