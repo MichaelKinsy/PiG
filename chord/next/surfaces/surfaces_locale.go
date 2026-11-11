@@ -151,9 +151,10 @@ func parseLocaleTag(tag string) (localeTag, bool) {
 }
 
 // singletonText is the extension singleton with its subtags; one that is only `true` or `yes` is the bare singleton (`en-x-true` is
-// `en-x`, `uz-a-yes` is `uz-a`), the one value of a `-u-` keyword that Intl drops wherever a lone one is.
+// `en-x`, `uz-a-yes` is `uz-a`), the one value of a `-u-` keyword that Intl drops wherever a lone one is. The `u` singleton keeps
+// them (`en-u-true` is an attribute, as it is in Intl): canonicalUnicodeExtension drops the `true` of a keyword.
 func singletonText(singleton string, subtags []string) string {
-	if len(subtags) == 0 || len(subtags) == 1 && (subtags[0] == "true" || subtags[0] == yesSubtag) {
+	if len(subtags) == 0 || singleton != "u" && len(subtags) == 1 && (subtags[0] == "true" || subtags[0] == yesSubtag) {
 		return singleton
 	}
 	return singleton + "-" + strings.Join(subtags, "-")

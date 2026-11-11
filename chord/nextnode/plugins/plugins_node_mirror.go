@@ -36,6 +36,15 @@ func runMirrorSnapshotHook() {
 	}
 }
 
+// mirrorResyncedHook is run once, by tests, after a resync sent its reset: a slot that ends there is one the mirror must read again.
+var mirrorResyncedHook atomic.Pointer[func()]
+
+func runMirrorResyncedHook() {
+	if hook := mirrorResyncedHook.Swap(nil); hook != nil {
+		(*hook)()
+	}
+}
+
 // resyncDelay is how long a mirror waits before it reads a reference again that had no live slot to read.
 const resyncDelay = 50 * time.Millisecond
 
@@ -60,7 +69,10 @@ type bridgedMirror struct {
 	reading bool
 	pending []map[string]any
 	dropped bool
-	// resyncing is whether resync runs.
+	// readEnd is closed when the read in progress ends, whether it sent its reset or was given up.
+	readEnd chan struct{}
+	// resyncing is whether resync runs. The read that sends the reset clears it in the critical section that queues the reset, so a
+	// slot that ends after that is read again by the resync it starts.
 	resyncing bool
 }
 
@@ -137,19 +149,29 @@ func (m *bridgedMirror) start() {
 	m.kick()
 }
 
-// flush waits until every frame queued so far was sent.
+// flush waits until every frame the commits so far made was sent: the ones kept behind a read are sent after its reset (or replaced by the
+// documents of the next slot read, which hold them), so it waits for the read to end first.
 func (m *bridgedMirror) flush(ctx context.Context) error {
-	m.mu.Lock()
-	idle := m.idle
-	m.mu.Unlock()
-	if idle == nil {
-		return nil
-	}
-	select {
-	case <-idle:
-		return nil
-	case <-ctx.Done():
-		return context.Cause(ctx)
+	for {
+		m.mu.Lock()
+		readEnd, idle := m.readEnd, m.idle
+		held := m.reading && len(m.pending) > 0
+		m.mu.Unlock()
+		wait := idle
+		if held {
+			wait = readEnd
+		}
+		if wait == nil {
+			return nil
+		}
+		select {
+		case <-wait:
+		case <-ctx.Done():
+			return context.Cause(ctx)
+		}
+		if !held {
+			return nil
+		}
 	}
 }
 
@@ -158,9 +180,13 @@ func (m *bridgedMirror) flush(ctx context.Context) error {
 func (m *bridgedMirror) read(ctx context.Context) (ok bool, err error) {
 	m.mu.Lock()
 	m.reading, m.dropped, m.pending = true, false, nil
+	m.readEnd = make(chan struct{})
 	m.mu.Unlock()
 	docs, stop, err := m.keyed.Snapshot(ctx, m.observe)
 	if err != nil {
+		m.mu.Lock()
+		m.endRead()
+		m.mu.Unlock()
 		return false, err
 	}
 	runMirrorSnapshotHook()
@@ -168,16 +194,25 @@ func (m *bridgedMirror) read(ctx context.Context) (ok bool, err error) {
 	defer m.mu.Unlock()
 	if m.dropped || m.stopped {
 		m.pending = nil
+		m.endRead()
 		go stop()
 		return false, nil
 	}
-	m.reading = false
+	m.endRead()
+	m.resyncing = false
 	m.stopSlot = stop
 	m.queue = append(m.queue, map[string]any{"op": "mirrorReset", "mirror": m.id, "docs": mirrorDocs(docs)})
 	m.queue = append(m.queue, m.pending...)
 	m.pending = nil
 	m.kick()
 	return true, nil
+}
+
+// endRead ends the read in progress; m.mu is held.
+func (m *bridgedMirror) endRead() {
+	m.reading = false
+	close(m.readEnd)
+	m.readEnd = nil
 }
 
 // resync reads the reference's keyed member again after its slot ended and sends it as a replacement.
@@ -189,20 +224,23 @@ func (m *bridgedMirror) resync() {
 	}
 	m.resyncing = true
 	m.mu.Unlock()
-	defer func() {
+	giveUp := func() {
 		m.mu.Lock()
 		m.resyncing = false
 		m.mu.Unlock()
-	}()
+	}
 	for {
 		ok, err := m.read(m.life)
 		if ok {
+			// read cleared resyncing with the reset queued: a drop after that starts the next resync.
+			runMirrorResyncedHook()
 			return
 		}
 		m.mu.Lock()
 		stopped := m.stopped
 		m.mu.Unlock()
 		if stopped || m.life.Err() != nil {
+			giveUp()
 			return
 		}
 		if err == nil {
@@ -211,6 +249,7 @@ func (m *bridgedMirror) resync() {
 		}
 		select {
 		case <-m.life.Done():
+			giveUp()
 			return
 		case <-time.After(resyncDelay):
 		}

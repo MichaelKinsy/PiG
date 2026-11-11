@@ -3,6 +3,8 @@ package plugins
 import (
 	"context"
 	"fmt"
+	"runtime"
+	"sync"
 	"testing"
 	"time"
 
@@ -199,8 +201,12 @@ func TestBridgedAKeyedMemberOfTenThousandDocumentsIsCopiedBeforeTheObjectIsLive(
 }
 
 // A commit made after the snapshot was read and before the object is live (the frame follows the mirror's answer in the same chunk) is
-// applied after the snapshot: the snapshot neither retires the key the commit made nor puts back the value it changed.
+// applied after the snapshot: the snapshot neither retires the key the commit made nor puts back the value it changed. The Node process is
+// stopped while the commits are made and the frames sent, so the answer and the frames reach it in one read.
 func TestBridgedAKeyedMemberKeepsACommitMadeWhileTheObjectOpens(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("a process is stopped with a signal on Unix only")
+	}
 	goHost := bgGoHost(t, host.HostFacet{Name: "@app/keyedcore", Facet: kcFacet()})
 	goRef, err := goHost.Get(background, kcCore, delta.JsonObjectOf("id", "a"), host.GetOptions{})
 	if err != nil {
@@ -214,20 +220,27 @@ func TestBridgedAKeyedMemberKeepsACommitMadeWhileTheObjectOpens(t *testing.T) {
 		}
 	}
 	put("a", "one")
+	var node *NodeHost
 	hook := func() {
+		resume := pauseNode(t, node)
 		put("k", "new")
 		put("a", "two")
+		// The answer of `mirror` and the three frames are written while the process is stopped.
+		time.AfterFunc(500*time.Millisecond, resume)
 	}
+	node = bgNode(t, []BridgedFacet{{Name: "@app/keyedcore", Host: goHost, Contracts: []*contracts.Contract{kcCore}}}, handmade(t, "@test/kplug", "worker", kcPlugin))
 	mirrorSnapshotHook.Store(&hook)
-	node := bgNode(t, []BridgedFacet{{Name: "@app/keyedcore", Host: goHost, Contracts: []*contracts.Contract{kcCore}}}, handmade(t, "@test/kplug", "worker", kcPlugin))
 	out, err := node.Get(background, kcOut, delta.JsonObjectOf("id", "a"), host.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(out.Release)
-	eventually(t, 15*time.Second, "the commit made while the object opened", func() bool {
-		return kcCall(t, out, "read", "k") == "new" && kcCall(t, out, "read", "a") == "two"
-	})
+	if got := kcCall(t, out, "read", "k"); got != "new" {
+		t.Fatalf("read k = %v, want the commit made while the object opened", got)
+	}
+	if got := kcCall(t, out, "read", "a"); got != "two" {
+		t.Fatalf("read a = %v, want the commit made while the object opened", got)
+	}
 }
 
 // A Go facet that reloads with the member kept in another definition ends the slot the mirror followed: the mirror reads the reference's
@@ -269,4 +282,91 @@ func TestBridgedAKeyedMemberIsReadAgainAfterTheGoFacetReloads(t *testing.T) {
 	eventually(t, 30*time.Second, "the document of the old slot to be gone", func() bool { return kcCall(t, out, "read", "a") == nil })
 	put("y", "after")
 	eventually(t, 30*time.Second, "a commit of the object after the reloads", func() bool { return kcCall(t, out, "read", "y") == "after" })
+}
+
+// A slot that ends right after a resync sent its reset (the mirror is no longer resyncing) is read again: the plugin sees the third slot's
+// documents, not the second's.
+func TestBridgedAKeyedMemberIsReadAgainWhenTheNextSlotEndsAfterTheResync(t *testing.T) {
+	goHost := bgGoHost(t, host.HostFacet{Name: "@app/keyedcore", Facet: kcFacet()})
+	goRef, err := goHost.Get(background, kcCore, delta.JsonObjectOf("id", "a"), host.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(goRef.Release)
+	reload := func(definition *documents.StateDefinition) {
+		t.Helper()
+		if _, err := goHost.Reload([]host.HostFacet{{Name: "@app/keyedcore", Facet: kcFacetOf(definition)}}, background, host.ReloadOptions{}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	node := bgNode(t, []BridgedFacet{{Name: "@app/keyedcore", Host: goHost, Contracts: []*contracts.Contract{kcCore}}}, handmade(t, "@test/kplug", "worker", kcPlugin))
+	out, err := node.Get(background, kcOut, delta.JsonObjectOf("id", "a"), host.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(out.Release)
+	if got := kcCall(t, out, "read", "a"); got != nil {
+		t.Fatalf("read a = %v", got)
+	}
+	hook := func() { reload(kcDocs) }
+	mirrorResyncedHook.Store(&hook)
+	reload(kcDocs2)
+	if _, err := goRef.Call("put", delta.JsonObjectOf("key", "y", "text", "third"), background); err != nil {
+		t.Fatal(err)
+	}
+	eventually(t, 30*time.Second, "a commit of the third slot", func() bool { return kcCall(t, out, "read", "y") == "third" })
+}
+
+// A method's answer waits for the frames of its commits even while a resync reads the slot they were made in: the call made during the
+// read answers after the reset and its frame were sent, and the plugin reads what it wrote at once.
+func TestBridgedAMethodCalledWhileTheMirrorIsReadAgainAnswersAfterItsFrames(t *testing.T) {
+	goHost := bgGoHost(t, host.HostFacet{Name: "@app/keyedcore", Facet: kcFacet()})
+	goRef, err := goHost.Get(background, kcCore, delta.JsonObjectOf("id", "a"), host.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(goRef.Release)
+	node := bgNode(t, []BridgedFacet{{Name: "@app/keyedcore", Host: goHost, Contracts: []*contracts.Contract{kcCore}}}, handmade(t, "@test/kplug", "worker", kcPlugin))
+	out, err := node.Get(background, kcOut, delta.JsonObjectOf("id", "a"), host.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(out.Release)
+	if got := kcCall(t, out, "read", "a"); got != nil {
+		t.Fatalf("read a = %v", got)
+	}
+	reading, release := make(chan struct{}), make(chan struct{})
+	var once sync.Once
+	t.Cleanup(func() { once.Do(func() { close(release) }) })
+	hook := func() {
+		close(reading)
+		<-release
+	}
+	mirrorSnapshotHook.Store(&hook)
+	if _, err := goHost.Reload([]host.HostFacet{{Name: "@app/keyedcore", Facet: kcFacetOf(kcDocs2)}}, background, host.ReloadOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	<-reading
+	answered := make(chan error, 1)
+	go func() {
+		_, err := out.Call("put", delta.JsonObjectOf("key", "b", "text", "two"), background)
+		answered <- err
+	}()
+	select {
+	case err := <-answered:
+		t.Fatalf("put answered (%v) before the frames of its commit were sent", err)
+	case <-time.After(500 * time.Millisecond):
+	}
+	once.Do(func() { close(release) })
+	select {
+	case err := <-answered:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(30 * time.Second):
+		t.Fatal("put never answered")
+	}
+	if got := kcCall(t, out, "read", "b"); got != "two" {
+		t.Fatalf("read b after the plugin's put = %v, want what it wrote", got)
+	}
 }

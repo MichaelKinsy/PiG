@@ -102,7 +102,7 @@ func aliasCorpus() []string {
 		"en-u-ms-imperial", "en-u-ms-uksystem", "en-u-tz-cnckg", "en-u-tz-eire", "en-u-tz-utc", "en-u-tz-cet", "en-u-tz-uct", "en-u-sd-no23", "en-u-rg-no23",
 		"en-u-sd-fra", "en-u-sd-frl", "en-u-rg-frg", "en-u-kb-yes", "en-u-kn-yes", "en-u-kb-no", "en-u-kb-true", "en-u-kb-false", "en-u-kf-yes", "en-u-ca-yes",
 		"en-u-nu-traditio", "en-u-co-big5han", "en-u-co-phonebk", "en-u-hc-h12", "en-u-ca-islamicc-nu-latn", "und-u-ca-islamicc", "de-DE-u-co-phonebk-ca-islamicc",
-		"en-u-attr-ca-islamicc", "en-u-ca-islamicc-ca-gregory", "en-u-ca-ethiopic-amete-alem-nu-latn", "en-u-ca-ethiopic-amete", "en-u-ca-ethiopic", "iw-u-ca-islamicc",
+		"en-u-true", "en-u-yes", "en-u-true-yes", "en-u-attr-ca-islamicc", "en-u-ca-islamicc-ca-gregory", "en-u-ca-ethiopic-amete-alem-nu-latn", "en-u-ca-ethiopic-amete", "en-u-ca-ethiopic", "iw-u-ca-islamicc",
 		"he-t-he-u-ca-islamicc", "en-t-m0-names", "en-t-m0-prprname", "en-t-m0-ungegn", "en-t-m0-bgn", "en-t-fr-m0-names-d0-lower", "en-t-fr-latn-m0-names",
 		"und-Qaai", "en-qaai", "en-Qaai-US", "sh-Qaai", "iw-qaai-IL", "und-Zinh",
 		"tw", "tw-AA", "tw-US", "tw-Latn", "tw-u-ca-gregory", "tw-x-a", "tw-1996", "tw-US-u-nu-latn", "tnf-AF", "swc-CD", "prs-AF", "drw-AF", "cnr-ME", "cnr-Latn", "bh-IN",
