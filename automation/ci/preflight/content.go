@@ -567,24 +567,14 @@ func runContent(args []string, stdout, stderr io.Writer) int {
 	dataPath := fs.String("data", "", "the run's data.json")
 	head := fs.String("head", "", "the PR's head checkout")
 	out := fs.String("out", "", "where the findings go")
-	tree := fs.Bool("tree", false, "check every tracked file of --head whole instead of a PR's changes (no --data): a report, for a PR that changes the rules")
-	rulesDir := fs.String("rules", "", "with --tree, the directory with the forbidden.yaml and mandatory.yaml to apply (default: the pre-flight's own)")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
-	var (
-		found []finding
-		err   error
-	)
-	switch {
-	case *out == "" || (*dataPath == "") == !*tree || (*tree && *head == "") || (*rulesDir != "" && !*tree):
-		_, _ = fmt.Fprintln(stderr, "preflight content: --out and either --data, or --tree with --head (and optionally --rules), are required")
+	if *dataPath == "" || *out == "" {
+		_, _ = fmt.Fprintln(stderr, "preflight content: --data and --out are required")
 		return 2
-	case *tree:
-		found, err = treeFindings(*head, *rulesDir)
-	default:
-		found, err = contentFindings(*dataPath, *head)
 	}
+	found, err := contentFindings(*dataPath, *head)
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "preflight content:", err)
 		return 2
@@ -597,9 +587,6 @@ func runContent(args []string, stdout, stderr io.Writer) int {
 	list := make([]jsonFinding, 0, len(found))
 	for _, f := range found {
 		list = append(list, jsonFinding{f.file, f.line, f.message})
-		if *tree {
-			_, _ = fmt.Fprintln(stdout, f.String())
-		}
 	}
 	if err := writeJSON(*out, list); err != nil {
 		_, _ = fmt.Fprintln(stderr, "preflight content:", err)
@@ -610,48 +597,6 @@ func runContent(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	return 0
-}
-
-// treeFindings applies the content rules in rulesDir (the pre-flight's own when empty) to every tracked file of head,
-// each read whole: what a stricter rule would find in the tree as it is.
-func treeFindings(head, rulesDir string) ([]finding, error) {
-	forbidden, mandatory := forbiddenYAML, mandatoryYAML
-	if rulesDir != "" {
-		var err error
-		if forbidden, err = os.ReadFile(filepath.Join(rulesDir, "forbidden.yaml")); err != nil {
-			return nil, err
-		}
-		if mandatory, err = os.ReadFile(filepath.Join(rulesDir, "mandatory.yaml")); err != nil {
-			return nil, err
-		}
-	}
-	rules, err := loadContentRules(forbidden, mandatory)
-	if err != nil {
-		return nil, err
-	}
-	tracked, err := trackedFiles(head)
-	if err != nil {
-		return nil, err
-	}
-	d := &data{}
-	for _, name := range tracked {
-		d.Files = append(d.Files, prFile{Filename: name, Status: "added"})
-	}
-	texts, err := changedText(d, head)
-	if err != nil {
-		return nil, err
-	}
-	versions, _ := loadVersions(head)
-	found := checkForbidden(rules.Forbidden, texts, versions)
-	targets := map[string][]string{}
-	for _, r := range rules.Mandatory {
-		for _, f := range tracked {
-			if r.Files.matches(f) {
-				targets[r.ID] = append(targets[r.ID], f)
-			}
-		}
-	}
-	return append(found, checkMandatory(rules.Mandatory, targets, head)...), nil
 }
 
 func contentFindings(dataPath, head string) ([]finding, error) {
@@ -720,5 +665,5 @@ func checkOut(head string, targets map[string][]string) error {
 	if out, err := git(context.Background(), append([]string{"-C", head, "sparse-checkout", "add"}, slices.Compact(missing)...)...); err != nil {
 		return fmt.Errorf("git sparse-checkout add: %w\n%s", err, out)
 	}
-	return nil
+	return flattenSymlinks(head)
 }

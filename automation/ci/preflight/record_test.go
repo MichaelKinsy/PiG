@@ -258,3 +258,83 @@ func TestAppendFileKeepsEveryReport(t *testing.T) {
 		t.Fatal("an unwritable summary was not reported")
 	}
 }
+
+func TestWarningsArePerFileAndBounded(t *testing.T) {
+	cfg, err := loadConfig(configYAML)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Three notices in one file are one warning that counts the other two; one acknowledgement covers the file.
+	long := "# Copyright 2020 " + strings.Repeat("x", 300)
+	f := prFile{Filename: "x.sh", Status: "modified", SHA: "blob", Patch: "@@ -1 +1,4 @@\n x\n+" + long + "\n+# Copyright 2021 B\n+# Copyright 2022 C"}
+	d := &data{Version: "v", Files: []prFile{f}, Relevant: []string{"licenses"}}
+	ev := evaluate(cfg, d, &ruleEnv{root: t.TempDir()})
+	ws := ev.Checks["licenses"].Warnings
+	if len(ws) != 1 || ws[0].Line != 2 || ws[0].More != 2 || len([]rune(ws[0].Notice)) != maxNotice || !strings.HasSuffix(ws[0].Notice, "…") {
+		t.Fatalf("warnings %+v", ws)
+	}
+	if where := ws[0].where(); !strings.HasPrefix(where, "x.sh:2 adds a copyright notice: ") || !strings.HasSuffix(where, " (and 2 more in this file)") {
+		t.Fatalf("where %q", where)
+	}
+	d.Acknowledged = ackEntry("licenses", ws[0])
+	if strings.Contains(d.Acknowledged, "notice") {
+		t.Fatalf("an entry names a notice:\n%s", d.Acknowledged)
+	}
+	if ws := evaluate(cfg, d, &ruleEnv{root: t.TempDir()}).Checks["licenses"].Warnings; len(ws) != 1 || !ws[0].Acknowledged {
+		t.Fatalf("the file's entry did not cover it: %+v", ws)
+	}
+
+	// Warnings in more files than maxWarnedFiles: the first are listed, the rest counted in one line without an entry.
+	d = &data{Version: "v", Relevant: []string{"licenses"}}
+	for i := range maxWarnedFiles + 3 {
+		d.Files = append(d.Files, prFile{Filename: fmt.Sprintf("f%02d.sh", i), Status: "modified", SHA: "b", Patch: "@@ -1 +1,2 @@\n x\n+# Copyright 2020 X"})
+	}
+	ev = evaluate(cfg, d, &ruleEnv{root: t.TempDir()})
+	ws = ev.Checks["licenses"].Warnings
+	if len(ws) != maxWarnedFiles+1 || ws[maxWarnedFiles].where() != "and 3 more file(s) with warnings" {
+		t.Fatalf("%d warnings, last %+v", len(ws), ws[len(ws)-1])
+	}
+	md := markdown(cfg, d, ev)
+	if strings.Count(md, "[[ack]]") != maxWarnedFiles || !strings.Contains(md, "| 🔶 | licenses | and 3 more file(s) with warnings |") {
+		t.Fatalf("markdown:\n%s", md)
+	}
+	var log strings.Builder
+	report(&log, cfg, ev)
+	if strings.Count(log.String(), "[[ack]]") != maxWarnedFiles {
+		t.Fatalf("the log offers %d entries", strings.Count(log.String(), "[[ack]]"))
+	}
+	if got := capWarnings(make([]warning, maxWarnedFiles)); len(got) != maxWarnedFiles {
+		t.Fatalf("exactly maxWarnedFiles were capped: %d", len(got))
+	}
+	if clip("abc", 3) != "abc" || clip("abcd", 3) != "ab…" || clip("äöüß", 3) != "äö…" {
+		t.Fatal("clip")
+	}
+	if (warning{File: "f", Text: "t"}).where() != "f t" {
+		t.Fatal("a warning without a notice")
+	}
+}
+
+func TestRecordRefusesATooLongCommentAndA422(t *testing.T) {
+	cfg := config{Checks: []check{{Name: "a"}}}
+	d := &data{Repo: "o/r", PR: 7, Mode: modeFull}
+	ev := evaluation{Head: "h", Checks: map[string]verdict{"a": {Result: resultFail, Reason: strings.Repeat("x", maxCommentLength)}}}
+	ev.finish()
+	if err := record(context.Background(), cfg, d, ev, recordOptions{dryRun: true}, io.Discard); err == nil || !strings.Contains(err.Error(), "more than the 65536 GitHub takes") {
+		t.Fatalf("err = %v", err)
+	}
+	g := &recordServer{comments: map[int64]string{}, patchStatus: http.StatusUnprocessableEntity}
+	server := httptest.NewServer(g)
+	defer server.Close()
+	ev.Checks["a"] = verdict{Result: resultFail, Reason: "short"}
+	ev.finish()
+	err := record(context.Background(), cfg, d, ev, recordOptions{apiBase: server.URL, token: "t", comment: prComment{ID: 1, Body: "old"}}, io.Discard)
+	if err == nil || !strings.Contains(err.Error(), "422") || slices.Contains(g.calls, "POST /repos/o/r/issues/7/comments") {
+		t.Fatalf("a refused body was posted anew: %v, calls %v", err, g.calls)
+	}
+}
+
+func TestFitsAComment(t *testing.T) {
+	if fitsAComment(strings.Repeat("x", maxCommentLength)) != nil || fitsAComment(strings.Repeat("x", maxCommentLength+1)) == nil {
+		t.Fatal("the bound is not exactly GitHub's")
+	}
+}

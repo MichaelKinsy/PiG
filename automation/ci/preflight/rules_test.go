@@ -107,7 +107,7 @@ func TestAcknowledgedWarnings(t *testing.T) {
 }
 
 func TestParseAcknowledgedRejects(t *testing.T) {
-	for _, text := range []string{"[[ack]]\ncheck = 'reuse'\n", "[[ack]]\ncheck='a'\nfile='b'\nnotice='c'\nblob='d'\nextra=1\n", "not toml ="} {
+	for _, text := range []string{"[[ack]]\ncheck = 'reuse'\n", "[[ack]]\ncheck='a'\nfile='b'\nblob='d'\nextra=1\n", "not toml ="} {
 		if _, err := parseAcknowledged(text); err == nil {
 			t.Errorf("accepted %q", text)
 		}

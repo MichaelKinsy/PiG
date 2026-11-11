@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -443,57 +444,22 @@ func TestMandatoryAfterListedIn(t *testing.T) {
 		t.Fatalf("the rule after a listed-in rule did not run: %v", f)
 	}
 	var stdout, stderr strings.Builder
-	if code := run([]string{"content", "--data", "d.json"}, &stdout, &stderr); code != 2 || !strings.Contains(stderr.String(), "--out and either --data, or --tree") {
+	if code := run([]string{"content", "--data", "d.json"}, &stdout, &stderr); code != 2 || !strings.Contains(stderr.String(), "--data and --out are required") {
 		t.Fatalf("missing --out: %d %q", code, stderr.String())
 	}
 }
 
-func TestContentTreeAppliesTheGivenRulesToEveryFile(t *testing.T) {
+func TestTrackedFilesKeepsUnusualNames(t *testing.T) {
 	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
 	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 	head := t.TempDir()
-	writeFiles(t, head, map[string]string{"a.txt": "fine\nold secret here", "b/c.sh": "no shebang", "untracked.txt": "secret", "with space é.txt": "fine"})
-	for _, args := range [][]string{{"init", "-q"}, {"add", "a.txt", "b/c.sh", "with space é.txt"}} {
+	writeFiles(t, head, map[string]string{"a.txt": "", "with space é.txt": "", "untracked": ""})
+	for _, args := range [][]string{{"init", "-q"}, {"add", "a.txt", "with space é.txt"}} {
 		if out, err := git(context.Background(), append([]string{"-C", head}, args...)...); err != nil {
 			t.Fatalf("git %v: %v %s", args, err, out)
 		}
 	}
-	rules := t.TempDir()
-	writeFiles(t, rules, map[string]string{
-		"forbidden.yaml": "- {id: secret, code: S, description: a secret, pattern: secret}\n",
-		"mandatory.yaml": "- {id: shebang, description: has a shebang, paths: ['**/*.sh'], pattern: '^#!'}\n",
-	})
-	out := filepath.Join(t.TempDir(), "out.json")
-	var stdout, stderr strings.Builder
-	code := run([]string{"content", "--tree", "--head", head, "--rules", rules, "--out", out}, &stdout, &stderr)
-	if code != 1 || stdout.String() != "a.txt:2 S: a secret\nb/c.sh shebang: has a shebang\n2 finding(s)\n" {
-		t.Fatalf("exit %d:\n%s%s", code, stdout.String(), stderr.String())
-	}
-	// Without --rules the pre-flight's own apply; this tree breaks none of them.
-	stdout.Reset()
-	if code := run([]string{"content", "--tree", "--head", head, "--out", out}, &stdout, &stderr); code != 0 {
-		t.Fatalf("exit %d: %s%s", code, stdout.String(), stderr.String())
-	}
-	for _, args := range [][]string{
-		{"content", "--tree", "--out", out},
-		{"content", "--tree", "--head", head, "--data", "d.json", "--out", out},
-		{"content", "--data", "d.json", "--rules", rules, "--out", out},
-	} {
-		if code := run(args, &stdout, &stderr); code != 2 {
-			t.Errorf("%v: exit %d", args, code)
-		}
-	}
-	for name, dir := range map[string]string{"no rules dir": filepath.Join(rules, "none"), "no mandatory.yaml": filepath.Join(rules, "half")} {
-		writeFiles(t, filepath.Join(rules, "half"), map[string]string{"forbidden.yaml": "[]"})
-		if code := run([]string{"content", "--tree", "--head", head, "--rules", dir, "--out", out}, &stdout, &stderr); code != 2 {
-			t.Errorf("%s: exit %d", name, code)
-		}
-	}
-	writeFiles(t, filepath.Join(rules, "bad"), map[string]string{"forbidden.yaml": "- {id: x}", "mandatory.yaml": "[]"})
-	if code := run([]string{"content", "--tree", "--head", head, "--rules", filepath.Join(rules, "bad"), "--out", out}, &stdout, &stderr); code != 2 {
-		t.Errorf("bad rules: exit %d", code)
-	}
-	if code := run([]string{"content", "--tree", "--head", t.TempDir(), "--out", out}, &stdout, &stderr); code != 2 {
-		t.Errorf("not a repository: exit %d", code)
+	if got, err := trackedFiles(head); err != nil || !slices.Equal(got, []string{"a.txt", "with space é.txt"}) {
+		t.Fatalf("tracked %q, err %v", got, err)
 	}
 }

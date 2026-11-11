@@ -52,6 +52,8 @@ type warning struct {
 	Notice string `json:"notice"`
 	Text   string `json:"text"`
 	Blob   string `json:"blob"`
+	// More counts the further warnings of the same check in the same file, folded into this one.
+	More int `json:"more,omitempty"`
 	// Acknowledged is set when acknowledged.toml holds a matching entry for this blob of the file.
 	Acknowledged bool `json:"acknowledged,omitempty"`
 }
@@ -181,7 +183,7 @@ func (t *tips) get(ctx context.Context, repo, ref string) (string, error) {
 				SHA string `json:"sha"`
 			} `json:"object"`
 		}
-		e.err = t.a.get(ctx, fmt.Sprintf("repos/%s/git/ref/heads/%s", repo, pathEscape(ref)), &r, false)
+		e.err = t.a.get(ctx, fmt.Sprintf("repos/%s/git/ref/heads/%s", repo, refPath(ref)), &r, false)
 		e.sha = r.Object.SHA
 	})
 	return e.sha, e.err
@@ -254,7 +256,7 @@ func fetch(ctx context.Context, cfg config, o fetchOptions, log io.Writer) (*dat
 		}
 	})
 	wg.Go(func() {
-		if err := a.get(ctx, fmt.Sprintf("%s/compare/%s...%s", prefix, pathEscape(d.Pull.Base.Ref), head), &d.CompareMain, false); err != nil {
+		if err := a.get(ctx, fmt.Sprintf("%s/compare/%s...%s", prefix, refPath(d.Pull.Base.Ref), head), &d.CompareMain, false); err != nil {
 			d.failed(&mu, log, "compare-main", err)
 		}
 	})

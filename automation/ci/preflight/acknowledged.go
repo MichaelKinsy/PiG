@@ -4,20 +4,19 @@ package main
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/BurntSushi/toml"
 )
 
-// acknowledgedPath holds the warnings a reviewer has seen. An entry names the check, the file, the exact notice and the
-// file's git blob at the time: a later change to the file changes its blob, so the warning shows again.
+// acknowledgedPath holds the warnings a reviewer has seen. An entry names the check, the file and the file's git blob at
+// the time, and covers that check's warnings for the file: a later change to the file changes its blob, so the
+// warnings show again.
 const acknowledgedPath = "automation/ci/preflight/acknowledged.toml"
 
 type acknowledgement struct {
-	Check  string `toml:"check"`
-	File   string `toml:"file"`
-	Notice string `toml:"notice"`
-	Blob   string `toml:"blob"`
+	Check string `toml:"check"`
+	File  string `toml:"file"`
+	Blob  string `toml:"blob"`
 }
 
 func parseAcknowledged(text string) ([]acknowledgement, error) {
@@ -32,8 +31,8 @@ func parseAcknowledged(text string) ([]acknowledgement, error) {
 		return nil, fmt.Errorf("%s: unknown key %s", acknowledgedPath, undecoded[0])
 	}
 	for i, a := range doc.Ack {
-		if a.Check == "" || a.File == "" || a.Notice == "" || a.Blob == "" {
-			return nil, fmt.Errorf("%s: entry %d needs check, file, notice and blob", acknowledgedPath, i+1)
+		if a.Check == "" || a.File == "" || a.Blob == "" {
+			return nil, fmt.Errorf("%s: entry %d needs check, file and blob", acknowledgedPath, i+1)
 		}
 	}
 	return doc.Ack, nil
@@ -51,7 +50,7 @@ func applyAcknowledged(ev *evaluation, d *data, acks []acknowledgement) {
 		for i := range v.Warnings {
 			w := &v.Warnings[i]
 			for j, a := range acks {
-				if a.Check == name && a.File == w.File && a.Notice == w.Notice && a.Blob == w.Blob {
+				if a.Check == name && a.File == w.File && a.Blob == w.Blob {
 					w.Acknowledged = true
 					used[j] = true
 				}
@@ -68,13 +67,12 @@ func applyAcknowledged(ev *evaluation, d *data, acks []acknowledgement) {
 		if !ok {
 			continue
 		}
-		v.Warnings = append(v.Warnings, warning{File: a.File, Blob: blob, Notice: a.Notice, Text: fmt.Sprintf("has an entry in %s for blob %s, but the file changed: check the notice again and update or delete the entry", acknowledgedPath, short(a.Blob))})
+		v.Warnings = append(v.Warnings, warning{File: a.File, Blob: blob, Text: fmt.Sprintf("has an entry in %s for blob %s, but the file changed: check it again and update or delete the entry", acknowledgedPath, short(a.Blob))})
 		ev.Checks[a.Check] = v
 	}
 }
 
-// ackEntry is the TOML entry that acknowledges a warning, printed for the reviewer to paste.
+// ackEntry is the TOML entry that acknowledges a check's warnings for a file, printed for the reviewer to paste.
 func ackEntry(check string, w warning) string {
-	q := func(s string) string { return `'''` + strings.ReplaceAll(s, `'''`, `''""`) + `'''` }
-	return fmt.Sprintf("[[ack]]\ncheck = %q\nfile = %q\nnotice = %s\nblob = %q\n", check, w.File, q(w.Notice), w.Blob)
+	return fmt.Sprintf("[[ack]]\ncheck = %q\nfile = %q\nblob = %q\n", check, w.File, w.Blob)
 }

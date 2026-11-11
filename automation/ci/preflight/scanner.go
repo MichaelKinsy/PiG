@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/url"
 	"os"
 	"os/exec"
@@ -174,6 +175,9 @@ func prepareWorkspace(ctx context.Context, d *data, scans []check, ws workspace,
 		return fmt.Errorf("%s is at %s, the evaluated head is %s; the PR moved, the next run takes it", ref, short(got), short(d.Pull.Head.SHA))
 	}
 	logf(log, "head %s checked out (%d path(s), %s)", short(got), len(patterns), time.Since(start).Round(time.Millisecond))
+	if err := flattenSymlinks(ws.head); err != nil {
+		return err
+	}
 	for _, rel := range slices.Compact(slices.Sorted(slices.Values(overlays))) {
 		if err := overlay(ws.main, ws.head, rel); err != nil {
 			return err
@@ -425,6 +429,30 @@ func relativeTo(file string, roots []string) string {
 	return strings.TrimPrefix(filepath.ToSlash(clean), "./")
 }
 
+// flattenSymlinks replaces every symbolic link in a checked-out head with a regular file holding the path it points to,
+// which is what git stores for it. A PR's link may point anywhere on the runner; after this, the pre-flight and the
+// scanners read only what the PR adds.
+func flattenSymlinks(head string) error {
+	return filepath.WalkDir(head, func(p string, e fs.DirEntry, err error) error {
+		switch {
+		case err != nil:
+			return err
+		case e.IsDir() && e.Name() == ".git":
+			return filepath.SkipDir
+		case e.Type()&fs.ModeSymlink == 0:
+			return nil
+		}
+		target, err := os.Readlink(p)
+		if err != nil {
+			return err
+		}
+		if err := os.Remove(p); err != nil {
+			return err
+		}
+		return os.WriteFile(p, []byte(target), 0o600)
+	})
+}
+
 // copyFromHead copies files of the checked-out head into dir, at the same paths.
 func copyFromHead(head, dir string, files []string) error {
 	for _, f := range files {
@@ -654,7 +682,7 @@ func runScans(ctx context.Context, cfg config, d *data, ev *evaluation, ws works
 	wg.Wait()
 	for i, c := range scans {
 		v := ev.Checks[c.Name]
-		v.Result, v.Reason = results[i].result, results[i].reason
+		v.Result, v.Reason = results[i].result, clip(results[i].reason, maxReason)
 		ev.Checks[c.Name] = v
 	}
 	ev.finish()

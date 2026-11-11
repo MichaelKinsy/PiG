@@ -540,3 +540,51 @@ func TestPendingResult(t *testing.T) {
 		t.Error("scans held back by a failed check were decided again")
 	}
 }
+
+func TestSymlinksOfAPRAreNotFollowed(t *testing.T) {
+	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	secret := filepath.Join(t.TempDir(), "runner-secret")
+	if err := os.WriteFile(secret, []byte("AKIA the runner's secret"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	remote := t.TempDir()
+	gitRepo(t, remote, map[string]string{"a.go": "package a"})
+	repo := filepath.Join(remote, "o", "r")
+	if err := os.Symlink(secret, filepath.Join(repo, "link")); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{{"add", "link"}, {"-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "link"}} {
+		if out, err := git(context.Background(), append([]string{"-C", repo}, args...)...); err != nil {
+			t.Fatalf("git %v: %v %s", args, err, out)
+		}
+	}
+	out, _ := git(context.Background(), "-C", repo, "rev-parse", "HEAD")
+	head := strings.TrimSpace(out)
+	if out, err := git(context.Background(), "-C", repo, "update-ref", "refs/pull/1/head", head); err != nil {
+		t.Fatal(err, out)
+	}
+	dir := t.TempDir()
+	ws := workspace{dir: dir, added: filepath.Join(dir, "added"), head: filepath.Join(dir, "head"), remote: "file://" + remote}
+	d := &data{Repo: "o/r", PR: 1, Files: []prFile{{Filename: "link", Status: "added"}}}
+	d.Pull.Head.SHA = head
+	scans := []check{scanCheck(t, scanSpec{Input: inputAdded, Run: []string{"x"}, Exit: exitCodes{Clean: []int{0}}, Report: reportSpec{In: "stdout", Format: "lines", Pattern: `(?P<message>.+)`}})}
+	if err := prepareWorkspace(context.Background(), d, scans, ws, io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range []string{filepath.Join(ws.head, "link"), filepath.Join(ws.added, "link")} {
+		info, err := os.Lstat(p)
+		raw, _ := os.ReadFile(p)
+		if err != nil || !info.Mode().IsRegular() || string(raw) != secret {
+			t.Fatalf("%s: %v %v %q", p, info.Mode(), err, raw)
+		}
+	}
+	locked := filepath.Join(t.TempDir(), "locked")
+	if err := os.Mkdir(locked, 0); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(locked, 0o755) })
+	if err := flattenSymlinks(filepath.Dir(locked)); err == nil {
+		t.Fatal("an unreadable directory was not reported")
+	}
+}

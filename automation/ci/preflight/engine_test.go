@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -177,9 +178,10 @@ func TestRunBatch(t *testing.T) {
 	o := runOptions{apiBase: server.URL, token: "tok", repo: "o/r", root: dir, bin: bin, work: filepath.Join(dir, "work"), jobs: 2, bot: defaultBot}
 
 	var out strings.Builder
+	// A PR whose API is down is reported on its own; the run stays green.
 	_, err = runBatch(context.Background(), cfg, o, &out)
-	if err == nil || !strings.Contains(err.Error(), "could not run for 1 PR(s)") {
-		t.Fatalf("err = %v; a PR whose API is down must be reported, log:\n%s", err, out.String())
+	if err != nil || !strings.Contains(out.String(), "the pre-flight could not run for 1 of 3 PR(s)") {
+		t.Fatalf("err = %v, log:\n%s", err, out.String())
 	}
 	if g.statuses["head1"] != "success" || g.statuses["head2"] != "failure" || g.preflightComment(1) == "" || g.preflightComment(2) == "" {
 		t.Fatalf("the PRs beside the broken one were not recorded: statuses %v", g.statuses)
@@ -214,7 +216,7 @@ func TestRunBatch(t *testing.T) {
 	if g.hits["GET /repos/o/r/pulls/1/files"] != before || !strings.Contains(out.String(), "mode reuse") {
 		t.Fatalf("PR #1 was fetched again; log:\n%s", out.String())
 	}
-	if g.hits["PATCH /repos/o/r/issues/comments/1"]+g.hits["POST /repos/o/r/statuses/head1"] != sent || !strings.Contains(out.String(), "nothing changed, nothing sent") {
+	if g.hits["PATCH /repos/o/r/issues/comments/1"]+g.hits["POST /repos/o/r/statuses/head1"] != sent || !strings.Contains(out.String(), "nothing changed, nothing sent") || strings.Contains(out.String(), "could not run") {
 		t.Fatalf("an unchanged PR was written; log:\n%s", out.String())
 	}
 	if _, err := os.Stat(filepath.Join(dir, "scanned-1")); err == nil {
@@ -251,7 +253,13 @@ func TestRunBatch(t *testing.T) {
 	g.broken[-1] = true
 	o.prs = []int{1, 2}
 	out.Reset()
-	if _, err := runBatch(context.Background(), cfg, o, &out); err == nil || !strings.Contains(out.String(), "its pre-flight comment could not be read") || !strings.Contains(out.String(), "PR #2: fail") {
+	if _, err := runBatch(context.Background(), cfg, o, &out); err != nil || !strings.Contains(out.String(), "its pre-flight comment could not be read") || !strings.Contains(out.String(), "PR #2: fail") {
+		t.Fatalf("err %v, log:\n%s", err, out.String())
+	}
+	// When it could run for none of its PRs, the run itself is broken.
+	g.broken[-2] = true
+	out.Reset()
+	if _, err := runBatch(context.Background(), cfg, o, &out); err == nil || !strings.Contains(err.Error(), "could not run for any of the 2 PR(s)") {
 		t.Fatalf("err %v, log:\n%s", err, out.String())
 	}
 	if len(g.comments[1]) != 1 {
@@ -383,7 +391,7 @@ func TestRunCommandWritesTheDeferredPRsForNextJobs(t *testing.T) {
 	var out, errOut strings.Builder
 	run([]string{"run", "--repo", "o/r", "--api", server.URL, "--root", dir, "--bin", dir, "--work", dir, "--dry-run", "--jobs", "1", "--budget", "1", "--next", next}, &out, &errOut)
 	raw, err := os.ReadFile(next)
-	if err != nil || strings.TrimSpace(string(raw)) != "[\n  \"2\",\n  \"3\"\n]" {
+	if err != nil || string(raw) != `["2","3"]`+"\n" {
 		t.Fatalf("next %q, err %v, log:\n%s%s", raw, err, out.String(), errOut.String())
 	}
 	if err := os.WriteFile(next, nil, 0o600); err != nil {
@@ -395,5 +403,66 @@ func TestRunCommandWritesTheDeferredPRsForNextJobs(t *testing.T) {
 	}
 	if code := run([]string{"run", "--repo", "o/r", "--api", server.URL, "--root", dir, "--bin", dir, "--work", dir, "--dry-run", "--prs", "1", "--next", filepath.Join(dir, "no", "next.json")}, &out, &errOut); code != 2 {
 		t.Fatalf("an unwritable --next: exit %d", code)
+	}
+}
+
+// TestWorkflowPassesTheGroupsOnUnchanged runs the workflow's own line that turns --next into the job output, and checks
+// that every group keeps its PR numbers apart.
+func TestWorkflowPassesTheGroupsOnUnchanged(t *testing.T) {
+	// The workflow is found upward from here: in the repository, and beside a copy of this package.
+	var raw []byte
+	for dir, _ := os.Getwd(); ; dir = filepath.Dir(dir) {
+		if b, err := os.ReadFile(filepath.Join(dir, ".github", "workflows", "preflight.yml")); err == nil {
+			raw = b
+			break
+		}
+		if dir == filepath.Dir(dir) {
+			t.Fatal("no .github/workflows/preflight.yml above the package")
+		}
+	}
+	var line string
+	for l := range strings.SplitSeq(string(raw), "\n") {
+		if strings.Contains(l, `echo "next=`) {
+			line = strings.TrimSpace(l)
+		}
+	}
+	if line == "" {
+		t.Fatal("the workflow has no next= line")
+	}
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "preflight"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	want := chunks([]int{421, 422, 424}, 2)
+	if err := writeNext(filepath.Join(dir, "preflight", "next.json"), want); err != nil {
+		t.Fatal(err)
+	}
+	output := filepath.Join(dir, "output")
+	cmd := exec.Command("bash", "-c", line)
+	cmd.Env = append(os.Environ(), "RUNNER_TEMP="+dir, "GITHUB_OUTPUT="+output)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("%s: %v %s", line, err, out)
+	}
+	got, _ := os.ReadFile(output)
+	var groups []string
+	if err := json.Unmarshal([]byte(strings.TrimPrefix(strings.TrimSpace(string(got)), "next=")), &groups); err != nil || !slices.Equal(groups, []string{"421 422", "424"}) {
+		t.Fatalf("output %q: %v %v", got, groups, err)
+	}
+	if err := writeNext(filepath.Join(dir, "no", "next.json"), nil); err == nil {
+		t.Fatal("an unwritable --next was not reported")
+	}
+}
+
+func TestRunBatchWithoutOpenPRs(t *testing.T) {
+	cfg, err := loadConfig([]byte(engineConfig))
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(newFakeGitHub(map[int]string{}))
+	defer server.Close()
+	dir := t.TempDir()
+	var out strings.Builder
+	if deferred, err := runBatch(context.Background(), cfg, runOptions{apiBase: server.URL, token: "t", repo: "o/r", root: dir, bin: dir, work: dir, bot: defaultBot}, &out); err != nil || deferred != nil {
+		t.Fatalf("no open PR: %v %v, log:\n%s", deferred, err, out.String())
 	}
 }

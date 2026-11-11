@@ -79,7 +79,7 @@ func runPR(ctx context.Context, cfg config, env *ruleEnv, o runOptions, version 
 			if err := runScans(ctx, cfg, d, &ev, ws, log); err != nil {
 				for _, name := range ev.Scans {
 					v := ev.Checks[name]
-					v.Result, v.Reason = resultError, "the scan inputs could not be prepared: "+err.Error()
+					v.Result, v.Reason = resultError, clip("the scan inputs could not be prepared: "+err.Error(), maxReason)
 					ev.Checks[name] = v
 				}
 				ev.finish()
@@ -112,8 +112,9 @@ func each(n, jobs int, fn func(i int)) {
 }
 
 // runBatch runs the pre-flight over every PR of the run, o.jobs at a time, each PR's log printed as one group when it
-// is done. It returns the PRs the budget deferred, for a next job, and an error only when the pre-flight could not run
-// for some PR; failing PRs are its normal output.
+// is done. It returns the PRs the budget deferred, for a next job, and an error only when the run itself is broken:
+// it cannot start, or it could run for none of its PRs. Failing PRs, and a PR it could not run for, are its normal
+// output.
 func runBatch(ctx context.Context, cfg config, o runOptions, out io.Writer) ([]int, error) {
 	version, err := bindMain(&cfg, o.root)
 	if err != nil {
@@ -191,8 +192,13 @@ func runBatch(ctx context.Context, cfg config, o runOptions, out io.Writer) ([]i
 	if len(deferred) > 0 {
 		logf(out, "%d PR(s) deferred by the budget, for a next job: %v", len(deferred), deferred)
 	}
+	// One PR the pre-flight could not run for is that PR's problem, shown on it and as an annotation: the run stays
+	// green. Only when it could run for none of them is the run itself broken.
 	if failedToRun > 0 {
-		return deferred, fmt.Errorf("the pre-flight could not run for %d PR(s)", failedToRun)
+		logf(out, "the pre-flight could not run for %d of %d PR(s)", failedToRun, len(results))
+	}
+	if failedToRun > 0 && failedToRun == len(results) {
+		return deferred, fmt.Errorf("the pre-flight could not run for any of the %d PR(s)", failedToRun)
 	}
 	return deferred, nil
 }

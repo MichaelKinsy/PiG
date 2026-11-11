@@ -279,4 +279,12 @@ type dependencyChange struct {
 	} `json:"vulnerabilities"`
 }
 
-func pathEscape(s string) string { return url.PathEscape(s) }
+// refPath escapes a branch name for a URL path segment by segment: the API reads team/x/y with its slashes, not as
+// team%2Fx%2Fy.
+func refPath(ref string) string {
+	parts := strings.Split(ref, "/")
+	for i, p := range parts {
+		parts[i] = url.PathEscape(p)
+	}
+	return strings.Join(parts, "/")
+}

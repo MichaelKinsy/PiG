@@ -39,7 +39,9 @@ func markdown(cfg config, d *data, ev evaluation) string {
 				continue
 			}
 			fmt.Fprintf(&b, "| 🔶 | %s | %s |\n", c.Name, cell(w.where()))
-			acks = append(acks, ackEntry(c.Name, w))
+			if w.File != "" {
+				acks = append(acks, ackEntry(c.Name, w))
+			}
 		}
 	}
 	if len(acks) > 0 {
@@ -154,6 +156,9 @@ func record(ctx context.Context, cfg config, d *data, ev evaluation, o recordOpt
 	}
 	setStatus := prev == nil || prev.Head != st.Head || prev.Status != st.Status
 	body := withState(report, st)
+	if err := fitsAComment(body); err != nil {
+		return err
+	}
 	writeBody := body != o.comment.Body
 	if o.dryRun {
 		if setStatus {
@@ -194,6 +199,14 @@ func record(ctx context.Context, cfg config, d *data, ev evaluation, o recordOpt
 	return writeComment(ctx, a, prefix, d.PR, o.comment.ID, body, log)
 }
 
+// fitsAComment refuses a body GitHub would refuse, with a reason instead of its bare 422.
+func fitsAComment(body string) error {
+	if len(body) > maxCommentLength {
+		return fmt.Errorf("the comment would be %d characters, more than the %d GitHub takes", len(body), maxCommentLength)
+	}
+	return nil
+}
+
 // writeComment updates the pre-flight's comment, or posts it when there is none or it was deleted.
 func writeComment(ctx context.Context, a *api, prefix string, pr int, id int64, body string, log io.Writer) error {
 	payload := map[string]string{"body": body}
@@ -203,7 +216,8 @@ func writeComment(ctx context.Context, a *api, prefix string, pr int, id int64, 
 			logf(log, "record: comment %d updated", id)
 			return nil
 		}
-		if !isNotFound(err) {
+		// Only a 404 means the comment is gone; a 422 is a body GitHub refuses, which a new comment would not fix.
+		if h := (*httpError)(nil); !errors.As(err, &h) || h.status != http.StatusNotFound {
 			return err
 		}
 		logf(log, "record: comment %d is gone, posting it again", id)

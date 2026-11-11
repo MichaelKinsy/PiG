@@ -92,7 +92,7 @@ func evaluate(cfg config, d *data, env *ruleEnv) evaluation {
 			v.Result, v.Reason = resultScan, "waits for its scan"
 		default:
 			o := decide(d, c, env)
-			v.Result, v.Reason, v.Warnings = o.result, o.reason, o.warnings
+			v.Result, v.Reason, v.Warnings = o.result, clip(o.reason, maxReason), perFile(o.warnings)
 		}
 		ev.Checks[c.Name] = v
 	}
@@ -106,6 +106,10 @@ func evaluate(cfg config, d *data, env *ruleEnv) evaluation {
 		} else {
 			applyAcknowledged(&ev, d, acks)
 		}
+	}
+	for name, v := range ev.Checks {
+		v.Warnings = capWarnings(v.Warnings)
+		ev.Checks[name] = v
 	}
 	ev.finish()
 	return ev
@@ -176,7 +180,9 @@ func report(w io.Writer, cfg config, ev evaluation) {
 				continue
 			}
 			logf(w, "WARN  %-20s %s", c.Name, x.where())
-			open = append(open, ackEntry(c.Name, x))
+			if x.File != "" {
+				open = append(open, ackEntry(c.Name, x))
+			}
 		}
 	}
 	if len(open) > 0 {
@@ -195,11 +201,61 @@ func report(w io.Writer, cfg config, ev evaluation) {
 	}
 }
 
-// where is a warning as one line: "file:line text: notice".
+// where is a warning as one line: "file:line text: notice", and how many more the file has.
 func (w warning) where() string {
 	at := w.File
 	if w.Line > 0 {
 		at = fmt.Sprintf("%s:%d", w.File, w.Line)
 	}
-	return fmt.Sprintf("%s %s: %q", at, w.Text, w.Notice)
+	s := at + " " + w.Text
+	if w.Notice != "" {
+		s += fmt.Sprintf(": %q", w.Notice)
+	}
+	if w.More > 0 {
+		s += fmt.Sprintf(" (and %d more in this file)", w.More)
+	}
+	return strings.TrimSpace(s)
+}
+
+// Bounds that keep a PR's comment, report and state small whatever the PR adds: GitHub refuses a comment over 65536
+// characters.
+const (
+	maxReason        = 1000 // characters of a check's reason
+	maxNotice        = 200  // characters of a warning's notice
+	maxWarnedFiles   = 20   // files a check lists warnings for; the rest are counted
+	maxCommentLength = 65536
+)
+
+// clip cuts s to at most n runes, marking the cut.
+func clip(s string, n int) string {
+	if r := []rune(s); len(r) > n {
+		return string(r[:n-1]) + "…"
+	}
+	return s
+}
+
+// perFile folds a check's warnings into one per file, the first of each, counting the rest: a reviewer needs to know
+// which file to look at, not every line of it.
+func perFile(ws []warning) []warning {
+	var out []warning
+	at := map[string]int{}
+	for _, w := range ws {
+		if i, ok := at[w.File]; ok {
+			out[i].More++
+			continue
+		}
+		at[w.File] = len(out)
+		w.Notice = clip(w.Notice, maxNotice)
+		out = append(out, w)
+	}
+	return out
+}
+
+// capWarnings keeps the warnings of the first maxWarnedFiles files and counts the others in one last line.
+func capWarnings(ws []warning) []warning {
+	if len(ws) <= maxWarnedFiles {
+		return ws
+	}
+	rest := len(ws) - maxWarnedFiles
+	return append(ws[:maxWarnedFiles:maxWarnedFiles], warning{Text: fmt.Sprintf("and %d more file(s) with warnings", rest)})
 }

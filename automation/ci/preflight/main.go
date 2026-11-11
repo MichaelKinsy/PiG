@@ -12,6 +12,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -137,7 +138,7 @@ func runCommand(ctx context.Context, cfg config, args []string, stdout, stderr i
 	deferred, err := runBatch(ctx, cfg, o, stdout)
 	if *next != "" {
 		// Written also when some PR could not run, so the deferred ones still get their job.
-		if werr := writeJSON(*next, append([]string{}, chunks(deferred, o.budget)...)); werr != nil {
+		if werr := writeNext(*next, chunks(deferred, o.budget)); werr != nil {
 			err = errors.Join(err, werr)
 		}
 	}
@@ -146,4 +147,14 @@ func runCommand(ctx context.Context, cfg config, args []string, stdout, stderr i
 		return 2
 	}
 	return 0
+}
+
+// writeNext writes the deferred groups as one line of compact JSON, which the workflow passes on as a job output
+// unchanged: ["1 2","3"]. A group keeps its spaces; nothing may strip them.
+func writeNext(path string, groups []string) error {
+	raw, err := json.Marshal(append([]string{}, groups...))
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, append(raw, '\n'), 0o600)
 }

@@ -277,3 +277,22 @@ func TestFetchWaveTwo(t *testing.T) {
 		t.Fatalf("mode %s, %d call(s), err %v", d.Mode, calls, err)
 	}
 }
+
+func TestRefPathKeepsSlashes(t *testing.T) {
+	for ref, want := range map[string]string{"main": "main", "team/patrick/249": "team/patrick/249", "a b/c#d": "a%20b/c%23d"} {
+		if got := refPath(ref); got != want {
+			t.Errorf("refPath(%q) = %q, want %q", ref, got, want)
+		}
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.EscapedPath() != "/repos/o/r/git/ref/heads/team/x" {
+			http.NotFound(w, r)
+			return
+		}
+		_, _ = io.WriteString(w, `{"object":{"sha":"tip"}}`)
+	}))
+	defer server.Close()
+	if sha, err := newTips(newAPI(server.URL, "t")).get(context.Background(), "o/r", "team/x"); err != nil || sha != "tip" {
+		t.Fatalf("tip %q, err %v", sha, err)
+	}
+}

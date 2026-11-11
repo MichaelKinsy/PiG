@@ -20,8 +20,8 @@ import (
 // Tests for the edges mutation testing found unguarded, grouped by the file they guard.
 
 func TestParseAcknowledgedNamesTheBadEntry(t *testing.T) {
-	good := "[[ack]]\ncheck='a'\nfile='b'\nnotice='c'\nblob='d'\n"
-	for _, missing := range []string{"check", "file", "notice", "blob"} {
+	good := "[[ack]]\ncheck='a'\nfile='b'\nblob='d'\n"
+	for _, missing := range []string{"check", "file", "blob"} {
 		bad := strings.Replace(good, missing+"=", "x"+missing+"=", 1)
 		bad = strings.Replace(bad, "x"+missing+"=", "# "+missing+"=", 1)
 		_, err := parseAcknowledged(good + "\n" + bad)
@@ -35,9 +35,8 @@ func TestApplyAcknowledgedMatchesEveryField(t *testing.T) {
 	w := warning{File: "a.sh", Line: 2, Blob: "b1", Notice: "n", Text: "t"}
 	d := &data{Files: []prFile{{Filename: "a.sh", SHA: "b1"}}}
 	for name, a := range map[string]acknowledgement{
-		"another check":  {Check: "other", File: "a.sh", Notice: "n", Blob: "b1"},
-		"another file":   {Check: "licenses", File: "z.sh", Notice: "n", Blob: "b1"},
-		"another notice": {Check: "licenses", File: "a.sh", Notice: "x", Blob: "b1"},
+		"another check": {Check: "other", File: "a.sh", Blob: "b1"},
+		"another file":  {Check: "licenses", File: "z.sh", Blob: "b1"},
 	} {
 		ev := evaluation{Checks: map[string]verdict{"licenses": {Result: resultPass, Warnings: []warning{w}}, "other": {Result: resultPass}}}
 		applyAcknowledged(&ev, d, []acknowledgement{a})
@@ -50,7 +49,7 @@ func TestApplyAcknowledgedMatchesEveryField(t *testing.T) {
 	}
 	// An entry for a file the PR does not change is not judged.
 	ev := evaluation{Checks: map[string]verdict{"licenses": {Result: resultPass}}}
-	applyAcknowledged(&ev, d, []acknowledgement{{Check: "licenses", File: "untouched.sh", Notice: "n", Blob: "old"}})
+	applyAcknowledged(&ev, d, []acknowledgement{{Check: "licenses", File: "untouched.sh", Blob: "old"}})
 	if len(ev.Checks["licenses"].Warnings) != 0 {
 		t.Error("an entry for a file outside the PR was reported stale")
 	}
@@ -505,8 +504,8 @@ func TestUncoveredEdges(t *testing.T) {
 	// acknowledged.toml may name a check this config does not have.
 	ev := evaluation{Checks: map[string]verdict{"licenses": {Result: resultPass}}}
 	applyAcknowledged(&ev, &data{Files: []prFile{{Filename: "a", SHA: "new"}}}, []acknowledgement{
-		{Check: "gone", File: "a", Notice: "n", Blob: "old"},
-		{Check: "licenses", File: "a", Notice: "n", Blob: "old"},
+		{Check: "gone", File: "a", Blob: "old"},
+		{Check: "licenses", File: "a", Blob: "old"},
 	})
 	if len(ev.Checks) != 1 || len(ev.Checks["licenses"].Warnings) != 1 {
 		t.Fatalf("an entry of an unknown check stopped the stale check of the next: %v", ev.Checks)
@@ -520,7 +519,7 @@ func TestUncoveredEdges(t *testing.T) {
 	}}}}
 	var out strings.Builder
 	report(&out, cfg, ev)
-	if !strings.Contains(out.String(), "ACK   licenses") || !strings.Contains(out.String(), "WARN  licenses") || !strings.Contains(out.String(), "notice = "+"'"+"''open one''"+"'") || strings.Count(out.String(), "::warning") != 1 {
+	if !strings.Contains(out.String(), "ACK   licenses") || !strings.Contains(out.String(), "WARN  licenses") || !strings.Contains(out.String(), "file = \"g\"") || strings.Count(out.String(), "::warning") != 1 {
 		t.Fatalf("report:\n%s", out.String())
 	}
 	if md := markdown(cfg, &data{}, ev); !strings.Contains(md, "☑️ | licenses | acknowledged") || !strings.Contains(md, "🔶 | licenses | g") {
