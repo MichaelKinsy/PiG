@@ -188,10 +188,13 @@ type subscription struct {
 	// Stop: a kept handle keeps neither.
 	stopAbort func() bool
 	stopped   func(*subscription)
+	// ctx is the context it was made under, until it stops: an abort ends it at once, as Pi's abort listener runs inside
+	// the abort (Go's AfterFunc only enters the loop later), so a call due after the abort is skipped.
+	ctx context.Context
 }
 
 func newSubscription(order int64, loop eventsLoop, listener eventListener, ctx context.Context, stopped func(*subscription)) *subscription {
-	s := &subscription{order: order, loop: loop, listener: listener, stopped: stopped}
+	s := &subscription{order: order, loop: loop, listener: listener, stopped: stopped, ctx: ctx}
 	s.stopAbort = context.AfterFunc(ctx, func() { loop.Run(s.stop) })
 	return s
 }
@@ -206,6 +209,7 @@ func (s *subscription) stop() {
 	}
 	s.listener = nil
 	s.stopped = nil
+	s.ctx = nil
 	s.stopAbort()
 	s.stopAbort = nil
 	stopped(s)
@@ -215,6 +219,10 @@ func (s *subscription) stop() {
 func (s *subscription) call(entry *eventEntry, report eventReport) {
 	listener := s.listener
 	if listener == nil {
+		return
+	}
+	if s.ctx.Err() != nil {
+		s.stop()
 		return
 	}
 	defer func() {
@@ -252,20 +260,33 @@ func newOwnEventSource(owner *eventSourceOwner) *ownEventSource { return &ownEve
 // ownedBy is whether owner owns it: an object implements its event members with its own attempt's sources only.
 func (s *ownEventSource) ownedBy(owner *eventSourceOwner) bool { return s.owner == owner }
 
-// Emit emits value now, outside any transaction (contracts.EventSource).
-func (s *ownEventSource) Emit(value delta.JsonValue) error {
+// Emit emits value now, outside any transaction (contracts.EventSource). It is one section of the host's loop (inline
+// inside one): the rest of a handler that suspended runs outside the section that admitted its call, and Pi's emit is
+// atomic on the one event loop.
+func (s *ownEventSource) Emit(value delta.JsonValue) (err error) {
 	owner := s.owner
-	if err := owner.sealed(); err != nil {
-		return err
-	}
-	owner.events.metrics.Counter("chord.events.emitted").Add(1, nil)
-	owner.events.push(&s.eventNode, value, owner.events.loop.Now())
-	return nil
+	owner.events.loop.Run(func() {
+		if err = owner.sealed(); err != nil {
+			return
+		}
+		owner.events.metrics.Counter("chord.events.emitted").Add(1, nil)
+		owner.events.push(&s.eventNode, value, owner.events.loop.Now())
+	})
+	return err
 }
 
 // On subscribes listener (contracts.EventMember).
 func (s *ownEventSource) On(listener func(contracts.EventDelivery[delta.JsonValue]), ctx context.Context) (contracts.EventSubscription, error) {
 	events := s.owner.events
+	var (
+		subscription contracts.EventSubscription
+		err          error
+	)
+	events.loop.Run(func() { subscription, err = s.on(events, listener, ctx) })
+	return subscription, err
+}
+
+func (s *ownEventSource) on(events *hostEvents, listener func(contracts.EventDelivery[delta.JsonValue]), ctx context.Context) (contracts.EventSubscription, error) {
 	return subscribe(events, listener, ctx,
 		func(sub *subscription) {
 			t := &tap{boundAt: events.counter(), deliver: func(entry *eventEntry, flush *eventFlush) { flush.call(sub, entry) }}
