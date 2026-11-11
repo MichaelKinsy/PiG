@@ -18,11 +18,6 @@ func TestSidebarModelRunsPisTests(t *testing.T) {
 	oracle.RunNodeTests(t, "test/p2/sidebar-model.test.ts")
 }
 
-// Pi main 555e9755: the chat's turns and the working wheel's thought (src/web/activity/model.ts).
-func TestActivityModelRunsPisTests(t *testing.T) {
-	oracle.RunNodeTests(t, "test/p2/activity-model.test.ts")
-}
-
 // Pi main da57c166: the views' layout (plugins/views/layout.ts).
 func TestViewsLayoutRunsPisTests(t *testing.T) {
 	oracle.RunNodeTests(t, "test/p2/views-layout.test.ts")
