@@ -1128,6 +1128,31 @@ func unitsToString(units []rune) string {
 }
 
 // stringToUnits decodes WTF-8 (or UTF-8) into UTF-16 code units.
+// unitCount is len(stringToUnits(text)) without building the units: a resumed run reads the units of the whole code and only the count of those before its
+// resume point.
+func unitCount(text string) int {
+	n := 0
+	for len(text) > 0 {
+		if text[0] < utf8.RuneSelf {
+			text = text[1:]
+			n++
+			continue
+		}
+		if len(text) >= 3 && text[0] == 0xed && text[1] >= 0xa0 && text[1] <= 0xbf && text[2] >= 0x80 && text[2] <= 0xbf {
+			text = text[3:]
+			n++
+			continue
+		}
+		r, size := utf8.DecodeRuneInString(text)
+		text = text[size:]
+		n++
+		if r > 0xffff {
+			n++
+		}
+	}
+	return n
+}
+
 func stringToUnits(text string) []rune {
 	units := make([]rune, 0, len(text))
 	for len(text) > 0 {

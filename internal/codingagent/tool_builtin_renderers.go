@@ -85,8 +85,10 @@ type builtInRenderState struct {
 	writePlain writePlainLines
 	// writeWarmed is the length of the content the whole-file highlight was last warmed at (warmWholeHighlight), and writeWarmOff
 	// that the file's language cannot resume, so no warm-up is worth its cost.
-	writeWarmed  int
-	writeWarmOff bool
+	// writeWarmTarget is the length of the content the step under way warms up to, writeWarmSlice the bytes its next slice covers.
+	writeWarmed                     int
+	writeWarmOff                    bool
+	writeWarmTarget, writeWarmSlice int
 	// highlighter is the row's highlighting of a complete write call's file, or of a codemode call's script (upstream
 	// WriteCallRenderComponent.highlighter and CodemodeRenderState.scriptHighlighter). A complete write call redraws on
 	// every update and expand toggle with the same file, and a codemode call on every progress update and timer tick with

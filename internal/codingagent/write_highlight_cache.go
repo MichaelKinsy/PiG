@@ -7,6 +7,8 @@ package codingagent
 
 import (
 	"strings"
+	"time"
+	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -186,6 +188,17 @@ const (
 	writeWarmMaxStep = 32 << 10
 )
 
+// A warm-up is cut into slices so that no frame carries more than about writeWarmBudget of it. highlight.js runs over a slice of the text to its end
+// and leaves a state the next slice resumes from, so the slices of a step together leave the state one run over the step leaves (the resume state a
+// run over a prefix holds is the one the whole file's run continues from, and each of the steps already ran over a prefix of the text); only the frame
+// each part is computed in moves. Without the cut, the frame a 16-32 KB step fell in took 20-30 ms of highlighting on top of its own work, a stall of
+// the owner loop that showed as a frame gap twice the throttle's. A slice is sized from the time the last one took, between writeWarmMinSlice and
+// writeWarmMaxStep bytes.
+// pig additive (D112): the slices move when the highlight is computed, not what it is.
+var writeWarmBudget = 4 * time.Millisecond
+
+const writeWarmMinSlice = 1 << 10
+
 // writeWarmStep is how many bytes a streaming write call's content of length n grows before its next warm-up.
 //
 //portlint:allow numbers a byte count of pig-only pacing (D112): no JS expression to match, and a step a byte short moves only when a warm-up runs
@@ -199,14 +212,45 @@ func writeWarmStep(n int) int { return min(max(n/16, writeWarmMinStep), writeWar
 // that cannot resume stops the warm-ups after the first.
 // pig additive (D112): upstream highlights the complete file once, when the call completes.
 func (state *builtInRenderState) warmWholeHighlight(content, lang string) {
-	if state.writeWarmOff || len(content) < state.writeWarmed+writeWarmStep(len(content)) {
+	if state.writeWarmOff {
 		return
 	}
-	if !tui.WarmHighlight(normalizeWriteText(content), lang) {
-		state.writeWarmOff = true
+	if state.writeWarmTarget <= state.writeWarmed {
+		// No step is under way: one starts when the content has grown by a step.
+		if len(content) < state.writeWarmed+writeWarmStep(len(content)) {
+			return
+		}
+		state.writeWarmTarget = len(content)
+	}
+	end := state.writeWarmTarget
+	if writeWarmBudget > 0 {
+		slice := state.writeWarmSlice
+		if slice == 0 {
+			slice = writeWarmMinSlice
+		}
+		end = min(end, state.writeWarmed+slice)
+	}
+	// The slice ends on a character start: a prefix that cuts one is not text the later runs start with.
+	for end < state.writeWarmTarget && end > state.writeWarmed && !utf8.RuneStart(content[end]) {
+		end--
+	}
+	started := time.Now()
+	held := tui.WarmHighlight(normalizeWriteText(content[:end]), lang)
+	elapsed := time.Since(started)
+	if !held {
+		if end >= state.writeWarmTarget {
+			state.writeWarmOff = true
+			return
+		}
+		// A short prefix may hold no resume point yet (few lines): the language is not known to lack them until the step's whole text ran.
+		state.writeWarmSlice = min(2*max(state.writeWarmSlice, writeWarmMinSlice), writeWarmMaxStep)
 		return
 	}
-	state.writeWarmed = len(content)
+	if writeWarmBudget > 0 && elapsed > 0 {
+		// The next slice is what the budget buys at the rate of this one.
+		state.writeWarmSlice = int(min(max(float64(end-state.writeWarmed)*float64(writeWarmBudget)/float64(elapsed), writeWarmMinSlice), writeWarmMaxStep))
+	}
+	state.writeWarmed = end
 }
 
 // normalizeWriteText is replaceTabs(normalizeDisplayText(text)) for the content of a write call. A lone surrogate, which

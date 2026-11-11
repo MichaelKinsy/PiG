@@ -100,7 +100,7 @@ func (r *Registry) HighlightResumable(code, language string, ignoreIllegals bool
 	units := stringToUnits(code)
 	start := checkpoint{iterations: from.Iterations}
 	if from.Byte > 0 {
-		start.unit = len(stringToUnits(code[:from.Byte]))
+		start.unit = unitCount(code[:from.Byte])
 	}
 	result := r.highlightFrom(language, units, ignoreIllegals, nil, start, true)
 	if result.failed && from.Byte > 0 {

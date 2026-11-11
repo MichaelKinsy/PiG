@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/tui"
@@ -82,5 +83,56 @@ func TestWriteCardWarmsNothingForAPathWithoutALanguage(t *testing.T) {
 	writeRenderCall(json.RawMessage(`{"path":"notes.unknownext","content":`+string(quoted)+`}`), nil, context)
 	if state := builtInState(context); state.writeWarmed != 0 {
 		t.Fatalf("a file without a language was warmed to %d bytes", state.writeWarmed)
+	}
+}
+
+// A warm-up is cut into slices so that no frame carries more than its budget of highlighting. With a budget no slice can meet (a nanosecond) every
+// slice is the smallest, and no frame warms more than that; the card the complete call draws, collapsed and expanded, is the card of a call whose
+// steps run in one piece.
+func TestWarmUpSlicesBoundWhatAFrameWarmsAndLeaveTheCardUnchanged(t *testing.T) {
+	content := streamedWriteTypeScript(120)
+	frames := func(budget time.Duration) (collapsed, expanded []string, widest int) {
+		saved := writeWarmBudget
+		writeWarmBudget = budget
+		t.Cleanup(func() { writeWarmBudget = saved })
+		forgetHighlights(t)
+		context := extension.ToolRenderContext{State: map[string]any{}, Cwd: "/work"}
+		draw := func(text string, complete bool) []string {
+			quoted, err := json.Marshal(text)
+			if err != nil {
+				t.Fatal(err)
+			}
+			context.ArgsComplete = complete
+			context.LastComponent = writeRenderCall(json.RawMessage(`{"path":"big/source.ts","content":`+string(quoted)+`}`), nil, context)
+			return context.LastComponent.Render(160)
+		}
+		warmed := 0
+		for end := 1000; end < len(content); end += 1000 {
+			draw(content[:end], false)
+			state := builtInState(context)
+			widest = max(widest, state.writeWarmed-warmed)
+			warmed = state.writeWarmed
+		}
+		collapsed = draw(content, true)
+		context.Expanded = true
+		expanded = draw(content, true)
+		if state := builtInState(context); state.writeWarmOff || state.writeWarmed == 0 {
+			t.Fatalf("budget %v: the warm-ups did not run (warmed %d, off %v)", budget, state.writeWarmed, state.writeWarmOff)
+		}
+		return collapsed, expanded, widest
+	}
+	wantCollapsed, wantExpanded, unboundedWidest := frames(0)
+	gotCollapsed, gotExpanded, widest := frames(time.Nanosecond)
+	if widest > writeWarmMinSlice {
+		t.Errorf("a frame warmed %d bytes with the smallest slice at %d", widest, writeWarmMinSlice)
+	}
+	if unboundedWidest <= writeWarmMinSlice {
+		t.Fatalf("without a budget a frame warmed only %d bytes, so the bound proves nothing", unboundedWidest)
+	}
+	if !slices.Equal(gotCollapsed, wantCollapsed) {
+		t.Errorf("collapsed card differs with a budget:\n got %q\nwant %q", gotCollapsed, wantCollapsed)
+	}
+	if !slices.Equal(gotExpanded, wantExpanded) {
+		t.Errorf("expanded card differs with a budget (%d lines, want %d)", len(gotExpanded), len(wantExpanded))
 	}
 }
