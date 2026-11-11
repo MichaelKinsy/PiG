@@ -6,7 +6,7 @@ path = "packages/tui/src/tui-alt-screen.ts"
 change = "modified"
 disposition = "ported"
 evidence = ["test:tui/kitty_full_redraw_port_test.go#TestAltScreenKeepsUploadedKittyImagesAcrossFullRedraw"]
-rationale = "be2744d95 (#12047): Kitty frees image data without placements on ED 2, so a full redraw that deleted placements and then cleared the screen broke placement-only reuse; with uploaded Kitty images the redraw now deletes the placements and skips the screen clear. TuiAltScreen.doRender does the same, and Pi's test is ported."
+rationale = "be2744d95 (#12047): Kitty frees image data without placements on ED 2, so a full redraw that deleted placements and then cleared the screen broke placement-only reuse; with uploaded Kitty images the redraw now deletes the placements and skips the screen clear. TuiAltScreen.doRender does the same, and Pi's test is ported. Oracle-vs-next gap: the vendored alt-screen fixture is Pi 1.5.2, which predates #12047 and still clears the screen with ESC[2J, so checkAltScreenOracleIn (alt_screen_oracle_test.go) ends the byte comparison of a Kitty scenario at the first step that differs only by that clear, and skips the later Kitty scenarios, whose image registry no longer matches the fixture's; recordings for the term corpus still replay every scenario. The comparison returns in full when the oracle pin passes #12047."
 
 [[files]]
 path = "packages/coding-agent/src/package-manager-cli.ts"

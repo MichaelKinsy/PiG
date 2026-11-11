@@ -263648,8 +263648,8 @@
       ],
       "evidence": [
         "test:env/process_test.go#TestOpenProcessDeliversLargeOutputCompletely",
-        "test:env/process_test.go#TestOpenProcessFailsForAProgramThatDoesNotExist",
-        "test:env/process_test.go#TestOpenProcessFailsInAMissingDirectory"
+        "test:env/process_test.go#TestOpenProcessDeliversOutputLeftInThePipeWhenTheProgramExitsWhileTheLinkIsBackedUp",
+        "test:env/process_test.go#TestOpenProcessFailsForAProgramThatDoesNotExist"
       ]
     },
     {
@@ -263670,8 +263670,8 @@
       ],
       "evidence": [
         "test:env/process_test.go#TestOpenProcessDeliversLargeOutputCompletely",
-        "test:env/process_test.go#TestOpenProcessFailsForAProgramThatDoesNotExist",
-        "test:env/process_test.go#TestOpenProcessKeepsInputInOrderAcrossManyWritesAndWritesLargerThanOneFrameChunk"
+        "test:env/process_test.go#TestOpenProcessDeliversOutputLeftInThePipeWhenTheProgramExitsWhileTheLinkIsBackedUp",
+        "test:env/process_test.go#TestOpenProcessFailsForAProgramThatDoesNotExist"
       ]
     },
     {
@@ -263692,8 +263692,8 @@
       ],
       "evidence": [
         "test:env/process_test.go#TestOpenProcessDeliversLargeOutputCompletely",
-        "test:env/process_test.go#TestOpenProcessFailsInAMissingDirectory",
-        "test:env/process_test.go#TestOpenProcessKeepsInputInOrderAcrossManyWritesAndWritesLargerThanOneFrameChunk"
+        "test:env/process_test.go#TestOpenProcessDeliversOutputLeftInThePipeWhenTheProgramExitsWhileTheLinkIsBackedUp",
+        "test:env/process_test.go#TestOpenProcessFailsInAMissingDirectory"
       ]
     },
     {
@@ -263776,8 +263776,8 @@
       ],
       "evidence": [
         "test:env/process_test.go#TestOpenProcessDeliversLargeOutputCompletely",
-        "test:env/process_test.go#TestOpenProcessKeepsInputInOrderAcrossManyWritesAndWritesLargerThanOneFrameChunk",
-        "test:env/process_test.go#TestOpenProcessKillsTheProgramAndWhatItStartedOnClose"
+        "test:env/process_test.go#TestOpenProcessDeliversOutputLeftInThePipeWhenTheProgramExitsWhileTheLinkIsBackedUp",
+        "test:env/process_test.go#TestOpenProcessKeepsInputInOrderAcrossManyWritesAndWritesLargerThanOneFrameChunk"
       ]
     },
     {
@@ -263798,8 +263798,8 @@
       ],
       "evidence": [
         "test:env/process_test.go#TestOpenProcessDeliversLargeOutputCompletely",
-        "test:env/process_test.go#TestOpenProcessKeepsInputInOrderAcrossManyWritesAndWritesLargerThanOneFrameChunk",
-        "test:env/process_test.go#TestOpenProcessKillsTheProgramAndWhatItStartedOnClose"
+        "test:env/process_test.go#TestOpenProcessDeliversOutputLeftInThePipeWhenTheProgramExitsWhileTheLinkIsBackedUp",
+        "test:env/process_test.go#TestOpenProcessKeepsInputInOrderAcrossManyWritesAndWritesLargerThanOneFrameChunk"
       ]
     },
     {
@@ -265631,9 +265631,9 @@
         "call:env/process.go#NewRemoteProcess"
       ],
       "evidence": [
+        "test:env/process_test.go#TestOpenProcessDeliversOutputLeftInThePipeWhenTheProgramExitsWhileTheLinkIsBackedUp",
         "test:env/process_test.go#TestOpenProcessKeepsInputInOrderAcrossManyWritesAndWritesLargerThanOneFrameChunk",
-        "test:env/process_test.go#TestOpenProcessKillsTheProgramAndWhatItStartedOnClose",
-        "test:env/process_test.go#TestOpenProcessKillsTheProgramWhenTheConnectionCloses"
+        "test:env/process_test.go#TestOpenProcessKillsTheProgramAndWhatItStartedOnClose"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -265675,6 +265675,7 @@
         "call:env/process.go#RemoteProcess.Close"
       ],
       "evidence": [
+        "test:env/process_test.go#TestOpenProcessDeliversOutputLeftInThePipeWhenTheProgramExitsWhileTheLinkIsBackedUp",
         "test:env/process_test.go#TestOpenProcessKillsTheProgramAndWhatItStartedOnClose",
         "test:mcp/pipe_pi_test.go#TestMcpPipeWritesClosesStdinAndKillsAProgram"
       ]
@@ -265696,6 +265697,7 @@
         "call:env/process.go#RemoteProcess.Close"
       ],
       "evidence": [
+        "test:env/process_test.go#TestOpenProcessDeliversOutputLeftInThePipeWhenTheProgramExitsWhileTheLinkIsBackedUp",
         "test:env/process_test.go#TestOpenProcessKillsTheProgramAndWhatItStartedOnClose",
         "test:mcp/pipe_pi_test.go#TestMcpPipeWritesClosesStdinAndKillsAProgram"
       ]
@@ -265763,7 +265765,7 @@
       "evidence": [
         "test:mcp/pipe_pi_test.go#TestMcpPipeWritesClosesStdinAndKillsAProgram",
         "test:env/process_test.go#TestOpenProcessDeliversLargeOutputCompletely",
-        "test:env/process_test.go#TestOpenProcessKeepsInputInOrderAcrossManyWritesAndWritesLargerThanOneFrameChunk"
+        "test:env/process_test.go#TestOpenProcessDeliversOutputLeftInThePipeWhenTheProgramExitsWhileTheLinkIsBackedUp"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -265806,9 +265808,9 @@
         "call:env/process.go#RemoteProcess.Write"
       ],
       "evidence": [
+        "test:env/process_test.go#TestOpenProcessDeliversOutputLeftInThePipeWhenTheProgramExitsWhileTheLinkIsBackedUp",
         "test:env/process_test.go#TestOpenProcessKeepsInputInOrderAcrossManyWritesAndWritesLargerThanOneFrameChunk",
-        "test:env/process_test.go#TestOpenProcessPassesBytesThroughUnchangedNoEchoNoNewlineTranslationNoDecoding",
-        "test:env/process_test.go#TestOpenProcessPipesStdinToTheProgramAndItsStdoutAndStderrBackSeparately"
+        "test:env/process_test.go#TestOpenProcessPassesBytesThroughUnchangedNoEchoNoNewlineTranslationNoDecoding"
       ]
     },
     {
@@ -265828,9 +265830,9 @@
         "call:env/process.go#RemoteProcess.Write"
       ],
       "evidence": [
+        "test:env/process_test.go#TestOpenProcessDeliversOutputLeftInThePipeWhenTheProgramExitsWhileTheLinkIsBackedUp",
         "test:env/process_test.go#TestOpenProcessKeepsInputInOrderAcrossManyWritesAndWritesLargerThanOneFrameChunk",
-        "test:env/process_test.go#TestOpenProcessPassesBytesThroughUnchangedNoEchoNoNewlineTranslationNoDecoding",
-        "test:env/process_test.go#TestOpenProcessPipesStdinToTheProgramAndItsStdoutAndStderrBackSeparately"
+        "test:env/process_test.go#TestOpenProcessPassesBytesThroughUnchangedNoEchoNoNewlineTranslationNoDecoding"
       ]
     },
     {
