@@ -227,6 +227,18 @@ func observe(t *testing.T, found *workers.Workers, key string, done <-chan struc
 	return starting, running, ended
 }
 
+// A test that fails before it closes `done` leaves no watcher behind: observe's goroutine ends with its test, so the leak checks of
+// the tests after it do not fail for it (one failed export test took 88 others down through it).
+func TestObserveEndsItsWatcherWithItsTestWhenTheCallerNeverClosesDone(t *testing.T) {
+	t.Run("caller that fails before closing done", func(t *testing.T) {
+		s := startTestApp(t, map[string]map[string]string{"notes": notesPlugin}, projectOptions(t))
+		p1 := holdNotes(t, s, "p1")
+		defer p1.Release()
+		observe(t, s.app.Workers["project"], "project|p1", make(chan struct{}))
+	})
+	noGoroutinesOf(t, "chord/nextnode/app.observe")
+}
+
 func TestAppLeavesAFailedAddressFailedAfterAnExport(t *testing.T) {
 	var failing atomic.Bool
 	s := startTestApp(t, map[string]map[string]string{"notes": notesPlugin}, func(o *AppOptions) {
