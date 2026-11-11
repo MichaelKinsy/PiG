@@ -1670,6 +1670,11 @@ func Extension() *sdk.Extension {
 			}
 			return strings.Join(parts, "|")
 		}
+		// The runner awaits a handler before it starts the next, so the second handler of a dispatch starts after the first handler's reply was sent, and the SDK
+		// reads the first handler's payload (the reply carries what the handler left in it) before that reply. The late writer waits for the second handler's start,
+		// so its write follows the SDK's last read of the payload through the reply and the second handler's request: a write that waited only for the clock
+		// would be a data race with that read.
+		secondStarted := make(chan struct{}, 4)
 		ext.OnEvent(name, func(hctx sdk.Context, data map[string]any) (any, error) {
 			hctx.Notify(fmt.Sprintf("event_isolation:A:%v:end", marker(data)), "info")
 			scribble(data, "SENTINEL-HANDLER-A")
@@ -1681,6 +1686,7 @@ func Extension() *sdk.Extension {
 				}
 			}
 			go func() {
+				<-secondStarted
 				time.Sleep(100 * time.Millisecond)
 				scribble(data, "SENTINEL-LATE-WRITER")
 				for _, object := range found {
@@ -1692,6 +1698,7 @@ func Extension() *sdk.Extension {
 			return nil, nil
 		})
 		ext.OnEvent(name, func(hctx sdk.Context, data map[string]any) (any, error) {
+			secondStarted <- struct{}{}
 			hctx.Notify(fmt.Sprintf("event_isolation:B:%v:end", marker(data)), "info")
 			hctx.Notify("event_isolation_msgs:B:"+report(messages(data)), "info")
 			return nil, nil
