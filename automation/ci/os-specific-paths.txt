@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: MIT
+#
+# Paths whose change a Linux run cannot prove. A pull request that changes one of them runs the full run, with Windows and
+# macOS, instead of the one-runner light run (automation/ci/classify-changes.sh prints os-specific=true, and the plan
+# step of .github/workflows/ci.yml treats it like the ci:full label). One shell glob per line, matched against the
+# repository-relative path with case(1) semantics, so * crosses directories.
+#
+# Files the Go toolchain selects by operating system
+*_windows.go
+*_windows_test.go
+*_windows_*.go
+*_darwin.go
+*_darwin_test.go
+*_darwin_*.go
+*_darwin_*.s
+*_darwin.s
+# Packages that exist for one platform or that wrap one
+internal/nativeplatform/*
+internal/nodespawn/*
+internal/crossspawn/*
+internal/childwait/*
+internal/pilock/*
+internal/fspublish/*
+internal/nodefs/*
+internal/nodepath/*
+internal/nodeerrno/*
+internal/shellconfig/*
+# Installers, packaging and the runner's own setup
+docs/site/public/install.sh
+docs/site/public/install.ps1
+test/ci-images/install_sh*_test.go
+*.ps1
+nix/*
+automation/ci/install-*
+automation/ci/node-loader-*
+automation/ci/windows-*
+automation/ci/*macos*
+# The workflow that defines what the Windows and macOS jobs run
+.github/workflows/ci.yml
+automation/ci/ci-tiers.txt
+automation/ci/ci-plan.sh
+automation/make/ci.mk

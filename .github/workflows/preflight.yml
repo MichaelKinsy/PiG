@@ -4,6 +4,10 @@ name: Pre-flight
 # The PiG CI pre-flight: automation/ci/preflight/README.md.
 
 on:
+  # A PR event judges that PR at once, from main's workflow and a checkout of main (pull_request_target; the PR's own code
+  # is never run), so ci.yml's Pre-flight verdict job has a status to wait for. The hourly run judges every open PR again.
+  pull_request_target:
+    types: [opened, synchronize, reopened, edited, ready_for_review]
   schedule:
     - cron: '17 * * * *'
   workflow_dispatch:
@@ -30,9 +34,10 @@ permissions: {}
 env:
   GOWORK: "off"
 
+# One PR's runs queue behind each other per PR (a newer push supersedes an older one); the hourly sweep has a group of its own.
 concurrency:
-  group: preflight
-  cancel-in-progress: false
+  group: preflight-${{ github.event.pull_request.number || 'sweep' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request_target' }}
 
 jobs:
   preflight:
@@ -78,7 +83,7 @@ jobs:
         shell: bash
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          PRS: ${{ inputs.prs }}
+          PRS: ${{ inputs.prs || github.event.pull_request.number }}
           DRY_RUN: ${{ inputs.dry-run }}
           REPO: ${{ inputs.repo }}
           PRIVATE_TERMS: ${{ secrets.PIG_PRIVATE_TERMS }}
