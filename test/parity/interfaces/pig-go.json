@@ -214034,6 +214034,17 @@
       "shapeHash": "sha256:63c82cb08e94de025092acbd1edcb8272ac16cf01f7f4430479bb7428a7b862e"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#conn.dropQueuedRequest",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "conn.dropQueuedRequest",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(id string)"
+      },
+      "shapeHash": "sha256:cfecdc755116fa71eb3b2bdd3bd35e8bff60ec89238fe389c46963b6e90a69dd"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#conn.notify",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "conn.notify",
