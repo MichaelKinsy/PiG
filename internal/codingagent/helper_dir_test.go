@@ -58,6 +58,7 @@ func TestOpenExternalEditorReportsFailures(t *testing.T) {
 
 // extension-editor.ts (Pi 6454d07e, #11592): an external editor failure renders under the editor and the next success clears it.
 func TestExtensionEditorShowsExternalEditorFailures(t *testing.T) {
+	restoreTUIKeybindings(t)
 	c := newExtensionEditorProbe(t, "Edit", "text", map[string][]string{"app.editor.external": {"ctrl+x"}}, nil)
 	var apply func(string)
 	var report func(string)

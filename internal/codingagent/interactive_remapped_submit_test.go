@@ -28,8 +28,7 @@ func TestTerminalInputPreservesRemappedSubmitBindings(t *testing.T) {
 	for _, debug := range []string{"", "1"} {
 		t.Run("debug="+debug, func(t *testing.T) {
 			t.Setenv("PIG_DEBUG_KEYS", debug)
-			previous := tui.GetTUIKeybindings()
-			t.Cleanup(func() { tui.SetTUIKeybindings(previous) })
+			restoreTUIKeybindings(t)
 			q := newInputQueueMode(t)
 			if err := os.WriteFile(KeybindingsFile(q.opts.AgentDir), []byte(`{"tui.input.submit":["ctrl+s"]}`), 0o600); err != nil {
 				t.Fatal(err)

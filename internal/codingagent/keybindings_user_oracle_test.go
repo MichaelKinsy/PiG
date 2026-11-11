@@ -17,6 +17,7 @@ import (
 // letter case loosely. PiG lowercased, trimmed and dropped empty ids. rebuild counts a claim toward a conflict only for an id KEYBINDINGS
 // defines, which includes the tui.* ids; PiG reported a conflict for an unknown id.
 func TestUserKeybindingsMatchPi(t *testing.T) {
+	restoreTUIKeybindings(t)
 	configs := []map[string]any{
 		{"app.model.select": "CTRL+L"},
 		{"app.model.select": "Ctrl+L", "app.tools.expand": "ctrl+l"},

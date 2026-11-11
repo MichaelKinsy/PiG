@@ -120,6 +120,7 @@ func leakSurfaces() []leakSurface {
 // TestStripLeakGate strips every generated strip ID in turn and fails when an interactive surface still shows it, or
 // when a key of a stripped command still runs its action. It fails too when a strip list maps to no surface here.
 func TestStripLeakGate(t *testing.T) {
+	restoreTUIKeybindings(t)
 	surfaces := leakSurfaces()
 	for _, list := range pigstrip.Lists() {
 		if !slices.ContainsFunc(surfaces, func(s leakSurface) bool { return slices.Contains(s.lists, list) }) {
@@ -165,5 +166,4 @@ func TestStripLeakGate(t *testing.T) {
 			t.Fatalf("stock %s renders nothing; the gate would pass vacuously", surface.name)
 		}
 	}
-	NewKeybindingsManager("")
 }
