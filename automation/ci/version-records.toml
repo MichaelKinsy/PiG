@@ -272,3 +272,11 @@ paths = [
   "docs/site/docs/bug-ledger.md",
   "docs/extension-api-parity.md",
 ]
+
+[[record]]
+version = "1.5.1"
+reason = "A bug-ledger release note and a changelog fragment (generated from or written with the fix commit) name the Pi release the SDK local bash fix of D243 was written against; the fix is the SDK wire reply carrying Pi 06aa6563e's shellExit, which Pi 1.5.2 keeps unchanged."
+paths = [
+  "docs/site/docs/bug-ledger.md",
+  "changelog.d/d243-123827b998.md",
+]
