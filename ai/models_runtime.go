@@ -96,7 +96,9 @@ type Models struct {
 	refreshGenerations map[string]uint64
 	refreshControllers map[string]*modelsRefreshSignal
 	publicationChains  map[string]chan struct{}
-	operations         sync.WaitGroup
+	// operations joins every operation the collection runs, including a caller's login and stream; owned is the subset the collection runs for its own queries (refresh, auth resolution and check, availability), which Drain joins.
+	operations sync.WaitGroup
+	owned      sync.WaitGroup
 }
 
 type MutableModels = Models
@@ -133,13 +135,22 @@ type modelsOperationResult[T any] struct {
 	err   error
 }
 
-func awaitModelsOperation[T any](ctx context.Context, owner *sync.WaitGroup, run func() (T, error)) (T, error) {
+// goOwned runs work the collection performs for its own queries. Drain waits for it; a login or stream operation, which ends with its caller's context, is not part of it.
+func (m *Models) goOwned(run func()) {
+	m.owned.Add(1)
+	m.operations.Go(func() {
+		defer m.owned.Done()
+		run()
+	})
+}
+
+func awaitModelsOperation[T any](ctx context.Context, spawn func(func()), run func() (T, error)) (T, error) {
 	var zero T
 	if ctx.Err() != nil {
 		return zero, context.Cause(ctx)
 	}
 	result := make(chan modelsOperationResult[T], 1)
-	owner.Go(func() { value, err := run(); result <- modelsOperationResult[T]{value, err} })
+	spawn(func() { value, err := run(); result <- modelsOperationResult[T]{value, err} })
 	select {
 	case outcome := <-result:
 		if ctx.Err() != nil {
