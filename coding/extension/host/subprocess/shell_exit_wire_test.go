@@ -38,8 +38,7 @@ func TestShellExitCrossesTheWireAsErrorInfoShellExit(t *testing.T) {
 		if err := json.Unmarshal(encoded, &info); err != nil {
 			t.Fatal(err)
 		}
-		var read *tools.ShellTimeoutError
-		if errors.As(info.ToError(), &read) {
+		if _, ok := errors.AsType[*tools.ShellTimeoutError](info.ToError()); ok {
 			t.Fatalf("%s without a shellExit was read back as the local backend's timeout", encoded)
 		}
 	}
