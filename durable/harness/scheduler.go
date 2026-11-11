@@ -330,10 +330,7 @@ type TaskScheduler struct {
 	failedMigrations map[durable.TaskId]failedMigration
 	edges            map[durable.ConversationId]*durable.TaskId
 	settled          map[durable.TaskId]taskNode
-	// scopeAbove holds, for a task a walk up passed, the conversation its chain of owner tasks ends in (conversationAboveLocked):
-	// owners never change, so it holds until the sweep forgets the task, as settled does.
-	scopeAbove     map[durable.TaskId]durable.ConversationId
-	failFastChecks map[durable.TaskId]bool
+	failFastChecks   map[durable.TaskId]bool
 	// abandoned holds the live tasks with AbandonOnRestart found at open, from an earlier Harness. The first reservation
 	// pass abort-marks them with reason restart, so nothing of them or below them runs a phase again.
 	abandoned *orderedSet[durable.TaskId]
@@ -464,7 +461,6 @@ func NewTaskScheduler(options TaskSchedulerOptions) *TaskScheduler {
 		failedMigrations:    map[durable.TaskId]failedMigration{},
 		edges:               map[durable.ConversationId]*durable.TaskId{},
 		settled:             map[durable.TaskId]taskNode{},
-		scopeAbove:          map[durable.TaskId]durable.ConversationId{},
 		failFastChecks:      map[durable.TaskId]bool{},
 		abandoned:           newOrderedSet[durable.TaskId](),
 		liveOrder:           newOrderedSet[durable.TaskId](),

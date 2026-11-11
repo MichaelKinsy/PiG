@@ -13,67 +13,30 @@ import (
 )
 
 // addScopesAboveLocked adds the conversations above record to scopes: those whose idleness a change of it can change. It
-// is false when a node on the way up is not known. A conversation already in scopes has everything above it there too.
-//
-// The owners of a task never change, so the conversation an owner chain of tasks ends in is found once per task (scopeAbove)
-// and a walk jumps over it: the work of a change is the conversations on the way up, not the depth of the chain. A task
-// that parks, wakes or ends in a chain of n tasks costs O(1) once the chain above it was walked, where walking it each time
-// cost O(n), and O(n^2) for a chain whose tasks park one commit at a time.
+// is false when an owner edge or owner task on the way up is not known. A conversation already in scopes has everything
+// above it there too.
 func (s *TaskScheduler) addScopesAboveLocked(record anyTaskRecord, scopes map[durable.ConversationId]struct{}) bool {
-	at := parentOf(nodeOf(record))
+	// A child task lives in its owner's conversation, so the first conversation above a task is its own: the walk skips the
+	// owner chain between, which made a change deep in a long chain cost its depth (Pi 628d8ab52).
+	conversationId := record.ConversationId
 	for {
-		if at.isTask {
-			conversationId, known := s.conversationAboveLocked(at.task)
-			if !known {
-				return false
-			}
-			at = up{conversation: conversationId}
-			continue
-		}
-		if _, seen := scopes[at.conversation]; seen {
+		if _, seen := scopes[conversationId]; seen {
 			return true
 		}
-		scopes[at.conversation] = struct{}{}
-		edge, known := s.edgeLocked(at.conversation, nil)
+		scopes[conversationId] = struct{}{}
+		owner, known := s.edgeLocked(conversationId, nil)
 		if !known {
 			return false
 		}
-		if edge == nil {
+		if owner == nil {
 			return true
 		}
-		at = up{isTask: true, task: *edge}
-	}
-}
-
-// conversationAboveLocked returns the conversation the chain of owner tasks from id upward ends in: the conversation of its
-// topmost owner, which no task owns. It is false when a task on the way is not known. The answer is kept for every task
-// the walk passes (scopeAbove) until the sweep forgets that task.
-func (s *TaskScheduler) conversationAboveLocked(id durable.TaskId) (durable.ConversationId, bool) {
-	if conversationId, kept := s.scopeAbove[id]; kept {
-		return conversationId, true
-	}
-	var passed []durable.TaskId
-	var conversationId durable.ConversationId
-	for at := id; ; {
-		if kept, ok := s.scopeAbove[at]; ok {
-			conversationId = kept
-			break
+		node, known := s.nodeLocked(*owner, nil)
+		if !known {
+			return false
 		}
-		node, ok := s.nodeLocked(at, nil)
-		if !ok {
-			return 0, false
-		}
-		passed = append(passed, at)
-		if node.owner == nil {
-			conversationId = node.conversationId
-			break
-		}
-		at = *node.owner
+		conversationId = node.conversationId
 	}
-	for _, passedId := range passed {
-		s.scopeAbove[passedId] = conversationId
-	}
-	return conversationId, true
 }
 
 // advanceContextsLocked extends each kept context range with the entries a stored commit appended to its conversation, so
