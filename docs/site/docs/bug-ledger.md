@@ -1076,6 +1076,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-860776a](#bf-860776a) | A Google provider built from a model id without catalog metadata now sends its own earlier thinking blocks as… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8620e9e](#bf-8620e9e) | The SDK `DefaultResourceLoader` lists a tool or flag that two extensions register as an error of the… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-86364b4](#bf-86364b4) | fix(minimatch): case-insensitive patterns compare as a JavaScript RegExp does | PiG's own defect | All platforms | Unreleased |
+| [BF-8665cdf](#bf-8665cdf) | p2: the first code-mode call of a session no longer fails with "Tool codemode is not available" when the… | PiG's own defect | All platforms | Unreleased |
 | [BF-866c7f9](#bf-866c7f9) | fix(rpc): two prompts of one batch answer in request order | PiG's own defect | All platforms | Unreleased |
 | [BF-869cef8](#bf-869cef8) | A pi-messages stream event that is a number, string, boolean or array is skipped, as Pi skips an event of… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-86c411a](#bf-86c411a) | fix(builtin): codemode and tool_search declare their parameters in TypeBox key order | PiG's own defect | All platforms | Unreleased |
@@ -16679,6 +16680,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `86364b4411` (2026-10-10)
 - **Tests:** `internal/minimatch/minimatch_oracle_test.go::TestMatchAgainstNodeMinimatch`
+
+### BF-8665cdf
+
+**p2: the first code-mode call of a session no longer fails with "Tool codemode is not available" when the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** p2: the first code-mode call of a session no longer fails with "Tool codemode is not available" when the first message is sent while the worker is still loading its plugins.
+- **Root cause:** The server routes a send to a worker that has started, before it is ready. Its Submit resumes scheduling, and the reserve pass snapshots the registry to plan the first request's tools. In Pi the continuations that make the objects behind HarnessHost live (codemode contributing its tool) run before the loop serves the next IPC request, so the snapshot has them; the Go worker serves the send on its own goroutine in that gap, the snapshot lacks codemode, and the model's first codemode call fails with "Tool codemode is not available".
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8665cdf121` (2026-11-11)
+- **Tests:** `apps/p2/e2e/loadgate/loadgate_test.go::TestMain`, `apps/p2/e2e/loadgate/loadgate_test.go::TestSendRoutedBeforeTheWorkerIsLoadedOffersThePluginsTool`, `apps/p2/runtime/load_gate_test.go::TestLoadGateAlreadyCancelledFailsWithoutWaiting`, `apps/p2/runtime/load_gate_test.go::TestLoadGateCancelReturnsTheCauseToThatWaiterOnly`, `apps/p2/runtime/load_gate_test.go::TestLoadGateFailedLoadAnswersEveryRequestWithItsError`, `apps/p2/runtime/load_gate_test.go::TestLoadGateNilIsOpen`, `apps/p2/runtime/load_gate_test.go::TestLoadGateOpensForWaitersAndLaterRequests`
+- **Release note:** p2: the first code-mode call of a session no longer fails with "Tool codemode is not available" when the first message is sent while the worker is still loading its plugins. The server routes a send to a worker that has started, before it is ready, and the Harness planned that turn's tools before the codemode plugin had contributed its tool. Pi's single event loop runs the plugin's contribution before it serves such a send; the worker now makes the chat methods and `Chat.send` wait until its plugins are loaded (a failed load or a cancelled request answers the caller with its error), without changing when scheduling resumes.
 
 ### BF-866c7f9
 
