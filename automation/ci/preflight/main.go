@@ -83,9 +83,31 @@ func defaultCache() string {
 }
 
 func runCommand(ctx context.Context, cfg config, args []string, stdout, stderr io.Writer) int {
+	o, reports, err := parseRunFlags(args, stderr)
+	if err != nil {
+		if !errors.Is(err, errUsage) {
+			_, _ = fmt.Fprintln(stderr, "preflight run:", err)
+		}
+		return 2
+	}
+	hs, err := runBatch(ctx, cfg, o, stdout)
+	if err = errors.Join(err, reports.write(hs, err, o.budget)); err != nil {
+		_, _ = fmt.Fprintln(stderr, "preflight run:", err)
+		return 2
+	}
+	return 0
+}
+
+type runReports struct{ next, handled string }
+
+// errUsage is a flag error the flag package has already printed.
+var errUsage = errors.New("usage")
+
+func parseRunFlags(args []string, stderr io.Writer) (runOptions, runReports, error) {
 	fs := flag.NewFlagSet("run", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	o := runOptions{token: token()}
+	var reports runReports
 	fs.StringVar(&o.repo, "repo", os.Getenv("GITHUB_REPOSITORY"), "owner/repo whose PRs to check")
 	fs.StringVar(&o.root, "root", ".", "main's tree")
 	fs.StringVar(&o.bin, "bin", "", "main's built tools and the scanners")
@@ -98,61 +120,61 @@ func runCommand(ctx context.Context, cfg config, args []string, stdout, stderr i
 	fs.IntVar(&o.budget, "budget", 200, "PRs a job fully checks before it leaves the rest to next jobs (see --next); reused PRs do not count; 0 is no limit")
 	fs.DurationVar(&o.timeBudget, "time-budget", 0, "start no PR after this long; 0 is no limit")
 	fs.StringVar(&o.bot, "bot", defaultBot, "the account the pre-flight comments as; only its comment holds a PR's state")
-	handledPath := fs.String("handled", "", "write what the job did with each PR to this file, for the verify job")
-	next := fs.String("next", "", "write the PRs the budget deferred to this file, as a JSON list of --prs values of --budget PRs each, for next jobs")
+	fs.StringVar(&reports.handled, "handled", "", "write what the job did with each PR to this file, for the verify job")
+	fs.StringVar(&reports.next, "next", "", "write the PRs the budget deferred to this file, as a JSON list of --prs values of --budget PRs each, for next jobs")
 	prs := fs.String("prs", "", "PR numbers, space- or comma-separated; empty runs every open PR")
 	if err := fs.Parse(args); err != nil {
-		return 2
+		return o, reports, errUsage
 	}
-	for f := range strings.FieldsFuncSeq(*prs, func(r rune) bool { return r == ' ' || r == ',' }) {
-		n, err := strconv.Atoi(f)
-		if err != nil || n < 1 {
-			_, _ = fmt.Fprintf(stderr, "preflight run: %q is not a PR number\n", f)
-			return 2
-		}
-		o.prs = append(o.prs, n)
+	var err error
+	if o.prs, err = parsePRs(*prs); err != nil {
+		return o, reports, err
 	}
+	// The tools run in other directories.
 	for _, p := range []*string{&o.root, &o.bin, &o.work} {
-		// The tools run in other directories.
 		if *p != "" {
-			abs, err := filepath.Abs(*p)
-			if err != nil {
-				_, _ = fmt.Fprintln(stderr, "preflight run:", err)
-				return 2
+			if *p, err = filepath.Abs(*p); err != nil {
+				return o, reports, err
 			}
-			*p = abs
 		}
 	}
 	switch {
 	case o.repo == "" || o.bin == "" || o.work == "":
-		_, _ = fmt.Fprintln(stderr, "preflight run: --repo, --bin and --work are required")
-		return 2
+		return o, reports, errors.New("--repo, --bin and --work are required")
 	case o.token == "":
-		_, _ = fmt.Fprintln(stderr, "preflight run: GITHUB_TOKEN or GH_TOKEN is required")
-		return 2
+		return o, reports, errors.New("GITHUB_TOKEN or GH_TOKEN is required")
 	}
-	hs, err := runBatch(ctx, cfg, o, stdout)
-	if *next != "" {
-		if werr := writeNext(*next, chunks(deferredPRs(hs), o.budget)); werr != nil {
-			err = errors.Join(err, werr)
+	return o, reports, nil
+}
+
+func parsePRs(list string) ([]int, error) {
+	var prs []int
+	for f := range strings.FieldsFuncSeq(list, func(r rune) bool { return r == ' ' || r == ',' }) {
+		n, err := strconv.Atoi(f)
+		if err != nil || n < 1 {
+			return nil, fmt.Errorf("%q is not a PR number", f)
 		}
+		prs = append(prs, n)
+	}
+	return prs, nil
+}
+
+// Also when the job failed: the deferred PRs still need their jobs, and verify its report.
+func (r runReports) write(hs []handled, runErr error, budget int) error {
+	var err error
+	if r.next != "" {
+		err = writeNext(r.next, chunks(deferredPRs(hs), budget))
 		for i := range hs {
 			hs[i].PassedOn = hs[i].Result == resultDeferred
 		}
 	}
-	if err != nil && len(hs) == 0 {
-		hs = []handled{{Result: resultError, Error: err.Error()}}
+	if runErr != nil && len(hs) == 0 {
+		hs = []handled{{Result: resultError, Error: runErr.Error()}}
 	}
-	if *handledPath != "" {
-		if werr := writeJSON(*handledPath, append([]handled{}, hs...)); werr != nil {
-			err = errors.Join(err, werr)
-		}
+	if r.handled != "" {
+		err = errors.Join(err, writeJSON(r.handled, append([]handled{}, hs...)))
 	}
-	if err != nil {
-		_, _ = fmt.Fprintln(stderr, "preflight run:", err)
-		return 2
-	}
-	return 0
+	return err
 }
 
 // One line, with the spaces inside each group: the workflow passes it on as a job output unchanged.

@@ -129,66 +129,91 @@ func alertBody(c check, d *data, ev evaluation) string {
 }
 
 func record(ctx context.Context, cfg config, d *data, ev evaluation, o recordOptions, log io.Writer) error {
-	report := markdown(cfg, d, ev)
-	status, description := statusFor(cfg, ev)
-	prev := d.Previous
-	st := state{Version: ev.Version, Engine: ev.Engine, Head: ev.Head, Base: ev.Base, Checks: ev.Checks, Body: bodyHash(d.Pull.Body), Status: status + " " + description}
-	due, alerted := alertsFor(cfg, ev, prev)
-	st.Alerted = alerted
-	setStatus := prev == nil || prev.Head != st.Head || prev.Status != st.Status
-	body, bodyErr := commentBody(cfg, d, ev, report, st)
-	writeBody := bodyErr == nil && body != o.comment.Body
-	summary := func() error {
-		if path := os.Getenv("GITHUB_STEP_SUMMARY"); path != "" {
-			return appendFile(path, report)
-		}
-		return nil
-	}
+	r := newRecording(cfg, d, ev, o.comment)
 	if o.dryRun {
-		if err := summary(); err != nil {
-			return err
-		}
-		if setStatus {
-			logf(log, "record (dry run): status %s %q on %s", status, description, short(ev.Head))
-		}
-		if writeBody {
-			shown, _, _ := strings.Cut(body, stateOpen)
-			logf(log, "record (dry run): comment\n%s", shown)
-		}
-		if !setStatus && !writeBody && bodyErr == nil {
-			logf(log, "record (dry run): nothing changed, nothing to send")
-		}
-		for _, c := range due {
-			logf(log, "record (dry run): alert\n%s", alertBody(c, d, ev))
-		}
-		return bodyErr
+		return r.show(log)
 	}
-	a := newAPI(o.apiBase, o.token)
-	a.log = log
-	prefix := "repos/" + d.Repo
-	// The status first: it gates the PR, so nothing after it may keep it from being set.
-	if setStatus {
-		if err := a.send(ctx, http.MethodPost, fmt.Sprintf("%s/statuses/%s", prefix, ev.Head), map[string]string{"state": status, "description": description, "context": statusContext}, nil); err != nil {
-			return err
-		}
-		logf(log, "record: status %s on %s", status, short(ev.Head))
+	return r.send(ctx, o, log)
+}
+
+type recording struct {
+	d                   *data
+	ev                  evaluation
+	report, body        string
+	status, description string
+	bodyErr             error
+	setStatus           bool
+	writeBody           bool
+	due                 []check
+	commentID           int64
+}
+
+func newRecording(cfg config, d *data, ev evaluation, comment prComment) recording {
+	r := recording{d: d, ev: ev, report: markdown(cfg, d, ev), commentID: comment.ID}
+	r.status, r.description = statusFor(cfg, ev)
+	st := state{Version: ev.Version, Engine: ev.Engine, Head: ev.Head, Base: ev.Base, Checks: ev.Checks, Body: bodyHash(d.Pull.Body), Status: r.status + " " + r.description}
+	r.due, st.Alerted = alertsFor(cfg, ev, d.Previous)
+	prev := d.Previous
+	r.setStatus = prev == nil || prev.Head != st.Head || prev.Status != st.Status
+	r.body, r.bodyErr = commentBody(cfg, d, ev, r.report, st)
+	r.writeBody = r.bodyErr == nil && r.body != comment.Body
+	return r
+}
+
+func (r recording) summary() error {
+	if path := os.Getenv("GITHUB_STEP_SUMMARY"); path != "" {
+		return appendFile(path, r.report)
 	}
-	if err := errors.Join(summary(), bodyErr); err != nil {
+	return nil
+}
+
+func (r recording) show(log io.Writer) error {
+	if err := r.summary(); err != nil {
 		return err
 	}
-	for _, c := range due {
-		if err := a.send(ctx, http.MethodPost, fmt.Sprintf("%s/issues/%d/comments", prefix, d.PR), map[string]string{"body": alertBody(c, d, ev)}, nil); err != nil {
+	if r.setStatus {
+		logf(log, "record (dry run): status %s %q on %s", r.status, r.description, short(r.ev.Head))
+	}
+	if r.writeBody {
+		shown, _, _ := strings.Cut(r.body, stateOpen)
+		logf(log, "record (dry run): comment\n%s", shown)
+	}
+	if !r.setStatus && !r.writeBody && r.bodyErr == nil {
+		logf(log, "record (dry run): nothing changed, nothing to send")
+	}
+	for _, c := range r.due {
+		logf(log, "record (dry run): alert\n%s", alertBody(c, r.d, r.ev))
+	}
+	return r.bodyErr
+}
+
+func (r recording) send(ctx context.Context, o recordOptions, log io.Writer) error {
+	a := newAPI(o.apiBase, o.token)
+	a.log = log
+	prefix := "repos/" + r.d.Repo
+	// The status first: it gates the PR, so nothing after it may keep it from being set.
+	if r.setStatus {
+		if err := a.send(ctx, http.MethodPost, fmt.Sprintf("%s/statuses/%s", prefix, r.ev.Head), map[string]string{"state": r.status, "description": r.description, "context": statusContext}, nil); err != nil {
+			return err
+		}
+		logf(log, "record: status %s on %s", r.status, short(r.ev.Head))
+	}
+	if err := errors.Join(r.summary(), r.bodyErr); err != nil {
+		return err
+	}
+	for _, c := range r.due {
+		if err := a.send(ctx, http.MethodPost, fmt.Sprintf("%s/issues/%d/comments", prefix, r.d.PR), map[string]string{"body": alertBody(c, r.d, r.ev)}, nil); err != nil {
 			return err
 		}
 		logf(log, "record: alert for %s posted", c.Name)
 	}
-	if !writeBody {
-		if !setStatus {
-			logf(log, "record: nothing changed, nothing sent")
-		}
-		return nil
+	if r.writeBody {
+		return writeComment(ctx, a, prefix, r.d.PR, r.commentID, r.body, log)
 	}
-	return writeComment(ctx, a, prefix, d.PR, o.comment.ID, body, log)
+	if !r.setStatus {
+		logf(log, "record: nothing changed, nothing sent")
+	}
+	return nil
 }
 
 const shortened = "\nThe warnings are left out: with them the report is too long for a comment. The run's log and step summary hold them.\n"

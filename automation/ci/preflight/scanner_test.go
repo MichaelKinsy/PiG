@@ -627,3 +627,12 @@ func TestFlattenSymlinksNeverEntersALink(t *testing.T) {
 		t.Fatal("content read a head without flattening it")
 	}
 }
+
+func TestAToolOnPathRunsWhenBinHasNone(t *testing.T) {
+	dir := t.TempDir()
+	ws := workspace{dir: dir, bin: filepath.Join(dir, "bin"), added: filepath.Join(dir, "added")}
+	s := scanSpec{Input: inputAdded, Run: []string{"sh", "-c", "exit 0"}, Exit: exitCodes{Clean: []int{0}}, Report: reportSpec{In: "stdout", Format: "lines", Pattern: `(?P<message>.+)`}}
+	if o := runScan(context.Background(), scanCheck(t, s), &data{}, ws, io.Discard); o.result != resultPass {
+		t.Fatalf("a tool on PATH: %+v", o)
+	}
+}

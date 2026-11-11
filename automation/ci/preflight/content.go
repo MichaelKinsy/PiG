@@ -200,52 +200,55 @@ func (f *forbiddenRule) validate(seen map[string]bool) error {
 	if err := uniqueID(f.ID, seen); err != nil {
 		return err
 	}
-	if f.Code == "" || f.Description == "" {
+	switch {
+	case f.Code == "" || f.Description == "":
 		return errors.New("needs a code and a description")
+	case (f.Pattern == "") == (f.Match == ""):
+		return errors.New("needs either a pattern or a match")
+	case f.Also != "" && f.Pattern == "":
+		return errors.New("also narrows a pattern")
+	case slices.ContainsFunc(f.Allow, func(a allowEntry) bool { return a.Path == "" || a.Reason == "" }):
+		return errors.New("an allow entry needs a path and a reason")
 	}
 	if err := f.Files.compile(); err != nil {
 		return err
 	}
-	if (f.Pattern == "") == (f.Match == "") {
-		return errors.New("needs either a pattern or a match")
-	}
-	if f.Also != "" && f.Pattern == "" {
-		return errors.New("also narrows a pattern")
-	}
-	if f.Pattern != "" {
-		re, err := regexp.Compile(f.Pattern)
-		if err != nil {
-			return fmt.Errorf("pattern: %w", err)
-		}
-		f.pattern = re
-		if f.Also != "" {
-			if f.also, err = regexp.Compile(f.Also); err != nil {
-				return fmt.Errorf("also: %w", err)
-			}
-		}
-		if f.Value != nil && re.NumSubexp() < 1 {
-			return errors.New("a value rule needs a pattern with a capture group")
-		}
-	}
 	if f.Match != "" {
-		m, ok := matchers[f.Match]
-		if !ok {
-			return fmt.Errorf("unknown match %q", f.Match)
-		}
-		if err := m.validate(params(f.With)); err != nil {
-			return fmt.Errorf("match %s: %w", f.Match, err)
+		return f.validateMatch()
+	}
+	return f.compilePattern()
+}
+
+func (f *forbiddenRule) validateMatch() error {
+	m, ok := matchers[f.Match]
+	if !ok {
+		return fmt.Errorf("unknown match %q", f.Match)
+	}
+	if err := m.validate(params(f.With)); err != nil {
+		return fmt.Errorf("match %s: %w", f.Match, err)
+	}
+	return nil
+}
+
+func (f *forbiddenRule) compilePattern() error {
+	var err error
+	if f.pattern, err = regexp.Compile(f.Pattern); err != nil {
+		return fmt.Errorf("pattern: %w", err)
+	}
+	if f.Also != "" {
+		if f.also, err = regexp.Compile(f.Also); err != nil {
+			return fmt.Errorf("also: %w", err)
 		}
 	}
-	if f.Value != nil && f.Value.Not != "" {
-		re, err := regexp.Compile(f.Value.Not)
-		if err != nil {
+	if f.Value == nil {
+		return nil
+	}
+	if f.pattern.NumSubexp() < 1 {
+		return errors.New("a value rule needs a pattern with a capture group")
+	}
+	if f.Value.Not != "" {
+		if f.Value.not, err = regexp.Compile(f.Value.Not); err != nil {
 			return fmt.Errorf("value not: %w", err)
-		}
-		f.Value.not = re
-	}
-	for _, a := range f.Allow {
-		if a.Path == "" || a.Reason == "" {
-			return errors.New("an allow entry needs a path and a reason")
 		}
 	}
 	return nil
@@ -339,39 +342,51 @@ func checkForbidden(rules []forbiddenRule, files []textFile, versions map[string
 	for _, file := range files {
 		text, lineAt := file.joined()
 		for _, r := range rules {
-			if !r.Files.matches(file.name) || slices.ContainsFunc(r.Allow, func(a allowEntry) bool { return a.Path == file.name }) {
+			if !r.appliesTo(file) {
 				continue
 			}
-			if file.binary && !readsBytes(r) {
-				continue
-			}
-			var hits []finding
-			switch {
-			case r.Match != "":
+			hits := r.patternHits(file, versions)
+			if r.Match != "" {
 				hits = matchers[r.Match].run(file.name, text, lineAt, params(r.With))
-			default:
-				for _, l := range file.lines {
-					if r.also != nil && !r.also.MatchString(l.text) {
-						continue
-					}
-					for _, sub := range r.pattern.FindAllStringSubmatch(l.text, -1) {
-						if r.Value != nil && !r.Value.accepts(firstGroup(sub), versions) {
-							continue
-						}
-						hits = append(hits, finding{file: file.name, line: l.n})
-					}
-				}
 			}
 			for _, h := range hits {
-				msg := r.Description
-				if h.message != "" {
-					msg += " (" + h.message + ")"
-				}
-				found = append(found, finding{file: h.file, line: h.line, message: r.Code + ": " + msg})
+				found = append(found, r.finding(h))
 			}
 		}
 	}
 	return dedupeFindings(found)
+}
+
+func (r forbiddenRule) appliesTo(file textFile) bool {
+	return r.Files.matches(file.name) &&
+		!slices.ContainsFunc(r.Allow, func(a allowEntry) bool { return a.Path == file.name }) &&
+		(!file.binary || readsBytes(r))
+}
+
+func (r forbiddenRule) patternHits(file textFile, versions map[string]string) []finding {
+	if r.pattern == nil {
+		return nil
+	}
+	var hits []finding
+	for _, l := range file.lines {
+		if r.also != nil && !r.also.MatchString(l.text) {
+			continue
+		}
+		for _, sub := range r.pattern.FindAllStringSubmatch(l.text, -1) {
+			if r.Value == nil || r.Value.accepts(firstGroup(sub), versions) {
+				hits = append(hits, finding{file: file.name, line: l.n})
+			}
+		}
+	}
+	return hits
+}
+
+func (r forbiddenRule) finding(h finding) finding {
+	msg := r.Description
+	if h.message != "" {
+		msg += " (" + h.message + ")"
+	}
+	return finding{file: h.file, line: h.line, message: r.Code + ": " + msg}
 }
 
 func readsBytes(r forbiddenRule) bool {

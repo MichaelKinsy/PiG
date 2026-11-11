@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"io"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"os/exec"
@@ -340,5 +341,17 @@ func TestWorkflowNamesTheFirstReport(t *testing.T) {
 	hs, problems := readHandled(strings.TrimSpace(filepath.Join(temp, "handled")))
 	if len(problems) != 0 || len(hs) != 2 || !strings.Contains(string(seen), firstReport) {
 		t.Fatalf("handled %+v, problems %+v, seen %q", hs, problems, seen)
+	}
+}
+
+func TestFindIssuesForAUserAccount(t *testing.T) {
+	var query string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		query = r.URL.Query().Get("q")
+		_, _ = io.WriteString(w, `{"items":[]}`)
+	}))
+	defer server.Close()
+	if _, err := findIssues(context.Background(), newAPI(server.URL, "t"), "o/r", "a-user"); err != nil || !strings.HasSuffix(query, " author:a-user") {
+		t.Fatalf("query %q, err %v", query, err)
 	}
 }

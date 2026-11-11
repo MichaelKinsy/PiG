@@ -578,23 +578,14 @@ func ruleLicenseNotices(d *data, p params, env *ruleEnv) outcome {
 		}
 		hasHeader := false
 		for _, l := range addedNumbered(f.Patch) {
-			if m := spdxLicenseRE.FindStringSubmatch(l.text); m != nil {
-				hasHeader = true
-				for _, id := range licenseIDRE.FindAllString(m[1], -1) {
-					if up := strings.ToUpper(id); up == "AND" || up == "OR" || up == "WITH" {
-						continue
-					}
-					if !slices.Contains(licenses, id) {
-						problems = append(problems, fmt.Sprintf("%s:%d declares %s, which is not in LICENSES/", f.Filename, l.n, id))
-					}
+			ids, header := declaredLicenses(l.text)
+			hasHeader = hasHeader || header
+			for _, id := range ids {
+				if !slices.Contains(licenses, id) {
+					problems = append(problems, fmt.Sprintf("%s:%d declares %s, which is not in LICENSES/", f.Filename, l.n, id))
 				}
 			}
-			if copyrightRE.MatchString(l.text) {
-				warnings = append(warnings, warning{File: f.Filename, Line: l.n, Blob: f.SHA, Notice: strings.TrimSpace(l.text), Text: "adds a copyright notice"})
-			}
-			if m := licenseTextRE.FindString(l.text); m != "" {
-				warnings = append(warnings, warning{File: f.Filename, Line: l.n, Blob: f.SHA, Notice: strings.TrimSpace(l.text), Text: fmt.Sprintf("adds license text (%q): is this code from a third party?", m)})
-			}
+			warnings = append(warnings, noticeWarnings(f, l)...)
 		}
 		if f.Status == "added" && codeFile.MatchString(f.Filename) && !hasHeader {
 			warnings = append(warnings, warning{File: f.Filename, Blob: f.SHA, Notice: "no SPDX-License-Identifier header", Text: "is new and has no SPDX-License-Identifier header; REUSE.toml's blanket license covers it"})
@@ -606,6 +597,30 @@ func ruleLicenseNotices(d *data, p params, env *ruleEnv) outcome {
 	}
 	o.warnings = warnings
 	return o
+}
+
+func declaredLicenses(line string) (ids []string, header bool) {
+	m := spdxLicenseRE.FindStringSubmatch(line)
+	if m == nil {
+		return nil, false
+	}
+	for _, id := range licenseIDRE.FindAllString(m[1], -1) {
+		if up := strings.ToUpper(id); up != "AND" && up != "OR" && up != "WITH" {
+			ids = append(ids, id)
+		}
+	}
+	return ids, true
+}
+
+func noticeWarnings(f prFile, l numberedLine) []warning {
+	var ws []warning
+	if copyrightRE.MatchString(l.text) {
+		ws = append(ws, warning{File: f.Filename, Line: l.n, Blob: f.SHA, Notice: strings.TrimSpace(l.text), Text: "adds a copyright notice"})
+	}
+	if m := licenseTextRE.FindString(l.text); m != "" {
+		ws = append(ws, warning{File: f.Filename, Line: l.n, Blob: f.SHA, Notice: strings.TrimSpace(l.text), Text: fmt.Sprintf("adds license text (%q): is this code from a third party?", m)})
+	}
+	return ws
 }
 
 func validateAddedLinesWarn(p params) error {

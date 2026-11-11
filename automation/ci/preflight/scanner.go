@@ -88,13 +88,42 @@ type workspace struct {
 }
 
 func prepareWorkspace(ctx context.Context, d *data, scans []check, ws workspace, log io.Writer) error {
-	need := map[string]bool{}
-	var patterns, overlays []string
+	need, patterns, overlays := scanNeeds(scans)
+	changed, whole, err := writeAdded(d, ws, need[inputAdded])
+	if err != nil {
+		return err
+	}
+	if !need["head"] && len(whole) == 0 {
+		return nil
+	}
+	for _, f := range changed {
+		patterns = append(patterns, "/"+f)
+	}
+	if err := checkoutHead(ctx, d, ws, patterns, log); err != nil {
+		return err
+	}
+	for _, rel := range slices.Compact(slices.Sorted(slices.Values(overlays))) {
+		if err := overlay(ws.main, ws.head, rel); err != nil {
+			return err
+		}
+	}
+	if err := copyFromHead(ws.head, ws.added, whole); err != nil {
+		return err
+	}
+	if !need[inputTree] {
+		return nil
+	}
+	if err := copyFromHead(ws.head, ws.tree, changed); err != nil {
+		return err
+	}
+	return runGit(ctx, "", "", [][]string{{"-C", ws.tree, "init", "-q"}, {"-C", ws.tree, "add", "-A"}})
+}
+
+func scanNeeds(scans []check) (need map[string]bool, patterns, overlays []string) {
+	need = map[string]bool{}
 	for _, c := range scans {
 		need[c.Scan.Input] = true
-		if c.Scan.Input != inputAdded {
-			need["head"] = true
-		}
+		need["head"] = need["head"] || c.Scan.Input != inputAdded
 		for _, p := range c.Scan.Checkout {
 			if p != "/*" {
 				p = "/" + p
@@ -103,38 +132,40 @@ func prepareWorkspace(ctx context.Context, d *data, scans []check, ws workspace,
 		}
 		overlays = append(overlays, c.Scan.Overlay...)
 	}
-	var changedFiles, whole []string
+	return need, patterns, overlays
+}
+
+func writeAdded(d *data, ws workspace, added bool) (changed, whole []string, err error) {
 	for _, f := range d.Files {
 		if f.Status == "removed" {
 			continue
 		}
-		changedFiles = append(changedFiles, f.Filename)
-		if !need[inputAdded] {
-			continue
-		}
-		if f.whole() {
+		changed = append(changed, f.Filename)
+		switch {
+		case !added:
+		case f.whole():
 			whole = append(whole, f.Filename)
-			need["head"] = true
-			continue
-		}
-		target, err := inside(ws.added, f.Filename)
-		if err != nil {
-			return err
-		}
-		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
-			return err
-		}
-		lines := addedLines(f.Patch)
-		if err := os.WriteFile(target, []byte(strings.Join(lines, "\n")+"\n"), 0o600); err != nil {
-			return err
+		default:
+			if err := writeFileUnder(ws.added, f.Filename, []byte(strings.Join(addedLines(f.Patch), "\n")+"\n")); err != nil {
+				return nil, nil, err
+			}
 		}
 	}
-	if !need["head"] {
-		return nil
+	return changed, whole, nil
+}
+
+func writeFileUnder(dir, name string, content []byte) error {
+	target, err := inside(dir, name)
+	if err != nil {
+		return err
 	}
-	for _, f := range changedFiles {
-		patterns = append(patterns, "/"+f)
+	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+		return err
 	}
+	return os.WriteFile(target, content, 0o600)
+}
+
+func checkoutHead(ctx context.Context, d *data, ws workspace, patterns []string, log io.Writer) error {
 	slices.Sort(patterns)
 	patterns = slices.Compact(patterns)
 	start := time.Now()
@@ -149,10 +180,8 @@ func prepareWorkspace(ctx context.Context, d *data, scans []check, ws workspace,
 	if slices.Contains(patterns, "/*") {
 		steps = [][]string{steps[0], {"-C", ws.head, "fetch", "-q", "--depth=1", remote, ref}, steps[3]}
 	}
-	for _, args := range steps {
-		if out, err := gitAuth(ctx, ws.remote, ws.token, args...); err != nil {
-			return fmt.Errorf("git %s: %w\n%s", strings.Join(args, " "), err, out)
-		}
+	if err := runGit(ctx, ws.remote, ws.token, steps); err != nil {
+		return err
 	}
 	got, err := git(ctx, "-C", ws.head, "rev-parse", "HEAD")
 	if err != nil {
@@ -162,25 +191,13 @@ func prepareWorkspace(ctx context.Context, d *data, scans []check, ws workspace,
 		return fmt.Errorf("%s is at %s, the evaluated head is %s; the PR moved, the next run takes it", ref, short(got), short(d.Pull.Head.SHA))
 	}
 	logf(log, "head %s checked out (%d path(s), %s)", short(got), len(patterns), time.Since(start).Round(time.Millisecond))
-	if err := flattenSymlinks(ws.head); err != nil {
-		return err
-	}
-	for _, rel := range slices.Compact(slices.Sorted(slices.Values(overlays))) {
-		if err := overlay(ws.main, ws.head, rel); err != nil {
-			return err
-		}
-	}
-	if err := copyFromHead(ws.head, ws.added, whole); err != nil {
-		return err
-	}
-	if need[inputTree] {
-		if err := copyFromHead(ws.head, ws.tree, changedFiles); err != nil {
-			return err
-		}
-		for _, args := range [][]string{{"-C", ws.tree, "init", "-q"}, {"-C", ws.tree, "add", "-A"}} {
-			if out, err := git(ctx, args...); err != nil {
-				return fmt.Errorf("git %s: %w\n%s", strings.Join(args, " "), err, out)
-			}
+	return flattenSymlinks(ws.head)
+}
+
+func runGit(ctx context.Context, remote, token string, steps [][]string) error {
+	for _, args := range steps {
+		if out, err := gitAuth(ctx, remote, token, args...); err != nil {
+			return fmt.Errorf("git %s: %w\n%s", strings.Join(args, " "), err, out)
 		}
 	}
 	return nil
@@ -224,10 +241,8 @@ func mergeTree(ctx context.Context, ws workspace, d *data) (bool, error) {
 	if err := os.RemoveAll(dir); err != nil {
 		return false, err
 	}
-	for _, args := range steps {
-		if out, err := gitAuth(ctx, ws.remote, ws.token, args...); err != nil {
-			return false, fmt.Errorf("git %s: %w\n%s", strings.Join(args, " "), err, out)
-		}
+	if err := runGit(ctx, ws.remote, ws.token, steps); err != nil {
+		return false, err
 	}
 	got, err := git(ctx, "-C", dir, "rev-parse", "refs/preflight/head")
 	if err != nil {
@@ -291,31 +306,58 @@ func runScan(ctx context.Context, c check, d *data, ws workspace, log io.Writer)
 	if s.selectRE != nil && len(files) == 0 {
 		return pass("no file it scans changed")
 	}
-	out := filepath.Join(ws.dir, c.Name+".report")
 	input := map[string]string{inputAdded: ws.added, inputChanged: ws.head, inputTree: ws.tree}[s.Input]
-	expand := func(arg string) string {
-		return strings.NewReplacer("{main}", ws.main, "{bin}", ws.bin, "{head}", ws.head, "{input}", input, "{out}", out, "{data}", ws.data, "{self}", ws.self).Replace(arg)
-	}
-	var args []string
-	for _, a := range s.Run {
-		if a == "{files}" {
-			for _, f := range files {
-				args = append(args, f.Filename)
-			}
-			continue
-		}
-		args = append(args, expand(a))
-	}
-	program := args[0]
-	if !strings.Contains(program, "/") {
-		if p := filepath.Join(ws.bin, program); fileExists(p) {
-			program = p
-		}
-	}
+	out := filepath.Join(ws.dir, c.Name+".report")
 	runCtx, cancel := context.WithTimeout(ctx, scanTimeout)
 	defer cancel()
+	cmd, name := scanCommand(runCtx, s, files, ws, input, out)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	start := time.Now()
+	code, err := exitCode(cmd.Run())
+	if err != nil {
+		return outcome{result: resultError, reason: fmt.Sprintf("%s could not run: %v", name, err)}
+	}
+	logf(log, "scan %s: %s exited %d after %s", c.Name, name, code, time.Since(start).Round(time.Millisecond))
+	said := firstLines(stderr.String()+stdout.String(), 3)
+	findings := slices.Contains(s.Exit.Findings, code)
+	if !findings && !slices.Contains(s.Exit.Clean, code) {
+		return outcome{result: resultError, reason: fmt.Sprintf("%s exited %d: %s", name, code, said)}
+	}
+	found, err := readFindings(s.Report, out, stdout.Bytes())
+	if err != nil {
+		return outcome{result: resultError, reason: fmt.Sprintf("%s report: %v", name, err)}
+	}
+	for i := range found {
+		found[i].file = relativeTo(found[i].file, []string{ws.added, ws.head, ws.tree, input})
+	}
+	if s.Input == inputAdded {
+		toHeadLines(found, d)
+	}
+	if findings && len(found) == 0 && s.Report.UnreadFindings != "pass" {
+		return outcome{result: resultError, reason: fmt.Sprintf("%s exited %d for findings, but none could be read from its report: %s", name, code, said)}
+	}
+	return judgeFindings(s, found, d, len(files), fmt.Sprintf("%s exited %d", name, code), findings)
+}
+
+func scanCommand(ctx context.Context, s *scanSpec, files []prFile, ws workspace, input, out string) (cmd *exec.Cmd, name string) {
+	expand := strings.NewReplacer("{main}", ws.main, "{bin}", ws.bin, "{head}", ws.head, "{input}", input, "{out}", out, "{data}", ws.data, "{self}", ws.self).Replace
+	var args []string
+	for _, a := range s.Run {
+		if a != "{files}" {
+			args = append(args, expand(a))
+			continue
+		}
+		for _, f := range files {
+			args = append(args, f.Filename)
+		}
+	}
+	program := args[0]
+	if p := filepath.Join(ws.bin, program); !strings.Contains(program, "/") && fileExists(p) {
+		program = p
+	}
 	//nolint:gosec // G204: the program and arguments are config.yaml's on main; the PR supplies only file names, passed as arguments, never through a shell.
-	cmd := exec.CommandContext(runCtx, program, args[1:]...)
+	cmd = exec.CommandContext(ctx, program, args[1:]...)
 	cmd.Dir = ws.dir
 	if s.Dir != "" {
 		cmd.Dir = expand(s.Dir)
@@ -324,46 +366,29 @@ func runScan(ctx context.Context, c check, d *data, ws workspace, log io.Writer)
 	for k, v := range s.Env {
 		cmd.Env = append(cmd.Env, k+"="+expand(v))
 	}
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout, cmd.Stderr = &stdout, &stderr
-	start := time.Now()
-	err := cmd.Run()
-	code := 0
-	var exitErr *exec.ExitError
-	switch {
-	case errors.As(err, &exitErr):
-		code = exitErr.ExitCode()
-	case err != nil:
-		return outcome{result: resultError, reason: fmt.Sprintf("%s could not run: %v", args[0], err)}
+	return cmd, args[0]
+}
+
+func exitCode(err error) (int, error) {
+	if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
+		return exitErr.ExitCode(), nil
 	}
-	logf(log, "scan %s: %s exited %d after %s", c.Name, args[0], code, time.Since(start).Round(time.Millisecond))
-	if !slices.Contains(s.Exit.Clean, code) && !slices.Contains(s.Exit.Findings, code) {
-		return outcome{result: resultError, reason: fmt.Sprintf("%s exited %d: %s", args[0], code, firstLines(stderr.String()+stdout.String(), 3))}
-	}
-	report := stdout.Bytes()
-	if s.Report.In == "out" {
+	return 0, err
+}
+
+func readFindings(r reportSpec, out string, stdout []byte) ([]finding, error) {
+	report := stdout
+	if r.In == "out" {
+		var err error
 		report, err = os.ReadFile(out)
-		if errors.Is(err, os.ErrNotExist) {
-			report, err = nil, nil
-		}
-		if err != nil {
-			return outcome{result: resultError, reason: err.Error()}
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
+			return nil, err
 		}
 	}
-	found, err := parseReport(s.Report, report)
-	if err != nil {
-		return outcome{result: resultError, reason: fmt.Sprintf("%s report: %v", args[0], err)}
-	}
-	roots := []string{ws.added, ws.head, ws.tree, input}
-	for i := range found {
-		found[i].file = relativeTo(found[i].file, roots)
-	}
-	if s.Input == inputAdded {
-		toHeadLines(found, d)
-	}
-	if slices.Contains(s.Exit.Findings, code) && len(found) == 0 && s.Report.UnreadFindings != "pass" {
-		return outcome{result: resultError, reason: fmt.Sprintf("%s exited %d for findings, but none could be read from its report: %s", args[0], code, firstLines(stderr.String()+stdout.String(), 3))}
-	}
+	return parseReport(r, report)
+}
+
+func judgeFindings(s *scanSpec, found []finding, d *data, files int, exited string, findingsExit bool) outcome {
 	read := len(found)
 	if s.AddedLinesOnly {
 		found = onAddedLines(found, d)
@@ -382,10 +407,10 @@ func runScan(ctx context.Context, c check, d *data, ws workspace, log io.Writer)
 		return fail("%d finding(s): %s%s", len(found), strings.Join(parts, " | "), more)
 	case read > 0:
 		return pass(fmt.Sprintf("%d finding(s), none on a line the PR adds", read))
-	case slices.Contains(s.Exit.Findings, code):
-		return pass(fmt.Sprintf("no finding (%s exited %d)", args[0], code))
+	case findingsExit:
+		return pass(fmt.Sprintf("no finding (%s)", exited))
 	}
-	return pass(fmt.Sprintf("clean (%d file(s))", len(files)))
+	return pass(fmt.Sprintf("clean (%d file(s))", files))
 }
 
 func fileExists(p string) bool {
@@ -480,58 +505,68 @@ func onAddedLines(found []finding, d *data) []finding {
 }
 
 func parseReport(r reportSpec, report []byte) ([]finding, error) {
-	var found []finding
 	switch r.Format {
 	case "lines":
-		sc := bufio.NewScanner(bytes.NewReader(report))
-		sc.Buffer(make([]byte, 0, 64<<10), 4<<20)
-		for sc.Scan() {
-			line := sc.Text()
-			if r.ignore != nil && r.ignore.MatchString(line) {
-				continue
-			}
-			m := r.pattern.FindStringSubmatch(line)
-			if m == nil {
-				continue
-			}
-			var f finding
-			for i, name := range r.pattern.SubexpNames() {
-				switch name {
-				case "file":
-					f.file = m[i]
-				case "line":
-					f.line, _ = strconv.Atoi(m[i])
-				case "message":
-					f.message = strings.TrimSpace(m[i])
-				}
-			}
-			found = append(found, f)
-		}
-		return found, sc.Err()
+		return lineFindings(r, report)
 	case "json-lines":
-		sc := bufio.NewScanner(bytes.NewReader(report))
-		sc.Buffer(make([]byte, 0, 64<<10), 16<<20)
-		for sc.Scan() {
-			if strings.TrimSpace(sc.Text()) == "" {
-				continue
-			}
-			var v any
-			if err := json.Unmarshal(sc.Bytes(), &v); err != nil {
-				return nil, err
-			}
-			found = append(found, jsonFindings(r, v)...)
+		return jsonLineFindings(r, report)
+	}
+	if len(bytes.TrimSpace(report)) == 0 {
+		return nil, nil
+	}
+	var v any
+	if err := json.Unmarshal(report, &v); err != nil {
+		return nil, err
+	}
+	return jsonFindings(r, v), nil
+}
+
+func lineFindings(r reportSpec, report []byte) ([]finding, error) {
+	var found []finding
+	sc := bufio.NewScanner(bytes.NewReader(report))
+	sc.Buffer(make([]byte, 0, 64<<10), 4<<20)
+	for sc.Scan() {
+		line := sc.Text()
+		if r.ignore != nil && r.ignore.MatchString(line) {
+			continue
 		}
-		return found, sc.Err()
-	default:
-		if len(bytes.TrimSpace(report)) == 0 {
-			return nil, nil
+		if m := r.pattern.FindStringSubmatch(line); m != nil {
+			found = append(found, namedFinding(r.pattern.SubexpNames(), m))
+		}
+	}
+	return found, sc.Err()
+}
+
+func namedFinding(names, m []string) finding {
+	var f finding
+	for i, name := range names {
+		switch name {
+		case "file":
+			f.file = m[i]
+		case "line":
+			f.line, _ = strconv.Atoi(m[i])
+		case "message":
+			f.message = strings.TrimSpace(m[i])
+		}
+	}
+	return f
+}
+
+func jsonLineFindings(r reportSpec, report []byte) ([]finding, error) {
+	var found []finding
+	sc := bufio.NewScanner(bytes.NewReader(report))
+	sc.Buffer(make([]byte, 0, 64<<10), 16<<20)
+	for sc.Scan() {
+		if strings.TrimSpace(sc.Text()) == "" {
+			continue
 		}
 		var v any
-		if err := json.Unmarshal(report, &v); err != nil {
+		if err := json.Unmarshal(sc.Bytes(), &v); err != nil {
 			return nil, err
 		}
-		return jsonFindings(r, v), nil
+		found = append(found, jsonFindings(r, v)...)
 	}
+	return found, sc.Err()
 }
 
 func jsonFindings(r reportSpec, v any) []finding {

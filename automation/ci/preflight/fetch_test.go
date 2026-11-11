@@ -317,3 +317,29 @@ func TestAcknowledgedOnlyA404IsNoFile(t *testing.T) {
 		}
 	}
 }
+
+func TestDependencyGraphFailureIsASourceError(t *testing.T) {
+	cfg, err := loadConfig(configYAML)
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/repos/o/r/pulls/1":
+			_, _ = io.WriteString(w, `{"number":1,"mergeable":true,"commits":1,"changed_files":1,"head":{"sha":"h"},"base":{"sha":"b","ref":"main"}}`)
+		case r.URL.Path == "/repos/o/r/pulls/1/files":
+			_, _ = io.WriteString(w, `[{"filename":"go.mod","status":"modified"}]`)
+		case strings.HasPrefix(r.URL.Path, "/repos/o/r/dependency-graph/"):
+			http.Error(w, "no", http.StatusForbidden)
+		case strings.HasPrefix(r.URL.Path, "/repos/o/r/compare/"):
+			_, _ = io.WriteString(w, `{}`)
+		default:
+			_, _ = io.WriteString(w, `[]`)
+		}
+	}))
+	defer server.Close()
+	d, err := fetchWith(t, cfg, fetchOptions{apiBase: server.URL, repo: "o/r", pr: 1, version: "v"}, io.Discard)
+	if _, failed := d.SourceErrors["dependency-graph"]; err != nil || !failed {
+		t.Fatalf("source errors %v, err %v", d.SourceErrors, err)
+	}
+}

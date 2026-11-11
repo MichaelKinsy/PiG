@@ -122,7 +122,26 @@ func runBatch(ctx context.Context, cfg config, o runOptions, out io.Writer) ([]h
 		return nil, err
 	}
 	a := newAPI(o.apiBase, o.token)
-	numbers := o.prs
+	numbers, err := prNumbers(ctx, a, o)
+	if err != nil {
+		return nil, err
+	}
+	prs := make([]pending, len(numbers))
+	each(len(numbers), o.jobs, func(i int) {
+		prs[i].pr = numbers[i]
+		prs[i].comment, prs[i].err = loadComment(ctx, a, o.repo, numbers[i], o.bot)
+	})
+	logf(out, "pre-flight %s over %d PR(s) of %s, %d at a time", short(version), len(prs), o.repo, o.jobs)
+	runs := runAll(ctx, cfg, o, version, prs, newTips(a))
+	hs, failedToRun := reportRuns(runs, out)
+	if failedToRun > 0 && failedToRun == len(runs) {
+		return hs, fmt.Errorf("the pre-flight could not run for any of the %d PR(s)", failedToRun)
+	}
+	return hs, nil
+}
+
+func prNumbers(ctx context.Context, a *api, o runOptions) ([]int, error) {
+	numbers := slices.Clone(o.prs)
 	if len(numbers) == 0 {
 		var open []struct {
 			Number int `json:"number"`
@@ -135,34 +154,32 @@ func runBatch(ctx context.Context, cfg config, o runOptions, out io.Writer) ([]h
 		}
 	}
 	slices.Sort(numbers)
-	prs := make([]pending, len(numbers))
-	each(len(numbers), o.jobs, func(i int) {
-		prs[i].pr = numbers[i]
-		prs[i].comment, prs[i].err = loadComment(ctx, a, o.repo, numbers[i], o.bot)
-	})
+	return numbers, nil
+}
+
+type prRun struct {
+	pr     int
+	result string
+	head   string
+	err    error
+	log    bytes.Buffer
+	took   time.Duration
+}
+
+func runAll(ctx context.Context, cfg config, o runOptions, version string, prs []pending, t *tips) []*prRun {
 	budget := o.budget
 	if len(o.prs) > 0 {
 		budget = 0
 	}
-	logf(out, "pre-flight %s over %d PR(s) of %s, %d at a time", short(version), len(prs), o.repo, o.jobs)
-	deadline := time.Now().Add(o.timeBudget)
 	var admitted atomic.Int32
 	admit := func() bool {
 		return budget <= 0 || int(admitted.Add(1)) <= budget
 	}
+	deadline := time.Now().Add(o.timeBudget)
 	env := &ruleEnv{root: o.root}
-	t := newTips(a)
-	type done struct {
-		pr     int
-		result string
-		head   string
-		err    error
-		log    bytes.Buffer
-		took   time.Duration
-	}
-	results := make([]*done, len(prs))
+	runs := make([]*prRun, len(prs))
 	each(len(prs), o.jobs, func(i int) {
-		r := &done{pr: prs[i].pr}
+		r := &prRun{pr: prs[i].pr}
 		start := time.Now()
 		if o.timeBudget > 0 && !start.Before(deadline) {
 			r.result = resultDeferred
@@ -171,10 +188,13 @@ func runBatch(ctx context.Context, cfg config, o runOptions, out io.Writer) ([]h
 			r.result, r.head, r.err = runPR(ctx, cfg, env, o, version, prs[i], admit, t, &r.log)
 		}
 		r.took = time.Since(start)
-		results[i] = r
+		runs[i] = r
 	})
-	failedToRun := 0
-	for _, r := range results {
+	return runs
+}
+
+func reportRuns(runs []*prRun, out io.Writer) (hs []handled, failedToRun int) {
+	for _, r := range runs {
 		logf(out, "::group::PR #%d: %s (%s)", r.pr, r.result, r.took.Round(time.Millisecond))
 		_, _ = out.Write(r.log.Bytes())
 		if r.err != nil {
@@ -183,8 +203,8 @@ func runBatch(ctx context.Context, cfg config, o runOptions, out io.Writer) ([]h
 		}
 		logf(out, "::endgroup::")
 	}
-	hs := make([]handled, 0, len(results))
-	for _, r := range results {
+	hs = make([]handled, 0, len(runs))
+	for _, r := range runs {
 		logf(out, "PR #%d: %s", r.pr, r.result)
 		h := handled{PR: r.pr, Head: r.head, Result: r.result}
 		if r.err != nil {
@@ -196,12 +216,9 @@ func runBatch(ctx context.Context, cfg config, o runOptions, out io.Writer) ([]h
 		logf(out, "%d PR(s) deferred by the budget, for a next job: %v", len(deferred), deferred)
 	}
 	if failedToRun > 0 {
-		logf(out, "the pre-flight could not run for %d of %d PR(s)", failedToRun, len(results))
+		logf(out, "the pre-flight could not run for %d of %d PR(s)", failedToRun, len(runs))
 	}
-	if failedToRun > 0 && failedToRun == len(results) {
-		return hs, fmt.Errorf("the pre-flight could not run for any of the %d PR(s)", failedToRun)
-	}
-	return hs, nil
+	return hs, failedToRun
 }
 
 func chunks(prs []int, size int) []string {
