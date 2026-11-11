@@ -55,9 +55,14 @@ func (cell *assistantMessageCell) publish(message *AssistantMessage, replacement
 func (cell *assistantMessageCell) publishSharing(message *AssistantMessage, replacements assistantMessageReplacements, streamed map[int]JsonObject) {
 	// The previous snapshot's content is immutable once published, so the copy below may share what has not changed.
 	cell.mu.RLock()
-	previous := cell.current.Content
+	previous, previousUsage := cell.current.Content, cell.current.Usage
 	cell.mu.RUnlock()
-	next := cloneAssistantMessageSharing(*message, previous, streamed)
+	// The snapshot's optional usage counters are copied by value, and an unchanged one keeps the previous snapshot's copy, which nothing writes through.
+	snapshot := *message
+	snapshot.Usage.CacheWrite1h, snapshot.Usage.Reasoning = nil, nil
+	next := cloneAssistantMessageSharing(snapshot, previous, streamed)
+	next.Usage.CacheWrite1h = sharedCounter(message.Usage.CacheWrite1h, previousUsage.CacheWrite1h)
+	next.Usage.Reasoning = sharedCounter(message.Usage.Reasoning, previousUsage.Reasoning)
 	cell.mu.Lock()
 	defer cell.mu.Unlock()
 	// Absent optional properties are not object references; adding or removing one is an assignment even without an explicit replacement flag.
@@ -70,6 +75,17 @@ func (cell *assistantMessageCell) publishSharing(message *AssistantMessage, repl
 	publishAssistantReference(&cell.nested.deferred, next.Deferred, replacements.Deferred)
 	cell.current = next
 	cell.seq++
+}
+
+// sharedCounter is a copy of the counter value points to, or the earlier copy when it holds the same value.
+func sharedCounter[T comparable](value, earlier *T) *T {
+	switch {
+	case value == nil:
+		return nil
+	case earlier != nil && *earlier == *value:
+		return earlier
+	}
+	return new(*value)
 }
 
 func publishAssistantReference[T any](reference **T, value T, replace bool) {
@@ -259,9 +275,47 @@ func (message *AssistantMessage) delivered() *AssistantMessage {
 		return message
 	}
 	current, _, seq := observation.capture(message)
-	owned := clonePublishedAssistantMessage(current)
-	owned.observation = &assistantMessageObservation{cell: cell, shallow: observation.shallow, seq: seq}
-	return &owned
+	return newDeliveredMessage(current, cell, observation.shallow, seq)
+}
+
+// deliveredInlineBlocks is the number of content blocks a delivered handle holds in its own allocation.
+const deliveredInlineBlocks = 2
+
+// deliveredMessage is a delivered handle, its observation and the content of up to deliveredInlineBlocks blocks in one allocation.
+type deliveredMessage struct {
+	message     AssistantMessage
+	observation assistantMessageObservation
+	blocks      [deliveredInlineBlocks]AssistantContentBlock
+	// cacheWrite1h and reasoning are the copies of the usage's optional counters.
+	cacheWrite1h, reasoning int
+}
+
+// newDeliveredMessage is the independently owned copy of the cell publication current, at publication seq, that keeps its link to cell.
+func newDeliveredMessage(current AssistantMessage, cell *assistantMessageCell, shallow *assistantMessageReferences, seq uint64) *AssistantMessage {
+	holder := new(deliveredMessage)
+	content, usage := current.Content, current.Usage
+	current.Content = nil
+	current.Usage.CacheWrite1h, current.Usage.Reasoning = nil, nil
+	holder.message = cloneAssistantMessageWith(current, clonePublishedJSONValue)
+	holder.message.Usage = usage
+	if usage.CacheWrite1h != nil {
+		holder.cacheWrite1h = *usage.CacheWrite1h
+		holder.message.Usage.CacheWrite1h = &holder.cacheWrite1h
+	}
+	if usage.Reasoning != nil {
+		holder.reasoning = *usage.Reasoning
+		holder.message.Usage.Reasoning = &holder.reasoning
+	}
+	switch {
+	case content == nil:
+	case len(content) <= len(holder.blocks):
+		holder.message.Content = cloneAssistantContentInto(holder.blocks[:len(content):len(content)], content, clonePublishedJSONValue)
+	default:
+		holder.message.Content = cloneAssistantContentWith(content, clonePublishedJSONValue)
+	}
+	holder.observation = assistantMessageObservation{cell: cell, shallow: shallow, seq: seq}
+	holder.message.observation = &holder.observation
+	return &holder.message
 }
 
 // RefreshEvent returns the event with its partial's exported fields set to the stream state at this call. A host dispatcher calls it when it delivers a retained event to a listener after an awaited step, so the listener's direct field reads match what a JavaScript listener sees at that tick. Events without a partial are returned unchanged.

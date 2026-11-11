@@ -2206,13 +2206,13 @@ func (p *anthropicProvider) parseAnthropicSSE(ctx context.Context, r io.Reader, 
 				if block, ok := output.Content[index].(TextContent); ok {
 					block.Text = builder.appendContent(index, block.Text, ev.Delta.Text)
 					output.Content[index] = block
-					builder.push(TextDeltaEvent{ContentIndex: index, Delta: ev.Delta.Text, Partial: output})
+					builder.pushView(TextDeltaEvent{ContentIndex: index, Delta: ev.Delta.Text, Partial: builder.publishedView()})
 				}
 			case "thinking_delta":
 				if block, ok := output.Content[index].(ThinkingContent); ok {
 					block.Thinking = builder.appendContent(index, block.Thinking, ev.Delta.Thinking)
 					output.Content[index] = block
-					builder.push(ThinkingDeltaEvent{ContentIndex: index, Delta: ev.Delta.Thinking, Partial: output})
+					builder.pushView(ThinkingDeltaEvent{ContentIndex: index, Delta: ev.Delta.Thinking, Partial: builder.publishedView()})
 				}
 			case "input_json_delta":
 				if block, ok := output.Content[index].(ToolCall); ok && open.args != nil {
@@ -2223,7 +2223,7 @@ func (p *anthropicProvider) parseAnthropicSSE(ctx context.Context, r io.Reader, 
 					arguments, order := open.args.Append(ev.Delta.PartialJSON)
 					builder.showStreamedArguments(index, &block, open.args, arguments, order)
 					output.Content[index] = block
-					builder.push(ToolCallDeltaEvent{ContentIndex: index, Delta: ev.Delta.PartialJSON, Partial: output})
+					builder.pushView(ToolCallDeltaEvent{ContentIndex: index, Delta: ev.Delta.PartialJSON, Partial: builder.publishedView()})
 				}
 			case "signature_delta":
 				if block, ok := output.Content[index].(ThinkingContent); ok {
