@@ -866,6 +866,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6a6fffa-9](#bf-6a6fffa-9) | `TestSettingsSelectorMatchesPi` opens each row under the Kitty keyboard protocol with CSI-u keys; no… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6ac4c8c](#bf-6ac4c8c) | Ctrl+V pastes clipboard text in Termux | A fix Pi shipped that PiG ported | Linux, Android and Termux | 0.5.0 |
 | [BF-6acf6a0](#bf-6acf6a0) | fix(durable/core): keep telemetry out of the hot publish body; report type; trace test | PiG's own defect | All platforms | Unreleased |
+| [BF-6b1fe99](#bf-6b1fe99) | After an answer, interactive mode no longer draws three more frames that repaint nothing and only move and… | PiG's own defect | All platforms | Unreleased |
 | [BF-6b584ff](#bf-6b584ff) | The `--help` text and the `/resume` and `/import` descriptions now say which working directory a resumed… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-6b97207](#bf-6b97207) | An extension that overrides the `edit` tool with a definition built by the Go, Rust or Python SDK's… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-6c26be3](#bf-6c26be3) | A submission's `Wait` no longer fails with "Harness is closed" when a close begins before the wait wakes: a… | PiG's own defect | All platforms | 0.7.0 |
@@ -1794,6 +1795,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-e5f9fdd](#bf-e5f9fdd) | The provider retry transport no longer replaces `Body` on the caller's request when it retries | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e63c61c](#bf-e63c61c) | fix(interactive): pump the owner loop while model selection awaits extensions (#208) (#209) | PiG's own defect | All platforms | Unreleased |
 | [BF-e64d2cf](#bf-e64d2cf) | fix(tui): a tool error result collapses like any other (Pi updateResult) | PiG's own defect | All platforms | Unreleased |
+| [BF-e650ce6](#bf-e650ce6) | A `write` tool call that streams a large file no longer stalls a frame while the highlighting of the whole… | PiG's own defect | All platforms | Unreleased |
 | [BF-e65ade9](#bf-e65ade9) | `WaitForIdle` on the Harness or a Conversation no longer resumes before the `SubscribeCommits` listeners saw… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-e69d018](#bf-e69d018) | Closing an `env` connection, or losing it, now ends its daemon process with SIGTERM, as in Pi, instead of… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e73e536](#bf-e73e536) | Codemode scripts no longer fail immediately when both codemode workers are busy, for example with parallel… | A fix Pi shipped that PiG ported | All platforms | 0.5.2 |
@@ -13717,6 +13719,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `6acf6a0da0` (2026-10-27)
 - **Tests:** `durable/core/session/telemetry_test.go::TestCreateTaskTraceAndLinks`
+
+### BF-6b1fe99
+
+**After an answer, interactive mode no longer draws three more frames that repaint nothing and only move and…**
+
+- **Source:** PiG's own defect
+- **Symptom:** After an answer, interactive mode no longer draws three more frames that repaint nothing and only move and hide the cursor (two direct renders at the end of the turn and one requested by `agent_settled`).
+- **Root cause:** After each answer PiG wrote three more frames that repaint nothing and only move and hide the cursor: two direct renders at the end of the turn (the pending message refresh and the turn flush, each after the turn had already rendered) and a RequestRender from agent_settled, 16 ms later. The extra frames made a harness that waits for output silence wait longer (interactive session wall 581 vs 512 ms for Pi-Bolt 1.2.1) and wrote 29 bytes per answer.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6b1fe9962d` (2026-11-11)
+- **Tests:** `internal/codingagent/interactive_answer_end_frames_test.go::TestInteractiveAnswerEndEmitsNoTrailingFrame`, `test/parity/runner/final_frame_test.go::TestEvaluateOutcome_NoFramesAfterReply`, `test/parity/runner/final_frame_test.go::TestObserveFinalFrame`, `test/parity/scenarios/interactive-rendering/68-no-frame-after-reply.toml`
+- **Release note:** After an answer, interactive mode no longer draws three more frames that repaint nothing and only move and hide the cursor (two direct renders at the end of the turn and one requested by `agent_settled`). Pi ends its output with the frame that carries the end of the reply; PiG now does too, which also stops a terminal multiplexer or a script that waits for output to go quiet from waiting a frame longer after every answer.
 
 ### BF-6b584ff
 
@@ -26589,6 +26605,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `e64d2cfe13` (2026-10-11)
 - **Tests:** `internal/codingagent/model_registry_availability_refresh_gaps_test.go::TestRefreshModelRuntimeHonoursNetworkForceErrorsAndRegistrationCover`, `tui/tool_execution_test.go::TestErrorResultStaysCollapsedUntilExpanded`
+
+### BF-e650ce6
+
+**A `write` tool call that streams a large file no longer stalls a frame while the highlighting of the whole…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A `write` tool call that streams a large file no longer stalls a frame while the highlighting of the whole file is kept warm: that work (20-30 ms a step for a large file) now runs on a worker the card owns instead of inside the frame it falls in, and ends with the call, the card or the session.
+- **Root cause:** A streaming write call warms the highlight of its whole file a step (a sixteenth of the content, 8-32 KB) at a time so the frame that completes the call does not stall. The step ran in whichever frame it fell in: 20-30 ms of highlighting inside ToolExecutionComponent.Render on the owner loop, which doubled the 99th percentile of the gap between frames in the write:50/200/400 race rows.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `e650ce6f5b` (2026-11-11)
+- **Tests:** `internal/codingagent/interactive_events_write_frame_cost_norace_test.go::TestStreamedWriteCardFrameCostIsFlat`, `internal/codingagent/write_highlight_warm_owner_test.go::TestInteractiveWriteWarmUpEndsWithTheSession`, `internal/codingagent/write_highlight_warm_owner_test.go::TestWriteWarmUpDoesNotStartOnADisposedCard`, `internal/codingagent/write_highlight_warm_owner_test.go::TestWriteWarmUpFailureEndsTheWarmUps`, `internal/codingagent/write_highlight_warm_owner_test.go::TestWriteWarmUpIsDroppedWhenTheCallCompletes`, `internal/codingagent/write_highlight_warm_owner_test.go::TestWriteWarmUpRunsOffTheRenderingGoroutine`, `internal/codingagent/write_highlight_warm_owner_test.go::TestWriteWarmUpStopsWhenTheCardEnds`, `internal/codingagent/write_highlight_warm_owner_test.go::TestWriteWarmUpsRunOneAtATimeAndFoldTheStepsThatArriveMeanwhile`
+- **Release note:** A `write` tool call that streams a large file no longer stalls a frame while the highlighting of the whole file is kept warm: that work (20-30 ms a step for a large file) now runs on a worker the card owns instead of inside the frame it falls in, and ends with the call, the card or the session. The lines the card draws are unchanged.
 
 ### BF-e65ade9
 

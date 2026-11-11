@@ -23632,6 +23632,31 @@
       ]
     },
     {
+      "id": "BF-6b1fe99",
+      "title": "After an answer, interactive mode no longer draws three more frames that repaint nothing and only move and…",
+      "symptom": "After an answer, interactive mode no longer draws three more frames that repaint nothing and only move and hide the cursor (two direct renders at the end of the turn and one requested by `agent_settled`).",
+      "rootCause": "After each answer PiG wrote three more frames that repaint nothing and only move and hide the cursor: two direct renders at the end of the turn (the pending message refresh and the turn flush, each after the turn had already rendered) and a RequestRender from agent_settled, 16 ms later. The extra frames made a harness that waits for output silence wait longer (interactive session wall 581 vs 512 ms for Pi-Bolt 1.2.1) and wrote 29 bytes per answer.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "After an answer, interactive mode no longer draws three more frames that repaint nothing and only move and hide the cursor (two direct renders at the end of the turn and one requested by `agent_settled`). Pi ends its output with the frame that carries the end of the reply; PiG now does too, which also stops a terminal multiplexer or a script that waits for output to go quiet from waiting a frame longer after every answer.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6b1fe9962d",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_answer_end_frames_test.go::TestInteractiveAnswerEndEmitsNoTrailingFrame",
+        "test/parity/runner/final_frame_test.go::TestEvaluateOutcome_NoFramesAfterReply",
+        "test/parity/runner/final_frame_test.go::TestObserveFinalFrame",
+        "test/parity/scenarios/interactive-rendering/68-no-frame-after-reply.toml"
+      ]
+    },
+    {
       "id": "BF-6b584ff",
       "title": "The `--help` text and the `/resume` and `/import` descriptions now say which working directory a resumed…",
       "symptom": "The `--help` text and the `/resume` and `/import` descriptions now say which working directory a resumed session runs in (`--continue` the current directory, `--resume` and `--session` the session's own, `--fork` the current directory), and `/import` says it preserves the session ID and working directory.",
@@ -50647,6 +50672,35 @@
       "tests": [
         "internal/codingagent/model_registry_availability_refresh_gaps_test.go::TestRefreshModelRuntimeHonoursNetworkForceErrorsAndRegistrationCover",
         "tui/tool_execution_test.go::TestErrorResultStaysCollapsedUntilExpanded"
+      ]
+    },
+    {
+      "id": "BF-e650ce6",
+      "title": "A `write` tool call that streams a large file no longer stalls a frame while the highlighting of the whole…",
+      "symptom": "A `write` tool call that streams a large file no longer stalls a frame while the highlighting of the whole file is kept warm: that work (20-30 ms a step for a large file) now runs on a worker the card owns instead of inside the frame it falls in, and ends with the call, the card or the session.",
+      "rootCause": "A streaming write call warms the highlight of its whole file a step (a sixteenth of the content, 8-32 KB) at a time so the frame that completes the call does not stall. The step ran in whichever frame it fell in: 20-30 ms of highlighting inside ToolExecutionComponent.Render on the owner loop, which doubled the 99th percentile of the gap between frames in the write:50/200/400 race rows.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A `write` tool call that streams a large file no longer stalls a frame while the highlighting of the whole file is kept warm: that work (20-30 ms a step for a large file) now runs on a worker the card owns instead of inside the frame it falls in, and ends with the call, the card or the session. The lines the card draws are unchanged.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e650ce6f5b",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_events_write_frame_cost_norace_test.go::TestStreamedWriteCardFrameCostIsFlat",
+        "internal/codingagent/write_highlight_warm_owner_test.go::TestInteractiveWriteWarmUpEndsWithTheSession",
+        "internal/codingagent/write_highlight_warm_owner_test.go::TestWriteWarmUpDoesNotStartOnADisposedCard",
+        "internal/codingagent/write_highlight_warm_owner_test.go::TestWriteWarmUpFailureEndsTheWarmUps",
+        "internal/codingagent/write_highlight_warm_owner_test.go::TestWriteWarmUpIsDroppedWhenTheCallCompletes",
+        "internal/codingagent/write_highlight_warm_owner_test.go::TestWriteWarmUpRunsOffTheRenderingGoroutine",
+        "internal/codingagent/write_highlight_warm_owner_test.go::TestWriteWarmUpStopsWhenTheCardEnds",
+        "internal/codingagent/write_highlight_warm_owner_test.go::TestWriteWarmUpsRunOneAtATimeAndFoldTheStepsThatArriveMeanwhile"
       ]
     },
     {

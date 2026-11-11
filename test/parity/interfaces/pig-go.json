@@ -258419,6 +258419,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.rebuildPendingMessages",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.rebuildPendingMessages",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.rebuildSystemPromptFromResources",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.rebuildSystemPromptFromResources",
@@ -278571,6 +278582,28 @@
       "shapeHash": "sha256:033570f7a9f8d8e0f079f36fadd16b5d415ce4c3855b08182796f580c1c64f28"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#builtInRenderState.goTask",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "builtInRenderState.goTask",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(task func())"
+      },
+      "shapeHash": "sha256:913f936befaf05459942c2fadddfdaa5bbfb74855749b4aefa7d19b13d7f9943"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#builtInRenderState.runWriteWarmUps",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "builtInRenderState.runWriteWarmUps",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#builtInRenderState.shellView",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "builtInRenderState.shellView",
@@ -278591,6 +278624,17 @@
         "type": "func(content string, lang string)"
       },
       "shapeHash": "sha256:05358d01ba230c49fe0f5df9e555e46a008342f2dd4c7010c1ce5d3d115775a2"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#builtInRenderState.writeWarmEnded",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "builtInRenderState.writeWarmEnded",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#builtInRenderStateKey",
@@ -311901,6 +311945,17 @@
       "shapeHash": "sha256:bedae4c0d175644e213cf1af430c7fddc2ee9c1a5fc83fe4b75e31b5247bbeec"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#warmWriteContent",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "warmWriteContent",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(content string, lang string) (resumable bool)"
+      },
+      "shapeHash": "sha256:aaf50284064729a1c7bc799e571eac22ae3dbbd535ab507c619e7d1294452a1a"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#warmerBranch",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "warmerBranch",
@@ -312537,6 +312592,17 @@
         "type": "func(b *strings.Builder, n *SessionTreeNode, prefix string, last bool)"
       },
       "shapeHash": "sha256:2dd4380a85eb4638dceb9d6a4c5880ec79196c6143342de2e52be58406c2ea09"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#writeWarmHighlight",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "writeWarmHighlight",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "func(code string, lang string) bool"
+      },
+      "shapeHash": "sha256:5a8c45560c23745d10ce7d0686f7fb3d382141366e1171cad9f0cce8fa2a1b54"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#writeWarmMaxStep",
