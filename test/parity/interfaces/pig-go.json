@@ -18476,6 +18476,17 @@
       "shapeHash": "sha256:9e21b800293a7b88ff71081c76a3c3ec8d09feab914b0d7b6e76a494699d37a2"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#Models.releasePublication",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "Models.releasePublication",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(providerID string, done chan struct{})"
+      },
+      "shapeHash": "sha256:f9fad3004e7c07ad51b581f5b207013bcafe1359279bb50a7f753d574db91674"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#Models.requireChatProvider",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "Models.requireChatProvider",

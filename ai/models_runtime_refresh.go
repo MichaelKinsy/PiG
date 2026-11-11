@@ -139,16 +139,8 @@ func (m *Models) publishProviderModels(providerID string, generation uint64, sig
 	done := make(chan struct{})
 	m.publicationChains[providerID] = done
 	m.mu.Unlock()
-	release := func() {
-		m.mu.Lock()
-		if m.publicationChains[providerID] == done {
-			delete(m.publicationChains, providerID)
-		}
-		close(done)
-		m.mu.Unlock()
-	}
 	publish := func() modelsOperationResult[bool] {
-		defer release()
+		defer m.releasePublication(providerID, done)
 		if previous != nil {
 			<-previous
 		}
@@ -191,7 +183,7 @@ func (m *Models) publishProviderModels(providerID string, generation uint64, sig
 	result := make(chan modelsOperationResult[bool], 1)
 	if !m.goOwned(func() { result <- publish() }) {
 		// Drain has begun, so the write is not started. Later publications queue behind this one, which never runs, so it settles its place in the chain.
-		release()
+		m.releasePublication(providerID, done)
 		if signal.Err() != nil {
 			return false, context.Cause(signal)
 		}
@@ -226,6 +218,17 @@ func (m *Models) resolveNetworkRefresh(ctx context.Context, provider *ModelsProv
 		return nil, err
 	}
 	return &networkRefresh{credential: credential}, nil
+}
+
+// releasePublication settles a publication's place in its provider's chain: later publications wait on done. It is a method, not a closure over the
+// publication, because every publication would allocate that closure, and a startup refresh publishes once per provider.
+func (m *Models) releasePublication(providerID string, done chan struct{}) {
+	m.mu.Lock()
+	if m.publicationChains[providerID] == done {
+		delete(m.publicationChains, providerID)
+	}
+	close(done)
+	m.mu.Unlock()
 }
 
 func (m *Models) resolveRefreshCredential(ctx context.Context, provider *ModelsProvider, stored *Credential) (*Credential, error) {
