@@ -12,6 +12,9 @@ func TestRadiusStatusLinesAsPiMobileLogsThem(t *testing.T) {
 		status contract.Status
 		want   string
 	}{
+		// Pi's test at 5c37d3be1 expects `connected as brain "Studio" (brain-1)` for this input, but Pi's own
+		// radiusStatusText returns `connected as brain Studio` (the two disagree upstream): the port follows the code.
+		{contract.Status{Kind: contract.StatusConnected, ServerID: "brain-1", OrganizationID: "org", Name: "Studio"}, "connected as brain Studio"},
 		{contract.Status{Kind: contract.StatusConnected, ServerID: "brain-1", OrganizationID: "org"}, "connected as brain brain-1"},
 		{contract.Status{Kind: contract.StatusRetrying, Error: "offline"}, "not connected (offline)"},
 		{contract.Status{Kind: contract.StatusConnecting}, ""},

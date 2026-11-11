@@ -22,3 +22,9 @@ func TestSidebarModelRunsPisTests(t *testing.T) {
 func TestSidebarCustomRunsPisTests(t *testing.T) {
 	oracle.RunNodeTests(t, "test/p2/sidebar-custom.test.ts")
 }
+
+// Pi main ea153dd28: project glyphs (plugins/glyphs/glyph.ts): the prototype's glyphs for the same seeds, seed forms, colors,
+// mirror symmetry, and how far apart similar seeds are. The Go port (plugins/glyphs) has the same test.
+func TestGlyphsRunPisTests(t *testing.T) {
+	oracle.RunNodeTests(t, "test/p2/glyphs.test.ts")
+}

@@ -548,3 +548,8 @@ plugins/sessions/sidebar/style.css
 plugins/sessions/sidebar/custom.ts
 plugins/rollups/contract.ts
 plugins/rollups/package.json
+plugins/glyphs/GlyphIcon.tsx
+plugins/glyphs/glyph.ts
+plugins/glyphs/package.json
+plugins/glyphs/seed.ts
+test/p2/glyphs.test.ts

@@ -79,6 +79,12 @@ import (
 // `?replace=1`: the relay fails the old host and its channels and takes the new socket at once. Relays that predate the
 // parameter ignore it and answer 409, which the backoff retries until the old host expires.
 //
+// Name. Every host connect carries the brain's name (`?name=`, from `identity.json`, see identity.go), read again for each
+// attempt, and Radius records it when it claims the server. Reading the name never fails a connect: an unreadable or
+// unwritable data directory falls back to the device's name, and a brain without any name connects without `name`, which
+// keeps the name Radius has (else Radius shows the server ID). The brain owns its name, so a rename on this machine
+// reaches Radius with the next reconnect, and Radius never changes it. Relays that predate names ignore the parameter.
+//
 // Two p2 processes with the same `radius.json` share one server ID, so they would replace each other in turn. The relay
 // closes a replaced host with 1012 "Server host replaced", and that is always another process: this one gives up its own
 // socket before it reconnects. The brain then yields: it reconnects without `replace`, gets 409 until the other process is
@@ -162,7 +168,9 @@ type Status struct {
 	Kind           StatusKind
 	ServerID       string // connected
 	OrganizationID string // connected
-	Error          string // retrying
+	// Name is the brain's name (identity.json) it connected under; "" when it has none (connected).
+	Name  string
+	Error string // retrying
 }
 
 // Timing overrides the heartbeat and handshake times (tests).
@@ -394,6 +402,10 @@ func (b *Brain) attempt() time.Duration {
 	if err != nil {
 		return b.retryAfter(err)
 	}
+	name := ""
+	if identity := ReadBrainIdentity(b.directory); identity != nil {
+		name = identity.Name
+	}
 	if b.forwards != nil && b.forwards.RadiusOrigin() == "" && config.PublicOrigin != "" {
 		b.forwards.SetRadiusOrigin(config.PublicOrigin)
 	}
@@ -410,7 +422,7 @@ func (b *Brain) attempt() time.Duration {
 	b.mu.Lock()
 	b.config = config
 	b.mu.Unlock()
-	failure, ok := b.connect(config, owner, replace)
+	failure, ok := b.connect(config, owner, replace, name)
 	if !ok {
 		return 0
 	}
@@ -529,6 +541,14 @@ func truncate(text string, n int) string {
 	return text
 }
 
+// formEscape is `URLSearchParams`'s serialization of a value: everything but ASCII letters, digits and `*-._` percent-encoded,
+// a space as `+`.
+func formEscape(value string) string {
+	return formEscaper.Replace(url.QueryEscape(value))
+}
+
+var formEscaper = strings.NewReplacer("%2A", "*", "~", "%7E")
+
 func websocketURL(gateway, path string) string {
 	base, err := url.Parse(gateway)
 	if err != nil {
@@ -557,10 +577,17 @@ func dialFailure(err error, response *http.Response) error {
 
 // connect opens the host socket and serves it until it ends. ok is false when the brain closed meanwhile; failure is why the
 // socket ended.
-func (b *Brain) connect(config *Config, owner principal, replace bool) (failure error, ok bool) {
+func (b *Brain) connect(config *Config, owner principal, replace bool, name string) (failure error, ok bool) {
 	address := websocketURL(config.Gateway, "/v1/servers/"+config.ServerID+"/connect")
+	var query []string
 	if replace {
-		address += "?replace=1"
+		query = append(query, "replace=1")
+	}
+	if name != "" {
+		query = append(query, "name="+formEscape(name))
+	}
+	if len(query) > 0 {
+		address += "?" + strings.Join(query, "&")
 	}
 	conn, response, err := b.dialer(hostSubprotocols).DialContext(b.ctx, address, http.Header{"Authorization": {"Bearer " + config.Credential.Access}})
 	if err != nil {
@@ -619,7 +646,7 @@ func (b *Brain) connect(config *Config, owner principal, replace bool) (failure 
 			}
 		}
 	})
-	b.onStatus(Status{Kind: StatusConnected, ServerID: config.ServerID, OrganizationID: owner.OrganizationID})
+	b.onStatus(Status{Kind: StatusConnected, ServerID: config.ServerID, OrganizationID: owner.OrganizationID, Name: name})
 	b.mu.Lock()
 	b.reported = false
 	b.mu.Unlock()

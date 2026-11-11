@@ -25,10 +25,11 @@ func IsPublicFile(path string) bool {
 	return ok
 }
 
-// pagePath is a page path of the app: a session, or one of its conversations; for the owner also a list (`/list/<key>`).
-var pagePath = regexp.MustCompile(`^/(?:s/[0-9a-f-]+(?:/c/[1-9][0-9]*)?|list/[^/]+)$`)
+// pagePath is a page path of the app: a session, or one of its conversations; for the owner also a list (`/list/<key>`) and the
+// new-session screen (`/new`).
+var pagePath = regexp.MustCompile(`^/(?:s/[0-9a-f-]+(?:/c/[1-9][0-9]*)?|list/[^/]+|new)$`)
 
-// IsAppPage is whether path is one of the app's pages (where a browser loads the app).
+// IsAppPage is whether path is one of the app's pages (where a browser loads the app): `/`, or a path of pagePath.
 func IsAppPage(path string) bool { return path == "/" || pagePath.MatchString(path) }
 
 // guestPagePath is a page path of a guest's sessions: a session, or one of its conversations.
