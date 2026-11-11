@@ -1,13 +1,4 @@
 # SPDX-License-Identifier: MIT
-#
-# What must not appear in the lines a PR adds (in the whole file when GitHub shows no patch). `preflight content` applies
-# every rule to every changed file it matches. A rule is a pattern, optionally narrowed by `also` (the same line must match
-# it too) and by conditions on the value its first group captures (value: not, min-length, not-in, random), or a built-in
-# matcher (match:, with its parameters under with:). paths and exclude are globs, path-pattern and exclude-pattern
-# regular expressions. allow lists reviewed false positives, one file each, with the reason.
-#
-# The FG rules keep provider captures out of the repository: a captured stream carries model reasoning, encrypted blobs,
-# billing rows, real ids and paths of somebody's machine. Fixtures are minimal synthetic shapes made in the test.
 
 - id: opaque-field
   code: FG001
@@ -94,8 +85,6 @@
   match: terms
   with: {env: PIG_PRIVATE_TERMS_FILE}
 
-# The toolchain pins: a build, CI or setup file names no Go release but the one of variables/versions.yaml, and a
-# workflow reads its Go and Node from the version files instead of writing a literal.
 - id: go-stray
   code: PIN
   description: a Go release other than the one of variables/versions.yaml

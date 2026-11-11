@@ -26,18 +26,15 @@ import (
 	"time"
 )
 
-// scanTimeout bounds one tool run.
 const scanTimeout = 5 * time.Minute
 
 var hunkHeaderRE = regexp.MustCompile(`^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@`)
 
-// numberedLine is a line a patch adds, with its line number at the head.
 type numberedLine struct {
 	n    int
 	text string
 }
 
-// addedNumbered returns the lines a unified diff patch adds, with their head line numbers.
 func addedNumbered(patch string) []numberedLine {
 	var out []numberedLine
 	line := 0
@@ -59,7 +56,6 @@ func addedNumbered(patch string) []numberedLine {
 	return out
 }
 
-// selectedFiles are the PR's added and modified files a scan reads: all of them, or those its select matches.
 func selectedFiles(d *data, s *scanSpec) []prFile {
 	var out []prFile
 	for _, f := range d.Files {
@@ -70,8 +66,6 @@ func selectedFiles(d *data, s *scanSpec) []prFile {
 	return out
 }
 
-// scanInputHash is the SHA-256 of what a scan decides on: its definition and the name, blob and
-// patch of every file it reads. An equal hash reuses the stored verdict.
 func scanInputHash(c check, files []prFile) string {
 	h := sha256.New()
 	_, _ = fmt.Fprintf(h, "%s\x00", c.definition)
@@ -81,24 +75,18 @@ func scanInputHash(c check, files []prFile) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-// workspace is where one PR's scan inputs live.
 type workspace struct {
-	dir   string // the run's work directory for this PR
-	added string // added/<path>: the lines the PR adds
-	head  string // head/: the PR's head, checked out sparsely
-	tree  string // tree/: a repository holding only the changed files
-	main  string // main's tree
-	bin   string // main's built tools and the installed scanners
-	// remote is the git host the PR's head is fetched from: https://github.com, or another host's URL.
-	remote string
-	// token authenticates the fetch of the head, through the environment, never on the command line.
-	token string
-	// data is the run's data for the PR as JSON, for a scan that reads it ({data}); self is this program ({self}).
+	dir        string
+	added      string
+	head       string
+	tree       string
+	main       string
+	bin        string
+	remote     string
+	token      string
 	data, self string
 }
 
-// prepareWorkspace writes the inputs the given scans read: the added lines, a sparse checkout of the PR's head with
-// the changed files and every checkout path the scans list, the overlays from main, and the tree of changed files.
 func prepareWorkspace(ctx context.Context, d *data, scans []check, ws workspace, log io.Writer) error {
 	need := map[string]bool{}
 	var patterns, overlays []string
@@ -159,7 +147,6 @@ func prepareWorkspace(ctx context.Context, d *data, scans []check, ws workspace,
 		{"-C", ws.head, "checkout", "-q", "--detach", "FETCH_HEAD"},
 	}
 	if slices.Contains(patterns, "/*") {
-		// The whole tree: one fetch of every blob is faster than fetching them lazily at checkout.
 		steps = [][]string{steps[0], {"-C", ws.head, "fetch", "-q", "--depth=1", remote, ref}, steps[3]}
 	}
 	for _, args := range steps {
@@ -199,7 +186,6 @@ func prepareWorkspace(ctx context.Context, d *data, scans []check, ws workspace,
 	return nil
 }
 
-// overlay copies main's file over the head's, or removes the head's when main has none.
 func overlay(mainRoot, head, rel string) error {
 	target, err := inside(head, rel)
 	if err != nil {
@@ -227,9 +213,6 @@ func git(ctx context.Context, args ...string) (string, error) {
 	return string(out), err
 }
 
-// mergeTree asks git whether the PR's head merges into its base branch without conflicts, for when GitHub has not
-// computed mergeable yet. It fetches only the two commits' history (--filter=tree:0); git merge-tree fetches the
-// trees and blobs it needs.
 func mergeTree(ctx context.Context, ws workspace, d *data) (bool, error) {
 	dir := filepath.Join(ws.dir, "merge")
 	remote := strings.TrimSuffix(ws.remote, "/") + "/" + d.Repo
@@ -265,9 +248,7 @@ func mergeTree(ctx context.Context, ws workspace, d *data) (bool, error) {
 	}
 }
 
-// gitAuth runs git with the token as an HTTP authorization header for remote's host only, passed in the environment
-// (GIT_CONFIG_*), so it never shows on a command line or in an error and is never offered to another host. A remote
-// that is not http(s) gets no header.
+// The token goes in the environment, never on a command line, and only for the remote's host.
 func gitAuth(ctx context.Context, remote, token string, args ...string) (string, error) {
 	//nolint:gosec // G204: as git above.
 	cmd := exec.CommandContext(ctx, "git", args...)
@@ -280,7 +261,6 @@ func gitAuth(ctx context.Context, remote, token string, args ...string) (string,
 	return string(out), err
 }
 
-// inside joins name under root and refuses a name that would leave it.
 func inside(root, name string) (string, error) {
 	target := filepath.Join(root, filepath.FromSlash(name))
 	if rel, err := filepath.Rel(root, target); err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
@@ -289,7 +269,6 @@ func inside(root, name string) (string, error) {
 	return target, nil
 }
 
-// finding is one thing a scan reported.
 type finding struct {
 	file    string
 	line    int
@@ -306,7 +285,6 @@ func (f finding) String() string {
 	return f.file + " " + f.message
 }
 
-// runScan runs one scan check and returns its outcome.
 func runScan(ctx context.Context, c check, d *data, ws workspace, log io.Writer) outcome {
 	s := c.Scan
 	files := selectedFiles(d, s)
@@ -415,7 +393,6 @@ func fileExists(p string) bool {
 	return err == nil && !info.IsDir()
 }
 
-// relativeTo strips the workspace directory a tool reported a path under, so findings name the repository path.
 func relativeTo(file string, roots []string) string {
 	clean := filepath.Clean(file)
 	for _, root := range roots {
@@ -429,9 +406,7 @@ func relativeTo(file string, roots []string) string {
 	return strings.TrimPrefix(filepath.ToSlash(clean), "./")
 }
 
-// flattenSymlinks replaces every symbolic link in a checked-out head with a regular file holding the path it points to,
-// which is what git stores for it. A PR's link may point anywhere on the runner; after this, the pre-flight and the
-// scanners read only what the PR adds.
+// A PR's symlink may point anywhere on the runner: each becomes a file holding its target, as git stores it.
 func flattenSymlinks(head string) error {
 	return filepath.WalkDir(head, func(p string, e fs.DirEntry, err error) error {
 		switch {
@@ -453,7 +428,6 @@ func flattenSymlinks(head string) error {
 	})
 }
 
-// copyFromHead copies files of the checked-out head into dir, at the same paths.
 func copyFromHead(head, dir string, files []string) error {
 	for _, f := range files {
 		raw, err := os.ReadFile(filepath.Join(head, filepath.FromSlash(f)))
@@ -474,8 +448,6 @@ func copyFromHead(head, dir string, files []string) error {
 	return nil
 }
 
-// toHeadLines turns the line numbers of findings in the added-lines files into the lines of the head they were taken
-// from. A file read whole keeps its numbers.
 func toHeadLines(found []finding, d *data) {
 	added := map[string][]numberedLine{}
 	for _, f := range d.Files {
@@ -490,7 +462,6 @@ func toHeadLines(found []finding, d *data) {
 	}
 }
 
-// onAddedLines keeps the findings on lines the PR adds and the findings that name no line.
 func onAddedLines(found []finding, d *data) []finding {
 	added, whole := map[string]bool{}, map[string]bool{}
 	for _, f := range d.Files {
@@ -508,7 +479,6 @@ func onAddedLines(found []finding, d *data) []finding {
 	return keep
 }
 
-// parseReport reads the findings from a tool's report as its report spec describes.
 func parseReport(r reportSpec, report []byte) ([]finding, error) {
 	var found []finding
 	switch r.Format {
@@ -587,7 +557,6 @@ func jsonFindings(r reportSpec, v any) []finding {
 	return found
 }
 
-// jsonPath walks a dot path; a segment ending in [] fans out over an array.
 func jsonPath(v any, p string) []any {
 	current := []any{v}
 	for seg := range strings.SplitSeq(p, ".") {
@@ -646,8 +615,6 @@ func firstLines(text string, n int) string {
 	return strings.Join(keep, " | ")
 }
 
-// runScans prepares the workspace and runs the scans that are still to decide, in parallel, writing each outcome
-// into the evaluation.
 func runScans(ctx context.Context, cfg config, d *data, ev *evaluation, ws workspace, log io.Writer) error {
 	var scans []check
 	for _, c := range cfg.Checks {

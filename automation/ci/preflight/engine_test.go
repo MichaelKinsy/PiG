@@ -18,29 +18,21 @@ import (
 	"time"
 )
 
-// fakeGitHub serves the parts of the REST API a run reads and writes, for open PRs of o/r. Comments it is sent are by
-// the bot; others can be put in its list by hand.
 type fakeGitHub struct {
-	mu       sync.Mutex
-	bodies   map[int]string
-	broken   map[int]bool
-	hits     map[string]int
-	statuses map[string]string
-	// comments holds each PR's comments in order.
-	comments map[int][]fakeComment
-	nextID   int64
-	// tip is where main is; empty is "base". tipDown makes reading it fail.
-	tip     string
-	tipDown bool
-	// unknown answers mergeable null, as GitHub does before it computed it.
-	unknown bool
-	// big are PRs with more commits than the API lists.
-	big map[int]bool
-	// issues are the repository's issues by number; issuesDown makes writing one fail.
+	mu         sync.Mutex
+	bodies     map[int]string
+	broken     map[int]bool
+	hits       map[string]int
+	statuses   map[string]string
+	comments   map[int][]fakeComment
+	nextID     int64
+	tip        string
+	tipDown    bool
+	unknown    bool
+	big        map[int]bool
 	issues     map[int]*fakeIssue
 	issuesDown bool
 	searchDown bool
-	// issuesGone answers 410 to writing an issue, as a repository with issues off does.
 	issuesGone bool
 }
 
@@ -67,7 +59,6 @@ func newFakeGitHub(bodies map[int]string) *fakeGitHub {
 	return &fakeGitHub{bodies: bodies, broken: map[int]bool{}, hits: map[string]int{}, statuses: map[string]string{}, comments: map[int][]fakeComment{}, issues: map[int]*fakeIssue{}}
 }
 
-// preflightComment is the bot's pre-flight comment on a PR, "" when there is none.
 func (g *fakeGitHub) preflightComment(pr int) string {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -127,7 +118,6 @@ func (g *fakeGitHub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "unexpected query "+q, http.StatusUnprocessableEntity)
 			return
 		}
-		// Every issue, as a search may also find others with a similar title: the caller checks author and marker.
 		var items []*fakeIssue
 		for n := 1000; n >= 1; n-- {
 			if i := g.issues[n]; i != nil {
@@ -253,12 +243,10 @@ func TestRunBatch(t *testing.T) {
 
 	dir := t.TempDir()
 	bin := filepath.Join(dir, "bin")
-	// The scan tool leaves a marker named after the PR it ran for, so the test sees which PRs reached the scans.
 	fakeTool(t, bin, "marker", `touch "`+dir+`/scanned-$(basename "$(dirname "$1")")"`)
 	o := runOptions{apiBase: server.URL, token: "tok", repo: "o/r", root: dir, bin: bin, work: filepath.Join(dir, "work"), jobs: 2, bot: defaultBot}
 
 	var out strings.Builder
-	// A PR whose API is down is reported on its own; the run stays green.
 	_, err = runBatch(context.Background(), cfg, o, &out)
 	if err != nil || !strings.Contains(out.String(), "the pre-flight could not run for 1 of 3 PR(s)") {
 		t.Fatalf("err = %v, log:\n%s", err, out.String())
@@ -275,7 +263,6 @@ func TestRunBatch(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dir, "scanned-2")); err == nil {
 		t.Error("PR #2 failed a cheap check but its scan ran")
 	}
-	// One group per PR and nothing nested: GitHub does not nest groups, so an inner one would end the PR's.
 	if strings.Count(out.String(), "::group::") != 3 || strings.Count(out.String(), "::endgroup::") != 3 || !strings.Contains(out.String(), "── fetch wave 1") {
 		t.Errorf("groups:\n%s", out.String())
 	}
@@ -285,7 +272,6 @@ func TestRunBatch(t *testing.T) {
 		}
 	}
 
-	// A second run with nothing changed reuses PR #1's verdicts from its comment: no data read, no scan, nothing sent.
 	if err := os.Remove(filepath.Join(dir, "scanned-1")); err != nil {
 		t.Fatal(err)
 	}
@@ -307,7 +293,6 @@ func TestRunBatch(t *testing.T) {
 		t.Error("the reused PR ran its scan again")
 	}
 
-	// A reused PR whose scans are still open does not run them, even when scans are forced.
 	o.prs, o.forceScans = []int{2}, true
 	out.Reset()
 	if _, err := runBatch(context.Background(), cfg, o, &out); err != nil {
@@ -317,7 +302,6 @@ func TestRunBatch(t *testing.T) {
 		t.Errorf("a reused PR ran its open scans; log:\n%s", out.String())
 	}
 
-	// Main moving, or the description changing, decides the PR again; the pull's base.sha does not move.
 	o.prs, o.forceScans = []int{1}, false
 	for _, change := range []func(){func() { g.tip = "new-base" }, func() { g.bodies[1] = "Fix: yes" }} {
 		change()
@@ -333,14 +317,12 @@ func TestRunBatch(t *testing.T) {
 		t.Fatalf("state %+v", st)
 	}
 
-	// A comment that cannot be read is an error for that PR alone, and no new comment is posted beside the old one.
 	g.broken[-1] = true
 	o.prs = []int{1, 2}
 	out.Reset()
 	if _, err := runBatch(context.Background(), cfg, o, &out); err != nil || !strings.Contains(out.String(), "its pre-flight comment could not be read") || !strings.Contains(out.String(), "PR #2: fail") {
 		t.Fatalf("err %v, log:\n%s", err, out.String())
 	}
-	// When it could run for none of its PRs, the run itself is broken.
 	g.broken[-2] = true
 	out.Reset()
 	if _, err := runBatch(context.Background(), cfg, o, &out); err == nil || !strings.Contains(err.Error(), "could not run for any of the 2 PR(s)") {
@@ -367,7 +349,6 @@ func TestRunPRMarksScansWhenTheirInputsFail(t *testing.T) {
 	}
 }
 
-// withComment puts a bot's pre-flight comment holding st on a PR of g.
 func withComment(g *fakeGitHub, pr int, st state) {
 	g.nextID++
 	c := fakeComment{ID: g.nextID, Body: withState(commentMarker+"\n", st)}
@@ -385,7 +366,6 @@ func TestRunBatchBudgets(t *testing.T) {
 	defer server.Close()
 	dir := t.TempDir()
 	o := runOptions{apiBase: server.URL, token: "t", repo: "o/r", root: dir, bin: dir, work: filepath.Join(dir, "work"), jobs: 1, budget: 2, bot: defaultBot}
-	// PRs go in number order, and the budget of two leaves 3 and 4 to a next job.
 	var out strings.Builder
 	hs, err := runBatch(context.Background(), cfg, o, &out)
 	if deferred := deferredPRs(hs); err != nil || !slices.Equal(deferred, []int{3, 4}) {
@@ -399,26 +379,22 @@ func TestRunBatchBudgets(t *testing.T) {
 	if g.hits["GET /repos/o/r/pulls/3/files"] != 0 || g.statuses["head3"] != "" {
 		t.Fatalf("a deferred PR was fetched or recorded: %v", g.hits)
 	}
-	// The next job runs the deferred PRs by name: named PRs are all run, whatever the budget.
 	o.prs, o.budget = []int{3, 4}, 1
 	out.Reset()
 	if hs, err := runBatch(context.Background(), cfg, o, &out); err != nil || len(deferredPRs(hs)) != 0 || !strings.Contains(out.String(), "PR #4: pass") || len(hs) != 2 || hs[1] != (handled{PR: 4, Head: "head4", Result: resultPass}) {
 		t.Fatalf("handled %+v, err %v, log:\n%s", hs, err, out.String())
 	}
-	// The next run reuses all four, which do not count.
 	o.prs, o.budget = nil, 2
 	out.Reset()
 	if hs, err := runBatch(context.Background(), cfg, o, &out); err != nil || len(deferredPRs(hs)) != 0 || strings.Count(out.String(), "mode reuse") != 4 || strings.Contains(out.String(), "deferred") {
 		t.Fatalf("handled %+v, err %v, log:\n%s", hs, err, out.String())
 	}
-	// Where main is cannot be read: nothing is reused.
 	g.tipDown = true
 	out.Reset()
 	if _, err := runBatch(context.Background(), cfg, o, &out); err != nil || strings.Contains(out.String(), "mode reuse") || !strings.Contains(out.String(), "the tip of main could not be read, so nothing is reused") {
 		t.Fatalf("err %v, log:\n%s", err, out.String())
 	}
 	g.tipDown = false
-	// A spent time budget starts no PR.
 	o.timeBudget = time.Nanosecond
 	out.Reset()
 	if hs, err := runBatch(context.Background(), cfg, o, &out); err != nil || len(deferredPRs(hs)) != 4 || !strings.Contains(out.String(), "time budget of 1ns is spent") {
@@ -457,7 +433,6 @@ func TestRunPRAsksGitWhenGitHubCannotTellMergeable(t *testing.T) {
 	if err != nil || result != resultPending || !strings.Contains(log.String(), "git merge-tree could not tell") {
 		t.Fatalf("result %s, err %v, log:\n%s", result, err, log.String())
 	}
-	// A reused PR asks nothing.
 	prev := &state{Version: "v", Head: "head1", Base: "old-base", Body: bodyHash("Fix: no"), Checks: map[string]verdict{"template": {Result: resultPass}, "up-to-date": {Result: resultPass}}}
 	log.Reset()
 	if result, _, err := runPR(context.Background(), cfg, &ruleEnv{root: dir}, o, "v", pending{pr: 1, comment: prComment{State: prev}}, nil, nil, &log); err != nil || result != resultPass || strings.Contains(log.String(), "merge-tree") {
@@ -487,7 +462,6 @@ func TestRunCommandWritesTheDeferredPRsForNextJobs(t *testing.T) {
 	if problems != nil || len(hs) != 3 || hs[0].PR != 1 || hs[0].Head != "head1" || hs[0].PassedOn || !hs[1].PassedOn || hs[2] != (handled{PR: 3, Head: "head3", Result: resultDeferred, PassedOn: true}) {
 		t.Fatalf("handled %+v, problems %v", hs, problems)
 	}
-	// Without --next nothing is passed on.
 	run([]string{"run", "--repo", "o/r", "--api", server.URL, "--root", dir, "--bin", dir, "--work", dir, "--dry-run", "--jobs", "1", "--budget", "1", "--handled", handledPath}, &out, &errOut)
 	if hs, _ := readHandled(reports); len(hs) != 3 || hs[2].Result != resultDeferred || hs[2].PassedOn {
 		t.Fatalf("handled %+v", hs)
@@ -495,7 +469,6 @@ func TestRunCommandWritesTheDeferredPRsForNextJobs(t *testing.T) {
 	if code := run([]string{"run", "--repo", "o/r", "--api", server.URL, "--root", dir, "--bin", dir, "--work", dir, "--dry-run", "--prs", "1", "--handled", filepath.Join(dir, "no", "h.json")}, &out, &errOut); code != 2 {
 		t.Fatalf("an unwritable --handled: exit %d", code)
 	}
-	// A repository without open PRs is an empty report.
 	empty := httptest.NewServer(newFakeGitHub(map[int]string{}))
 	defer empty.Close()
 	if code := run([]string{"run", "--repo", "o/r", "--api", empty.URL, "--root", dir, "--bin", dir, "--work", dir, "--dry-run", "--handled", handledPath}, &out, &errOut); code != 0 {
@@ -504,7 +477,6 @@ func TestRunCommandWritesTheDeferredPRsForNextJobs(t *testing.T) {
 	if raw, _ := os.ReadFile(handledPath); strings.TrimSpace(string(raw)) != "[]" {
 		t.Fatalf("no open PRs: %s", raw)
 	}
-	// A job that cannot start says so in its report, rather than look like a repository without open PRs.
 	if code := run([]string{"run", "--repo", "o/r", "--api", "http://127.0.0.1:1", "--root", dir, "--bin", dir, "--work", dir, "--dry-run", "--handled", handledPath}, &out, &errOut); code != 2 {
 		t.Fatalf("a job that cannot list its PRs: exit %d", code)
 	}
@@ -523,10 +495,7 @@ func TestRunCommandWritesTheDeferredPRsForNextJobs(t *testing.T) {
 	}
 }
 
-// TestWorkflowPassesTheGroupsOnUnchanged runs the workflow's own line that turns --next into the job output, and checks
-// that every group keeps its PR numbers apart.
 func TestWorkflowPassesTheGroupsOnUnchanged(t *testing.T) {
-	// The workflow is found upward from here: in the repository, and beside a copy of this package.
 	var raw []byte
 	for dir, _ := os.Getwd(); ; dir = filepath.Dir(dir) {
 		if b, err := os.ReadFile(filepath.Join(dir, ".github", "workflows", "preflight.yml")); err == nil {

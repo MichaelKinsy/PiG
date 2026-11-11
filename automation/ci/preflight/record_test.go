@@ -43,7 +43,6 @@ func TestStatusAndMarkdown(t *testing.T) {
 	}
 }
 
-// recordServer is a GitHub that keeps one PR's comments and statuses for record.
 type recordServer struct {
 	mu          sync.Mutex
 	calls       []string
@@ -94,7 +93,6 @@ func TestRecordSendsOnlyChangesAndAlertsOnce(t *testing.T) {
 	server := httptest.NewServer(g)
 	defer server.Close()
 	o := recordOptions{apiBase: server.URL, token: "t"}
-	// step records ev and then reads the comment back as the next run would.
 	step := func() *state {
 		t.Helper()
 		g.calls = nil
@@ -112,24 +110,20 @@ func TestRecordSendsOnlyChangesAndAlertsOnce(t *testing.T) {
 	if !strings.HasPrefix(g.comments[1], commentMarker) || !strings.Contains(g.comments[1], "❌ fail") {
 		t.Fatalf("comment %q", g.comments[1])
 	}
-	// A reused run with nothing changed sends nothing and does not alert again.
 	d.Mode = modeReuse
 	if step(); len(g.calls) != 0 || len(g.alerts) != 1 {
 		t.Fatalf("an unchanged run sent %v", g.calls)
 	}
-	// A changed verdict updates the comment by its id and sets the status.
 	d.Mode = modeFull
 	ev.Checks["template"] = verdict{Result: resultFail, Reason: "x"}
 	ev.finish()
 	if step(); !slices.Equal(g.calls, []string{"POST /repos/o/r/statuses/h1", "PATCH /repos/o/r/issues/comments/1"}) {
 		t.Fatalf("calls %v", g.calls)
 	}
-	// A full run that only moved main writes the new state but sets no status: the status did not change.
 	ev.Base = "b2"
 	if step(); !slices.Equal(g.calls, []string{"PATCH /repos/o/r/issues/comments/1"}) {
 		t.Fatalf("calls %v", g.calls)
 	}
-	// A deleted comment is posted anew.
 	g.patchStatus = http.StatusNotFound
 	ev.Checks["template"] = verdict{Result: resultPass}
 	ev.finish()
@@ -137,7 +131,6 @@ func TestRecordSendsOnlyChangesAndAlertsOnce(t *testing.T) {
 		t.Fatalf("calls %v", g.calls)
 	}
 	g.patchStatus = 0
-	// Passing clears the alert; failing again alerts again.
 	ev.Checks["secrets"] = verdict{Result: resultPass}
 	ev.finish()
 	if st = step(); len(st.Alerted) != 0 {
@@ -148,14 +141,12 @@ func TestRecordSendsOnlyChangesAndAlertsOnce(t *testing.T) {
 	if step(); len(g.alerts) != 2 {
 		t.Fatalf("alerts %q", g.alerts)
 	}
-	// A new head sets the status even when it reads the same.
 	ev.Head = "h2"
 	g.calls = nil
 	if err := record(context.Background(), cfg, d, ev, o, io.Discard); err != nil || !slices.Contains(g.calls, "POST /repos/o/r/statuses/h2") {
 		t.Fatalf("calls %v, err %v", g.calls, err)
 	}
 	ev.Head = "h1"
-	// A refused PATCH is an error, not a new comment.
 	g.patchStatus = http.StatusForbidden
 	ev.Checks["template"] = verdict{Result: resultFail, Reason: "y"}
 	ev.finish()
@@ -178,7 +169,6 @@ func TestRecordDryRunSaysWhatItWouldSend(t *testing.T) {
 			t.Fatalf("log lacks %q:\n%s", want, log.String())
 		}
 	}
-	// What the same run would leave is unchanged for the next one.
 	st := state{Head: "h1", Checks: ev.Checks, Body: bodyHash(""), Alerted: []string{"secrets"}}
 	st.Status = "failure 1 failed: secrets"
 	d.Previous, d.Mode = &st, modeReuse
@@ -190,7 +180,6 @@ func TestRecordDryRunSaysWhatItWouldSend(t *testing.T) {
 	if !strings.Contains(log.String(), "nothing changed, nothing to send") || strings.Contains(log.String(), "alert") {
 		t.Fatalf("log %s", log.String())
 	}
-	// Only the comment differs: it is sent, and the run does not say nothing changed.
 	log.Reset()
 	if err := record(context.Background(), cfg, d, ev, recordOptions{dryRun: true, comment: prComment{ID: 1, Body: body + "x"}}, &log); err != nil {
 		t.Fatal(err)
@@ -264,7 +253,6 @@ func TestWarningsArePerFileAndBounded(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Three notices in one file are one warning that counts the other two; one acknowledgement covers the file.
 	long := "# Copyright 2020 " + strings.Repeat("x", 300)
 	f := prFile{Filename: "x.sh", Status: "modified", SHA: "blob", Patch: "@@ -1 +1,4 @@\n x\n+" + long + "\n+# Copyright 2021 B\n+# Copyright 2022 C"}
 	d := &data{Version: "v", Files: []prFile{f}, Relevant: []string{"licenses"}}
@@ -284,7 +272,6 @@ func TestWarningsArePerFileAndBounded(t *testing.T) {
 		t.Fatalf("the file's entry did not cover it: %+v", ws)
 	}
 
-	// Warnings in more files than maxWarnedFiles: the first are listed, the rest counted in one line without an entry.
 	d = &data{Version: "v", Relevant: []string{"licenses"}}
 	for i := range maxWarnedFiles + 3 {
 		d.Files = append(d.Files, prFile{Filename: fmt.Sprintf("f%02d.sh", i), Status: "modified", SHA: "b", Patch: "@@ -1 +1,2 @@\n x\n+# Copyright 2020 X"})
@@ -310,11 +297,9 @@ func TestWarningsArePerFileAndBounded(t *testing.T) {
 	if got := capWarnings(exact); len(got) != maxWarnedFiles {
 		t.Fatalf("exactly maxWarnedFiles were capped: %d", len(got))
 	}
-	// Capping a capped list again, as a reused verdict is, keeps the count.
 	if again := capWarnings(ws); len(again) != maxWarnedFiles+1 || again[maxWarnedFiles].where() != "and 3 more file(s) with warnings" {
 		t.Fatalf("capped again: %d, last %q", len(again), again[len(again)-1].where())
 	}
-	// A reused verdict with a stale acknowledgement: it stays listed, first, and the count grows by the file it pushes out.
 	d.Acknowledged = ackEntry("licenses", warning{File: "f00.sh", Blob: "old"})
 	d.Mode = modeFull
 	d.Previous = &state{Engine: cfg.EngineRevision, Checks: ev.Checks}
@@ -355,13 +340,11 @@ func TestCommentBodyShortensOnlyWhatCanGrow(t *testing.T) {
 	d := &data{}
 	ev := evaluation{Head: "h", Checks: map[string]verdict{"licenses": {Result: resultPass, Reason: "ok", Warnings: []warning{{File: "f", Text: "t"}}}}}
 	st := state{Head: "h", Checks: ev.Checks}
-	// Exactly as long as GitHub takes: kept whole.
 	overhead := len(withState("", st))
 	exact := strings.Repeat("x", maxCommentLength-overhead)
 	if body, err := commentBody(cfg, d, ev, exact, st); err != nil || len(body) != maxCommentLength || !strings.HasPrefix(body, exact) {
 		t.Fatalf("a body of exactly the limit: %d %v", len(body), err)
 	}
-	// One more: the warnings go, the verdicts stay.
 	body, err := commentBody(cfg, d, ev, exact+"x", st)
 	if err != nil || !strings.Contains(body, strings.TrimSpace(shortened)) || strings.Contains(body, "| 🔶 |") || !strings.Contains(body, "| ✅ | licenses | ok |") {
 		t.Fatalf("shortened body: %v\n%s", err, body)

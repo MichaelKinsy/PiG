@@ -1,13 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-// Command preflight runs the cheap checks a pull request must pass before any heavy CI starts, over every open PR of a
-// repository on one runner. What it checks, when, and with which tool is declared in config.yaml; this command is the
-// engine that runs it:
-//
-//	preflight run      fetch each PR's data once, decide the cheap checks, run the scans, record status and comment
-//	preflight install  put the pinned scanners of config.yaml into a bin directory
-//	preflight content  apply forbidden.yaml and mandatory.yaml to a PR's changed files (a scan config.yaml runs)
-//	preflight checks   list the checks of config.yaml
+// Command preflight is the PiG CI pre-flight; see README.md.
 package main
 
 import (
@@ -120,7 +113,7 @@ func runCommand(ctx context.Context, cfg config, args []string, stdout, stderr i
 		o.prs = append(o.prs, n)
 	}
 	for _, p := range []*string{&o.root, &o.bin, &o.work} {
-		// The tools run in other directories, so every path they are given is absolute.
+		// The tools run in other directories.
 		if *p != "" {
 			abs, err := filepath.Abs(*p)
 			if err != nil {
@@ -139,7 +132,6 @@ func runCommand(ctx context.Context, cfg config, args []string, stdout, stderr i
 		return 2
 	}
 	hs, err := runBatch(ctx, cfg, o, stdout)
-	// Both written also when the job failed, so the deferred PRs still get their job and the verify job its report.
 	if *next != "" {
 		if werr := writeNext(*next, chunks(deferredPRs(hs), o.budget)); werr != nil {
 			err = errors.Join(err, werr)
@@ -149,7 +141,6 @@ func runCommand(ctx context.Context, cfg config, args []string, stdout, stderr i
 		}
 	}
 	if err != nil && len(hs) == 0 {
-		// The job could not start: its report says so, rather than look like a repository without open PRs.
 		hs = []handled{{Result: resultError, Error: err.Error()}}
 	}
 	if *handledPath != "" {
@@ -164,8 +155,7 @@ func runCommand(ctx context.Context, cfg config, args []string, stdout, stderr i
 	return 0
 }
 
-// writeNext writes the deferred groups as one line of compact JSON, which the workflow passes on as a job output
-// unchanged: ["1 2","3"]. A group keeps its spaces; nothing may strip them.
+// One line, with the spaces inside each group: the workflow passes it on as a job output unchanged.
 func writeNext(path string, groups []string) error {
 	raw, err := json.Marshal(append([]string{}, groups...))
 	if err != nil {

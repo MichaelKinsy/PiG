@@ -20,24 +20,17 @@ import (
 	"time"
 )
 
-// state is what a run leaves for the next run of the same PR.
 type state struct {
 	Version string             `json:"version"`
 	Engine  int                `json:"engine"`
 	Head    string             `json:"head"`
 	Base    string             `json:"base"`
 	Checks  map[string]verdict `json:"checks"`
-	// Body is the SHA-256 of the PR's description, which an author edits without a new commit.
-	Body string `json:"body"`
-	// Status is the commit status last set, state and description; an equal one on the same head is not set again.
-	Status string `json:"status,omitempty"`
-	// Alerted are the checks whose alert was posted; a check leaves the list when it passes, and alerts again when
-	// it fails again.
-	Alerted []string `json:"alerted,omitempty"`
+	Body    string             `json:"body"`
+	Status  string             `json:"status,omitempty"`
+	Alerted []string           `json:"alerted,omitempty"`
 }
 
-// verdict is one check's outcome and the hash of the inputs it was decided on. Warnings do not fail the check; they are
-// shown to the reviewer.
 type verdict struct {
 	Input    string    `json:"input"`
 	Result   string    `json:"result"`
@@ -45,39 +38,30 @@ type verdict struct {
 	Warnings []warning `json:"warnings,omitempty"`
 }
 
-// warning is something a reviewer should know that does not fail its check. Notice is the exact text it is about; with
-// the file's blob it is what an acknowledgement in acknowledged.toml matches.
 type warning struct {
-	File   string `json:"file"`
-	Line   int    `json:"line,omitempty"`
-	Notice string `json:"notice"`
-	Text   string `json:"text"`
-	Blob   string `json:"blob"`
-	// More counts the further warnings of the same check in the same file, folded into this one.
-	More int `json:"more,omitempty"`
-	// Acknowledged is set when acknowledged.toml holds a matching entry for this blob of the file.
-	Acknowledged bool `json:"acknowledged,omitempty"`
+	File         string `json:"file"`
+	Line         int    `json:"line,omitempty"`
+	Notice       string `json:"notice"`
+	Text         string `json:"text"`
+	Blob         string `json:"blob"`
+	More         int    `json:"more,omitempty"`
+	Acknowledged bool   `json:"acknowledged,omitempty"`
 }
 
-// Modes of a run.
 const (
-	modeFull  = "full"
-	modeReuse = "reuse"
-	// modeDeferred is a PR the run's budget left for the next run.
+	modeFull     = "full"
+	modeReuse    = "reuse"
 	modeDeferred = "deferred"
 )
 
-// data is everything fetch collects for one PR; evaluate decides every check from it alone.
 type data struct {
 	Repo    string `json:"repo"`
 	PR      int    `json:"pr"`
 	Version string `json:"version"`
-	// BaseTip is the commit the base branch is at now. The pull's base.sha is not: it stays where the PR was last
-	// updated, so it cannot tell that main moved.
-	BaseTip string `json:"base_tip"`
-	Mode    string `json:"mode"`
-	Reason  string `json:"reason"`
-	// Limit names a GitHub REST limit the PR exceeds; the PR fails with it instead of being judged on truncated data.
+	// GitHub's base.sha stays where the PR was last updated; it does not follow the base branch.
+	BaseTip      string             `json:"base_tip"`
+	Mode         string             `json:"mode"`
+	Reason       string             `json:"reason"`
 	Limit        string             `json:"limit,omitempty"`
 	Pull         pull               `json:"pull"`
 	Files        []prFile           `json:"files"`
@@ -87,14 +71,10 @@ type data struct {
 	Dependencies []dependencyChange `json:"dependencies,omitempty"`
 	Relevant     []string           `json:"relevant"`
 	Previous     *state             `json:"previous,omitempty"`
-	// SourceErrors holds each source that still failed after its retries; the checks reading it cannot pass, the others
-	// are decided as usual.
-	SourceErrors map[string]string `json:"source_errors,omitempty"`
-	// Acknowledged is acknowledged.toml as it is at the PR's head; empty when the file does not exist there.
-	Acknowledged string `json:"acknowledged,omitempty"`
+	SourceErrors map[string]string  `json:"source_errors,omitempty"`
+	Acknowledged string             `json:"acknowledged,omitempty"`
 }
 
-// failed records a source that failed after its retries.
 func (d *data) failed(mu *sync.Mutex, log io.Writer, source string, err error) {
 	mu.Lock()
 	defer mu.Unlock()
@@ -105,13 +85,10 @@ func (d *data) failed(mu *sync.Mutex, log io.Writer, source string, err error) {
 	logf(log, "::warning::source %s failed after retries: %v", source, err)
 }
 
-// mergeableRetryDelay is how long GitHub gets to compute mergeable before the one retry.
 var mergeableRetryDelay = 3 * time.Second
 
 var dependsOnRE = regexp.MustCompile(`(?mi)^[ \t]*Depends on:[ \t]*(\S.*?)[ \t]*$`)
 
-// parseDependsOn reads the template's "Depends on:" line: "None" or "#<n>". ok is false when the line is missing or holds
-// anything else.
 func parseDependsOn(body string) (number int, ok bool) {
 	m := dependsOnRE.FindStringSubmatch(body)
 	if m == nil {
@@ -126,9 +103,6 @@ func parseDependsOn(body string) (number int, ok bool) {
 	return 0, false
 }
 
-// decideMode compares this run with the previous state: the same version, head, base tip and description reuse every
-// verdict; anything else decides every check again, each reusing its own verdict while its definition and inputs are
-// unchanged.
 func decideMode(prev *state, version, head, base, body string) (mode, reason string) {
 	switch {
 	case prev == nil:
@@ -141,7 +115,6 @@ func decideMode(prev *state, version, head, base, body string) (mode, reason str
 		return modeFull, "the description changed since the previous run"
 	}
 	for _, v := range prev.Checks {
-		// An error or a pending check may come out otherwise next time; a scan a failed cheap check held back may not.
 		if v.Result == resultError || v.Result == resultPending {
 			return modeFull, "the previous run left a check undecided"
 		}
@@ -149,13 +122,11 @@ func decideMode(prev *state, version, head, base, body string) (mode, reason str
 	return modeReuse, "same head, base and description as the previous run"
 }
 
-// bodyHash is the SHA-256 of a PR description.
 func bodyHash(body string) string {
 	sum := sha256.Sum256([]byte(body))
 	return hex.EncodeToString(sum[:])
 }
 
-// tips looks up where each base branch is now, once per run.
 type tips struct {
 	a  *api
 	mu sync.Mutex
@@ -197,10 +168,8 @@ type fetchOptions struct {
 	pr       int
 	version  string
 	previous *state
-	// admit is asked before a PR that is not reused is fetched further; false defers it to the next run.
-	admit func() bool
-	// tips gives where the base branch is now; without it the pull's base.sha stands in.
-	tips *tips
+	admit    func() bool
+	tips     *tips
 }
 
 func fetch(ctx context.Context, cfg config, o fetchOptions, log io.Writer) (*data, error) {
@@ -209,8 +178,7 @@ func fetch(ctx context.Context, cfg config, o fetchOptions, log io.Writer) (*dat
 	d := &data{Repo: o.repo, PR: o.pr, Version: o.version, Previous: o.previous}
 	prefix := "repos/" + o.repo
 
-	// Plain headings, not ::group::: the batch shows each PR as one group, and GitHub does not nest groups, so an
-	// inner ::endgroup:: would end the PR's.
+	// Not ::group::: GitHub does not nest groups, and the batch already wraps each PR in one.
 	logf(log, "── fetch wave 1")
 	if err := a.get(ctx, fmt.Sprintf("%s/pulls/%d", prefix, o.pr), &d.Pull, false); err != nil {
 		return nil, err
@@ -224,14 +192,12 @@ func fetch(ctx context.Context, cfg config, o fetchOptions, log io.Writer) (*dat
 	if o.tips != nil {
 		var err error
 		if base, err = o.tips.get(ctx, o.repo, d.Pull.Base.Ref); err != nil {
-			// Without the tip the run cannot tell main did not move: it decides every check.
 			logf(log, "the tip of %s could not be read, so nothing is reused: %v", d.Pull.Base.Ref, err)
 		}
 	}
 	d.BaseTip = base
 	d.Mode, d.Reason = decideMode(o.previous, o.version, head, base, bodyHash(d.Pull.Body))
 	if d.Limit != "" && d.Mode != modeReuse {
-		// The PR fails on its size whatever its files say: nothing more is fetched, and it costs no budget.
 		logf(log, "pull #%d head %s: too large for the pre-flight (%s), nothing more fetched", o.pr, short(head), d.Limit)
 		logf(log, "mode %s: %s", d.Mode, d.Reason)
 		return d, nil
@@ -251,7 +217,6 @@ func fetch(ctx context.Context, cfg config, o fetchOptions, log io.Writer) (*dat
 		wg sync.WaitGroup
 		mu sync.Mutex
 	)
-	// Each source is fetched and retried on its own; one that still fails is recorded and the others go on.
 	wg.Go(func() {
 		if err := a.get(ctx, fmt.Sprintf("%s/pulls/%d/files?per_page=%d", prefix, o.pr, perPage), &d.Files, true); err != nil {
 			d.failed(&mu, log, "files", err)

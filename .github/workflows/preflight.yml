@@ -1,15 +1,8 @@
 # SPDX-License-Identifier: MIT
 name: Pre-flight
 
-# The cheap checks every open PR must pass before heavy CI: once an hour, every open PR, a few at a time (`preflight
-# run`; what it checks is declared in automation/ci/preflight/config.yaml). It always runs main's code and
-# configuration, never a PR's: schedule and dispatch check out the default branch. Each PR gets a "preflight" commit
-# status and one comment, which also holds the PR's state for the next run; a PR whose head, main and description did
-# not change since its last run costs two API calls and is not written. The first job fully checks at most 200 PRs,
-# in number order; the PRs beyond go to next jobs, 200 each, at the same time. (Measured on a runner: 40 PRs with
-# every scan took under two minutes; a job takes about 50 s to start, so a next job only pays off past a few hundred.) A PR failing its checks is normal and
-# keeps the run green. The verify job then checks that every PR of the run got its status and comment; when one did
-# not, the pre-flight itself fell short: it keeps one issue open that says which, and fails the run.
+# The PiG CI pre-flight: automation/ci/preflight/README.md.
+
 on:
   schedule:
     - cron: '17 * * * *'
@@ -33,7 +26,6 @@ on:
 
 permissions: {}
 
-# One run at a time, so two runs never write the same PR's comment; a run waits for the one before it.
 concurrency:
   group: preflight
   cancel-in-progress: false
@@ -75,7 +67,7 @@ jobs:
           set -uo pipefail
           extra=()
           if [ "${DRY_RUN:-}" = true ]; then extra+=(--dry-run); fi
-          # Another repository is read only: never written to.
+          # Another repository is read only.
           if [ -n "${REPO:-}" ] && [ "${DRY_RUN:-}" != true ]; then
             echo "::error::repo is for a dry run only"
             exit 2
@@ -85,7 +77,7 @@ jobs:
             --prs "${PRS:-}" --budget 200 --time-budget 25m --next "$RUNNER_TEMP/preflight/next.json" \
             --handled "$RUNNER_TEMP/preflight/preflight-handled-0.json" "${extra[@]}"
           status=$?
-          # The deferred PRs get their jobs also when some PR could not run.
+          # Written also when the run failed, so the deferred PRs still get their jobs.
           if [ -s "$RUNNER_TEMP/preflight/next.json" ]; then
             echo "next=$(cat "$RUNNER_TEMP/preflight/next.json")" >> "$GITHUB_OUTPUT"
           fi
@@ -93,15 +85,13 @@ jobs:
       - name: Keep what the job did with each PR, for the verify job
         if: ${{ always() && inputs.dry-run != true }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        # Each job's report has a name of its own, so the verify job downloads them all into one directory. The first is
-        # the one verify requires (firstReport in automation/ci/preflight/verify.go).
+        # The name verify requires (firstReport in verify.go).
         with:
           name: preflight-handled-0
           path: ${{ runner.temp }}/preflight/preflight-handled-0.json
           if-no-files-found: ignore
           retention-days: 1
 
-  # The PRs the first job's budget left: 200 per job, at the same time.
   more:
     name: Pre-flight (PRs ${{ matrix.prs }})
     needs: preflight
@@ -154,8 +144,6 @@ jobs:
           if-no-files-found: ignore
           retention-days: 1
 
-  # Always, after the others, also when they failed: did every PR of the run get its status and comment? A job that
-  # reported nothing is a missing line too. Not on a dry run, which writes nothing.
   verify:
     name: Every PR has its verdict
     needs: [preflight, more]
@@ -184,7 +172,7 @@ jobs:
         with:
           pattern: preflight-handled-*
           path: ${{ runner.temp }}/handled
-          # Every report in one directory, by its own name: one artifact or many, the layout is the same.
+          # Without it, one artifact lands in the path without the directory of its name.
           merge-multiple: true
       - name: Check every PR and keep the issue
         shell: bash

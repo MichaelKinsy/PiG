@@ -14,20 +14,15 @@ import (
 	"sync"
 )
 
-// Results of a check.
 const (
-	resultPass  = "pass"
-	resultFail  = "fail"
-	resultScan  = "scan"
-	resultError = "error"
-	// resultPending is a check the data cannot decide yet; the next run decides it.
-	resultPending = "pending"
-	// resultDeferred is a PR the run's budget left for the next run.
+	resultPass     = "pass"
+	resultFail     = "fail"
+	resultScan     = "scan"
+	resultError    = "error"
+	resultPending  = "pending"
 	resultDeferred = "deferred"
 )
 
-// outcome is what a rule decides: a result, the reason a reader acts on, and warnings that do not fail the check but
-// are shown to the reviewer.
 type outcome struct {
 	result   string
 	reason   string
@@ -40,10 +35,8 @@ func fail(format string, args ...any) outcome {
 	return outcome{result: resultFail, reason: fmt.Sprintf(format, args...)}
 }
 
-// compiled holds every pattern a rule compiled, by its source; the config validated each one when it loaded.
 var compiled sync.Map
 
-// pattern returns the compiled regular expression of src, compiling it once per run.
 func pattern(src string) *regexp.Regexp {
 	if re, ok := compiled.Load(src); ok {
 		return re.(*regexp.Regexp)
@@ -53,7 +46,6 @@ func pattern(src string) *regexp.Regexp {
 	return re
 }
 
-// params are a rule's parameters, the with: map of its check.
 type params map[string]any
 
 func (p params) str(key string) string {
@@ -85,7 +77,6 @@ func (p params) maps(key string) []params {
 	return out
 }
 
-// need returns an error unless every key is a non-empty string parameter.
 func (p params) need(keys ...string) error {
 	for _, k := range keys {
 		if p.str(k) == "" {
@@ -106,16 +97,14 @@ func (p params) regexps(keys ...string) error {
 	return nil
 }
 
-// ruleEnv is what a rule may read besides the PR's data: main's tree, read once per run.
 type ruleEnv struct {
 	root string
 
 	once     sync.Once
 	licenses []string
-	files    sync.Map // path -> content of a main file a rule read
+	files    sync.Map
 }
 
-// mainLicenses lists the license identifiers of LICENSES/ in main's tree.
 func (e *ruleEnv) mainLicenses() []string {
 	e.once.Do(func() {
 		entries, _ := os.ReadDir(filepath.Join(e.root, "LICENSES"))
@@ -128,7 +117,6 @@ func (e *ruleEnv) mainLicenses() []string {
 	return e.licenses
 }
 
-// mainFiles returns the contents of the files of main's tree that match a glob.
 func (e *ruleEnv) mainFiles(glob string) string {
 	if v, ok := e.files.Load(glob); ok {
 		return v.(string)
@@ -147,7 +135,6 @@ func (e *ruleEnv) mainFiles(glob string) string {
 	return b.String()
 }
 
-// builtinRule is a rule config.yaml can name. validate checks its parameters when the config loads.
 type builtinRule struct {
 	validate func(params) error
 	run      func(*data, params, *ruleEnv) outcome
@@ -179,7 +166,6 @@ func needList(p params, key string) error {
 	return nil
 }
 
-// templateField reads "Name: value" from the PR body; ok is false when the line is missing or empty.
 func templateField(body, name string) (string, bool) {
 	m := pattern(`(?mi)^[ \t]*` + regexp.QuoteMeta(name) + `:[ \t]*(\S.*?)[ \t]*$`).FindStringSubmatch(body)
 	if m == nil {
@@ -215,7 +201,6 @@ func validateBodyFields(p params) error {
 	return nil
 }
 
-// ruleBodyFields fails unless the PR body fills in every template field with a value its pattern accepts.
 func ruleBodyFields(d *data, p params, _ *ruleEnv) outcome {
 	if strings.TrimSpace(d.Pull.Body) == "" {
 		return fail("the PR body is empty: fill in .github/pull_request_template.md")
@@ -244,7 +229,6 @@ func validateAllCommits(p params) error {
 	return p.regexps("message")
 }
 
-// ruleAllCommits fails on every PR commit that is not Verified, or whose message does not match the pattern.
 func ruleAllCommits(d *data, p params, _ *ruleEnv) outcome {
 	var bad []string
 	message := p.str("message")
@@ -294,10 +278,8 @@ func ruleUpToDate(d *data, _ params, _ *ruleEnv) outcome {
 	return pass("up to date with " + d.Pull.Base.Ref)
 }
 
-// fixTitleRE matches the commit titles upstream treats as a fix: "Fix ...", "fix: ..." and "<area>: fix ...".
 var fixTitleRE = regexp.MustCompile(`^(?:Fix\b|fix(?:\([^)]*\))?:|[\w./-]+: fix\b)`)
 
-// fixEvidence lists what marks the PR as a fix besides the template: fix-titled commits and added "### Fixed" sections.
 func fixEvidence(d *data) []string {
 	var why []string
 	for _, c := range d.Commits {
@@ -343,7 +325,6 @@ var (
 	fixMarkerRE    = regexp.MustCompile(`<!-- fix: ([0-9a-f, ]+) -->`)
 )
 
-// prCommit reports whether prefix names a commit of the PR.
 func (d *data) prCommit(prefix string) bool {
 	return slices.ContainsFunc(d.Commits, func(c prCommit) bool { return strings.HasPrefix(c.SHA, prefix) })
 }
@@ -397,7 +378,6 @@ func ruleChangelog(d *data, _ params, _ *ruleEnv) outcome {
 	return pass(fmt.Sprintf("%d valid fragment(s)", len(fragments)))
 }
 
-// fixMarkerProblems checks one "### Fixed" bullet: it needs a <!-- fix: <sha> --> marker naming commits of the PR.
 func fixMarkerProblems(d *data, fragment, bullet string) []string {
 	m := fixMarkerRE.FindStringSubmatch(bullet)
 	if m == nil {
@@ -412,7 +392,6 @@ func fixMarkerProblems(d *data, fragment, bullet string) []string {
 	return problems
 }
 
-// addedLines returns the lines a unified diff patch adds, without the leading "+".
 func addedLines(patch string) []string {
 	var out []string
 	for _, l := range addedNumbered(patch) {
@@ -431,21 +410,16 @@ func removedLines(patch string) []string {
 	return out
 }
 
-// The expectation heuristic of test/parity/cmd/testprune: a line with a comparison or expectation name and a literal.
 var (
-	expectRE  = regexp.MustCompile(`(?i)(?:\bwant\w*\b|\bexpect\w*\b|\bgot\b|!=|==|Equal|\bgolden\b|Contains)`)
-	literalRE = regexp.MustCompile("(?:\"[^\"]{2,}\"|`[^`]{2,}`|\\b\\d{2,}\\b)")
-	piCiteRE  = regexp.MustCompile(`(?m)^Pi-Behavior-Change:[ \t]*(\S+\.ts):\d+`)
-	piPathRE  = regexp.MustCompile(`packages/[A-Za-z0-9_./-]+\.ts\b`)
-	// nilCheckRE matches an error or nil comparison, which compares no expected value.
+	expectRE   = regexp.MustCompile(`(?i)(?:\bwant\w*\b|\bexpect\w*\b|\bgot\b|!=|==|Equal|\bgolden\b|Contains)`)
+	literalRE  = regexp.MustCompile("(?:\"[^\"]{2,}\"|`[^`]{2,}`|\\b\\d{2,}\\b)")
+	piCiteRE   = regexp.MustCompile(`(?m)^Pi-Behavior-Change:[ \t]*(\S+\.ts):\d+`)
+	piPathRE   = regexp.MustCompile(`packages/[A-Za-z0-9_./-]+\.ts\b`)
 	nilCheckRE = regexp.MustCompile(`[!=]= nil\b`)
-	// reportRE matches a test's failure or log message: its literals are the message, not an expectation.
-	reportRE = regexp.MustCompile(`^\s*t\.(?:Fatal|Fatalf|Error|Errorf|Log|Logf|Skip|Skipf)\(`)
-	quotedRE = regexp.MustCompile("\"(?:[^\"\\\\]|\\\\.)*\"|`[^`]*`")
+	reportRE   = regexp.MustCompile(`^\s*t\.(?:Fatal|Fatalf|Error|Errorf|Log|Logf|Skip|Skipf)\(`)
+	quotedRE   = regexp.MustCompile("\"(?:[^\"\\\\]|\\\\.)*\"|`[^`]*`")
 )
 
-// isExpectation reports a line that compares with or names an expected value and holds a literal. The comparison or
-// name must stand outside the line's string literals; nil checks and failure messages do not count.
 func isExpectation(line string) bool {
 	if reportRE.MatchString(line) || !literalRE.MatchString(line) {
 		return false
@@ -454,14 +428,11 @@ func isExpectation(line string) bool {
 	return expectRE.MatchString(code)
 }
 
-// pathLike reports a quoted literal that names a file or package path: moving code changes these without changing behavior.
 func pathLike(literal string) bool {
 	body := strings.Trim(literal, "\"`")
 	return strings.Contains(body, "/") && !strings.ContainsAny(body, " \t\n")
 }
 
-// expectationEdits counts the expected literals a patch replaced: removed by one expectation line and not re-added,
-// bounded by those added and not removed, so a renamed identifier or a moved path does not count.
 func expectationEdits(patch string) int {
 	collect := func(lines []string) map[string]int {
 		m := map[string]int{}
@@ -492,9 +463,6 @@ func isProdGo(p string) bool {
 	return strings.HasSuffix(p, ".go") && !strings.HasSuffix(p, "_test.go") && !strings.Contains(p, "/testdata/")
 }
 
-// ruleTestExpectation fails when the PR changes expected values in a test together with production code of the same
-// directory, unless the PR body and a commit both cite, as `Pi-Behavior-Change: <file.ts:line>`, a Pi source that
-// main's inventories name.
 func ruleTestExpectation(d *data, p params, env *ruleEnv) outcome {
 	prodDirs := map[string]bool{}
 	for _, f := range d.Files {
@@ -594,9 +562,6 @@ func validateLicenseNotices(p params) error {
 	return p.regexps("code-files")
 }
 
-// ruleLicenseNotices fails on a license main does not ship in LICENSES/, and warns on what a reviewer should see: added
-// copyright notices, license texts outside the notice files, and new code files without an SPDX header (REUSE.toml's
-// blanket license then covers them).
 func ruleLicenseNotices(d *data, p params, env *ruleEnv) outcome {
 	var notices []*regexp.Regexp
 	for _, g := range p.strs("notice-files") {
@@ -650,7 +615,6 @@ func validateAddedLinesWarn(p params) error {
 	return p.regexps("pattern")
 }
 
-// ruleAddedLinesWarn passes and warns on every added line that matches the pattern, so a reviewer sees each one.
 func ruleAddedLinesWarn(d *data, p params, _ *ruleEnv) outcome {
 	re := pattern(p.str("pattern"))
 	o := pass("checked the added lines")

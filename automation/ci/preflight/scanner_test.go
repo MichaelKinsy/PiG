@@ -119,7 +119,6 @@ func TestOverlay(t *testing.T) {
 	}
 }
 
-// fakeTool writes an executable shell script into bin and returns its name.
 func fakeTool(t *testing.T, bin, name, script string) string {
 	t.Helper()
 	if err := os.MkdirAll(bin, 0o755); err != nil {
@@ -236,8 +235,6 @@ func TestScanInputHash(t *testing.T) {
 	}
 }
 
-// gitRepo makes a repository at dir/o/r whose refs/pull/1/head holds files, so a workspace can fetch the PR's head from
-// dir as its remote.
 func gitRepo(t *testing.T, dir string, files map[string]string) string {
 	t.Helper()
 	repo := filepath.Join(dir, "o", "r")
@@ -323,7 +320,6 @@ func TestPrepareWorkspaceHead(t *testing.T) {
 		t.Error("the tree is not a repository its scanner can list")
 	}
 
-	// A PR that moved after it was evaluated is not scanned at the newer head.
 	d.Pull.Head.SHA = strings.Repeat("0", 40)
 	ws.dir, ws.head, ws.tree = t.TempDir(), "", ""
 	ws.head, ws.tree = filepath.Join(ws.dir, "head"), filepath.Join(ws.dir, "tree")
@@ -400,7 +396,6 @@ func TestAddedInputReadsUnpatchedFilesWhole(t *testing.T) {
 	if len(kept) != 2 || kept[0].file != "blob.bin" || kept[1].line != 2 {
 		t.Fatalf("kept %+v", kept)
 	}
-	// A file that cannot be read from the head fails the workspace.
 	d.Files = append(d.Files, prFile{Filename: "missing.bin", Status: "added"})
 	if err := os.RemoveAll(ws.head); err != nil {
 		t.Fatal(err)
@@ -618,7 +613,6 @@ func TestFlattenSymlinksNeverEntersALink(t *testing.T) {
 	if raw, _ := os.ReadFile(filepath.Join(outside, "secret")); string(raw) != "AKIA" {
 		t.Fatal("the target was changed")
 	}
-	// content flattens the head it is given before it reads it.
 	if err := os.Symlink(filepath.Join(outside, "secret"), filepath.Join(head, "late")); err != nil {
 		t.Fatal(err)
 	}

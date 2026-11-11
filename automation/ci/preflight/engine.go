@@ -16,41 +16,28 @@ import (
 	"time"
 )
 
-// runOptions are one pre-flight run over a repository's PRs.
 type runOptions struct {
 	apiBase, token string
-	// gitBase is where the PRs' heads are fetched from, https://github.com unless the host is another.
-	gitBase string
-	repo    string
-	// root is main's tree: the code and configuration that judge the PRs.
-	root string
-	// bin holds main's built tools and the installed scanners.
-	bin  string
-	work string
-	prs  []int
-	jobs int
-	// bot is the account the pre-flight comments as; only its comment holds a state.
-	bot string
-	// dryRun sets no status and posts no comment.
-	dryRun bool
-	// forceScans runs the scans even when a cheap check failed.
-	forceScans bool
-	// budget is how many PRs a job fully checks before it leaves the rest to next jobs; a PR it reuses does not count.
-	// Zero is no limit; PRs named in prs are all run.
-	budget int
-	// timeBudget is how long a run starts PRs; the ones running then finish. Zero is no limit.
-	timeBudget time.Duration
+	gitBase        string
+	repo           string
+	root           string
+	bin            string
+	work           string
+	prs            []int
+	jobs           int
+	bot            string
+	dryRun         bool
+	forceScans     bool
+	budget         int
+	timeBudget     time.Duration
 }
 
-// pending is one PR of a run with its comment as loaded.
 type pending struct {
 	pr      int
 	comment prComment
 	err     error
 }
 
-// runPR runs the whole pre-flight for one PR and returns its result. An error means the pre-flight itself could not
-// run for it.
 func runPR(ctx context.Context, cfg config, env *ruleEnv, o runOptions, version string, p pending, admit func() bool, t *tips, log io.Writer) (result, head string, err error) {
 	if p.err != nil {
 		return resultError, "", fmt.Errorf("its pre-flight comment could not be read: %w", p.err)
@@ -94,17 +81,14 @@ func runPR(ctx context.Context, cfg config, env *ruleEnv, o runOptions, version 
 	return ev.Result, head, nil
 }
 
-// handled is what a job did with one PR, for the verify job: the head it judged, the result, why it could not run.
 type handled struct {
-	PR     int    `json:"pr"`
-	Head   string `json:"head,omitempty"`
-	Result string `json:"result"`
-	Error  string `json:"error,omitempty"`
-	// PassedOn is a deferred PR this job handed to a next job (--next); one it did not is left for the next run.
-	PassedOn bool `json:"passed_on,omitempty"`
+	PR       int    `json:"pr"`
+	Head     string `json:"head,omitempty"`
+	Result   string `json:"result"`
+	Error    string `json:"error,omitempty"`
+	PassedOn bool   `json:"passed_on,omitempty"`
 }
 
-// deferredPRs are the PRs the job deferred.
 func deferredPRs(hs []handled) []int {
 	var prs []int
 	for _, h := range hs {
@@ -115,7 +99,6 @@ func deferredPRs(hs []handled) []int {
 	return prs
 }
 
-// each runs fn over 0..n-1, jobs at a time.
 func each(n, jobs int, fn func(i int)) {
 	next := make(chan int)
 	var wg sync.WaitGroup
@@ -133,11 +116,6 @@ func each(n, jobs int, fn func(i int)) {
 	wg.Wait()
 }
 
-// runBatch runs the pre-flight over every PR of the run, o.jobs at a time, each PR's log printed as one group when it
-// is done. It returns what it did with each PR, the deferred ones for a next job, and an error only when the run
-// itself is broken:
-// it cannot start, or it could run for none of its PRs. Failing PRs, and a PR it could not run for, are its normal
-// output.
 func runBatch(ctx context.Context, cfg config, o runOptions, out io.Writer) ([]handled, error) {
 	version, err := bindMain(&cfg, o.root)
 	if err != nil {
@@ -156,7 +134,6 @@ func runBatch(ctx context.Context, cfg config, o runOptions, out io.Writer) ([]h
 			numbers = append(numbers, p.Number)
 		}
 	}
-	// PRs in number order, each with its comment, which holds its state.
 	slices.Sort(numbers)
 	prs := make([]pending, len(numbers))
 	each(len(numbers), o.jobs, func(i int) {
@@ -218,8 +195,6 @@ func runBatch(ctx context.Context, cfg config, o runOptions, out io.Writer) ([]h
 	if deferred := deferredPRs(hs); len(deferred) > 0 {
 		logf(out, "%d PR(s) deferred by the budget, for a next job: %v", len(deferred), deferred)
 	}
-	// One PR the pre-flight could not run for is that PR's problem, shown on it and as an annotation, and the verify job
-	// reports it: this job stays green. Only when it could run for none of them is the job itself broken.
 	if failedToRun > 0 {
 		logf(out, "the pre-flight could not run for %d of %d PR(s)", failedToRun, len(results))
 	}
@@ -229,7 +204,6 @@ func runBatch(ctx context.Context, cfg config, o runOptions, out io.Writer) ([]h
 	return hs, nil
 }
 
-// chunks splits PRs into groups of size, each as the space-separated list `preflight run --prs` takes.
 func chunks(prs []int, size int) []string {
 	var out []string
 	for c := range slices.Chunk(prs, max(size, 1)) {

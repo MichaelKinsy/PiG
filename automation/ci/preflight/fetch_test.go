@@ -141,7 +141,6 @@ func TestGetRetriesTransientFailures(t *testing.T) {
 	}
 }
 
-// TestMain holds the delays themselves; this holds that a new API client takes them.
 func TestNewAPIUsesTheDefaultRetryDelays(t *testing.T) {
 	want := defaultRetryDelays
 	if got := newAPI("x", "").retryDelays; !slices.Equal(got, want) {
@@ -185,7 +184,6 @@ func TestFetchKeepsGoingWhenOneSourceFails(t *testing.T) {
 	}
 }
 
-// fetchWith runs fetch with retry delays short enough for a test.
 func fetchWith(t *testing.T, cfg config, o fetchOptions, log io.Writer) (*data, error) {
 	t.Helper()
 	saved := defaultRetryDelays
@@ -264,7 +262,6 @@ func TestFetchWaveTwo(t *testing.T) {
 		t.Fatalf("relevant %v", d.Relevant)
 	}
 
-	// The same head, base and description reuse the previous run with one call.
 	prev.Head, prev.Body = "new", bodyHash("")
 	calls := 0
 	counted := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

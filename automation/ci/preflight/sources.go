@@ -18,29 +18,23 @@ import (
 	"time"
 )
 
-// The GitHub REST limits a PR's data is read under: pulls/<n>/commits returns at most 250 commits and pulls/<n>/files at
-// most 3000 files. A larger PR fails the pre-flight with that reason instead of being judged on a truncated list.
+// pulls/<n>/commits lists at most 250 commits and pulls/<n>/files at most 3000 files.
 const (
 	maxCommits = 250
 	maxFiles   = 3000
 	perPage    = 100
 )
 
-// apiTimeout bounds one API request.
 const apiTimeout = 30 * time.Second
 
-// api reads the GitHub REST API with a token.
 type api struct {
-	base   string
-	token  string
-	client *http.Client
-	// retryDelays are the waits before each retry of a request that failed transiently.
+	base        string
+	token       string
+	client      *http.Client
 	retryDelays []time.Duration
-	// log receives one line per retry; nil discards them.
-	log io.Writer
+	log         io.Writer
 
-	mu sync.Mutex
-	// calls counts requests, retries included, logged so a run shows what it cost.
+	mu    sync.Mutex
 	calls int
 }
 
@@ -53,19 +47,14 @@ func newAPI(base, token string) *api {
 	}
 }
 
-// defaultRetryDelays are the waits before the first, second and third retry of a request.
 var defaultRetryDelays = []time.Duration{2 * time.Second, 4 * time.Second, 6 * time.Second}
 
-// response is one HTTP answer.
 type response struct {
 	status int
 	header http.Header
 	body   []byte
 }
 
-// retrying calls send until it answers 2xx, answers a status that is not transient, or the retries after each of
-// delays run out. A transient failure is a network error, a timeout, HTTP 429 or a 5xx; any other status is the answer,
-// not a hiccup. label names the request in errors and in the one log line per retry.
 func retrying(ctx context.Context, delays []time.Duration, log io.Writer, label string, send func() (response, error)) (response, error) {
 	for attempt := 0; ; attempt++ {
 		r, err := send()
@@ -88,10 +77,8 @@ func retrying(ctx context.Context, delays []time.Duration, log io.Writer, label 
 	}
 }
 
-// succeeded reports a 2xx status.
 func succeeded(status int) bool { return status >= 200 && status < 300 }
 
-// exchange sends one request and reads at most limit bytes of its answer. With a token it speaks the GitHub REST API.
 func exchange(ctx context.Context, client *http.Client, method, target, token string, body []byte, limit int64) (response, error) {
 	var reader io.Reader
 	if body != nil {
@@ -122,7 +109,6 @@ func exchange(ctx context.Context, client *http.Client, method, target, token st
 	return response{status: resp.StatusCode, header: resp.Header, body: raw}, nil
 }
 
-// call sends one API request with the retries of the api and counts it.
 func (a *api) call(ctx context.Context, method, target, label string, body []byte, limit int64) (response, error) {
 	return retrying(ctx, a.retryDelays, a.log, label, func() (response, error) {
 		a.mu.Lock()
@@ -132,7 +118,6 @@ func (a *api) call(ctx context.Context, method, target, label string, body []byt
 	})
 }
 
-// sleep waits d or until ctx ends.
 func sleep(ctx context.Context, d time.Duration) error {
 	select {
 	case <-ctx.Done():
@@ -142,7 +127,6 @@ func sleep(ctx context.Context, d time.Duration) error {
 	}
 }
 
-// token is the GitHub token of the environment: GITHUB_TOKEN in a workflow, GH_TOKEN for a local run.
 func token() string {
 	if t := os.Getenv("GITHUB_TOKEN"); t != "" {
 		return t
@@ -158,7 +142,6 @@ func (a *api) callCount() int {
 
 var nextLinkRE = regexp.MustCompile(`<([^>]+)>;\s*rel="next"`)
 
-// get decodes one response into out; with all it follows the Link header and appends every page's array.
 func (a *api) get(ctx context.Context, path string, out any, all bool) error {
 	next := a.base + "/" + strings.TrimPrefix(path, "/")
 	var pages []json.RawMessage
@@ -203,13 +186,11 @@ func (e *httpError) Error() string {
 	return fmt.Sprintf("HTTP %d: %.200s", e.status, e.body)
 }
 
-// hasStatus reports an HTTP error with that status.
 func hasStatus(err error, status int) bool {
 	var h *httpError
 	return errors.As(err, &h) && h.status == status
 }
 
-// pull is the part of pulls/<n> the checks read.
 type pull struct {
 	Number       int    `json:"number"`
 	State        string `json:"state"`
@@ -230,7 +211,6 @@ type pull struct {
 	} `json:"base"`
 }
 
-// prFile is one entry of pulls/<n>/files or of a compare's files.
 type prFile struct {
 	Filename         string `json:"filename"`
 	Status           string `json:"status"`
@@ -240,13 +220,10 @@ type prFile struct {
 	Changes          int    `json:"changes"`
 }
 
-// whole reports a file whose new content GitHub shows no patch for (a binary file, or a diff too large to show): a
-// scan of the added lines reads it whole from the head. A rename without a change adds nothing.
 func (f prFile) whole() bool {
 	return f.Patch == "" && f.Status != "removed" && (f.Status != "renamed" || f.Changes > 0)
 }
 
-// prCommit is one entry of pulls/<n>/commits.
 type prCommit struct {
 	SHA    string `json:"sha"`
 	Commit struct {
@@ -258,7 +235,6 @@ type prCommit struct {
 	} `json:"commit"`
 }
 
-// comparison is the part of compare/<a>...<b> the checks read.
 type comparison struct {
 	Status   string   `json:"status"`
 	AheadBy  int      `json:"ahead_by"`
@@ -266,7 +242,6 @@ type comparison struct {
 	Files    []prFile `json:"files"`
 }
 
-// dependencyChange is one entry of dependency-graph/compare.
 type dependencyChange struct {
 	ChangeType      string `json:"change_type"`
 	Manifest        string `json:"manifest"`
@@ -281,8 +256,6 @@ type dependencyChange struct {
 	} `json:"vulnerabilities"`
 }
 
-// refPath escapes a branch name for a URL path segment by segment: the API reads team/x/y with its slashes, not as
-// team%2Fx%2Fy.
 func refPath(ref string) string {
 	parts := strings.Split(ref, "/")
 	for i, p := range parts {

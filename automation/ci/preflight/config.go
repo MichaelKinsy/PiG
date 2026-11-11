@@ -23,8 +23,6 @@ import (
 //go:embed config.yaml
 var configYAML []byte
 
-// tool is a scanner `preflight install` puts in the bin directory: a release archive pinned by SHA-256, or a
-// hash-locked pip requirements file.
 type tool struct {
 	Name    string `yaml:"name"`
 	Version string `yaml:"version"`
@@ -43,23 +41,20 @@ type exitCodes struct {
 	Findings []int `yaml:"findings" json:"findings"`
 }
 
-// reportSpec says where a scan's findings are and how to read file, line and message from each.
 type reportSpec struct {
-	In      string `yaml:"in" json:"in"`
-	Format  string `yaml:"format" json:"format"`
-	Pattern string `yaml:"pattern" json:"pattern,omitempty"`
-	Ignore  string `yaml:"ignore" json:"ignore,omitempty"`
-	List    string `yaml:"list" json:"list,omitempty"`
-	File    string `yaml:"file" json:"file,omitempty"`
-	Line    string `yaml:"line" json:"line,omitempty"`
-	Message string `yaml:"message" json:"message,omitempty"`
-	// UnreadFindings is "pass" when a findings exit without a finding read is not an error.
+	In             string `yaml:"in" json:"in"`
+	Format         string `yaml:"format" json:"format"`
+	Pattern        string `yaml:"pattern" json:"pattern,omitempty"`
+	Ignore         string `yaml:"ignore" json:"ignore,omitempty"`
+	List           string `yaml:"list" json:"list,omitempty"`
+	File           string `yaml:"file" json:"file,omitempty"`
+	Line           string `yaml:"line" json:"line,omitempty"`
+	Message        string `yaml:"message" json:"message,omitempty"`
 	UnreadFindings string `yaml:"unread-findings" json:"unread_findings,omitempty"`
 
 	pattern, ignore *regexp.Regexp
 }
 
-// scanSpec is how a scan check runs its tool.
 type scanSpec struct {
 	Input          string            `yaml:"input" json:"input"`
 	Select         string            `yaml:"select" json:"select,omitempty"`
@@ -75,47 +70,34 @@ type scanSpec struct {
 	selectRE *regexp.Regexp
 }
 
-// check is one pre-flight check as config.yaml declares it.
 type check struct {
-	Name  string         `yaml:"name" json:"name"`
-	When  when           `yaml:"when" json:"when"`
-	Stage string         `yaml:"stage" json:"stage"`
-	Reads []string       `yaml:"reads" json:"reads,omitempty"`
-	Rule  string         `yaml:"rule" json:"rule,omitempty"`
-	With  map[string]any `yaml:"with" json:"with,omitempty"`
-	Scan  *scanSpec      `yaml:"scan" json:"scan,omitempty"`
-	// Main lists the files in main's tree the check's verdict depends on (globs; a directory counts with everything
-	// in it); a scan's overlay counts too. Their content is part of the definition.
-	Main []string `yaml:"main" json:"main,omitempty"`
-	// Revision is raised by hand to decide the check again where nothing else here changed.
-	Revision int `yaml:"revision" json:"revision,omitempty"`
-	// Alert, when the check fails, is posted once as a comment of its own that mentions the PR's author: for a finding
-	// a summary table must not leave to be noticed, such as a secret.
-	Alert string `yaml:"alert" json:"alert,omitempty"`
+	Name     string         `yaml:"name" json:"name"`
+	When     when           `yaml:"when" json:"when"`
+	Stage    string         `yaml:"stage" json:"stage"`
+	Reads    []string       `yaml:"reads" json:"reads,omitempty"`
+	Rule     string         `yaml:"rule" json:"rule,omitempty"`
+	With     map[string]any `yaml:"with" json:"with,omitempty"`
+	Scan     *scanSpec      `yaml:"scan" json:"scan,omitempty"`
+	Main     []string       `yaml:"main" json:"main,omitempty"`
+	Revision int            `yaml:"revision" json:"revision,omitempty"`
+	Alert    string         `yaml:"alert" json:"alert,omitempty"`
 
-	patterns []*regexp.Regexp
-	// declared is the SHA-256 of the check's declaration here.
-	declared string
-	// definition is the SHA-256 of the check's declaration and, once bindMain ran, of its main files: part of every
-	// input hash, so editing a check or a file it reads decides that check again and no other.
+	patterns   []*regexp.Regexp
+	declared   string
 	definition string
 }
 
 type config struct {
-	// EngineRevision is raised by hand when the engine's code changes what a stored verdict means; it decides every
-	// check again. A new scanner or image version does not.
 	EngineRevision int     `yaml:"engine-revision"`
 	Tools          []tool  `yaml:"tools"`
 	Checks         []check `yaml:"checks"`
 }
 
-// Stages of a check.
 const (
 	stageCheap = "cheap"
 	stageScan  = "scan"
 )
 
-// Inputs of a scan.
 const (
 	inputAdded   = "added"
 	inputChanged = "changed"
@@ -124,10 +106,8 @@ const (
 
 var sha256RE = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
-// sourceNames are the data sources a cheap check may read.
 var sourceNames = []string{"pull", "files", "commits", "compare-main", "depends-on", "dependency-graph"}
 
-// loadConfig parses and validates config.yaml.
 func loadConfig(data []byte) (config, error) {
 	var cfg config
 	decoder := yaml.NewDecoder(bytes.NewReader(data))
@@ -296,7 +276,6 @@ func (r *reportSpec) validate() error {
 	return nil
 }
 
-// relevant reports whether a check applies to a PR that changes these paths.
 func (c check) relevant(changed []string) bool {
 	if c.When.Always {
 		return true
@@ -311,25 +290,19 @@ func (c check) relevant(changed []string) bool {
 	return false
 }
 
-// globRegexp turns a slash-separated glob into an anchored regexp: "**/" matches any number of leading directories,
-// "**" any run of characters, "*" any run without a slash, "?" one character that is not a slash.
 func globRegexp(glob string) (*regexp.Regexp, error) {
 	if glob == "" || strings.HasPrefix(glob, "/") {
 		return nil, fmt.Errorf("path pattern %q must be relative and non-empty", glob)
 	}
-	// QuoteMeta escapes * and ?; the replacer then turns the escaped wildcards into patterns, trying them in argument
-	// order at each place, so **/ wins over ** and ** over *.
+	// Replacer tries its pairs in order at each position: **/ before ** before *.
 	return regexp.Compile("^" + globReplacer.Replace(regexp.QuoteMeta(glob)) + "$")
 }
 
 var globReplacer = strings.NewReplacer(`\*\*/`, "(?:.*/)?", `\*\*`, ".*", `\*`, "[^/]*", `\?`, "[^/]")
 
-// bindMain adds the content of each check's main files in main's tree at root to its definition and returns the run's
-// version: the engine revision with every definition. A state of the same version and the same head and base is
-// reused whole; otherwise each check keeps its stored verdict while its own definition and inputs are unchanged.
 func bindMain(cfg *config, root string) (string, error) {
 	run := sha256.New()
-	_, _ = fmt.Fprintf(run, "engine %d\x00", cfg.EngineRevision) // a hash.Hash never fails to write
+	_, _ = fmt.Fprintf(run, "engine %d\x00", cfg.EngineRevision)
 	for i := range cfg.Checks {
 		c := &cfg.Checks[i]
 		paths := slices.Clone(c.Main)
@@ -356,8 +329,6 @@ func bindMain(cfg *config, root string) (string, error) {
 	return hex.EncodeToString(run.Sum(nil)), nil
 }
 
-// mainNames expands globs and directories under root to the sorted slash paths of the files in them; a path that
-// matches nothing counts as absent, so adding it later changes the hash.
 func mainNames(root string, paths []string) ([]string, error) {
 	var names []string
 	for _, p := range paths {

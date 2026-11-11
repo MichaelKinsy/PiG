@@ -67,7 +67,6 @@ func TestMatchHomePathForms(t *testing.T) {
 		lines = append(lines, f.line)
 	}
 	slices.Sort(lines)
-	// Two paths on line 4 are one finding: findings are per file, line and rule.
 	if !slices.Equal(lines, []int{1, 2, 4}) {
 		t.Fatalf("home paths on lines %v", lines)
 	}
@@ -103,7 +102,6 @@ func TestMatchProseThresholds(t *testing.T) {
 			t.Errorf("%s: %+v", name, got)
 		}
 	}
-	// Characters and words add up over several lines and Go struct literals.
 	text := []byte("Thinking: \"" + words(5) + "\",\nReasoning: `" + words(5)[3:] + " zz`,\n" + `{"reasoning":"more words here"}`)
 	if got := matchProse("f", text, lineOf(text), params{"min-chars": 30, "min-distinct-words": 9}); len(got) != 1 || got[0].line != 1 {
 		t.Fatalf("over several lines: %+v", got)
@@ -121,7 +119,6 @@ func TestMatchTermsAndLoadTerms(t *testing.T) {
 	for _, f := range matchTerms("dir/x", text, lineOf(text), params{"env": "PRIVATE"}) {
 		got = append(got, toStrings([]int{f.line})+":"+f.message)
 	}
-	// abc twice on line 1 is one finding; Acme Corp matches across case on line 2.
 	if strings.Join(got, ",") != "1:term at line 2 of the terms file,2:term at line 4 of the terms file" {
 		t.Fatalf("terms %v", got)
 	}
@@ -154,7 +151,6 @@ func TestReassemble(t *testing.T) {
 	for _, s := range reassemble(indexed, lineOf(indexed)) {
 		keys = append(keys, s.field+"/"+string(s.buf)+"/"+map[bool]string{true: "whole", false: "id"}[s.whole])
 	}
-	// The first delta has no index before it on its line; the second has index 2.
 	if strings.Join(keys, " ") != "delta/xy/whole delta/y/id" {
 		t.Fatalf("streams %v", keys)
 	}
@@ -205,7 +201,6 @@ func TestLastMatcherEdges(t *testing.T) {
 	if len(matchCapturedTime("f", iso, lineOf(iso), nil)) != 1 {
 		t.Error("milliseconds of an ISO time were not read")
 	}
-	// Two reasoning fields on one line both count.
 	two := []byte(`{"thinking":"alpha beta gamma","reasoning":"delta epsilon zeta"}`)
 	if got := matchProse("f", two, lineOf(two), params{"min-chars": 30, "min-distinct-words": 6}); len(got) != 1 {
 		t.Errorf("the second reasoning field of a line was not counted: %+v", got)
@@ -227,7 +222,6 @@ func TestLastMatcherEdges(t *testing.T) {
 	if got := matchTerms("f", twice, lineOf(twice), params{"env": "PRIVATE"}); len(got) != 2 || got[1].line != 3 {
 		t.Errorf("a term on two lines: %+v", got)
 	}
-	// Several values and ids on one line keep their streams apart.
 	line := []byte(`{"index":1,"delta":"a"},{"index":2,"delta":"b"},{"index":1,"delta":"c"}`)
 	var streams []string
 	for _, s := range reassemble(line, lineOf(line)) {

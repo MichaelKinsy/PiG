@@ -1,12 +1,5 @@
 # SPDX-License-Identifier: MIT
-#
-# What a changed file must contain. `preflight content` applies a rule to every changed file it matches (paths and
-# exclude are globs, path-pattern and exclude-pattern regular expressions). A pattern may name a version of
-# variables/versions.yaml as {{ versions.<key> }}, with the filters | minor (the first two parts) and | url (+ as %2B); a
-# rule that does is also applied to every file it matches when variables/versions.yaml changes. listed-in instead requires
-# each matching changed file to be named by a glob under the keys of another file.
 
-# The copies of the toolchain versions.
 - id: pin-go-version-file
   description: .go-version names the Go of variables/versions.yaml
   paths: [.go-version]
@@ -134,7 +127,6 @@
   paths: [automation/dev/toolchains.lock]
   pattern: '(?m)^tinygo\t{{ versions.tinygo }}\t'
 
-# Provenance: a golden or snapshot data file a PR changes is named in test/testdata-provenance.toml.
 - id: golden-provenance
   description: a golden or snapshot data file needs its entry in test/testdata-provenance.toml
   path-pattern: '(?i)((^|/)testdata/.*(golden|snapshot|\.snap$)|__snapshots__)'

@@ -28,8 +28,6 @@ var forbiddenYAML []byte
 //go:embed mandatory.yaml
 var mandatoryYAML []byte
 
-// fileMatch selects files: paths and exclude are globs, path-pattern and exclude-pattern regular expressions. A rule
-// with no selector applies to every file.
 type fileMatch struct {
 	Paths          []string `yaml:"paths"`
 	Exclude        []string `yaml:"exclude"`
@@ -82,7 +80,6 @@ func (m *fileMatch) matches(name string) bool {
 	return match(m.paths) || (m.pathPattern != nil && m.pathPattern.MatchString(name))
 }
 
-// valueRule judges the text a forbidden pattern captured in its first group.
 type valueRule struct {
 	Not       string      `yaml:"not"`
 	MinLength int         `yaml:"min-length"`
@@ -92,7 +89,6 @@ type valueRule struct {
 	not *regexp.Regexp
 }
 
-// randomRule accepts a value with the digits and distinct characters of a generated id.
 type randomRule struct {
 	Digits   int `yaml:"digits"`
 	Distinct int `yaml:"distinct"`
@@ -119,14 +115,11 @@ func (v *valueRule) accepts(value string, versions map[string]string) bool {
 	return true
 }
 
-// allowEntry is a reviewed false positive of one forbidden rule in one file.
 type allowEntry struct {
 	Path   string `yaml:"path"`
 	Reason string `yaml:"reason"`
 }
 
-// forbiddenRule is something that must not appear in the lines a PR adds: a pattern, optionally with conditions on the
-// value it captures, or a built-in matcher.
 type forbiddenRule struct {
 	ID          string         `yaml:"id"`
 	Code        string         `yaml:"code"`
@@ -142,9 +135,6 @@ type forbiddenRule struct {
 	pattern, also *regexp.Regexp
 }
 
-// mandatoryRule is something a changed file matching it must contain. {{ versions.<key> }} in the pattern is the value of
-// that key in variables/versions.yaml at the PR's head; such a rule also runs over every file it matches when that file
-// changes. listed-in instead requires every changed file it matches to be named by an entry of another file.
 type mandatoryRule struct {
 	ID          string      `yaml:"id"`
 	Description string      `yaml:"description"`
@@ -153,7 +143,6 @@ type mandatoryRule struct {
 	ListedIn    *listedRule `yaml:"listed-in"`
 }
 
-// listedRule names a TOML file and the dot paths of its entries' globs ("golden[].paths").
 type listedRule struct {
 	File string   `yaml:"file"`
 	Keys []string `yaml:"keys"`
@@ -164,7 +153,6 @@ type contentRules struct {
 	Mandatory []mandatoryRule
 }
 
-// versionsPath is the one source of every toolchain version.
 const versionsPath = "variables/versions.yaml"
 
 var versionRefRE = regexp.MustCompile(`\{\{\s*versions\.([A-Za-z0-9_.-]+)\s*(?:\|\s*(minor|url)\s*)?\}\}`)
@@ -287,15 +275,12 @@ func (m *mandatoryRule) validate(seen map[string]bool) error {
 	return nil
 }
 
-// textFile is what the content rules read of one changed file: the lines it adds, or all its lines when GitHub gave no
-// patch (a binary file or a diff too large to show).
 type textFile struct {
 	name   string
 	lines  []numberedLine
 	binary bool
 }
 
-// joined returns the lines as one text and maps an offset in it back to its line number.
 func (t textFile) joined() ([]byte, func(int) int) {
 	var b bytes.Buffer
 	starts := make([]int, 0, len(t.lines))
@@ -313,8 +298,6 @@ func (t textFile) joined() ([]byte, func(int) int) {
 	}
 }
 
-// changedText returns the text of every changed file the content rules read: the added lines of its patch, or the
-// whole file from the head when the patch is missing.
 func changedText(d *data, head string) ([]textFile, error) {
 	var out []textFile
 	for _, f := range d.Files {
@@ -338,7 +321,6 @@ func changedText(d *data, head string) ([]textFile, error) {
 	return out, nil
 }
 
-// firstGroup returns the first capture group that matched, for a pattern of alternatives that each capture.
 func firstGroup(sub []string) string {
 	for _, g := range sub[1:] {
 		if g != "" {
@@ -348,14 +330,10 @@ func firstGroup(sub []string) string {
 	return ""
 }
 
-// unquoteMeta undoes regexp.QuoteMeta for a value put in as a literal.
 func unquoteMeta(s string) string {
 	return regexp.MustCompile(`\\(.)`).ReplaceAllString(s, "$1")
 }
 
-// checkForbidden applies every forbidden rule to the changed text. Binary files get only the matchers that read
-// bytes (private terms); allowed entries drop a rule's findings in that one file. versions fills {{ versions.x }} in a
-// value's not-in.
 func checkForbidden(rules []forbiddenRule, files []textFile, versions map[string]string) []finding {
 	var found []finding
 	for _, file := range files {
@@ -396,7 +374,6 @@ func checkForbidden(rules []forbiddenRule, files []textFile, versions map[string
 	return dedupeFindings(found)
 }
 
-// readsBytes reports a rule that also reads binary files: a matcher that searches bytes, such as private terms.
 func readsBytes(r forbiddenRule) bool {
 	return r.Match != "" && matchers[r.Match].binary
 }
@@ -413,7 +390,6 @@ func dedupeFindings(found []finding) []finding {
 	return out
 }
 
-// loadVersions reads variables/versions.yaml at the head into dot-separated keys.
 func loadVersions(head string) (map[string]string, error) {
 	raw, err := os.ReadFile(filepath.Join(head, filepath.FromSlash(versionsPath)))
 	if errors.Is(err, os.ErrNotExist) {
@@ -442,7 +418,6 @@ func loadVersions(head string) (map[string]string, error) {
 	return out, nil
 }
 
-// expandVersions puts each {{ versions.key }} of a pattern in as a literal.
 func expandVersions(pattern string, versions map[string]string) (string, error) {
 	var missing []string
 	out := versionRefRE.ReplaceAllStringFunc(pattern, func(ref string) string {
@@ -466,8 +441,6 @@ func expandVersions(pattern string, versions map[string]string) (string, error) 
 	return out, nil
 }
 
-// mandatoryTargets lists the files each mandatory rule checks: the changed files it matches, and for a rule that reads
-// versions every file of the head it matches when variables/versions.yaml changed.
 func mandatoryTargets(rules []mandatoryRule, changed, tracked []string) map[string][]string {
 	versionsChanged := slices.Contains(changed, versionsPath)
 	out := map[string][]string{}
@@ -485,7 +458,6 @@ func mandatoryTargets(rules []mandatoryRule, changed, tracked []string) map[stri
 	return out
 }
 
-// checkMandatory applies the mandatory rules to their target files at the head.
 func checkMandatory(rules []mandatoryRule, targets map[string][]string, head string) []finding {
 	var found []finding
 	var versions map[string]string
@@ -529,7 +501,6 @@ func checkMandatory(rules []mandatoryRule, targets map[string][]string, head str
 	return found
 }
 
-// checkListed requires every file to be matched by one of the globs the listing file holds under its keys.
 func checkListed(r mandatoryRule, files []string, head string) []finding {
 	var doc any
 	if _, err := toml.DecodeFile(filepath.Join(head, filepath.FromSlash(r.ListedIn.File)), &doc); err != nil {
@@ -559,8 +530,6 @@ func checkListed(r mandatoryRule, files []string, head string) []finding {
 	return found
 }
 
-// runContent is `preflight content`: it applies forbidden.yaml and mandatory.yaml to a PR's changed files and writes the
-// findings as JSON. Exit 0 is clean, 1 findings, 2 an error.
 func runContent(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("content", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -612,7 +581,7 @@ func contentFindings(dataPath, head string) ([]finding, error) {
 	if err := json.Unmarshal(raw, &d); err != nil {
 		return nil, err
 	}
-	// The head is read here before anything else is checked out: its links are flattened first, whoever checked it out.
+	// A PR's symlink may point anywhere on the runner: flatten before reading.
 	if head != "" {
 		if err := flattenSymlinks(head); err != nil {
 			return nil, err
@@ -641,12 +610,11 @@ func contentFindings(dataPath, head string) ([]finding, error) {
 	return append(found, checkMandatory(rules.Mandatory, targets, head)...), nil
 }
 
-// trackedFiles lists every file of the head, also those a sparse checkout left out.
 func trackedFiles(head string) ([]string, error) {
 	if head == "" {
 		return nil, nil
 	}
-	// -z: names as they are, with spaces and without git's quoting of unusual characters.
+	// -z: names with spaces, and without git's quoting.
 	out, err := git(context.Background(), "-C", head, "ls-files", "-z")
 	if err != nil {
 		return nil, fmt.Errorf("git ls-files: %w\n%s", err, out)
@@ -654,7 +622,6 @@ func trackedFiles(head string) ([]string, error) {
 	return strings.FieldsFunc(out, func(r rune) bool { return r == 0 }), nil
 }
 
-// checkOut adds the target files a sparse head left out, so a mandatory rule reads every file it checks.
 func checkOut(head string, targets map[string][]string) error {
 	var missing []string
 	for _, files := range targets {

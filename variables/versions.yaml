@@ -1,12 +1,7 @@
 # SPDX-License-Identifier: MIT
-#
-# The one source of every toolchain version of PiG. A file that can read it is pinned to it; every other copy is a rule in
-# automation/ci/preflight/mandatory.yaml, which the pre-flight checks against this file whenever the copy or this file
-# changes.
 
 go: 1.27.3
 node: 24.22.1
-# The oldest Node an extension runtime accepts (coding/extension/host/subprocess/builder_node.go).
 node-extension-floor: 22.13.0
 rust: 1.97.1
 npm: 12.1.0

@@ -12,7 +12,6 @@ import (
 	"strings"
 )
 
-// evaluation is the outcome of every check for one PR head.
 type evaluation struct {
 	Repo    string             `json:"repo"`
 	PR      int                `json:"pr"`
@@ -22,11 +21,9 @@ type evaluation struct {
 	Engine  int                `json:"engine"`
 	Result  string             `json:"result"`
 	Checks  map[string]verdict `json:"checks"`
-	// Scans are the checks a scan still has to decide.
-	Scans []string `json:"scans"`
+	Scans   []string           `json:"scans"`
 }
 
-// sourceValue returns the part of the data a source name stands for, as it is hashed.
 func sourceValue(d *data, name string) any {
 	switch name {
 	case "pull":
@@ -45,8 +42,6 @@ func sourceValue(d *data, name string) any {
 	return nil
 }
 
-// cheapInputHash is the SHA-256 of a cheap check's definition and every source it reads, so an unchanged input and rule
-// reuse the stored verdict and any change decides it again.
 func cheapInputHash(d *data, c check) string {
 	parts := map[string]any{"definition": c.definition}
 	for _, s := range c.Reads {
@@ -54,14 +49,12 @@ func cheapInputHash(d *data, c check) string {
 	}
 	raw, err := json.Marshal(parts)
 	if err != nil {
-		panic(err) // every value is plain decoded JSON
+		panic(err)
 	}
 	sum := sha256.Sum256(raw)
 	return hex.EncodeToString(sum[:])
 }
 
-// evaluate decides every cheap check from the data and marks the scans still to run. A check no changed file makes
-// relevant passes; a check whose input hash equals the stored one keeps its stored pass or fail.
 func evaluate(cfg config, d *data, env *ruleEnv) evaluation {
 	ev := evaluation{Repo: d.Repo, PR: d.PR, Head: d.Pull.Head.SHA, Base: d.BaseTip, Version: d.Version, Engine: cfg.EngineRevision, Checks: map[string]verdict{}}
 	var prev map[string]verdict
@@ -99,7 +92,6 @@ func evaluate(cfg config, d *data, env *ruleEnv) evaluation {
 	if d.Acknowledged != "" {
 		acks, err := parseAcknowledged(d.Acknowledged)
 		if err != nil {
-			// A broken acknowledgement file must not hide warnings, so the check that warns most reports it.
 			v := ev.Checks["licenses"]
 			v.Result, v.Reason = resultFail, clip(err.Error(), maxReason)
 			ev.Checks["licenses"] = v
@@ -115,7 +107,6 @@ func evaluate(cfg config, d *data, env *ruleEnv) evaluation {
 	return ev
 }
 
-// decide runs a cheap check's rule, or reports the source it reads that failed after its retries.
 func decide(d *data, c check, env *ruleEnv) outcome {
 	for _, s := range c.Reads {
 		if msg, bad := d.SourceErrors[s]; bad {
@@ -125,8 +116,6 @@ func decide(d *data, c check, env *ruleEnv) outcome {
 	return builtinRules[c.Rule].run(d, params(c.With), env)
 }
 
-// finish derives the overall result: fail when any check failed or errored, scan while scans remain, pending while a
-// check waits for the next run, else pass.
 func (ev *evaluation) finish() {
 	ev.Scans = nil
 	ev.Result = resultPass
@@ -155,7 +144,6 @@ func (ev *evaluation) finish() {
 	}
 }
 
-// cheapFailed reports whether a cheap check failed or errored, which keeps the scans from running.
 func (ev evaluation) cheapFailed(cfg config) bool {
 	return slices.ContainsFunc(cfg.Checks, func(c check) bool {
 		r := ev.Checks[c.Name].Result
@@ -165,8 +153,6 @@ func (ev evaluation) cheapFailed(cfg config) bool {
 
 var resultMark = map[string]string{resultPass: "PASS ", resultFail: "FAIL ", resultScan: "SCAN ", resultError: "ERROR", resultPending: "WAIT "}
 
-// report prints one line per check in config order, the warnings, the entries that would acknowledge them, and the
-// GitHub annotations.
 func report(w io.Writer, cfg config, ev evaluation) {
 	var open []string
 	for _, c := range cfg.Checks {
@@ -201,8 +187,6 @@ func report(w io.Writer, cfg config, ev evaluation) {
 	}
 }
 
-// where is a warning as one line: "file:line text: notice", and how many more the file has. The line counting the
-// files beyond the cap is its text alone.
 func (w warning) where() string {
 	if w.File == "" {
 		return w.Text
@@ -221,16 +205,14 @@ func (w warning) where() string {
 	return strings.TrimSpace(s)
 }
 
-// Bounds that keep a PR's comment, report and state small whatever the PR adds: GitHub refuses a comment over 65536
-// characters.
+// GitHub refuses a comment over 65536 characters.
 const (
-	maxReason        = 1000 // characters of a check's reason
-	maxNotice        = 200  // characters of a warning's notice
-	maxWarnedFiles   = 20   // files a check lists warnings for; the rest are counted
+	maxReason        = 1000
+	maxNotice        = 200
+	maxWarnedFiles   = 20
 	maxCommentLength = 65536
 )
 
-// clip cuts s to at most n runes, marking the cut.
 func clip(s string, n int) string {
 	if r := []rune(s); len(r) > n {
 		return string(r[:n-1]) + "…"
@@ -238,8 +220,6 @@ func clip(s string, n int) string {
 	return s
 }
 
-// perFile folds a check's warnings into one per file, the first of each, counting the rest: a reviewer needs to know
-// which file to look at, not every line of it.
 func perFile(ws []warning) []warning {
 	var out []warning
 	at := map[string]int{}
@@ -255,8 +235,6 @@ func perFile(ws []warning) []warning {
 	return out
 }
 
-// capWarnings keeps the warnings of the first maxWarnedFiles files and counts the others in one last line, which
-// holds the count in More. It can run again on its own result, as on a reused verdict: the count carries over.
 func capWarnings(ws []warning) []warning {
 	var kept []warning
 	hidden := 0

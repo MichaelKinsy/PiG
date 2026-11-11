@@ -17,8 +17,6 @@ import (
 
 func TestVerifyHandled(t *testing.T) {
 	g := newFakeGitHub(nil)
-	// PR 2 has everything; PR 3 a status but a comment for an older head; PR 4 neither; PR 7's comment cannot be read;
-	// PR 10 was passed on and judged, but its next job's report was lost.
 	g.statuses["h2"], g.statuses["h3"], g.statuses["h7"], g.statuses["h10"] = "success", "failure", "success", "success"
 	withComment(g, 2, state{Head: "h2"})
 	withComment(g, 10, state{Head: "h10"})
@@ -28,25 +26,19 @@ func TestVerifyHandled(t *testing.T) {
 	defer server.Close()
 	a := newAPI(server.URL, "t")
 	hs := []handled{
-		// Deferred by a next job's time budget: the next run takes it.
 		{PR: 1, Result: resultDeferred, PassedOn: true},
 		{PR: 1, Result: resultDeferred},
 		{PR: 2, Head: "h2", Result: resultPass},
 		{PR: 3, Head: "h3", Result: resultFail},
 		{PR: 4, Head: "h4", Result: resultPass},
 		{PR: 5, Result: resultError, Error: "its pre-flight comment could not be read"},
-		// Passed on by the first job and run by a next one.
 		{PR: 2, Head: "h2", Result: resultDeferred, PassedOn: true},
-		// Passed on, and no next job reported it: GitHub says whether it was judged.
 		{PR: 6, Head: "h6", Result: resultDeferred, PassedOn: true},
 		{PR: 10, Head: "h10", Result: resultDeferred, PassedOn: true},
-		// Passed on before its head was read (the time budget), and not reported.
 		{PR: 11, Result: resultDeferred, PassedOn: true},
 		{PR: 7, Head: "h7", Result: resultPass},
-		// A head GitHub no longer knows (a force-push): its new head is judged next run.
 		{PR: 8, Head: "gone", Result: resultPass},
 		{PR: 9, Head: "h9", Result: resultPass},
-		// The first job could not start.
 		{Result: resultError, Error: "cannot list the PRs"},
 	}
 	var log strings.Builder
@@ -71,7 +63,6 @@ func TestVerifyHandled(t *testing.T) {
 	if !strings.Contains(log.String(), "verify: PR #8: head gone is gone, its new head is judged next run") {
 		t.Fatalf("log:\n%s", log.String())
 	}
-	// A head GitHub answers 404 for is skipped too, also without a log.
 	if what := verifyPR(context.Background(), newAPI(server.URL, "t"), "o/r", defaultBot, handled{PR: 8, Head: "gone404"}); what != "" {
 		t.Fatalf("a 404 head: %q", what)
 	}
@@ -103,7 +94,6 @@ func botIssue(g *fakeGitHub, n int, body, state string) {
 
 func TestKeepIssue(t *testing.T) {
 	g := newFakeGitHub(nil)
-	// Not it: an issue with the marker by someone else, and the bot's issue without the marker.
 	g.issues[1] = &fakeIssue{Number: 1, Title: issueTitle, Body: issueMarker + " by someone", State: "open"}
 	g.issues[1].User.Login = "someone"
 	botIssue(g, 2, "something else", "open")
@@ -111,7 +101,6 @@ func TestKeepIssue(t *testing.T) {
 	defer server.Close()
 	a := newAPI(server.URL, "t")
 	ctx := context.Background()
-	// Nothing missing and no issue: nothing is done.
 	if err := keepIssue(ctx, a, "o/r", defaultBot, nil, "", io.Discard); err != nil || len(g.issues) != 2 || g.issues[1].State != "open" || g.issues[2].State != "open" {
 		t.Fatalf("err %v, issues %d", err, len(g.issues))
 	}
@@ -125,40 +114,32 @@ func TestKeepIssue(t *testing.T) {
 		!strings.Contains(issue.Body, "| the run | <code>a &lt;b&gt;file&lt;/b&gt; &#124; `x` line</code> |") || !strings.Contains(issue.Body, "Run: https://run/1") {
 		t.Fatalf("issue %+v, log %s", issue, log.String())
 	}
-	// The next run finds the same PRs missing: the issue is not written again, whatever run found it.
 	hits := g.hits["PATCH /repos/o/r/issues/902"]
 	if err := keepIssue(ctx, a, "o/r", defaultBot, ms, "https://run/2", io.Discard); err != nil || g.hits["PATCH /repos/o/r/issues/902"] != hits {
 		t.Fatal("an unchanged list was written again")
 	}
-	// Other PRs missing: the same issue is updated.
 	if err := keepIssue(ctx, a, "o/r", defaultBot, ms[:1], "https://run/3", io.Discard); err != nil || len(g.issues) != 3 || strings.Contains(issue.Body, "the run") || !strings.Contains(issue.Body, "run/3") {
 		t.Fatalf("err %v, issues %d, body %q", err, len(g.issues), issue.Body)
 	}
-	// Every PR has its verdict again: closed, with a word why.
 	if err := keepIssue(ctx, a, "o/r", defaultBot, nil, "https://run/4", io.Discard); err != nil || issue.State != "closed" || len(issue.comments) != 1 || !strings.Contains(issue.comments[0], "https://run/4") {
 		t.Fatalf("err %v, issue %+v", err, issue)
 	}
-	// Missing again: the same issue is reopened, not a new one made.
 	if err := keepIssue(ctx, a, "o/r", defaultBot, ms, "", io.Discard); err != nil || issue.State != "open" || len(g.issues) != 3 || !strings.Contains(issue.Body, "the run") {
 		t.Fatalf("err %v, issues %d, issue %+v", err, len(g.issues), issue)
 	}
-	// More than one open from before: the oldest is kept, the others closed as duplicates.
 	botIssue(g, 950, issueMarker+" later", "open")
 	if err := keepIssue(ctx, a, "o/r", defaultBot, ms, "", io.Discard); err != nil || g.issues[950].State != "closed" || issue.State != "open" || !strings.Contains(g.issues[950].comments[0], "#902") {
 		t.Fatalf("err %v, %+v", err, g.issues[950])
 	}
-	// Of closed ones only, the oldest is reopened.
 	issue.State = "closed"
 	if err := keepIssue(ctx, a, "o/r", defaultBot, ms, "", io.Discard); err != nil || issue.State != "open" || g.issues[950].State != "closed" {
 		t.Fatalf("err %v", err)
 	}
-	// An open one beside an older closed one: the open one is kept, the closed one stays closed.
 	issue.State, g.issues[950].State = "closed", "open"
 	if err := keepIssue(ctx, a, "o/r", defaultBot, ms, "", io.Discard); err != nil || issue.State != "closed" || g.issues[950].State != "open" {
 		t.Fatalf("err %v, 902 %s, 950 %s", err, issue.State, g.issues[950].State)
 	}
 	issue.State, g.issues[950].State = "open", "closed"
-	// Failures are reported: the search, and every write.
 	g.searchDown = true
 	if err := keepIssue(ctx, a, "o/r", defaultBot, ms, "", io.Discard); err == nil {
 		t.Fatal("a failed search was not reported")
@@ -172,7 +153,6 @@ func TestKeepIssue(t *testing.T) {
 		{"update", ms[:1], func() { issue.State, issue.Body = "open", issueMarker+" old"; g.issues[950].State = "closed" }},
 		{"close", nil, func() { issue.State = "open"; g.issues[950].State = "closed" }},
 		{"reopen", ms[:1], func() { issue.State = "closed"; g.issues[950].State = "closed" }},
-		// The kept issue needs no write: only closing the duplicate fails.
 		{"duplicate", ms[:1], func() { issue.State, issue.Body = "open", issueBody(ms[:1], ""); g.issues[950].State = "open" }},
 	} {
 		tc.setup()
@@ -222,7 +202,6 @@ func TestVerifyCommand(t *testing.T) {
 	if code := run(args, &out, &errOut); code != 0 || !strings.Contains(out.String(), "every PR of the run has its verdict (3 report line(s))") || g.issues[900].State != "closed" {
 		t.Fatalf("exit %d:\n%s%s", code, out.String(), errOut.String())
 	}
-	// The first report missing, and one that cannot be read: lines for the run; the readable reports are still checked.
 	if err := os.Rename(filepath.Join(dir, firstReport), filepath.Join(dir, "x")); err != nil {
 		t.Fatal(err)
 	}
@@ -258,7 +237,6 @@ func TestVerifyCommand(t *testing.T) {
 		t.Fatalf("a refused call wrote issues: %d, was %d", len(g.issues), issues)
 	}
 	t.Setenv("GITHUB_TOKEN", "t")
-	// Issues are off (a fork): the run still fails on what is missing, and says why there is no issue.
 	g.issuesGone = true
 	g.statuses["h2"] = ""
 	out.Reset()
@@ -266,7 +244,6 @@ func TestVerifyCommand(t *testing.T) {
 		t.Fatalf("issues off: exit %d\n%s", code, out.String())
 	}
 	g.issuesGone = false
-	// The issue cannot be kept: the check could not finish.
 	g.searchDown = true
 	if code := run(args, &out, &errOut); code != 2 {
 		t.Errorf("an issue that cannot be kept: exit %d", code)
@@ -293,9 +270,6 @@ func TestReadHandledReadsPastABadReport(t *testing.T) {
 	}
 }
 
-// TestWorkflowNamesTheFirstReport holds the workflow to verify: the first job writes and uploads its report under the
-// name verify requires, every job's report has a name of its own, the verify job downloads them all into one directory,
-// and its own step then finds the first report there.
 func TestWorkflowNamesTheFirstReport(t *testing.T) {
 	var raw []byte
 	for dir, _ := os.Getwd(); ; dir = filepath.Dir(dir) {
@@ -331,7 +305,6 @@ func TestWorkflowNamesTheFirstReport(t *testing.T) {
 		return step{}
 	}
 	index := strings.NewReplacer("${{ strategy.job-index }}", "0", "$JOB_INDEX", "0")
-	// What each job writes, and what it uploads.
 	firstWrites := find("preflight", "preflight\" run").Run
 	firstUpload := find("preflight", "actions/upload-artifact@").With["path"]
 	moreWrites := index.Replace(find("more", "preflight\" run").Run)
@@ -346,8 +319,6 @@ func TestWorkflowNamesTheFirstReport(t *testing.T) {
 	if download.With["merge-multiple"] != "true" || download.With["path"] != "${{ runner.temp }}/handled" {
 		t.Fatalf("download %+v", download.With)
 	}
-	// One directory holds every report by its own name, as merge-multiple downloads them; the verify job's own step
-	// then reads it, with a stand-in for the program.
 	temp := t.TempDir()
 	for _, name := range []string{filepath.Base(firstUpload), filepath.Base(moreUpload)} {
 		if err := os.MkdirAll(filepath.Join(temp, "handled"), 0o755); err != nil {

@@ -9,10 +9,6 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
-// acknowledgedPath holds the warnings a reviewer has seen. An entry names the check, the file and the file's git blob at
-// the time, and covers that check's warnings for the file: a later change to the file changes its blob, so the
-// warnings show again. It covers the file whatever rule found them: a stricter rule on main that finds something new in
-// the unchanged file stays covered until the file changes (ZeroDawn: one warning per file, not per line).
 const acknowledgedPath = "automation/ci/preflight/acknowledged.toml"
 
 type acknowledgement struct {
@@ -40,8 +36,6 @@ func parseAcknowledged(text string) ([]acknowledgement, error) {
 	return doc.Ack, nil
 }
 
-// applyAcknowledged marks the warnings an entry matches and returns a warning for each entry of a changed file whose
-// blob no longer matches, so stale entries are cleaned up.
 func applyAcknowledged(ev *evaluation, d *data, acks []acknowledgement) {
 	blobs := map[string]string{}
 	for _, f := range d.Files {
@@ -70,7 +64,7 @@ func applyAcknowledged(ev *evaluation, d *data, acks []acknowledgement) {
 			continue
 		}
 		stale := warning{File: a.File, Blob: blob, Text: fmt.Sprintf("has an entry in %s for blob %s, but the file changed: check it again and update or delete the entry", acknowledgedPath, short(a.Blob))}
-		// First, so the cap on listed files never hides it; once, as a reused verdict already holds it.
+		// First, so the cap on listed files never hides it.
 		if !slices.Contains(v.Warnings, stale) {
 			v.Warnings = append([]warning{stale}, v.Warnings...)
 		}
@@ -78,7 +72,6 @@ func applyAcknowledged(ev *evaluation, d *data, acks []acknowledgement) {
 	}
 }
 
-// ackEntry is the TOML entry that acknowledges a check's warnings for a file, printed for the reviewer to paste.
 func ackEntry(check string, w warning) string {
 	return fmt.Sprintf("[[ack]]\ncheck = %q\nfile = %q\nblob = %q\n", check, w.File, w.Blob)
 }

@@ -17,18 +17,12 @@ import (
 	"strings"
 )
 
-// issueMarker identifies the one issue the verify job keeps while the pre-flight leaves PRs without a verdict.
 const issueMarker = "<!-- pig-preflight-verify -->"
 
 const issueTitle = "Pre-flight: PRs without a verdict"
 
-// firstReport is the first job's report among the reports verify reads. It lists every PR of the run, so it must be
-// there: without it the PRs that job judged would go unchecked. It is the file the first job writes with --handled in
-// .github/workflows/preflight.yml, which the verify job downloads with every other report into one directory; a test
-// holds the two together.
 const firstReport = "preflight-handled-0.json"
 
-// missing is a PR the pre-flight did not deliver for, and what is missing. PR 0 is the run itself.
 type missing struct {
 	PR   int
 	Head string
@@ -39,7 +33,6 @@ type commitStatus struct {
 	Context string `json:"context"`
 }
 
-// where names the PR and head of a missing line; a line for the whole run has neither.
 func (m missing) where() string {
 	switch {
 	case m.PR == 0:
@@ -50,11 +43,6 @@ func (m missing) where() string {
 	return fmt.Sprintf("#%d `%s`", m.PR, short(m.Head))
 }
 
-// verifyHandled checks that every PR the jobs of a run reported has what the pre-flight owes it: a "preflight" status
-// on the head it judged and its comment with the state for that head. A PR a job could not run for, a PR the first job
-// passed on that no next job reported, and a PR that could not be checked are missing too; so is the run when a job
-// could not start (PR 0). A PR deferred by a next job's time budget is left for the next run. One PR never stops the
-// check of the others.
 func verifyHandled(ctx context.Context, a *api, repo, bot string, hs []handled) []missing {
 	byPR := map[int][]handled{}
 	for _, h := range hs {
@@ -71,10 +59,8 @@ func verifyHandled(ctx context.Context, a *api, repo, bot string, hs []handled) 
 		i := slices.IndexFunc(entries, func(h handled) bool { return h.Result != resultDeferred })
 		if i < 0 {
 			if slices.ContainsFunc(entries, func(h handled) bool { return !h.PassedOn }) {
-				continue // deferred by a next job's time budget: the next run takes it
+				continue
 			}
-			// No next job reported it. When its report was only lost, GitHub has its verdict: check that, by the head
-			// the first job saw. Without a head (deferred before it was read) there is nothing to check it by.
 			what := "passed on to a next job, which did not report it"
 			if head := entries[0].Head; head != "" {
 				what = verifyPR(ctx, a, repo, bot, entries[0])
@@ -96,14 +82,12 @@ func verifyHandled(ctx context.Context, a *api, repo, bot string, hs []handled) 
 	return out
 }
 
-// verifyPR says what one judged PR lacks, "" when nothing.
 func verifyPR(ctx context.Context, a *api, repo, bot string, h handled) string {
 	var statuses []commitStatus
 	err := a.get(ctx, fmt.Sprintf("repos/%s/commits/%s/statuses?per_page=%d", repo, h.Head, perPage), &statuses, true)
 	switch {
 	case hasStatus(err, http.StatusNotFound) || hasStatus(err, http.StatusUnprocessableEntity):
-		// GitHub no longer knows the head (a force-push): the PR's new head is judged next run. A head that exists
-		// but has no status answers an empty list, so a real shortfall is never skipped here.
+		// 404 or 422: GitHub no longer knows the head (a force-push). An existing head without a status answers [], so a real shortfall is never skipped.
 		if a.log != nil {
 			logf(a.log, "verify: PR #%d: head %s is gone, its new head is judged next run", h.PR, short(h.Head))
 		}
@@ -127,12 +111,10 @@ func verifyPR(ctx context.Context, a *api, repo, bot string, h handled) string {
 	return strings.Join(what, ", ")
 }
 
-// issueText puts text from a PR, such as an error naming its files, in an issue as plain text.
 func issueText(s string) string {
 	return "<code>" + strings.NewReplacer("|", "&#124;", "\n", " ", "\r", " ").Replace(html.EscapeString(s)) + "</code>"
 }
 
-// issueBody lists the PRs without a verdict, and the run that found them.
 func issueBody(ms []missing, runURL string) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "%s\nThe pre-flight left these PRs without a verdict. The PRs are not at fault: the pre-flight is. This issue closes itself once every PR has one again.\n\n", issueMarker)
@@ -146,8 +128,6 @@ func issueBody(ms []missing, runURL string) string {
 	return b.String()
 }
 
-// sameList compares the lists of two issue bodies, the tables alone: a new run that finds the same PRs missing changes
-// nothing.
 func sameList(a, b string) bool {
 	table := func(s string) string {
 		if _, rest, ok := strings.Cut(s, "| PR |"); ok {
@@ -167,10 +147,7 @@ type foundIssue struct {
 	} `json:"user"`
 }
 
-// findIssues finds the verify issues, open and closed, oldest first: by their title and author through the search API,
-// then each checked for the bot's login and the marker, so no one else's issue is taken for it. Search trails a new
-// issue by a little: a run right after the one that opened it may open a second, which the next run closes as a
-// duplicate.
+// Search trails a new issue: a second one made meanwhile is closed as a duplicate by the next run.
 func findIssues(ctx context.Context, a *api, repo, bot string) ([]foundIssue, error) {
 	q := fmt.Sprintf("repo:%s is:issue in:title %q", repo, issueTitle)
 	if name, ok := strings.CutSuffix(bot, "[bot]"); ok {
@@ -194,9 +171,6 @@ func findIssues(ctx context.Context, a *api, repo, bot string) ([]foundIssue, er
 	return out, nil
 }
 
-// keepIssue keeps one issue for the whole life of the verify job: opened while PRs lack a verdict, updated when the
-// list changes, closed once none does, and reopened, not made anew, when it happens again. Further open ones, from
-// before, are closed as duplicates.
 func keepIssue(ctx context.Context, a *api, repo, bot string, ms []missing, runURL string, log io.Writer) error {
 	issues, err := findIssues(ctx, a, repo, bot)
 	if err != nil {
@@ -258,8 +232,6 @@ func closeIssue(ctx context.Context, a *api, repo string, number int, why string
 	return a.send(ctx, http.MethodPatch, fmt.Sprintf("repos/%s/issues/%d", repo, number), map[string]string{"state": "closed"}, nil)
 }
 
-// readHandled reads every job's report in dir. A report that cannot be read, and a missing first report, are missing
-// lines for the run; the reports that can be read are still checked.
 func readHandled(dir string) ([]handled, []missing) {
 	names, err := filepath.Glob(filepath.Join(dir, "*.json"))
 	if err != nil {
@@ -287,14 +259,11 @@ func readHandled(dir string) ([]handled, []missing) {
 	return all, problems
 }
 
-// annotation keeps text in one workflow-command line: a newline would end it, and what follows could be read as a
-// command.
+// A newline would end the workflow command, and what follows could be read as one.
 func annotation(s string) string {
 	return strings.NewReplacer("%", "%25", "\r", "%0D", "\n", "%0A").Replace(s)
 }
 
-// runVerify is `preflight verify`: exit 0 when every PR has its verdict, 1 when some PR lacks it (the issue says
-// which), 2 when the issue could not be kept.
 func runVerify(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("verify", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -323,7 +292,7 @@ func runVerify(ctx context.Context, args []string, stdout, stderr io.Writer) int
 	}
 	switch err := keepIssue(ctx, a, *repo, *bot, ms, runURL, stdout); {
 	case hasStatus(err, http.StatusGone):
-		// Issues are off in this repository (a fork, say): the run still fails, and its log says what is missing.
+		// Issues are off (a fork): GitHub answers 410.
 		logf(stdout, "::warning title=pre-flight verify::issues are disabled in %s, so no issue is kept; the lines above say what is missing", *repo)
 	case err != nil:
 		_, _ = fmt.Fprintln(stderr, "preflight verify:", err)

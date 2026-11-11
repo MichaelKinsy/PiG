@@ -14,19 +14,15 @@ import (
 	"strings"
 )
 
-// commentMarker identifies the pre-flight's one comment on a PR, which every run updates.
 const commentMarker = "<!-- pig-preflight -->"
 
-// statusContext is the commit status the pre-flight sets on a PR's head.
 const statusContext = "preflight"
 
 var resultIcon = map[string]string{resultPass: "✅", resultFail: "❌", resultScan: "⏳", resultError: "⚠️", resultPending: "⏳"}
 
-// markdown is the report for the step summary and the PR comment.
 func markdown(cfg config, d *data, ev evaluation) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "%s\n### Pre-flight: %s %s\n\n", commentMarker, resultIcon[ev.Result], ev.Result)
-	// Only what a verdict depends on: a run that only moved the base or reused its state sends nothing new.
 	fmt.Fprintf(&b, "Head `%s`.\n\n", short(ev.Head))
 	b.WriteString("| | Check | Result |\n|---|---|---|\n")
 	var acks []string
@@ -50,12 +46,10 @@ func markdown(cfg config, d *data, ev evaluation) string {
 	return b.String()
 }
 
-// cell keeps a reason inside one Markdown table cell.
 func cell(s string) string {
 	return strings.NewReplacer("|", `\|`, "\n", " ").Replace(s)
 }
 
-// statusFor maps the evaluation to a commit status state and a description of at most 140 characters.
 func statusFor(cfg config, ev evaluation) (state, description string) {
 	var failed, waiting []string
 	passed := 0
@@ -85,7 +79,6 @@ func statusFor(cfg config, ev evaluation) (state, description string) {
 	return state, description
 }
 
-// send writes to the GitHub API: POST or PATCH a JSON body, with the same retries as reads.
 func (a *api) send(ctx context.Context, method, path string, body, out any) error {
 	raw, err := json.Marshal(body)
 	if err != nil {
@@ -101,12 +94,10 @@ func (a *api) send(ctx context.Context, method, path string, body, out any) erro
 type recordOptions struct {
 	apiBase, token string
 	dryRun         bool
-	// comment is the pre-flight's comment as the run found it; its ID is 0 when there is none yet.
-	comment prComment
+	comment        prComment
 }
 
-// appendFile adds text at the end of path in one write: the PRs of a run record at the same time, and O_APPEND keeps
-// one report from overwriting another.
+// O_APPEND: the PRs of a run write the summary at the same time.
 func appendFile(path, text string) error {
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
@@ -116,8 +107,6 @@ func appendFile(path, text string) error {
 	return errors.Join(err, f.Close())
 }
 
-// alertsFor returns the checks with an alert that fail now and were not alerted since they last passed, and the
-// alerted list for the state.
 func alertsFor(cfg config, ev evaluation, prev *state) (due []check, alerted []string) {
 	var before []string
 	if prev != nil {
@@ -139,9 +128,6 @@ func alertBody(c check, d *data, ev evaluation) string {
 	return fmt.Sprintf("@%s %s\n\n%s on `%s`: %s", d.Pull.User.Login, c.Alert, c.Name, short(ev.Head), ev.Checks[c.Name].Reason)
 }
 
-// record writes the step summary, the commit status, the PR's one pre-flight comment with the state for the next run in
-// it, and any alert. The status is set only when it differs from the one the previous run set on the same head, the
-// comment only when its text differs, so an unchanged PR is not written at all. With dryRun it writes the summary and prints what it would send.
 func record(ctx context.Context, cfg config, d *data, ev evaluation, o recordOptions, log io.Writer) error {
 	report := markdown(cfg, d, ev)
 	status, description := statusFor(cfg, ev)
@@ -180,8 +166,7 @@ func record(ctx context.Context, cfg config, d *data, ev evaluation, o recordOpt
 	a := newAPI(o.apiBase, o.token)
 	a.log = log
 	prefix := "repos/" + d.Repo
-	// The status first: it is what holds a PR back, so nothing about the summary, the comment or an alert may keep it
-	// from being set.
+	// The status first: it gates the PR, so nothing after it may keep it from being set.
 	if setStatus {
 		if err := a.send(ctx, http.MethodPost, fmt.Sprintf("%s/statuses/%s", prefix, ev.Head), map[string]string{"state": status, "description": description, "context": statusContext}, nil); err != nil {
 			return err
@@ -206,14 +191,10 @@ func record(ctx context.Context, cfg config, d *data, ev evaluation, o recordOpt
 	return writeComment(ctx, a, prefix, d.PR, o.comment.ID, body, log)
 }
 
-// shortened is the line a report too long for a comment ends with.
 const shortened = "\nThe warnings are left out: with them the report is too long for a comment. The run's log and step summary hold them.\n"
 
-// fits reports a body GitHub takes as a comment.
 func fits(body string) bool { return len(body) <= maxCommentLength }
 
-// commentBody is the comment: the report and the state. When that is longer than GitHub takes, the report and the
-// state lose their warnings, which are what can grow; the verdicts, and so the status, stay whole.
 func commentBody(cfg config, d *data, ev evaluation, report string, st state) (string, error) {
 	body := withState(report, st)
 	if fits(body) {
@@ -233,7 +214,6 @@ func commentBody(cfg config, d *data, ev evaluation, report string, st state) (s
 	return body, nil
 }
 
-// writeComment updates the pre-flight's comment, or posts it when there is none or it was deleted.
 func writeComment(ctx context.Context, a *api, prefix string, pr int, id int64, body string, log io.Writer) error {
 	payload := map[string]string{"body": body}
 	if id != 0 {
@@ -242,7 +222,7 @@ func writeComment(ctx context.Context, a *api, prefix string, pr int, id int64, 
 			logf(log, "record: comment %d updated", id)
 			return nil
 		}
-		// Only a 404 means the comment is gone; a 422 is a body GitHub refuses, which a new comment would not fix.
+		// Only a 404 means the comment is gone; a 422 is a body GitHub refuses.
 		if !hasStatus(err, http.StatusNotFound) {
 			return err
 		}

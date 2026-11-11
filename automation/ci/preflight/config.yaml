@@ -1,46 +1,4 @@
 # SPDX-License-Identifier: MIT
-#
-# Everything the pre-flight does is declared here; the engine (main.go and the files beside it) only runs it.
-#
-# tools: the scanners, pinned by release and SHA-256, or by a hash-locked pip requirements file (`preflight install`).
-#
-# checks: one entry per check, run in this order.
-#   when     always: true, or paths: the globs that make the check relevant to a PR (** crosses directories)
-#   stage    cheap: decided from the PR's API data by a built-in rule; scan: an external tool run on the PR's files.
-#            Every cheap check runs first; the scans run only when no cheap check failed.
-#   reads    (cheap) the data sources the rule reads: pull, files, commits, compare-main, depends-on, dependency-graph
-#   rule     (cheap) the built-in rule (rules.go) and its parameters under with:
-#   scan     (scan) the tool run:
-#     input     added: the lines the PR adds, one file each, under {input}; a file GitHub shows no patch for (binary or
-#                      too large) whole from the head. Line numbers are reported as the head's.
-#               changed: the changed files at the PR's head, under {head}, listed as {files}
-#               tree: a repository holding only the changed files, at {input}
-#     select    a regular expression the changed files must match to be scanned; none matching passes the check
-#     checkout  more paths the scan reads at the head besides the changed files ("/*" is the whole tree)
-#     overlay   files copied from main over the head before the run (removed from the head when main has none), so
-#               main's code and configuration run, never the PR's
-#     run       the command and its arguments (put -- before {files}, so a file name is never read as an option); {main} is main's tree, {bin} the directory of the scanners, {self}
-#               this program, {data} the PR's data as JSON, {head}, {input}, {out} (a report file) and {files} (each
-#               selected file, one argument each)
-#     dir       the working directory (default the run's work directory)
-#     env       extra environment variables
-#     exit      the exit codes that mean clean and the ones that mean findings; any other code is an error
-#     report    where the findings are: in {out} or on stdout, as json (an array), json-lines, or lines read
-#               with a regular expression (pattern) whose named groups are file, line and message, skipping lines that
-#               match ignore; list, file, line and message are dot paths into each JSON finding ("a.b[].c")
-#               A findings exit with no finding read is an error (the report changed shape, or the tool failed),
-#               unless report unread-findings: pass says the tool exits so for something else.
-#     added-lines-only  keep only findings on lines the PR adds: a finding on an untouched line is main's
-#
-#   main     the files in main's tree the verdict depends on (globs; a directory with everything in it). A scan's
-#            overlay counts too.
-#   alert    posted once as a comment of its own, mentioning the PR's author, when the check fails; again only after
-#            it passed in between
-#   revision raise it to decide the check again where nothing else here changed
-#
-# A check's stored verdict is reused while its definition here, its main files, engine-revision and its inputs are
-# unchanged. Raise engine-revision when a change to the engine's code changes what a stored verdict means; a new
-# scanner or image version decides nothing again.
 
 engine-revision: 1
 
@@ -157,9 +115,7 @@ checks:
     main: [.gitleaks.toml]
     scan:
       input: added
-      # --ignore-gitleaks-allow: an inline allow in the PR is not trusted. A real false positive is allowed only in
-      # main's .gitleaks.toml, read from main as are .gitleaksignore and the rest: acknowledged.toml comes from the
-      # PR's head and covers warnings, never a failing scan. --max-archive-depth looks inside archives a PR adds.
+      # An inline gitleaks:allow in the PR is not trusted; a false positive is allowed only in main's .gitleaks.toml.
       run: [gitleaks, dir, '{input}', --config, '{main}/.gitleaks.toml', --gitleaks-ignore-path, '{main}', --ignore-gitleaks-allow, --max-archive-depth, '3', --no-banner, --redact, --exit-code, '3', --report-format, json, --report-path, '{out}']
       # Exit 3 means leaks; gitleaks exits 1 on its own errors.
       exit: {clean: [0], findings: [3]}
@@ -168,8 +124,7 @@ checks:
   - name: trufflehog
     when: {always: true}
     stage: scan
-    # trufflehog reports only secrets it verified against their service: a finding is a live credential, never a false
-    # positive, so there is nothing to allow.
+    # Verified secrets only: a finding is a live credential, never a false positive.
     alert: 'a verified, working secret was found in this PR. Revoke it now, then remove it from the branch history (rewrite and force-push; a later commit that deletes it is not enough).'
     scan:
       input: added
@@ -188,7 +143,6 @@ checks:
       exit: {clean: [0], findings: [1]}
       report: {in: stdout, format: lines, pattern: '^(?P<file>[^:]+): (?P<message>.+)$'}
 
-  # A change to the REUSE configuration or the licences can make any file of the tree non-compliant.
   - name: reuse-tree
     when: {paths: [REUSE.toml, 'LICENSES/**', '.reuse/**']}
     stage: scan

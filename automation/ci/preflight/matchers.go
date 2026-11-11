@@ -15,8 +15,6 @@ import (
 	"strings"
 )
 
-// matcher is a forbidden rule's check that a pattern cannot express. run returns findings with an optional detail in
-// message; binary says it also reads binary files.
 type matcher struct {
 	validate func(params) error
 	run      func(name string, text []byte, lineAt func(int) int, p params) []finding
@@ -56,7 +54,6 @@ func needInts(keys ...string) func(params) error {
 	}
 }
 
-// eachLine calls fn with every line of text, without its newline, and the line's offset in text.
 func eachLine(text []byte, fn func(off int, line []byte)) {
 	off := 0
 	for line := range bytes.Lines(text) {
@@ -74,8 +71,6 @@ var (
 	alnumRE     = regexp.MustCompile(`[a-zA-Z0-9]`)
 )
 
-// matchBase64Blob finds runs of base64 characters at least min long that mix lower case, upper case and digits and are
-// not plain hex, which separates encoded binary from a long word, a digest or a repeated filler.
 func matchBase64Blob(name string, text []byte, lineAt func(int) int, p params) []finding {
 	var found []finding
 	for _, at := range base64RunRE.FindAllIndex(text, -1) {
@@ -91,7 +86,6 @@ func mixedCase(b []byte) bool {
 	return lowerRE.Match(b) && upperRE.Match(b) && digitRE.Match(b)
 }
 
-// randomLooking reports a value with the digit and distinct-character spread of a generated id.
 func randomLooking(value string, digits, distinct int) bool {
 	seen := map[string]bool{}
 	for _, c := range alnumRE.FindAllString(value, -1) {
@@ -102,8 +96,6 @@ func randomLooking(value string, digits, distinct int) bool {
 
 var capturedTimeRE = regexp.MustCompile(`"(?:created|created_at)"\s*:\s*(?:(1[6-9][0-9]{8})\b|"20[2-3][0-9]-[0-9]{2}-[0-9]{2}T[0-9:]{8}\.([0-9]{3})[0-9]*)`)
 
-// matchCapturedTime finds created or created_at values a fixture author would not type: a non-round epoch second or
-// non-zero milliseconds.
 func matchCapturedTime(name string, text []byte, lineAt func(int) int, _ params) []finding {
 	var found []finding
 	at := capturedTimeRE.FindAllIndex(text, -1)
@@ -122,8 +114,6 @@ var (
 	windowsHomeRE = regexp.MustCompile(`[A-Za-z]:\\+Users\\+([A-Za-z0-9._ -]+)`)
 )
 
-// matchHomePath finds absolute home paths of an account that is not one of the placeholders, also when a stream spreads
-// the path over several fragments.
 func matchHomePath(name string, text []byte, lineAt func(int) int, p params) []finding {
 	placeholders := p.strs("placeholders")
 	homes := func(b []byte, at func(int) int) []finding {
@@ -150,12 +140,10 @@ var (
 	goReasoningLineRE = regexp.MustCompile("\\b(?:Thinking|Reasoning|ReasoningText|ReasoningContent|SummaryText)\\s*:\\s*(?:\"((?:[^\"\\\\]|\\\\.)*)\"|`([^`]*)`)")
 	wordRE            = regexp.MustCompile(`[A-Za-z]{2,}`)
 	reasoningFields   = []string{"reasoning_text", "reasoning_content", "reasoning", "thinking", "summary_text", "thought"}
-	// reasoningWordsRE gates the line-level tally: the text and delta fields count only on a line that also names
-	// reasoning, so ordinary text fields of a fixture are not mistaken for model reasoning.
+	// Only lines that also name reasoning count, or every text field of a fixture would.
 	reasoningWordsRE = regexp.MustCompile(`reasoning|thinking|thought|summary_text|Thinking|Reasoning|SummaryText`)
 )
 
-// tally accumulates natural-language text and its distinct words.
 type tally struct {
 	chars, first int
 	words        map[string]bool
@@ -175,8 +163,6 @@ func (t *tally) add(line int, value []byte) {
 	t.chars += len(value)
 }
 
-// matchProse finds model reasoning text: enough characters and distinct words in reasoning and stream fields of one
-// file, line by line or reassembled from a stream's fragments.
 func matchProse(name string, text []byte, lineAt func(int) int, p params) []finding {
 	var lines, streams tally
 	eachLine(text, func(off int, line []byte) {
@@ -204,9 +190,6 @@ func matchProse(name string, text []byte, lineAt func(int) int, p params) []find
 	return found
 }
 
-// matchTerms finds the private terms of the file the environment variable names, case-insensitively, in the file's
-// name, its text and its reassembled streams. Without the variable it finds nothing; the file must be outside the
-// repository and every term at least three characters long.
 func matchTerms(name string, text []byte, lineAt func(int) int, p params) []finding {
 	terms, err := loadTerms(os.Getenv(p.str("env")))
 	if err != nil {
@@ -230,7 +213,7 @@ func matchTerms(name string, text []byte, lineAt func(int) int, p params) []find
 
 type term struct {
 	line int
-	re   *regexp.Regexp // the term, case-insensitively
+	re   *regexp.Regexp
 }
 
 func loadTerms(file string) ([]term, error) {
@@ -255,15 +238,9 @@ func loadTerms(file string) ([]term, error) {
 	return terms, nil
 }
 
-// A streamed value arrives as many small string fragments, so a path or a sentence can straddle fragments and escape
-// every line-level match. reassemble joins the string fields of a stream per field and stream (the nearest preceding
-// index, output_index, item_id or call_id on the line), and per field across the whole text, which covers providers
-// that interleave streams or omit the index.
 const streamFields = `arguments|partial_json|text|content|reasoning_text|reasoning_content|reasoning|thinking|summary_text|thought|delta`
 
 var (
-	// streamTokenRE reads a stream line in order: an id (index, output_index, content_index, item_id, call_id) sets the
-	// stream the following values belong to; a value is a string field of streamFields, plain or escaped inside a string.
 	streamTokenRE = regexp.MustCompile(`\\*"(?:output_|content_)?index\\*"\s*:\s*([0-9]+)|\\*"(?:item_id|call_id)\\*"\s*:\s*\\*"([^"\\]*)|(?:^|[^\\])"(` + streamFields + `)"\s*:\s*"((?:[^"\\]|\\.)*)"|\\"(` + streamFields + `)\\"\s*:\s*\\"((?:[^"\\]|\\[^"])*)\\"`)
 	streamMarkers = [][]byte{[]byte(`"delta"`), []byte(`\"delta\"`), []byte("partial_json"), []byte("\ndata:")}
 )
@@ -282,7 +259,6 @@ func (s *stream) add(line int, fragment []byte) {
 	s.buf = append(s.buf, fragment...)
 }
 
-// lineAt returns the source line of the fragment that holds buf[off].
 func (s *stream) lineAt(off int) int {
 	i := max(sort.Search(len(s.offs), func(i int) bool { return s.offs[i] > off })-1, 0)
 	return s.lines[i]
@@ -299,7 +275,6 @@ func unescapeFragment(raw []byte) []byte {
 	return []byte(out)
 }
 
-// reassemble returns the joined streams of a text in a fixed order, or nil when it carries no stream.
 func reassemble(text []byte, lineAt func(int) int) []*stream {
 	if !bytes.HasPrefix(text, []byte("data:")) && !slices.ContainsFunc(streamMarkers, func(m []byte) bool { return bytes.Contains(text, m) }) {
 		return nil

@@ -20,12 +20,8 @@ import (
 	"time"
 )
 
-// downloadTimeout bounds one download of a tool.
 const downloadTimeout = 5 * time.Minute
 
-// install puts every tool of the config into bin: a release archive is downloaded (or taken from the digest-keyed
-// cache), accepted only at its pinned SHA-256, and the tool's binary extracted; a pip tool is installed into its own
-// virtual environment from the hash-locked requirements file and linked into bin.
 func install(ctx context.Context, cfg config, root, bin, cache string, log io.Writer) error {
 	if err := os.MkdirAll(bin, 0o755); err != nil {
 		return err
@@ -79,7 +75,6 @@ func installArchive(ctx context.Context, t tool, bin, cache string) error {
 	}
 }
 
-// download returns the body at url when its SHA-256 is want, from cache when an earlier run stored it there.
 func download(ctx context.Context, url, want, cache string) ([]byte, error) {
 	cached := filepath.Join(cache, want)
 	if raw, err := os.ReadFile(cached); err == nil && sha256Hex(raw) == want {

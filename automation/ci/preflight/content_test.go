@@ -178,7 +178,6 @@ func TestMatchProseAndStreams(t *testing.T) {
 	if got := forbiddenCodes(t, added("a.json", textOnly)); len(got) != 0 {
 		t.Fatalf("an ordinary text field counted as reasoning: %v", got)
 	}
-	// The same text spread over stream deltas, a fragment per line, is reassembled.
 	var stream []string
 	for w := range strings.FieldsSeq(sentence + " " + strings.Repeat("filler text ", 20)) {
 		stream = append(stream, `data: {"index":0,"delta":{"type":"thinking_delta","thinking":"`+w+` "}}`)
@@ -186,7 +185,6 @@ func TestMatchProseAndStreams(t *testing.T) {
 	if got := forbiddenCodes(t, added("s.sse", stream...)); len(got) != 1 || got[0] != "FG005@s.sse" {
 		t.Fatalf("reasoning spread over a stream: %v", got)
 	}
-	// A home path split over two deltas.
 	split := []string{`data: {"index":0,"delta":{"partial_json":"/ho"}}`, `data: {"index":0,"delta":{"partial_json":"me/zerodawn/x"}}`}
 	if got := forbiddenCodes(t, added("a/testdata/s.sse", split...)); len(got) != 1 || got[0] != "FG004@a/testdata/s.sse" {
 		t.Fatalf("a home path split over a stream: %v", got)
@@ -353,7 +351,6 @@ func TestContentCommand(t *testing.T) {
 	raw, _ := os.ReadFile(out)
 	var found []map[string]any
 	_ = json.Unmarshal(raw, &found)
-	// .go-version was not changed and not checked out; the versions change checks it out and finds the stray pin.
 	if code != 1 || len(found) != 1 || found[0]["file"] != ".go-version" {
 		t.Fatalf("exit %d, findings %s, stderr %s", code, raw, stderr.String())
 	}
@@ -365,7 +362,6 @@ func TestContentCommand(t *testing.T) {
 	}
 }
 
-// ioDiscard is an io.Writer that drops what it gets.
 type ioDiscard struct{}
 
 func (ioDiscard) Write(p []byte) (int, error) { return len(p), nil }
@@ -392,7 +388,6 @@ func TestContentEdges(t *testing.T) {
 	if f := checkMandatory(rules.Mandatory, targets, head); len(f) != 1 {
 		t.Fatalf("a rule after one without targets did not run: %v", f)
 	}
-	// Files that are present need no checkout: a head that is not a repository is not asked.
 	if err := checkOut(head, map[string][]string{"x": {"s.sh"}}); err != nil {
 		t.Fatalf("checkOut of present files: %v", err)
 	}

@@ -17,8 +17,6 @@ import (
 	"time"
 )
 
-// Tests for the edges mutation testing found unguarded, grouped by the file they guard.
-
 func TestParseAcknowledgedNamesTheBadEntry(t *testing.T) {
 	good := "[[ack]]\ncheck='a'\nfile='b'\nblob='d'\n"
 	for _, missing := range []string{"check", "file", "blob"} {
@@ -47,7 +45,6 @@ func TestApplyAcknowledgedMatchesEveryField(t *testing.T) {
 			t.Errorf("%s: an entry for an unchanged blob was reported stale (%d warnings)", name, n)
 		}
 	}
-	// An entry for a file the PR does not change is not judged.
 	ev := evaluation{Checks: map[string]verdict{"licenses": {Result: resultPass}}}
 	applyAcknowledged(&ev, d, []acknowledgement{{Check: "licenses", File: "untouched.sh", Blob: "old"}})
 	if len(ev.Checks["licenses"].Warnings) != 0 {
@@ -196,7 +193,6 @@ func TestEvaluateIgnoresAStateOfAnotherEngine(t *testing.T) {
 	if ev := evaluate(cfg, d, &ruleEnv{}); ev.Checks["template"].Result != resultFail {
 		t.Fatalf("a reuse of another engine revision's state: %+v", ev.Checks["template"])
 	}
-	// A full run decides a check whose input changed.
 	d.Mode, d.Previous.Engine = modeFull, 1
 	d.Previous.Checks["template"] = verdict{Result: resultPass, Input: "other"}
 	if ev := evaluate(cfg, d, &ruleEnv{}); ev.Checks["template"].Result != resultFail {
@@ -275,7 +271,6 @@ func TestFetchLimitsAndRenames(t *testing.T) {
 			t.Errorf("%d commits, %d files: limit %q, want %q", tc.commits, tc.files, d.Limit, tc.limit)
 		}
 		if tc.limit != "" {
-			// Too large: it fails on its size, so nothing past the pull itself is fetched.
 			if calls != 1 {
 				t.Errorf("%d commits, %d files: %d call(s), want 1", tc.commits, tc.files, calls)
 			}
@@ -476,7 +471,6 @@ func TestPrepareWorkspaceEdges(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(ws.added, "kept.go")); err != nil {
 		t.Fatal("a file after a removed one was not written")
 	}
-	// A path that cannot be written is an error, not a silently missing input.
 	if err := os.MkdirAll(filepath.Join(ws.added, "blocked.go"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -484,7 +478,6 @@ func TestPrepareWorkspaceEdges(t *testing.T) {
 	if err := prepareWorkspace(context.Background(), d, scans, ws, io.Discard); err == nil {
 		t.Fatal("an unwritable input was not reported")
 	}
-	// overlay reports a head path it cannot remove.
 	head := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(head, "cfg", "inner"), 0o755); err != nil {
 		t.Fatal(err)
@@ -510,7 +503,6 @@ func TestRunPRWithoutScansSaysNothingAboutSkipping(t *testing.T) {
 }
 
 func TestUncoveredEdges(t *testing.T) {
-	// acknowledged.toml may name a check this config does not have.
 	ev := evaluation{Checks: map[string]verdict{"licenses": {Result: resultPass}}}
 	applyAcknowledged(&ev, &data{Files: []prFile{{Filename: "a", SHA: "new"}}}, []acknowledgement{
 		{Check: "gone", File: "a", Blob: "old"},
@@ -520,7 +512,6 @@ func TestUncoveredEdges(t *testing.T) {
 		t.Fatalf("an entry of an unknown check stopped the stale check of the next: %v", ev.Checks)
 	}
 
-	// An acknowledged warning shows as ACK in the log and as acknowledged in the comment, without an entry to paste.
 	cfg := config{Checks: []check{{Name: "licenses"}}}
 	ev = evaluation{Checks: map[string]verdict{"licenses": {Result: resultPass, Warnings: []warning{
 		{File: "f", Notice: "n", Text: "t", Acknowledged: true},
@@ -535,7 +526,6 @@ func TestUncoveredEdges(t *testing.T) {
 		t.Fatalf("markdown:\n%s", md)
 	}
 
-	// A PR over the API's limits fails every check with the reason.
 	full, err := loadConfig([]byte(engineConfig))
 	if err != nil {
 		t.Fatal(err)
@@ -547,7 +537,6 @@ func TestUncoveredEdges(t *testing.T) {
 		}
 	}
 
-	// A fragment that adds a ### Fixed section is a fix even when the template says it is not.
 	frag := prFile{Filename: "changelog.d/lane-1234567.md", Status: "added", Patch: "@@ -0,0 +1 @@\n+### Fixed"}
 	if o := ruleFixLedger(&data{Pull: pull{Body: "Fix: no"}, Files: []prFile{frag}}, params{"ledger": "l"}, nil); !strings.Contains(o.reason, "adds a ### Fixed section") {
 		t.Fatalf("outcome %+v", o)
@@ -610,7 +599,6 @@ func TestRecordWritesTheStepSummary(t *testing.T) {
 func TestRunCommandReportsABatchThatCannotStart(t *testing.T) {
 	t.Setenv("GITHUB_TOKEN", "t")
 	dir := t.TempDir()
-	// A main file a check depends on that cannot be read stops the run before any API call.
 	if err := os.Mkdir(filepath.Join(dir, "LICENSES"), 0); err != nil {
 		t.Fatal(err)
 	}
@@ -625,7 +613,6 @@ func TestRunCommandReportsABatchThatCannotStart(t *testing.T) {
 func TestInstallPip(t *testing.T) {
 	dir := t.TempDir()
 	fakes := filepath.Join(dir, "fakes")
-	// A fake python3 makes the virtual environment with a pip that installs the tool and records its arguments.
 	fakeTool(t, fakes, "python3", `venv="$3"; mkdir -p "$venv/bin"
 cat > "$venv/bin/pip" <<PIP
 #!/bin/sh
