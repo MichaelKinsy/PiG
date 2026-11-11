@@ -186,6 +186,17 @@ type TmuxStep struct {
 	WaitTimeoutSeconds     int `toml:"wait_timeout_seconds"`
 	// FrameWatch samples the visible pane from before the step's keys until the step's waits end and counts the samples it forbids.
 	FrameWatch *TmuxFrameWatch `toml:"frame_watch"`
+	// FinalFrame reads the raw terminal transcript after the step's waits, for no_frames_after_reply.
+	FinalFrame *TmuxFinalFrame `toml:"final_frame"`
+}
+
+// TmuxFinalFrame names the text of a reply the step ends on. The visible pane keeps what the program last drew, so a settled-screen comparison cannot
+// see a frame that repaints the same rows; the raw transcript can.
+type TmuxFinalFrame struct {
+	// Text is a reply text that appears once, unbroken by escape sequences.
+	Text string `toml:"text"`
+	// QuietMilliseconds is how long to wait for a late frame before reading the transcript (default 300).
+	QuietMilliseconds int `toml:"quiet_milliseconds"`
 }
 
 // TmuxFrameWatch names a frame a step must never put on screen. The terminal keeps what the program last drew, so a frame the program
@@ -261,6 +272,9 @@ type AssertSpec struct {
 	// PigNoStaleFrames requires every pig run's frame_watch steps to have sampled enough panes and found no forbidden one. It is pig-only for a
 	// scenario whose operation Pi awaits without holding the frame (an extension handler that awaits), so Pi's samples are not asserted.
 	PigNoStaleFrames bool `toml:"pig_no_stale_frames"`
+	// NoFramesAfterReply requires, for every run of both binaries, that no frame begins after the last occurrence of a final_frame text in the raw
+	// transcript: the frame that carries the end of a reply ends the stream (Pi's agent_end requests one frame; agent_settled requests none).
+	NoFramesAfterReply bool `toml:"no_frames_after_reply"`
 	Runs             int  `toml:"runs"`
 
 	// ChangelogHeadersComplete compares all rendered release headers with each binary's own document, in reverse source order (D22).

@@ -1,0 +1,67 @@
+//go:build parity
+
+package runner
+
+import (
+	"bytes"
+	"fmt"
+	"os"
+	"time"
+)
+
+// beginSynchronizedOutput starts every frame Pi's renderers and PiG's write: tui.ts, tui-main-screen.ts and tui-alt-screen.ts wrap a frame in
+// CSI ? 2026 h ... CSI ? 2026 l.
+var beginSynchronizedOutput = []byte("\x1b[?2026h")
+
+// finalFrameQuietDefault is how long a final_frame observation waits for a late frame: several of the 16 ms render throttles.
+const finalFrameQuietDefault = 300 * time.Millisecond
+
+// FinalFrameResult is what a step's final_frame saw in the raw terminal transcript.
+type FinalFrameResult struct {
+	// Observed reports that a step carried a final_frame.
+	Observed bool
+	// Text is the reply text the frame must carry.
+	Text string
+	// Found reports that the transcript holds Text.
+	Found bool
+	// Trailing is the number of frames that begin after the last Text in the transcript.
+	Trailing int
+	// Tail is the bytes after the last Text, for the failure message.
+	Tail string
+}
+
+// observeFinalFrame waits the quiet window and reads the raw transcript (tmux pipe-pane) for frames written after the last Text.
+func observeFinalFrame(transcriptPath string, spec TmuxFinalFrame) FinalFrameResult {
+	quiet := finalFrameQuietDefault
+	if spec.QuietMilliseconds > 0 {
+		quiet = time.Duration(spec.QuietMilliseconds) * time.Millisecond
+	}
+	time.Sleep(quiet)
+	raw, _ := os.ReadFile(transcriptPath)
+	result := FinalFrameResult{Observed: true, Text: spec.Text}
+	at := bytes.LastIndex(raw, []byte(spec.Text))
+	if at < 0 {
+		return result
+	}
+	tail := raw[at+len(spec.Text):]
+	result.Found = true
+	result.Trailing = bytes.Count(tail, beginSynchronizedOutput)
+	result.Tail = fmt.Sprintf("%q", tail[:min(len(tail), 200)])
+	return result
+}
+
+// merge adds the observation of a later step to r.
+func (r FinalFrameResult) merge(next FinalFrameResult) FinalFrameResult {
+	if !next.Observed {
+		return r
+	}
+	if !r.Observed {
+		return next
+	}
+	r.Found = r.Found && next.Found
+	r.Trailing += next.Trailing
+	if next.Trailing > 0 || !next.Found {
+		r.Text, r.Tail = next.Text, next.Tail
+	}
+	return r
+}
