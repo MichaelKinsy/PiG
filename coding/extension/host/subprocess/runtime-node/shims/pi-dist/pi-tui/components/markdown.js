@@ -327,7 +327,10 @@ export class Markdown {
         const rightMargin = " ".repeat(this.paddingX);
         const bgFn = this.defaultTextStyle?.bgColor;
         const lines = [];
-        for (const line of this.renderToken(token, contentWidth, nextTokenType)) {
+        // Pi 5b4d7d3df (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+        // Image lines skip wrapping, so split them here: hard breaks after an image must stay separate rows.
+        const tokenLines = this.renderToken(token, contentWidth, nextTokenType).flatMap((line) => isImageLine(line) ? line.split("\n") : [line]);
+        for (const line of tokenLines) {
             if (isImageLine(line)) {
                 lines.push(line);
                 continue;

@@ -124,7 +124,7 @@ import {
   wrapRegisteredTools,
   writeBugReportArchive,
   writeRawStdout
-} from "./chunk-QSKTP3Z5.js";
+} from "./chunk-45LXESLW.js";
 import {
   CredentialSynchronizationError,
   InMemoryCodingAgentModelsStore,
@@ -163,7 +163,7 @@ import {
   resolveReadPath,
   withFileMutationQueue,
   writeRenderers
-} from "./chunk-GXPJB5J2.js";
+} from "./chunk-5OLLTYCS.js";
 import {
   fetchWithRetry,
   getPiUserAgent
@@ -5729,7 +5729,7 @@ import { llamaCppClassifyApi } from "../../pi-ai/api/llama-cpp-classify.lazy.js"
 import { typesafeSystemOneApi } from "../../pi-ai/api/typesafe-system-one.lazy.js";
 import { stream, streamSimple } from "../../pi-ai/sdk-bundle/compat.js";
 var LLAMA_PROVIDER_ID = "llama.cpp";
-var DEFAULT_LLAMA_SERVER_URL = "http://127.0.0.1:8080";
+var DEFAULT_LLAMA_SERVER_URL = "http://127.0.0.1:9931";
 function credentialServerUrl(credential) {
   const value = credential?.env?.LLAMA_BASE_URL;
   return typeof value === "string" && value.trim() ? normalizeLlamaServerUrl(value) : void 0;

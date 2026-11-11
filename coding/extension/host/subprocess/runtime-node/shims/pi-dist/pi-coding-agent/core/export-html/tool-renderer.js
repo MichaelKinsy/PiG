@@ -5,16 +5,15 @@
  * and converting the ANSI output to HTML.
  */
 import { keyHint, keyText } from "../../modes/interactive/components/keybinding-hints.js";
-import { ansiLinesToHtml } from "./ansi-to-html.js";
+import { ansiLinesToHtml, stripAnsiEscapes } from "./ansi-to-html.js";
 /**
  * Create a tool HTML renderer.
  *
  * The renderer looks up tool definitions and invokes their renderCall/renderResult
  * methods, converting the resulting TUI Component output (ANSI) to HTML.
  */
-const ANSI_ESCAPE_REGEX = /\x1b\[[\d;]*m/g;
 function isBlankRenderedLine(line) {
-    return line.replace(ANSI_ESCAPE_REGEX, "").trim().length === 0;
+    return stripAnsiEscapes(line).trim().length === 0;
 }
 function trimRenderedResultLines(lines) {
     let start = 0;

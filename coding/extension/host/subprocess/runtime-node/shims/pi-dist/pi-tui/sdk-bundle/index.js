@@ -5868,7 +5868,8 @@ var Markdown = class {
     const rightMargin = " ".repeat(this.paddingX);
     const bgFn = this.defaultTextStyle?.bgColor;
     const lines = [];
-    for (const line of this.renderToken(token, contentWidth, nextTokenType)) {
+    const tokenLines = this.renderToken(token, contentWidth, nextTokenType).flatMap((line) => isImageLine(line) ? line.split("\n") : [line]);
+    for (const line of tokenLines) {
       if (isImageLine(line)) {
         lines.push(line);
         continue;
@@ -9931,8 +9932,11 @@ var TuiAltScreen = class extends TuiBase {
     let buffer = BEGIN_SYNCHRONIZED_OUTPUT;
     if (fullRedraw) {
       this.fullRedrawCount += 1;
-      const clearImages = this.imageProtocol === "kitty" && hadUploadedKittyImages ? deleteAllKittyPlacements() : this.deleteKittyImages();
-      buffer += `${clearImages}\x1B[2J`;
+      if (this.imageProtocol === "kitty" && hadUploadedKittyImages) {
+        buffer += deleteAllKittyPlacements();
+      } else {
+        buffer += `${this.deleteKittyImages()}\x1B[2J`;
+      }
     } else if (imagesNeedRedraw) {
       if (this.imageProtocol === "iterm2")
         buffer += "\x1B[2J";
