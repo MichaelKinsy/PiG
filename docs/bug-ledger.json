@@ -40272,6 +40272,31 @@
       ]
     },
     {
+      "id": "BF-ba5e8ab",
+      "title": "Shutting down a Session no longer leaves a provider's model refresh, or an auth check it had abandoned…",
+      "symptom": "Shutting down a Session no longer leaves a provider's model refresh, or an auth check it had abandoned, running against the agent directory.",
+      "rootCause": "CloseModelTasks cancelled the native collection's refreshes and then joined its operations on a detached goroutine (`go models.Close()`), so a provider's refreshModels, its store write, or an auth check the caller had abandoned kept running after Close returned, so its owner could remove the agent directory under it. Windows cannot delete a directory while a file in it is being written or held open, and TestModelPickerGeminiAuthAndCatalog failed on Windows CI with \"TempDir RemoveAll cleanup: The directory is not empty\". That failure was not reproduced; the Linux evidence is TestModelSelectorNativeProviderRefreshDoesNotOutliveShutdown, which shows the provider's refresh still running after…",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Shutting down a Session no longer leaves a provider's model refresh, or an auth check it had abandoned, running against the agent directory. Closing the registry's model tasks cancelled the native model collection's refreshes but joined their work on a detached goroutine, so the refresh could still be writing its catalog after `Close` returned and the owner removed the directory (which on Windows cannot delete a directory whose file is still being written). `ai.Models` gains `Drain`, which cancels active refreshes and waits for the work the collection runs for its own queries (a provider's refresh and its store write, auth resolution and checks, availability) but not for a caller's login or stream, and `CloseModelTasks` calls it before returning.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ba5e8abb4e",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "ai/models_runtime_drain_test.go::TestModelsDrainJoinsAbandonedRefreshButNotLogin",
+        "internal/codingagent/model_availability_read_context_test.go::TestAvailabilityReadContextOnlyWithoutExtensionProviders",
+        "internal/codingagent/model_picker_parity_test.go::TestModelPickerGeminiAuthAndCatalog",
+        "internal/codingagent/model_selector_native_refresh_owned_test.go::TestModelSelectorNativeProviderRefreshDoesNotOutliveShutdown"
+      ]
+    },
+    {
       "id": "BF-ba80002",
       "title": "fix(chord/nextnode/plugins): a process the Go side killed ends with SIGKILL on Windows too",
       "symptom": "fix(chord/nextnode/plugins): a process the Go side killed ends with SIGKILL on Windows too",
