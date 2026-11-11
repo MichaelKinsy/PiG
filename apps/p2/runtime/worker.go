@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/chord"
@@ -910,9 +911,16 @@ func openHarness(self host.StoreSelf, init WorkerInit, session SessionInit, loca
 	placements := self.Registry(ConversationLocations.Registry)
 	extensions := self.Registry(Extensions.Registry)
 	switches := self.Registry(ExtensionSwitches.Registry)
+	// The models plugin's configuration as the last batch that composed it left it, recorded once the Harness opens
+	// (HarnessConfigView): the scheduler reads the settings under its own lock, where a read of the registry's value would
+	// wait for the host's loop.
+	var configView atomic.Pointer[HarnessConfigView]
 	configured := func() (HarnessConfigEntry, bool) {
-		table, _ := config.Value().(*KeyedTable[HarnessConfigEntry])
-		return table.Get("default")
+		view := configView.Load()
+		if view == nil {
+			return HarnessConfigEntry{}, false
+		}
+		return view.Default()
 	}
 	// Model access is looked up at each use: the models plugin may reload or replace its configuration. Every generation
 	// request passes through StreamSimple here, after Durable and the Harness's identity wrapper completed it.
@@ -995,6 +1003,17 @@ func openHarness(self host.StoreSelf, init WorkerInit, session SessionInit, loca
 			if _, err := whenPresent[HarnessConfigEntry](ctx, config, "default"); err != nil {
 				return nil, err
 			}
+			view, err := ObserveHarnessConfig(config)
+			if err != nil {
+				return nil, err
+			}
+			configView.Store(view)
+			opened := false
+			defer func() {
+				if !opened {
+					view.Stop()
+				}
+			}()
 			// Durable's records in the session's store, beside the kit's `Files`.
 			storage, err := DurableStorage(ctx, store)
 			if err != nil {
@@ -1047,10 +1066,12 @@ func openHarness(self host.StoreSelf, init WorkerInit, session SessionInit, loca
 				_ = h.Close(context.WithoutCancel(ctx))
 				return nil, err
 			}
+			opened = true
 			return h, nil
 		},
 		func(value any, _ host.NativeCloseReason, _ context.Context) error {
 			_ = value.(harness.Harness).Close(chordctx.Background())
+			configView.Load().Stop()
 			return nil
 		},
 	)

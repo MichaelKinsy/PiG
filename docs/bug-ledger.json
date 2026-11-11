@@ -7948,6 +7948,28 @@
       "tests": []
     },
     {
+      "id": "BF-2d625ae",
+      "title": "p2: a worker restarted after it was killed mid-call resumes its code-mode script again",
+      "symptom": "p2: a worker restarted after it was killed mid-call resumes its code-mode script again.",
+      "rootCause": "openHarness read the models plugin's configuration (model access, and the scheduler's settings such as restartLimit) with config.Value(), a section of the host's loop. Pi reads config.value.get(\"default\") synchronously (apps/p2/src/runtime/worker.ts, scheduler.ts #restartLimit, read in the reserve pass). Here the scheduler's reserve pass holds TaskScheduler.mu while it reads the settings, and a batch's observer (the durable registry's, since the in-batch wake) holds the loop while it wakes the scheduler (notifyBlocked waits TaskScheduler.mu): a lock-order deadlock. A worker restarted after being killed mid-call (a task with Restarts \u003e 0) never resumed its script.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "p2: a worker restarted after it was killed mid-call resumes its code-mode script again. Its Harness read the models plugin's configuration (the scheduler's restart limit among it) as a section of the host's loop while the scheduler held its own lock, and a batch of the loop that woke the scheduler waited for that lock: a lock-order deadlock (the script hung until its 30 s wait). As in Pi, which reads the configuration synchronously, the Harness reads a view that a synchronous observer records in the batches that compose it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2d625ae724",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "apps/p2/runtime/harness_config_test.go::TestHarnessConfigViewAnswersWhileASectionHoldsTheLoopAndFollowsTheBatchesThatCompose"
+      ]
+    },
+    {
       "id": "BF-2d71556",
       "title": "fix(codingagent): queued-message lines use the dim foreground; hint separator closes only the foreground",
       "symptom": "fix(codingagent): queued-message lines use the dim foreground; hint separator closes only the foreground",
