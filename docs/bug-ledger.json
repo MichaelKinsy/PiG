@@ -24212,6 +24212,25 @@
       ]
     },
     {
+      "id": "BF-704bed4",
+      "title": "fix(ai): default Anthropic message threads by endpoint, not provider id (Pi, #11987); ledger v1.5.2+",
+      "symptom": "fix(ai): default Anthropic message threads by endpoint, not provider id (Pi, #11987); ledger v1.5.2+",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "704bed4d93",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-7056d2d",
       "title": "Images in steering and follow-up messages queued while the agent is busy (`steer`, `followUp`, a prompt sent…",
       "symptom": "Images in steering and follow-up messages queued while the agent is busy (`steer`, `followUp`, a prompt sent while streaming, RPC `steer` and `follow_up`) are now resized when the message is delivered, like images in idle prompts, instead of being sent and saved at full size; an image-only queued message now leaves the pending queue display after delivery (Pi #11738, #8581, D249, D250).",
