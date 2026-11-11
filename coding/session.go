@@ -149,7 +149,7 @@ type Session struct {
 	extensionErrorUnsubscribe func()
 	baseSystemPrompt          atomic.Pointer[string]
 	baseSystemPromptOptions   atomic.Pointer[extension.BuildSystemPromptOptions]
-	systemPromptOptionsGen    atomic.Uint64
+	systemPromptOptionsWatch  systemPromptOptionsWatch
 	systemPromptResources     atomic.Pointer[SystemPromptResources]
 	baseSystemSections        ai.OrderedSections
 	runPrompt                 atomic.Pointer[icodingagent.BeforeAgentStartRun]
