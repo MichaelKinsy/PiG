@@ -19527,6 +19527,26 @@
       ]
     },
     {
+      "id": "BF-63de63a",
+      "title": "p2's terminal client no longer drops a newer view of a conversation that arrived while a load of earlier or…",
+      "symptom": "p2's terminal client no longer drops a newer view of a conversation that arrived while a load of earlier or missing entries was ending: the older view the load returned replaced it until the next change.",
+      "rootCause": "LoadEarlier and FillGap set the view their load returned over the store value. The goroutine that follows the view merges on its own, so a merge between the end of the load and the store lock was undone. Pi's store is one event loop where nothing merges between a load end and its resumption. The store now brings the transcript up to its latest merged view after a load.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "p2's terminal client no longer drops a newer view of a conversation that arrived while a load of earlier or missing entries was ending: the older view the load returned replaced it until the next change.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "63de63aa7a",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-6445df7",
       "title": "PNG images are now decoded the way Pi decodes them, pixel for pixel and error for error on every file of the…",
       "symptom": "PNG images are now decoded the way Pi decodes them, pixel for pixel and error for error on every file of the oracle corpus, where PiG used to use Go's `image/png`.",

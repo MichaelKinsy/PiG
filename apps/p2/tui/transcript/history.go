@@ -62,6 +62,8 @@ type TranscriptStore struct {
 	nextID     int
 	stop       func()
 	value      *Pages
+	// latest is the last view merged into transcript, which a load's result is brought up to (see current).
+	latest harness.ConversationView
 }
 
 // NewTranscriptStore is a store following source once someone subscribes.
@@ -147,13 +149,13 @@ func (s *TranscriptStore) LoadEarlier() error {
 	listeners := s.setLocked(&loading)
 	s.mu.Unlock()
 	notify(listeners)
-	view, err := transcript.LoadEarlier(context.Background())
+	_, err := transcript.LoadEarlier(context.Background())
 	s.mu.Lock()
 	if transcript == s.transcript && s.value != nil {
 		next := *s.value
 		next.LoadingEarlier = false
 		if err == nil {
-			next.View = view
+			next.View = s.currentLocked()
 		}
 		listeners = s.setLocked(&next)
 	} else {
@@ -162,6 +164,14 @@ func (s *TranscriptStore) LoadEarlier() error {
 	s.mu.Unlock()
 	notify(listeners)
 	return err
+}
+
+// currentLocked is the transcript's view now: the pages a load added and every view merged so far. A load returns the view as of its own end, and the goroutine
+// that follows the view may merge a newer one before the result reaches the store (Pi's store is one event loop, where nothing comes in between): the older view
+// set over the newer one would hide the entries of the latter until another view arrived, and a finished answer is the last one. Merging the latest view again
+// adds nothing and returns the transcript's current items.
+func (s *TranscriptStore) currentLocked() *harness.TranscriptView {
+	return s.transcript.Merge(s.latest)
 }
 
 // FillGap loads the next page of gap; nothing while it loads.
@@ -178,13 +188,13 @@ func (s *TranscriptStore) FillGap(gap Gap) error {
 	listeners := s.setLocked(&loading)
 	s.mu.Unlock()
 	notify(listeners)
-	view, err := transcript.FillGap(context.Background(), gap)
+	_, err := transcript.FillGap(context.Background(), gap)
 	s.mu.Lock()
 	if transcript == s.transcript && s.value != nil {
 		next := *s.value
 		next.Filling = withFilling(s.value.Filling, key, false)
 		if err == nil {
-			next.View = view
+			next.View = s.currentLocked()
 		}
 		listeners = s.setLocked(&next)
 	} else {
@@ -292,6 +302,7 @@ func (s *TranscriptStore) apply(ctx context.Context, value delta.JsonValue, ops 
 		s.transcript = s.fresh()
 		s.value = nil
 	}
+	s.latest = view
 	merged := s.transcript.Merge(view)
 	var listeners []func()
 	if s.value == nil || merged != s.value.View {
