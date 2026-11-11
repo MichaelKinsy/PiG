@@ -470,7 +470,9 @@ src/web/ModelPicker.tsx
 src/web/OwnerNotices.tsx
 src/web/PiLogo.tsx
 src/web/SessionStats.tsx
+src/web/SettingsNav.tsx
 src/web/SidePanel.tsx
+src/web/Switch.tsx
 src/web/Time.tsx
 src/web/Viewer.tsx
 src/web/activity/ActivityRow.tsx
@@ -508,6 +510,7 @@ src/web/query-cache.ts
 src/web/reconnect.ts
 src/web/row-estimate.ts
 src/web/scroll-gesture.ts
+src/web/settings-embed.ts
 src/web/sheet-swipe.ts
 src/web/sidebar.ts
 src/web/style.css
@@ -546,3 +549,7 @@ plugins/sessions/sidebar/Row.tsx
 plugins/sessions/sidebar/Sidebar.tsx
 plugins/sessions/sidebar/model.ts
 plugins/sessions/sidebar/style.css
+plugins/settings/contract.ts
+plugins/settings/package.json
+plugins/settings/settings.css
+plugins/settings/web.tsx
