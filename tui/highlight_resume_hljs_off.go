@@ -11,3 +11,5 @@ func highlightResumable(highlightEngine, string, string, *Theme, bool) ([]string
 }
 
 func highlightResumeHeld(string, string, *Theme) bool { return false }
+
+func releaseHighlightUnits(string, string) {}

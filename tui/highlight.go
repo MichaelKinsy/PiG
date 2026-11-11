@@ -468,6 +468,18 @@ func WarmHighlight(code, lang string) bool {
 	return highlightResumeHeld(code, lang, t)
 }
 
+// ReleaseWarmHighlight drops the UTF-16 units that WarmHighlight of code, and of the texts code starts with, kept for a longer text
+// to continue from. A caller that warms a text as it grows calls it with the last text it warmed when no longer text will follow (the
+// text is complete, or its owner ended), so the units of a warm-up that ended after the text's last draw, or that no draw took, are
+// not held until later warm-ups push their state out. The resume states stay, and so do the lines HighlightCode returns.
+// pig additive (D112): only when the units are freed moves.
+func ReleaseWarmHighlight(code, lang string) {
+	if highlightStripped() {
+		return
+	}
+	releaseHighlightUnits(code, lang)
+}
+
 // HighlightEpoch is what HighlightCode's lines depend on besides its arguments: the active theme and the highlight.js
 // languages loaded. Within one epoch HighlightCode returns the same lines for the same code and language, so a caller may
 // keep lines it highlighted instead of highlighting the same code again.
