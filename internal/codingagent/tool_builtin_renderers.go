@@ -67,10 +67,13 @@ func (linesComponent) Invalidate()                 {}
 // renderers keep. The shell ticker and the edit preview update it off the UI
 // loop, so it has its own lock.
 type builtInRenderState struct {
-	mu        sync.Mutex
-	lifetime  context.Context
-	closed    bool
-	tasks     sync.WaitGroup
+	mu       sync.Mutex
+	lifetime context.Context
+	closed   bool
+	tasks    sync.WaitGroup
+	// spawn, when set, starts a task the card does not join itself: an interactive session runs its cards' workers in its own
+	// background group, which its end cancels and joins. Unset, a task runs in tasks, which the card's Dispose joins.
+	spawn     func(task func())
 	startedAt time.Time
 	endedAt   time.Time
 	stopTick  chan struct{}
@@ -83,10 +86,14 @@ type builtInRenderState struct {
 	writeHighlight *writeHighlightCache
 	// writePlain is the write card's lines for a path without a language, extended as its content streams in.
 	writePlain writePlainLines
-	// writeWarmed is the length of the content the whole-file highlight was last warmed at (warmWholeHighlight), and writeWarmOff
-	// that the file's language cannot resume, so no warm-up is worth its cost.
-	writeWarmed  int
-	writeWarmOff bool
+	// writeWarmed is the length of the content last handed to the whole-file highlight warm-up (warmWholeHighlight), writeWarmOff
+	// that the file's language cannot resume or a warm-up failed, so no warm-up is worth its cost, writeWarmRunning that the
+	// card's warm-up worker is alive, and writeWarmNext and writeWarmLang the newest content waiting for it. All are guarded by mu.
+	writeWarmed      int
+	writeWarmOff     bool
+	writeWarmRunning bool
+	writeWarmNext    string
+	writeWarmLang    string
 	// highlighter is the row's highlighting of a complete write call's file, or of a codemode call's script (upstream
 	// WriteCallRenderComponent.highlighter and CodemodeRenderState.scriptHighlighter). A complete write call redraws on
 	// every update and expand toggle with the same file, and a codemode call on every progress update and timer tick with
@@ -103,6 +110,15 @@ type builtInRenderState struct {
 	// editCall reports that the built-in edit renderCall drew this card, so
 	// its box holds the preview (upstream state.callComponent).
 	editCall bool
+}
+
+// goTask runs task on a goroutine the card's owner joins. state.mu is held, so a card that ended starts no more.
+func (state *builtInRenderState) goTask(task func()) {
+	if state.spawn != nil {
+		state.spawn(task)
+		return
+	}
+	state.tasks.Go(task)
 }
 
 func builtInState(context extension.ToolRenderContext) *builtInRenderState {
@@ -639,6 +655,8 @@ func writeRenderCall(args json.RawMessage, _ extension.Theme, context extension.
 		}
 	} else {
 		state.writeHighlight = nil
+		// A complete call draws its file from the highlighter once: a warm-up that has not started is dropped.
+		state.writeWarmNext = ""
 	}
 	cache := state.writeHighlight
 	var plain writePlainLines

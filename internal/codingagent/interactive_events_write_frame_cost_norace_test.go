@@ -3,6 +3,7 @@
 package codingagent
 
 import (
+	"context"
 	"fmt"
 	"runtime"
 	"strings"
@@ -18,6 +19,7 @@ import (
 // and once 400 KB of content have arrived; a frame at 400 KB may not allocate more than 1.5 times what one at 40 KB does.
 func TestStreamedWriteCardFrameCostIsFlat(t *testing.T) {
 	m, _ := newTickRenderProbe(t, "regular")
+	m.backgroundCtx, m.backgroundCancel = context.WithCancel(t.Context())
 	const width, delta, warm, frames = 120, 64, 8, 64
 	var source strings.Builder
 	for line := 0; source.Len() < 400<<10+(warm+frames+1)*delta; line++ {
@@ -49,6 +51,8 @@ func TestStreamedWriteCardFrameCostIsFlat(t *testing.T) {
 		for _, update := range updates[:warm] {
 			frame(update)
 		}
+		// The warm-up of the content that arrived runs on the session's worker: it is not what a frame costs.
+		m.backgroundTasks.Wait()
 		var before, after runtime.MemStats
 		runtime.GC()
 		runtime.ReadMemStats(&before)
