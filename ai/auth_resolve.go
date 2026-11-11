@@ -210,6 +210,11 @@ const (
 // credential type without a matching handler. Mirrors upstream
 // resolveProviderAuth.
 func ResolveProviderAuth(ctx context.Context, providerID string, auth ProviderAuth, credentials CredentialStore, authContext AuthContext, overrides AuthResolutionOverrides) (*AuthResult, error) {
+	return resolveProviderAuth(ctx, providerID, auth, credentials, authContext, overrides, startOAuthRefreshWork)
+}
+
+// resolveProviderAuth is ResolveProviderAuth with the starter of the stored-credential refresh its caller owns.
+func resolveProviderAuth(ctx context.Context, providerID string, auth ProviderAuth, credentials CredentialStore, authContext AuthContext, overrides AuthResolutionOverrides, start oauthRefreshStarter) (*AuthResult, error) {
 	if ctx.Err() != nil {
 		// resolve.ts:53 signal.throwIfAborted() throws the signal's reason: "This operation was aborted" for a plain abort().
 		return nil, AbortReason(ctx)
@@ -227,7 +232,7 @@ func ResolveProviderAuth(ctx context.Context, providerID string, auth ProviderAu
 	}
 	if stored != nil {
 		if stored.Type == CredentialOAuth && auth.OAuth != nil {
-			return resolveStoredOAuth(ctx, credentials, providerID, auth.OAuth, *stored, overrides.MinOAuthValidityMs)
+			return resolveStoredOAuth(ctx, credentials, providerID, auth.OAuth, *stored, overrides.MinOAuthValidityMs, start)
 		}
 		if stored.Type == CredentialAPIKey && auth.APIKey != nil {
 			credential := stored
@@ -302,8 +307,8 @@ func overlayEnvAuthContext(base AuthContext, env map[string]string) AuthContext 
 // resolveStoredOAuth refreshes with double-checked locking: a token with less
 // than the minimum validity remaining locks, re-checks expiry under the lock,
 // refreshes once, and persists the rotated credential before release.
-func resolveStoredOAuth(ctx context.Context, credentials CredentialStore, providerID string, oauth *OAuthAuth, stored Credential, minOAuthValidityMs *float64) (*AuthResult, error) {
-	credential, err := refreshStoredOAuth(ctx, credentials, providerID, oauth, stored, minOAuthValidityMs)
+func resolveStoredOAuth(ctx context.Context, credentials CredentialStore, providerID string, oauth *OAuthAuth, stored Credential, minOAuthValidityMs *float64, start oauthRefreshStarter) (*AuthResult, error) {
+	credential, err := refreshStoredOAuth(ctx, credentials, providerID, oauth, stored, minOAuthValidityMs, start)
 	if err != nil || credential == nil {
 		return nil, err
 	}
@@ -315,7 +320,7 @@ func resolveStoredOAuth(ctx context.Context, credentials CredentialStore, provid
 }
 
 // refreshStoredOAuth is resolveStoredOAuth's refresh step: it returns the credential to derive auth from, refreshed under the store's lock when it expires within the minimum validity, or nil when the credential was removed or replaced by a non-OAuth one meanwhile.
-func refreshStoredOAuth(ctx context.Context, credentials CredentialStore, providerID string, oauth *OAuthAuth, stored Credential, minOAuthValidityMs *float64) (*Credential, error) {
+func refreshStoredOAuth(ctx context.Context, credentials CredentialStore, providerID string, oauth *OAuthAuth, stored Credential, minOAuthValidityMs *float64, start oauthRefreshStarter) (*Credential, error) {
 	minimumValidityMs := defaultOAuthMinimumValidityMs
 	if minOAuthValidityMs != nil {
 		minimumValidityMs = math.Max(minimumValidityMs, *minOAuthValidityMs)
@@ -326,7 +331,7 @@ func refreshStoredOAuth(ctx context.Context, credentials CredentialStore, provid
 	credential := stored
 	if expiresSoon(credential) {
 		// Optimistic check said expired; the authoritative check runs under the lock.
-		post, err := refreshStoredOAuthCredential(ctx, credentials, providerID, oauth, expiresSoon)
+		post, err := refreshStoredOAuthCredential(ctx, credentials, providerID, oauth, expiresSoon, start)
 		if err != nil {
 			return nil, err
 		}
@@ -344,13 +349,22 @@ func refreshStoredOAuth(ctx context.Context, credentials CredentialStore, provid
 	return &credential, nil
 }
 
-// oauthRefreshWork owns the stored-credential refreshes that outlive a cancelled caller. Each is bounded by the store's lock and the fifteen-second refresh timeout.
+// oauthRefreshWork owns the stored-credential refreshes that outlive a cancelled caller and belong to no Models collection. Each is bounded by the store's lock and the fifteen-second refresh timeout.
 var oauthRefreshWork sync.WaitGroup
+
+// oauthRefreshStarter starts a stored-credential refresh that outlives a cancelled caller, and reports false when its owner admits no more work. A Models
+// collection supplies its own owned work, so draining it joins the credential write a cancelled caller leaves behind; the rest start it on oauthRefreshWork.
+type oauthRefreshStarter func(run func()) bool
+
+func startOAuthRefreshWork(run func()) bool {
+	oauthRefreshWork.Go(run)
+	return true
+}
 
 // refreshStoredOAuthCredential refreshes a stored OAuth credential under the credential store's lock and persists the result before the lock is released. needsRefresh is re-checked under the lock, so concurrent callers and processes refresh once.
 // ctx cancels only the wait for the lock. Once a refresh starts, the provider may already have rotated the refresh token, so the refresh and its persistence ignore ctx and are bounded only by the fifteen-second timeout; otherwise a cancelled caller could discard the only valid refresh token. Upstream's callers race the promise with their signal; this call does that itself, so a cancelled caller returns the signal reason ([AbortReason]) while the refresh finishes and persists in the background. It returns nil when the credential was removed or replaced by a non-OAuth one meanwhile.
 // upstream: packages/ai/src/auth/resolve.ts:refreshStoredOAuthCredential
-func refreshStoredOAuthCredential(ctx context.Context, credentials CredentialStore, providerID string, oauth *OAuthAuth, needsRefresh func(Credential) bool) (*Credential, error) {
+func refreshStoredOAuthCredential(ctx context.Context, credentials CredentialStore, providerID string, oauth *OAuthAuth, needsRefresh func(Credential) bool, start oauthRefreshStarter) (*Credential, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, AbortReason(ctx)
 	}
@@ -359,10 +373,12 @@ func refreshStoredOAuthCredential(ctx context.Context, credentials CredentialSto
 		err        error
 	}
 	done := make(chan outcome, 1)
-	oauthRefreshWork.Go(func() {
+	if !start(func() {
 		credential, err := refreshStoredOAuthLocked(ctx, credentials, providerID, oauth, needsRefresh)
 		done <- outcome{credential, err}
-	})
+	}) {
+		return nil, errModelsDraining
+	}
 	select {
 	case result := <-done:
 		return result.credential, result.err
@@ -400,7 +416,7 @@ func refreshStoredOAuthLocked(ctx context.Context, credentials CredentialStore, 
 // RefreshStoredOAuth is [refreshStoredOAuthCredential] for a provider whose OAuth refresh is not an [OAuthAuth] of a Models provider: refreshes the stored OAuth credential under the store's lock when needsRefresh still holds, and persists the result, with the caller's cancellation ending only the wait for the lock. It returns nil when the credential was removed or replaced by a non-OAuth one meanwhile.
 // upstream: packages/ai/src/auth/resolve.ts:refreshStoredOAuthCredential
 func RefreshStoredOAuth(ctx context.Context, credentials CredentialStore, providerID string, oauth *OAuthAuth, needsRefresh func(Credential) bool) (*Credential, error) {
-	return refreshStoredOAuthCredential(ctx, credentials, providerID, oauth, needsRefresh)
+	return refreshStoredOAuthCredential(ctx, credentials, providerID, oauth, needsRefresh, startOAuthRefreshWork)
 }
 
 // ModifyCredentialDetached is credentials.Modify for a transaction that may rotate a single-use token: ctx cancels only the wait for the store's lock. Once fn starts, a cancelled ctx neither stops fn's store write nor discards its result, so the rotated token is persisted; fn itself must not use ctx for the provider request, which is bounded by [RefreshOAuthDetached]. A ctx that ended before fn started returns [AbortReason]. A caller that returns when ctx ends owns running the transaction to its end, as refreshStoredOAuthCredential's goroutine does.

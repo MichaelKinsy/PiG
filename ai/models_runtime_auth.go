@@ -102,6 +102,12 @@ func HasApi(model AnyModel, api API) bool {
 }
 
 func (m *Models) GetAuth(ctx context.Context, providerID string, overrides ...AuthResolutionOverrides) (*AuthResult, error) {
+	return m.getAuth(ctx, m.goOwned, providerID, overrides...)
+}
+
+// getAuth resolves auth on spawn, which runs the provider's auth callbacks: the collection's owned work for a query, its operations for a stream's request
+// setup, whose callbacks end with the stream's context. The stored-credential refresh and its write are owned work either way.
+func (m *Models) getAuth(ctx context.Context, spawn func(func()) bool, providerID string, overrides ...AuthResolutionOverrides) (*AuthResult, error) {
 	provider := m.GetProvider(providerID)
 	if provider == nil {
 		return nil, nil
@@ -110,12 +116,16 @@ func (m *Models) GetAuth(ctx context.Context, providerID string, overrides ...Au
 	if len(overrides) > 0 {
 		opts = overrides[0]
 	}
-	return awaitModelsOperation(ctx, m.goOwned, func() (*AuthResult, error) {
-		return ResolveProviderAuth(ctx, provider.ID, provider.Auth, m.credentials, m.authContext, opts)
+	return awaitModelsOperation(ctx, spawn, func() (*AuthResult, error) {
+		return resolveProviderAuth(ctx, provider.ID, provider.Auth, m.credentials, m.authContext, opts, m.goOwned)
 	})
 }
 
 func (m *Models) GetModelAuth(ctx context.Context, anyModel AnyModel, overrides ...AuthResolutionOverrides) (*AuthResult, error) {
+	return m.getModelAuth(ctx, m.goOwned, anyModel, overrides...)
+}
+
+func (m *Models) getModelAuth(ctx context.Context, spawn func(func()) bool, anyModel AnyModel, overrides ...AuthResolutionOverrides) (*AuthResult, error) {
 	model, isChat := anyModel.(*Model)
 	if m.modelAuth != nil && isChat {
 		var opts AuthResolutionOverrides
@@ -124,7 +134,7 @@ func (m *Models) GetModelAuth(ctx context.Context, anyModel AnyModel, overrides 
 		}
 		return m.modelAuth(ctx, model, opts)
 	}
-	result, err := m.GetAuth(ctx, anyModel.ProviderID(), overrides...)
+	result, err := m.getAuth(ctx, spawn, anyModel.ProviderID(), overrides...)
 	modelHeaders := anyModelHeaders(anyModel)
 	if err != nil || result == nil || modelHeaders == nil {
 		return result, err
@@ -175,7 +185,7 @@ func (m *Models) authenticatedProviders(ctx context.Context, providerID []string
 	checks := make([]checked, len(providers))
 	completed := make(chan checked, len(providers))
 	for i, provider := range providers {
-		m.goOwned(func() {
+		if !m.goOwned(func() {
 			credential, err := readProviderCredential(ctx, m.credentials, provider.ID)
 			if err != nil {
 				completed <- checked{index: i, err: err}
@@ -183,7 +193,9 @@ func (m *Models) authenticatedProviders(ctx context.Context, providerID []string
 			}
 			check, err := m.checkProviderAuth(ctx, provider, credential)
 			completed <- checked{i, credential, check, err}
-		})
+		}) {
+			completed <- checked{index: i, err: errModelsDraining}
+		}
 	}
 	for range providers {
 		check := <-completed
@@ -297,7 +309,7 @@ func (m *Models) checkProviderAuth(ctx context.Context, provider *ModelsProvider
 		}
 		return check, nil
 	}
-	resolution, err := ResolveProviderAuth(ctx, provider.ID, provider.Auth, m.credentials, m.authContext, AuthResolutionOverrides{})
+	resolution, err := resolveProviderAuth(ctx, provider.ID, provider.Auth, m.credentials, m.authContext, AuthResolutionOverrides{}, m.goOwned)
 	if err != nil || resolution == nil {
 		return nil, err
 	}
@@ -338,14 +350,14 @@ func (m *Models) LoginProvider(ctx context.Context, provider *ModelsProvider, au
 	if login == nil {
 		return Credential{}, NewModelsError(ModelsErrorAuth, fmt.Sprintf("%s does not support %s login", provider.Name, authType), nil)
 	}
-	credential, err := awaitModelsOperation(ctx, m.operations.Go, func() (Credential, error) { return login(ctx, interaction, loginOptions) })
+	credential, err := awaitModelsOperation(ctx, m.goOperation, func() (Credential, error) { return login(ctx, interaction, loginOptions) })
 	if err != nil {
 		return Credential{}, err
 	}
 	if authType == CredentialOAuth && provider.Auth.OAuth.store != nil {
 		// pig additive (D40): an extension OAuth provider with its own credential store saves there, never in the core store, as /login and pig login do.
 		store := provider.Auth.OAuth.store
-		if _, err := awaitModelsOperation(ctx, m.operations.Go, func() (string, error) { return store.StoreOAuthCredentials(credential.OAuthCredentials()) }); err != nil {
+		if _, err := awaitModelsOperation(ctx, m.goOperation, func() (string, error) { return store.StoreOAuthCredentials(credential.OAuthCredentials()) }); err != nil {
 			if ctx.Err() != nil {
 				return Credential{}, context.Cause(ctx)
 			}
