@@ -102,6 +102,17 @@ func highlightResumeHeld(code, lang string, t *Theme) bool {
 	return len(found.prefix) > 0
 }
 
+// releaseHighlightUnits drops the units of the states of lang that hold them for code or for a text code starts with: what the warm-ups of code left. A run that continues from the longest resume point takes the units of one state, and states of equal resume points (the files of one directory share their first lines) are not told apart, so an earlier warm-up of the text can keep its units; they go with the last. A state of a longer or another text keeps its units, which a later text of its own continues from.
+func releaseHighlightUnits(code, lang string) {
+	hlMu.Lock()
+	defer hlMu.Unlock()
+	for i := range hlResumes {
+		if r := &hlResumes[i]; r.text != nil && r.lang == lang && strings.HasPrefix(code, r.seen) {
+			r.text = nil
+		}
+	}
+}
+
 // hlFindResume is the state with the longest prefix of code for the block among those whose whole code code starts with, or the zero state, and the generation of the loaded languages it was found under. take hands the state's units to the caller, which leaves the stored state without them.
 func hlFindResume(code, lang string, t *Theme, take bool) (found hlResume, generation int) {
 	hlMu.Lock()

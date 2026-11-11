@@ -88,13 +88,18 @@ type builtInRenderState struct {
 	writePlain writePlainLines
 	// writeWarmed is the length of the content last handed to the whole-file highlight warm-up (warmWholeHighlight), writeWarmOff
 	// that the file's language cannot resume or a warm-up failed, so no warm-up is worth its cost, writeWarmRunning that the
-	// card's warm-up worker is alive, writeWarmNext and writeWarmLang the newest content waiting for it, and writeWarmFailure the panic of a warm-up that the next frame raises. All are guarded by mu.
-	writeWarmed      int
-	writeWarmOff     bool
-	writeWarmRunning bool
-	writeWarmNext    string
-	writeWarmLang    string
-	writeWarmFailure any
+	// card's warm-up worker is alive, writeWarmNext and writeWarmLang the newest content waiting for it, and writeWarmFailure the panic of a warm-up that the next frame raises.
+	// writeWarmHeld and writeWarmHeldLang are the text, and its language, that the last warm-up left the units for the next one of
+	// (empty when it left none), and writeWarmDone that the call is complete: both end the card's hold on them (releaseWarmUnits). All are guarded by mu.
+	writeWarmed       int
+	writeWarmOff      bool
+	writeWarmRunning  bool
+	writeWarmDone     bool
+	writeWarmNext     string
+	writeWarmLang     string
+	writeWarmHeld     string
+	writeWarmHeldLang string
+	writeWarmFailure  any
 	// highlighter is the row's highlighting of a complete write call's file, or of a codemode call's script (upstream
 	// WriteCallRenderComponent.highlighter and CodemodeRenderState.scriptHighlighter). A complete write call redraws on
 	// every update and expand toggle with the same file, and a codemode call on every progress update and timer tick with
@@ -658,6 +663,7 @@ func writeRenderCall(args json.RawMessage, _ extension.Theme, context extension.
 		state.writeHighlight = nil
 		// A complete call draws its file from the highlighter once: a warm-up that has not started is dropped.
 		state.writeWarmNext = ""
+		state.writeWarmDone = state.writeWarmDone || context.ArgsComplete
 	}
 	cache := state.writeHighlight
 	var plain writePlainLines
@@ -712,6 +718,9 @@ func writeRenderCall(args json.RawMessage, _ extension.Theme, context extension.
 			text += moreLinesHint("\n... (" + strconv.Itoa(remaining) + " more lines, " + strconv.Itoa(total) + " total,")
 		}
 	}
+	// The frame that completed the call drew the highlighter's lines of the whole file from the state the last warm-up left, and took
+	// its units; a warm-up still running at that draw releases its own when it ends (runWriteWarmUps).
+	state.releaseWarmUnitsOfAFinishedCall()
 	// The row's Text is reused, and keeps its wrapped lines when a redraw sets the text it showed (upstream
 	// WriteCallRenderComponent extends Text).
 	component := reusableText(context.LastComponent)

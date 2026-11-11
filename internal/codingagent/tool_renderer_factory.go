@@ -111,6 +111,8 @@ func (card *ToolRendererCard) Dispose() {
 			close(card.state.stopTick)
 			card.state.stopTick = nil
 		}
+		// A write call that never completed leaves the units its last warm-up kept for the next one; a warm-up that still runs releases its own when it ends.
+		card.state.releaseWarmUnitsOfAFinishedCall()
 		card.state.mu.Unlock()
 		card.state.tasks.Wait()
 	})
