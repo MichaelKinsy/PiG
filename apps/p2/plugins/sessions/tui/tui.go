@@ -240,7 +240,7 @@ type Surface struct {
 	decoded   []contract.Session
 	decodedOf []any
 	shownRows func() []contract.Session
-	editing   chordtui.OptimisticAdd[rowGuess]
+	editing   p2tui.OptimisticAdd[rowGuess]
 
 	operations []operation
 	children   map[string][]runtime.SessionChild
@@ -302,7 +302,7 @@ func New(rt *runtime.TuiRuntime) *Surface {
 	s.focus = s.Search
 	s.scope = chordtui.NewTuiScope(context.Background(), rt.Host, rt.Ctx.RequestRender)
 	s.probes = NewPlaceProbes(rt.Ctx, func() { rt.Ctx.RequestRender() })
-	s.shownRows, s.editing, _ = chordtui.Optimistic(s.scope, s.catalogRows, applyRow)
+	s.shownRows, s.editing, _ = p2tui.Optimistic(s.scope, s.catalogRows, applyRow)
 	s.Prompt.OnSubmit = func(string) { s.submitPrompt() }
 	s.sourcesRead = chordtui.Registry(s.scope, runtime.TuiSessionSources.Registry)
 	s.viewed = rt.Session
@@ -668,7 +668,7 @@ func (s *Surface) edit(guess rowGuess, method string, args delta.JsonValue, done
 		return
 	}
 	go func() {
-		err := s.editing(guess, func() error {
+		err := p2tui.AddCall(s.editing, guess, func() error {
 			_, err := catalog.Call(method, args, context.Background())
 			return err
 		})
