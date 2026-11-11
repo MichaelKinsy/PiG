@@ -228,6 +228,13 @@ func (state *builtInRenderState) warmWholeHighlight(content, lang string) {
 		if slice == 0 {
 			slice = writeWarmMinSlice
 		}
+		// The warm-up never falls more than two steps behind the content, however slow a frame is (the steps before the slices left at most one): the
+		// frame that completes the call highlights what is left of it.
+		if behind := len(content) - state.writeWarmed - 2*writeWarmStep(len(content)); behind > 0 {
+			state.writeWarmTarget = len(content)
+			end = state.writeWarmTarget
+			slice = max(slice, behind)
+		}
 		end = min(end, state.writeWarmed+slice)
 	}
 	// The slice ends on a character start: a prefix that cuts one is not text the later runs start with.

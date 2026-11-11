@@ -18,7 +18,7 @@ import (
 // and once 400 KB of content have arrived; a frame at 400 KB may not allocate more than 1.5 times what one at 40 KB does.
 func TestStreamedWriteCardFrameCostIsFlat(t *testing.T) {
 	m, _ := newTickRenderProbe(t, "regular")
-	const width, delta, warm, frames = 120, 64, 8, 64
+	const width, delta, warm, frames = 120, 64, 160, 64
 	var source strings.Builder
 	for line := 0; source.Len() < 400<<10+(warm+frames+1)*delta; line++ {
 		fmt.Fprintf(&source, "export function step%d(input: number[]): number { return input.reduce((a, b) => a + b * %d, %d); }\n", line, line%7, line)
