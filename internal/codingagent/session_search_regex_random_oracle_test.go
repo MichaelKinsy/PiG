@@ -4,6 +4,7 @@ package codingagent
 
 import (
 	"math/rand"
+	"os/exec"
 	"slices"
 	"strings"
 	"testing"
@@ -17,6 +18,10 @@ import (
 //
 // What `new RegExp` accepts and the message it reports for a pattern with several faults are V8's, and they change between Node releases, so the oracle runs on the qualified Node (.node-version, which CI installs and the other Node oracles require) and PiG follows that V8 (13.x on Node 24). Pi 1.5.0 declares engines node >=22.19.0, but PiG does not follow that floor. Measured with this test: on Node 22.19 (V8 12.4) Pi rejects every modifier group such as `(?s:a)` ("Invalid group") and every duplicate capture group name, which PiG accepts as V8 13 does; on Node 26.12 (V8 14.6) Pi reports "Duplicate capture group name" before "Invalid quantifier" or "Nothing to repeat" (5 of the 3000 patterns) and rejects nested duplicates that V8 13 accepts.
 func TestSessionSearchRegexMatchesPi(t *testing.T) {
+	// Like pioracle.Run, which this oracle ends in, a missing Node is a failure: RequireQualifiedNode skips a plain developer run without Node, and then a targeted go test would pass without running the oracle.
+	if _, err := exec.LookPath("node"); err != nil {
+		t.Fatalf("session-search regex oracle: node is required: %v", err)
+	}
 	testenv.RequireQualifiedNode(t)
 	type session struct {
 		Path, ID, CWD, Name, Text string
