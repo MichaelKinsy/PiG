@@ -569,5 +569,6 @@ plugins/views/layout.ts
 plugins/views/package.json
 plugins/views/panes.tsx
 plugins/views/sheet.tsx
+plugins/views/tool.ts
 plugins/views/views.css
 plugins/views/web.tsx

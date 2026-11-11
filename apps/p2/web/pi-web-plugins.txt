@@ -21,6 +21,7 @@ settings
 sharing
 subagents
 terminals
+views
 voice
 web-shell
 workspace

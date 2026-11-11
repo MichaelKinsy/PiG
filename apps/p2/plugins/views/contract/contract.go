@@ -162,7 +162,9 @@ func viewsState() []contracts.Property {
 	}
 }
 
-func sessionParam() contracts.Params { return contracts.Params{contracts.Prop("session", contracts.Str())} }
+func sessionParam() contracts.Params {
+	return contracts.Params{contracts.Prop("session", contracts.Str())}
+}
 
 // Views is a session's views and annotations as anyone who may view the session sees them; people who may send there also
 // open, close and select in views, annotate, and drop what their next message would carry.

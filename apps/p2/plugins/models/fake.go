@@ -216,7 +216,7 @@ func fauxToolPrefixed(text string) (name string, ok bool) {
 		return "", false
 	}
 	switch name {
-	case "artifact", "history_search", "history_read", "history_handoff", "location_envs", "location_dirs", "location_move", "tool_search", "terminal":
+	case "artifact", "view", "history_search", "history_read", "history_handoff", "location_envs", "location_dirs", "location_move", "tool_search", "terminal":
 		return name, true
 	}
 	if rest, has := strings.CutPrefix(name, "mcp__"); has && rest != "" && strings.IndexFunc(rest, func(r rune) bool {

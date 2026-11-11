@@ -56,6 +56,7 @@ import (
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/subagents"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/terminals"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/tree"
+	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/views"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/voice"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/web-shell"
 	_ "github.com/MichaelKinsy/PiG/apps/p2/plugins/workspace"
