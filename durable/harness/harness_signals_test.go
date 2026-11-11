@@ -140,7 +140,9 @@ func sigWakeSignal(key string) map[string]any {
 	return map[string]any{"reason": "signal", "signal": "test.answer", "key": key}
 }
 
-func sigValue(text string) map[string]any { return map[string]any{"value": map[string]any{"text": text}} }
+func sigValue(text string) map[string]any {
+	return map[string]any{"value": map[string]any{"text": text}}
+}
 
 // sigResultOf is the JSON form of the result a task completed with.
 func sigResultOf(t *testing.T, outcome durable.TaskOutcome[durable.JsonValue]) map[string]any {
@@ -752,7 +754,7 @@ func TestSleepingOnSignals(t *testing.T) {
 				"start": func(ctx context.Context, _ selfRecord, runtime selfRuntime) error {
 					return runtime.Commit(ctx, func(tx durable.Tx, _ selfRecord) (*durable.NextTaskState[stepState, *durable.WakeReason], error) {
 						if result, err := durable.Signal(tx, runtime.TaskId(), sigAnswerToken, "self", sigAnswer{Text: "me"}); err != nil || result != durable.SignalDelivered {
-							return nil, fmt.Errorf("self delivery: %s %v", result, err)
+							return nil, fmt.Errorf("self delivery: %s %w", result, err)
 						}
 						return &durable.NextTaskState[stepState, *durable.WakeReason]{Status: durable.TaskSleeping, Checkpoint: &stepState{Phase: "woke"}, Signals: []durable.SignalKey{sigAnswerToken.Key("self")}}, nil
 					})

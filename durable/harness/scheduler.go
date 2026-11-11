@@ -641,13 +641,6 @@ func (s *TaskScheduler) SubscribeBlocked(listener func()) func() {
 	}
 }
 
-// notifyBlocked tells the blocked listeners.
-func (s *TaskScheduler) notifyBlocked() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.notifyBlockedLocked()
-}
-
 // notifyBlockedLocked tells the blocked listeners off the lock, in subscription order; one that panics is reported as a
 // listener failure.
 func (s *TaskScheduler) notifyBlockedLocked() {

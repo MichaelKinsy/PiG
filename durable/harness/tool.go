@@ -304,11 +304,12 @@ func toolCallPhase(ctx context.Context, task toolRecord, runtime toolRuntime) er
 			block = &reason
 			return nil
 		}
-		if decision != nil && decision.Block != nil {
+		switch {
+		case decision != nil && decision.Block != nil:
 			block = decision.Block
-		} else if decision != nil && decision.Sleep != nil {
+		case decision != nil && decision.Sleep != nil:
 			sleep = decision.Sleep
-		} else if decision != nil && decision.Arguments != nil {
+		case decision != nil && decision.Arguments != nil:
 			args = decision.Arguments
 		}
 		return nil

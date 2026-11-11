@@ -263,13 +263,17 @@ func TestCoreHarnessHookResultsOfSuspendableWorkAreReportedWithThePinError(t *te
 func TestCoreHarnessAfterToolsWithoutTasksIsNotAPinError(t *testing.T) {
 	reports := &pinReports{}
 	_, _, sub := nestedCoreHarnessWith(t, &durable.Extension{
-		Name:  "empty",
-		Tools: []*durable.ToolRegistration{okCoreTool(func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) { return nestedCoreText("ran"), nil })},
+		Name: "empty",
+		Tools: []*durable.ToolRegistration{okCoreTool(func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
+			return nestedCoreText("ran"), nil
+		})},
 		Hooks: []durable.HookRegistration{{Task: harness.GenerationTask.AnyDefinition().Name, Handlers: &harness.GenerationHooks{
 			AfterTools: func(context.Context, durable.EntryId, []durable.EntryId, harness.HookApi) (*harness.HookTasks, error) {
 				return &harness.HookTasks{}, nil
 			},
-			OnYield: func(context.Context, ai.AssistantMessage, harness.HookApi) (harness.YieldResult, error) { return nil, nil },
+			OnYield: func(context.Context, ai.AssistantMessage, harness.HookApi) (harness.YieldResult, error) {
+				return nil, nil
+			},
 		}}},
 	}, reports.add)
 	nestedCoreWait(t, sub, durable.SubmissionDone)

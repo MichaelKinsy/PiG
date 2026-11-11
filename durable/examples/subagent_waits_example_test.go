@@ -137,7 +137,7 @@ func TestExample43SubagentWaits(t *testing.T) {
 			}
 			handle, err := api.Conversation(ctx, created.(durable.ConversationId))
 			if err != nil || handle == nil {
-				return durable.ToolExecutionResult{}, fmt.Errorf("child conversation: %v", err)
+				return durable.ToolExecutionResult{}, fmt.Errorf("child conversation: %w", err)
 			}
 			// The request ID makes a rerun find the same submission; `Notify` signals this call when it settles.
 			if _, err := handle.Submit(ctx, durable.SubmissionDraft{

@@ -289,7 +289,7 @@ func (harness *harnessImpl) SignalErased(ctx context.Context, taskId durable.Tas
 	if err := harness.tasks.TryResume(); err != nil {
 		return "", err
 	}
-	result, err := harness.SessionImpl.Commit(ctx, func(tx durable.Tx) (any, error) {
+	result, err := harness.Commit(ctx, func(tx durable.Tx) (any, error) {
 		return tx.SignalErased(taskId, token, key, value)
 	})
 	if err != nil {

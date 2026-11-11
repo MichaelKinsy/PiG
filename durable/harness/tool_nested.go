@@ -227,16 +227,17 @@ func (n *NestedCalls) ExecuteNoWait(ctx context.Context, caller NestedCaller, na
 		return durable.NestedToolCall{}, fmt.Errorf("Tool call %s has settled", n.callId)
 	}
 	var key string
-	if option.Key != nil {
+	switch {
+	case option.Key != nil:
 		key = *option.Key
 		if err := checkNestedKey(key); err != nil {
 			n.mu.Unlock()
 			return durable.NestedToolCall{}, err
 		}
-	} else if n.afterWake {
+	case n.afterWake:
 		n.mu.Unlock()
 		return durable.NestedToolCall{}, fmt.Errorf("Tool call %s needs explicit keys after a wake", n.callId)
-	} else {
+	default:
 		n.sequence++
 		key = strconv.Itoa(n.sequence)
 	}
