@@ -110,11 +110,14 @@ func runWorker(start workers.WorkerStart, ctx context.Context) (*workers.WorkerR
 	}
 	facets = append(facets, workerFacets(selection)...)
 	report, err := worker.Load(facets, ctx)
+	if err == nil && len(report.Failed) > 0 {
+		err = report.Failed[0].Error
+	}
+	// Every plugin is contributed (codemode's tool among them): request-time users of the Harness, the server's `send` routed
+	// at started, may now proceed (p2runtime.LoadGate); a failed Load answers them with its error.
+	finishLoad(ctx, worker, err)
 	if err != nil {
 		return nil, err
-	}
-	if len(report.Failed) > 0 {
-		return nil, report.Failed[0].Error
 	}
 	setReloader(&workerReloader{host: worker, facets: facets, selection: selection, applied: map[string]string{}})
 	// A Harness that cannot open fails the worker (its error, with Retry), as an unknown root model does: at its first
@@ -136,6 +139,18 @@ func runWorker(start workers.WorkerStart, ctx context.Context) (*workers.WorkerR
 		durable.Resume()
 	}
 	return &workers.WorkerResult{Busy: liveness}, nil
+}
+
+// finishLoad opens the Harness's LoadGate with the outcome of the worker's Load (the gate exists once the Harness is opened;
+// before that nothing can wait on it).
+func finishLoad(ctx context.Context, worker host.Host, outcome error) {
+	source, err := worker.Registry(ctx, p2runtime.HarnessNative, host.GetOptions{})
+	if err != nil {
+		return
+	}
+	if parts, _ := source.Value().(*p2runtime.HarnessParts); parts != nil {
+		parts.Loaded.Finish(outcome)
+	}
 }
 
 // openedHarness waits for the HarnessHost object to go live, failing with its first failure.
