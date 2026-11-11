@@ -12,6 +12,7 @@ func TestRadiusStatusLinesAsPiMobileLogsThem(t *testing.T) {
 		status contract.Status
 		want   string
 	}{
+		{contract.Status{Kind: contract.StatusConnected, ServerID: "brain-1", OrganizationID: "org", Name: "Studio"}, "connected as brain Studio"},
 		{contract.Status{Kind: contract.StatusConnected, ServerID: "brain-1", OrganizationID: "org"}, "connected as brain brain-1"},
 		{contract.Status{Kind: contract.StatusRetrying, Error: "offline"}, "not connected (offline)"},
 		{contract.Status{Kind: contract.StatusConnecting}, ""},

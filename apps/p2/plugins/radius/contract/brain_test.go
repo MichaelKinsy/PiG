@@ -317,3 +317,45 @@ func TestBrainKeepsReplacingAgainstARelayThatIgnoresReplaceAndAnswers409(t *test
 	f.set(func() { f.occupied = false })
 	waitFor(t, "the connection", func() bool { return f.connected() == 1 })
 }
+
+// Ports radius.test.ts "Radius brain connects under its name, the device's at first, and a rename goes with the next connect" (Pi 5c37d3be1).
+func TestBrainConnectsUnderItsNameTheDevicesAtFirstAndARenameGoesWithTheNextConnect(t *testing.T) {
+	f := startFlakyRelay(t)
+	names := func() []string {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+		var out []string
+		for _, raw := range f.urls {
+			parsed, _ := url.Parse(raw)
+			out = append(out, parsed.Query().Get("name"))
+		}
+		return out
+	}
+	device := DeviceName()
+	f.brain.Start()
+	waitFor(t, "the first connection", func() bool { return f.connected() == 1 })
+	if got := names(); len(got) != 1 || got[0] != device {
+		t.Fatalf("names = %q, want [%q]", got, device)
+	}
+	// The first connect created identity.json with the device's name; it stays the brain's until changed here.
+	if identity, ok := ReadBrainIdentity(f.brain.directory); !ok || identity.Name != device {
+		t.Fatalf("identity = %v, %v", identity, ok)
+	}
+	if err := WriteBrainIdentity(f.brain.directory, BrainIdentity{Name: "Studio brain"}); err != nil {
+		t.Fatal(err)
+	}
+	f.closeHost(1001, "")
+	waitFor(t, "the second connection", func() bool { return f.connected() == 2 })
+	if got := names(); got[len(got)-1] != "Studio brain" {
+		t.Fatalf("names = %q", got)
+	}
+	var last Status
+	for _, status := range f.statusList() {
+		if status.Kind == StatusConnected {
+			last = status
+		}
+	}
+	if last.Name != "Studio brain" {
+		t.Fatalf("connected status name = %q", last.Name)
+	}
+}

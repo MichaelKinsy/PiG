@@ -79,6 +79,12 @@ import (
 // `?replace=1`: the relay fails the old host and its channels and takes the new socket at once. Relays that predate the
 // parameter ignore it and answer 409, which the backoff retries until the old host expires.
 //
+// Name. Every host connect carries the brain's name (`?name=`, from `identity.json`, see identity.go), read again for each attempt, and Radius
+// records it when it claims the server. Reading the name never fails a connect: an unreadable or unwritable data directory falls back to the
+// device's name, and a brain without any name connects without `name`, which keeps the name Radius has (else Radius shows the server ID). The
+// brain owns its name, so a rename on this machine reaches Radius with the next reconnect, and Radius never changes it. Relays that predate
+// names ignore the parameter.
+//
 // Two p2 processes with the same `radius.json` share one server ID, so they would replace each other in turn. The relay
 // closes a replaced host with 1012 "Server host replaced", and that is always another process: this one gives up its own
 // socket before it reconnects. The brain then yields: it reconnects without `replace`, gets 409 until the other process is
@@ -163,6 +169,7 @@ type Status struct {
 	ServerID       string // connected
 	OrganizationID string // connected
 	Error          string // retrying
+	Name           string // connected: the brain name it connected under (identity.json), empty without one
 }
 
 // Timing overrides the heartbeat and handshake times (tests).
@@ -410,7 +417,8 @@ func (b *Brain) attempt() time.Duration {
 	b.mu.Lock()
 	b.config = config
 	b.mu.Unlock()
-	failure, ok := b.connect(config, owner, replace)
+	identity, _ := ReadBrainIdentity(b.directory)
+	failure, ok := b.connect(config, owner, replace, identity.Name)
 	if !ok {
 		return 0
 	}
@@ -557,10 +565,17 @@ func dialFailure(err error, response *http.Response) error {
 
 // connect opens the host socket and serves it until it ends. ok is false when the brain closed meanwhile; failure is why the
 // socket ended.
-func (b *Brain) connect(config *Config, owner principal, replace bool) (failure error, ok bool) {
+func (b *Brain) connect(config *Config, owner principal, replace bool, name string) (failure error, ok bool) {
 	address := websocketURL(config.Gateway, "/v1/servers/"+config.ServerID+"/connect")
+	query := url.Values{}
 	if replace {
-		address += "?replace=1"
+		query.Set("replace", "1")
+	}
+	if name != "" {
+		query.Set("name", name)
+	}
+	if len(query) > 0 {
+		address += "?" + query.Encode()
 	}
 	conn, response, err := b.dialer(hostSubprotocols).DialContext(b.ctx, address, http.Header{"Authorization": {"Bearer " + config.Credential.Access}})
 	if err != nil {
@@ -619,7 +634,7 @@ func (b *Brain) connect(config *Config, owner principal, replace bool) (failure 
 			}
 		}
 	})
-	b.onStatus(Status{Kind: StatusConnected, ServerID: config.ServerID, OrganizationID: owner.OrganizationID})
+	b.onStatus(Status{Kind: StatusConnected, ServerID: config.ServerID, OrganizationID: owner.OrganizationID, Name: name})
 	b.mu.Lock()
 	b.reported = false
 	b.mu.Unlock()
