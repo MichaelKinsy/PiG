@@ -116,10 +116,11 @@ func tierRows(t *testing.T) []tierRow {
 type workflowFile struct {
 	On   any
 	Jobs map[string]struct {
-		Name  string
-		If    string
-		Needs any
-		Steps []struct {
+		Name           string
+		If             string
+		Needs          any
+		TimeoutMinutes int `yaml:"timeout-minutes"`
+		Steps          []struct {
 			Name string
 			If   string
 			Uses string

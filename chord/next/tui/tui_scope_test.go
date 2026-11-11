@@ -211,14 +211,14 @@ func TestOptimisticShowsTheValueWhileItsCallIsPendingThenTheReadersCallingChange
 	defer scope.Dispose()
 	notes, _ := scope.Hold(Notes, delta.NewJsonObject(0))
 	read := WatchMember(scope, notes.Member("text"))
-	text, add, _ := OptimisticLast(scope, func() delta.JsonValue { v, _ := read(); return v })
+	text, add, _ := OptimisticLast[delta.JsonValue, struct{}](scope, func() delta.JsonValue { v, _ := read(); return v })
 	until(t, func() bool { return text() == "first" })
 	settle(&changes)
 	before := changes.Load()
 	gate, shown := make(chan struct{}), make(chan struct{})
 	done := make(chan error)
 	go func() {
-		done <- add("second", func() error { close(shown); <-gate; _, err := notes.Call("write", "second", bg); return err })
+		done <- addOnly(add, "second", func() error { close(shown); <-gate; _, err := notes.Call("write", "second", bg); return err })
 	}()
 	<-shown
 	if got := text(); got != "second" {
@@ -243,14 +243,14 @@ func TestOptimisticShowsTheLastValueUntilEveryCallSettledAFailedCallDropsItAsASu
 	var text func() string
 	scope := scopeOn(newHost(t), func() { mu.Lock(); calls = append(calls, text()); mu.Unlock() })
 	defer scope.Dispose()
-	shown, add, _ := OptimisticLast(scope, func() string { return "real" })
+	shown, add, _ := OptimisticLast[string, struct{}](scope, func() string { return "real" })
 	text = shown
 	first, second := make(chan error), make(chan error)
 	firstDone, secondDone := make(chan error, 1), make(chan error, 1)
-	go func() { firstDone <- add("one", func() error { return <-first }) }()
+	go func() { firstDone <- addOnly(add, "one", func() error { return <-first }) }()
 	// add's redraw ran before it called: wait for it, so the order of actions is the order of calls.
 	until(t, func() bool { mu.Lock(); defer mu.Unlock(); return len(calls) == 1 })
-	go func() { secondDone <- add("two", func() error { return <-second }) }()
+	go func() { secondDone <- addOnly(add, "two", func() error { return <-second }) }()
 	until(t, func() bool { mu.Lock(); defer mu.Unlock(); return len(calls) == 2 })
 	first <- nil
 	if err := <-firstDone; err != nil {
@@ -277,7 +277,7 @@ func TestOptimisticAppliesAReducerOverEveryActionInFlightInOrderAndSaysWhetherAC
 	defer scope.Dispose()
 	var mu sync.Mutex
 	real := []string{"a", "b", "c"}
-	list, add, pending := Optimistic(scope,
+	list, add, pending := Optimistic[[]string, string, struct{}](scope,
 		func() []string { mu.Lock(); defer mu.Unlock(); return real },
 		func(current []string, removed string) []string {
 			var kept []string
@@ -290,9 +290,9 @@ func TestOptimisticAppliesAReducerOverEveryActionInFlightInOrderAndSaysWhetherAC
 		})
 	first, second := make(chan error), make(chan error)
 	firstDone, secondDone := make(chan error, 1), make(chan error, 1)
-	go func() { firstDone <- add("a", func() error { return <-first }) }()
+	go func() { firstDone <- addOnly(add, "a", func() error { return <-first }) }()
 	until(t, pending)
-	go func() { secondDone <- add("c", func() error { return <-second }) }()
+	go func() { secondDone <- addOnly(add, "c", func() error { return <-second }) }()
 	until(t, func() bool { return reflect.DeepEqual(list(), []string{"b"}) })
 	// Unchanged reader and actions: the same value, not a new slice per read.
 	if a, b := list(), list(); &a[0] != &b[0] {
@@ -320,10 +320,10 @@ func TestOptimisticAppliesAReducerOverEveryActionInFlightInOrderAndSaysWhetherAC
 func TestOptimisticNeverCallsChangedAfterDispose(t *testing.T) {
 	var changes atomic.Int64
 	scope := scopeOn(newHost(t), func() { changes.Add(1) })
-	_, add, _ := OptimisticLast(scope, func() string { return "real" })
+	_, add, _ := OptimisticLast[string, struct{}](scope, func() string { return "real" })
 	call := make(chan error)
 	done := make(chan error, 1)
-	go func() { done <- add("shown", func() error { return <-call }) }()
+	go func() { done <- addOnly(add, "shown", func() error { return <-call }) }()
 	until(t, func() bool { return changes.Load() == 1 })
 	scope.Dispose()
 	call <- nil
@@ -402,4 +402,52 @@ func TestScopeMessagesRenderInTheHostsLanguageAtEachCallAChangeOfItCallingChange
 func fmtN(n any, suffix string) (string, error) {
 	formatted, err := surfaces.FormatNumber(nil, n.(float64), nil)
 	return formatted + " " + suffix, err
+}
+
+// addOnly runs call as an optimistic add of action whose result is none.
+func addOnly[A any](add OptimisticAdd[A, struct{}], action A, call func() error) error {
+	_, err := add(action, func() (struct{}, error) { return struct{}{}, call() })
+	return err
+}
+
+// OptimisticAdd is Pi's `<R>(action, call: Promise<R>) => Promise<R>`: it returns call's result and error.
+func TestOptimisticAddReturnsTheResultOfItsCall(t *testing.T) {
+	scope := scopeOn(newHost(t), func() {})
+	defer scope.Dispose()
+	_, add, _ := OptimisticLast[string, int](scope, func() string { return "real" })
+	identity := OptimisticAdd[string, int](func(_ string, run func() (int, error)) (int, error) { return run() })
+	viaLast, errLast := add("z", func() (int, error) { return 5, nil })
+	direct, errDirect := identity("z", func() (int, error) { return 5, nil })
+	if errLast != nil || errDirect != nil || viaLast != direct {
+		t.Fatalf("add = %v, %v; the identity add gives %v, %v", viaLast, errLast, direct, errDirect)
+	}
+	got, err := call(add)
+	if err != nil || got != 7 {
+		t.Fatalf("add = %v, %v; want 7, nil", got, err)
+	}
+	failure := errors.New("the call failed")
+	if got, err := add("y", func() (int, error) { return 3, failure }); !errors.Is(err, failure) || got != 3 {
+		t.Fatalf("add of a failing call = %v, %v; want 3 and the call's error", got, err)
+	}
+}
+
+// call adds "x" with a call that gives 7.
+func call(add OptimisticAdd[string, int]) (int, error) {
+	return add("x", func() (int, error) { return 7, nil })
+}
+
+type noJSONValue struct{}
+
+func (noJSONValue) Value() string { panic(errors.New("not ready")) }
+func (noJSONValue) Watch(context.Context) (chord.WatchHandle[string], error) {
+	return nil, errors.New("not ready")
+}
+
+// Pi's TuiScope.watch takes a Watchable too: a JSON watchable that has no value reads as none.
+func TestScopeWatchReadsNothingFromAJSONWatchableWithoutAValue(t *testing.T) {
+	scope := scopeOn(newHost(t), func() {})
+	defer scope.Dispose()
+	if got, ok := WatchJSON[string](scope, noJSONValue{})(); ok || got != "" {
+		t.Errorf("read = %q, %v", got, ok)
+	}
 }

@@ -743,9 +743,11 @@ jobs:
             ~/.cache/pig-dev/tinygo
             durable/contract/.cache
           key: durable-cf-host-${{ runner.os }}-${{ hashFiles('automation/dev/toolchains.lock', 'durable/contract/PIN') }}
+      # The assignment is its own command so a failed install fails this step: inside echo "TINYGO=$(...)" its status is lost, TINYGO is empty, and
+      # the next step reports "tinygo not found" (Error 127) for what was a download failure.
       - name: Install the pinned TinyGo
         shell: bash
-        run: echo "TINYGO=$(sh durable/core/budget/tinygo-install.sh)" >> "$GITHUB_ENV"
+        run: tinygo=$(sh durable/core/budget/tinygo-install.sh) && echo "TINYGO=$tinygo" >> "$GITHUB_ENV"
       # durable-core-host-check: durable-contract-setup, durable-core-host-deps (the pinned Pi build, then the locked npm tree), upstream-mirror (the pin's source
       # mirror the examples type-check reads), then check.sh: tsc and the whole suite against the core built with Go and with TinyGo.
       - name: Typecheck and test the Cloudflare host
@@ -804,9 +806,11 @@ jobs:
             ~/.cache/pig-dev/tinygo
             durable/contract/.cache
           key: durable-cf-host-${{ runner.os }}-${{ hashFiles('automation/dev/toolchains.lock', 'durable/contract/PIN') }}
+      # The assignment is its own command so a failed install fails this step: inside echo "TINYGO=$(...)" its status is lost, TINYGO is empty, and
+      # the next step reports "tinygo not found" (Error 127) for what was a download failure.
       - name: Install the pinned TinyGo
         shell: bash
-        run: echo "TINYGO=$(sh durable/core/budget/tinygo-install.sh)" >> "$GITHUB_ENV"
+        run: tinygo=$(sh durable/core/budget/tinygo-install.sh) && echo "TINYGO=$tinygo" >> "$GITHUB_ENV"
       # durable-contract: durable-contract-setup (the Pi reference and its npm tree), durable-core-host-deps for the host, then
       # cd durable/contract && node cli/contract.mjs all --impls <impl>: every row, per-lane table, exit 1 on a row that differs.
       - name: Run the Durable core conformance gate
@@ -1255,7 +1259,7 @@ jobs:
           automation/release/android-binary.sh build -trimpath -o "$RUNNER_TEMP/pig-android" ./cmd/pig
           automation/release/android-binary.sh check "$RUNNER_TEMP/pig-android"
       - name: Vet the Android packages
-        run: CGO_ENABLED=0 GOOS=android GOARCH=arm64 go vet ./...
+        run: CGO_ENABLED=0 GOOS=android GOARCH=arm64 automation/ci/go-vet.sh
 
   cache-prune:
     name: Prune superseded caches

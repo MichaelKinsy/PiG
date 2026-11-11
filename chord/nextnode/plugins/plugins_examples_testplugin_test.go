@@ -13,6 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // Ports examples/52-test-plugin/main.ts: testing a plugin alone. TestPlugin builds the stats plugin as production does (the same
@@ -54,7 +55,7 @@ func TestExample52TestPlugin(t *testing.T) {
 	worker := delta.JsonObjectOf("kind", "worker", "project", "p1")
 	tested := tpPlugin(t, filepath.Join(root, "plugins", "stats"), TestPluginOptions{
 		Kind: "worker", Kinds: []string{"server", "worker", "web"},
-		Api:     &AppApi{Name: exAcmeApi, Versions: []string{"v3"}},
+		Api:     &model.AppApi{Name: exAcmeApi, Versions: []string{"v3"}},
 		Modules: tpAppModules(t, cache, `defineRegistry("acme.indexers", { version: 1 })`, "Indexers"), Stubs: []TestStub{notesStub},
 		Principal: worker, Node: NodeOptions{CacheDir: cache},
 	})

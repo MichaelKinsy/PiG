@@ -1,5 +1,7 @@
 package durable
 
+// Ports packages/chord/src/json.ts
+
 import (
 	"errors"
 	"fmt"

@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// Ports packages/chord/src/next/host/uuid.ts. UUIDv7 (§3, code copied from pi-ai's `uuidv7`): time-ordered ids, minted for
+// Ports packages/chord/src/host/uuid.ts. UUIDv7 (§3, code copied from pi-ai's `uuidv7`): time-ordered ids, minted for
 // host incarnations.
 
 const maxSequence = int64(1)<<41 - 1

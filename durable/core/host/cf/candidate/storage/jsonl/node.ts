@@ -1,6 +1,6 @@
 // openNodeJsonlStorage of the candidate (src/storage/jsonl/node.ts). pi-durable keeps JSONL as a file format; the Durable core has
 // one store format, so the gate opens a SQLite store under the directory (CONTRACT section 6, adaptation of the E rows).
-import type { Context } from "@earendil-works/chord"
+import type { Context } from "@earendil-works/chord/context"
 import type { Storage } from "@earendil-works/pi-durable"
 import { join } from "node:path"
 import { openNodeSqliteStorage } from "../sqlite/node.ts"

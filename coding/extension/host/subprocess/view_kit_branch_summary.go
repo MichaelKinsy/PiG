@@ -17,6 +17,6 @@ func init() {
 func buildBranchSummary(b *viewBuilder, n *ViewNode, out *frontend.ViewNode) (tui.Component, error) {
 	out.Text = n.Summary
 	return b.expandableMessage(n, out, widgetCtorKey(n, func(c *ViewNode) { c.Expanded, c.OutputPad = false, nil }), func(pad int) expandableComponent {
-		return tui.NewBranchSummaryMessageComponent(tui.BranchSummaryMessage{Summary: n.Summary}, nil, pad)
+		return tui.NewBranchSummaryMessageComponent(tui.BranchSummaryMessage{Summary: n.Summary}, nil, pad, nil, "", "")
 	}), nil
 }

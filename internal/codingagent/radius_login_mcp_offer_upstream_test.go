@@ -2,6 +2,8 @@
 
 package codingagent
 
+// pi: packages/coding-agent/src/core/radius-mcp.ts
+
 import (
 	"encoding/json"
 	"os"

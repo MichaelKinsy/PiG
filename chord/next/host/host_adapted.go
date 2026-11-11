@@ -10,7 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// Ports packages/chord/src/next/host/adapted.ts. Adapted members (Q10, §22, slice 7b §7; decision "References are the only
+// Ports packages/chord/src/host/adapted.ts. Adapted members (Q10, §22, slice 7b §7; decision "References are the only
 // indirection" (5)): one object instance's shared mapping for the consumers of one older version its provider accepts. Per
 // state member one derive of the instance's member through `(current) => old` (a changed member), of its variant's whole
 // state through `(state) => old` (a removed member), or the member itself (unchanged), made on first use; per key of a keyed

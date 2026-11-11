@@ -3517,14 +3517,6 @@ class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder com
 
 [[hit]]
 file = "durable/codecs.go"
-func = "EntryRecord.MarshalJSON"
-pattern = "nested-marshal"
-detail = "json.Marshal"
-count = 1
-class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
-
-[[hit]]
-file = "durable/codecs.go"
 func = "TaskOutcome.MarshalJSON"
 pattern = "nested-marshal"
 detail = "json.Marshal"
@@ -3688,14 +3680,6 @@ file = "durable/json.go"
 func = "ToJsonValue"
 pattern = "decode-own-encode"
 detail = "strictjson.Marshal->durable.decodeJsonText"
-count = 1
-class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
-
-[[hit]]
-file = "durable/message_json.go"
-func = "DecodeUserContent"
-pattern = "decode-own-encode"
-detail = "json.Marshal->durable.decodeUserContent"
 count = 1
 class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
 
@@ -5053,7 +5037,7 @@ class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shr
 
 [[hit]]
 file = "internal/codingagent/startup_ui.go"
-func = "configureStartupTheme"
+func = "configureStartupTui"
 pattern = "env-stat"
 detail = "os.Stat"
 count = 1
@@ -5356,14 +5340,6 @@ count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
 [[hit]]
-file = "internal/orderedjson/orderedjson.go"
-func = "Object.MarshalJSON"
-pattern = "nested-marshal"
-detail = "json.Marshal"
-count = 1
-class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
-
-[[hit]]
 file = "internal/orderedjson/source_order.go"
 func = "MarshalInSourceOrder"
 pattern = "sort-instance"
@@ -5584,14 +5560,6 @@ file = "tui/fuzzy.go"
 func = "FuzzyFilter"
 pattern = "sort-instance"
 detail = "slices.SortStableFunc"
-count = 1
-class = "hot-kept:source of an SDK copy; the nested module cannot import internal/sortx"
-
-[[hit]]
-file = "tui/keybindings.go"
-func = "TUIKeybindingsManager.rebuild"
-pattern = "sort-instance"
-detail = "slices.SortFunc"
 count = 1
 class = "hot-kept:source of an SDK copy; the nested module cannot import internal/sortx"
 

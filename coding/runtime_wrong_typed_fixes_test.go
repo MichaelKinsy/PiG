@@ -51,7 +51,7 @@ func TestNavigateTreeOntoAWrongTypedSystemBranchMovesTheLeafThenFails(t *testing
 	if err == nil || err.Error() != "(message.toolsAdded ?? []) is not iterable" {
 		t.Fatalf("navigate error = %v, want the toolsAdded spread TypeError", err)
 	}
-	leaf := session.inner.GetLeafID()
+	leaf := session.inner.Load().GetLeafID()
 	if leaf == nil || *leaf != "m-2" {
 		t.Fatalf("leaf after the failed navigation = %v, want m-2 (moved before the replay throws)", leaf)
 	}

@@ -2,6 +2,7 @@ package oauth_test
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"testing"
 
@@ -23,7 +24,7 @@ func TestWaitForLoopbackSignInCancelsOnAJavaScriptBlankAnswer(t *testing.T) {
 	_, err = oauth.WaitForLoopbackSignIn(t.Context(), oauth.WaitForLoopbackSignInOptions{
 		Callback: loopback.Callback, Authorization: second, PromptForRedirectURL: answer("\u0085"),
 	})
-	if _, cancelled := err.(*oauth.McpSignInCancelledError); cancelled || err == nil {
+	if _, cancelled := errors.AsType[*oauth.McpSignInCancelledError](err); cancelled || err == nil {
 		t.Fatalf("U+0085 answer: err = %v, want the redirect URL rejected", err)
 	}
 }

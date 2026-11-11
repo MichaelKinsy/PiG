@@ -9,7 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// Ports packages/chord/src/next/host/presence.ts. Presence (§19): `host.references(Type)`, a JSON watchable of the
+// Ports packages/chord/src/host/presence.ts. Presence (§19): `host.references(Type)`, a JSON watchable of the
 // references to objects of one type on this host, one entry per reference with the object's params, the reference's
 // principal (remote types) and its incarnation.
 //

@@ -449,9 +449,9 @@ func (r *scenarioRig) runTool(ctx context.Context, step sdkscenarios.Step, lines
 // a block with its reason, or that the call goes ahead.
 func (r *scenarioRig) runToolCallEvent(ctx context.Context, step sdkscenarios.Step, lines *[]string) {
 	event := extension.CustomToolCallEvent{
-		ToolCallEventBase: extension.ToolCallEventBase{Type: "tool_call", ToolCallID: "call-1"},
-		ToolName:          step.Name,
-		Input:             map[string]any{},
+		Type: "tool_call", ToolCallID: "call-1",
+		ToolName: step.Name,
+		Input:    map[string]any{},
 	}
 	result, err := r.runner().EmitToolCall(ctx, event)
 	switch {
@@ -614,10 +614,8 @@ func (r *scenarioRig) runBeforeAgentStartEvent(ctx context.Context, step sdkscen
 // text, the error flag and the details, or that no handler changed anything.
 func (r *scenarioRig) runToolResultEvent(ctx context.Context, step sdkscenarios.Step, lines *[]string) {
 	event := extension.CustomToolResultEvent{
-		ToolResultEventBase: extension.ToolResultEventBase{
-			Type: "tool_result", ToolCallID: "call-1", Input: map[string]any{},
-			Content: []any{map[string]any{"type": "text", "text": "original"}},
-		},
+		Type: "tool_result", ToolCallID: "call-1", Input: map[string]any{},
+		Content:  []any{map[string]any{"type": "text", "text": "original"}},
 		ToolName: step.Name,
 	}
 	result, err := r.runner().EmitToolResult(ctx, event)

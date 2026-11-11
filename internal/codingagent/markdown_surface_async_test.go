@@ -19,11 +19,10 @@ func surfaceTestMode(t *testing.T, ctx context.Context, wait func(extension.Mark
 	t.Helper()
 	m := &InteractiveMode{backgroundCtx: ctx, tuiInst: tui.NewWithOutput(io.Discard, 80, 24), chatContainer: tui.NewContainer(), outputPad: 1, toolsExpanded: true}
 	m.newRunner = inproc.NewRunner([]extension.Extension{{
-		MarkdownMessageTypes: []extension.MarkdownMessageType{extension.MarkdownMessageCustom, extension.MarkdownMessageSummary, extension.MarkdownMessageChangelog},
-		MarkdownTransformer: func(text string, context extension.MarkdownTransformContext) string {
+		MarkdownTransformer: extension.NewMarkdownTransformerRegistration(func(text string, context extension.MarkdownTransformContext) string {
 			wait(context)
 			return strings.ReplaceAll(text, "private", "redacted")
-		},
+		}, []extension.MarkdownMessageType{extension.MarkdownMessageCustom, extension.MarkdownMessageSummary, extension.MarkdownMessageChangelog}),
 	}}, "")
 	return m
 }

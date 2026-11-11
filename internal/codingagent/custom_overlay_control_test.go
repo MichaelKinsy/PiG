@@ -46,7 +46,10 @@ func TestRemoteOverlayHandleControlsOwnInputRoute(t *testing.T) {
 
 // Pi tui.ts:745-775: unfocus({target}) focuses exactly the explicit target, which may be another mounted overlay or null. The host resolves a remote target to the same mounted component and moves the input route with focus.
 func TestRemoteOverlayUnfocusExplicitTargetMatchesPi(t *testing.T) {
-	mode := &InteractiveMode{tuiInst: tui.NewWithOutput(io.Discard, 100, 40)}
+	mode := &InteractiveMode{tuiInst: tui.NewWithOutput(io.Discard, 100, 40), uiTaskCh: make(chan func(), 64)}
+	// Two RunRemoteOverlay callers are two extension goroutines: under Run each mounts and unmounts on the one owner loop, which
+	// serializes the overlay list. Without a loop a caller runs its owner work inline, so the two would write the list together.
+	startOwnerLoop(t, mode)
 	ui := &ExtUIContext{m: mode}
 	handles := make(chan *customOverlay, 2)
 	results := make(chan any, 2)

@@ -5,7 +5,7 @@ import "testing"
 // registerSnapshot materializes each snapshot node as its own object at the node's index. A mode keeps the snapshot's Object.isFrozen bit: expandOrCloneMode clones a frozen mode before compiling it (highlight.js core.js expandOrCloneMode), so a frozen mode that lost the bit would be compiled in place and shared between parents.
 func TestRegisterSnapshotMaterializesEveryNodeWithItsFrozenBit(t *testing.T) {
 	r := &Registry{languages: map[string]*Mode{}, aliases: map[string]string{}}
-	for _, data := range [][]byte{eagerGrammars, allGrammars} {
+	for _, data := range [][]byte{eagerGrammars, allGrammarsGzip()} {
 		s := decodeSnapshot(data, snapshotGrammars)
 		r.registerSnapshot(s)
 		frozen, modes := 0, 0

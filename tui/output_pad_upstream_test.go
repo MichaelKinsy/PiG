@@ -82,19 +82,19 @@ func TestSummaryMessageComponentsSetOutputPadMatchesPi(t *testing.T) {
 			Component
 			SetOutputPad(int)
 		} {
-			return NewBranchSummaryMessageComponent(BranchSummaryMessage{Summary: "explored a sidebar"}, nil, 1)
+			return NewBranchSummaryMessageComponent(BranchSummaryMessage{Summary: "explored a sidebar"}, nil, 1, nil, "", "")
 		}},
 		{"compaction summary", func() interface {
 			Component
 			SetOutputPad(int)
 		} {
-			return NewCompactionSummaryMessageComponent(CompactionSummaryMessage{Summary: "kept the plan", TokensBefore: 1200}, nil, 1)
+			return NewCompactionSummaryMessageComponent(CompactionSummaryMessage{Summary: "kept the plan", TokensBefore: 1200}, nil, 1, nil, "", "")
 		}},
 		{"skill invocation", func() interface {
 			Component
 			SetOutputPad(int)
 		} {
-			return NewSkillInvocationMessageComponent(ParsedSkillBlock{Name: "review", Content: "check it"}, nil, 1)
+			return NewSkillInvocationMessageComponent(ParsedSkillBlock{Name: "review", Content: "check it"}, nil, 1, nil, "", "")
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

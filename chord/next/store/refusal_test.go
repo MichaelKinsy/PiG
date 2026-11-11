@@ -7,8 +7,8 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 )
 
-// pi: packages/chord/src/next/store/refusal.ts
-// Ports packages/chord/test/next/store/refusal.test.ts: tests of refusals as Chord's owners take them (slice 6b D4,
+// pi: packages/chord/src/store/refusal.ts
+// Ports packages/chord/test/store/refusal.test.ts: tests of refusals as Chord's owners take them (slice 6b D4,
 // §1.4): an `int` CHECK fails only its transaction, any other refusal its object; the store's own errors pass
 // through.
 //

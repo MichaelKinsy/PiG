@@ -22,6 +22,7 @@ import (
 // an `HttpFailure` escaping a route answering its status), and a body nobody read (drained or closed). Ports
 // packages/chord/test/node/http/request.test.ts.
 
+// The summary a route gets: `method` (packages/chord/src/node/http/request.ts:11), `query` (request.ts:16), `origin` (request.ts:20).
 func TestRequestHasItsMethodPathParamsQueryHeadersOriginProvenanceAndNonce(t *testing.T) {
 	var mu sync.Mutex
 	var seen HttpRequest
@@ -79,6 +80,8 @@ func reading(t *testing.T) *testServer {
 	}})}}, servedOptions{})
 }
 
+// `body(limit)` yields the chunks of the body, at most `limit` bytes, a chunked one past it 413 (packages/chord/src/node/http/request.ts:33,
+// :108-:125); `json(limit)` reads them whole (request.ts:30).
 func TestBodiesParseJSONWithinItsLimitMalformedIs400LargerIs413(t *testing.T) {
 	server := reading(t)
 	port := server.port

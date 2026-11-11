@@ -17,7 +17,7 @@ type samplingTool struct {
 func (t *samplingTool) Schema() ai.ToolSchema { return t.schema }
 
 func samplingTools(schema ai.ToolSchema) []AgentTool {
-	return []AgentTool{&samplingTool{fakeTool: fakeTool{name: schema.Name}, schema: schema}}
+	return []AgentTool{&samplingTool{name: schema.Name, schema: schema}}
 }
 
 func declaredToolsJSON(t *testing.T, tools []AgentTool, committed []AgentMessage) []string {

@@ -9,8 +9,8 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// pi: packages/chord/src/next/state/batch.ts
-// Ports packages/chord/test/next/state/batch.test.ts. The describe blocks "reentrancy" and "delivery" run on a ChordHost
+// pi: packages/chord/src/state/batch.ts
+// Ports packages/chord/test/state/batch.test.ts. The describe blocks "reentrancy" and "delivery" run on a ChordHost
 // with served objects, defineState documents and references; they are covered here by batch_own_test.go and
 // derive_own_test.go on the same Batch, and run as upstream on a host in chord/next/host/host_batch_test.go.
 

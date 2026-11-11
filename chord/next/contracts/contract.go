@@ -8,7 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 )
 
-// Ports packages/chord/src/next/contracts/contract.ts (contract handles: the branded, immutable value an app declares
+// Ports packages/chord/src/contracts/contract.ts (contract handles: the branded, immutable value an app declares
 // and the Chord-owned data behind it).
 //
 // Forced Go differences. The WeakMap brand is the Contract itself: a *Contract holds its ContractData and a pointer to

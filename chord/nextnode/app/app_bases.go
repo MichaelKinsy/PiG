@@ -8,7 +8,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	chordhttp "github.com/MichaelKinsy/PiG/chord/nextnode/http"
-	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // Ports the bases' part of packages/chord/src/node/app/app.ts (Pi 284e63d9): `buildBases`, `watchBaseCode` and `editedSinceStart`.
@@ -34,7 +34,7 @@ var processStart = time.Now() //portlint:allow clock Pi's `performance.timeOrigi
 // or why it failed.
 type baseBuild struct {
 	name  string
-	build func() (plugins.BaseInputs, error)
+	build func() (model.BaseInputs, error)
 }
 
 // comparisons are the first comparisons of every record added after the start, to wait for.
@@ -88,7 +88,7 @@ func (a *App) reportLate(kind AppErrorKind, err any, base string) {
 func (a *App) startBases(bases []baseBuild) {
 	built, watched := a.basesBuilt, a.baseWatched
 	//portlint:allow golifetime the bases' builds cannot be cancelled (esbuild) and the close does not wait for them: what they finish after it is dropped, as upstream's
-	go func() {
+	go func() { //portlint:allow asyncorder owner decision "A": the bases build at once after the listen, off the caller. Pi awaits them before the listen (app.ts:366-383: the server scan, each worker kind's base, the surfaces); D608 records the surfaces, the scan and the worker kinds have no divergence number yet. The builds join inside (builds.Wait, then close(built)) and each request that needs a base waits for built
 		defer close(watched)
 		compared := &comparisons{}
 		var builds sync.WaitGroup
@@ -102,7 +102,7 @@ func (a *App) startBases(bases []baseBuild) {
 					a.reportLate(AppErrorBaseBuild, err, each.name)
 					return
 				}
-				compared.add(a.Plugins.WatchBase(inputs))
+				compared.add(a.Plugins.Component.WatchBaseCompared(inputs))
 			})
 		}
 		builds.Wait()
@@ -120,31 +120,30 @@ func (a *App) watchBaseCode(compared *comparisons) {
 	if a.isClosing() {
 		return
 	}
-	exe, ok := a.serverExecutable()
+	inputs, ok := a.serverExecutable()
 	if a.isClosing() {
 		return
 	}
 	if ok {
-		compared.add(a.Plugins.WatchBase(a.editedSinceStart(exe)))
+		compared.add(a.Plugins.Component.WatchBaseCompared(a.editedSinceStart(inputs)))
 	}
 	compared.wait()
 }
 
-// editedSinceStart is the record of the file at path: its hash, or one no bytes have when it changed since this process started (its
+// editedSinceStart is the record of the file inputs names (NodeBaseInputs'): its hash, or one no bytes have when it changed since this process started (its
 // mtime or ctime after the start): the process may run other bytes than the ones read now, so its first comparison marks `base`
 // (until a restart: the bytes the process runs are unknown). Conservative: a metadata-only change (ctime) marks too. Per timestamp:
 // one later than now (plus futureSlack) is no edit since the start (a file stamped in the future, by a skewed clock or an archive,
 // would mark every start until that time); a file neither of whose timestamps is in range keeps its hash, compared by content
 // alone.
-func (a *App) editedSinceStart(path string) plugins.BaseInputs {
+func (a *App) editedSinceStart(inputs model.BaseInputs) model.BaseInputs {
+	var path, hash string
+	for each, text := range inputs {
+		path, hash = each, text
+	}
 	started := processStart
 	if a.options.processStart != nil {
 		started = a.options.processStart()
-	}
-	hash, readable := plugins.HashFile(path)
-	if !readable {
-		// Gone since it was checked: its first comparison finds it so.
-		return plugins.BaseInputs{path: ""}
 	}
 	if info, err := os.Stat(path); err == nil {
 		latest := time.Now().Add(futureSlack) //portlint:allow clock Pi's `Date.now() + FUTURE_SLACK_MS` of editedSinceStart: a file's timestamps are wall-clock, and the tests set AppOptions.processStart instead
@@ -155,21 +154,21 @@ func (a *App) editedSinceStart(path string) plugins.BaseInputs {
 			}
 		}
 	}
-	return plugins.BaseInputs{path: hash}
+	return model.BaseInputs{path: hash}
 }
 
 // baseBuilds are the bases of the app: its surfaces' base bundles, then each worker kind's base.
 func (a *App) baseBuilds() []baseBuild {
 	var bases []baseBuild
 	for _, each := range a.surfaces {
-		bases = append(bases, baseBuild{name: each.name, build: func() (plugins.BaseInputs, error) {
+		bases = append(bases, baseBuild{name: each.name, build: func() (model.BaseInputs, error) {
 			built := each.build()
 			return built.Inputs, built.Err
 		}})
 	}
 	for _, kind := range a.options.Workers {
 		name := kind.Kind.Kind
-		bases = append(bases, baseBuild{name: name, build: func() (plugins.BaseInputs, error) {
+		bases = append(bases, baseBuild{name: name, build: func() (model.BaseInputs, error) {
 			built := a.Workers[name].Build()
 			return built.Inputs, built.Err
 		}})
@@ -181,6 +180,8 @@ func (a *App) baseBuilds() []baseBuild {
 // reconnecting to a restarted server) would hold the scripts object's empty set, and its base is none the page runs (it reloads).
 // Pi's client has that window too; its build is quicker than a Go server's, which starts the plugins' Node. A request the server
 // closes meanwhile is refused. The options are the zero ones the links endpoint gave every socket.
+//
+// Pi's links connect at once; here an upgrade waits for the bases.
 func (a *App) linksAfterTheBases(chordhttp.HttpRequest, data.Principal) (chordhttp.LinkOptions, error) {
 	select {
 	case <-a.basesBuilt:

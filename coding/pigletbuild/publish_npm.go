@@ -263,8 +263,8 @@ func publishNPM(ctx context.Context, request publishNPMRequest, stdout, stderr i
 		stdin = os.Stdin
 	}
 	return npmpublish.Request{
-		Package: npmpublish.Package{Name: source.Name, Version: source.Version, Dir: source.Dir, IgnoreScripts: true},
-		Flags:   request.flags, Label: "Piglet", Notes: notes, Command: command,
+		Name: source.Name, Version: source.Version, Dir: source.Dir, IgnoreScripts: true,
+		Flags: request.flags, Label: "Piglet", Notes: notes, Command: command,
 		Next: []string{
 			"Add it with: pig piglet add npm:" + source.Name,
 			"npm lists it under the keyword " + piglet.NPMKeyword + "; catalogs that search that keyword show it after their next index build.",

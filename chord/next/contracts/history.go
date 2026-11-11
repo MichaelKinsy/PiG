@@ -1,6 +1,6 @@
 package contracts
 
-// Ports packages/chord/src/next/contracts/history.ts. Upstream's history is a type-level structure (Variants, Step,
+// Ports packages/chord/src/contracts/history.ts. Upstream's history is a type-level structure (Variants, Step,
 // History, CurrentStep, StepAt, OlderVersions, ChangesAfter, Increment); all of it is designed out. At runtime a
 // contract holds its versions (VersionData: the number, the fingerprint, the variants and the changes that produced
 // it), and accepts reads the older versions' changes directly. What remains of the history types as runtime helpers

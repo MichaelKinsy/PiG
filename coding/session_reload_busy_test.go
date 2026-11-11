@@ -169,7 +169,7 @@ func reloadDuringCompactionOrTreeNavigation(t *testing.T) {
 				drainEvents(t, s)
 			}
 			target := ""
-			for _, entry := range s.inner.GetEntries() {
+			for _, entry := range s.inner.Load().GetEntries() {
 				if entry.Base().Type == "message" {
 					target = entry.Base().ID
 					break

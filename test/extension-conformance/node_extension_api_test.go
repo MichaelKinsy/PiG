@@ -735,8 +735,8 @@ func TestNodeToolEventsAndNewEvents(t *testing.T) {
 		rig.waitNotification("tool_call|outer-1/2|outer-1")
 
 		if _, err := rig.runner.EmitToolResult(t.Context(), extension.CustomToolResultEvent{
-			ToolResultEventBase: extension.ToolResultEventBase{Type: "tool_result", ToolCallID: "outer-1/3", ParentToolCallID: "outer-1", Input: map[string]any{}, Content: []any{}, StructuredContent: json.RawMessage(`{"rows":[9,8]}`)},
-			ToolName:            "custom",
+			Type: "tool_result", ToolCallID: "outer-1/3", ParentToolCallID: "outer-1", Input: map[string]any{}, Content: []any{}, StructuredContent: json.RawMessage(`{"rows":[9,8]}`),
+			ToolName: "custom",
 		}); err != nil {
 			t.Fatal(err)
 		}

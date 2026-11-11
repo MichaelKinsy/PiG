@@ -25,8 +25,9 @@ func TestStreamedHighlightEqualsAWholeRun(t *testing.T) {
 	}
 	theme := ActiveTheme()
 	steps, resumed := 0, 0
-	for _, c := range corpus {
-		if !SupportsLanguage(c.Lang) {
+	for i, c := range corpus {
+		// Under the race detector every fourth sample runs (race_on_test.go).
+		if !SupportsLanguage(c.Lang) || raceEnabled && i%4 != 0 {
 			continue
 		}
 		hlMu.Lock()

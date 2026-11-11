@@ -11,9 +11,9 @@ import (
 	"github.com/MichaelKinsy/PiG/schema"
 )
 
-// pi: packages/chord/src/next/contracts/schema.ts
+// pi: packages/chord/src/contracts/schema.ts
 
-// Ports packages/chord/test/next/contracts/schema.test.ts. The Static<> checks and expectTypeOf are type-level only
+// Ports packages/chord/test/contracts/schema.test.ts. The Static<> checks and expectTypeOf are type-level only
 // (designed out: a Go schema is data, values are JSON). pi-schema's `compile(schema).check(value)` is
 // schema.Compile(node, ...).Check(value); the bytes leaf is checked natively, as pi-schema checks a Uint8Array.
 

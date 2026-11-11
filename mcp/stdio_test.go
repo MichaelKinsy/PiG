@@ -22,7 +22,7 @@ func TestStdioTransportConnectsToANewlineDelimitedMCPServerAndCapturesStderr(t *
 			mu.Unlock()
 		},
 	})
-	client := mcp.NewClient(mcp.ClientOptions{Implementation: mcp.Implementation{Name: "stdio-test", Version: "1.0.0"}})
+	client := mcp.NewClient(mcp.ClientOptions{Name: "stdio-test", Version: "1.0.0"})
 	if _, err := client.Connect(t.Context(), transport); err != nil {
 		t.Fatal(err)
 	}

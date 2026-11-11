@@ -667,6 +667,18 @@ func Extension() *sdk.Extension {
 				return (&kitProbe{}).View(0), nil
 			}
 			return &renderers
+		case "last_view_probe":
+			// A view renderer that reads the view form of ToolRenderContext.LastComponent: the kind of what its previous run returned, and the run's own n.
+			return &sdk.ToolRenderers{CallView: func(_ sdk.Context, args map[string]any, render sdk.ToolRenderContext, _ int) (kit.View, error) {
+				kind := "none"
+				if last := render.LastComponent; last != nil {
+					kind = "lines"
+					if last.View != nil {
+						kind = "view"
+					}
+				}
+				return kit.View{Root: kit.NewText(fmt.Sprintf("lastview:%s:n=%v", kind, args["n"]), 0, 0)}, nil
+			}}
 		case "conformance_keyhints":
 			return &sdk.ToolRenderers{Call: func(_ sdk.Context, args map[string]any, render sdk.ToolRenderContext, _ int) ([]string, error) {
 				id, _ := args["q"].(string)
@@ -703,7 +715,7 @@ func Extension() *sdk.Extension {
 		Call: func(_ sdk.Context, args map[string]any, render sdk.ToolRenderContext, width int) ([]string, error) {
 			calls, _ := render.State["calls"].(int)
 			render.State["calls"] = calls + 1
-			return []string{fmt.Sprintf("toolrender:call:%v:partial=%t:calls=%d:width=%d", args["topic"], render.IsPartial, calls+1, width)}, nil
+			return []string{fmt.Sprintf("toolrender:call:%v:partial=%t:calls=%d:width=%d:last=%s", args["topic"], render.IsPartial, calls+1, width, lastRenderLine(render))}, nil
 		},
 		Result: func(_ sdk.Context, result sdk.ToolRenderResult, options sdk.ToolRenderResultOptions, render sdk.ToolRenderContext, width int) ([]string, error) {
 			details, _ := result.Details.(map[string]any)
@@ -711,7 +723,7 @@ func Extension() *sdk.Extension {
 			if render.DurationMs != nil {
 				duration = fmt.Sprint(*render.DurationMs)
 			}
-			return []string{fmt.Sprintf("toolrender:result:%v:%v:expanded=%t:calls=%v:width=%d:duration=%s", result.Content[0]["text"], details["k"], options.Expanded, render.State["calls"], width, duration)}, nil
+			return []string{fmt.Sprintf("toolrender:result:%v:%v:expanded=%t:calls=%v:width=%d:duration=%s:last=%s", result.Content[0]["text"], details["k"], options.Expanded, render.State["calls"], width, duration, lastRenderLine(render))}, nil
 		},
 	})
 
@@ -1159,6 +1171,11 @@ func Extension() *sdk.Extension {
 		return ctx.SendUserMessage(content, "followUp")
 	})
 
+	ext.Command("send_user_message_expand", "Send a user message with expandPromptTemplates set to the argument", func(ctx sdk.Context, args string) error {
+		expand := args == "true"
+		return ctx.SendUserMessageWith("expand-user", sdk.SendUserMessageOptions{DeliverAs: "followUp", ExpandPromptTemplates: &expand})
+	})
+
 	ext.Command("set_session_name", "Set the session name", func(ctx sdk.Context, args string) error {
 		return ctx.SetSessionName("conformance-session")
 	})
@@ -1563,10 +1580,14 @@ func Extension() *sdk.Extension {
 		return nil
 	})
 	// event_isolation_probe subscribes two handlers to the event named by the argument (TestConformance_EventHandlersDoNotShareTheirPayload). The first
-	// reports the marker it received, writes a sentinel into data["context"]["contextEntries"][0]["sourceEntry"]["id"], keeps that container and changes it again from
-	// another goroutine after the handler returned; the second handler of the same dispatch reports what it received. Each handler owns its payload, so no report carries a sentinel.
+	// reports the marker it received, writes a sentinel into the payload's container, keeps that container and changes it again from another goroutine
+	// after the handler returned; the second handler of the same dispatch reports what it received. Each handler owns its payload, so no report carries a sentinel.
+	// For a boundary event the marker is data["context"]["contextEntries"][0]["sourceEntry"]["id"], the container that one and the first message in each of
+	// the three places its text lives; for a context or context_with_system event it is the length of data["messages"], the container that list, and the
+	// first three messages.
 	ext.Command("event_isolation_probe", "Subscribe two handlers that report the nested marker they received and then write sentinels into it", func(ctx sdk.Context, args string) error {
 		name := strings.TrimSpace(args)
+		conversation := name == "context" || name == "context_with_system"
 		source := func(data map[string]any) map[string]any {
 			context, _ := data["context"].(map[string]any)
 			entries, _ := context["contextEntries"].([]any)
@@ -1577,18 +1598,79 @@ func Extension() *sdk.Extension {
 			container, _ := entry["sourceEntry"].(map[string]any)
 			return container
 		}
+		marker := func(data map[string]any) any {
+			if conversation {
+				list, _ := data["messages"].([]any)
+				return len(list)
+			}
+			return source(data)["id"]
+		}
+		// scribble writes value into the payload's container: a sentinel id into the source entry, or a message appended to the list.
+		scribble := func(data map[string]any, value string) {
+			if conversation {
+				list, _ := data["messages"].([]any)
+				data["messages"] = append(list, map[string]any{"role": "user", "content": value, "timestamp": float64(0)})
+				return
+			}
+			source(data)["id"] = value
+		}
+		// messages are, for a boundary event, the first context message, the first llm message and the first message of the first context entry: the same text lives in three places of the payload, and a decode that shared one value between them or between handlers would show a sentinel written into one in another. For a conversation event they are the first three messages.
+		messages := func(data map[string]any) (found [3]map[string]any) {
+			if conversation {
+				list, _ := data["messages"].([]any)
+				for i := range found {
+					if i < len(list) {
+						found[i], _ = list[i].(map[string]any)
+					}
+				}
+				return found
+			}
+			context, _ := data["context"].(map[string]any)
+			if list, _ := context["contextMessages"].([]any); len(list) > 0 {
+				found[0], _ = list[0].(map[string]any)
+			}
+			if list, _ := context["llmMessages"].([]any); len(list) > 0 {
+				found[1], _ = list[0].(map[string]any)
+			}
+			if entries, _ := context["contextEntries"].([]any); len(entries) > 0 {
+				first, _ := entries[0].(map[string]any)
+				if list, _ := first["messages"].([]any); len(list) > 0 {
+					found[2], _ = list[0].(map[string]any)
+				}
+			}
+			return found
+		}
+		report := func(found [3]map[string]any) string {
+			parts := make([]string, len(found))
+			for i, object := range found {
+				parts[i] = fmt.Sprint(object["content"])
+			}
+			return strings.Join(parts, "|")
+		}
 		ext.OnEvent(name, func(hctx sdk.Context, data map[string]any) (any, error) {
-			container := source(data)
-			hctx.Notify(fmt.Sprintf("event_isolation:A:%v:end", container["id"]), "info")
-			container["id"] = "SENTINEL-HANDLER-A"
+			hctx.Notify(fmt.Sprintf("event_isolation:A:%v:end", marker(data)), "info")
+			scribble(data, "SENTINEL-HANDLER-A")
+			found := messages(data)
+			hctx.Notify("event_isolation_msgs:A:"+report(found), "info")
+			for _, object := range found {
+				if object != nil {
+					object["content"] = "SENTINEL-HANDLER-A"
+				}
+			}
 			go func() {
 				time.Sleep(100 * time.Millisecond)
-				container["id"] = "SENTINEL-LATE-WRITER"
+				scribble(data, "SENTINEL-LATE-WRITER")
+				for _, object := range found {
+					if object != nil {
+						object["content"] = "SENTINEL-LATE-WRITER"
+					}
+				}
 			}()
 			return nil, nil
 		})
 		ext.OnEvent(name, func(hctx sdk.Context, data map[string]any) (any, error) {
-			hctx.Notify(fmt.Sprintf("event_isolation:B:%v:end", source(data)["id"]), "info")
+			hctx.Notify(fmt.Sprintf("event_isolation:B:%v:end", marker(data)), "info")
+			hctx.Notify("event_isolation_msgs:B:"+report(messages(data)), "info")
 			return nil, nil
 		})
 		return nil
@@ -3182,7 +3264,7 @@ func Extension() *sdk.Extension {
 	})
 	ext.Command("editor-install-viewport", "Install a custom editor that captures viewport input until it receives t", func(ctx sdk.Context, args string) error {
 		return ctx.SetEditorComponent(func(base *sdk.Editor) sdk.EditorComponent {
-			return &viewportEditor{conformanceEditor: conformanceEditor{Editor: base}}
+			return &viewportEditor{Editor: base}
 		})
 	})
 	ext.Command("select-page-probe", "Report getSelectPageIndex for a key under the default keybindings", func(ctx sdk.Context, args string) error {
@@ -3966,4 +4048,13 @@ func countClick(state map[string]any, event kit.Event) {
 	clicks, _ := state["clicks"].(int)
 	state["clicks"] = clicks + 1
 	state["last"] = fmt.Sprintf("%d,%d", event.Mouse.X, event.Mouse.Y)
+}
+
+// lastRenderLine is the first line the card's renderer of the same phase returned on its previous run, or "none" on the first run: the value
+// ToolRenderContext.LastComponent carries (the render_probe rows of the conformance suite bind to it).
+func lastRenderLine(render sdk.ToolRenderContext) string {
+	if render.LastComponent == nil || len(render.LastComponent.Lines) == 0 {
+		return "none"
+	}
+	return render.LastComponent.Lines[0]
 }

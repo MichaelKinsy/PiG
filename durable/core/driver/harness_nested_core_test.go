@@ -74,8 +74,8 @@ func nestedCoreOpen(t testing.TB, extension *durable.Extension, onReport ...func
 
 func nestedCoreTool(name string, execute func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error)) *durable.ToolRegistration {
 	return &durable.ToolRegistration{
-		ToolSchema: ai.ToolSchema{Name: name, Description: name, Parameters: map[string]any{"type": "object", "properties": map[string]any{"text": map[string]any{"type": "string"}}}},
-		Execute:    execute,
+		Name: name, Description: name, Parameters: map[string]any{"type": "object", "properties": map[string]any{"text": map[string]any{"type": "string"}}},
+		Execute: execute,
 	}
 }
 

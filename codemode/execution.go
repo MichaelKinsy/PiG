@@ -14,6 +14,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/ecmascript"
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
+	"github.com/MichaelKinsy/PiG/internal/jsonwire"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
@@ -308,7 +309,7 @@ func bridgeBroken(reason string) *Error {
 //
 // Ports packages/codemode/src/runtime/execution.ts (parseBridgeJson).
 func parseBridgeJSON(text, what string) (json.RawMessage, error) {
-	if !json.Valid([]byte(text)) {
+	if !jsonwire.Valid(text) {
 		return nil, bridgeError(what + " is not valid JSON")
 	}
 	return json.RawMessage(text), nil

@@ -1,5 +1,9 @@
 package tui
 
+// pi: packages/chord/src/node/surfaces/tui.ts
+// pi: packages/chord/src/node/surfaces/served.ts
+// pi: packages/chord/src/node/surfaces/current.ts
+
 import (
 	"context"
 	"os"
@@ -17,6 +21,7 @@ import (
 	next "github.com/MichaelKinsy/PiG/chord/next/surfaces"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/app"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // Tests of the terminal launcher (slice 11 §4, decision "Slice 11, P8") with a kit app's terminal surface: it signs in with the
@@ -33,7 +38,7 @@ func untilMarks(t testing.TB, a *app.App, what string, ok func(plugins.PluginsSt
 	t.Helper()
 	ctx, cancel := context.WithTimeout(background, 30*time.Second)
 	defer cancel()
-	watch, err := a.Plugins.State().Watch(ctx)
+	watch, err := a.Plugins.Component.State().Watch(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,11 +51,11 @@ func untilMarks(t testing.TB, a *app.App, what string, ok func(plugins.PluginsSt
 		}
 		return nil
 	})
-	for !ok(a.Plugins.Marks()) {
+	for !ok(a.Plugins.Component.Marks()) {
 		select {
 		case <-changed:
 		case <-ctx.Done():
-			t.Fatalf("timed out waiting for %s (marks %+v)", what, a.Plugins.Marks())
+			t.Fatalf("timed out waiting for %s (marks %+v)", what, a.Plugins.Component.Marks())
 		}
 	}
 }
@@ -97,7 +102,7 @@ func TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScr
 	}
 	set := next.ScriptSetOf(value)
 	if len(set.Plugins) == 0 {
-		built, err := s.app.Plugins.Build([]string{"@test/lines"}, background)
+		built, err := s.app.Plugins.Component.Build([]string{"@test/lines"}, background)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -105,7 +110,7 @@ func TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScr
 		for _, entry := range entries {
 			t.Logf("file %s", entry.Name())
 		}
-		t.Fatalf("the set has no plugin script; the build: %+v; discovery: %+v", built.Facets, s.app.Plugins.Discovery())
+		t.Fatalf("the set has no plugin script; the build: %+v; discovery: %+v", built.Facets, s.app.Plugins.Component.Discovery())
 	}
 	entry := set.Plugins[0]
 	if entry.URL != "/_chord/tui/plugin/@test~lines."+entry.Digest+".js" {
@@ -126,13 +131,13 @@ func TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScr
 	})
 	// The watcher noticed the new plugin once the plugin set is marked: then the build discovers it.
 	untilMarks(t, s.app, "the plugin set's mark", func(state plugins.PluginsState) bool { return state.Set })
-	built, err := s.app.Plugins.Build([]string{"@test/pictured"}, background)
+	built, err := s.app.Plugins.Component.Build([]string{"@test/pictured"}, background)
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, facet := range built.Facets {
 		if facet.Plugin == "@test/pictured" {
-			if facet.Kind != plugins.BuiltFacetFailed || len(facet.Errors) == 0 || !strings.Contains(facet.Errors[0], "assets by URL are for browser builds") {
+			if facet.Kind != model.BuiltFacetFailed || len(facet.Errors) == 0 || !strings.Contains(facet.Errors[0], "assets by URL are for browser builds") {
 				t.Fatalf("facet = %+v, want a failed build refusing assets by URL", facet)
 			}
 			return

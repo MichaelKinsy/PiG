@@ -91,36 +91,45 @@ func (r *run) classify(req requestInfo, message *jv.Object) {
 func (r *run) classifyFailure(req requestInfo, message *jv.Object, settings Settings) {
 	stop := str(message, "stopReason")
 	overflow := stop == "error" && IsContextOverflow(message)
-	compaction := settings.CompactionFor(req.model)
-	if !overflow || req.compacted != 0 || !compaction.Enabled {
+	if !overflow || req.compacted != 0 {
 		r.retryOrFail(req, message, settings, stop, overflow)
 		return
 	}
-	r.context(req.cutoff, func(view *history.View) {
-		if _, ok := view.SelectCut(compaction.KeepRecentTokens); ok {
-			text := "Context overflow"
-			if s, ok := stringField(message, "errorMessage"); ok {
-				text = s
-			}
-			r.commitDone(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
-				live, err := tx.Doc(LiveDef, session.DocArgs{Owner: r.conv})
-				if err != nil {
-					return nil, err
-				}
-				if _, err := appendAssistant(tx, r.conv, message); err != nil {
-					return nil, err
-				}
-				live.Delete("generation")
-				child, err := createCompaction(tx, r.conv, "overflow", r.rt.TaskID())
-				if err != nil {
-					return nil, err
-				}
-				cp := jobj("phase", phasePrepare, "attempt", req.attempt, "compacted", float64(child), "overflow", text)
-				return jobj("status", "waiting", "checkpoint", cp, "on", idList([]ID{child}), "policy", "allSettled"), nil
-			})
+	// generation.ts classify reads the agent only for an overflow nothing was compacted for yet; the policy it resolves keeps a
+	// cut or the failure is retried or ended as any. Past the check above the answer is an overflow, so the closures name its stop
+	// reason and overflow flag as constants: that keeps the two locals off the heap.
+	r.agent(func(agent *Agent) {
+		compaction := settings.CompactionFor(req.model, agent.Compaction)
+		if !compaction.Enabled {
+			r.retryOrFail(req, message, settings, "error", true)
 			return
 		}
-		r.retryOrFail(req, message, settings, stop, overflow)
+		r.context(req.cutoff, func(view *history.View) {
+			if _, ok := view.SelectCut(compaction.KeepRecentTokens); ok {
+				text := "Context overflow"
+				if s, ok := stringField(message, "errorMessage"); ok {
+					text = s
+				}
+				r.commitDone(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
+					live, err := tx.Doc(LiveDef, session.DocArgs{Owner: r.conv})
+					if err != nil {
+						return nil, err
+					}
+					if _, err := appendAssistant(tx, r.conv, message); err != nil {
+						return nil, err
+					}
+					live.Delete("generation")
+					child, err := createCompaction(tx, r.conv, "overflow", r.rt.TaskID())
+					if err != nil {
+						return nil, err
+					}
+					cp := jobj("phase", phasePrepare, "attempt", req.attempt, "compacted", float64(child), "overflow", text)
+					return jobj("status", "waiting", "checkpoint", cp, "on", idList([]ID{child}), "policy", "allSettled"), nil
+				})
+				return
+			}
+			r.retryOrFail(req, message, settings, "error", true)
+		})
 	})
 }
 

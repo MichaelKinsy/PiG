@@ -130,7 +130,7 @@ func (r *compactionRun) selectPhase() {
 		r.context(0, func(view *history.View) {
 			policy := settings.Compaction
 			if agent.Model != nil {
-				policy = settings.CompactionFor(*agent.Model)
+				policy = settings.CompactionFor(*agent.Model, agent.Compaction)
 			}
 			params := &history.SelectParams{ModelPresent: agent.Model != nil, ModelKnown: known, Policy: policy}
 			if agent.Model != nil {

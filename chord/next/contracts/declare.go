@@ -6,7 +6,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Ports packages/chord/src/next/contracts/declare.ts (declarations: `remote(...)` and `local(...)`, the checks every
+// Ports packages/chord/src/contracts/declare.ts (declarations: `remote(...)` and `local(...)`, the checks every
 // declared version passes, and the reading of untyped declaration input).
 //
 // Forced Go differences. A declaration is a typed struct: upstream's checks that name an unknown key, a non-object, a

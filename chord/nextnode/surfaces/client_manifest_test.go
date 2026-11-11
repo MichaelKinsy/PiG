@@ -11,6 +11,12 @@ import (
 	"testing"
 )
 
+// pi: packages/chord/src/react/hooks.ts
+// pi: packages/chord/src/react/stores.ts
+// pi: packages/chord/src/web/page.ts
+// pi: packages/chord/src/web/environment.ts
+// pi: packages/chord/src/web/language.ts
+// pi: packages/chord/src/web/themes.ts
 // client/manifest.json records the Pi commit and the hash of every file vendored under client/pi (D601): a file edited by
 // hand, or one the manifest does not list, fails here (automation/gen/vendor-chord-surfaces-client.sh regenerates both). The
 // commit is the pin's (`.upstream/pin`), unless the manifest names it as an explicit `catchup`, as the plugins component's
@@ -71,7 +77,8 @@ func TestClientVendoredFilesAreExactlyTheManifests(t *testing.T) {
 	}
 	err = filepath.WalkDir(filepath.Join("client", "pi"), func(path string, entry fs.DirEntry, err error) error {
 		relative, _ := filepath.Rel("client", path)
-		if err == nil && !entry.IsDir() && !listed[filepath.ToSlash(relative)] {
+		// pi/go.mod is the data-only directory's own module file (automation/gen/vendor-chord-surfaces-client.mjs writes it), not Pi's.
+		if err == nil && !entry.IsDir() && relative != filepath.Join("pi", "go.mod") && !listed[filepath.ToSlash(relative)] {
 			t.Errorf("%s is vendored but not in the manifest", path)
 		}
 		return err

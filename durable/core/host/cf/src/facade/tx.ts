@@ -2,7 +2,8 @@
 // (ABI section 8). Document drafts are Chord trackers over the value the core returns; their Op[] go back before `end`.
 // The core enforces ReadAfterWrite and every other §4 rule and answers each operation, so this proxy forwards and never
 // decides.
-import { copyJson, type Context, type JsonValue } from "@earendil-works/chord"
+import type { Context } from "@earendil-works/chord/context"
+import { copyJson, type JsonValue } from "@earendil-works/chord/json"
 import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context"
 import { track, type Change, type Tracker } from "@earendil-works/chord/delta"
 import type { TxChannel } from "../client.ts"
@@ -75,6 +76,7 @@ export class TxProxy {
   latestHeadMarker(conversationId: number) { return this.forward("latestHeadMarker", { conversationId }) }
   latestEntryId(conversationId: number) { return this.forward("latestEntryId", { conversationId }) }
   scanTasks(query: unknown, limit: number, cursor?: unknown) { return this.forward("scanTasks", { query, limit, cursor }) }
+  submission(id: number) { return this.forward("submission", { id }) }
   submissionByRequest(conversationId: number, requestId: string) { return this.forward("submissionByRequest", { conversationId, requestId }) }
 
   // Table writes.

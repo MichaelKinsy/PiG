@@ -229,7 +229,7 @@ func (s *Session) prepareRequest(ctx context.Context, request agent.PrepareReque
 	failed := s.failedResponse.Swap(nil)
 	// prepare projects the Session and passes the projection through the hook the supplied Agent had before the Session installed its own.
 	prepare := func() (previous *agent.AgentRequestUpdate, requestContext *agent.AgentContext, projection codingagent.SessionProjection, err error) {
-		projection = s.inner.BuildSessionProjectionView()
+		projection = s.inner.Load().BuildSessionProjectionView()
 		requestContext = s.executableContext(s.contextFromProjection(projection))
 		if s.previousPrepareRequest == nil {
 			return nil, requestContext, projection, nil
@@ -308,7 +308,7 @@ func (s *Session) exceedsCompactionThreshold(model *ai.Model, projection codinga
 // Send, which holds s.mu.
 func (s *Session) prepareNextTurn(ctx context.Context, turn agent.PrepareNextTurnContext) (*agent.AgentLoopTurnUpdate, error) {
 	// The projection is the session's own messages, as Pi's buildSessionContext returns the entries' objects: the loop reads them and the request that follows projects the session again, so a deep copy of every message before each request only grows with the history.
-	projection := s.inner.BuildSessionProjectionView()
+	projection := s.inner.Load().BuildSessionProjectionView()
 	// A virtual selection is checked in prepareRequest, against the model the request is routed to.
 	if model := s.Model(); model != nil && !IsVirtualModel(model) {
 		exceeds, err := s.exceedsCompactionThreshold(model, projection)
@@ -319,7 +319,7 @@ func (s *Session) prepareNextTurn(ctx context.Context, turn agent.PrepareNextTur
 			if _, err := s.runAutoCompaction(ctx, "threshold", false); err != nil {
 				return nil, err
 			}
-			projection = s.inner.BuildSessionProjectionView()
+			projection = s.inner.Load().BuildSessionProjectionView()
 		}
 	}
 	projected := s.contextFromProjection(projection)

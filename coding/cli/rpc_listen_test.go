@@ -580,6 +580,33 @@ func TestListenExitsOnSIGTERMDuringABuild(t *testing.T) {
 	server.requireSocketGone()
 }
 
+// The second connection's first bind waits in a session_start handler that never returns (an extension awaiting a dialog the dying client will never answer); its marker proves the handler is pending when the signal lands. Pi's shutdown() does not wait for a pending session_start handler, so the first signal ends the server.
+func TestListenExitsOnSIGTERMDuringAHungSessionStart(t *testing.T) {
+	dir := listenTempDir(t)
+	marker := filepath.Join(dir, "starting")
+	fixture, err := filepath.Abs(filepath.Join("testdata", "listen-hang-start.mjs"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, "pig.sock")
+	server := startListenServer(t, append(listenEnv(t, dir), "LISTEN_BUILD_COUNT="+filepath.Join(dir, "count"), "LISTEN_BUILD_MARKER="+marker),
+		"--mode", "rpc", "--listen", path, "--model", "test-faux/echo", "--no-session", "-e", fixture)
+	server.path = path
+	first := server.dial()
+	requestResponse(first, "ready", "get_state")
+	conn, err := net.Dial("unix", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	server.waitForFile(marker, "the second connection's session_start")
+	server.signal(syscall.SIGTERM)
+	if code := server.waitForExit(); code != 128+int(syscall.SIGTERM) {
+		t.Fatalf("exit %d, want %d\n%s", code, 128+int(syscall.SIGTERM), server.stderr())
+	}
+	server.requireSocketGone()
+}
+
 // Ctrl+C is a termination signal under --listen: the sessions shut down and the socket file is removed.
 func TestListenExitsOnSIGINT(t *testing.T) {
 	server := newListenServer(t)

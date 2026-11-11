@@ -4,6 +4,10 @@
 // tool starts first (the F-gate seeds 26, 61, 67 and 77: a beforeTool wait of 8 passes plus 100 ms on call 0 and 1 pass plus 100 ms on
 // call 1 starts call 0 first in Pi, call 1 first in a candidate whose second task starts fewer than 8 passes after the first).
 // Every step is a count of a self-requeuing microtask, so the number is exact. Run by lib/run.mjs under the hooks.
+// A self-requeuing microtask starves the event loop, and since Pi's writer publishes through `hop` (session/writer.ts: `await new Promise(setImmediate)`)
+// the third call's execute waits for a macrotask: the count would never leave that wait (the reference ran at 100% CPU until its timeout killed it). The
+// count therefore pauses while a setImmediate is pending, which lets the macrotask run, and goes on in the turn that ran it: a mark counts the passes
+// of the microtasks around it, not the wait of a macrotask, which is the same for the reference and a candidate that queues its own macrotask there.
 import { join } from "node:path"
 import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context"
 import { obj } from "@earendil-works/pi-schema"
@@ -12,8 +16,31 @@ import { fauxAssistantMessage, fauxProvider, fauxText, fauxToolCall } from "@ear
 import { createRegistry, defineExtension, defineTool, Harness, hook, ToolTask } from "@earendil-works/pi-durable"
 import { openNodeSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite/node"
 
-let passes = 0, counting = false
-const spin = () => { if (counting) { passes++; queueMicrotask(spin) } }
+let passes = 0, counting = false, immediates = 0, paused = false
+const spin = () => {
+	if (!counting) return
+	if (immediates > 0) { paused = true; return }
+	passes++
+	queueMicrotask(spin)
+}
+const setImmediateOf = globalThis.setImmediate, clearImmediateOf = globalThis.clearImmediate
+const pending = new Set()
+const settled = () => { if (paused && immediates === 0) { paused = false; queueMicrotask(spin) } }
+globalThis.setImmediate = (callback, ...args) => {
+	immediates++
+	const handle = setImmediateOf((...rest) => {
+		pending.delete(handle)
+		immediates--
+		try { callback(...rest) } finally { settled() }
+	}, ...args)
+	pending.add(handle)
+	return handle
+}
+// A cleared immediate never runs, so it stops counting as pending here.
+globalThis.clearImmediate = handle => {
+	if (pending.delete(handle)) { immediates--; settled() }
+	clearImmediateOf(handle)
+}
 const mark = label => console.log(`${label}: ${passes}`)
 
 const parameters = obj({})

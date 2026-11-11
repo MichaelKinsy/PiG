@@ -11,7 +11,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
-	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 var packedUIConfigs = map[string]func() ([]subprocess.ExtConfig, error){
@@ -32,6 +32,10 @@ func createPackedUIConfigs(language string) ([]subprocess.ExtConfig, error) {
 	peer := filepath.Join(dir, "ui-peer")
 	switch language {
 	case "go":
+		goDirective, err := rootGoDirective(root)
+		if err != nil {
+			return nil, err
+		}
 		for _, item := range []struct{ path, body string }{
 			{source, `package fixture
 import "github.com/MichaelKinsy/PiG/test/extension-conformance/testfixture"
@@ -44,7 +48,11 @@ func Extension() *sdk.Extension { return sdk.New("ui-peer") }
 `},
 		} {
 			write(filepath.Join(item.path, "extension.go"), item.body)
-			write(filepath.Join(item.path, "go.mod"), fmt.Sprintf("module example.com/%s\n\ngo 1.26.0\nrequire (\n github.com/MichaelKinsy/PiG v%s\n github.com/MichaelKinsy/PiG/extensions/sdk v%s\n)\nreplace github.com/MichaelKinsy/PiG => %s\nreplace github.com/MichaelKinsy/PiG/extensions/sdk => %s\n", filepath.Base(item.path), pigversion.PigVersion, pigversion.PigVersion, filepath.ToSlash(root), filepath.ToSlash(filepath.Join(root, "extensions", "sdk"))))
+			sdkVersion, err := testenv.RootSDKRequirement(root)
+			if err != nil {
+				return nil, err
+			}
+			write(filepath.Join(item.path, "go.mod"), fmt.Sprintf("module example.com/%s\n\ngo %s\nrequire (\n github.com/MichaelKinsy/PiG %s\n github.com/MichaelKinsy/PiG/extensions/sdk %s\n)\nreplace github.com/MichaelKinsy/PiG => %s\nreplace github.com/MichaelKinsy/PiG/extensions/sdk => %s\n", filepath.Base(item.path), goDirective, sdkVersion, sdkVersion, filepath.ToSlash(root), filepath.ToSlash(filepath.Join(root, "extensions", "sdk"))))
 		}
 	case "python":
 		data, err := os.ReadFile(filepath.Join(root, "test", "extension-conformance", "testdata", name, "main.py"))

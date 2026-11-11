@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/streamattachhook/attachstall"
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
@@ -323,5 +324,31 @@ func TestProviderBridgeAnUndefinedOnPayloadAnswerKeepsThePayload(t *testing.T) {
 	defer mu.Unlock()
 	if !strings.Contains(body, `"model":"bench-1"`) || strings.Contains(body, "replaced") {
 		t.Fatalf("an undefined onPayload answer must leave the provider payload, got %q", body)
+	}
+}
+
+// Pi creates the provider stream and attaches its consumer in one synchronous prefix (agent-loop.ts:412-424: `await streamFunction(...)` then `for await`), before any response I/O can complete, so the first event's partial is the one the provider built (stopReason "pending", no content) however long the provider's response takes. A bridge that attached after the whole response was read would serialize Start with the finished message.
+func TestProviderBridgeStartIsSerializedBeforeTheResponseFillsItsPartial(t *testing.T) {
+	server := bridgeServer(t, nil)
+	attachstall.Install(t)
+	run := startBridge(t)
+	writeBridge(t, run.stdin, bridgeLine("s", "stream", true, server.URL))
+	got := run.until(t, "s", "result")
+	raw, err := json.Marshal(got[0].Event)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var start struct {
+		Type    string `json:"type"`
+		Partial struct {
+			StopReason string `json:"stopReason"`
+			Content    []any  `json:"content"`
+		} `json:"partial"`
+	}
+	if err := json.Unmarshal(raw, &start); err != nil {
+		t.Fatal(err)
+	}
+	if start.Type != "start" || start.Partial.StopReason != "pending" || len(start.Partial.Content) != 0 {
+		t.Fatalf("first event %s: want Start with the pending, empty partial the provider built", raw)
 	}
 }

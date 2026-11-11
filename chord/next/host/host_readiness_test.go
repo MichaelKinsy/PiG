@@ -1,5 +1,7 @@
 package host
 
+// pi: packages/chord/src/host/readiness.ts
+
 import (
 	"context"
 	"errors"

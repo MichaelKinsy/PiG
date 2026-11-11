@@ -15,7 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/src/next/remote/hold.ts. A hold arriving on a link and served here (§7, §22, W1): where it goes
+// Ports packages/chord/src/remote/hold.ts. A hold arriving on a link and served here (§7, §22, W1): where it goes
 // once the host published (waiting in the unbound index until then), why it is unbound (refused: kept in the index while
 // it waits for a name, dependency model §1), the object it keeps, the notices of its object's failures and new attempts,
 // the snapshot and subscription taken in one synchronous step when a slot of the window is free, and the ops of its

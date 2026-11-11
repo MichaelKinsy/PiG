@@ -18,11 +18,11 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`.
 
 | Runtime | implemented | exercised by a conformance fixture | holes |
 |---|---|---|---|
-| Node runtime | 226 | 226 | 0 |
-| Go | 228 | 228 | 0 |
-| Rust | 228 | 228 | 0 |
-| Python | 228 | 228 | 0 |
-| Lisp | 228 | 228 | 0 |
+| Node runtime | 227 | 227 | 0 |
+| Go | 229 | 229 | 0 |
+| Rust | 229 | 229 | 0 |
+| Python | 229 | 229 | 0 |
+| Lisp | 229 | 229 | 0 |
 
 ## pi (ExtensionAPI)
 
@@ -266,7 +266,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`.
 |---|---|---|---|---|
 | `ctx.ui.theme.name` | exercised | exercised | exercised | exercised | exercised |
 | `ctx.ui.theme.sourcePath` | exercised | exercised | exercised | exercised | exercised |
-| `ctx.ui.theme.sourceInfo` | - | - | - | - | - |
+| `ctx.ui.theme.sourceInfo` | exercised | exercised | exercised | exercised | exercised |
 | `ctx.ui.theme.appearance` | exercised | exercised | exercised | exercised | exercised |
 | `ctx.ui.theme.colors` | exercised | exercised | exercised | exercised | exercised |
 | `ctx.ui.theme.style` | exercised | exercised | exercised | exercised | exercised |

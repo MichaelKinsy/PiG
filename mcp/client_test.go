@@ -87,7 +87,7 @@ func createServer(t *testing.T) (*mcptest.InMemoryTransport, *testServer) {
 func connect(t *testing.T) (*mcp.Client, *testServer) {
 	t.Helper()
 	clientTransport, server := createServer(t)
-	client := mcp.NewClient(mcp.ClientOptions{Implementation: mcp.Implementation{Name: "test-client", Version: "2.0.0"}})
+	client := mcp.NewClient(mcp.ClientOptions{Name: "test-client", Version: "2.0.0"})
 	if _, err := client.Connect(t.Context(), clientTransport); err != nil {
 		t.Fatal(err)
 	}
@@ -244,7 +244,7 @@ func TestClientRenewsTheTimeoutOnProgress(t *testing.T) {
 	// vitest fake timers upstream; the virtual clock stands in for them.
 	clock := &fakeClock{}
 	clientTransport, server := createServer(t)
-	client := mcp.NewClient(mcp.ClientOptions{Implementation: mcp.Implementation{Name: "test-client", Version: "2.0.0"}})
+	client := mcp.NewClient(mcp.ClientOptions{Name: "test-client", Version: "2.0.0"})
 	mcp.SetClientAfterFuncForTest(client, clock.AfterFunc)
 	if _, err := client.Connect(t.Context(), clientTransport); err != nil {
 		t.Fatal(err)
@@ -378,7 +378,7 @@ func waitFor(t *testing.T, condition func() bool) {
 // packages/mcp/src/transports/in-memory.ts:35-36: emitError(error) reports a transport error to the listeners.
 func TestClientReportsTransportErrorsWithoutFailingPendingRequests(t *testing.T) {
 	clientTransport, server := createServer(t)
-	client := mcp.NewClient(mcp.ClientOptions{Implementation: mcp.Implementation{Name: "test-client", Version: "1.0.0"}})
+	client := mcp.NewClient(mcp.ClientOptions{Name: "test-client", Version: "1.0.0"})
 	if _, err := client.Connect(t.Context(), clientTransport); err != nil {
 		t.Fatal(err)
 	}
@@ -431,7 +431,7 @@ func TestClientAcceptsServersThatAnswerWithAnOlderProtocolVersion(t *testing.T) 
 	server.setHandler("initialize", func(mcp.JSONRPCMessage) (any, error) {
 		return map[string]any{"protocolVersion": "2024-11-05", "capabilities": map[string]any{}, "serverInfo": map[string]any{"name": "old-server", "version": "0.1.0"}}, nil
 	})
-	client := mcp.NewClient(mcp.ClientOptions{Implementation: mcp.Implementation{Name: "test-client", Version: "1.0.0"}})
+	client := mcp.NewClient(mcp.ClientOptions{Name: "test-client", Version: "1.0.0"})
 	if _, err := client.Connect(t.Context(), clientTransport); err != nil {
 		t.Fatal(err)
 	}
@@ -444,7 +444,7 @@ func TestClientAcceptsServersThatAnswerWithAnOlderProtocolVersion(t *testing.T) 
 	unsupported.setHandler("initialize", func(mcp.JSONRPCMessage) (any, error) {
 		return map[string]any{"protocolVersion": "1999-01-01", "capabilities": map[string]any{}, "serverInfo": map[string]any{"name": "ancient-server", "version": "0.1.0"}}, nil
 	})
-	rejected := mcp.NewClient(mcp.ClientOptions{Implementation: mcp.Implementation{Name: "test-client", Version: "1.0.0"}})
+	rejected := mcp.NewClient(mcp.ClientOptions{Name: "test-client", Version: "1.0.0"})
 	if _, err := rejected.Connect(t.Context(), unsupportedTransport); err == nil || !strings.Contains(err.Error(), "unsupported protocol version") {
 		t.Fatalf("err = %v", err)
 	}
@@ -490,7 +490,7 @@ func TestClientDefaultsMissingToolResultContentToAnEmptyList(t *testing.T) {
 func TestClientDoesNotSendCancelledForATimedOutInitialize(t *testing.T) {
 	clientTransport, server := createServer(t)
 	server.setHandler("initialize", func(mcp.JSONRPCMessage) (any, error) { return blockUntilTestEnds(t) })
-	client := mcp.NewClient(mcp.ClientOptions{Implementation: mcp.Implementation{Name: "test-client", Version: "1.0.0"}, RequestTimeoutMs: 5})
+	client := mcp.NewClient(mcp.ClientOptions{Name: "test-client", Version: "1.0.0", RequestTimeoutMs: 5})
 	_, err := client.Connect(t.Context(), clientTransport)
 	if _, ok := errors.AsType[*mcp.McpTimeoutError](err); !ok {
 		t.Fatalf("err = %v", err)
@@ -544,8 +544,8 @@ func TestClientNotifiesCloseListenersOnceWhenTheTransportDrops(t *testing.T) {
 func TestClientAnswersRootsListAndDispatchesNotifications(t *testing.T) {
 	clientTransport, server := createServer(t)
 	client := mcp.NewClient(mcp.ClientOptions{
-		Implementation: mcp.Implementation{Name: "test-client", Version: "1.0.0"},
-		Roots:          []mcp.Root{{URI: "file:///workspace", Name: "workspace"}},
+		Name: "test-client", Version: "1.0.0",
+		Roots: []mcp.Root{{URI: "file:///workspace", Name: "workspace"}},
 	})
 	if _, err := client.Connect(t.Context(), clientTransport); err != nil {
 		t.Fatal(err)

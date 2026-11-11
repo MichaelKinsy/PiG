@@ -21,12 +21,10 @@ import (
 func TestWatchHandleContract(t *testing.T) {
 	ctx := context.Background()
 	token := durable.DefineDoc(durable.DocDefinition[durable.JsonObject]{
-		CommonDocDefinition: durable.CommonDocDefinition[durable.JsonObject]{
-			Kind: "watch.contract", Version: 1,
-			Initial:        func() durable.JsonObject { return delta.JsonObjectOf("value", 0) },
-			CheckpointWhen: func(durable.JsonObject, []durable.Op, durable.CheckpointInfo) bool { return false },
-		},
-		DocumentSemantics: durable.DocumentSemantics{Scope: durable.ScopeSession},
+		Kind: "watch.contract", Version: 1,
+		Initial:        func() durable.JsonObject { return delta.JsonObjectOf("value", 0) },
+		CheckpointWhen: func(durable.JsonObject, []durable.Op, durable.CheckpointInfo) bool { return false },
+		Scope:          durable.ScopeSession,
 	})
 	open := func() sessiontest.Harness {
 		harness := sessiontest.OpenTestSession()
@@ -142,20 +140,19 @@ func TestWatchHandleContract(t *testing.T) {
 		}
 		var mu sync.Mutex
 		var delivered []string
-		inStart := true
+		// A pending frame's delivery may start on the watch's goroutine before Start returns to this one: inline is the listener
+		// running on the stack of this function, inside its call of Start, not a listener that is running by then.
+		here := sessiontest.Here()
 		handle.Start(func(_ context.Context, change durable.WatchCall[durable.JsonObject]) error {
 			value := change.Value
 			mu.Lock()
 			defer mu.Unlock()
-			if inStart {
+			if here.OnStack() {
 				t.Error("the listener ran inline in Start with a pending frame")
 			}
 			delivered = append(delivered, fmt.Sprint(value.Value("value")))
 			return nil
 		})
-		mu.Lock()
-		inStart = false
-		mu.Unlock()
 		harness.Session.WaitDeliveries()
 		mu.Lock()
 		got := append([]string(nil), delivered...)

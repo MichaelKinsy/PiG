@@ -7,7 +7,7 @@
     },
     {
       "source": "test/parity/runner/changelog_assert.go",
-      "sha256": "ce703c70d410d59e79c6f0e1df29268350b47148169f43ac809385659f1a3b4a",
+      "sha256": "616bfcede15420081ca71ac5229e0a3930fe71f752f0893348c5dc2fd9cb3610",
       "reason": "D22: the products ship different changelog documents. Compare every rendered release header, in order, against that binary's independent source document; this does not claim cross-product equality of body text or styling."
     },
     {
@@ -37,7 +37,7 @@
     },
     {
       "source": "test/parity/runner/json_compare.go",
-      "sha256": "fde6cb1d87a77f6e1ba4ff432e29e18fdc20482e3a9f434285fe9b93ab30599e",
+      "sha256": "cb3d2d566718fd9f5c4da255c04a2d45d4627897b5af617fa35e745f5c4be35a",
       "reason": "Parsed full records ignore object-member order and equivalent JSON number spelling only. Explicit scalar aliases preserve field presence, types, ordered arrays and bijective ID references; no ignored-field list exists."
     },
     {
@@ -2207,6 +2207,23 @@
             "capture_start": "Run: ext tool robust_words"
           },
           "reason": "Owned visible surface: The go robust-notes extension draws Pi's screen for its tool, flag, events, appendEntry and overlay",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/75-robust-notes-lisp.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Run: ext tool robust_words"
+          },
+          "reason": "Owned visible surface: The lisp robust-notes extension draws Pi's screen for its tool, flag, events, appendEntry and overlay",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {

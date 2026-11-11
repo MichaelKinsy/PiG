@@ -222,17 +222,38 @@ func TestNestedToolCallRunnerSumsTheUsageOfNestedResultsAtEveryDepth(t *testing.
 }
 
 // upstream nested-tool-calls.test.ts:164-187
+//
+// The parallel tool holds each call until all three are inside it, so the check needs no timing luck: a fixed 5 ms sleep let the first
+// call finish before the third had started on a loaded host (portmap's evidence run read parallel:2). A runner that serialized
+// parallel calls never gets the third call in; the hold gives up after a bound and maxActive reports it. The sequential tool keeps the
+// 5 ms sleep: that side proves an absence (no two calls overlap), so a slow host can only make it miss a runner that stopped serializing,
+// never fail a correct one.
 func TestNestedToolCallRunnerSerializesConcurrentCallsToSequentialTools(t *testing.T) {
 	var active atomic.Int32
 	var mu sync.Mutex
 	maxActive := map[string]int32{"sequential": 0, "parallel": 0}
+	var arrived atomic.Int32
+	allIn := make(chan struct{})
+	hold := func(name string) {
+		if name != "parallel" {
+			time.Sleep(5 * time.Millisecond)
+			return
+		}
+		if arrived.Add(1) == 3 {
+			close(allIn)
+		}
+		select {
+		case <-allIn:
+		case <-time.After(10 * time.Second):
+		}
+	}
 	makeTool := func(name string, mode agent.ToolExecutionMode) agent.AgentTool {
 		return &nestedTestTool{name: name, mode: mode, run: func(context.Context, string, agent.ToolUpdateCallback) agent.AgentToolResult {
 			now := active.Add(1)
 			mu.Lock()
 			maxActive[name] = max(maxActive[name], now)
 			mu.Unlock()
-			time.Sleep(5 * time.Millisecond)
+			hold(name)
 			active.Add(-1)
 			return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{}, Details: map[string]any{}}
 		}}

@@ -199,17 +199,19 @@ type AgentState struct {
 	// MaxTurns is the tool rounds one run takes at most (pi.live.run.turns): the round that reaches it runs its tools, then the run
 	// ends unanswered with turn_limit. An integer, 1 or more; unset, no limit. Task-owned children and forks inherit it.
 	MaxTurns *int `json:"maxTurns,omitempty"`
+	// Compaction is this conversation's compaction settings over the harness's, field by field: its modelOverrides entry,
+	// then the harness's, then its own fields, then the harness-wide policy. Its enabled: false also beats the harness's model
+	// override. Task-owned children and forks inherit it.
+	Compaction *durable.CompactionSettings `json:"compaction,omitempty"`
 }
 
 // AgentDoc is the built-in agent document; rewindable so forks start from the agent at their fork entry.
 var AgentDoc = durable.DefineDoc(durable.DocDefinition[AgentState]{
-	CommonDocDefinition: durable.CommonDocDefinition[AgentState]{
-		Kind:              "pi.agent",
-		Version:           1,
-		CheckpointWhenRaw: func(durable.JsonObject, []durable.Op, durable.CheckpointInfo) bool { return true },
+	Kind:              "pi.agent",
+	Version:           1,
+	CheckpointWhenRaw: func(durable.JsonObject, []durable.Op, durable.CheckpointInfo) bool { return true },
 
-		Initial: func() AgentState { return AgentState{} },
-	},
+	Initial:           func() AgentState { return AgentState{} },
 	DocumentSemantics: durable.NewRewindableConversationSemantics(durable.ForkAsOf).DocumentSemantics,
 })
 
@@ -268,6 +270,9 @@ type AgentChange struct {
 	Cwd           Change[string]
 	// MaxTurns is validated by Configure: it must be an integer 1 or more (or cleared), else an error (upstream's RangeError).
 	MaxTurns Change[float64]
+	// Compaction replaces the stored settings as a whole; Configure fails (upstream's RangeError) unless every token count is an
+	// integer 0 or more.
+	Compaction Change[durable.CompactionSettings]
 }
 
 // HarnessSettings is the Harness-wide run policy. It is read at every resolution and never copied.
@@ -317,15 +322,9 @@ type RetryPolicyPatch struct {
 }
 
 // CompactionPolicyPatch is CompactionSettings: Partial<CompactionPolicy>, nil fields keep the defaults, plus ModelOverrides.
-type CompactionPolicyPatch struct {
-	Enabled          *bool
-	ReserveTokens    *int
-	KeepRecentTokens *int
-	BackgroundTokens *int
-	// ModelOverrides is keyed by exact "provider/modelId"; each field an entry sets replaces the Harness-wide one for that
-	// model, so small- and large-window models can share a Harness (types.ts CompactionSettings, Pi c4cf7957).
-	ModelOverrides map[string]durable.CompactionPolicyOverride
-}
+// ModelOverrides is keyed by exact "provider/modelId"; each field an entry sets replaces the general one for that model, so
+// small- and large-window models can share a Harness (types.ts CompactionSettings, Pi c4cf7957).
+type CompactionPolicyPatch = durable.CompactionSettings
 
 // ProgressPolicyPatch is Partial<ProgressPolicy>; nil fields keep the defaults.
 type ProgressPolicyPatch struct {
@@ -583,7 +582,84 @@ func applyChange(state durable.Draft[AgentState], change AgentChange) error {
 	if maxTurns.state == changeSet && !(maxTurns.value == math.Trunc(maxTurns.value) && math.Abs(maxTurns.value) <= 1<<53-1 && maxTurns.value >= 1) {
 		return fmt.Errorf("maxTurns must be an integer 1 or more, got %s", jsNumberString(maxTurns.value))
 	}
-	return setField(state, "maxTurns", maxTurns.state, maxTurns.value)
+	if err := setField(state, "maxTurns", maxTurns.state, maxTurns.value); err != nil {
+		return err
+	}
+	compaction := change.Compaction
+	if compaction.state == changeSet {
+		stored, err := compactionSettings(compaction.value)
+		if err != nil {
+			return err
+		}
+		return setField(state, "compaction", changeSet, compactionJSON(stored))
+	}
+	return setField(state, "compaction", compaction.state, nil)
+}
+
+// compactionJSON is settings as the plain JSON object pi.agent stores: its set fields in the order enabled, reserveTokens,
+// keepRecentTokens, backgroundTokens, then modelOverrides.
+func compactionJSON(settings durable.CompactionSettings) *delta.JsonObject {
+	object := policyJSON(settings.Enabled, settings.ReserveTokens, settings.KeepRecentTokens, settings.BackgroundTokens)
+	if settings.ModelOverrides.IsSet() {
+		overrides := delta.NewJsonObject(settings.ModelOverrides.Len())
+		for key, override := range settings.ModelOverrides.All() {
+			overrides.Set(key, policyJSON(override.Enabled, override.ReserveTokens, override.KeepRecentTokens, override.BackgroundTokens))
+		}
+		object.Set("modelOverrides", overrides)
+	}
+	return object
+}
+
+func policyJSON(enabled *bool, reserve, keep, background *int) *delta.JsonObject {
+	object := delta.NewJsonObject(5)
+	if enabled != nil {
+		object.Set("enabled", *enabled)
+	}
+	for _, field := range []struct {
+		name  string
+		value *int
+	}{{"reserveTokens", reserve}, {"keepRecentTokens", keep}, {"backgroundTokens", background}} {
+		if field.value != nil {
+			object.Set(field.name, float64(*field.value))
+		}
+	}
+	return object
+}
+
+// compactionSettings is agent.ts compactionSettings: a stored copy of a conversation's compaction settings; it fails for a token
+// count that is not an integer 0 or more (a RangeError upstream). Unset fields are not stored.
+func compactionSettings(settings durable.CompactionSettings) (durable.CompactionSettings, error) {
+	stored := durable.CompactionSettings{}
+	var err error
+	if stored.Enabled, stored.ReserveTokens, stored.KeepRecentTokens, stored.BackgroundTokens, err = compactionFields("compaction", settings.Enabled, settings.ReserveTokens, settings.KeepRecentTokens, settings.BackgroundTokens); err != nil {
+		return stored, err
+	}
+	if !settings.ModelOverrides.IsSet() {
+		return stored, nil
+	}
+	stored.ModelOverrides = durable.NewCompactionOverrides()
+	for key, override := range settings.ModelOverrides.All() {
+		var fields durable.CompactionPolicyOverride
+		if fields.Enabled, fields.ReserveTokens, fields.KeepRecentTokens, fields.BackgroundTokens, err = compactionFields("compaction", override.Enabled, override.ReserveTokens, override.KeepRecentTokens, override.BackgroundTokens); err != nil {
+			return stored, err
+		}
+		stored.ModelOverrides.Set(key, fields)
+	}
+	return stored, nil
+}
+
+// compactionFields is agent.ts compactionFields: the set fields of one policy; it fails for a token count that is not an integer 0
+// or more. A model override's error names the same `compaction.<field>` as Pi's (agent.ts:189).
+func compactionFields(scope string, enabled *bool, reserve, keep, background *int) (*bool, *int, *int, *int, error) {
+	for _, field := range []struct {
+		name  string
+		value *int
+	}{{"reserveTokens", reserve}, {"keepRecentTokens", keep}, {"backgroundTokens", background}} {
+		if field.value != nil && (*field.value < 0 || int64(*field.value) > 1<<53-1) {
+			return nil, nil, nil, nil, fmt.Errorf("%s.%s must be an integer 0 or more, got %d", scope, field.name, *field.value)
+		}
+	}
+	return enabled, reserve, keep, background, nil
 }
 
 // jsNumberString is `String(value)` of a JavaScript number: NaN and the infinities by name, other values in JSON form.
@@ -792,6 +868,9 @@ func ResolveAgent(state *AgentState, snapshot durable.RegistrySnapshot, settings
 	}
 	if state.MaxTurns != nil {
 		agent.MaxTurns = new(*state.MaxTurns)
+	}
+	if state.Compaction != nil {
+		agent.Compaction = state.Compaction
 	}
 	return agent
 }

@@ -50,7 +50,7 @@ func TestBranchSummaryAmbientAuthWithoutAPIKeyUpstream(t *testing.T) {
 		{User: &agent.UserMessage{Role: agent.RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: "abandoned branch work"}}}},
 		{Assistant: &agent.AssistantMessage{Role: agent.RoleAssistant, Content: []ai.AssistantContentBlock{ai.TextContent{Text: "abandoned reply"}}}},
 	} {
-		id, err := session.inner.AppendMessage(message)
+		id, err := session.inner.Load().AppendMessage(message)
 		if err != nil {
 			t.Fatal(err)
 		}

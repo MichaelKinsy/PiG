@@ -166,14 +166,14 @@ func TestConformance_EventResultsReachTheHost(t *testing.T) {
 			})
 		}},
 		{"tool_call", `{"block":true,"reason":"probe-reason"}`, func(r *inproc.Runner) (any, error) {
-			return r.EmitToolCall(context.Background(), extension.CustomToolCallEvent{ToolCallEventBase: extension.ToolCallEventBase{Type: "tool_call", ToolCallID: "call-probe"}, ToolName: "probe", Input: map[string]any{}})
+			return r.EmitToolCall(context.Background(), extension.CustomToolCallEvent{Type: "tool_call", ToolCallID: "call-probe", ToolName: "probe", Input: map[string]any{}})
 		}, "reason", `"probe-reason"`, func(api extension.API) {
 			api.OnToolCall(func(context.Context, extension.ToolCallEvent) (extension.ToolCallEventResult, error) {
 				return extension.ToolCallEventResult{Block: true, Reason: "probe-reason"}, nil
 			})
 		}},
 		{"tool_result", `{"isError":true,"content":[{"type":"text","text":"probe-redacted"}]}`, func(r *inproc.Runner) (any, error) {
-			return r.EmitToolResult(context.Background(), extension.CustomToolResultEvent{ToolResultEventBase: extension.ToolResultEventBase{Type: "tool_result", ToolCallID: "call-probe", Input: map[string]any{}, Content: []any{map[string]any{"type": "text", "text": "original"}}}, ToolName: "probe"})
+			return r.EmitToolResult(context.Background(), extension.CustomToolResultEvent{Type: "tool_result", ToolCallID: "call-probe", Input: map[string]any{}, Content: []any{map[string]any{"type": "text", "text": "original"}}, ToolName: "probe"})
 		}, "content.0.text", `"probe-redacted"`, func(api extension.API) {
 			isError := true
 			api.OnToolResult(func(context.Context, extension.ToolResultEvent) (extension.ToolResultEventResult, error) {
@@ -261,7 +261,7 @@ func TestConformance_EventResultsReachTheHost(t *testing.T) {
 			})
 		}},
 		{"agent_before_settle", `{"entries":[{"type":"custom","customType":"probe-settle"}],"continue":true}`, func(r *inproc.Runner) (any, error) {
-			return r.EmitBoundary(context.Background(), &extension.AgentBeforeSettleEvent{Type: "agent_before_settle", BoundaryState: extension.BoundaryState{Entries: []extension.SessionBoundaryDraft{}, Outcome: extension.AgentActivityCompleted}}, noBoundaryPreview)
+			return r.EmitBoundary(context.Background(), &extension.AgentBeforeSettleEvent{Type: "agent_before_settle", Entries: []extension.SessionBoundaryDraft{}, Outcome: extension.AgentActivityCompleted}, noBoundaryPreview)
 		}, "Entries.0.customType", `"probe-settle"`, func(api extension.API) {
 			entries := []extension.SessionBoundaryDraft{{Type: "custom", CustomType: "probe-settle"}}
 			api.OnAgentBeforeSettle(func(context.Context, *extension.AgentBeforeSettleEvent) (extension.AgentBeforeSettleEventResult, error) {

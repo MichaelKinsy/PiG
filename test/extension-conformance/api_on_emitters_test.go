@@ -44,7 +44,7 @@ func TestConformanceAPIOnToolCallBlockEndsDispatch(t *testing.T) {
 		return extension.ToolCallEventResult{}, nil
 	})
 	runner := apiReferenceRunner(t, map[string][]extension.HandlerFn{"tool_call": bridgePtr(fake.OnToolCallHandlers)})
-	event := extension.CustomToolCallEvent{ToolCallEventBase: extension.ToolCallEventBase{Type: "tool_call", ToolCallID: "c1"}, ToolName: "x", Input: map[string]any{}}
+	event := extension.CustomToolCallEvent{Type: "tool_call", ToolCallID: "c1", ToolName: "x", Input: map[string]any{}}
 	result, err := runner.EmitToolCall(t.Context(), event)
 	if err != nil {
 		t.Fatal(err)
@@ -70,7 +70,7 @@ func TestConformanceAPIOnToolResultChainsModifications(t *testing.T) {
 		return extension.ToolResultEventResult{Details: "two"}, nil
 	})
 	runner := apiReferenceRunner(t, map[string][]extension.HandlerFn{"tool_result": bridgePtr(fake.OnToolResultHandlers)})
-	event := extension.CustomToolResultEvent{ToolResultEventBase: extension.ToolResultEventBase{Type: "tool_result", ToolCallID: "c1", Input: map[string]any{}}, ToolName: "x", Details: "original"}
+	event := extension.CustomToolResultEvent{Type: "tool_result", ToolCallID: "c1", Input: map[string]any{}, ToolName: "x", Details: "original"}
 	result, err := runner.EmitToolResult(t.Context(), event)
 	if err != nil {
 		t.Fatal(err)

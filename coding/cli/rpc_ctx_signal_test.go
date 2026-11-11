@@ -175,6 +175,8 @@ func TestExtensionContextSignalComparedWithPi(t *testing.T) {
 				// A command issued during the run gets the run's signal.
 				p.sendJSON(map[string]any{"id": "during", "type": "prompt", "message": "/probe"})
 				p.await("command during the run", func(r rpcRecord) bool { return r["id"] == "during" && r["type"] == "response" })
+				// The extension's 5 ms timer can miss a run the abort ends first.
+				awaitCtxSignalPollRow(t, p, report, "live")
 				p.sendJSON(map[string]any{"id": "abort", "type": "abort"})
 				awaitCtxSignalRow(t, p, report, "agent_settled")
 			},
@@ -198,6 +200,7 @@ func TestExtensionContextSignalComparedWithPi(t *testing.T) {
 			drive: func(t *testing.T, p *rpcProcess, report string) {
 				p.sendJSON(map[string]any{"id": "prompt", "type": "prompt", "message": "Run: extension echo hello"})
 				awaitCtxSignalRow(t, p, report, "inner.explicit.held")
+				awaitCtxSignalPollRow(t, p, report, "live")
 				p.sendJSON(map[string]any{"id": "abort", "type": "abort"})
 				awaitCtxSignalRow(t, p, report, "agent_settled")
 			},

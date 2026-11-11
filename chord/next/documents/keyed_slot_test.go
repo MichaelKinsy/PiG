@@ -21,8 +21,8 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Ports packages/chord/test/next/documents/keyed-slot.test.ts
-// pi: packages/chord/src/next/documents/keyed-slot.ts
+// Ports packages/chord/test/documents/keyed-slot.test.ts
+// pi: packages/chord/src/documents/keyed-slot.ts
 //
 // Keyed slots (slice 6a §4, §10, §11): keyed reads with a context, per-key watches and `at(key)` sources with their
 // pins, persisted keyed documents loaded on demand on the object's line (one load per key, shared), and their

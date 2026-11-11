@@ -7,7 +7,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 )
 
-// Ports packages/chord/src/next/state/watchable.ts (Subscriber, WatchStart, handedOut, Dependent, Source, constant,
+// Ports packages/chord/src/state/watchable.ts (Subscriber, WatchStart, handedOut, Dependent, Source, constant,
 // Constant). Chord's JSON watchables: sources (documents and derives, with their watches and dependent derives) and
 // constants.
 

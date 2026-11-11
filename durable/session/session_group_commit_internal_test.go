@@ -22,12 +22,10 @@ import (
 )
 
 var internalNote = durable.DefineDoc(durable.DocDefinition[durable.JsonObject]{
-	CommonDocDefinition: durable.CommonDocDefinition[durable.JsonObject]{
-		Kind: "gc.internal.note", Version: 1,
-		CheckpointWhen: func(durable.JsonObject, []durable.Op, durable.CheckpointInfo) bool { return false },
-		Initial:        func() durable.JsonObject { return delta.JsonObjectOf("n", 0.0) },
-	},
-	DocumentSemantics: durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkInitial},
+	Kind: "gc.internal.note", Version: 1,
+	CheckpointWhen: func(durable.JsonObject, []durable.Op, durable.CheckpointInfo) bool { return false },
+	Initial:        func() durable.JsonObject { return delta.JsonObjectOf("n", 0.0) },
+	Scope:          durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkInitial,
 })
 
 // scopedMemory is memory storage with a publication scope: scope runs each publication.

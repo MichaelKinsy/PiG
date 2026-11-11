@@ -53,7 +53,7 @@ func TestInlineSandboxWithoutABudgetUsesTheDefaultOf100000(t *testing.T) {
 // Pi 1.2.0 packages/codemode/test/portable.test.ts:48 describe("InlineCodemodeSandbox") "counts the budget across waits on tools"
 func TestInlineSandboxCountsTheBudgetAcrossWaitsOnTools(t *testing.T) {
 	tick := codemode.Tool{Name: "tick", Execute: func(context.Context, json.RawMessage) (json.RawMessage, error) { return js("1"), nil }}
-	sandbox := newInlineSandbox(t, codemode.InlineSandboxOptions{InterruptBudget: 1_000, SandboxOptions: codemode.SandboxOptions{Tools: []codemode.Tool{tick}}})
+	sandbox := newInlineSandbox(t, codemode.InlineSandboxOptions{InterruptBudget: 1_000, Tools: []codemode.Tool{tick}})
 	result := run(t, sandbox.Sandbox, "for (;;) { for (let i = 0; i < 1e5; i++); await tools.tick(); }")
 	wantFailure(t, result, codemode.ErrorTimeout)
 	if len(result.Calls) <= 1 {
@@ -89,7 +89,7 @@ func TestInlineSandboxChecksTheDeadlineBetweenTurnsLikePi(t *testing.T) {
 		{"a deadline that expires during the first segment waits for its result", spin + "spin(800); return 3", 400, true, "3"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			sandbox := newInlineSandbox(t, codemode.InlineSandboxOptions{InterruptBudget: 10_000_000, SandboxOptions: codemode.SandboxOptions{Tools: []codemode.Tool{wait}}})
+			sandbox := newInlineSandbox(t, codemode.InlineSandboxOptions{InterruptBudget: 10_000_000, Tools: []codemode.Tool{wait}})
 			wantOK(t, run(t, sandbox.Sandbox, "return 0"), "0")
 			result := run(t, sandbox.Sandbox, tc.code, codemode.ExecuteOptions{TimeoutMs: tc.timeoutMs})
 			if tc.wantOK {
@@ -116,7 +116,7 @@ func TestWorkerSandboxPreemptsAComputingScriptOnTheDeadline(t *testing.T) {
 // sandbox error Failed to load QuickJS.
 func TestInlineSandboxUsesItsWasmLoader(t *testing.T) {
 	loads := 0
-	ok := newInlineSandbox(t, codemode.InlineSandboxOptions{SandboxOptions: codemode.SandboxOptions{Wasm: func() ([]byte, error) { loads++; return codemode.QuickJSWasm(), nil }}})
+	ok := newInlineSandbox(t, codemode.InlineSandboxOptions{Wasm: func() ([]byte, error) { loads++; return codemode.QuickJSWasm(), nil }})
 	result, err := ok.Execute(t.Context(), "return 1 + 1", codemode.ExecuteOptions{})
 	if err != nil || !result.OK || string(result.Value) != "2" {
 		t.Fatalf("result = %+v, err = %v", result, err)
@@ -124,7 +124,7 @@ func TestInlineSandboxUsesItsWasmLoader(t *testing.T) {
 	if loads != 1 {
 		t.Fatalf("the loader ran %d times, want 1", loads)
 	}
-	failing := newInlineSandbox(t, codemode.InlineSandboxOptions{SandboxOptions: codemode.SandboxOptions{Wasm: func() ([]byte, error) { return nil, errors.New("no wasm") }}})
+	failing := newInlineSandbox(t, codemode.InlineSandboxOptions{Wasm: func() ([]byte, error) { return nil, errors.New("no wasm") }})
 	result, err = failing.Execute(t.Context(), "return 1", codemode.ExecuteOptions{})
 	if err != nil || result.OK || result.Error == nil || result.Error.Kind != codemode.ErrorSandbox || result.Error.Message != "Failed to load QuickJS: no wasm" {
 		t.Fatalf("result = %+v (%+v), err = %v", result, result.Error, err)

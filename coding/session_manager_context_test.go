@@ -14,16 +14,16 @@ import (
 func TestContextSessionManagerIsTheLiveSessionThroughTheReadOnlyInterface(t *testing.T) {
 	h := newRecoveryHarness(t, harnessOptions{})
 	runner := h.session.currentRunner()
-	runner.BindCore(extension.ExtensionActions{}, extension.ContextActions{SessionManager: h.session.inner}, nil)
+	runner.BindCore(extension.ExtensionActions{}, extension.ContextActions{SessionManager: h.session.inner.Load()}, nil)
 	manager, err := runner.CreateCommandContext().SessionManager()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if manager.GetSessionId() != h.session.inner.GetSessionId() || manager.GetCwd() != h.session.inner.GetCwd() || manager.GetSessionDir() != h.session.inner.GetSessionDir() {
+	if manager.GetSessionId() != h.session.inner.Load().GetSessionId() || manager.GetCwd() != h.session.inner.Load().GetCwd() || manager.GetSessionDir() != h.session.inner.Load().GetSessionDir() {
 		t.Fatalf("identity = %q %q %q, want the session's own", manager.GetSessionId(), manager.GetCwd(), manager.GetSessionDir())
 	}
 	before := len(manager.GetEntries())
-	if err := h.session.inner.AppendEntry(map[string]any{"type": "custom", "id": "c1", "parentId": nil, "timestamp": "2026-01-01T00:00:00Z", "customType": "probe", "data": 1}); err != nil {
+	if err := h.session.inner.Load().AppendEntry(map[string]any{"type": "custom", "id": "c1", "parentId": nil, "timestamp": "2026-01-01T00:00:00Z", "customType": "probe", "data": 1}); err != nil {
 		t.Fatal(err)
 	}
 	entries := manager.GetEntries()

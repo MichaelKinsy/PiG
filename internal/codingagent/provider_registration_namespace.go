@@ -89,7 +89,7 @@ func legacyProviderInput(id string, config providerConfig) ProviderConfigInput {
 			input.OAuth.GetAPIKey = func(credential ai.Credential) string { return callbacks.GetAPIKey(credential.OAuthCredentials()) }
 		}
 		if callbacks.ModifyModels != nil {
-			input.OAuth.ModifyModels = func(models []*ai.Model, credential ai.Credential) []*ai.Model {
+			input.OAuth.ModifyModels = func(models []*ai.Model, credential ai.Credential) ([]*ai.Model, error) {
 				return callbacks.ModifyModels(models, credential.OAuthCredentials())
 			}
 		}

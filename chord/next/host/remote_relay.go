@@ -9,7 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/src/next/remote/relay.ts. Relayed holds (§4, §22, R1; decision "Relay flow control per origin"):
+// Ports packages/chord/src/remote/relay.ts. Relayed holds (§4, §22, R1; decision "Relay flow control per origin"):
 // a hold that arrived on one link (downstream) and that this host neither serves nor parses, held again on its path's
 // link (upstream) with the same id under its downstream origin's number there; messages are forwarded between the two
 // with the origin rewritten and parts untouched.

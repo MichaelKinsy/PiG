@@ -156,13 +156,17 @@ func (h *handler) txRun(t *hostTx, name string, op *jv.Object) {
 
 // txStorageRead asks the host's Storage to run one Pi Storage call (hook storageRead) that the operation makes before it
 // takes effect: session.ts #acquire loads the document with findDocument, and every record ID is minted with mintId. The
-// operation answers when the call completes, as the transaction callback's await does; a rejection answers the operation.
-func (h *handler) txStorageRead(t *hostTx, name string, op *jv.Object, method string, args any, done func()) {
+// operation answers when the call completes, as the transaction callback's await does; a rejection answers the operation. A call with nil args takes the one record ID id.
+func (h *handler) txStorageRead(t *hostTx, name string, op *jv.Object, method string, args any, id float64, done *bool) {
 	body := jv.NewObject()
 	body.Set("name", "storageRead")
 	body.Set("handler", float64(0))
 	body.Set("conversationId", float64(0))
 	body.Set("taskId", float64(0))
+	if args == nil {
+		// The calls that take one record ID.
+		args = []any{id}
+	}
 	body.Set("payload", jobj("method", method, "args", args))
 	h.startEffect(abi.EffectHook, jv.Append(nil, body), &pending{done: func(outcome uint8, payload []byte) {
 		if outcome != abi.OutcomeResult {
@@ -174,10 +178,14 @@ func (h *handler) txStorageRead(t *hostTx, name string, op *jv.Object, method st
 			}
 			return
 		}
-		done()
+		*done = true
 		h.txRun(t, name, op)
 	}})
 }
+
+// noStorageArgs are the arguments of a Storage call that takes none (mintId). It is read-only: the hook payload only reads it, so
+// every call shares the one object rather than allocating its own.
+var noStorageArgs = jv.NewObject()
 
 // requiredConversation is the conversation an operation requires to exist, or 0 when it names none (the operation then reports its own
 // error).
@@ -543,17 +551,25 @@ func (h *handler) txOp(t *hostTx, name string, op *jv.Object) (any, error) {
 	// transaction.ts #requireConversation: appendEntry, createTask and createSubmission read the conversation from the Storage first,
 	// unless this transaction created it.
 	if conv := requiredConversation(t, name, op); conv != 0 && !t.convDone && h.gated("conversation") && !tx.ConversationCreated(conv) {
-		h.txStorageRead(t, name, op, "conversation", []any{float64(conv)}, func() { t.convDone = true })
+		h.txStorageRead(t, name, op, "conversation", nil, float64(conv), &t.convDone)
 		return nil, errTxWaiting
 	}
 	if isMintOp(name) && !t.mintDone && h.gated("mintId") {
-		h.txStorageRead(t, name, op, "mintId", jv.NewObject(), func() { t.mintDone = true })
+		h.txStorageRead(t, name, op, "mintId", noStorageArgs, 0, &t.mintDone)
 		return nil, errTxWaiting
 	}
-	// transaction.ts conversation, entry and task read the record from the Storage (storage.conversation, entry, task) before they answer.
-	if (name == "conversation" || name == "entry" || name == "task") && !t.mintDone && h.gated(name) {
-		h.txStorageRead(t, name, op, name, []any{numOf(op, "id")}, func() { t.mintDone = true })
-		return nil, errTxWaiting
+	// transaction.ts conversation, entry, task, submission and submissionByRequest read the record from the Storage
+	// (storage.conversation, entry, task, submission, submissionByRequest) before they answer.
+	switch name {
+	case "conversation", "entry", "task", "submission", "submissionByRequest":
+		if !t.mintDone && h.gated(name) {
+			if name == "submissionByRequest" {
+				h.txStorageRead(t, name, op, name, []any{numOf(op, "conversationId"), strOf(op, "requestId")}, 0, &t.mintDone)
+			} else {
+				h.txStorageRead(t, name, op, name, nil, numOf(op, "id"), &t.mintDone)
+			}
+			return nil, errTxWaiting
+		}
 	}
 	id := session.ID(numOf(op, "id"))
 	nilRec := func(o *jv.Object, err error) (any, error) {
@@ -848,7 +864,7 @@ func (h *handler) txDoc(t *hostTx, op *jv.Object) (any, error) {
 	}
 	// session.ts #acquire: a document that is not in the Session's loaded cache is looked up in the Storage (findDocument) first.
 	if !hd.found && !hd.hasInitial && !hd.hasMigrate && h.gated("findDocument") && !h.sess.Loaded(def, args) {
-		h.txStorageRead(t, "doc", op, "findDocument", jobj("address", docAddress(op)), func() { hd.found = true })
+		h.txStorageRead(t, "doc", op, "findDocument", jobj("address", docAddress(op)), 0, &hd.found)
 		return nil, errTxWaiting
 	}
 	waitMint := false
@@ -884,7 +900,7 @@ func (h *handler) txDoc(t *hostTx, op *jv.Object) (any, error) {
 	}
 	host, err := t.tx.HostDoc(def, args, have, holds)
 	if waitMint {
-		h.txStorageRead(t, "doc", op, "mintId", jv.NewObject(), func() { t.mintDone = true })
+		h.txStorageRead(t, "doc", op, "mintId", noStorageArgs, 0, &t.mintDone)
 		return nil, errTxWaiting
 	}
 	if err != nil {

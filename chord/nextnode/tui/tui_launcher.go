@@ -46,8 +46,12 @@ type TerminalOptions struct {
 	// URL is the app's server (`http://127.0.0.1:8788`).
 	URL         string
 	Credentials TerminalCredentials
-	// Terminal is the terminal's input and output: the process's by default (raw mode while running, when a TTY).
-	Terminal Terminal
+	// Input is the terminal's input: the process's by default (raw mode while running, when it is a TTY: an Input that
+	// has SetRawMode(bool) error and IsTTY() bool, as Node's `setRawMode?` and `isTTY?`).
+	Input io.Reader
+	// Output is the terminal's output: the process's by default; an Output that has Columns() int, Rows() int and
+	// OnResize(func()) func() reports its size and resizes, as Node's `columns?`, `rows?` and the "resize" event.
+	Output io.Writer
 	// Colors is how many colours the terminal shows ("truecolor" or "256"): true colour when `COLORTERM` says so, else 256.
 	Colors string
 	// Mode is the terminal's background, choosing between the user's dark and light theme: "dark" by default.
@@ -128,9 +132,7 @@ func StartTerminal(ctx context.Context, options TerminalOptions) (*RunningTermin
 	if options.Node == "" {
 		options.Node = "node"
 	}
-	if options.Terminal == nil {
-		options.Terminal = &ProcessTerminal{}
-	}
+	terminal := terminalOf(options.Input, options.Output)
 	if options.Client == nil {
 		options.Client = http.DefaultClient
 	}
@@ -141,7 +143,7 @@ func StartTerminal(ctx context.Context, options TerminalOptions) (*RunningTermin
 	if err != nil {
 		return nil, err
 	}
-	output := options.Terminal.Output()
+	output := terminal.Output()
 	// What the launcher prints of the server's (the pairing's code) passes the output filter too.
 	say := func(line string) {
 		if filtered, err := FilterOutput(line); err == nil {
@@ -152,7 +154,7 @@ func StartTerminal(ctx context.Context, options TerminalOptions) (*RunningTermin
 	if err != nil {
 		return nil, err
 	}
-	launcher := newLauncher(ctx, base, token, options)
+	launcher := newLauncher(ctx, base, token, options, terminal)
 	if err := launcher.start(ctx); err != nil {
 		return nil, err
 	}
@@ -207,6 +209,8 @@ type Launcher struct {
 	// confirming is whether an action is being confirmed (one at a time), from its request to its end: meanwhile the sandbox's
 	// frames are held (held, at most maxHeld bytes), so nothing draws over the prompt, even before it appears.
 	confirming bool
+	// confirmDone is closed when the action being confirmed ended and its held frames were written (the claim made it).
+	confirmDone chan struct{}
 	// requests are the running sandbox's requests being answered (at most maxRequests).
 	requests   int
 	prompt     *prompt
@@ -218,10 +222,10 @@ type Launcher struct {
 	restoreSig func()
 }
 
-func newLauncher(parent context.Context, base *url.URL, token string, options TerminalOptions) *Launcher {
+func newLauncher(parent context.Context, base *url.URL, token string, options TerminalOptions, terminal Terminal) *Launcher {
 	ctx, cancel := context.WithCancel(parent)
 	return &Launcher{
-		base: base, token: token, options: options, term: options.Terminal, output: options.Terminal.Output(), client: options.Client,
+		base: base, token: token, options: options, term: terminal, output: terminal.Output(), client: options.Client,
 		ctx: ctx, cancel: cancel, events: make(chan func(), eventQueue), loopDone: make(chan struct{}), exited: make(chan int, 1),
 		sockets: map[int]*linkSocket{},
 	}
@@ -281,13 +285,13 @@ func (l *Launcher) rows() int {
 // start downloads the base bundle and the plugins, starts the sandbox and takes the terminal.
 func (l *Launcher) start(ctx context.Context) error {
 	//portlint:allow golifetime the loop ends with the launcher: finish ends it (loopDone) and every post and sync gives up once it is closed
-	go l.loop()
+	go l.loop() //portlint:allow asyncorder the loop is Node's single event loop (launcher.ts:147-283: every listener and #handle run on it); each post queues to it in order, and finish joins it (loopDone)
 	if err := l.startSandbox(ctx); err != nil {
 		l.cancel()
 		return err
 	}
 	//portlint:allow golifetime ends when the terminal's input closes (a stopped launcher closes it) and its posts are dropped once the loop ended
-	go l.readInput()
+	go l.readInput() //portlint:allow asyncorder launcher.ts:147 #onInput is stdin's data listener, an event with no ordering against other work; each chunk is posted to the loop, which orders it
 	// On the loop: a finish (the sandbox exited meanwhile) reads both, and must not see them half set, nor miss them.
 	l.sync(func() {
 		if l.finished {
@@ -366,56 +370,81 @@ func (l *Launcher) onResize() {
 	}
 }
 
-// finish ends the client with code: the terminal given back, the sockets closed, the sandbox ended.
-// finishAsync ends the client from the loop's own goroutine: finish waits for the loop, so it cannot run on it.
+// finishAsync ends the client from the loop, as Pi's `void this.finish(code)` does: the synchronous prefix (beginFinish: finished, the
+// terminal given back, RESET_MODES written, the sockets closed) runs now, in the caller's turn, so no event queued behind it is
+// handled before it (launcher.ts:207-218); what Pi awaits (the sandbox's termination, the exit) runs on a goroutine, because
+// endFinish waits for the loop, so it cannot run on it.
 func (l *Launcher) finishAsync(code int) {
-	//portlint:allow golifetime ends with finish, which closes loopDone and the sandbox; it runs once (the `finished` flag) and every post it makes is dropped once the loop ended
-	go l.finish(code)
+	sandbox, confirmed := l.beginFinish()
+	//portlint:allow golifetime ends with the launcher: it closes l.ctx, ends the sandbox and waits for the loop, which stops once finished is set
+	go l.endFinish(code, sandbox, confirmed) //portlint:allow asyncorder launcher.ts:219-220 `await this.#sandbox?.terminate(); this.#exit(code)` is the part of finish Pi awaits, after the synchronous prefix beginFinish ran on the loop; the exit code is delivered once (exited)
 }
 
 // outdatedAsync restarts the sandbox for a newer base bundle off the loop (it downloads).
 func (l *Launcher) outdatedAsync() {
 	//portlint:allow golifetime ends with the launcher: its downloads take l.ctx, which finish cancels
-	go l.outdated()
+	go l.outdated() //portlint:allow asyncorder launcher.ts:275 `void this.#outdated()` starts it unawaited, as here; it reads the loop's state through sync and restarts through the loop
 }
 
+// finish ends the client with code from outside the loop: the terminal given back, the sockets closed, the sandbox ended.
 func (l *Launcher) finish(code int) {
 	done := make(chan struct{})
 	var sandbox *Sandbox
+	var confirmed <-chan struct{}
 	l.post(func() {
 		defer close(done)
-		if l.finished {
-			return
-		}
-		l.finished = true
-		if l.stopResize != nil {
-			l.stopResize()
-		}
-		if l.restoreSig != nil {
-			l.restoreSig()
-		}
-		if l.term.IsTTY() {
-			_ = l.term.SetRaw(false)
-		}
-		if l.prompt != nil {
-			l.prompt.answer <- false
-			l.prompt = nil
-		}
-		_, _ = io.WriteString(l.output, resetModes)
-		l.closeSockets()
-		sandbox = l.sandbox
-		l.sandbox = nil
-		l.generation++
+		sandbox, confirmed = l.beginFinish()
 	})
 	select {
 	case <-done:
 	case <-l.loopDone:
 	}
+	l.endFinish(code, sandbox, confirmed)
+}
+
+// beginFinish is the synchronous prefix of Pi's finish (launcher.ts:207-218), on the loop: the launcher is finished, the terminal
+// given back, the open prompt answered no, RESET_MODES written, the sockets closed. It returns the sandbox to end, nil when the
+// launcher was finished already, and, when a prompt was open, the channel closed once its action ended and wrote the frames held meanwhile
+// (Pi's #confirm finally block runs after the answer, launcher.ts:376-383, before the sandbox's termination settles).
+func (l *Launcher) beginFinish() (*Sandbox, <-chan struct{}) {
+	if l.finished {
+		return nil, nil
+	}
+	l.finished = true
+	if l.stopResize != nil {
+		l.stopResize()
+	}
+	if l.restoreSig != nil {
+		l.restoreSig()
+	}
+	if l.term.IsTTY() {
+		_ = l.term.SetRaw(false)
+	}
+	var confirmed <-chan struct{}
+	if l.prompt != nil {
+		l.prompt.answer <- false
+		l.prompt = nil
+		confirmed = l.confirmDone
+	}
+	_, _ = io.WriteString(l.output, resetModes)
+	l.closeSockets()
+	sandbox := l.sandbox
+	l.sandbox = nil
+	l.generation++
+	return sandbox, confirmed
+}
+
+// endFinish is what Pi's finish awaits: the launcher's context ended, the sandbox terminated, the loop stopped, the answered prompt's action
+// ended, then the exit code.
+func (l *Launcher) endFinish(code int, sandbox *Sandbox, confirmed <-chan struct{}) {
 	l.cancel()
 	if sandbox != nil {
 		sandbox.Terminate()
 	}
 	<-l.loopDone
+	if confirmed != nil {
+		<-confirmed
+	}
 	select {
 	case l.exited <- code:
 	default:
@@ -500,7 +529,7 @@ func (l *Launcher) sandboxIs(sandbox *Sandbox) bool {
 // loop).
 func (l *Launcher) sandboxEndPost(generation int) {
 	//portlint:allow golifetime the post ends when the loop takes it or the loop ends (loopDone)
-	go l.post(func() { l.sandboxEnded(generation) })
+	go l.post(func() { l.sandboxEnded(generation) }) //portlint:allow asyncorder launcher.ts:244 the sandbox's exit callback `() => void this.finish(1)` is an event with no ordering against other work; the post is the ordering point: it queues to the loop, which checks the generation
 }
 
 // sandboxEnded is the sandbox's end (an exit, a crash, a malformed frame): the client ends with code 1.
@@ -511,6 +540,9 @@ func (l *Launcher) sandboxEnded(generation int) {
 }
 
 // message is one message of the sandbox; one the launcher fails on ends the client, never the launcher's process.
+// Pi's Sandbox delivers nothing once the launcher's finish called terminate(), which sets #ended in the same synchronous turn (sandbox.ts:200-203,
+// 216, 229): a message the sandbox sent after the one that ended the client, in the same chunk or a later one, is never handled. finished,
+// set by beginFinish in the caller's turn, is that point here; a message queued before it ran first, as Pi handled it when it was read.
 func (l *Launcher) message(generation int, message SandboxMessage) {
 	if generation != l.generation || l.finished {
 		return
@@ -581,7 +613,7 @@ func (l *Launcher) openSocket(id int) {
 	sandbox := l.sandbox
 	headers := http.Header{"Authorization": {"Bearer " + l.token}}
 	//portlint:allow golifetime the dial ends with its context, which close and finish cancel; what it dialed is handed to the loop, which closes it when the loop is gone
-	go func() {
+	go func() { //portlint:allow asyncorder launcher.ts:303-330 #openSocket: the WebSocket dials and reports through events; the dial's result is posted to the loop (dialed), which orders it against close
 		conn, _, err := webSocketDialer.DialContext(dialCtx, target.String(), headers) //nolint:bodyclose // gorilla/websocket hands back a handshake response whose body is already read and closed
 		if !l.post(func() { l.dialed(id, socket, sandbox, conn, err) }) && conn != nil {
 			_ = conn.Close()
@@ -604,9 +636,9 @@ func (l *Launcher) dialed(id int, socket *linkSocket, sandbox *Sandbox, conn *we
 	socket.open = true
 	sandbox.Post(LauncherMessage{Kind: "socket_opened", Socket: id})
 	//portlint:allow golifetime ends when the socket closes (close ends out and the connection), which the launcher's finish does for every socket
-	go socket.writeLoop()
+	go socket.writeLoop() //portlint:allow asyncorder launcher.ts:328-335 #send writes each frame to the socket as it arrives; writeLoop drains out in that order and ends when close ends out
 	//portlint:allow golifetime ends when the connection closes (close does, and the launcher's finish closes every socket)
-	go func() {
+	go func() { //portlint:allow asyncorder launcher.ts:317-329 the socket's message and close events: each message goes to the sandbox in read order, and the close is posted to the loop
 		for {
 			_, payload, err := conn.ReadMessage()
 			if err != nil {
@@ -700,10 +732,11 @@ func (l *Launcher) answer(id int, request BridgeRequest) {
 			return
 		}
 		l.confirming = true
+		l.confirmDone = make(chan struct{})
 	}
 	l.requests++
 	//portlint:allow golifetime a request answers once (at most maxRequests run); its downloads take l.ctx, which finish cancels, and its prompt ends with the loop (Ask returns false on loopDone)
-	go func() {
+	go func() { //portlint:allow asyncorder launcher.ts:272 `void this.#answer(...)` starts the request unawaited, as here; its claim on the prompt is ordered on the loop (requests, confirming) and its end is posted back to it
 		reply, err := l.reply(id, request)
 		if err != nil {
 			sandbox.Post(LauncherMessage{Kind: "refused", ID: id, Message: err.Error()})
@@ -760,22 +793,36 @@ func (l *Launcher) reply(id int, request BridgeRequest) (LauncherMessage, error)
 }
 
 // confirm runs the action run (it asks the user); the request claimed the prompt (`answer`, one at a time). Afterwards the held
-// frames are written and the sandbox asked to redraw.
+// frames are written and the sandbox asked to redraw. When the launcher finished meanwhile the loop has stopped: Pi's finally block still
+// writes the held frames (launcher.ts:376-383), after the RESET_MODES the loop wrote, and there is no sandbox to redraw.
 func (l *Launcher) confirm(run func() error) error {
+	done := l.confirmDone
+	defer close(done)
 	err := run()
+	ran := false
 	l.sync(func() {
-		l.confirming = false
-		held := l.held
-		l.held = nil
-		l.heldBytes = 0
-		for _, frame := range held {
-			l.write(frame)
-		}
-		if l.sandbox != nil {
-			l.sandbox.Post(LauncherMessage{Kind: "resize", Columns: l.columns(), Rows: l.rows()})
-		}
+		ran = true
+		l.flushHeld()
 	})
+	if !ran {
+		// The loop ended, so nothing else touches the launcher's state.
+		l.flushHeld()
+	}
 	return err
+}
+
+// flushHeld ends the confirmation: the frames held meanwhile are written, the sandbox asked to redraw.
+func (l *Launcher) flushHeld() {
+	l.confirming = false
+	held := l.held
+	l.held = nil
+	l.heldBytes = 0
+	for _, frame := range held {
+		l.write(frame)
+	}
+	if l.sandbox != nil {
+		l.sandbox.Post(LauncherMessage{Kind: "resize", Columns: l.columns(), Rows: l.rows()})
+	}
 }
 
 // launcherPrompt is the launcher's own prompt on the real terminal, for the action being confirmed: its key not the sandbox's.

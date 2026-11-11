@@ -113,7 +113,7 @@ func TestMarshalJSONIllFormedUTF8MatchesNode(t *testing.T) {
 			t.Fatal(err)
 		}
 		// The session's message entry appends its message's members into the line (json.StringifyAppender) rather than compacting them.
-		entry := sessionentry.MessageEntry{SessionEntryBase: sessionentry.SessionEntryBase{Type: "message", ID: "e", Timestamp: "t"},
+		entry := sessionentry.MessageEntry{Type: "message", ID: "e", Timestamp: "t",
 			Message: agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: agent.RoleAssistant, API: ai.APIOpenAICompletions, Provider: "p",
 				ModelID: "m", StopReason: ai.StopReasonToolUse, Timestamp: 1, Content: content}}}
 		entryLine, err := jsstring.AppendMarshalJSON(nil, entry)

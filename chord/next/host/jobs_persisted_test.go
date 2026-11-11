@@ -26,7 +26,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/test/next/jobs/persisted.test.ts: persisted jobs (slice 6b §4, D5-D8, R3): run records and state
+// Ports packages/chord/test/jobs/persisted.test.ts: persisted jobs (slice 6b §4, D5-D8, R3): run records and state
 // documents in the object's store, every transition of §4.2 across a crash (the store closed under a live host, reopened
 // by a new one), the clean stop and the close writer, a seal and its retry, the restart limit and its reset, the finish
 // failure count, a stored abort, deferred state.
@@ -38,9 +38,9 @@ import (
 // test's end. `RETENTION_MS` and `vi.spyOn(Residency.prototype, "touch")` are `documents.RetentionMs` on the host's
 // virtual loop and a check of what the run states are (the spy has no Go form).
 //
-// pi: packages/chord/src/next/jobs/persisted.ts
-// pi: packages/chord/src/next/jobs/run-states.ts
-// pi: packages/chord/src/next/jobs/stored.ts
+// pi: packages/chord/src/jobs/persisted.ts
+// pi: packages/chord/src/jobs/run-states.ts
+// pi: packages/chord/src/jobs/stored.ts
 
 var jobImportProgress = mustDefineState(documents.DefineState("import.progress", documents.StateOptions{
 	Schema:  contracts.Obj(contracts.Prop("done", contracts.Int())),

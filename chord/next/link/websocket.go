@@ -2,7 +2,7 @@ package link
 
 import "sync"
 
-// Ports packages/chord/src/next/link/websocket.ts. WebSocket links (§3): a link over a WebSocket, the browser's or
+// Ports packages/chord/src/link/websocket.ts. WebSocket links (§3): a link over a WebSocket, the browser's or
 // `ws` in Node, typed structurally; binary frames, messages sent while it still connects buffered until it opens.
 
 // WebSocketEvent names the events a link listens for.

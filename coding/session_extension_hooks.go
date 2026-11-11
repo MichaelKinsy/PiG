@@ -14,6 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
+	"github.com/MichaelKinsy/PiG/internal/boundarywire"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 )
@@ -72,9 +73,9 @@ func (s *Session) toolCallHook(ctx context.Context, toolCallID, parentToolCallID
 	}
 	beforeValues, _ := json.Marshal(input)
 	event := extension.CustomToolCallEvent{
-		ToolCallEventBase: extension.ToolCallEventBase{Type: icodingagent.EventToolCall, ToolCallID: toolCallID, ParentToolCallID: parentToolCallID, WireInput: wireInput},
-		ToolName:          toolName,
-		Input:             input,
+		Type: icodingagent.EventToolCall, ToolCallID: toolCallID, ParentToolCallID: parentToolCallID, WireInput: wireInput,
+		ToolName: toolName,
+		Input:    input,
 	}
 	result, err := runner.EmitToolCall(ctx, event)
 	if err != nil {
@@ -128,19 +129,17 @@ func (s *Session) toolResultHook(ctx context.Context, toolCallID, parentToolCall
 		details = json.RawMessage("null")
 	}
 	hookResult, err := runner.EmitToolResult(ctx, extension.CustomToolResultEvent{
-		ToolResultEventBase: extension.ToolResultEventBase{
-			Type:              icodingagent.EventToolResult,
-			ToolCallID:        toolCallID,
-			ParentToolCallID:  parentToolCallID,
-			Input:             input,
-			WireInput:         args,
-			Content:           icodingagent.ToolResultEventContent(result),
-			StructuredContent: result.StructuredContent,
-			IsError:           result.IsError,
-			Usage:             toolResultEventUsage(result.Usage),
-		},
-		ToolName: toolName,
-		Details:  details,
+		Type:              icodingagent.EventToolResult,
+		ToolCallID:        toolCallID,
+		ParentToolCallID:  parentToolCallID,
+		Input:             input,
+		WireInput:         args,
+		Content:           icodingagent.ToolResultEventContent(result),
+		StructuredContent: result.StructuredContent,
+		IsError:           result.IsError,
+		Usage:             toolResultEventUsage(result.Usage),
+		ToolName:          toolName,
+		Details:           details,
 	})
 	if err != nil || hookResult == nil {
 		return agent.AfterToolCallResult{}
@@ -171,7 +170,7 @@ func (s *Session) contextWithSystemPhase(ctx context.Context, runner *inproc.Run
 	if !runner.HasHandlers(icodingagent.EventContextWithSystem) {
 		return messages, nil
 	}
-	return runner.EmitContextWithSystem(ctx, messages)
+	return runner.EmitContextWithSystem(boundarywire.WithContextEncodings(ctx, &s.contextWithSystemEncodings), messages)
 }
 
 func (s *Session) contextPhase(ctx context.Context, runner *inproc.Runner, messages []agent.AgentMessage) ([]agent.AgentMessage, error) {
@@ -187,7 +186,7 @@ func (s *Session) contextPhase(ctx context.Context, runner *inproc.Runner, messa
 		}
 		visible = append(visible, message)
 	}
-	returned, replaced, err := runner.EmitContextTracked(ctx, visible)
+	returned, replaced, err := runner.EmitContextTracked(boundarywire.WithContextEncodings(ctx, &s.contextEncodings), visible)
 	if err != nil {
 		return nil, err
 	}
@@ -446,7 +445,7 @@ func (s *Session) bindExtensionCommandActions(runner *inproc.Runner) {
 		runner.BindTools(extension.ContextActions{
 			GetAllTools: s.GetAllTools, GetActiveTools: s.ActiveToolNames,
 			SetActiveTools: s.SetActiveToolsByName, RefreshTools: s.RefreshTools, GetSystemPrompt: s.systemPrompt,
-			GetModel: func() extension.Model { return s.Model() }, SessionManager: s.inner,
+			GetModel: func() extension.Model { return s.Model() }, SessionManager: s.inner.Load(),
 			ModelRegistry: s.ModelRegistry(), IsIdle: s.IsIdle, HasPendingMessages: s.HasPendingMessages, GetSignal: s.Signal,
 			SendUserMessage: s.SendExtensionUserMessage,
 			ToolActions:     s.ToolActions(),
@@ -470,7 +469,7 @@ func (s *Session) ReloadExtensions(extensions []extension.Extension, runtime ...
 	if len(runtime) > 0 {
 		extensionRuntime = runtime[0]
 	}
-	runner := NewExtensionRunner(extensions, extensionRuntime, s.services.CWD(), s.inner, s.services.Registry())
+	runner := NewExtensionRunner(extensions, extensionRuntime, s.services.CWD(), s.inner.Load(), s.services.Registry())
 	s.bindExtensionCore(runner)
 	s.ReplaceRunner(runner)
 	if previous != nil {

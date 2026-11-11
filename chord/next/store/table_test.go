@@ -9,13 +9,13 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Ports packages/chord/test/next/store/table.test.ts: `defineTable` (slice 6a §5): what a declaration materializes,
+// Ports packages/chord/test/store/table.test.ts: `defineTable` (slice 6a §5): what a declaration materializes,
 // the checks it makes, and its fingerprint.
 //
 // Also the helpers of the query lane's tests (table, expression, evaluate, query, history, evolve and migration
 // tests): qDefine, qEvolve, qEqual, qFails, qJSON.
 //
-// Designed out: nothing (every case is ported; the type-level `@ts-expect-error` and `expectTypeOf` lines of the
+// Designed out: nothing (every case is ported, the `keys` case as a run-time check; the type-level `@ts-expect-error` and `expectTypeOf` lines of the
 // other files are noted there).
 
 // qDefine is DefineTable, failing the test on its error.
@@ -29,7 +29,7 @@ func qDefine(t testing.TB, name string, options TableOptions) *TableDefinition {
 }
 
 // qEvolve is EvolveTable, failing the test on its error.
-func qEvolve(t testing.TB, previous *TableDefinition, edit func(e *TableEditor) *TableEditor) *TableDefinition {
+func qEvolve(t testing.TB, previous *TableDefinition, edit func(e *TableEditor) TableTailEditor) *TableDefinition {
 	t.Helper()
 	definition, err := EvolveTable(previous, edit)
 	if err != nil {
@@ -148,4 +148,64 @@ func TestDefineTable(t *testing.T) {
 			t.Fatalf("another json schema keeps the fingerprint")
 		}
 	})
+}
+
+// Ports packages/chord/test/store/table.test.ts "keys › type an int() key column as a number and a str() one as a string
+// (tutorial, 2026-11-03)". Pi checks it with the types (KeyOf); a Go key is a Row, so the codec checks it when the key is
+// used: an int() column takes a number, a str() one a string, and each refuses the other.
+func TestKeysTypeAnIntKeyColumnAsANumberAndAStrOneAsAString(t *testing.T) {
+	byNumber := qDefine(t, "by_number", TableOptions{
+		Version: 1, Columns: []ColumnProp{Col("id", Int()), Col("text", Str())}, Key: []string{"id"},
+	})
+	key, err := byNumber.Rows.Key(Row{"id": 7}, "get")
+	if err != nil {
+		t.Fatalf("Key({id: 7}) on an int() key: %v", err)
+	}
+	qEqual(t, key.ID, "[7]")
+	_, err = byNumber.Rows.Key(Row{"id": "7"}, "get")
+	qFails(t, err, `key column "id"`)
+
+	mixed := qDefine(t, "mixed", TableOptions{
+		Version: 1, Columns: tableColumns(), Key: []string{"id", "at"},
+	})
+	key, err = mixed.Rows.Key(Row{"id": "a", "at": 1}, "get")
+	if err != nil {
+		t.Fatalf("Key({id: a, at: 1}) on a str() and an int() key: %v", err)
+	}
+	qEqual(t, key.ID, `["a",1]`)
+	_, err = mixed.Rows.Key(Row{"id": 1, "at": 1}, "get")
+	qFails(t, err, `key column "id"`)
+	_, err = mixed.Rows.Key(Row{"id": "a", "at": "1"}, "get")
+	qFails(t, err, `key column "at"`)
+}
+
+// A TableDefinition keeps what NewTableDefinition was given: its columns by name (ByName, Column), its Indexes and, for a table
+// built with one, the Evolution it came about by; a base has no Evolution.
+func TestTableDefinitionKeepsItsColumnsIndexesAndEvolutionAfterNewTableDefinition(t *testing.T) {
+	var _ *TableDefinition // the type whose fields these are
+	indexes := IndexRecords{{Name: "by_path", Columns: []string{"path", "at"}}}
+	base, err := NewTableDefinition("edits", TableOptions{Version: 1, Columns: tableColumns(), Key: []string{"id"}, Indexes: indexes}, nil)
+	if err != nil {
+		t.Fatalf("NewTableDefinition: %v", err)
+	}
+	qEqual(t, base.Indexes, indexes)
+	if base.Evolution != nil {
+		t.Fatalf("a base has Evolution %+v, want none", base.Evolution)
+	}
+	if len(base.ByName) != 5 || base.ByName["path"].Name != "path" {
+		t.Fatalf("ByName = %v, want the five columns by name", base.ByName)
+	}
+	at, err := base.Column("at", "test")
+	if err != nil || at.Name != "at" {
+		t.Fatalf("Column(at) = %+v, %v", at, err)
+	}
+	_, err = base.Column("nope", "test")
+	qFails(t, err, `no column "nope"`)
+	next, err := NewTableDefinition("edits", TableOptions{Version: 2, Columns: tableColumns(), Key: []string{"id"}, Indexes: indexes}, &Evolution{Previous: base})
+	if err != nil {
+		t.Fatalf("NewTableDefinition(evolution): %v", err)
+	}
+	if next.Evolution == nil || next.Evolution.Previous != base {
+		t.Fatalf("Evolution = %+v, want the version before it", next.Evolution)
+	}
 }

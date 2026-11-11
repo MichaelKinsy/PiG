@@ -1,0 +1,7 @@
+### Added
+
+- A provider config's `oauth.modifyModels`, `refreshModels` and `oauth.usesCallbackServer` now work from Go, Rust, Python, Lisp and Node extensions, as in Pi 1.5.0. `modifyModels` runs in the extension with the provider's chat models and the stored OAuth credential (Go `OAuthProvider.ModifyModels`, Rust `modify_models`, Python `modify_models`, Lisp `:modify-models`) and its error is the model listing's error. `refreshModels` runs in the extension with Pi's refresh context and its `context.publish({persist, update})` calls reach the host's refresh (Go `ProviderConfig["refreshModels"]` as `sdk.ProviderRefreshModelsFunc`, Rust `ProviderOperations::refresh_models`, Python `config["refreshModels"]`, Lisp the `"refreshModels"` config key). `usesCallbackServer` is forwarded to the registered config and, as in Pi, changes nothing. Before, the host dropped all three. <!-- feat: sdkprovidergaps -->
+
+### Changed
+
+- Go: `coding/extension.ProviderOAuth.ModifyModels` and `ExtensionOAuthConfig.ModifyModels` now return `([]Model, error)` so a failing hook is the model listing's error, as the exception of Pi's synchronous hook is. Rust: `OAuthProvider` has the new public fields `modify_models` and `uses_callback_server`; build one with `OAuthProvider::new(name, login)` and set the optional capabilities, since a struct literal without the new fields no longer compiles. <!-- feat: sdkprovidergaps -->

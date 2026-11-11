@@ -219,6 +219,7 @@ func hasCode(err error, code data.ChordErrorCode) bool {
 	return ok
 }
 
+// Ports ctx.test.ts › ctx.trace (packages/chord/test/host/ctx.test.ts:267, `ctx.trace("app.step", ...)`).
 func TestCtxTraceRunsFnInAChildSpanOfTheHandlersWithAChildCtxTheSamePrincipalSignalAndReferences(t *testing.T) {
 	recorder := telemetry.NewInMemoryTelemetryContext()
 	var outer, inner Ctx
@@ -439,7 +440,7 @@ func TestNativeSpansMarkACloseThatFailedFailed(t *testing.T) {
 // --- who a span was for (principalAttributes) ---------------------------------------------------------------------------
 
 // whoMethodSpan is the attributes of the chord.method span of a call to a host acting as u1, recording on recorder.
-func whoMethodSpan(t *testing.T, recorder *telemetry.InMemoryTelemetryContext, hook func(data.Principal) telemetry.SpanAttributes) telemetry.RecordedTelemetrySpan {
+func whoMethodSpan(t *testing.T, recorder *telemetry.InMemoryTelemetryContext, hook PrincipalAttributes) telemetry.RecordedTelemetrySpan {
 	t.Helper()
 	host := newHost(t, HostOptions{
 		Principal: delta.JsonObjectOf("kind", "user", "id", "u1", "name", "Ada"), Telemetry: recorder,
@@ -570,4 +571,39 @@ func TestServeOptionsStartNoMethodSpanForATypeServedUntraced(t *testing.T) {
 	if !reflect.DeepEqual(types, []any{"app.loud"}) {
 		t.Errorf("chord.method types = %v, want [app.loud]", types)
 	}
+}
+
+// attempt.ts call: `span.endWhen(running.promise, "method_failed", callContext.abortSignal)` ends the chord.method span with the
+// handler's own promise, not with the caller's `awaitWithContext`: a caller whose context aborted leaves, the span stays open
+// while the handler runs on, and a handler that returns normally after the abort ends it `ok`.
+func TestMethodSpanEndsWithTheHandlerNotWithACallerThatLeftAtAnAbortAHandlerReturningAfterItEndsItOk(t *testing.T) {
+	recorder := telemetry.NewInMemoryTelemetryContext()
+	started, proceed := newSignal(), newSignal()
+	host := tracedHost(t, recorder, func(ctx Ctx) (any, error) {
+		started.fire()
+		proceed.await(t, ctx)
+		return float64(1), nil
+	}, nil)
+	ref := mustGet(t, host, tracedType, jsonObject())
+	tracedUnder(t, recorder, "caller", func(base context.Context) {
+		caller, cancel := chordctx.WithCancel(base)
+		called := make(chan error, 1)
+		go func() { _, err := ref.Call("work", nil, caller); called <- err }()
+		started.wait(t)
+		cancel(errors.New("gone"))
+		if err := receive(t, called); err == nil || err.Error() != "gone" {
+			t.Fatalf("call error = %v, want gone", err)
+		}
+	})
+	turn(host)
+	if method := spanWhere(t, recorder, "chord.method", map[string]any{"type": "app.traced"}); method.Settled {
+		t.Errorf("the method span ended at the caller's abort while the handler still runs")
+	}
+	proceed.fire()
+	scopeEventually(t, "the method span to end with the handler", func() bool { return allSettled(recorder, "chord.method") })
+	method := spanWhere(t, recorder, "chord.method", map[string]any{"type": "app.traced"})
+	if outcome, _ := method.Attributes.Get("outcome"); outcome != "ok" || method.Status.Status != telemetry.SpanStatusCodeOK {
+		t.Errorf("method span outcome %v status %+v, want ok: the handler returned normally", outcome, method.Status)
+	}
+	closeHosts(t, host)
 }

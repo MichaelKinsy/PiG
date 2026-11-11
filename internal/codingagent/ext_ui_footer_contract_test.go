@@ -40,8 +40,8 @@ func TestSetExtensionFooterFollowsUpstreamOrder(t *testing.T) {
 	ui, mode, renders := newFooterProbe()
 	mode.statusLine.SetExtensionStatus("key", "status text")
 	var log []string
-	first := &recordingFooter{widthComponent: widthComponent{prefix: "f1:"}, log: &log, id: "first"}
-	second := &recordingFooter{widthComponent: widthComponent{prefix: "f2:"}, log: &log, id: "second"}
+	first := &recordingFooter{prefix: "f1:", log: &log, id: "first"}
+	second := &recordingFooter{prefix: "f2:", log: &log, id: "second"}
 
 	before := *renders
 	ui.SetFooter(nil)

@@ -65,6 +65,17 @@ class RaceCoverageTests(unittest.TestCase):
         self.assertEqual(0, run_gate(files, "rest ./sdk\n").returncode)
         self.assertEqual(1, run_gate(files, "rest ./sdk/x\n").returncode)
 
+    def test_workspace_marker_is_for_a_nested_module_only(self):
+        files = {"go.mod": "module m\n", "sdk/go.mod": "module sdk\n", "sdk/x/a.go": SPAWNER, "sdk/x/a_test.go": TEST}
+        self.assertEqual(0, run_gate(files, "rest ./sdk workspace\n").returncode)
+        self.assertEqual(1, run_gate(self.base, "ai ./owner workspace\n").returncode)
+        result = run_gate(files, "rest ./sdk anything else\n")
+        self.assertEqual(1, result.returncode)
+        self.assertIn("empty or `workspace`", result.stderr)
+
+    def test_exempt_reason_may_be_workspace_text(self):
+        self.assertEqual(0, run_gate(self.base, "exempt ./owner workspace only\n").returncode)
+
     def test_test_only_files_are_ignored(self):
         files = {"go.mod": "module m\n", "p/a.go": "package p\n", "p/a_test.go": SPAWNER}
         self.assertEqual(0, run_gate(files, "").returncode)

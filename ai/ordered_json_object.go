@@ -3,12 +3,14 @@ package ai
 import (
 	"bytes"
 	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"io"
 	"strconv"
 	"unicode/utf16"
 
+	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
@@ -22,40 +24,37 @@ type jsonMember struct {
 // readJSONObjectMembers returns the members of a JSON object in the order the text has them; as with JavaScript's JSON.parse, a repeated key keeps its first
 // position with its last value. A Go map has no order, so a request body that has to leave exactly as Pi writes it is edited member by member.
 func readJSONObjectMembers(data []byte) ([]jsonMember, error) {
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	token, err := decoder.Token()
+	decoder := jsontext.NewDecoder(bytes.NewReader(data), jsonopts.Parse)
+	token, err := decoder.ReadToken()
 	if err != nil {
 		return nil, err
 	}
-	if delimiter, ok := token.(json.Delim); !ok || delimiter != '{' {
+	if token.Kind() != '{' {
 		return nil, errors.New("not a JSON object")
 	}
 	var members []jsonMember
 	index := map[string]int{}
-	for decoder.More() {
-		keyToken, err := decoder.Token()
+	for decoder.PeekKind() != '}' {
+		name, err := jsonopts.ReadName(decoder) // the JavaScript key: "\ud800" and "\ud801" stay two keys, as in JSON.parse
 		if err != nil {
 			return nil, err
 		}
-		key, ok := keyToken.(string)
-		if !ok {
-			return nil, errors.New("not a JSON object")
-		}
-		var value json.RawMessage
-		if err := decoder.Decode(&value); err != nil {
+		value, err := decoder.ReadValue()
+		if err != nil {
 			return nil, err
 		}
-		if at, seen := index[key]; seen {
-			members[at].value = value
+		raw := json.RawMessage(bytes.Clone(value))
+		if at, seen := index[name]; seen {
+			members[at].value = raw
 			continue
 		}
-		index[key] = len(members)
-		members = append(members, jsonMember{key: key, value: value})
+		index[name] = len(members)
+		members = append(members, jsonMember{key: jsonopts.ValidName(name), value: raw})
 	}
-	if _, err := decoder.Token(); err != nil {
+	if _, err := decoder.ReadToken(); err != nil {
 		return nil, err
 	}
-	if _, err := decoder.Token(); !errors.Is(err, io.EOF) {
+	if _, err := decoder.ReadToken(); !errors.Is(err, io.EOF) {
 		return nil, errors.New("trailing data after the JSON object")
 	}
 	return members, nil

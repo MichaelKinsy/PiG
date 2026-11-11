@@ -278,6 +278,39 @@ def test_provider_config_implementations_are_declared_and_run_in_the_extension()
         host.close()
 
 
+def test_oauth_provider_registration_carries_modify_models_and_uses_callback_server() -> None:
+    """types.ts:1930, 2026, 2034: the OAuth declaration flags modifyModels and usesCallbackServer, the model declaration of the same name carries refreshModels; modifyModels runs in the extension on the host's oauth_modify_models request and an exception is the request's error."""
+
+    def modify(models: list[dict[str, Any]], credentials: pig_sdk.OAuthCredentials) -> list[dict[str, Any]]:
+        if credentials.access == "boom":
+            raise RuntimeError("modify boom")
+        return [{**model, "name": f"{model['name']}+{credentials.access}"} for model in reversed(models) if model["id"] != "drop"]
+
+    ext = pig_sdk.Extension("py-oauth-models")
+    ext.register_provider("dyn", {"baseUrl": "https://dyn.test/v1", "refreshModels": lambda context: None})
+    ext.register_oauth_provider(
+        "dyn",
+        {},
+        pig_sdk.OAuthProvider(name="Dyn", login=lambda callbacks: pig_sdk.OAuthCredentials(access="login"), modify_models=modify, uses_callback_server=True),
+    )
+    host = _host(ext)
+    try:
+        providers = host.register["providers"]
+        assert len(providers) == 2, providers
+        assert providers[0]["refresh_models"] is True and "refreshModels" not in providers[0]["config"], providers[0]
+        assert providers[0]["config"]["baseUrl"] == "https://dyn.test/v1"
+        oauth = providers[1]["config"]["oauth"]
+        assert oauth["has_modify_models"] is True and oauth["usesCallbackServer"] is True, oauth
+
+        models = [{"id": "a", "name": "A"}, {"id": "drop", "name": "Drop"}, {"id": "b", "name": "B"}]
+        _, response = _drive(host, "mm-1", {"method": "oauth_modify_models", "tool": "dyn", "args": {"models": models, "credentials": {"access": "tok", "refresh": "", "expires": 0}}})
+        assert [(model["id"], model["name"]) for model in response["response"]["result"]["models"]] == [("b", "B+tok"), ("a", "A+tok")], response
+        _, response = _drive(host, "mm-2", {"method": "oauth_modify_models", "tool": "dyn", "args": {"models": models, "credentials": {"access": "boom", "refresh": "", "expires": 0}}})
+        assert "modify boom" in response["response"]["error"]["message"], response
+    finally:
+        host.close()
+
+
 def test_provider_re_registration_keeps_implementations_it_does_not_redefine() -> None:
     """model-runtime.ts registerProvider merges a re-registration's defined values, so a second registration without images keeps the first's; the host keeps the APIs it wired."""
     ran: list[str] = []

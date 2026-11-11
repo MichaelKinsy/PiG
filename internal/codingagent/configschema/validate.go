@@ -7,13 +7,15 @@ package configschema
 import (
 	"bytes"
 	"cmp"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"fmt"
 	"math"
 	"slices"
 	"strconv"
 	"strings"
 	"unicode/utf16"
+
+	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 )
 
 type jsonKind uint8
@@ -39,37 +41,34 @@ type jsonNode struct {
 }
 
 func parseJSONNode(data []byte) (jsonNode, error) {
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.UseNumber()
+	decoder := jsontext.NewDecoder(bytes.NewReader(data), jsonopts.Parse)
 	return parseJSONValue(decoder)
 }
 
-func parseJSONValue(decoder *json.Decoder) (jsonNode, error) {
-	token, err := decoder.Token()
+func parseJSONValue(decoder *jsontext.Decoder) (jsonNode, error) {
+	token, err := decoder.ReadToken()
 	if err != nil {
 		return jsonNode{}, err
 	}
-	switch value := token.(type) {
-	case json.Delim:
-		if value == '[' {
-			node := jsonNode{kind: jsonArray}
-			for decoder.More() {
-				item, err := parseJSONValue(decoder)
-				if err != nil {
-					return jsonNode{}, err
-				}
-				node.items = append(node.items, item)
-			}
-			_, err := decoder.Token()
-			return node, err
-		}
-		node := jsonNode{kind: jsonObject, fields: map[string]jsonNode{}}
-		for decoder.More() {
-			keyToken, err := decoder.Token()
+	switch token.Kind() {
+	case '[':
+		node := jsonNode{kind: jsonArray}
+		for decoder.PeekKind() != ']' {
+			item, err := parseJSONValue(decoder)
 			if err != nil {
 				return jsonNode{}, err
 			}
-			key := keyToken.(string)
+			node.items = append(node.items, item)
+		}
+		_, err := decoder.ReadToken()
+		return node, err
+	case '{':
+		node := jsonNode{kind: jsonObject, fields: map[string]jsonNode{}}
+		for decoder.PeekKind() != '}' {
+			key, err := jsonopts.ReadName(decoder) // the JavaScript key, not Token.String(): see jsonopts.ReadName
+			if err != nil {
+				return jsonNode{}, err
+			}
 			item, err := parseJSONValue(decoder)
 			if err != nil {
 				return jsonNode{}, err
@@ -79,21 +78,23 @@ func parseJSONValue(decoder *json.Decoder) (jsonNode, error) {
 			}
 			node.fields[key] = item
 		}
-		if _, err := decoder.Token(); err != nil {
+		if _, err := decoder.ReadToken(); err != nil {
 			return jsonNode{}, err
 		}
 		node.keys = jsKeyOrder(node.keys)
 		return node, nil
-	case string:
-		return jsonNode{kind: jsonString, text: value}, nil
-	case json.Number:
-		number, err := strconv.ParseFloat(string(value), 64)
+	case '"':
+		return jsonNode{kind: jsonString, text: token.String()}, nil
+	case '0':
+		number, err := strconv.ParseFloat(token.String(), 64)
 		if err != nil && !math.IsInf(number, 0) {
 			return jsonNode{}, err
 		}
 		return jsonNode{kind: jsonNumber, number: number}, nil
-	case bool:
-		return jsonNode{kind: jsonBool, number: map[bool]float64{true: 1}[value]}, nil
+	case 't':
+		return jsonNode{kind: jsonBool, number: 1}, nil
+	case 'f':
+		return jsonNode{kind: jsonBool}, nil
 	}
 	return jsonNode{kind: jsonNull}, nil
 }

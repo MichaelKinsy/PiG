@@ -19,24 +19,6 @@ snippet = "go func() {"
 
 [[hit]]
 check = "asyncorder"
-file = "coding/cli/rpc_mode_runtime.go"
-func = "rpcHost.bind"
-snippet = "go func() {"
-
-[[hit]]
-check = "asyncorder"
-file = "coding/session.go"
-func = "NewSession"
-snippet = "go sess.forwardAgentEvents()"
-
-[[hit]]
-check = "asyncorder"
-file = "internal/codingagent/model_tasks.go"
-func = "ModelRegistry.CloseModelTasks"
-snippet = "go models.Close()"
-
-[[hit]]
-check = "asyncorder"
 file = "mcp/client.go"
 func = "Client.startRequest"
 snippet = "go func() {"
@@ -2989,12 +2971,6 @@ snippet = "data, err := json.Marshal(object)"
 
 [[hit]]
 check = "mapkeyorder"
-file = "internal/codingagent/interactive_radius_mcp.go"
-func = "radiusMcpServerConfig"
-snippet = "auth, err := json.Marshal(map[string]string{\"provider\": providerID})"
-
-[[hit]]
-check = "mapkeyorder"
 file = "internal/codingagent/keybindings.go"
 func = "KeybindingsManager.Save"
 snippet = "if err := enc.Encode(out); err != nil {"
@@ -3307,18 +3283,6 @@ snippet = "port := int(*aux.CallbackPort)"
 
 [[hit]]
 check = "numbers"
-file = "coding/extension/mcp_servers.go"
-func = "validateOAuth"
-snippet = "if err := json.Unmarshal(v, &n); err != nil || len(v) == 0 || v[0] == '\"' || n != float64(int(n)) || n < 1 || n > 65535 {"
-
-[[hit]]
-check = "numbers"
-file = "coding/extension/mcp_servers.go"
-func = "validateOAuth"
-snippet = "port, hasPort = int(n), true"
-
-[[hit]]
-check = "numbers"
 file = "coding/mcpext/cli.go"
 func = "mcpCLI.login"
 snippet = "delay := time.Duration(timeoutMs * float64(time.Millisecond))"
@@ -3337,27 +3301,9 @@ snippet = "perServer = min(maxServerDescriptionChars, (MaxServersSectionChars-si
 
 [[hit]]
 check = "numbers"
-file = "coding/mcpext/oauth.go"
-func = "newCallbackSettings"
-snippet = "p, _ := strconv.Atoi(u.Port)"
-
-[[hit]]
-check = "numbers"
-file = "coding/mcpext/oauth.go"
-func = "SignInMcpServer"
-snippet = "if p, err := strconv.Atoi(u.Port); err == nil && p != 0 {"
-
-[[hit]]
-check = "numbers"
 file = "coding/mcpext/runtime.go"
 func = "Connection.Timeout"
 snippet = "return time.Duration(seconds * float64(time.Second))"
-
-[[hit]]
-check = "numbers"
-file = "coding/mcpext/tools.go"
-func = "LimitMcpContent"
-snippet = "tokens := (truncation.TotalBytes + 3) / 4"
 
 [[hit]]
 check = "numbers"
@@ -4812,12 +4758,6 @@ snippet = "return encoded[0:8] + \"-\" + encoded[8:12] + \"-\" + encoded[12:16] 
 
 [[hit]]
 check = "utf16units"
-file = "codemode/declarations.go"
-func = "resolveRef"
-snippet = "for segment := range strings.SplitSeq(ref[2:], \"/\") {"
-
-[[hit]]
-check = "utf16units"
 file = "codemode/source.go"
 func = "ParseCodemodeSource"
 snippet = "options, err := parseOptions(jsstring.Trim(trimmed[len(CodemodeOptionsPrefix):]))"
@@ -4851,24 +4791,6 @@ check = "utf16units"
 file = "coding/mcpext/runtime.go"
 func = "expandHome"
 snippet = "return filepath.Join(home, value[2:])"
-
-[[hit]]
-check = "utf16units"
-file = "coding/mcpext/tools.go"
-func = "CreateMcpToolName"
-snippet = "if len(name) <= maxToolNameLength && (isTaken == nil || !isTaken(name)) {"
-
-[[hit]]
-check = "utf16units"
-file = "coding/mcpext/tools.go"
-func = "CreateMcpToolName"
-snippet = "hash := hex.EncodeToString(digest[:])[:8]"
-
-[[hit]]
-check = "utf16units"
-file = "coding/mcpext/tools.go"
-func = "CreateMcpToolName"
-snippet = "return name[:min(len(name), maxToolNameLength-len(hash)-1)] + \"_\" + hash"
 
 [[hit]]
 check = "utf16units"
@@ -6066,48 +5988,6 @@ check = "ctxbackground"
 file = "durable/session/sessiontest/support.go"
 func = "CreateConversation"
 snippet = "id, err := durable.Commit(context.Background(), kernel, func(tx durable.Tx) (durable.ConversationId, error) {"
-
-[[hit]]
-check = "ctxbackground"
-file = "chord/sqlite/node/node.go"
-func = "NewDatabaseSync"
-snippet = "conn, err := db.Conn(context.Background())"
-
-[[hit]]
-check = "ctxbackground"
-file = "chord/sqlite/node/node.go"
-func = "NewDatabaseSync"
-snippet = "context.Background(), fmt.Sprintf(\"PRAGMA busy_timeout = %d\", max(options.TimeoutMs, 0)),"
-
-[[hit]]
-check = "ctxbackground"
-file = "chord/sqlite/node/node.go"
-func = "DatabaseSync.Exec"
-snippet = "_, err = conn.ExecContext(context.Background(), sqlText)"
-
-[[hit]]
-check = "ctxbackground"
-file = "chord/sqlite/node/node.go"
-func = "DatabaseSync.Prepare"
-snippet = "statement, err := conn.PrepareContext(context.Background(), sqlText)"
-
-[[hit]]
-check = "ctxbackground"
-file = "chord/sqlite/node/node.go"
-func = "StatementSync.Run"
-snippet = "_, err := statement.statement.ExecContext(context.Background(), params...)"
-
-[[hit]]
-check = "ctxbackground"
-file = "chord/sqlite/node/node.go"
-func = "StatementSync.EachText"
-snippet = "rows, err := statement.statement.QueryContext(context.Background(), params...)"
-
-[[hit]]
-check = "ctxbackground"
-file = "chord/sqlite/node/node.go"
-func = "StatementSync.query"
-snippet = "rows, err := statement.statement.QueryContext(context.Background(), params...)"
 
 [[hit]]
 check = "ctxbackground"

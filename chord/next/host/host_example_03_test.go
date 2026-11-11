@@ -1,6 +1,6 @@
 package host
 
-// pi: packages/chord/test/next/examples/03-derives.ts
+// pi: packages/chord/test/examples/03-derives.ts
 
 import (
 	"context"

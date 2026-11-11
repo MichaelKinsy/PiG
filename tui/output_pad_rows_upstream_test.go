@@ -78,7 +78,7 @@ func TestOutputPadRendersAtZeroAndOne(t *testing.T) {
 			Component
 			SetOutputPad(int)
 		} {
-			c := NewCompactionSummaryMessageComponent(CompactionSummaryMessage{Summary: "summary", TokensBefore: 10}, nil, 0)
+			c := NewCompactionSummaryMessageComponent(CompactionSummaryMessage{Summary: "summary", TokensBefore: 10}, nil, 0, nil, "", "")
 			return c
 		}},
 	} {

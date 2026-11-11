@@ -1,4 +1,4 @@
-// Package data ports packages/chord/src/next/data: Chord's errors and plugin errors, principals, per-call checks of
+// Package data ports packages/chord/src/data: Chord's errors and plugin errors, principals, per-call checks of
 // params and arguments, and how a plugin's open reports a broken configuration.
 package data
 
@@ -11,7 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Ports packages/chord/src/next/data/errors.ts.
+// Ports packages/chord/src/data/errors.ts.
 
 // ProtocolVersion is the version of the error table below on links; adding or moving a code or reason bumps it.
 const ProtocolVersion = 1
@@ -186,6 +186,16 @@ func (err *PluginError) Error() string { return err.Message }
 // Invalid returns an `invalid` error with the given reason; details is optional.
 func Invalid(reason ChordErrorReason, message string, details ...delta.JsonValue) *ChordError {
 	init := ChordErrorInit{Code: CodeInvalid, Reason: reason, Message: message}
+	if len(details) > 0 {
+		init.Details, init.HasDetails = details[0], true
+	}
+	return NewChordError(init, nil)
+}
+
+// Forbidden returns a `forbidden` error without a reason: what a plugin or an `authorize` returns for a principal it
+// refuses (`revoked` is Chord's own, for a revoked authority); details is optional.
+func Forbidden(message string, details ...delta.JsonValue) *ChordError {
+	init := ChordErrorInit{Code: CodeForbidden, Message: message}
 	if len(details) > 0 {
 		init.Details, init.HasDetails = details[0], true
 	}

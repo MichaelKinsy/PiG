@@ -10,7 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// Ports packages/chord/src/next/host/host.ts (Position, HostError, GetOptions): the data types of the host that its helper
+// Ports packages/chord/src/host/host.ts (Position, HostError, GetOptions): the data types of the host that its helper
 // files name. D5b declares them ahead of the host core (DESIGN-go-layout.md section 5); the host port does not redeclare
 // them. Pi's `HostOptions`, `LinkOptions`, `Host` and `createHost` are the host core's.
 

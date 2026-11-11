@@ -1,5 +1,7 @@
 package telemetryingest_test
 
+// pi: packages/chord/src/telemetry-ingest/recorder.ts
+
 import (
 	"slices"
 	"testing"
@@ -114,7 +116,7 @@ func TestRecorderQueuesIngestedSpansAndMergesIngestedMetricRowsWithinItsBounds(t
 	other := span
 	other.ID = "w:2"
 	metric := telemetry.StoredMetric{Name: "m", Kind: telemetry.TelemetryMetricKindCounter, Count: 1, Sum: 2, Min: 2, Max: 2}
-	queued := recorder.Ingest(telemetryingest.Batch{Spans: []telemetry.StoredSpan{span, other}, Metrics: []telemetry.StoredMetric{metric, metric}})
+	queued := recorder.Ingest(telemetryingest.TelemetryBatch{Spans: []telemetry.StoredSpan{span, other}, Metrics: []telemetry.StoredMetric{metric, metric}})
 	if queued != 1 || recorder.DroppedSpans() != 1 {
 		t.Fatalf("queued %d dropped %d", queued, recorder.DroppedSpans())
 	}

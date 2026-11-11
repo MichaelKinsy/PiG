@@ -287,7 +287,9 @@ type Host struct {
 	xref               xrefHub
 	// providerConfigRefs maps a provider to the xref of its effective registered configuration root in the owning Node realm.
 	providerConfigRefs map[string]providerConfigRef
-	eventBus           hostEventBus
+	// configRefreshes holds the publish callback of each running config-form refreshModels request (providerRefreshModels), keyed by connection and request.
+	configRefreshes sync.Map
+	eventBus        hostEventBus
 	// loopTurns holds each forwarded loop turn until every recipient took it (forwardLoopTurned).
 	loopTurns loopTurns
 	// childSessions holds the child agent sessions each connection created (child_session.go).
@@ -3210,7 +3212,7 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 		h.fusedLog.export()
 		hostConn, extConn := newFusedConn()
 		serve := me.inProcServe
-		go func() {
+		go func() { //portlint:allow asyncorder serve is the fused extension's own process half: it runs the extension's factory and frame loop in this process (loader.ts:625-645 initializeExtension awaits factory(load.api)); the fused connection is its only link to the host and orders every frame
 			if err := serve(extConn); err != nil && extCtx.Err() == nil {
 				fmt.Fprintf(os.Stderr, "extension %s (fused): %v\n", me.config.Name, err)
 			}
@@ -3379,7 +3381,7 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 	// status is captured so the crash path can tell a real crash
 	// (non-zero/signal) from a clean, intentional exit(0).
 	stderrLog := me.stderrLog
-	go func() {
+	go func() { //portlint:allow asyncorder the reaper waits for the child (cmd.Wait) and closes exitedCh, which the crash path and Shutdown join through me.exited(); Pi has no counterpart (Node reaps its children itself)
 		me.waitErr = cmd.Wait()
 		stderrLog.closeWriter()
 		_ = processTree.Close()
@@ -3773,8 +3775,11 @@ func validateRegisterPayload(expectedName string, reg *RegisterPayload) error {
 	if reg.Flags, err = lastRegistrationWins("flag", reg.Flags, func(f FlagDecl) string { return f.Name }); err != nil {
 		return err
 	}
-	if reg.Providers, err = lastRegistrationWins("provider", reg.Providers, func(p ProviderDecl) string { return p.Name }); err != nil {
-		return err
+	// Pi queues every registerProvider call of the load in an array (loader.ts:221-231, where unregisterProvider also filters the name's entries out) and applies each in order through the registry (runner.ts:471-487, agent-session-services.ts:158-169), which merges defined values over the earlier registration (model-runtime.ts:965-986), so every declaration of a name is kept here and queued in order; only an empty name is refused. Tools, commands, shortcuts, flags and renderers are Maps in Pi's loader, hence lastRegistrationWins above and below.
+	for _, provider := range reg.Providers {
+		if provider.Name == "" {
+			return errors.New("provider name is required")
+		}
 	}
 	for _, provider := range reg.Providers {
 		if provider.Native != nil && provider.Native.ID != provider.Name {
@@ -3975,13 +3980,14 @@ func (h *Host) buildExtension(me *managedExt, reg *RegisterPayload) *extension.E
 
 	if reg.MarkdownTransformer {
 		proxy := &markdownTransformProxy{conn: func() *Conn { return me.current().connection() }, inactivity: rendererInactivity}
-		ext.MarkdownTransformer = proxy.transform
+		var messageTypes []extension.MarkdownMessageType
 		if reg.MarkdownMessageTypes != nil {
-			ext.MarkdownMessageTypes = make([]extension.MarkdownMessageType, 0, len(*reg.MarkdownMessageTypes))
+			messageTypes = make([]extension.MarkdownMessageType, 0, len(*reg.MarkdownMessageTypes))
 			for _, messageType := range *reg.MarkdownMessageTypes {
-				ext.MarkdownMessageTypes = append(ext.MarkdownMessageTypes, extension.MarkdownMessageType(messageType))
+				messageTypes = append(messageTypes, extension.MarkdownMessageType(messageType))
 			}
 		}
+		ext.MarkdownTransformer = extension.NewMarkdownTransformerRegistration(proxy.transform, messageTypes)
 	}
 
 	// Build event handlers.
@@ -4533,7 +4539,7 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 		}
 		if len(args) > 0 && !streamed && !encoded {
 			var err error
-			argsJSON, err = marshalEventWire(boundaryEventWire(wireEventPayload(args[0]), boundaryWire))
+			argsJSON, err = marshalEventWireIn(parent, boundaryEventWire(wireEventPayload(args[0]), boundaryWire))
 			if err != nil {
 				return nil, fmt.Errorf("marshal event args: %w", err)
 			}
@@ -4742,7 +4748,7 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 func (h *Host) goHandleIncoming(me *managedExt, conn *Conn) {
 	conn.incoming.Store(&incomingLoop{ended: make(chan struct{})})
 	//portlint:allow golifetime the loop ends with its connection, which the host closes before it stops the extension, and Shutdown waits for the loop through Conn.awaitIncomingEnded
-	go func() {
+	go func() { //portlint:allow asyncorder the loop is recorded on the connection before it runs (conn.incoming) and Shutdown joins it through Conn.awaitIncomingEnded
 		defer conn.endIncoming()
 		h.handleIncoming(me, conn)
 	}()

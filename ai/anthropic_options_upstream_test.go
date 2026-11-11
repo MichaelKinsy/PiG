@@ -120,6 +120,8 @@ func TestAnthropicUpstreamTemperatureCompat(t *testing.T) {
 		{"omits temperature for Claude Opus 4.8", "claude-opus-4-8", 0, false},
 		// .upstream/v0.87.1/packages/ai/test/anthropic-temperature-compat.test.ts:80
 		{"omits default temperature for Claude Opus 4.7", "claude-opus-4-7", 1, false},
+		// .upstream/current/packages/ai/test/anthropic-temperature-compat.test.ts:86 (Pi c23b9ec1)
+		{"omits temperature for Claude Sonnet 5", "claude-sonnet-5", 0, false},
 		// .upstream/v0.87.1/packages/ai/test/anthropic-temperature-compat.test.ts:86
 		{"keeps temperature for Claude Opus 4.6", "claude-opus-4-6", 0, true},
 		// .upstream/v0.87.1/packages/ai/test/anthropic-temperature-compat.test.ts:92

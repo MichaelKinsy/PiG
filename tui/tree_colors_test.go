@@ -53,7 +53,7 @@ func TestTreeRenderBranchLabelUsesWarningOutsideSelectedContent(t *testing.T) {
 	SetTheme("dark")
 	th := ActiveTheme()
 	root := &fakeNode{id: "r", kids: []TreeNode{
-		&fakeNodeWithBranchLabel{fakeNode: fakeNode{id: "u", label: th.Accent + "user: " + SGRFgReset + "hello"}, branchLabel: "milestone"},
+		&fakeNodeWithBranchLabel{id: "u", label: th.Accent + "user: " + SGRFgReset + "hello", branchLabel: "milestone"},
 	}}
 	ts := NewTreeSelectorComponent("", root)
 	lines := ts.Render(80)

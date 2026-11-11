@@ -11,7 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Ports packages/chord/src/next/store/import.ts
+// Ports packages/chord/src/store/import.ts
 //
 // `ImportStore(backend, parts, ctx, options)` (slice 6a §13, rules 12, 24, 25): a store made from an archive, a trust
 // boundary. Every part is checked against the archive schema, its place in the archive's order and its content

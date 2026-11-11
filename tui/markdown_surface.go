@@ -1,6 +1,10 @@
 package tui
 
-import "context"
+import (
+	"context"
+
+	"github.com/MichaelKinsy/PiG/coding/extension/markdowntransform"
+)
 
 // MarkdownSurface is the display-only Markdown transform of a message component whose body Pi renders from a Markdown source with a header of its own
 // (custom messages, skill blocks, branch and compaction summaries). The component's owner passes it to the component's constructor, as Pi hands the
@@ -67,4 +71,18 @@ func withHeader(async *AsyncMarkdownTransform, header string) *AsyncMarkdownTran
 		return func(ctx context.Context) string { return header + run(ctx) }
 	}
 	return &headed
+}
+
+// transformerSurface is the surface of createMarkdownTransform(messageType, false, markdownTransformers, messageId, timestamp): the zero surface when
+// there are no transformers, as Pi's chain of none leaves the Markdown as it is.
+func transformerSurface(messageType markdowntransform.MarkdownMessageType, transformers []markdowntransform.MarkdownTransformer, messageID, timestamp string) MarkdownSurface {
+	if len(transformers) == 0 {
+		return MarkdownSurface{}
+	}
+	return MarkdownSurface{Transform: markdowntransform.CreateMarkdownTransform(messageType, false, transformers, messageID, timestamp)}
+}
+
+// summarySurface is [transformerSurface] for a branch or compaction summary.
+func summarySurface(transformers []markdowntransform.MarkdownTransformer, messageID, timestamp string) MarkdownSurface {
+	return transformerSurface(markdowntransform.MarkdownMessageSummary, transformers, messageID, timestamp)
 }

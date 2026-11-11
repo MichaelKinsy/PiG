@@ -794,20 +794,18 @@ func TestExtensionAPIToolEventsCarryParentAndStructuredContentGo(t *testing.T) {
 		t.Run(placement, func(t *testing.T) {
 			h := newExtensionAPIHarness(t, placement)
 			if _, err := h.runner.EmitToolCall(t.Context(), extension.CustomToolCallEvent{
-				ToolCallEventBase: extension.ToolCallEventBase{Type: "tool_call", ToolCallID: "call-1/1", ParentToolCallID: "call-1"}, ToolName: "helper", Input: map[string]any{},
+				Type: "tool_call", ToolCallID: "call-1/1", ParentToolCallID: "call-1", ToolName: "helper", Input: map[string]any{},
 			}); err != nil {
 				t.Fatal(err)
 			}
 			if _, err := h.runner.EmitToolCall(t.Context(), extension.CustomToolCallEvent{
-				ToolCallEventBase: extension.ToolCallEventBase{Type: "tool_call", ToolCallID: "call-2"}, ToolName: "echo", Input: map[string]any{},
+				Type: "tool_call", ToolCallID: "call-2", ToolName: "echo", Input: map[string]any{},
 			}); err != nil {
 				t.Fatal(err)
 			}
 			result, err := h.runner.EmitToolResult(t.Context(), extension.CustomToolResultEvent{
-				ToolResultEventBase: extension.ToolResultEventBase{
-					Type: "tool_result", ToolCallID: "call-1/1", ParentToolCallID: "call-1", Input: map[string]any{},
-					Content: []any{map[string]any{"type": "text", "text": "helped"}}, StructuredContent: json.RawMessage(`{"n":3}`),
-				},
+				Type: "tool_result", ToolCallID: "call-1/1", ParentToolCallID: "call-1", Input: map[string]any{},
+				Content: []any{map[string]any{"type": "text", "text": "helped"}}, StructuredContent: json.RawMessage(`{"n":3}`),
 				ToolName: "helper",
 			})
 			if err != nil {

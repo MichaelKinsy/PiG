@@ -11,6 +11,9 @@ import (
 	"testing"
 
 	"github.com/evanw/esbuild/pkg/api"
+
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/build"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // Ports packages/chord/test/node/plugins/base-inputs.test.ts (p3 step 0a): the hash a record keeps, the one read that
@@ -18,7 +21,7 @@ import (
 
 // Ports base-inputs.test.ts "hashes bytes with SHA-256, and records a file's bytes as it reads them".
 func TestBaseInputsHashBytesWithSHA256AndRecordAFilesBytesAsItReadsThem(t *testing.T) {
-	if got := ContentHash([]byte("abc")); got != sha256Hex("abc") {
+	if got := model.ContentHash([]byte("abc")); got != sha256Hex("abc") {
 		t.Fatalf("ContentHash = %s", got)
 	}
 	dir := t.TempDir()
@@ -26,12 +29,12 @@ func TestBaseInputsHashBytesWithSHA256AndRecordAFilesBytesAsItReadsThem(t *testi
 	if err := os.WriteFile(file, []byte("export const a = 1;"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	recorder := NewRecorder()
+	recorder := build.NewRecorder()
 	bytes, err := recorder.Read(file)
 	if err != nil || string(bytes) != "export const a = 1;" {
 		t.Fatalf("Read = %q, %v", bytes, err)
 	}
-	want := BaseInputs{file: ContentHash(bytes)}
+	want := model.BaseInputs{file: model.ContentHash(bytes)}
 	if got := recorder.Inputs(); !maps.Equal(got, want) {
 		t.Fatalf("inputs = %v, want %v", got, want)
 	}
@@ -67,7 +70,7 @@ func TestBaseInputsRecordedSourcesLoadEveryFileWithEsbuildsOwnLoaderAndRecordEac
 		return texts
 	}
 	plain := built()
-	recorder := NewRecorder()
+	recorder := build.NewRecorder()
 	if recorded := built(recorder.Plugin()); !slices.Equal(recorded, plain) {
 		t.Fatalf("recorded outputs differ from plain ones:\n%q\n%q", recorded, plain)
 	}
@@ -92,18 +95,18 @@ func TestBaseInputsRecordedSourcesLoadEveryFileWithEsbuildsOwnLoaderAndRecordEac
 func TestHashFilesGivesEachFilesHashInOrderAndNothingForAnUnreadableOne(t *testing.T) {
 	dir := t.TempDir()
 	var files, want []string
-	for i := range 3*maxComparers + 1 {
+	for i := range 3*model.MaxComparers + 1 {
 		file := filepath.Join(dir, "f"+strconv.Itoa(i)+".ts")
 		text := "export const n = " + strconv.Itoa(i) + ";"
 		if err := os.WriteFile(file, []byte(text), 0o644); err != nil {
 			t.Fatal(err)
 		}
 		files = append(files, file)
-		want = append(want, ContentHash([]byte(text)))
+		want = append(want, model.ContentHash([]byte(text)))
 	}
 	files = append(files, filepath.Join(dir, "gone.ts"), dir)
 	want = append(want, "", "")
-	got := hashFiles(files)
+	got := model.HashFiles(files)
 	if len(got) != len(want) {
 		t.Fatalf("%d hashes for %d files", len(got), len(files))
 	}
@@ -112,7 +115,7 @@ func TestHashFilesGivesEachFilesHashInOrderAndNothingForAnUnreadableOne(t *testi
 			t.Errorf("hash of %s = %q, want %q", files[i], got[i], want[i])
 		}
 	}
-	if got := hashFiles(nil); len(got) != 0 {
+	if got := model.HashFiles(nil); len(got) != 0 {
 		t.Errorf("hashes of no file = %v", got)
 	}
 }

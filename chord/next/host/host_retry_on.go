@@ -9,7 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// Ports packages/chord/src/next/host/retry-on.ts. Wake signals (slice 8 §3, D2): `self.retryOn(...sources)`. The object
+// Ports packages/chord/src/host/retry-on.ts. Wake signals (slice 8 §3, D2): `self.retryOn(...sources)`. The object
 // follows each declared source while it lives, replaced by each attempt's declaration; a new value of a source wakes it
 // (the object decides what a wake does: a retry while failed, remembered while it activates, nothing while live). Failures
 // of a source wake nothing.

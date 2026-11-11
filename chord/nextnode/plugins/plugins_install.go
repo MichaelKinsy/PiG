@@ -20,9 +20,10 @@ import (
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
-// Ports packages/chord/src/next-node/plugins/install.ts. Installing (slice 7c §5, decision "Slice 7c's points" (3); slice 12
+// Ports packages/chord/src/node/plugins/install.ts. Installing (slice 7c §5, decision "Slice 7c's points" (3); slice 12
 // §5, decision "`chord.plugins` is a package's manifest of plugins"): a plugin's npm dependencies as coding-agent installs a
 // package's (`npm install` in the plugin's real directory without dev dependencies, host peers or lifecycle scripts; the
 // command overridable), and new plugins from git (a shallow clone of a ref) or npm (a packed tarball extracted), each staged
@@ -45,7 +46,7 @@ type InstallPluginOptions struct {
 	// Kinds are the app's facet kinds: a package whose top has a facet file is one plugin (none by default).
 	Kinds []string
 	// Roots are every root of the app: a new plugin named like one in any of them is refused (`[root]` when nil).
-	Roots []PluginRoot
+	Roots []model.PluginRoot
 }
 
 // PluginSource is where InstallPlugin installs from: a git repository at a ref (a branch, tag or commit), or an npm package.
@@ -65,8 +66,8 @@ var installArgs = []string{"install", "--omit=dev", "--legacy-peer-deps", "--ign
 // --legacy-peer-deps --ignore-scripts --no-audit --no-fund` in its real directory; git dependencies with a ref are npm's).
 // It blocks until the command ends and returns an error carrying the command's output when it fails, and the abort's reason
 // (context.Cause) when ctx aborts (the command is killed). A single-file plugin has nothing to install.
-func InstallDependencies(plugin Plugin, ctx context.Context, options InstallOptions) error {
-	if plugin.Layout == LayoutFile {
+func InstallDependencies(plugin model.Plugin, ctx context.Context, options InstallOptions) error {
+	if plugin.Layout == model.LayoutFile {
 		return errors.New(`plugin "` + plugin.Name + `": a single-file plugin has no package.json`)
 	}
 	command, prefix, err := npmCommandOf(options)
@@ -128,7 +129,7 @@ func InstallPlugin(source PluginSource, root string, ctx context.Context, option
 			err = &os.LinkError{Op: "rename", Old: staged, New: made.target, Err: err}
 			return nil, err
 		}
-		discovery, err := DiscoverPackage(made.target, atRoot(root, options), ctx)
+		discovery, err := model.DiscoverPackage(made.target, atRoot(root, options), ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -179,7 +180,7 @@ func removeStaleStaging(root string) error {
 	for _, entry := range entries {
 		names = append(names, entry.Name())
 	}
-	slices.SortFunc(names, compareUTF16)
+	slices.SortFunc(names, model.CompareUTF16)
 	for _, name := range names {
 		if !strings.HasPrefix(name, stagingPrefix) {
 			continue
@@ -274,14 +275,14 @@ func claim(root, name string) (claimed, error) {
 }
 
 // atRoot is the root a package is discovered as part of.
-func atRoot(root string, options InstallPluginOptions) RootContext {
-	return RootContext{Root: root, Required: false, Kinds: options.Kinds}
+func atRoot(root string, options InstallPluginOptions) model.RootContext {
+	return model.RootContext{Root: root, Required: false, Kinds: options.Kinds}
 }
 
 // checkPackage checks the package staged at staged (going to target): discovery reports no problem in it, finds a plugin,
 // and none of its plugins' names is taken in the app's roots.
 func checkPackage(staged, target, root string, ctx context.Context, options InstallPluginOptions) error {
-	discovery, err := DiscoverPackage(staged, atRoot(root, options), ctx)
+	discovery, err := model.DiscoverPackage(staged, atRoot(root, options), ctx)
 	if err != nil {
 		return err
 	}
@@ -294,14 +295,14 @@ func checkPackage(staged, target, root string, ctx context.Context, options Inst
 	}
 	roots := options.Roots
 	if roots == nil {
-		roots = []PluginRoot{{Path: root}}
+		roots = []model.PluginRoot{{Path: root}}
 	}
-	installed, err := DiscoverPlugins(roots, DiscoveryOptions{Kinds: options.Kinds}, ctx)
+	installed, err := model.DiscoverPlugins(roots, model.DiscoveryOptions{Kinds: options.Kinds}, ctx)
 	if err != nil {
 		return err
 	}
 	for _, plugin := range discovery.Plugins {
-		if i := slices.IndexFunc(installed.Plugins, func(each Plugin) bool { return each.Name == plugin.Name }); i >= 0 {
+		if i := slices.IndexFunc(installed.Plugins, func(each model.Plugin) bool { return each.Name == plugin.Name }); i >= 0 {
 			return errors.New(`installPlugin: plugin "` + plugin.Name + `" is in ` + installed.Plugins[i].Dir + " already")
 		}
 	}
@@ -441,6 +442,7 @@ func unpack(name, version, dir string, ctx context.Context, options InstallOptio
 // name instead, which that destructuring cannot read; this reads the first member of an object the same way, so one
 // install works with either npm.
 func packedTarball(output, what string) (string, error) {
+	// pig divergence (D501): an object keyed by package name (npm 12's `pack --json`) is read as the list is; Pi's destructuring rejects it.
 	value, err := delta.DecodeJson([]byte(output))
 	if err != nil {
 		return "", err

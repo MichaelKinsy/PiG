@@ -10,7 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/store"
 )
 
-// Ports packages/chord/src/next/documents/slot.ts
+// Ports packages/chord/src/documents/slot.ts
 //
 // Document slots (slice 6a §1.2): one per declared document name on its object, across the object's attempts. A slot
 // holds the documents' trackers, the version and definition its values are of, what is stored of persisted ones, and

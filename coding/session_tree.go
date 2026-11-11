@@ -76,22 +76,22 @@ type treeBranchSummary struct {
 // The caller holds s.mu.
 func (s *Session) moveTreeLeaf(targetID string, newLeafID *string, summary *treeBranchSummary, label string) (string, error) {
 	if summary != nil && summary.Summary != "" {
-		summaryID, err := s.inner.BranchWithSummary(newLeafID, summary.Summary, summary.Details, summary.FromExtension, summary.Usage)
+		summaryID, err := s.inner.Load().BranchWithSummary(newLeafID, summary.Summary, summary.Details, summary.FromExtension, summary.Usage)
 		if err != nil {
 			return "", err
 		}
 		if label != "" {
-			if _, err := s.inner.AppendLabelChange(summaryID, &label); err != nil {
+			if _, err := s.inner.Load().AppendLabelChange(summaryID, &label); err != nil {
 				return summaryID, err
 			}
 		}
 		return summaryID, nil
 	}
-	if err := s.inner.SetLeafID(newLeafID); err != nil {
+	if err := s.inner.Load().SetLeafID(newLeafID); err != nil {
 		return "", err
 	}
 	if label != "" {
-		_, err := s.inner.AppendLabelChange(targetID, &label)
+		_, err := s.inner.Load().AppendLabelChange(targetID, &label)
 		return "", err
 	}
 	return "", nil
@@ -110,7 +110,7 @@ func (s *Session) branchSummaryEntry(id string) *BranchSummaryEntry {
 	if id == "" {
 		return nil
 	}
-	entry, ok := s.inner.GetEntry(id)
+	entry, ok := s.inner.Load().GetEntry(id)
 	if !ok || entry.Base().Type != "branch_summary" {
 		return nil
 	}
@@ -175,7 +175,7 @@ func (s *Session) emitSessionTree(ctx context.Context, newLeafID, oldLeafID *str
 		NewLeafID: newLeafID,
 		OldLeafID: oldLeafID,
 	}
-	if entry, ok := s.inner.GetEntry(summaryID); ok {
+	if entry, ok := s.inner.Load().GetEntry(summaryID); ok {
 		if entry.Base().Type == "branch_summary" {
 			// As upstream casts the entry without validating it, one whose JSON does not decode reaches the handlers with its base members only.
 			summary, decoded := entry.(icodingagent.BranchSummaryEntry)

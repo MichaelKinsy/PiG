@@ -187,7 +187,7 @@ func TestPortableSQLiteFacadeSettlement(t *testing.T) {
 		mustDo(t, err)
 		connection := &prepareCountingDatabaseSync{DatabaseSync: raw, prepareCounts: map[string]int{}}
 		raw.ObservePrepare(connection.count)
-		storage, err := durablesqlite.Open(NewNodeSqliteDatabase(raw))
+		storage, err := durablesqlite.Open(NewNodeSqliteDatabase(raw, ""))
 		mustDo(t, err)
 		_, err = durabletest.CommitWrites(background, storage, []durable.StorageWrite{rootWrite()})
 		mustDo(t, err)
@@ -429,7 +429,7 @@ func yieldGoroutine() { runtime.Gosched() }
 func TestNewNodeSqliteDatabaseAdaptsADatabaseSync(t *testing.T) {
 	raw, err := NewDatabaseSync(":memory:", DatabaseSyncOptions{})
 	mustDo(t, err)
-	database := NewNodeSqliteDatabase(raw)
+	database := NewNodeSqliteDatabase(raw, "")
 	storage, err := durablesqlite.Open(database)
 	mustDo(t, err)
 	_, err = durabletest.CommitWrites(background, storage, []durable.StorageWrite{rootWrite()})

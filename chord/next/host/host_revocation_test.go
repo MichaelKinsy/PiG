@@ -22,7 +22,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 )
 
-// Ports packages/chord/test/next/host/revocation.test.ts for the part that needs no host: `revocation keys`. Upstream runs
+// Ports packages/chord/test/host/revocation.test.ts for the part that needs no host: `revocation keys`. Upstream runs
 // its two cases through createHost (host.revoke, a RawPeer of hold messages), which belongs to the host core; these are own
 // tests of revocationKeys with the behavior each of them asserts: the keys are computed once per principal object and
 // compared as canonical JSON ("are computed once per principal object, compared as canonical JSON"), and the cache keeps
@@ -216,6 +216,7 @@ func revokedWire(message string) *delta.JsonObject {
 func goneOf(peer *RawPeer) *link.GoneMessage { return peer.Next("gone").(*link.GoneMessage) }
 
 // Mirrors revocation.test.ts "revocation keys › are computed once per principal object, compared as canonical JSON".
+// Calls `host.revoke(revocation, context)` as packages/chord/test/host/host.test.ts:1847 does (`host.revoke("S1", withTelemetry(span, context))`).
 func TestHostRevocationKeysAreComputedOncePerPrincipalObjectComparedAsCanonicalJSON(t *testing.T) {
 	var mu sync.Mutex
 	calls := 0

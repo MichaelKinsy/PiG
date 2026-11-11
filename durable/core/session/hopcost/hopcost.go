@@ -83,10 +83,12 @@ const (
 	Delta
 )
 
-// Action is the merged document action of one document ID in a commit (SqliteStorage.prepareDocumentActions,
-// storage.ts:674-719): its create or copy, its content and its retire.
+// Action is the merged document action of one document ID in a commit (SqliteStorage.prepareDocumentActions, sqlite/commit.ts): its
+// create or copy, its content and its retire.
 type Action struct {
-	// Create is set for a document.create or document.copy write: the action inserts the documents row.
+	// Doc identifies the document within the call: the actions of one document in different batches share it.
+	Doc int64
+	// Create is set for a document.create or document.copy write: the action inserts the documents row and claims the ID.
 	Create bool
 	// Copy is set for a document.copy: the content is the materialized source document.
 	Copy bool
@@ -94,26 +96,19 @@ type Action struct {
 	Content Content
 	// Retire is set when a document.retire write names the document.
 	Retire bool
-	// CurrentOnly is storage.ts isCurrentOnly of the document record: its revisions are replaced, not kept.
+	// CurrentOnly is sqlite/rows.ts isCurrentOnly of the document record: its revisions are replaced, not kept.
 	CurrentOnly bool
-	// KnownAddress is set when an earlier action of the commit already looked up this document's address (liveCounts, storage.ts:721-770).
-	KnownAddress bool
 }
 
 // Writes is one batch of a Storage.commit call: the StorageWrite batch one job's commit made.
 type Writes struct {
-	// Tables counts the conversation, entry, task and submission writes.
-	Tables int
-	// DocCreates counts the document.create and document.copy writes: each claims its ID in checkGlobalIds.
-	DocCreates int
-	// DocEdits counts the document.change and document.retire writes.
-	DocEdits int
+	// Conversations, Entries, Tasks and Submissions count the table writes of the batch; each kind claims its record IDs.
+	Conversations, Entries, Tasks, Submissions int
 	// Actions are the merged document actions in write order.
 	Actions []Action
-	// Refused is set for a batch Durable's own checks refuse in checkGlobalIds (an ID that is taken, storage.ts:754-772): the
-	// number of claiming writes checked up to and including the refused one. The batch writes nothing and ends the call; only the
-	// last batch of a call can be refused.
-	Refused int
+	// Refused is set for a batch Durable's own checks refuse in memory (CommitState.check): the batch writes nothing and ends the call; only
+	// the last batch of a call can be refused.
+	Refused bool
 }
 
 // Commit is the ticks from the call of Storage.commit(batches) to its caller's resumption through the Session's guard: the
@@ -132,36 +127,30 @@ func CommitCall(p Profile, batches []Writes) (receive, resume int) {
 	return resume - CommitTail(p), resume
 }
 
-// IDReadLead is the ticks from the Storage's read of its ID counter to the COMMIT of the call (SqliteStorage.commit, storage.ts:249-253):
-// candidateNextId(writes) reads the counter once the last stored batch is applied, so an ID a job mints until then is in the next_id the
-// call writes. After the read come the checks of the refused batch the call ends in, if it does, then `await writeMetadata` (the run and
-// the async method's return: 2) and `await cb(direct)` (1), after which the transaction commits: 3 ticks, measured on Pi (the tick of
-// candidateNextId against capsql's COMMIT tick, gate and node profiles). A call that stored nothing writes no metadata and reads nothing.
+// IDReadLead is the ticks from the Storage's read of its ID counter to the COMMIT of the call (SqliteStorage.commit, sqlite/storage.ts):
+// candidateNextId(writes) reads the counter right after each accepted batch is checked, so an ID a job mints until the last stored
+// batch's read is in the next_id the call writes. After that read come the check of the refused batch the call ends in (one tick), if
+// it does, the flush of the pending writes (flushCost), then `await writeMetadata` (the run and the async method's return: 2) and
+// `await cb(direct)` (1), after which the transaction commits. A call that stored nothing writes no metadata and reads nothing.
 func IDReadLead(batches []Writes) int {
-	n := 3
-	if len(batches) > 0 && batches[len(batches)-1].Refused > 0 {
-		n += refusedBatch(batches[len(batches)-1].Refused)
+	w := walkBatches(batches)
+	n := w.flush + 3
+	if w.refused {
+		n++
 	}
 	return n
 }
 
-// commitBackend is Commit of the adapter itself, before the Session's guard: SqliteStorage.commit (storage.ts:218-259) over the
-// capsql facade (capsql.mjs:142-160), counted by the awaits of its one transaction. One tick for `queue.then(work)` to start the work,
-// readMetadata, each batch's checks and writes, the metadata write when a batch was stored, and the four ticks that leave the transaction:
-// `await cb(direct)`, the facade's adoption of the work's promise, `await this.db.transaction` and the caller's `await commit`.
+// commitBackend is Commit of the adapter itself, before the Session's guard: SqliteStorage.commit (sqlite/storage.ts) over the capsql
+// facade (capsql.mjs:142-160), counted by the awaits of its one transaction. One tick for `queue.then(work)` to start the work,
+// `await readMetadata` (the get and the async method's return: 2), `await CommitState.read` (stateRead), each batch's check, the one
+// flush of the writes still pending (walk.flush), the metadata write when a batch was stored (2), and the four ticks that leave the
+// transaction: `await cb(direct)`, the facade's adoption of the work's promise, `await this.db.transaction` and the caller's
+// `await commit`.
 func commitBackend(p Profile, batches []Writes) int {
-	n := 1 // serial: queue.then(work)
-	n += 2 // await readMetadata: the get, and the async method's return
-	stored := false
-	for _, w := range batches {
-		if w.Refused > 0 {
-			n += refusedBatch(w.Refused)
-			break
-		}
-		n += checkBatch(w) + applyBatch(w)
-		stored = true
-	}
-	if stored {
+	w := walkBatches(batches)
+	n := 1 + 2 + stateRead(batches) + w.checks + w.flush
+	if w.stored {
 		n += 2 // await writeMetadata: the run, and the async method's return
 	}
 	n += 4
@@ -172,27 +161,153 @@ func commitBackend(p Profile, batches []Writes) int {
 }
 
 // watched is the ticks of `await checked.get(...)` of one statement: `watchCalls` wraps each call of the checks in an async arrow that
-// awaits it (1) and returns, so the caller resumes one tick later (storage.ts:160-171).
+// awaits it (1) and returns, so the caller resumes one tick later (sqlite/storage.ts watchCalls).
 const watched = 2
 
-// checkBatch is `await this.checkBatch(checked, writes, actions)` (storage.ts:278-286): the three async checks, each awaited, and the
-// method's own return.
-func checkBatch(w Writes) int {
-	n := checkGlobalIDs(w) + 1
-	n += checkDocumentActions(w.Actions) + 1
-	n += resolveCopies(w.Actions) + 1
-	return n + 1
+// walk is the shape of one call's batch loop (SqliteStorage.commit's `for (const writes of batches)`).
+type walk struct {
+	// checks is the ticks of the awaited checkBatch calls of all batches, the refused one included.
+	checks int
+	// flush is the ticks of the final `await pending.flush`, of the writes no copy's check flushed before.
+	flush int
+	// stored is set when a batch was accepted: the call writes its metadata.
+	stored bool
+	// refused is set when the call ends in a refused batch (checkBatch, one tick, then the loop breaks).
+	refused bool
 }
 
-// applyBatch is `await this.applyBatch(transaction, writes, actions, seq)` (storage.ts:288-296): every write awaited through
-// applyTableWrite (only the table kinds do work), applyDocumentActions awaited, and the method's own return.
-func applyBatch(w Writes) int {
-	return w.Tables*tableWrite + w.DocCreates + w.DocEdits + applyDocumentActions(w.Actions) + 1 + 1
+// walkBatches runs the loop of SqliteStorage.commit over the batches. A batch with a copy flushes the writes pending before it (checkBatch:
+// `await pending.flush`) so that its source is read from the database; the writes pending at the end are the batches from the last
+// such batch on.
+func walkBatches(batches []Writes) walk {
+	var w walk
+	from, end := 0, 0
+	for i := range batches {
+		b := &batches[i]
+		if b.Refused {
+			w.checks += checkBatch(0, 0)
+			w.refused = true
+			break
+		}
+		copies := copiesOf(b)
+		if copies > 0 {
+			w.checks += checkBatch(copies, flushCost(batches[from:i]))
+			from = i
+		} else {
+			w.checks += checkBatch(0, 0)
+		}
+		w.stored = true
+		end = i + 1
+	}
+	w.flush = flushCost(batches[from:end])
+	return w
 }
 
-// refusedBatch is a batch refused after `claims` checked claims: checkGlobalIds rejects as its last check resumes, the await of
-// it in checkBatch resumes one tick later and checkBatch rejects, and the await in commit resumes one tick after that into the catch.
-func refusedBatch(claims int) int { return claims*watched + 2 }
+// checkBatch is `await this.checkBatch(...)` (sqlite/storage.ts) of a batch: an async method whose in-memory checks (CommitState.check) await
+// nothing, so one tick. A batch with copies first awaits the flush of the writes pending before it (flushed ticks), then one
+// `await resolveCopies`: per copy `await this.materializeDocument(...)`, whose statements are watched, and the method's return.
+func checkBatch(copies, flushed int) int {
+	n := 1
+	if copies > 0 {
+		n += flushed + copies*(materializeDocument*watched+1) + 1
+	}
+	return n
+}
+
+// copiesOf counts the document copies of a batch.
+func copiesOf(w *Writes) int {
+	n := 0
+	for i := range w.Actions {
+		if w.Actions[i].Copy {
+			n++
+		}
+	}
+	return n
+}
+
+// stateRead is `await CommitState.read(...)` (sqlite/commit.ts). Each of its four reads is an awaited async helper (readRows: one
+// statement per chunk of the JSON array parameter, none for an empty one, and the return), so it costs the statements it runs plus one:
+// record IDs (a claim), documents (any document action), versions (a delta change) and, through readCurrent (its own async return, one
+// more), the current incarnation of each created address (a create or copy); the async `read` returns one tick later. Rows are
+// counted in one chunk each; the 512 Ki character split of jsonArrays is not modelled.
+func stateRead(batches []Writes) int {
+	var ids, docs, versions, current int
+	for i := range batches {
+		b := &batches[i]
+		if b.Conversations+b.Entries+b.Tasks+b.Submissions > 0 {
+			ids = 1
+		}
+		for j := range b.Actions {
+			a := &b.Actions[j]
+			docs = 1
+			if a.Create {
+				ids, current = 1, 1
+			}
+			if a.Content == Delta {
+				versions = 1
+			}
+		}
+	}
+	return ids + docs + versions + current + 6
+}
+
+// flushCost is `await pending.flush(...)` (sqlite/commit.ts PendingWrites.flush) of the net writes of the batches: seven awaited insertRows
+// (the statement of its small rows when it has any, `await insertBound` (its return) and its own return: 2 without rows, 3 with), the
+// awaited runForEach of the cleared documents (one statement when any, and its return) and the flush's own return. The tables with rows
+// are the record IDs (a claim), conversations, entries, tasks, submissions, documents (a create or a retire) and revisions; a document
+// is cleared when its base is stored current-only or it is retired current-only, which also drops its pending revisions.
+func flushCost(batches []Writes) int {
+	var present, cleared int
+	var recordIDs, docRows, revisions bool
+	var conv, entries, tasks, subs bool
+	for i := range batches {
+		b := &batches[i]
+		conv = conv || b.Conversations > 0
+		entries = entries || b.Entries > 0
+		tasks = tasks || b.Tasks > 0
+		subs = subs || b.Submissions > 0
+		for j := range b.Actions {
+			a := &b.Actions[j]
+			recordIDs = recordIDs || a.Create
+			docRows = docRows || a.Create || a.Retire
+			if a.CurrentOnly && (a.Content == Base || a.Retire) {
+				cleared = 1
+			}
+			if a.Content != NoContent && !revisionDropped(batches, i, j) {
+				revisions = true
+			}
+		}
+	}
+	recordIDs = recordIDs || conv || entries || tasks || subs
+	for _, has := range [...]bool{recordIDs, conv, entries, tasks, subs, docRows, revisions} {
+		if has {
+			present++
+		}
+	}
+	return 16 + present + cleared
+}
+
+// revisionDropped is whether the revision action j of batch i adds is cleared before the flush: its own document retires current-only
+// in the same action, or a later action of the document stores a current-only base or retires current-only (PendingWrites.#clear).
+func revisionDropped(batches []Writes, i, j int) bool {
+	a := &batches[i].Actions[j]
+	if a.Retire && a.CurrentOnly {
+		return true
+	}
+	for k := i; k < len(batches); k++ {
+		first := 0
+		if k == i {
+			first = j + 1
+		}
+		for l := first; l < len(batches[k].Actions); l++ {
+			b := &batches[k].Actions[l]
+			if b.Doc == a.Doc && b.CurrentOnly && (b.Content == Base || b.Retire) {
+				return true
+			}
+		}
+	}
+	return false
+}
 
 // CommitTail is the ticks from the backend's COMMIT statement to the writer's resumption from Storage.commit (writer.ts #send
 // `await this.#host.commit(...)`): commitTailBackend, then the Session's guard, whose async arrow adopts the backend's promise and whose
@@ -223,71 +338,6 @@ func commitTailBackend(p Profile) int {
 		n += nodeTransactionEnd + 1
 	case Gate:
 		n++
-	}
-	return n
-}
-
-// tableWrite is applyTableWrite of a conversation, entry, task or submission (storage.ts:881-940): claimId awaits one
-// statement and is awaited (2), the row statement (1), and the function's own await by the caller loop (1).
-const tableWrite = 4
-
-// checkGlobalIDs is the body of checkGlobalIds (storage.ts:754-772): one watched get per write that claims an ID (every table write
-// and document create or copy; document.change and retire skip).
-func checkGlobalIDs(w Writes) int { return (w.Tables + w.DocCreates) * watched }
-
-// checkDocumentActions is the body of checkDocumentActions (storage.ts:824-859): per action the watched record get, the watched
-// version get of a delta, and `await this.currentDocumentId(...)` (a watched get and the async method's return) unless an earlier
-// action already looked the address up.
-func checkDocumentActions(actions []Action) int {
-	n := 0
-	for _, a := range actions {
-		n += watched // SELECT record FROM documents
-		if a.Content == Delta {
-			n += watched // SELECT version FROM document_revisions
-		}
-		if !a.KnownAddress {
-			n += watched + 1
-		}
-	}
-	return n
-}
-
-// resolveCopies is the body of resolveCopies (storage.ts:951-973): per copy `await this.materializeDocument(checked, ...)`, whose
-// three statements are watched (storage.ts:708-750), and the method's return.
-func resolveCopies(actions []Action) int {
-	n := 0
-	for _, a := range actions {
-		if a.Copy {
-			n += materializeDocument*watched + 1
-		}
-	}
-	return n
-}
-
-// applyDocumentActions is the body of applyDocumentActions (storage.ts:975-1050): the copies were resolved to their content by the
-// checks, so a copy applies like a create.
-func applyDocumentActions(actions []Action) int {
-	n := 0
-	for _, a := range actions {
-		if a.Create {
-			n += 2 + 1 // claimId (statement and await), INSERT INTO documents
-		} else {
-			n++ // SELECT record FROM documents
-		}
-		if a.Content != NoContent {
-			if a.Content == Base && a.CurrentOnly {
-				n++ // DELETE FROM document_revisions
-			}
-			n++ // INSERT INTO document_revisions
-		}
-		if a.Retire {
-			if !a.Create {
-				n++ // UPDATE documents
-			}
-			if a.CurrentOnly {
-				n++ // DELETE FROM document_revisions
-			}
-		}
 	}
 	return n
 }
@@ -537,6 +587,34 @@ func GatedChange(s int) int { return GatedRegion + max(s, 1) + 1 }
 
 // GatedSyncChange is the Change of a `#gated` callback whose `change` returns a value without awaiting: the callback returns after its region.
 const GatedSyncChange = GatedRegion
+
+// The ticks a host's transaction callback starts after the core granted the Session line. Pi's callback is called by the line job itself
+// (Session.#runCommit, session.ts: `new Transaction(...)` then `await change(tx)` in the tick the job starts); the host's callback runs in the
+// host's facade (host/cf/src/facade/tx.ts runCommit, client.ts TxChannel), which learns of the grant from the core's `ready` answer
+// (core/tx.go grant) and sends the callback's first operation after two promise steps. Each is one tick: a promise reaction runs one
+// microtask after the promise it awaits settled.
+const (
+	// HostBeginResume is `const channel = await begin()` (runCommit): TxChannel.answer resolves the begin's promise with the channel and the awaiting
+	// callback resumes one tick later.
+	HostBeginResume = 1
+	// HostOpDispatch is TxChannel.op's `this.chain.then(() => this.send(...))`: the chain is settled, so the operation leaves one tick after the call.
+	HostOpDispatch = 1
+	// HostFirstOp is the ticks from the grant to the first operation of the host's callback reaching the core (the channel's own pass counter reads
+	// 2 when it sends the first operation: `elapsed` of TxChannel.startCount).
+	HostFirstOp = HostBeginResume + HostOpDispatch
+)
+
+// HostCallbackStart is the tick of Pi's job duration at which Pi's callback starts: with the job for a Session commit (nothing is awaited before
+// `change(tx)`, Session.#runCommit), after its decision region (GatedRegion) for a task's runtime.commit, whose `#gated` callback awaits it first.
+// The host's callback reaches the core HostFirstOp ticks after the grant, so its operations lag Pi's by HostFirstOp - HostCallbackStart less the tick
+// Pi's job starts after the grant when the transaction was queued on an idle line (Loop.HostStart): for a Session commit 2 queued behind another
+// job (the E24 compaction) and 1 on an idle line, for a task's commit 1 and 0.
+func HostCallbackStart(taskCommit bool) int {
+	if taskCommit {
+		return GatedRegion
+	}
+	return 0
+}
 
 // DocLoad is how Session.#loadDocument finds a document for tx.doc (session.ts:505-535).
 type DocLoad uint8

@@ -592,8 +592,10 @@ func rebindExpandCards(probes []toolCardProbe, names []string) ([]toolCardProbe,
 }
 
 // installCardBindings installs the interactive mode's merged tui and app table with the probe's user bindings, which the hints read.
+// The process-wide keybindings are restored when the test ends, so a rebound expand key does not reach later tests.
 func installCardBindings(t *testing.T, probe toolCardProbe) {
 	t.Helper()
+	restoreTUIKeybindings(t)
 	userBindings := map[string][]KeyID{}
 	for action, keys := range probe.Bindings {
 		userBindings[action] = []KeyID{}

@@ -12,8 +12,8 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
 )
 
-// pi: packages/chord/src/next/registries/registry.ts
-// Mirrors "providers" of packages/chord/test/next/registries/registry.test.ts, on a loaded host.
+// pi: packages/chord/src/registries/registry.ts
+// Mirrors "providers" of packages/chord/test/registries/registry.test.ts, on a loaded host.
 
 var provNames = rvRegistryOf("app.names", 1)
 

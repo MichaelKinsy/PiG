@@ -446,7 +446,11 @@ func (r *ModelRegistry) composeProvider(base *ai.ModelsProvider, extension *Prov
 				}
 			}
 			if credential != nil && extension.OAuth != nil && extension.OAuth.ModifyModels != nil {
-				models = extension.OAuth.ModifyModels(models, *credential)
+				// provider-composer.ts:566-575: an exception of the synchronous hook reaches the caller of the model listing; the error is the listing's.
+				models, err = extension.OAuth.ModifyModels(models, *credential)
+				if err != nil {
+					return nil, err
+				}
 			}
 		}
 		for i, model := range models {

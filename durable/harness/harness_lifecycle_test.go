@@ -198,7 +198,7 @@ func TestHarnessClose(t *testing.T) {
 				readAfterRelease = new(storageOpen(store))
 			}
 			addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{
-				ToolSchema: ai.ToolSchema{Name: "wait", Description: "wait", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}},
+				Name: "wait", Description: "wait", Parameters: map[string]any{"type": "object", "properties": map[string]any{}},
 				Execute: func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 					if where == "tool" {
 						stubborn()
@@ -366,8 +366,8 @@ func TestHarnessClose(t *testing.T) {
 	// harness-lifecycle.test.ts:276 it("publishes no frame to watches from a commit that settles during close")
 	t.Run("publishes no frame to states and watches from a commit that settles during close", func(t *testing.T) {
 		notes := durable.DefineDoc(durable.DocDefinition[noteState]{
-			CommonDocDefinition: durable.CommonDocDefinition[noteState]{Kind: "test.close-frames", Version: 1, Initial: func() noteState { return noteState{} }, CheckpointWhen: func(noteState, []durable.Op, durable.CheckpointInfo) bool { return false }},
-			DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeSession},
+			Kind: "test.close-frames", Version: 1, Initial: func() noteState { return noteState{} }, CheckpointWhen: func(noteState, []durable.Op, durable.CheckpointInfo) bool { return false },
+			Scope: durable.ScopeSession,
 		})
 		store := newControlledStorage()
 		harness, _, _ := openTasks(t, store, nil)
@@ -465,8 +465,8 @@ func TestHarnessClose(t *testing.T) {
 	// harness-lifecycle.test.ts:337 it("leaves no subscription behind a watch acquisition cancelled on the line")
 	t.Run("leaves no subscription behind a watch acquisition cancelled on the line", func(t *testing.T) {
 		notes := durable.DefineDoc(durable.DocDefinition[noteState]{
-			CommonDocDefinition: durable.CommonDocDefinition[noteState]{Kind: "test.cancelled-watch", Version: 1, Initial: func() noteState { return noteState{} }, CheckpointWhen: func(noteState, []durable.Op, durable.CheckpointInfo) bool { return false }},
-			DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeSession},
+			Kind: "test.cancelled-watch", Version: 1, Initial: func() noteState { return noteState{} }, CheckpointWhen: func(noteState, []durable.Op, durable.CheckpointInfo) bool { return false },
+			Scope: durable.ScopeSession,
 		})
 		store := newControlledStorage()
 		harness, _, _ := openTasks(t, store, nil)
@@ -643,12 +643,12 @@ func TestHarnessClose(t *testing.T) {
 	// harness-lifecycle.test.ts:451 it("completes reads queued at the seal and rejects queued waits and acquisitions that would follow commits")
 	t.Run("completes reads queued at the seal and rejects queued waits and acquisitions that would follow commits", func(t *testing.T) {
 		notes := durable.DefineDoc(durable.DocDefinition[noteState]{
-			CommonDocDefinition: durable.CommonDocDefinition[noteState]{Kind: "test.queued-at-seal", Version: 1, Initial: func() noteState { return noteState{} }, CheckpointWhen: func(noteState, []durable.Op, durable.CheckpointInfo) bool { return false }},
-			DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeSession},
+			Kind: "test.queued-at-seal", Version: 1, Initial: func() noteState { return noteState{} }, CheckpointWhen: func(noteState, []durable.Op, durable.CheckpointInfo) bool { return false },
+			Scope: durable.ScopeSession,
 		})
 		absent := durable.DefineDoc(durable.DocDefinition[noteState]{
-			CommonDocDefinition: durable.CommonDocDefinition[noteState]{Kind: "test.queued-absent", Version: 1, Initial: func() noteState { return noteState{} }, CheckpointWhen: func(noteState, []durable.Op, durable.CheckpointInfo) bool { return false }},
-			DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeSession},
+			Kind: "test.queued-absent", Version: 1, Initial: func() noteState { return noteState{} }, CheckpointWhen: func(noteState, []durable.Op, durable.CheckpointInfo) bool { return false },
+			Scope: durable.ScopeSession,
 		})
 		pending := oneStep("test.queued-pending")
 		store := newControlledStorage()
@@ -794,8 +794,8 @@ func TestSchedulingOnAPausedHarness(t *testing.T) {
 		opened := paused(t)
 		harness, root := opened.harness, opened.root
 		notes := durable.DefineDoc(durable.DocDefinition[noteState]{
-			CommonDocDefinition: durable.CommonDocDefinition[noteState]{Kind: "test.viewer-notes", Version: 1, Initial: func() noteState { return noteState{} }, CheckpointWhen: func(noteState, []durable.Op, durable.CheckpointInfo) bool { return false }},
-			DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeSession},
+			Kind: "test.viewer-notes", Version: 1, Initial: func() noteState { return noteState{} }, CheckpointWhen: func(noteState, []durable.Op, durable.CheckpointInfo) bool { return false },
+			Scope: durable.ScopeSession,
 		})
 		check := func(err error) {
 			t.Helper()

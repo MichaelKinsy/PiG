@@ -9,7 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Ports packages/chord/src/next/jobs/persisted.ts
+// Ports packages/chord/src/jobs/persisted.ts
 //
 // A persisted job's run records in its object's store (slice 6b §4.1, D5): the record document of each unsettled run
 // (namespace `chord.jobs`, kind the job name, key the run id, `history: none`), written whole in the transactions that

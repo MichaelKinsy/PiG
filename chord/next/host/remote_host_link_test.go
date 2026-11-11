@@ -16,9 +16,9 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/nextnode"
 )
 
-// pi: packages/chord/src/next/remote/host-link.ts
+// pi: packages/chord/src/remote/host-link.ts
 
-// Ports packages/chord/test/next/remote/host-link.test.ts.
+// Ports packages/chord/test/remote/host-link.test.ts.
 //
 // Go forms: a Promise a test starts and awaits later (`const got = tab.get(...)`) is a goroutine delivering on a
 // channel (rhAsync); `await transported()` is rhSync / rhSettleLinks.

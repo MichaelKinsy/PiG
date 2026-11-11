@@ -376,11 +376,11 @@ func (c *renderProxyComponent) HandleMouse(event tui.TuiMouseEvent) *tui.TuiMous
 			// pig divergence (D277): a component that handles the mouse itself answers for itself, which the host cannot ask before it answers the terminal, so it gets the clicks inside it and no other event.
 			return nil
 		}
-		c.enqueueEvent(ViewEventPayload{Key: c.key, Type: ViewEventMouse, ViewEventExtras: ViewEventExtras{Mouse: remoteMouse(event)}})
+		c.enqueueEvent(ViewEventPayload{Key: c.key, Type: ViewEventMouse, Mouse: remoteMouse(event)})
 		result = extension.ViewMouseResult{Handled: true}
 	}
 	dispatched := &tui.TuiMouseDispatchResult{
-		TuiMouseEventResult: tui.TuiMouseEventResult{Handled: true, Capture: result.Capture, Focus: result.Focus, Render: result.Render},
+		Handled: true, Capture: result.Capture, Focus: result.Focus, Render: result.Render,
 		Target: tui.TuiMouseDispatchTarget{
 			Component: c, OriginX: event.ScreenX - event.X, OriginY: event.ScreenY - event.Y,
 			Width: event.Width, Height: event.Height,

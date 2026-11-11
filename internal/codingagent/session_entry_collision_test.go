@@ -46,7 +46,7 @@ func TestSessionGeneratedEntriesRejectExistingIDs(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			s := NewSession("collision-fixture", t.TempDir())
-			if err := s.AppendEntry(MessageEntry{SessionEntryBase: SessionEntryBase{Type: "message", ID: occupied, Timestamp: "2026-01-01T00:00:00.000Z"}, Message: user("seed")}); err != nil {
+			if err := s.AppendEntry(MessageEntry{Type: "message", ID: occupied, Timestamp: "2026-01-01T00:00:00.000Z", Message: user("seed")}); err != nil {
 				t.Fatal(err)
 			}
 			before, _ := s.GetEntry(occupied)

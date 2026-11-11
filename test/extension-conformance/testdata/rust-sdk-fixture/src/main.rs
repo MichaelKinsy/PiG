@@ -171,6 +171,15 @@ fn subscribe(
     subscriber.on_event(name, handler)
 }
 
+// isolation_text is the text of a JSON value the isolation probe reports: a string as is, another value as its JSON, a missing one as "None".
+fn isolation_text(value: Option<&Value>) -> String {
+    match value {
+        Some(Value::String(text)) => text.clone(),
+        Some(other) => other.to_string(),
+        None => "None".to_string(),
+    }
+}
+
 fn conformance_login_definition() -> LoginDefinition {
     LoginDefinition {
         brand: vec!["A".repeat(41); 5],
@@ -2525,36 +2534,50 @@ fn main() {
         click_state(&options.state, &event);
         Ok(())
     });
-    ext.markdown_transformer_with_options(|markdown, context| {
-        // "trace:<dir>:<name>" records the body's entry in <dir>/trace; the body named "first" returns only once <dir>/release exists.
-        if let Some(rest) = markdown.strip_prefix("trace:") {
-            // The name is the last field: a Windows <dir> contains a drive colon.
-            if let Some((dir, name)) = rest.rsplit_once(':') {
-                let append = |line: &str| {
-                    use std::io::Write;
-                    let mut file = std::fs::OpenOptions::new()
-                        .create(true)
-                        .append(true)
-                        .open(format!("{dir}/trace"))
-                        .unwrap();
-                    writeln!(file, "{line}").unwrap();
-                };
-                append(&format!("entered {name}"));
-                if name == "first" {
-                    while !std::path::Path::new(&format!("{dir}/release")).exists() {
-                        thread::sleep(Duration::from_millis(10));
+    ext.markdown_transformer_with_options(
+        |markdown, context| {
+            // "trace:<dir>:<name>" records the body's entry in <dir>/trace; the body named "first" returns only once <dir>/release exists.
+            if let Some(rest) = markdown.strip_prefix("trace:") {
+                // The name is the last field: a Windows <dir> contains a drive colon.
+                if let Some((dir, name)) = rest.rsplit_once(':') {
+                    let append = |line: &str| {
+                        use std::io::Write;
+                        let mut file = std::fs::OpenOptions::new()
+                            .create(true)
+                            .append(true)
+                            .open(format!("{dir}/trace"))
+                            .unwrap();
+                        writeln!(file, "{line}").unwrap();
+                    };
+                    append(&format!("entered {name}"));
+                    if name == "first" {
+                        while !std::path::Path::new(&format!("{dir}/release")).exists() {
+                            thread::sleep(Duration::from_millis(10));
+                        }
+                        append("returned first");
                     }
-                    append("returned first");
                 }
             }
-        }
-        Some(format!(
-            "md:{markdown}:{}:streaming={}:width={}",
-            context.message_type, context.is_streaming, context.available_width
-        ))
-    }, pig_sdk::MarkdownTransformerOptions {
-        message_types: Some(["user", "assistant", "assistant-thinking", "custom", "summary", "changelog"].map(String::from).to_vec()),
-    });
+            Some(format!(
+                "md:{markdown}:{}:streaming={}:width={}",
+                context.message_type, context.is_streaming, context.available_width
+            ))
+        },
+        pig_sdk::MarkdownTransformerOptions {
+            message_types: Some(
+                [
+                    "user",
+                    "assistant",
+                    "assistant-thinking",
+                    "custom",
+                    "summary",
+                    "changelog",
+                ]
+                .map(String::from)
+                .to_vec(),
+            ),
+        },
+    );
     fn resolved_line(prefix: &'static str, tool: &str) -> pig_sdk::ToolRendererSet {
         let tool = tool.to_string();
         pig_sdk::ToolRendererSet::with_call(move |_ctx, args, _render, _width| {
@@ -2572,6 +2595,24 @@ fn main() {
             ));
             set.result_view = Some(Arc::new(|_ctx, _result, _options, _render, _width| {
                 Ok(kit_probe_view())
+            }));
+            Some(set)
+        }
+        "last_view_probe" => {
+            // A view renderer that reads the view form of ToolRenderContext::last_component: the kind of what its previous run returned, and the run's own n.
+            let mut set = pig_sdk::ToolRendererSet::default();
+            set.call_view = Some(Arc::new(|_ctx, args, render, _width| {
+                let kind = match &render.last_component {
+                    None => "none",
+                    Some(pig_sdk::ToolRenderComponent::View(_)) => "view",
+                    Some(_) => "lines",
+                };
+                let n = args.get("n").map(Value::to_string).unwrap_or_default();
+                Ok(kit::View::new(Container::new().child(Text::new(
+                    format!("lastview:{kind}:n={n}"),
+                    0,
+                    0,
+                ))))
             }));
             Some(set)
         }
@@ -2632,8 +2673,9 @@ fn main() {
         render.state.insert("calls".to_string(), json!(calls));
         let topic = args.get("topic").and_then(Value::as_str).unwrap_or("");
         Ok(vec![format!(
-            "toolrender:call:{topic}:partial={}:calls={calls}:width={width}",
-            render.is_partial
+            "toolrender:call:{topic}:partial={}:calls={calls}:width={width}:last={}",
+            render.is_partial,
+            last_render_line(render)
         )])
     });
     ext.render_tool_result("render_probe", |_ctx, result, options, render, width| {
@@ -2642,8 +2684,9 @@ fn main() {
         let calls = render.state.get("calls").cloned().unwrap_or(Value::Null);
         let duration = render.duration_ms.map_or("none".to_string(), |ms| ms.to_string());
         Ok(vec![format!(
-            "toolrender:result:{text}:{key}:expanded={}:calls={calls}:width={width}:duration={duration}",
-            options.expanded
+            "toolrender:result:{text}:{key}:expanded={}:calls={calls}:width={width}:duration={duration}:last={}",
+            options.expanded,
+            last_render_line(render)
         )])
     });
     ext.tool(
@@ -3651,6 +3694,18 @@ fn main() {
         }
     });
     ext.command(
+        "send_user_message_expand",
+        "Send a user message with expandPromptTemplates set to the argument",
+        |ctx, args| match ctx.send_user_message_with(
+            "expand-user",
+            "followUp",
+            Some(args == "true"),
+        ) {
+            Ok(_) => CommandResult::Ok,
+            Err(err) => CommandResult::Error(err.to_string()),
+        },
+    );
+    ext.command(
         "settings_probe",
         "Report the effective settings",
         |ctx, _args| match ctx.get_settings() {
@@ -4305,6 +4360,74 @@ fn main() {
                 .lock()
                 .unwrap()
                 .push(subscription);
+            CommandResult::Ok
+        },
+    );
+    // event_isolation_probe: two handlers; the first reports the marker it received and writes a sentinel into its container, the second reports what it
+    // received (TestConformance_EventHandlersDoNotShareTheirPayload). A handler's data is a &mut Value that cannot outlive the call, so there is no late writer.
+    // A boundary event's marker is the first context entry's sourceEntry id (the container is that source entry); a context or context_with_system event's is
+    // the length of messages (the container is that list).
+    let event_isolation_subscriber = ext.event_subscriber();
+    let event_isolation_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
+        Arc::new(Mutex::new(Vec::new()));
+    ext.command(
+        "event_isolation_probe",
+        "Subscribe two handlers that report the nested marker they received and then write sentinels into it",
+        move |_ctx, args| {
+            let name = args.trim().to_string();
+            let conversation = name == "context" || name == "context_with_system";
+            let paths: [&'static str; 3] = if conversation {
+                ["/messages/0/content", "/messages/1/content", "/messages/2/content"]
+            } else {
+                [
+                    "/context/contextMessages/0/content",
+                    "/context/llmMessages/0/content",
+                    "/context/contextEntries/0/messages/0/content",
+                ]
+            };
+            let marker = move |data: &Value| -> String {
+                if conversation {
+                    data.get("messages")
+                        .and_then(Value::as_array)
+                        .map_or(0, Vec::len)
+                        .to_string()
+                } else {
+                    isolation_text(data.pointer("/context/contextEntries/0/sourceEntry/id"))
+                }
+            };
+            let report = move |data: &Value| -> String {
+                paths
+                    .iter()
+                    .map(|path| isolation_text(data.pointer(path)))
+                    .collect::<Vec<_>>()
+                    .join("|")
+            };
+            let first_report = report;
+            let first = subscribe(&event_isolation_subscriber, &name, move |ctx, data| {
+                ctx.notify(&format!("event_isolation:A:{}:end", marker(data)), "info");
+                if conversation {
+                    if let Some(list) = data.get_mut("messages").and_then(Value::as_array_mut) {
+                        list.push(json!({"role": "user", "content": "SENTINEL-HANDLER-A", "timestamp": 0}));
+                    }
+                } else if let Some(id) = data.pointer_mut("/context/contextEntries/0/sourceEntry/id") {
+                    *id = json!("SENTINEL-HANDLER-A");
+                }
+                ctx.notify(&format!("event_isolation_msgs:A:{}", first_report(data)), "info");
+                for path in paths {
+                    if let Some(content) = data.pointer_mut(path) {
+                        *content = json!("SENTINEL-HANDLER-A");
+                    }
+                }
+                Ok(None)
+            });
+            let second = subscribe(&event_isolation_subscriber, &name, move |ctx, data| {
+                ctx.notify(&format!("event_isolation:B:{}:end", marker(data)), "info");
+                ctx.notify(&format!("event_isolation_msgs:B:{}", report(data)), "info");
+                Ok(None)
+            });
+            let mut held = event_isolation_subscriptions.lock().unwrap();
+            held.push(first);
+            held.push(second);
             CommandResult::Ok
         },
     );
@@ -6013,6 +6136,8 @@ fn register_conformance_oauth_object(ext: &mut Extension) {
             })),
             is_subscription: false,
             credential_store: None,
+            modify_models: None,
+            uses_callback_server: false,
         },
     );
 }
@@ -6044,6 +6169,8 @@ fn register_conformance_oauth_large(ext: &mut Extension) {
             })),
             is_subscription: false,
             credential_store: None,
+            modify_models: None,
+            uses_callback_server: false,
         },
     );
 }
@@ -6094,6 +6221,8 @@ fn register_conformance_oauth(ext: &mut Extension) {
                 format!("key:{}", creds.access)
             })),
             credential_store: Some(Box::new(ConformanceStore)),
+            modify_models: None,
+            uses_callback_server: false,
         },
     );
 }
@@ -8061,4 +8190,15 @@ fn register_tui_alt_reentry_probe(ext: &mut Extension) {
             Err(err) => CommandResult::Error(err.to_string()),
         },
     );
+}
+
+/// The first line the card's renderer of the same phase returned on its previous run, or "none" on the first run: the value
+/// `ToolRenderContext::last_component` carries (the render_probe rows of the conformance suite bind to it).
+fn last_render_line(render: &pig_sdk::ToolRenderContext) -> String {
+    match &render.last_component {
+        Some(pig_sdk::ToolRenderComponent::Lines(lines)) => {
+            lines.first().cloned().unwrap_or_else(|| "none".to_string())
+        }
+        _ => "none".to_string(),
+    }
 }

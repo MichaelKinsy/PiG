@@ -15,7 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/src/next/link/part.ts. Parts on links (R1, R2, Q2, §22): a value as it crosses a link (JSON
+// Ports packages/chord/src/link/part.ts. Parts on links (R1, R2, Q2, §22): a value as it crosses a link (JSON
 // text at its origin, its bytes once received, or deflated by its origin), the size limits per part, compression at the
 // origin, and opening a part where it is owned: its size checked before anything is parsed or inflated, a deflated
 // part inflated within the decoded limit.

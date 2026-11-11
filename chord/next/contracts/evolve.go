@@ -6,7 +6,7 @@ import (
 	"strconv"
 )
 
-// Ports packages/chord/src/next/contracts/evolve.ts (evolution: `evolve(previous, (e) => e...)` appends the next
+// Ports packages/chord/src/contracts/evolve.ts (evolution: `evolve(previous, (e) => e...)` appends the next
 // version of a history with structured edits).
 //
 // Forced Go differences. The type-level editor interfaces (MethodEditor, RemoteEditor, LocalEditor, Put, Drop, Evolved)

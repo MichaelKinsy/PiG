@@ -96,9 +96,9 @@ func (d *device) pull(sessionID ...string) Seq {
 	d.t.Helper()
 	id := first(sessionID)
 	existing, ok := d.copies[id]
-	local := LocalCopy{Store: existing}
+	local := LocalCopy{Kind: LocalCopyStore, Store: existing}
 	if !ok {
-		local = LocalCopy{Backend: backendAt(d.t, "")}
+		local = LocalCopy{Kind: LocalCopyEmpty, Backend: backendAt(d.t, "")}
 	}
 	result, err := PullSession(background, PullOptions{SessionID: id, Store: d.remote, Local: local, State: d.state})
 	noError(d.t, err)
@@ -285,7 +285,7 @@ func TestSyncingASessionBetweenDevices(t *testing.T) {
 				t.Fatalf("winner upload = %s, want uploaded", got)
 			}
 			same(t, "loser upload", loser.upload(), UploadResult{Type: Diverged, At: shared})
-			_, err := PullSession(background, PullOptions{SessionID: session, Store: remote, Local: LocalCopy{Store: loser.store()}, State: loser.state})
+			_, err := PullSession(background, PullOptions{SessionID: session, Store: remote, Local: LocalCopy{Kind: LocalCopyStore, Store: loser.store()}, State: loser.state})
 			_ = isError[*UnsyncedCommitsError](t, err)
 
 			// The loser's copy becomes a new session, uploaded whole as an archive (its outbox was trimmed through
@@ -384,7 +384,7 @@ func TestSyncingASessionBetweenDevices(t *testing.T) {
 		}
 		same(t, "upload", upload(), UploadResult{Type: Behind, Head: lastSeq(survived), SyncedHead: uploaded})
 
-		_, err := PullSession(background, PullOptions{SessionID: session, Store: remote, Local: LocalCopy{Store: survived}, State: laptop.state})
+		_, err := PullSession(background, PullOptions{SessionID: session, Store: remote, Local: LocalCopy{Kind: LocalCopyStore, Store: survived}, State: laptop.state})
 		noError(t, err)
 		same(t, "survived copy", reads(t, survived), reads(t, laptop.store()))
 		commitAll(t, survived, batches[7:]...)
@@ -431,7 +431,7 @@ func TestSyncingASessionBetweenDevices(t *testing.T) {
 			return remote.GetBatch(ctx, sessionID, after)
 		}}
 		local := opened(t, backendAt(t, ""), true)
-		_, err := PullSession(background, PullOptions{SessionID: session, Store: flaky, Local: LocalCopy{Store: local}, State: viewer.state})
+		_, err := PullSession(background, PullOptions{SessionID: session, Store: flaky, Local: LocalCopy{Kind: LocalCopyStore, Store: local}, State: viewer.state})
 		if err == nil || !strings.Contains(err.Error(), "connection lost") {
 			t.Fatalf("err = %v, want connection lost", err)
 		}
@@ -442,7 +442,7 @@ func TestSyncingASessionBetweenDevices(t *testing.T) {
 		result, err := UploadSession(background, UploadOptions{SessionID: session, Device: "viewer", Source: local, Store: remote, State: viewer.state})
 		noError(t, err)
 		same(t, "upload", result, UploadResult{Type: Idle})
-		_, err = PullSession(background, PullOptions{SessionID: session, Store: remote, Local: LocalCopy{Store: local}, State: viewer.state})
+		_, err = PullSession(background, PullOptions{SessionID: session, Store: remote, Local: LocalCopy{Kind: LocalCopyStore, Store: local}, State: viewer.state})
 		noError(t, err)
 		same(t, "viewer copy", reads(t, local), reads(t, laptop.store()))
 	})
@@ -472,7 +472,7 @@ func TestSyncingASessionBetweenDevices(t *testing.T) {
 		same(t, "replica copy", reads(t, replica.store()), reads(t, laptop.store()))
 		// A copy behind the fold cannot continue through folded batches: it restores instead.
 		at := lastSeq(stale.store())
-		_, err := PullSession(background, PullOptions{SessionID: session, Store: remote, Local: LocalCopy{Store: stale.store()}, State: stale.state})
+		_, err := PullSession(background, PullOptions{SessionID: session, Store: remote, Local: LocalCopy{Kind: LocalCopyStore, Store: stale.store()}, State: stale.state})
 		_ = isError[*HistoryUnavailableError](t, err)
 		// Nor can it take a folded slot: its own commits are a different history.
 		stale.commit([]rows{entry(300)})
@@ -580,7 +580,7 @@ func TestBoundedMemory(t *testing.T) {
 		viewer := newDevice(t, "viewer", remote)
 		local := sessionStore(t)
 		applied := 0
-		options := PullOptions{SessionID: session, Store: remote, Local: LocalCopy{Store: local}, State: viewer.state}
+		options := PullOptions{SessionID: session, Store: remote, Local: LocalCopy{Kind: LocalCopyStore, Store: local}, State: viewer.state}
 		options.apply = func(target *store.ChordStore, commits []store.OutboxCommit, ctx context.Context) error {
 			applied++
 			if applied == 2 {
@@ -609,24 +609,26 @@ func TestBoundedMemory(t *testing.T) {
 func TestHostPieces(t *testing.T) {
 	t.Run("lists sessions and keeps the last metadata written", func(t *testing.T) {
 		remote := newRemote(t)
-		empty, err := remote.Sessions(background, nil)
+		// Pi's test holds the remote as the SessionSyncStore it is read through (packages/chord/test/sync/sync.test.ts:685).
+		var syncStore SessionSyncStore = remote
+		empty, err := syncStore.Sessions(background, nil)
 		noError(t, err)
 		same(t, "sessions", empty, SessionChanges{Sessions: []SessionSummary{}, Cursor: "", More: false})
 		laptop := newDevice(t, "laptop", remote)
 		laptop.commit([]rows{entry(1)}, "s2")
 		laptop.upload("s2")
-		noError(t, remote.PutMeta(background, "s1", deltaObject("title", "first")))
-		noError(t, remote.PutMeta(background, "s1", deltaObject("title", "renamed", "origin", "laptop")))
-		changes, err := remote.Sessions(background, nil)
+		noError(t, syncStore.PutMeta(background, "s1", deltaObject("title", "first")))
+		noError(t, syncStore.PutMeta(background, "s1", deltaObject("title", "renamed", "origin", "laptop")))
+		changes, err := syncStore.Sessions(background, nil)
 		noError(t, err)
 		same(t, "sessions", changes.Sessions, []SessionSummary{
 			{ID: "s1", Head: LogStart, Meta: deltaObject("title", "renamed", "origin", "laptop")},
 			{ID: "s2", Head: lastSeq(laptop.store("s2")), Meta: nil},
 		})
-		meta, err := remote.GetMeta(background, "s1")
+		meta, err := syncStore.GetMeta(background, "s1")
 		noError(t, err)
 		same(t, "meta", meta, deltaObject("title", "renamed", "origin", "laptop"))
-		meta, err = remote.GetMeta(background, "s2")
+		meta, err = syncStore.GetMeta(background, "s2")
 		noError(t, err)
 		if meta != nil {
 			t.Fatalf("meta of s2 = %v, want none", meta)
@@ -696,10 +698,10 @@ type fakeTimer struct {
 
 var epoch = time.Unix(1_000_000, 0)
 
-func (c *clock) Now() time.Time {
+func (c *clock) Now() int64 {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return epoch.Add(c.now)
+	return epoch.Add(c.now).UnixMilli()
 }
 
 func (c *clock) elapsed() time.Duration {
@@ -708,10 +710,10 @@ func (c *clock) elapsed() time.Duration {
 	return c.now
 }
 
-func (c *clock) SetTimer(callback func(), delay time.Duration) (disarm func()) {
+func (c *clock) SetTimer(callback func(), delayMs int64) (disarm func()) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	timer := &fakeTimer{at: c.now + delay, callback: callback, armed: true}
+	timer := &fakeTimer{at: c.now + time.Duration(delayMs)*time.Millisecond, callback: callback, armed: true}
 	c.timers = append(c.timers, timer)
 	return func() {
 		c.mu.Lock()
@@ -841,6 +843,44 @@ func TestFlushScheduler(t *testing.T) {
 		}
 	})
 
+	t.Run("doubles its retry delay from RetryMs up to MaxRetryMs and no further", func(t *testing.T) {
+		fake := &clock{}
+		var attempts []time.Duration
+		scheduler := NewFlushScheduler(FlushSchedulerOptions{
+			Now: fake.Now, SetTimer: fake.SetTimer, OnError: func(error) {}, UrgentMs: 100, RetryMs: 500, MaxRetryMs: 3000,
+			Flush: func() error {
+				attempts = append(attempts, fake.elapsed())
+				if len(attempts) < 7 {
+					return errors.New("offline")
+				}
+				return nil
+			},
+		})
+		scheduler.Notify(true)
+		fake.advance(30_000 * time.Millisecond)
+		// 100, then +500, +1000, +2000, then the cap: +3000 (not 4000, 8000), +3000, +3000.
+		same(t, "attempts", attempts, ms(100, 600, 1600, 3600, 6600, 9600, 12600))
+	})
+
+	t.Run("caps the retry delay at a minute by default", func(t *testing.T) {
+		fake := &clock{}
+		var attempts []time.Duration
+		scheduler := NewFlushScheduler(FlushSchedulerOptions{
+			Now: fake.Now, SetTimer: fake.SetTimer, OnError: func(error) {},
+			Flush: func() error {
+				attempts = append(attempts, fake.elapsed())
+				if len(attempts) < 10 {
+					return errors.New("offline")
+				}
+				return nil
+			},
+		})
+		scheduler.Notify(true)
+		fake.advance(300_000 * time.Millisecond)
+		// 200, then +1s, +2s, +4s, +8s, +16s, +32s, then the cap: +60s (not 64s, 128s), +60s.
+		same(t, "attempts", attempts, ms(200, 1200, 3200, 7200, 15200, 31200, 63200, 123200, 183200, 243200))
+	})
+
 	t.Run("flushes a last time at close, and reports the failure", func(t *testing.T) {
 		fake := &clock{}
 		scheduler := NewFlushScheduler(FlushSchedulerOptions{
@@ -865,11 +905,11 @@ func TestFlushSchedulerCloseAgainstAFiredTimer(t *testing.T) {
 	newScheduler := func(flush func() error) (*FlushScheduler, func()) {
 		var fired func()
 		scheduler := NewFlushScheduler(FlushSchedulerOptions{
-			Now:     time.Now,
+			Now:     func() int64 { return time.Now().UnixMilli() },
 			OnError: func(err error) { t.Errorf("unexpected flush error: %v", err) },
 			Flush:   flush,
 			// The timer fired already: stopping it does nothing.
-			SetTimer: func(callback func(), _ time.Duration) func() {
+			SetTimer: func(callback func(), _ int64) func() {
 				fired = callback
 				return func() {}
 			},

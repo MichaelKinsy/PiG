@@ -1,4 +1,4 @@
-// Package state ports packages/chord/src/next/state: the reactive state of Chord v2. A host owns one Batch, which runs
+// Package state ports packages/chord/src/state: the reactive state of Chord v2. A host owns one Batch, which runs
 // each commit's adoptions, then delivers one frame for every watched value that changed; Sources (JSON) and
 // NativeSources (in-process values, FollowedSource and WritableSource) are what watches and derives read; Derives are
 // values computed from them, recomputed on read when a commit marked them dirty.

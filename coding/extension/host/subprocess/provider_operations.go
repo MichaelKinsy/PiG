@@ -5,20 +5,23 @@ package subprocess
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"slices"
+	"strconv"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
-// RequestProviderOperation runs an image or classifier implementation of a provider config in its owning extension. The request carries the provider in Tool and {kind, api, model, context, options} in Args; the response is the AssistantImages or ClassifierResult, and a callback failure is the request's error.
+// RequestProviderOperation runs an implementation of a provider config in its owning extension. The request carries the provider in Tool and {kind, ...} in Args. An image or classifier operation carries {kind, api, model, context, options} and its response is the AssistantImages or ClassifierResult; a refreshModels operation carries {kind, context} and its response is the model list refreshModels returned. A callback failure is the request's error.
 const RequestProviderOperation = "provider_operation"
 
 // The kinds of a provider operation.
 const (
-	ProviderOperationImages      = "images"
-	ProviderOperationClassifiers = "classifiers"
+	ProviderOperationImages        = "images"
+	ProviderOperationClassifiers   = "classifiers"
+	ProviderOperationRefreshModels = "refreshModels"
 )
 
 // encodeImagesOptions is the wire form of the options an image API receives. It carries the caller's API key; the extension receives it as `apiKey`.
@@ -75,7 +78,7 @@ func encodeClassifierOptions(o ai.ClassifierOptions) map[string]any {
 	return values
 }
 
-// attachProviderOperations wires the implementations a provider declaration names to the extension that owns them: the streamSimple callback, and the image and classifier APIs.
+// attachProviderOperations wires the implementations a provider declaration names to the extension that owns them: the streamSimple callback, the image and classifier APIs, refreshModels and oauth.modifyModels.
 // pig additive (D19): connection-owned callbacks carry the image and classifier implementations across the SDK boundary without changing registry scope.
 func (h *Host) attachProviderOperations(me *managedExt, provider ProviderDecl, cfg *extension.ProviderConfig) {
 	if provider.StreamSimple {
@@ -97,6 +100,12 @@ func (h *Host) attachProviderOperations(me *managedExt, provider ProviderDecl, c
 			}}
 		}
 	}
+	if provider.RefreshModels {
+		cfg.RefreshModels = h.providerRefreshModels(me, provider.Name)
+	}
+	if cfg.OAuth != nil && oauthModifiesModels(provider.Config) {
+		cfg.OAuth.ModifyModels = providerModifyModels(me, provider.Name)
+	}
 }
 
 func remoteOperation[T any](ctx context.Context, me *managedExt, provider, kind, api string, model extension.ModelValue, request any, options map[string]any) (T, error) {
@@ -109,18 +118,165 @@ func remoteOperation[T any](ctx context.Context, me *managedExt, provider, kind,
 	if conn == nil {
 		return result, fmt.Errorf("provider %q extension is disconnected", provider)
 	}
-	response, err := conn.Request(ctx, &Envelope{Type: MsgRequest, Request: &RequestPayload{Method: RequestProviderOperation, Tool: provider, Args: args}})
+	raw, err := providerRequest(ctx, conn, provider, &Envelope{Type: MsgRequest, Request: &RequestPayload{Method: RequestProviderOperation, Tool: provider, Args: args}})
 	if err != nil {
 		return result, err
 	}
+	err = json.Unmarshal(raw, &result)
+	return result, err
+}
+
+// providerRequest sends a provider's request and returns its result; the extension's error is the request's error.
+func providerRequest(ctx context.Context, conn *Conn, provider string, request *Envelope) (json.RawMessage, error) {
+	response, err := conn.Request(ctx, request)
+	if err != nil {
+		return nil, err
+	}
 	if response == nil || response.Response == nil {
-		return result, fmt.Errorf("provider %q returned no response", provider)
+		return nil, fmt.Errorf("provider %q returned no response", provider)
 	}
 	if response.Response.Error != nil {
-		return result, response.Response.Error.ToError()
+		return nil, response.Response.Error.ToError()
 	}
-	err = json.Unmarshal(response.Response.Result, &result)
-	return result, err
+	return response.Response.Result, nil
+}
+
+// connectionEnded is the error of a request that ran under the connection's lifetime: when the lifetime ended because the connection did, the error is the connection's own, as it is for a request waiting on a connection that ends, not the lifetime's cancellation: the failure that stopped it, or what Close answers a pending request ("connection closed", the same remote error value).
+func connectionEnded(conn *Conn, err error) error {
+	if err == nil || !errors.Is(err, context.Canceled) || conn.lifetime.Err() == nil {
+		return err
+	}
+	if failure := conn.failureError(); failure != nil {
+		return failure
+	}
+	return (&ErrorInfo{Message: "connection closed"}).ToError()
+}
+
+// configRefreshKey names one running config-form refreshModels request: request ids are unique per connection.
+type configRefreshKey struct {
+	conn    *Conn
+	request string
+}
+
+// configRefreshPublication is the publish callback of the config-form refreshModels request the extension's provider.callback call belongs to.
+func (h *Host) configRefreshPublication(conn *Conn, request string) (nativeProviderCallback, bool) {
+	value, ok := h.configRefreshes.Load(configRefreshKey{conn: conn, request: request})
+	if !ok {
+		return nil, false
+	}
+	return value.(nativeProviderCallback), true
+}
+
+// refreshModelsRequest is the Args of a refreshModels provider operation: {kind, context}, in that order.
+type refreshModelsRequest struct {
+	Kind    string            `json:"kind"`
+	Context refreshModelsWire `json:"context"`
+}
+
+// providerSyncUpdateArgs is the Args of the provider_sync request that runs a publication's update in the extension: {method: "update", params: {token}}.
+type providerSyncUpdateArgs struct {
+	Method string `json:"method"`
+	Params struct {
+		Token string `json:"token"`
+	} `json:"params"`
+}
+
+// providerRefreshModels is ProviderConfig.refreshModels of a provider config registered by an extension (types.ts:1930): the callback runs in the extension with the
+// refresh context minus its callbacks, its returned model definitions are the result, and its context.publish calls reach the refresh's Publish while the request is in flight
+// (provider.callback calls of the request), a publication's update running in the extension by token as a provider object's does. The refresh's Signal is Pi's
+// RefreshModelsContext.signal, which the runtime always sets ("Always present", models.ts:97-98): aborting it cancels the request, and the extension sees its signal abort. A
+// context built without one runs under the connection's lifetime, as there is no caller to cancel it.
+func (h *Host) providerRefreshModels(me *managedExt, provider string) func(extension.RefreshModelsContext) ([]extension.ProviderModelConfig, error) {
+	return func(refresh extension.RefreshModelsContext) ([]extension.ProviderModelConfig, error) {
+		conn := me.connection()
+		if conn == nil {
+			return nil, fmt.Errorf("provider %q extension is disconnected", provider)
+		}
+		signal := refresh.Signal
+		if signal == nil {
+			signal = conn.lifetime
+		}
+		args, err := json.Marshal(refreshModelsRequest{Kind: ProviderOperationRefreshModels, Context: refreshModelsParams(refresh)})
+		if err != nil {
+			return nil, err
+		}
+		id := "r" + strconv.FormatUint(conn.nextID.Add(1), 10)
+		key := configRefreshKey{conn: conn, request: id}
+		h.configRefreshes.Store(key, refreshPublication(refresh, func(token string) error {
+			body := providerSyncUpdateArgs{Method: "update"}
+			body.Params.Token = token
+			update, err := json.Marshal(body)
+			if err != nil {
+				return err
+			}
+			_, err = providerRequest(signal, conn, provider, &Envelope{Type: MsgRequest, Request: &RequestPayload{Method: MethodProviderSync, Tool: provider, Args: update}})
+			return err
+		}))
+		defer h.configRefreshes.Delete(key)
+		raw, err := providerRequest(signal, conn, provider, &Envelope{Type: MsgRequest, ID: id, Request: &RequestPayload{Method: RequestProviderOperation, Tool: provider, Args: args}})
+		if refresh.Signal == nil {
+			err = connectionEnded(conn, err)
+		}
+		if err != nil {
+			return nil, err
+		}
+		// A callback that returned nothing (JavaScript undefined) leaves the extension's models as they are.
+		if len(raw) == 0 {
+			return nil, nil
+		}
+		var models []extension.ProviderModelConfig
+		if err := json.Unmarshal(raw, &models); err != nil {
+			return nil, fmt.Errorf("provider %q refreshModels returned invalid models: %w", provider, err)
+		}
+		return models, nil
+	}
+}
+
+// oauthModifiesModels reports whether a provider config's oauth descriptor declares modifyModels.
+func oauthModifiesModels(config json.RawMessage) bool {
+	var probe struct {
+		OAuth *ProviderOAuthConfig `json:"oauth"`
+	}
+	return json.Unmarshal(config, &probe) == nil && probe.OAuth != nil && probe.OAuth.HasModifyModels
+}
+
+// providerModifyModels is oauth.modifyModels of a provider config registered by an extension (types.ts:2034): the callback runs in the extension with the chat models
+// and the stored OAuth credential, and the models it returns are the result. Pi's callback is synchronous and its exception reaches the caller of the model listing,
+// so a failed request is the error of the composer's model listing. The callback has no AbortSignal in Pi (types.ts:2034 takes (models, credentials); provider-composer.ts:566-575
+// calls it inside the synchronous getAllModels), so no caller can cancel it and the request runs under the context its connection owns: it ends with the extension's connection.
+func providerModifyModels(me *managedExt, provider string) func([]extension.Model, extension.OAuthCredentials) ([]extension.Model, error) {
+	return func(models []extension.Model, creds extension.OAuthCredentials) ([]extension.Model, error) {
+		conn := me.connection()
+		if conn == nil {
+			return nil, errors.New("extension not connected")
+		}
+		encoded, err := extension.MarshalModelObjects(models)
+		if err != nil {
+			return nil, err
+		}
+		credential, err := storedOAuthCredential(creds)
+		if err != nil {
+			return nil, err
+		}
+		args, err := json.Marshal(OAuthModifyModelsArgs{Models: encoded, Credentials: credential})
+		if err != nil {
+			return nil, err
+		}
+		raw, err := providerRequest(conn.lifetime, conn, provider, &Envelope{Type: MsgRequest, Request: &RequestPayload{Method: MethodOAuthModifyModels, Tool: provider, Args: args}})
+		err = connectionEnded(conn, err)
+		if err != nil {
+			return nil, err
+		}
+		var result OAuthModifyModelsResult
+		if err := json.Unmarshal(raw, &result); err != nil {
+			return nil, err
+		}
+		decoded, err := decodeProviderModels(provider, result.Models)
+		if err != nil {
+			return nil, err
+		}
+		return chatModels(decoded), nil
+	}
 }
 
 // generateImages runs the provider object's generateImages in its extension.

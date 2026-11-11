@@ -56,14 +56,14 @@ func TestConformance_EventPayloadsReachEverySDKUnchanged(t *testing.T) {
 		}, `{"type":"user_bash","command":"probe-payload","excludeFromContext":true,"cwd":"/work"}`},
 		{"tool_call", func(ctx context.Context, h *harness) error {
 			_, err := h.runner.EmitToolCall(ctx, extension.CustomToolCallEvent{
-				ToolCallEventBase: extension.ToolCallEventBase{Type: "tool_call", ToolCallID: "c1", ParentToolCallID: "p1"}, ToolName: "probe", Input: map[string]any{"a": float64(1)},
+				Type: "tool_call", ToolCallID: "c1", ParentToolCallID: "p1", ToolName: "probe", Input: map[string]any{"a": float64(1)},
 			})
 			return err
 		}, `{"type":"tool_call","toolCallId":"c1","parentToolCallId":"p1","toolName":"probe","input":{"a":1}}`},
 		{"tool_result", func(ctx context.Context, h *harness) error {
 			_, err := h.runner.EmitToolResult(ctx, extension.CustomToolResultEvent{
-				ToolResultEventBase: extension.ToolResultEventBase{Type: "tool_result", ToolCallID: "c1", ParentToolCallID: "p1", Input: map[string]any{"a": float64(1)}, Content: []any{map[string]any{"type": "text", "text": "ok"}}, IsError: true},
-				ToolName:            "probe",
+				Type: "tool_result", ToolCallID: "c1", ParentToolCallID: "p1", Input: map[string]any{"a": float64(1)}, Content: []any{map[string]any{"type": "text", "text": "ok"}}, IsError: true,
+				ToolName: "probe",
 			})
 			return err
 		}, `{"type":"tool_result","toolCallId":"c1","parentToolCallId":"p1","input":{"a":1},"content":[{"type":"text","text":"ok"}],"isError":true,"toolName":"probe"}`},

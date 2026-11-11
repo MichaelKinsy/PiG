@@ -30,12 +30,16 @@ func TestRegisteredMarkdownMessageTypesReachTheBuiltExtension(t *testing.T) {
 			if ext.MarkdownTransformer == nil {
 				t.Fatal("no transformer")
 			}
-			if (ext.MarkdownMessageTypes == nil) != tc.isNil || len(ext.MarkdownMessageTypes) != len(tc.want) {
-				t.Fatalf("types = %#v, want %#v", ext.MarkdownMessageTypes, tc.want)
+			want := tc.want
+			if tc.isNil {
+				want = extension.DefaultMarkdownMessageTypes()
 			}
-			for i, want := range tc.want {
-				if ext.MarkdownMessageTypes[i] != want {
-					t.Fatalf("types = %#v, want %#v", ext.MarkdownMessageTypes, tc.want)
+			if len(ext.MarkdownTransformer.MessageTypes) != len(want) {
+				t.Fatalf("types = %#v, want %#v", ext.MarkdownTransformer.MessageTypes, want)
+			}
+			for _, messageType := range want {
+				if _, ok := ext.MarkdownTransformer.MessageTypes[messageType]; !ok {
+					t.Fatalf("types = %#v, want %#v", ext.MarkdownTransformer.MessageTypes, want)
 				}
 			}
 		})

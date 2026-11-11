@@ -35,6 +35,9 @@ func moduleToolchain(t *testing.T, root, name string) string {
 	return string(match[1])
 }
 
+// requiresRootModule matches a go.mod line that requires the root module itself, not one of its nested modules.
+var requiresRootModule = regexp.MustCompile(`(?m)^\s*(?:require\s+)?github\.com/MichaelKinsy/PiG\s+v`)
+
 func TestGoVersionPolicy(t *testing.T) {
 	root := repoRoot(t)
 	goVersion := goToolchain(t, root)
@@ -91,8 +94,16 @@ func TestGoVersionPolicy(t *testing.T) {
 			if !strings.HasPrefix(line, "go ") {
 				continue
 			}
-			if line != "go 1.26" && line != "go 1.26.0" {
-				t.Errorf("%s declares %q; want Go 1.26 language floor", path, line)
+			// The root module reads and writes JSON with encoding/json/v2, which a 1.26 module cannot import (the stdversion vet
+			// check rejects it). A module that requires the root module (the Porter extension, the extension conformance fixtures)
+			// cannot declare less than the root does: the go command asks for `go mod tidy`. Every other module, the extension SDK
+			// first, keeps the 1.26 floor.
+			floor, floorName := "go 1.26", "Go 1.26"
+			if filepath.Dir(path) == root || requiresRootModule.Match(data) {
+				floor, floorName = "go 1.27", "Go 1.27"
+			}
+			if line != floor && line != floor+".0" {
+				t.Errorf("%s declares %q; want %s language floor", path, line, floorName)
 			}
 			return nil
 		}

@@ -3,6 +3,7 @@ package http
 import (
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
@@ -55,38 +56,10 @@ func asciiLower(text string) string {
 	return text
 }
 
-// StringSet is a set of strings in insertion order (a JavaScript `Set<string>`).
-type StringSet struct {
-	order []string
-	seen  map[string]struct{}
-}
-
-// NewStringSet is a set of values.
-func NewStringSet(values ...string) *StringSet {
-	set := &StringSet{seen: map[string]struct{}{}}
-	for _, value := range values {
-		set.Add(value)
+// addUnique appends value to list unless it is there: a JavaScript `Set<string>` as its insertion-ordered values.
+func addUnique(list []string, value string) []string {
+	if slices.Contains(list, value) {
+		return list
 	}
-	return set
+	return append(list, value)
 }
-
-// Add adds value.
-func (s *StringSet) Add(value string) {
-	if _, ok := s.seen[value]; ok {
-		return
-	}
-	s.seen[value] = struct{}{}
-	s.order = append(s.order, value)
-}
-
-// Has is whether value is in the set.
-func (s *StringSet) Has(value string) bool {
-	_, ok := s.seen[value]
-	return ok
-}
-
-// Size is how many values the set holds.
-func (s *StringSet) Size() int { return len(s.order) }
-
-// Values are its values in insertion order.
-func (s *StringSet) Values() []string { return append([]string(nil), s.order...) }

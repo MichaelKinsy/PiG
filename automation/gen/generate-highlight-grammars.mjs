@@ -6,17 +6,19 @@
 // mode objects while it compiles them (isCompiled, cachedVariants, deleting keywords.$pattern), and some modes are shared
 // between modes and between the two registrations of a language.
 //
-// Usage: node generate-highlight-grammars.mjs <pi-package-root> <out-dir>
+// grammars_eager.json.gz is written into <out-dir>. The full snapshot is written as plain JSON to <all-json>: the Makefile target highlight-grammars stores it as the zstd frame tui/internal/hljs embeds (automation/gen/zstdfile), so the pinned encoder, not this script, decides that frame's bytes.
+//
+// Usage: node generate-highlight-grammars.mjs <pi-package-root> <out-dir> <all-json>
 import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { writeGzipText } from "./write-gzip-text.mjs";
 
-const [packageArg, outDir] = process.argv.slice(2);
+const [packageArg, outDir, allJSON] = process.argv.slice(2);
 const packageRoot = packageArg && path.resolve(packageArg);
-if (!packageArg || !outDir) {
-	console.error("usage: generate-highlight-grammars.mjs <pi-package-root> <out-dir>");
+if (!packageArg || !outDir || !allJSON) {
+	console.error("usage: generate-highlight-grammars.mjs <pi-package-root> <out-dir> <all-json>");
 	process.exit(2);
 }
 const require = createRequire(path.join(packageRoot, "package.json"));
@@ -264,7 +266,7 @@ write("grammars_eager.json.gz", {
 	canonicalize,
 	lowerCase,
 });
-write("grammars_all.json.gz", { firstNode: eagerNodeCount, nodes: nodes.slice(eagerNodeCount), registrations: all });
+fs.writeFileSync(allJSON, `${JSON.stringify({ firstNode: eagerNodeCount, nodes: nodes.slice(eagerNodeCount), registrations: all })}\n`);
 console.log(
 	`highlight.js ${hljsPackage.version}: ${eager.length} eager and ${all.length} deferred registrations, ${eagerNodeCount} + ${nodes.length - eagerNodeCount} grammar nodes`,
 );

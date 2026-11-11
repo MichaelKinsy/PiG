@@ -30,7 +30,7 @@ func BenchmarkClientCallTool(b *testing.B) {
 	if err := serverTransport.Start(); err != nil {
 		b.Fatal(err)
 	}
-	client := mcp.NewClient(mcp.ClientOptions{Implementation: mcp.Implementation{Name: "bench-client", Version: "1.0.0"}})
+	client := mcp.NewClient(mcp.ClientOptions{Name: "bench-client", Version: "1.0.0"})
 	if _, err := client.Connect(b.Context(), clientTransport); err != nil {
 		b.Fatal(err)
 	}

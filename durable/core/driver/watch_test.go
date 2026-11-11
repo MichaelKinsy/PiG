@@ -21,8 +21,8 @@ type notesState struct {
 }
 
 var notesDoc = durable.DefineDoc(durable.DocDefinition[notesState]{
-	CommonDocDefinition: durable.CommonDocDefinition[notesState]{Kind: "test.driver-notes", Version: 1, Initial: func() notesState { return notesState{} }, CheckpointWhen: func(notesState, []durable.Op, durable.CheckpointInfo) bool { return false }},
-	DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeSession},
+	Kind: "test.driver-notes", Version: 1, Initial: func() notesState { return notesState{} }, CheckpointWhen: func(notesState, []durable.Op, durable.CheckpointInfo) bool { return false },
+	Scope: durable.ScopeSession,
 })
 
 func writeNotes(t *testing.T, s durable.Session, text string) {
@@ -382,10 +382,9 @@ func TestObserveCommitsKeepsCommitOrderUnderBurst(t *testing.T) {
 func TestRetiringADocumentThroughTheRealCoreStartsANewIncarnation(t *testing.T) {
 	s := openCore(t)
 	token := durable.DefineDoc(durable.DocDefinition[durable.JsonObject]{
-		CommonDocDefinition: durable.CommonDocDefinition[durable.JsonObject]{
-			Kind: "t.native.retire", Version: 1,
-			CheckpointWhen: func(durable.JsonObject, []durable.Op, durable.CheckpointInfo) bool { return true }, Initial: func() durable.JsonObject { return delta.JsonObjectOf() }},
-		DocumentSemantics: durable.DocumentSemantics{Scope: durable.ScopeSession},
+		Kind: "t.native.retire", Version: 1,
+		CheckpointWhen: func(durable.JsonObject, []durable.Op, durable.CheckpointInfo) bool { return true }, Initial: func() durable.JsonObject { return delta.JsonObjectOf() },
+		Scope: durable.ScopeSession,
 	})
 	set := func(n int, retire bool) (seen bool) {
 		t.Helper()

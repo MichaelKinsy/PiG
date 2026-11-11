@@ -147,7 +147,7 @@ func TestOutboundFramesAreTheEncodersBytes(t *testing.T) {
 				t.Fatal(err)
 			}
 			raw := slices.Clone(wireInput)
-			call := extension.CustomToolCallEvent{ToolCallEventBase: extension.ToolCallEventBase{Type: "tool_call", ToolCallID: "corpus-call", WireInput: &raw}, ToolName: "corpus_tool", Input: input}
+			call := extension.CustomToolCallEvent{Type: "tool_call", ToolCallID: "corpus-call", WireInput: &raw, ToolName: "corpus_tool", Input: input}
 			if _, err := h.runner.EmitToolCall(ctx, call); err != nil {
 				t.Fatalf("emit tool_call: %v", err)
 			}

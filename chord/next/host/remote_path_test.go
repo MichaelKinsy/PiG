@@ -8,9 +8,9 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// pi: packages/chord/src/next/remote/path.ts
+// pi: packages/chord/src/remote/path.ts
 
-// Ports packages/chord/test/next/remote/path.test.ts.
+// Ports packages/chord/test/remote/path.test.ts.
 
 // recordingHolder records where it was held and what it was told, as `name@link` and `name dropped`: the path calls only
 // attach and dropped (Pi's test fakes the holder the same way).

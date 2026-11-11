@@ -172,6 +172,7 @@ func TestTreeSearchLineRenderMatchesPi(t *testing.T) {
 
 // TestTreeHelpRenderMatchesPi runs TreeHelp.render over every width with default, partly unbound, compacted, glyph-substituted and rebound keys.
 func TestTreeHelpRenderMatchesPi(t *testing.T) {
+	restoreTUIKeybindings(t)
 	variants := map[string]map[string][]string{
 		"default":                nil,
 		"move-keys-unbound":      {"tui.select.up": {}, "tui.select.down": {}},

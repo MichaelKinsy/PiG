@@ -63,7 +63,7 @@ func TestSessionStatsCacheWasteResetsAtSummary(t *testing.T) {
 	appendAssistant := func(id string, usage *ai.Usage) {
 		t.Helper()
 		entry := MessageEntry{
-			SessionEntryBase: SessionEntryBase{Type: "message", ID: id, ParentID: session.GetLeafID(), Timestamp: "2025-01-01T00:00:00Z"},
+			Type: "message", ID: id, ParentID: session.GetLeafID(), Timestamp: "2025-01-01T00:00:00Z",
 			Message: agent.AgentMessage{Assistant: &agent.AssistantMessage{
 				Role: "assistant", Provider: "custom", ModelID: "model", Timestamp: 1, Usage: usage,
 			}},
@@ -94,8 +94,8 @@ func BenchmarkSessionStatsSnapshot(b *testing.B) {
 			session := NewSession("benchmark", "/tmp")
 			for i := range entries {
 				entry := MessageEntry{
-					SessionEntryBase: SessionEntryBase{Type: "message", ID: fmt.Sprintf("u%d", i), Timestamp: "2025-01-01T00:00:00Z"},
-					Message:          agent.AgentMessage{User: &agent.UserMessage{Role: "user"}},
+					Type: "message", ID: fmt.Sprintf("u%d", i), Timestamp: "2025-01-01T00:00:00Z",
+					Message: agent.AgentMessage{User: &agent.UserMessage{Role: "user"}},
 				}
 				if err := session.AppendEntry(entry); err != nil {
 					b.Fatal(err)

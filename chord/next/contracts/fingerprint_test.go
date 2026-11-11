@@ -6,9 +6,9 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 )
 
-// Ports packages/chord/test/next/contracts/fingerprint.test.ts.
+// Ports packages/chord/test/contracts/fingerprint.test.ts.
 
-// pi: packages/chord/src/next/contracts/fingerprint.ts
+// pi: packages/chord/src/contracts/fingerprint.ts
 
 // fingerprintOf is the fingerprint of a one-variant remote contract with state `s` and params `params`.
 func fingerprintOf(t *testing.T, state contracts.Schema, params contracts.Params) string {

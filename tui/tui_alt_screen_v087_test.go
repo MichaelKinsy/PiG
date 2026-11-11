@@ -91,8 +91,8 @@ func columnOf(row, needle string, last bool) int {
 
 func transcriptOverDock(transcript Component, dock Component, dockBasis *int) *VStack {
 	return NewVStack([]StackEntry{
-		{Component: transcript, StackEntryOptions: StackEntryOptions{Basis: new(0), Grow: new(1), MinSize: new(1)}},
-		{Component: dock, StackEntryOptions: StackEntryOptions{Basis: dockBasis, Shrink: new(0), MinSize: new(1)}},
+		{Component: transcript, Basis: new(0), Grow: new(1), MinSize: new(1)},
+		{Component: dock, Basis: dockBasis, Shrink: new(0), MinSize: new(1)},
 	}, StackOptions{})
 }
 
@@ -218,8 +218,8 @@ func TestAltScreenDoesNotRedispatchMissesThroughHorizontalLayouts(t *testing.T) 
 	h := newAltHarness(t, 20, 2, TuiAltScreenOptions{})
 	list := &mouseProbe{lines: []string{"A", "B"}, result: &TuiMouseEventResult{Handled: true}}
 	h.tui.SetLayoutRoot(NewHStack([]StackEntry{
-		{Component: list, StackEntryOptions: StackEntryOptions{Basis: new(10)}},
-		{Component: NewText("plain"), StackEntryOptions: StackEntryOptions{Basis: new(10)}},
+		{Component: list, Basis: new(10)},
+		{Component: NewText("plain"), Basis: new(10)},
 	}, StackOptions{}))
 	h.start()
 	h.send("\x1b[<0;15;1M", "\x1b[<0;15;1m")

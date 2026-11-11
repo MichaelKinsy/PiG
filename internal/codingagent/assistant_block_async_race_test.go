@@ -17,9 +17,9 @@ func TestAssistantBlockAsyncMarkdownCompletionLeavesTheBlockToTheOwnerLoop(t *te
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	m := &InteractiveMode{backgroundCtx: ctx, tuiInst: tui.NewWithOutput(io.Discard, 80, 24)}
-	m.newRunner = inproc.NewRunner([]extension.Extension{{MarkdownTransformer: func(text string, _ extension.MarkdownTransformContext) string {
+	m.newRunner = inproc.NewRunner([]extension.Extension{{MarkdownTransformer: extension.NewMarkdownTransformerRegistration(func(text string, _ extension.MarkdownTransformContext) string {
 		return "rewritten " + text
-	}}}, "")
+	}, nil)}}, "")
 	block := m.newAssistantMessageBlock(messageMeta{})
 	chat := tui.NewContainer()
 	chat.Add(block)

@@ -1,7 +1,7 @@
 // The context read an invocation gets: Pi's options object ({at}) and immutable records (context.ts kept ranges).
 import assert from "node:assert/strict"
 import { test } from "node:test"
-import type { Context } from "@earendil-works/chord"
+import type { Context } from "@earendil-works/chord/context"
 import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context"
 import { invocationApi } from "../src/facade/hostapi.ts"
 

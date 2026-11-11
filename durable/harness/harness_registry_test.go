@@ -21,7 +21,7 @@ import (
 // registryTool builds a tool. Upstream's AppTool adds an application field (snippet); a Go registration carries such data in its own fields, so the snippet rides in PromptGuidelines here.
 func registryTool(name string, edit ...func(*durable.ToolRegistration)) *durable.ToolRegistration {
 	tool := &durable.ToolRegistration{
-		ToolSchema: ai.ToolSchema{Name: name, Description: name + " tool", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}},
+		Name: name, Description: name + " tool", Parameters: map[string]any{"type": "object", "properties": map[string]any{}},
 		Execute: func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}}, nil
 		},

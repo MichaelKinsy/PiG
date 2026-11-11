@@ -5,8 +5,10 @@ package tui
 import (
 	"bytes"
 	"encoding/json"
+	"encoding/json/jsontext"
 	"strings"
 
+	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
@@ -35,20 +37,21 @@ func toolCallArgEntries(args json.RawMessage) (entries []toolCallArg, ok bool) {
 	if canonical[0] != '{' {
 		return []toolCallArg{{key: "args", json: canonical}}, true
 	}
-	decoder := json.NewDecoder(bytes.NewReader(canonical))
-	if _, err := decoder.Token(); err != nil {
+	decoder := jsontext.NewDecoder(bytes.NewReader(canonical), jsonopts.Parse)
+	if _, err := decoder.ReadToken(); err != nil {
 		return nil, false
 	}
-	for decoder.More() {
-		key, err := decoder.Token()
+	for decoder.PeekKind() != '}' {
+		keyToken, err := decoder.ReadToken()
 		if err != nil {
 			return nil, false
 		}
-		var value json.RawMessage
-		if err := decoder.Decode(&value); err != nil {
+		key := keyToken.String() // a Token and the bytes ReadValue returns are void after the next call on the decoder
+		value, err := decoder.ReadValue()
+		if err != nil {
 			return nil, false
 		}
-		entries = append(entries, toolCallArg{key: key.(string), json: value})
+		entries = append(entries, toolCallArg{key: key, json: json.RawMessage(bytes.Clone(value))})
 	}
 	return entries, true
 }
