@@ -113,6 +113,7 @@ pub(crate) fn dispatch(
     let failure = |message: String| ErrorInfo {
         code: None,
         message,
+        shell_exit: None,
     };
     let args = args.cloned().unwrap_or(Value::Null);
     let handle = args["handle"].as_str().unwrap_or_default();

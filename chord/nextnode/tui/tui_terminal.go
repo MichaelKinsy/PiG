@@ -78,8 +78,11 @@ func (*ProcessTerminal) OnResize(handler func()) func() {
 	notifyResize(signals)
 	stopped := make(chan struct{})
 	var once sync.Once
+	// Node's output.on("resize", handler) has the listener installed when it returns: the goroutine is listening before OnResize does.
+	listening := make(chan struct{})
 	//portlint:allow golifetime ends when the returned stop function runs
 	go func() {
+		close(listening)
 		for {
 			select {
 			case <-signals:
@@ -89,6 +92,7 @@ func (*ProcessTerminal) OnResize(handler func()) func() {
 			}
 		}
 	}()
+	<-listening
 	return func() {
 		once.Do(func() {
 			signal.Stop(signals)

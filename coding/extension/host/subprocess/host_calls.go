@@ -597,7 +597,7 @@ func (h *Host) replyToCall(me *managedExt, conn *Conn, callID string, call *Call
 		_ = conn.Send(&Envelope{
 			Type:       MsgCallResult,
 			ID:         callID,
-			CallResult: &CallResultPayload{Error: &ErrorInfo{Message: err.Error()}},
+			CallResult: &CallResultPayload{Error: errorInfoOf(err)},
 		})
 		return
 	}

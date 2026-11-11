@@ -24,6 +24,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 )
 
@@ -457,7 +458,7 @@ func (c *RpcClient) handleLine(line []byte) {
 		if found {
 			// Upstream resolves with the parsed object as is; decode what fits.
 			var response RpcResponse
-			_ = json.Unmarshal(line, &response)
+			_ = jsstring.UnmarshalKeepingSurrogates(line, &response)
 			pending.resolve <- response
 			return
 		}
@@ -654,7 +655,7 @@ func getData[T any](response RpcResponse) (T, error) {
 	if len(response.Data) == 0 {
 		return data, nil
 	}
-	err := json.Unmarshal(response.Data, &data)
+	err := jsstring.UnmarshalKeepingSurrogates(response.Data, &data)
 	return data, err
 }
 

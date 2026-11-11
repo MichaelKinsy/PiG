@@ -204,6 +204,8 @@ type requestMsg struct {
 	ChildSession string `json:"child_session,omitempty"`
 	// ToolCallIndex, on tool_call, is the call's position in its assistant message's batch (Context.ToolCallIndex).
 	ToolCallIndex *int `json:"tool_call_index,omitempty"`
+	// SignalAborted, on session_before_compact and session_before_tree, reports that the event's AbortSignal had already aborted when the host dispatched the handler: the request's signal starts aborted, so Context.Done is closed in the handler's first line (its host calls run), as event.signal.aborted is true in Pi.
+	SignalAborted bool `json:"signal_aborted,omitempty"`
 
 	// streamData and streamErr are the payload a stream request produced, or why it could not be produced (applyEventStream).
 	streamData map[string]any
@@ -262,6 +264,8 @@ func (m widgetPushMsg) MarshalJSON() ([]byte, error) {
 type cancelMsg struct {
 	RequestID string `json:"request_id,omitempty"`
 	Reason    string `json:"reason,omitempty"`
+	// SignalOnly reports that only the request's AbortSignal ended (session_before_compact, session_before_tree) and the request goes on: the signal its handler holds (Context.Done, Err) aborts and no host call is cancelled, as Pi's in-process calls never fail with the abort.
+	SignalOnly bool `json:"signal_only,omitempty"`
 }
 
 type pingMsg struct {
@@ -283,6 +287,13 @@ type shutdownMsg struct {
 type errorInfo struct {
 	Code    string `json:"code,omitempty"`
 	Message string `json:"message"`
+	// ShellExit is Pi's ShellTimeoutError.shellExit: on the error of a local shell command that timed out after its shell had exited.
+	ShellExit *shellExitInfo `json:"shellExit,omitempty"`
+}
+
+type shellExitInfo struct {
+	ExitCode     int     `json:"exitCode"`
+	AfterSeconds float64 `json:"afterSeconds"`
 }
 
 // conn manages the socket connection with read/write goroutines and
@@ -435,6 +446,19 @@ func (c *conn) readLoop() {
 				ch <- env.CallResult
 			}
 			continue
+		}
+		if env.Type == msgCancel && env.Cancel != nil && env.Cancel.SignalOnly {
+			id := env.ID
+			if id == "" {
+				id = env.Cancel.RequestID
+			}
+			var cause error
+			if env.Cancel.Reason != "" {
+				cause = cancelReason(env.Cancel.Reason)
+			}
+			if c.signalParent(id, cause) {
+				continue
+			}
 		}
 		// Everything else goes to the main loop.
 		if env.Type == msgNotify {
@@ -812,6 +836,10 @@ func encodeResponse(id string, result any, respErr error) ([]byte, error) {
 	resp := &responseMsg{}
 	if respErr != nil {
 		resp.Error = &errorInfo{Message: respErr.Error()}
+		// Pi's bash tool tells the error of the local backend by class, so only that error, rethrown unchanged, keeps the shell's exit.
+		if timeout, ok := respErr.(*shellTimeoutError); ok {
+			resp.Error.ShellExit = &shellExitInfo{ExitCode: timeout.exitCode, AfterSeconds: timeout.afterSeconds}
+		}
 	}
 	if result != nil {
 		var data []byte

@@ -3,12 +3,14 @@ package subprocess
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 	"github.com/MichaelKinsy/PiG/internal/sessionentry"
 )
@@ -639,6 +641,8 @@ type RequestPayload struct {
 	MessageSeqs []uint64 `json:"message_seqs,omitempty"` //portlint:allow emptydrop a PiG-only frame field; absent means no message of the event is shared
 	// SignalTimeoutMS, on oauth_refresh, tells a runtime whose refresh callback receives an AbortSignal that the signal is AbortSignal.timeout(SignalTimeoutMS) alone: the caller's cancellation never reaches it, as in Pi's refreshStoredOAuthCredential (auth/resolve.ts). Absent, the signal follows the request's cancellation.
 	SignalTimeoutMS *float64 `json:"signal_timeout_ms,omitempty"`
+	// SignalAborted, on a session_before_compact or session_before_tree event, reports that the event's AbortSignal had already aborted when the host dispatched the handler: Pi's runner awaits every handler of those events with event.signal aborted (runner.ts emit), so a handler dispatched after the abort starts with event.signal.aborted true. When the signal ends while the handler runs, the host sends a signal-only cancel (CancelPayload.SignalOnly) and keeps waiting for the reply, as Pi keeps the handler's result.
+	SignalAborted bool `json:"signal_aborted,omitempty"`
 	// OwnSignal, on tool_call, reports a nested call that runs with the signal its caller passed in options.signal: the tool's signal parameter is that signal, not the run's.
 	OwnSignal bool `json:"own_signal,omitempty"`
 	// ExecuteID, with OwnSignal, names the executeTool call of the same connection that made this nested call, so its runtime can hand the tool the very signal object its caller passed.
@@ -805,11 +809,35 @@ type ErrorInfo struct {
 	// one (a JavaScript `err.stack`). Hosts report it as upstream reports
 	// `ExtensionError.stack`.
 	Stack string `json:"stack,omitempty"`
+	// ShellExit is set on the error of a local shell command (Pi's createLocalBashOperations().exec) that timed out after its shell had already exited, so the
+	// tool was only still waiting for background processes that held the output pipes (Pi's ShellTimeoutError.shellExit). The host sets it on the error reply of
+	// builtinTool.localExec, and an SDK sets it on the error response of user_bash_exec when the error its exec raised is the one its local operations returned,
+	// unchanged. Message is then "timeout:<seconds>". It is omitted otherwise.
+	ShellExit *ShellExitInfo `json:"shellExit,omitempty"`
+}
+
+// ShellExitInfo is Pi's `shellExit`: the shell's own exit code and the seconds it ran, rounded to a tenth as Pi rounds them (Math.round(ms / 100) / 10).
+type ShellExitInfo struct {
+	ExitCode     int     `json:"exitCode"`
+	AfterSeconds float64 `json:"afterSeconds"`
+}
+
+// errorInfoOf is the wire error of err: its message, and the shell's exit when err is the local shell backend's timeout after the shell had exited.
+func errorInfoOf(err error) *ErrorInfo {
+	info := &ErrorInfo{Message: err.Error()}
+	if timeout, ok := err.(*tools.ShellTimeoutError); ok && timeout.ShellExit != nil {
+		info.ShellExit = &ShellExitInfo{ExitCode: timeout.ShellExit.ExitCode, AfterSeconds: timeout.ShellExit.AfterSeconds}
+	}
+	return info
 }
 
 func (e *ErrorInfo) ToError() error {
 	if e == nil {
 		return nil
+	}
+	if timeout, ok := strings.CutPrefix(e.Message, "timeout:"); ok && e.Code == "" && e.ShellExit != nil {
+		// Pi's bash tool tells the error of its local backend by class, and the error an extension's exec rethrows unchanged is that error.
+		return &tools.ShellTimeoutError{Timeout: timeout, ShellExit: &tools.ShellExit{ExitCode: e.ShellExit.ExitCode, AfterSeconds: e.ShellExit.AfterSeconds}}
 	}
 	message := e.Message
 	if e.Code != "" {
@@ -1458,6 +1486,8 @@ type WidgetPushPayload struct {
 type CancelPayload struct {
 	RequestID string `json:"request_id,omitempty"`
 	Reason    string `json:"reason,omitempty"`
+	// SignalOnly reports that only the request's AbortSignal ended (session_before_compact, session_before_tree: Pi's abortCompaction aborts the AbortController, agent-session.ts:2867) and the request goes on: the runtime aborts the signal its handler holds and cancels no host call, as Pi's in-process calls never fail with the abort. The host keeps answering the handler's calls, before and after, and waits for its reply. An ordinary cancel, without it, ends the request and its host calls.
+	SignalOnly bool `json:"signal_only,omitempty"`
 }
 
 // ShutdownPayload signals the extension to exit gracefully.

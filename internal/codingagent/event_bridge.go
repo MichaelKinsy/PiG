@@ -19,6 +19,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	sdkjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // emitSessionInfoChanged dispatches a session_info_changed event.
@@ -191,7 +192,7 @@ func toolExecutionArgs(args json.RawMessage) any {
 		return nil
 	}
 	var value any
-	if err := json.Unmarshal(args, &value); err != nil {
+	if err := jsstring.UnmarshalKeepingSurrogates(args, &value); err != nil {
 		return args
 	}
 	return value
@@ -309,7 +310,7 @@ func extensionToolResult(result agent.AgentToolResult) map[string]any {
 	}
 	if len(result.StructuredContent) > 0 {
 		var structured any
-		if err := json.Unmarshal(result.StructuredContent, &structured); err == nil {
+		if err := jsstring.UnmarshalKeepingSurrogates(result.StructuredContent, &structured); err == nil {
 			payload["structuredContent"] = structured
 		}
 	}

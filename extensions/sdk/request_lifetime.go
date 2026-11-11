@@ -16,6 +16,8 @@ type requestParent struct {
 	completed bool
 	finished  bool
 	cancelled bool
+	// signal aborts the request's signal alone (Context.Done and Err), for a signal-only cancel; nil until the request is armed with its signal (armRequestScope).
+	signal context.CancelCauseFunc
 }
 
 func (c *conn) armParent(id string, runtime, request context.Context) *requestParent {
@@ -113,4 +115,19 @@ func hostServesBeforeRegister(method string) bool {
 		return true
 	}
 	return false
+}
+
+// signalParent aborts the signal of the armed request id alone and reports whether it did: the request is not cancelled and none of its host calls ends. The read loop applies a signal-only cancel here, where the frame is read, so the handler finds its signal aborted when it wakes from a call whose result the same loop routes after the frame (the main loop reads the frames of requests in a later turn). A request not armed yet has no call to wake: the frame goes to the main loop, behind the request frame it follows.
+func (c *conn) signalParent(id string, cause error) bool {
+	c.pendingMu.Lock()
+	var signal context.CancelCauseFunc
+	if parent := c.requestParents[id]; parent != nil {
+		signal = parent.signal
+	}
+	c.pendingMu.Unlock()
+	if signal == nil {
+		return false
+	}
+	signal(cause)
+	return true
 }

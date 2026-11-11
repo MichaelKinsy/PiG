@@ -688,6 +688,21 @@
                    (lambda (ctx args) (declare (ignore ctx))
                      (multiple-value-bind (name raw) (split-first args)
                        (let ((result (pig:from-json raw))) (pig:on ext name (lambda (hctx data) (declare (ignore hctx data)) result))))))
+      ;; event_signal_probe: session_before_compact / session_before_tree handler that returns the state of its event signal (the request's cancellation) on its first line and after a dialog it opened was answered, and the dialog's answer: the signal aborts while the dialog is pending (mode "wait") or before the handler runs (mode "first"), and Pi's in-process host call still returns its answer.
+      (pig:command ext "event_signal_probe" "Subscribe to session_before_compact or session_before_tree with a handler that returns the state of its event signal"
+                   (lambda (ctx args) (declare (ignore ctx))
+                     (let ((name (string-trim '(#\Space #\Newline #\Tab) args)))
+                       (pig:on ext name
+                               (lambda (hctx data)
+                                 (let* ((source (if (equal name "session_before_tree") (pig:jget data "preparation") data))
+                                        (mode (let ((m (pig:jget source "customInstructions"))) (if (stringp m) m "")))
+                                        (before (pig:ctx-cancelled-p hctx))
+                                        (answer (handler-case (let ((text (pig:ctx-input hctx (format nil "event_signal:~A:~A:pending" name mode) :placeholder "p"))) (if (stringp text) text ""))
+                                                  (error (e) (format nil "failed: ~A" e))))
+                                        (state (format nil "event_signal:~A:~A:~A:~A" mode (if before "true" "false") (if (pig:ctx-cancelled-p hctx) "true" "false") answer)))
+                                   (if (equal name "session_before_compact")
+                                       (pig:obj "compaction" (pig:obj "summary" state "firstKeptEntryId" "k" "tokensBefore" 1))
+                                       (pig:obj "label" state))))))))
       (pig:command ext "event_ordered_result_probe" "Subscribe to an event with a handler that returns the given JSON, members in written order"
                    (lambda (ctx args) (declare (ignore ctx))
                      (multiple-value-bind (name raw) (split-first args)

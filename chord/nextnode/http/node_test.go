@@ -356,7 +356,7 @@ func TestTargetsReachTheComponentOnlyWhereNodesParserTakesThem(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	server := serving(t, []plugin{echoPlugin}, servedOptions{})
 	host := "Host: 127.0.0.1:" + strconv.Itoa(server.port)
 	scanner := bufio.NewScanner(file)

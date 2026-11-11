@@ -91,12 +91,34 @@
                                (maphash (lambda (k v) (setf (gethash k env) v)) (pig:jget spawn "env"))
                                (setf (gethash "HOOK_VAR" env) "hook-env")
                                (pig:obj "command" "printf '%s|%s' \"$HOOK_VAR\" \"$PI_SESSION_ID\"" "cwd" (pig:jget spawn "cwd") "env" env))))
-          :operations (and (custom)
+          :operations (cond
+                        ;; The bash tool runs on the local operations. "local" signals their condition unchanged; "localWrapped" signals a new one with the same message, which is
+                        ;; not the backend's and keeps nothing of it (Pi matches the backend's class, bash.ts).
+                        ;; "localThread" runs them on another thread and signals the very condition they signaled there, unchanged.
+                        ((equal (bp-case case "ops") "localThread")
+                         (let ((local (pig:bash-operations-exec (pig:create-local-bash-operations))))
                            (pig:make-bash-operations
                             (lambda (command cwd options)
-                              (note (format nil "exec:~A|cwd=~A" command cwd))
-                              (funcall (pig:bash-exec-options-on-data options) (sb-ext:string-to-octets (format nil "custom:~A" command) :external-format :utf-8))
-                              (pig:obj "exitCode" 0))))))))))
+                              (let* ((failure nil)
+                                     (worker (sb-thread:make-thread
+                                              (lambda ()
+                                                (handler-case (funcall local command cwd options)
+                                                  (error (e) (setf failure e) nil))))))
+                                (let ((result (sb-thread:join-thread worker)))
+                                  (if failure (error failure) result)))))))
+                        ((member (bp-case case "ops") '("local" "localWrapped") :test #'equal)
+                         (let ((local (pig:bash-operations-exec (pig:create-local-bash-operations)))
+                               (wrapped (equal (bp-case case "ops") "localWrapped")))
+                           (pig:make-bash-operations
+                            (lambda (command cwd options)
+                              (handler-bind ((error (lambda (e) (when wrapped (error "~A" e)))))
+                                (funcall local command cwd options))))))
+                        ((custom)
+                         (pig:make-bash-operations
+                          (lambda (command cwd options)
+                            (note (format nil "exec:~A|cwd=~A" command cwd))
+                            (funcall (pig:bash-exec-options-on-data options) (sb-ext:string-to-octets (format nil "custom:~A" command) :external-format :utf-8))
+                            (pig:obj "exitCode" 0)))))))))))
 
 (defun bp-factories (tool)
   "(definition-factory . tool-factory) of the built-in TOOL."

@@ -140,7 +140,11 @@ func screenshots(t *testing.T, out string, printed *bytes.Buffer) {
 	browser.Wait(`document.querySelectorAll('.lists-panel li').length === 5`)
 	shoot("page.png")
 
-	// 2. The Harbor theme plugin added and applied; the browser prefers dark, so the page takes Harbor.
+	// 2. The Harbor theme plugin added and applied; the browser prefers dark, so the page takes Harbor. As the tutorial's step 6, once
+	// the base code is watched (Pi f2bd84a519).
+	if err := untilBaseWatched(server); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.CopyFS(filepath.Join(root, "harbor"), os.DirFS(filepath.Join(here, "later", "harbor"))); err != nil {
 		t.Fatal(err)
 	}

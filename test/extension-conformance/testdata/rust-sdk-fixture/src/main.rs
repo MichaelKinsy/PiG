@@ -4190,6 +4190,43 @@ fn main() {
             CommandResult::Ok
         },
     );
+    // event_signal_probe subscribes to session_before_compact or session_before_tree with a handler that returns the state of its event signal (the request's cancellation) on its first line and after a dialog it opened was answered, and the dialog's answer: the signal aborts while the dialog is pending (mode "wait") or before the handler runs (mode "first"), and Pi's in-process host call still returns its answer.
+    let event_signal_subscriber = ext.event_subscriber();
+    let event_signal_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
+        Arc::new(Mutex::new(Vec::new()));
+    ext.command(
+        "event_signal_probe",
+        "Subscribe to session_before_compact or session_before_tree with a handler that returns the state of its event signal",
+        move |_ctx, args| {
+            let name = args.trim().to_string();
+            let event = name.clone();
+            let subscription = subscribe(&event_signal_subscriber, &name, move |hctx, data| {
+                let source: &serde_json::Value = if event == "session_before_tree" {
+                    data.get("preparation").unwrap_or(&serde_json::Value::Null)
+                } else {
+                    &*data
+                };
+                let mode = source
+                    .get("customInstructions")
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or("")
+                    .to_string();
+                let before = hctx.is_cancelled();
+                let answer = match hctx.input(&format!("event_signal:{event}:{mode}:pending"), "p") {
+                    Ok((value, _)) => value.as_str().unwrap_or("").to_string(),
+                    Err(error) => format!("failed: {error}"),
+                };
+                let state = format!("event_signal:{mode}:{before}:{}:{answer}", hctx.is_cancelled());
+                if event == "session_before_compact" {
+                    Ok(Some(serde_json::json!({"compaction": {"summary": state, "firstKeptEntryId": "k", "tokensBefore": 1}})))
+                } else {
+                    Ok(Some(serde_json::json!({"label": state})))
+                }
+            });
+            event_signal_subscriptions.lock().unwrap().push(subscription);
+            CommandResult::Ok
+        },
+    );
     let event_ordered_result_subscriber = ext.event_subscriber();
     let event_ordered_result_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
         Arc::new(Mutex::new(Vec::new()));
@@ -6516,9 +6553,9 @@ fn conformance_bash_operations() -> pig_sdk::BashOperations {
                 (options.on_data)(b"waiting");
                 options.signal.wait();
                 (options.on_data)(b"stopped");
-                Err("aborted".to_string())
+                Err("aborted".into())
             }
-            other => Err(format!("exec failed: {other}")),
+            other => Err(format!("exec failed: {other}").into()),
         }),
     }
 }
@@ -6965,6 +7002,37 @@ fn builtin_options(case: &Value, log: &CallLog) -> ProbeOptions {
             })
         }));
     }
+    if case["ops"].as_str() == Some("localThread") {
+        // The local operations run on another thread and their error comes back unchanged: the shell's exit belongs to the error, not to the thread.
+        let inner = pig_sdk::create_local_bash_operations(None).exec;
+        options.bash.operations = Some(pig_sdk::BashOperations {
+            exec: Arc::new(move |command, cwd, exec_options| {
+                let inner = inner.clone();
+                let (command, cwd) = (command.to_string(), cwd.to_string());
+                std::thread::spawn(move || inner(&command, &cwd, exec_options))
+                    .join()
+                    .unwrap_or_else(|_| Err("the local operations panicked".into()))
+            }),
+        });
+        return options;
+    }
+    if matches!(case["ops"].as_str(), Some("local" | "localWrapped")) {
+        // The bash tool runs on the local operations. "local" returns their error unchanged; "localWrapped" returns a new error with the same message, which is not the
+        // backend's error and keeps nothing of it (Pi matches the backend's class, bash.ts).
+        let wrapped = case["ops"].as_str() == Some("localWrapped");
+        let inner = pig_sdk::create_local_bash_operations(None).exec;
+        options.bash.operations = Some(pig_sdk::BashOperations {
+            exec: Arc::new(move |command, cwd, exec_options| {
+                let result = inner(command, cwd, exec_options);
+                if wrapped {
+                    result.map_err(|error| pig_sdk::BashExecError::from(error.message()))
+                } else {
+                    result
+                }
+            }),
+        });
+        return options;
+    }
     if case["ops"].as_str() == Some("globlimit") {
         // Pi main 676af1d77 (#11747): the tool asks glob for one result past its limit.
         let glob_log = log.clone();
@@ -7300,7 +7368,7 @@ fn builtin_local(case: &Value) -> Value {
         options,
     ) {
         Ok(code) => report["exitCode"] = json!(code),
-        Err(message) => report["error"] = json!(message),
+        Err(error) => report["error"] = json!(error.message()),
     }
     report["output"] = json!(chunks.lock().unwrap().join(""));
     report

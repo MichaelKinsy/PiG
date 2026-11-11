@@ -875,6 +875,36 @@
       ]
     },
     {
+      "id": "BF-05b3416",
+      "title": "Aborting a compaction or a session-tree move while extensions were handling `session_before_compact` or…",
+      "symptom": "Aborting a compaction or a session-tree move while extensions were handling `session_before_compact` or `session_before_tree` no longer drops the handler's reply and keeps every later extension from hearing about it.",
+      "rootCause": "Pi awaits every handler of both events with event.signal aborted and keeps their results (runner.ts emit; agent-session.ts:2878-2890, 3206-3218, 4107-4135); navigateTree checks no abort after the emit, so a late cancel or summary is honoured. PiG dispatched them with the abortable context: the running subprocess handler was cancelled and its reply dropped, and every later handler was never delivered, silently.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Aborting a compaction or a session-tree move while extensions were handling `session_before_compact` or `session_before_tree` no longer drops the handler's reply and keeps every later extension from hearing about it. As in Pi, each handler now receives the event in order, `event.signal` aborts for the one that is running, and a handler dispatched after the abort starts with the signal already aborted. A `{ cancel: true }`, summary, instructions or label returned after a tree move was aborted is honoured.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "05b3416ad9",
+          "date": "2026-11-09"
+        },
+        {
+          "hash": "6b778e70d7",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "coding/session_before_abort_dispatch_test.go::TestNavigateTreeHonoursAHandlerResultReturnedAfterTheAbort",
+        "coding/session_before_abort_dispatch_test.go::TestSessionBeforeCompactReachesEveryExtensionWhenAbortedDuringDispatch",
+        "test/extension-conformance/session_before_abort_test.go::TestNodeSessionBeforeCompactReachesTheNextExtensionWhenAbortedDuringDispatch",
+        "test/extension-conformance/session_before_abort_test.go::TestNodeSessionBeforeTreeHonoursAResultReturnedAfterTheAbort",
+        "test/extension-conformance/session_before_signal_test.go::TestSessionBeforeSignalReachesEverySDKWhenAbortedDuringDispatch"
+      ]
+    },
+    {
       "id": "BF-05c7426",
       "title": "CI: the nightly `-race` run no longer fails on the nested modules that only build inside a Go workspace…",
       "symptom": "CI: the nightly `-race` run no longer fails on the nested modules that only build inside a Go workspace (`apps/p2`, `apps/p2desktop`; `piglets/porter/extensions/pig-porter` builds and tests with `GOWORK=off` against its released dependencies and stays as it was): their entries in `automation/ci/race-packages.txt` carry `workspace`, and `test-race-nightly.sh` runs them without `GOWORK=off`.",
@@ -2209,6 +2239,32 @@
       ]
     },
     {
+      "id": "BF-0c4a06b",
+      "title": "A Lisp extension's host call that the host had already answered no longer fails with `host-call-cancelled`…",
+      "symptom": "A Lisp extension's host call that the host had already answered no longer fails with `host-call-cancelled` when the request is cancelled before the waiting thread wakes, so a `ctx-notify` in a handler cancelled at that moment no longer ends the handler with no result.",
+      "rootCause": "deliver-call-result left an answered call in extension-pending, so a cancel that arrived before the waiting thread woke finished it as cancelled and the call raised host-call-cancelled although the host had answered it: a notify in a handler whose request was cancelled at that moment ended the handler with no result. Python drops the parent on delivery; Lisp now removes the answered slot under the state lock.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Lisp extension's host call that the host had already answered no longer fails with `host-call-cancelled` when the request is cancelled before the waiting thread wakes, so a `ctx-notify` in a handler cancelled at that moment no longer ends the handler with no result.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0c4a06b0e4",
+          "date": "2026-11-09"
+        },
+        {
+          "hash": "f8180c331b",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/session_before_signal_test.go::TestSessionBeforeSignalReachesEverySDKWhenAbortedDuringDispatch"
+      ]
+    },
+    {
       "id": "BF-0c7d23f",
       "title": "A model's `bash`, `powershell`, `grep`, `find` or `ls` call is now drawn by the tool's built-in card, as Pi…",
       "symptom": "A model's `bash`, `powershell`, `grep`, `find` or `ls` call is now drawn by the tool's built-in card, as Pi does and as `read`, `write` and `edit` already were.",
@@ -2976,6 +3032,34 @@
       ],
       "tests": [
         "durable/core/view_test.go::TestResolveWindow"
+      ]
+    },
+    {
+      "id": "BF-123827b",
+      "title": "Go, Rust, Python and Lisp extensions: a bash tool built on `createLocalBashOperations()` now says `The shell…",
+      "symptom": "Go, Rust, Python and Lisp extensions: a bash tool built on `createLocalBashOperations()` now says `The shell exited with code C after S seconds, but background processes it started kept writing output until the timeout.` when a command timed out after its shell had already exited, as Pi 1.5.1 does.",
+      "rootCause": "The Go, Rust, Python and Lisp SDKs reach the local shell over builtinTool.localExec, whose error reply carried only 'timeout:N'.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Go, Rust, Python and Lisp extensions: a bash tool built on `createLocalBashOperations()` now says `The shell exited with code C after S seconds, but background processes it started kept writing output until the timeout.` when a command timed out after its shell had already exited, as Pi 1.5.1 does. The local operations of these SDKs reach the host over `builtinTool.localExec`, whose error reply carried only `timeout:N`; it now carries Pi's `shellExit` (the shell's exit code and run time), which the SDK passes on when its exec returns that error unchanged. An error wrapped around it, or a new error with its message, gives the plain `Command timed out after N seconds`, as in Pi.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "01d8d08b31",
+          "date": "2026-11-09"
+        },
+        {
+          "hash": "123827b998",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/shell_exit_wire_test.go::TestLocalShellTimeoutReadsAFusedSDKsError",
+        "coding/extension/host/subprocess/shell_exit_wire_test.go::TestShellExitCrossesTheWireAsErrorInfoShellExit",
+        "test/extension-conformance/builtin_tool_delegate_test.go::TestConformance_BuiltinToolDelegationAcrossSDKs"
       ]
     },
     {
@@ -8195,6 +8279,26 @@
       ]
     },
     {
+      "id": "BF-30cdab4",
+      "title": "Windows: the environment daemon's `taskkill /F /T` runs with the `SystemRoot` it resolved for its path…",
+      "symptom": "Windows: the environment daemon's `taskkill /F /T` runs with the `SystemRoot` it resolved for its path (`C:\\Windows` when the variable is empty or unset) instead of inheriting an empty one, with which taskkill did not run and left the killed program's tree alive.",
+      "rootCause": "Windows: the environment daemon's `taskkill /F /T` runs with the `SystemRoot` it resolved for its path (`C:\\Windows` when the variable is empty or unset) instead of inheriting an empty one, with which taskkill did not run and left the killed program's tree alive.",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Windows: the environment daemon's `taskkill /F /T` runs with the `SystemRoot` it resolved for its path (`C:\\Windows` when the variable is empty or unset) instead of inheriting an empty one, with which taskkill did not run and left the killed program's tree alive.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "30cdab4dca",
+          "date": "2026-11-10"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-30d4a6d",
       "title": "Fix in shipped code",
       "symptom": "Fix in shipped code",
@@ -11185,17 +11289,11 @@
       "rootCauseSource": "release note",
       "userImpact": "An operation failed or was rejected",
       "platform": "Windows",
-      "class": "ahead-of-pi",
-      "divergence": "D243",
-      "removeWhen": "the pinned Pi release contains 06aa6563e. Then the call-site markers and this record go.",
+      "class": "own",
       "fixedIn": "Unreleased",
       "releaseNote": "A bash or PowerShell command that timed out after its shell had already exited, because a background process it started kept writing to the shared output, now reports the shell's exit code as well: `Command timed out after N seconds. The shell exited with code C after S seconds, but background processes it started kept writing output until the timeout.` The model no longer reads a failed command as a slow one and retries with a longer timeout. A shell still running at the deadline keeps the plain timeout message, and custom operations that fail with `timeout:N` are unchanged (D243).",
       "origin": "release note",
       "commits": [
-        {
-          "hash": "3cf1ce8466",
-          "date": "2026-11-05"
-        },
         {
           "hash": "3fe717aa8a",
           "date": "2026-11-05"
@@ -11517,6 +11615,32 @@
       ],
       "tests": [
         "ai/anthropic_sse_oracle_test.go::TestAnthropicEventReaderMatchesPi"
+      ]
+    },
+    {
+      "id": "BF-4106324",
+      "title": "A `session_tree` handler is no longer cancelled, and later extensions no longer miss the event, when the…",
+      "symptom": "A `session_tree` handler is no longer cancelled, and later extensions no longer miss the event, when the context of the tree navigation ended while it ran.",
+      "rootCause": "Pi awaits runner.emit({ type: \"session_tree\" }) after the leaf moved with no signal (agent-session.ts:4221-4230). PiG emitted it with the navigation's context, so a context that ended while the navigation ran cancelled the running handler and dropped every later one. The emit now detaches the cancellation. The parity doc lists the audit of the other signal-carrying events.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A `session_tree` handler is no longer cancelled, and later extensions no longer miss the event, when the context of the tree navigation ended while it ran. As in Pi, the event reaches every extension after the leaf moved.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "41063244c4",
+          "date": "2026-11-09"
+        },
+        {
+          "hash": "c3342406bf",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "coding/session_before_abort_dispatch_test.go::TestNavigateTreeEmitsSessionTreeToEveryExtensionAfterTheCallerContextEnded"
       ]
     },
     {
@@ -13335,6 +13459,26 @@
       ]
     },
     {
+      "id": "BF-47e7748",
+      "title": "On macOS and the BSDs, a chord app's watch of its base code puts back the watch of a directory that was moved…",
+      "symptom": "On macOS and the BSDs, a chord app's watch of its base code puts back the watch of a directory that was moved away and back (a base directory, or one holding a recorded file).",
+      "rootCause": "A directory of base code moved away and back is held again by fsnotify's kqueue for its own removal and rename alone: it is in the notifier's list, so keepWatches found nothing lost, and nothing in it was reported. Where the notifier says a held watch may be partial, keepWatches adds the directory its event named again: one Add, never one per directory under it.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "macOS",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "On macOS and the BSDs, a chord app's watch of its base code puts back the watch of a directory that was moved away and back (a base directory, or one holding a recorded file). The system's file watcher (kqueue) held the directory again for its own rename alone, so nothing made in it was reported and `base` never changed; the watcher now adds that directory again when an event names it, as Pi's FSEvents watch of a path follows the path.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "47e7748062",
+          "date": "2026-11-10"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-47ec6e8",
       "title": "A chord plugin that starts a child process which keeps the Node host's output pipes open (a child that…",
       "symptom": "A chord plugin that starts a child process which keeps the Node host's output pipes open (a child that inherited stdout or stderr) no longer holds the host's exit: `Close` and the host's `Exited` waited for that child to end, for as long as it lived.",
@@ -13354,6 +13498,28 @@
       ],
       "tests": [
         "chord/nextnode/plugins/plugins_node_test.go::TestNodeAProcessTheHostStartedThatHoldsItsPipesDoesNotHoldItsExit"
+      ]
+    },
+    {
+      "id": "BF-4812c01",
+      "title": "Windows: installing a plugin from npm also names the extraction directory relative to the pack directory (`-C…",
+      "symptom": "Windows: installing a plugin from npm also names the extraction directory relative to the pack directory (`-C ../\u003cdir\u003e`), so the `tar` of Git for Windows, which resolves a `-C C:\\...` name against its working directory, no longer fails with \"Cannot open: No such file or directory\".",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Windows: installing a plugin from npm also names the extraction directory relative to the pack directory (`-C ../\u003cdir\u003e`), so the `tar` of Git for Windows, which resolves a `-C C:\\...` name against its working directory, no longer fails with \"Cannot open: No such file or directory\". Pi passes the absolute directory (D616 now names the archive and the destination).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4812c0127b",
+          "date": "2026-11-10"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_install_tar_test.go::TestInstallPluginNamesTheTarballToTarRelativeToThePackDirectory"
       ]
     },
     {
@@ -33309,6 +33475,34 @@
       "tests": []
     },
     {
+      "id": "BF-9a9b153",
+      "title": "Aborting a compaction or a branch summary while an extension's `session_before_compact` or…",
+      "symptom": "Aborting a compaction or a branch summary while an extension's `session_before_compact` or `session_before_tree` handler awaits a host call, such as a dialog, a notification or a session read, no longer fails that call in the Go, Node, Python, Rust and Lisp extension SDKs.",
+      "rootCause": "Pi's abort only calls AbortController.abort() (agent-session.ts:2867-2870); the handler's in-process calls never fail with it. The host sent the ordinary cancel frame when the event's signal ended, which every SDK also took as the request's cancellation, so a host call pending at the abort, such as a dialog or a session read, failed in the handler.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Aborting a compaction or a branch summary while an extension's `session_before_compact` or `session_before_tree` handler awaits a host call, such as a dialog, a notification or a session read, no longer fails that call in the Go, Node, Python, Rust and Lisp extension SDKs. The abort aborts the handler's `event.signal` and nothing else, as in Pi: the pending call and later calls return their results, and the handler's reply is kept.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4139cda473",
+          "date": "2026-11-10"
+        },
+        {
+          "hash": "9a9b153d6b",
+          "date": "2026-11-10"
+        }
+      ],
+      "tests": [
+        "extensions/sdk/request_signal_only_test.go::TestCancelRequestSignalOnlyKeepsTheRequestAndOrdinaryCancelEndsIt",
+        "extensions/sdk/request_signal_only_test.go::TestSignalOnlyCancelAbortsTheSignalAndLeavesHostCallsRunning",
+        "test/extension-conformance/session_before_signal_test.go::TestSessionBeforeSignalReachesEverySDKWhenAbortedDuringDispatch"
+      ]
+    },
+    {
       "id": "BF-9a9dc99",
       "title": "`WaitForTask` on a task whose terminal commit was adopted no longer fails with \"Harness is closed\" when a…",
       "symptom": "`WaitForTask` on a task whose terminal commit was adopted no longer fails with \"Harness is closed\" when a close begins before the wait wakes: a host `SubscribeCommits` listener that closes the Harness on that commit, or a close that comes between the commit's adoption and its publication.",
@@ -45897,6 +46091,32 @@
       ]
     },
     {
+      "id": "BF-d93f8bc",
+      "title": "A Python or Lisp `session_before_compact` or `session_before_tree` handler dispatched after the operation was…",
+      "symptom": "A Python or Lisp `session_before_compact` or `session_before_tree` handler dispatched after the operation was aborted can now make host calls, such as a notification on its first line, as Pi's handler can.",
+      "rootCause": "A session_before_compact or session_before_tree handler dispatched after the event's signal aborted started with its request cancelled, so every host call of it raised, including a void ctx.ui.notify (examples/extensions/custom-compaction.ts notifies on its first line) and a later {cancel:true} or summary was lost. Pi's notify never fails on abort. The handler still starts with its signal aborted (is_cancelled, ctx-cancelled-p), and the request is not cancelled.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Python or Lisp `session_before_compact` or `session_before_tree` handler dispatched after the operation was aborted can now make host calls, such as a notification on its first line, as Pi's handler can. The handler still starts with its signal aborted.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d93f8bccf0",
+          "date": "2026-11-09"
+        },
+        {
+          "hash": "f8180c331b",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/session_before_signal_test.go::TestSessionBeforeSignalReachesEverySDKWhenAbortedDuringDispatch"
+      ]
+    },
+    {
       "id": "BF-d943286",
       "title": "A tool's `handoff` control now continues the run in the new context in the Durable core as it does in Pi: the…",
       "symptom": "The core used to end the run at the handoff and answer it without another model request.",
@@ -49509,6 +49729,26 @@
         "test/longsession/session_oracle_test.go::TestSessionManagerMatchesPi",
         "test/parity/scenarios/rpc/58-rpc-session-wrong-typed-members.toml"
       ]
+    },
+    {
+      "id": "BF-e2bbcc5",
+      "title": "A lone UTF-16 surrogate now keeps its unit through the coding paths that still went through `encoding/json`…",
+      "symptom": "A lone UTF-16 surrogate now keeps its unit through the coding paths that still went through `encoding/json`, which writes it as U+FFFD, where Pi's `JSON.stringify` and `JSON.parse` keep it: the text blocks of an extension's `sendUserMessage` (the persisted user message), the `tool_call` and `tool_result` input a handler sees and the arguments an edited call runs with (also when the handler runs in an extension process and edits another member), the arguments and structured content an in-process `tool_execution_*` handler sees, the content of an extension's custom message sent to the model, a `context` handler's change to such a message, the `entry_appended` event's usage entry (now the exact session-line bytes, with `\u003c`, `\u003e` and `\u0026` literal), an `extension_ui_response` string value, the text of an RPC command field that a template literal coerces (`Model not found: …`, a non-string `bash` command), and the Go RPC client's typed decode of a response.",
+      "rootCause": "encoding/json writes a lone surrogate (three WTF-8 bytes in a Go string) as U+FFFD and reads its escape as U+FFFD; Pi's JSON.stringify and JSON.parse keep the unit. Six coding paths still went through it: - sendUserMessage content blocks an extension supplies (persisted as the user message); - the tool_call and tool_result input handed to handlers, the bytes of an edited call, and the context hook's changed-message comparison; - the entry_appended event's usage entry, now the bytes the session line holds; - an extension_ui_response string value; - RPC command fields the template literal coerces into an error text or a bash command; - the Go RPC client's typed decode of a response (data and…",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A lone UTF-16 surrogate now keeps its unit through the coding paths that still went through `encoding/json`, which writes it as U+FFFD, where Pi's `JSON.stringify` and `JSON.parse` keep it: the text blocks of an extension's `sendUserMessage` (the persisted user message), the `tool_call` and `tool_result` input a handler sees and the arguments an edited call runs with (also when the handler runs in an extension process and edits another member), the arguments and structured content an in-process `tool_execution_*` handler sees, the content of an extension's custom message sent to the model, a `context` handler's change to such a message, the `entry_appended` event's usage entry (now the exact session-line bytes, with `\u003c`, `\u003e` and `\u0026` literal), an `extension_ui_response` string value, the text of an RPC command field that a template literal coerces (`Model not found: …`, a non-string `bash` command), and the Go RPC client's typed decode of a response.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e2bbcc56cf",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-e2db931",
@@ -57092,11 +57332,6 @@
       "entry": "BF-D235"
     },
     {
-      "id": "D243",
-      "title": "The SDK local bash operations lose the shell's exit code on a timeout after the shell exited",
-      "entry": "BF-3fe717a"
-    },
-    {
       "id": "D266",
       "title": "An image block with an empty `mimeType` is named `image/unknown` in tool cards, where Pi names it with the…",
       "entry": "BF-D266"
@@ -57220,7 +57455,7 @@
     },
     {
       "id": "D616",
-      "title": "An npm tarball is extracted with `tar` told the archive relative to the pack directory, where Pi passes its…",
+      "title": "An npm tarball is extracted with `tar` told the archive and the destination relative to the pack directory…",
       "entry": "BF-5043738"
     }
   ],

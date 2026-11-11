@@ -4,7 +4,6 @@ package coding
 
 import (
 	"context"
-	"encoding/json"
 	"reflect"
 	"slices"
 	"sync"
@@ -228,7 +227,8 @@ func (s *Session) decideCacheWarming(ctx context.Context, event icodingagent.Cac
 // wait on channel capacity: the goroutine keeps trying to deliver the event
 // until either it succeeds or the event executor ends.
 func (s *Session) emitEntryAppended(ctx context.Context, entry icodingagent.UsageEntry) {
-	raw, err := json.Marshal(entry)
+	// The entry as the session line wrote it (JSON.stringify: a lone surrogate an escape, `<`, `>` and `&` literal); json.Marshal would re-encode those bytes with HTML escapes.
+	raw, err := entry.MarshalJSON()
 	if err != nil || ctx.Err() != nil {
 		return
 	}

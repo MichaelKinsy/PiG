@@ -106,6 +106,30 @@ def test_cancelled_context_is_not_promoted_after_response():
         assert contexts[0].is_cancelled()
 
 
+def test_signal_only_cancel_aborts_the_signal_and_leaves_host_calls_running():
+    # Pi's abort of a session_before_compact / session_before_tree event fires event.signal and nothing else (agent-session.ts:2867-2870): the handler's pending call and later calls are answered.
+    ext = pig_sdk.Extension("signal-only")
+    seen = []
+    entered = threading.Event()
+
+    def command(ctx, _):
+        entered.set()
+        first = ctx.get_editor_text()
+        seen.append((first, ctx.is_cancelled()))
+        seen.append((ctx.get_editor_text(), ctx.is_cancelled()))
+
+    ext.command("wait", "Wait on a host call across a signal-only cancel", command)
+    with connected_extension(ext) as (send, receive):
+        send({"type": "request", "id": "origin", "request": {"method": "command", "tool": "wait"}})
+        pending = receive("call")
+        send({"type": "cancel", "cancel": {"request_id": "origin", "reason": "context canceled", "signal_only": True}})
+        send({"type": "call_result", "id": pending["id"], "call_result": {"result": {"text": "answered"}}})
+        later = receive("call")
+        send({"type": "call_result", "id": later["id"], "call_result": {"result": {"text": "later"}}})
+        assert receive("response")["id"] == "origin"
+    assert seen == [("answered", True), ("later", True)]
+
+
 def test_failed_worker_start_releases_armed_parent(monkeypatch):
     ext = pig_sdk.Extension("failed-worker")
     ext.command("capture", "Must not enter", lambda *_: pytest.fail("failed worker ran"))

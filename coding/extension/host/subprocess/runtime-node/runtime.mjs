@@ -148,6 +148,15 @@ process.on("unhandledRejection", (reason) => {
 });
 
 const USER_BLOCKING_CALLS = new Set(["ui.select", "ui.confirm", "ui.input", "ui.editor", "ui.custom"]);
+// A request's controller aborts its signal. An ordinary cancel also ends the request's host calls; a signal-only cancel (session_before_compact, session_before_tree: Pi's abort fires event.signal and nothing else) does not, and its handler's host calls, pending and later, are answered. signalOnly marks a controller whose only abort was that one; a later ordinary cancel clears it.
+function abortSignalOnly(controller, reason) {
+  if (!controller) return;
+  if (!controller.signal.aborted) controller.signalOnly = true;
+  controller.abort(reason);
+}
+function cancelsHostCalls(controller) {
+  return controller?.signal.aborted === true && controller.signalOnly !== true;
+}
 const MAX_FRAME_SIZE = 128 * 1024 * 1024;
 // A process keeps this many of the message objects its events carried (messageObjects), and this many message entries the host named that no log it holds has shown yet (Runtime.entrySeqs).
 const MESSAGE_OBJECT_LIMIT = 128;
@@ -1464,7 +1473,16 @@ export class Connection {
     }
     // The host needs this process's event loop for any other request, and for shutdown: a wait for its own turn ends (awaitTurnTaken).
     if (env.type === "request" || env.type === "shutdown") turnWait.turn = 0;
-    if (env.type === "cancel") this.cancelParent(env.cancel?.request_id || env.id || "", true);
+    if (env.type === "cancel") {
+      const requestId = env.cancel?.request_id || env.id || "";
+      // A signal-only cancel (session_before_compact, session_before_tree: Pi's abort fires event.signal and nothing else) cancels no host call, and its signal aborts here, where the frame is read: a synchronous call of the handler settles in this reader at once, and the handler must find event.signal aborted when that call returns, as the cancel frame precedes the result on the wire.
+      if (env.cancel?.signal_only) abortSignalOnly(this.owner?.activeRequests.get(requestId), env.cancel.reason || "cancelled");
+      else {
+        const controller = this.owner?.activeRequests.get(requestId);
+        if (controller) controller.signalOnly = false;
+        this.cancelParent(requestId, true);
+      }
+    }
     if (env.type === "notify" && env.notify?.method === "model_stream_event" && env.notify.args?.started) {
       this.streamStarts.get(env.notify.args.streamId)?.();
       return;
@@ -3242,6 +3260,8 @@ export class Runtime {
     if (env.request?.stream) (this.eventReplicas ??= new EventReplicas()).apply(env.request);
     this.conn.requestState(env.id, "started");
     const controller = new AbortController();
+    // A session_before_compact or session_before_tree handler dispatched after the event's signal aborted starts with event.signal aborted (runner.ts emit awaits it so): the signal is that of the request, as a cancel frame queued ahead of the request would leave it.
+    if (env.request?.signal_aborted) abortSignalOnly(controller, "context canceled");
     this.activeRequests.set(env.id, controller);
     // Pi's context getters are enumerable own properties. Forward reads to the live context instead of snapshotting values or hiding them on a prototype; extensions can spread a context and retain ui/session/model access.
     const requestCtx = Object.create(Object.getPrototypeOf(this.ctx));
@@ -3271,7 +3291,7 @@ export class Runtime {
         await this.handleRequest(env.id, env.request || {}, requestCtx);
       } finally {
         if (env.request?.method === "event") this.loadHighlightLanguagesAfterStartup(env.request.event);
-        request.cancelled ||= !request.settled && controller.signal.aborted;
+        request.cancelled ||= !request.settled && cancelsHostCalls(controller);
         request.settled = true;
         this.activeRequests.delete(env.id);
         this.requestRecords.delete(env.id);
@@ -3339,8 +3359,14 @@ export class Runtime {
         if (env.type === "shutdown") return;
         if (env.type === "cancel") {
           const requestId = env.cancel?.request_id || env.id || "";
-          (this.activeRequests.get(requestId) ?? this.retainedController(requestId))?.abort(env.cancel?.reason || "cancelled");
-          this.conn.cancelParent(requestId);
+          const controller = this.activeRequests.get(requestId) ?? this.retainedController(requestId);
+          // A signal-only cancel aborts the request's signal alone: the handler's host calls, pending and later, are answered and its reply is delivered. An ordinary cancel ends the request's host calls, also after a signal-only one.
+          if (env.cancel?.signal_only) abortSignalOnly(controller, env.cancel?.reason || "cancelled");
+          else {
+            if (controller) controller.signalOnly = false;
+            controller?.abort(env.cancel?.reason || "cancelled");
+            this.conn.cancelParent(requestId);
+          }
           continue;
         }
         if (env.type === "request") this.startRequest(env);
@@ -5596,7 +5622,7 @@ export class Runtime {
   async respond(id, result = null, error = null) {
     const owner = this.requestContext.getStore();
     if (owner?.id === id) {
-      owner.cancelled ||= !owner.settled && owner.controller.signal.aborted;
+      owner.cancelled ||= !owner.settled && cancelsHostCalls(owner.controller);
       owner.settled = true;
       if (owner.pendingHostCalls.size > 0) await Promise.all([...owner.pendingHostCalls]);
       owner.responded = true;
@@ -5704,7 +5730,7 @@ export class Runtime {
     const current = this.connection();
     const connection = owner?.connection ?? ambient?.connection ?? current;
     if (!connection || connection.closed || connection !== current) throw new Error("extension connection closed or replaced");
-    if (!detached && (owner?.cancelled || (!owner?.settled && owner?.controller.signal.aborted))) {
+    if (!detached && (owner?.cancelled || (!owner?.settled && cancelsHostCalls(owner?.controller)))) {
       throw hostCancelled("host call cancelled with its parent request");
     }
     // A callback the Host declared for one request belongs to that request even when

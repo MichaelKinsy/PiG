@@ -465,6 +465,31 @@ func TestValueRuleDecodesTypeScriptEscapes(t *testing.T) {
 	}
 }
 
+// V1 compares a number literal by value: the Go constant 0.15 is the rational 3/20, which is not the text "0.15", and a different
+// value, a string constant or a sign flip must still differ.
+func TestValueRuleComparesNumberLiteralsByValue(t *testing.T) {
+	for _, tc := range []struct {
+		literal string
+		value   constant.Value
+		want    bool
+	}{
+		{"0.15", constant.MakeFromLiteral("0.15", token.FLOAT, 0), true},
+		{"0.15", constant.MakeFromLiteral("0.16", token.FLOAT, 0), false},
+		{"0.05", constant.MakeFromLiteral("0.05", token.FLOAT, 0), true},
+		{"0.05", constant.MakeFromLiteral("0.5", token.FLOAT, 0), false},
+		{"60000", constant.MakeInt64(60000), true},
+		{"60000", constant.MakeInt64(60001), false},
+		{"-3", constant.MakeInt64(-3), true},
+		{"-3", constant.MakeInt64(3), false},
+		{"1", constant.MakeString("1"), false},
+	} {
+		c := types.NewConst(token.NoPos, nil, "C", types.Typ[types.UntypedFloat], tc.value)
+		if got := valueVerdict(nil, tc.literal, c).ok == yes; got != tc.want {
+			t.Errorf("valueVerdict(%s, %s) = %v, want %v", tc.literal, tc.value.ExactString(), got, tc.want)
+		}
+	}
+}
+
 // TestObjectLiteralMembers: T12 ignores comments and readonly, finds a member promoted from an embedded struct that encoding/json
 // flattens, a method member as a Go method (T12m), and a string-literal member as the JSON discriminator the type marshals (T12d).
 func TestObjectLiteralMembers(t *testing.T) {

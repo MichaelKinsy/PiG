@@ -94,7 +94,7 @@ func IsCacheWarmingReplayable(model *Model, options StreamOptions) bool {
 }
 
 // GetCacheWarmingRequestOptions is a refresh's request: the original's options capped at one output token and without retries, and without replacing the conversation's provider thread state (the refresh repeats the last request). The returned context is signal with the no-retry budget; it carries the request's abort and `maxRetries: 0`, which Go passes beside the options (WithProviderMaxRetries) where upstream sets them in the options object.
-func GetCacheWarmingRequestOptions(options StreamOptions, signal context.Context) (context.Context, StreamOptions) {
+func GetCacheWarmingRequestOptions(signal context.Context, options StreamOptions) (context.Context, StreamOptions) {
 	options.MaxTokens = 1
 	options.DisableContinuation = true
 	return WithProviderMaxRetries(signal, 0), options
