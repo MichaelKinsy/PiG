@@ -13,42 +13,30 @@ import (
 )
 
 // addScopesAboveLocked adds the conversations above record to scopes: those whose idleness a change of it can change. It
-// is false when a node on the way up is not known. A conversation already in scopes has everything above it there too, and
-// so has a task already walked up from (walked: the tasks of this publication whose chain scopes already holds), so the
-// tasks of one commit that hang in a chain are walked once in all, not once each.
-func (s *TaskScheduler) addScopesAboveLocked(record anyTaskRecord, scopes map[durable.ConversationId]struct{}, walked map[durable.TaskId]struct{}) bool {
-	var passed []durable.TaskId
-	at := parentOf(nodeOf(record))
+// is false when an owner edge or owner task on the way up is not known. A conversation already in scopes has everything
+// above it there too.
+func (s *TaskScheduler) addScopesAboveLocked(record anyTaskRecord, scopes map[durable.ConversationId]struct{}) bool {
+	// A child task lives in its owner's conversation, so the first conversation above a task is its own: the walk skips the
+	// owner chain between, which made a change deep in a long chain cost its depth (Pi 628d8ab52).
+	conversationId := record.ConversationId
 	for {
-		if at.isTask {
-			if _, seen := walked[at.task]; seen {
-				break
-			}
-			node, ok := s.nodeLocked(at.task, nil)
-			if !ok {
-				return false
-			}
-			passed = append(passed, at.task)
-			at = parentOf(node)
-			continue
+		if _, seen := scopes[conversationId]; seen {
+			return true
 		}
-		if _, seen := scopes[at.conversation]; seen {
-			break
-		}
-		scopes[at.conversation] = struct{}{}
-		edge, known := s.edgeLocked(at.conversation, nil)
+		scopes[conversationId] = struct{}{}
+		owner, known := s.edgeLocked(conversationId, nil)
 		if !known {
 			return false
 		}
-		if edge == nil {
-			break
+		if owner == nil {
+			return true
 		}
-		at = up{isTask: true, task: *edge}
+		node, known := s.nodeLocked(*owner, nil)
+		if !known {
+			return false
+		}
+		conversationId = node.conversationId
 	}
-	for _, id := range passed {
-		walked[id] = struct{}{}
-	}
-	return true
 }
 
 // advanceContextsLocked extends each kept context range with the entries a stored commit appended to its conversation, so
