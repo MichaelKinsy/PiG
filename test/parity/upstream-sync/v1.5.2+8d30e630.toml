@@ -140,3 +140,115 @@ change = "modified"
 disposition = "ported"
 evidence = ["test:chord/next/host/host_events_test.go#TestEventsCostAnEmitWithNoHolderEncodesNothingWalksAndCopiesNothingItIsCountedEmitted", "test:chord/next/host/host_adapted_events_test.go#TestAdaptedEventsDropAnEmitOnlyForTheirVersionWhenTheMappingThrowsReportedOncePerFailureEpisodeTriedAgainNext"]
 rationale = "8d30e6306: the four chord.events.* metrics (emitted, dropped, encodes, windows). chord/next/telemetry/schema.go."
+
+[[files]]
+path = "packages/chord/src/link/message.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/link/message_test.go#TestMessages", "test:chord/next/link/event_test.go#TestEventSchema"]
+rationale = "8d30e6306: the `event` kind (entries hold, member, at, value part; one message per flush per link and origin, possibly without entries when a relay filtered them all), `ack.events` (an event ack counting consumed `event` messages, apart from the state ack), and `hello.calls` optional (none for a trusted link). link/message.go: EventMessage/WireEvent, AckMessage.Events, HelloMessage.Calls 0 = none; the Pi message tests are ported with byte goldens for each new frame."
+
+[[files]]
+path = "packages/chord/src/link/binary.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/link/message_test.go#TestTheBinaryCodec", "test:chord/next/link/message_test.go#TestMessages"]
+rationale = "8d30e6306: the binary frame of `event` (hold, member, at, value part per entry), the third flag of the `ack` kind byte for `events`, and `hello` writing 0 for no call window. link/binary.go; the goldens of the new frames are in TestTheBinaryCodec."
+
+[[files]]
+path = "packages/chord/src/link/text.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/link/message_test.go#TestTheTextCodec", "test:chord/next/link/message_test.go#TestMessages"]
+rationale = "8d30e6306: the text form of `event`, `ack.events`, and `hello` without `calls`. link/text.go mirrors the binary codec; the goldens of the new frames are in TestTheTextCodec."
+
+[[files]]
+path = "packages/chord/src/link/channel.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/link/channel_test.go#TestTheHandshake"]
+rationale = "8d30e6306: the handshake accepts a `hello` without a call window (a trusted peer's): PeerCalls is 0, the link opens. link/channel.go."
+
+[[files]]
+path = "packages/chord/src/link/internal.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "Exports the event message types from the barrel; Go packages have no barrel (DESIGN-go-layout.md)."
+
+[[files]]
+path = "packages/chord/src/link/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "Documentation of the event message and ack; the Go package docs and file comments carry it."
+
+[[files]]
+path = "packages/chord/src/remote/calls.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_calls_test.go#TestCallWindowSendsEveryCallAtOnceToAPeerThatAnnouncedNoWindow", "test:chord/next/host/remote_consumer_test.go#TestConsumerCallWindow"]
+rationale = "8d30e6306 (decision \"Call windows only for untrusted links\"): `opened(undefined)` makes the window unlimited: a peer that announced no calls (a trusted link's) gets every call at once after its hello. remote_calls.go callWindow.opened(0) = no window (a window is at least 1)."
+
+[[files]]
+path = "packages/chord/src/remote/host-link.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_host_link_trust_test.go#TestHostLinkAnnouncesNoCallWindowOnATrustedLinkAndTheHostsOtherwise", "test:chord/next/host/remote_host_link_trust_test.go#TestHostLinkAnnouncesNoCallWindowOnARoutesTrustedLinkAndTheHostsOtherwise", "test:chord/next/host/remote_host_link_trust_test.go#TestHostLinkAClientTrustingItsServerKeepsWithinTheServersWindow"]
+rationale = "8d30e6306: a link announces its host's `callWindow` (default 10,000) only when it was not given as trusted (accept, connect, a route's resolve); a trusted link announces none, and its provider side counts no limit. remote_host_link.go hostLink.calls (0 for trusted); a client trusting its server still keeps within the window the server announced."
+
+[[files]]
+path = "packages/chord/src/remote/consumer.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_consumer_events_test.go#TestConsumerEvents", "test:chord/next/host/remote_consumer_test.go#TestConsumerCallWindow"]
+rationale = "8d30e6306: `event` messages of this side's own holds are handed to the host's event flush (an unknown hold, a hold not live or a member nobody listens to drops the entry unopened and uninflated, an index outside the bound version is a protocol error, a value past the part limit counts chord.events.dropped{too_large}), the message consumed and acknowledged once per inbound turn after the flush (a microtask), deflated parts inflated asynchronously first on a host without a compressor; the `bound` ack goes before the references go live so parked calls follow it; calls parked while rebinding go after that ack; calls wait in the window the peer announced (none: all at once). remote_consumer.go events/deflatedEvents/consumed, bound."
+
+[[files]]
+path = "packages/chord/src/remote/hold.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_provider_events_test.go#TestProviderEvents", "test:chord/next/host/remote_relay_events_test.go#TestRelayEvents"]
+rationale = "8d30e6306: a served hold taps its object's event nodes for the links that follow it (bound at the binding, untapped at release, end or rebinding), queueing each entry to its provider side after the state published before the flush. remote_hold.go stopFollowing/untap/tapEvents."
+
+[[files]]
+path = "packages/chord/src/remote/remote-object.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_consumer_events_test.go#TestConsumerEvents", "test:chord/next/host/remote_relay_events_test.go#TestRelayEventsAcrossRealHostsReachATabThroughTheRelayAndThroughTheServersReExposure"]
+rationale = "8d30e6306: a remote object has the event nodes of its variant's event members (eventNodeOf by wire index), delivers consumed entries to its reference's taps with the wire stamp, and nothing of an earlier binding. remote_remote_object.go."
+
+[[files]]
+path = "packages/chord/src/remote/provider.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_provider_events_test.go#TestProviderEvents", "test:chord/next/host/remote_provider_test.go#TestProviderCallLimit", "test:chord/next/host/remote_provider_test.go#TestProviderOrigins", "test:chord/next/host/remote_relay_events_test.go#TestRelayEvents"]
+rationale = "8d30e6306: the per-link, per-origin event window (the host's `eventWindow`, default 32): an entry meeting a full window is dropped before it is encoded and counted chord.events.dropped{window}; one `event` message per flush per origin takes a slot; a state ack and an event ack (`ack.events`) are separate credits; a value is encoded once per representation for every hold and link; a relayed event message is forwarded at once with its filtered entries and its sender as a ticket, returned in order by the downstream's event acks; a side retires only once its tickets drained. Calls count against the announced window only on an untrusted link. remote_provider.go queueEvent/sendEvents/eventAck/tickets, limit 0 = none."
+
+[[files]]
+path = "packages/chord/src/remote/relay.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_relay_events_test.go#TestRelayedCallsInTheUpstreamWindow", "test:chord/next/host/remote_relay_events_test.go#TestRelayedCallsInARealWorkersFiniteWindowNeverExceedItWhenAHoldWithAForwardedCallIsReleased", "test:chord/next/host/remote_relay_events_test.go#TestRelayEvents"]
+rationale = "8d30e6306: relayed calls wait per upstream window (the worker's announced one, also behind a trusted downstream link): a waiting call leaves the queue on abort, release or the downstream's close, forwarded ones free their slots (the release goes before the next call), loading rejects the waiting calls (unavailable, \"rebinding\"), a rebound one waits for the new bound's ack (\"rebound\"), failed and gone reject them with their cause, an upstream drop fails them. remote_relay.go relayedCall."
+
+[[files]]
+path = "packages/chord/src/remote/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "Documentation of the event window and the call windows by trust; the Go file comments carry it."
+
+[[files]]
+path = "packages/chord/src/tui/scope.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/tui/tui_scope_test.go#TestScopeEventSubscriptionsCallTheListenerForEachEventNeverChangedByThemselvesUntilDispose"]
+rationale = "8d30e6306: `TuiScope.on(member, listener)` subscribes to an event member until dispose; events call the listener only, never `changed`. tui_scope.go On."
+
+[[files]]
+path = "packages/chord/src/tui/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "Documentation only."
