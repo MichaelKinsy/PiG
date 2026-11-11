@@ -42807,6 +42807,25 @@
       ]
     },
     {
+      "id": "BF-cafa121",
+      "title": "fix(llama): default llama.cpp server URL is port 9931 (Pi, #12001); NVIDIA RTX guide mirror (Pi)",
+      "symptom": "fix(llama): default llama.cpp server URL is port 9931 (Pi, #12001); NVIDIA RTX guide mirror (Pi)",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "cafa121edf",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-cb00273",
       "title": "OpenRouter's signature-only `reasoning.text` delta for Claude is kept and replayed with its reasoning block…",
       "symptom": "OpenRouter's signature-only `reasoning.text` delta for Claude is kept and replayed with its reasoning block (D122, pi-mono #9534).",

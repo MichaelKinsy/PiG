@@ -1544,6 +1544,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ca41377](#bf-ca41377) | fix(tui): the alt-screen frame serves a render's viewport reads and ends a screen's callbacks at disposal… | PiG's own defect | All platforms | Unreleased |
 | [BF-ca675e0](#bf-ca675e0) | A list item whose text is `[ ] ` or `[x] ` with nothing after the spaces on the line is plain text, not a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-caae28a](#bf-caae28a) | In RPC mode, `exit.log` no longer says "received SIGTERM" for a single signal that arrived during a shutdown… | PiG's own defect | All platforms | Unreleased |
+| [BF-cafa121](#bf-cafa121) | fix(llama): default llama.cpp server URL is port 9931 (Pi, #12001); NVIDIA RTX guide mirror (Pi) | PiG's own defect | All platforms | Unreleased |
 | [BF-cb00273](#bf-cb00273) | OpenRouter's signature-only `reasoning.text` delta for Claude is kept and replayed with its reasoning block… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-cb20ec0](#bf-cb20ec0) | After `pig update --models`, OpenRouter's `:nitro` and `:floor` routing variants no longer disappear from… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-cb21ee0](#bf-cb21ee0) | Markdown resolves link reference definitions as Pi does: `[text][label]`, `[label][]` and `[label]` link to a… | PiG's own defect | All platforms | 0.5.0 |
@@ -23112,6 +23113,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `caae28ae1c` (2026-11-05)
 - **Tests:** `coding/cli/rpc_exit_once_test.go::TestRPCExitRunsItsStepsOnce`, `coding/cli/rpc_shutdown_exitlog_test.go::TestRPCExitLogNamesWhatEndedTheProcess`
 - **Release note:** In RPC mode, `exit.log` no longer says "received SIGTERM" for a single signal that arrived during a shutdown that stdin's end or `ctx.shutdown()` had started and that finished with exit status 0. The line now reads "received SIGTERM during shutdown, which completed (exit 0)", and a repeated signal's line reads "received SIGTERM again during shutdown (exit 143)". The cleanup, the log line and the process exit of an RPC exit now run once, so a repeated signal that arrives while another exit is already past its stdout wait no longer repeats them (D234).
+
+### BF-cafa121
+
+**fix(llama): default llama.cpp server URL is port 9931 (Pi, #12001); NVIDIA RTX guide mirror (Pi)**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(llama): default llama.cpp server URL is port 9931 (Pi, #12001); NVIDIA RTX guide mirror (Pi)
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `cafa121edf` (2026-11-11)
+- **Tests:** None recorded.
 
 ### BF-cb00273
 
