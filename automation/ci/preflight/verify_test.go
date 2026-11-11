@@ -40,6 +40,8 @@ func TestVerifyHandled(t *testing.T) {
 		{PR: 7, Head: "h7", Result: resultPass},
 		{PR: 8, Head: "gone", Result: resultPass},
 		{PR: 9, Head: "h9", Result: resultPass},
+		// The statuses cannot be read: a line, not a skip.
+		{PR: 12, Head: "down", Result: resultPass},
 		{Result: resultError, Error: "cannot list the PRs"},
 	}
 	var log strings.Builder
@@ -57,6 +59,7 @@ func TestVerifyHandled(t *testing.T) {
 		"#7 `h7`: its comment could not be checked: GET repos/o/r/issues/7/comments?per_page=100: HTTP 502: down",
 		"#9 `h9`: no preflight status, no pre-flight comment",
 		"#11: passed on to a next job, which did not report it",
+		"#12 `down`: could not be checked: GET repos/o/r/commits/down/statuses?per_page=100: HTTP 502: down",
 	}
 	if strings.Join(got, "\n") != strings.Join(want, "\n") {
 		t.Fatalf("missing:\n%s", strings.Join(got, "\n"))
@@ -351,7 +354,7 @@ func TestFindIssuesForAUserAccount(t *testing.T) {
 		_, _ = io.WriteString(w, `{"items":[]}`)
 	}))
 	defer server.Close()
-	if _, err := findIssues(context.Background(), newAPI(server.URL, "t"), "o/r", "a-user"); err != nil || !strings.HasSuffix(query, " author:a-user") {
+	if _, err := findIssues(context.Background(), newAPI(server.URL, "t"), "o/r", "a-user"); err != nil || query != `repo:o/r is:issue in:title "`+issueTitle+`" author:a-user` {
 		t.Fatalf("query %q, err %v", query, err)
 	}
 }
