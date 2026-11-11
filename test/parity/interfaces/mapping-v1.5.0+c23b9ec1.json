@@ -20233,7 +20233,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/models_catalog_codec.go#anyModelRecord"
+        "call:ai/cache_warming.go#GetPromptCacheTtlMs"
       ],
       "evidence": [
         "test:coding/model_registry_overrides_upstream_test.go#TestModelRegistryModelOverridesUpstream",
@@ -64274,7 +64274,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/models_catalog_codec.go#anyModelRecord"
+        "call:ai/cache_warming.go#GetPromptCacheTtlMs"
       ],
       "evidence": [
         "test:coding/model_registry_overrides_upstream_test.go#TestModelRegistryModelOverridesUpstream",
@@ -162546,8 +162546,9 @@
         "call:tui/box.go#Box.SetBgFn"
       ],
       "evidence": [
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/component_members_test.go#TestBoxRemoveChildClearAndSetBgFnChangeWhatRenders"
+        "test:tui/box_dirty_test.go#TestBoxBackgroundThatDrawsNothingIsNotNoBackground",
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -162567,8 +162568,9 @@
         "call:tui/box.go#Box.SetBgFn"
       ],
       "evidence": [
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/component_members_test.go#TestBoxRemoveChildClearAndSetBgFnChangeWhatRenders"
+        "test:tui/box_dirty_test.go#TestBoxBackgroundThatDrawsNothingIsNotNoBackground",
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -162675,8 +162677,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/output_pad_test.go#TestSetPaddingXDropsRenderCache"
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -162697,8 +162699,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/output_pad_test.go#TestSetPaddingXDropsRenderCache"
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -163200,147 +163202,154 @@
       "id": "pkg:coding-agent/.#CacheWarmingDecision::property:action",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:0256259170da898741b6daae815ee4157d4de180d8220196df3ebcf1fa84efc6",
-      "rationale": "CacheWarmingDecision: Go CacheWarmingDecision has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:action is Go ai/cache_warming.go#CacheWarmingDecision.Action (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "internal/codingagent/cache_warmer.go#CacheWarmingDecision.Action"
+        "ai/cache_warming.go#CacheWarmingDecision.Action"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/cache_warmer.go#CacheWarmer.beginRefresh"
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
       ],
       "evidence": [
-        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingFormatsStatusAndUsageEntries",
-        "test:internal/codingagent/slash_session_cache_warming_test.go#TestSessionHandlerRendersCacheWarmingSection"
+        "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingAppliesEconomicDecisionsAndExtensionOverrides",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingFormatsStatusAndUsageEntries"
       ]
     },
     {
       "id": "pkg:coding-agent/.#CacheWarmingDecision::property:continuationProbability",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:afcf5f10a115de1823d3fb04b2ab5819849304d8200b22c528fb013c2da156b8",
-      "rationale": "CacheWarmingDecision: Go CacheWarmingDecision has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:continuationProbability is Go ai/cache_warming.go#CacheWarmingDecision.ContinuationProbability (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "internal/codingagent/cache_warmer.go#CacheWarmingDecision.ContinuationProbability"
+        "ai/cache_warming.go#CacheWarmingDecision.ContinuationProbability"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/cache_warmer.go#CacheWarmer.beginRefresh"
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
       ],
       "evidence": [
-        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingFormatsStatusAndUsageEntries",
-        "test:internal/codingagent/slash_session_cache_warming_test.go#TestSessionHandlerRendersCacheWarmingSection"
+        "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingExpectedSavingsRoundsTheProductLikePi",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingFormatsStatusAndUsageEntries"
       ]
     },
     {
       "id": "pkg:coding-agent/.#CacheWarmingDecision::property:economicsAvailable",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:bac064f8a357ca6db3a67f4b98f05666f3ef4298e60fa3a38fdb5332c5889d2f",
-      "rationale": "CacheWarmingDecision: Go CacheWarmingDecision has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:economicsAvailable is Go ai/cache_warming.go#CacheWarmingDecision.EconomicsAvailable (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "internal/codingagent/cache_warmer.go#CacheWarmingDecision.EconomicsAvailable"
+        "ai/cache_warming.go#CacheWarmingDecision.EconomicsAvailable"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/cache_warmer.go#CacheWarmer.beginRefresh"
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
       ],
       "evidence": [
-        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingFormatsStatusAndUsageEntries",
-        "test:internal/codingagent/slash_session_cache_warming_test.go#TestSessionHandlerRendersCacheWarmingSection"
+        "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingAppliesEconomicDecisionsAndExtensionOverrides",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingFormatsStatusAndUsageEntries"
       ]
     },
     {
       "id": "pkg:coding-agent/.#CacheWarmingDecision::property:expectedSavings",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:d01688118afeb91c5519e5a2fb42f106260e5d7533ce58ab94e7f03e4993502f",
-      "rationale": "CacheWarmingDecision: Go CacheWarmingDecision has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:expectedSavings is Go ai/cache_warming.go#CacheWarmingDecision.ExpectedSavings (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "internal/codingagent/cache_warmer.go#CacheWarmingDecision.ExpectedSavings"
+        "ai/cache_warming.go#CacheWarmingDecision.ExpectedSavings"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/cache_warmer.go#CacheWarmer.beginRefresh"
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
       ],
       "evidence": [
-        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingFormatsStatusAndUsageEntries",
-        "test:internal/codingagent/slash_session_cache_warming_test.go#TestSessionHandlerRendersCacheWarmingSection"
+        "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingExpectedSavingsRoundsTheProductLikePi",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingFormatsStatusAndUsageEntries"
       ]
     },
     {
       "id": "pkg:coding-agent/.#CacheWarmingDecision::property:missCost",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:1f6b4d61e586748effcdaa202e17e1b3abb3edf582d8c33c4b8f7abac2295956",
-      "rationale": "CacheWarmingDecision: Go CacheWarmingDecision has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:missCost is Go ai/cache_warming.go#CacheWarmingDecision.MissCost (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "internal/codingagent/cache_warmer.go#CacheWarmingDecision.MissCost"
+        "ai/cache_warming.go#CacheWarmingDecision.MissCost"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/cache_warmer.go#CacheWarmer.beginRefresh"
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
       ],
       "evidence": [
-        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingFormatsStatusAndUsageEntries",
-        "test:internal/codingagent/slash_session_cache_warming_test.go#TestSessionHandlerRendersCacheWarmingSection"
+        "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingExpectedSavingsRoundsTheProductLikePi",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingFormatsStatusAndUsageEntries"
       ]
     },
     {
       "id": "pkg:coding-agent/.#CacheWarmingDecision::property:phase",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:121984399eae5b9afdf74cf86131346c1c5bdafe3e448980659a44e89c5c528a",
-      "rationale": "CacheWarmingDecision: Go CacheWarmingDecision has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:phase is Go ai/cache_warming.go#CacheWarmingDecision.Phase (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "internal/codingagent/cache_warmer.go#CacheWarmingDecision.Phase"
+        "ai/cache_warming.go#CacheWarmingDecision.Phase"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/cache_warmer.go#CacheWarmer.beginRefresh"
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
       ],
       "evidence": [
-        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingFormatsStatusAndUsageEntries",
-        "test:internal/codingagent/slash_session_cache_warming_test.go#TestSessionHandlerRendersCacheWarmingSection"
+        "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingExpectedSavingsRoundsTheProductLikePi",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingFormatsStatusAndUsageEntries"
       ]
     },
     {
       "id": "pkg:coding-agent/.#CacheWarmingDecision::property:warmCost",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:04ed344ef6f83d4908a03a3cb42b9d8057bb4ed59a6e74e32d5869b207e0f94a",
-      "rationale": "CacheWarmingDecision: Go CacheWarmingDecision has a field for every upstream property; types reviewed against the upstream declaration; tests attributed by go/types.",
+      "rationale": "Derived by the interface gap detector: CacheWarmingDecision::property:warmCost is Go ai/cache_warming.go#CacheWarmingDecision.WarmCost (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "internal/codingagent/cache_warmer.go#CacheWarmingDecision.WarmCost"
+        "ai/cache_warming.go#CacheWarmingDecision.WarmCost"
       ],
       "layers": {
-        "shape": "complete",
+        "behavior": "complete",
         "production": "complete",
-        "behavior": "complete"
+        "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/cache_warmer.go#CacheWarmer.beginRefresh"
+        "call:ai/cache_warming.go#EvaluateCacheWarming"
       ],
       "evidence": [
-        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingFormatsStatusAndUsageEntries",
-        "test:internal/codingagent/slash_session_cache_warming_test.go#TestSessionHandlerRendersCacheWarmingSection"
+        "test:internal/codingagent/cache_warmer_format_oracle_test.go#TestCacheWarmerPureFunctionsMatchPi",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingExpectedSavingsRoundsTheProductLikePi",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingFormatsStatusAndUsageEntries"
       ]
     },
     {
@@ -165079,8 +165088,9 @@
         "call:tui/box.go#Box.SetBgFn"
       ],
       "evidence": [
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/component_members_test.go#TestBoxRemoveChildClearAndSetBgFnChangeWhatRenders"
+        "test:tui/box_dirty_test.go#TestBoxBackgroundThatDrawsNothingIsNotNoBackground",
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -165100,8 +165110,9 @@
         "call:tui/box.go#Box.SetBgFn"
       ],
       "evidence": [
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/component_members_test.go#TestBoxRemoveChildClearAndSetBgFnChangeWhatRenders"
+        "test:tui/box_dirty_test.go#TestBoxBackgroundThatDrawsNothingIsNotNoBackground",
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -165208,8 +165219,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/output_pad_test.go#TestSetPaddingXDropsRenderCache"
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -165230,8 +165241,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/output_pad_test.go#TestSetPaddingXDropsRenderCache"
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -170875,7 +170886,7 @@
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
         "test:tui/show_images_selector_component_upstream_test.go#TestShowImagesSelectorComponentStructureAndSelectionUpstream",
-        "test:tui/box_semantics_test.go#TestBoxChangesMarkItDirty"
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange"
       ]
     },
     {
@@ -218900,8 +218911,9 @@
         "call:tui/box.go#Box.SetBgFn"
       ],
       "evidence": [
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/component_members_test.go#TestBoxRemoveChildClearAndSetBgFnChangeWhatRenders"
+        "test:tui/box_dirty_test.go#TestBoxBackgroundThatDrawsNothingIsNotNoBackground",
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -218921,8 +218933,9 @@
         "call:tui/box.go#Box.SetBgFn"
       ],
       "evidence": [
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/component_members_test.go#TestBoxRemoveChildClearAndSetBgFnChangeWhatRenders"
+        "test:tui/box_dirty_test.go#TestBoxBackgroundThatDrawsNothingIsNotNoBackground",
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -219029,8 +219042,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/output_pad_test.go#TestSetPaddingXDropsRenderCache"
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -219051,8 +219064,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/output_pad_test.go#TestSetPaddingXDropsRenderCache"
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -232119,7 +232132,7 @@
       "evidence": [
         "test:internal/codingagent/tools/mutation_queue_upstream_test.go#TestFileMutationQueueUpstream",
         "test:test/extension-conformance/file_mutation_queue_host_test.go#TestConformance_FileMutationQueueIsTheHostsQueue",
-        "test:coding/extension/host/subprocess/host_file_mutation_test.go#TestFileMutationEnterCancelledWhileWaitingTakesNoTurn"
+        "test:test/extension-conformance/file_mutation_queue_host_test.go#TestHostQueueBusySeesAHeldFile"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -232142,7 +232155,7 @@
       "evidence": [
         "test:internal/codingagent/tools/mutation_queue_upstream_test.go#TestFileMutationQueueUpstream",
         "test:test/extension-conformance/file_mutation_queue_host_test.go#TestConformance_FileMutationQueueIsTheHostsQueue",
-        "test:coding/extension/host/subprocess/host_file_mutation_test.go#TestFileMutationEnterCancelledWhileWaitingTakesNoTurn"
+        "test:test/extension-conformance/file_mutation_queue_host_test.go#TestHostQueueBusySeesAHeldFile"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -232404,6 +232417,7 @@
       ],
       "evidence": [
         "test:durable/harness/harness_observers_test.go#TestObserveConversationAndObserveTaskGraph",
+        "test:durable/harness/task_graph_race_test.go#TestTheTaskGraphAdvancesFromPublicationsWhileTheBlockedReasonsRefresh",
         "test:durable/harness/task_graph_pi_oracle_test.go#TestTaskGraphViewMatchesPiOnSeededPrograms"
       ]
     },
@@ -292953,8 +292967,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/output_pad_test.go#TestSetPaddingXDropsRenderCache"
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
@@ -292975,8 +292989,8 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground",
-        "test:tui/output_pad_test.go#TestSetPaddingXDropsRenderCache"
+        "test:tui/box_dirty_test.go#TestBoxSetBgFnAndSetPaddingXReportTheChange",
+        "test:tui/box_slice_style_gaps_test.go#TestBoxRendersPaddedChildrenWithBackground"
       ]
     },
     {
