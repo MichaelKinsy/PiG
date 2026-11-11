@@ -96,6 +96,7 @@ await page.waitForFunction((want) => document.querySelector(".messages .assistan
 await browser.close();
 
 const ids = pid ? tree(Number(pid)) : [];
-const manifest = await (await fetch(`${base}/__p2_web`)).json();
+// The server answers loopback only with the local owner's cookie: send it as the browser did.
+const manifest = await (await fetch(`${base}/__p2_web`, { headers: process.env.P2_UI_COOKIE ? { cookie: process.env.P2_UI_COOKIE } : {} })).json();
 console.log(JSON.stringify({ base, manifest, firstLoad, reply: reply.trim(), problems, serverRssKiB: pid ? rss(pid) : null, treeRssKiB: ids.reduce((sum, id) => sum + rss(id), 0), processes: ids.length }));
 expect(problems.length === 0, `browser problems: ${problems.join("; ")}`);

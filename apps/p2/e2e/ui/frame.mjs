@@ -45,13 +45,13 @@ const { frameTree } = await cdp.send("Page.getFrameTree");
 const child = frameTree.childFrames?.[0]?.frame;
 if (!child) await fail("the framer has no iframe");
 if (!(child.url.startsWith("chrome-error:") || child.unreachableUrl !== undefined)) await fail(`the app rendered in a frame: ${JSON.stringify(child)}`);
-// The same frame, but the request reaches the server without Fetch Metadata (through a forwarding proxy, as a script's would),
-// so the server serves the owner's app page: the refusal then comes from that page's own X-Frame-Options and CSP
+// The same frame, but the request reaches the server without Fetch Metadata (through a forwarding proxy that carries the owner's
+// cookie, as a script's would), so the server serves the owner's app page: the refusal then comes from that page's own X-Frame-Options and CSP
 // frame-ancestors, not from the sign-in page's (a browser marks every frame request, which the server reads as signed out).
 const basePort = new URL(base).port;
 const served = [];
 const proxy = createServer((request, response) => {
-	const upstream = httpRequest({ host: "127.0.0.1", port: basePort, path: request.url, method: request.method, headers: { host: `127.0.0.1:${basePort}` } }, (reply) => {
+	const upstream = httpRequest({ host: "127.0.0.1", port: basePort, path: request.url, method: request.method, headers: { host: `127.0.0.1:${basePort}`, ...(process.env.P2_UI_COOKIE ? { cookie: process.env.P2_UI_COOKIE } : {}) } }, (reply) => {
 		served.push(`${reply.statusCode} ${request.url}`);
 		response.writeHead(reply.statusCode, reply.headers);
 		reply.pipe(response);

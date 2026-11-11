@@ -38,6 +38,10 @@ mkdir -p "$scratch/pw"
 (cd "$scratch/pw" && npm init -y >/dev/null && npm i --no-audit --no-fund --loglevel=error playwright-core@1.64.1)
 if [ -z "${PLAYWRIGHT_BROWSERS_PATH:-}" ]; then
   export PLAYWRIGHT_BROWSERS_PATH="$scratch/browsers"
-  node "$scratch/pw/node_modules/playwright-core/cli.js" install ${CI:+--with-deps} chromium
+  # --with-deps installs system packages (apt, so root or passwordless sudo): only where that can work. A CI image without
+  # either (tern-ci:v10-b9chrome) carries Chromium's system libraries already; the browser itself needs no privileges.
+  deps=
+  if [ -n "${CI:-}" ] && { [ "$(id -u)" = 0 ] || sudo -n true 2>/dev/null; }; then deps=--with-deps; fi
+  node "$scratch/pw/node_modules/playwright-core/cli.js" install $deps chromium
 fi
 (cd "$app" && P2_UI_NODE_PATH="$scratch/pw/node_modules" go test -count=1 -run 'TestWebClient' -v ./e2e)
