@@ -21269,6 +21269,30 @@
       ]
     },
     {
+      "id": "BF-7b6510e",
+      "title": "On Linux, the native X11 clipboard reads a `DISPLAY` that starts with `/` or `unix:` as a socket path with an…",
+      "symptom": "On Linux, the native X11 clipboard reads a `DISPLAY` that starts with `/` or `unix:` as a socket path with an optional screen (`/tmp/.X11-unix/X0.1`, `unix:/tmp/.X11-unix/X0`), as libxcb 1.16 and later do.",
+      "rootCause": "Pi's Linux clipboard addon links libxcb.so.1 and calls xcb_connect, so the host's libxcb decides how DISPLAY is read. libxcb 1.16 (by Demi Marie Obenour, a mitigation for CVE-2020-25697) made a display that starts with \"/\" or \"unix:\" always a socket path with an optional screen of 1 to 9 first digit, and no longer a host:number display. PiG still read \"unix:\u003cnumber\u003e\" as a local display, so DISPLAY=unix:0.-1 connected where libxcb 1.16 and 1.17 fail, and a display such as /tmp/.X11-unix/X0 failed where they connect.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "Linux",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "On Linux, the native X11 clipboard reads a `DISPLAY` that starts with `/` or `unix:` as a socket path with an optional screen (`/tmp/.X11-unix/X0.1`, `unix:/tmp/.X11-unix/X0`), as libxcb 1.16 and later do. A socket path now connects where it failed before, and `DISPLAY=unix:0` no longer names display 0. Pi's addon links the host's libxcb, so hosts with libxcb 1.15 or earlier read these displays differently.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7b6510e674",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11DisplayNumbersParseAsXcbDoes",
+        "internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11DisplaySpellingsConnectAsPiDoes",
+        "internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11SocketPathDisplaysParseAsXcbDoes"
+      ]
+    },
+    {
       "id": "BF-7b92429",
       "title": "`find` and `grep` trim like JavaScript: `FindTool` trimmed each fd output line with `strings.TrimSpace` where…",
       "symptom": "`find` and `grep` trim like JavaScript: `FindTool` trimmed each fd output line with `strings.TrimSpace` where find.ts:270 uses `String.prototype.trim`, so a file whose name ends with U+FEFF lost nothing in Pi but a name ending in U+0085 lost it in PiG (and the reverse).",
@@ -42450,6 +42474,29 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-ecfaad1",
+      "title": "The startup prompts (the project-trust and extension selectors, the extension text input and first-time…",
+      "symptom": "The startup prompts (the project-trust and extension selectors, the extension text input and first-time setup) ignored the keybindings.json of the agent directory: a remapped tui.select.confirm or tui.select.cancel had no effect in them.",
+      "rootCause": "Pi's createStartupTui calls setKeybindings(KeybindingsManager.create()) for each startup prompt (cli/startup-ui.ts:91). configureStartupTheme only set the theme, so the selector, input and first-time-setup prompts took whatever keybindings the process already held and never read the user's keybindings.json.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The startup prompts (the project-trust and extension selectors, the extension text input and first-time setup) now load the `keybindings.json` of the agent directory, as Pi's startup UI does. They took whatever keybindings the process held before, so a remapped `tui.select.confirm` or `tui.select.cancel` was ignored by them.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ecfaad1026",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/startup_keybindings_test.go::TestStartupPromptsApplyTheKeybindingsOfTheAgentDirectory",
+        "internal/codingagent/startup_keybindings_test.go::TestStartupPromptsDoNotInheritKeybindingsInstalledBefore"
+      ]
     },
     {
       "id": "BF-ed01bf6",

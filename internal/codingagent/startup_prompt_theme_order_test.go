@@ -14,6 +14,7 @@ import (
 // ExtensionInputComponent build their themed title and rows under the grayscale system theme. The probe in tmux
 // (parity 10-startup-trust-prompt-wording) draws the heading and the selected row without a foreground color.
 func TestStartupPromptComponentsAreBuiltUnderThePendingSystemTheme(t *testing.T) {
+	restoreTUIKeybindings(t)
 	for name, build := range map[string]func(StartupUIOptions) tui.Component{
 		"selector": func(opts StartupUIOptions) tui.Component {
 			return newStartupSelector("Trust project folder?", []string{"Trust", "Do not trust"}, opts)
@@ -42,6 +43,7 @@ func TestStartupPromptComponentsAreBuiltUnderThePendingSystemTheme(t *testing.T)
 // rows at construction. A `terminal.trueColor: false` setting therefore draws the rows in 256 colors even where
 // COLORTERM advertises truecolor, and keeps them after the terminal reports its colors.
 func TestStartupPromptComponentsAreBuiltUnderTheCapabilityOverrides(t *testing.T) {
+	restoreTUIKeybindings(t)
 	t.Setenv("COLORTERM", "truecolor")
 	t.Setenv("TERM", "xterm-256color")
 	for _, env := range []string{"TERM_PROGRAM", "TMUX", "KITTY_WINDOW_ID", "GHOSTTY_RESOURCES_DIR", "WEZTERM_PANE", "ITERM_SESSION_ID", "WT_SESSION"} {

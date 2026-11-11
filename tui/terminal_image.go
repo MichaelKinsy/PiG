@@ -285,18 +285,30 @@ func ApplyCapabilityOverrides(caps TerminalCapabilities, overrides CapabilityOve
 	return caps
 }
 
-// GetTerminalColorMode is the color depth the terminal supports: truecolor when capabilities report it, else 256 colors. Upstream defaults the argument to getCapabilities(); omit it for that default. As upstream's default parameter, detection runs only when the argument is omitted, so passed capabilities never run the tmux probe.
+// GetTerminalColorMode is the color depth the terminal supports: truecolor when capabilities report it, else 256 colors. Without an argument it
+// reads TrueColor as getCapabilities() would, without the tmux probe.
 func GetTerminalColorMode(capabilities ...TerminalCapabilities) TerminalColorMode {
-	var caps TerminalCapabilities
+	var trueColor bool
 	if len(capabilities) > 0 {
-		caps = capabilities[0]
+		trueColor = capabilities[0].TrueColor
 	} else {
-		caps = GetCapabilities()
+		trueColor = currentTrueColor()
 	}
-	if caps.TrueColor {
+	if trueColor {
 		return TerminalColorModeTrueColor
 	}
 	return TerminalColorMode256
+}
+
+// The tmux probe decides only Hyperlinks.
+func currentTrueColor() bool {
+	if cached := cachedCapabilities.Load(); cached != nil {
+		return cached.TrueColor
+	}
+	capabilityMu.Lock()
+	overrides := capabilityOverrides
+	capabilityMu.Unlock()
+	return ApplyCapabilityOverrides(DetectCapabilities(func() bool { return false }), overrides).TrueColor
 }
 
 func ResetCapabilitiesCache() {
