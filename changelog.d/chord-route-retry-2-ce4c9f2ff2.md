@@ -1,0 +1,3 @@
+### Fixed
+
+- A worker that crashed while a script waited on it is restarted for its holders even when its exit is handled before its link closes and the machine is loaded: the route applied the result of a resolve that was rejected at once (a failed address) in a section of its own after the section that began it, so the Retry of the crash restart could enter between them, find the address still resolving and do nothing, and the failure the resolve then recorded stayed until the next retry (a Code Mode script resumed after its worker was killed could wait for ever). The result is now applied as a microtask of the section that began the resolve, the order of Pi's route continuation. <!-- fix: ce4c9f2ff275768bf4b205b9b2b39781b490a7b8 -->
