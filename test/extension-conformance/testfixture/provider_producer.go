@@ -47,5 +47,6 @@ func ProviderProducer() *sdk.Extension {
 			return stream, nil
 		},
 	})
+	registerProviderSnapshot(ext)
 	return ext
 }

@@ -25,7 +25,7 @@ FETCH-DEFERRED and CANCEL-DEFERRED, (lambda (model handle options)), are optiona
 (defun cp-setup-error-stream (model error)
   "pi-ai's lazyStream of a setup that threw: the stream ends with an error event carrying the message of an empty assistant message."
   (let ((stream (create-assistant-message-event-stream)))
-    (model-stream-push stream (obj "type" "error" "reason" "error"
+    (model-stream-enqueue stream (obj "type" "error" "reason" "error"
                                    "error" (obj "role" "assistant" "content" (vector) "api" (jget model "api") "provider" (jget model "provider")
                                                 "model" (jget model "id") "usage" (cp-zero-usage) "stopReason" "error"
                                                 "errorMessage" (princ-to-string error) "timestamp" (cp-now-ms))))
