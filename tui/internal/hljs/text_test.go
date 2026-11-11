@@ -21,7 +21,7 @@ func randomWTF8(rng *rand.Rand, n int) string {
 // A text grown through any chain of cuts, inside a character or not, holds the units of a conversion of its whole code.
 func TestTextGrownThroughCutsHasTheUnitsOfAFreshConversion(t *testing.T) {
 	rng := rand.New(rand.NewSource(7))
-	for round := 0; round < 300; round++ {
+	for round := range 300 {
 		code := randomWTF8(rng, 1+rng.Intn(400))
 		text := &Text{}
 		for end := 0; end < len(code); {
