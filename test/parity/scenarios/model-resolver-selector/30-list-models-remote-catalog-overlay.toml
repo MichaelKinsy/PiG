@@ -1,0 +1,38 @@
+# Behavior family: model-resolver-selector
+# Surface: --list-models after `update --models` merges the saved remote catalog into the bundled catalog (issue #260).
+#
+# Upstream rule: remote-catalog-provider.ts:withRemoteCatalog restores the models-store.json entry of a built-in provider and
+# remoteModels() applies it when its lastModified is newer than the bundled model data. mergeModels() keeps every bundled model
+# (a model the live catalog dropped stays listed), lets a saved model with the same id replace the bundled one, and appends the
+# rest. The issue's remaining difference was exactly this union for opencode and opencode-go after `update --models`: PiG's hosted
+# catalog (D64) was missing models that https://pi.dev served, so the union differed. The hosted content is not an offline CLI
+# behavior; this scenario pins the client half: saved entries for both providers, one replacing a bundled model (changed context,
+# max-out, thinking and images columns) and one new to the bundled catalog, must produce byte-identical tables.
+#
+# The credential is OPENCODE_API_KEY, shared by both providers; nothing is read from a real account.
+name = "30-list-models-remote-catalog-overlay"
+description = "Both binaries list the bundled opencode and opencode-go catalogs merged with the saved remote catalog."
+covers = [
+  "packages/coding-agent/src/cli/list-models.ts",
+  "packages/coding-agent/src/core/model-runtime.ts",
+  "packages/coding-agent/src/core/remote-catalog-provider.ts",
+]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[cli]
+args = ["--list-models", "opencode"]
+timeout_seconds = 30
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../model-resolver-selector/testdata/pig-agent-remote-overlay", "OPENCODE_API_KEY=fixture-key"]
+pi = ["PI_CODING_AGENT_DIR=../model-resolver-selector/testdata/pi-agent-remote-overlay", "OPENCODE_API_KEY=fixture-key"]
+pig_args = ["--no-extensions", "--offline"]
+pi_args = ["--no-extensions", "--offline"]
+
+[assert]
+output_equal = true
+both_contain = ["fixture-new-free", "fixture-go-new", "big-pickle", "kimi-k3", "111K", "333K"]
+both_not_contain = ["panic:", "goroutine ", "Warning:"]
+runtime_ratio_max = 2.0
+runs = 3
