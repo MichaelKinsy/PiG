@@ -9,12 +9,12 @@ import (
 	"github.com/MichaelKinsy/PiG/durable"
 )
 
-// Pi packages/durable/src/testing/storage-conformance.ts createStorageConformance: the same 32 named cases, each Run returning the provider's failure when the provider fails.
+// Pi packages/durable/src/testing/storage-conformance.ts createStorageConformance: the same 33 named cases (the 33rd is Pi 473515f9c), each Run returning the provider's failure when the provider fails.
 // mutation-checked: dropping the reads and writes of StorageConformanceCase.Name, StorageConformanceCase.Run, StorageConformanceOptions.WithStorage fails it
 // Pi: packages/durable/src/testing/runner.ts:7 (name)
 // Pi: packages/durable/src/testing/runner.ts:23 (run)
 // Pi: packages/durable/src/testing/runner.ts:16 (withStorage)
-// Pi packages/durable/src/testing/storage-conformance.ts createStorageConformance (cases are packages/durable/src/testing/types.ts:20 StorageConformanceCase, each with a name and a run): the same 32 named cases, each Run returning the provider's failure when the provider fails.
+// Pi packages/durable/src/testing/storage-conformance.ts createStorageConformance (cases are packages/durable/src/testing/types.ts:20 StorageConformanceCase, each with a name and a run): the same 33 named cases (the 33rd is Pi 473515f9c), each Run returning the provider's failure when the provider fails.
 func TestCreateStorageConformanceCasesMatchUpstream(t *testing.T) {
 	want := []string{
 		"commits batches in order, each with its seq, checked against the earlier ones",
@@ -40,6 +40,7 @@ func TestCreateStorageConformanceCasesMatchUpstream(t *testing.T) {
 		"reserves ID 1 for the immutable root conversation",
 		"resolves a batched copy against the state the earlier batches left",
 		"rolls back record tables and secondary indexes when a document command fails",
+		"round-trips sleeps on signals, any waits, and wakes",
 		"scans deep fork history newest-first through every ancestor cap",
 		"scans tables in either ID order and continues a cursor in its order",
 		"stores and scans sleeping tasks by status",

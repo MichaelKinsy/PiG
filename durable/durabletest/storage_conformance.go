@@ -769,6 +769,42 @@ func CreateStorageConformance(options StorageConformanceOptions) []StorageConfor
 			expect(scan(durable.TaskRunning)).toEqual([]storedTask{running})
 		}),
 
+		// storage-conformance.ts "round-trips sleeps on signals, any waits, and wakes" (Pi 473515f9c).
+		createCase(options, "round-trips sleeps on signals, any waits, and wakes", func(storage durable.Storage, expect func(any) expectation, _ func(error, string)) {
+			rootId := createRoot(storage)
+			ids := make([]durable.TaskId, 5)
+			for index := range ids {
+				ids[index] = mint[durable.TaskId](storage)
+			}
+			signals := []durable.SignalKey{{Signal: "app.answer", Key: "a"}}
+			next := func() *durable.JsonValue { return new(durable.JsonValue(map[string]any{"phase": "next"})) }
+			until := 61_000.0
+			tasks := make([]storedTask, 5)
+			for index := range tasks {
+				tasks[index] = pendingTask(ids[index], rootId, "next")
+			}
+			// A sleep without until, waiting only for a signal.
+			tasks[0].State = durable.TaskState[durable.JsonValue, durable.JsonValue]{Status: durable.TaskSleeping, Checkpoint: next(), Signals: signals}
+			tasks[1].State = durable.TaskState[durable.JsonValue, durable.JsonValue]{Status: durable.TaskSleeping, Checkpoint: next(), Until: &until, Signals: signals}
+			tasks[1].Memos = map[string]durable.JsonValue{"pi.signal.app.answer/a": map[string]any{"version": float64(1), "value": map[string]any{"text": "yes"}}}
+			tasks[2].State = durable.TaskState[durable.JsonValue, durable.JsonValue]{Status: durable.TaskWaiting, Checkpoint: next(), On: []durable.TaskId{ids[0], ids[1]}, Policy: durable.JoinAny}
+			tasks[3].State = durable.TaskState[durable.JsonValue, durable.JsonValue]{Status: durable.TaskPending, Checkpoint: next(), Wake: &durable.WakeReason{Reason: durable.WakeTasks, Ended: []durable.TaskId{ids[0]}}}
+			tasks[4].State = durable.TaskState[durable.JsonValue, durable.JsonValue]{Status: durable.TaskRunning, Checkpoint: next(), Wake: &durable.WakeReason{Reason: durable.WakeSignal, Signal: "app.answer", Key: "a"}}
+			writes := make([]durable.StorageWrite, len(tasks))
+			for index, task := range tasks {
+				writes[index] = taskWrite(task)
+			}
+			commit(storage, writes...)
+			for _, task := range tasks {
+				expect(must(storage.Task(ctx, task.Id))).toEqual(task)
+			}
+			scan := func(status durable.TaskStatus) []storedTask {
+				return must(storage.ScanTasks(ctx, durable.TaskQuery{Status: &status}, 10, nil)).Items
+			}
+			expect(scan(durable.TaskSleeping)).toEqual([]storedTask{tasks[0], tasks[1]})
+			expect(scan(durable.TaskWaiting)).toEqual([]storedTask{tasks[2]})
+		}),
+
 		createCase(options, "indexes request IDs per conversation and replaces complete submission records", func(storage durable.Storage, expect func(any) expectation, _ func(error, string)) {
 			rootId := createRoot(storage)
 			secondConversationId := mint[durable.ConversationId](storage)
