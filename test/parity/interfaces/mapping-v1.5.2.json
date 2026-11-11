@@ -211859,7 +211859,7 @@
       ],
       "evidence": [
         "test:bench/sessionscale/gen_test.go#TestGeneratedSessionResumesToTheReportedContext",
-        "test:internal/codingagent/perf_gate_norace_test.go#TestSessionTurnAllocationGate",
+        "test:internal/codingagent/perf_gate_norace_test.go#TestSessionContextCopyAllocationGate",
         "test:internal/codingagent/session_compaction_record_test.go#TestCompactionEntriesServeTheirLines"
       ]
     },
@@ -211881,7 +211881,7 @@
       ],
       "evidence": [
         "test:bench/sessionscale/gen_test.go#TestGeneratedSessionResumesToTheReportedContext",
-        "test:internal/codingagent/perf_gate_norace_test.go#TestSessionTurnAllocationGate",
+        "test:internal/codingagent/perf_gate_norace_test.go#TestSessionContextCopyAllocationGate",
         "test:internal/codingagent/session_compaction_record_test.go#TestCompactionEntriesServeTheirLines"
       ]
     },
