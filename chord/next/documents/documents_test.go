@@ -190,3 +190,32 @@ func TestDocumentsCheckChecksADeclarationAsDeclareWouldChangingNothing(t *testin
 		t.Fatalf("a keyed declaration of a singleton slot = %v", clash)
 	}
 }
+
+// Go-only, Pi's `documents.hydrate` after the object ended while its attempt waited for the host data gate: every declared name
+// misses its slot, `slots.get(name)!` is undefined and `.hydrate` throws a TypeError, which Pi's `#activate` catches as a failed
+// activation. Go returns `released` (the attempt's `broken` makes the same failed activation of it) instead of dereferencing the
+// missing slot, and releases the pins the attempt took, which nothing else will; an attempt that declared nothing hydrates.
+func TestHydrateOfDocumentsThatEndedWhileTheAttemptWaitedFailsReleasedAndReleasesItsPins(t *testing.T) {
+	_, draftsDefinition := documentsDefinitions(t)
+	o := newObject(t, objectOptions{})
+	a := o.newAttempt()
+	drafts := a.Keyed(draftsDefinition)
+	pinned, err := drafts.At("a")
+	if err != nil {
+		t.Fatalf("at: %v", err)
+	}
+	if pins := pinned.Pins(); pins != 1 {
+		t.Fatalf("pins before = %d, want 1", pins)
+	}
+	o.End()
+	released := obj("code", "released", "reason", "ended", "message", "app.owner(1): ended")
+	err = a.Activate()
+	nexttest.RequireJSONEqual(t, rejection(t, err), released)
+	if pins := pinned.Pins(); pins != 0 {
+		t.Fatalf("pins after = %d, want 0: the failed hydration released them", pins)
+	}
+	// Nothing declared: nothing misses its slot (Pi's loop over `declared` does not run).
+	if err := o.newAttempt().Activate(); err != nil {
+		t.Fatalf("hydrate of nothing on ended documents = %v, want nil", err)
+	}
+}

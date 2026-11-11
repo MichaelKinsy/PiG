@@ -180,8 +180,18 @@ func (d *Documents) Check(definition AnyDefinition) error {
 // Hydrate takes an attempt's declarations once its factory returned: its `at(key)` pins replace the previous factory's,
 // the slots it no longer declares are dropped (their watches end; persisted ones load again when declared again),
 // every declared one hydrated (`initial()`, migrations; a failure fails the activation). declared is in declaration
-// order. A section.
+// order. Documents that ended while the attempt waited for the host data gate (its object ended: a reload no longer
+// serving its type, a close) hold none of its declared slots: Pi's `slots.get(name)!` is undefined there and `.hydrate`
+// throws a TypeError, which `#activate`'s catch turns into a failed activation (or the abandonment that came first). Go
+// returns `released` for that, which the attempt's `broken` turns the same way, and releases the pins the attempt took,
+// which End's release of the previous ones passed over. A section.
 func (d *Documents) Hydrate(declared []AnyDefinition, pins []func(), ctx context.Context) error {
+	if d.state == documentsEnded && len(declared) > 0 {
+		for _, release := range pins {
+			release()
+		}
+		return d.Released()
+	}
 	previous := d.pins
 	d.pins = pins
 	for _, release := range previous {

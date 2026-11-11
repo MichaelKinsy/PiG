@@ -530,6 +530,107 @@ func TestHostDataLifecycleAnAbortBeforeTheCommitWasAdmittedWritesNothing(t *test
 	closeHosts(t, h)
 }
 
+// hdCancelAfterEnters is site whose `enter` cancels the operation's context right after its n-th section ran: the abort
+// reaches the operation at a step of its own, deterministically, instead of while it waits for a line.
+func hdCancelAfterEnters(site hostDataSite, n int, cancel func(error)) (wrapped hostDataSite, entered func() int) {
+	var mu sync.Mutex
+	count := 0
+	enter := site.enter
+	site.enter = func(work func()) {
+		enter(work)
+		mu.Lock()
+		count++
+		cancelNow := count == n
+		mu.Unlock()
+		if cancelNow {
+			cancel(errors.New("given up"))
+		}
+	}
+	return site, func() int {
+		mu.Lock()
+		defer mu.Unlock()
+		return count
+	}
+}
+
+// Go-only completion of host-data.test.ts › lifecycle › an abort before the commit was admitted writes nothing: Pi's test
+// aborts while the delete waits for the ledger's line, which settles before the commit and leaves the commit fence's
+// admission (`admit: () => context.abortSignal?.aborted !== true`) untested. Here the abort comes after every line was
+// taken and the objects' keys and queries were gathered, right before the commit: the store refuses it `released` and
+// writes nothing, and the same delete without the abort commits.
+func TestHostDataLifecycleADeleteAbortedAfterItsLinesWereTakenIsRefusedAtAdmissionAndWritesNothing(t *testing.T) {
+	st := memoryStore(t)
+	w := newHdWorld()
+	live := w.board(t, st, hdMeta)
+	h := live.host
+	exCall(t, live.ledger, "put", "S1")
+	site, err := h.(*chordHost).dataSite("deleteHostData")
+	must(t, err)
+	seq := st.LastSeq()
+	cancellable, cancel := chordctx.WithCancel(background)
+	// coordinated enters: the objects owning the key's data, then (their lines held) its slots and live queries.
+	aborting, entered := hdCancelAfterEnters(site, 2, cancel)
+	counts, err := deleteFrom(aborting, hdS1, cancellable)
+	wantChordError(t, err, data.CodeReleased, data.ReasonDiscarded, "store: the commit's attempt ended")
+	if counts != (store.HostDataCounts{}) {
+		t.Fatalf("aborted delete counts = %+v, want none", counts)
+	}
+	if got := entered(); got != 2 {
+		t.Fatalf("sections entered = %d, want 2: the abort came after the lines were taken and nothing was adopted", got)
+	}
+	if st.LastSeq() != seq {
+		t.Fatalf("lastSeq = %d, want %d: nothing written", st.LastSeq(), seq)
+	}
+	if count := hdCount(t, live.ledger); count != 1 {
+		t.Fatalf("count = %v, want 1: the refused delete left the row", count)
+	}
+	// The lines were released: the same delete, not aborted, commits.
+	counts, err = h.DeleteHostData(hdS1, background)
+	must(t, err)
+	if counts.Rows != 1 {
+		t.Fatalf("delete = %+v, want its one row", counts)
+	}
+	if count := hdCount(t, live.ledger); count != 0 {
+		t.Fatalf("count = %v, want 0", count)
+	}
+	closeHosts(t, h)
+}
+
+// Go-only completion of the same lifecycle test for an import: aborted after the owners' lines were taken, right before its
+// commit, it writes nothing (the address stays free: the same import, not aborted, is then not refused as an existing one).
+func TestHostDataLifecycleAnImportAbortedAfterItsLinesWereTakenIsRefusedAtAdmissionAndWritesNothing(t *testing.T) {
+	parts := hdArchiveOfS1(t, hdMeta)
+	st := memoryStore(t)
+	w := newHdWorld()
+	live := w.board(t, st, hdMeta)
+	h := live.host
+	site, err := h.(*chordHost).dataSite("importHostData")
+	must(t, err)
+	seq := st.LastSeq()
+	cancellable, cancel := chordctx.WithCancel(background)
+	// importInto enters: the tables' histories; coordinated's: the objects, then (their lines held) slots and live queries.
+	aborting, entered := hdCancelAfterEnters(site, 3, cancel)
+	counts, err := importInto(aborting, hdParts(parts), cancellable, store.HostImportOptions{})
+	wantChordError(t, err, data.CodeReleased, data.ReasonDiscarded, "store: the commit's attempt ended")
+	if counts != (store.HostDataCounts{}) {
+		t.Fatalf("aborted import counts = %+v, want none", counts)
+	}
+	if got := entered(); got != 3 {
+		t.Fatalf("sections entered = %d, want 3: the abort came after the lines were taken and nothing was adopted", got)
+	}
+	if st.LastSeq() != seq {
+		t.Fatalf("lastSeq = %d, want %d: nothing written", st.LastSeq(), seq)
+	}
+	exEqual(t, "meta", hdMember(t, live.board, "meta"), jsonObject("title", ""))
+	counts, err = h.ImportHostData(hdParts(parts), background, store.HostImportOptions{})
+	must(t, err)
+	if counts.Documents != 1 {
+		t.Fatalf("import = %+v, want its one document: the address was free", counts)
+	}
+	exEqual(t, "meta", hdMember(t, live.board, "meta"), jsonObject("title", "one"))
+	closeHosts(t, h)
+}
+
 // host-data.test.ts › lifecycle › an owner that cannot read an imported document fails alone; the other owners adopt.
 func TestHostDataLifecycleAnOwnerThatCannotReadAnImportedDocumentFailsAloneTheOtherOwnersAdopt(t *testing.T) {
 	parts := hdArchiveOfS1(t, hdMetaV2)
@@ -894,4 +995,93 @@ func TestHostDataObjectsAreOrderedByIdentityInUTF16CodeUnitOrderAsJavaScriptSort
 	if got := compareUTF16("abc", "abc"); got != 0 {
 		t.Fatalf("compareUTF16 of equal strings = %d, want 0", got)
 	}
+}
+
+// hdScratchDoc is the scratch object's in-memory document: declared by every activation of it, owned by no table.
+var hdScratchDoc = func() *documents.StateDefinition {
+	definition, err := documents.DefineState("scratch", documents.StateOptions{
+		Schema: exObj(exProp("n", exInt())), Version: 1, Initial: func() *delta.JsonObject { return jsonObject("n", 0.0) },
+	})
+	if err != nil {
+		panic(err)
+	}
+	return definition
+}()
+
+// hdScratch has one in-memory document and no data of any host: no host data operation takes its line. It has params, so
+// each get is a fresh activation (an object without params activates when the host loads).
+var hdScratch = exLocal("test.scratch", contracts.Params{exProp("id", exStr())}, contracts.Mem("n", exObj(exProp("n", exInt()))))
+
+// Go-only (Pi's TypeScript `documents.hydrate` throws a TypeError there, which its `#activate` catches as a failed
+// activation; Go's nil slot is a crash of the host's loop): an activation waits at the gate while an operation is exclusive;
+// its object ends meanwhile (a reload no longer serves it) and its documents with it; once the operation ends the activation
+// resumes and must fail `released`, not hydrate the ended documents.
+func TestHostDataAnActivationWaitingAtTheGateWhoseObjectEndedMeanwhileFailsReleased(t *testing.T) {
+	w := newHdWorld()
+	setup := func(h FacetHost, self FacetSelf) error {
+		if err := w.setup(hdMeta, hdLabelsV2)(h, self); err != nil {
+			return err
+		}
+		return h.Serve(hdScratch, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+			counter := plain.State(hdScratchDoc).(*documents.Singleton)
+			return contracts.Implementation{Members: contracts.VariantImplementation{
+				State: map[string]chord.Watchable[delta.JsonValue]{"n": Expose(counter)},
+			}}, nil
+		}, ServeOptions{})
+	}
+	h, _ := loaded(t, setup, loadedOptions{Store: memoryStore(t)})
+	ledger := mustGet(t, h, hdLedger, jsonObject())
+	release := w.holdLedger(t, ledger)
+	// The delete is exclusive, waiting for the ledger's line (the scratch object has no data of S9: its line is not taken).
+	deleting := hdGo(func() (store.HostDataCounts, error) {
+		return h.DeleteHostData(Session.Address(jsonObject("id", "S9")), background)
+	})
+	hdEventually(t, "the delete exclusive", func() bool {
+		exclusive, _ := hdGateState(h)
+		return exclusive && hdWaitingOnLine(h, "test.ledger") > 0
+	})
+	reading := hdGo(func() (delta.JsonValue, error) {
+		scratchRef, err := h.Get(background, hdScratch, jsonObject("id", "a"), GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+		return scratchRef.Member("n").Value()
+	})
+	hdEventually(t, "the scratch activation waiting at the gate", func() bool {
+		_, waiting := hdGateState(h)
+		return waiting > 0
+	})
+	var scratch *documents.Documents
+	h.(*chordHost).enter(func() {
+		for _, object := range h.(*chordHost).objectList() {
+			if object.owner() == "test.scratch" {
+				scratch = object.documents
+			}
+		}
+	})
+	if scratch == nil {
+		t.Fatal("the scratch object is not live")
+	}
+	// A reload that no longer serves the scratch type ends its object, documents and all, while the delete holds the gate.
+	reloading := hdGo(func() (ReloadReport, error) {
+		return h.Reload([]HostFacet{{Name: "@test/app", Facet: DefineFacet(w.setup(hdMeta, hdLabelsV2))}}, background, ReloadOptions{})
+	})
+	hdEventually(t, "the scratch object's documents ended", func() bool {
+		var ended bool
+		h.(*chordHost).enter(func() { ended = scratch.AssertLive() != nil })
+		return ended
+	})
+	release()
+	_, err := hdAwait(t, "the delete", deleting)
+	must(t, err)
+	_, err = hdAwait(t, "the reload", reloading)
+	must(t, err)
+	// The type is no longer served: the read waits for it (an unbound name), the ended object's failed activation did not crash the host.
+	hdPending(t, "the scratch read", reading)
+	_, err = h.Reload([]HostFacet{{Name: "@test/app", Facet: DefineFacet(setup)}}, background, ReloadOptions{})
+	must(t, err)
+	value, err := hdAwait(t, "the scratch read", reading)
+	must(t, err)
+	exEqual(t, "scratch", value, jsonObject("n", 0.0))
+	closeHosts(t, h)
 }
