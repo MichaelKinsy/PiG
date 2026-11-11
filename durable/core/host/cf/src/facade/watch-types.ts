@@ -1,6 +1,7 @@
 // The watch and observer declarations of pi-durable's types.ts (JsonObject, Observer, Observation), kept structural so the
 // facade does not import the package it replaces. The watch types themselves are Chord's.
-import type { Context, WatchCall, WatchEnd } from "@earendil-works/chord"
+import type { Context } from "@earendil-works/chord/context"
+import type { WatchCall, WatchEnd } from "@earendil-works/chord/watch"
 
 export type JsonObject = { [key: string]: unknown }
 

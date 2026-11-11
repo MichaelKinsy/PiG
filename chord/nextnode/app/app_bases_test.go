@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	chordhttp "github.com/MichaelKinsy/PiG/chord/nextnode/http"
-	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 	nodesurfaces "github.com/MichaelKinsy/PiG/chord/nextnode/surfaces"
 )
 
@@ -37,7 +37,7 @@ func plainPage(_ chordhttp.HttpRequest, assets nodesurfaces.PageAssets) (string,
 
 func withPublicWeb(entry string, page func(chordhttp.HttpRequest, nodesurfaces.PageAssets) (string, error)) func(*AppOptions) {
 	return func(o *AppOptions) {
-		o.Kinds = append(o.Kinds, AppKind{Name: "web", Platform: plugins.PlatformBrowser})
+		o.Kinds = append(o.Kinds, AppKindEntry{Name: "web", Kind: AppKind{Platform: model.PlatformBrowser}})
 		o.Web = &AppWeb{Entry: entry, Page: page, Public: true}
 	}
 }
@@ -54,6 +54,7 @@ func TestAppReportsABaseThatFailsAfterTheListenAndRunsOnThePageAnswers503TheKind
 		worker.Entry = filepath.Join(dir, "no-such-worker")
 		o.Workers = []AppWorkerKind{worker}
 	})
+	s.errors.expect()
 	s.errors.mu.Lock()
 	reported := slices.Clone(s.errors.list)
 	s.errors.mu.Unlock()

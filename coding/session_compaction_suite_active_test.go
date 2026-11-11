@@ -225,10 +225,10 @@ func TestCompactionSuiteCheckpointsSystemPatches(t *testing.T) {
 	first := persistQueueMessage(t, h.session, queueUser("kept before patch", now))
 	persistQueueMessage(t, h.session, agent.AgentMessage{System: &ai.SystemMessage{Content: ai.SystemText("retained instruction"), Sections: ai.OrderedSections{{Name: "extra", Value: new("<extra>late</extra>")}}, ToolsRemoved: []ai.ToolReference{{Name: "read"}}, Timestamp: now}})
 	persistQueueMessage(t, h.session, queueUser("kept after patch", now))
-	if _, err := h.session.inner.AppendCompaction("compacted", first, 100, nil, false, nil); err != nil {
+	if _, err := h.session.inner.Load().AppendCompaction("compacted", first, 100, nil, false, nil); err != nil {
 		t.Fatal(err)
 	}
-	messages := h.session.inner.BuildSessionProjection().Messages
+	messages := h.session.inner.Load().BuildSessionProjection().Messages
 	if len(messages) != 4 || messages[0].System == nil || messages[1].Custom["role"] != "compactionSummary" || messages[2].User == nil || messages[3].User == nil {
 		t.Fatal(messages)
 	}

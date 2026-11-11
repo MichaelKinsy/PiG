@@ -25,7 +25,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/sqlite"
 )
 
-// Ports packages/chord/test/next/host/reference.test.ts: references (§7): hydrated when got, released once, cycles (Q5),
+// Ports packages/chord/test/host/reference.test.ts: references (§7): hydrated when got, released once, cycles (Q5),
 // GC, release, remote references and keyed state members (slice 6a §12). The type-level cases (`expectTypeOf`) are
 // designed out to Go tests that name the mechanism: Reference.Variant reports bound and the variant.
 

@@ -260,6 +260,7 @@ func (writer *Writer) pump() {
 	writer.queue = nil
 	writer.running.Add(1)
 	writer.mu.Unlock()
+	//portlint:allow asyncorder writer.ts:150-160 #flush is an intentionally unawaited async chain owned by the writer: pump starts one at a time (flight) and Wait joins it through running
 	go func() {
 		defer writer.running.Done()
 		writer.flush(parts)

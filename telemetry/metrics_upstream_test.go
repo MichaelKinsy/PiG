@@ -18,10 +18,10 @@ import (
 )
 
 func metricAttribute(attributeType telemetry.TelemetryAttributeType, description string, required bool, values ...string) telemetry.TelemetryMetricAttributeDefinition {
-	definition := telemetry.TelemetryMetricAttributeDefinition{Required: required}
-	definition.Type = attributeType
-	definition.Description = description
-	definition.Values = values
+	definition := telemetry.TelemetryMetricAttributeDefinition{Required: required,
+		Type:        attributeType,
+		Description: description,
+		Values:      values}
 	return definition
 }
 
@@ -162,7 +162,7 @@ func TestMetricsUpstream(t *testing.T) {
 
 	t.Run("metrics › shares frozen no-op instruments", func(t *testing.T) {
 		// upstream: packages/telemetry/test/metrics.test.ts:182
-		options := telemetry.HistogramOptions{InstrumentOptions: telemetry.InstrumentOptions{Unit: new("By")}}
+		options := telemetry.HistogramOptions{Unit: new("By")}
 		attributes := telemetry.SpanAttributes{telemetry.Attr("direction", "out")}
 		counter := telemetry.NoopTelemetryMetrics.Counter("bytes", options.InstrumentOptions)
 		active := telemetry.NoopTelemetryMetrics.UpDownCounter("active", options.InstrumentOptions)

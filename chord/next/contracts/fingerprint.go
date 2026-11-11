@@ -8,7 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Ports packages/chord/src/next/contracts/fingerprint.ts (the normal form of a contract version and its portable
+// Ports packages/chord/src/contracts/fingerprint.ts (the normal form of a contract version and its portable
 // 64-bit hash; not a security boundary).
 
 // NormalFormVersion is the version of the normal form; changing the normal form changes it and is a link-protocol

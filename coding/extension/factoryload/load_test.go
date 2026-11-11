@@ -262,7 +262,7 @@ func TestHandlersReachTheRunnerAsEveryOtherExtensionsDo(t *testing.T) {
 		t.Fatal(err)
 	}
 	runner := inproc.NewRunner([]extension.Extension{ext}, ".", runtime)
-	result, err := runner.EmitToolCall(context.Background(), extension.CustomToolCallEvent{ToolCallEventBase: extension.ToolCallEventBase{Type: "tool_call", ToolCallID: "c1"}, ToolName: "bash"})
+	result, err := runner.EmitToolCall(context.Background(), extension.CustomToolCallEvent{Type: "tool_call", ToolCallID: "c1", ToolName: "bash"})
 	if err != nil || result == nil || !result.Block || result.Reason != "no bash" {
 		t.Fatalf("EmitToolCall = %+v, %v", result, err)
 	}
@@ -271,7 +271,7 @@ func TestHandlersReachTheRunnerAsEveryOtherExtensionsDo(t *testing.T) {
 	}
 	unsubscribe()
 	unsubscribe()
-	result, err = runner.EmitToolCall(context.Background(), extension.CustomToolCallEvent{ToolCallEventBase: extension.ToolCallEventBase{Type: "tool_call", ToolCallID: "c1"}, ToolName: "bash"})
+	result, err = runner.EmitToolCall(context.Background(), extension.CustomToolCallEvent{Type: "tool_call", ToolCallID: "c1", ToolName: "bash"})
 	if err != nil || result != nil && result.Block {
 		t.Fatalf("after unsubscribe EmitToolCall = %+v, %v", result, err)
 	}

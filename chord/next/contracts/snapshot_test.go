@@ -3,18 +3,18 @@ package contracts_test
 import (
 	"math"
 	"testing"
+	"unsafe"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/schema"
 )
 
-// pi: packages/chord/src/next/contracts/snapshot.ts
-// Ports packages/chord/test/next/contracts/snapshot.test.ts.
+// pi: packages/chord/src/contracts/snapshot.ts
+// Ports packages/chord/test/contracts/snapshot.test.ts.
 //
 // Designed out (no Go input): the refusal of a non-enumerable key ("non-enumerable key (a TypeBox refinement)": Go has no
-// non-enumerable property, a Schema holds its keys as data and its `Optional` flag is no key); symbol keys and
-// accessor properties; a `maximum: undefined` datum (Go has no undefined; the NaN case covers a non-JSON datum).
+// non-enumerable property, a Schema holds its keys as data and its `Optional` flag is no key); a `maximum: undefined` datum (Go has no undefined; the NaN case covers a non-JSON datum).
 
 func TestSnapshotVocabulary(t *testing.T) {
 	t.Run("accepts primitives, arrays, tuples, objects, records, unions, intersections, $defs/$ref, constraints", func(t *testing.T) {
@@ -78,6 +78,30 @@ func TestSnapshotVocabulary(t *testing.T) {
 		wantError(t, err, "s.items: cyclic schema")
 		_, err = contracts.SnapshotSchema(raw(t, `{"type":"object","properties":{"a":{"type":1}}}`), "s")
 		wantError(t, err, "s.properties.a.type: unsupported type 1")
+	})
+
+	// Pi: "refuses symbol keys, accessors and cycles, naming the path". A Go value has no symbol key and no accessor; the
+	// values a schema cannot carry that Go does have are the same two refusals: a key that is no string (a map keyed by
+	// anything else) and a value computed on read (a func; a chan and an unsafe pointer likewise carry no data).
+	t.Run("refuses keys that are no strings and computed values, naming the path", func(t *testing.T) {
+		_, err := contracts.SnapshotSchema(map[any]any{"type": "string", 1: 1}, "s")
+		wantError(t, err, "s: non-string keys are not supported")
+		_, err = contracts.SnapshotSchema(map[int]any{1: 1}, "s")
+		wantError(t, err, "s: non-string keys are not supported")
+		// A map of any whose keys are all strings has no key that is no string: it is no schema, not a refused key.
+		_, err = contracts.SnapshotSchema(map[any]any{"type": "string"}, "s")
+		wantError(t, err, "s: expected a schema")
+		accessor := delta.JsonObjectOf("type", "object")
+		accessor.Set("properties", func() any { return map[string]any{} })
+		_, err = contracts.SnapshotSchema(accessor, "s")
+		wantError(t, err, "s.properties: functions are not supported")
+		_, err = contracts.SnapshotSchema(delta.JsonObjectOf("type", "string", "default", make(chan int)), "s")
+		wantError(t, err, "s.default: channels are not supported")
+		_, err = contracts.SnapshotSchema(delta.JsonObjectOf("type", "string", "enum", []any{"a", delta.JsonObjectOf("deep", func() {})}), "s")
+		wantError(t, err, "s.enum[1].deep: functions are not supported")
+		var nowhere unsafe.Pointer
+		_, err = contracts.SnapshotSchema(delta.JsonObjectOf("type", "string", "default", nowhere), "s")
+		wantError(t, err, "s.default: unsafe pointers are not supported")
 	})
 
 	t.Run("allows a schema object shared by two places (not a cycle)", func(t *testing.T) {

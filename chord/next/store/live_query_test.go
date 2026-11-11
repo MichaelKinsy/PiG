@@ -5,6 +5,7 @@ import (
 	"testing"
 )
 
+// pi: packages/chord/src/store/live-query.ts
 // Ports packages/chord/test/store/live-query.test.ts, "a refresh applied again" (Pi main 8889e623d): a refresh applied
 // again adopts only its last runs. The other cases of that file run on a host (chord/next/host/host_live_query_test.go).
 

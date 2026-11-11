@@ -88,6 +88,51 @@ func TestProvingEndsOnceDistinctGoroutinesHaveCalledCurrent(t *testing.T) {
 	}
 }
 
+// Token is stable on a goroutine and differs between the goroutines alive at once, a coroutine of iter.Pull's included.
+func TestTokenIdentifiesTheCallingGoroutine(t *testing.T) {
+	here := Token()
+	if here == 0 || Token() != here {
+		t.Fatalf("Token() = %d, not stable and non-zero on one goroutine", here)
+	}
+	next, stop := iter.Pull(func(yield func(uintptr) bool) {
+		for range 2 {
+			if !yield(Token()) {
+				return
+			}
+		}
+	})
+	defer stop()
+	if coroutine, _ := next(); coroutine == 0 || coroutine == here {
+		t.Fatalf("a coroutine has token %d, its consumer %d", coroutine, here)
+	}
+	const goroutines = 64
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	seen := map[uintptr]bool{here: true}
+	release := make(chan struct{})
+	for range goroutines {
+		wg.Go(func() {
+			first := Token()
+			<-release
+			mu.Lock()
+			defer mu.Unlock()
+			if Token() != first || seen[first] {
+				t.Errorf("token %d changed or is shared with another live goroutine", first)
+			}
+			seen[first] = true
+		})
+	}
+	close(release)
+	wg.Wait()
+}
+
+func BenchmarkToken(b *testing.B) {
+	b.ReportAllocs()
+	for b.Loop() {
+		Token()
+	}
+}
+
 func BenchmarkCurrent(b *testing.B) {
 	var deep func(n int)
 	deep = func(n int) {

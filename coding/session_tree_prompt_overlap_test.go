@@ -66,7 +66,7 @@ func TestPromptIsRejectedWhileBranchSummarizationIsInProgress(t *testing.T) {
 	if preflight != 0 {
 		t.Fatalf("preflightResult called %d times", preflight)
 	}
-	for _, entry := range sess.inner.GetEntries() {
+	for _, entry := range sess.inner.Load().GetEntries() {
 		if strings.Contains(string(entry.Raw()), "prompt during summary") {
 			t.Fatalf("the rejected prompt was persisted: %s", entry.Raw())
 		}
@@ -155,7 +155,7 @@ func TestNavigationStaysBlockedWhenAnotherPromptFinishesPreflightFirst(t *testin
 func TestNavigationStartedFromSessionTreeKeepsItsOwnState(t *testing.T) {
 	sess := newTreeTestSession(t)
 	target := seedTreeHistory(t, sess)
-	nextTarget := *sess.inner.GetLeafID()
+	nextTarget := *sess.inner.Load().GetLeafID()
 	started, released := make(chan struct{}), make(chan struct{})
 	continuation := make(chan error, 1)
 	var once, startedOnce = new(bool), new(bool)
@@ -193,7 +193,7 @@ func TestNavigationStartedFromSessionTreeKeepsItsOwnState(t *testing.T) {
 	if err := <-continuation; err != nil {
 		t.Fatal(err)
 	}
-	if got := sess.inner.GetLeafID(); got == nil || *got != nextTarget || sess.IsCompacting() {
+	if got := sess.inner.Load().GetLeafID(); got == nil || *got != nextTarget || sess.IsCompacting() {
 		t.Fatalf("leaf = %v, compacting = %v", got, sess.IsCompacting())
 	}
 }
@@ -206,7 +206,7 @@ func TestThinkingLevelIsRecordedOnTheNewBranchBeforeTheNextPrompt(t *testing.T) 
 		t.Fatal(err)
 	}
 	promptHarness(t, h, "one")
-	firstAnswer := *s.inner.GetLeafID()
+	firstAnswer := *s.inner.Load().GetLeafID()
 	if err := s.SetThinkingLevel(ai.ThinkingLow); err != nil {
 		t.Fatal(err)
 	}
@@ -214,7 +214,7 @@ func TestThinkingLevelIsRecordedOnTheNewBranchBeforeTheNextPrompt(t *testing.T) 
 	if _, err := s.NavigateTree(t.Context(), firstAnswer, NavigateTreeOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	if level, _ := icodingagent.GetSessionContextSettings(s.inner.GetContextBranch()); level != "high" {
+	if level, _ := icodingagent.GetSessionContextSettings(s.inner.Load().GetContextBranch()); level != "high" {
 		t.Fatalf("thinking level of the new branch = %q, want high", level)
 	}
 	promptHarness(t, h, "three")
@@ -222,7 +222,7 @@ func TestThinkingLevelIsRecordedOnTheNewBranchBeforeTheNextPrompt(t *testing.T) 
 		t.Fatalf("session thinking level = %q", s.ThinkingLevel())
 	}
 	// Resume restores the thinking level from this context.
-	if level, _ := icodingagent.GetSessionContextSettings(s.inner.GetContextBranch()); level != "low" {
+	if level, _ := icodingagent.GetSessionContextSettings(s.inner.Load().GetContextBranch()); level != "low" {
 		t.Fatalf("recorded thinking level = %q, want low", level)
 	}
 }
@@ -234,7 +234,7 @@ func TestThinkingLevelThatOnlyDiffersFromTheBranchByClampingIsNotRecorded(t *tes
 		t.Fatal(err)
 	}
 	// As after resuming a session that requested xhigh on a model without it: the session runs at high.
-	if _, err := s.inner.AppendThinkingLevelChange("xhigh"); err != nil {
+	if _, err := s.inner.Load().AppendThinkingLevelChange("xhigh"); err != nil {
 		t.Fatal(err)
 	}
 	promptHarness(t, h, "one")
@@ -305,7 +305,7 @@ func TestNavigationIsAllowedFromAnExtensionCommandAndAgentSettledHandler(t *test
 			if err := sess.Prompt(t.Context(), prompt, nil); err != nil {
 				t.Fatal(err)
 			}
-			if got := sess.inner.GetLeafID(); !navigated || got == nil || *got != target {
+			if got := sess.inner.Load().GetLeafID(); !navigated || got == nil || *got != target {
 				t.Fatalf("navigated = %v, leaf = %v, want %s", navigated, got, target)
 			}
 		})

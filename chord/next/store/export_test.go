@@ -16,7 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 )
 
-// Ports packages/chord/test/next/store/export.test.ts: tests of `store.Export(ctx)` (slice 6a §13, rule 26): the
+// Ports packages/chord/test/store/export.test.ts: tests of `store.Export(ctx)` (slice 6a §13, rule 26): the
 // parts in archive order, lossless; the commit queue held from the first `Next` until the export ends, is closed or
 // aborts (also while the consumer is suspended); GC of closed and aborted iterators.
 //
@@ -24,7 +24,7 @@ import (
 // has no listener list; the `context.AfterFunc` registration is stopped when the export ends, and what the counts
 // proved there (the queue given back at once, nothing left held) is asserted by the commits that follow.
 //
-// pi: packages/chord/src/next/store/export.ts
+// pi: packages/chord/src/store/export.ts
 
 // exportFlushed waits until every goroutine that can make progress did (Pi's `flushed()`: pending promise callbacks).
 func exportFlushed() { time.Sleep(50 * time.Millisecond) }

@@ -280,10 +280,8 @@ func TestEmitToolResult_MutationChainCompoundsAcrossHandlers(t *testing.T) {
 	r := inproc.NewRunner(exts, ".")
 
 	got, err := r.EmitToolResult(context.Background(), extension.BashToolResultEvent{
-		ToolResultEventBase: extension.ToolResultEventBase{
-			Type:    "tool_result",
-			Content: []any{"original"},
-		},
+		Type:    "tool_result",
+		Content: []any{"original"},
 	})
 	if err != nil {
 		t.Fatalf("err = %v", err)
@@ -312,7 +310,7 @@ func TestEmitToolResult_IsErrorPropagates(t *testing.T) {
 	r := inproc.NewRunner(exts, ".")
 
 	got, err := r.EmitToolResult(context.Background(), extension.BashToolResultEvent{
-		ToolResultEventBase: extension.ToolResultEventBase{IsError: false},
+		IsError: false,
 	})
 	if err != nil {
 		t.Fatalf("err = %v", err)
@@ -460,8 +458,8 @@ func TestEmitToolResult_ContentOnlyKeepsIsError(t *testing.T) {
 	}}
 	r := inproc.NewRunner([]extension.Extension{ext}, t.TempDir())
 	got, err := r.EmitToolResult(context.Background(), extension.CustomToolResultEvent{
-		ToolResultEventBase: extension.ToolResultEventBase{Type: "tool_result", IsError: true},
-		ToolName:            "bash",
+		Type: "tool_result", IsError: true,
+		ToolName: "bash",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -484,7 +482,7 @@ func TestEmitToolResult_UsageChains(t *testing.T) {
 		return json.RawMessage(`{"content":[{"type":"text","text":"x"}]}`), nil
 	}}
 	r := inproc.NewRunner([]extension.Extension{first, second}, t.TempDir())
-	got, err := r.EmitToolResult(context.Background(), extension.CustomToolResultEvent{ToolResultEventBase: extension.ToolResultEventBase{Type: "tool_result"}, ToolName: "bash"})
+	got, err := r.EmitToolResult(context.Background(), extension.CustomToolResultEvent{Type: "tool_result", ToolName: "bash"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -510,8 +508,8 @@ func TestEmitToolResult_NextHandlerSeesPredecessorValues(t *testing.T) {
 	}}
 	r := inproc.NewRunner([]extension.Extension{first, second}, t.TempDir())
 	got, err := r.EmitToolResult(context.Background(), extension.CustomToolResultEvent{
-		ToolResultEventBase: extension.ToolResultEventBase{Type: "tool_result", Content: []any{map[string]any{"type": "text", "text": "orig"}}, Usage: map[string]any{"output": float64(1)}},
-		ToolName:            "probe",
+		Type: "tool_result", Content: []any{map[string]any{"type": "text", "text": "orig"}}, Usage: map[string]any{"output": float64(1)},
+		ToolName: "probe",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -539,7 +537,7 @@ func TestEmitToolResult_TypedDetailsChain(t *testing.T) {
 		return nil, nil
 	}}
 	r := inproc.NewRunner([]extension.Extension{first, second}, t.TempDir())
-	if _, err := r.EmitToolResult(context.Background(), extension.BashToolResultEvent{ToolResultEventBase: extension.ToolResultEventBase{Type: "tool_result"}, ToolName: "bash"}); err != nil {
+	if _, err := r.EmitToolResult(context.Background(), extension.BashToolResultEvent{Type: "tool_result", ToolName: "bash"}); err != nil {
 		t.Fatal(err)
 	}
 	if seen == nil || seen.FullOutputPath == "" {
@@ -571,7 +569,7 @@ func TestEmitToolResult_TypedVariantPreservesReplacementDetails(t *testing.T) {
 				return nil, nil
 			}}
 			r := inproc.NewRunner([]extension.Extension{first, second}, t.TempDir())
-			got, err := r.EmitToolResult(context.Background(), extension.BashToolResultEvent{ToolResultEventBase: extension.ToolResultEventBase{Type: "tool_result"}, ToolName: "bash"})
+			got, err := r.EmitToolResult(context.Background(), extension.BashToolResultEvent{Type: "tool_result", ToolName: "bash"})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -598,7 +596,7 @@ func TestEmitToolResult_TypedVariantKeptWhenLossless(t *testing.T) {
 		return nil, nil
 	}}
 	r := inproc.NewRunner([]extension.Extension{first, second}, t.TempDir())
-	if _, err := r.EmitToolResult(context.Background(), extension.BashToolResultEvent{ToolResultEventBase: extension.ToolResultEventBase{Type: "tool_result"}, ToolName: "bash"}); err != nil {
+	if _, err := r.EmitToolResult(context.Background(), extension.BashToolResultEvent{Type: "tool_result", ToolName: "bash"}); err != nil {
 		t.Fatal(err)
 	}
 	bash, ok := seen.(extension.BashToolResultEvent)
@@ -623,8 +621,8 @@ func TestEmitToolResult_PowerShellVariantChainsContentAndDetails(t *testing.T) {
 	}}
 	r := inproc.NewRunner([]extension.Extension{first, second}, t.TempDir())
 	event := extension.PowerShellToolResultEvent{
-		ToolResultEventBase: extension.ToolResultEventBase{Type: "tool_result", Content: []any{map[string]any{"type": "text", "text": "Get-Date output"}}},
-		ToolName:            "powershell",
+		Type: "tool_result", Content: []any{map[string]any{"type": "text", "text": "Get-Date output"}},
+		ToolName: "powershell",
 	}
 	got, err := r.EmitToolResult(context.Background(), event)
 	if err != nil {

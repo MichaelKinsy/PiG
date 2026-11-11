@@ -74,17 +74,17 @@ func TestOutputPad(t *testing.T) {
 			return card
 		}},
 		{"compaction summary", func(outputPad int) outputPaddedComponent {
-			component := tui.NewCompactionSummaryMessageComponent(tui.CompactionSummaryMessage{Summary: "summary", TokensBefore: 10}, nil, 1)
+			component := tui.NewCompactionSummaryMessageComponent(tui.CompactionSummaryMessage{Summary: "summary", TokensBefore: 10}, nil, 1, nil, "", "")
 			component.SetOutputPad(outputPad)
 			return component
 		}},
 		{"branch summary", func(outputPad int) outputPaddedComponent {
-			component := tui.NewBranchSummaryMessageComponent(tui.BranchSummaryMessage{Summary: "summary"}, nil, 1)
+			component := tui.NewBranchSummaryMessageComponent(tui.BranchSummaryMessage{Summary: "summary"}, nil, 1, nil, "", "")
 			component.SetOutputPad(outputPad)
 			return component
 		}},
 		{"skill invocation", func(outputPad int) outputPaddedComponent {
-			component := tui.NewSkillInvocationMessageComponent(tui.ParsedSkillBlock{Name: "skill", Content: "body"}, nil, 1)
+			component := tui.NewSkillInvocationMessageComponent(tui.ParsedSkillBlock{Name: "skill", Content: "body"}, nil, 1, nil, "", "")
 			component.SetOutputPad(outputPad)
 			return component
 		}},
@@ -153,7 +153,7 @@ func TestApplyOutputPadUpdatesBlocksInPlace(t *testing.T) {
 	queuedBash.SetComplete(&exitCode, false, nil, "")
 	card := newToolCardForTest("custom_tool", "")
 	card.SetResult("ok", false, 0)
-	summary := tui.NewCompactionSummaryMessageComponent(tui.CompactionSummaryMessage{Summary: "summary", TokensBefore: 10}, nil, 1)
+	summary := tui.NewCompactionSummaryMessageComponent(tui.CompactionSummaryMessage{Summary: "summary", TokensBefore: 10}, nil, 1, nil, "", "")
 
 	chat, pending := tui.NewContainer(), tui.NewContainer()
 	for _, component := range []tui.Component{bash, card, summary} {
@@ -192,13 +192,13 @@ func TestApplyOutputPadReachesTheCardsTheChatContainerCaches(t *testing.T) {
 		create func(outputPad int) outputPaddedComponent
 	}{
 		{"branch summary", func(outputPad int) outputPaddedComponent {
-			return tui.NewBranchSummaryMessageComponent(tui.BranchSummaryMessage{Summary: "branch summary"}, nil, outputPad)
+			return tui.NewBranchSummaryMessageComponent(tui.BranchSummaryMessage{Summary: "branch summary"}, nil, outputPad, nil, "", "")
 		}},
 		{"compaction summary", func(outputPad int) outputPaddedComponent {
-			return tui.NewCompactionSummaryMessageComponent(tui.CompactionSummaryMessage{Summary: "compaction summary", TokensBefore: 10}, nil, outputPad)
+			return tui.NewCompactionSummaryMessageComponent(tui.CompactionSummaryMessage{Summary: "compaction summary", TokensBefore: 10}, nil, outputPad, nil, "", "")
 		}},
 		{"skill invocation", func(outputPad int) outputPaddedComponent {
-			return tui.NewSkillInvocationMessageComponent(tui.ParsedSkillBlock{Name: "skill", Content: "skill body"}, nil, outputPad)
+			return tui.NewSkillInvocationMessageComponent(tui.ParsedSkillBlock{Name: "skill", Content: "skill body"}, nil, outputPad, nil, "", "")
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

@@ -9,7 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Ports packages/chord/src/next/link/binary.ts. The binary codec (2b): a kind byte (its high bit set when an origin
+// Ports packages/chord/src/link/binary.ts. The binary codec (2b): a kind byte (its high bit set when an origin
 // follows as a varint), then the kind's fields as unsigned varints, length-prefixed UTF-8 strings, raw incarnation (16
 // bytes) and fingerprint (8 bytes), parts as length-prefixed bytes whose prefix also says whether the part is deflated
 // (decoded as views of the message, never parsed or inflated here), and byte segments only beside payloads marked as

@@ -1,6 +1,6 @@
 package host
 
-// pi: packages/chord/test/next/examples/20-tables.ts
+// pi: packages/chord/test/examples/20-tables.ts
 
 import (
 	"context"
@@ -15,9 +15,9 @@ import (
 
 // --- 20-tables.ts --------------------------------------------------------------------------------------------------
 
-// Ports packages/chord/test/next/examples/20-tables.ts: the factory declares its table with `self.table(Edits)`
+// Ports packages/chord/test/examples/20-tables.ts: the factory declares its table with `self.table(Edits)`
 // (20-tables.ts:45, StoreSelf.Table) and the app closes the store it opened with `store.close(context)`
-// (packages/chord/test/next/examples/20-tables.ts:101, through the store.Store interface OpenStore returned).
+// (packages/chord/test/examples/20-tables.ts:101, through the store.Store interface OpenStore returned).
 func TestExample20Tables(t *testing.T) {
 	// Flat columns, defaults, a key of non-opt str or int columns, and indexes, which end with the key.
 	edits, err := store.DefineTable("edits", store.TableOptions{

@@ -187,14 +187,12 @@ func NewTuiSurfaceWithSize(session frontend.Session, cols, rows int, onApplyErro
 
 func newTuiSurface(out io.Writer, session frontend.Session, onApplyError func(error)) *TuiSurface {
 	t := &TuiSurface{
-		tuiBase: tuiBase{
-			out:                stdoutWriter(out),
-			terminalBackground: &terminalBackgroundQueries{},
-			showHardwareCursor: os.Getenv("PI_HARDWARE_CURSOR") == "1",
-			now:                time.Now,
-			afterFunc: func(d time.Duration, fn func()) stoppableTimer {
-				return time.AfterFunc(d, fn)
-			},
+		out:                stdoutWriter(out),
+		terminalBackground: &terminalBackgroundQueries{},
+		showHardwareCursor: os.Getenv("PI_HARDWARE_CURSOR") == "1",
+		now:                time.Now,
+		afterFunc: func(d time.Duration, fn func()) stoppableTimer {
+			return time.AfterFunc(d, fn)
 		},
 		session:        session,
 		statusTerminal: newSurfaceTerminal(session),

@@ -7,7 +7,7 @@ import (
 )
 
 // fakeLoop is a deterministic eventLoop for helper tests, as vitest's fake timers are for Pi's: `fakeTimers()` fakes
-// setTimeout, clearTimeout and Date from 0 (test/next/support.ts) and leaves microtasks real. The clock moves only
+// setTimeout, clearTimeout and Date from 0 (test/support.ts) and leaves microtasks real. The clock moves only
 // through Advance and AdvanceAsync; Queue jobs run when Flush (or AdvanceAsync) runs them, as promise callbacks run at an
 // await. Its state is locked (a blocking helper such as sleepOn runs on a goroutine of its own); jobs run unlocked.
 type fakeLoop struct {

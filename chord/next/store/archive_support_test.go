@@ -11,7 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 )
 
-// Ports packages/chord/test/next/support.ts (the archive's helpers: ArchiveTables, archiveStore) for archive_test.go,
+// Ports packages/chord/test/support.ts (the archive's helpers: ArchiveTables, archiveStore) for archive_test.go,
 // export_test.go and import_test.go. Names carry the `archive` prefix; the package's shared helpers are
 // support_test.go's.
 
@@ -30,7 +30,7 @@ var archiveTables = func() archiveTableSet {
 		}
 		return definition
 	}
-	evolve := func(previous *TableDefinition, edit func(t *TableEditor) *TableEditor) *TableDefinition {
+	evolve := func(previous *TableDefinition, edit func(t *TableEditor) TableTailEditor) *TableDefinition {
 		definition, err := EvolveTable(previous, edit)
 		if err != nil {
 			panic(err)
@@ -49,11 +49,11 @@ var archiveTables = func() archiveTableSet {
 		Key:     []string{"id"},
 		Indexes: IndexRecords{{Name: "by_path", Columns: []string{"path", "at"}}},
 	})
-	editsV2 := evolve(editsV1, func(t *TableEditor) *TableEditor {
+	editsV2 := evolve(editsV1, func(t *TableEditor) TableTailEditor {
 		return t.Add("done", Bool(contracts.Default(false)))
 	})
 	notesV1 := define("notes", TableOptions{Version: 1, Columns: []ColumnProp{Col("id", Int()), Col("text", Str())}, Key: []string{"id"}})
-	notesV2 := evolve(notesV1, func(t *TableEditor) *TableEditor {
+	notesV2 := evolve(notesV1, func(t *TableEditor) TableTailEditor {
 		return t.Rows(func(row Row) (any, error) {
 			if row["id"] == int64(120) {
 				return nil, errors.New("crash")

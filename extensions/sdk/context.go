@@ -686,9 +686,14 @@ func (c Context) SendCustomMessage(msg CustomMessage, opts SendMessageOptions) e
 
 // SendUserMessage injects a user message containing a string or text/image content blocks.
 func (c Context) SendUserMessage(content any, deliverAs string) error {
+	return c.SendUserMessageWith(content, SendUserMessageOptions{DeliverAs: deliverAs})
+}
+
+// SendUserMessageWith is pi.sendUserMessage with Pi's whole options object (types.ts:1792). ExpandPromptTemplates true dispatches an extension command and expands a skill command or prompt template in the text as typed input would; nil is Pi's default, false. On a withSession context the call runs on the replacement Session and returns after it.
+func (c Context) SendUserMessageWith(content any, options SendUserMessageOptions) error {
 	result, err := c.callHost("sendUserMessage", map[string]any{
 		"content": content,
-		"options": map[string]any{"deliverAs": deliverAs},
+		"options": options,
 	})
 	if err != nil {
 		return err

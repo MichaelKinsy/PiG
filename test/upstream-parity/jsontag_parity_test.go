@@ -197,7 +197,7 @@ var variantSamples = map[string][]any{
 		extension.TurnEndEvent{Type: "turn_end", Message: extension.AgentMessage{Assistant: &agent.AssistantMessage{Role: "assistant"}}, BoundaryState: &extension.BoundaryState{Entries: []extension.SessionBoundaryDraft{{Type: extension.SessionBoundaryDraftCustom}}, Continue: true}},
 	},
 	"AgentBeforeSettleEvent": {
-		extension.AgentBeforeSettleEvent{Type: "agent_before_settle", BoundaryState: extension.BoundaryState{Entries: []extension.SessionBoundaryDraft{{Type: extension.SessionBoundaryDraftCustom}}, Continue: true}},
+		extension.AgentBeforeSettleEvent{Type: "agent_before_settle", Entries: []extension.SessionBoundaryDraft{{Type: extension.SessionBoundaryDraftCustom}}, Continue: true},
 	},
 }
 

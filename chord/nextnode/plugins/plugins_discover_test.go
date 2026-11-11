@@ -1,6 +1,6 @@
 package plugins
 
-// pi: packages/chord/src/next-node/plugins/discover.ts
+// pi: packages/chord/src/node/plugins/discover.ts
 
 import (
 	"encoding/json"
@@ -12,10 +12,11 @@ import (
 	"testing"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
-// Ports packages/chord/test/next-node/plugins/discover.test.ts. Tests of discovery (slice 7c §1, slice 12 §1, §2, §4): names
+// Ports packages/chord/test/node/plugins/discover.test.ts. Tests of discovery (slice 7c §1, slice 12 §1, §2, §4): names
 // from package.json, the first root winning a duplicate, directories reported (no or an invalid package.json, an invalid
 // name, two files of one kind), contracts-only plugins, symlinks, required roots, checkouts of several plugins, packages'
 // chord.plugins manifests, single-file plugins.
@@ -23,16 +24,16 @@ import (
 var background = chordctx.Background()
 
 // plainRoots are paths as roots that are not required (upstream's string form of a root).
-func plainRoots(paths ...string) []PluginRoot {
-	roots := make([]PluginRoot, len(paths))
+func plainRoots(paths ...string) []model.PluginRoot {
+	roots := make([]model.PluginRoot, len(paths))
 	for i, path := range paths {
-		roots[i] = PluginRoot{Path: path}
+		roots[i] = model.PluginRoot{Path: path}
 	}
 	return roots
 }
 
 // pathsAndErrors is problems as the upstream tests compare them: `{ path, error }` of each.
-func pathsAndErrors(problems []DiscoveryProblem) [][2]string {
+func pathsAndErrors(problems []model.DiscoveryProblem) [][2]string {
 	pairs := [][2]string{}
 	for _, problem := range problems {
 		pairs = append(pairs, [2]string{problem.Path, problem.Error})
@@ -41,7 +42,7 @@ func pathsAndErrors(problems []DiscoveryProblem) [][2]string {
 }
 
 // pluginNames is the names of plugins.
-func pluginNames(plugins []Plugin) []string {
+func pluginNames(plugins []model.Plugin) []string {
 	names := []string{}
 	for _, plugin := range plugins {
 		names = append(names, plugin.Name)
@@ -50,9 +51,9 @@ func pluginNames(plugins []Plugin) []string {
 }
 
 // discovered is DiscoverPlugins's result, which must not be an error.
-func discovered(t *testing.T, roots []PluginRoot) Discovery {
+func discovered(t *testing.T, roots []model.PluginRoot) model.Discovery {
 	t.Helper()
-	discovery, err := DiscoverPlugins(roots, DiscoveryOptions{Kinds: kinds}, background)
+	discovery, err := model.DiscoverPlugins(roots, model.DiscoveryOptions{Kinds: kinds}, background)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +76,7 @@ func TestDiscoveryNamesAPluginByItsPackageJSONListsItsFacetFilesByKindItsDepende
 		"dependencies": map[string]any{"marked": "1.0.0"},
 		"chord":        map[string]any{"external": []any{"better-sqlite3"}},
 	})
-	discovery, err := DiscoverPlugins(plainRoots(root), DiscoveryOptions{Kinds: kinds}, background)
+	discovery, err := model.DiscoverPlugins(plainRoots(root), model.DiscoveryOptions{Kinds: kinds}, background)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,13 +84,13 @@ func TestDiscoveryNamesAPluginByItsPackageJSONListsItsFacetFilesByKindItsDepende
 		t.Fatalf("problems = %v", discovery.Problems)
 	}
 	canon := realOf(t, root)
-	want := []Plugin{
-		{Name: "@test/contracts", Dir: filepath.Join(canon, "contracts"), Root: canon, Layout: LayoutDirectory, Facets: map[string]string{}, Dependencies: []string{}, External: []string{}},
+	want := []model.Plugin{
+		{Name: "@test/contracts", Dir: filepath.Join(canon, "contracts"), Root: canon, Layout: model.LayoutDirectory, Facets: map[string]string{}, Dependencies: []string{}, External: []string{}},
 		{
 			Name:         "@test/deps",
 			Dir:          realOf(t, dir),
 			Root:         canon,
-			Layout:       LayoutDirectory,
+			Layout:       model.LayoutDirectory,
 			Facets:       map[string]string{"worker": filepath.Join(canon, "deps-dir", "worker.ts")},
 			Dependencies: []string{"marked"},
 			External:     []string{"better-sqlite3"},
@@ -98,7 +99,7 @@ func TestDiscoveryNamesAPluginByItsPackageJSONListsItsFacetFilesByKindItsDepende
 			Name:         "@test/notes",
 			Dir:          filepath.Join(canon, "notes"),
 			Root:         canon,
-			Layout:       LayoutDirectory,
+			Layout:       model.LayoutDirectory,
 			Facets:       map[string]string{"server": filepath.Join(canon, "notes", "server.ts"), "worker": filepath.Join(canon, "notes", "worker.ts")},
 			Dependencies: []string{},
 			External:     []string{},
@@ -124,7 +125,7 @@ func TestDiscoveryReportsADirectoryWithoutPackageJSONWithAnInvalidOneAnInvalidNa
 			t.Fatal(err)
 		}
 	}
-	discovery, err := DiscoverPlugins(plainRoots(root), DiscoveryOptions{Kinds: kinds}, background)
+	discovery, err := model.DiscoverPlugins(plainRoots(root), model.DiscoveryOptions{Kinds: kinds}, background)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -167,7 +168,7 @@ func TestDiscoveryKeepsTheFirstRootsPluginOfADuplicateNameAndReportsTheOtherAMis
 	second := tempRoot(t)
 	writePlugin(t, first, "a", "@test/same", map[string]string{"worker.ts": ""}, nil)
 	writePlugin(t, second, "b", "@test/same", map[string]string{"server.ts": ""}, nil)
-	discovery, err := DiscoverPlugins(plainRoots(first, filepath.Join(first, "missing"), second), DiscoveryOptions{Kinds: kinds}, background)
+	discovery, err := model.DiscoverPlugins(plainRoots(first, filepath.Join(first, "missing"), second), model.DiscoveryOptions{Kinds: kinds}, background)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -192,7 +193,7 @@ func TestDiscoveryFollowsASymlinkedPluginDirectoryToItsRealPath(t *testing.T) {
 	root := tempRoot(t)
 	dir := writePlugin(t, elsewhere, "linked", "@test/linked", map[string]string{"worker.ts": ""}, nil)
 	testenv.RequireDirectoryLink(t, dir, filepath.Join(root, "link"))
-	discovery, err := DiscoverPlugins(plainRoots(root), DiscoveryOptions{Kinds: kinds}, background)
+	discovery, err := model.DiscoverPlugins(plainRoots(root), model.DiscoveryOptions{Kinds: kinds}, background)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -210,10 +211,10 @@ func TestDiscoveryReturnsTheAbortsReasonBeforeEachDirectoryAndNothingForNoDirect
 	aborted, cancel := chordctx.WithCancel(background)
 	stop := errors.New("stop")
 	cancel(stop)
-	if _, err := DiscoverPlugins(plainRoots(root), DiscoveryOptions{Kinds: kinds}, aborted); !errors.Is(err, stop) {
+	if _, err := model.DiscoverPlugins(plainRoots(root), model.DiscoveryOptions{Kinds: kinds}, aborted); !errors.Is(err, stop) {
 		t.Fatalf("error = %v, want the abort's reason", err)
 	}
-	discovery, err := DiscoverPlugins(plainRoots(filepath.Join(root, "missing")), DiscoveryOptions{Kinds: kinds}, aborted)
+	discovery, err := model.DiscoverPlugins(plainRoots(filepath.Join(root, "missing")), model.DiscoveryOptions{Kinds: kinds}, aborted)
 	if err != nil || len(discovery.Plugins) != 0 || len(discovery.Problems) != 0 {
 		t.Fatalf("discovery = %+v, error = %v", discovery, err)
 	}
@@ -224,7 +225,7 @@ func TestDiscoveryMarksThePluginsOfARequiredRootAndRecordsEachPluginsRoot(t *tes
 	user := tempRoot(t)
 	writePlugin(t, app, "core", "@test/core", map[string]string{"server.ts": ""}, nil)
 	writePlugin(t, user, "extra", "@test/extra", map[string]string{"server.ts": ""}, nil)
-	discovery := discovered(t, []PluginRoot{{Path: app, Required: true}, {Path: user}})
+	discovery := discovered(t, []model.PluginRoot{{Path: app, Required: true}, {Path: user}})
 	type row struct {
 		name, root string
 		required   bool
@@ -368,7 +369,7 @@ func TestDiscoveryReportsARequiredRootThatDoesNotExistAndRecordsEachProblemsRoot
 	root := tempRoot(t)
 	writeFiles(t, filepath.Join(root, "broken"), map[string]string{"package.json": "{ not json"})
 	missing := filepath.Join(root, "missing")
-	discovery := discovered(t, []PluginRoot{{Path: root, Required: true}, {Path: missing, Required: true}})
+	discovery := discovered(t, []model.PluginRoot{{Path: root, Required: true}, {Path: missing, Required: true}})
 	canon := realOf(t, root)
 	if len(discovery.Problems) != 2 {
 		t.Fatalf("problems = %#v", discovery.Problems)
@@ -377,7 +378,7 @@ func TestDiscoveryReportsARequiredRootThatDoesNotExistAndRecordsEachProblemsRoot
 	if first.Path != filepath.Join(canon, "broken") || !regexp.MustCompile(`^package\.json: `).MatchString(first.Error) || first.Root != canon || !first.Required {
 		t.Fatalf("problem 0 = %#v", first)
 	}
-	want := DiscoveryProblem{Path: missing, Error: "the required root does not exist", Root: missing, Required: true}
+	want := model.DiscoveryProblem{Path: missing, Error: "the required root does not exist", Root: missing, Required: true}
 	if discovery.Problems[1] != want {
 		t.Fatalf("problem 1 = %#v, want %#v", discovery.Problems[1], want)
 	}
@@ -398,11 +399,11 @@ func TestDiscoveryGroupsNameKindExtFilesAtARootsTopByNameOneFacetPerFileWithoutP
 	if len(discovery.Problems) != 0 {
 		t.Fatalf("problems = %v", discovery.Problems)
 	}
-	of := Plugin{Dir: canon, Root: canon, Layout: LayoutFile, Dependencies: []string{}, External: []string{}}
+	of := model.Plugin{Dir: canon, Root: canon, Layout: model.LayoutFile, Dependencies: []string{}, External: []string{}}
 	clock, hello := of, of
 	clock.Name, clock.Facets = "clock", map[string]string{"worker": filepath.Join(canon, "clock.worker.mjs")}
 	hello.Name, hello.Facets = "hello", map[string]string{"server": filepath.Join(canon, "hello.server.ts"), "web": filepath.Join(canon, "hello.web.tsx")}
-	if want := []Plugin{clock, hello}; !reflect.DeepEqual(discovery.Plugins, want) {
+	if want := []model.Plugin{clock, hello}; !reflect.DeepEqual(discovery.Plugins, want) {
 		t.Fatalf("plugins = %#v\nwant %#v", discovery.Plugins, want)
 	}
 }
@@ -420,14 +421,14 @@ func TestDiscoveryReportsAnInvalidNameAndTwoFilesOfAKindADirectoryPluginOfTheSam
 	canon := realOf(t, root)
 	type row struct {
 		name   string
-		layout PluginLayout
+		layout model.PluginLayout
 		dir    string
 	}
 	got := []row{}
 	for _, plugin := range discovery.Plugins {
 		got = append(got, row{plugin.Name, plugin.Layout, plugin.Dir})
 	}
-	if want := []row{{"notes", LayoutDirectory, realOf(t, dir)}}; !reflect.DeepEqual(got, want) {
+	if want := []row{{"notes", model.LayoutDirectory, realOf(t, dir)}}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("plugins = %v, want %v", got, want)
 	}
 	want := [][2]string{
@@ -442,44 +443,19 @@ func TestDiscoveryReportsAnInvalidNameAndTwoFilesOfAKindADirectoryPluginOfTheSam
 
 // Not upstream's: sameFiles compares directory, layout and facet files (not the other fields).
 func TestSameFilesComparesDirectoryLayoutAndFacetFiles(t *testing.T) {
-	base := Plugin{Name: "a", Dir: "/d", Root: "/r", Layout: LayoutDirectory, Facets: map[string]string{"server": "/d/server.ts"}}
-	same := Plugin{Name: "b", Dir: "/d", Root: "/other", Required: true, Layout: LayoutDirectory, Facets: map[string]string{"server": "/d/server.ts"}}
-	if !SameFiles(base, same) {
+	base := model.Plugin{Name: "a", Dir: "/d", Root: "/r", Layout: model.LayoutDirectory, Facets: map[string]string{"server": "/d/server.ts"}}
+	same := model.Plugin{Name: "b", Dir: "/d", Root: "/other", Required: true, Layout: model.LayoutDirectory, Facets: map[string]string{"server": "/d/server.ts"}}
+	if !model.SameFiles(base, same) {
 		t.Fatal("plugins of one directory, layout and facets differ")
 	}
-	for name, other := range map[string]Plugin{
-		"dir":    {Dir: "/e", Layout: LayoutDirectory, Facets: base.Facets},
-		"layout": {Dir: "/d", Layout: LayoutFile, Facets: base.Facets},
-		"facets": {Dir: "/d", Layout: LayoutDirectory, Facets: map[string]string{"server": "/d/server.js"}},
-		"kinds":  {Dir: "/d", Layout: LayoutDirectory, Facets: map[string]string{"worker": "/d/server.ts"}},
+	for name, other := range map[string]model.Plugin{
+		"dir":    {Dir: "/e", Layout: model.LayoutDirectory, Facets: base.Facets},
+		"layout": {Dir: "/d", Layout: model.LayoutFile, Facets: base.Facets},
+		"facets": {Dir: "/d", Layout: model.LayoutDirectory, Facets: map[string]string{"server": "/d/server.js"}},
+		"kinds":  {Dir: "/d", Layout: model.LayoutDirectory, Facets: map[string]string{"worker": "/d/server.ts"}},
 	} {
-		if SameFiles(base, other) {
+		if model.SameFiles(base, other) {
 			t.Errorf("a changed %s is the same files", name)
-		}
-	}
-}
-
-// Not upstream's: matchesGlob's tokens (`**/` optional folders, `**`, `*`, `?`, literals) match as the RegExp they build does.
-func TestMatchesGlobStarsStayInASegmentDoubleStarsCrossThemQuestionMarksMatchOneUnit(t *testing.T) {
-	for _, row := range []struct {
-		path, pattern string
-		want          bool
-	}{
-		{"a/b", "a/*", true},
-		{"a/b/c", "a/*", false},
-		{"a/b/c", "a/**", true},
-		{"a", "a/**", false},
-		{"a/p1", "a/**/p?", true},
-		{"a/x/y/p1", "a/**/p?", true},
-		{"a/p12", "a/**/p?", false},
-		{"a.b", "a.b", true},
-		{"axb", "a.b", false},
-		{"a/😀", "a/?", false},
-		{"a/\n/b", "a/**/b", false},
-		{".", ".", true},
-	} {
-		if got := matchesGlob(row.path, row.pattern); got != row.want {
-			t.Errorf("matchesGlob(%q, %q) = %v, want %v", row.path, row.pattern, got, row.want)
 		}
 	}
 }

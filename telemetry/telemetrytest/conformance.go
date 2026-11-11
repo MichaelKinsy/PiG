@@ -200,7 +200,7 @@ func CreateTelemetryAdapterConformance(factory TelemetryAdapterFixtureFactory) [
 			active := fixture.Metrics.UpDownCounter("active", telemetry.InstrumentOptions{})
 			active.Add(1, nil)
 			active.Add(-1, nil)
-			histogram := fixture.Metrics.Histogram("duration", telemetry.HistogramOptions{InstrumentOptions: telemetry.InstrumentOptions{Unit: new("ms")}, Boundaries: []float64{1, 10}})
+			histogram := fixture.Metrics.Histogram("duration", telemetry.HistogramOptions{Unit: new("ms"), Boundaries: []float64{1, 10}})
 			if err := fixture.Context.StartSpan(telemetry.SpanOptions{Name: "measured"}, func(span telemetry.TelemetrySpan) error {
 				histogram.Record(5, telemetry.SpanAttributes{telemetry.Attr("method", "read")}, span)
 				return nil
@@ -251,7 +251,7 @@ func CreateTelemetryAdapterConformance(factory TelemetryAdapterFixtureFactory) [
 			// The instrument's options and the measurement's attributes are copied: mutating them in place afterwards changes nothing recorded.
 			boundaries := []float64{1, 10}
 			description := "Original"
-			options := telemetry.HistogramOptions{InstrumentOptions: telemetry.InstrumentOptions{Description: &description}, Boundaries: boundaries}
+			options := telemetry.HistogramOptions{Description: &description, Boundaries: boundaries}
 			histogram := fixture.Metrics.Histogram("snapshot", options)
 			boundaries[0], boundaries[1] = 2, 100
 			description = "Changed"

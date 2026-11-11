@@ -91,19 +91,19 @@ func TestSummaryAndSkillMessageComponentsMatchPi(t *testing.T) {
 		var got [][]string
 		switch probe.Kind {
 		case "compaction":
-			c := NewCompactionSummaryMessageComponent(CompactionSummaryMessage{Summary: probe.Text, TokensBefore: probe.Tokens}, nil, probe.Pad)
+			c := NewCompactionSummaryMessageComponent(CompactionSummaryMessage{Summary: probe.Text, TokensBefore: probe.Tokens}, nil, probe.Pad, nil, "", "")
 			got = append(got, plain(c.Render(probe.Width)))
 			c.SetExpanded(true)
 			got = append(got, plain(c.Render(probe.Width)))
 		case "branch":
 			var c *BranchSummaryMessageComponent
-			c = NewBranchSummaryMessageComponent(BranchSummaryMessage{Summary: probe.Text}, nil, probe.Pad)
+			c = NewBranchSummaryMessageComponent(BranchSummaryMessage{Summary: probe.Text}, nil, probe.Pad, nil, "", "")
 			got = append(got, plain(c.Render(probe.Width)))
 			c.SetExpanded(true)
 			got = append(got, plain(c.Render(probe.Width)))
 		case "skill":
 			var c *SkillInvocationMessageComponent
-			c = NewSkillInvocationMessageComponent(ParsedSkillBlock{Name: probe.Name, Content: probe.Text}, nil, probe.Pad)
+			c = NewSkillInvocationMessageComponent(ParsedSkillBlock{Name: probe.Name, Content: probe.Text}, nil, probe.Pad, nil, "", "")
 			got = append(got, plain(c.Render(probe.Width)))
 			c.SetExpanded(true)
 			got = append(got, plain(c.Render(probe.Width)))

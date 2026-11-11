@@ -8,7 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/src/next/state/batch.ts (Batch, BatchError, Delivered). The batch (W1), one per host: a commit
+// Ports packages/chord/src/state/batch.ts (Batch, BatchError, Delivered). The batch (W1), one per host: a commit
 // adopts inside it, then every watched value that changed gets one frame, then the flushes it collected run (a link
 // sends one message); Chord calls that would reenter it are refused while it runs.
 

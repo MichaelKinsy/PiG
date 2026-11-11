@@ -30,14 +30,14 @@ func TestBashRecordingDefersDuringActualUnlockedAgentRun(t *testing.T) {
 	if err := s.RecordBashResult("echo buffered", BashResult{Output: "buffered", ExitCode: new(0)}, nil); err != nil {
 		t.Fatal(err)
 	}
-	for _, entry := range s.inner.GetEntries() {
+	for _, entry := range s.inner.Load().GetEntries() {
 		if message, ok := entry.(icodingagent.MessageEntry); ok && message.Message.Role() == agent.RoleBashExecution {
 			t.Error("shell result persisted while the agent run was active")
 		}
 	}
 	s.RequestAbort()
 	<-done
-	entries := s.inner.GetEntries()
+	entries := s.inner.Load().GetEntries()
 	if len(entries) == 0 {
 		t.Fatal("shell result was not flushed after the run")
 	}

@@ -2,6 +2,8 @@
 
 package plugins
 
+// Ports packages/chord/src/node/plugins/watcher.ts
+
 import "syscall"
 
 // statIdentity is the inode and the birth time of the entry at path, not following a link: lstat's `st_ino` and

@@ -423,7 +423,7 @@ func TestCodingCompactionUpstream(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		raw, err := json.Marshal(codingagent.CompactionEntry{SessionEntryBase: codingagent.SessionEntryBase{Type: "compaction", ID: "compaction-test-id", ParentID: new(entries[len(entries)-1].Base().ID), Timestamp: time.Now().UTC().Format(time.RFC3339Nano)}, Summary: result.Summary, FirstKeptEntryID: result.FirstKeptEntryID, TokensBefore: result.TokensBefore})
+		raw, err := json.Marshal(codingagent.CompactionEntry{Type: "compaction", ID: "compaction-test-id", ParentID: new(entries[len(entries)-1].Base().ID), Timestamp: time.Now().UTC().Format(time.RFC3339Nano), Summary: result.Summary, FirstKeptEntryID: result.FirstKeptEntryID, TokensBefore: result.TokensBefore})
 		if err != nil {
 			t.Fatal(err)
 		}

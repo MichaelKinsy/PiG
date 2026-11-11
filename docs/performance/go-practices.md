@@ -11,7 +11,7 @@ Read [TypeScript-to-Go porting](../typescript-to-go-porting.md) first for the se
 | file | role |
 |---|---|
 | `.go-version` | The Go release that CI, the release workflow and the CI images use. Every `actions/setup-go` step reads it, and CI checks that `go env GOVERSION` equals it. |
-| `go.mod` `go` line | The language floor (Go 1.26). Do not raise it to match the build toolchain. |
+| root `go.mod` and `go.work` `go` line | The root module's language floor, Go 1.27: it imports `encoding/json/v2` and `jsontext`. Do not raise it to match the build toolchain. |
 | `go.mod` and `go.work` `toolchain` line | Equal to `.go-version`. A Go older than the pin with `GOTOOLCHAIN=auto` requests the pinned toolchain; where Go does not publish one (Termux), build with `GOTOOLCHAIN=local`. |
 | `automation/dev/toolchains.lock` | The archive and digest that `automation/dev/setup.sh` uses when go.dev is unreachable. |
 | `automation/images/*` | CI images, pinned by digest. |
@@ -21,7 +21,7 @@ Rules:
 
 - Build and test with the `.go-version` release. A local toolchain older than `.go-version` can disagree with CI, because the standard library's JSON engine and its security fixes change in patch releases.
 - Scripts that pin a toolchain with `GOTOOLCHAIN` read `.go-version`, as the Durable scripts (`durable/core/budget/build-wasm.sh`, `durable/core/contracttest/gate.sh`, `durable/core/host/cf/check.sh`, `durable/core/probe/build.sh`) do. `make compliance` rejects any other Go release in a build, CI, image or setup file. A count baseline that depends on the toolchain (for example exact Wasm instruction counts) is regenerated in the same change as the version bump.
-- Nested modules (`extensions/sdk`, `piglets/standard`, the Porter extension, test fixtures) declare the same Go 1.26 floor. `third_party/` holds vendored upstream source as packages of the root module; lint, `go fix` and the JSON ratchet skip it.
+- Nested modules that do not require the root module (`extensions/sdk`, `piglets/standard`, `piglets/aot`, the examples, other fixtures) keep the Go 1.26 floor and must not import `encoding/json/v2` or `jsontext`: `go test` runs the `stdversion` vet check, which rejects a Go 1.27 symbol in a file of a 1.26 module. The Porter extension and the extension conformance fixtures require the root module, so they declare 1.27.0: the go command asks for `go mod tidy` when a module declares less than a dependency. `third_party/` holds vendored upstream source as packages of the root module; lint, `go fix` and the JSON ratchet skip it.
 
 ### Experiments and build flags
 
@@ -43,7 +43,7 @@ The Go specification allows a compiler to compute `x*y + z` with one rounding. T
 
 ### JSON
 
-- With the Go 1.27 toolchain, `encoding/json` runs the JSON v2 engine behind the v1 API. A build at the Go 1.26 language floor (`GOTOOLCHAIN=local` with Go 1.26) runs the v1 engine, and no CI job tests that build. `extensions/sdk/json` is a copy of the v1 engine with WTF-8 handling of unmatched UTF-16 surrogates. It serves the extension wire, session entries, Durable storage and the Go SDK, and it keeps the SDK independent of the user's Go release. Two engines therefore run in one process, with different allocation profiles.
+- With the Go 1.27 toolchain, `encoding/json` runs the JSON v2 engine behind the v1 API. A Go 1.26 toolchain cannot build the root module (its language floor is Go 1.27); `GOEXPERIMENT=nojsonv2` builds the v1 engine, and no CI job tests that build. `internal/jsonopts` holds the one `encoding/json/v2` option set for JSON that follows `JSON.parse` and `JSON.stringify`. `extensions/sdk/json` is a copy of the v1 engine with WTF-8 handling of unmatched UTF-16 surrogates. It serves the extension wire, session entries, Durable storage and the Go SDK, and it keeps the SDK independent of the user's Go release. Two engines therefore run in one process, with different allocation profiles.
 - Decode into typed structs. Keep members whose shape is open as `json.RawMessage` or a scanner, not as `map[string]any`. A decode into `any`, `map[string]any`, `[]any` or a type parameter builds a tree of boxed values.
 - `make any-trap` counts those decodes against `automation/ci/anytrap/baseline.toml`. The counts may only shrink. The gate matches calls of `encoding/json` and `encoding/json/v2`; decodes through `extensions/sdk/json` need the same scrutiny in review.
 - A faster encoder or decoder must keep Pi's JavaScript output rules where Pi's output depends on them: insertion key order, `-0` printed as `0`, non-finite numbers, invalid UTF-8 and last-wins duplicate names. Prove each rule with a test against Pi before replacing a codec.

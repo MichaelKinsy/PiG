@@ -26,7 +26,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/test/next/support.ts: hosts, links, raw peers, notes types, relays and stores for the slice
+// Ports packages/chord/test/support.ts: hosts, links, raw peers, notes types, relays and stores for the slice
 // tests of host, jobs and remote. Names are Pi's, camelCase.
 //
 // Go forms (the contract the other D5a test files follow):

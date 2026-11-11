@@ -82,6 +82,14 @@ for (const entry of ["index.ts", "render.ts"]) visit(join(telemetrySrc, entry), 
 
 const pi = join(outDir, "pi");
 rmSync(pi, { recursive: true, force: true });
+// pi/ is data only (the Chromium and Node tests read it by path, nothing embeds it): its own go.mod keeps its 2.5 MB out of the root module zip.
+// The manifest does not list it.
+mkdirSync(pi, { recursive: true });
+writeFileSync(join(pi, "go.mod"), `// This directory holds data only. Its own go.mod keeps it out of the root module zip that go install downloads; the files stay in the repository and tests read them by path. Never go:embed from here. automation/release/modulesize gates the root module zip size.
+module github.com/MichaelKinsy/PiG/chord/nextnode/surfaces/client/pi
+
+go 1.26.0
+`);
 const files = [];
 function copy(from, to) {
 	mkdirSync(dirname(to), { recursive: true });

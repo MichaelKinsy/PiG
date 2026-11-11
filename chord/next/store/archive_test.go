@@ -6,7 +6,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 )
 
-// Ports packages/chord/test/next/store/archive.test.ts: tests of the archive part schema (slice 6a §13, rule 25):
+// Ports packages/chord/test/store/archive.test.ts: tests of the archive part schema (slice 6a §13, rule 25):
 // every part an export yields passes; a part with an unknown kind, a missing or extra field or a value of another
 // type is refused, naming its position.
 

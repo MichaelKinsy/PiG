@@ -21,8 +21,8 @@ func TestRunnerMarkdownTransformerCollectionOrder(t *testing.T) {
 			return name + "(" + markdown + ")"
 		}
 	}
-	a := extension.Extension{Path: "z-first.ts", MarkdownTransformer: transform("A")}
-	b := extension.Extension{Path: "a-second.ts", MarkdownTransformer: transform("B")}
+	a := extension.Extension{Path: "z-first.ts", MarkdownTransformer: extension.NewMarkdownTransformerRegistration(transform("A"), nil)}
+	b := extension.Extension{Path: "a-second.ts", MarkdownTransformer: extension.NewMarkdownTransformerRegistration(transform("B"), nil)}
 	for _, tc := range []struct {
 		name  string
 		exts  []extension.Extension
@@ -64,7 +64,7 @@ func BenchmarkRunnerMarkdownTransformerCollection(b *testing.B) {
 		b.Run(fmt.Sprint(count), func(b *testing.B) {
 			exts := make([]extension.Extension, count)
 			for i := range exts {
-				exts[i].MarkdownTransformer = func(text string, _ extension.MarkdownTransformContext) string { return text }
+				exts[i].MarkdownTransformer = extension.NewMarkdownTransformerRegistration(func(text string, _ extension.MarkdownTransformContext) string { return text }, nil)
 			}
 			runner := inproc.NewRunner(exts, b.TempDir())
 			b.ReportAllocs()
@@ -84,9 +84,9 @@ func TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes(t *testing.T) {
 		return func(markdown string, _ extension.MarkdownTransformContext) string { return markdown + suffix }
 	}
 	runner := inproc.NewRunner([]extension.Extension{
-		{Path: "markdown-default.ts", MarkdownTransformer: appendTo(" default")},
-		{Path: "markdown-opt-in.ts", MarkdownTransformer: appendTo(" opt-in"), MarkdownMessageTypes: []extension.MarkdownMessageType{extension.MarkdownMessageAssistant, extension.MarkdownMessageChangelog}},
-		{Path: "markdown-none.ts", MarkdownTransformer: appendTo(" none"), MarkdownMessageTypes: []extension.MarkdownMessageType{}},
+		{Path: "markdown-default.ts", MarkdownTransformer: extension.NewMarkdownTransformerRegistration(appendTo(" default"), nil)},
+		{Path: "markdown-opt-in.ts", MarkdownTransformer: extension.NewMarkdownTransformerRegistration(appendTo(" opt-in"), []extension.MarkdownMessageType{extension.MarkdownMessageAssistant, extension.MarkdownMessageChangelog})},
+		{Path: "markdown-none.ts", MarkdownTransformer: extension.NewMarkdownTransformerRegistration(appendTo(" none"), []extension.MarkdownMessageType{})},
 	}, t.TempDir())
 	apply := func(messageType extension.MarkdownMessageType) string {
 		got := "text"

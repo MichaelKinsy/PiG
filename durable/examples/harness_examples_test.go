@@ -17,14 +17,12 @@ import (
 // exampleTool is the examples' tool: a path parameter and a text result.
 func exampleTool(name, description string) *durable.ToolRegistration {
 	return &durable.ToolRegistration{
-		ToolSchema: ai.ToolSchema{
-			Name:        name,
-			Description: description,
-			Parameters: map[string]any{
-				"type":       "object",
-				"properties": map[string]any{"path": map[string]any{"type": "string"}},
-				"required":   []any{"path"},
-			},
+		Name:        name,
+		Description: description,
+		Parameters: map[string]any{
+			"type":       "object",
+			"properties": map[string]any{"path": map[string]any{"type": "string"}},
+			"required":   []any{"path"},
 		},
 		Execute: func(_ context.Context, args any, _ durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			path, _ := args.(map[string]any)["path"].(string)

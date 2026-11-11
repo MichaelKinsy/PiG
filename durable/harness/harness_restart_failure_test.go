@@ -74,7 +74,7 @@ func TestTheRestartLimitOnTheNormalPath(t *testing.T) {
 			return &HarnessSettings{}
 		}
 		addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{
-			ToolSchema: ai.ToolSchema{Name: "t", Description: "t", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}},
+			Name: "t", Description: "t", Parameters: map[string]any{"type": "object", "properties": map[string]any{}},
 			Execute: func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 				return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}}, nil
 			},

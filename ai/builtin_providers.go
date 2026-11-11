@@ -3,6 +3,8 @@ package ai
 // Ports packages/ai/src/providers/all.ts (built-in model accessors and provider assembly), providers/typesafe.ts,
 // providers/cloudflare-workers-ai.ts and the classifier registrations of providers/{opencode,openrouter,
 // vercel-ai-gateway}.ts.
+//
+// Ports packages/ai/src/providers/github-copilot.ts (its classifier registration: builtinClassifiers, the typesafe-system-one entry).
 
 import (
 	"context"

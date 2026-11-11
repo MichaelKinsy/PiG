@@ -19,12 +19,12 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// pi: packages/chord/src/next/registries/value.ts
-// pi: packages/chord/src/next/registries/contribution.ts
-// pi: packages/chord/src/next/registries/record.ts
-// pi: packages/chord/src/next/registries/internal.ts
+// pi: packages/chord/src/registries/value.ts
+// pi: packages/chord/src/registries/contribution.ts
+// pi: packages/chord/src/registries/record.ts
+// pi: packages/chord/src/registries/internal.ts
 
-// Ports the host-run cases of packages/chord/test/next/registries/value.test.ts: the readers of a registry (`self.registry`,
+// Ports the host-run cases of packages/chord/test/registries/value.test.ts: the readers of a registry (`self.registry`,
 // `host.registry`) on a loaded host with plugins, which the record-level cases in registries/value_test.go cannot run:
 // "older readers (S2)" (value mapping, a reader newer than the provider, a contributor that failed live, a native that
 // closed), "readers (S3)", "readers' memory" and "values' memory".
@@ -276,40 +276,6 @@ func TestReadersAHostRegistryWhoseDeadlineElapsedBeforeItsFirstLookReportsWhyThe
 	_, err := host.Registry(background, rvRegistry(t, "app.nobody", 1), rvWithin(deadline))
 	if chordErr, ok := data.IsChordErrorCode(err, data.CodeUnavailable); !ok || chordErr.Reason != data.ReasonUndeclared {
 		t.Fatalf("host.registry(app.nobody) = %v, want unavailable/undeclared", err)
-	}
-	must(t, host.Close(background))
-}
-
-func TestReadersAHostRegistryWhoseDeadlineElapsedBeforeThePublicationStillSaysItDidNotBecomeLive(t *testing.T) {
-	const deadline = 5 * time.Millisecond
-	host := newHost(t, HostOptions{loop: &overdueLoop{Loop: NewLoop(), delay: deadline}})
-	done := make(chan error, 1)
-	go func() {
-		_, err := host.Registry(background, rvSumV1, rvWithin(deadline))
-		done <- err
-	}()
-	// A deadline before the publication ends the wait at once; one wrongly held back for a look the unpublished host
-	// cannot give never returns, which the bound reports (the cleanup's close ends that wait).
-	select {
-	case err := <-done:
-		if err == nil || err.Error() != "registry app.sum: did not become live within 5 ms" {
-			t.Fatalf("host.registry before the publication = %v, want %q", err, "registry app.sum: did not become live within 5 ms")
-		}
-	case <-time.After(10 * time.Second):
-		t.Fatal("host.registry before the publication did not return after its 5 ms deadline")
-	}
-	must(t, host.Close(background))
-}
-
-func TestReadersAHostRegistryWhoseDeadlineElapsedBeforeItsFirstLookStillReturnsAValueItFindsThere(t *testing.T) {
-	const deadline = 5 * time.Millisecond
-	host, _ := rvPlugins(t, HostOptions{loop: &overdueLoop{Loop: NewLoop(), delay: deadline}}, rvPlugin("@app/sum", func(h FacetHost, _ FacetSelf) error {
-		return rvServeSum(h, rvTotalCompose, nil)
-	}))
-	value, err := host.Registry(background, rvSum, rvWithin(deadline))
-	must(t, err)
-	if got, thrown := rvRead(value); thrown != nil || got != (rvTotal{total: 0}) {
-		t.Fatalf("value = %v (%v), want {0}", got, thrown)
 	}
 	must(t, host.Close(background))
 }

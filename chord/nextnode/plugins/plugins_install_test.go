@@ -1,6 +1,6 @@
 package plugins
 
-// pi: packages/chord/src/next-node/plugins/install.ts
+// pi: packages/chord/src/node/plugins/install.ts
 
 import (
 	"encoding/json"
@@ -18,10 +18,12 @@ import (
 	"time"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/build"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
-// Ports packages/chord/test/next-node/plugins/install.test.ts. Tests of installing (slice 7c §5, slice 12 §2, §5): the npm
+// Ports packages/chord/test/node/plugins/install.test.ts. Tests of installing (slice 7c §5, slice 12 §2, §5): the npm
 // arguments, run in the plugin's real directory, the command overridable; a failure and an abort reject; git dependencies
 // with a ref, a plugin inside a repository of several reached by path; plugins installed from git and npm (a package's
 // chord.plugins manifest, the refusals, claims and cleanup). Git repositories and tarballs are local: no network.
@@ -56,7 +58,7 @@ func TestInstallDependenciesRunsNpmInstallWithoutDevDependenciesPeersScriptsAudi
 		"dependencies": map[string]any{"a": "1.0.0"},
 	})
 	testenv.RequireDirectoryLink(t, dir, filepath.Join(root, "deps"))
-	discovery, err := DiscoverPlugins(plainRoots(root), DiscoveryOptions{Kinds: kinds}, background)
+	discovery, err := model.DiscoverPlugins(plainRoots(root), model.DiscoveryOptions{Kinds: kinds}, background)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +79,7 @@ func TestInstallDependenciesRejectsWithTheCommandsOutputWhenItFailsAndWhenTheCon
 	tools := tempRoot(t)
 	root := tempRoot(t)
 	writePlugin(t, root, "deps", "@test/deps", map[string]string{}, nil)
-	discovery, err := DiscoverPlugins(plainRoots(root), DiscoveryOptions{Kinds: kinds}, background)
+	discovery, err := model.DiscoverPlugins(plainRoots(root), model.DiscoveryOptions{Kinds: kinds}, background)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +100,7 @@ func TestInstallDependenciesRejectsWithTheCommandsOutputWhenItFailsAndWhenTheCon
 func TestInstallDependenciesRefusesAnEmptyCommandAndAnAbortedContextBeforeRunningAnything(t *testing.T) {
 	root := tempRoot(t)
 	writePlugin(t, root, "deps", "@test/deps", map[string]string{}, nil)
-	discovery, err := DiscoverPlugins(plainRoots(root), DiscoveryOptions{Kinds: kinds}, background)
+	discovery, err := model.DiscoverPlugins(plainRoots(root), model.DiscoveryOptions{Kinds: kinds}, background)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +132,7 @@ func TestInstallDependenciesEndsWithTheCommandThoughAProcessItStartedHoldsItsPip
 			tools := tempRoot(t)
 			root := tempRoot(t)
 			writePlugin(t, root, "deps", "@test/deps", map[string]string{}, nil)
-			discovery, err := DiscoverPlugins(plainRoots(root), DiscoveryOptions{Kinds: kinds}, background)
+			discovery, err := model.DiscoverPlugins(plainRoots(root), model.DiscoveryOptions{Kinds: kinds}, background)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -189,11 +191,11 @@ func workerOf(t *testing.T, root, name string) string {
 		if plugin.Name != name {
 			continue
 		}
-		built, err := BuildFacet(plugin, "worker", BuildOptions{HostPackages: []string{"@earendil-works/chord"}, Platform: PlatformNode, Plugins: discovery.Plugins}, background)
+		built, err := build.BuildFacet(plugin, "worker", model.BuildOptions{HostPackages: []string{"@earendil-works/chord"}, Platform: model.PlatformNode, Plugins: discovery.Plugins}, background)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if built.Kind == BuiltFacetFailed {
+		if built.Kind == model.BuiltFacetFailed {
 			t.Fatal(strings.Join(built.Errors, "\n"))
 		}
 		return built.Source
@@ -241,7 +243,7 @@ func recordedDir(t *testing.T, tools string) string {
 
 // Not upstream's: a single-file plugin has no package.json (installDependencies's first line).
 func TestInstallDependenciesRefusesASingleFilePlugin(t *testing.T) {
-	err := InstallDependencies(Plugin{Name: "hello", Layout: LayoutFile}, background, InstallOptions{})
+	err := InstallDependencies(model.Plugin{Name: "hello", Layout: model.LayoutFile}, background, InstallOptions{})
 	if err == nil || err.Error() != `plugin "hello": a single-file plugin has no package.json` {
 		t.Fatalf("error = %v", err)
 	}
@@ -292,7 +294,7 @@ func TestInstallPluginClonesARepositoryWhoseTopIsAPluginIntoRootRepositoryAtATag
 	}, "v1", nil)
 	root := tempRoot(t)
 	tools := tempRoot(t)
-	options := InstallPluginOptions{InstallOptions: InstallOptions{NpmCommand: fakeNpm(t, tools, 0, false)}}
+	options := InstallPluginOptions{NpmCommand: fakeNpm(t, tools, 0, false)}
 	names, err := InstallPlugin(PluginSource{Git: repository.url, Ref: "v1"}, root, background, options)
 	if err != nil || !reflect.DeepEqual(names, []string{"@bob/hello"}) {
 		t.Fatalf("names = %v, error = %v", names, err)
@@ -315,7 +317,7 @@ func TestInstallPluginClonesARepositoryOfSeveralPluginsItsSubdirectoriesPinnedTo
 	gitRepository(t, "bob-plugins", map[string]string{"later/package.json": manifestText(t, map[string]any{"name": "@bob/later"})}, "v2", &first)
 	root := tempRoot(t)
 	tools := tempRoot(t)
-	names, err := InstallPlugin(PluginSource{Git: first.url, Ref: first.commit}, root, background, InstallPluginOptions{InstallOptions: InstallOptions{NpmCommand: fakeNpm(t, tools, 0, false)}})
+	names, err := InstallPlugin(PluginSource{Git: first.url, Ref: first.commit}, root, background, InstallPluginOptions{NpmCommand: fakeNpm(t, tools, 0, false)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -368,7 +370,7 @@ func TestInstallPluginInstallsExactlyTheFoldersAPackagesChordPluginsLists(t *tes
 	}, "v1", nil)
 	root := tempRoot(t)
 	tools := tempRoot(t)
-	names, err := InstallPlugin(PluginSource{Git: repository.url, Ref: "v1"}, root, background, InstallPluginOptions{InstallOptions: InstallOptions{NpmCommand: fakeNpm(t, tools, 0, false)}})
+	names, err := InstallPlugin(PluginSource{Git: repository.url, Ref: "v1"}, root, background, InstallPluginOptions{NpmCommand: fakeNpm(t, tools, 0, false)})
 	if err != nil || !reflect.DeepEqual(names, []string{"@bob/notes"}) {
 		t.Fatalf("names = %v, error = %v", names, err)
 	}
@@ -417,7 +419,7 @@ func TestInstallPluginClaimsItsDirectoryFirstOfTwoConcurrentInstallsOneWinsTheOt
 	repository := gitRepository(t, "hello", map[string]string{"package.json": manifestText(t, map[string]any{"name": "@bob/hello"})}, "v1", nil)
 	root := tempRoot(t)
 	tools := tempRoot(t)
-	options := InstallPluginOptions{InstallOptions: InstallOptions{NpmCommand: fakeNpm(t, tools, 0, false)}}
+	options := InstallPluginOptions{NpmCommand: fakeNpm(t, tools, 0, false)}
 	var group sync.WaitGroup
 	errs := make([]error, 2)
 	for i := range errs {
@@ -443,7 +445,7 @@ func TestInstallPluginClaimsItsDirectoryFirstOfTwoConcurrentInstallsOneWinsTheOt
 func TestInstallPluginRemovesTheScopeDirectoryItMadeWhenAScopedNpmInstallFailsOpusL2(t *testing.T) {
 	root := tempRoot(t)
 	tools := tempRoot(t)
-	_, err := InstallPlugin(PluginSource{Npm: "@bob/notes", Version: "1.0.0"}, root, background, InstallPluginOptions{InstallOptions: InstallOptions{NpmCommand: fakeNpm(t, tools, 1, false)}})
+	_, err := InstallPlugin(PluginSource{Npm: "@bob/notes", Version: "1.0.0"}, root, background, InstallPluginOptions{NpmCommand: fakeNpm(t, tools, 1, false)})
 	if err == nil || !strings.Contains(err.Error(), "pack @bob/notes@1.0.0 failed") {
 		t.Fatalf("error = %v", err)
 	}
@@ -465,7 +467,7 @@ func TestInstallPluginRemovesStagingDirectoriesAnInstallCrashedOutOfOnceAnHourOl
 		t.Fatal(err)
 	}
 	tools := tempRoot(t)
-	if _, err := InstallPlugin(PluginSource{Git: repository.url, Ref: "v1"}, root, background, InstallPluginOptions{InstallOptions: InstallOptions{NpmCommand: fakeNpm(t, tools, 0, false)}}); err != nil {
+	if _, err := InstallPlugin(PluginSource{Git: repository.url, Ref: "v1"}, root, background, InstallPluginOptions{NpmCommand: fakeNpm(t, tools, 0, false)}); err != nil {
 		t.Fatal(err)
 	}
 	if got, want := listing(t, root), []string{".chord-install-recent", "hello"}; !reflect.DeepEqual(got, want) {
@@ -498,5 +500,36 @@ func TestInstallPluginReturnsTheAbortsReasonAndRemovesWhatItCreated(t *testing.T
 	}
 	if names := listing(t, root); len(names) != 0 {
 		t.Fatalf("root = %v", names)
+	}
+}
+
+// D501: Pi reads `const [tarball] = JSON.parse(output)`, the list npm 10 and 11 print; npm 12 prints an object keyed by package name,
+// which PiG reads by its first member. Everything else is Pi's: its errors for an empty list, a null or primitive member, a name that
+// is no string, and for output that is no JSON value of those shapes.
+func TestPackedTarballReadsTheListNpm10And11PrintAndTheObjectNpm12Prints(t *testing.T) {
+	for name, tc := range map[string]struct{ output, want, wantError string }{
+		"list (npm 10, 11)":       {output: `[{"filename":"acme-1.0.0.tgz","size":3}]`, want: "acme-1.0.0.tgz"},
+		"first of a list":         {output: `[{"filename":"a.tgz"},{"filename":"b.tgz"}]`, want: "a.tgz"},
+		"object by name (npm 12)": {output: `{"acme":{"filename":"acme-1.0.0.tgz","size":3}}`, want: "acme-1.0.0.tgz"},
+		"first of an object":      {output: `{"acme":{"filename":"a.tgz"},"other":{"filename":"b.tgz"}}`, want: "a.tgz"},
+		"empty list":              {output: `[]`, wantError: "what: packed nothing"},
+		"empty object":            {output: `{}`, wantError: "what: packed nothing"},
+		"null member":             {output: `[null]`, wantError: "Cannot read properties of null (reading 'filename')"},
+		"primitive member":        {output: `{"acme":3}`, wantError: "Cannot read properties of a primitive (reading 'filename')"},
+		"no filename":             {output: `[{"size":3}]`, wantError: `The "path" argument must be of type string`},
+		"a string":                {output: `"acme.tgz"`, wantError: "npm's output is not a list of packed tarballs"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			got, err := packedTarball(tc.output, "what")
+			if tc.wantError != "" {
+				if err == nil || err.Error() != tc.wantError {
+					t.Fatalf("error = %v, want %q", err, tc.wantError)
+				}
+				return
+			}
+			if err != nil || got != tc.want {
+				t.Fatalf("packedTarball = %q, %v, want %q", got, err, tc.want)
+			}
+		})
 	}
 }

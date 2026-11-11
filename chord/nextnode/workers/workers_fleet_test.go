@@ -20,9 +20,11 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/build"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
-// Ports packages/chord/test/next-node/workers/support.ts: a server routing `Session` to forked fixture workers, the
+// Ports packages/chord/test/node/workers/support.ts: a server routing `Session` to forked fixture workers, the
 // fixture plugins copied into a temporary root, each address's start data (its behaviour) chosen by the test.
 
 var background = chordctx.Background()
@@ -80,6 +82,8 @@ type fleet struct {
 	starts *collector[string]
 	// output is the workers' stdout lines, each with its address key.
 	output *collector[string]
+	// forgotten is the address keys WorkersOptions.Forgotten ran for, in order.
+	forgotten *collector[string]
 	// behaviours is each address's behaviour (its start data); none: a plain worker.
 	behaviours *behaviours
 	clock      *switchClock
@@ -114,7 +118,7 @@ func newFleet(t testing.TB, options fleetOptions) *fleet {
 	root := t.TempDir()
 	f := &fleet{
 		t: t, root: root, errors: &collector[WorkersError]{}, hostErrors: &collector[host.HostError]{}, starts: &collector[string]{},
-		output: &collector[string]{}, behaviours: &behaviours{byID: map[string]workerBehaviour{}}, clock: newSwitchClock(),
+		output: &collector[string]{}, forgotten: &collector[string]{}, behaviours: &behaviours{byID: map[string]workerBehaviour{}}, clock: newSwitchClock(),
 	}
 	f.plugins = newPlugins(t, root)
 	serverAddress := fixtureServer.Address(nil)
@@ -172,8 +176,9 @@ func newFleet(t testing.TB, options fleetOptions) *fleet {
 				f.output.add(address.Key + " " + string(trimSpace(chunk)))
 			}
 		},
-		OnError: f.errors.add,
-		clock:   f.clock,
+		OnError:   f.errors.add,
+		Forgotten: func(address contracts.Address) { f.forgotten.add(address.Key) },
+		clock:     f.clock,
 	}, background)
 	if err != nil {
 		t.Fatal(err)
@@ -227,11 +232,7 @@ func session(id string) contracts.Address {
 
 // stateOf is the state entry of id: nil when none.
 func (f *fleet) stateOf(id string) *WorkerState {
-	value, err := f.workers.State().Value()
-	if err != nil {
-		f.t.Fatal(err)
-	}
-	object, _ := value.(*delta.JsonObject)
+	object, _ := f.workers.State().Value().(*delta.JsonObject)
 	entry, ok := object.Value("session|" + id).(*delta.JsonObject)
 	if !ok {
 		return nil
@@ -249,8 +250,7 @@ func (f *fleet) stateOf(id string) *WorkerState {
 
 // stateText is JSON.stringify(workers.state.value).
 func (f *fleet) stateText() string {
-	value, _ := f.workers.State().Value()
-	text, _ := delta.JsonObjectOf("v", value).MarshalJSON()
+	text, _ := delta.JsonObjectOf("v", f.workers.State().Value()).MarshalJSON()
 	return string(text)
 }
 
@@ -435,8 +435,8 @@ func newPlugins(t testing.TB, root string) *plugins.Plugins {
 		t.Fatal(err)
 	}
 	component := plugins.CreatePlugins(plugins.PluginsOptions{
-		Roots:   []plugins.PluginRoot{{Path: root}},
-		Kinds:   []plugins.KindDefinition{{Name: "worker", Platform: plugins.PlatformNode, HostPackages: []string{"@earendil-works/chord"}}},
+		Build: build.BuildFacet, Roots: []model.PluginRoot{{Path: root}},
+		Kinds:   []plugins.KindEntry{{Name: "worker", Definition: plugins.KindDefinition{Platform: model.PlatformNode, HostPackages: []string{"@earendil-works/chord"}}}},
 		OnError: func(plugins.PluginsError) {},
 	}, background)
 	t.Cleanup(component.Close)

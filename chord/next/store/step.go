@@ -2,7 +2,7 @@ package store
 
 import "github.com/MichaelKinsy/PiG/chord/sqlite"
 
-// Ports packages/chord/src/next/store/step.ts
+// Ports packages/chord/src/store/step.ts
 //
 // The commit step's working state (slice 6a §3, slice 6b §1.3) and the shape every write takes into it: a write
 // staged before the queue (serialized, rule 8), applied inside the step, returning the writes it recorded.

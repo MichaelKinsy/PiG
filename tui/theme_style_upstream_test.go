@@ -55,12 +55,12 @@ func TestThemeStylesUpstream(t *testing.T) {
 	// theme-style.test.ts:36
 	t.Run("renders theme tokens the same as the generic text styler", func(t *testing.T) {
 		theme := themeStyleLoad(t, "dark", nil)
-		got, err := theme.Style("Ready", ThemeStyle{FgToken: "success", BgToken: "toolSuccessBg", TextAttributes: TextAttributes{Bold: true}})
+		got, err := theme.Style("Ready", ThemeStyle{FgToken: "success", BgToken: "toolSuccessBg", Bold: true})
 		if err != nil {
 			t.Fatal(err)
 		}
 		colors := theme.Colors()
-		want := StyleText("Ready", TextStyle{TextAttributes: TextAttributes{Bold: true}, Fg: colors["success"], Bg: colors["toolSuccessBg"]}, TerminalColorModeTrueColor)
+		want := StyleText("Ready", TextStyle{Bold: true, Fg: colors["success"], Bg: colors["toolSuccessBg"]}, TerminalColorModeTrueColor)
 		if got != want {
 			t.Errorf("style = %q, want %q", got, want)
 		}

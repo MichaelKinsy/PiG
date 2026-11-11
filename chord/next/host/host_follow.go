@@ -10,7 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// Ports packages/chord/src/next/host/follow.ts
+// Ports packages/chord/src/host/follow.ts
 //
 // Followed sources (slice 6b D9, R4, §3): `self.follow(attach)`, a Chord source over a synchronous observer of another
 // runtime (Durable's `observeConversation`, `observeTaskGraph`, `observeDoc`). Attached during its attempt's

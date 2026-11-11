@@ -393,10 +393,11 @@ def take_shutdown(path: str) -> bool:
 
 
 def take_helper_socket(path: str) -> Any:
-    """The connection a helper opened to ``path``, for ``run`` to serve on; None when there is none."""
-    with _State.lock:
-        _State.owners.pop(path, None)
-        return _State.dialled.pop(path, None)
+    """The connection a helper opened to ``path``, for ``run`` to serve on; None when there is none. A call still running on that connection finishes first."""
+    with _path_lock(path):
+        with _State.lock:
+            _State.owners.pop(path, None)
+            return _State.dialled.pop(path, None)
 
 
 def report_load_failure(sock_path: str) -> None:

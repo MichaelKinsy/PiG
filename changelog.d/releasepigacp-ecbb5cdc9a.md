@@ -1,0 +1,3 @@
+### Added
+
+- Each release now publishes `pig-acp-<version>-<os>-<arch>` archives (`.tar.gz`, `.zip` on Windows) for linux, darwin and windows on amd64 and arm64, with the `pig` of the same release beside `pig-acp`. They carry the same SBOMs, scan, checksums (in the release `SHA256SUMS`), build-provenance attestation and Sigstore bundle as the pig archives, and are smoke-tested through ACP on linux/amd64, darwin/arm64 and windows/amd64 before the draft release is created. `pig-acp` is built from the `@pi-in-go/pigpen-acp` version pinned in `automation/release/pig-acp.lock` (size and sha512 checked).

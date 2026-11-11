@@ -14,7 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/src/next/data/validator.ts: compiled checks (pi-schema validators of Chord-owned schemas) and the
+// Ports packages/chord/src/data/validator.ts: compiled checks (pi-schema validators of Chord-owned schemas) and the
 // `invalid` error of a failed check.
 //
 // Go forced differences:

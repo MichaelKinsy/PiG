@@ -3,31 +3,25 @@
 package codemode
 
 import (
-	"bytes"
-	"compress/gzip"
 	_ "embed"
-	"encoding/binary"
-	"io"
 	"sync"
+
+	"github.com/MichaelKinsy/PiG/internal/zstdblob"
 )
 
 // Ports packages/codemode/src/wasm.ts (the quickjs.wasm module bytes that loadQuickJSWasm compiles)
 
-// The binary carries the module gzip-compressed (287 KB, not 637 KB); assets/quickjs.wasm is the same bytes uncompressed, the file the oracle tests and the refresh steps in assets/PROVENANCE.md read.
+// The binary carries the module as one zstd frame (260 KB, not 637 KB); assets/quickjs.wasm is the same bytes uncompressed, the file the oracle tests and the refresh steps in assets/PROVENANCE.md read.
 //
-//go:generate sh -c "gzip -9nc assets/quickjs.wasm > assets/quickjs.wasm.gz"
-//go:embed assets/quickjs.wasm.gz
-var quickJSWasmGzip []byte
+//go:generate go run ../automation/gen/zstdfile assets/quickjs.wasm assets/quickjs.wasm.zst
+//go:embed assets/quickjs.wasm.zst
+var quickJSWasmFrame []byte
 
-// quickJSWasm inflates the embedded module once, on first use. The gzip trailer's last four bytes are the inflated size.
+// quickJSWasm decodes the embedded module once, on first use.
 var quickJSWasm = sync.OnceValue(func() []byte {
-	reader, err := gzip.NewReader(bytes.NewReader(quickJSWasmGzip))
+	module, err := zstdblob.Decode(quickJSWasmFrame)
 	if err != nil {
-		panic("codemode: embedded quickjs.wasm.gz: " + err.Error())
-	}
-	module := make([]byte, binary.LittleEndian.Uint32(quickJSWasmGzip[len(quickJSWasmGzip)-4:]))
-	if _, err := io.ReadFull(reader, module); err != nil {
-		panic("codemode: embedded quickjs.wasm.gz: " + err.Error())
+		panic("codemode: embedded quickjs.wasm.zst: " + err.Error())
 	}
 	return module
 })

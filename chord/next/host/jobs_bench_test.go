@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/sqlite/node"
 )
 
-// Ports packages/chord/test/next/bench/jobs.ts as Go benchmarks, run by hand (not in CI):
+// Ports packages/chord/test/bench/jobs.ts as Go benchmarks, run by hand (not in CI):
 //
 //	go test -run '^$' -bench BenchmarkJobs -benchmem ./chord/next/host
 //

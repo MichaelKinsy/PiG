@@ -36,7 +36,7 @@ func TestConformance_ToolCallGuardAgreesAcrossSDKs(t *testing.T) {
 					want = ""
 				}
 				if _, err := h.runner.EmitToolCall(context.Background(), extension.CustomToolCallEvent{
-					ToolCallEventBase: extension.ToolCallEventBase{Type: "tool_call", ToolCallID: "c1"}, ToolName: tool, Input: map[string]any{},
+					Type: "tool_call", ToolCallID: "c1", ToolName: tool, Input: map[string]any{},
 				}); err != nil {
 					t.Fatalf("emit %s: %v", tool, err)
 				}

@@ -20,9 +20,20 @@ func (m *InteractiveMode) offerRadiusMcpServer(providerID, providerName string) 
 	if pigstrip.Has(pigstrip.ListExtensions, "mcp") {
 		return
 	}
+	// This runs on the login's goroutine, which is not the owner loop when the login was started off it; the chat container and the status line are the
+	// loop's alone (Pi's TUI is single-threaded), so every use of them goes through the loop. On the loop itself the work runs in place.
+	ctx := m.loginContext()
+	onMain := func(work func()) {
+		_ = m.runOnMainAndWait(ctx, func() error {
+			work()
+			return nil
+		})
+	}
 	plan, err := PlanRadiusMcpServer(providerID, m.opts.AgentDir, m.opts.CWD)
 	if err != nil {
-		m.showError(fmt.Sprintf("Could not update %s: %v", filepath.Join(m.opts.AgentDir, "mcp.json"), err))
+		onMain(func() {
+			m.showError(fmt.Sprintf("Could not update %s: %v", filepath.Join(m.opts.AgentDir, "mcp.json"), err))
+		})
 		return
 	}
 	if plan == nil {
@@ -36,13 +47,15 @@ func (m *InteractiveMode) offerRadiusMcpServer(providerID, providerName string) 
 		return
 	}
 	if _, err := plan.Apply(); err != nil {
-		m.showError(fmt.Sprintf("Could not update %s: %v", mcpPath, err))
+		onMain(func() { m.showError(fmt.Sprintf("Could not update %s: %v", mcpPath, err)) })
 		return
 	}
 	// The MCP extension reads mcp.json when the session starts. Pi runs its /reload handler directly
 	// (interactive-mode.ts:6334 handleReloadCommand), not the slash command an extension may override.
-	if err := reloadHandler(m.buildSlashContext(m.loginContext())); err != nil {
-		m.showError(err.Error())
-	}
-	m.tuiInst.Render()
+	onMain(func() {
+		if err := reloadHandler(m.buildSlashContext(ctx)); err != nil {
+			m.showError(err.Error())
+		}
+		m.tuiInst.Render()
+	})
 }

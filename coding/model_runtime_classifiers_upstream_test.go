@@ -64,7 +64,7 @@ func TestModelRuntimeClassifiersUpstream(t *testing.T) {
 			}
 			return &http.Response{StatusCode: 200, Status: "OK", Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"answers":{"approved":{"type":"noul","noul":0.8}}}`))}, nil
 		})
-		result := runtime.Classify(t.Context(), jev, classifiersTestContext, ai.ModelsClassifierOptions{ClassifierOptions: ai.ClassifierOptions{Fetch: &http.Client{Transport: fetch}}})
+		result := runtime.Classify(t.Context(), jev, classifiersTestContext, ai.ModelsClassifierOptions{Fetch: &http.Client{Transport: fetch}})
 		if result.StopReason != ai.ClassifierStopReasonStop || len(result.Answers) != 1 || result.Answers[0].ID != "approved" || result.Answers[0].Answer != (ai.ClassifierBoolAnswer{Probability: 0.8}) {
 			t.Fatalf("result = %+v", result)
 		}
@@ -97,7 +97,7 @@ func TestModelRuntimeClassifiersUpstream(t *testing.T) {
 			input = string(body)
 			return &http.Response{StatusCode: 200, Status: "OK", Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"answers":[{"type":"predicate","name":"approved","probability":0.7}]}`))}, nil
 		})
-		result := runtime.Classify(t.Context(), luna, withImages, ai.ModelsClassifierOptions{ClassifierOptions: ai.ClassifierOptions{Fetch: &http.Client{Transport: fetch}}})
+		result := runtime.Classify(t.Context(), luna, withImages, ai.ModelsClassifierOptions{Fetch: &http.Client{Transport: fetch}})
 		if result.StopReason != ai.ClassifierStopReasonStop || len(result.Answers) != 1 || result.Answers[0].Answer != (ai.ClassifierBoolAnswer{Probability: 0.7}) {
 			t.Fatalf("result = %+v", result)
 		}
@@ -179,7 +179,7 @@ func TestModelRegistryClassifyForwardsOptionsAndACancelledRequestIsAborted(t *te
 		requests++
 		return &http.Response{StatusCode: 200, Status: "OK", Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"answers":{"approved":{"type":"noul","noul":0.8}}}`))}, nil
 	})
-	options := ai.ModelsClassifierOptions{ClassifierOptions: ai.ClassifierOptions{Fetch: &http.Client{Transport: fetch}}}
+	options := ai.ModelsClassifierOptions{Fetch: &http.Client{Transport: fetch}}
 	var registry *ModelRegistry = services.Registry()
 	if result := registry.Classify(t.Context(), jev, classifiersTestContext, options); result.StopReason != ai.ClassifierStopReasonStop || requests != 1 {
 		t.Fatalf("registry classify with options = %+v after %d requests", result, requests)
@@ -205,7 +205,7 @@ func TestModelRegistryClassifyForwardsOptionsAndACancelledRequestIsAborted(t *te
 	if imageModel == nil {
 		t.Fatal("the registered image model is missing")
 	}
-	if result := registry.GenerateImages(t.Context(), imageModel, imagesTestContext, ai.ModelsImagesOptions{ImagesOptions: ai.ImagesOptions{APIKey: "caller-key"}}); result.StopReason != ai.ImagesStopReasonStop {
+	if result := registry.GenerateImages(t.Context(), imageModel, imagesTestContext, ai.ModelsImagesOptions{APIKey: "caller-key"}); result.StopReason != ai.ImagesStopReasonStop {
 		t.Fatalf("registry generateImages = %+v", result)
 	}
 	if len(apiKeys) != 1 || apiKeys[0] != "caller-key" {
@@ -240,7 +240,7 @@ func TestModelRuntimeClassifierImagesUpstream(t *testing.T) {
 			requests = append(requests, captured{url: request.URL.String(), optIn: request.Header.Get("typesafe-danger-zone-images"), body: body})
 			return &http.Response{StatusCode: 200, Status: "OK", Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"answers":{"approved":{"type":"noul","noul":0.8}}}`))}, nil
 		})
-		result := runtime.Classify(t.Context(), model, withImage, ai.ModelsClassifierOptions{ClassifierOptions: ai.ClassifierOptions{Fetch: &http.Client{Transport: fetch}}})
+		result := runtime.Classify(t.Context(), model, withImage, ai.ModelsClassifierOptions{Fetch: &http.Client{Transport: fetch}})
 		if result.StopReason != ai.ClassifierStopReasonStop || len(requests) != 1 {
 			t.Fatalf("result = %+v, requests = %d", result, len(requests))
 		}

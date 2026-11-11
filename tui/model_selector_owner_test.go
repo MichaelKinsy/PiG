@@ -63,7 +63,7 @@ func TestModelSelectorRefreshIsJoinedByItsTaskOwner(t *testing.T) {
 		owner := newTaskOwner(t)
 		started := make(chan struct{}, 1)
 		var returned atomic.Bool
-		runtime := &ownedModelRuntime{fakeModelRuntime: fakeModelRuntime{refresh: lingeringRefresh(started, &returned)}, start: owner.start}
+		runtime := &ownedModelRuntime{refresh: lingeringRefresh(started, &returned), start: owner.start}
 		selector := NewModelSelectorComponent(ui, nil, runtime, nil, nil, nil, "", nil, nil)
 		defer selector.Dispose()
 		<-started
@@ -91,10 +91,10 @@ func TestModelSelectorDisposeBeforeTheOwnerStartsTheTask(t *testing.T) {
 		var pending func(context.Context)
 		var sawCancelled atomic.Bool
 		runtime := &ownedModelRuntime{
-			fakeModelRuntime: fakeModelRuntime{refresh: func(ctx context.Context) ai.ModelsRefreshResult {
+			refresh: func(ctx context.Context) ai.ModelsRefreshResult {
 				sawCancelled.Store(ctx.Err() != nil)
 				return ai.ModelsRefreshResult{Aborted: true}
-			}},
+			},
 			start: func(refresh func(context.Context)) bool { pending = refresh; return true },
 		}
 		selector := NewModelSelectorComponent(ui, nil, runtime, nil, nil, nil, "", nil, nil)
@@ -120,8 +120,8 @@ func TestModelSelectorWithAShutDownOwnerShowsNoRefreshStatus(t *testing.T) {
 		ui, _ := newModelSelectorTUI(t)
 		var refreshed atomic.Bool
 		runtime := &ownedModelRuntime{
-			fakeModelRuntime: fakeModelRuntime{refresh: func(context.Context) ai.ModelsRefreshResult { refreshed.Store(true); return ai.ModelsRefreshResult{} }},
-			start:            func(func(context.Context)) bool { return false },
+			refresh: func(context.Context) ai.ModelsRefreshResult { refreshed.Store(true); return ai.ModelsRefreshResult{} },
+			start:   func(func(context.Context)) bool { return false },
 		}
 		selector := NewModelSelectorComponent(ui, nil, runtime, nil, nil, nil, "", nil, nil)
 		defer selector.Dispose()

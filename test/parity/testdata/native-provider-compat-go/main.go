@@ -166,11 +166,11 @@ func run() (resultErr error) {
 	if err := legacy.Auth().Set("extension-oauth", ai.Credential{Type: ai.CredentialOAuth, Access: "access", Refresh: "refresh", Expires: time.Now().Add(time.Minute).UnixMilli()}); err != nil {
 		return err
 	}
-	if err := legacy.ModelRuntime().RegisterProvider("extension-oauth", coding.ProviderConfigInput{BaseURL: "https://example.test/v1", API: ai.APIOpenAICompletions, Models: []ai.AnyModel{model("base", "extension-oauth", "https://example.test/v1")}, OAuth: &coding.ExtensionOAuthConfig{Name: "Extension OAuth", RefreshToken: func(_ context.Context, credential ai.Credential) (ai.Credential, error) { return credential, nil }, GetAPIKey: func(credential ai.Credential) string { return credential.Access }, ModifyModels: func(models []*ai.Model, credential ai.Credential) []*ai.Model {
+	if err := legacy.ModelRuntime().RegisterProvider("extension-oauth", coding.ProviderConfigInput{BaseURL: "https://example.test/v1", API: ai.APIOpenAICompletions, Models: []ai.AnyModel{model("base", "extension-oauth", "https://example.test/v1")}, OAuth: &coding.ExtensionOAuthConfig{Name: "Extension OAuth", RefreshToken: func(_ context.Context, credential ai.Credential) (ai.Credential, error) { return credential, nil }, GetAPIKey: func(credential ai.Credential) string { return credential.Access }, ModifyModels: func(models []*ai.Model, credential ai.Credential) ([]*ai.Model, error) {
 		if credential.Access == "access" {
-			return append(models, model("credential-model", "extension-oauth", "https://example.test/v1"))
+			return append(models, model("credential-model", "extension-oauth", "https://example.test/v1")), nil
 		}
-		return models
+		return models, nil
 	}}}); err != nil {
 		return err
 	}

@@ -30,8 +30,8 @@ func TestCancellableLoaderAbortsOnTheCancelKeyOnly(t *testing.T) {
 // stack.ts HStack: children lay out left to right at their allocated widths, separated by the gap.
 func TestHStackLaysChildrenOutLeftToRightWithTheGap(t *testing.T) {
 	stack := NewHStack([]StackChild{
-		{Component: NewText("ab"), StackEntryOptions: StackEntryOptions{Basis: new(3), Shrink: new(0)}},
-		{Component: NewText("cd"), StackEntryOptions: StackEntryOptions{Basis: new(2), Shrink: new(0)}},
+		{Component: NewText("ab"), Basis: new(3), Shrink: new(0)},
+		{Component: NewText("cd"), Basis: new(2), Shrink: new(0)},
 	}, StackOptions{Gap: new(2)})
 	lines := (*HStack).Render(stack, 10)
 	if len(lines) != 1 || strings.TrimRight(stripANSI(lines[0]), " ") != "ab   cd" {

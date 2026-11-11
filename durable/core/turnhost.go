@@ -105,23 +105,7 @@ func (h *handler) turnSettings() turn.Settings {
 	}
 	out.RetryEnabled, _ = boolOf(retry, "enabled")
 	out.Compaction.Enabled, _ = boolOf(compaction, "enabled")
-	if overrides := objOf(compaction, "modelOverrides"); overrides != nil {
-		out.CompactionOverrides = map[string]history.PolicyOverride{}
-		overrides.Members(func(key string, value any) bool {
-			entry := asObject(value)
-			var override history.PolicyOverride
-			if v, ok := boolOf(entry, "enabled"); ok {
-				override.Enabled = &v
-			}
-			for name, field := range map[string]**float64{"reserveTokens": &override.ReserveTokens, "keepRecentTokens": &override.KeepRecentTokens, "backgroundTokens": &override.BackgroundTokens} {
-				if v, ok := valueOf(entry, name).(float64); ok {
-					*field = &v
-				}
-			}
-			out.CompactionOverrides[key] = override
-			return true
-		})
-	}
+	out.CompactionOverrides = modelOverridesOf(compaction)
 	if v, ok := valueOf(retry, "maxAgentDelayMs").(float64); ok {
 		out.MaxAgentDelayMs = &v
 	}
@@ -408,6 +392,34 @@ func (h *handler) requestAgentRaw(state *jv.Object, conv turn.ID, cancel *sessio
 	h.hookEffect("resolveAgent", 0, conv, 0, payload, cancel, then)
 }
 
+// policyOverrideOf reads a Partial<CompactionPolicy>: the set fields of entry.
+func policyOverrideOf(entry *jv.Object) history.PolicyOverride {
+	var override history.PolicyOverride
+	if v, ok := boolOf(entry, "enabled"); ok {
+		override.Enabled = &v
+	}
+	for name, field := range map[string]**float64{"reserveTokens": &override.ReserveTokens, "keepRecentTokens": &override.KeepRecentTokens, "backgroundTokens": &override.BackgroundTokens} {
+		if v, ok := valueOf(entry, name).(float64); ok {
+			*field = &v
+		}
+	}
+	return override
+}
+
+// modelOverridesOf reads the modelOverrides of a CompactionSettings; nil without any.
+func modelOverridesOf(settings *jv.Object) map[string]history.PolicyOverride {
+	overrides := objOf(settings, "modelOverrides")
+	if overrides == nil {
+		return nil
+	}
+	out := map[string]history.PolicyOverride{}
+	overrides.Members(func(key string, value any) bool {
+		out[key] = policyOverrideOf(asObject(value))
+		return true
+	})
+	return out
+}
+
 // agentOf reads the host's resolved agent JSON (PROTOCOL.md, Resolved agent JSON).
 func agentOf(o *jv.Object) *turn.Agent {
 	a := &turn.Agent{ThinkingLevel: strOf(o, "thinkingLevel")}
@@ -448,6 +460,10 @@ func agentOf(o *jv.Object) *turn.Agent {
 	}
 	a.Instructions, a.Cwd = strOf(o, "instructions"), strOf(o, "cwd")
 	a.MaxTurns = int(numOf(o, "maxTurns"))
+	if compaction := objOf(o, "compaction"); compaction != nil {
+		a.CompactionStore = turn.AgentCompaction{Own: policyOverrideOf(compaction), Overrides: modelOverridesOf(compaction)}
+		a.Compaction = &a.CompactionStore
+	}
 	return a
 }
 

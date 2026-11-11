@@ -7,7 +7,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 )
 
-// Ports packages/chord/src/next/contracts/accepts.ts (accepted versions: the older versions a provider still serves,
+// Ports packages/chord/src/contracts/accepts.ts (accepted versions: the older versions a provider still serves,
 // with the direct mappings their edits require).
 //
 // Forced Go differences. AcceptsTable<C> and the mapping types built from Static<> are type-level only (designed

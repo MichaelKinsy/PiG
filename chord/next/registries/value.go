@@ -10,7 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// Ports packages/chord/src/next/registries/value.ts (registry values, slice 8 §1 "Reading", S2, S3): a registry's
+// Ports packages/chord/src/registries/value.ts (registry values, slice 8 §1 "Reading", S2, S3): a registry's
 // composed value as the readers of one version see it, a native source. The provider's version reads the composition
 // itself; an older one reads it mapped back with `accepts[old].value`, once per composition, kept only while someone
 // reads or follows it; a version the provider cannot serve fails `contract_mismatch`. Its readers (attempts that

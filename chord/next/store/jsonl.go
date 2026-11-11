@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Ports packages/chord/src/next/store/jsonl.ts
+// Ports packages/chord/src/store/jsonl.ts
 //
 // Plain JSONL for archives (slice 6a §13): one part per line, UTF-8. The store yields and takes parts; this is the
 // encoding it ships (others, compressed ones, come later without touching the applier).

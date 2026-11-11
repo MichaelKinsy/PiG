@@ -214,6 +214,12 @@ func swapAlphaDigit(q string) string {
 func isASCIILetter(r rune) bool { return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') }
 func isASCIIDigit(r rune) bool  { return r >= '0' && r <= '9' }
 
+// fuzzyRank is a matching item's index in the input and its summed score. FuzzyFilter sorts these instead of the items, so the sort is compiled once for all item types rather than once for each (each copy of package slices' stable sort is about 6 KB of machine code, and FuzzyFilter has a dozen item types).
+type fuzzyRank struct {
+	idx   int
+	score float64
+}
+
 // FuzzyFilter sorts items best-match-first and drops non-matchers.
 // Tokens (separated by whitespace or `/`, upstream `split(/[\s/]+/)`) AND
 // together: each token must match, so "openai-codex/gpt-5.5" matches the
@@ -233,12 +239,7 @@ func FuzzyFilter[T any](items []T, query string, getText func(T) string) []T {
 		return out
 	}
 
-	type scored struct {
-		item  T
-		idx   int // for stable sort
-		score float64
-	}
-	results := make([]scored, 0, len(items))
+	results := make([]fuzzyRank, 0, len(items))
 	for i, it := range items {
 		text := getText(it)
 		total := 0.0
@@ -252,10 +253,10 @@ func FuzzyFilter[T any](items []T, query string, getText func(T) string) []T {
 			total += m.Score
 		}
 		if ok {
-			results = append(results, scored{item: it, idx: i, score: total})
+			results = append(results, fuzzyRank{idx: i, score: total})
 		}
 	}
-	slices.SortStableFunc(results, func(a, b scored) int {
+	slices.SortStableFunc(results, func(a, b fuzzyRank) int {
 		if c := cmp.Compare(a.score, b.score); c != 0 {
 			return c
 		}
@@ -263,7 +264,7 @@ func FuzzyFilter[T any](items []T, query string, getText func(T) string) []T {
 	})
 	out := make([]T, len(results))
 	for i, r := range results {
-		out[i] = r.item
+		out[i] = items[r.idx]
 	}
 	return out
 }

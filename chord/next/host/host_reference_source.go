@@ -10,7 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// Ports packages/chord/src/next/host/reference-source.ts
+// Ports packages/chord/src/host/reference-source.ts
 //
 // A reference's member as consumers follow it (decision "References are the only indirection", §7): a consumer's
 // watches and derives over `ref.member` (or a key of a keyed member) attach here, and this passes them straight through

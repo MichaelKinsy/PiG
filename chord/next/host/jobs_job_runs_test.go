@@ -20,7 +20,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/test/next/jobs/job.test.ts (runs, finishes, `running`, keep-alive, the object's end, GC); the
+// Ports packages/chord/test/jobs/job.test.ts (runs, finishes, `running`, keep-alive, the object's end, GC); the
 // start cases are in jobs_job_test.go. The Go forms are described there.
 
 func exitResult(code int) *delta.JsonObject { return jsonObject("exit", float64(code)) }
@@ -386,7 +386,7 @@ func TestRunThatIgnoresItsSignalAtTheObjectsEndIsDrainedUpToCloseTimeoutItsLater
 			late <- setOutput(ctx, "too late", ChangeOptions{})
 			return exitResult(0), nil
 		}}
-	}, jobHostOptions{loadedOptions: loadedOptions{CloseTimeout: new(20 * time.Millisecond)}})
+	}, jobHostOptions{CloseTimeout: new(20 * time.Millisecond)})
 	jobStart(t, fixture.Job, commandArgs("a"), background)
 	started.Wait()
 	must(t, fixture.Host.Close(background))
@@ -842,7 +842,7 @@ func TestRunningDoesNoValidationWalkOrCompilationForAStateChange(t *testing.T) {
 			g.Wait()
 			return exitResult(0), nil
 		}}
-	}, jobHostOptions{loadedOptions: loadedOptions{Telemetry: telemetry, Context: counting}})
+	}, jobHostOptions{Telemetry: telemetry, Context: counting})
 	job := fixture.Job
 	jobStart(t, job, commandArgs("a"), counting)
 	ctx := <-ctxs
@@ -1117,12 +1117,15 @@ func TestPhaseSpansTraceTheIntentUnderTheStarterTheRunAndTheFinishUnderTheIntent
 				return appendLog(tx, log, string(outcome.Kind))
 			},
 		}
-	}, jobHostOptions{loadedOptions: loadedOptions{Telemetry: recorder}, Loop: loop})
+	}, jobHostOptions{Telemetry: recorder, Loop: loop})
 	var run Run
 	tracedUnder(t, recorder, "request", func(ctx context.Context) { run = jobStart(t, fixture.Job, textArgs("hi"), ctx) })
 	eventually(t, "the finish's backoff timer", func() bool { return loop.fake.TimerCount() == 1 })
 	loop.fake.Advance(1_000)
 	runOutcome(t, run)
+	// The outcome is recorded by the finish's transaction; the phase's span ends on the finish task after it (Pi: the continuation
+	// after `await documents.tx`), so the outcome does not order the span's `outcome` attribute: wait for the spans to end.
+	scopeEventually(t, "the phase spans to settle", func() bool { return allSettled(recorder, "chord.job") })
 	request := spanWhere(t, recorder, "request", nil)
 	jobs := spansNamed(recorder, "chord.job")
 	if len(jobs) != 3 {
@@ -1198,7 +1201,7 @@ func TestPhaseSpansMarkARunThatThrewFailedJobFailedAndAnAbortedOneOk(t *testing.
 		}
 		untilDone(ctx)
 		return nil, errors.New("stopped")
-	}}, jobHostOptions{loadedOptions: loadedOptions{Telemetry: recorder}})
+	}}, jobHostOptions{Telemetry: recorder})
 	tracedUnder(t, recorder, "request", func(ctx context.Context) {
 		threw := jobStart(t, fixture.Job, textArgs("throw"), ctx)
 		runOutcome(t, threw)

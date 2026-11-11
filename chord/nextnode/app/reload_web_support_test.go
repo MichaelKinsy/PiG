@@ -13,13 +13,13 @@ import (
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
-	"github.com/MichaelKinsy/PiG/chord/nextnode/internal/browsertest"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/internal/browsertest"
 )
 
 // The reload suite's browser kit (Pi's test/node/fixtures/reload/{app,plugins}.ts over the vendored base bundle
 // fixtures/reload/{main,entry,web-api}.ts): the suite's app with the web surface, a real Chromium signed in as the owner, the web
-// plugins' source, and `reloadTab`, Pi's `ReloadPage` over the DevTools driver (chord/nextnode/internal/browsertest). The tests are
+// plugins' source, and `reloadTab`, Pi's `ReloadPage` over the DevTools driver (internal/browsertest). The tests are
 // skipped without a Chromium (`CHROMIUM_BIN`).
 
 // reloadWebCounter is the counter as a web plugin shows it.
@@ -131,7 +131,7 @@ func startReloadWebApp(t testing.TB, entry string, port int, files map[string]ma
 		o.Workers = []AppWorkerKind{testWorker(t, project, "")}
 		o.Timeouts = reloadTimeouts
 		// The reload suite's web API (its `Views` registry and the probe) replaces the browser tests' own.
-		o.Kinds[len(o.Kinds)-1].Packages = plugins.HostPackages{"react": "", "react/jsx-runtime": "", "@test/app/v1/web": surfacesFixture(t, "reload", "web-api.ts")}
+		o.Kinds[len(o.Kinds)-1].Kind.Packages = plugins.HostPackages{"react": "", "react/jsx-runtime": "", "@test/app/v1/web": surfacesFixture(t, "reload", "web-api.ts")}
 		if more != nil {
 			more(o)
 		}

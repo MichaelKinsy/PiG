@@ -10,11 +10,11 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/store"
 )
 
-// Ports packages/chord/test/next/store/claims.test.ts:45 ("an object claims its tables and documents when it
+// Ports packages/chord/test/store/claims.test.ts:45 ("an object claims its tables and documents when it
 // declares them, and releases them at its end"): the two cases of that file on a bare Claims are in
 // chord/next/store/claims_test.go.
 //
-// pi: packages/chord/src/next/store/claims.ts
+// pi: packages/chord/src/store/claims.ts
 
 func TestClaimsAnObjectClaimsItsTablesAndDocumentsWhenItDeclaresThemAndReleasesThemAtItsEnd(t *testing.T) {
 	chordStore := memoryStore(t)

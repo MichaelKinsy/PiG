@@ -69,8 +69,8 @@ func TestLoopbackSignInCompletesThroughTheLoopbackCallbackServer(t *testing.T) {
 		t.Fatalf("redirect = %q", loopback.RedirectURL)
 	}
 	options := oauth.McpSignInOptions{
-		McpOAuthClientOptions: oauth.McpOAuthClientOptions{ServerURL: server.serverURL, Store: store, ClientName: "app"},
-		RedirectURL:           loopback.RedirectURL,
+		ServerURL: server.serverURL, Store: store, ClientName: "app",
+		RedirectURL: loopback.RedirectURL,
 	}
 	authorization := startRedirect(t, options)
 	waiting := startWaiting(t, t.Context(), oauth.WaitForLoopbackSignInOptions{Callback: loopback.Callback, Authorization: authorization})

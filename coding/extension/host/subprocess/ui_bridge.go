@@ -495,6 +495,8 @@ type SendMessageOptions struct {
 // SendUserMessageOptions mirrors upstream options for sendUserMessage.
 type SendUserMessageOptions struct {
 	DeliverAs string `json:"deliverAs,omitempty"` // "steer" | "followUp"
+	// ExpandPromptTemplates is Pi's option (types.ts:1792, agent-session.ts:2557): true dispatches extension commands and expands skill commands and prompt templates; absent is false.
+	ExpandPromptTemplates *bool `json:"expandPromptTemplates,omitempty"`
 }
 
 // ToolInfo is one entry of getAllTools on the wire. Mirrors upstream ToolInfo

@@ -11,7 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/src/next/link/message.ts. Messages (§22, R1, R4, 2b): the one Message every link carries, a
+// Ports packages/chord/src/link/message.ts. Messages (§22, R1, R4, 2b): the one Message every link carries, a
 // sealed interface of one struct per kind in place of upstream's schema-checked tagged union, checked after every decode by
 // CheckMessage (the schema's constraints, field by field), and the codecs that turn it into bytes.
 //

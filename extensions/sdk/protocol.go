@@ -172,6 +172,8 @@ type providerDef struct {
 	// ImageAPIs and ClassifierAPIs name the APIs whose implementations (ProviderConfig images and classifiers) run in the extension.
 	ImageAPIs      []string `json:"image_apis,omitempty"`
 	ClassifierAPIs []string `json:"classifier_apis,omitempty"`
+	// RefreshModels says the config's refreshModels callback runs in the extension (types.ts:1930).
+	RefreshModels bool `json:"refresh_models,omitempty"`
 }
 
 type rendererDef struct {

@@ -465,12 +465,18 @@ type Agent struct {
 	// MaxTurns is the tool rounds one run takes at most (pi.live.run.turns): the round that reaches it runs its tools, then
 	// the run ends unanswered with turn_limit. An integer, 1 or more; nil, no limit. Task-owned children and forks inherit it.
 	MaxTurns *int
+	// Compaction is this conversation's compaction settings over the harness's (AgentState.compaction); nil when it has none.
+	Compaction *CompactionSettings
 }
 
 // ConversationStreamOptions holds curated pi-ai request options; absent fields use pi-ai defaults.
 type ConversationStreamOptions struct {
 	Transport ai.Transport `json:"transport,omitempty"`
 	TimeoutMs *int         `json:"timeoutMs,omitempty"`
+	// WebsocketConnectTimeoutMs is the WebSocket connection/open handshake timeout; stream idleness uses TimeoutMs.
+	WebsocketConnectTimeoutMs *int `json:"websocketConnectTimeoutMs,omitempty"`
+	// ThinkingBudgets are custom token budgets for thinking levels on token-based providers.
+	ThinkingBudgets *ai.ThinkingBudgets `json:"thinkingBudgets,omitempty"`
 	// MaxRetries is provider/SDK retries inside one request attempt.
 	MaxRetries      *int               `json:"maxRetries,omitempty"`
 	MaxRetryDelayMs *int               `json:"maxRetryDelayMs,omitempty"`
@@ -501,8 +507,8 @@ type CompactionPolicy struct {
 	BackgroundTokens int `json:"backgroundTokens"`
 	// ModelOverrides is the resolved CompactionSettings.modelOverrides, keyed by exact "provider/modelId"; nil without
 	// any. PolicyFor applies it.
-	//portlint:allow emptydrop a nil map is Pi's absent modelOverrides (Settings spreads only the keys a host set); an explicit {} is kept
-	ModelOverrides map[string]CompactionPolicyOverride `json:"modelOverrides,omitzero"`
+	//portlint:allow emptydrop an unset ModelOverrides is Pi's absent modelOverrides (Settings spreads only the keys a host set); an explicit {} is kept
+	ModelOverrides CompactionOverrides `json:"modelOverrides,omitzero"`
 }
 
 // CompactionPolicyOverride is Partial<CompactionPolicy>: one model's entry of modelOverrides; nil fields keep the
@@ -514,25 +520,63 @@ type CompactionPolicyOverride struct {
 	BackgroundTokens *int  `json:"backgroundTokens,omitempty"`
 }
 
-// PolicyFor is compaction.ts compactionPolicy: the model's modelOverrides entry over the Harness-wide policy, field by
-// field. The result carries no overrides.
-func (policy CompactionPolicy) PolicyFor(model ModelRef) CompactionPolicy {
-	resolved := CompactionPolicy{Enabled: policy.Enabled, ReserveTokens: policy.ReserveTokens, KeepRecentTokens: policy.KeepRecentTokens, BackgroundTokens: policy.BackgroundTokens}
-	override, ok := policy.ModelOverrides[model.Provider+"/"+model.ModelId]
-	if !ok {
-		return resolved
+// CompactionSettings is Pi's CompactionSettings: Partial<CompactionPolicy> plus modelOverrides, of the Harness
+// (HarnessSettings.Compaction) or of one conversation (AgentState.Compaction). Nil fields are unset. ModelOverrides is keyed
+// by exact "provider/modelId"; each field an entry sets replaces the general one for that model.
+type CompactionSettings struct {
+	Enabled          *bool `json:"enabled,omitempty"`
+	ReserveTokens    *int  `json:"reserveTokens,omitempty"`
+	KeepRecentTokens *int  `json:"keepRecentTokens,omitempty"`
+	BackgroundTokens *int  `json:"backgroundTokens,omitempty"`
+	//portlint:allow emptydrop an unset ModelOverrides is Pi's absent modelOverrides; an explicit {} is stored as {}
+	ModelOverrides CompactionOverrides `json:"modelOverrides,omitzero"`
+}
+
+// own is the settings' own fields as a layer of the resolution.
+func (settings *CompactionSettings) own() CompactionPolicyOverride {
+	return CompactionPolicyOverride{Enabled: settings.Enabled, ReserveTokens: settings.ReserveTokens, KeepRecentTokens: settings.KeepRecentTokens, BackgroundTokens: settings.BackgroundTokens}
+}
+
+// PolicyFor is compaction.ts compactionPolicy, field by field: the conversation's modelOverrides entry for the model, the
+// Harness's, the conversation's own fields, then the Harness-wide policy. A model-specific value beats a general one, and the
+// conversation beats the Harness at the same level; the exception is the conversation's own enabled: false, which also beats
+// the Harness's model override, since turning compaction off for a conversation does not depend on the model. The result
+// carries no overrides.
+func (policy CompactionPolicy) PolicyFor(model ModelRef, conversation *CompactionSettings) CompactionPolicy {
+	key := model.Provider + "/" + model.ModelId
+	var layers [3]CompactionPolicyOverride
+	var conversationModel CompactionPolicyOverride
+	if conversation != nil {
+		conversationModel, _ = conversation.ModelOverrides.Get(key)
+		layers[0], layers[2] = conversationModel, conversation.own()
 	}
-	if override.Enabled != nil {
-		resolved.Enabled = *override.Enabled
+	layers[1], _ = policy.ModelOverrides.Get(key)
+	field := func(pick func(CompactionPolicyOverride) *int, harness int) int {
+		for _, layer := range layers {
+			if value := pick(layer); value != nil {
+				return *value
+			}
+		}
+		return harness
 	}
-	if override.ReserveTokens != nil {
-		resolved.ReserveTokens = *override.ReserveTokens
+	resolved := CompactionPolicy{
+		ReserveTokens:    field(func(layer CompactionPolicyOverride) *int { return layer.ReserveTokens }, policy.ReserveTokens),
+		KeepRecentTokens: field(func(layer CompactionPolicyOverride) *int { return layer.KeepRecentTokens }, policy.KeepRecentTokens),
+		BackgroundTokens: field(func(layer CompactionPolicyOverride) *int { return layer.BackgroundTokens }, policy.BackgroundTokens),
 	}
-	if override.KeepRecentTokens != nil {
-		resolved.KeepRecentTokens = *override.KeepRecentTokens
-	}
-	if override.BackgroundTokens != nil {
-		resolved.BackgroundTokens = *override.BackgroundTokens
+	switch {
+	case conversationModel.Enabled != nil:
+		resolved.Enabled = *conversationModel.Enabled
+	case conversation != nil && conversation.Enabled != nil && !*conversation.Enabled:
+		resolved.Enabled = false
+	default:
+		resolved.Enabled = policy.Enabled
+		for _, layer := range layers {
+			if layer.Enabled != nil {
+				resolved.Enabled = *layer.Enabled
+				break
+			}
+		}
 	}
 	return resolved
 }

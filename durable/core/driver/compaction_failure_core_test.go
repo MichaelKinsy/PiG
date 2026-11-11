@@ -307,7 +307,7 @@ func TestCorePerModelCompactionOverrideSetsTheBlockingThreshold(t *testing.T) {
 			)
 			policy := thresholdPolicy()
 			policy.Enabled = new(false)
-			policy.ModelOverrides = map[string]durable.CompactionPolicyOverride{key: {Enabled: new(true)}}
+			policy.ModelOverrides = durable.NewCompactionOverrides(durable.CompactionModelOverride{Model: key, Override: durable.CompactionPolicyOverride{Enabled: new(true)}})
 			r.changeSettings(func(settings *harness.HarnessSettings) { settings.Compaction = policy })
 			r.firstTurn(t)
 			if second := r.submit(t, strings.Repeat("y", 500)); second.Status != durable.SubmissionDone {
@@ -317,6 +317,33 @@ func TestCorePerModelCompactionOverrideSetsTheBlockingThreshold(t *testing.T) {
 			if want := key == "faux/faux-1"; compacted != want {
 				t.Fatalf("override %s: compacted %v (provider calls %d), want %v", key, compacted, r.faux.CallCount(), want)
 			}
+		}
+	})
+}
+
+// harness-compaction.test.ts "skips overflow compaction when the conversation turns compaction off" (and the threshold with it) over the
+// core and the reference: a conversation whose own settings turn compaction off is neither compacted before its request (the
+// blocking threshold) nor after an overflow, though the Harness-wide policy enables it.
+func TestCoreAConversationThatTurnsCompactionOffIsNeverCompacted(t *testing.T) {
+	eachEngine(t, func(t *testing.T, core bool) {
+		r := openCompactionFailureRig(t, core,
+			ai.FauxStaticStep(ai.FauxResponse{StopReason: "error", ErrorMessage: "prompt is too long: 250000 tokens > 200000 maximum"}),
+			ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("SUMMARY")}, StopReason: "stop"}),
+		)
+		if err := r.root.Configure(t.Context(), harness.AgentChange{Compaction: harness.SetTo(durable.CompactionSettings{Enabled: new(false)})}); err != nil {
+			t.Fatal(err)
+		}
+		r.firstTurn(t)
+		second := r.submit(t, strings.Repeat("y", 500))
+		if second.Status != durable.SubmissionUnanswered {
+			t.Fatalf("second turn %+v, want unanswered by the overflow", second)
+		}
+		// The first turn and the overflowed request are the only provider calls: no summary request was made.
+		if calls := r.faux.CallCount(); calls != 2 {
+			t.Fatalf("%d provider calls, want 2", calls)
+		}
+		if live := r.live(t); live.Compactions != nil {
+			t.Fatalf("compactions %+v, want none", live.Compactions)
 		}
 	})
 }

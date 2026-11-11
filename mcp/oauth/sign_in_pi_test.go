@@ -35,8 +35,8 @@ func loopbackDocuments() *oauth.McpClientMetadataDocuments {
 
 func signInOptions(server *authServer, settings oauth.McpOAuthSettings) oauth.McpSignInOptions {
 	return oauth.McpSignInOptions{
-		McpOAuthClientOptions: oauth.McpOAuthClientOptions{ServerURL: server.serverURL, Store: &memoryStore{}, Settings: settings, ClientName: "app"},
-		RedirectURL:           routeURL,
+		ServerURL: server.serverURL, Store: &memoryStore{}, Settings: settings, ClientName: "app",
+		RedirectURL: routeURL,
 	}
 }
 

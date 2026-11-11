@@ -15,8 +15,8 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 )
 
-// pi: packages/chord/src/next/link/channel.ts
-// Ports packages/chord/test/next/link/channel.test.ts at the channel's own level: the handshake, checks, the
+// pi: packages/chord/src/link/channel.ts
+// Ports packages/chord/test/link/channel.test.ts at the channel's own level: the handshake, checks, the
 // heartbeat, trusted links, and in-order handling while a message waits for an asynchronous inflate. The cases that
 // run a host over the channel (the queued messages before the peer's hello, the heartbeat references going loading, one timer
 // per host, the numbers from the host's options, the codec mismatch between two hosts) are in chord/next/host/host_channel_test.go;
@@ -201,7 +201,12 @@ func TestTheHandshake(t *testing.T) {
 }
 
 func TestACodecMismatchOfChannels(t *testing.T) {
-	a, b := link.MemoryLinkPair()
+	// Pi's hellos are microtasks: neither is delivered before the code that started both channels finished. On the pair's own
+	// queue a delivery goroutine can run between left.Start and right.Start, or inside right.Start between its hello and its
+	// listeners, and close the link under the second channel before it listens (a test goroutine that is descheduled there
+	// reports nothing for that side): the test runs the queue itself (fifoQueue).
+	queue := &fifoQueue{}
+	a, b := link.MemoryLinkPairOn(queue.post, queue.run)
 	first, second := &reports{}, &reports{}
 	left, err := link.NewChannel(a, &recordingHandler{}, link.ChannelOptions{Codec: link.BinaryCodec, Incarnation: incarnation, Calls: 1, Report: first.add}, background)
 	requireNoError(t, err)

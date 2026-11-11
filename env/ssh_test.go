@@ -24,7 +24,6 @@ import (
 	"time"
 
 	durableenv "github.com/MichaelKinsy/PiG/durable/env"
-	"github.com/MichaelKinsy/PiG/durable/env/node"
 )
 
 // deployedName is what a daemon with this content is called on the remote machine.
@@ -251,7 +250,7 @@ func TestSSHBootstrap(t *testing.T) {
 		if !reflect.DeepEqual(listing, want) {
 			t.Fatalf("listing over SSH = %+v, want %+v", listing, want)
 		}
-		env := NewLocalExecutionEnv(LocalExecutionEnvOptions{NodeExecutionEnvOptions: node.NodeExecutionEnvOptions{Cwd: home}, Connection: local})
+		env := NewLocalExecutionEnv(LocalExecutionEnvOptions{Cwd: home, Connection: local})
 		if local := must(env.ListFiles(ctx, "tree", &durableenv.ListFilesOptions{Exclude: []string{"skip"}})); !reflect.DeepEqual(local, listing) {
 			t.Fatalf("local listing = %+v, want the listing over SSH %+v", local, listing)
 		}

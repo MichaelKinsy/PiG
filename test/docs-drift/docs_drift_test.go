@@ -106,6 +106,8 @@ func TestDocumentedSlashCommandsExist(t *testing.T) {
 		"/overlay-focus":     "Pi's overlay QA example extension (coding-agent examples/extensions/overlay-qa-tests.ts)",
 		"/overlay-passive":   "Pi's overlay QA example extension (coding-agent examples/extensions/overlay-qa-tests.ts)",
 		"/overlay-streaming": "Pi's overlay QA example extension (coding-agent examples/extensions/overlay-qa-tests.ts)",
+		// The bug ledger entry for the expandPromptTemplates option of sendUserMessage uses a prompt template a user would write as its example.
+		"/my-command": "example prompt template a user creates (bug ledger entry for sendUserMessage expandPromptTemplates)",
 	}
 	// Words in backticks that start with a slash and are paths, not commands.
 	paths := map[string]string{

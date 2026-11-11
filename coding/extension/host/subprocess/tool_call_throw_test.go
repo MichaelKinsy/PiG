@@ -57,9 +57,9 @@ func TestToolCallHandlerThrowIsWordedAsPi(t *testing.T) {
 		"number":         "Extension failed, blocking execution: 7",
 	} {
 		_, err := runner.EmitToolCall(t.Context(), extension.CustomToolCallEvent{
-			ToolCallEventBase: extension.ToolCallEventBase{Type: "tool_call", ToolCallID: mode},
-			ToolName:          "bash",
-			Input:             map[string]any{"mode": mode},
+			Type: "tool_call", ToolCallID: mode,
+			ToolName: "bash",
+			Input:    map[string]any{"mode": mode},
 		})
 		if err == nil {
 			t.Errorf("%s: EmitToolCall returned no error", mode)

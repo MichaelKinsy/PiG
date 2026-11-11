@@ -46,7 +46,7 @@ func TestToolResultEventsAreWrittenInPiMemberOrder(t *testing.T) {
 
 // Without the model's raw arguments the input is the map, sorted; an absent optional member is left out as undefined is.
 func TestToolResultEventWithoutRawInputOmitsAbsentMembers(t *testing.T) {
-	encoded, err := json.Marshal(CustomToolResultEvent{ToolResultEventBase: ToolResultEventBase{Type: "tool_result", ToolCallID: "c", Input: map[string]any{"b": 1.0, "a": 2.0}}, ToolName: "t"})
+	encoded, err := json.Marshal(CustomToolResultEvent{Type: "tool_result", ToolCallID: "c", Input: map[string]any{"b": 1.0, "a": 2.0}, ToolName: "t"})
 	if err != nil {
 		t.Fatal(err)
 	}

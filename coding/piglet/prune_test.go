@@ -85,9 +85,9 @@ func TestPruneItemsNeverOffersPulledInstalls(t *testing.T) {
 		}
 		return path
 	}
-	built := managedRecord{Piglet: "p", RecordInfo: RecordInfo{Path: write("built.json"), ArtifactPath: write("built.bin"), ResolutionPath: "res-built"}}
-	pulled := managedRecord{Piglet: "p", RecordInfo: RecordInfo{Path: write("receipt.json"), ArtifactPath: write("pulled.bin"), CurrentPath: write("current"), ResolutionPath: "res-pulled"}}
-	missing := managedRecord{Piglet: "p", RecordInfo: RecordInfo{Path: write("m.json"), ArtifactPath: filepath.Join(dir, "gone.bin"), ResolutionPath: "res-missing"}}
+	built := managedRecord{Piglet: "p", Path: write("built.json"), ArtifactPath: write("built.bin"), ResolutionPath: "res-built"}
+	pulled := managedRecord{Piglet: "p", Path: write("receipt.json"), ArtifactPath: write("pulled.bin"), CurrentPath: write("current"), ResolutionPath: "res-pulled"}
+	missing := managedRecord{Piglet: "p", Path: write("m.json"), ArtifactPath: filepath.Join(dir, "gone.bin"), ResolutionPath: "res-missing"}
 	items, staying := pruneItems([]managedRecord{built, pulled, missing})
 	if len(items) != 1 || items[0].record.Path != built.Path {
 		t.Fatalf("items = %v", names(items))

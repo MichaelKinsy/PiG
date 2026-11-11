@@ -296,6 +296,15 @@ classification = "upstream"
 rationale = "pi-chord packages/chord/src/documents/residency.ts Resident.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
 
 [[fields]]
+id = "chord/next/host/host_host.go#UndeclaredRegistry.Version:go:-"
+path = "chord/next/host/host_host.go"
+owner = "UndeclaredRegistry"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/host/host.ts reports a registry that has contributions and no provider (`registry_undeclared`) with the newest registry version contributed; the number is the contribution's registry version, which Pi owns. The port carries it unchanged and reads no format from it."
+
+[[fields]]
 id = "chord/next/host/jobs_definition.go#JobDefinition.Version:go:-"
 path = "chord/next/host/jobs_definition.go"
 owner = "JobDefinition"
@@ -611,6 +620,42 @@ classification = "upstream"
 rationale = "pi-chord packages/chord/src/store/table-writes.ts updateWriteJSON.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
 
 [[fields]]
+id = "chord/nextnode/app/files_index.go#FileInfo.Version:go:-"
+path = "chord/nextnode/app/files_index.go"
+owner = "FileInfo"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/node/app/files-index.ts FileInfo.version: the version number of one stored file in the app's file index (one `files` row per version); user data identity decided by the index, not a format selector. Pi owns it; the port carries it unchanged."
+
+[[fields]]
+id = "chord/nextnode/app/info.go#AppInfoValues.Version:go:-"
+path = "chord/nextnode/app/info.go"
+owner = "AppInfoValues"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/node/app/info.ts AppInfoValues.version: the app's newest API version (the `version` member of the `chord.app.info` start data), a string the application declares; Pi owns the meaning and the port reads no Pig format from it."
+
+[[fields]]
+id = "chord/nextnode/plugins/model/model_built.go#BuiltApi.Version:go:-"
+path = "chord/nextnode/plugins/model/model_built.go"
+owner = "BuiltApi"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/node/plugins/build.ts `api?: { name, version }`: the version of the app's API a facet script imports (one of AppApi.versions, empty is Pi's `undefined`); the application declares it and Pi owns the meaning."
+
+[[fields]]
+id = "chord/nextnode/plugins/plugins_install.go#PluginSource.Version:go:-"
+path = "chord/nextnode/plugins/plugins_install.go"
+owner = "PluginSource"
+field = "Version"
+wire_name = "-"
+classification = "external"
+rationale = "The npm package version of the `{ npm, version }` plugin source (packages/chord/src/node/plugins/install.ts); the npm registry owns the version syntax and the install runs `npm pack` at it, so it is an external-standard version, not a Pig format discriminator."
+
+[[fields]]
 id = "chord/nextnode/plugins/plugins_node.go#NodeHostError.Version:go:-"
 path = "chord/nextnode/plugins/plugins_node.go"
 owner = "NodeHostError"
@@ -656,6 +701,24 @@ classification = "external"
 rationale = "A count of installed Node versions of one version manager read when discovering a Node executable, not a format version; the version managers own the installed names."
 
 [[fields]]
+id = "chord/nextnode/plugins/plugins_runtime.go#apiWire.Version:json:version"
+path = "chord/nextnode/plugins/plugins_runtime.go"
+owner = "apiWire"
+field = "Version"
+wire_name = "version"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/node/plugins/runtime.ts builds each facet as `api?: { name, version }` (version undefined is no key); apiWire is that shape on the plugin runtime's wire, with Pi's key name and omission. It names the app's API version the facet imports, not a Pig wire version."
+
+[[fields]]
+id = "chord/nextnode/plugins/plugins_testing.go#Contribution.Version:go:-"
+path = "chord/nextnode/plugins/plugins_testing.go"
+owner = "Contribution"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/registries/contribution.ts `version`: the registry version a contribution was built against, which testPlugin returns in the table of `contributions(R)` (packages/chord/src/node/plugins/testing.ts); Pi owns the number, the port carries it unchanged and reads no format from it."
+
+[[fields]]
 id = "chord/sqlite/migrations.go#SqliteMigration.Version:go:-"
 path = "chord/sqlite/migrations.go"
 owner = "SqliteMigration"
@@ -663,6 +726,24 @@ field = "Version"
 wire_name = "-"
 classification = "upstream"
 rationale = "Chord SQLite schema migration version (packages/chord/src/sqlite/migrations.ts), the migration type pi-durable re-exports."
+
+[[fields]]
+id = "chord/sync/lines.go#const.LogVersion:go:-"
+path = "chord/sync/lines.go"
+owner = "<package>"
+field = "LogVersion"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/sync/lines.ts LOG_VERSION: the `v` of the sync log line envelope that Pi writes and checks (2). The Go constant is the same number so Pi and PiG logs interchange; Pi owns when it changes, and PiG adds no reader, negotiation or migration around it."
+
+[[fields]]
+id = "chord/telemetrysqlite/schema.go#const.versionTable:go:-"
+path = "chord/telemetrysqlite/schema.go"
+owner = "<package>"
+field = "versionTable"
+wire_name = "-"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/telemetry-sqlite/schema.ts VERSION_TABLE = \"telemetry_schema\": the name of the table in which Pi's SQLite migration runner records the store's version; the port opens Pi's store files with the same name. Pi owns the schema; this constant names a table, it selects no Pig reader."
 
 [[fields]]
 id = "codemode/deterministic.go#const.deterministicVersion:go:-"
@@ -1599,6 +1680,15 @@ field = "Version"
 wire_name = "version"
 classification = "external"
 rationale = "Go release index (go.dev/dl) release field owned by the external download service."
+
+[[fields]]
+id = "internal/zstdblob/zstdblob.go#const.PinnedCLIVersion:go:-"
+path = "internal/zstdblob/zstdblob.go"
+owner = "<package>"
+field = "PinnedCLIVersion"
+wire_name = "-"
+classification = "external"
+rationale = "The release of the zstd command (1.5.5, the zstd-source row of automation/dev/toolchains.lock) that writes every committed frame; zstd's own release version, an external toolchain pin and not a Pig format discriminator."
 
 [[fields]]
 id = "mcp/client.go#ClientOptions.ProtocolVersion:go:-"

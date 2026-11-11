@@ -15,7 +15,7 @@ import (
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 )
 
-// pi: packages/chord/src/next-node/workers/lock.ts
+// pi: packages/chord/src/node/workers/lock.ts
 // A temporary directory too deep for sun_path does not break the lock: the socket goes to a private per-user directory under
 // /tmp (lock.ts `socketPath`).
 func TestASocketFileLockFallsBackToAPrivateDirectoryWhenTheTempDirIsTooLongForASocketPath(t *testing.T) {
@@ -44,7 +44,7 @@ func TestASocketFileLockFallsBackToAPrivateDirectoryWhenTheTempDirIsTooLongForAS
 	}
 }
 
-// pi: packages/chord/src/next-node/workers/lock.ts waitWhileHeld
+// pi: packages/chord/src/node/workers/lock.ts waitWhileHeld
 // Nobody accepts on a socket file a crashed holder left: Linux's connect(2) to it fails with ECONNREFUSED, and macOS's and the
 // BSDs' fail with ENOTSOCK when the leftover is a plain file. Either way the waiter must end with "stale lock file". The
 // classifier took only ECONNREFUSED, so on macOS a plain stale file made lockAt retry its listen and connect forever (nightly

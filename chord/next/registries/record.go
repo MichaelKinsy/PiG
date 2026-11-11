@@ -9,7 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// Ports packages/chord/src/next/registries/record.ts (a registry on a host, slice 8 §1: its provider (replaced or removed by a reload, slice 7b §3), its
+// Ports packages/chord/src/registries/record.ts (a registry on a host, slice 8 §1: its provider (replaced or removed by a reload, slice 7b §3), its
 // contributions in table order, the table and its lazy composition, the reports of conflicts and failures, and the
 // values its readers follow by version), in its dependency-model final state.
 

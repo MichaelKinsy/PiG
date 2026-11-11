@@ -199,7 +199,7 @@ func (s *Session) completeCustomMessage(ctx context.Context, finish context.Canc
 func (s *Session) appendCustomMessage(message agent.AgentMessage) error {
 	customType, _ := message.Custom["customType"].(string)
 	display, _ := message.Custom["display"].(bool)
-	if _, err := s.inner.AppendCustomMessageEntry(customType, message.Custom["content"], display, message.Custom["details"]); err != nil {
+	if _, err := s.inner.Load().AppendCustomMessageEntry(customType, message.Custom["content"], display, message.Custom["details"]); err != nil {
 		return err
 	}
 	s.refreshContext()

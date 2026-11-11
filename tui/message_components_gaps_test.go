@@ -29,7 +29,7 @@ func TestSummaryMessageCollapsedLinesUseThemeTokensAndTheConfiguredExpandKey(t *
 	withExpandKeyText(t, "ctrl+e")
 	theme := ActiveTheme()
 
-	branch := NewBranchSummaryMessageComponent(BranchSummaryMessage{Summary: "s"}, nil, 1)
+	branch := NewBranchSummaryMessageComponent(BranchSummaryMessage{Summary: "s"}, nil, 1, nil, "", "")
 	lines := branch.Render(80)
 	wantLabel := theme.Fg("customMessageLabel", "\x1b[1m[branch]\x1b[22m")
 	wantHint := theme.Fg("customMessageText", "Branch summary (") + theme.Fg("dim", "ctrl+e") + theme.Fg("customMessageText", " to expand)")
@@ -40,7 +40,7 @@ func TestSummaryMessageCollapsedLinesUseThemeTokensAndTheConfiguredExpandKey(t *
 		t.Errorf("branch hint %q not in %q", wantHint, lines)
 	}
 
-	skill := NewSkillInvocationMessageComponent(ParsedSkillBlock{Name: "pdf", Content: "c"}, nil, 1)
+	skill := NewSkillInvocationMessageComponent(ParsedSkillBlock{Name: "pdf", Content: "c"}, nil, 1, nil, "", "")
 	skillLines := skill.Render(80)
 	wantSkill := theme.Fg("customMessageLabel", "\x1b[1m[skill]\x1b[22m ") + theme.Fg("customMessageText", "pdf") + theme.Fg("dim", " (ctrl+e to expand)")
 	if !slices.ContainsFunc(skillLines, func(l string) bool { return strings.Contains(l, wantSkill) }) {
@@ -53,8 +53,8 @@ func TestSummaryMessageCollapsedLinesUseThemeTokensAndTheConfiguredExpandKey(t *
 	SetTheme("light")
 	branch.Invalidate()
 	skill.Invalidate()
-	freshBranch := NewBranchSummaryMessageComponent(BranchSummaryMessage{Summary: "s"}, nil, 1).Render(80)
-	freshSkill := NewSkillInvocationMessageComponent(ParsedSkillBlock{Name: "pdf", Content: "c"}, nil, 1).Render(80)
+	freshBranch := NewBranchSummaryMessageComponent(BranchSummaryMessage{Summary: "s"}, nil, 1, nil, "", "").Render(80)
+	freshSkill := NewSkillInvocationMessageComponent(ParsedSkillBlock{Name: "pdf", Content: "c"}, nil, 1, nil, "", "").Render(80)
 	if got := branch.Render(80); !slices.Equal(got, freshBranch) {
 		t.Errorf("branch summary after a theme change\n got %q\nwant %q", got, freshBranch)
 	}
@@ -84,7 +84,7 @@ func TestCustomMessageComponentLayoutRendererLifecycleAndLiveness(t *testing.T) 
 	t.Cleanup(func() { SetThemeByName(original) })
 	SetTheme("dark")
 
-	def := NewCustomMessageComponent(&CustomMessage{CustomType: "note", Content: "body"}, nil, nil, 3)
+	def := NewCustomMessageComponent(&CustomMessage{CustomType: "note", Content: "body"}, nil, nil, 3, nil, "", "")
 	lines := def.Render(20)
 	plain := make([]string, len(lines))
 	for i, line := range lines {
@@ -106,7 +106,7 @@ func TestCustomMessageComponentLayoutRendererLifecycleAndLiveness(t *testing.T) 
 		version++
 		renderedWith = append(renderedWith, options)
 		return &staticGapComponent{text: "custom-v" + string(rune('0'+version))}
-	}, nil, 2)
+	}, nil, 2, nil, "", "")
 	if got := stripANSILines(custom.Render(20)); !slices.Equal(got, []string{"", "custom-v1"}) {
 		t.Fatalf("custom render = %q", got)
 	}
@@ -128,7 +128,7 @@ func TestCustomMessageComponentLayoutRendererLifecycleAndLiveness(t *testing.T) 
 	}
 
 	live := &liveGapComponent{text: "live"}
-	liveMessage := NewCustomMessageComponent(&CustomMessage{CustomType: "note", Content: "body"}, func(*CustomMessage, MessageRenderOptions) Component { return live }, nil, 1)
+	liveMessage := NewCustomMessageComponent(&CustomMessage{CustomType: "note", Content: "body"}, func(*CustomMessage, MessageRenderOptions) Component { return live }, nil, 1, nil, "", "")
 	_ = liveMessage.Render(20)
 	liveMessage.NeedsRedraw()
 	if !liveMessage.SurfaceLive() {
@@ -147,7 +147,7 @@ func TestCustomMessageComponentLayoutRendererLifecycleAndLiveness(t *testing.T) 
 		t.Error("an invalidated message is not dirty")
 	}
 
-	panicking := NewCustomMessageComponent(&CustomMessage{CustomType: "note", Content: "body"}, func(*CustomMessage, MessageRenderOptions) Component { panic("renderer failed") }, nil, 1)
+	panicking := NewCustomMessageComponent(&CustomMessage{CustomType: "note", Content: "body"}, func(*CustomMessage, MessageRenderOptions) Component { panic("renderer failed") }, nil, 1, nil, "", "")
 	if got := stripANSILines(panicking.Render(20)); !slices.ContainsFunc(got, func(l string) bool { return strings.Contains(l, "[note]") }) {
 		t.Fatalf("a throwing renderer did not fall back to the default box: %q", got)
 	}

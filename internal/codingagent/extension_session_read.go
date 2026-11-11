@@ -763,7 +763,7 @@ func AppendExtensionEntry(sess *Session, customType string, data any, direct *su
 	if err != nil {
 		return CustomEntry{}, err
 	}
-	entry := CustomEntry{SessionEntryBase: SessionEntryBase{Type: "custom", ID: id, ParentID: sess.GetLeafID(), Timestamp: timestamp}, CustomType: customType, Data: data}
+	entry := CustomEntry{Type: "custom", ID: id, ParentID: sess.GetLeafID(), Timestamp: timestamp, CustomType: customType, Data: data}
 	if err := sess.AppendEntry(entry); err != nil {
 		return CustomEntry{}, err
 	}

@@ -127,7 +127,7 @@ connection while it waits, and *HELPER-LOCK* only for the moment each table is r
                      ((equal type "call_result") (setf (gethash (jget env "id") *helper-results*) (or (jget env "call_result") (obj))))
                      ((equal type "ping")
                       (send-frame conn (obj "type" "pong" "pong" (obj "nonce" (jget (or (jget env "ping") (obj)) "nonce" "")))))
-                     ((equal type "shutdown") (pushnew conn *helper-shutdown*))
+                     ((equal type "shutdown") (helper-note-shutdown conn))
                      ((refused-request-p env) (refuse-request conn env))
                      ((equal type "refused") (note-dropped-frame))
                      ((equal type "request")

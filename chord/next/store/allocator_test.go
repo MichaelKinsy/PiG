@@ -2,10 +2,10 @@ package store
 
 import "testing"
 
-// Ports packages/chord/test/next/store/allocator.test.ts: tests of the id allocator (slice 6b D3, §1.2): from 2,
+// Ports packages/chord/test/store/allocator.test.ts: tests of the id allocator (slice 6b D3, §1.2): from 2,
 // raised by explicit ids, saturating at the safe range.
 //
-// pi: packages/chord/src/next/store/allocator.ts
+// pi: packages/chord/src/store/allocator.ts
 
 func mintOne(t *testing.T, ids *IdAllocator) int64 {
 	t.Helper()

@@ -1198,19 +1198,17 @@ func TestRunToolCall_ValidatesRunsTheHooksAndReportsFailuresAsErrorOutcomes(t *t
 	var updates []update
 	options := RunToolCallOptions{
 		Tools: []AgentTool{newStructuredEchoTool(), failing},
-		ToolCallHooks: ToolCallHooks{
-			BeforeToolCallHooks: []BeforeToolCallHook{func(_ context.Context, id, _ string, args json.RawMessage) ToolCallHookResult {
-				hookCalls = append(hookCalls, "before "+id)
-				if argValue(args) == "blocked" {
-					return ToolCallHookResult{Block: true, Reason: "nope"}
-				}
-				return ToolCallHookResult{}
-			}},
-			AfterToolCallHooks: []AfterToolCallHook{func(_ context.Context, id, _ string, _ json.RawMessage, _ AgentToolResult) AfterToolCallResult {
-				hookCalls = append(hookCalls, "after "+id)
-				return AfterToolCallResult{}
-			}},
-		},
+		BeforeToolCallHooks: []BeforeToolCallHook{func(_ context.Context, id, _ string, args json.RawMessage) ToolCallHookResult {
+			hookCalls = append(hookCalls, "before "+id)
+			if argValue(args) == "blocked" {
+				return ToolCallHookResult{Block: true, Reason: "nope"}
+			}
+			return ToolCallHookResult{}
+		}},
+		AfterToolCallHooks: []AfterToolCallHook{func(_ context.Context, id, _ string, _ json.RawMessage, _ AgentToolResult) AfterToolCallResult {
+			hookCalls = append(hookCalls, "after "+id)
+			return AfterToolCallResult{}
+		}},
 		OnUpdate: func(partial AgentToolResult) error {
 			updates = append(updates, update{partial.Text(), partial.Details})
 			return nil
@@ -1263,11 +1261,11 @@ func TestRunToolCall_LetsAfterToolCallReplaceStructuredContentAndDropsItWhenOnly
 	for _, afterResult := range results {
 		outcome, _ := RunToolCall(context.Background(), AgentToolCall{ID: "x", Name: "echo", Arguments: ai.JsonObject{"value": "original"}}, RunToolCallOptions{
 			Tools: []AgentTool{newStructuredEchoTool()},
-			ToolCallHooks: ToolCallHooks{AfterToolCallHooks: []AfterToolCallHook{
+			AfterToolCallHooks: []AfterToolCallHook{
 				func(context.Context, string, string, json.RawMessage, AgentToolResult) AfterToolCallResult {
 					return afterResult
 				},
-			}},
+			},
 		})
 		if outcome.Result.StructuredContent == nil {
 			seen = append(seen, "undefined")

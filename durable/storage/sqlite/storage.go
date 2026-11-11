@@ -74,7 +74,37 @@ type scopeColumns struct {
 
 // encodeJSON serializes a stored value as JSON.stringify does (storage.ts encodeJson): lone UTF-16 surrogates survive, and <, >, & and U+2028/U+2029 stay literal.
 func encodeJSON(value any) (string, error) {
-	encoded, err := jsstring.MarshalJSON(value)
+	buffer := encodeBuffers.Get().(*[]byte)
+	encoded, err := jsstring.AppendMarshalJSON((*buffer)[:0], value)
+	return finishEncoding(buffer, encoded, err)
+}
+
+// encodeEntryJSON is encodeJSON of an entry record without boxing it: the record writes its own text.
+func encodeEntryJSON(entry durable.EntryRecord) (string, error) {
+	buffer := encodeBuffers.Get().(*[]byte)
+	encoded, err := entry.AppendStringify((*buffer)[:0])
+	return finishEncoding(buffer, encoded, err)
+}
+
+// encodeBuffers holds the buffers stored values are encoded into. The text leaves as a string copy, so one buffer serves
+// every row a commit encodes.
+var encodeBuffers = sync.Pool{New: func() any { return new([]byte) }}
+
+// maxPooledEncodeBuffer bounds the buffer kept between calls (golang/go#23199): a larger one is left to the collector.
+const maxPooledEncodeBuffer = 64 << 10
+
+// finishEncoding returns buffer to the pool and the encoded text as a string, or the error encodeJSON reports.
+func finishEncoding(buffer *[]byte, encoded []byte, err error) (string, error) {
+	var text string
+	if err == nil {
+		text = string(encoded)
+	}
+	if cap(encoded) <= maxPooledEncodeBuffer {
+		*buffer = encoded[:0]
+	} else {
+		*buffer = nil
+	}
+	encodeBuffers.Put(buffer)
 	if err != nil {
 		var unsupported *json.UnsupportedValueError
 		if errors.As(err, &unsupported) && strings.Contains(unsupported.Str, "cycle") {
@@ -82,17 +112,24 @@ func encodeJSON(value any) (string, error) {
 		}
 		return "", err
 	}
-	return string(encoded), nil
+	return text, nil
 }
 
 func parseJSON[T any](text string) (T, error) {
 	var value T
-	if err := json.Unmarshal([]byte(text), &value); err != nil {
+	if entry, ok := any(&value).(*durable.EntryRecord); ok {
+		// EntryRecord's decoder validates the text itself, so the generic decoder's extra scan is skipped.
+		if err := entry.UnmarshalJSON(stringBytes(text)); err != nil {
+			return value, err
+		}
+		return value, nil
+	}
+	if err := json.Unmarshal(stringBytes(text), &value); err != nil {
 		return value, err
 	}
 	if ordered.HasDynamic(reflect.TypeFor[T]()) {
 		// A JsonValue member holds the stored text's objects in order, as JSON.parse gives Pi.
-		tree, err := chordjson.DecodeUnquoting([]byte(text), unquoteJS)
+		tree, err := chordjson.DecodeUnquoting(stringBytes(text), unquoteJS)
 		if err != nil {
 			return value, err
 		}
@@ -129,11 +166,8 @@ func parseOps(text string) ([]durable.Op, error) {
 // their JSON escapes survive. The text is JSON.stringify's (storage.ts encodeIndexedString), since a query matches the
 // stored column byte for byte and either implementation may have written it.
 func encodeIndexedString(value string) string {
-	encoded, err := jsstring.MarshalJSON(value)
-	if err != nil {
-		panic(fmt.Sprintf("durable sqlite: string is not JSON encodable: %v", err))
-	}
-	return string(encoded)
+	var scratch [64]byte
+	return string(jsstring.AppendString(scratch[:0], value))
 }
 
 func cursorId(cursor durable.Cursor) (int64, bool, error) {
@@ -270,6 +304,7 @@ type SqliteStorage struct {
 	retained *workingSet
 
 	schema        SqliteSchema
+	statements    *commitStatements
 	mu            sync.Mutex
 	nextId        int64
 	closed        bool
@@ -332,7 +367,7 @@ func open(db SqliteDatabase, prefix *string) (*SqliteStorage, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &SqliteStorage{db: db, schema: schema, nextId: nextId}, nil
+	return &SqliteStorage{db: db, schema: schema, statements: newCommitStatements(schema.Tables), nextId: nextId}, nil
 }
 
 func metadataNextId(metadata SqliteRow) (int64, error) {
@@ -390,16 +425,22 @@ func (watched watchedExecutor) All(sql string, params ...SqliteValue) ([]SqliteR
 	return rows, watched.watch(err)
 }
 
-// Commit commits batches in one SQL transaction, each with its own seq. Each batch is checked before it writes
-// anything, against the state the earlier ones left, and the first one refused ends the commit: the transaction commits
-// the ones before it. No savepoints, which Durable Objects do not allow: the checks run before the writes instead.
+// Commit commits batches in one SQL transaction, each with its own seq, in a few statements whatever their number
+// (commit.go). Each batch is checked in memory before it is accepted, against the state the earlier ones left, and the
+// first one refused ends the commit: the transaction commits the ones before it. No savepoints, which Durable Objects do
+// not allow: the checks run before the writes instead.
 func (storage *SqliteStorage) Commit(
 	_ context.Context, batches [][]durable.StorageWrite, receive func(index int, seq durable.Seq),
 ) (durable.CommitResult, error) {
 	if err := storage.assertOpen(); err != nil {
 		return durable.CommitResult{}, err
 	}
-	if slices.ContainsFunc(batches, hasEntryWrite) {
+	// Pointer-form writes are normalized once, so every check below reads the value forms.
+	values := make([][]durable.StorageWrite, len(batches))
+	for i, batch := range batches {
+		values[i] = writes.Values(batch)
+	}
+	if slices.ContainsFunc(values, hasEntryWrite) {
 		storage.retained.mu.Lock()
 		defer storage.retained.mu.Unlock()
 	}
@@ -409,7 +450,7 @@ func (storage *SqliteStorage) Commit(
 	candidateNextId := storage.candidateNextId(nil)
 	err := storage.db.Transaction(func(transaction SqliteExecutor) error {
 		seqs = seqs[:0]
-		committedEntries = committedEntries[:0]
+		committedEntries = nil
 		refused = nil
 		candidateNextId = storage.candidateNextId(nil)
 		storedNextId, nextSeq, err := storage.readMetadata(transaction)
@@ -417,35 +458,34 @@ func (storage *SqliteStorage) Commit(
 			return err
 		}
 		next := nextSeq
-		// Whether a database call of a batch's checks failed: then the failure is an unknown outcome, not a refusal.
-		calls := &databaseCalls{}
-		checked := watchedExecutor{executor: transaction, calls: calls}
-		for _, batch := range batches {
-			batch = writes.Values(batch)
-			// Only Durable's own checks refuse a batch, before it wrote anything: the ones before it stand. A failure of
-			// the database fails the call, and rolls back the batches before it with the transaction.
-			calls.failed = false
-			actions, err := prepareDocumentActions(batch)
-			if err == nil {
-				err = storage.checkBatch(checked, batch, actions)
-			}
+		// A failure of the database fails the call and rolls back the batches before it with the transaction.
+		state, err := storage.readCommitState(transaction, values)
+		if err != nil {
+			return err
+		}
+		pending := &pendingWrites{}
+		for _, batch := range values {
+			actions, refusal, err := storage.checkBatch(transaction, state, pending, batch)
 			if err != nil {
-				if calls.failed {
-					return err
-				}
-				refused = err
+				return err
+			}
+			if refusal != nil {
+				refused = refusal
 				break
 			}
 			seq := durable.Seq(next)
 			next++
-			entries, err := storage.applyBatch(transaction, batch, actions, seq)
-			if err != nil {
+			state.apply(batch, actions, seq)
+			if err := pending.add(batch, actions, seq, state); err != nil {
 				return err
 			}
-			committedEntries = append(committedEntries, entries...)
 			seqs = append(seqs, seq)
 			candidateNextId = max(candidateNextId, storage.candidateNextId(batch))
 		}
+		if err := pending.flush(transaction, storage.statements); err != nil {
+			return err
+		}
+		committedEntries = append(committedEntries, pending.stored...)
 		if len(seqs) > 0 {
 			return storage.writeMetadata(transaction, max(storedNextId, candidateNextId), next)
 		}
@@ -492,34 +532,39 @@ func (storage *SqliteStorage) writeMetadata(executor SqliteExecutor, nextId, nex
 	)
 }
 
-// checkBatch is Durable's own checks of one batch, copy resolution included, before it writes anything.
-func (storage *SqliteStorage) checkBatch(executor SqliteExecutor, batch []durable.StorageWrite, actions *documentActions) error {
-	if err := storage.checkGlobalIds(executor, batch); err != nil {
-		return err
+// checkBatch is Durable's own checks of one batch, copy resolution included, before it is accepted: the refusal, or the
+// batch's document actions. Only these checks refuse; a failure of a database call is the error. A copy reads its source
+// from the database, so the batches accepted before it are written first: a call of many fork batches costs a few
+// statements per fork, not per write.
+func (storage *SqliteStorage) checkBatch(
+	executor SqliteExecutor, state *commitState, pending *pendingWrites, batch []durable.StorageWrite,
+) (actions *documentActions, refusal error, err error) {
+	actions, refusal = prepareDocumentActions(batch)
+	if refusal == nil {
+		refusal = state.check(batch, actions)
 	}
-	if err := storage.checkDocumentActions(executor, actions); err != nil {
-		return err
+	if refusal != nil {
+		return nil, refusal, nil
 	}
-	return storage.resolveCopies(executor, actions)
-}
-
-// applyBatch writes one checked batch at seq and returns the entries it stored.
-func (storage *SqliteStorage) applyBatch(
-	executor SqliteExecutor, batch []durable.StorageWrite, actions *documentActions, seq durable.Seq,
-) ([]committedEntry, error) {
-	var entries []committedEntry
-	for _, write := range batch {
-		entryText, err := storage.applyTableWrite(executor, write, seq)
-		if err != nil {
-			return nil, err
+	copies := false
+	for _, id := range actions.order {
+		copies = copies || actions.actions[id].copy != nil
+	}
+	if !copies {
+		return actions, nil, nil
+	}
+	if err := pending.flush(executor, storage.statements); err != nil {
+		return nil, nil, err
+	}
+	// Whether a database call of the copies' resolution failed: then the failure is an unknown outcome, not a refusal.
+	calls := &databaseCalls{}
+	if err := storage.resolveCopies(watchedExecutor{executor: executor, calls: calls}, actions); err != nil {
+		if calls.failed {
+			return nil, nil, err
 		}
-		if entryText != "" {
-			entries = append(entries, committedEntry{
-				conversationId: write.(durable.EntryWrite).Value.ConversationId, text: entryText,
-			})
-		}
+		return nil, err, nil
 	}
-	return entries, storage.applyDocumentActions(executor, actions, seq)
+	return actions, nil, nil
 }
 
 // MintId returns a fresh candidate from the Session-global numeric ID namespace.
@@ -547,38 +592,54 @@ func (storage *SqliteStorage) Conversation(
 	return getRecord[durable.ConversationRecord](storage.db, "SELECT record FROM "+storage.schema.Tables.Conversations+" WHERE id = ?", id)
 }
 
-func getRecord[T any](executor SqliteExecutor, sqlText string, params ...SqliteValue) (*T, error) {
-	row, err := executor.Get(sqlText, params...)
-	if err != nil || row == nil {
-		return nil, err
-	}
-	text, err := rowText(row, "record")
-	if err != nil {
-		return nil, err
-	}
-	record, err := parseJSON[T](text)
-	if err != nil {
-		return nil, err
-	}
-	return &record, nil
-}
+// recordColumn names the one column of the record queries, for an executor that builds rows as maps.
+var recordColumn = []string{"record"}
 
-func allRecords[T any](executor SqliteExecutor, sqlText string, params ...SqliteValue) ([]T, error) {
-	rows, err := executor.All(sqlText, params...)
-	if err != nil {
-		return nil, err
-	}
-	records := make([]T, 0, len(rows))
-	for _, row := range rows {
-		text, err := rowText(row, "record")
+// entryColumns and revisionColumns name the columns of the queries that read them by position.
+var (
+	entryColumns    = []string{"record", "commit_seq"}
+	revisionColumns = []string{"seq", "kind", "version", "content"}
+)
+
+// errFirstRow ends a read after the first row it wanted.
+var errFirstRow = errors.New("first row read")
+
+func getRecord[T any](executor SqliteExecutor, sqlText string, params ...SqliteValue) (*T, error) {
+	var found *T
+	err := eachRow(executor, true, sqlText, params, recordColumn, func(values []SqliteValue) error {
+		text, err := valueText(values[0], "record")
 		if err != nil {
-			return nil, err
+			return err
 		}
 		record, err := parseJSON[T](text)
 		if err != nil {
-			return nil, err
+			return err
+		}
+		found = &record
+		return errFirstRow
+	})
+	if err != nil && !errors.Is(err, errFirstRow) {
+		return nil, err
+	}
+	return found, nil
+}
+
+func allRecords[T any](executor SqliteExecutor, sqlText string, params ...SqliteValue) ([]T, error) {
+	records := []T{}
+	err := eachRow(executor, false, sqlText, params, recordColumn, func(values []SqliteValue) error {
+		text, err := valueText(values[0], "record")
+		if err != nil {
+			return err
+		}
+		record, err := parseJSON[T](text)
+		if err != nil {
+			return err
 		}
 		records = append(records, record)
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	return records, nil
 }
@@ -684,21 +745,29 @@ func (storage *SqliteStorage) readEntry(
 			return nil, durable.NewStorageRequestError(fmt.Sprintf("Unknown conversation: %d", *conversationId))
 		}
 	}
-	row, err := storage.db.Get("SELECT record, commit_seq FROM "+storage.schema.Tables.Entries+" WHERE id = ?", int64(id))
-	if err != nil || row == nil {
+	var entry durable.EntryRecord
+	var commitSeq int64
+	found := false
+	err := eachRow(storage.db, true, "SELECT record, commit_seq FROM "+storage.schema.Tables.Entries+" WHERE id = ?", []SqliteValue{int64(id)}, entryColumns,
+		func(values []SqliteValue) (err error) {
+			text, err := valueText(values[0], "record")
+			if err != nil {
+				return err
+			}
+			if entry, err = parseJSON[durable.EntryRecord](text); err != nil {
+				return err
+			}
+			if commitSeq, err = valueInt(values[1], "commit_seq"); err != nil {
+				return err
+			}
+			found = true
+			return errFirstRow
+		})
+	if err != nil && !errors.Is(err, errFirstRow) {
 		return nil, err
 	}
-	text, err := rowText(row, "record")
-	if err != nil {
-		return nil, err
-	}
-	entry, err := parseJSON[durable.EntryRecord](text)
-	if err != nil {
-		return nil, err
-	}
-	commitSeq, err := rowInt(row, "commit_seq")
-	if err != nil {
-		return nil, err
+	if !found {
+		return nil, nil
 	}
 	if conversation != nil {
 		upperEntryId := int64(math.MaxInt64)
@@ -1197,57 +1266,62 @@ func (storage *SqliteStorage) materializeDocument(
 	if !at.Current {
 		upper = int64(at.Seq)
 	}
-	base, err := executor.Get(`SELECT seq, kind, version, content FROM `+storage.schema.Tables.DocumentRevisions+`
-				WHERE document_id = ? AND kind = 'base' AND seq <= ? ORDER BY seq DESC LIMIT 1`, int64(id), upper)
-	if err != nil {
+	var baseSeq, baseVersion int64
+	var value any
+	found := false
+	err = eachRow(executor, true, `SELECT seq, kind, version, content FROM `+storage.schema.Tables.DocumentRevisions+`
+				WHERE document_id = ? AND kind = 'base' AND seq <= ? ORDER BY seq DESC LIMIT 1`, []SqliteValue{int64(id), upper}, revisionColumns,
+		func(values []SqliteValue) (err error) {
+			if baseSeq, err = valueInt(values[0], "seq"); err != nil {
+				return err
+			}
+			if baseVersion, err = valueInt(values[2], "version"); err != nil {
+				return err
+			}
+			content, err := valueText(values[3], "content")
+			if err != nil {
+				return err
+			}
+			if value, err = chordjson.DecodeUnquoting(stringBytes(content), unquoteJS); err != nil {
+				return err
+			}
+			found = true
+			return errFirstRow
+		})
+	if err != nil && !errors.Is(err, errFirstRow) {
 		return nil, err
 	}
-	if base == nil {
+	if !found {
 		return nil, fmt.Errorf("Document %d is missing a required base", id)
 	}
-	baseSeq, err := rowInt(base, "seq")
+	batches := [][]durable.Op{}
+	err = eachRow(executor, false, `SELECT seq, kind, version, content FROM `+storage.schema.Tables.DocumentRevisions+`
+				WHERE document_id = ? AND seq > ? AND seq <= ? ORDER BY seq`, []SqliteValue{int64(id), baseSeq, upper}, revisionColumns,
+		func(values []SqliteValue) error {
+			kind, err := valueText(values[1], "kind")
+			if err != nil {
+				return err
+			}
+			version, err := valueInt(values[2], "version")
+			if err != nil {
+				return err
+			}
+			if kind != string(durable.ContentDelta) || version != baseVersion {
+				return fmt.Errorf("Document %d crosses a stored version boundary without a base", id)
+			}
+			content, err := valueText(values[3], "content")
+			if err != nil {
+				return err
+			}
+			batch, err := parseOps(content)
+			if err != nil {
+				return err
+			}
+			batches = append(batches, batch)
+			return nil
+		})
 	if err != nil {
 		return nil, err
-	}
-	baseVersion, err := rowInt(base, "version")
-	if err != nil {
-		return nil, err
-	}
-	baseContent, err := rowText(base, "content")
-	if err != nil {
-		return nil, err
-	}
-	value, err := chordjson.DecodeUnquoting([]byte(baseContent), unquoteJS)
-	if err != nil {
-		return nil, err
-	}
-	tail, err := executor.All(`SELECT seq, kind, version, content FROM `+storage.schema.Tables.DocumentRevisions+`
-				WHERE document_id = ? AND seq > ? AND seq <= ? ORDER BY seq`, int64(id), baseSeq, upper)
-	if err != nil {
-		return nil, err
-	}
-	batches := make([][]durable.Op, 0, len(tail))
-	for _, revision := range tail {
-		kind, err := rowText(revision, "kind")
-		if err != nil {
-			return nil, err
-		}
-		version, err := rowInt(revision, "version")
-		if err != nil {
-			return nil, err
-		}
-		if kind != string(durable.ContentDelta) || version != baseVersion {
-			return nil, fmt.Errorf("Document %d crosses a stored version boundary without a base", id)
-		}
-		content, err := rowText(revision, "content")
-		if err != nil {
-			return nil, err
-		}
-		batch, err := parseOps(content)
-		if err != nil {
-			return nil, err
-		}
-		batches = append(batches, batch)
 	}
 	if value, err = ops.ApplyBatches(value, batches); err != nil {
 		return nil, err
@@ -1257,7 +1331,7 @@ func (storage *SqliteStorage) materializeDocument(
 		return nil, fmt.Errorf("Document %d does not materialize to an object", id)
 	}
 	return &durable.StoredDocument{
-		Record: *record, Version: int(baseVersion), Value: object, DeltasSinceBase: len(tail),
+		Record: *record, Version: int(baseVersion), Value: object, DeltasSinceBase: len(batches),
 	}, nil
 }
 
@@ -1305,46 +1379,6 @@ func writeTable(write durable.StorageWrite) (int64, tableName, bool) {
 	}
 }
 
-func (storage *SqliteStorage) checkGlobalIds(executor SqliteExecutor, batch []durable.StorageWrite) error {
-	claimed := map[int64]tableName{}
-	for _, write := range batch {
-		id, table, ok := writeTable(write)
-		if !ok {
-			continue
-		}
-		row, err := executor.Get("SELECT record_type FROM "+storage.schema.Tables.RecordIds+" WHERE id = ?", id)
-		if err != nil {
-			return err
-		}
-		var existing tableName
-		if row != nil {
-			text, err := rowText(row, "record_type")
-			if err != nil {
-				return err
-			}
-			existing = tableName(text)
-		}
-		earlier := claimed[id]
-		if table == tableConversation || table == tableEntry || table == tableDocument {
-			if existing != "" {
-				return fmt.Errorf("ID %d already belongs to %s", id, existing)
-			}
-			if earlier != "" {
-				return fmt.Errorf("ID %d is written more than once", id)
-			}
-		} else {
-			if existing != "" && existing != table {
-				return fmt.Errorf("ID %d already belongs to %s", id, existing)
-			}
-			if earlier != "" && earlier != table {
-				return fmt.Errorf("ID %d is written as two record types", id)
-			}
-		}
-		claimed[id] = table
-	}
-	return nil
-}
-
 func prepareDocumentActions(batch []durable.StorageWrite) (*documentActions, error) {
 	actions := &documentActions{actions: map[durable.DocumentId]*documentAction{}}
 	for _, write := range batch {
@@ -1378,175 +1412,6 @@ func prepareDocumentActions(batch []durable.StorageWrite) (*documentActions, err
 		}
 	}
 	return actions, nil
-}
-
-func (storage *SqliteStorage) checkDocumentActions(executor SqliteExecutor, actions *documentActions) error {
-	liveCounts := map[addressParts]int{}
-	var liveOrder []addressParts
-	for _, id := range actions.order {
-		action := actions.actions[id]
-		if action.copy != nil && actions.has(action.copy.Id) {
-			return fmt.Errorf("Document copy %d source is changed in the copy batch", id)
-		}
-		existing, err := getRecord[durable.DocumentRecord](executor, "SELECT record FROM "+storage.schema.Tables.Documents+" WHERE id = ?", int64(id))
-		if err != nil {
-			return err
-		}
-		if action.create == nil && existing == nil {
-			return fmt.Errorf("Unknown document: %d", id)
-		}
-		if action.create != nil && existing != nil {
-			return fmt.Errorf("Document %d already exists", id)
-		}
-		if existing != nil && existing.RetiredAt != nil {
-			return fmt.Errorf("Document %d is retired", id)
-		}
-		if action.content != nil && action.content.Kind == durable.ContentDelta {
-			previous, err := executor.Get(
-				"SELECT version FROM "+storage.schema.Tables.DocumentRevisions+" WHERE document_id = ? ORDER BY seq DESC LIMIT 1", int64(id),
-			)
-			if err != nil {
-				return err
-			}
-			if previous == nil {
-				return fmt.Errorf("Document %d delta has no base", id)
-			}
-			version, err := rowInt(previous, "version")
-			if err != nil {
-				return err
-			}
-			if version != int64(action.content.Version) {
-				return fmt.Errorf("Document %d version transition requires a base", id)
-			}
-		}
-		var parts addressParts
-		if action.create != nil {
-			parts = addressPartsOf(action.create.Kind, action.create.Scope, action.create.Key)
-		} else {
-			parts = addressPartsOf(existing.Kind, existing.Scope, existing.Key)
-		}
-		live, counted := liveCounts[parts]
-		if !counted {
-			liveOrder = append(liveOrder, parts)
-			current, err := storage.currentDocumentId(executor, parts)
-			if err != nil {
-				return err
-			}
-			if current {
-				live = 1
-			}
-		}
-		if action.retire && existing != nil {
-			live--
-		}
-		if action.create != nil && !action.retire {
-			live++
-		}
-		liveCounts[parts] = live
-	}
-	for _, parts := range liveOrder {
-		if liveCounts[parts] > 1 {
-			return errors.New("Document address already has a current incarnation")
-		}
-	}
-	return nil
-}
-
-// currentDocumentId reports whether an incarnation is current at the address.
-func (storage *SqliteStorage) currentDocumentId(executor SqliteExecutor, parts addressParts) (bool, error) {
-	row, err := executor.Get(`SELECT id FROM `+storage.schema.Tables.Documents+`
-				WHERE kind = ? AND scope_kind = ? AND owner_id = ? AND family = ? AND key_value = ? AND retired_at IS NULL
-				LIMIT 1`, parts.kind, parts.scopeKind, parts.ownerId, parts.family, parts.keyValue)
-	return row != nil, err
-}
-
-// applyTableWrite stores one write. For an entry it also returns the stored JSON text.
-func (storage *SqliteStorage) applyTableWrite(executor SqliteExecutor, write durable.StorageWrite, seq durable.Seq) (entryText string, err error) {
-	switch typed := write.(type) {
-	case durable.ConversationWrite:
-		value := typed.Value
-		record, err := encodeJSON(value)
-		if err != nil {
-			return "", err
-		}
-		if err := storage.claimId(executor, int64(value.Id), tableConversation); err != nil {
-			return "", err
-		}
-		var ownerConversation, ownerTask SqliteValue
-		if value.Owner != nil {
-			ownerConversation = int64(value.Owner.ConversationId)
-			ownerTask = int64(value.Owner.TaskId)
-		}
-		return "", executor.Run(
-			"INSERT INTO "+storage.schema.Tables.Conversations+" (id, owner_conversation_id, owner_task_id, record) VALUES (?, ?, ?, ?)",
-			int64(value.Id), ownerConversation, ownerTask, record,
-		)
-	case durable.EntryWrite:
-		value := typed.Value
-		if err := storage.claimId(executor, int64(value.Id), tableEntry); err != nil {
-			return "", err
-		}
-		var head SqliteValue
-		if value.Head != nil {
-			head = int64(*value.Head)
-		}
-		record, err := encodeJSON(value)
-		if err != nil {
-			return "", err
-		}
-		return record, executor.Run(
-			"INSERT INTO "+storage.schema.Tables.Entries+" (id, conversation_id, head, commit_seq, record) VALUES (?, ?, ?, ?, ?)",
-			int64(value.Id), int64(value.ConversationId), head, int64(seq), record,
-		)
-	case durable.TaskWrite:
-		value := typed.Value
-		if err := storage.claimId(executor, int64(value.Id), tableTask); err != nil {
-			return "", err
-		}
-		record, err := encodeJSON(value)
-		if err != nil {
-			return "", err
-		}
-		return "", executor.Run(
-			`INSERT INTO `+storage.schema.Tables.Tasks+` (id, conversation_id, kind, status, abort_requested, background, record)
-						VALUES (?, ?, ?, ?, ?, ?, ?)
-						ON CONFLICT(id) DO UPDATE SET conversation_id = excluded.conversation_id, kind = excluded.kind,
-						status = excluded.status, abort_requested = excluded.abort_requested,
-						background = excluded.background, record = excluded.record`,
-			int64(value.Id),
-			int64(value.ConversationId),
-			encodeIndexedString(value.Kind),
-			string(value.State.Status),
-			boolInt(value.AbortRequested),
-			boolInt(value.Background),
-			record,
-		)
-	case durable.SubmissionWrite:
-		value := typed.Value
-		if err := storage.claimId(executor, int64(value.Id), tableSubmission); err != nil {
-			return "", err
-		}
-		var requestId SqliteValue
-		if value.RequestId != nil {
-			requestId = encodeIndexedString(*value.RequestId)
-		}
-		record, err := encodeJSON(value)
-		if err != nil {
-			return "", err
-		}
-		return "", executor.Run(
-			`INSERT INTO `+storage.schema.Tables.Submissions+` (id, conversation_id, request_id, status, record) VALUES (?, ?, ?, ?, ?)
-						ON CONFLICT(id) DO UPDATE SET conversation_id = excluded.conversation_id,
-						request_id = excluded.request_id, status = excluded.status, record = excluded.record`,
-			int64(value.Id), int64(value.ConversationId), requestId, string(value.Status), record,
-		)
-	default:
-		return "", nil
-	}
-}
-
-func (storage *SqliteStorage) claimId(executor SqliteExecutor, id int64, table tableName) error {
-	return executor.Run("INSERT OR IGNORE INTO "+storage.schema.Tables.RecordIds+" (id, record_type) VALUES (?, ?)", id, string(table))
 }
 
 func (storage *SqliteStorage) resolveCopy(
@@ -1588,106 +1453,6 @@ func (storage *SqliteStorage) resolveCopies(executor SqliteExecutor, actions *do
 			return err
 		}
 		action.content = content
-	}
-	return nil
-}
-
-func (storage *SqliteStorage) applyDocumentActions(executor SqliteExecutor, actions *documentActions, seq durable.Seq) error {
-	for _, id := range actions.order {
-		action := actions.actions[id]
-		// Copies are resolved to their content by resolveCopies.
-		content := action.content
-		var record durable.DocumentRecord
-		if action.create != nil {
-			record = durable.DocumentRecord{
-				Id:        action.create.Id,
-				Kind:      action.create.Kind,
-				Key:       action.create.Key,
-				CreatedAt: seq,
-				Scope:     action.create.Scope,
-				History:   action.create.History,
-				Fork:      action.create.Fork,
-			}
-			var retiredAt SqliteValue
-			if action.retire {
-				retired := seq
-				record.RetiredAt = &retired
-				retiredAt = int64(seq)
-			}
-			parts := addressPartsOf(record.Kind, record.Scope, record.Key)
-			if err := storage.claimId(executor, int64(id), tableDocument); err != nil {
-				return err
-			}
-			encoded, err := encodeJSON(record)
-			if err != nil {
-				return err
-			}
-			if err := executor.Run(
-				`INSERT INTO `+storage.schema.Tables.Documents+`
-						(id, kind, family, key_value, scope_kind, owner_id, created_at, retired_at, record)
-						VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-				int64(id), parts.kind, parts.family, parts.keyValue, parts.scopeKind, parts.ownerId, int64(seq),
-				retiredAt, encoded,
-			); err != nil {
-				return err
-			}
-		} else {
-			existing, err := getRecord[durable.DocumentRecord](
-				executor, "SELECT record FROM "+storage.schema.Tables.Documents+" WHERE id = ?", int64(id),
-			)
-			if err != nil {
-				return err
-			}
-			if existing == nil {
-				return fmt.Errorf("Unknown document: %d", id)
-			}
-			record = *existing
-		}
-
-		if content != nil {
-			if content.Kind == durable.ContentBase && isCurrentOnly(record) {
-				if err := executor.Run("DELETE FROM "+storage.schema.Tables.DocumentRevisions+" WHERE document_id = ?", int64(id)); err != nil {
-					return err
-				}
-			}
-			var encoded string
-			var err error
-			if content.Kind == durable.ContentBase {
-				encoded, err = encodeJSON(content.Value)
-			} else {
-				encoded, err = encodeJSON(content.Ops)
-			}
-			if err != nil {
-				return err
-			}
-			if err := executor.Run(
-				"INSERT INTO "+storage.schema.Tables.DocumentRevisions+" (document_id, seq, kind, version, content) VALUES (?, ?, ?, ?, ?)",
-				int64(id), int64(seq), string(content.Kind), int64(content.Version), encoded,
-			); err != nil {
-				return err
-			}
-		}
-
-		if action.retire {
-			if action.create == nil {
-				retired := seq
-				record.RetiredAt = &retired
-				encoded, err := encodeJSON(record)
-				if err != nil {
-					return err
-				}
-				if err := executor.Run(
-					"UPDATE "+storage.schema.Tables.Documents+" SET retired_at = ?, record = ? WHERE id = ?", int64(seq), encoded, int64(id),
-				); err != nil {
-					return err
-				}
-			}
-			if isCurrentOnly(record) {
-				if err := executor.Run("DELETE FROM "+storage.schema.Tables.DocumentRevisions+" WHERE document_id = ?", int64(id)); err != nil {
-					return err
-				}
-			}
-		}
 	}
 	return nil
 }

@@ -25,6 +25,13 @@ func Current() uint64 { return current() }
 // it there, so such a caller waits for Proving to end before it reuses them. It is false where Current always formats the header.
 func Proving() bool { return proving() }
 
+// Token identifies the calling goroutine among the goroutines alive at the same time, for a caller that compares the token of a
+// goroutine it recorded with the caller's on every call of a hot path. Where the runtime's goroutine record can be read it is the
+// record's address, which costs a load and needs no proof; elsewhere it is Current. A token is valid while the goroutine it
+// identifies runs: the runtime reuses a goroutine's record once the goroutine has ended, so a token outlives its goroutine only
+// as a name for whichever goroutine next holds the record. It is never zero and is not a wire, persisted or application identity.
+func Token() uintptr { return token() }
+
 // stackID parses the ID from the header line runtime.Stack writes for the calling goroutine.
 func stackID() uint64 {
 	var buf [64]byte

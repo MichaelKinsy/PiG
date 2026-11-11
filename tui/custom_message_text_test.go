@@ -39,7 +39,7 @@ func TestCustomMessageTextMatchesPi(t *testing.T) {
 // CustomMessageComponent extends Container (custom-message.ts:14): Spacer(1) and a Box(1, 1) holding a Text(label, 0, 0), a
 // Spacer(1) and the Markdown body, so a label wider than the box wraps like any Text; no row is wider than the width.
 func TestCustomMessageComponentIsAContainerWhoseLabelWrapsInsideTheBox(t *testing.T) {
-	c := NewCustomMessageComponent(&CustomMessage{CustomType: "my-type", Content: "body"}, nil, nil, 1)
+	c := NewCustomMessageComponent(&CustomMessage{CustomType: "my-type", Content: "body"}, nil, nil, 1, nil, "", "")
 	if got := len(c.Children()); got != 2 {
 		t.Fatalf("children = %d, want 2", got)
 	}

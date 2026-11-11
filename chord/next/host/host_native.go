@@ -13,7 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Ports packages/chord/src/next/host/native.ts. Natives (§13): the handle `self.open` returns, a value opened during
+// Ports packages/chord/src/host/native.ts. Natives (§13): the handle `self.open` returns, a value opened during
 // activation and closed with a reason when its attempt ends; `within`, which bounds a close or a drain by a timeout; and the
 // drain's admission of running work.
 

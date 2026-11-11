@@ -40,7 +40,7 @@ func TestClientWritesRequestsInIDOrder(t *testing.T) {
 		return map[string]any{"content": []any{}}, nil
 	})
 	gated := &gatedTransport{InMemoryTransport: clientTransport, reached: make(chan struct{}), gate: make(chan struct{})}
-	client := mcp.NewClient(mcp.ClientOptions{Implementation: mcp.Implementation{Name: "test-client", Version: "2.0.0"}})
+	client := mcp.NewClient(mcp.ClientOptions{Name: "test-client", Version: "2.0.0"})
 	if _, err := client.Connect(t.Context(), gated); err != nil {
 		t.Fatal(err)
 	}

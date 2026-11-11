@@ -22,8 +22,9 @@ func TestJSONModeWritesNothingSessionStartEmittedBeforeTheWriterSubscribesInEver
 	}
 	fixtures := filepath.Join(root, "test", "parity", "testdata", "writer-start")
 	binary := buildPigBinaryForSignalTest(t)
-	for _, sdk := range []string{"node", "go", "python", "rust"} {
+	for _, sdk := range []string{"node", "go", "python", "rust", "lisp"} {
 		t.Run(sdk, func(t *testing.T) {
+			requireSDKFixtureToolchain(t, sdk)
 			home := t.TempDir()
 			ctx, cancel := context.WithTimeout(t.Context(), testbudget.Wait(t))
 			defer cancel()

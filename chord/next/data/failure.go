@@ -6,7 +6,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Ports packages/chord/src/next/data/failure.ts: failure causes. Transient (the object's own effect failed: retry
+// Ports packages/chord/src/data/failure.ts: failure causes. Transient (the object's own effect failed: retry
 // later), broken (its own code, a cycle or authority: retry by hand) or waiting (not its fault: no provider, no fitting
 // version, a dependency that failed; woken by an event). The failing stage decides, never the error code.
 

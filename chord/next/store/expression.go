@@ -11,7 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Ports packages/chord/src/next/store/expression.ts
+// Ports packages/chord/src/store/expression.ts
 //
 // The table expression language (slice 6a §6, §7; rules 10, 13, 14, 16; decision "Nullable columns and the `set`
 // form"): the builders plugins write `where` and `set` with, and their compilation at staging into one data-only

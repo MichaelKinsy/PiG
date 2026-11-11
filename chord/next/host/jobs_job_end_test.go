@@ -20,7 +20,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 )
 
-// Ports packages/chord/test/next/jobs/job.test.ts (keep-alive over a link, the object's end, GC); the other cases are
+// Ports packages/chord/test/jobs/job.test.ts (keep-alive over a link, the object's end, GC); the other cases are
 // in jobs_job_test.go and jobs_job_runs_test.go. The Go forms are described in jobs_job_test.go.
 
 // jobClosingLink is `failing` of the keep-alive test: the server's end of the link closes while it sends.

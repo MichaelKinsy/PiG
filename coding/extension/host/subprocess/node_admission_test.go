@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // Pi loader.ts awaits factories in configured order while resource-loader.ts hands them one bus. A native factory between two Node factories must not split their bus.
@@ -44,7 +44,11 @@ export default function(pi) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	mod := fmt.Sprintf("module example.com/admission\n\ngo 1.26.0\n\nrequire github.com/MichaelKinsy/PiG/extensions/sdk v%s\nreplace github.com/MichaelKinsy/PiG/extensions/sdk => %s\n", pigversion.PigVersion, filepath.ToSlash(sdk))
+	sdkVersion, err := testenv.RootSDKRequirement("../../../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	mod := fmt.Sprintf("module example.com/admission\n\ngo 1.26.0\n\nrequire github.com/MichaelKinsy/PiG/extensions/sdk %s\nreplace github.com/MichaelKinsy/PiG/extensions/sdk => %s\n", sdkVersion, filepath.ToSlash(sdk))
 	if err := os.WriteFile(filepath.Join(goRoot, "go.mod"), []byte(mod), 0o644); err != nil {
 		t.Fatal(err)
 	}

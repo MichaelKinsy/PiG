@@ -21,7 +21,7 @@ func TestAToolResultWithALoneSurrogateKeepsItThroughTheHarnessAndTheEntry(t *tes
 	f := codemodeChat(t)
 	schema := map[string]any{"type": "object", "properties": map[string]any{"s": map[string]any{"type": "string"}}}
 	addTool(t, f.setup.registry, harness.DefineTool(durable.ToolRegistration{
-		ToolSchema:             ai.ToolSchema{Name: "lone", Description: "lone", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}},
+		Name: "lone", Description: "lone", Parameters: map[string]any{"type": "object", "properties": map[string]any{}},
 		StructuredOutputSchema: schema,
 		Execute: func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			return durable.ToolExecutionResult{

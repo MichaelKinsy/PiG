@@ -7,7 +7,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 )
 
-// Ports packages/chord/src/next/documents/handles.ts
+// Ports packages/chord/src/documents/handles.ts
 //
 // Document handles (slice 6a §1.2): what `self.state` returns, one per attempt and definition, a thin view of its
 // object's slot bound to the attempt's seal token and the definition's version.

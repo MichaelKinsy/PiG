@@ -434,7 +434,7 @@ func TestRunClipboardCommandEncodesJavaScriptUTF8(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The deadline is not under test here. Starting the helper binary takes seconds on a loaded host (a race build also waits GORACE atexit_sleep_ms at exit), so use the generous deadline TestRunClipboardCommand uses; the default 3 s of clipboard-command.ts applies to Pi's callers, not to this child.
+	// The deadline is not under test here. Starting the helper binary can take seconds on a loaded host (TestMain sets atexit_sleep_ms=0 in GORACE for the helpers a race build starts, so they exit at once), so use the generous deadline TestRunClipboardCommand uses; the default 3 s of clipboard-command.ts applies to Pi's callers, not to this child.
 	const slow = 30 * time.Second
 	for _, tc := range clipboardJavaScriptTextCases() {
 		t.Run(tc.name, func(t *testing.T) {

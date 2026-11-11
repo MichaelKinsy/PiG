@@ -27,7 +27,7 @@ func (u *terminalStateProbeUI) GetToolsExpanded() bool {
 }
 
 func TestTerminalInputUsesOwnerSnapshotWithoutReadingMutableUI(t *testing.T) {
-	ui := &terminalStateProbeUI{terminalInputUI: terminalInputUI{UIContext: extension.NoopUIContext}}
+	ui := &terminalStateProbeUI{UIContext: extension.NoopUIContext}
 	hostEnd, extEnd := net.Pipe()
 	conn := NewConn("state-probe", hostEnd)
 	ctx, cancel := context.WithCancel(t.Context())

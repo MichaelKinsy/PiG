@@ -7,7 +7,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 )
 
-// Ports packages/chord/src/next/documents/line.ts
+// Ports packages/chord/src/documents/line.ts
 //
 // An object's line (§9): its transactions, cold loads, key pages and eviction sweeps run on it one at a time, in the
 // order they asked. Go form of Pi's promise chain: a call takes its place under mu at the call (so the order is the

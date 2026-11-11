@@ -13,31 +13,33 @@ import (
 // it (time.AfterFunc starts one per firing), so the scheduler starts none; `running` is closed when a flush ended, and Close
 // waits on it. SetTimer and Now are injected, as Pi's, so tests drive time.
 
-// FlushSchedulerOptions are what NewFlushScheduler takes; a zero duration takes its default.
+// FlushSchedulerOptions are what NewFlushScheduler takes. Times are milliseconds, as Pi's (`delayMs`, `intervalMs`, ...); a
+// zero delay takes its default, where Pi's `??` takes an explicit zero as it is.
 type FlushSchedulerOptions struct {
 	// Flush uploads what was committed. A failed flush is retried with backoff.
 	Flush func() error
-	// SetTimer arms a timer calling callback after delay (on a goroutine of its own, once) and returns its disarm.
-	SetTimer func(callback func(), delay time.Duration) (disarm func())
-	Now      func() time.Time
+	// SetTimer arms a timer calling callback after delayMs (on a goroutine of its own, once) and returns its disarm.
+	SetTimer func(callback func(), delayMs int64) (disarm func())
+	// Now is the time in milliseconds, on any clock that does not run backwards.
+	Now func() int64
 	// OnError is told of a failed flush; the scheduler retries it.
 	OnError func(err error)
-	// Interval is the delay of an ordinary flush after a commit. Default 5 seconds.
-	Interval time.Duration
-	// Urgent is the delay of a flush after an urgent commit. Default 200 milliseconds.
-	Urgent time.Duration
-	// Retry is the first retry delay after a failed flush, doubling up to MaxRetry. Default 1 second.
-	Retry time.Duration
-	// MaxRetry bounds the retry delay. Default 1 minute.
-	MaxRetry time.Duration
+	// IntervalMs is the delay of an ordinary flush after a commit. Default 5 seconds.
+	IntervalMs int64
+	// UrgentMs is the delay of a flush after an urgent commit. Default 200 milliseconds.
+	UrgentMs int64
+	// RetryMs is the first retry delay after a failed flush, doubling up to MaxRetryMs. Default 1 second.
+	RetryMs int64
+	// MaxRetryMs bounds the retry delay. Default 1 minute.
+	MaxRetryMs int64
 }
 
-// RealTimers is SetTimer over time.AfterFunc and Now over time.Now.
-func RealTimers() (setTimer func(callback func(), delay time.Duration) (disarm func()), now func() time.Time) {
-	return func(callback func(), delay time.Duration) func() {
-		timer := time.AfterFunc(delay, callback)
+// RealTimers is SetTimer over time.AfterFunc and Now over the wall clock in milliseconds.
+func RealTimers() (setTimer func(callback func(), delayMs int64) (disarm func()), now func() int64) {
+	return func(callback func(), delayMs int64) func() {
+		timer := time.AfterFunc(time.Duration(delayMs)*time.Millisecond, callback)
 		return func() { timer.Stop() }
-	}, time.Now
+	}, func() int64 { return time.Now().UnixMilli() }
 }
 
 // FlushScheduler decides when to flush: some time after a commit, sooner after an urgent one, one flush at a time.
@@ -47,12 +49,12 @@ type FlushScheduler struct {
 	options FlushSchedulerOptions
 
 	mu     sync.Mutex
-	due    *time.Time
+	due    *int64
 	disarm func()
 	// running is closed when the flush underway ended; nil when none is.
 	running chan struct{}
 	// pendingDue is when the commits that arrived during a flush want the next one.
-	pendingDue *time.Time
+	pendingDue *int64
 	failures   int
 	closed     bool
 }
@@ -62,7 +64,7 @@ func NewFlushScheduler(options FlushSchedulerOptions) *FlushScheduler {
 	return &FlushScheduler{options: options}
 }
 
-func orDefault(value, fallback time.Duration) time.Duration {
+func orDefault(value, fallback int64) int64 {
 	if value == 0 {
 		return fallback
 	}
@@ -76,13 +78,13 @@ func (scheduler *FlushScheduler) Notify(urgent bool) {
 	if scheduler.closed {
 		return
 	}
-	delay := orDefault(scheduler.options.Interval, 5*time.Second)
+	delay := orDefault(scheduler.options.IntervalMs, 5000)
 	if urgent {
-		delay = orDefault(scheduler.options.Urgent, 200*time.Millisecond)
+		delay = orDefault(scheduler.options.UrgentMs, 200)
 	}
-	due := scheduler.options.Now().Add(delay)
+	due := scheduler.options.Now() + delay
 	if scheduler.running != nil {
-		if scheduler.pendingDue == nil || due.Before(*scheduler.pendingDue) {
+		if scheduler.pendingDue == nil || due < *scheduler.pendingDue {
 			scheduler.pendingDue = &due
 		}
 		return
@@ -113,15 +115,15 @@ func (scheduler *FlushScheduler) Close(ctx context.Context) error {
 }
 
 // arm arms the timer for due unless one is armed for sooner. The caller holds mu.
-func (scheduler *FlushScheduler) arm(due time.Time) {
-	if scheduler.due != nil && !scheduler.due.After(due) {
+func (scheduler *FlushScheduler) arm(due int64) {
+	if scheduler.due != nil && *scheduler.due <= due {
 		return
 	}
 	if scheduler.disarm != nil {
 		scheduler.disarm()
 	}
 	scheduler.due = &due
-	scheduler.disarm = scheduler.options.SetTimer(scheduler.run, max(0, due.Sub(scheduler.options.Now())))
+	scheduler.disarm = scheduler.options.SetTimer(scheduler.run, max(0, due-scheduler.options.Now()))
 }
 
 // run is the timer's callback: one flush, then the next one when commits arrived during it or it failed.
@@ -145,15 +147,15 @@ func (scheduler *FlushScheduler) run() {
 
 	scheduler.mu.Lock()
 	defer scheduler.mu.Unlock()
-	var retry *time.Time
+	var retry *int64
 	if err != nil {
-		maxDelay := orDefault(scheduler.options.MaxRetry, time.Minute)
+		maxDelay := orDefault(scheduler.options.MaxRetryMs, 60_000)
 		delay := maxDelay
 		if scheduler.failures < 32 {
-			delay = min(orDefault(scheduler.options.Retry, time.Second)<<scheduler.failures, maxDelay)
+			delay = min(orDefault(scheduler.options.RetryMs, 1000)<<scheduler.failures, maxDelay)
 		}
 		scheduler.failures++
-		at := scheduler.options.Now().Add(delay)
+		at := scheduler.options.Now() + delay
 		retry = &at
 	} else {
 		scheduler.failures = 0

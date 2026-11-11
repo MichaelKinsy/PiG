@@ -1,6 +1,6 @@
 package plugins
 
-// pi: packages/chord/src/next-node/plugins/plugins.ts
+// pi: packages/chord/src/node/plugins/plugins.ts
 
 import (
 	"context"
@@ -20,10 +20,12 @@ import (
 
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/build"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
-// Ports packages/chord/test/next-node/plugins/plugins.test.ts (all but "end to end: a server and a worker", which is
+// Ports packages/chord/test/node/plugins/plugins.test.ts (all but "end to end: a server and a worker", which is
 // plugins_endtoend_test.go). Tests of the plugins component (slice 7c §4, §5, §7): per plugin at startup and reload (a failing
 // build, evaluation, setup; unchanged plugins untouched; added and removed plugins; the closure rule through builds),
 // `rollout` (order, stopping at a rejecting step, marks), installs through the component, the app's API and required roots
@@ -63,8 +65,8 @@ type pcOptions struct {
 	// hostError gets what the Node hosts' hosts report in the background (NodeOptions.OnError).
 	hostError func(NodeHostError)
 	// roots are the component's roots (the root given to pcNew when nil) and api its API.
-	roots []PluginRoot
-	api   *AppApi
+	roots []model.PluginRoot
+	api   *model.AppApi
 }
 
 // pcComponent is the component over a root (plugins.test.ts's `component`), its reports collected, and the cache directory
@@ -97,12 +99,12 @@ func (c *pcComponent) quiet(t *testing.T) {
 }
 
 // pcKinds is the fixtures' app's kinds (support.ts's `kindsOf`).
-func pcKinds(modules []string) []KindDefinition {
+func pcKinds(modules []string) []KindEntry {
 	packages := append(slices.Clone(pcHostPackages), modules...)
-	return []KindDefinition{
-		{Name: "server", Platform: PlatformNode, HostPackages: packages},
-		{Name: "worker", Platform: PlatformNode, HostPackages: packages},
-		{Name: "web", Platform: PlatformBrowser, HostPackages: packages},
+	return []KindEntry{
+		{Name: "server", Definition: KindDefinition{Platform: model.PlatformNode, HostPackages: packages}},
+		{Name: "worker", Definition: KindDefinition{Platform: model.PlatformNode, HostPackages: packages}},
+		{Name: "web", Definition: KindDefinition{Platform: model.PlatformBrowser, HostPackages: packages}},
 	}
 }
 
@@ -120,10 +122,10 @@ func pcNew(t *testing.T, root string, opts ...pcOptions) *pcComponent {
 	reported := &pcReported{}
 	roots := chosen.roots
 	if roots == nil {
-		roots = []PluginRoot{{Path: root}}
+		roots = []model.PluginRoot{{Path: root}}
 	}
 	created := CreatePlugins(PluginsOptions{
-		Roots: roots, Api: chosen.api, Kinds: pcKinds(chosen.modules), Install: chosen.install, OnError: reported.add, Node: node,
+		Build: build.BuildFacet, Roots: roots, Api: chosen.api, Kinds: pcKinds(chosen.modules), Install: chosen.install, OnError: reported.add, Node: node,
 	}, background)
 	t.Cleanup(created.Close)
 	return &pcComponent{Plugins: created, cache: cache, reported: reported}
@@ -599,7 +601,7 @@ func TestPluginsCurrentSetsScriptsKindBuiltOnFirstUseABuildChangesNoSetARolloutA
 		out := [][2]string{}
 		for _, script := range scripts {
 			what := string(script.Built.Kind)
-			if script.Built.Kind == BuiltFacetScript {
+			if script.Built.Kind == model.BuiltFacetScript {
 				what = script.Built.Digest[:8]
 			}
 			out = append(out, [2]string{script.Plugin.Name, what})
@@ -690,8 +692,8 @@ func TestPluginsTheAppsAPIRequiredRootsAndInstallsChecksPluginsImportsAgainstThe
 	writePlugin(t, app, "old", "@test/old", map[string]string{"worker.ts": facet("v1")}, nil)
 	writePlugin(t, user, "mine", "@test/mine", map[string]string{"worker.ts": facet("v1")}, nil)
 	c := pcNew(t, app, pcOptions{
-		modules: []string{"@acme/app/v3"}, roots: []PluginRoot{{Path: app, Required: true}, {Path: user}},
-		api: &AppApi{Name: "@acme/app", Versions: []string{"v3"}},
+		modules: []string{"@acme/app/v3"}, roots: []model.PluginRoot{{Path: app, Required: true}, {Path: user}},
+		api: &model.AppApi{Name: "@acme/app", Versions: []string{"v3"}},
 	})
 	module := filepath.Join(t.TempDir(), "v3.mjs")
 	writeFiles(t, filepath.Dir(module), map[string]string{"v3.mjs": `export { defineFacet } from "` + c.src(t) + `index.ts";`})
@@ -724,12 +726,12 @@ func TestPluginsTheAppsAPIRequiredRootsAndInstallsRejectsLoadWhenARequiredRootIs
 	writePlugin(t, app, "core", "@app/core", map[string]string{"server.ts": facet}, nil)
 	for _, each := range []struct {
 		name    string
-		roots   []PluginRoot
+		roots   []model.PluginRoot
 		problem string
 	}{
-		{"a broken package", []PluginRoot{{Path: broken, Required: true}}, `package\.json: `},
-		{"a missing root", []PluginRoot{{Path: filepath.Join(broken, "missing"), Required: true}}, `the required root does not exist`},
-		{"a name an earlier root has", []PluginRoot{{Path: user}, {Path: app, Required: true}}, `plugin "@app/core" is in .* already`},
+		{"a broken package", []model.PluginRoot{{Path: broken, Required: true}}, `package\.json: `},
+		{"a missing root", []model.PluginRoot{{Path: filepath.Join(broken, "missing"), Required: true}}, `the required root does not exist`},
+		{"a name an earlier root has", []model.PluginRoot{{Path: user}, {Path: app, Required: true}}, `plugin "@app/core" is in .* already`},
 	} {
 		t.Run(each.name, func(t *testing.T) {
 			c := pcNew(t, "", pcOptions{roots: each.roots})
@@ -799,7 +801,7 @@ func TestPluginsPluginsWhoseFilesMoveAndRemovedPluginsRebuildsASingleFilePluginT
 	writePlugin(t, root, "hello", "hello", map[string]string{"worker.ts": pcItemText(t, "hello", "from a directory")}, nil)
 	c.waitMarks(t, "set", func(marks PluginsState) bool { return marks.Set })
 	built := c.build(t)
-	if len(built.Plugins) != 1 || built.Plugins["hello"].Layout != LayoutDirectory {
+	if len(built.Plugins) != 1 || built.Plugins["hello"].Layout != model.LayoutDirectory {
 		t.Fatalf("built plugins = %+v, want hello as a directory", built.Plugins)
 	}
 	step, err := c.Step("worker", h.node)
@@ -1164,7 +1166,7 @@ func TestPluginsFixRound1ReadsAChangedPackageJSONAgainAtTheNextBuildANewDependen
 	}, nil)
 	c := pcNew(t, root, pcOptions{install: InstallOptions{NpmCommand: []string{pcNode(t), filepath.Join(tools, "npm.mjs")}}})
 	first := c.build(t)
-	if len(first.Facets) != 1 || first.Facets[0].Kind != BuiltFacetScript {
+	if len(first.Facets) != 1 || first.Facets[0].Kind != model.BuiltFacetScript {
 		t.Fatalf("facets = %+v", first.Facets)
 	}
 	writeFiles(t, dir, map[string]string{"package.json": `{"name":"@test/a","type":"module","dependencies":{"new-dep":"1.0.0"}}`})
@@ -1184,7 +1186,7 @@ func TestPluginsFixRound1ReadsAChangedPackageJSONAgainAtTheNextBuildANewDependen
 		t.Fatalf("marks = %+v, want set false", marks)
 	}
 	built := c.build(t, "@test/a")
-	if len(built.Facets) != 1 || built.Facets[0].Kind != BuiltFacetScript || built.Facets[0].Plugin != "@test/a" {
+	if len(built.Facets) != 1 || built.Facets[0].Kind != model.BuiltFacetScript || built.Facets[0].Plugin != "@test/a" {
 		t.Fatalf("facets = %+v", built.Facets)
 	}
 	if got := c.Discovery().Plugins[0].Dependencies; !slices.Equal(got, []string{"new-dep"}) {

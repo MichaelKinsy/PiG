@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/store"
 )
 
-// Ports packages/chord/src/next/documents/keyed-slot.ts
+// Ports packages/chord/src/documents/keyed-slot.ts
 //
 // Keyed slots (slice 6a §1.2, §4, §10, §11): the documents of one keyed name on one object, by key. In memory, every
 // present document stays; persisted, a document is loaded on demand (a cold read is a job on the object's line, one

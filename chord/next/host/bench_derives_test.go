@@ -11,7 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/documents"
 )
 
-// Ports packages/chord/test/next/bench/derives.ts: a retirement through derives (slice 6a rule 21): a singleton under a
+// Ports packages/chord/test/bench/derives.ts: a retirement through derives (slice 6a rule 21): a singleton under a
 // diamond of 40 derives (13 layers of two derives joined by a third, 2^13 paths from the top to the bottom), its bottom
 // watched; each step retires the document and creates it again in one transaction, so every step carries the `retired`
 // flag through the diamond. The flag reaches each derive once per retirement, not once per path. Pi reports the median

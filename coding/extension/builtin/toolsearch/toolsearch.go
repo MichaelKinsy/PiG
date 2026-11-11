@@ -270,7 +270,7 @@ func (r *Bm25Ranker) Rank(query string, documents []Document, limit int) []Match
 		if len(document.localNameTerms) > 0 && !slices.ContainsFunc(document.localNameTerms, func(term string) bool { return !slices.Contains(queryTerms, term) }) {
 			score += fullNameBonus
 		}
-		ranked = append(ranked, rankedMatch{Match: Match{Name: document.name, Score: score}, exact: isExactNameQuery(exactQuery, document.name), covered: covered})
+		ranked = append(ranked, rankedMatch{Name: document.name, Score: score, exact: isExactNameQuery(exactQuery, document.name), covered: covered})
 	}
 	sort.SliceStable(ranked, func(a, b int) bool {
 		if ranked[a].exact != ranked[b].exact {

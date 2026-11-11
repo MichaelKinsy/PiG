@@ -14,7 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
 )
 
-// Ports packages/chord/src/next-node/workers/process.ts. A worker process as the server sees it (slice 10 §3, Chord v1's
+// Ports packages/chord/src/node/workers/process.ts. A worker process as the server sees it (slice 10 §3, Chord v1's
 // `forkDriver`): started as a detached process group (the whole tree can be killed), stdout and stderr piped (the stderr
 // tail kept, both mirrored to the server's own when the app takes no output), its IPC link made at the fork so the child's
 // `hello` and early holds are queued, never lost; control messages, the link's close and the exit are told as they happen.

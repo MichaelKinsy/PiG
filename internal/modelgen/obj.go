@@ -6,7 +6,7 @@ package modelgen
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"io"
@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
+	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 )
 
 // Obj is a JavaScript plain object: string keys in insertion order. Values are nil (JSON null), string, bool, float64,
@@ -337,57 +338,57 @@ func Quote(text string) string {
 // ParseJSON is JSON.parse for catalog sources: objects become *Obj in document order (a repeated key keeps its first position
 // and takes its last value), numbers become float64.
 func ParseJSON(data []byte) (any, error) {
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.UseNumber()
+	decoder := jsontext.NewDecoder(bytes.NewReader(data), jsonopts.Parse)
 	value, err := decodeValue(decoder)
 	if err != nil {
 		return nil, err
 	}
-	if _, err := decoder.Token(); err != io.EOF {
+	if _, err := decoder.ReadToken(); !errors.Is(err, io.EOF) {
 		return nil, errors.New("unexpected data after JSON value")
 	}
 	return value, nil
 }
 
-func decodeValue(decoder *json.Decoder) (any, error) {
-	token, err := decoder.Token()
+func decodeValue(decoder *jsontext.Decoder) (any, error) {
+	token, err := decoder.ReadToken()
 	if err != nil {
 		return nil, err
 	}
-	switch v := token.(type) {
-	case json.Delim:
-		switch v {
-		case '{':
-			object := NewObj()
-			for decoder.More() {
-				keyToken, err := decoder.Token()
-				if err != nil {
-					return nil, err
-				}
-				value, err := decodeValue(decoder)
-				if err != nil {
-					return nil, err
-				}
-				object.Set(keyToken.(string), value)
+	switch token.Kind() {
+	case '{':
+		object := NewObj()
+		for decoder.PeekKind() != '}' {
+			key, err := jsonopts.ReadName(decoder) // the JavaScript key, not Token.String(): see jsonopts.ReadName
+			if err != nil {
+				return nil, err
 			}
-			_, err := decoder.Token()
-			return object, err
-		case '[':
-			list := []any{}
-			for decoder.More() {
-				value, err := decodeValue(decoder)
-				if err != nil {
-					return nil, err
-				}
-				list = append(list, value)
+			value, err := decodeValue(decoder)
+			if err != nil {
+				return nil, err
 			}
-			_, err := decoder.Token()
-			return list, err
+			object.Set(key, value)
 		}
-	case json.Number:
-		return jsnumber.FromJSON([]byte(v.String())), nil
+		_, err := decoder.ReadToken()
+		return object, err
+	case '[':
+		list := []any{}
+		for decoder.PeekKind() != ']' {
+			value, err := decodeValue(decoder)
+			if err != nil {
+				return nil, err
+			}
+			list = append(list, value)
+		}
+		_, err := decoder.ReadToken()
+		return list, err
+	case '0':
+		return jsnumber.FromJSON([]byte(token.String())), nil
+	case '"':
+		return token.String(), nil
+	case 't', 'f':
+		return token.Bool(), nil
 	}
-	return token, nil
+	return nil, nil
 }
 
 func (o *Obj) member(key string) any {

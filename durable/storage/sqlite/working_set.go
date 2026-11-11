@@ -75,15 +75,17 @@ func (set *workingSet) release() {
 	set.reset()
 }
 
+// dataVersionColumn names the column of PRAGMA data_version.
+var dataVersionColumn = []string{"data_version"}
+
 // checkVersion resets the set when another connection changed the database since the set was last consistent. The
 // caller holds mu.
 func (set *workingSet) checkVersion(db SqliteDatabase) error {
-	row, err := db.Get("PRAGMA data_version")
-	if err != nil {
+	var version int64
+	if err := eachRow(db, true, "PRAGMA data_version", nil, dataVersionColumn, func(values []SqliteValue) (err error) {
+		version, err = valueInt(values[0], "data_version")
 		return err
-	}
-	version, err := rowInt(row, "data_version")
-	if err != nil {
+	}); err != nil {
 		return err
 	}
 	if set.versionKnown && set.version != version {

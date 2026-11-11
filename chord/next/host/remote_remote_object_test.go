@@ -23,9 +23,9 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// pi: packages/chord/src/next/remote/remote-object.ts
+// pi: packages/chord/src/remote/remote-object.ts
 
-// Ports packages/chord/test/next/remote/remote-object.test.ts.
+// Ports packages/chord/test/remote/remote-object.test.ts.
 //
 // Go forms: see remote_hold_test.go (rhSync is `await transported()`; rhVirtual is `fakeTimers()`; a started Promise is
 // an rhGo goroutine). `instancesOf(RemoteObject, "hold")` is designed out: a Go test reaches the host's remote objects

@@ -2,6 +2,8 @@
 
 package plugins
 
+// Ports packages/chord/src/node/plugins/watcher.ts
+
 import "golang.org/x/sys/windows"
 
 // statIdentity is the file index and the creation time of the entry at path, not following a link: what libuv gives Node's `ino`

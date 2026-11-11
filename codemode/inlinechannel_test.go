@@ -186,7 +186,7 @@ func TestAnInlineLaterSegmentDeliversItsResultBeforeAnExpiredDeadline(t *testing
 		time.Sleep(10 * time.Millisecond)
 		return args, nil
 	}}
-	sandbox, err := NewInlineSandbox(InlineSandboxOptions{InterruptBudget: 10_000_000, SandboxOptions: SandboxOptions{Tools: []Tool{wait}}})
+	sandbox, err := NewInlineSandbox(InlineSandboxOptions{InterruptBudget: 10_000_000, Tools: []Tool{wait}})
 	if err != nil {
 		t.Fatal(err)
 	}

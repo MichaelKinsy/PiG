@@ -45,8 +45,8 @@ type (
 )
 
 var specPlanModeDoc = durable.DefineDoc(durable.DocDefinition[specPlanMode]{
-	CommonDocDefinition: durable.CommonDocDefinition[specPlanMode]{Kind: "app.plan-mode", Version: 1, Initial: func() specPlanMode { return specPlanMode{Enabled: false} }, CheckpointWhen: func(specPlanMode, []durable.Op, durable.CheckpointInfo) bool { return false }},
-	DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkCurrent},
+	Kind: "app.plan-mode", Version: 1, Initial: func() specPlanMode { return specPlanMode{Enabled: false} }, CheckpointWhen: func(specPlanMode, []durable.Op, durable.CheckpointInfo) bool { return false },
+	Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkCurrent,
 })
 
 // specNames are the names the spec leaves to the application (spec-usage.test.ts:49-80).
@@ -190,14 +190,12 @@ func specUsageHarnessExamples(names specNames) map[string]func(context.Context) 
 		Name: "subagent",
 		Tools: []*durable.ToolRegistration{
 			new(durable.ToolRegistration{
-				ToolSchema: ai.ToolSchema{
-					Name:        "subagent",
-					Description: "Delegate a self-contained task to a subagent and get its answer back.",
-					Parameters: map[string]any{
-						"type":       "object",
-						"properties": map[string]any{"task": map[string]any{"type": "string"}},
-						"required":   []any{"task"},
-					},
+				Name:        "subagent",
+				Description: "Delegate a self-contained task to a subagent and get its answer back.",
+				Parameters: map[string]any{
+					"type":       "object",
+					"properties": map[string]any{"task": map[string]any{"type": "string"}},
+					"required":   []any{"task"},
 				},
 				Replay: durable.ReplaySafe,
 				Execute: func(ctx context.Context, args any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
@@ -290,8 +288,8 @@ func specUsageHarnessExamples(names specNames) map[string]func(context.Context) 
 			// Absent: the conversation runs locally. Only conversations with this document run in a container.
 			// Subagents do not copy it: their creator writes it too when they should run in the container.
 			containerDoc := durable.DefineDoc(durable.DocDefinition[specContainer]{
-				CommonDocDefinition: durable.CommonDocDefinition[specContainer]{Kind: "app.container", Version: 1, Initial: func() specContainer { return specContainer{Image: "node:22"} }, CheckpointWhen: func(specContainer, []durable.Op, durable.CheckpointInfo) bool { return false }},
-				DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkCurrent},
+				Kind: "app.container", Version: 1, Initial: func() specContainer { return specContainer{Image: "node:22"} }, CheckpointWhen: func(specContainer, []durable.Op, durable.CheckpointInfo) bool { return false },
+				Scope: durable.ScopeConversation, History: durable.HistoryLatest, Fork: durable.ForkCurrent,
 			})
 			_, err := harness.OpenHarness(ctx, names.storage, harness.HarnessOptions{
 				Models:   names.models,

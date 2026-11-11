@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
-	"github.com/MichaelKinsy/PiG/internal/sessionentry"
 )
 
 // custom-entry.ts CustomEntryComponent asks the registered entry renderer for the component of the whole session entry with the
@@ -30,9 +29,9 @@ func TestCustomEntryRendererProxyRendersTheEntryOverTheWire(t *testing.T) {
 
 	parent := "parent-1"
 	entry := extension.CustomEntry{
-		SessionEntryBase: sessionentry.SessionEntryBase{Type: "custom", ID: "entry-1", ParentID: &parent, Timestamp: "2026-01-01T00:00:00.000Z"},
-		CustomType:       "note",
-		Data:             map[string]any{"text": "hi"},
+		Type: "custom", ID: "entry-1", ParentID: &parent, Timestamp: "2026-01-01T00:00:00.000Z",
+		CustomType: "note",
+		Data:       map[string]any{"text": "hi"},
 	}
 	component := h.makeEntryRenderer(me, "note")(entry, extension.EntryRenderOptions{}, nil)
 

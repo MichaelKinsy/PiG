@@ -167,7 +167,7 @@ func checkSearchBodyScan(t *testing.T, line []byte) bool {
 	if !ok {
 		return false
 	}
-	entry := RawEntry{SessionEntryBase: SessionEntryBase{Type: "message"}}
+	entry := RawEntry{Type: "message"}
 	if want := treeSearchBody(entry, line); scanned != want {
 		t.Fatalf("scan of %s = %+v, decode = %+v", line, scanned, want)
 	}
@@ -265,7 +265,7 @@ func TestMessageSearchTextMatchesPiInNode(t *testing.T) {
 	if err := json.Unmarshal(stdout, &want); err != nil || len(want) != len(lines) {
 		t.Fatalf("node output: %v (%d of %d)", err, len(want), len(lines))
 	}
-	entry := RawEntry{SessionEntryBase: SessionEntryBase{Type: "message"}}
+	entry := RawEntry{Type: "message"}
 	for i, line := range lines {
 		if got := treeSearchBody(entry, []byte(line)); got.text != want[i] {
 			t.Fatalf("line %s: PiG %q, Pi %q", line, got.text, want[i])

@@ -907,7 +907,7 @@ func (e *Extension) takeProviderDef(name string, config ProviderConfig) (provide
 	}
 	// A re-registration replaces only the kinds it defines, as registerProvider merges defined values (model-runtime.ts registerProvider) and the host keeps the APIs it wired.
 	ops, imageAPIs, classifierAPIs := takeProviderOperations(config)
-	if len(imageAPIs)+len(classifierAPIs) > 0 {
+	if len(imageAPIs)+len(classifierAPIs) > 0 || ops.refresh != nil {
 		if e.providerOperations == nil {
 			e.providerOperations = make(map[string]providerOperations)
 		}
@@ -917,6 +917,9 @@ func (e *Extension) takeProviderDef(name string, config ProviderConfig) (provide
 		}
 		if len(classifierAPIs) > 0 {
 			kept.classifiers = ops.classifiers
+		}
+		if ops.refresh != nil {
+			kept.refresh = ops.refresh
 		}
 		e.providerOperations[name] = kept
 	}
@@ -930,7 +933,7 @@ func (e *Extension) takeProviderDef(name string, config ProviderConfig) (provide
 		}
 	}
 	data, err := json.MarshalJS(config)
-	return providerDef{Name: name, Config: data, StreamSimple: streaming, ImageAPIs: imageAPIs, ClassifierAPIs: classifierAPIs}, err
+	return providerDef{Name: name, Config: data, StreamSimple: streaming, ImageAPIs: imageAPIs, ClassifierAPIs: classifierAPIs, RefreshModels: ops.refresh != nil}, err
 }
 
 // heldCallbacks are the callbacks an extension holds for one provider name.
@@ -1501,7 +1504,7 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 	case "provider_object_callback", "provider_object_callback_sync":
 		result, err := e.dispatchProviderObjectCallback(req)
 		_ = e.conn.respond(id, result, err)
-	case methodOAuthLogin, methodOAuthRefresh, methodOAuthGetAPIKey,
+	case methodOAuthLogin, methodOAuthRefresh, methodOAuthGetAPIKey, methodOAuthModifyModels,
 		methodOAuthCredentialStatus, methodOAuthStoreCredentials, methodOAuthDeleteCredentials:
 		e.dispatchOAuth(id, req)
 

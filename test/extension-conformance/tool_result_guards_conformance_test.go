@@ -37,8 +37,8 @@ func TestToolResultGuardsMatchAcrossSDKs(t *testing.T) {
 			h.ui.ClearRecorded()
 			for _, tool := range tools {
 				event := extension.CustomToolResultEvent{
-					ToolResultEventBase: extension.ToolResultEventBase{Type: "tool_result", ToolCallID: tool + "-guard", Input: map[string]any{}, Content: []any{map[string]any{"type": "text", "text": "output"}}},
-					ToolName:            tool,
+					Type: "tool_result", ToolCallID: tool + "-guard", Input: map[string]any{}, Content: []any{map[string]any{"type": "text", "text": "output"}},
+					ToolName: tool,
 				}
 				if _, err := h.runner.EmitToolResult(ctx, event); err != nil {
 					t.Fatalf("%s tool_result: %v", tool, err)

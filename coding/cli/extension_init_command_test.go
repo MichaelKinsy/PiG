@@ -166,6 +166,35 @@ func TestRunExtensionInitRust(t *testing.T) {
 	assertScaffoldHasNoYAML(t, dir)
 }
 
+func TestRunExtensionInitNode(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("PIG_HOME", home)
+
+	dir := filepath.Join(t.TempDir(), "planner")
+	if code := runExtensionInit([]string{dir, "--lang", "typescript", "--json"}); code != 0 {
+		t.Fatalf("node init exit code = %d, want 0", code)
+	}
+	// Node has no SDK package to stage: the runtime supplies Pi's API module.
+	if _, err := os.Stat(filepath.Join(home, "sdk")); err == nil {
+		t.Fatal("node init staged an SDK")
+	}
+	source, err := os.ReadFile(filepath.Join(dir, "index.ts"))
+	if err != nil {
+		t.Fatalf("missing node index.ts: %v", err)
+	}
+	if !strings.Contains(string(source), "export default function (pi: ExtensionAPI)") || !strings.Contains(string(source), "planner_ping") {
+		t.Fatalf("Node scaffold is not a Pi default-export factory with the ping tool:\n%s", source)
+	}
+	if strings.Contains(string(source), filepath.ToSlash(home)) {
+		t.Fatalf("Node scaffold contains a machine-specific path:\n%s", source)
+	}
+	manifest, err := os.ReadFile(filepath.Join(dir, "package.json"))
+	if err != nil || !strings.Contains(string(manifest), `"name": "planner"`) {
+		t.Fatalf("package.json = %q, %v", manifest, err)
+	}
+	assertScaffoldHasNoYAML(t, dir)
+}
+
 func TestRunExtensionInitRefusesOverwriteWithoutForce(t *testing.T) {
 	t.Setenv("PIG_HOME", t.TempDir())
 	dir := filepath.Join(t.TempDir(), "x")
@@ -195,8 +224,9 @@ func TestRunExtensionInitRejectsUnknownLang(t *testing.T) {
 }
 
 func TestRunExtensionInitIsolatedScaffoldsStandalone(t *testing.T) {
-	for _, language := range []string{"go", "python", "rust"} {
+	for _, language := range []string{"go", "python", "rust", "lisp"} {
 		t.Run(language, func(t *testing.T) {
+			requireSDKFixtureToolchain(t, language)
 			t.Setenv("PIG_HOME", t.TempDir())
 			dir := filepath.Join(t.TempDir(), language+"-isolated")
 			if code := runExtensionInit([]string{dir, "--lang", language, "--isolated", "--json"}); code != 0 {
@@ -211,6 +241,18 @@ func TestRunExtensionInitIsolatedScaffoldsStandalone(t *testing.T) {
 			}
 			assertScaffoldHasNoYAML(t, dir)
 		})
+	}
+}
+
+// A Node extension is Pi's default-export factory and an executable Node script has no SDK to speak the wire with, so there is no isolated form to scaffold.
+func TestRunExtensionInitRejectsIsolatedNode(t *testing.T) {
+	t.Setenv("PIG_HOME", t.TempDir())
+	dir := filepath.Join(t.TempDir(), "node-isolated")
+	if code := runExtensionInit([]string{dir, "--lang", "node", "--isolated", "--json"}); code == 0 {
+		t.Fatal("init scaffolded an isolated Node extension")
+	}
+	if _, err := os.Stat(dir); err == nil {
+		t.Fatal("init created a directory for an isolated Node extension")
 	}
 }
 
@@ -250,13 +292,17 @@ func TestExtensionInitScaffoldsBuildAndRegister(t *testing.T) {
 	if testing.Short() {
 		t.Skip("scaffold registration builds language fixtures")
 	}
-	for _, language := range []string{"go", "python", "rust"} {
+	for _, language := range []string{"go", "python", "rust", "lisp", "node"} {
 		for _, isolated := range []bool{false, true} {
+			if isolated && language == "node" {
+				continue // TestRunExtensionInitRejectsIsolatedNode
+			}
 			name := language + "-fixture"
 			if isolated {
 				name += "-isolated"
 			}
 			t.Run(name, func(t *testing.T) {
+				requireSDKFixtureToolchain(t, language)
 				t.Setenv("PIG_HOME", t.TempDir())
 				root := filepath.Join(t.TempDir(), name)
 				args := []string{root, "--lang", language, "--json"}

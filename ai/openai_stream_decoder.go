@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
+	"github.com/MichaelKinsy/PiG/internal/jsonwire"
 )
 
 // openAIStreamDecoder translates openai core/streaming.mjs's iterSSEChunks, _iterSSEMessages, and fromSSEResponse generators. It follows 7.19.0 (Pi 1.1.0): the exact "[DONE]" sentinel ends the stream without reading further, an event that lacks its blank line is flushed at EOF, an "error" event and a malformed record throw the SDK's errors, and each suspension point is one of 7.19's awaits, including the return and cleanup awaits of createAbortableSSESource. A body read's awaits belong to the reader: the native read and source.iterator.next's Promise.race over it, which iterSSEChunks's for-await awaits.
@@ -204,7 +205,7 @@ func jsonObjectHasMember(data, name string) bool {
 		key := data[i+1 : end-1]
 		if escaped {
 			var decoded string
-			if json.Unmarshal([]byte(data[i:end]), &decoded) != nil {
+			if json.Unmarshal(jsonwire.Bytes(data[i:end]), &decoded) != nil {
 				return true // not reached for valid JSON; the caller's decode decides
 			}
 			key = decoded

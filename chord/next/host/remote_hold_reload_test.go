@@ -20,7 +20,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// Ports the final-state cases of packages/chord/test/next/remote/hold.test.ts that slice 7b added: holds across a reload
+// Ports the final-state cases of packages/chord/test/remote/hold.test.ts that slice 7b added: holds across a reload
 // (§6), across more than one reload, after a live failure, and across a reload whose mapping fails.
 //
 // Go forms: `await transported()` is transported over the links of the hosts, `await delivered()` is deliveredOn, a

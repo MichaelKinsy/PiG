@@ -57,7 +57,7 @@ type nestedDetails struct {
 
 func heldEntryCase(result agent.ToolResultMessage) (MessageEntry, json.RawMessage, error) {
 	parent := "0a1b2c3d"
-	entry := MessageEntry{SessionEntryBase: SessionEntryBase{Type: "message", ID: "4e5f6a7b", ParentID: &parent, Timestamp: "2026-10-13T08:00:00.000Z"},
+	entry := MessageEntry{Type: "message", ID: "4e5f6a7b", ParentID: &parent, Timestamp: "2026-10-13T08:00:00.000Z",
 		Message: agent.AgentMessage{ToolResult: &result}}
 	raw, err := marshalSessionLine(entry)
 	return entry, raw, err

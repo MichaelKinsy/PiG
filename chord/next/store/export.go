@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/sqlite"
 )
 
-// Ports packages/chord/src/next/store/export.ts
+// Ports packages/chord/src/store/export.ts
 //
 // `store.Export(ctx)` (slice 6a §13, rule 26): the store's state after its `lastSeq` as archive parts, read page by
 // page with plain reads while the export holds the commit queue (no commit can interleave, no long read transaction).

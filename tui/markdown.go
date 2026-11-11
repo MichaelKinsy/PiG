@@ -50,6 +50,9 @@ type Markdown struct {
 	cachedTheme          *Theme
 	cachedRevision       uint64
 	cachedTransformed    string
+	// cachedBuffered is whether cachedLines is rowBuf, the array a render for a borrowing container reuses.
+	cachedBuffered bool
+	rowBuf         []string
 	// inlinesOn is set while a render of a document that is not a quote or list item fills the inline renderings of memos;
 	// highlightsOn is the same for its highlighted code, which the document keeps for a quote or list item.
 	inlinesOn, highlightsOn bool
@@ -367,7 +370,26 @@ func (m *Markdown) highlightCode(highlight func(code, lang string) []string, lan
 var renderInline = (*Markdown).renderInlineMarkdown
 
 //perf:hot
-func (m *Markdown) Render(width int) []string {
+func (m *Markdown) Render(width int) []string { return m.render(width, false) }
+
+// renderBorrowedChild is Render for a container that borrows the rows: a rebuilt document is laid out into an array the
+// component keeps for its next render, so a streamed message does not allocate its whole row list each frame. The rows
+// stay valid until the component renders again; a later Render copies them first, so the array it returns is its own.
+// Only a container that holds the component as a child calls it, under that container's lock.
+//
+//perf:hot
+func (m *Markdown) renderBorrowedChild(width int) []string { return m.render(width, true) }
+
+// ownCachedLines is the cached rows as an array of the caller's own when the last render left them in the reusable one. A cache
+// hit only reads the component, so the copy is not kept: public renders of one component from several goroutines stay reads.
+func (m *Markdown) ownCachedLines() []string {
+	if m.cachedBuffered {
+		return slices.Clone(m.cachedLines)
+	}
+	return m.cachedLines
+}
+
+func (m *Markdown) render(width int, borrow bool) []string {
 	// Pi throws a RangeError for a negative width (" ".repeat(width)); a negative width renders as width 0 here.
 	if width < 0 {
 		width = 0
@@ -384,7 +406,10 @@ func (m *Markdown) Render(width int) []string {
 		content, ready = m.asyncState.resolve(m.AsyncTransform, markdownTransformInput{text: content, width: contentWidth, state: transformState, theme: ActiveTheme(), revision: revision})
 		if !ready {
 			if m.cachedWidth == width {
-				return m.cachedLines
+				if borrow {
+					return m.cachedLines
+				}
+				return m.ownCachedLines()
 			}
 			return nil
 		}
@@ -392,7 +417,10 @@ func (m *Markdown) Render(width int) []string {
 	if m.cachedLines != nil && m.cachedContent == m.Content && m.cachedWidth == width &&
 		m.cachedTransformState == transformState && (m.theme != nil || m.cachedTheme == ActiveTheme()) && m.cachedRevision == revision &&
 		(m.AsyncTransform == nil || m.cachedTransformed == content) {
-		return m.cachedLines
+		if borrow {
+			return m.cachedLines
+		}
+		return m.ownCachedLines()
 	}
 	if m.Transform != nil && m.AsyncTransform == nil {
 		content = m.Transform(content, contentWidth)
@@ -404,12 +432,13 @@ func (m *Markdown) Render(width int) []string {
 		content = jsstring.Canonical(content)
 	}
 	out := []string{}
+	buffered := false
 	if widthx.JSTrim(content) != "" {
-		out = m.renderDocument(content, width, contentWidth)
+		out, buffered = m.renderDocument(content, width, contentWidth, borrow)
 	} else if memos := m.memos(); memos != nil {
 		memos.resume = nil
 	}
-	m.cachedContent, m.cachedWidth, m.cachedLines = m.Content, width, out
+	m.cachedContent, m.cachedWidth, m.cachedLines, m.cachedBuffered = m.Content, width, out, buffered
 	m.cachedTransformState, m.cachedTheme = transformState, ActiveTheme()
 	m.cachedRevision, m.cachedTransformed = revision, transformed
 	if m.finished {
@@ -419,7 +448,7 @@ func (m *Markdown) Render(width int) []string {
 }
 
 // renderDocument is the rows of a component whose text is content, a non-blank text.
-func (m *Markdown) renderDocument(content string, width, contentWidth int) []string {
+func (m *Markdown) renderDocument(content string, width, contentWidth int, borrow bool) ([]string, bool) {
 	state := markedInlineStates.Get().(*markedInlineState)
 	state.startDocument()
 	m.inlineState = state
@@ -473,12 +502,17 @@ func (m *Markdown) renderDocument(content string, width, contentWidth int) []str
 	} else {
 		padding = slices.Repeat([]string{strings.Repeat(" ", width)}, max(m.paddingY, 0))
 	}
-	out := slices.Concat(padding, body, tail, padding)
-	// markdown.ts render returns [""] when text that is not blank renders no lines (only link definitions).
-	if len(out) == 0 {
-		out = []string{""}
+	if len(padding)*2+len(body)+len(tail) == 0 {
+		// markdown.ts render returns [""] when text that is not blank renders no lines (only link definitions).
+		return []string{""}, false
 	}
-	return out
+	if borrow {
+		out := slices.Grow(m.rowBuf[:0], len(padding)*2+len(body)+len(tail))
+		out = append(append(append(append(out, padding...), body...), tail...), padding...)
+		m.rowBuf = out
+		return out, true
+	}
+	return slices.Concat(padding, body, tail, padding), false
 }
 
 // applyMarkdownBackground is rows with the background function applied to every row that is not an image line.

@@ -165,7 +165,7 @@ func TestCreateInlineSandboxResultsAreThoseOfPisCreateInlineCodemodeSandbox(t *t
 	golden := loadGolden(t)
 	for _, c := range golden.Inlines {
 		t.Run(c.Name, func(t *testing.T) {
-			options := codemode.InlineSandboxOptions{SandboxOptions: codemode.SandboxOptions{MemoryLimitBytes: c.Options.MemoryLimitBytes}, InterruptBudget: c.Options.InterruptBudget}
+			options := codemode.InlineSandboxOptions{MemoryLimitBytes: c.Options.MemoryLimitBytes, InterruptBudget: c.Options.InterruptBudget}
 			for _, name := range c.Options.Tools {
 				options.Tools = append(options.Tools, codemode.Tool{Name: name, Execute: func(_ context.Context, args json.RawMessage) (json.RawMessage, error) {
 					if args == nil {

@@ -473,7 +473,7 @@ THIS SOFTWARE.
 
 The Node extension runtime highlights code for Pi 0.87.1's `highlightCode` and `getMarkdownTheme` with the same highlighter Pi 0.87.1 uses. `coding/extension/host/subprocess/runtime-node/shims/highlight.js/` holds the unmodified CommonJS build (`lib/`), `package.json` and `LICENSE` of the npm package `highlight.js@10.7.3` (integrity `sha512-tzcUFauisWKNHaRkN4Wjl/ZA07gENAjFl3J/c480dprkGTg5EQstgaNFqBfUqCq54kZRIEcreTsAgF/m2quD7A==`), copied by `automation/gen/vendor-pi-dist.sh`.
 
-`tui/internal/hljs/` ports the same highlighter to Go for PiG's own `highlightCode`: its `.go` files translate `lib/core.js` and the language callbacks, `grammars_eager.json.gz` and `grammars_all.json.gz` serialize the language definitions Pi 1.0.0 registers (`automation/gen/generate-highlight-grammars.mjs`), and `testdata/corpus.json` holds the test inputs of highlight.js's repository at tag 10.7.3 (`automation/gen/import-highlight-corpus.mjs`).
+`tui/internal/hljs/` ports the same highlighter to Go for PiG's own `highlightCode`: its `.go` files translate `lib/core.js` and the language callbacks, `grammars_eager.json.gz` and `grammars_all.json.zst` serialize the language definitions Pi 1.0.0 registers (`automation/gen/generate-highlight-grammars.mjs`), and `testdata/corpus.json` holds the test inputs of highlight.js's repository at tag 10.7.3 (`automation/gen/import-highlight-corpus.mjs`).
 
 ```text
 BSD 3-Clause License
@@ -758,6 +758,15 @@ THE SOFTWARE.
 Source: <https://github.com/modelcontextprotocol/typescript-sdk/blob/v1.29.0/src/client/auth.ts>
 
 `mcp/oauth` translates, through upstream's `packages/mcp/src/oauth`, the SDK's OAuth client subset (discovery, PKCE authorization code flow, dynamic client registration, token refresh) into Go. It retains the notice Copyright (c) 2024 Anthropic, PBC, under the MIT license reproduced in `LICENSES/MIT.txt`.
+
+## modernc.org/sqlite v1.62.0 (SQLite driver layer, PiG fork)
+
+Source: <https://gitlab.com/cznic/sqlite/-/tree/v1.62.0>
+
+Distributed files: `third_party/sqlite/`, a package of the root module. The directory is the non-test Go files of the v1.62.0 root package (the `database/sql/driver` layer; the transpiled SQLite library `modernc.org/sqlite/lib` stays the module dependency) with the changes listed in `third_party/sqlite/FORK.md` (a `_threading_mode` DSN parameter, and no `database/sql` registration).
+
+- Copyright (c) 2017 The Sqlite Authors.
+- License: BSD-3-Clause, in `third_party/sqlite/LICENSE` and `LICENSES/BSD-3-Clause.txt`.
 
 ## santhosh-tekuri/jsonschema v6.0.2 (JSON Schema validator, PiG fork)
 

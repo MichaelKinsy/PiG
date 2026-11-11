@@ -6,6 +6,7 @@ package jsonstringify
 import (
 	"bytes"
 	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"math"
 	"slices"
@@ -13,6 +14,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/durable/core/jv"
+	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 	"github.com/MichaelKinsy/PiG/internal/jsparity"
 )
 
@@ -84,22 +86,23 @@ type member struct {
 }
 
 func object(raw []byte) ([]byte, error) {
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	if _, err := decoder.Token(); err != nil {
+	decoder := jsontext.NewDecoder(bytes.NewReader(raw), jsonopts.Parse)
+	if _, err := decoder.ReadToken(); err != nil {
 		return nil, err
 	}
 	var members []member
 	positions := map[string]int{}
-	for decoder.More() {
+	for decoder.PeekKind() != '}' {
 		start := decoder.InputOffset()
-		if _, err := decoder.Token(); err != nil {
+		if _, err := decoder.ReadToken(); err != nil {
 			return nil, err
 		}
 		key := string(stringToken(bytes.TrimLeft(raw[start:decoder.InputOffset()], ", \t\r\n")))
-		var value json.RawMessage
-		if err := decoder.Decode(&value); err != nil {
+		valueBytes, err := decoder.ReadValue()
+		if err != nil {
 			return nil, err
 		}
+		value := bytes.Clone(valueBytes) // canonicalize returns a literal or a plain string as it is: the result must outlive the next call on the decoder
 		encoded, err := canonicalize(value)
 		if err != nil {
 			return nil, err

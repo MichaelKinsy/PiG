@@ -17,15 +17,13 @@ type ProviderState struct {
 
 // ProviderDoc is the built-in provider state; every fork starts with a fresh identity instead of copying its parent, and every change stores a complete base (provider.ts:12-20).
 var ProviderDoc = durable.DefineDoc(durable.DocDefinition[ProviderState]{
-	CommonDocDefinition: durable.CommonDocDefinition[ProviderState]{
-		Kind:    "pi.provider",
-		Version: 1,
-		CheckpointWhenRaw: func(durable.JsonObject, []durable.Op, durable.CheckpointInfo) bool {
-			return true
-		},
-
-		Initial: newProviderState,
+	Kind:    "pi.provider",
+	Version: 1,
+	CheckpointWhenRaw: func(durable.JsonObject, []durable.Op, durable.CheckpointInfo) bool {
+		return true
 	},
+
+	Initial:           newProviderState,
 	DocumentSemantics: durable.NewLatestConversationSemantics(durable.ForkInitial).DocumentSemantics,
 })
 
