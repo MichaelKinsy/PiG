@@ -1651,6 +1651,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ce0f352-2](#bf-ce0f352-2) | The editor's autocomplete list takes its colors from one `getSelectListTheme` equivalent, the same function… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ce366dd](#bf-ce366dd) | fix(coding): resume restores the transcript's tools only for the unchanged default selection… | PiG's own defect | All platforms | Unreleased |
 | [BF-ce42877](#bf-ce42877) | `durable/images.CreatePhotonImages`, and `durable/images/node.CreateNodePhotonImages` with `Worker: false`… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-ce4c9f2](#bf-ce4c9f2) | A worker that crashed while a script waited on it is restarted for its holders even when its exit is handled… | PiG's own defect | All platforms | Unreleased |
 | [BF-ce7dae9](#bf-ce7dae9) | MCP servers that frame server-sent events with a lone CR (or a CRLF split across reads) now deliver their… | PiG's own defect | All platforms | Unreleased |
 | [BF-ce8587e](#bf-ce8587e) | On macOS, reading an image or file paths from the clipboard and writing text to it no longer risk passing… | PiG's own defect | macOS | 0.5.0 |
 | [BF-ced3a9c](#bf-ced3a9c) | RPC model objects of built-in models carry `"type":"chat"` (`get_available_models`, `get_state`, `set_model`… | PiG's own defect | All platforms | 0.5.0 |
@@ -24663,6 +24664,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `34f7594aa5` (2026-10-11), `8435c98530` (2026-10-13), `ce42877426` (2026-10-13)
 - **Tests:** `durable/images/node/worker_test.go::TestTheWorkerPreparesImagesInCallOrder`, `durable/images/node/worker_test.go::TestTheWorkerPreparesOneImageAtATime`, `durable/images/node/worker_test.go::TestWorkerFalsePreparesWithThePlainProcessor`, `durable/images/sequential_test.go::TestCreatePhotonImagesPreparesImagesInCallOrder`, `durable/images/sequential_test.go::TestCreatePhotonImagesPreparesOneImageAtATime`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestAwaitedExtensionPhaseWithoutShutdownReturnsItsResult`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestNewSessionEndedByShutdownIsNotAFatalRuntimeError`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestShutdownDuringAwaitedExtensionPhaseDoesNotWaitForAHandlerThatIgnoresCancellation` and 4 more in docs/bug-ledger.json
 - **Release note:** `durable/images.CreatePhotonImages`, and `durable/images/node.CreateNodePhotonImages` with `Worker: false`, which returns it, prepare images one at a time in call order on the caller's goroutine, as Pi's `createPhotonImages` does on its calling thread. Before, concurrent calls prepared side by side. A caller whose context is cancelled while it waits returns the context's error and does not hold up or reorder the calls after it.
+
+### BF-ce4c9f2
+
+**A worker that crashed while a script waited on it is restarted for its holders even when its exit is handled…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A worker that crashed while a script waited on it is restarted for its holders even when its exit is handled before its link closes and the machine is loaded: the route applied the result of a resolve that was rejected at once (a failed address) in a section of its own after the section that began it, so the Retry of the crash restart could enter between them, find the address still resolving and do nothing, and the failure the resolve then recorded stayed until the next retry (a Code Mode script resumed after its worker was killed could wait for ever).
+- **Root cause:** The Go route lent that section to Resolve and applied the result with Loop.Run after the goroutine that ended the section had given the loop up (Loop.Run unlocks, then resumeAfter runs the rest of the lent handler), so another goroutine's section could enter between them: when the worker's exit was handled before its link's close (the failure already recorded, the resolve rejected at once, which parking.Applied does not order because that start is not queued), the crash restart's Retry met the address resolving, did nothing, and the failure the resolve then recorded stayed (holders failed until the next retry; e2e TestCodeModeFakeProvider, kill-and-reopen, hung under load with applied).
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `ce4c9f2ff2` (2026-11-11)
+- **Tests:** `apps/p2/e2e/codemode_test.go::TestCodeModeFakeProvider`, `chord/next/host/host_route_microtask_test.go::TestRouteAppliesAResolveThatSettledInsideItsSectionAsAMicrotaskOfThatSection`
+- **Release note:** A worker that crashed while a script waited on it is restarted for its holders even when its exit is handled before its link closes and the machine is loaded: the route applied the result of a resolve that was rejected at once (a failed address) in a section of its own after the section that began it, so the Retry of the crash restart could enter between them, find the address still resolving and do nothing, and the failure the resolve then recorded stayed until the next retry (a Code Mode script resumed after its worker was killed could wait for ever). The result is now applied as a microtask of the section that began the resolve, the order of Pi's route continuation.
 
 ### BF-ce7dae9
 

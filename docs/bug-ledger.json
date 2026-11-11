@@ -45398,6 +45398,29 @@
       ]
     },
     {
+      "id": "BF-ce4c9f2",
+      "title": "A worker that crashed while a script waited on it is restarted for its holders even when its exit is handled…",
+      "symptom": "A worker that crashed while a script waited on it is restarted for its holders even when its exit is handled before its link closes and the machine is loaded: the route applied the result of a resolve that was rejected at once (a failed address) in a section of its own after the section that began it, so the Retry of the crash restart could enter between them, find the address still resolving and do nothing, and the failure the resolve then recorded stayed until the next retry (a Code Mode script resumed after its worker was killed could wait for ever).",
+      "rootCause": "The Go route lent that section to Resolve and applied the result with Loop.Run after the goroutine that ended the section had given the loop up (Loop.Run unlocks, then resumeAfter runs the rest of the lent handler), so another goroutine's section could enter between them: when the worker's exit was handled before its link's close (the failure already recorded, the resolve rejected at once, which parking.Applied does not order because that start is not queued), the crash restart's Retry met the address resolving, did nothing, and the failure the resolve then recorded stayed (holders failed until the next retry; e2e TestCodeModeFakeProvider, kill-and-reopen, hung under load with applied).",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A worker that crashed while a script waited on it is restarted for its holders even when its exit is handled before its link closes and the machine is loaded: the route applied the result of a resolve that was rejected at once (a failed address) in a section of its own after the section that began it, so the Retry of the crash restart could enter between them, find the address still resolving and do nothing, and the failure the resolve then recorded stayed until the next retry (a Code Mode script resumed after its worker was killed could wait for ever). The result is now applied as a microtask of the section that began the resolve, the order of Pi's route continuation.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ce4c9f2ff2",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "apps/p2/e2e/codemode_test.go::TestCodeModeFakeProvider",
+        "chord/next/host/host_route_microtask_test.go::TestRouteAppliesAResolveThatSettledInsideItsSectionAsAMicrotaskOfThatSection"
+      ]
+    },
+    {
       "id": "BF-ce7dae9",
       "title": "MCP servers that frame server-sent events with a lone CR (or a CRLF split across reads) now deliver their…",
       "symptom": "MCP servers that frame server-sent events with a lone CR (or a CRLF split across reads) now deliver their events, as in Pi; the call used to fail with \"stream ended without a response\".",
