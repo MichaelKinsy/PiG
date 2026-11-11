@@ -7,7 +7,8 @@
 // context ends (or whose Harness closes) after its waiter registered, or whose context had ended before, gives the caller the
 // cancellation cause (the close error) once the line delivers the job, the waiter stops being registered, and no goroutine
 // stays behind, whichever way the rejection and the delivery are ordered. Waiters.Add already satisfies it, so the cases are
-// the port and Go needed no change.
+// the port and Go needed no change. They run for Submission.Wait and for Harness.WaitForTask, which registers through the same
+// Waiters.Add but on the Session line, so its waiter registers only once the line is free (see openTaskTarget).
 
 package harness
 
@@ -61,12 +62,23 @@ func (storage *slowPublications) Publishing(_ context.Context, publish func()) {
 type waitTarget struct {
 	harness Harness
 	storage *slowPublications
-	// written receives the result of the write submission whose publication is held.
+	// root is the conversation the held write is submitted to.
+	root Conversation
+	// written receives the result of the write submission whose publication is held; nil until the publication is held.
 	written chan error
 	// wait is the wait under test.
 	wait func(ctx context.Context) error
 	// pending is the Done channel of each waiter registered for it.
 	pending func() []<-chan struct{}
+}
+
+// held holds the publication of a write, unless it already is. A wait that registers on the Session line (Harness.WaitForTask reads
+// the task on it) registers only once the line is free, so such a target holds the publication after its waiter registered.
+func (target *waitTarget) held(t *testing.T) {
+	t.Helper()
+	if target.written == nil {
+		target.holdWrite(t, target.root)
+	}
 }
 
 func pendingDone[K comparable, T any](waiters *Waiters[K, T], key K) []<-chan struct{} {
@@ -113,6 +125,7 @@ func (target *waitTarget) registered(t *testing.T) <-chan struct{} {
 		done = target.pending()
 		return len(done) == 1
 	})
+	target.held(t)
 	return done[0]
 }
 
@@ -143,7 +156,30 @@ func openSubmissionTarget(t *testing.T) *waitTarget {
 	// The run's own commits come first: one of them published after the hold would take the place of the write's, and the wait
 	// would queue behind a publication that nothing releases yet. Once the request is sent, the run has nothing left to commit.
 	waitFor(t, func() bool { return closedChannel(answer.reached) })
+	target.root = root
 	target.holdWrite(t, root)
+	return target
+}
+
+// openTaskTarget waits for a live task with Harness.WaitForTask, which reads the task on the Session line and registers its waiter
+// there: the publication is held once the waiter registered (registered), not before, or the wait would queue behind it.
+func openTaskTarget(t *testing.T) *waitTarget {
+	t.Helper()
+	storage := newSlowPublications()
+	fixtures := newOwnFixtures()
+	opened := ownOpenHarness(t, fixtures, storage)
+	id := must(durable.Commit(testContext, opened.root, func(tx durable.Tx) (durable.TaskId, error) {
+		return durable.CreateTask(tx, fixtures.hold, holdInput{Name: "held"}, durable.TaskOptions{Ownership: conversationOwned})
+	}))
+	target := &waitTarget{harness: opened.harness, storage: storage, root: opened.root}
+	target.cleanup(t)
+	target.wait = func(ctx context.Context) error {
+		_, err := opened.harness.WaitForTask(ctx, id)
+		return err
+	}
+	target.pending = func() []<-chan struct{} {
+		return pendingDone(&opened.harness.(*harnessImpl).tasks.taskWaiters, id)
+	}
 	return target
 }
 
@@ -161,7 +197,7 @@ func TestAWaitEndedBeforeItsResultIsDelivered(t *testing.T) {
 	targets := []struct {
 		name string
 		open func(*testing.T) *waitTarget
-	}{{"Submission.Wait", openSubmissionTarget}}
+	}{{"Submission.Wait", openSubmissionTarget}, {"Harness.WaitForTask", openTaskTarget}}
 	for _, kind := range targets {
 		t.Run(kind.name, func(t *testing.T) {
 			// harness-submissions.test.ts "reports no unhandled rejection for a wait cancelled before its result is delivered": the
@@ -195,6 +231,7 @@ func TestAWaitEndedBeforeItsResultIsDelivered(t *testing.T) {
 			// #11963: the context was already ended when the waiter was registered.
 			t.Run("gives the caller the cause of a context that ended before the wait", func(t *testing.T) {
 				target := kind.open(t)
+				target.held(t)
 				before := waiterGoroutines()
 				cause := errors.New("stop waiting")
 				ctx, abort := cancelledContext(cause)
