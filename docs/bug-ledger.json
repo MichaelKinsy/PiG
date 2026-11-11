@@ -162,6 +162,27 @@
       ]
     },
     {
+      "id": "BF-0224f25",
+      "title": "fix(rpc): create the --listen socket with mode 0600 from the moment it exists",
+      "symptom": "fix(rpc): create the --listen socket with mode 0600 from the moment it exists",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "0224f258c2",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_listen_unix_test.go::TestListenSocketIsPrivateUnderAPermissiveUmask"
+      ]
+    },
+    {
       "id": "BF-0225926",
       "title": "fix: symlink callers, changelog fragment name, behavior contract hash at the new pin, interface extractor…",
       "symptom": "fix: symlink callers, changelog fragment name, behavior contract hash at the new pin, interface extractor cache keyed by the package list, generated patterns",
@@ -421,6 +442,25 @@
         "internal/jsonstringify/fast_test.go::TestFastPathAcceptsEncodedGoValues",
         "test/parity/scenarios/rpc/56-rpc-hand-ordered-session-messages.toml"
       ]
+    },
+    {
+      "id": "BF-039dc7b",
+      "title": "fix(rpc): close a connection session on a forced termination signal",
+      "symptom": "fix(rpc): close a connection session on a forced termination signal",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "039dc7ba0c",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-03ad544",
@@ -4192,6 +4232,27 @@
       ],
       "tests": [
         "internal/codingagent/crash_notice_date_oracle_test.go::TestCrashNoticeTimeMatchesToLocaleString"
+      ]
+    },
+    {
+      "id": "BF-20e1c2a",
+      "title": "fix(extension-host): count only the Host's own running tools when a timer call becomes a tick",
+      "symptom": "fix(extension-host): count only the Host's own running tools when a timer call becomes a tick",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "20e1c2a698",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/node_group_scope_test.go::TestSharedNodeCellCountsPendingToolsPerHost"
       ]
     },
     {
@@ -10712,6 +10773,27 @@
       ],
       "tests": [
         "ai/classifier_shared_exports_test.go::TestParseClassifierUsagePricesTheModelCatalog"
+      ]
+    },
+    {
+      "id": "BF-4cdec4b",
+      "title": "fix(rpc): gate the stale-host bus allowance on the cell registry and make the crash test observe convergence",
+      "symptom": "fix(rpc): gate the stale-host bus allowance on the cell registry and make the crash test observe convergence",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "4cdec4be2f",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_listen_ext_test.go::TestListenRecoversASharedExtensionCrash"
       ]
     },
     {
@@ -28272,6 +28354,32 @@
       ]
     },
     {
+      "id": "BF-9e6d794",
+      "title": "fix(extension-host): drop per-group node state, start again after a joined process exits, forget released…",
+      "symptom": "fix(extension-host): drop per-group node state, start again after a joined process exits, forget released registry entries",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "9e6d7943a2",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/node_cell_shared_test.go::TestSharedCellsForgetAProcessWhenItsLastHostLeaves",
+        "coding/extension/host/subprocess/node_cell_shared_test.go::TestSharedNodeCellAdmitsAHostWhoseJoinedProcessExitsBeforeAdmission",
+        "coding/extension/host/subprocess/node_cell_shared_test.go::TestSharedNodeCellKeepsOneBeforeExitListenerAcrossSessions",
+        "coding/extension/host/subprocess/node_group_scope_test.go::TestSharedNodeCellDropsAGroupsStateWhenItsLastRuntimeLeaves",
+        "coding/extension/host/subprocess/node_group_scope_test.go::TestSharedNodeCellKeepsAGroupsBusWhileAListenerRemains",
+        "coding/extension/host/subprocess/node_group_scope_test.go::TestSharedNodeCellNeverCrossesAPayloadToAForeignGroup"
+      ]
+    },
+    {
       "id": "BF-9eda512",
       "title": "The Go Durable SDK's scheduler no longer resolves the Harness settings for the context a run itself reads…",
       "symptom": "The Go Durable SDK's scheduler no longer resolves the Harness settings for the context a run itself reads: `contextRetentionMs` is read only when the conversation is idle, as Pi's `runtime.context` does, which removes four settings resolutions from every round of one generation with a tool call.",
@@ -29377,6 +29485,40 @@
         "ai/overflow_oracle_test.go::TestContextOverflowMatchesPiOnSeededMessages",
         "ai/radius_config_oracle_test.go::TestRadiusConfigMatchesPiOnSeededProbes",
         "coding/cli/strip_app_features_test.go::TestStripExportHTMLBuildOmitsExportPackage"
+      ]
+    },
+    {
+      "id": "BF-a40694a",
+      "title": "fix(rpc): retry transient accept errors, end --listen on Ctrl+C and on a second signal after the fan-out",
+      "symptom": "fix(rpc): retry transient accept errors, end --listen on Ctrl+C and on a second signal after the fan-out",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "a40694ab0e",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_listen_accept_test.go::TestAcceptWithBackoffRetriesTransientErrors",
+        "coding/cli/rpc_listen_accept_test.go::TestAcceptWithBackoffReturnsAPermanentError",
+        "coding/cli/rpc_listen_accept_test.go::TestAcceptWithBackoffStopsWhenTheServerStops",
+        "coding/cli/rpc_listen_accept_test.go::TestHoldForFurtherSignalsForwardsASignalAfterTheFanOut",
+        "coding/cli/rpc_listen_accept_test.go::TestHoldForFurtherSignalsForwardsASignalDuringTheFanOut",
+        "coding/cli/rpc_listen_accept_test.go::TestNextAcceptDelayDoublesFromFiveMillisecondsToOneSecond",
+        "coding/cli/rpc_listen_ext_test.go::TestListenCloseDuringAConfirmDialogLeavesNothingBehind",
+        "coding/cli/rpc_listen_ext_test.go::TestListenCloseDuringASlowToolCallEndsOnlyThatSession",
+        "coding/cli/rpc_listen_test.go::TestListenASecondSIGTERMEndsAServerWhoseSessionDisposeHangs",
+        "coding/cli/rpc_listen_test.go::TestListenExitsOnSIGINT",
+        "coding/cli/rpc_listen_test.go::TestListenExitsOnSIGTERMDuringABuild",
+        "coding/cli/rpc_listen_test.go::TestListenRefusesAnExistingPath",
+        "coding/cli/rpc_listen_test.go::TestListenSecondConnectionMatchesPigModeRPC",
+        "coding/cli/rpc_listen_test.go::TestListenServesOneRPCSessionPerConnection"
       ]
     },
     {
@@ -30843,6 +30985,26 @@
         "internal/codingagent/session_line_capacity_test.go::TestMessageEntryRecordKeepsNoSpareCapacity",
         "test/perfgate/process_test.go::TestRPCTurnProcessGate"
       ]
+    },
+    {
+      "id": "BF-ada7018",
+      "title": "`events.off` on an extension listener that had migrated to the routed event bus panicked on a nil untrack",
+      "symptom": "`events.off` on an extension listener that had migrated to the routed event bus panicked on a nil untrack.",
+      "rootCause": "Every build creates its Host on the server's registry, a connection's shutdown no longer holds its retirements, a stale Host still serves events.off and xref.hello, a migrated bus listener is tracked, and a lone shared Node member restarts into the shared cell.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`events.off` on an extension listener that had migrated to the routed event bus panicked on a nil untrack.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ada701819c",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-ae1ee6d",
@@ -33626,6 +33788,25 @@
         {
           "hash": "c15309d0f4",
           "date": "2026-10-23"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-c1b8890",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "c1b88904c3",
+          "date": "2026-11-01"
         }
       ],
       "tests": []
@@ -39788,6 +39969,28 @@
       ]
     },
     {
+      "id": "BF-ddc6060",
+      "title": "fix(extension-host): keep shared cell processes alive past the spawner and out of quarantine",
+      "symptom": "fix(extension-host): keep shared cell processes alive past the spawner and out of quarantine",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "ddc6060aa0",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/cell_registry_test.go::TestSharedCellsNeverShareAQuarantinedCell",
+        "coding/extension/host/subprocess/cell_registry_test.go::TestSharedCellsOutliveTheSpawnersLoadContext"
+      ]
+    },
+    {
       "id": "BF-ddd4772",
       "title": "fix(ai): a lone surrogate in a content block stays one code unit, as in JSON.parse",
       "symptom": "fix(ai): a lone surrogate in a content block stays one code unit, as in JSON.parse",
@@ -42688,6 +42891,28 @@
       ]
     },
     {
+      "id": "BF-edae8e7",
+      "title": "fix(rpc): track live hosts, escape a hung dispose on a second signal, and prove --listen concurrency",
+      "symptom": "fix(rpc): track live hosts, escape a hung dispose on a second signal, and prove --listen concurrency",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "edae8e70d7",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_listen_test.go::TestListenASecondSIGTERMEndsAServerWhoseSessionDisposeHangs",
+        "coding/cli/rpc_listen_test.go::TestListenSessionsRunConcurrently"
+      ]
+    },
+    {
       "id": "BF-edb73db",
       "title": "fix(codingagent): one owner-overflow forwarder at a time; the drain test waits for it, not for the flag's…",
       "symptom": "fix(codingagent): one owner-overflow forwarder at a time; the drain test waits for it, not for the flag's early read",
@@ -44061,6 +44286,31 @@
         "durable/harness/harness_conversations_test.go::TestHarnessRootAndConversations",
         "durable/harness/harness_tasks_scheduling_test.go::TestTaskClose",
         "durable/harness_types_test.go::TestCompactionReasonValuesMatchPi"
+      ]
+    },
+    {
+      "id": "BF-f34cb22",
+      "title": "fix(extension-host): scope ctx.abort per host group and prove the drain, registry-hold and xref group rules",
+      "symptom": "fix(extension-host): scope ctx.abort per host group and prove the drain, registry-hold and xref group rules",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "f34cb22f47",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/node_group_scope_test.go::TestSharedNodeCellAbortsOnlyTheEmittingHostsRun",
+        "coding/extension/host/subprocess/node_group_scope_test.go::TestSharedNodeCellCrossesPayloadsToTheRequestersHostFirst",
+        "coding/extension/host/subprocess/node_group_scope_test.go::TestSharedNodeCellDrainsOnlyTheClosingHost",
+        "coding/extension/host/subprocess/node_group_scope_test.go::TestSharedNodeCellHoldsRegistryWritesPerHost",
+        "test/extension-conformance/shared_cells_test.go::TestConformance_SharedCellsIsolatePerHostInstances"
       ]
     },
     {
