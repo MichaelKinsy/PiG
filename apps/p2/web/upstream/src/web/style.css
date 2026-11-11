@@ -2638,18 +2638,6 @@ button.diff-number:hover {
 .collapse-sidebar svg {
 	transform: rotate(180deg);
 }
-.new-session {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--s1);
-	height: var(--control);
-	padding: 0 var(--s2);
-	color: var(--muted);
-	font-size: var(--fs-sm);
-}
-.new-session:hover {
-	color: var(--text);
-}
 .session-scroll {
 	flex: 1;
 	overflow-y: auto;
@@ -3488,6 +3476,12 @@ button.history-edge:disabled {
 	margin-right: 3px;
 	vertical-align: -1px;
 }
+/* The location's project glyph (plugins/glyphs), before the path in the top bar's location line. */
+.title .glyph-icon {
+	display: inline-block;
+	margin-right: var(--s1);
+	vertical-align: -1px;
+}
 
 /* Touch targets: on a coarse pointer every list row and small control is at least one --row (44px) tall. The
    transcript's own rows keep their rhythm (.row, TranscriptRow.gap in Chat.tsx). */
@@ -3531,4 +3525,12 @@ button.history-edge:disabled {
 .switch-label {
 	flex: 1;
 	min-width: 0;
+}
+
+/* The Pi macOS app (apps/p2-mac, in progress) shows the page under its transparent title bar, the window buttons over
+   its top left corner. It sets data-shell="macos" and --shell-inset-start (the buttons' width) on <html>, and marks the
+   bars at that corner with data-shell-corner, whichever layout or plugin put them there: their content starts after
+   the buttons. */
+:root[data-shell="macos"] [data-shell-corner] {
+	padding-left: var(--shell-inset-start);
 }
