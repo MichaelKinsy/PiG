@@ -5,6 +5,7 @@
 package e2e_test
 
 import (
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -259,6 +260,52 @@ func TestSearchFakeProvider(t *testing.T) {
 		}
 		if _, err := f.sessions.Call("restore", delta.JsonObjectOf("id", session), p2test.Background); err != nil {
 			t.Fatal(err)
+		}
+	})
+
+	t.Run("limits a search to the given sessions before ranking and the hit limit (a sidebar list's own sessions)", func(t *testing.T) {
+		// 45 sessions whose message ranks above the listed one's: an unscoped search's 41 hits leave it out.
+		crowd := make([]string, 45)
+		for index := range crowd {
+			crowd[index] = f.create("Crowd " + strconv.Itoa(index))
+		}
+		listed := f.create("Listed")
+		for _, id := range append(append([]string{}, crowd...), listed) {
+			text := "pangolin pangolin pangolin"
+			if id == listed {
+				text = "pangolin facts, among other things"
+			}
+			f.onIndex("index", delta.JsonObjectOf("session", id, "conversation", float64(1), "messages", []any{
+				delta.JsonObjectOf("conversationId", float64(1), "entryId", float64(1), "role", "user", "timestamp", float64(time.Now().UnixMilli()), "text", text),
+			}, "through", float64(1)))
+		}
+		everywhere := listOf(f.query("pangolin").Value("messages"))
+		if len(everywhere) != 41 {
+			t.Fatalf("an unscoped search has %d hits, want 41", len(everywhere))
+		}
+		for _, each := range everywhere {
+			if object(each).Value("session") == listed {
+				t.Fatal("the unscoped search's 41 hits include the listed session")
+			}
+		}
+		within := func(query string) *delta.JsonObject {
+			results, err := f.search.Call("search", delta.JsonObjectOf("query", query, "sessions", []any{listed}), p2test.Background)
+			if err != nil {
+				t.Fatal(err)
+			}
+			return object(results)
+		}
+		if hits := listOf(within("pangolin").Value("messages")); len(hits) != 1 || object(hits[0]).Value("session") != listed {
+			t.Fatalf("scoped hits = %v, want the listed session's alone", hits)
+		}
+		// Titles too: only the listed sessions'.
+		if titles := listOf(within("crowd").Value("sessions")); len(titles) != 0 {
+			t.Fatalf("scoped titles = %v, want none", titles)
+		}
+		for _, id := range append(append([]string{}, crowd...), listed) {
+			if _, err := f.sessions.Call("archive", delta.JsonObjectOf("id", id), p2test.Background); err != nil {
+				t.Fatal(err)
+			}
 		}
 	})
 

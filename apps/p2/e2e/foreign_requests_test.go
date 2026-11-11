@@ -169,6 +169,10 @@ func TestForeignBrowserRequests(t *testing.T) {
 			if cookieNamed(page, "p2_owner_"+strconv.Itoa(port)) == "" {
 				t.Errorf("%s navigation does not renew the owner's local session", site)
 			}
+			// A sidebar list's address is an app page too (`/list/<key>`).
+			if list := get("/list/folder%3AW251bGwsIi93Il0", navigation, with(device)); list.Status == 401 {
+				t.Errorf("%s navigation to a list with the cookie does not open the app", site)
+			}
 			signIn := get("/s/"+session, navigation)
 			if signIn.Status != 401 || !reloads.MatchString(signIn.Body) {
 				t.Errorf("%s navigation without a cookie signs in after one reload: %d", site, signIn.Status)

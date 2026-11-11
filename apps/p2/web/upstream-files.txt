@@ -515,6 +515,7 @@ src/web/use-chat-scroll.ts
 src/web/virtual-list.ts
 src/web/ThemeButton.tsx
 src/web/navigation-components.ts
+src/web/ErrorToast.tsx
 tsconfig.json
 plugins/terminals/protocol.ts
 plugins/terminals/wasm.d.ts

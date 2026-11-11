@@ -532,6 +532,14 @@ func serveSearch(facet host.FacetHost) error {
 					in := objectOf(args)
 					query := stringOf(in.Value("query"))
 					archived := in.Value("archived") == true
+					within, _ := in.Value("sessions").([]any)
+					var listed map[string]bool
+					if in.Has("sessions") {
+						listed = make(map[string]bool, len(within))
+						for _, id := range within {
+							listed[stringOf(id)] = true
+						}
+					}
 					rows, err := catalog.Member("sessions").Value()
 					if err != nil {
 						return nil, err
@@ -539,7 +547,7 @@ func serveSearch(facet host.FacetHost) error {
 					var scope []sessioncontract.Session
 					list, _ := rows.([]any)
 					for _, row := range list {
-						if session := sessioncontract.SessionFromJSON(row); (session.ArchivedAt != nil) == archived {
+						if session := sessioncontract.SessionFromJSON(row); (session.ArchivedAt != nil) == archived && (listed == nil || listed[session.ID]) {
 							scope = append(scope, session)
 						}
 					}
@@ -582,7 +590,16 @@ func serveSearch(facet host.FacetHost) error {
 				},
 			},
 		}}, nil
-	}), host.ServeOptions{Accepts: contracts.AcceptsTable{{Name: "1", Value: contracts.VersionMappings{}}}})
+	}), host.ServeOptions{Accepts: searchAccepts()})
+}
+
+// searchAccepts: older pages search every session of the scope: their arguments are the same without `sessions`.
+func searchAccepts() contracts.AcceptsTable {
+	same := func(value delta.JsonValue) (delta.JsonValue, error) { return value, nil }
+	versions := contracts.VersionMappings{Methods: []contracts.Entry[contracts.MethodMapping]{
+		{Name: "search", Value: contracts.MethodMapping{Args: same}},
+	}}
+	return contracts.AcceptsTable{{Name: "1", Value: versions}, {Name: "2", Value: versions}}
 }
 
 // ServerFacet serves the index, the workers' feed, owner search and unread answers.
