@@ -51,16 +51,17 @@ type pending struct {
 
 // runPR runs the whole pre-flight for one PR and returns its result. An error means the pre-flight itself could not
 // run for it.
-func runPR(ctx context.Context, cfg config, env *ruleEnv, o runOptions, version string, p pending, admit func() bool, t *tips, log io.Writer) (string, error) {
+func runPR(ctx context.Context, cfg config, env *ruleEnv, o runOptions, version string, p pending, admit func() bool, t *tips, log io.Writer) (result, head string, err error) {
 	if p.err != nil {
-		return resultError, fmt.Errorf("its pre-flight comment could not be read: %w", p.err)
+		return resultError, "", fmt.Errorf("its pre-flight comment could not be read: %w", p.err)
 	}
 	d, err := fetch(ctx, cfg, fetchOptions{apiBase: o.apiBase, token: o.token, repo: o.repo, pr: p.pr, version: version, previous: p.comment.State, admit: admit, tips: t}, log)
 	if err != nil {
-		return resultError, err
+		return resultError, "", err
 	}
+	head = d.Pull.Head.SHA
 	if d.Mode == modeDeferred {
-		return resultDeferred, nil
+		return resultDeferred, head, nil
 	}
 	ws := workspace{dir: filepath.Join(o.work, strconv.Itoa(p.pr)), main: o.root, bin: o.bin, remote: o.gitBase, token: o.token}
 	if d.Pull.Mergeable == nil && d.Mode != modeReuse {
@@ -88,9 +89,30 @@ func runPR(ctx context.Context, cfg config, env *ruleEnv, o runOptions, version 
 	}
 	report(log, cfg, ev)
 	if err := record(ctx, cfg, d, ev, recordOptions{apiBase: o.apiBase, token: o.token, dryRun: o.dryRun, comment: p.comment}, log); err != nil {
-		return resultError, err
+		return resultError, head, err
 	}
-	return ev.Result, nil
+	return ev.Result, head, nil
+}
+
+// handled is what a job did with one PR, for the verify job: the head it judged, the result, why it could not run.
+type handled struct {
+	PR     int    `json:"pr"`
+	Head   string `json:"head,omitempty"`
+	Result string `json:"result"`
+	Error  string `json:"error,omitempty"`
+	// PassedOn is a deferred PR this job handed to a next job (--next); one it did not is left for the next run.
+	PassedOn bool `json:"passed_on,omitempty"`
+}
+
+// deferredPRs are the PRs the job deferred.
+func deferredPRs(hs []handled) []int {
+	var prs []int
+	for _, h := range hs {
+		if h.Result == resultDeferred {
+			prs = append(prs, h.PR)
+		}
+	}
+	return prs
 }
 
 // each runs fn over 0..n-1, jobs at a time.
@@ -112,10 +134,11 @@ func each(n, jobs int, fn func(i int)) {
 }
 
 // runBatch runs the pre-flight over every PR of the run, o.jobs at a time, each PR's log printed as one group when it
-// is done. It returns the PRs the budget deferred, for a next job, and an error only when the run itself is broken:
+// is done. It returns what it did with each PR, the deferred ones for a next job, and an error only when the run
+// itself is broken:
 // it cannot start, or it could run for none of its PRs. Failing PRs, and a PR it could not run for, are its normal
 // output.
-func runBatch(ctx context.Context, cfg config, o runOptions, out io.Writer) ([]int, error) {
+func runBatch(ctx context.Context, cfg config, o runOptions, out io.Writer) ([]handled, error) {
 	version, err := bindMain(&cfg, o.root)
 	if err != nil {
 		return nil, err
@@ -155,6 +178,7 @@ func runBatch(ctx context.Context, cfg config, o runOptions, out io.Writer) ([]i
 	type done struct {
 		pr     int
 		result string
+		head   string
 		err    error
 		log    bytes.Buffer
 		took   time.Duration
@@ -167,7 +191,7 @@ func runBatch(ctx context.Context, cfg config, o runOptions, out io.Writer) ([]i
 			r.result = resultDeferred
 			logf(&r.log, "the run's time budget of %s is spent", o.timeBudget)
 		} else {
-			r.result, r.err = runPR(ctx, cfg, env, o, version, prs[i], admit, t, &r.log)
+			r.result, r.head, r.err = runPR(ctx, cfg, env, o, version, prs[i], admit, t, &r.log)
 		}
 		r.took = time.Since(start)
 		results[i] = r
@@ -182,25 +206,27 @@ func runBatch(ctx context.Context, cfg config, o runOptions, out io.Writer) ([]i
 		}
 		logf(out, "::endgroup::")
 	}
-	var deferred []int
+	hs := make([]handled, 0, len(results))
 	for _, r := range results {
 		logf(out, "PR #%d: %s", r.pr, r.result)
-		if r.result == resultDeferred {
-			deferred = append(deferred, r.pr)
+		h := handled{PR: r.pr, Head: r.head, Result: r.result}
+		if r.err != nil {
+			h.Error = r.err.Error()
 		}
+		hs = append(hs, h)
 	}
-	if len(deferred) > 0 {
+	if deferred := deferredPRs(hs); len(deferred) > 0 {
 		logf(out, "%d PR(s) deferred by the budget, for a next job: %v", len(deferred), deferred)
 	}
-	// One PR the pre-flight could not run for is that PR's problem, shown on it and as an annotation: the run stays
-	// green. Only when it could run for none of them is the run itself broken.
+	// One PR the pre-flight could not run for is that PR's problem, shown on it and as an annotation, and the verify job
+	// reports it: this job stays green. Only when it could run for none of them is the job itself broken.
 	if failedToRun > 0 {
 		logf(out, "the pre-flight could not run for %d of %d PR(s)", failedToRun, len(results))
 	}
 	if failedToRun > 0 && failedToRun == len(results) {
-		return deferred, fmt.Errorf("the pre-flight could not run for any of the %d PR(s)", failedToRun)
+		return hs, fmt.Errorf("the pre-flight could not run for any of the %d PR(s)", failedToRun)
 	}
-	return deferred, nil
+	return hs, nil
 }
 
 // chunks splits PRs into groups of size, each as the space-separated list `preflight run --prs` takes.

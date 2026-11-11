@@ -101,7 +101,7 @@ func evaluate(cfg config, d *data, env *ruleEnv) evaluation {
 		if err != nil {
 			// A broken acknowledgement file must not hide warnings, so the check that warns most reports it.
 			v := ev.Checks["licenses"]
-			v.Result, v.Reason = resultFail, err.Error()
+			v.Result, v.Reason = resultFail, clip(err.Error(), maxReason)
 			ev.Checks["licenses"] = v
 		} else {
 			applyAcknowledged(&ev, d, acks)
@@ -201,8 +201,12 @@ func report(w io.Writer, cfg config, ev evaluation) {
 	}
 }
 
-// where is a warning as one line: "file:line text: notice", and how many more the file has.
+// where is a warning as one line: "file:line text: notice", and how many more the file has. The line counting the
+// files beyond the cap is its text alone.
 func (w warning) where() string {
+	if w.File == "" {
+		return w.Text
+	}
 	at := w.File
 	if w.Line > 0 {
 		at = fmt.Sprintf("%s:%d", w.File, w.Line)
@@ -251,11 +255,22 @@ func perFile(ws []warning) []warning {
 	return out
 }
 
-// capWarnings keeps the warnings of the first maxWarnedFiles files and counts the others in one last line.
+// capWarnings keeps the warnings of the first maxWarnedFiles files and counts the others in one last line, which
+// holds the count in More. It can run again on its own result, as on a reused verdict: the count carries over.
 func capWarnings(ws []warning) []warning {
-	if len(ws) <= maxWarnedFiles {
-		return ws
+	var kept []warning
+	hidden := 0
+	for _, w := range ws {
+		if w.File == "" {
+			hidden += w.More
+			continue
+		}
+		kept = append(kept, w)
 	}
-	rest := len(ws) - maxWarnedFiles
-	return append(ws[:maxWarnedFiles:maxWarnedFiles], warning{Text: fmt.Sprintf("and %d more file(s) with warnings", rest)})
+	hidden += max(len(kept)-maxWarnedFiles, 0)
+	kept = kept[:min(len(kept), maxWarnedFiles):min(len(kept), maxWarnedFiles)]
+	if hidden == 0 {
+		return kept
+	}
+	return append(kept, warning{Text: fmt.Sprintf("and %d more file(s) with warnings", hidden), More: hidden})
 }

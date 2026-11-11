@@ -402,11 +402,11 @@ func TestRetryingEdges(t *testing.T) {
 		if tc.retried && !strings.Contains(log.String(), "retry 1/1 of GET x") {
 			t.Errorf("status %d: log %q", tc.status, log.String())
 		}
-		if tc.status == 422 && !isNotFound(err) {
-			t.Errorf("422 is not read as an unknown ref: %v", err)
+		if !hasStatus(err, tc.status) || hasStatus(err, tc.status+1) {
+			t.Errorf("status %d is not read back: %v", tc.status, err)
 		}
 	}
-	if isNotFound(errors.New("plain")) {
+	if hasStatus(errors.New("plain"), 404) {
 		t.Error("a plain error is a 404")
 	}
 }
@@ -495,7 +495,7 @@ func TestRunPRWithoutScansSaysNothingAboutSkipping(t *testing.T) {
 	dir := t.TempDir()
 	var log strings.Builder
 	o := runOptions{apiBase: server.URL, token: "t", repo: "o/r", root: dir, bin: dir, work: dir, dryRun: true}
-	if result, err := runPR(context.Background(), cfg, &ruleEnv{root: dir}, o, "v", pending{pr: 1}, nil, nil, &log); err != nil || result != resultFail || strings.Contains(log.String(), "scans skipped") {
+	if result, _, err := runPR(context.Background(), cfg, &ruleEnv{root: dir}, o, "v", pending{pr: 1}, nil, nil, &log); err != nil || result != resultFail || strings.Contains(log.String(), "scans skipped") {
 		t.Fatalf("result %s, err %v, log:\n%s", result, err, log.String())
 	}
 }

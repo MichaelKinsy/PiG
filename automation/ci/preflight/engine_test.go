@@ -34,6 +34,20 @@ type fakeGitHub struct {
 	tipDown bool
 	// unknown answers mergeable null, as GitHub does before it computed it.
 	unknown bool
+	// issues are the repository's issues by number; issuesDown makes writing one fail.
+	issues     map[int]*fakeIssue
+	issuesDown bool
+}
+
+type fakeIssue struct {
+	Number      int    `json:"number"`
+	Title       string `json:"title"`
+	Body        string `json:"body"`
+	State       string `json:"state"`
+	PullRequest *struct {
+		URL string `json:"url"`
+	} `json:"pull_request,omitempty"`
+	comments []string
 }
 
 type fakeComment struct {
@@ -45,7 +59,7 @@ type fakeComment struct {
 }
 
 func newFakeGitHub(bodies map[int]string) *fakeGitHub {
-	return &fakeGitHub{bodies: bodies, broken: map[int]bool{}, hits: map[string]int{}, statuses: map[string]string{}, comments: map[int][]fakeComment{}}
+	return &fakeGitHub{bodies: bodies, broken: map[int]bool{}, hits: map[string]int{}, statuses: map[string]string{}, comments: map[int][]fakeComment{}, issues: map[int]*fakeIssue{}}
 }
 
 // preflightComment is the bot's pre-flight comment on a PR, "" when there is none.
@@ -102,12 +116,60 @@ func (g *fakeGitHub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		_, _ = fmt.Fprint(w, `[{"sha":"c1c1c1c1c1","commit":{"message":"a: b","verification":{"verified":true,"reason":"valid"}}}]`)
 	case strings.HasPrefix(r.URL.Path, "/repos/o/r/compare/"):
 		_, _ = fmt.Fprint(w, `{"status":"ahead","ahead_by":1,"behind_by":0}`)
+	case r.URL.Path == "/repos/o/r/issues" && r.Method == http.MethodGet:
+		if r.URL.Query().Get("creator") != defaultBot || r.URL.Query().Get("state") != "open" {
+			http.Error(w, "unexpected query "+r.URL.RawQuery, http.StatusBadRequest)
+			return
+		}
+		var open []*fakeIssue
+		for n := 1; n <= 1000; n++ {
+			if i := g.issues[n]; i != nil && i.State == "open" {
+				open = append(open, i)
+			}
+		}
+		_ = json.NewEncoder(w).Encode(append([]*fakeIssue{}, open...))
+	case strings.HasPrefix(r.URL.Path, "/repos/o/r/issues") && !strings.Contains(r.URL.Path, "/comments") && r.Method != http.MethodGet && g.issuesDown:
+		http.Error(w, "no", http.StatusForbidden)
+	case r.URL.Path == "/repos/o/r/issues" && r.Method == http.MethodPost:
+		var body map[string]string
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		n := 900 + len(g.issues)
+		g.issues[n] = &fakeIssue{Number: n, Title: body["title"], Body: body["body"], State: "open"}
+		_, _ = fmt.Fprintf(w, `{"number":%d}`, n)
+	case strings.HasPrefix(r.URL.Path, "/repos/o/r/issues/") && !strings.Contains(r.URL.Path, "/comments") && r.Method == http.MethodPatch:
+		var n int
+		_, _ = fmt.Sscanf(r.URL.Path, "/repos/o/r/issues/%d", &n)
+		var body map[string]string
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		if i := g.issues[n]; i != nil {
+			if b, ok := body["body"]; ok {
+				i.Body = b
+			}
+			if st, ok := body["state"]; ok {
+				i.State = st
+			}
+		}
+		_, _ = fmt.Fprint(w, `{}`)
+	case strings.HasPrefix(r.URL.Path, "/repos/o/r/commits/") && strings.HasSuffix(r.URL.Path, "/statuses"):
+		sha := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/repos/o/r/commits/"), "/statuses")
+		if g.statuses[sha] == "" {
+			_, _ = fmt.Fprint(w, `[{"context":"other"}]`)
+			return
+		}
+		_, _ = fmt.Fprintf(w, `[{"context":%q}]`, statusContext)
 	case strings.HasPrefix(r.URL.Path, "/repos/o/r/statuses/"):
 		var body map[string]string
 		_ = json.NewDecoder(r.Body).Decode(&body)
 		g.statuses[strings.TrimPrefix(r.URL.Path, "/repos/o/r/statuses/")] = body["state"]
 	case strings.HasSuffix(r.URL.Path, "/comments"):
 		_, _ = fmt.Sscanf(r.URL.Path, "/repos/o/r/issues/%d/comments", &pr)
+		if i := g.issues[pr]; i != nil && r.Method == http.MethodPost {
+			var body map[string]string
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			i.comments = append(i.comments, body["body"])
+			_, _ = fmt.Fprint(w, `{"id":1}`)
+			return
+		}
 		if g.broken[-pr] {
 			http.Error(w, "down", http.StatusBadGateway)
 			return
@@ -277,7 +339,7 @@ func TestRunPRMarksScansWhenTheirInputsFail(t *testing.T) {
 	dir := t.TempDir()
 	o := runOptions{apiBase: server.URL, gitBase: "file://" + filepath.Join(dir, "no-such-remote"), token: "t", repo: "o/r", root: dir, bin: dir, work: filepath.Join(dir, "work"), dryRun: true}
 	var log strings.Builder
-	result, err := runPR(context.Background(), cfg, &ruleEnv{root: dir}, o, "v", pending{pr: 1}, nil, nil, &log)
+	result, _, err := runPR(context.Background(), cfg, &ruleEnv{root: dir}, o, "v", pending{pr: 1}, nil, nil, &log)
 	if err != nil || result != resultFail || !strings.Contains(log.String(), "the scan inputs could not be prepared") {
 		t.Fatalf("result %s, err %v, log:\n%s", result, err, log.String())
 	}
@@ -303,8 +365,8 @@ func TestRunBatchBudgets(t *testing.T) {
 	o := runOptions{apiBase: server.URL, token: "t", repo: "o/r", root: dir, bin: dir, work: filepath.Join(dir, "work"), jobs: 1, budget: 2, bot: defaultBot}
 	// PRs go in number order, and the budget of two leaves 3 and 4 to a next job.
 	var out strings.Builder
-	deferred, err := runBatch(context.Background(), cfg, o, &out)
-	if err != nil || !slices.Equal(deferred, []int{3, 4}) {
+	hs, err := runBatch(context.Background(), cfg, o, &out)
+	if deferred := deferredPRs(hs); err != nil || !slices.Equal(deferred, []int{3, 4}) {
 		t.Fatalf("deferred %v, err %v", deferred, err)
 	}
 	for _, want := range []string{"PR #1: pass", "PR #2: pass", "PR #3: deferred", "mode deferred", "2 PR(s) deferred by the budget, for a next job: [3 4]"} {
@@ -318,14 +380,14 @@ func TestRunBatchBudgets(t *testing.T) {
 	// The next job runs the deferred PRs by name: named PRs are all run, whatever the budget.
 	o.prs, o.budget = []int{3, 4}, 1
 	out.Reset()
-	if deferred, err := runBatch(context.Background(), cfg, o, &out); err != nil || len(deferred) != 0 || !strings.Contains(out.String(), "PR #4: pass") {
-		t.Fatalf("deferred %v, err %v, log:\n%s", deferred, err, out.String())
+	if hs, err := runBatch(context.Background(), cfg, o, &out); err != nil || len(deferredPRs(hs)) != 0 || !strings.Contains(out.String(), "PR #4: pass") || len(hs) != 2 || hs[1] != (handled{PR: 4, Head: "head4", Result: resultPass}) {
+		t.Fatalf("handled %+v, err %v, log:\n%s", hs, err, out.String())
 	}
 	// The next run reuses all four, which do not count.
 	o.prs, o.budget = nil, 2
 	out.Reset()
-	if deferred, err := runBatch(context.Background(), cfg, o, &out); err != nil || len(deferred) != 0 || strings.Count(out.String(), "mode reuse") != 4 || strings.Contains(out.String(), "deferred") {
-		t.Fatalf("deferred %v, err %v, log:\n%s", deferred, err, out.String())
+	if hs, err := runBatch(context.Background(), cfg, o, &out); err != nil || len(deferredPRs(hs)) != 0 || strings.Count(out.String(), "mode reuse") != 4 || strings.Contains(out.String(), "deferred") {
+		t.Fatalf("handled %+v, err %v, log:\n%s", hs, err, out.String())
 	}
 	// Where main is cannot be read: nothing is reused.
 	g.tipDown = true
@@ -337,8 +399,8 @@ func TestRunBatchBudgets(t *testing.T) {
 	// A spent time budget starts no PR.
 	o.timeBudget = time.Nanosecond
 	out.Reset()
-	if deferred, err := runBatch(context.Background(), cfg, o, &out); err != nil || len(deferred) != 4 || !strings.Contains(out.String(), "time budget of 1ns is spent") {
-		t.Fatalf("deferred %v, log:\n%s", deferred, out.String())
+	if hs, err := runBatch(context.Background(), cfg, o, &out); err != nil || len(deferredPRs(hs)) != 4 || !strings.Contains(out.String(), "time budget of 1ns is spent") {
+		t.Fatalf("handled %+v, log:\n%s", hs, out.String())
 	}
 }
 
@@ -369,14 +431,14 @@ func TestRunPRAsksGitWhenGitHubCannotTellMergeable(t *testing.T) {
 	dir := t.TempDir()
 	o := runOptions{apiBase: server.URL, gitBase: "file://" + filepath.Join(dir, "no-such-remote"), token: "t", repo: "o/r", root: dir, bin: dir, work: filepath.Join(dir, "work"), dryRun: true}
 	var log strings.Builder
-	result, err := runPR(context.Background(), cfg, &ruleEnv{root: dir}, o, "v", pending{pr: 1}, nil, nil, &log)
+	result, _, err := runPR(context.Background(), cfg, &ruleEnv{root: dir}, o, "v", pending{pr: 1}, nil, nil, &log)
 	if err != nil || result != resultPending || !strings.Contains(log.String(), "git merge-tree could not tell") {
 		t.Fatalf("result %s, err %v, log:\n%s", result, err, log.String())
 	}
 	// A reused PR asks nothing.
 	prev := &state{Version: "v", Head: "head1", Base: "old-base", Body: bodyHash("Fix: no"), Checks: map[string]verdict{"template": {Result: resultPass}, "up-to-date": {Result: resultPass}}}
 	log.Reset()
-	if result, err := runPR(context.Background(), cfg, &ruleEnv{root: dir}, o, "v", pending{pr: 1, comment: prComment{State: prev}}, nil, nil, &log); err != nil || result != resultPass || strings.Contains(log.String(), "merge-tree") {
+	if result, _, err := runPR(context.Background(), cfg, &ruleEnv{root: dir}, o, "v", pending{pr: 1, comment: prComment{State: prev}}, nil, nil, &log); err != nil || result != resultPass || strings.Contains(log.String(), "merge-tree") {
 		t.Fatalf("result %s, err %v, log:\n%s", result, err, log.String())
 	}
 }
@@ -389,10 +451,27 @@ func TestRunCommandWritesTheDeferredPRsForNextJobs(t *testing.T) {
 	dir := t.TempDir()
 	next := filepath.Join(dir, "next.json")
 	var out, errOut strings.Builder
-	run([]string{"run", "--repo", "o/r", "--api", server.URL, "--root", dir, "--bin", dir, "--work", dir, "--dry-run", "--jobs", "1", "--budget", "1", "--next", next}, &out, &errOut)
+	reports := filepath.Join(dir, "reports")
+	if err := os.Mkdir(reports, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	handledPath := filepath.Join(reports, "handled.json")
+	run([]string{"run", "--repo", "o/r", "--api", server.URL, "--root", dir, "--bin", dir, "--work", dir, "--dry-run", "--jobs", "1", "--budget", "1", "--next", next, "--handled", handledPath}, &out, &errOut)
 	raw, err := os.ReadFile(next)
 	if err != nil || string(raw) != `["2","3"]`+"\n" {
 		t.Fatalf("next %q, err %v, log:\n%s%s", raw, err, out.String(), errOut.String())
+	}
+	hs, err := readHandled(reports)
+	if err != nil || len(hs) != 3 || hs[0].PR != 1 || hs[0].Head != "head1" || hs[0].PassedOn || !hs[1].PassedOn || hs[2] != (handled{PR: 3, Head: "head3", Result: resultDeferred, PassedOn: true}) {
+		t.Fatalf("handled %+v, err %v", hs, err)
+	}
+	// Without --next nothing is passed on.
+	run([]string{"run", "--repo", "o/r", "--api", server.URL, "--root", dir, "--bin", dir, "--work", dir, "--dry-run", "--jobs", "1", "--budget", "1", "--handled", handledPath}, &out, &errOut)
+	if hs, _ := readHandled(reports); len(hs) != 3 || hs[2].Result != resultDeferred || hs[2].PassedOn {
+		t.Fatalf("handled %+v", hs)
+	}
+	if code := run([]string{"run", "--repo", "o/r", "--api", server.URL, "--root", dir, "--bin", dir, "--work", dir, "--dry-run", "--prs", "1", "--handled", filepath.Join(dir, "no", "h.json")}, &out, &errOut); code != 2 {
+		t.Fatalf("an unwritable --handled: exit %d", code)
 	}
 	if err := os.WriteFile(next, nil, 0o600); err != nil {
 		t.Fatal(err)
@@ -462,7 +541,7 @@ func TestRunBatchWithoutOpenPRs(t *testing.T) {
 	defer server.Close()
 	dir := t.TempDir()
 	var out strings.Builder
-	if deferred, err := runBatch(context.Background(), cfg, runOptions{apiBase: server.URL, token: "t", repo: "o/r", root: dir, bin: dir, work: dir, bot: defaultBot}, &out); err != nil || deferred != nil {
-		t.Fatalf("no open PR: %v %v, log:\n%s", deferred, err, out.String())
+	if hs, err := runBatch(context.Background(), cfg, runOptions{apiBase: server.URL, token: "t", repo: "o/r", root: dir, bin: dir, work: dir, bot: defaultBot}, &out); err != nil || len(hs) != 0 {
+		t.Fatalf("no open PR: %v %v, log:\n%s", hs, err, out.String())
 	}
 }

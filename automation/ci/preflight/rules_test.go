@@ -90,11 +90,16 @@ func TestAcknowledgedWarnings(t *testing.T) {
 	}
 	applyAcknowledged(&ev, d, acks)
 	got := ev.Checks["reuse"].Warnings
-	if !got[0].Acknowledged {
-		t.Fatal("a matching entry did not acknowledge the warning")
+	if len(got) != 2 || !got[1].Acknowledged {
+		t.Fatalf("a matching entry did not acknowledge the warning: %+v", got)
 	}
-	if len(got) != 2 || got[1].File != "b.sh" || !strings.Contains(got[1].Text, "the file changed") {
-		t.Fatalf("want a stale-entry warning for b.sh, got %+v", got)
+	// The stale entry's warning comes first, so no cap hides it, and only once, as a reused verdict already holds it.
+	if got[0].File != "b.sh" || !strings.Contains(got[0].Text, "the file changed") {
+		t.Fatalf("want a stale-entry warning for b.sh first, got %+v", got)
+	}
+	applyAcknowledged(&ev, d, acks)
+	if again := ev.Checks["reuse"].Warnings; len(again) != 2 {
+		t.Fatalf("applied twice: %+v", again)
 	}
 	// A changed blob is a new warning: the entry for the old blob does not cover it.
 	w.Blob = "blob2"

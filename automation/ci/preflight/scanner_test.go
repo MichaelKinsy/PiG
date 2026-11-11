@@ -588,3 +588,48 @@ func TestSymlinksOfAPRAreNotFollowed(t *testing.T) {
 		t.Fatal("an unreadable directory was not reported")
 	}
 }
+
+func TestFlattenSymlinksNeverEntersALink(t *testing.T) {
+	outside := t.TempDir()
+	if err := os.WriteFile(filepath.Join(outside, "secret"), []byte("AKIA"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	head := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(head, "sub", "deeper"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	links := map[string]string{"dir": outside, "sub/deeper/file": filepath.Join(outside, "secret"), "sub/rel": "../dir/secret"}
+	for name, target := range links {
+		if err := os.Symlink(target, filepath.Join(head, filepath.FromSlash(name))); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := flattenSymlinks(head); err != nil {
+		t.Fatal(err)
+	}
+	for name, target := range links {
+		p := filepath.Join(head, filepath.FromSlash(name))
+		info, err := os.Lstat(p)
+		raw, _ := os.ReadFile(p)
+		if err != nil || !info.Mode().IsRegular() || string(raw) != target {
+			t.Errorf("%s: %v %v %q", name, info.Mode(), err, raw)
+		}
+	}
+	if raw, _ := os.ReadFile(filepath.Join(outside, "secret")); string(raw) != "AKIA" {
+		t.Fatal("the target was changed")
+	}
+	// content flattens the head it is given before it reads it.
+	if err := os.Symlink(filepath.Join(outside, "secret"), filepath.Join(head, "late")); err != nil {
+		t.Fatal(err)
+	}
+	dataPath := filepath.Join(t.TempDir(), "data.json")
+	if err := writeJSON(dataPath, &data{Files: []prFile{{Filename: "late", Status: "added"}}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := contentFindings(dataPath, head); err == nil || !strings.Contains(err.Error(), "ls-files") {
+		t.Fatalf("err = %v", err)
+	}
+	if info, err := os.Lstat(filepath.Join(head, "late")); err != nil || !info.Mode().IsRegular() {
+		t.Fatal("content read a head without flattening it")
+	}
+}

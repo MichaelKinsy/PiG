@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"regexp"
 	"slices"
@@ -321,7 +322,7 @@ func fetch(ctx context.Context, cfg config, o fetchOptions, log io.Writer) (*dat
 			}
 			err := a.get(ctx, fmt.Sprintf("%s/contents/%s?ref=%s", prefix, acknowledgedPath, head), &file, false)
 			switch {
-			case isNotFound(err):
+			case hasStatus(err, http.StatusNotFound):
 			case err != nil:
 				d.failed(&mu, log, "acknowledged", err)
 			case file.Encoding != "base64":

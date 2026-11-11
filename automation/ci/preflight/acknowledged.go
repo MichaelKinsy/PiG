@@ -4,13 +4,15 @@ package main
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/BurntSushi/toml"
 )
 
 // acknowledgedPath holds the warnings a reviewer has seen. An entry names the check, the file and the file's git blob at
 // the time, and covers that check's warnings for the file: a later change to the file changes its blob, so the
-// warnings show again.
+// warnings show again. It covers the file whatever rule found them: a stricter rule on main that finds something new in
+// the unchanged file stays covered until the file changes (ZeroDawn: one warning per file, not per line).
 const acknowledgedPath = "automation/ci/preflight/acknowledged.toml"
 
 type acknowledgement struct {
@@ -67,7 +69,11 @@ func applyAcknowledged(ev *evaluation, d *data, acks []acknowledgement) {
 		if !ok {
 			continue
 		}
-		v.Warnings = append(v.Warnings, warning{File: a.File, Blob: blob, Text: fmt.Sprintf("has an entry in %s for blob %s, but the file changed: check it again and update or delete the entry", acknowledgedPath, short(a.Blob))})
+		stale := warning{File: a.File, Blob: blob, Text: fmt.Sprintf("has an entry in %s for blob %s, but the file changed: check it again and update or delete the entry", acknowledgedPath, short(a.Blob))}
+		// First, so the cap on listed files never hides it; once, as a reused verdict already holds it.
+		if !slices.Contains(v.Warnings, stale) {
+			v.Warnings = append([]warning{stale}, v.Warnings...)
+		}
 		ev.Checks[a.Check] = v
 	}
 }

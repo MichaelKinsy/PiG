@@ -303,8 +303,25 @@ func TestWarningsArePerFileAndBounded(t *testing.T) {
 	if strings.Count(log.String(), "[[ack]]") != maxWarnedFiles {
 		t.Fatalf("the log offers %d entries", strings.Count(log.String(), "[[ack]]"))
 	}
-	if got := capWarnings(make([]warning, maxWarnedFiles)); len(got) != maxWarnedFiles {
+	exact := make([]warning, maxWarnedFiles)
+	for i := range exact {
+		exact[i].File = fmt.Sprint(i)
+	}
+	if got := capWarnings(exact); len(got) != maxWarnedFiles {
 		t.Fatalf("exactly maxWarnedFiles were capped: %d", len(got))
+	}
+	// Capping a capped list again, as a reused verdict is, keeps the count.
+	if again := capWarnings(ws); len(again) != maxWarnedFiles+1 || again[maxWarnedFiles].where() != "and 3 more file(s) with warnings" {
+		t.Fatalf("capped again: %d, last %q", len(again), again[len(again)-1].where())
+	}
+	// A reused verdict with a stale acknowledgement: it stays listed, first, and the count grows by the file it pushes out.
+	d.Acknowledged = ackEntry("licenses", warning{File: "f00.sh", Blob: "old"})
+	d.Mode = modeFull
+	d.Previous = &state{Engine: cfg.EngineRevision, Checks: ev.Checks}
+	ev = evaluate(cfg, d, &ruleEnv{root: t.TempDir()})
+	ws = ev.Checks["licenses"].Warnings
+	if len(ws) != maxWarnedFiles+1 || !strings.Contains(ws[0].Text, "the file changed") || ws[maxWarnedFiles].where() != "and 4 more file(s) with warnings" {
+		t.Fatalf("%d warnings: first %q, last %q", len(ws), ws[0].where(), ws[len(ws)-1].where())
 	}
 	if clip("abc", 3) != "abc" || clip("abcd", 3) != "ab…" || clip("äöüß", 3) != "äö…" {
 		t.Fatal("clip")
@@ -319,7 +336,7 @@ func TestRecordRefusesATooLongCommentAndA422(t *testing.T) {
 	d := &data{Repo: "o/r", PR: 7, Mode: modeFull}
 	ev := evaluation{Head: "h", Checks: map[string]verdict{"a": {Result: resultFail, Reason: strings.Repeat("x", maxCommentLength)}}}
 	ev.finish()
-	if err := record(context.Background(), cfg, d, ev, recordOptions{dryRun: true}, io.Discard); err == nil || !strings.Contains(err.Error(), "more than the 65536 GitHub takes") {
+	if err := record(context.Background(), cfg, d, ev, recordOptions{dryRun: true}, io.Discard); err == nil || !strings.Contains(err.Error(), "even without its warnings, more than the 65536 GitHub takes") {
 		t.Fatalf("err = %v", err)
 	}
 	g := &recordServer{comments: map[int64]string{}, patchStatus: http.StatusUnprocessableEntity}
@@ -333,8 +350,45 @@ func TestRecordRefusesATooLongCommentAndA422(t *testing.T) {
 	}
 }
 
-func TestFitsAComment(t *testing.T) {
-	if fitsAComment(strings.Repeat("x", maxCommentLength)) != nil || fitsAComment(strings.Repeat("x", maxCommentLength+1)) == nil {
-		t.Fatal("the bound is not exactly GitHub's")
+func TestCommentBodyShortensOnlyWhatCanGrow(t *testing.T) {
+	cfg := config{Checks: []check{{Name: "licenses"}}}
+	d := &data{}
+	ev := evaluation{Head: "h", Checks: map[string]verdict{"licenses": {Result: resultPass, Reason: "ok", Warnings: []warning{{File: "f", Text: "t"}}}}}
+	st := state{Head: "h", Checks: ev.Checks}
+	// Exactly as long as GitHub takes: kept whole.
+	overhead := len(withState("", st))
+	exact := strings.Repeat("x", maxCommentLength-overhead)
+	if body, err := commentBody(cfg, d, ev, exact, st); err != nil || len(body) != maxCommentLength || !strings.HasPrefix(body, exact) {
+		t.Fatalf("a body of exactly the limit: %d %v", len(body), err)
+	}
+	// One more: the warnings go, the verdicts stay.
+	body, err := commentBody(cfg, d, ev, exact+"x", st)
+	if err != nil || !strings.Contains(body, strings.TrimSpace(shortened)) || strings.Contains(body, "| 🔶 |") || !strings.Contains(body, "| ✅ | licenses | ok |") {
+		t.Fatalf("shortened body: %v\n%s", err, body)
+	}
+	if got := parseState(body); got == nil || got.Checks["licenses"].Result != resultPass || len(got.Checks["licenses"].Warnings) != 0 {
+		t.Fatalf("shortened state %+v", got)
+	}
+	if len(ev.Checks["licenses"].Warnings) != 1 {
+		t.Fatal("shortening changed the evaluation")
+	}
+}
+
+func TestRecordSetsTheStatusFirst(t *testing.T) {
+	cfg := config{Checks: []check{{Name: "secrets", Alert: "revoke it"}}}
+	d := &data{Repo: "o/r", PR: 7, Mode: modeFull}
+	ev := evaluation{Head: "h1", Checks: map[string]verdict{"secrets": {Result: resultFail, Reason: "r"}}}
+	ev.finish()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "/statuses/") {
+			w.WriteHeader(http.StatusCreated)
+			return
+		}
+		http.Error(w, "no", http.StatusForbidden)
+	}))
+	defer server.Close()
+	var log strings.Builder
+	if err := record(context.Background(), cfg, d, ev, recordOptions{apiBase: server.URL, token: "t"}, &log); err == nil || !strings.HasPrefix(log.String(), "record: status failure on h1") {
+		t.Fatalf("err %v, log:\n%s", err, log.String())
 	}
 }

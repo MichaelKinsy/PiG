@@ -36,7 +36,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	if len(args) == 0 {
-		_, _ = fmt.Fprintln(stderr, "usage: preflight run|install|checks [flags]")
+		_, _ = fmt.Fprintln(stderr, "usage: preflight run|install|checks|content|verify [flags]")
 		return 2
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -48,6 +48,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return installCommand(ctx, cfg, args[1:], stdout, stderr)
 	case "content":
 		return runContent(args[1:], stdout, stderr)
+	case "verify":
+		return runVerify(ctx, args[1:], stdout, stderr)
 	case "checks":
 		for _, c := range cfg.Checks {
 			_, _ = fmt.Fprintf(stdout, "%-20s %s\n", c.Name, c.Stage)
@@ -103,6 +105,7 @@ func runCommand(ctx context.Context, cfg config, args []string, stdout, stderr i
 	fs.IntVar(&o.budget, "budget", 20, "PRs a job fully checks before it leaves the rest to next jobs (see --next); reused PRs do not count; 0 is no limit")
 	fs.DurationVar(&o.timeBudget, "time-budget", 0, "start no PR after this long; 0 is no limit")
 	fs.StringVar(&o.bot, "bot", defaultBot, "the account the pre-flight comments as; only its comment holds a PR's state")
+	handledPath := fs.String("handled", "", "write what the job did with each PR to this file, for the verify job")
 	next := fs.String("next", "", "write the PRs the budget deferred to this file, as a JSON list of --prs values of --budget PRs each, for next jobs")
 	prs := fs.String("prs", "", "PR numbers, space- or comma-separated; empty runs every open PR")
 	if err := fs.Parse(args); err != nil {
@@ -135,10 +138,18 @@ func runCommand(ctx context.Context, cfg config, args []string, stdout, stderr i
 		_, _ = fmt.Fprintln(stderr, "preflight run: GITHUB_TOKEN or GH_TOKEN is required")
 		return 2
 	}
-	deferred, err := runBatch(ctx, cfg, o, stdout)
+	hs, err := runBatch(ctx, cfg, o, stdout)
+	// Both written also when the job failed, so the deferred PRs still get their job and the verify job its report.
 	if *next != "" {
-		// Written also when some PR could not run, so the deferred ones still get their job.
-		if werr := writeNext(*next, chunks(deferred, o.budget)); werr != nil {
+		if werr := writeNext(*next, chunks(deferredPRs(hs), o.budget)); werr != nil {
+			err = errors.Join(err, werr)
+		}
+		for i := range hs {
+			hs[i].PassedOn = hs[i].Result == resultDeferred
+		}
+	}
+	if *handledPath != "" {
+		if werr := writeJSON(*handledPath, append([]handled{}, hs...)); werr != nil {
 			err = errors.Join(err, werr)
 		}
 	}

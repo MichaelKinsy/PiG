@@ -612,6 +612,12 @@ func contentFindings(dataPath, head string) ([]finding, error) {
 	if err := json.Unmarshal(raw, &d); err != nil {
 		return nil, err
 	}
+	// The head is read here before anything else is checked out: its links are flattened first, whoever checked it out.
+	if head != "" {
+		if err := flattenSymlinks(head); err != nil {
+			return nil, err
+		}
+	}
 	texts, err := changedText(&d, head)
 	if err != nil {
 		return nil, err

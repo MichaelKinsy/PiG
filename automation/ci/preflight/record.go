@@ -155,8 +155,8 @@ func record(ctx context.Context, cfg config, d *data, ev evaluation, o recordOpt
 		}
 	}
 	setStatus := prev == nil || prev.Head != st.Head || prev.Status != st.Status
-	body := withState(report, st)
-	if err := fitsAComment(body); err != nil {
+	body, err := commentBody(cfg, d, ev, report, st)
+	if err != nil {
 		return err
 	}
 	writeBody := body != o.comment.Body
@@ -165,7 +165,8 @@ func record(ctx context.Context, cfg config, d *data, ev evaluation, o recordOpt
 			logf(log, "record (dry run): status %s %q on %s", status, description, short(ev.Head))
 		}
 		if writeBody {
-			logf(log, "record (dry run): comment\n%s", report)
+			shown, _, _ := strings.Cut(body, stateOpen)
+			logf(log, "record (dry run): comment\n%s", shown)
 		}
 		if !setStatus && !writeBody {
 			logf(log, "record (dry run): nothing changed, nothing to send")
@@ -178,17 +179,18 @@ func record(ctx context.Context, cfg config, d *data, ev evaluation, o recordOpt
 	a := newAPI(o.apiBase, o.token)
 	a.log = log
 	prefix := "repos/" + d.Repo
-	for _, c := range due {
-		if err := a.send(ctx, http.MethodPost, fmt.Sprintf("%s/issues/%d/comments", prefix, d.PR), map[string]string{"body": alertBody(c, d, ev)}, nil); err != nil {
-			return err
-		}
-		logf(log, "record: alert for %s posted", c.Name)
-	}
+	// The status first: it is what holds a PR back, so nothing about the comment or an alert may keep it from being set.
 	if setStatus {
 		if err := a.send(ctx, http.MethodPost, fmt.Sprintf("%s/statuses/%s", prefix, ev.Head), map[string]string{"state": status, "description": description, "context": statusContext}, nil); err != nil {
 			return err
 		}
 		logf(log, "record: status %s on %s", status, short(ev.Head))
+	}
+	for _, c := range due {
+		if err := a.send(ctx, http.MethodPost, fmt.Sprintf("%s/issues/%d/comments", prefix, d.PR), map[string]string{"body": alertBody(c, d, ev)}, nil); err != nil {
+			return err
+		}
+		logf(log, "record: alert for %s posted", c.Name)
 	}
 	if !writeBody {
 		if !setStatus {
@@ -199,12 +201,31 @@ func record(ctx context.Context, cfg config, d *data, ev evaluation, o recordOpt
 	return writeComment(ctx, a, prefix, d.PR, o.comment.ID, body, log)
 }
 
-// fitsAComment refuses a body GitHub would refuse, with a reason instead of its bare 422.
-func fitsAComment(body string) error {
-	if len(body) > maxCommentLength {
-		return fmt.Errorf("the comment would be %d characters, more than the %d GitHub takes", len(body), maxCommentLength)
+// shortened is the line a report too long for a comment ends with.
+const shortened = "\nThe warnings are left out: with them the report is too long for a comment. The run's log and step summary hold them.\n"
+
+// fits reports a body GitHub takes as a comment.
+func fits(body string) bool { return len(body) <= maxCommentLength }
+
+// commentBody is the comment: the report and the state. When that is longer than GitHub takes, the report and the
+// state lose their warnings, which are what can grow; the verdicts, and so the status, stay whole.
+func commentBody(cfg config, d *data, ev evaluation, report string, st state) (string, error) {
+	body := withState(report, st)
+	if fits(body) {
+		return body, nil
 	}
-	return nil
+	bare := ev
+	bare.Checks = map[string]verdict{}
+	for name, v := range ev.Checks {
+		v.Warnings = nil
+		bare.Checks[name] = v
+	}
+	st.Checks = bare.Checks
+	body = withState(markdown(cfg, d, bare)+shortened, st)
+	if !fits(body) {
+		return "", fmt.Errorf("the comment would be %d characters even without its warnings, more than the %d GitHub takes", len(body), maxCommentLength)
+	}
+	return body, nil
 }
 
 // writeComment updates the pre-flight's comment, or posts it when there is none or it was deleted.
@@ -217,7 +238,7 @@ func writeComment(ctx context.Context, a *api, prefix string, pr int, id int64, 
 			return nil
 		}
 		// Only a 404 means the comment is gone; a 422 is a body GitHub refuses, which a new comment would not fix.
-		if h := (*httpError)(nil); !errors.As(err, &h) || h.status != http.StatusNotFound {
+		if !hasStatus(err, http.StatusNotFound) {
 			return err
 		}
 		logf(log, "record: comment %d is gone, posting it again", id)

@@ -6,7 +6,9 @@ name: Pre-flight
 # configuration, never a PR's: schedule and dispatch check out the default branch. Each PR gets a "preflight" commit
 # status and one comment, which also holds the PR's state for the next run; a PR whose head, main and description did
 # not change since its last run costs two API calls and is not written. The first job fully checks at most 20 PRs,
-# in number order; the PRs beyond go to next jobs, 20 each, at the same time.
+# in number order; the PRs beyond go to next jobs, 20 each, at the same time. A PR failing its checks is normal and
+# keeps the run green. The verify job then checks that every PR of the run got its status and comment; when one did
+# not, the pre-flight itself fell short: it keeps one issue open that says which, and fails the run.
 on:
   schedule:
     - cron: '17 * * * *'
@@ -68,13 +70,22 @@ jobs:
           if [ "${DRY_RUN:-}" = true ]; then extra+=(--dry-run); fi
           "$RUNNER_TEMP/preflight/preflight" run --repo "$GITHUB_REPOSITORY" --root "$GITHUB_WORKSPACE" \
             --bin "$RUNNER_TEMP/preflight/bin" --work "$RUNNER_TEMP/preflight/work" \
-            --prs "${PRS:-}" --budget 20 --time-budget 25m --next "$RUNNER_TEMP/preflight/next.json" "${extra[@]}"
+            --prs "${PRS:-}" --budget 20 --time-budget 25m --next "$RUNNER_TEMP/preflight/next.json" \
+            --handled "$RUNNER_TEMP/preflight/handled.json" "${extra[@]}"
           status=$?
           # The deferred PRs get their jobs also when some PR could not run.
           if [ -s "$RUNNER_TEMP/preflight/next.json" ]; then
             echo "next=$(cat "$RUNNER_TEMP/preflight/next.json")" >> "$GITHUB_OUTPUT"
           fi
           exit "$status"
+      - name: Keep what the job did with each PR, for the verify job
+        if: ${{ always() && inputs.dry-run != true }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: preflight-handled-0
+          path: ${{ runner.temp }}/preflight/handled.json
+          if-no-files-found: ignore
+          retention-days: 1
 
   # The PRs the first job's budget left: 20 per job, at the same time.
   more:
@@ -117,5 +128,55 @@ jobs:
           if [ "${DRY_RUN:-}" = true ]; then extra+=(--dry-run); fi
           "$RUNNER_TEMP/preflight/preflight" run --repo "$GITHUB_REPOSITORY" --root "$GITHUB_WORKSPACE" \
             --bin "$RUNNER_TEMP/preflight/bin" --work "$RUNNER_TEMP/preflight/work" \
-            --prs "$PRS" --time-budget 25m "${extra[@]}"
+            --prs "$PRS" --time-budget 25m --handled "$RUNNER_TEMP/preflight/handled.json" "${extra[@]}"
+      - name: Keep what the job did with each PR, for the verify job
+        if: ${{ always() && inputs.dry-run != true }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: preflight-handled-${{ strategy.job-index }}-more
+          path: ${{ runner.temp }}/preflight/handled.json
+          if-no-files-found: ignore
+          retention-days: 1
 
+  # Always, after the others, also when they failed: did every PR of the run get its status and comment? A job that
+  # reported nothing is a missing line too. Not on a dry run, which writes nothing.
+  verify:
+    name: Every PR has its verdict
+    needs: [preflight, more]
+    if: ${{ always() && inputs.dry-run != true }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      statuses: read
+      pull-requests: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - name: Build the pre-flight
+        shell: bash
+        run: go build -o "$RUNNER_TEMP/preflight" ./automation/ci/preflight
+      - name: Collect what the jobs did
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        continue-on-error: true
+        with:
+          pattern: preflight-handled-*
+          path: ${{ runner.temp }}/handled
+      - name: Check every PR and keep the issue
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/handled"
+          # Each artifact is a directory with its handled.json: give every report its own name in one directory.
+          find "$RUNNER_TEMP/handled" -mindepth 2 -name handled.json | while read -r f; do
+            mv "$f" "$RUNNER_TEMP/handled/$(basename "$(dirname "$f")").json"
+          done
+          "$RUNNER_TEMP/preflight" verify --repo "$GITHUB_REPOSITORY" --handled "$RUNNER_TEMP/handled"

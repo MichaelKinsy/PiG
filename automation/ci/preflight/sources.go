@@ -97,6 +97,7 @@ func exchange(ctx context.Context, client *http.Client, method, target, token st
 	if body != nil {
 		reader = bytes.NewReader(body)
 	}
+	//nolint:gosec // G704: the host is --api (the GitHub API) or a download URL pinned in config.yaml; the run's data only fills path segments.
 	req, err := http.NewRequestWithContext(ctx, method, target, reader)
 	if err != nil {
 		return response{}, err
@@ -109,7 +110,7 @@ func exchange(ctx context.Context, client *http.Client, method, target, token st
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) //nolint:gosec // G704: as above.
 	if err != nil {
 		return response{}, err
 	}
@@ -202,9 +203,10 @@ func (e *httpError) Error() string {
 	return fmt.Sprintf("HTTP %d: %.200s", e.status, e.body)
 }
 
-func isNotFound(err error) bool {
+// hasStatus reports an HTTP error with that status.
+func hasStatus(err error, status int) bool {
 	var h *httpError
-	return errors.As(err, &h) && (h.status == http.StatusNotFound || h.status == http.StatusUnprocessableEntity)
+	return errors.As(err, &h) && h.status == status
 }
 
 // pull is the part of pulls/<n> the checks read.

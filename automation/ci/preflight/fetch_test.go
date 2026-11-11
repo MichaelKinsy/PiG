@@ -96,7 +96,7 @@ func TestGetReportsHTTPErrors(t *testing.T) {
 	var p pull
 	a := newAPI(server.URL, "")
 	err := a.get(context.Background(), "x", &p, false)
-	if err == nil || !isNotFound(err) || !strings.Contains(err.Error(), "404") || a.callCount() != 1 {
+	if err == nil || !hasStatus(err, http.StatusNotFound) || !strings.Contains(err.Error(), "404") || a.callCount() != 1 {
 		t.Fatalf("err = %v, calls %d (a 404 is not retried)", err, a.callCount())
 	}
 }
@@ -294,5 +294,29 @@ func TestRefPathKeepsSlashes(t *testing.T) {
 	defer server.Close()
 	if sha, err := newTips(newAPI(server.URL, "t")).get(context.Background(), "o/r", "team/x"); err != nil || sha != "tip" {
 		t.Fatalf("tip %q, err %v", sha, err)
+	}
+}
+
+func TestAcknowledgedOnlyA404IsNoFile(t *testing.T) {
+	cfg, err := loadConfig(configYAML)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for status, failed := range map[int]bool{http.StatusNotFound: false, http.StatusUnprocessableEntity: true} {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.URL.Path {
+			case "/repos/o/r/pulls/1":
+				_, _ = io.WriteString(w, `{"number":1,"mergeable":true,"head":{"sha":"h"},"base":{"sha":"b","ref":"main"}}`)
+			case "/repos/o/r/contents/" + acknowledgedPath:
+				http.Error(w, "no", status)
+			default:
+				_, _ = io.WriteString(w, `[]`)
+			}
+		}))
+		d, err := fetchWith(t, cfg, fetchOptions{apiBase: server.URL, repo: "o/r", pr: 1, version: "v"}, io.Discard)
+		server.Close()
+		if _, got := d.SourceErrors["acknowledged"]; err != nil || got != failed {
+			t.Errorf("status %d: source errors %v, err %v", status, d.SourceErrors, err)
+		}
 	}
 }
