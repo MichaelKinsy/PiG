@@ -485,6 +485,15 @@ classification = "upstream"
 rationale = "pi-chord packages/chord/src/store/engine.ts StoredDocument.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
 
 [[fields]]
+id = "chord/next/store/engine.go#committedRecord.Version:json:version"
+path = "chord/next/store/engine.go"
+owner = "committedRecord"
+field = "Version"
+wire_name = "version"
+classification = "upstream"
+rationale = "pi-chord packages/chord/src/store/engine.ts createDocument (engine.ts:111-120) puts the base's version in the `document.create` record it returns, and DocumentRecord.version (engine.ts:291) is that column of the stored record; the store schema is Pi's (schema.ts MIGRATIONS, whose version 3, Pi 8a5da3ce6, adds the host column the record spreads after its key): the version the application declares for its own data. committedRecord is the Go twin of that record in Pi's key order; the port carries the number unchanged and reads no format from it."
+
+[[fields]]
 id = "chord/next/store/json_column.go#JsonColumn.Version:go:-"
 path = "chord/next/store/json_column.go"
 owner = "JsonColumn"
