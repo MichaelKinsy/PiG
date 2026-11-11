@@ -47,9 +47,9 @@ type StdioTransportOptions struct {
 }
 
 // StdioTransport talks to a server process over newline-delimited JSON on its
-// stdin and stdout. The process runs in its own process group, and closing the
-// transport shuts down the whole group per the spec: close stdin, then
-// SIGTERM, then SIGKILL.
+// stdin and stdout. The process leads a session and a process group of its own,
+// and closing the transport shuts down the whole group per the spec: close
+// stdin, then SIGTERM, then SIGKILL.
 type StdioTransport struct {
 	TransportEvents
 	options StdioTransportOptions
