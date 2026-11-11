@@ -177,7 +177,7 @@ func TestViewRooms(t *testing.T) {
 		// Read by polling: a socket's reference ends as its link closes.
 		for _, ref := range []*host.Reference{room, real} {
 			var state *host.RefState
-			for n := 0; n < 100; n++ {
+			for range 100 {
 				if state = ref.State().Value(); state.Kind == host.RefStateEnded {
 					break
 				}
@@ -263,7 +263,7 @@ func TestViewRooms(t *testing.T) {
 		sender := f.crafted(s.id, opening, "sender")
 		join(sender, "live")
 		encoded, _ := json.Marshal(strings.Repeat("y", 250*1024))
-		for n := 0; n < 4; n++ {
+		for n := range 4 {
 			roomCall(sender, "send", send(map[string]any{"key": "k" + strconv.Itoa(n), "data": string(encoded)}))
 		}
 		if err := callErr(sender, "send", send(map[string]any{"key": "k4", "data": string(encoded)})); err == nil || !strings.Contains(err.Error(), "part limit") {
@@ -284,7 +284,7 @@ func TestViewRooms(t *testing.T) {
 			join(sender, "live")
 			// 100,000 characters each: escaped or UTF-8, each key encodes to 200-300 KB.
 			accepted := 0
-			for n := 0; n < 8; n++ {
+			for n := range 8 {
 				err := callErr(sender, "send", send(map[string]any{"key": "k" + strconv.Itoa(n), "data": strings.Repeat(unit, 100_000)}))
 				if err == nil {
 					accepted++
@@ -344,13 +344,13 @@ func TestViewRooms(t *testing.T) {
 		}
 		timed := func() time.Duration {
 			start := time.Now()
-			for n := 0; n < 4; n++ {
+			for range 4 {
 				roomCall(sender, "send", send(batch...))
 			}
 			return time.Since(start)
 		}
 		early := timed()
-		for n := 0; n < 40; n++ {
+		for range 40 {
 			roomCall(sender, "send", send(batch...))
 		}
 		late := timed()

@@ -540,7 +540,7 @@ func TestViewRoomsMemoryBudget(t *testing.T) {
 			batch[n] = map[string]any{"data": strings.Repeat("z", 1000)}
 		}
 		fill := func() error {
-			for n := 0; n < 4; n++ {
+			for range 4 {
 				if err := callErr(left, "send", send(batch...)); err != nil {
 					return err
 				}
