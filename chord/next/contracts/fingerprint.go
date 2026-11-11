@@ -56,12 +56,16 @@ type normalEntry struct {
 	value any
 }
 
-// variantNormal is the members as a sorted dictionary of `{ state }`, `{ args, result }` or `{ keyed }` (slice 6a
-// §12: a node of its own, so contracts without keyed members keep their fingerprints and NormalFormVersion stays).
+// variantNormal is the members as a sorted dictionary of `{ state }`, `{ args, result }`, `{ keyed }` or `{ event }`
+// (slice 6a §12, decision "Events: fire-and-forget members": a node of its own per kind, so contracts without keyed or
+// event members keep their fingerprints and NormalFormVersion stays).
 func variantNormal(variant *VariantData) delta.JsonValue {
-	entries := make([]normalEntry, 0, variant.State.Len()+variant.Keyed.Len()+variant.Methods.Len())
+	entries := make([]normalEntry, 0, variant.State.Len()+variant.Events.Len()+variant.Keyed.Len()+variant.Methods.Len())
 	for member, schema := range variant.State.All() {
 		entries = append(entries, normalEntry{member, delta.JsonObjectOf("state", schema.Normal)})
+	}
+	for member, schema := range variant.Events.All() {
+		entries = append(entries, normalEntry{member, delta.JsonObjectOf("event", schema.Normal)})
 	}
 	for member, schema := range variant.Keyed.All() {
 		entries = append(entries, normalEntry{member, delta.JsonObjectOf("keyed", schema.Normal)})

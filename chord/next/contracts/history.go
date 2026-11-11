@@ -9,12 +9,13 @@ package contracts
 // ChangeSide is the side of a member an edit changed.
 type ChangeSide string
 
-// The sides of an edit; SideKeyed is a local contract's keyed member (slice 7b).
+// The sides of an edit; SideKeyed is a local contract's keyed member (slice 7b), SideEvent an event member.
 const (
 	SideState  ChangeSide = "state"
 	SideArgs   ChangeSide = "args"
 	SideResult ChangeSide = "result"
 	SideKeyed  ChangeSide = "keyed"
+	SideEvent  ChangeSide = "event"
 )
 
 // Change is what one edit changed: one side of one member in one variant. An edit that changed several variants
@@ -25,8 +26,8 @@ type Change struct {
 	Side    ChangeSide
 }
 
-// MemberSide names a part of a variant: its state members, its methods or its keyed members (upstream's
-// `keyof VariantShape`).
+// MemberSide names a part of a variant: its state members, its methods, its keyed members or its event members
+// (upstream's `keyof VariantShape`).
 type MemberSide string
 
 // The parts of a variant.
@@ -34,6 +35,7 @@ const (
 	MemberSideState   MemberSide = "state"
 	MemberSideMethods MemberSide = "methods"
 	MemberSideKeyed   MemberSide = "keyed"
+	MemberSideEvents  MemberSide = "events"
 )
 
 // MemberNames lists the names of the members of side in any variant, each once, in order of first appearance.
@@ -49,6 +51,8 @@ func MemberNames(variants *NamedMap[*VariantData], side MemberSide) []string {
 			keys = variant.Methods.Keys()
 		case MemberSideKeyed:
 			keys = variant.Keyed.Keys()
+		case MemberSideEvents:
+			keys = variant.Events.Keys()
 		}
 		for _, name := range keys {
 			if !seen[name] {

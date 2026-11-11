@@ -106,7 +106,7 @@ func TestContractVariantNames(t *testing.T) {
 		t.Fatalf("VariantOrder = %v", got)
 	}
 	editor := currentVariants(t, notes).Value("editor")
-	if got := contracts.VariantNamesOf(editor); !reflect.DeepEqual(got, contracts.VariantNames{State: []string{"notes"}, Methods: []string{"add", "clear"}}) {
+	if got := contracts.VariantNamesOf(editor); !reflect.DeepEqual(got, contracts.VariantNames{State: []string{"notes"}, Methods: []string{"add", "clear"}, Events: []string{}}) {
 		t.Fatalf("VariantNamesOf = %+v", got)
 	}
 	// Names sort, whatever the declaration order.
@@ -117,7 +117,7 @@ func TestContractVariantNames(t *testing.T) {
 	if got := must(contracts.VariantOrder(reversed)); !reflect.DeepEqual(got, []string{"a", "z"}) {
 		t.Fatalf("VariantOrder = %v", got)
 	}
-	if got := contracts.VariantNamesOf(currentVariants(t, reversed).Value("z")); !reflect.DeepEqual(got, contracts.VariantNames{State: []string{"a", "b"}, Methods: []string{"m", "n"}}) {
+	if got := contracts.VariantNamesOf(currentVariants(t, reversed).Value("z")); !reflect.DeepEqual(got, contracts.VariantNames{State: []string{"a", "b"}, Methods: []string{"m", "n"}, Events: []string{}}) {
 		t.Fatalf("VariantNamesOf = %+v", got)
 	}
 }
