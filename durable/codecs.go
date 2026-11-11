@@ -338,15 +338,18 @@ func decodeContentMembers(value, ops json.RawMessage) (JsonObject, delta.Ops, er
 type taskStateWire[S, R any] struct {
 	Status     TaskStatus      `json:"status"`
 	Checkpoint *S              `json:"checkpoint,omitempty"`
+	Wake       *WakeReason     `json:"wake,omitempty"`
 	On         *[]TaskId       `json:"on,omitempty"`
 	Policy     JoinPolicy      `json:"policy,omitempty"`
 	Until      *float64        `json:"until,omitempty"`
+	Signals    *[]SignalKey    `json:"signals,omitempty"`
 	Outcome    *TaskOutcome[R] `json:"outcome,omitempty"`
 }
 
-// MarshalJSON encodes On for a waiting state even when it is empty: the waiting member requires it.
+// MarshalJSON encodes On for a waiting state even when it is empty: the waiting member requires it. A non-nil Signals
+// is encoded as well, also when empty: a sleep lists them as given.
 func (state TaskState[S, R]) MarshalJSON() ([]byte, error) {
-	wire := taskStateWire[S, R]{Status: state.Status, Checkpoint: state.Checkpoint, Policy: state.Policy, Until: state.Until, Outcome: state.Outcome}
+	wire := taskStateWire[S, R]{Status: state.Status, Checkpoint: state.Checkpoint, Wake: state.Wake, Policy: state.Policy, Until: state.Until, Outcome: state.Outcome}
 	if state.On != nil || state.Status == TaskWaiting {
 		on := state.On
 		if on == nil {
@@ -354,7 +357,54 @@ func (state TaskState[S, R]) MarshalJSON() ([]byte, error) {
 		}
 		wire.On = &on
 	}
+	if state.Signals != nil {
+		signals := state.Signals
+		wire.Signals = &signals
+	}
 	return jsstring.MarshalKeepingSurrogates(wire)
+}
+
+type wakeReasonWire struct {
+	Reason WakeReasonKind `json:"reason"`
+	Signal *string        `json:"signal,omitempty"`
+	Key    *string        `json:"key,omitempty"`
+	Ended  *[]TaskId      `json:"ended,omitempty"`
+}
+
+// MarshalJSON writes the member of the union the reason names: signal carries the key's signal and key, tasks the ended
+// list, also when empty.
+func (wake WakeReason) MarshalJSON() ([]byte, error) {
+	wire := wakeReasonWire{Reason: wake.Reason}
+	switch wake.Reason {
+	case WakeSignal:
+		wire.Signal, wire.Key = &wake.Signal, &wake.Key
+	case WakeTasks:
+		ended := wake.Ended
+		if ended == nil {
+			ended = []TaskId{}
+		}
+		wire.Ended = &ended
+	}
+	return jsstring.MarshalKeepingSurrogates(wire)
+}
+
+// UnmarshalJSON reads the member of the union the reason names.
+func (wake *WakeReason) UnmarshalJSON(data []byte) error {
+	var wire wakeReasonWire
+	if err := jsstring.UnmarshalKeepingSurrogates(data, &wire); err != nil {
+		return err
+	}
+	*wake = WakeReason{Reason: wire.Reason}
+	if wire.Signal != nil {
+		wake.Signal = *wire.Signal
+	}
+	if wire.Key != nil {
+		wake.Key = *wire.Key
+	}
+	if wire.Ended != nil {
+		wake.Ended = *wire.Ended
+	}
+	return nil
 }
 
 // orderedValue decodes a JsonValue member with insertion-ordered objects, as JSON.parse gives Pi.

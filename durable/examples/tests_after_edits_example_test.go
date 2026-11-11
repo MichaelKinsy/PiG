@@ -127,7 +127,7 @@ func TestExample32TestsAfterEdits(t *testing.T) {
 		Tools: []*durable.ToolRegistration{edit},
 		Tasks: []durable.AnyTask{runTestsTask.Erased()},
 		Hooks: []durable.HookRegistration{harness.Hook(harness.GenerationTask, &harness.GenerationHooks{
-			AfterRun: func(ctx context.Context, run harness.RunSummary, api harness.HookApi) (*harness.RunEndTasks, error) {
+			AfterRun: func(ctx context.Context, run harness.RunSummary, api harness.HookApi) (*harness.HookTasks, error) {
 				// The run's own entries, from its first input to its answer; a compaction never removes them.
 				ascending := durable.ScanAscending
 				page, err := api.Entries(ctx, durable.EntryQuery{MinEntryId: &run.First, MaxEntryId: &run.Last, Order: &ascending}, 1000, nil)
@@ -147,7 +147,7 @@ func TestExample32TestsAfterEdits(t *testing.T) {
 					return nil, nil
 				}
 				// Each fix run asks again with a fresh turn budget: the extension caps the loop itself.
-				return &harness.RunEndTasks{Tasks: []harness.RunEndTask{harness.RunEndTaskOf(runTestsTask, testsInput{Attempt: int(attempts.Add(1))})}}, nil
+				return &harness.HookTasks{Tasks: []harness.HookTask{harness.HookTaskOf(runTestsTask, testsInput{Attempt: int(attempts.Add(1))})}}, nil
 			},
 		})},
 	}

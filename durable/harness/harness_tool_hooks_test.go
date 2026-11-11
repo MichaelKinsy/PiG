@@ -1073,8 +1073,8 @@ func TestCallsToToolsTheRequestDidNotOffer(t *testing.T) {
 			if len(live.Tools) != 2 || live.Tools[0].CallId != "c1" || live.Tools[0].Unoffered || live.Tools[1].CallId != "c2" || !live.Tools[1].Unoffered {
 				t.Fatalf("version %d: slots %+v, want c1 offered and c2 unoffered", version, live.Tools)
 			}
-			if got := tkTaskRecord(t, opened.harness, generation).Version; got != 2 {
-				t.Fatalf("version %d: generation version %d, want 2", version, got)
+			if got := tkTaskRecord(t, opened.harness, generation).Version; got != 3 {
+				t.Fatalf("version %d: generation version %d, want 3", version, got)
 			}
 			// The tools are offered when the round goes on: only the flag keeps `ghost` from running.
 			if err := root.Configure(testContext, AgentChange{Tools: Cleared[ToolChange]()}); err != nil {
@@ -1098,8 +1098,8 @@ func TestCallsToToolsTheRequestDidNotOffer(t *testing.T) {
 
 			opened = thOpen(t, path, setup)
 			thExpectStatus(t, thWait(t, thSubmitted(t, opened.harness, id)), durable.SubmissionDone)
-			if got := tkTaskRecord(t, opened.harness, generation).Version; got != 2 {
-				t.Fatalf("version %d: generation version %d after reopening, want 2", version, got)
+			if got := tkTaskRecord(t, opened.harness, generation).Version; got != 3 {
+				t.Fatalf("version %d: generation version %d after reopening, want 3", version, got)
 			}
 			entries := allEntries(t, opened.root)
 			thExpectEqual(t, "c2 diagnostics", thDiagnosticsOf(entries, "c2"), []string{"tool_unavailable"})

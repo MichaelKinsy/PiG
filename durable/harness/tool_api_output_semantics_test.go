@@ -71,7 +71,7 @@ func TestToolApiOutputRejectsLateCallsAndForeignChunks(t *testing.T) {
 // hooks that set it still run.
 func TestAfterResponseSkipsHookSetsWithoutIt(t *testing.T) {
 	setup := chatSetup(t)
-	addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{OnYield: func(context.Context, ai.AssistantMessage, HookApi) (*YieldContinue, error) { return nil, nil }})
+	addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{OnYield: func(context.Context, ai.AssistantMessage, HookApi) (YieldResult, error) { return nil, nil }})
 	seen := &syncList[string]{}
 	addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{AfterResponse: func(_ context.Context, message ai.AssistantMessage, _ HookApi) error {
 		text, _ := textOf(message)

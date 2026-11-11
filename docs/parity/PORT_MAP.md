@@ -1107,7 +1107,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/harness/provider.ts` | `durable/harness/provider.go` | ✅ |
 | `packages/durable/src/harness/registry-reader.ts` | `durable/harness/registry_reader.go (durable/harness/registry_reader_test.go, durable/harness/registry_reader_host_test.go, durable/harness/registry_reader_upstream_test.go)` Missing: six one-line mutations of registry_reader.go that no test in durable/harness fails (mutation run of 2026-11-10, 15 mutants, 9 killed or not compilable): the snapshot never cached (snapshot-never-cached); the cached-seen flag never set (cache-seen-not-set); attach overwriting a newer cached value (attach-overwrites-newer); Subscribe dropping its ctx (subscribe-ctx-dropped); the reader dropping its observer and the observer's ctx (reader-observer-dropped, reader-observer-ctx-dropped); each needs an asserting case before the row closes | 🟡 |
 | `packages/durable/src/harness/registry.ts` | `durable/harness/registry.go` | ✅ |
-| `packages/durable/src/harness/scheduler.ts` | `durable/harness/scheduler.go`, `durable/types.go` | ✅ |
+| `packages/durable/src/harness/scheduler.ts` | `durable/harness/scheduler.go`, `durable/harness/scheduler_parked.go`, `durable/types.go` | ✅ |
 | `packages/durable/src/harness/submissions.ts` | `durable/harness/submissions.go` | ✅ |
 | `packages/durable/src/harness/task-graph.ts` | `durable/harness/task_graph.go` | ✅ |
 | `packages/durable/src/harness/tool.ts` | `durable/harness/tool.go`, `durable/harness/tool_nested.go` | ✅ |

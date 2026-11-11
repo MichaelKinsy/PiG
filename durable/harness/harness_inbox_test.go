@@ -278,7 +278,7 @@ func TestInbox(t *testing.T) {
 		first := gatedReply("first")
 		setup.Faux.SetResponses([]ai.FauxResponseStep{first.step, fauxAnswer("both")})
 		yielded := deferred()
-		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{OnYield: func(context.Context, ai.AssistantMessage, HookApi) (*YieldContinue, error) {
+		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{OnYield: func(context.Context, ai.AssistantMessage, HookApi) (YieldResult, error) {
 			yielded.resolve()
 			return nil, nil
 		}})
@@ -805,7 +805,7 @@ func TestInbox(t *testing.T) {
 		setup := chatSetup(t)
 		first := gatedReply("first")
 		setup.Faux.SetResponses([]ai.FauxResponseStep{first.step})
-		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{OnYield: func(context.Context, ai.AssistantMessage, HookApi) (*YieldContinue, error) {
+		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{OnYield: func(context.Context, ai.AssistantMessage, HookApi) (YieldResult, error) {
 			return &YieldContinue{Continue: ai.UserText("more")}, nil
 		}})
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
@@ -1232,7 +1232,7 @@ func expectSameSettlement(t *testing.T, got, settled durable.SubmissionRecord, i
 func continueOnce(text string) *GenerationHooks {
 	var mu sync.Mutex
 	yields := 0
-	return &GenerationHooks{OnYield: func(context.Context, ai.AssistantMessage, HookApi) (*YieldContinue, error) {
+	return &GenerationHooks{OnYield: func(context.Context, ai.AssistantMessage, HookApi) (YieldResult, error) {
 		mu.Lock()
 		defer mu.Unlock()
 		yields++

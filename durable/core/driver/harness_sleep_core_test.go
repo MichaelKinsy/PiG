@@ -351,11 +351,12 @@ func TestSleepingTasks(t *testing.T) {
 			}
 			pollUntil(t, "the sleeping inspection", func() bool {
 				state, ok := inspected()
-				return ok && state.Kind == harness.TaskInspectionSleeping && state.Until == 2000
+				return ok && state.Kind == harness.TaskInspectionSleeping && state.Until != nil && *state.Until == 2000
 			})
 			pollUntil(t, "the graph showing the sleep", func() bool {
 				node, ok := graph.Value().Tasks[strconv.FormatInt(int64(id), 10)]
-				return ok && node.State.Status == durable.TaskSleeping && node.State.Phase == "after" && node.State.Until == 2000
+				// Compared through JSON: Until is the sleep's time when it has one (a pointer, absent for a sleep on signals only).
+				return ok && node.State.Status == durable.TaskSleeping && node.State.Phase == "after" && jsonValueOf(t, node.State).(map[string]any)["until"] == float64(2000)
 			})
 			// harness-sleep.test.ts:109: the wake is idle once open's recovery pass has landed.
 			pollUntil(t, "open's recovery pass landed", func() bool { return !h.Wake().Active })

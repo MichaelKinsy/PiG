@@ -58,3 +58,9 @@ pkg:coding-agent/.#GrepOperations	coding-agent	child-gap	internal/codingagent/to
 pkg:coding-agent/.#GrepOperations::property:readFile	coding-agent	not-exercised	internal/codingagent/tools/grep.go#GrepOperations.ReadFile
 pkg:coding-agent/.#OAuthSelectorComponent	coding-agent	child-gap	tui/oauth_selector.go#OAuthSelectorComponent
 pkg:coding-agent/.#OAuthSelectorComponent::construct:0	coding-agent	signature-mismatch	tui/oauth_selector.go#NewOAuthSelectorComponent
+pkg:durable/.#GenerationHooks	durable	child-gap	durable/harness/types.go#GenerationHooks
+pkg:durable/.#GenerationHooks::property:afterTools	durable	child-gap	durable/harness/types.go#GenerationHooks.AfterTools
+pkg:durable/.#GenerationHooks::property:afterTools::call:0	durable	signature-mismatch	durable/harness/types.go#GenerationHooks.AfterTools
+pkg:durable/.#GenerationHooks::property:onYield	durable	child-gap	durable/harness/types.go#GenerationHooks.OnYield
+pkg:durable/.#GenerationHooks::property:onYield::call:0	durable	undecidable	durable/harness/types.go#GenerationHooks.OnYield
+pkg:durable/.#RunEndTask	durable	no-go-symbol	

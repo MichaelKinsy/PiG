@@ -283,7 +283,7 @@ func TestExample27Reviewer(t *testing.T) {
 			return new("You review diffs. Report problems as a list. Never edit files."), nil
 		})},
 		Hooks: []durable.HookRegistration{harness.Hook(harness.GenerationTask, &harness.GenerationHooks{
-			OnYield: func(_ context.Context, answer ai.AssistantMessage, _ harness.HookApi) (*harness.YieldContinue, error) {
+			OnYield: func(_ context.Context, answer ai.AssistantMessage, _ harness.HookApi) (harness.YieldResult, error) {
 				if strings.Contains(assistantText(answer), done) {
 					return nil, nil
 				}

@@ -113,9 +113,19 @@ func (i *invocation) MemoCandidate(ctx context.Context, name string, candidate d
 	return value, json.Unmarshal(raw, &value)
 }
 
-func (i *invocation) CreateTaskErased(ctx context.Context, task durable.AnyTask, input durable.JsonValue, options durable.TaskOptions) (durable.TaskId, error) {
+// ReadSignalErased is the signal read of a hook or a tool call, which the core cannot answer: it has no signal memos (CONTRACT.md
+// section 8).
+func (i *invocation) ReadSignalErased(context.Context, durable.AnySignalSource, string) (*durable.ErasedSignalState, error) {
+	return nil, notInPin("ReadSignalErased")
+}
+
+func (i *invocation) CreateTaskErased(ctx context.Context, task durable.AnyTask, input durable.JsonValue, options durable.ToolTaskOptions) (durable.TaskId, error) {
+	// A keyed task is a row of the call's task memo (CONTRACT.md section 8): the core has none.
+	if options.Key != nil {
+		return 0, notInPin("ToolTaskOptions.Key")
+	}
 	options.ConversationId = nil
-	id, err := i.Commit(ctx, func(tx durable.Tx) (any, error) { return tx.CreateTaskErased(task, input, options) })
+	id, err := i.Commit(ctx, func(tx durable.Tx) (any, error) { return tx.CreateTaskErased(task, input, options.TaskOptions) })
 	if err != nil {
 		return 0, err
 	}
@@ -593,8 +603,16 @@ func (s *coreSession) Usage(ctx context.Context) (harness.UsageState, error) {
 	return usage, json.Unmarshal(raw, &usage)
 }
 
+// SignalErased is Harness.signal: the core has no signal rows to write (CONTRACT.md section 8), so nothing is delivered.
+func (s *coreSession) SignalErased(context.Context, durable.TaskId, durable.AnySignalSource, string, durable.JsonValue) (durable.SignalResult, error) {
+	return "", notInPin("Harness.SignalErased")
+}
+
 // submit admits one submission and waits for the core's answer, which names its ID.
 func (s *coreSession) submit(ctx context.Context, conversationID durable.ConversationId, draft durable.SubmissionDraft) (durable.Submission, error) {
+	if draft.Notify != nil {
+		return nil, notInPin("SubmissionDraft.Notify")
+	}
 	release, err := s.admit()
 	if err != nil {
 		return nil, err
@@ -646,6 +664,9 @@ func submissionEvent(conversationID durable.ConversationId, draft durable.Submis
 // submitIn is Conversation.submit(tx, draft): the admission runs inside the caller's commit, by the transaction operation `submit`, which
 // the core refuses after the transaction's first table write (ReadAfterWrite).
 func (s *coreSession) submitIn(tx durable.Tx, conversationID durable.ConversationId, draft durable.SubmissionDraft) (durable.SubmissionId, error) {
+	if draft.Notify != nil {
+		return 0, notInPin("SubmissionDraft.Notify")
+	}
 	proxy, ok := tx.(*txProxy)
 	if !ok || proxy.tx.client != s.client {
 		return 0, errors.New("The transaction belongs to another Session")
