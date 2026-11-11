@@ -10,7 +10,7 @@ import {
   createAllToolDefinitions,
   createLocalBashOperations,
   processImage
-} from "./chunk-GXPJB5J2.js";
+} from "./chunk-5OLLTYCS.js";
 import {
   getPiUserAgent
 } from "./chunk-PNTN457B.js";
@@ -7871,39 +7871,70 @@ function applySgrCode(params, style) {
   }
 }
 __name(applySgrCode, "applySgrCode");
-var ANSI_REGEX = /\x1b\[([\d;]*)m/g;
+var ANSI_REGEX = /\x1b\[([\d;]*)m|\x1b\[[0-?]*[ -/]*[@-~]|\x1b\]([^\x07\x1b]*)(?:\x07|\x1b\\)|\x1b_[^\x07\x1b]*(?:\x07|\x1b\\)/g;
+var OSC8_REGEX = /^8;[^;]*;(.*)$/s;
+var SAFE_LINK_REGEX = /^(?:https?:|mailto:)/i;
+function stripAnsiEscapes(text) {
+  return text.replace(ANSI_REGEX, "").replace(/\x1b/g, "");
+}
+__name(stripAnsiEscapes, "stripAnsiEscapes");
 function ansiToHtml(text) {
   const style = createEmptyStyle();
   let result = "";
   let lastIndex = 0;
   let inSpan = false;
+  let inLink = false;
+  const closeSpan = /* @__PURE__ */ __name(() => {
+    if (inSpan) {
+      result += "</span>";
+      inSpan = false;
+    }
+  }, "closeSpan");
+  const openSpan = /* @__PURE__ */ __name(() => {
+    if (hasStyle(style)) {
+      result += `<span style="${styleToInlineCSS(style)}">`;
+      inSpan = true;
+    }
+  }, "openSpan");
   ANSI_REGEX.lastIndex = 0;
   let match = ANSI_REGEX.exec(text);
   while (match !== null) {
     const beforeText = text.slice(lastIndex, match.index);
     if (beforeText) {
-      result += escapeHtml(beforeText);
+      result += escapeHtml(beforeText.replace(/\x1b/g, ""));
     }
-    const paramStr = match[1];
-    const params = paramStr ? paramStr.split(";").map((p) => parseInt(p, 10) || 0) : [0];
-    if (inSpan) {
-      result += "</span>";
-      inSpan = false;
-    }
-    applySgrCode(params, style);
-    if (hasStyle(style)) {
-      result += `<span style="${styleToInlineCSS(style)}">`;
-      inSpan = true;
+    if (match[1] !== void 0) {
+      const paramStr = match[1];
+      const params = paramStr ? paramStr.split(";").map((p) => parseInt(p, 10) || 0) : [0];
+      closeSpan();
+      applySgrCode(params, style);
+      openSpan();
+    } else if (match[2] !== void 0) {
+      const hyperlink = OSC8_REGEX.exec(match[2]);
+      if (hyperlink) {
+        const url = hyperlink[1].trim().replace(/[\x00-\x1f\x7f]/g, "");
+        closeSpan();
+        if (inLink) {
+          result += "</a>";
+          inLink = false;
+        }
+        if (url && SAFE_LINK_REGEX.test(url)) {
+          result += `<a href="${escapeHtml(url)}">`;
+          inLink = true;
+        }
+        openSpan();
+      }
     }
     lastIndex = match.index + match[0].length;
     match = ANSI_REGEX.exec(text);
   }
   const remainingText = text.slice(lastIndex);
   if (remainingText) {
-    result += escapeHtml(remainingText);
+    result += escapeHtml(remainingText.replace(/\x1b/g, ""));
   }
-  if (inSpan) {
-    result += "</span>";
+  closeSpan();
+  if (inLink) {
+    result += "</a>";
   }
   return result;
 }
@@ -7914,9 +7945,8 @@ function ansiLinesToHtml(lines) {
 __name(ansiLinesToHtml, "ansiLinesToHtml");
 
 // pi-dist/pi-coding-agent/core/export-html/tool-renderer.js
-var ANSI_ESCAPE_REGEX = /\x1b\[[\d;]*m/g;
 function isBlankRenderedLine(line) {
-  return line.replace(ANSI_ESCAPE_REGEX, "").trim().length === 0;
+  return stripAnsiEscapes(line).trim().length === 0;
 }
 __name(isBlankRenderedLine, "isBlankRenderedLine");
 function trimRenderedResultLines(lines) {
@@ -8540,6 +8570,8 @@ var AgentSession = class {
    * `setActiveToolsByName()` deactivates a tool or the next agent run starts.
    */
   _pendingToolNames = /* @__PURE__ */ new Set();
+  /** The restored or reloaded loadout that `_pendingToolNames` belongs to. */
+  _restoredToolNames = /* @__PURE__ */ new Set();
   _usesDefaultTools;
   _defaultToolModifiers;
   /** Matches the `--tools` entries: tool names or patterns. */
@@ -9464,8 +9496,9 @@ var AgentSession = class {
     const previous = this.getActiveToolNames();
     this._setActiveTools(toolNames);
     const active = new Set(this.getActiveToolNames());
-    if (previous.some((name) => !active.has(name)))
+    if (previous.some((name) => !active.has(name) && this._restoredToolNames.has(name))) {
       this._pendingToolNames.clear();
+    }
   }
   _setActiveTools(toolNames) {
     const tools = this._applyToolLoadout(toolNames);
@@ -9727,6 +9760,7 @@ var AgentSession = class {
    */
   _restoreToolsFromTranscript(modifiers = []) {
     this._pendingToolNames.clear();
+    this._restoredToolNames.clear();
     const systemMessages = this.sessionManager.getBranch().flatMap((entry) => entry.type === "message" && entry.message.role === "system" ? [entry.message] : []);
     if (systemMessages.length === 0)
       return;
@@ -9734,6 +9768,7 @@ var AgentSession = class {
     const newTools = [...this._toolRegistry.keys()].filter((name) => !mentioned.has(name) && !this._baseToolDefinitions.has(name) && this._isActivatedOnRegistration(name));
     const names = applyToolModifiers([...getCurrentTools(systemMessages).map((tool) => tool.name), ...newTools], modifiers);
     this._pendingToolNames = new Set(names.filter((name) => this._isAllowedTool(name)));
+    this._restoredToolNames = new Set(applyToolModifiers(getCurrentTools(systemMessages).map((tool) => tool.name), modifiers));
     this._setActiveTools(names);
   }
   // =========================================================================
@@ -11235,6 +11270,7 @@ ${normalized.hints.join("\n")}` : first.text;
     const addedDefaultTools = getDefaultTools().filter((name) => !previousDefaultTools.has(name));
     for (const name of this.getActiveToolNames())
       this._pendingToolNames.add(name);
+    this._restoredToolNames = new Set(this.getActiveToolNames());
     this._buildRuntime({
       activeToolNames: [...this.getActiveToolNames(), ...addedDefaultTools],
       flagValues: previousFlagValues,
