@@ -29,7 +29,7 @@ import (
 // entry, a Node new enough for the sandbox (26.5.1 or later: `CHORD_TUI_NODE`, else `node26`, else `node` on the PATH; the tests
 // that need it are skipped without), and launchers run in this process with their terminal on pipes.
 //
-// Forced differences (D602). Pi runs the launcher as a child process (`drive.ts`) on a pipe or a pseudo-terminal; the Go launcher
+// Forced differences (language mechanics: Go has goroutines and packages where Pi has one JavaScript thread and child processes). Pi runs the launcher as a child process (`drive.ts`) on a pipe or a pseudo-terminal; the Go launcher
 // is a package, run here on a Terminal of pipes, its output a buffer a test waits on (no polling).
 
 // clientRoot is the vendored client tree's Pi sources (surfaces/client/pi/chord).

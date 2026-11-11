@@ -21,7 +21,7 @@ import (
 
 // Ports the "applies changes", "applying changes one after another" and "base code" tests of
 // packages/chord/test/node/app/app.test.ts (Pi main c23b9ec1). The base-code tests that start a server with no `base` given are in
-// app_executable_test.go; the one with a lazy optional import has no Go form (D603: an executable has no import graph). The worker
+// app_executable_test.go; the one with a lazy optional import has no Go form (language mechanics: an executable has no import graph). The worker
 // kind's built-from file is its entry executable (a Go worker is a program, not a Node bundle). The
 // serialization test holds the first build through App's `build` and `rollout` fields, where Pi replaces the component's methods.
 // The "installs" test is ported below.

@@ -6115,7 +6115,7 @@
         "internal/codingagent/llama/ui_selection_test.go#TestHuggingFaceSearchSelectsTheBestMatchWhenTheUserDidNotBrowse",
         "internal/codingagent/llama/ui_selection_test.go#TestHuggingFaceSearchSelectsTheBestMatchWhenTheBrowsedModelIsNotInTheNewResults"
       ],
-      "rationale": "All 3 upstream cases run in internal/codingagent/llama/ui_selection_test.go; D312 records the Pi 1.5.0 difference."
+      "rationale": "All 3 upstream cases run in internal/codingagent/llama/ui_selection_test.go; the Pi 1.5.0 difference (the model selector kept no selection when results refreshed, Pi df0d88aac) was fixed in Pi 1.5.1, before the 1.5.2 pin."
     },
     {
       "path": "packages/coding-agent/test/login-dialog-device-code.test.ts",

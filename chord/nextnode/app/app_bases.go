@@ -13,7 +13,7 @@ import (
 // the base code the `base` mark compares.
 //
 // Forced Go differences. A Promise is a channel closed when it settles (`BasesBuilt`, `BaseWatched`). The server's own code is its
-// executable (D603), where Pi scans the static import graph of its start script; a worker kind's base is its executable too, which
+// executable (language mechanics: an executable has no import graph), where Pi scans the static import graph of its start script; a worker kind's base is its executable too, which
 // holds its code already (workers' doc.go): its build copies the entry (the check that it can be started) and records its bytes. The one
 // goroutine that builds and records is the app's, joined by Wait (Go's ownership of what Pi leaves as unawaited promises: no Pi
 // counterpart, no numbered divergence). As in Pi, the close does not wait for the builds or the scan: a build cannot be cancelled
