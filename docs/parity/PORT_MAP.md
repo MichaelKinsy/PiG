@@ -966,7 +966,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/host/readiness.ts` | `chord/next/host/host_readiness.go` | ✅ |
 | `packages/chord/src/host/reload-cycle.ts` | `chord/next/host/host_reload_cycle.go` | ✅ |
 | `packages/chord/src/host/unbound-clock.ts` | `chord/next/host/host_unbound_clock.go` | ✅ |
-| `packages/chord/src/node/app/app.ts` | `chord/nextnode/app/app.go` | ✅ |
+| `packages/chord/src/node/app/app.ts` | `chord/nextnode/app/app.go, chord/nextnode/plugins/plugins_node_host_data.go, chord/nextnode/plugins/node/host.mjs (exportHostData, importHostData, deleteHostData control requests)` | ✅ |
 | `packages/chord/src/node/app/archive.ts` | `chord/nextnode/app/archive.go` | ✅ |
 | `packages/chord/src/node/app/blobs.ts` | `chord/nextnode/app/blobs.go` | ✅ |
 | `packages/chord/src/node/app/data.ts` | `chord/nextnode/app/data.go, host_data.mjs` | ✅ |
@@ -1061,10 +1061,10 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/web/scripts.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/scripts.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/web/styles.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/styles.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/web/themes.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/themes.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
-| `packages/chord/src/host/host-data.ts` | `(new upstream by 1.5.2; not mapped)` | ⬜ |
-| `packages/chord/src/store/host-column.ts` | `(new upstream by 1.5.2; not mapped)` | ⬜ |
-| `packages/chord/src/store/host-data.ts` | `(new upstream by 1.5.2; not mapped)` | ⬜ |
-| `packages/chord/src/store/import-migration.ts` | `(new upstream by 1.5.2; not mapped)` | ⬜ |
+| `packages/chord/src/host/host-data.ts` | `chord/next/host/host_host_data.go` | ✅ |
+| `packages/chord/src/store/host-column.ts` | `chord/next/store/host_column.go` | ✅ |
+| `packages/chord/src/store/host-data.ts` | `chord/next/store/host_data.go` | ✅ |
+| `packages/chord/src/store/import-migration.ts` | `chord/next/store/import_migration.go` | ✅ |
 
 ## `packages/protocol/src/`
 

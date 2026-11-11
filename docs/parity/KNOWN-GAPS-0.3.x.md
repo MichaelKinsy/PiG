@@ -14,39 +14,15 @@ Only `make test-porting-release` accepts the reviewed deferral tag. Unit tests, 
 
 Pi 1.5.2. `make known-gaps` generates this block from `go run ./test/parity/cmd/testinventorycheck -release-policy`, and `make known-gaps-drift` fails when it is stale. The block names no commit: its totals come from the [reviewed mapping](../../test/parity/interfaces/test-mapping-v1.5.2.json) and the [release policy](../../test/parity/interfaces/test-porting-policy-v1.5.2.json) at the commit that carries this file.
 
-The checker reports 992 files: 956 ported, 2 partial, 0 scenario-covered, 6 designed-out, 1 divergence and 27 pending. `make test-porting-release` accepts 0 approved 0.3.x known gaps and reports 992 reviewed paths and 956 ported (committed baseline 479). 29 files are open: 0 hot-path and 29 without a hot-path tag.
+The checker reports 992 files: 980 ported, 1 partial, 0 scenario-covered, 6 designed-out, 1 divergence and 4 pending. `make test-porting-release` accepts 0 approved 0.3.x known gaps and reports 992 reviewed paths and 980 ported (committed baseline 479). 5 files are open: 0 hot-path and 5 without a hot-path tag.
 
 | Area | Upstream test path | Status | Hot path | Follow-up |
 |---|---|---|---|---|
-| extensions | `packages/chord/test/contracts/accepts.test.ts` | pending | no | none |
-| extensions | `packages/chord/test/contracts/declare.test.ts` | partial | no | none |
-| extensions | `packages/chord/test/contracts/host-kind.test.ts` | pending | no | none |
-| extensions | `packages/chord/test/documents/definition.test.ts` | pending | no | none |
-| extensions | `packages/chord/test/documents/handles.test.ts` | pending | no | none |
-| extensions | `packages/chord/test/documents/keyed-slot.test.ts` | pending | no | none |
-| extensions | `packages/chord/test/documents/persistence.test.ts` | pending | no | none |
-| extensions | `packages/chord/test/documents/slot.test.ts` | pending | no | none |
-| extensions | `packages/chord/test/host/host-data.test.ts` | pending | no | none |
-| extensions | `packages/chord/test/host/members.test.ts` | pending | no | none |
-| extensions | `packages/chord/test/node/app/app.test.ts` | pending | no | none |
-| extensions | `packages/chord/test/node/app/archive.test.ts` | pending | no | none |
+| extensions | `packages/chord/test/node/app/app.test.ts` | partial | no | none |
 | extensions | `packages/chord/test/node/plugins/stack.test.ts` | pending | no | none |
 | extensions | `packages/chord/test/node/workers/base.test.ts` | pending | no | none |
 | extensions | `packages/chord/test/node/workers/workers.test.ts` | pending | no | none |
 | extensions | `packages/chord/test/registries/value.test.ts` | pending | no | none |
-| extensions | `packages/chord/test/store/applier.test.ts` | pending | no | none |
-| extensions | `packages/chord/test/store/columns.test.ts` | partial | no | none |
-| extensions | `packages/chord/test/store/engine.test.ts` | pending | no | none |
-| extensions | `packages/chord/test/store/export.test.ts` | pending | no | none |
-| extensions | `packages/chord/test/store/expression.test.ts` | pending | no | none |
-| extensions | `packages/chord/test/store/host-column.test.ts` | pending | no | none |
-| extensions | `packages/chord/test/store/host-data.test.ts` | pending | no | none |
-| extensions | `packages/chord/test/store/import-migration.test.ts` | pending | no | none |
-| extensions | `packages/chord/test/store/import.test.ts` | pending | no | none |
-| extensions | `packages/chord/test/store/rows.test.ts` | pending | no | none |
-| extensions | `packages/chord/test/store/store.test.ts` | pending | no | none |
-| extensions | `packages/chord/test/store/table-changes.test.ts` | pending | no | none |
-| extensions | `packages/chord/test/store/table.test.ts` | pending | no | none |
 
 Approved known gaps by area: tools 0, providers 0, sessions 0, extensions 0, tui 0, cli 0, utilities 0. `make test-porting-release` prints the full missing-case text for each approved gap.
 

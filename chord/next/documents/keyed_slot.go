@@ -7,6 +7,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/internal/parking"
+	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
@@ -28,6 +29,26 @@ import (
 type Access struct {
 	Token   *SealToken
 	Version int
+}
+
+// ChangedKind is how a keyed document stands after a host data change.
+type ChangedKind string
+
+// The kinds of ChangedDocument.
+const (
+	ChangedAbsent    ChangedKind = "absent"
+	ChangedUnchanged ChangedKind = "unchanged"
+	ChangedPresent   ChangedKind = "present"
+	ChangedFailed    ChangedKind = "failed"
+)
+
+// ChangedDocument is a keyed document as a host data change left it in the store (ReadChanged): absent, unchanged
+// (the same record and revision as in memory), present (Loaded, decoded by the slot's definition) or failed (Error:
+// the code cannot read it; adopting it fails the owner).
+type ChangedDocument struct {
+	Kind   ChangedKind
+	Loaded Loaded
+	Error  *data.ChordError
 }
 
 // keysPage is the keys `Keys` reads per page from the store.
@@ -216,6 +237,37 @@ func (it *KeyIterator) Close() {
 	it.buffer = nil
 }
 
+// HandleKeyIterator is Keys as a handle yields them (Pi's `AsyncIterable<Key>`): a host-keyed slot's stored keys decoded
+// into addresses of its kind (Address values), a string-keyed one's strings as they are.
+type HandleKeyIterator struct {
+	keys *KeyIterator
+	kind *contracts.HostKind
+}
+
+// HandleKeys is Keys as a handle yields them.
+func (slot *KeyedSlot) HandleKeys(access Access, ctx context.Context) *HandleKeyIterator {
+	return &HandleKeyIterator{keys: slot.Keys(access, ctx), kind: slot.definition.current.Host}
+}
+
+// Next is the next key; ok is false once every key was read. Decoded keys are not re-validated.
+func (it *HandleKeyIterator) Next(ctx context.Context) (key any, ok bool, err error) {
+	stored, ok, err := it.keys.Next(ctx)
+	if err != nil || !ok {
+		return nil, false, err
+	}
+	if it.kind == nil {
+		return stored, true, nil
+	}
+	address, err := contracts.AddressOfKey(it.kind, stored)
+	if err != nil {
+		return nil, false, err
+	}
+	return address, true, nil
+}
+
+// Close ends the iteration.
+func (it *HandleKeyIterator) Close() { it.keys.Close() }
+
 // Watch is a watch of the document at key, nil when absent (after a cold load); it follows the address (a retirement
 // is a frame with the `retired` flag) and pins the key until it ends.
 func (slot *KeyedSlot) Watch(raw string, access Access, ctx context.Context) (*chord.Watch[delta.JsonValue], error) {
@@ -332,6 +384,25 @@ func (slot *KeyedSlot) KeySourceOf(raw string) *KeySource {
 // U+FFFD, NUL refused `invalid/args`. Plugin keys are a trust boundary; every entry point takes them through here, so
 // memory and the store agree on one key.
 func (slot *KeyedSlot) Key(key string) (string, error) { return store.StoredText(key, slot.keyWhat) }
+
+// KeyOf is the stored key of a key a handle was given (a trust boundary for Go callers): a string-keyed slot's string
+// as it is (Key applies the text rules), a host-keyed slot's address of its kind (an Address or *Address) as the
+// address's key; anything else is invalid/args.
+func (slot *KeyedSlot) KeyOf(key any) (string, error) {
+	kind := slot.definition.current.Host
+	if kind == nil {
+		text, isText := key.(string)
+		if !isText {
+			return "", data.Invalid(data.ReasonArgs, slot.keyWhat+": expected a string")
+		}
+		return text, nil
+	}
+	stored, fits := contracts.KeyOfAddress(kind, key)
+	if !fits {
+		return "", data.Invalid(data.ReasonArgs, slot.keyWhat+": expected an address of "+kind.Kind)
+	}
+	return stored, nil
+}
 
 // LoadDeclared loads every pinned key not loaded since it was pinned (activation, holding the line).
 func (slot *KeyedSlot) LoadDeclared(ctx context.Context) error {
@@ -519,6 +590,77 @@ func (slot *KeyedSlot) Adopt(key string, tracker *delta.Tracker, prepared *delta
 		source.Written(before, prepared)
 	}
 	return nil
+}
+
+// Holds reports whether the slot holds key in memory: a resident document or a pinned key's source (a host data change
+// reads it). A section.
+func (slot *KeyedSlot) Holds(key string) bool {
+	_, resident := slot.residents[key]
+	_, pinned := slot.sources[key]
+	return resident || pinned
+}
+
+// ReadChanged is what the store holds at key after a host data change, read through step (it sees the change's writes,
+// before `COMMIT`): absent, unchanged (the same record and revision as in memory) or present, decoded by the slot's
+// definition; a document the code cannot read is failed. An error is the store's.
+func (slot *KeyedSlot) ReadChanged(key string, step *store.Step, ctx context.Context) (ChangedDocument, error) {
+	persistence := slot.persistence
+	record, err := store.FindDocument(step, persistence.At(key), store.CurrentPoint)
+	if err != nil {
+		return ChangedDocument{}, err
+	}
+	if record == nil {
+		return ChangedDocument{Kind: ChangedAbsent}, nil
+	}
+	var unchanged bool
+	slot.owner.Do(func() {
+		if resident := slot.residents[key]; resident != nil && resident.Stored != nil {
+			unchanged = resident.Stored.ID == record.ID && resident.Stored.Revision == record.Revision
+		}
+	})
+	if unchanged {
+		return ChangedDocument{Kind: ChangedUnchanged}, nil
+	}
+	document, err := store.LoadDocument(step, *record, store.CurrentPoint)
+	if err != nil {
+		return ChangedDocument{}, err
+	}
+	loaded, err := persistence.Decode(&document, slot.definition.current, ctx)
+	if err != nil {
+		return ChangedDocument{Kind: ChangedFailed, Error: data.AsChordError(err, slot.owner.Label())}, nil
+	}
+	return ChangedDocument{Kind: ChangedPresent, Loaded: loaded}, nil
+}
+
+// AdoptChanged adopts a host data change's changed document at key (inside the change's batch): a new value replaces the
+// resident (its watchers get a root replacement), an absent one retires it (a `retired` frame). An unreadable one changes
+// nothing: the caller fails the owner after the batch, and its references keep the value they had until the failure
+// detaches them.
+func (slot *KeyedSlot) AdoptChanged(key string, changed ChangedDocument) error {
+	if changed.Kind == ChangedUnchanged || changed.Kind == ChangedFailed {
+		return nil
+	}
+	before := slot.residents[key]
+	if before != nil {
+		delete(slot.residents, key)
+		slot.owner.Residency().Forget(before)
+	}
+	source := slot.sources[key]
+	if changed.Kind == ChangedAbsent {
+		if before != nil && source != nil {
+			source.Retire()
+		}
+		return nil
+	}
+	stored := changed.Loaded.Stored
+	resident := NewResident(slot, key, delta.Track(changed.Loaded.Value), &stored, slot.definition.current.Version)
+	slot.residents[key] = resident
+	if source == nil {
+		slot.touch(resident)
+		return nil
+	}
+	source.ready = true
+	return source.Replaced()
 }
 
 // Retire retires the document at key (inside the batch): out of memory, its source reads `initial()` with the flag.

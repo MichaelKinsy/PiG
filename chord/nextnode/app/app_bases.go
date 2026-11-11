@@ -18,10 +18,10 @@ import (
 // Forced Go differences. A Promise is a channel closed when it settles (`BasesBuilt`, `BaseWatched`). The server's own code is its
 // executable (D603), where Pi scans the static import graph of its start script; a worker kind's base is its executable too, which
 // holds its code already (workers' doc.go): its build copies the entry (the check that it can be started) and records its bytes. The one
-// goroutine that builds and records is the app's, and the close joins it (drainBuilds), bounded by the close's context, where Pi's
-// `#close` does not wait for its unawaited builds (a forced Go lifetime difference, no numbered divergence): a build cannot be
-// cancelled (esbuild), so what it finishes after the close began is dropped, and one still running when the close's context ends is
-// abandoned (Close returns the context's error).
+// goroutine that builds and records is the app's, joined by Wait (Go's ownership of what Pi leaves as unawaited promises: no Pi
+// counterpart, no numbered divergence). As in Pi, the close does not wait for the builds or the scan: a build cannot be cancelled
+// (esbuild), so what it finishes after the close began is dropped (nothing reported, nothing recorded), the goroutine ends with its
+// scan, and `BaseWatched` closes then.
 
 // futureSlack is how far in the future a file's timestamp may be and still count as an edit since the start: clock skew.
 const futureSlack = 5 * time.Second
@@ -90,7 +90,7 @@ func (a *App) reportLate(kind AppErrorKind, err any, base string) {
 func (a *App) startBases(bases []baseBuild) {
 	built, watched := a.basesBuilt, a.baseWatched
 	a.basesStarted.Store(true)
-	//portlint:allow golifetime the bases' builds cannot be cancelled (esbuild): the goroutine ends when they do, and the close joins it (drainBuilds, bounded by its context); what they finish after the close began is dropped
+	//portlint:allow golifetime the bases' builds cannot be cancelled (esbuild): the goroutine ends when they do, and Wait joins it (the close does not, as Pi's `#close`); what the builds and the scan finish after the close began is dropped
 	go func() { //portlint:allow asyncorder the bases build at once after the listen, off the caller, as Pi's app.ts does (`buildBases` after `http.listening`, Pi 1.5.1); the builds join inside (builds.Wait, then close(built)) and each request that needs a base waits for built
 		defer close(watched)
 		compared := &comparisons{}

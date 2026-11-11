@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -13,12 +14,70 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/store"
 )
 
-// Ports packages/chord/test/node/app/archive.test.ts (Pi main c23b9ec1): pack and unpack round-trip a host directory (its store's
-// export and its files, uploads under way left out); unpacking refuses an existing directory, a manifest `accept` refuses, an
-// archive not starting with its manifest and an entry outside the format, each leaving nothing behind. The round trip of a live
-// worker's documents, tables and files is in app_test.go.
+// Ports packages/chord/test/node/app/archive.test.ts (Pi 8a5da3ce6): pack and unpack round-trip a host directory (its store's
+// export and its files, uploads under way left out) and the server's part, unpacked into a staging directory for the kit to put in
+// place; unpacking refuses what a manifest `accept` refuses, an archive not starting with its manifest, an entry outside the format
+// and an archive past its limits, each leaving nothing behind. The round trip of a live worker's documents, tables and files is in
+// app_test.go.
 
-var archiveManifest = ArchiveManifest{Format: 1, App: "acme", API: "v1", Address: ArchiveAddress{Kind: "doc", Key: "doc|1"}}
+var archiveManifest = ArchiveManifest{Format: 2, App: "acme", API: "v1", Address: ArchiveAddress{Kind: "doc", Key: "doc|1"}}
+
+// serverParts are the server's part of the archives: a host data archive of `doc|1` without data, as JSONL.
+var serverParts = []any{
+	&store.ManifestPart{Format: 1, Schema: 3, LastSeq: 0, NextID: 2, Host: new("doc|1")},
+	&store.EndPart{Writes: 0},
+}
+
+// serverPart writes the server's part (the NodeHost's, `server.archive`) beside the archives; its path.
+func serverPart(t *testing.T, base string) string {
+	return serverPartAt(t, filepath.Join(base, "server.jsonl"))
+}
+
+// kitServerPart writes the Go host's part (`kit-server.archive`, D462) beside the archives; its path.
+func kitServerPart(t *testing.T, base string) string {
+	return serverPartAt(t, filepath.Join(base, "kit-server.jsonl"))
+}
+
+func serverPartAt(t *testing.T, path string) string {
+	t.Helper()
+	writeFile(t, path, `{"kind":"manifest","format":1,"schema":3,"lastSeq":0,"nextId":2,"host":"doc|1"}`+"\n"+`{"kind":"end","writes":0}`+"\n")
+	return path
+}
+
+// partsText is the parts as JSON.
+func partsText(t *testing.T, parts []any) string {
+	t.Helper()
+	text, err := json.Marshal(parts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(text)
+}
+
+// serverTaken is what a server that takes the parts it is handed got from the JSONL file at path.
+func serverTaken(t *testing.T, path string) []any {
+	t.Helper()
+	file, err := os.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parts := store.DecodeJsonl(&fileBytes{file: file})
+	var taken []any
+	for {
+		part, ok, err := parts.Next(background)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !ok {
+			break
+		}
+		taken = append(taken, part)
+	}
+	if err := parts.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return taken
+}
 
 func writeFile(t *testing.T, path, text string) {
 	t.Helper()
@@ -124,89 +183,128 @@ func wantError(t *testing.T, err error, want string) {
 func TestRoundTripsAHostDirectorysStoreAndFilesWithoutUploadsUnderWay(t *testing.T) {
 	base := t.TempDir()
 	dir := hostDirectory(t, base)
-	if err := PackData(background, dir, archiveManifest, filepath.Join(base, "out.tar")); err != nil {
+	if err := PackData(background, dir, archiveManifest, serverPart(t, base), kitServerPart(t, base), filepath.Join(base, "out.tar")); err != nil {
 		t.Fatal(err)
 	}
 	var seen []ArchiveManifest
 	accept := func(manifest ArchiveManifest) error { seen = append(seen, manifest); return nil }
-	if err := UnpackData(background, filepath.Join(base, "out.tar"), filepath.Join(base, "copy"), accept, ImportLimits{}); err != nil {
+	staging, part, kitPart, err := UnpackStaging(background, filepath.Join(base, "out.tar"), filepath.Join(base, "in"), accept, ImportLimits{})
+	if err != nil {
 		t.Fatal(err)
 	}
 	if len(seen) != 1 || seen[0] != archiveManifest {
 		t.Fatalf("seen = %+v", seen)
 	}
-	if got := dirNames(t, filepath.Join(base, "copy")); !slices.Equal(got, []string{"files", "store.sqlite"}) {
-		t.Fatalf("copy = %v", got)
+	for _, got := range [][]any{serverTaken(t, part), serverTaken(t, kitPart)} {
+		if gotText, wantText := partsText(t, got), partsText(t, serverParts); gotText != wantText {
+			t.Fatalf("the server got %s, want %s", gotText, wantText)
+		}
 	}
-	if got := dirNames(t, filepath.Join(base, "copy", "files")); !slices.Equal(got, []string{"a", "sub"}) {
-		t.Fatalf("copy/files = %v", got)
+	if got := dirNames(t, staging); !slices.Equal(got, []string{"files", "kit-server.archive", "server.archive", "store.sqlite"}) {
+		t.Fatalf("staging = %v", got)
 	}
-	if got, _ := os.ReadFile(filepath.Join(base, "copy", "files", "sub", "b")); string(got) != "file b" {
+	if got := dirNames(t, filepath.Join(staging, "files")); !slices.Equal(got, []string{"a", "sub"}) {
+		t.Fatalf("staging/files = %v", got)
+	}
+	if got, _ := os.ReadFile(filepath.Join(staging, "files", "sub", "b")); string(got) != "file b" {
 		t.Fatalf("b = %q", got)
 	}
-	if exportedStore(t, filepath.Join(base, "copy")) != exportedStore(t, dir) {
+	if exportedStore(t, staging) != exportedStore(t, dir) {
 		t.Fatal("the store's export differs after the round trip")
-	}
-	// No staging directory left beside either.
-	if got := dirNames(t, base); !slices.Equal(got, []string{"copy", "host", "out.tar"}) {
-		t.Fatalf("base = %v", got)
 	}
 }
 
 func TestRefusesToPackAnAddressWithoutData(t *testing.T) {
 	base := t.TempDir()
-	wantError(t, PackData(background, filepath.Join(base, "none"), archiveManifest, filepath.Join(base, "out.tar")), "has no data")
+	part := serverPart(t, base)
+	wantError(t, PackData(background, filepath.Join(base, "none"), archiveManifest, part, kitServerPart(t, base), filepath.Join(base, "out.tar")), "has no data")
 }
 
 func TestRefusesAnArchivePastItsLimitsUnpackedBytesAndEntriesCountedBeforeWriting(t *testing.T) {
 	base := t.TempDir()
 	big := strings.Repeat("x", 2000)
-	head := [][2]string{{"manifest.json", manifestText(t)}, {"store.archive", ""}}
+	head := [][2]string{{"manifest.json", manifestText(t)}, {"store.archive", ""}, {"server.archive", ""}}
+	in := filepath.Join(base, "in")
 	forged(t, filepath.Join(base, "big.tar"), append(slices.Clone(head), [2]string{"files/a", big}, [2]string{"files/b", big})...)
-	wantError(t, UnpackData(background, filepath.Join(base, "big.tar"), filepath.Join(base, "a"), func(ArchiveManifest) error { return nil }, ImportLimits{Bytes: 3000}), "unpacks to more than 3000 bytes")
+	_, _, _, err := UnpackStaging(background, filepath.Join(base, "big.tar"), in, func(ArchiveManifest) error { return nil }, ImportLimits{Bytes: 3000})
+	wantError(t, err, "unpacks to more than 3000 bytes")
 	many := slices.Clone(head)
 	for _, name := range []string{"0", "1", "2", "3", "4"} {
 		many = append(many, [2]string{"files/" + name, "x"})
 	}
 	forged(t, filepath.Join(base, "many.tar"), many...)
-	wantError(t, UnpackData(background, filepath.Join(base, "many.tar"), filepath.Join(base, "b"), func(ArchiveManifest) error { return nil }, ImportLimits{Entries: 4}), "more than 4 entries")
-	if got := dirNames(t, base); !slices.Equal(got, []string{"big.tar", "many.tar"}) {
-		t.Fatalf("base = %v", got)
+	_, _, _, err = UnpackStaging(background, filepath.Join(base, "many.tar"), in, func(ArchiveManifest) error { return nil }, ImportLimits{Entries: 4})
+	wantError(t, err, "more than 4 entries")
+	if got := dirNames(t, in); len(got) != 0 {
+		t.Fatalf("in = %v", got)
 	}
-}
-
-func TestRefusesAnExistingDirectory(t *testing.T) {
-	base := t.TempDir()
-	dir := hostDirectory(t, base)
-	if err := PackData(background, dir, archiveManifest, filepath.Join(base, "out.tar")); err != nil {
-		t.Fatal(err)
-	}
-	wantError(t, UnpackData(background, filepath.Join(base, "out.tar"), dir, func(ArchiveManifest) error { return nil }, ImportLimits{}), "exists already")
 }
 
 func TestRefusesWhatAcceptRefusesAnArchiveNotStartingWithItsManifestAndAForeignEntryLeavingNothing(t *testing.T) {
 	base := t.TempDir()
-	if err := PackData(background, hostDirectory(t, base), archiveManifest, filepath.Join(base, "out.tar")); err != nil {
+	if err := PackData(background, hostDirectory(t, base), archiveManifest, serverPart(t, base), kitServerPart(t, base), filepath.Join(base, "out.tar")); err != nil {
 		t.Fatal(err)
 	}
+	in := filepath.Join(base, "in")
 	refuse := func(ArchiveManifest) error { return errors.New("not this app") }
 	accept := func(ArchiveManifest) error { return nil }
-	wantError(t, UnpackData(background, filepath.Join(base, "out.tar"), filepath.Join(base, "a"), refuse, ImportLimits{}), "not this app")
+	_, _, _, err := UnpackStaging(background, filepath.Join(base, "out.tar"), in, refuse, ImportLimits{})
+	wantError(t, err, "not this app")
 	forged(t, filepath.Join(base, "late.tar"), [2]string{"files/x", "x"}, [2]string{"manifest.json", manifestText(t)})
-	wantError(t, UnpackData(background, filepath.Join(base, "late.tar"), filepath.Join(base, "b"), accept, ImportLimits{}), "start with manifest.json")
+	_, _, _, err = UnpackStaging(background, filepath.Join(base, "late.tar"), in, accept, ImportLimits{})
+	wantError(t, err, "start with manifest.json")
 	forged(t, filepath.Join(base, "extra.tar"), [2]string{"manifest.json", manifestText(t)}, [2]string{"plugins/evil.ts", "x"})
-	wantError(t, UnpackData(background, filepath.Join(base, "extra.tar"), filepath.Join(base, "c"), accept, ImportLimits{}), "plugins/evil.ts")
+	_, _, _, err = UnpackStaging(background, filepath.Join(base, "extra.tar"), in, accept, ImportLimits{})
+	wantError(t, err, "plugins/evil.ts")
 	forged(t, filepath.Join(base, "nostore.tar"), [2]string{"manifest.json", manifestText(t)})
-	wantError(t, UnpackData(background, filepath.Join(base, "nostore.tar"), filepath.Join(base, "d"), accept, ImportLimits{}), "no manifest.json or store.archive")
-	if got := dirNames(t, base); !slices.Equal(got, []string{"extra.tar", "host", "late.tar", "nostore.tar", "out.tar"}) {
-		t.Fatalf("base = %v", got)
+	_, _, _, err = UnpackStaging(background, filepath.Join(base, "nostore.tar"), in, accept, ImportLimits{})
+	wantError(t, err, "no manifest.json, store.archive or server.archive")
+	if got := dirNames(t, in); len(got) != 0 {
+		t.Fatalf("in = %v", got)
+	}
+}
+
+// Beyond Pi's tests: an archive without its server's part (the pre-change layout: manifest and store.archive only) is refused too.
+func TestRefusesAnArchiveWithoutItsServerPart(t *testing.T) {
+	base := t.TempDir()
+	forged(t, filepath.Join(base, "old.tar"), [2]string{"manifest.json", manifestText(t)}, [2]string{"store.archive", ""})
+	_, _, _, err := UnpackStaging(background, filepath.Join(base, "old.tar"), filepath.Join(base, "in"), func(ArchiveManifest) error { return nil }, ImportLimits{})
+	wantError(t, err, "no manifest.json, store.archive or server.archive")
+}
+
+// Beyond Pi's tests: the entries are written in Pi's order: manifest, store.archive, [kit.archive], server.archive, [kit-server.archive], files/ (the bracketed are PiG's second store, D462).
+func TestPackedEntriesAreInPisOrder(t *testing.T) {
+	base := t.TempDir()
+	dir := hostDirectory(t, base)
+	if err := openStoreAt(t, filepath.Join(dir, "kit.sqlite")).Close(background); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(base, "out.tar")
+	if err := PackData(background, dir, archiveManifest, serverPart(t, base), kitServerPart(t, base), out); err != nil {
+		t.Fatal(err)
+	}
+	file, err := os.Open(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = file.Close() }()
+	var names []string
+	if err := ReadTar(file, func(entry TarRead) error {
+		names = append(names, entry.Path)
+		_, err := io.Copy(io.Discard, entry.Data)
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"manifest.json", "store.archive", "kit.archive", "server.archive", "kit-server.archive", "files/a", "files/sub/b"}; !slices.Equal(names, want) {
+		t.Fatalf("entries = %v, want %v", names, want)
 	}
 }
 
 // Beyond Pi's tests: the manifest is written as JSON.stringify writes it (no HTML escaping, members in order).
 func TestTheManifestIsWrittenAsJSONStringifyWritesIt(t *testing.T) {
-	manifest := ArchiveManifest{Format: 1, App: "a&b<c>", API: "v1", Address: ArchiveAddress{Kind: "doc", Key: "doc|1"}}
-	if got, want := string(manifest.text()), `{"format":1,"app":"a&b<c>","api":"v1","address":{"kind":"doc","key":"doc|1"}}`; got != want {
+	manifest := ArchiveManifest{Format: 2, App: "a&b<c>", API: "v1", Address: ArchiveAddress{Kind: "doc", Key: "doc|1"}}
+	if got, want := string(manifest.text()), `{"format":2,"app":"a&b<c>","api":"v1","address":{"kind":"doc","key":"doc|1"}}`; got != want {
 		t.Fatalf("manifest = %s, want %s", got, want)
 	}
 }
@@ -220,16 +318,17 @@ func TestRoundTripsAHostDirectorysKitStoreBesideItsPluginStore(t *testing.T) {
 		t.Fatal(err)
 	}
 	out := filepath.Join(base, "out.tar")
-	if err := PackData(background, dir, archiveManifest, out); err != nil {
+	if err := PackData(background, dir, archiveManifest, serverPart(t, base), kitServerPart(t, base), out); err != nil {
 		t.Fatal(err)
 	}
-	if err := UnpackData(background, out, filepath.Join(base, "copy"), func(ArchiveManifest) error { return nil }, ImportLimits{}); err != nil {
+	staging, _, _, err := UnpackStaging(background, out, filepath.Join(base, "in"), func(ArchiveManifest) error { return nil }, ImportLimits{})
+	if err != nil {
 		t.Fatal(err)
 	}
-	if got := dirNames(t, filepath.Join(base, "copy")); !slices.Equal(got, []string{"files", "kit.sqlite", "store.sqlite"}) {
-		t.Fatalf("copy = %v", got)
+	if got := dirNames(t, staging); !slices.Equal(got, []string{"files", "kit-server.archive", "kit.sqlite", "server.archive", "store.sqlite"}) {
+		t.Fatalf("staging = %v", got)
 	}
-	if exportedStore(t, filepath.Join(base, "copy")) != exportedStore(t, dir) {
+	if exportedStore(t, staging) != exportedStore(t, dir) {
 		t.Fatal("the copied plugin store differs")
 	}
 }

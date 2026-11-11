@@ -229,15 +229,35 @@ func rowsStep(step *DataStep, v int, ready []StagedWrite, target migrationTarget
 	}
 }
 
-// patchRow is the write of one row's patch: Patch run on the decoded row, its result checked (an object of non-key
-// columns of the version, values of their types) and stamped v through the internal form of `update`.
+// patchRow is the write of one row's patch: PatchSet of the decoded row stamped v through the internal form of `update`.
 func patchRow(step *DataStep, stored sqlite.SqliteRow, v int, sql *TableSql, table string, ctx context.Context) (StagedWrite, error) {
 	definition := step.Table
 	decoded, err := definition.Rows.Decode(ctx, stored)
 	if err != nil {
 		return nil, err
 	}
-	patch, err := step.Patch(decoded)
+	set, err := PatchSet(step, decoded, v)
+	if err != nil {
+		return nil, err
+	}
+	key := delta.NewJsonObject(len(definition.Key))
+	params := make([]sqlite.SqliteValue, len(definition.Key))
+	for i, name := range definition.Key {
+		// Key columns are non-opt `str` or `int`: stored scalars.
+		params[i] = stored[name]
+		key.Set(name, jsonScalar(stored[name]))
+	}
+	versions := JsonVersions(definition, set)
+	statement := sql.Update(set.With(RowVersion, ExprNode{Op: ExprLiteral, Value: int64(v)}), params, versions)
+	return StageUpdate(statement, table, key, set, RecordedVersions(set, versions), &v), nil
+}
+
+// PatchSet is the `set` of step's patch of one decoded row (of the step's table) at version v: the patch run, its result
+// checked (an object of non-key columns of the version, values of their types). It fails for a patch the version cannot
+// take. Shared by the eager migration and the migration of imported rows (`host_data.go`).
+func PatchSet(step *DataStep, row Row, v int) (SetNode, error) {
+	definition := step.Table
+	patch, err := step.Patch(row)
 	if err != nil {
 		return nil, err
 	}
@@ -278,16 +298,7 @@ func patchRow(step *DataStep, stored sqlite.SqliteRow, v int, sql *TableSql, tab
 		}
 		set = set.With(prop.Name, node)
 	}
-	key := delta.NewJsonObject(len(definition.Key))
-	params := make([]sqlite.SqliteValue, len(definition.Key))
-	for i, name := range definition.Key {
-		// Key columns are non-opt `str` or `int`: stored scalars.
-		params[i] = stored[name]
-		key.Set(name, jsonScalar(stored[name]))
-	}
-	versions := JsonVersions(definition, set)
-	statement := sql.Update(set.With(RowVersion, ExprNode{Op: ExprLiteral, Value: int64(v)}), params, versions)
-	return StageUpdate(statement, table, key, set, RecordedVersions(set, versions), &v), nil
+	return set, nil
 }
 
 // cellOf is a patch value as a `set` node: `Undefined` clears an `opt(...)` column, `json(...)` cells as JSON
@@ -307,7 +318,7 @@ func cellOf(column Column, value any, what string) (ExprNode, error) {
 		return ExprNode{Op: ExprJSON, Json: cell.Stored}, nil
 	}
 	// EncodeCell returns a scalar for a scalar column (ints as float64 JSON): the node holds the checked scalar.
-	scalar, err := CheckScalar(column.Type, value, what)
+	scalar, err := encodeScalar(column, value, what)
 	if err != nil {
 		return ExprNode{}, err
 	}

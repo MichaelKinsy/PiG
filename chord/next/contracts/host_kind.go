@@ -1,6 +1,8 @@
 package contracts
 
 import (
+	"math"
+	"strconv"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -30,6 +32,15 @@ type HostKind struct {
 	Kind string
 
 	params *ParamsData
+	// fields are the params fields as address keys hold them (read once, at declaration).
+	fields []keyField
+}
+
+// keyField is one params field as an address key holds it: its name, its type and, for `oneOf(...)`, its literals.
+type keyField struct {
+	name     string
+	typeName string
+	literals map[string]struct{}
 }
 
 // NewHostKind declares a host kind (upstream's `hostKind`); params follow the params policy of contracts (a flat record
@@ -47,7 +58,7 @@ func NewHostKind(name string, params ...Property) (*HostKind, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &HostKind{Kind: name, params: data}, nil
+	return &HostKind{Kind: name, params: data, fields: fieldsOf(data)}, nil
 }
 
 // Address is the address of the host of this kind with the given params (nil is `{}`).
@@ -112,4 +123,133 @@ func jsString(value any) string {
 		return "[object Object]"
 	}
 	return "undefined"
+}
+
+// fieldsOf is the fields of declared params as keys hold them (ReadParams admitted only these normal forms).
+func fieldsOf(data *ParamsData) []keyField {
+	// Normal is `[field, normal form]` pairs in identity order.
+	pairs := data.Normal.([]any)
+	fields := make([]keyField, len(pairs))
+	for i, pair := range pairs {
+		entry := pair.([]any)
+		node := entry[1].(*delta.JsonObject)
+		field := keyField{name: entry[0].(string)}
+		if branches, present := node.Get("anyOf"); present {
+			// `oneOf(...)` of string literals: `{ type: "string", const }` branches.
+			field.typeName = "string"
+			field.literals = map[string]struct{}{}
+			for _, branch := range branches.([]any) {
+				field.literals[branch.(*delta.JsonObject).Value("const").(string)] = struct{}{}
+			}
+		} else {
+			field.typeName, _ = node.Value("type").(string)
+		}
+		fields[i] = field
+	}
+	return fields
+}
+
+// KeyOfAddress is the key of value when it is an address of kind (a trust boundary for values a plugin hands in: a
+// host-keyed document's key, a `host(...)` cell): an Address of that kind whose params hold exactly the kind's fields,
+// each of its type (a `oneOf(...)` one among its literals; other constraints are checked where the address is routed).
+// The key is computed from the params, never taken from the value's Key. ok is false when it does not fit.
+func KeyOfAddress(kind *HostKind, value any) (string, bool) {
+	var address Address
+	switch typed := value.(type) {
+	case Address:
+		address = typed
+	case *Address:
+		if typed == nil {
+			return "", false
+		}
+		address = *typed
+	default:
+		return "", false
+	}
+	// Declaration policy: callers checked the kind (KindParams) when they took it; an undeclared one fits nothing.
+	if kind == nil || kind.params == nil || address.Kind != kind.Kind || address.Params == nil || address.Params.Len() != len(kind.fields) {
+		return "", false
+	}
+	for _, field := range kind.fields {
+		each, present := address.Params.Get(field.name)
+		if !present {
+			return "", false
+		}
+		fits := false
+		switch field.typeName {
+		case "integer":
+			number, isNumber := each.(float64)
+			fits = isNumber && number == math.Trunc(number) && math.Abs(number) <= 1<<53-1
+		case "boolean":
+			_, fits = each.(bool)
+		default:
+			text, isText := each.(string)
+			if isText {
+				_, listed := field.literals[text]
+				fits = field.literals == nil || listed
+			}
+		}
+		if !fits {
+			return "", false
+		}
+	}
+	return AddressKey(kind.Kind, kind.params, address.Params), true
+}
+
+// AddressOfKey is the address of kind whose key is key (a key KeyOfAddress made: stored data): the escaped parts split,
+// `int()` fields as numbers, `bool()` fields as booleans. A key of another kind or number of parts is an error.
+func AddressOfKey(kind *HostKind, key string) (Address, error) {
+	if _, err := KindParams(kind); err != nil {
+		return Address{}, err
+	}
+	parts := splitKey(key)
+	if parts[0] != kind.Kind || len(parts)-1 != len(kind.fields) {
+		return Address{}, fail("%s: not an address key of %s", quote(key), kind.Kind)
+	}
+	params := delta.NewJsonObject(len(kind.fields))
+	for i, field := range kind.fields {
+		part := parts[i+1]
+		switch field.typeName {
+		case "integer":
+			number, err := strconv.ParseFloat(part, 64)
+			if err != nil {
+				number = math.NaN()
+			}
+			params.Set(field.name, number)
+		case "boolean":
+			params.Set(field.name, part == "true")
+		default:
+			params.Set(field.name, part)
+		}
+	}
+	return Address{Kind: kind.Kind, Params: params, Key: key}, nil
+}
+
+// KindOfKey is the kind's name of an address key: its first part (kind names never hold `|` or a backslash).
+func KindOfKey(key string) string {
+	if before, _, ok := strings.Cut(key, "|"); ok {
+		return before
+	}
+	return key
+}
+
+// splitKey is the parts of a key JoinKey made, unescaped.
+func splitKey(key string) []string {
+	var parts []string
+	var part strings.Builder
+	for i := 0; i < len(key); i++ {
+		switch char := key[i]; char {
+		case '\\':
+			i++
+			if i < len(key) {
+				part.WriteByte(key[i])
+			}
+		case '|':
+			parts = append(parts, part.String())
+			part.Reset()
+		default:
+			part.WriteByte(char)
+		}
+	}
+	return append(parts, part.String())
 }

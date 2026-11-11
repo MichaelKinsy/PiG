@@ -153,7 +153,7 @@ func (d *Documents) Declare(definition AnyDefinition, token *SealToken, declarer
 	}
 	var persistence *Persistence
 	if slot == nil && definition.Persist {
-		persistence = d.persistence(definition.Name)
+		persistence = d.persistence(definition)
 	}
 	// The definition's `keyed` decides the slot's class and the handle's.
 	if definition.Keyed {
@@ -431,6 +431,19 @@ func (d *Documents) Settled() {
 	d.line.Acquire(context.Background())()
 }
 
+// HostSlots is the persisted slots keyed by addresses of host kind kind: the documents of this object belonging to such
+// hosts, in declaration order. A section.
+func (d *Documents) HostSlots(kind string) []*KeyedSlot {
+	var slots []*KeyedSlot
+	for _, name := range d.order {
+		slot, keyed := d.slots[name].(*KeyedSlot)
+		if keyed && slot.persistence != nil && hostKindName(slot.definition.current.Host) == kind {
+			slots = append(slots, slot)
+		}
+	}
+	return slots
+}
+
 // End drops every document and pin; watches end `ended`, and every later use returns `released`. A section.
 func (d *Documents) End() {
 	d.state = documentsEnded
@@ -464,8 +477,8 @@ func (d *Documents) add(slot DeclaredSlot) DeclaredSlot {
 	return slot
 }
 
-// persistence is the store side of persisted documents named name; the attempt checked the store first (P3).
-func (d *Documents) persistence(name string) *Persistence {
+// persistence is the store side of persisted definition's documents; the attempt checked the store first (P3).
+func (d *Documents) persistence(definition AnyDefinition) *Persistence {
 	chordStore, owner, _ := d.owner.Store()
-	return NewPersistence(chordStore, owner, "chord", name)
+	return NewPersistence(chordStore, owner, "chord", definition.Name, definition.Host)
 }

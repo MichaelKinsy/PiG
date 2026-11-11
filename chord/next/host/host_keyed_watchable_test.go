@@ -73,7 +73,7 @@ func TestKeyedWatchableGetIsTheDocumentAtKeyNotFoundWhenAbsent(t *testing.T) {
 		if !ok {
 			break
 		}
-		keys = append(keys, key)
+		keys = append(keys, key.(string))
 	}
 	nexttest.RequireJSONEqual(t, keys, []string{"a", "b", "\uFFFF", "\U0001F600"})
 	closeHosts(t, run.Host)

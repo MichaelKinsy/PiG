@@ -21,8 +21,8 @@ import (
 // Forced Go differences: Pi's `Promise<Outcome>` stored and awaited by several parties is a once-started goroutine and a channel
 // closed when the outcome is set; a waiter's context ends only its own wait (Pi's awaits take none, but a request's abort and a
 // rollout's are Go's contexts). A build in esbuild cannot be cancelled, and, as in Pi, what it finishes after the server closed is
-// dropped; but where Pi's `#close` leaves the build's Promise unawaited, the goroutine is owned: the app's close joins it (close),
-// bounded by the close's context, and no build starts after that.
+// dropped. Where Pi leaves the build's Promise unawaited, the goroutine is owned: the app's close does not wait for it (close, which
+// only stops a build not started yet from starting), and the app's Wait joins it (wait), bounded by its context.
 
 // SurfaceBuilt is how a surface's build ended: built (its base bundle's hash and the files it read), or failed (esbuild's failure,
 // or the first set's).
@@ -132,7 +132,7 @@ func (b *surfaceBuild) start() {
 		close(b.done)
 		return
 	}
-	//portlint:allow golifetime the build is shared by every waiter and ends with the base bundle's; esbuild cannot be cancelled, so the goroutine ends when the build does: close joins it, bounded by the close's context
+	//portlint:allow golifetime the build is shared by every waiter and ends with the base bundle's; esbuild cannot be cancelled, so the goroutine ends when the build does: wait joins it, bounded by its context
 	go func() {
 		outcome := b.run(chordctx.Background())
 		b.mu.Lock()
@@ -142,11 +142,17 @@ func (b *surfaceBuild) start() {
 	}()
 }
 
-// close ends the surface's builds: one not started never starts (a later request answers 503), one in flight is waited for until
-// ctx ends (ctx's error then: the goroutine is left to finish, its result dropped as the server's close fails its publication).
-func (b *surfaceBuild) close(ctx context.Context) error {
+// close ends the surface's builds without waiting: one not started never starts (a later request answers 503), one in flight goes on
+// (its result dropped as the server's close fails its publication).
+func (b *surfaceBuild) close() {
 	b.mu.Lock()
 	b.closed = true
+	b.mu.Unlock()
+}
+
+// wait returns once the build, if started, ended, or with ctx's error when ctx ends first (the goroutine is left to finish).
+func (b *surfaceBuild) wait(ctx context.Context) error {
+	b.mu.Lock()
 	running := b.running
 	b.mu.Unlock()
 	if !running {

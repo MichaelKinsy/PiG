@@ -54,7 +54,7 @@ func screenshots(t *testing.T, out string, printed *bytes.Buffer) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = server.Close(ctx) }()
+	defer closeServer(ctx, server)
 	link, err := url.Parse(server.OwnerLink())
 	if err != nil {
 		t.Fatal(err)

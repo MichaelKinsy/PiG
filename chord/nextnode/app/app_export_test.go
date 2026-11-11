@@ -21,7 +21,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/nextnode/workers"
 )
 
-// Ports packages/chord/test/node/app/app.test.ts "export and import per address" (Pi main c23b9ec1): a running worker packs its own
+// Ports packages/chord/test/node/app/app.test.ts "export and import per address" (Pi 8a5da3ce6; the cases about the server's records and rows are in app_export_host_test.go): a running worker packs its own
 // store without stopping, the worker's data object is the server's only, an export without a worker holds its lock (a hold arriving
 // meanwhile starts the worker after it), a failed address stays failed after an export, and the round trip with its refusals. The
 // round trip's file is put into the worker's directory and read from the copy's (a plugin cannot get a worker's `Files`, D461).

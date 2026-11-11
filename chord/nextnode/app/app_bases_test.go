@@ -26,8 +26,8 @@ import (
 // in chord/nextnode/workers: a component that closed copies nothing) have no app-level counterpart; the worker kind's part of the
 // failing-base test below is a start that fails, as Pi's. Pi's tests of the scan of the server's own code held on a pipe (`answers
 // before the scan ... finished`, `closes without waiting for a scan ... stalled on a read`) are the two tests of a stalled web
-// base: the scan runs after the bases are built; the close, which Pi's does not make wait for a build, waits for it (a forced Go
-// lifetime difference: app_bases_scan_test.go, app_bases_linux_test.go). Its `settles baseWatched only once the
+// base: the scan runs after the bases are built; the close does not wait for the build, as Pi's, and Wait (Go's ownership of
+// the goroutines, no Pi counterpart) joins it: app_bases_scan_test.go, app_bases_linux_test.go. Its `settles baseWatched only once the
 // base bundles' records were compared` is `TestRecordBaseSettlesOnceItsFirstComparisonsEnded` (the plugins' watcher) and
 // `TestAppMarksBaseForAChangeOfAWorkerKindsEntry…` (app_changes_test.go). A link's upgrade waiting for the bases is D604.
 

@@ -110,6 +110,25 @@ const (
 	stateRemoved
 )
 
+// keyedNeed is a keyed member's need: a changed key kind (keyedRekeyed: strings and addresses, or another kind) is only
+// refused.
+type keyedNeed int
+
+const (
+	keyedChanged keyedNeed = iota + 1
+	keyedRemoved
+	keyedRekeyed
+)
+
+// keyKind is the name of the host kind a keyed member's keys are addresses of; "" for string keys (kind names are never
+// empty).
+func keyKind(snapshot *KeyedSnapshot) string {
+	if snapshot.Key == nil {
+		return ""
+	}
+	return snapshot.Key.Kind
+}
+
 type methodNeed struct {
 	removed, args, result bool
 }
@@ -120,7 +139,7 @@ type needs struct {
 	state   *NamedMap[*NamedMap[stateNeed]]
 	methods *NamedMap[methodNeed]
 	// keyed is per keyed member (local contracts).
-	keyed *NamedMap[stateNeed]
+	keyed *NamedMap[keyedNeed]
 }
 
 func needsOf(data *ContractData, index int) needs {
@@ -134,14 +153,17 @@ func needsOf(data *ContractData, index int) needs {
 	}
 	state := NewNamedMap[*NamedMap[stateNeed]](0)
 	collected := NewNamedMap[methodNeed](0)
-	keyed := NewNamedMap[stateNeed](0)
+	keyed := NewNamedMap[keyedNeed](0)
 	for variant, oldVariant := range old.Variants.All() {
 		now := current.Variants.Value(variant)
-		for member := range oldVariant.Keyed.All() {
-			if !now.Keyed.Has(member) {
-				keyed.Set(member, stateRemoved)
+		for member, oldKeyed := range oldVariant.Keyed.All() {
+			current, kept := now.Keyed.Get(member)
+			if !kept {
+				keyed.Set(member, keyedRemoved)
+			} else if keyKind(current) != keyKind(oldKeyed) {
+				keyed.Set(member, keyedRekeyed)
 			} else if changes[Change{variant, member, SideKeyed}] {
-				keyed.Set(member, stateChanged)
+				keyed.Set(member, keyedChanged)
 			}
 		}
 		variantNeeds := NewNamedMap[stateNeed](0)
@@ -232,14 +254,18 @@ func checkStateMapping(mapping StateMapping, need stateNeed, path string) error 
 	return fail("%s: expected a function", path)
 }
 
-func checkKeyedMapping(mapping KeyedMapping, need stateNeed, path string) error {
-	if mapping.Refuse || need == stateChanged && mapping.Func != nil {
+func checkKeyedMapping(mapping KeyedMapping, need keyedNeed, path string) error {
+	if mapping.Refuse || need == keyedChanged && mapping.Func != nil {
 		return nil
 	}
-	if need == stateChanged {
+	because := ""
+	if need == keyedRekeyed {
+		because = " (its key kind changed: a value mapping cannot map keys)"
+	}
+	if need == keyedChanged {
 		return fail(`%s: expected a function or "refuse"`, path)
 	}
-	return fail(`%s: expected "refuse"`, path)
+	return fail(`%s: expected "refuse"%s`, path, because)
 }
 
 func checkMethodMapping(mapping MethodMapping, need methodNeed, path string) error {

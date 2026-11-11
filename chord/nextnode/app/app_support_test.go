@@ -157,6 +157,18 @@ func testOptions(t testing.TB, edit func(*AppOptions)) (AppOptions, *appErrors) 
 	return options, errs
 }
 
+// closeAndWait closes app and joins its builds and scan (Wait): a build the test left stalled fails the test after a minute instead of
+// hanging it. A close that fails is not reported here (the test that made it fail did).
+func closeAndWait(t testing.TB, app *App) {
+	t.Helper()
+	_ = app.Close(background)
+	ctx, cancel := context.WithTimeout(background, time.Minute)
+	defer cancel()
+	if err := app.Wait(ctx); err != nil {
+		t.Errorf("the app's builds did not end: %v", err)
+	}
+}
+
 // startTestApp starts an app with testOptions, its bases built (BasesBuilt: most tests get the app as its first requests see it);
 // it is closed when the test ends unless a test closed it.
 func startTestApp(t testing.TB, plugins map[string]map[string]string, edit func(*AppOptions)) started {
@@ -177,11 +189,11 @@ func startUnbuilt(t testing.TB, plugins map[string]map[string]string, edit func(
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Registered first, so it runs after the close: no goroutine of the app, its HTTP component, its workers or its plugins outlives it.
+	// Registered first, so it runs after the close and the join: no goroutine of the app, its HTTP component, its workers or its plugins outlives it.
 	t.Cleanup(func() {
 		noGoroutinesOf(t, "chord/nextnode/app.", "chord/nextnode/http.", "chord/nextnode/workers.", "chord/nextnode/plugins.")
 	})
-	t.Cleanup(func() { _ = app.Close(background) })
+	t.Cleanup(func() { closeAndWait(t, app) })
 	// Runs before the close: a started app that ran its test reported nothing. An app the test closed itself is not asked: a close
 	// reports what it ends (a call in flight, a hold that could not resolve), as the reload rows with a link in flight have it.
 	t.Cleanup(func() {

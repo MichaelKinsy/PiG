@@ -114,3 +114,16 @@ func TestColumnRecordFromJSONKeepsAnIntDefaultThatIsNoSafeInteger(t *testing.T) 
 		t.Fatalf("default of 1.5 = %#v, want float64(1.5)", fractional.Default)
 	}
 }
+
+func TestHostColumnsDescribed(t *testing.T) {
+	session := hostColKind(t, "session")
+
+	t.Run("are recorded as str columns with their kind, refused inside opt(...)", func(t *testing.T) {
+		columns, err := DescribeColumns([]ColumnProp{Col("session", Host(session))}, "t")
+		must(t, err)
+		record := ColumnRecordOf(columns[0])
+		qEqual(t, record, ColumnRecord{Type: ColStr, Host: new("session")})
+		qEqual(t, qJSON(t, record), `{"type":"str","host":"session"}`)
+		describeFails(t, []ColumnProp{Col("session", Opt(Host(session)))}, "not opt(...)")
+	})
+}

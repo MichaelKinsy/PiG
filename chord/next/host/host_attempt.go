@@ -1287,6 +1287,16 @@ func (a *attempt) releaseReferences() {
 	}
 }
 
+// declaredTable is its declaration of table `table` (SQL name), if it declared one.
+func (a *attempt) declaredTable(table string) *store.TableDefinition {
+	for _, each := range a.tables {
+		if each.sql == table {
+			return each.handle.Definition
+		}
+	}
+	return nil
+}
+
 // activateSteps is `#activate`: the activation steps; each catches its own failures with their kind (the table in slice
 // 2's spec). finish gets the outcome.
 func (a *attempt) activateSteps(dl *deadline, finish func(activation)) {
@@ -1294,7 +1304,6 @@ func (a *attempt) activateSteps(dl *deadline, finish func(activation)) {
 	host := object.host
 	var implementation factoryResult
 	var dependencies []dependency
-	needsLoad := false
 	setup := func() error {
 		var err error
 		if implementation, err = a.declare(); err != nil {
@@ -1305,15 +1314,6 @@ func (a *attempt) activateSteps(dl *deadline, finish func(activation)) {
 			object.retryOn(a.registry.retrySources)
 		} else {
 			object.retryOn(nil)
-		}
-		// The object holds the pins from now on.
-		if err = object.documents.Hydrate(a.declared, a.takePins(), a.opening); err != nil {
-			return err
-		}
-		for _, definition := range a.declared {
-			if definition.Persist {
-				needsLoad = true
-			}
 		}
 		return nil
 	}
@@ -1378,41 +1378,70 @@ func (a *attempt) activateSteps(dl *deadline, finish func(activation)) {
 			afterLoads()
 		})
 	}
+	// loaded ends the load phase (the host data gate's) and goes on to the jobs.
+	loaded := func() {
+		host.hostData.leave()
+		loadJobs()
+	}
+	// failedLoading ends the load phase of a load that failed.
+	failedLoading := func(err error) {
+		host.hostData.leave()
+		fail(err)
+	}
 	afterDocuments := func() {
 		if len(a.tables) == 0 {
-			loadJobs()
+			loaded()
 			return
 		}
 		a.prepareTables(dl).then(func(_ struct{}, err error) {
 			if err != nil {
-				fail(err)
+				failedLoading(err)
 				return
 			}
 			a.loadQueries(0, func(err error) {
 				if err != nil {
-					fail(err)
+					failedLoading(err)
 					return
 				}
-				loadJobs()
+				loaded()
 			})
 		})
+	}
+	// loadPhase is the load phase: no host data operation of the host runs meanwhile (its gate), so what loads is current.
+	loadPhase := func() {
+		// The object holds the pins from now on.
+		if err := object.documents.Hydrate(a.declared, a.takePins(), a.opening); err != nil {
+			failedLoading(err)
+			return
+		}
+		needsLoad := false
+		for _, definition := range a.declared {
+			if definition.Persist {
+				needsLoad = true
+			}
+		}
+		if !needsLoad {
+			afterDocuments()
+			return
+		}
+		awaitTask(host, func() (struct{}, error) { return struct{}{}, object.documents.Load(a.opening) }).then(
+			func(_ struct{}, err error) {
+				if err != nil {
+					failedLoading(err)
+					return
+				}
+				afterDocuments()
+			})
 	}
 	if err := setup(); err != nil {
 		fail(err)
 		return
 	}
-	if !needsLoad {
-		afterDocuments()
+	if entering := host.hostData.enter(); entering != nil {
+		entering.then(func(struct{}, error) { loadPhase() })
 		return
 	}
-	awaitTask(host, func() (struct{}, error) { return struct{}{}, object.documents.Load(a.opening) }).then(
-		func(_ struct{}, err error) {
-			if err != nil {
-				fail(err)
-				return
-			}
-			afterDocuments()
-		})
+	loadPhase()
 }
 
 // loadQueries runs the live queries once, before the object goes live (`for (const query of queries) await
@@ -2036,7 +2065,7 @@ func (e *exposedKeyed) keyed() documents.KeyedHandle {
 }
 
 // Get is the document at key; found is false when absent.
-func (e *exposedKeyed) Get(ctx context.Context, key string) (delta.JsonValue, bool, error) {
+func (e *exposedKeyed) Get(ctx context.Context, key any) (delta.JsonValue, bool, error) {
 	value, err := e.keyed().Get(ctx, key)
 	if err != nil || value == nil {
 		return nil, false, err
@@ -2045,12 +2074,12 @@ func (e *exposedKeyed) Get(ctx context.Context, key string) (delta.JsonValue, bo
 }
 
 // Watch is a watch of the document at key that follows its address.
-func (e *exposedKeyed) Watch(ctx context.Context, key string) (chord.WatchHandle[delta.JsonValue], error) {
+func (e *exposedKeyed) Watch(ctx context.Context, key any) (chord.WatchHandle[delta.JsonValue], error) {
 	return e.keyed().Watch(ctx, key)
 }
 
 // At is, in a factory only, the document at key as a watchable.
-func (e *exposedKeyed) At(key string) chord.Watchable[delta.JsonValue] {
+func (e *exposedKeyed) At(key any) chord.Watchable[delta.JsonValue] {
 	source, err := e.keyed().At(key)
 	if err != nil {
 		panic(err)
