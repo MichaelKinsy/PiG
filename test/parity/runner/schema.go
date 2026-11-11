@@ -275,7 +275,13 @@ type AssertSpec struct {
 	// NoFramesAfterReply requires, for every run of both binaries, that no frame begins after the last occurrence of a final_frame text in the raw
 	// transcript: the frame that carries the end of a reply ends the stream (Pi's agent_end requests one frame; agent_settled requests none).
 	NoFramesAfterReply bool `toml:"no_frames_after_reply"`
-	Runs             int  `toml:"runs"`
+	// FinalFrameCursorOnlyPig and FinalFrameCursorOnlyPi pin, for every run of that binary, the exact number of cursor-only frames (CSI ? 2026 h,
+	// CSI <row>;1 H, CSI ? 25 l, CSI ? 2026 l: a render that repaints nothing) that begin after the last occurrence of a final_frame text. Both
+	// binaries write other frames there while the terminal answers their start-up queries, so a scenario that records a numbered divergence over
+	// a repaint pins the one frame kind the divergence is about (D618) and not the whole stream.
+	FinalFrameCursorOnlyPig *int `toml:"final_frame_cursor_only_pig"`
+	FinalFrameCursorOnlyPi  *int `toml:"final_frame_cursor_only_pi"`
+	Runs                    int  `toml:"runs"`
 
 	// ChangelogHeadersComplete compares all rendered release headers with each binary's own document, in reverse source order (D22).
 	ChangelogHeadersComplete bool `toml:"changelog_headers_complete"`

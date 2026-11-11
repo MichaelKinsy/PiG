@@ -115,32 +115,34 @@ type scenario struct {
 var providerFixtureAPIs = []string{"openai-completions", "mistral-conversations", "anthropic-messages", "google-generative-ai"}
 
 type assertBlock struct {
-	JSONOutputEqual       bool                    `toml:"json_output_equal"`
-	StderrEqual           bool                    `toml:"stderr_equal"`
-	JSONAliases           []jsonAliasRule         `toml:"json_aliases"`
-	JSONPigOnlyRecords    []jsonPigOnlyRecordRule `toml:"json_pig_only_records"`
-	ArtifactEqual         bool                    `toml:"artifact_equal"`
-	ExitCode              *int                    `toml:"exit_code"`
-	PigExitCode           *int                    `toml:"pig_exit_code"`
-	PiExitCode            *int                    `toml:"pi_exit_code"`
-	BothContain           []string                `toml:"both_contain"`
-	BothNotContain        []string                `toml:"both_not_contain"`
-	PigContains           []string                `toml:"pig_contains"`
-	PigNotContain         []string                `toml:"pig_not_contain"`
-	PiContains            []string                `toml:"pi_contains"`
-	PiNotContain          []string                `toml:"pi_not_contain"`
-	BothMatchRegex        []string                `toml:"both_match_regex"`
-	OutputEqual           bool                    `toml:"output_equal"`
-	OutputNormalizedEqual bool                    `toml:"output_normalized_equal"`
-	OutputLayoutEqual     bool                    `toml:"output_layout_equal"`
-	EscapedOutputEqual    bool                    `toml:"escaped_output_equal"`
-	RuntimeRatioMax       float64                 `toml:"runtime_ratio_max"`
-	BothReachReady        bool                    `toml:"both_reach_ready"`
-	PigNoStaleFrames      bool                    `toml:"pig_no_stale_frames"`
-	NoFramesAfterReply    bool                    `toml:"no_frames_after_reply"`
-	Runs                  int                     `toml:"runs"`
-	NormalizeReplace      []normalizeReplaceBlock `toml:"normalize_replace"`
-	Extensions            extensionAssertBlock    `toml:"extensions"`
+	JSONOutputEqual         bool                    `toml:"json_output_equal"`
+	StderrEqual             bool                    `toml:"stderr_equal"`
+	JSONAliases             []jsonAliasRule         `toml:"json_aliases"`
+	JSONPigOnlyRecords      []jsonPigOnlyRecordRule `toml:"json_pig_only_records"`
+	ArtifactEqual           bool                    `toml:"artifact_equal"`
+	ExitCode                *int                    `toml:"exit_code"`
+	PigExitCode             *int                    `toml:"pig_exit_code"`
+	PiExitCode              *int                    `toml:"pi_exit_code"`
+	BothContain             []string                `toml:"both_contain"`
+	BothNotContain          []string                `toml:"both_not_contain"`
+	PigContains             []string                `toml:"pig_contains"`
+	PigNotContain           []string                `toml:"pig_not_contain"`
+	PiContains              []string                `toml:"pi_contains"`
+	PiNotContain            []string                `toml:"pi_not_contain"`
+	BothMatchRegex          []string                `toml:"both_match_regex"`
+	OutputEqual             bool                    `toml:"output_equal"`
+	OutputNormalizedEqual   bool                    `toml:"output_normalized_equal"`
+	OutputLayoutEqual       bool                    `toml:"output_layout_equal"`
+	EscapedOutputEqual      bool                    `toml:"escaped_output_equal"`
+	RuntimeRatioMax         float64                 `toml:"runtime_ratio_max"`
+	BothReachReady          bool                    `toml:"both_reach_ready"`
+	PigNoStaleFrames        bool                    `toml:"pig_no_stale_frames"`
+	NoFramesAfterReply      bool                    `toml:"no_frames_after_reply"`
+	FinalFrameCursorOnlyPig *int                    `toml:"final_frame_cursor_only_pig"`
+	FinalFrameCursorOnlyPi  *int                    `toml:"final_frame_cursor_only_pi"`
+	Runs                    int                     `toml:"runs"`
+	NormalizeReplace        []normalizeReplaceBlock `toml:"normalize_replace"`
+	Extensions              extensionAssertBlock    `toml:"extensions"`
 
 	ArtifactNormalizedEqual bool     `toml:"artifact_normalized_equal"`
 	ArtifactBothContain     []string `toml:"artifact_both_contain"`
@@ -662,7 +664,7 @@ func hasBehaviorAssertion(sc *scenario) bool {
 	return a.ExitCode != nil || a.PigExitCode != nil || a.PiExitCode != nil ||
 		len(a.BothContain) > 0 || len(a.PigContains) > 0 || len(a.PiContains) > 0 ||
 		a.ChangelogHeadersComplete || len(a.BothMatchRegex) > 0 || a.OutputEqual || a.OutputNormalizedEqual ||
-		a.OutputLayoutEqual || a.EscapedOutputEqual || a.JSONOutputEqual || a.StderrEqual || a.ArtifactEqual || a.BothReachReady || a.PigNoStaleFrames || a.NoFramesAfterReply ||
+		a.OutputLayoutEqual || a.EscapedOutputEqual || a.JSONOutputEqual || a.StderrEqual || a.ArtifactEqual || a.BothReachReady || a.PigNoStaleFrames || a.NoFramesAfterReply || a.FinalFrameCursorOnlyPig != nil || a.FinalFrameCursorOnlyPi != nil ||
 		len(a.Extensions.RegisteredTools) > 0 || len(a.Extensions.RegisteredCommands) > 0 ||
 		len(a.Extensions.RegisteredProviders) > 0 || len(a.Extensions.RegisteredShortcuts) > 0 ||
 		a.Extensions.NoDiagnostics || len(a.Extensions.PlacementStrategy) > 0 ||

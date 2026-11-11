@@ -3664,3 +3664,25 @@ Call-site markers: `chord/nextnode/plugins/plugins_install.go` (`unpack`).
 Evidence: `chord/nextnode/plugins/plugins_install_tar_test.go` (`TestInstallPluginNamesTheTarballToTarRelativeToThePackDirectory`), and on Windows `TestInstallPluginInstallsAnNpmPackageHereALocalTarballIntoRootName` against Git for Windows' tar.
 
 Parity allowance: observable only on Windows with GNU tar first in PATH, where Pi's extraction fails.
+
+## D618 A start repaints after the highlight grammar load only when a highlight lookup made before it could have answered differently
+
+What: Pi's `init` loads the remaining highlight.js grammars after the startup frame and then calls `invalidate()` and `requestRender()` (`packages/coding-agent/src/modes/interactive/interactive-mode.ts`, `loadAllHighlightLanguages().then(...)`). Pi's renderer writes a frame for every render request even when no row changed (`packages/tui/src/tui-alt-screen.ts` `doRender` has no early return for unchanged lines), so a fresh start writes one more frame about 100 ms after the first: a 29-byte cursor-only frame (`CSI ? 2026 h`, `CSI <row>;1 H`, `CSI ? 25 l`, `CSI ? 2026 l`) that repaints nothing. PiG's `loadRemainingHighlightLanguages` repaints only when `tui.LoadAllHighlightLanguages` reports that a highlight lookup made before the load answers differently now: a language name the startup grammars do not register (including a name no language has), an auto-detection over the languages registered so far, or a listing of them. A start that drew no code block (the usual start) made none, so PiG writes nothing after its first frame. A screen that did draw such code is repainted as in Pi, so highlighted code still picks up the remaining grammars.
+
+Why: the frame carries no row, yet it restarts any consumer's output-quiet wait, and it costs a render pass on the pinned core right after start. Measured on xd670 (core 103, interactive session, 15 rounds): wall 519 ms to 483 ms with CPU unchanged (Pi-Bolt 500 ms). The bytes PiG omits are bytes that do not change the terminal's state: the cursor is already at that row and hidden.
+
+Pi bug: none; Pi's repaint after the load is intended. (Pi-Bolt omits the frame too.)
+
+Scope: `tui` (`LoadAllHighlightLanguages`), `tui/internal/hljs` (`Registry.LoadAllLanguages` and the lookups that record a miss), `internal/codingagent` (`loadRemainingHighlightLanguages`). A Piglet Binary built with `pig_strip_syntax_highlight` loads no grammar and, as before, has nothing to repaint.
+
+Owner decision: owner approved 2026-11-11.
+
+SCRUTINIZED:approved 2026-11-11
+
+Remove when: Pi's renderer writes nothing for a render request that changes no row and moves no cursor, or the owner withdraws the approval.
+
+Call-site markers: `internal/codingagent/interactive.go` (`loadRemainingHighlightLanguages`), `tui/highlight.go` (`LoadAllHighlightLanguages`), `tui/internal/hljs/registry.go` (`LoadAllLanguages`).
+
+Evidence: `TestLoadRemainingHighlightLanguagesRepaintsOnTheOwnerLoop`, `TestLoadRemainingHighlightLanguagesPostsNoRepaintWhenNoLookupDiffers` (`internal/codingagent/highlight_languages_load_test.go`), `TestLoadAllLanguagesReportsEarlierLookupsThatDiffer` (`tui/internal/hljs/load_reports_test.go`), and parity scenario `interactive-rendering/69-startup-frames-after-grammar-load`, which captures the raw start of both binaries and pins PiG's count of frames after the footer's frame at 0 and Pi's at exactly 1, matching the cursor-only frame.
+
+Parity allowance: scenario 69 (`final_frame_trailing_pig = 0`, `final_frame_trailing_pi = 1`, `final_frame_trailing_pi_match`) records the one cursor-only frame Pi writes and PiG does not; the settled screens are compared as in the family's other scenarios.

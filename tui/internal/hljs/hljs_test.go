@@ -185,7 +185,7 @@ func TestRegistriesHighlightWhileLoading(t *testing.T) {
 	samples := map[string]string{"go": "func main() { fmt.Println(`x`) }", "python": "def f(x):\n    return f'{x}'", "bash": "echo \"$HOME\" | grep -c x", "json": `{"a": [1, true, null]}`}
 	first, second := NewRegistry(), NewRegistry()
 	var wg sync.WaitGroup
-	wg.Go(first.LoadAllLanguages)
+	wg.Go(func() { first.LoadAllLanguages() })
 	for _, r := range []*Registry{first, second} {
 		for language, code := range samples {
 			wg.Go(func() {
