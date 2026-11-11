@@ -198002,9 +198002,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(id string) (Context, *requestScope)"
+        "type": "func(id string, abortSignal bool) (Context, *requestScope)"
       },
-      "shapeHash": "sha256:ef999474e1b4d6e53f5fec4825902e82c3de3809fef9ba81dd56f044253f9da7"
+      "shapeHash": "sha256:7450350f15136f92ab6f064cd41a82c837330110f2249903c90d8a1172c1861f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#Extension.busConn",
@@ -215297,6 +215297,17 @@
         "type": "func(component any) bool"
       },
       "shapeHash": "sha256:0a00ea5da307554247d1ce644ded71325d199fc4e483db89de0d585115733f87"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#carriesAbortSignal",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "carriesAbortSignal",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(req *requestMsg) bool"
+      },
+      "shapeHash": "sha256:e17d6f441a03b22fdb1e03219096334a921386a791f21d3b00fa61f6e035ab14"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#cerebrasBodylessOverflowPattern",
