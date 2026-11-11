@@ -20,6 +20,22 @@ if [ "$#" -eq 0 ]; then
   exit 2
 fi
 
+# A package the runner image already ships needs no mirror: ask dpkg, install only what is missing, and leave apt, the sources and
+# the network alone when nothing is. The Ubuntu mirrors have been unreachable for whole runs, and a job whose packages are all in
+# the image must not fail on them. dpkg-query prints "installed" only for a package that is configured; an unknown name, a
+# virtual package or a version-pinned spec counts as missing and goes to apt.
+missing=()
+for package in "$@"; do
+  if [ "$(dpkg-query --show --showformat='${db:Status-Status}' "$package" 2>/dev/null || true)" != installed ]; then
+    missing+=("$package")
+  fi
+done
+if [ "${#missing[@]}" -eq 0 ]; then
+  echo "install-apt-packages.sh: already installed, apt not run: $*" >&2
+  exit 0
+fi
+set -- "${missing[@]}"
+
 sources_dir="${APT_SOURCES_DIR:-/etc/apt/sources.list.d}"
 sources_list="${APT_SOURCES_LIST:-/etc/apt/sources.list}"
 read -r -a sudo_cmd <<< "${SUDO-sudo}"
