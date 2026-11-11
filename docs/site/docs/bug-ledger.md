@@ -1830,6 +1830,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ec2080a](#bf-ec2080a) | A subprocess extension's `ctx.ui.custom` component now learns when another component shown over it takes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ec409c7](#bf-ec409c7) | A chord client's watch callback returned at once and let a newer script set be delivered while an update ran… | PiG's own defect | All platforms | Unreleased |
 | [BF-ecc7b76](#bf-ecc7b76) | fix(tui): an async markdown completion no longer rebuilds the assistant block off the owner loop | PiG's own defect | All platforms | Unreleased |
+| [BF-ecc923b](#bf-ecc923b) | A packed Rust cell whose two members both failed to build could report the second member's panic as the first… | PiG's own defect | All platforms | Unreleased |
 | [BF-ecf6db9](#bf-ecf6db9) | A chord session's `lastUsed` touch was written even when its request had been cancelled; it is now cancelled… | PiG's own defect | All platforms | Unreleased |
 | [BF-ed01bf6](#bf-ed01bf6) | Resuming a very long session no longer reads and decodes every entry of the branch to restore the tool loadout | PiG's own defect | All platforms | 0.7.0 |
 | [BF-ed05099](#bf-ed05099) | An extension's `ui.setHiddenThinkingLabel` now changes the label shown for hidden thinking in the chat… | PiG's own defect | All platforms | 0.5.0 |
@@ -1921,6 +1922,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-f7c4b01](#bf-f7c4b01) | `pig extension upgrade` no longer changes, breaks or rejects a Go extension that already builds against the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f7d701e](#bf-f7d701e) | Tool argument validation asserts the `format` keyword for the formats TypeBox checks (date, time, date-time… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f81b457](#bf-f81b457) | fix(telemetry): the span clock re-anchors when Date.now() is replaced; conformance steps both clocks together | PiG's own defect | All platforms | Unreleased |
+| [BF-f81ce00](#bf-f81ce00) | Interactive mode: when the first message flushed from the compaction queue was rejected (a… | PiG's own defect | All platforms | Unreleased |
 | [BF-f821434](#bf-f821434) | fix(ai): lint and go fix findings of the catalog generator | PiG's own defect | All platforms | Unreleased |
 | [BF-f8673e6](#bf-f8673e6) | Tool argument conversion for TypeBox schemas lower-cases with JavaScript rules (an `İ` in `UNDEFİNED` no… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f89c404](#bf-f89c404) | fix(durable/core/turn): the pattern generator reads Pi's single-quoted pattern strings, so the Zhipu 1308… | PiG's own defect | All platforms | Unreleased |
@@ -27084,6 +27086,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `ecc7b7683c` (2026-10-29)
 - **Tests:** None recorded.
 
+### BF-ecc923b
+
+**A packed Rust cell whose two members both failed to build could report the second member's panic as the first…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A packed Rust cell whose two members both failed to build could report the second member's panic as the first member's load error.
+- **Root cause:** Not recorded.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `ecc923b099` (2026-11-10)
+- **Tests:** `coding/extension/host/runtimecell/rust_runner_test.go::TestRustPackedRunnerHoldsTheNextMemberUntilAFailureIsReported`
+- **Release note:** A packed Rust cell whose two members both failed to build could report the second member's panic as the first member's load error. The runner started the next member while the failed one was still writing its line, so the panic output of the next member split the line, and the host, finding no line of its own for the first member, read the last panic in the log. The next member now starts after the failed member's line is written and the host's wait for it has ended, as the Go runner already did.
+
 ### BF-ecf6db9
 
 **A chord session's `lastUsed` touch was written even when its request had been cancelled; it is now cancelled…**
@@ -28347,6 +28363,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `f81b45751c` (2026-11-07)
 - **Tests:** `telemetry/telemetry_now_test.go::TestInMemoryStampsStartsWithTelemetryNowToTheMicrosecondInTheirOrder`
+
+### BF-f81ce00
+
+**Interactive mode: when the first message flushed from the compaction queue was rejected (a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Interactive mode: when the first message flushed from the compaction queue was rejected (a `before_agent_start` handler that fails, a missing model, an input handler error), a message queued behind it could start a run of its own if the rejection had already ended the first run, and be rejected for the same cause, so "Failed to send queued messages" was shown twice.
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f81ce001e3` (2026-11-10)
+- **Tests:** `internal/codingagent/interactive_flush_compaction_queue_contract_test.go::TestFlushCompactionQueueDoesNotStartARunBehindARejectedPrompt`
+- **Release note:** Interactive mode: when the first message flushed from the compaction queue was rejected (a `before_agent_start` handler that fails, a missing model, an input handler error), a message queued behind it could start a run of its own if the rejection had already ended the first run, and be rejected for the same cause, so "Failed to send queued messages" was shown twice. The rejection is now recorded when the run finds it, and a message behind it is neither sent nor queued; the whole queue comes back with one failure shown.
 
 ### BF-f821434
 
