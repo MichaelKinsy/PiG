@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io/fs"
-	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
