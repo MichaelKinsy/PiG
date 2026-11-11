@@ -199,7 +199,7 @@ Step 1 of `run` opens the telemetry store (chapter XI), starts the app, tries th
 	if err != nil {
 		return err
 	}
-	defer func() { _ = server.Close(ctx) }()
+	defer closeServer(ctx, server)
 	link, err := url.Parse(server.OwnerLink())
 	if err != nil {
 		return err
@@ -253,6 +253,18 @@ Step 1 of `run` opens the telemetry store (chapter XI), starts the app, tries th
    GET / signed out: 401
    the owner signs in: 200 chord-session=…
    GET / signed in: 200
+```
+
+`closeServer` is what the step defers: closing the app does not wait for the builds and the scan it started, so it then waits (bounded) for them to end, and none outlives the run:
+
+<!-- quote: main.go -->
+```go
+func closeServer(ctx context.Context, server *app.App) {
+	_ = server.Close(ctx)
+	waited, cancel := context.WithTimeout(context.WithoutCancel(ctx), time.Minute)
+	defer cancel()
+	_ = server.Wait(waited)
+}
 ```
 
 `StartServer` made the data directory: `server/` (its store, the cookie secret, its files), `workers/` (one directory per worker), `plugins/` (the user's plugin root, beside the app's built-in one), `cache/` (the workers' bases), `logs/`, `owner-token` and the telemetry store's files. Without the owner's session both requests are answered 401: the kit answers it before a route or the page runs; once signed in, the page is served.
