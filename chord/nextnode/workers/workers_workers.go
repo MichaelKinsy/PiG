@@ -19,6 +19,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord"
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
@@ -39,7 +40,9 @@ import (
 // is a blocking call that enters the loop for each synchronous part; a Promise stored and awaited by several parties
 // (`started`, `ready`, an address's start, a reload's reply) is a once-settled `outcome` (workers_outcome.go). The
 // per-address queue (`routed.queue`, `queue.then(operation)`) is a chain of `done` channels, one owned goroutine per
-// operation, joined by Close. `setTimeout` is `clock.AfterFunc` (the loop's own unless a test gives one), `setInterval` a
+// operation, joined by Close (a start the route awaits releases the next operation in the section that applies its result,
+// as Pi's route continuation runs before it: parking.Applied, at `resolve`). `setTimeout` is `clock.AfterFunc` (the loop's own
+// unless a test gives one), `setInterval` a
 // timer its callback re-arms, `Date.now()` is `clock.Now()` in milliseconds. A thrown error is a returned one: `authorize`,
 // `principal`, `start`, `lock` and the plugins' `Scripts` return errors where Pi's throw, and the component keeps each
 // inside the boundary Pi's try/catch draws. `Workers<K>`'s kind parameter is type-level: addresses are contracts.Address.
@@ -477,8 +480,9 @@ func (c *Workers) resolve(address contracts.Address, routing context.Context) (h
 			return
 		}
 		// The start has settled when its address's bookkeeping is done, before whoever awaits it resumes (the first reaction
-		// Pi registers on it).
-		started = enqueue(c, record, func() (host.ResolvedLink, error) { return c.start(record, routing) }, func() { c.settled(record, started) })
+		// Pi registers on it); the next operation is released once the route applied the result (the await's continuation, which
+		// Pi runs before it).
+		started = enqueue(c, record, func() (host.ResolvedLink, error) { return c.start(record, routing) }, func() { c.settled(record, started) }, parking.AppliedOf(routing))
 		record.starting = started
 	})
 	if immediate != nil {
@@ -610,11 +614,14 @@ func (c *Workers) routedOf(address contracts.Address) *routed {
 
 // enqueue runs operation after the address's earlier ones. Call it in a section.
 func (c *Workers) enqueue(record *routed, operation func() (struct{}, error)) *outcome[struct{}] {
-	return enqueue(c, record, operation, nil)
+	return enqueue(c, record, operation, nil, nil)
 }
 
 // enqueue is Workers.enqueue for any result; after, if not nil, runs in the section that ends the operation's bookkeeping.
-func enqueue[T any](c *Workers, record *routed, operation func() (T, error), after func()) *outcome[T] {
+// applied, if not nil, is the route's hand-off for the result of an operation the route awaits: the next operation is released
+// by the section that applies it, as Pi runs the route's `await` continuation before the next operation of the queue (the
+// reaction on the promise the bookkeeping reaction settles); a route that applies nothing has no such continuation to wait for.
+func enqueue[T any](c *Workers, record *routed, operation func() (T, error), after func(), applied *parking.Applied) *outcome[T] {
 	record.pending++
 	previous := record.queue
 	next := make(chan struct{})
@@ -631,6 +638,10 @@ func enqueue[T any](c *Workers, record *routed, operation func() (T, error), aft
 			}
 		})
 		run.settle(value, err)
+		if applied != nil {
+			applied.Then(func() { close(next) })
+			return
+		}
 		close(next)
 	})
 	return run
@@ -1042,7 +1053,7 @@ func (c *Workers) checkIdle() bool {
 			continue
 		}
 		child.idleStop = true
-		enqueue(c, record, func() (struct{}, error) { return struct{}{}, c.idleStop(record, child) }, nil)
+		enqueue(c, record, func() (struct{}, error) { return struct{}{}, c.idleStop(record, child) }, nil, nil)
 	}
 	return workers > 0
 }
