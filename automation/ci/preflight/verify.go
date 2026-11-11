@@ -23,9 +23,9 @@ const issueMarker = "<!-- pig-preflight-verify -->"
 const issueTitle = "Pre-flight: PRs without a verdict"
 
 // firstReport is the first job's report among the reports verify reads. It lists every PR of the run, so it must be
-// there: without it the PRs that job judged would go unchecked. It is the first job's artifact name in
-// .github/workflows/preflight.yml plus ".json", which the verify job's collect step makes of it; a test holds the two
-// together.
+// there: without it the PRs that job judged would go unchecked. It is the file the first job writes with --handled in
+// .github/workflows/preflight.yml, which the verify job downloads with every other report into one directory; a test
+// holds the two together.
 const firstReport = "preflight-handled-0.json"
 
 // missing is a PR the pre-flight did not deliver for, and what is missing. PR 0 is the run itself.
@@ -321,7 +321,11 @@ func runVerify(ctx context.Context, args []string, stdout, stderr io.Writer) int
 	for _, m := range ms {
 		logf(stdout, "::error title=pre-flight verify::%s", annotation(strings.ReplaceAll(m.where(), "`", "")+": "+m.What))
 	}
-	if err := keepIssue(ctx, a, *repo, *bot, ms, runURL, stdout); err != nil {
+	switch err := keepIssue(ctx, a, *repo, *bot, ms, runURL, stdout); {
+	case hasStatus(err, http.StatusGone):
+		// Issues are off in this repository (a fork, say): the run still fails, and its log says what is missing.
+		logf(stdout, "::warning title=pre-flight verify::issues are disabled in %s, so no issue is kept; the lines above say what is missing", *repo)
+	case err != nil:
 		_, _ = fmt.Fprintln(stderr, "preflight verify:", err)
 		return 2
 	}

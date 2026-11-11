@@ -258,6 +258,14 @@ func TestVerifyCommand(t *testing.T) {
 		t.Fatalf("a refused call wrote issues: %d, was %d", len(g.issues), issues)
 	}
 	t.Setenv("GITHUB_TOKEN", "t")
+	// Issues are off (a fork): the run still fails on what is missing, and says why there is no issue.
+	g.issuesGone = true
+	g.statuses["h2"] = ""
+	out.Reset()
+	if code := run(args, &out, &errOut); code != 1 || !strings.Contains(out.String(), "issues are disabled in o/r") {
+		t.Fatalf("issues off: exit %d\n%s", code, out.String())
+	}
+	g.issuesGone = false
 	// The issue cannot be kept: the check could not finish.
 	g.searchDown = true
 	if code := run(args, &out, &errOut); code != 2 {
@@ -285,8 +293,9 @@ func TestReadHandledReadsPastABadReport(t *testing.T) {
 	}
 }
 
-// TestWorkflowNamesTheFirstReport runs the verify job's own collect step over artifacts named as the workflow names them,
-// laid out as download-artifact lays them out (one directory per artifact), and checks verify finds the first report.
+// TestWorkflowNamesTheFirstReport holds the workflow to verify: the first job writes and uploads its report under the
+// name verify requires, every job's report has a name of its own, the verify job downloads them all into one directory,
+// and its own step then finds the first report there.
 func TestWorkflowNamesTheFirstReport(t *testing.T) {
 	var raw []byte
 	for dir, _ := os.Getwd(); ; dir = filepath.Dir(dir) {
@@ -299,7 +308,6 @@ func TestWorkflowNamesTheFirstReport(t *testing.T) {
 		}
 	}
 	type step struct {
-		Name string            `yaml:"name"`
 		Uses string            `yaml:"uses"`
 		Run  string            `yaml:"run"`
 		With map[string]string `yaml:"with"`
@@ -312,47 +320,54 @@ func TestWorkflowNamesTheFirstReport(t *testing.T) {
 	if err := yaml.Unmarshal(raw, &wf); err != nil {
 		t.Fatal(err)
 	}
-	find := func(job, uses string) step {
+	find := func(job, what string) step {
 		t.Helper()
 		for _, s := range wf.Jobs[job].Steps {
-			if strings.HasPrefix(s.Uses, uses) || (uses == "run" && strings.Contains(s.Run, "preflight\" verify")) {
+			if strings.HasPrefix(s.Uses, what) || (what != "" && strings.Contains(s.Run, what)) {
 				return s
 			}
 		}
-		t.Fatalf("job %s has no %s step", job, uses)
+		t.Fatalf("job %s has no step with %s", job, what)
 		return step{}
 	}
-	first := find("preflight", "actions/upload-artifact@").With["name"]
-	more := strings.ReplaceAll(find("more", "actions/upload-artifact@").With["name"], "${{ strategy.job-index }}", "0")
+	index := strings.NewReplacer("${{ strategy.job-index }}", "0", "$JOB_INDEX", "0")
+	// What each job writes, and what it uploads.
+	firstWrites := find("preflight", "preflight\" run").Run
+	firstUpload := find("preflight", "actions/upload-artifact@").With["path"]
+	moreWrites := index.Replace(find("more", "preflight\" run").Run)
+	moreUpload := index.Replace(find("more", "actions/upload-artifact@").With["path"])
+	if filepath.Base(firstUpload) != firstReport || !strings.Contains(firstWrites, `--handled "$RUNNER_TEMP/preflight/`+firstReport+`"`) {
+		t.Fatalf("the first job writes or uploads another report than %s:\n%s\n%s", firstReport, firstUpload, firstWrites)
+	}
+	if filepath.Base(moreUpload) == firstReport || !strings.Contains(moreWrites, `--handled "$RUNNER_TEMP/preflight/`+filepath.Base(moreUpload)+`"`) {
+		t.Fatalf("a next job's report: %s\n%s", moreUpload, moreWrites)
+	}
 	download := find("verify", "actions/download-artifact@")
-	if first+".json" != firstReport || more == first || download.With["merge-multiple"] != "" || download.With["path"] != "${{ runner.temp }}/handled" {
-		t.Fatalf("first %q, more %q, download %+v", first, more, download.With)
+	if download.With["merge-multiple"] != "true" || download.With["path"] != "${{ runner.temp }}/handled" {
+		t.Fatalf("download %+v", download.With)
 	}
-	for _, name := range []string{first, more} {
-		if ok, _ := filepath.Match(download.With["pattern"], name); !ok {
-			t.Fatalf("the download pattern %q misses %q", download.With["pattern"], name)
-		}
-	}
+	// One directory holds every report by its own name, as merge-multiple downloads them; the verify job's own step
+	// then reads it, with a stand-in for the program.
 	temp := t.TempDir()
-	for _, name := range []string{first, more} {
-		if err := os.MkdirAll(filepath.Join(temp, "handled", name), 0o755); err != nil {
+	for _, name := range []string{filepath.Base(firstUpload), filepath.Base(moreUpload)} {
+		if err := os.MkdirAll(filepath.Join(temp, "handled"), 0o755); err != nil {
 			t.Fatal(err)
 		}
-		if err := writeJSON(filepath.Join(temp, "handled", name, "handled.json"), []handled{{PR: 1, Head: name, Result: resultPass}}); err != nil {
+		if err := writeJSON(filepath.Join(temp, "handled", name), []handled{{PR: 1, Head: name, Result: resultPass}}); err != nil {
 			t.Fatal(err)
 		}
 	}
-	// The step's preflight is a stand-in: only the collecting is under test.
-	if err := os.WriteFile(filepath.Join(temp, "preflight"), []byte("#!/bin/sh\n"), 0o755); err != nil {
+	if err := os.WriteFile(filepath.Join(temp, "preflight"), []byte("#!/bin/sh\nls \"$5\" > \"$RUNNER_TEMP/seen\"\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.Command("bash", "-c", find("verify", "run").Run)
+	cmd := exec.Command("bash", "-c", find("verify", "preflight\" verify").Run)
 	cmd.Env = append(os.Environ(), "RUNNER_TEMP="+temp, "GITHUB_REPOSITORY=o/r")
 	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("collect step: %v %s", err, out)
+		t.Fatalf("verify step: %v %s", err, out)
 	}
-	hs, problems := readHandled(filepath.Join(temp, "handled"))
-	if len(problems) != 0 || len(hs) != 2 {
-		t.Fatalf("handled %+v, problems %+v", hs, problems)
+	seen, _ := os.ReadFile(filepath.Join(temp, "seen"))
+	hs, problems := readHandled(strings.TrimSpace(filepath.Join(temp, "handled")))
+	if len(problems) != 0 || len(hs) != 2 || !strings.Contains(string(seen), firstReport) {
+		t.Fatalf("handled %+v, problems %+v, seen %q", hs, problems, seen)
 	}
 }

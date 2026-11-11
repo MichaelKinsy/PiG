@@ -40,6 +40,8 @@ type fakeGitHub struct {
 	issues     map[int]*fakeIssue
 	issuesDown bool
 	searchDown bool
+	// issuesGone answers 410 to writing an issue, as a repository with issues off does.
+	issuesGone bool
 }
 
 type fakeIssue struct {
@@ -133,6 +135,8 @@ func (g *fakeGitHub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{"items": append([]*fakeIssue{}, items...)})
+	case strings.HasPrefix(r.URL.Path, "/repos/o/r/issues") && !strings.Contains(r.URL.Path, "/comments") && r.Method != http.MethodGet && g.issuesGone:
+		http.Error(w, `{"message":"Issues has been disabled in this repository."}`, http.StatusGone)
 	case strings.HasPrefix(r.URL.Path, "/repos/o/r/issues") && !strings.Contains(r.URL.Path, "/comments") && r.Method != http.MethodGet && g.issuesDown:
 		http.Error(w, "no", http.StatusForbidden)
 	case r.URL.Path == "/repos/o/r/issues" && r.Method == http.MethodPost:

@@ -83,7 +83,7 @@ jobs:
           "$RUNNER_TEMP/preflight/preflight" run --repo "${REPO:-$GITHUB_REPOSITORY}" --root "$GITHUB_WORKSPACE" \
             --bin "$RUNNER_TEMP/preflight/bin" --work "$RUNNER_TEMP/preflight/work" \
             --prs "${PRS:-}" --budget 200 --time-budget 25m --next "$RUNNER_TEMP/preflight/next.json" \
-            --handled "$RUNNER_TEMP/preflight/handled.json" "${extra[@]}"
+            --handled "$RUNNER_TEMP/preflight/preflight-handled-0.json" "${extra[@]}"
           status=$?
           # The deferred PRs get their jobs also when some PR could not run.
           if [ -s "$RUNNER_TEMP/preflight/next.json" ]; then
@@ -93,9 +93,11 @@ jobs:
       - name: Keep what the job did with each PR, for the verify job
         if: ${{ always() && inputs.dry-run != true }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        # Each job's report has a name of its own, so the verify job downloads them all into one directory. The first is
+        # the one verify requires (firstReport in automation/ci/preflight/verify.go).
         with:
           name: preflight-handled-0
-          path: ${{ runner.temp }}/preflight/handled.json
+          path: ${{ runner.temp }}/preflight/preflight-handled-0.json
           if-no-files-found: ignore
           retention-days: 1
 
@@ -133,6 +135,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           PRS: ${{ matrix.prs }}
+          JOB_INDEX: ${{ strategy.job-index }}
           DRY_RUN: ${{ inputs.dry-run }}
           REPO: ${{ inputs.repo }}
         run: |
@@ -141,13 +144,13 @@ jobs:
           if [ "${DRY_RUN:-}" = true ]; then extra+=(--dry-run); fi
           "$RUNNER_TEMP/preflight/preflight" run --repo "${REPO:-$GITHUB_REPOSITORY}" --root "$GITHUB_WORKSPACE" \
             --bin "$RUNNER_TEMP/preflight/bin" --work "$RUNNER_TEMP/preflight/work" \
-            --prs "$PRS" --time-budget 25m --handled "$RUNNER_TEMP/preflight/handled.json" "${extra[@]}"
+            --prs "$PRS" --time-budget 25m --handled "$RUNNER_TEMP/preflight/preflight-handled-$JOB_INDEX-more.json" "${extra[@]}"
       - name: Keep what the job did with each PR, for the verify job
         if: ${{ always() && inputs.dry-run != true }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: preflight-handled-${{ strategy.job-index }}-more
-          path: ${{ runner.temp }}/preflight/handled.json
+          path: ${{ runner.temp }}/preflight/preflight-handled-${{ strategy.job-index }}-more.json
           if-no-files-found: ignore
           retention-days: 1
 
@@ -181,6 +184,8 @@ jobs:
         with:
           pattern: preflight-handled-*
           path: ${{ runner.temp }}/handled
+          # Every report in one directory, by its own name: one artifact or many, the layout is the same.
+          merge-multiple: true
       - name: Check every PR and keep the issue
         shell: bash
         env:
@@ -188,8 +193,4 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/handled"
-          # Each artifact is a directory with its handled.json: give every report its own name in one directory.
-          find "$RUNNER_TEMP/handled" -mindepth 2 -name handled.json | while read -r f; do
-            mv "$f" "$RUNNER_TEMP/handled/$(basename "$(dirname "$f")").json"
-          done
           "$RUNNER_TEMP/preflight" verify --repo "$GITHUB_REPOSITORY" --handled "$RUNNER_TEMP/handled"
