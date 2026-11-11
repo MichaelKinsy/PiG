@@ -302,6 +302,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-2d3121b-2](#bf-2d3121b-2) | A gateway's `cut short after the reply had begun` stream error is retried like other dropped streams | PiG's own defect | All platforms | Unreleased |
 | [BF-2d3121b-3](#bf-2d3121b-3) | Requests through the built-in HTTP client refuse the ports the Fetch standard blocks (for example 1, 25… | PiG's own defect | All platforms | Unreleased |
 | [BF-2d31c33](#bf-2d31c33) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
+| [BF-2d625ae](#bf-2d625ae) | p2: a worker restarted after it was killed mid-call resumes its code-mode script again | PiG's own defect | All platforms | Unreleased |
 | [BF-2d71556](#bf-2d71556) | fix(codingagent): queued-message lines use the dim foreground; hint separator closes only the foreground | PiG's own defect | All platforms | Unreleased |
 | [BF-2d99958](#bf-2d99958) | A terminal's reply to the startup color query now applies the colors and ends the startup wait before the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2dd2ced](#bf-2dd2ced) | fix(chord): calls crossing a failed or a fresh bound are answered by what their consumer knows | PiG's own defect | All platforms | Unreleased |
@@ -5985,6 +5986,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `2d31c33b90` (2026-10-29)
 - **Tests:** None recorded.
+
+### BF-2d625ae
+
+**p2: a worker restarted after it was killed mid-call resumes its code-mode script again**
+
+- **Source:** PiG's own defect
+- **Symptom:** p2: a worker restarted after it was killed mid-call resumes its code-mode script again.
+- **Root cause:** openHarness read the models plugin's configuration (model access, and the scheduler's settings such as restartLimit) with config.Value(), a section of the host's loop. Pi reads config.value.get("default") synchronously (apps/p2/src/runtime/worker.ts, scheduler.ts #restartLimit, read in the reserve pass). Here the scheduler's reserve pass holds TaskScheduler.mu while it reads the settings, and a batch's observer (the durable registry's, since the in-batch wake) holds the loop while it wakes the scheduler (notifyBlocked waits TaskScheduler.mu): a lock-order deadlock. A worker restarted after being killed mid-call (a task with Restarts > 0) never resumed its script.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2d625ae724` (2026-11-11)
+- **Tests:** `apps/p2/runtime/harness_config_test.go::TestHarnessConfigViewAnswersWhileASectionHoldsTheLoopAndFollowsTheBatchesThatCompose`
+- **Release note:** p2: a worker restarted after it was killed mid-call resumes its code-mode script again. Its Harness read the models plugin's configuration (the scheduler's restart limit among it) as a section of the host's loop while the scheduler held its own lock, and a batch of the loop that woke the scheduler waited for that lock: a lock-order deadlock (the script hung until its 30 s wait). As in Pi, which reads the configuration synchronously, the Harness reads a view that a synchronous observer records in the batches that compose it.
 
 ### BF-2d71556
 
