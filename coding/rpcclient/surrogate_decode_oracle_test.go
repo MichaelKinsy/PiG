@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
-	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // rpc-client.ts parses each response line with JSON.parse, which keeps a lone UTF-16 surrogate in the text a caller reads.
@@ -14,7 +13,7 @@ func TestResponseTextKeepsALoneSurrogate(t *testing.T) {
 		Text  string `json:"text"`
 		Error string `json:"error"`
 	}
-	want := testenv.PiEval[answer](t, `const r = JSON.parse(input); return { text: r.data.text, error: r.error };`, line)
+	want := piEval[answer](t, `const r = JSON.parse(input); return { text: r.data.text, error: r.error };`, line)
 	client := NewRpcClient(RpcClientOptions{})
 	request := pendingRequest{resolve: make(chan RpcResponse, 1), reject: make(chan error, 1)}
 	client.pendingRequests["req_1"] = request

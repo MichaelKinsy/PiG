@@ -8,7 +8,6 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
-	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // Pi's handler edits the one parsed object the model's arguments became, so a member it leaves alone keeps a lone UTF-16 unit the model wrote: the
@@ -19,7 +18,7 @@ func TestToolCallReplyKeepsALoneSurrogateTheHandlerLeftAlone(t *testing.T) {
 	const wireBefore = `{"text":"a\ud800<&>","n":1}`
 	const reply = `{"result":{"_pigToolCallInput":{"text":"a\ud800<&>","n":2},"_pigToolCallResult":null}}`
 	// What Pi's tool runs with: the object the handler left, written by JSON.stringify.
-	wantWire := testenv.PiEval[string](t, `return JSON.stringify(JSON.parse(input).result._pigToolCallInput);`, reply)
+	wantWire := piEval[string](t, `return JSON.stringify(JSON.parse(input).result._pigToolCallInput);`, reply)
 
 	hostEnd, peer := net.Pipe()
 	conn := NewConn("observe", hostEnd)

@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
-	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // A session file Pi wrote holds lone UTF-16 surrogates as the escape `\ud800` in every kind of entry. Resuming it must read each unit, and the
@@ -30,7 +29,7 @@ func TestSessionFileWithLoneSurrogatesResumesAndResavesByteForByte(t *testing.T)
 	lines := append([]string{header}, entries...)
 
 	// The fixture is what Pi writes: JSON.stringify(JSON.parse(line)) is the line.
-	piLines := testenv.PiEval[[]string](t, `return input.map((line) => JSON.stringify(JSON.parse(line)));`, lines)
+	piLines := piEval[[]string](t, `return input.map((line) => JSON.stringify(JSON.parse(line)));`, lines)
 	for i := range lines {
 		if piLines[i] != lines[i] {
 			t.Fatalf("fixture line %d is not Pi's bytes:\n got  %s\n Pi's %s", i, lines[i], piLines[i])

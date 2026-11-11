@@ -11,7 +11,6 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
-	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // Pi keeps text as JavaScript strings, so a lone UTF-16 unit in a model's tool arguments, an extension's user message or a persisted usage entry reaches the next consumer and the session file as the same unit, written by JSON.stringify as the escape `\ud800` with `<`, `>` and `&` literal. The comparisons below take Pi's text from the qualified Node.
@@ -19,7 +18,7 @@ import (
 // piStringify is JSON.stringify(JSON.parse(text)) for each document, the bytes Pi writes for the same value.
 func piStringify(t *testing.T, documents ...string) []string {
 	t.Helper()
-	return testenv.PiEval[[]string](t, `return input.map((document) => JSON.stringify(JSON.parse(document)));`, documents)
+	return piEval[[]string](t, `return input.map((document) => JSON.stringify(JSON.parse(document)));`, documents)
 }
 
 func unitsOf(text string) []uint16 { return jsstring.ToUTF16(text) }
@@ -89,7 +88,7 @@ func TestToolCallHookKeepsALoneSurrogateInTheModelsArguments(t *testing.T) {
 			if wire != modelArgs {
 				t.Errorf("event input %s, want the model's %s", wire, modelArgs)
 			}
-			want := testenv.PiEval[string](t, `const args = JSON.parse(input); `+tc.pi+` return JSON.stringify(args);`, modelArgs)
+			want := piEval[string](t, `const args = JSON.parse(input); `+tc.pi+` return JSON.stringify(args);`, modelArgs)
 			if tc.edit == nil {
 				if len(hook.Args) != 0 {
 					t.Errorf("an unedited call got arguments %s", hook.Args)
