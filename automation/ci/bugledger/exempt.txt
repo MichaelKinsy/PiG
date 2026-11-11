@@ -27,3 +27,14 @@ f3fd868442 see ab1d07097c
 ee03bf520b Follow-up to unreleased work: commits the vendored node_modules of the Chord plugins Node evaluator that the .gitignore hid (701 generated files), no product behaviour
 # f26dfe2355 corrects f06ba8fd15, which hid the symptom of the same bug (its trailer names f06ba8fd15 back): the entry is the correction's.
 f06ba8fd15 see f26dfe2355
+20e1c2a698 Follow-up to unreleased work: the --listen server's per-group sibling-tool check in the Node runtime (D232), no behaviour of a release changes
+0224f258c2 Follow-up to unreleased work: the --listen socket's mode (D232), no behaviour of a release changes
+039dc7ba0c Follow-up to unreleased work: the --listen connection's forced-signal exit (D232), no behaviour of a release changes
+4cdec4be2f Follow-up to unreleased work: the --listen server's stale-host bus allowance (D232), no behaviour of a release changes
+9e6d7943a2 Follow-up to unreleased work: per-group Node state of the --listen server's shared cells (D232), no behaviour of a release changes
+a40694ab0e Follow-up to unreleased work: --listen accept retries and signals (D232), no behaviour of a release changes
+c1b88904c3 Follow-up to unreleased work: lint fallout of the --listen server (D232), no product behaviour
+edae8e70d7 Follow-up to unreleased work: --listen live-host tracking and second-signal escape (D232), no behaviour of a release changes
+f34cb22f47 Follow-up to unreleased work: ctx.abort scoped per host group for the --listen server's shared cells (D232), no behaviour of a release changes
+ddc6060aa0 Follow-up to unreleased work: shared cell processes of the --listen server outlive their spawner (D232), no behaviour of a release changes
+ada701819c Follow-up to unreleased work: the --listen server's builds join the cell registry and a closed connection retires its own Host (D232), no behaviour of a release changes

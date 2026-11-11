@@ -12,7 +12,7 @@ import (
 	sdk "github.com/MichaelKinsy/PiG/extensions/sdk"
 )
 
-// Extension is the Go twin of listen-counter.mjs: every tool answers what the Node one answers. Tool names carry the extension name so both register in one session. pig additive (D205).
+// Extension is the Go twin of listen-counter.mjs: every tool answers what the Node one answers. Tool names carry the extension name so both register in one session. pig additive (D232).
 func Extension() *sdk.Extension {
 	const name = "go"
 	buf := make([]byte, 8)

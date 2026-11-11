@@ -158,7 +158,7 @@ func (h *Host) recoverNodeProcess(failed *packedProcessState, reason string) {
 			culprit = failed.members[0].config.Name
 		}
 		if h.cells != nil && len(failed.members) == 1 {
-			// pig additive (D205): a lone member has no sibling in this Host to isolate it from, and quarantining it would start it in a process no other Host's instance of the cell joins; it restarts into the shared cell, and the supervisor's breaker stops one that keeps crashing.
+			// pig additive (D232): a lone member has no sibling in this Host to isolate it from, and quarantining it would start it in a process no other Host's instance of the cell joins; it restarts into the shared cell, and the supervisor's breaker stops one that keeps crashing.
 			action = "restart shared cell"
 		} else {
 			h.nodeFaults[culprit] = reason

@@ -58,7 +58,7 @@ setHandlersRunning(() => {
 // payloads cross to other realms by reference (xref.mjs).
 const liveRuntimes = new Set();
 
-// siblingToolPending reports whether a tool call of group is still running in this process: its handler has not returned, so it may await real work, and Pi's loop turns while it does. pig additive (D205): a member with a group counts only its own Host's tools, because another session's tool is no sibling of its session; a group-less member counts the whole process, as before.
+// siblingToolPending reports whether a tool call of group is still running in this process: its handler has not returned, so it may await real work, and Pi's loop turns while it does. pig additive (D232): a member with a group counts only its own Host's tools, because another session's tool is no sibling of its session; a group-less member counts the whole process, as before.
 function siblingToolPending(group) {
   for (const runtime of liveRuntimes) {
     if (group && runtime.group !== group) continue;
@@ -70,7 +70,7 @@ function siblingToolPending(group) {
 }
 const xrefRealm = new Realm(() => {
   const preferred = currentRuntime();
-  // pig additive (D205): a payload crosses to a connection of the requesting runtime's group before any other, and never to another group's when the requester has a group; a group-less process keeps the unfiltered order.
+  // pig additive (D232): a payload crosses to a connection of the requesting runtime's group before any other, and never to another group's when the requester has a group; a group-less process keeps the unfiltered order.
   if (preferred && preferred.group !== "") {
     for (const runtime of [preferred, ...liveRuntimes]) {
       if (runtime.group !== preferred.group) continue;
@@ -90,7 +90,7 @@ const xrefRealm = new Realm(() => {
 installCloneHooks(xrefRealm);
 installTestCollect(xrefRealm);
 const sharedBus = new SharedBus(xrefRealm, process.env.PIG_EVENT_BUS === "routed");
-// pig additive (D205): a runtime that belongs to a group keeps that group's own bus, so pi.events of one Host's session never reach another's instance in this process; the group-less runtime keeps the process-wide bus.
+// pig additive (D232): a runtime that belongs to a group keeps that group's own bus, so pi.events of one Host's session never reach another's instance in this process; the group-less runtime keeps the process-wide bus.
 const groupBuses = new Map();
 function busFor(group) {
   if (!group) return sharedBus;
@@ -966,7 +966,7 @@ export class ThemeShim {
 
 // pig additive (D19): after RPC stdin ends, the transport must not keep an otherwise drained Node event loop alive. Report the drain to the process owner without resolving any pending extension Promise. A process reports when its loop drained with a pending quit session_shutdown handler (runtime_drained: Pi's exit when its loop empties), and, when it has none, with an unanswered command it has not reported yet (runtime_commands_drained: the host then knows the process cannot answer the commands it had started, as Pi's single loop would not either). A command that arrives after a report makes the loop reportable again.
 const quitDrain = newQuitDrain();
-// pig additive (D205): a connection end drains only its own group; the group-less runtime keeps the process-wide drain.
+// pig additive (D232): a connection end drains only its own group; the group-less runtime keeps the process-wide drain.
 const groupDrains = new Map();
 function newQuitDrain() {
   return { active: false, inputEnded: false, reported: false, listening: false, tailCheck: false, runtimes: new Set() };
@@ -980,7 +980,7 @@ function drainFor(group) {
   }
   return drain;
 }
-// releaseGroup drops the bus and the drain of a group whose last runtime left. pig additive (D205): a long-lived shared process serves many Hosts one after another, so their per-group state must not accumulate. A bus that still holds a listener, or a drain that still holds a runtime, stays until it empties.
+// releaseGroup drops the bus and the drain of a group whose last runtime left. pig additive (D232): a long-lived shared process serves many Hosts one after another, so their per-group state must not accumulate. A bus that still holds a listener, or a drain that still holds a runtime, stays until it empties.
 function releaseGroup(group) {
   if (!group) return;
   for (const runtime of liveRuntimes) if (runtime.group === group) return;
@@ -1018,7 +1018,7 @@ function refreshQuitDrain(drain) {
   if (!drain.inputEnded) return;
   const { outstanding, commands, tail, hostWaits } = quitDrainState(drain);
   const quitWaits = drain.active && !drain.reported && outstanding;
-  // pig additive (D205): a group still serving keeps the provider sockets referenced.
+  // pig additive (D232): a group still serving keeps the provider sockets referenced.
   setProviderSocketsRef(!(quitWaits || commands) || hostWaits || otherGroupServing(drain));
   // Pi flushRawStdout lets immediately fulfilled Promise continuations run, but does not await a post-disposal handler's future timer or I/O. IPC must not turn that suspension into a Session join.
   if (drain.active && !drain.reported && tail && !outstanding && !hostWaits && !drain.tailCheck) {
@@ -1159,7 +1159,7 @@ let beforeExitInstalled = false;
 function listenForQuitDrain(drain) {
   if (drain.listening) return;
   drain.listening = true;
-  // pig additive (D205): one process-wide listener serves every group's drain, so a long-lived shared process adds no listener per Host.
+  // pig additive (D232): one process-wide listener serves every group's drain, so a long-lived shared process adds no listener per Host.
   if (beforeExitInstalled) return;
   beforeExitInstalled = true;
   process.on("beforeExit", () => {
@@ -2178,7 +2178,7 @@ export class Runtime {
     this.entry = entry;
     this.name = name || process.env.PIG_EXT_NAME || basename(entry).replace(/\.[^.]+$/, "");
     this.socketPath = socket || process.env.PIG_EXT_SOCKET;
-    // pig additive (D205): the group of the Host that admitted this generation, set before its factory runs and never changed by ready, so a factory-time listener stays on the bus it emits on; "" for a process one Host owns.
+    // pig additive (D232): the group of the Host that admitted this generation, set before its factory runs and never changed by ready, so a factory-time listener stays on the bus it emits on; "" for a process one Host owns.
     this.group = group;
     this.version = "0.0.0";
     // Pi's per-extension API state (loader.ts createExtensionAPI): event-bus
@@ -4189,7 +4189,7 @@ export class Runtime {
 
   // Pi's registerProvider and unregisterProvider recompose the provider and rewrite the model snapshot before they return, so the next read of ctx.modelRegistry holds the write (model-runtime.ts:928-957, model-registry.ts:64-74). The Host's registry reaches this process later, and a publication that predates the write would undo it, so the view keeps the write over the snapshot until the Host answers it. The Host publishes the registry with the write, ahead of its answer on the connection's one ordered stream: by the answer the snapshot holds the write, and it stands alone again. Every member of a packed process holds the write, as every extension holds one registry. answered is the Host call's settled operation, or undefined when no call was made, which no answer ends.
   holdRegistryWrite(name, answered) {
-    // pig additive (D205): only the runtimes of this group hold the registry write.
+    // pig additive (D232): only the runtimes of this group hold the registry write.
     const members = new Set([this, ...[...liveRuntimes].filter((member) => member.group === this.group)]);
     for (const runtime of members) {
       runtime.registryHolds.set(name, (runtime.registryHolds.get(name) ?? 0) + 1);
@@ -4217,7 +4217,7 @@ export class Runtime {
   // holdVirtualWrite records a virtual-model registration (model) or removal (undefined) this process made, and rewrites the provider's view from it. Pi's registerVirtualModel and unregisterVirtualModel update the model snapshot before they return (model-runtime.ts:964-992). The Host registers the model before it answers, but publishes the registry later, from its refresh, so the write stays on the view until a Host snapshot shows it (hostShowsVirtualWrite): a publication that predates the write cannot undo it. Every member of a packed process holds the write, as every extension holds one registry.
   holdVirtualWrite(provider, id, model) {
     const written = model === undefined ? undefined : normalizeModel(piVirtualModels().createVirtualModel(model));
-    // pig additive (D205): only the runtimes of the emitting group hold the write.
+    // pig additive (D232): only the runtimes of the emitting group hold the write.
     for (const runtime of new Set([this, ...[...liveRuntimes].filter((member) => member.group === this.group)])) {
       runtime.virtualWrites.set(modelRegistryKey(provider, id), { provider, id, model: written });
       runtime.overlayProvider(provider);
@@ -4407,7 +4407,7 @@ export class Runtime {
   // ctx.abort(). Pi's abort is synchronous up to agent.abort(), which aborts the active run's controller before it returns (agent-session.ts:2464-2474, 3472-3478; agent.ts:340-342), so a handler that aborts and reads ctx.signal, or the signal its tool received, in the same turn sees it aborted. The host's abort and its run_signal frame follow; the frame finds the controller aborted. Every member of a packed process holds the same run, as every extension holds one agent.
   abortRun() {
     this.runSignal?.controller.abort();
-    // pig additive (D205): ctx.abort() aborts only the runs of this group.
+    // pig additive (D232): ctx.abort() aborts only the runs of this group.
     for (const runtime of liveRuntimes) if (runtime.group === this.group) runtime.runSignal?.controller.abort();
     this.fireAndForget("abort", {});
   }
@@ -5794,5 +5794,5 @@ export function reportLoadFailure(sockPath, failure) {
   });
 }
 
-// pig additive (D205): the per-group state the shared-process tests read.
+// pig additive (D232): the per-group state the shared-process tests read.
 export { busFor, drainFor, xrefRealm, liveRuntimes, groupBuses, groupDrains, releaseGroup, siblingToolPending };

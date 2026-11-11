@@ -27,6 +27,53 @@ If you omit `--model` and no default model exists, RPC mode starts with Pi's `un
 
 The initial active tool list and system-message tool declarations retain extension load and registration order. When several extensions register the same tool name, the first registration wins.
 
+## Serve many sessions
+
+```bash
+pig --mode rpc --listen /run/user/1000/pig.sock [--model <provider/model>] [options]
+```
+
+`--listen <path>` serves one RPC session per connection on the Unix socket at `<path>` (D232). The connection carries Pi's RPC protocol unchanged: the client writes commands and reads responses and events, framed as in [Framing](#framing).
+
+- Every connection creates a new Session, persisted under the Session directory unless you pass `--no-session`. `--listen` rejects `--continue`, `--resume`, `--session`, `--session-id` and `--fork`.
+- Closing a connection is the end of that session's standard input: PiG shuts the session down, closes the connection and keeps serving.
+- At most 64 connections are open at once, and one that is still waiting to start its session counts. A connection past that gets one error line, `{"type":"response","command":"parse","success":false,"error":"too many connections (max 64)"}`, and is closed; the server logs one line to stderr when it reaches the limit, and a closed connection frees its place.
+- The server ignores its own standard input and runs until a termination signal. The signal shuts every live session down, then PiG exits with `128 +` the signal number.
+- Every session has the server's working directory, agent directory, flags, model and tool selection. Start another server for a different working directory.
+- The socket path must not exist: PiG refuses an existing path of any kind (a file, a directory, a socket or a symlink) and never removes it. PiG creates the socket private to you, removes it at exit, and removes only the socket it created.
+- By default every session has its own extension processes, as a process per session would. No extension state is shared between sessions: a module variable, `process.env`, `globalThis` or a timer in Node, and a package variable in Go, Rust or Python, belong to one session. The cost is one set of extension processes per session (see the memory table in `bench/sessionhost/README.md`). Extensions compiled into the host program (a Piglet Binary's fused Go extensions, or a program's own `ExtensionFactories`) run inside the server process in both modes, so their package-level state is the server's and is shared by every session.
+- `--listen-share-extensions` makes the sessions share the extension processes: sessions that load the same extension run in one process per cell, and an additional session costs a small part of a process. **Warning: module-level state is then shared between sessions.** An extension that keeps a client, a cache or a timer in a module variable, in `process.env` or in `globalThis` sees the other sessions' writes and its timers outlive their session while another session keeps the process. Each session still has its own extension instance, registration, replicated state and events. Exact standalone extensions and quarantined cells keep a process of their own in this mode too. A `/reload` from one connection re-evaluates edited modules for the next generation of every session. The flag is an error without `--listen`.
+- `SIGINT` (Ctrl+C), `SIGTERM` and `SIGHUP` end the server as described above, and a further signal during the shutdown terminates the extension processes and exits at once. On Windows only the console-close events and Ctrl+C reach the server.
+- A crash or a kill leaves the socket file behind, and the next start refuses the path as existing until you delete it by hand. On Windows the server listens on an `AF_UNIX` socket (Windows 10 version 1803 or later), not a named pipe.
+- Nobody is authenticated. The socket is a Unix domain socket at the path you give; PiG never listens on a network port. Whoever can open the socket gets a full session with your tools, extensions and credentials, so keep it in a directory only you can write: a symlink in the path is followed, and whoever can replace it can point the socket elsewhere. On Unix the socket is mode 0600, so only your own processes and root can connect. On Windows PiG reads the socket's access list before it accepts a connection and refuses to serve (it removes the socket and names the user or group it found) unless only your own user, SYSTEM and Administrators can reach it; a group you belong to does not count as you. Serve from a directory only you can access, for example one under `%LOCALAPPDATA%`.
+- A connection has no project-trust prompt of its own: it takes the project-trust decision the server made at startup for its working directory (`--approve`, `--no-approve`, the saved decision or the settings default).
+
+A client that connects twice and prompts both sessions:
+
+```python
+import json, socket
+
+def session(path):
+    s = socket.socket(socket.AF_UNIX); s.connect(path); return s, s.makefile("rw")
+
+def prompt(f, text):
+    f.write(json.dumps({"type": "prompt", "message": text}) + "\n"); f.flush()
+
+a, fa = session("/run/user/1000/pig.sock")
+b, fb = session("/run/user/1000/pig.sock")
+prompt(fa, "Name one prime number.")
+prompt(fb, "Name one even number.")
+for f in (fa, fb):
+    for line in f:
+        r = json.loads(line)
+        if r.get("type") == "agent_settled":
+            break  # the run ended
+        if r.get("type") == "response" and r.get("command") == "prompt" and (not r.get("success") or r["data"].get("disposition") == "handled"):
+            break  # refused (no model, bad auth), or handled without a run: no agent_settled follows
+for s, f in ((a, fa), (b, fb)):
+    f.close(); s.close()
+```
+
 ## Framing
 
 Each input or output record is one JSON object followed by LF (`\n`).

@@ -1,4 +1,4 @@
-// A factory whose instance state tells two Hosts' instances in one shared process apart: counter counts this instance's calls, ping emits on the process's pi.events bus and received lists what this instance heard (pig additive (D205)).
+// A factory whose instance state tells two Hosts' instances in one shared process apart: counter counts this instance's calls, ping emits on the process's pi.events bus and received lists what this instance heard (pig additive (D232)).
 export default function (pi) {
   let calls = 0;
   const heard = [];

@@ -392,7 +392,7 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 	if mark != nil {
 		callCtx = extension.WithCallInitiation(callCtx, mark)
 	}
-	// pig additive (D205): a runtime releases its bus listeners (events.off, after its lazy xref.hello) when the invalidate notification arrives, and Pi's unsubscribe never throws; refusing them would end a process other Hosts share.
+	// pig additive (D232): a runtime releases its bus listeners (events.off, after its lazy xref.hello) when the invalidate notification arrives, and Pi's unsubscribe never throws; refusing them would end a process other Hosts share.
 	if message := h.staleMessage.Load(); message != nil && (h.cells == nil || (call.Method != callEventsOff && call.Method != callXrefHello)) {
 		if callID != "" {
 			_ = conn.Send(&Envelope{Type: MsgCallResult, ID: callID, CallResult: &CallResultPayload{Error: &ErrorInfo{Message: *message}}})
