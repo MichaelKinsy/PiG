@@ -40702,6 +40702,28 @@
       ]
     },
     {
+      "id": "BF-bc5690c",
+      "title": "A durable `Submission.Wait` or task wait whose context was cancelled while earlier commits were still…",
+      "symptom": "A durable `Submission.Wait` or task wait whose context was cancelled while earlier commits were still publishing returns the cancellation cause as the error of that call; a regression test with a slow `Storage.Publishing` (Pi `d9d535b6c9e4`, #11963, #11820) pins it.",
+      "rootCause": "Pi marks the waiter promise handled so Node reports no unhandledRejection. Go has none: the rejection is the error of the same Wait call, so the port is the ported test (red under a mutant of Waiters.Add), the async-contracts row and the v1.5.2+ sync ledger row.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A durable `Submission.Wait` or task wait whose context was cancelled while earlier commits were still publishing returns the cancellation cause as the error of that call; a regression test with a slow `Storage.Publishing` (Pi `d9d535b6c9e4`, #11963, #11820) pins it. Pi needed a fix so Node reported no unhandled promise rejection; Go has none, so no Go source changed.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "bc5690c60e",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "durable/harness/wait_aborted_context_test.go::TestWaitCancelledBeforeItsResultIsDeliveredReturnsTheCauseOnThatWait"
+      ]
+    },
+    {
       "id": "BF-bc8d37f",
       "title": "`FileModelsStore` roots and index keys: new live-Pi oracle…",
       "symptom": "`FileModelsStore` roots and index keys: new live-Pi oracle `TestFileModelsStoreNonObjectRootsAndIndexKeysMatchPi` (`ai/models_store_file_oracle_test.go`; 900 models-store.json files x 1-5 operations; null, array, number and boolean roots, integer-index provider ids, valid files holding null/number/string/array entries; TypeError text compared).",
