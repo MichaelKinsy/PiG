@@ -89,6 +89,9 @@ type Envelope struct {
 	// barrier, when set, is a host-side marker, not a frame: the dispatcher closes it when it reaches it, so everything the read loop read before the marker is dispatched.
 	barrier *dispatchMark
 
+	// pooled is the reusable frame the read loop built this envelope in (response_frame.go); releaseResponse returns it.
+	pooled *responseFrame
+
 	// Common fields
 	ID string `json:"id,omitempty"` // Correlation ID for request/response pairs
 

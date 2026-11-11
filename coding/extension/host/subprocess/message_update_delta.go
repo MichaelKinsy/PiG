@@ -323,6 +323,46 @@ type deltaParser struct {
 	pos   int
 	table []string
 	used  []bool
+	// nodes, items and keys are slabs the tree's nodes and their member lists are cut from, so a payload of many small nodes costs a few allocations.
+	nodes []deltaNode
+	items []*deltaNode
+	keys  [][]byte
+}
+
+// Sizes of the slabs a parse cuts from, and of the member list a node starts with.
+const (
+	parseNodeSlab  = 32
+	parseListSlab  = 64
+	parseListStart = 4
+)
+
+func (p *deltaParser) newNode(kind deltaKind) *deltaNode {
+	if len(p.nodes) == 0 {
+		p.nodes = make([]deltaNode, parseNodeSlab)
+	}
+	node := &p.nodes[0]
+	p.nodes = p.nodes[1:]
+	node.kind = kind
+	return node
+}
+
+// itemList returns an empty member list with room for parseListStart members; one that outgrows it moves to an array of its own.
+func (p *deltaParser) itemList() []*deltaNode {
+	if len(p.items) < parseListStart {
+		p.items = make([]*deltaNode, parseListSlab)
+	}
+	list := p.items[:0:parseListStart]
+	p.items = p.items[parseListStart:]
+	return list
+}
+
+func (p *deltaParser) keyList() [][]byte {
+	if len(p.keys) < parseListStart {
+		p.keys = make([][]byte, parseListSlab)
+	}
+	list := p.keys[:0:parseListStart]
+	p.keys = p.keys[parseListStart:]
+	return list
 }
 
 func (p *deltaParser) parse() (*deltaNode, error) {
@@ -362,12 +402,13 @@ func (p *deltaParser) value() (*deltaNode, error) {
 	switch p.data[p.pos] {
 	case '{':
 		p.pos++
-		node := &deltaNode{kind: deltaObject}
+		node := p.newNode(deltaObject)
 		p.space()
 		if p.pos < len(p.data) && p.data[p.pos] == '}' {
 			p.pos++
 			return node, nil
 		}
+		node.keys, node.items = p.keyList(), p.itemList()
 		for {
 			p.space()
 			key, err := p.token()
@@ -401,12 +442,13 @@ func (p *deltaParser) value() (*deltaNode, error) {
 		}
 	case '[':
 		p.pos++
-		node := &deltaNode{kind: deltaArray}
+		node := p.newNode(deltaArray)
 		p.space()
 		if p.pos < len(p.data) && p.data[p.pos] == ']' {
 			p.pos++
 			return node, nil
 		}
+		node.items = p.itemList()
 		for {
 			member, err := p.value()
 			if err != nil {
@@ -437,12 +479,16 @@ func (p *deltaParser) value() (*deltaNode, error) {
 			if !ok {
 				return nil, errDeltaUnsupported
 			}
-			return &deltaNode{kind: deltaBig, str: p.table[index]}, nil
+			node := p.newNode(deltaBig)
+			node.str = p.table[index]
+			return node, nil
 		}
 		if raw[0] == '"' && bytes.Contains(raw, []byte("pig-big")) {
 			return nil, errDeltaUnsupported
 		}
-		return &deltaNode{kind: deltaScalar, raw: raw}, nil
+		node := p.newNode(deltaScalar)
+		node.raw = raw
+		return node, nil
 	}
 }
 
@@ -537,7 +583,10 @@ func appendJSONString(out []byte, value string) []byte {
 	return append(out, encoded...)
 }
 
-// diffDelta appends the operations that turn old into new. A path element is a quoted key or an array index.
+// diffPathCap is the room a diff's path buffer starts with: a payload's paths are a few elements deep.
+const diffPathCap = 128
+
+// diffDelta appends the operations that turn old into new. path is the path of old, in a buffer with room for the paths below it. A path element is a quoted key or an array index.
 func diffDelta(ops []byte, path []byte, old, next *deltaNode) []byte {
 	if old.kind != next.kind {
 		return appendSetOp(ops, path, next)
@@ -567,25 +616,28 @@ func diffDelta(ops []byte, path []byte, old, next *deltaNode) []byte {
 			}
 		}
 		for index := range next.keys {
-			member := appendPath(path, next.keys[index])
+			member := pushMemberPath(path, next.keys[index])
 			if index < len(old.keys) {
 				ops = diffDelta(ops, member, old.items[index], next.items[index])
 			} else {
 				ops = appendSetOp(ops, member, next.items[index])
 			}
+			popMemberPath(path)
 		}
 		return ops
 	default:
 		if len(next.items) < len(old.items) {
 			return appendSetOp(ops, path, next)
 		}
+		var digits [20]byte
 		for index := range next.items {
-			member := appendPath(path, []byte(strconv.Itoa(index)))
+			member := pushMemberPath(path, strconv.AppendInt(digits[:0], int64(index), 10))
 			if index < len(old.items) {
 				ops = diffDelta(ops, member, old.items[index], next.items[index])
 			} else {
 				ops = appendSetOp(ops, member, next.items[index])
 			}
+			popMemberPath(path)
 		}
 		return ops
 	}
@@ -599,16 +651,22 @@ func extends(next, old string) bool {
 	return strings.HasPrefix(next, old)
 }
 
-func appendPath(path []byte, element []byte) []byte {
-	out := make([]byte, 0, len(path)+len(element)+2)
+// pushMemberPath returns the path of the member element of the value at path, a JSON array of its elements, in path's own array when it has room. The caller pops the member once it is done with it (popMemberPath), before it pushes the next sibling, and never keeps path or the member beyond that: diffDelta copies a path into the operation it writes.
+func pushMemberPath(path []byte, element []byte) []byte {
 	if len(path) == 0 {
-		out = append(out, '[')
+		path = append(path, '[')
 	} else {
-		out = append(out, path[:len(path)-1]...)
-		out = append(out, ',')
+		path = append(path[:len(path)-1], ',')
 	}
-	out = append(out, element...)
-	return append(out, ']')
+	path = append(path, element...)
+	return append(path, ']')
+}
+
+// popMemberPath restores the closing bracket pushMemberPath of a member overwrote in path's array.
+func popMemberPath(path []byte) {
+	if len(path) > 0 {
+		path[len(path)-1] = ']'
+	}
 }
 
 func appendSetOp(ops []byte, path []byte, value *deltaNode) []byte {
@@ -817,7 +875,7 @@ func (payload *messageUpdatePayload) frame(base *deltaNode) (messageUpdateFrame,
 		return frame, true, nil
 	}
 	if payload.patch == nil || payload.patchBase != base {
-		payload.patchBase, payload.patch = base, append(append([]byte{'['}, diffDelta(nil, nil, base, payload.next)...), ']')
+		payload.patchBase, payload.patch = base, append(append([]byte{'['}, diffDelta(nil, make([]byte, 0, diffPathCap), base, payload.next)...), ']')
 	}
 	frame.ops = payload.patch
 	return frame, true, nil

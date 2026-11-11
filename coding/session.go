@@ -145,9 +145,11 @@ type Session struct {
 	extensionErrorUnsubscribe func()
 	baseSystemPrompt          atomic.Pointer[string]
 	baseSystemPromptOptions   atomic.Pointer[extension.BuildSystemPromptOptions]
+	systemPromptOptionsGen    atomic.Uint64
 	systemPromptResources     atomic.Pointer[SystemPromptResources]
 	baseSystemSections        ai.OrderedSections
 	runPrompt                 atomic.Pointer[icodingagent.BeforeAgentStartRun]
+	runSystemPromptMemo       runSystemPromptMemo
 	structuredSystemPrompt    bool
 	// defaultSystemPrompt reports that the Session built its own prompt,
 	// which it rebuilds when the active tools change.

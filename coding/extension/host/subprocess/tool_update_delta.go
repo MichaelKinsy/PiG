@@ -169,7 +169,7 @@ func (m *toolUpdateStreams) prepare(conn *Conn, update extension.ToolExecutionUp
 		return prepared, args, stream, true, err
 	}
 	stream.Base = state.seq
-	stream.Ops = append(append([]byte{'['}, diffDelta(nil, nil, state.base, next)...), ']')
+	stream.Ops = append(append([]byte{'['}, diffDelta(nil, make([]byte, 0, diffPathCap), state.base, next)...), ']')
 	return prepared, nil, stream, true, nil
 }
 
