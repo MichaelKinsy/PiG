@@ -212,9 +212,6 @@ func shdRead(t *testing.T, chordStore *store.ChordStore, id string) any {
 	return result
 }
 
-// shdData is the JSON `Sessions.read` returns.
-func shdData(t *testing.T, text string) any { return nexttest.ParseJSON(t, text) }
-
 // shdReadArchive is parts read as an archive of sessions.
 func shdReadArchive(t *testing.T, parts []store.ArchivePart) *store.HostArchive {
 	t.Helper()
