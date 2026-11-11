@@ -209,7 +209,9 @@ func fetch(ctx context.Context, cfg config, o fetchOptions, log io.Writer) (*dat
 	d := &data{Repo: o.repo, PR: o.pr, Version: o.version, Previous: o.previous}
 	prefix := "repos/" + o.repo
 
-	logf(log, "::group::fetch wave 1")
+	// Plain headings, not ::group::: the batch shows each PR as one group, and GitHub does not nest groups, so an
+	// inner ::endgroup:: would end the PR's.
+	logf(log, "── fetch wave 1")
 	if err := a.get(ctx, fmt.Sprintf("%s/pulls/%d", prefix, o.pr), &d.Pull, false); err != nil {
 		return nil, err
 	}
@@ -230,13 +232,11 @@ func fetch(ctx context.Context, cfg config, o fetchOptions, log io.Writer) (*dat
 	d.Mode, d.Reason = decideMode(o.previous, o.version, head, base, bodyHash(d.Pull.Body))
 	if d.Mode != modeReuse && o.admit != nil && !o.admit() {
 		d.Mode, d.Reason = modeDeferred, "the run's budget is spent; a next job takes it"
-		logf(log, "::endgroup::")
 		logf(log, "mode %s: %s", d.Mode, d.Reason)
 		return d, nil
 	}
 	if d.Mode == modeReuse {
 		logf(log, "pull #%d head %s base %s: unchanged", o.pr, short(head), short(base))
-		logf(log, "::endgroup::")
 		logf(log, "mode %s: %s", d.Mode, d.Reason)
 		logf(log, "fetch: %d API call(s)", a.callCount())
 		return d, nil
@@ -263,7 +263,6 @@ func fetch(ctx context.Context, cfg config, o fetchOptions, log io.Writer) (*dat
 	})
 	wg.Wait()
 	logf(log, "pull #%d head %s base %s (%s): %d commit(s), %d file(s), behind main by %d", o.pr, short(head), short(base), d.Pull.Base.Ref, len(d.Commits), len(d.Files), d.CompareMain.BehindBy)
-	logf(log, "::endgroup::")
 
 	logf(log, "mode %s: %s", d.Mode, d.Reason)
 
@@ -293,7 +292,7 @@ func fetch(ctx context.Context, cfg config, o fetchOptions, log io.Writer) (*dat
 			}
 		}
 	}
-	logf(log, "::group::fetch wave 2")
+	logf(log, "── fetch wave 2")
 	if n, ok := parseDependsOn(d.Pull.Body); ok && n > 0 && reads["depends-on"] {
 		wg.Go(func() {
 			var p pull
@@ -355,7 +354,6 @@ func fetch(ctx context.Context, cfg config, o fetchOptions, log io.Writer) (*dat
 		})
 	}
 	wg.Wait()
-	logf(log, "::endgroup::")
 	logf(log, "fetch: %d API call(s)", a.callCount())
 	return d, nil
 }

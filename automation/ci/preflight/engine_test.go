@@ -269,6 +269,10 @@ func TestRunBatch(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dir, "scanned-2")); err == nil {
 		t.Error("PR #2 failed a cheap check but its scan ran")
 	}
+	// One group per PR and nothing nested: GitHub does not nest groups, so an inner one would end the PR's.
+	if strings.Count(out.String(), "::group::") != 3 || strings.Count(out.String(), "::endgroup::") != 3 || !strings.Contains(out.String(), "── fetch wave 1") {
+		t.Errorf("groups:\n%s", out.String())
+	}
 	for _, want := range []string{"PR #1: pass", "PR #2: fail", "PR #3: error", "::group::PR #3", "could not run"} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("the log lacks %q:\n%s", want, out.String())
