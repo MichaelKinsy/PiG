@@ -264626,7 +264626,9 @@
         "call:env/remote_env.go#RemoteExecutionEnv.ListDir"
       ],
       "evidence": [
-        "test:env/remote_direct_test.go#TestRemoteExecutionEnvDirectOperations"
+        "test:env/remote_direct_test.go#TestRemoteExecutionEnvDirectOperations",
+        "test:env/remote_list_race_port_test.go#TestRemoteListDirFailsOnOtherEntryErrors",
+        "test:env/remote_list_race_port_test.go#TestRemoteListDirLeavesOutAnEntryRemovedBetweenEnumerationAndLstat"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -264647,7 +264649,9 @@
         "call:env/remote_env.go#RemoteExecutionEnv.ListDir"
       ],
       "evidence": [
-        "test:env/remote_direct_test.go#TestRemoteExecutionEnvDirectOperations"
+        "test:env/remote_direct_test.go#TestRemoteExecutionEnvDirectOperations",
+        "test:env/remote_list_race_port_test.go#TestRemoteListDirFailsOnOtherEntryErrors",
+        "test:env/remote_list_race_port_test.go#TestRemoteListDirLeavesOutAnEntryRemovedBetweenEnumerationAndLstat"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },

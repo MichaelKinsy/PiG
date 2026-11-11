@@ -36,6 +36,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-022d99f](#bf-022d99f) | fix(tui): the login dialog's input renders at every prompt position | PiG's own defect | All platforms | Unreleased |
 | [BF-02887e3](#bf-02887e3) | fix(release): carry main's PigVersion 0.5.3 and the post-bump goldens and pins | PiG's own defect | All platforms | Unreleased |
 | [BF-0309820](#bf-0309820) | Aborting a compaction while extensions were being told it finished no longer keeps the extensions after the… | PiG's own defect | All platforms | Unreleased |
+| [BF-030a083](#bf-030a083) | Fullscreen Kitty images no longer disappear after a full redraw such as a window resize; the redraw deletes… | PiG's own defect | All platforms | Unreleased |
 | [BF-030f512](#bf-030f512) | A nested `RawMessage` or `MarshalJSON` output, and an agent message or content block written by the SDK… | PiG's own defect | All platforms | Unreleased |
 | [BF-031b259](#bf-031b259) | fix(chord/nextnode/workers): a start releases the registrations of its context when it returns | PiG's own defect | All platforms | Unreleased |
 | [BF-03675ab](#bf-03675ab) | fix(chord/next/store): report the recovered panic, bytes.Equal, allow jsonparse in the chord boundary | PiG's own defect | All platforms | Unreleased |
@@ -175,6 +176,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-1aaf60f](#bf-1aaf60f) | Rendered diffs keep the indentation shared by a removed and an added line when text is inserted at the start… | PiG's own defect | All platforms | Unreleased |
 | [BF-1b5540a](#bf-1b5540a) | `client.Client.Disconnect` takes the reason string as Pi's `Client.disconnect(reason)` does (it was an… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1b9718b](#bf-1b9718b) | fix(photonimage): register the lossless decoders Decode falls back to and decode test sources with Photon | PiG's own defect | All platforms | Unreleased |
+| [BF-1be8228](#bf-1be8228) | `listDir` of the local and remote execution environments leaves out an entry removed between enumeration and… | PiG's own defect | All platforms | Unreleased |
 | [BF-1c1887a](#bf-1c1887a) | Closing a Chord host no longer hangs when a hold arrives over a link that closes at the same time | PiG's own defect | Windows | 0.7.0 |
 | [BF-1c1b349](#bf-1c1b349) | A write to a terminal that went away (`EIO` after a hang-up, `EPIPE`, `ENOTCONN`, `ENOTTY`) now ends the… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-1c6b864](#bf-1c6b864) | A Session that an extension creates with `createAgentSession`, or that `coding.CreateAgentSession` returns… | PiG's own defect | All platforms | 0.7.0 |
@@ -471,6 +473,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-462b96e](#bf-462b96e) | A Python or Rust extension no longer fails to load when the host releases one of its listeners between… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-4649166](#bf-4649166) | fix(sdk): place the arrival-order start in the request scope so a tool_call round trip keeps its 68… | PiG's own defect | All platforms | Unreleased |
 | [BF-464b14e](#bf-464b14e) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
+| [BF-4669953](#bf-4669953) | `/export` HTML no longer shows raw terminal hyperlink escape codes around links in custom tool output; http… | PiG's own defect | All platforms | Unreleased |
 | [BF-46abed3](#bf-46abed3) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-4706781](#bf-4706781) | Tool output and streamed shell output no longer keep the parameters of private-parameter CSI sequences such… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-4706781-2](#bf-4706781-2) | A package whose `pi` object holds only metadata such as `changelogPath` is loaded by directory auto-discovery… | PiG's own defect | All platforms | 0.7.0 |
@@ -509,6 +512,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-4aaa810](#bf-4aaa810) | fix: go fix the five test and testenv files; the v3 differential corpus counts its 40th file document | PiG's own defect | All platforms | Unreleased |
 | [BF-4ac21c8](#bf-4ac21c8) | fix(jsloop): run a tick whose tool call already ended at once, though no wait is open | PiG's own defect | All platforms | Unreleased |
 | [BF-4afdbac](#bf-4afdbac) | `ProjectTrustStore` reads entries in JavaScript order: `readTrustFile` named whichever invalid value Go's map… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-4b6e822](#bf-4b6e822) | MCP tools loaded by `tool_search` are no longer dropped on resume and `/reload` when an extension deactivates… | PiG's own defect | All platforms | Unreleased |
 | [BF-4b9f5f8](#bf-4b9f5f8) | `/tree` with summarization no longer sends an attempt that was hidden from the model back to the summarizer | PiG's own defect | All platforms | 0.7.0 |
 | [BF-4bcc7da](#bf-4bcc7da) | `StreamProxy` merges the final tool call and reports abort and timeout as Pi does, and it no longer changes a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4c032a0](#bf-4c032a0) | A description decoded from the wire is written back with every schema member in the order it was declared in… | PiG's own defect | All platforms | 0.7.0 |
@@ -2229,6 +2233,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `030982080e` (2026-11-09)
 - **Tests:** `coding/session_compact_abort_dispatch_test.go::TestSessionCompactReachesEveryExtensionWhenAbortedDuringDispatch`, `test/extension-conformance/session_compact_abort_test.go::TestNodeSessionCompactReachesTheNextExtensionWhenAbortedDuringDispatch`, `test/extension-conformance/session_compact_abort_test.go::TestSessionCompactIsDeliveredToEverySDKWhenAbortedDuringDispatch`
 - **Release note:** Aborting a compaction while extensions were being told it finished no longer keeps the extensions after the first from hearing about it. `session_compact` now reaches every extension, in order, as in Pi, whichever of them calls `abortCompaction()` or has the compaction aborted while its handler runs; the saved compaction still completes.
+
+### BF-030a083
+
+**Fullscreen Kitty images no longer disappear after a full redraw such as a window resize; the redraw deletes…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fullscreen Kitty images no longer disappear after a full redraw such as a window resize; the redraw deletes the placements and keeps the uploaded image data instead of clearing the screen, as Pi does (upstream #12047).
+- **Root cause:** Kitty frees image data that has no placements on ED 2, so a full redraw that deleted placements and then cleared the screen left placement-only reuse pointing at nothing. With uploaded images, delete the placements and skip \x1b[2J (every row is cleared with EL 2), as Pi does. Ported test: TestAltScreenKeepsUploadedKittyImagesAcrossFullRedraw.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `030a083ada` (2026-11-11)
+- **Tests:** `tui/kitty_full_redraw_port_test.go::TestAltScreenKeepsUploadedKittyImagesAcrossFullRedraw`
+- **Release note:** Fullscreen Kitty images no longer disappear after a full redraw such as a window resize; the redraw deletes the placements and keeps the uploaded image data instead of clearing the screen, as Pi does (upstream #12047).
 
 ### BF-030f512
 
@@ -4137,6 +4155,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `1b9718b659` (2026-10-29)
 - **Tests:** `internal/codingagent/clipboard_normalization_test.go::TestClipboardImageNormalization`, `internal/codingagent/image_convert_oracle_test.go::TestConvertToPngMatchesPiBytes`, `internal/codingagent/team_app_image_convert_test.go::TestImageConvertDecodedPixels`, `internal/photonimage/decode_routing_test.go::TestDecoderUsesFindsGoDecoderCalls`, `internal/photonimage/decode_routing_test.go::TestNoProductionCodeDecodesWithTheGoDecoders`
+
+### BF-1be8228
+
+**`listDir` of the local and remote execution environments leaves out an entry removed between enumeration and…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `listDir` of the local and remote execution environments leaves out an entry removed between enumeration and `lstat` instead of failing, so a read-only JSONL open beside a live writer no longer fails with `JSONL directory listing failed: ENOENT`, as Pi does (upstream #11994, #12055).
+- **Root cause:** NodeExecutionEnv.ListDir and RemoteExecutionEnv.ListDir failed with ENOENT when an entry vanished between readdir and lstat (a writer renaming a .reclaim file over a sidecar); they now leave it out, as the directory readers already did and Pi does. Any other entry error still fails the listing. Ported tests: env-node-list-race (a test hook runs the rename before the lstat) and a scripted daemon for the remote listing; the differential test now expects Node's non-UTF-8 names to be left out of the remote listDir.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1be82286e0` (2026-11-11)
+- **Tests:** `durable/env/node/list_race_port_test.go::TestListDirLeavesOutAnEntryRemovedBetweenEnumerationAndLstat`, `env/differential_test.go::TestRemoteExecutionEnvAgainstNodeExecutionEnv`, `env/main_test.go::TestMain`, `env/remote_list_race_port_test.go::TestRemoteListDirFailsOnOtherEntryErrors`, `env/remote_list_race_port_test.go::TestRemoteListDirLeavesOutAnEntryRemovedBetweenEnumerationAndLstat`
+- **Release note:** `listDir` of the local and remote execution environments leaves out an entry removed between enumeration and `lstat` instead of failing, so a read-only JSONL open beside a live writer no longer fails with `JSONL directory listing failed: ENOENT`, as Pi does (upstream #11994, #12055).
 
 ### BF-1c1887a
 
@@ -8226,6 +8258,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `464b14e4ff` (2026-11-07)
 - **Tests:** None recorded.
 
+### BF-4669953
+
+**`/export` HTML no longer shows raw terminal hyperlink escape codes around links in custom tool output; http…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `/export` HTML no longer shows raw terminal hyperlink escape codes around links in custom tool output; http, https and mailto links are clickable and other escape sequences are dropped, as Pi does (upstream #12052).
+- **Root cause:** ansiToHTML now drops CSI, OSC and APC sequences and stray ESC characters and turns OSC 8 links with http, https or mailto URLs into anchors nested around the current style span; expandable tool output ignores clicks on links; a line holding only escape sequences counts as blank when result lines are trimmed. As Pi does.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `4669953e23` (2026-11-11)
+- **Tests:** `internal/codingagent/export/ansi_html_test.go::TestCustomToolResultHTMLBlankLineSemantics`, `internal/codingagent/export/ansi_links_port_test.go::TestAnsiToHTMLConvertsOSC8HyperlinksToAnchors`, `internal/codingagent/export/ansi_links_port_test.go::TestAnsiToHTMLDropsUnsafeSchemesAndOtherEscapeSequences`, `internal/codingagent/export/ansi_links_port_test.go::TestAnsiToHTMLKeepsStyledTextNestedInAnchorAndClosesUnterminatedLink`, `internal/codingagent/export/ansi_links_port_test.go::TestCustomToolResultHTMLTrimsLineWithOnlyEscapeSequences`, `internal/codingagent/export/ansi_links_port_test.go::TestExportTemplateExpandableToolOutputIgnoresLinkClicks`, `internal/codingagent/export/upstream_test.go::TestExportHTMLPinnedAssets`
+- **Release note:** `/export` HTML no longer shows raw terminal hyperlink escape codes around links in custom tool output; http, https and mailto links are clickable and other escape sequences are dropped, as Pi does (upstream #12052).
+
 ### BF-46abed3
 
 **Fix in shipped code**
@@ -8748,6 +8794,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `4afdbac644` (2026-10-10)
 - **Tests:** `internal/codingagent/trust_store_multi_oracle_test.go::TestProjectTrustStoreMultiEntryFilesMatchPi`
 - **Release note:** `ProjectTrustStore` reads entries in JavaScript order: `readTrustFile` named whichever invalid value Go's map iteration reached first, so a trust.json with several wrong-typed values reported a random key; Pi's `Object.entries` order (array-index keys, then insertion order) decides, and `read` now walks `orderedjson` keys. New live-Pi oracle `TestProjectTrustStoreMultiEntryFilesMatchPi` (`internal/codingagent/trust_store_multi_oracle_test.go`; 1,200 trust.json files x 1-5 get/getEntry/set/setMany operations; symlinked cwd, missing paths, astral and BMP-high keys); red before the fix (4-5 of 1,200, varying with map order); 8 mutations red (key order, null rejected, false-as-true, non-object check, UTF-16 key sort, null entry stops the ancestor walk, null delete, BOM). Extends `TestProjectTrustStoreMatchesPi`, which passed before the fix. Not compared: the V8 text after `Failed to read trust store <path>: `, file modes, cross-process locking.
+
+### BF-4b6e822
+
+**MCP tools loaded by `tool_search` are no longer dropped on resume and `/reload` when an extension deactivates…**
+
+- **Source:** PiG's own defect
+- **Symptom:** MCP tools loaded by `tool_search` are no longer dropped on resume and `/reload` when an extension deactivates only its own tool at `session_start`, as Pi does (upstream #12054).
+- **Root cause:** A loadout change dropped the pending restored tools whenever it deactivated any active tool, so an extension that registers a loader tool and hides it at session_start (the restore or reload activated it as newly registered) lost the MCP tools tool_search had loaded. The Session now remembers the restored or reloaded loadout (restoredToolNames) and drops the pending tools only when a tool of that loadout is deactivated, as Pi does. Ported tests: the two dropLoader cases of agent-session-mcp.test.ts.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `4b6e822b66` (2026-11-11)
+- **Tests:** `coding/mcp_restore_own_tool_port_test.go::TestAgentSessionMCPToolsAfterResumeAndReloadKeepsRestoredToolsWhenAnExtensionDeactivatesOnlyItsOwnToolBeforeTheyRegister`, `coding/mcp_restore_own_tool_port_test.go::TestAgentSessionMCPToolsAfterResumeAndReloadKeepsToolsToolSearchLoadedAfterReloadWhenAnExtensionDeactivatesOnlyItsOwnTool`
+- **Release note:** MCP tools loaded by `tool_search` are no longer dropped on resume and `/reload` when an extension deactivates only its own tool at `session_start`, as Pi does (upstream #12054).
 
 ### BF-4b9f5f8
 

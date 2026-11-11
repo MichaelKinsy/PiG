@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
 var ansiColors = []string{
@@ -161,43 +163,88 @@ func parseSGRParams(s string) []int {
 
 var htmlEscaper = strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;", `"`, "&quot;", "'", "&#039;")
 
+// ansiRegex matches SGR (ESC[...m), other CSI sequences, OSC sequences and
+// APC sequences (the last two terminated by BEL or ST).
+var ansiRegex = lazyregexp.New(`\x1b\[([\d;]*)m|\x1b\[[0-?]*[ -/]*[@-~]|\x1b\]([^\x07\x1b]*)(?:\x07|\x1b\\)|\x1b_[^\x07\x1b]*(?:\x07|\x1b\\)`)
+
+// osc8Regex matches an OSC 8 hyperlink payload: "8;params;url".
+var osc8Regex = lazyregexp.New(`(?s)^8;[^;]*;(.*)$`)
+
+var safeLinkRegex = lazyregexp.New(`(?i)^(?:https?:|mailto:)`)
+
+// jsWhitespace is ECMAScript WhiteSpace plus LineTerminator, the set String.prototype.trim removes.
+const jsWhitespace = "\t\n\v\f\r \u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff"
+
+// stripAnsiEscapes removes every escape sequence ansiToHTML converts, plus stray ESC characters.
+func stripAnsiEscapes(text string) string {
+	return strings.ReplaceAll(ansiRegex.ReplaceAllString(text, ""), "\x1b", "")
+}
+
+// stripC0Controls drops C0 controls and DEL: browsers strip them from URLs, so they are removed before the scheme check.
+func stripC0Controls(s string) string {
+	return strings.Map(func(r rune) rune {
+		if r <= 0x1f || r == 0x7f {
+			return -1
+		}
+		return r
+	}, s)
+}
+
 func ansiToHTML(text string) string {
 	style := textStyle{}
 	var out strings.Builder
 	last := 0
 	inSpan := false
+	inLink := false
 
-	for i := 0; i < len(text); {
-		if text[i] == 0x1b && i+1 < len(text) && text[i+1] == '[' {
-			j := i + 2
-			for j < len(text) && ((text[j] >= '0' && text[j] <= '9') || text[j] == ';') {
-				j++
-			}
-			if j < len(text) && text[j] == 'm' {
-				if i > last {
-					out.WriteString(htmlEscaper.Replace(text[last:i]))
-				}
-				if inSpan {
-					out.WriteString("</span>")
-					inSpan = false
-				}
-				applySGRCodes(parseSGRParams(text[i+2:j]), &style)
-				if style.hasStyle() {
-					out.WriteString(`<span style="` + style.inlineCSS() + `">`)
-					inSpan = true
-				}
-				i = j + 1
-				last = i
-				continue
-			}
+	closeSpan := func() {
+		if inSpan {
+			out.WriteString("</span>")
+			inSpan = false
 		}
-		i++
 	}
-	if last < len(text) {
-		out.WriteString(htmlEscaper.Replace(text[last:]))
+	openSpan := func() {
+		if style.hasStyle() {
+			out.WriteString(`<span style="` + style.inlineCSS() + `">`)
+			inSpan = true
+		}
 	}
-	if inSpan {
-		out.WriteString("</span>")
+
+	for _, m := range ansiRegex.FindAllStringSubmatchIndex(text, -1) {
+		if before := text[last:m[0]]; before != "" {
+			out.WriteString(htmlEscaper.Replace(strings.ReplaceAll(before, "\x1b", "")))
+		}
+		switch {
+		case m[2] >= 0:
+			closeSpan()
+			applySGRCodes(parseSGRParams(text[m[2]:m[3]]), &style)
+			openSpan()
+		case m[4] >= 0:
+			if link := osc8Regex.FindStringSubmatch(text[m[4]:m[5]]); link != nil {
+				// Keep spans nested inside the link: close and reopen the current style around link changes.
+				url := stripC0Controls(strings.Trim(link[1], jsWhitespace))
+				closeSpan()
+				if inLink {
+					out.WriteString("</a>")
+					inLink = false
+				}
+				if url != "" && safeLinkRegex.MatchString(url) {
+					out.WriteString(`<a href="` + htmlEscaper.Replace(url) + `">`)
+					inLink = true
+				}
+				openSpan()
+			}
+			// Other OSC sequences are dropped.
+		}
+		// Other CSI and APC sequences are dropped.
+		last = m[1]
+	}
+	if remaining := text[last:]; remaining != "" {
+		out.WriteString(htmlEscaper.Replace(strings.ReplaceAll(remaining, "\x1b", "")))
+	}
+	closeSpan()
+	if inLink {
+		out.WriteString("</a>")
 	}
 	return out.String()
 }

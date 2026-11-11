@@ -73,13 +73,17 @@ type Session struct {
 	//
 	// upstream: agent-session.ts _pendingToolNames
 	pendingToolNames []string
-	modelRuntime     *ModelRuntime
-	modelRegistry    *ModelRegistry
-	sessionDir       string
-	noSession        atomic.Bool // whether the installed log has no file: ReplaceInner stores it under mu, /new, /fork and Clone read it without mu
-	scopedModels     sessionScopedModels
-	runnerMu         sync.RWMutex
-	runner           *inproc.Runner // extension runner for event dispatch
+	// restoredToolNames is the restored or reloaded loadout that pendingToolNames belongs to. toolRegistryMu guards it.
+	//
+	// upstream: agent-session.ts _restoredToolNames
+	restoredToolNames []string
+	modelRuntime      *ModelRuntime
+	modelRegistry     *ModelRegistry
+	sessionDir        string
+	noSession         atomic.Bool // whether the installed log has no file: ReplaceInner stores it under mu, /new, /fork and Clone read it without mu
+	scopedModels      sessionScopedModels
+	runnerMu          sync.RWMutex
+	runner            *inproc.Runner // extension runner for event dispatch
 	// sharedRunner is the Runtime- or Clone-source-owned runner this Session borrowed; its owner invalidates it.
 	sharedRunner *inproc.Runner
 	// extensionHost is the extension host of the Runtime that created the Session (Session.ExtensionHost).

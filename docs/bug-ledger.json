@@ -414,6 +414,28 @@
       ]
     },
     {
+      "id": "BF-030a083",
+      "title": "Fullscreen Kitty images no longer disappear after a full redraw such as a window resize; the redraw deletes…",
+      "symptom": "Fullscreen Kitty images no longer disappear after a full redraw such as a window resize; the redraw deletes the placements and keeps the uploaded image data instead of clearing the screen, as Pi does (upstream #12047).",
+      "rootCause": "Kitty frees image data that has no placements on ED 2, so a full redraw that deleted placements and then cleared the screen left placement-only reuse pointing at nothing. With uploaded images, delete the placements and skip \\x1b[2J (every row is cleared with EL 2), as Pi does. Ported test: TestAltScreenKeepsUploadedKittyImagesAcrossFullRedraw.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Fullscreen Kitty images no longer disappear after a full redraw such as a window resize; the redraw deletes the placements and keeps the uploaded image data instead of clearing the screen, as Pi does (upstream #12047).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "030a083ada",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "tui/kitty_full_redraw_port_test.go::TestAltScreenKeepsUploadedKittyImagesAcrossFullRedraw"
+      ]
+    },
+    {
       "id": "BF-030f512",
       "title": "A nested `RawMessage` or `MarshalJSON` output, and an agent message or content block written by the SDK…",
       "symptom": "A nested `RawMessage` or `MarshalJSON` output, and an agent message or content block written by the SDK encoder, no longer lose a quote, newline, backslash or other two-character escape that stands before the letters `fffd` (`\"say \\\"fffd\\\"\"` was written as `\"say �\"`): only the `\\ufffd` escape itself is written as the replacement character.",
@@ -4401,6 +4423,32 @@
         "internal/codingagent/team_app_image_convert_test.go::TestImageConvertDecodedPixels",
         "internal/photonimage/decode_routing_test.go::TestDecoderUsesFindsGoDecoderCalls",
         "internal/photonimage/decode_routing_test.go::TestNoProductionCodeDecodesWithTheGoDecoders"
+      ]
+    },
+    {
+      "id": "BF-1be8228",
+      "title": "`listDir` of the local and remote execution environments leaves out an entry removed between enumeration and…",
+      "symptom": "`listDir` of the local and remote execution environments leaves out an entry removed between enumeration and `lstat` instead of failing, so a read-only JSONL open beside a live writer no longer fails with `JSONL directory listing failed: ENOENT`, as Pi does (upstream #11994, #12055).",
+      "rootCause": "NodeExecutionEnv.ListDir and RemoteExecutionEnv.ListDir failed with ENOENT when an entry vanished between readdir and lstat (a writer renaming a .reclaim file over a sidecar); they now leave it out, as the directory readers already did and Pi does. Any other entry error still fails the listing. Ported tests: env-node-list-race (a test hook runs the rename before the lstat) and a scripted daemon for the remote listing; the differential test now expects Node's non-UTF-8 names to be left out of the remote listDir.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`listDir` of the local and remote execution environments leaves out an entry removed between enumeration and `lstat` instead of failing, so a read-only JSONL open beside a live writer no longer fails with `JSONL directory listing failed: ENOENT`, as Pi does (upstream #11994, #12055).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1be82286e0",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "durable/env/node/list_race_port_test.go::TestListDirLeavesOutAnEntryRemovedBetweenEnumerationAndLstat",
+        "env/differential_test.go::TestRemoteExecutionEnvAgainstNodeExecutionEnv",
+        "env/main_test.go::TestMain",
+        "env/remote_list_race_port_test.go::TestRemoteListDirFailsOnOtherEntryErrors",
+        "env/remote_list_race_port_test.go::TestRemoteListDirLeavesOutAnEntryRemovedBetweenEnumerationAndLstat"
       ]
     },
     {
@@ -12875,6 +12923,34 @@
       "tests": []
     },
     {
+      "id": "BF-4669953",
+      "title": "`/export` HTML no longer shows raw terminal hyperlink escape codes around links in custom tool output; http…",
+      "symptom": "`/export` HTML no longer shows raw terminal hyperlink escape codes around links in custom tool output; http, https and mailto links are clickable and other escape sequences are dropped, as Pi does (upstream #12052).",
+      "rootCause": "ansiToHTML now drops CSI, OSC and APC sequences and stray ESC characters and turns OSC 8 links with http, https or mailto URLs into anchors nested around the current style span; expandable tool output ignores clicks on links; a line holding only escape sequences counts as blank when result lines are trimmed. As Pi does.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`/export` HTML no longer shows raw terminal hyperlink escape codes around links in custom tool output; http, https and mailto links are clickable and other escape sequences are dropped, as Pi does (upstream #12052).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4669953e23",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/export/ansi_html_test.go::TestCustomToolResultHTMLBlankLineSemantics",
+        "internal/codingagent/export/ansi_links_port_test.go::TestAnsiToHTMLConvertsOSC8HyperlinksToAnchors",
+        "internal/codingagent/export/ansi_links_port_test.go::TestAnsiToHTMLDropsUnsafeSchemesAndOtherEscapeSequences",
+        "internal/codingagent/export/ansi_links_port_test.go::TestAnsiToHTMLKeepsStyledTextNestedInAnchorAndClosesUnterminatedLink",
+        "internal/codingagent/export/ansi_links_port_test.go::TestCustomToolResultHTMLTrimsLineWithOnlyEscapeSequences",
+        "internal/codingagent/export/ansi_links_port_test.go::TestExportTemplateExpandableToolOutputIgnoresLinkClicks",
+        "internal/codingagent/export/upstream_test.go::TestExportHTMLPinnedAssets"
+      ]
+    },
+    {
       "id": "BF-46abed3",
       "title": "Fix in shipped code",
       "symptom": "Fix in shipped code",
@@ -13851,6 +13927,29 @@
       ],
       "tests": [
         "internal/codingagent/trust_store_multi_oracle_test.go::TestProjectTrustStoreMultiEntryFilesMatchPi"
+      ]
+    },
+    {
+      "id": "BF-4b6e822",
+      "title": "MCP tools loaded by `tool_search` are no longer dropped on resume and `/reload` when an extension deactivates…",
+      "symptom": "MCP tools loaded by `tool_search` are no longer dropped on resume and `/reload` when an extension deactivates only its own tool at `session_start`, as Pi does (upstream #12054).",
+      "rootCause": "A loadout change dropped the pending restored tools whenever it deactivated any active tool, so an extension that registers a loader tool and hides it at session_start (the restore or reload activated it as newly registered) lost the MCP tools tool_search had loaded. The Session now remembers the restored or reloaded loadout (restoredToolNames) and drops the pending tools only when a tool of that loadout is deactivated, as Pi does. Ported tests: the two dropLoader cases of agent-session-mcp.test.ts.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "MCP tools loaded by `tool_search` are no longer dropped on resume and `/reload` when an extension deactivates only its own tool at `session_start`, as Pi does (upstream #12054).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4b6e822b66",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "coding/mcp_restore_own_tool_port_test.go::TestAgentSessionMCPToolsAfterResumeAndReloadKeepsRestoredToolsWhenAnExtensionDeactivatesOnlyItsOwnToolBeforeTheyRegister",
+        "coding/mcp_restore_own_tool_port_test.go::TestAgentSessionMCPToolsAfterResumeAndReloadKeepsToolsToolSearchLoadedAfterReloadWhenAnExtensionDeactivatesOnlyItsOwnTool"
       ]
     },
     {
