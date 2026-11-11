@@ -337464,7 +337464,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "12 normalized-name Pig candidates are ambiguous."
+        "13 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -337482,6 +337482,7 @@
         "go:github.com/MichaelKinsy/PiG/ai#sseDecoder.Err",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#Context.Err",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#ReplacedSessionContext.Err",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#requestSignal.Err",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#cancellationOnlyContext.Err",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#modelTaskBinding.Err",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#modelTaskContext.Err",
