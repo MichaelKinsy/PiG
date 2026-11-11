@@ -831,8 +831,9 @@ type TaskRecord[I, S, R any] struct {
 	// AbandonOnRestart is set from TaskOptions.AbandonOnRestart. Immutable.
 	AbandonOnRestart bool            `json:"abandonOnRestart,omitempty"`
 	State            TaskState[S, R] `json:"state"`
-	// Memos are small first-writer-wins values retained while the task can run; nil once completing or terminal.
-	Memos map[string]JsonValue `json:"memos,omitempty"`
+	// Memos are small first-writer-wins values retained while the task can run; nil once completing or terminal. Nil is absent on
+	// the wire and empty is `{}`: a reservation that applies a wake writes the memos it marks, none for a time wake (Pi scheduler.ts reserved).
+	Memos map[string]JsonValue `json:"memos,omitzero"`
 	// StartedAt is the wall-clock time in milliseconds of the first change to running, stamped by the Session. It is
 	// kept through waits and recovery, so the span to EndedAt includes them. Nil before the task first runs, and on
 	// records written by earlier versions.
