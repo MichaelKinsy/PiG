@@ -1,0 +1,38 @@
+# SPDX-License-Identifier: MIT
+name: Cache cleanup
+
+# A pull request's caches are visible to that pull request alone (ref refs/pull/<N>/merge), so once it is closed nothing restores them and they only count against
+# the repository's cache limit until age evicts them. This deletes them when the pull request closes, merged or not. It checks out nothing and runs no pull
+# request code. A fork's pull request gets a read-only token and saves no cache here, so only same-repository pull requests clean up.
+on:
+  pull_request:
+    types: [closed]
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    name: Delete the pull request's caches
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      actions: write
+    steps:
+      - name: Delete the caches of the pull request's merge ref
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          REF: refs/pull/${{ github.event.pull_request.number }}/merge
+        shell: bash
+        run: |
+          set -euo pipefail
+          ids="$(gh cache list --repo "$REPO" --ref "$REF" --limit 1000 --json id --jq '.[].id')"
+          for id in $ids; do
+            # A concurrent run may have deleted the same entry first.
+            gh cache delete "$id" --repo "$REPO" || echo "::warning::cache $id could not be deleted"
+          done
