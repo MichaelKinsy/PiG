@@ -46,10 +46,10 @@ var versionLiteralAllowlist = []allowedVersionLiteral{
 	{"automation/ci/build-libxcb.sh", "1.16.1", "the libxcb release the script builds for the X11 display oracle; the sha256 beside it fixes the bytes"},
 
 	// Checked copies. make compliance compares each with its source and fails on drift.
-	{"automation/images/ci-go/Dockerfile", "1.27.3", "ARG GO_IMAGE: a digest-pinned image tag; make compliance checks it against .go-version"},
-	{"automation/images/ci-go/metadata.env", "1.27.3", "IMAGE_TAG; make compliance checks it against .go-version"},
-	{"automation/images/ci-parity/Dockerfile", "1.27.3", "ARG GO_VERSION; make compliance checks it against .go-version"},
-	{"automation/images/ci-parity/metadata.env", "1.27.3", "IMAGE_TAG; make compliance checks it against .go-version"},
+	{"automation/images/ci-go/Dockerfile", "1.27.4", "ARG GO_IMAGE: a digest-pinned image tag; make compliance checks it against .go-version"},
+	{"automation/images/ci-go/metadata.env", "1.27.4", "IMAGE_TAG; make compliance checks it against .go-version"},
+	{"automation/images/ci-parity/Dockerfile", "1.27.4", "ARG GO_VERSION; make compliance checks it against .go-version"},
+	{"automation/images/ci-parity/metadata.env", "1.27.4", "IMAGE_TAG; make compliance checks it against .go-version"},
 	{"automation/images/ci-parity/Dockerfile", "1.5.0", "ARG PI_VERSION; make pin-sync writes it from .upstream/pin and make compliance checks it"},
 	{"automation/images/ci-parity/metadata.env", "1.5.0", "IMAGE_TAG; make pin-sync writes it from .upstream/pin and make compliance checks it"},
 	{"automation/images/ci-parity/Dockerfile", "12.1.0", "the image's npm check; make compliance checks it against NPM_VERSION"},
