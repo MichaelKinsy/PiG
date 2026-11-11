@@ -1364,6 +1364,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ac0dc3b](#bf-ac0dc3b) | An empty list item ends its list: a following unindented line is no longer taken for its lazy continuation… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ac6fcea](#bf-ac6fcea) | A `session_start` handler that calls `ctx.shutdown()` during `/reload` ends the session and exits 0, as Pi… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ac7e3e9](#bf-ac7e3e9) | fix(durable/core): the observer's abort and microtasks wait a hop without new heap sites | PiG's own defect | All platforms | Unreleased |
+| [BF-ac7ebbf](#bf-ac7ebbf) | The find tool no longer returns no results for patterns that start with `./`, such as `./src/*.ts`; the… | PiG's own defect | All platforms | Unreleased |
 | [BF-ac8664c](#bf-ac8664c) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-aca35e7](#bf-aca35e7) | In print and JSON mode, a Node extension no longer runs a timer or other callback between a prompt's last… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ad0c167](#bf-ad0c167) | Bold, italic, underline, strikethrough and inverse text (markdown headings, quotes, table headers, links and… | PiG's own defect | All platforms | 0.7.0 |
@@ -1629,6 +1630,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-d7855fd](#bf-d7855fd) | A subprocess extension's message, entry or tool renderer, or tool renderer resolver, that was busy past the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d7bfea6](#bf-d7bfea6) | A git source whose ref has no repository (`git:#v1`) no longer panics, and a ref split out of an opaque-path… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d7c7f86](#bf-d7c7f86) | fix(runtimecell): start a packed cell's members in order so a later member's factory cannot take the factory… | PiG's own defect | All platforms | Unreleased |
+| [BF-d7dd9c5](#bf-d7dd9c5) | Text after a multi-row inline image in Markdown no longer draws over the image when the image rows were… | PiG's own defect | All platforms | Unreleased |
 | [BF-d7fbf00](#bf-d7fbf00) | Stored assistant messages of a durable conversation now carry `thinkingLevel`: a generation records the… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-d80425c](#bf-d80425c) | fix(train): gate repairs after merging train 3 and the ordering stack | PiG's own defect | All platforms | Unreleased |
 | [BF-d80c1cd](#bf-d80c1cd) | Where Pi calls `new URL(value)`, Pig now parses a `ws:`, `wss:`, `ftp:` or `file:` URL, and a bracketed IPv6… | PiG's own defect | All platforms | 0.5.0 |
@@ -20626,6 +20628,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `ac7e3e9885` (2026-10-27)
 - **Tests:** None recorded.
 
+### BF-ac7ebbf
+
+**The find tool no longer returns no results for patterns that start with `./`, such as `./src/*.ts`; the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The find tool no longer returns no results for patterns that start with `./`, such as `./src/*.ts`; the leading `./` is dropped, as under Pi (upstream #12020).
+- **Root cause:** fd's full paths never contain /./, so ./src/*.ts found nothing. Drop the leading ./ before choosing full-path matching, as upstream does. Ported test: TestFindIgnoresLeadingDotSlashInPattern.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `ac7ebbf1a5` (2026-11-11)
+- **Tests:** `internal/codingagent/tools/find_leading_dot_slash_port_test.go::TestFindIgnoresLeadingDotSlashInPattern`
+- **Release note:** The find tool no longer returns no results for patterns that start with `./`, such as `./src/*.ts`; the leading `./` is dropped, as under Pi (upstream #12020).
+
 ### BF-ac8664c
 
 **Fix in shipped code**
@@ -24289,6 +24305,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `d7c7f86a12` (2026-10-21)
 - **Tests:** None recorded.
+
+### BF-d7dd9c5
+
+**Text after a multi-row inline image in Markdown no longer draws over the image when the image rows were…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Text after a multi-row inline image in Markdown no longer draws over the image when the image rows were joined with hard line breaks; the rows stay separate, as under Pi (upstream #12017).
+- **Root cause:** Image lines skip wrapping, so rows joined to an image by hard breaks drew over it. Split such a line into rows before layout, as upstream does. Ported test: TestMarkdownKeepsHardBreaksAfterInlineImageAsSeparateRows.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d7dd9c5a19` (2026-11-11)
+- **Tests:** `tui/markdown_image_hard_break_port_test.go::TestMarkdownKeepsHardBreaksAfterInlineImageAsSeparateRows`
+- **Release note:** Text after a multi-row inline image in Markdown no longer draws over the image when the image rows were joined with hard line breaks; the rows stay separate, as under Pi (upstream #12017).
 
 ### BF-d7fbf00
 
