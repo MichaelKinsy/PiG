@@ -321,10 +321,10 @@ func (l *Liveness) FollowActivity(h host.Host) error {
 }
 
 // Value is the counts.
-func (l *Liveness) Value() (delta.JsonValue, error) {
+func (l *Liveness) Value() delta.JsonValue {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	return l.object(), nil
+	return l.object()
 }
 
 // Counts is each count now.

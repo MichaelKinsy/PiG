@@ -230,13 +230,13 @@ type ChatSurface struct {
 
 	// outgoing: messages in flight (`send`) are shown at once, the editor already cleared; a refused one comes back to the editor.
 	outgoing func() []outgoing
-	sending  chordtui.OptimisticAdd[outgoing]
+	sending  p2tui.OptimisticAdd[outgoing]
 	// starting: a `!cmd` in flight, its block shows as running before the server's state does.
 	starting func() *chatcontract.LiveShell
-	start    chordtui.OptimisticAdd[*chatcontract.LiveShell]
+	start    p2tui.OptimisticAdd[*chatcontract.LiveShell]
 	// compacting: a `/compact` in flight, the compaction indicator shows before `pi.live` does.
 	compacting func() bool
-	compactNow chordtui.OptimisticAdd[bool]
+	compactNow p2tui.OptimisticAdd[bool]
 
 	// tree is the viewed session's branches (`/tree`), held from its first use until another session is viewed: a switch of the main conversation changes the
 	// view's identity but must not release it while `navigate` is in flight.
@@ -673,11 +673,11 @@ func (s *ChatSurface) switchTo(identity string) {
 	}
 	scope := rt.Ctx.Scope()
 	s.scope = scope
-	s.outgoing, s.sending, _ = chordtui.Optimistic(scope, func() []outgoing { return noOutgoing }, func(list []outgoing, message outgoing) []outgoing {
+	s.outgoing, s.sending, _ = p2tui.Optimistic(scope, func() []outgoing { return noOutgoing }, func(list []outgoing, message outgoing) []outgoing {
 		return append(slices.Clone(list), message)
 	})
-	s.starting, s.start, _ = chordtui.OptimisticLast(scope, func() *chatcontract.LiveShell { return nil })
-	s.compacting, s.compactNow, _ = chordtui.OptimisticLast(scope, func() bool { return false })
+	s.starting, s.start, _ = p2tui.OptimisticLast(scope, func() *chatcontract.LiveShell { return nil })
+	s.compacting, s.compactNow, _ = p2tui.OptimisticLast(scope, func() bool { return false })
 	if ref, err := scope.HoldWith(chatcontract.Chat, delta.JsonObjectOf("session", s.session, "conversation", float64(s.conversation)), func(ref *host.Reference) {
 		// The conversation stays held for a while after its screen is left (Pi's UI_LINGER): coming back finds it live.
 		p2runtime.UILinger.Release(ref, chatcontract.Chat.Name)
@@ -1107,7 +1107,7 @@ func (s *ChatSurface) Shell(command string, includeInContext bool) {
 	guess := &chatcontract.LiveShell{ID: requestID, Command: command, Author: author, IncludeInContext: includeInContext, Running: true}
 	start := s.start
 	s.perform(func() error {
-		err := start(guess, func() error {
+		err := p2tui.AddCall(start, guess, func() error {
 			_, err := call(ref, "shell", delta.JsonObjectOf("command", command, "includeInContext", includeInContext, "requestId", requestID))
 			return err
 		})
@@ -1364,7 +1364,7 @@ func (s *ChatSurface) Send(mode string) {
 	sending := s.sending
 	message := outgoing{id: sent.ID, text: text, mode: mode, files: files}
 	s.perform(func() error {
-		return sending(message, func() error {
+		return p2tui.AddCall(sending, message, func() error {
 			// Waits through a connecting conversation; calls made while it reconnects wait for it too.
 			err := p2runtime.WhenLive(s.ctx, ref)
 			var writer *host.Reference
@@ -1804,7 +1804,7 @@ func (s *ChatSurface) Compact(instructions string) {
 	}
 	compactNow := s.compactNow
 	s.perform(func() error {
-		return compactNow(true, func() error { _, err := call(ref, "compact", args); return err })
+		return p2tui.AddCall(compactNow, true, func() error { _, err := call(ref, "compact", args); return err })
 	})
 }
 

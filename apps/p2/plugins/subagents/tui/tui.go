@@ -240,7 +240,7 @@ func openAgents(ctx runtime.TuiContext) error {
 		return err
 	}
 	// Archive and restore show at once; a refused one flips back with the error.
-	shown, archiving, _ := chordtui.Optimistic(scope, func() []child {
+	shown, archiving, _ := p2tui.Optimistic(scope, func() []child {
 		value, _ := childrenRead()
 		var out []child
 		for _, each := range p2tui.JList(p2tui.JField(value, session)) {
@@ -340,7 +340,7 @@ func openAgents(ctx runtime.TuiContext) error {
 				change := archiveChange{conversation: target.conversationID, archived: !target.archived}
 				name := target.name
 				go func() {
-					err := archiving(change, func() error {
+					err := p2tui.AddCall(archiving, change, func() error {
 						_, err := control.Call("archive", delta.JsonObjectOf("conversation", float64(change.conversation), "archived", change.archived), context.Background())
 						return err
 					})
