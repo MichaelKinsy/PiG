@@ -1,0 +1,3 @@
+### Fixed
+
+- p2: a worker's first turn no longer starts without a tool that a plugin contributed just before it. The registry the worker hands to Durable recorded each composition of the extensions and their switches on a watch's delivery goroutine, after the batch that composed it and once the host's loop was free, so a turn that took its snapshot in between (under load, with code mode listing its tools) missed the agent tool or an MCP server's tools, or kept one that the `codemode` setting had just switched off. As in Pi, the batch that composed records the composition, through a synchronous observer. <!-- fix: e6243507db0943312f85b1d54dc3d281eb339488 -->
