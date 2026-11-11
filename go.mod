@@ -15,7 +15,7 @@ require (
 	github.com/BurntSushi/toml v1.6.0
 	github.com/MichaelKinsy/PiG/extensions/sdk v0.7.0
 	github.com/Microsoft/go-winio v0.6.4
-	github.com/alecthomas/chroma/v2 v2.24.1
+	github.com/alecthomas/chroma/v2 v2.27.0
 	github.com/aws/aws-sdk-go-v2 v1.47.1
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.16
 	github.com/aws/smithy-go v1.28.1
@@ -41,6 +41,7 @@ require (
 
 require (
 	github.com/Masterminds/semver/v3 v3.5.0 // indirect
+	github.com/dlclark/regexp2/v2 v2.2.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
@@ -54,8 +55,6 @@ require (
 	4d63.com/gocheckcompilerdirectives v1.3.0 // indirect
 	4d63.com/gochecknoglobals v0.2.2 // indirect
 	charm.land/lipgloss/v2 v2.0.3 // indirect
-	// golang.org/x/oauth2/google imports cloud.google.com/go/compute/metadata. Without this pin viper v1.12.0 selects compute v1.6.1, which still ships that package, and the import is ambiguous with the split-out metadata module. go mod tidy drops the pin; restore it.
-	cloud.google.com/go/compute v1.24.0 // indirect
 	cloud.google.com/go/compute/metadata v0.9.0 // indirect
 	codeberg.org/chavacava/garif v0.2.0 // indirect
 	codeberg.org/polyfloyd/go-errorlint v1.9.0 // indirect
