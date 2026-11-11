@@ -4,6 +4,7 @@ import (
 	"context"
 	"maps"
 	"sync"
+	"sync/atomic"
 )
 
 // ExtensionFactory is an extension written as Go code the binary was built with: it receives the extension API and registers tools, commands,
@@ -171,6 +172,8 @@ type registeredEventHandler struct {
 type eventHandlerState struct {
 	mu       sync.RWMutex
 	handlers map[string][]registeredEventHandler
+	// present is the set of events that have a handler, built on demand under mu and dropped (nil) by every change to handlers, so a reader that finds it set answers without a lock. A change publishes nil while it holds mu exclusively, and a reader publishes a set only while it holds mu shared, so a set never outlives the change that made it stale.
+	present atomic.Pointer[map[string]struct{}]
 }
 
 // InitializeEventHandlers imports legacy Handlers once. Call before sharing an
@@ -204,6 +207,7 @@ func (e *Extension) addEventHandler(event string, registered registeredEventHand
 	e.handlerState.mu.Lock()
 	defer e.handlerState.mu.Unlock()
 	e.handlerState.handlers[event] = append(e.handlerState.handlers[event], registered)
+	e.handlerState.present.Store(nil)
 	if e.Handlers == nil {
 		e.Handlers = make(map[string][]HandlerFn)
 	}
@@ -237,6 +241,7 @@ func (e *Extension) RemoveEventHandler(event string, id int) {
 		} else {
 			e.handlerState.handlers[event] = handlers
 		}
+		e.handlerState.present.Store(nil)
 		return
 	}
 }
@@ -262,6 +267,7 @@ func (e *Extension) ReplaceEventHandlers(source *Extension) {
 	e.handlerState.mu.Lock()
 	defer e.handlerState.mu.Unlock()
 	e.handlerState.handlers = handlers
+	e.handlerState.present.Store(nil)
 	if e.Handlers == nil {
 		e.Handlers = legacy
 		return
@@ -285,6 +291,34 @@ func (e *Extension) EventHandlers(event string) []HandlerFn {
 		handlers[i] = handler.handler
 	}
 	return handlers
+}
+
+// HasEventHandlers reports whether EventHandlers(event) is not empty, without a lock or an allocation: the dispatcher asks it before every event it might dispatch.
+func (e *Extension) HasEventHandlers(event string) bool {
+	state := e.handlerState
+	if state == nil {
+		return len(e.Handlers[event]) > 0
+	}
+	present := state.present.Load()
+	if present == nil {
+		present = state.publishPresent()
+	}
+	_, ok := (*present)[event]
+	return ok
+}
+
+// publishPresent builds the set of events that have a handler and publishes it, still holding mu shared so that no change can have run in between.
+func (s *eventHandlerState) publishPresent() *map[string]struct{} {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	present := make(map[string]struct{}, len(s.handlers))
+	for event, registered := range s.handlers {
+		if len(registered) > 0 {
+			present[event] = struct{}{}
+		}
+	}
+	s.present.Store(&present)
+	return &present
 }
 
 // JSONEventHandlers is EventHandlers with, for each handler, whether it was added with AddJSONEventHandler.

@@ -108379,6 +108379,17 @@
       "shapeHash": "sha256:d9d0ba70eac3347ec49a3f4a824a09e08ae93f1b82f76948d4e036fe7e6726d3"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#Extension.HasEventHandlers",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "Extension.HasEventHandlers",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(event string) bool"
+      },
+      "shapeHash": "sha256:a069791dad0ceff3a47995491e721a05a5d7bba95738665aefc05fa7ba426f02"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#Extension.InitializeDeclarationRegistry",
       "package": "github.com/MichaelKinsy/PiG/coding/extension",
       "name": "Extension.InitializeDeclarationRegistry",
@@ -116495,6 +116506,17 @@
         "type": "eventHandlerState"
       },
       "shapeHash": "sha256:211f6fd71f76951123047ba9bfce9d3b316204917982e273e36859a41599ec0b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#eventHandlerState.publishPresent",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "eventHandlerState.publishPresent",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() *map[string]struct{}"
+      },
+      "shapeHash": "sha256:74b5f878c21d72187527ae512b0215ea229129e594ba192b8708bbebe0ceb5fa"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#execDefaultMaxBuffer",
