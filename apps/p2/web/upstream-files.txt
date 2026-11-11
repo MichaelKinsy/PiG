@@ -486,6 +486,7 @@ src/web/chat-context.ts
 src/web/composer-state.tsx
 src/web/conversation-cache.ts
 src/web/drag-gesture.ts
+src/web/drag-size.ts
 src/web/drawer-swipe.ts
 src/web/elanor-extra/drum.ts
 src/web/elanor-extra/elanor-extra.css
