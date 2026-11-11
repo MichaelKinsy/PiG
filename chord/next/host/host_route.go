@@ -27,6 +27,15 @@ import (
 // (Loop.Run) afterwards, so a `resolve` whose holds were all released meanwhile finishes and its result is handled as Pi's.
 // `authorize` and `resolve` may throw in Pi: they return the error. The route calls the host's own `*path`, `*hostLink` and
 // `*chordHost` directly, as Pi's classes do. A `Link` of `link` and its `Codec` and `PartLimits` are the package's own.
+//
+// Pi's `await` continuation (the section that applies the result) runs before the next operation of the workers component's
+// queue starts: workers.ts `#enqueue` registers the bookkeeping reaction on a start's promise first and the route's `await`
+// after it, and the next operation (the Stop, and the Retry after it, queued behind a start that failed) is a reaction on the
+// promise that bookkeeping reaction settles, one microtask later, so it finds the result applied and `resolving` cleared. The
+// Go section is not ordered like that by itself: it runs once the goroutine of `resolve` has returned and entered the loop.
+// The ctx of `Resolve` therefore carries a parking.Applied, which the route applies in that section after the result: an app
+// that releases its next operation on it (parking.AppliedOf(ctx).Then) takes Pi's order. The route ignores what the app does
+// with it.
 
 // RouteOptions is what `host.route` takes for a kind.
 type RouteOptions struct {
@@ -292,7 +301,8 @@ func (r *route) resolve(routed *routed, trigger telemetry.TelemetrySpan) {
 	routed.resolving = true
 	loop := r.host.loop()
 	signal := parking.New()
-	ctx := context.WithValue(baseContext, parking.Key, signal)
+	applied := parking.NewApplied()
+	ctx := parking.WithApplied(context.WithValue(baseContext, parking.Key, signal), applied)
 	loop.Lend(signal, func(abandoned bool) {
 		var resolved ResolvedLink
 		var err error
@@ -305,6 +315,8 @@ func (r *route) resolve(routed *routed, trigger telemetry.TelemetrySpan) {
 		}
 		signal.Return()
 		loop.Run(func() {
+			// What the app released on this result being applied runs after it was, in this section.
+			defer applied.Apply()
 			// A Goexit after the result was handled leaves nothing to do.
 			if !abandoned || routed.resolving {
 				r.resolved(routed, resolved, err, span)
